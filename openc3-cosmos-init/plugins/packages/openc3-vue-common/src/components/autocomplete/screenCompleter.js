@@ -52,7 +52,8 @@ export default class ScreenCompleter {
     if (!this.autocompleteData) return callback(null, [])
     let line = session.getLine(pos.row)
     let lineBefore = line.slice(0, pos.column)
-    let parsedLine = lineBefore.trimStart().split(/ (?![^<]*>)/)
+    // Split on spaces, except those inside a <bracketed parameter>
+    let parsedLine = lineBefore.trimStart().split(/ (?![^<>]*>)/)
     let suggestions = this.autocompleteData
     // If we have more than 1 we've selected a keyword
     if (parsedLine.length > 1) {

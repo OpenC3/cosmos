@@ -68,6 +68,21 @@ test.afterAll(async ({ browser, baseURL }) => {
   await setQuiet(browser, baseURL, 'FALSE')
 })
 
+// Close the notifications menu.
+//
+// Vuetify only lets the top overlay in its global stack handle Escape, and it
+// updates that "am I on top" flag inside a setTimeout. An Escape sent in the
+// same tick the menu opened is therefore dropped by every overlay, the menu
+// stays up, and its scrim then swallows every later click until the test times
+// out. Retry until the menu is really gone.
+async function closeNotifications(page: Page) {
+  const pane = page.locator('[data-test=notification-list]')
+  await expect(async () => {
+    await page.keyboard.press('Escape')
+    await expect(pane).toBeHidden({ timeout: 1000 })
+  }).toPass({ timeout: 10000 })
+}
+
 // Open Notification settings and set a switch to the desired state (only
 // clicking if it isn't already there), then close the dialog.
 async function setSetting(page: Page, dataTest: string, enable: boolean) {
@@ -83,7 +98,7 @@ async function setSetting(page: Page, dataTest: string, enable: boolean) {
   await expect(input).toBeChecked({ checked: enable })
   await page.locator('button:has-text("Close")').click()
   // Close the notifications menu so its overlay stops intercepting clicks.
-  await page.keyboard.press('Escape')
+  await closeNotifications(page)
 }
 
 // Open Notification settings and choose the alert popup position ('top' or
@@ -100,7 +115,7 @@ async function setToastPosition(page: Page, position: 'top' | 'bottom') {
   await radio.locator('.v-selection-control__input').click()
   await expect(radio.locator('input')).toBeChecked()
   await page.locator('button:has-text("Close")').click()
-  await page.keyboard.press('Escape')
+  await closeNotifications(page)
 }
 
 test('plain notifications only appear in the menu, not as a toast', async ({
@@ -204,7 +219,7 @@ test('acking a toast marks the same alert read in the menu (event round trip)', 
   await expect(
     menuRow(page, alertText).locator('[data-test=ack-notification]'),
   ).toBeVisible()
-  await page.keyboard.press('Escape')
+  await closeNotifications(page)
 
   // Acknowledge from the toast; the openc3-ack-alert event marks the menu row
   // read even though the toast lives in a separate app instance.
@@ -317,7 +332,7 @@ test('un-acked alerts survive a page reload (must-ack persists)', async ({
   // Open and close the menu without acking. This must not advance the stream
   // offset past the un-acked alert, otherwise the reload below would drop it.
   await page.locator('[data-test=notifications]').click()
-  await page.keyboard.press('Escape')
+  await closeNotifications(page)
 
   // The re-toast only happens if the un-acked alert lowered the persisted
   // reconnect offset (Notifications.vue persistStreamOffset), so the reloaded
@@ -406,7 +421,7 @@ test('turning off Show alerts dismisses existing toasts and suppresses new ones'
   await expect(
     menuRow(page, firstText).locator('[data-test=ack-notification]'),
   ).toBeVisible()
-  await page.keyboard.press('Escape')
+  await closeNotifications(page)
 
   // With the master toggle off, a new alert does not toast (still logged to
   // the menu).
@@ -418,7 +433,7 @@ test('turning off Show alerts dismisses existing toasts and suppresses new ones'
   // The new alert still logs to the menu (proves the client processed it)...
   await page.locator('[data-test=notifications]').click()
   await expect(menuRow(page, secondText)).toBeVisible()
-  await page.keyboard.press('Escape')
+  await closeNotifications(page)
   // ...but does not toast while the master toggle is off.
   await expect(
     page.locator('[data-test=toast]', { hasText: secondText }),

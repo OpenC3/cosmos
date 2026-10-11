@@ -255,7 +255,7 @@ class RunningScript:
     # Matches the following test cases:
     # class MySuite(TestSuite)
     # class MySuite(Suite)
-    PYTHON_SUITE_REGEX = re.compile(r"\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)")
+    PYTHON_SUITE_REGEX = re.compile(r"class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)")
 
     # Can't use isoformat because it appends "+00:00" instead of "Z"
     STRFTIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"

@@ -560,6 +560,20 @@ RSpec.describe StorageController, type: :controller do
         }
         expect(response).to have_http_status(:unauthorized)
       end
+
+      it "rejects a table definition overlay upload (requires admin)" do
+        get :get_upload_presigned_request, params: {
+          bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/tables/config/table_def.txt", scope: "DEFAULT"
+        }
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "allows a table binary overlay upload" do
+        get :get_upload_presigned_request, params: {
+          bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/tables/bin/table.bin", scope: "DEFAULT"
+        }
+        expect(response).to have_http_status(:created)
+      end
     end
   end
 
@@ -957,8 +971,9 @@ RSpec.describe StorageController, type: :controller do
         expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/tmp/foo.txt')).to be true
       end
 
-      it "requires admin (returns false) for the cmd_tlm overlay" do
+      it "requires admin (returns false) for the code areas" do
         expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt')).to be false
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/tables/config/table_def.txt')).to be false
       end
 
       it "requires admin for non-overlay and non-config paths" do

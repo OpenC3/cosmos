@@ -119,7 +119,7 @@ services:
       - OPENC3_SETTING_PYPI_URL=https://pypi.org
 ```
 
-These variables are deliberately absent from `compose.yaml`; adding them here is what makes them reach the container, so a setting added by a later COSMOS release needs no `compose.yaml` edit. A setting is written on first init and then left alone so Admin Console edits survive a restart. See [cli initsettings](../getting-started/cli.md#initsettings) for the full list, the JSON settings, `--dry-run` and `--export`.
+These variables are deliberately absent from `compose.yaml`; adding them here is what makes them reach the container, so a setting added by a later COSMOS release needs no `compose.yaml` edit. A setting is written on first init and updated when its variable changes, but a value changed in the Admin Console is left alone so the edit survives a restart. See [cli initsettings](../getting-started/cli.md#initsettings) for the full list, the JSON settings, `--dry-run` and `--export`.
 
 ## Do not put secrets in this file
 

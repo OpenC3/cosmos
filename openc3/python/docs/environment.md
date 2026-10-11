@@ -52,6 +52,21 @@ Example:
 OPENC3_API_TIMEOUT=1.0
 ```
 
+## OPENC3_API_READ_TIMEOUT
+
+> CORE, ENTERPRISE
+
+Set the time in seconds to wait for the first response byte from the server. This is
+separate from OPENC3_API_TIMEOUT, which only covers the connection phase. Requests can
+legitimately block for a long time, e.g. `cmd()` with a large timeout waiting on an
+interface ack, so the default is 86400 (one day). A read timeout is not retried.
+
+Example:
+
+```
+OPENC3_API_READ_TIMEOUT=86400
+```
+
 ## OPENC3_SCRIPT_API_SCHEMA
 
 ---

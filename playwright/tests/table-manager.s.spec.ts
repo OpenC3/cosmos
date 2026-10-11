@@ -21,13 +21,39 @@ test.use({
   toolName: 'Table Manager',
 })
 
-async function openFile(page: Page, utils: Utilities, filename: string) {
+// INST and INST2 both ship tables/bin/ConfigTables.bin and the matching
+// definitions, so a bare filename locator is ambiguous. Scope to one target's
+// top level tree node, which is the only place the target name appears exactly.
+function targetNode(page: Page, target: string) {
+  return page
+    .locator('.tree-container > .tree-node')
+    .filter({ has: page.getByText(target, { exact: true }) })
+}
+
+async function openFile(
+  page: Page,
+  utils: Utilities,
+  filename: string,
+  target: string = 'INST',
+) {
   let openDialog = page.locator('.v-dialog').locator('text=File Open')
   await expect(openDialog).toBeVisible()
+  // The dialog requests each target's file list separately and renders each one
+  // as it lands, so until every request is in, tree order is arrival order, not
+  // target order. 'nth=0' then picks whichever target answered first: for 'New
+  // Binary from Definition' that silently generates and saves the binary into
+  // the wrong target, leaving it marked modified for the rest of the run. The
+  // progress bar clears (and the buttons enable) only once all of them return.
+  await expect(page.getByRole('progressbar')).not.toBeVisible()
   await expect(page.getByText('TEMPLATED')).not.toBeVisible()
   await page.locator('[data-test=file-open-save-search] input').fill(filename)
   await utils.sleep(100) // Allow search to complete
-  await page.locator(`text=${filename} >> nth=0`).click()
+  // The listing appends '*' to a modified file, so allow a trailing one. The
+  // search string is lower case while the tree shows the real name, hence 'i'.
+  const escaped = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  await targetNode(page, target)
+    .getByText(new RegExp(`^${escaped}\\*?$`, 'i'))
+    .click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(openDialog).not.toBeVisible()
 }
@@ -267,9 +293,11 @@ test('strips the modified marker on Save As', async ({ page, utils }) => {
     .fill('configtables.bin')
 
   // Precondition: without the marker actually present in the tree this test
-  // would pass no matter what the dialog does with it. Only INST is edited by
-  // this spec, so INST2's copy of the same filename stays unmarked.
-  const marked = page.getByText('ConfigTables.bin*', { exact: true })
+  // would pass no matter what the dialog does with it. Scoped to INST because
+  // INST2 ships the same filename and may carry its own marker.
+  const marked = targetNode(page, 'INST').getByText('ConfigTables.bin*', {
+    exact: true,
+  })
   await expect(marked).toBeVisible()
 
   // toHaveValue is an exact match, so a trailing '*' fails here

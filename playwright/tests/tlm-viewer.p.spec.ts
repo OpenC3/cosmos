@@ -310,6 +310,75 @@ BIG INST HEALTH_STATUS TEMP2`)
   })
 })
 
+test('autocompletes screen keywords and their parameters', async ({
+  page,
+  utils,
+}) => {
+  // The screen editor completer splits the line being typed into tokens to work
+  // out which parameter is being completed, so it has to keep counting tokens
+  // correctly as the line grows. Uses ADCS because no other test saves it.
+  await showScreen(page, utils, 'INST', 'ADCS', true, async function () {
+    await page.locator('[data-test=edit-screen-icon]').click()
+    await expect(
+      page.locator('.v-toolbar:has-text("Edit Screen")'),
+    ).toBeVisible()
+    // Complete on a clean line at the end of the screen. fill() inserts at the
+    // cursor rather than replacing the document, and drops the newline, which
+    // would leave the keyword appended to the last line of the definition.
+    const editor = page.locator('textarea').first()
+    if (process.platform === 'darwin') {
+      await page.keyboard.press('Meta+ArrowDown') // Ace "gotoend" on mac
+    } else {
+      await page.keyboard.press('Control+End')
+    }
+    await page.keyboard.press('Enter')
+
+    const autocomplete = page.locator('.ace_autocomplete')
+    // Ctrl-space is the editor's documented trigger, and works whether or not
+    // live autocompletion fired on the keystrokes themselves
+    const showCompletions = async () => {
+      await page.keyboard.press('Control+Space')
+      await expect(autocomplete).toBeVisible()
+    }
+
+    // One token so far: the keyword itself. The completer fetches its keyword
+    // list when the editor opens, so retry until that request has landed.
+    await editor.pressSequentially('LABELVA')
+    await expect(async () => {
+      await page.keyboard.press('Control+Space')
+      await expect(autocomplete).toBeVisible({ timeout: 1000 })
+    }).toPass({ timeout: 20000 })
+    await expect(autocomplete).toContainText('LABELVALUE')
+
+    // Two tokens: the first parameter is the target name
+    await editor.pressSequentially('LUE INS')
+    await showCompletions()
+    await expect(autocomplete).toContainText('INST')
+
+    // Three tokens: the packets of the target named in the second token
+    await editor.pressSequentially('T HEALTH')
+    await showCompletions()
+    await expect(autocomplete).toContainText('HEALTH_STATUS')
+
+    // Four tokens: the items of the packet named in the third token
+    await editor.pressSequentially('_STATUS TEMP')
+    await showCompletions()
+    await expect(autocomplete).toContainText('TEMP1')
+
+    // Dismiss the completion popup, then leave without saving
+    await editor.press('Escape')
+    await expect(autocomplete).not.toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByText('You have unsaved changes')).toBeVisible()
+    await page
+      .locator('[data-test="confirm-dialog-close without saving"]')
+      .click()
+    await expect(
+      page.locator('.v-toolbar:has-text("Edit Screen")'),
+    ).not.toBeVisible()
+  })
+})
+
 test('displays INST TABS', async ({ page, utils }) => {
   await showScreen(page, utils, 'INST', 'TABS')
 })

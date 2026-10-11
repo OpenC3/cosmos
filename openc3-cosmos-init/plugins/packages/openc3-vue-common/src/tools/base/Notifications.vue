@@ -17,12 +17,17 @@
 
 <template>
   <div>
-    <v-overlay :model-value="showNotificationPane" class="overlay" />
+    <!-- The dimming scrim belongs to the menu itself. A separate v-overlay
+         would be a second entry in Vuetify's overlay stack, and whichever
+         entry is on top owns the Escape key - so Escape could close the menu
+         while leaving an unclosable full-screen scrim swallowing every
+         click. -->
     <v-menu
       v-model="showNotificationPane"
       transition="slide-y-transition"
       :close-on-content-click="false"
       :offset="[12, 102]"
+      scrim
     >
       <template #activator="{ props }">
         <rux-monitoring-icon
@@ -581,10 +586,6 @@ export default {
 }
 .v-badge {
   width: 100%;
-}
-.overlay {
-  height: 100vh;
-  width: 100vw;
 }
 /* v-list-item provides icon-size defaults to prepend icons, overriding the
    size prop, so pin the fatal octagon to rux-status's 12px footprint. */

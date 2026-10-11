@@ -16,6 +16,66 @@ require "openc3/utilities/questdb_client"
 
 module OpenC3
   describe QuestDBClient, no_ext: true do
+    describe "tsdb_lookup" do
+      it "returns a row of nils when every item is a placeholder" do
+        # get_tlm_available returns nil for items which don't exist, which arrive
+        # here as [nil, nil, nil, nil, nil]. There's no table to query so the values
+        # come back nil rather than building a query with no FROM clause.
+        items = Array.new(3) { Array.new(5) }
+        expect(QuestDBClient.tsdb_lookup(items, start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")).to eq([[nil, nil], [nil, nil], [nil, nil]])
+      end
+
+      it "returns a row of nils for a placeholder without an end_time" do
+        expect(QuestDBClient.tsdb_lookup([Array.new(5)], start_time: "2026-09-13T00:00:00Z")).to eq([[nil, nil]])
+      end
+
+      context "with items across db_shards" do
+        let(:items) do
+          [
+            ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil],
+            ["INST2", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil],
+            ["INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", nil],
+          ]
+        end
+
+        def lookup(results, end_time: nil)
+          # INST is on db_shard 0 and INST2 is on db_shard 1
+          allow(QuestDBClient).to receive(:db_shard_for_target) { |target_name, **| target_name == "INST2" ? 1 : 0 }
+          allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard) do |_items, db_shard:, flatten:, **|
+            expect(flatten).to be false
+            results[db_shard]
+          end
+          QuestDBClient.tsdb_lookup(items, start_time: "2026-09-13T00:00:00Z", end_time: end_time)
+        end
+
+        it "queries each db_shard and merges a single row" do
+          result = lookup({ 0 => [[[1.0, nil], [3.0, "RED"]]], 1 => [[[2.0, nil]]] })
+          expect(result).to eq([[1.0, nil], [2.0, nil], [3.0, "RED"]])
+          expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[0], items[2]], hash_including(db_shard: 0))
+          expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[1]], hash_including(db_shard: 1))
+        end
+
+        it "merges a single row of a multi-row query" do
+          # A db_shard with a single row must not be mistaken for multiple rows
+          result = lookup({ 0 => [[[1.0, nil], [3.0, nil]]], 1 => [[[2.0, nil]]] }, end_time: "2026-09-13T01:00:00Z")
+          expect(result).to eq([[1.0, nil], [2.0, nil], [3.0, nil]])
+        end
+
+        it "merges multiple rows filling missing rows with nils" do
+          result = lookup({ 0 => [[[1.0, nil], [3.0, nil]], [[4.0, nil], [6.0, nil]]], 1 => [[[2.0, nil]]] }, end_time: "2026-09-13T01:00:00Z")
+          expect(result).to eq([[[1.0, nil], [2.0, nil], [3.0, nil]], [[4.0, nil], [nil, nil], [6.0, nil]]])
+        end
+
+        it "fills a db_shard with no results with nils" do
+          expect(lookup({ 0 => [[[1.0, nil], [3.0, nil]]], 1 => {} })).to eq([[1.0, nil], [nil, nil], [3.0, nil]])
+        end
+
+        it "returns empty when no db_shard has results" do
+          expect(lookup({ 0 => {}, 1 => {} }, end_time: "2026-09-13T01:00:00Z")).to eq({})
+        end
+      end
+    end
+
     describe "numeric_column_type?" do
       it "returns true for aggregatable numeric types (case-insensitive)" do
         ['BYTE', 'SHORT', 'INT', 'LONG', 'FLOAT', 'DOUBLE', 'double', 'float'].each do |type|

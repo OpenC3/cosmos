@@ -59,6 +59,23 @@ Changing the Min Y and Max Y values simply sets the graph scale. Deleting the Mi
 
 ![Min Max](/img/telemetry_grapher/graph_min_max.png)
 
+The Scale / Lines tab also contains the Draw Style selector and the Custom X Axis Item option.
+
+#### Draw Style
+
+The Draw Style selector changes how data series are rendered on the graph. The available options are:
+
+- **Lines** (default) - Draws connected line segments between data points. Best for time-series data where you want to see trends and continuity.
+- **Points** - Draws individual filled circles at each data point without connecting lines. Best for X-Y scatter plots or data where individual samples are more meaningful than the trend between them.
+
+#### X-Y Plots
+
+Telemetry Grapher supports X-Y plots by allowing you to choose a custom X axis item. By default, all graphs use time as the X axis. Checking the "Custom X axis item" checkbox lets you select a telemetry item from the same packet to use as the X axis instead. This plots one telemetry item against another, creating an X-Y scatter or parametric plot.
+
+All items on the graph must be from the same packet to use this feature, because items from different packets arrive at different times and cannot be correlated.
+
+When using a custom (non-time) X axis, additional Min X Axis and Max X Axis fields appear to allow you to override the automatic X axis scaling.
+
 ## Selecting Items
 
 Selecting a target from the Select Target drop down automatically updates the available packets in the Select Packet drop down which updates the available items in the Select Item drop down. Clicking Add Item adds the item to the graph which immediately begins graphing.

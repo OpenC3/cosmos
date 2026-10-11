@@ -1,0 +1,20 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+# smui-theme builds its sass load path from require.resolve('@material/dom'),
+# which only finds the sibling @material/* packages in a flat node_modules.
+nodeLinker: hoisted
+
+minimumReleaseAge: 1440 # 1 day
+minimumReleaseAgeExclude:
+  # we control these packages, so we don't need to wait to consume them
+  - '@openc3/js-common'
+  - '@openc3/vue-common'

@@ -589,6 +589,47 @@ module OpenC3
         LocalMode.delete_local(key)
         expect(File.exist?(full_path)).to be false
       end
+
+      it "does not delete files outside the scope via a traversal key" do
+        victim = "#{@tmp_dir}/OTHER/targets_modified/INST/procedures/mod.rb"
+        FileUtils.mkdir_p(File.dirname(victim))
+        File.write(victim, "Some data")
+        # The traversal only resolves on disk if the caller's own directory exists, as it does in a real install
+        FileUtils.mkdir_p("#{@tmp_dir}/DEFAULT/targets_modified")
+        LocalMode.delete_local("DEFAULT/targets_modified/../../OTHER/targets_modified/INST/procedures/mod.rb")
+        expect(File.exist?(victim)).to be true
+      end
+
+      it "does not delete files in a sibling of the local mode root" do
+        sibling = "#{@tmp_dir}_old/DEFAULT/file.rb"
+        FileUtils.mkdir_p(File.dirname(sibling))
+        File.write(sibling, "Some data")
+        LocalMode.delete_local("../#{File.basename(@tmp_dir)}_old/DEFAULT/file.rb")
+        expect(File.exist?(sibling)).to be true
+      ensure
+        FileUtils.rm_rf("#{@tmp_dir}_old")
+      end
+    end
+
+    describe "safe_key? and path_within?" do
+      it "accepts plain relative keys" do
+        expect(LocalMode.safe_key?("DEFAULT/targets_modified/INST/procedures/a.rb")).to be true
+        expect(LocalMode.safe_key?("DEFAULT/tool_config/tlm-viewer/my.config")).to be true
+      end
+
+      it "rejects traversal and malformed keys" do
+        ["../OTHER", "DEFAULT/../OTHER", "DEFAULT/./x", "/etc/passwd", "DEFAULT//x", "DEFAULT/x/",
+         "DEFAULT\\..\\x", "DEFAULT/x\0", "", nil].each do |key|
+          expect(LocalMode.safe_key?(key)).to be(false), key.inspect
+        end
+      end
+
+      it "requires a separator boundary" do
+        expect(LocalMode.path_within?("/plugins/DEFAULT/x", "/plugins")).to be true
+        expect(LocalMode.path_within?("/plugins", "/plugins")).to be true
+        expect(LocalMode.path_within?("/plugins_old/DEFAULT/x", "/plugins")).to be false
+        expect(LocalMode.path_within?("/plugins/DEFAULT/../OTHER/x", "/plugins/DEFAULT")).to be false
+      end
     end
 
     describe "delete_remote" do
@@ -933,6 +974,20 @@ module OpenC3
         LocalMode.delete_tool_config('DEFAULT', 'tlm-viewer', 'temps')
         expect(File.exist?("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json")).to be false
       end
+
+      it "does not write or delete outside the scope directory" do
+        setup_sync_test()
+        LocalMode.save_tool_config('DEFAULT', '../../OTHER/tool_config/x', 'temps', '{}')
+        LocalMode.save_tool_config('DEFAULT', 'tlm-viewer', '../../../OTHER/temps', '{}')
+        LocalMode.save_tool_config('../OTHER', 'tlm-viewer', 'temps', '{}')
+        expect(Dir.exist?("#{@tmp_dir}/OTHER")).to be false
+
+        victim = "#{@tmp_dir}/OTHER/tool_config/tlm-viewer/temps.json"
+        FileUtils.mkdir_p(File.dirname(victim))
+        File.write(victim, '{}')
+        LocalMode.delete_tool_config('DEFAULT', 'tlm-viewer', '../../../OTHER/tool_config/tlm-viewer/temps')
+        expect(File.exist?(victim)).to be true
+      end
     end
 
     describe "sync_settings" do
@@ -1102,6 +1157,15 @@ module OpenC3
     end
 
     describe "open_local_file" do
+      it "does not open files in another scope" do
+        victim = "#{@tmp_dir}/OTHER/targets_modified/INST/secret.txt"
+        FileUtils.mkdir_p(File.dirname(victim))
+        File.write(victim, "secret")
+        # The traversal only resolves on disk if the caller's own directory exists, as it does in a real install
+        FileUtils.mkdir_p("#{@tmp_dir}/DEFAULT/targets_modified")
+        expect(LocalMode.open_local_file("../../OTHER/targets_modified/INST/secret.txt", scope: 'DEFAULT')).to be_nil
+      end
+
       it "opens local files" do
         setup_sync_test()
         key = "ANOTHER/something/mod0.ext"
@@ -1123,6 +1187,12 @@ module OpenC3
     end
 
     describe "put_target_file" do
+      it "does not write outside the given scope" do
+        LocalMode.put_target_file("DEFAULT/targets_modified/../../OTHER/x.rb", "data", scope: 'DEFAULT')
+        LocalMode.put_target_file("OTHER/targets_modified/INST/x.rb", "data", scope: 'DEFAULT')
+        expect(Dir.exist?("#{@tmp_dir}/OTHER")).to be false
+      end
+
       it "puts a target file locally" do
         path = "DEFAULT/demo-plugin/a_file.rb"
         string = "Some data for the file"

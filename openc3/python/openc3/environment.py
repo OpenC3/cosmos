@@ -18,6 +18,7 @@ _openc3_api_schema = "OPENC3_API_SCHEMA"
 _openc3_api_hostname = "OPENC3_API_HOSTNAME"
 _openc3_api_port = "OPENC3_API_PORT"
 _openc3_api_timeout = "OPENC3_API_TIMEOUT"
+_openc3_api_read_timeout = "OPENC3_API_READ_TIMEOUT"
 _openc3_script_api_schema = "OPENC3_SCRIPT_API_SCHEMA"
 _openc3_script_api_hostname = "OPENC3_SCRIPT_API_HOSTNAME"
 _openc3_script_api_port = "OPENC3_SCRIPT_API_PORT"
@@ -107,6 +108,12 @@ try:
     OPENC3_API_TIMEOUT = float(os.environ.get(_openc3_api_timeout))
 except TypeError:
     OPENC3_API_TIMEOUT = 1.0
+# None means unset. JsonApiObject.DEFAULT_READ_TIMEOUT_S owns the default so the
+# fallback lives in one place, matching the Ruby ENV.fetch(..., DEFAULT_READ_TIMEOUT_S).
+try:
+    OPENC3_API_READ_TIMEOUT = float(os.environ.get(_openc3_api_read_timeout))
+except TypeError:
+    OPENC3_API_READ_TIMEOUT = None
 
 OPENC3_SCRIPT_API_SCHEMA = os.environ.get(_openc3_script_api_schema, "http")
 OPENC3_SCRIPT_API_HOSTNAME = os.environ.get(_openc3_script_api_hostname, "openc3-cosmos-script-runner-api")

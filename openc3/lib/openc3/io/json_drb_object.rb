@@ -38,8 +38,9 @@ module OpenC3
     # @param url [String] The url of openc3-cosmos-cmd-tlm-api http://openc3-cosmos-cmd-tlm-api:2901
     # @param timeout [Float] The time to wait before disconnecting 1.0
     # @param authentication [OpenC3Authentication] The authentication object if nill initialize will generate
-    def initialize(url:, timeout: 1.0, authentication: nil)
-      super(url: url, timeout: timeout, authentication: authentication)
+    # @param read_timeout [Float] The time to wait for the first response byte from the server
+    def initialize(url:, timeout: 1.0, authentication: nil, read_timeout: nil)
+      super(url: url, timeout: timeout, authentication: authentication, read_timeout: read_timeout)
       @uri = URI("#{url}/openc3-api/api")
     end
 

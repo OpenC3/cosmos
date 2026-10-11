@@ -16,7 +16,6 @@ const app = createApp(App)
 
 app.use(store)
 app.use(vuetify)
-app.use(router)
 app.use(Notify)
 
 const options = OpenC3Auth.getInitOptions()
@@ -25,5 +24,9 @@ OpenC3Auth.init(options).then(() => {
   // It is always DEFAULT in COSMOS Core
   window.openc3Scope = 'DEFAULT'
 
+  // Install the router only after auth is ready. Installing it starts the
+  // initial navigation, whose guard makes API calls that would otherwise run
+  // before auth has initialized and fail with no token
+  app.use(router)
   app.mount('#openc3-main')
 })

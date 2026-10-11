@@ -10,8 +10,118 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+from unittest.mock import MagicMock, patch
+
+import psycopg
 
 from openc3.utilities.questdb_client import QuestDBClient
+
+
+class TestTsdbLookup(unittest.TestCase):
+    def test_returns_a_row_of_nones_when_every_item_is_a_placeholder(self):
+        # get_tlm_available returns None for items which don't exist, which arrive
+        # here as [None, None, None, None, None]. There's no table to query so the
+        # values come back None rather than building a query with no FROM clause.
+        items = [[None] * 5, [None] * 5, [None] * 5]
+        self.assertEqual(
+            QuestDBClient.tsdb_lookup(items, start_time="2026-09-13T00:00:00Z", end_time="2026-09-13T01:00:00Z"),
+            [[None, None], [None, None], [None, None]],
+        )
+
+    def test_returns_a_row_of_nones_for_a_placeholder_without_an_end_time(self):
+        self.assertEqual(
+            QuestDBClient.tsdb_lookup([[None] * 5], start_time="2026-09-13T00:00:00Z"),
+            [[None, None]],
+        )
+
+
+class TestTsdbLookupDbShards(unittest.TestCase):
+    ITEMS = [
+        ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
+        ["INST2", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
+        ["INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", None],
+    ]
+
+    def setUp(self):
+        # INST is on db_shard 0 and INST2 is on db_shard 1
+        patcher = patch.object(
+            QuestDBClient,
+            "db_shard_for_target",
+            side_effect=lambda target_name, scope: 1 if target_name == "INST2" else 0,
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def lookup(self, results, **kwargs):
+        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard") as single:
+            single.side_effect = lambda items, db_shard, **_kw: results[db_shard]
+            return QuestDBClient.tsdb_lookup(self.ITEMS, start_time="2026-09-13T00:00:00Z", **kwargs), single
+
+    def test_uses_the_single_db_shard_fast_path(self):
+        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard", return_value="result") as single:
+            items = [self.ITEMS[0], self.ITEMS[2]]
+            self.assertEqual(
+                QuestDBClient.tsdb_lookup(items, start_time="2026-09-13T00:00:00Z", scope="OTHER"), "result"
+            )
+        single.assert_called_once()
+        self.assertEqual(single.call_args.kwargs["db_shard"], 0)
+        self.assertEqual(single.call_args.kwargs["scope"], "OTHER")
+        self.assertEqual(single.call_args[0][0][1].item_name, "TEMP2")
+
+    def test_queries_each_db_shard_and_merges_a_single_row(self):
+        result, single = self.lookup({0: [[[1.0, None], [3.0, "RED"]]], 1: [[[2.0, None]]]})
+        self.assertEqual(result, [[1.0, None], [2.0, None], [3.0, "RED"]])
+        self.assertEqual(single.call_count, 2)
+        shards = {call.kwargs["db_shard"]: call[0][0] for call in single.call_args_list}
+        self.assertEqual([item.item_name for item in shards[0]], ["TEMP1", "TEMP2"])
+        self.assertEqual([item.target_name for item in shards[1]], ["INST2"])
+        for call in single.call_args_list:
+            self.assertFalse(call.kwargs["flatten"])
+
+    def test_merges_multiple_rows_filling_missing_rows_with_nones(self):
+        result, _ = self.lookup(
+            {0: [[[1.0, None], [3.0, None]], [[4.0, None], [6.0, None]]], 1: [[[2.0, None]]]},
+            end_time="2026-09-13T01:00:00Z",
+        )
+        self.assertEqual(
+            result,
+            [
+                [[1.0, None], [2.0, None], [3.0, None]],
+                [[4.0, None], [None, None], [6.0, None]],
+            ],
+        )
+
+    def test_merges_array_values(self):
+        # An array item's value is itself a list which must not be mistaken for a row
+        result, _ = self.lookup(
+            {0: [[[[1, 2], None], [[5, 6], None]]], 1: [[[[3, 4], None]]]}, end_time="2026-09-13T01:00:00Z"
+        )
+        self.assertEqual(result, [[[1, 2], None], [[3, 4], None], [[5, 6], None]])
+
+    def test_fills_a_db_shard_with_no_results_with_nones(self):
+        result, _ = self.lookup({0: [[[1.0, None], [3.0, None]]], 1: {}})
+        self.assertEqual(result, [[1.0, None], [None, None], [3.0, None]])
+
+    def test_returns_empty_when_no_db_shard_has_results(self):
+        result, _ = self.lookup({0: {}, 1: {}}, end_time="2026-09-13T01:00:00Z")
+        self.assertEqual(result, {})
+
+
+class TestQueryWithRetry(unittest.TestCase):
+    def test_queries_and_reconnects_the_given_db_shard(self):
+        cursor = MagicMock()
+        cursor.__enter__.return_value.execute.side_effect = [psycopg.OperationalError("down"), None]
+        cursor.__enter__.return_value.fetchall.return_value = [{"A": 1}]
+        conn = MagicMock()
+        conn.cursor.return_value = cursor
+        with (
+            patch.object(QuestDBClient, "connection", return_value=conn) as connection,
+            patch.object(QuestDBClient, "disconnect") as disconnect,
+            patch("openc3.utilities.questdb_client.time.sleep"),
+        ):
+            self.assertEqual(QuestDBClient.query_with_retry("SELECT 1", db_shard=2), [{"A": 1}])
+        connection.assert_called_with(db_shard=2)
+        disconnect.assert_called_once_with(db_shard=2)
 
 
 class TestBuildAggregationSelects(unittest.TestCase):
@@ -127,3 +237,77 @@ class TestCreateTableConvertedColumns(unittest.TestCase):
         }
         sql = self._create(item, "TLM")
         self.assertNotIn("VALUE__C", sql)
+
+
+class TestHandleIngressError(unittest.TestCase):
+    """handle_ingress_error parses the offending table and column out of the
+    QuestDB error message before casting the pending row to fit the column."""
+
+    def _client(self, pending_rows=None):
+        # Bypass __init__ so no connection is required
+        client = QuestDBClient.__new__(QuestDBClient)
+        client.pending_rows = pending_rows if pending_rows is not None else []
+        client.varchar_columns = {}
+        self.logs = []
+        client._log_warn = lambda msg: self.logs.append(msg)
+        client._log_error = lambda msg: self.logs.append(msg)
+        client._log_info = lambda msg: self.logs.append(msg)
+        client._reconnect_and_retry_pending = lambda: self.logs.append("retried")
+        return client
+
+    @staticmethod
+    def _error(message):
+        return type("IngressError", (Exception,), {"__str__": lambda self: message})()
+
+    CAST_ERROR = (
+        "error in line 1: table: INST__HEALTH_STATUS, column: TEMP1; "
+        "cast error from protocol type: DOUBLE to column type: LONG"
+    )
+
+    def test_parses_the_table_and_column_from_the_error(self):
+        client = self._client()
+        self.assertFalse(client.handle_ingress_error(self._error(self.CAST_ERROR)))
+        self.assertIn(
+            "Could not find column TEMP1 in pending rows for table INST__HEALTH_STATUS",
+            "\n".join(self.logs),
+        )
+
+    def test_casts_the_value_in_the_matching_pending_row(self):
+        columns = {"TEMP1": 1.5}
+        client = self._client([("INST__HEALTH_STATUS", columns, 0)])
+        self.assertTrue(client.handle_ingress_error(self._error(self.CAST_ERROR)))
+        self.assertEqual(columns["TEMP1"], 1)
+        self.assertIn("retried", self.logs)
+
+    def test_leaves_rows_for_other_tables_alone(self):
+        columns = {"TEMP1": 1.5}
+        client = self._client([("INST__ADCS", columns, 0)])
+        self.assertFalse(client.handle_ingress_error(self._error(self.CAST_ERROR)))
+        self.assertEqual(columns["TEMP1"], 1.5)
+
+    def test_parses_a_multi_line_error_message(self):
+        message = (
+            "error in line 1:\n table: INST__HEALTH_STATUS,\n column: TEMP1;\n cast error from protocol type: DOUBLE"
+        )
+        client = self._client()
+        self.assertFalse(client.handle_ingress_error(self._error(message)))
+        self.assertIn("for table INST__HEALTH_STATUS", "\n".join(self.logs))
+
+    def test_does_not_run_a_name_past_the_end_of_its_line(self):
+        # The table name is bounded by the newline as well as the comma, matching
+        # the r"(.+?)," this replaced (`.` never matched a newline)
+        message = "table: INST\nHEALTH_STATUS, column: TEMP1; cast error from protocol type: DOUBLE"
+        client = self._client()
+        self.assertFalse(client.handle_ingress_error(self._error(message)))
+        self.assertIn("Could not parse table or column", "\n".join(self.logs))
+
+    def test_gives_up_when_the_table_and_column_cannot_be_parsed(self):
+        client = self._client()
+        message = "cast error from protocol type: DOUBLE but no table or column named"
+        self.assertFalse(client.handle_ingress_error(self._error(message)))
+        self.assertIn("Could not parse table or column", "\n".join(self.logs))
+
+    def test_ignores_errors_that_are_not_type_mismatches(self):
+        client = self._client()
+        client.connect_ingest = lambda: None
+        self.assertFalse(client.handle_ingress_error(self._error("connection reset by peer")))

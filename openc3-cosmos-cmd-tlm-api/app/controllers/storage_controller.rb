@@ -444,8 +444,8 @@ class StorageController < ApplicationController
     end
 
     # Non-admins may only write the user-writable overlay (config/SCOPE/targets_modified
-    # or config/SCOPE/tmp), and never the cmd_tlm overlay, which PacketConfig ERB-renders
-    # and whose GENERIC_*_CONVERSION blocks it evaluates as code. Everything else is admin.
+    # or config/SCOPE/tmp), and never the cmd_tlm or tables/config overlay, whose
+    # GENERIC_*_CONVERSION blocks are evaluated as code. Everything else is admin.
     return if !non_admin_config_overlay_write?(params[:bucket], path) && !authorization('admin')
 
     bucket = OpenC3::Bucket.getClient()
@@ -617,11 +617,11 @@ class StorageController < ApplicationController
 
   # True if the given config-bucket key is an overlay path a non-admin is allowed
   # to write. Non-admins may write config/SCOPE/targets_modified/... and
-  # config/SCOPE/tmp/..., but NOT the cmd_tlm overlay
-  # (config/SCOPE/targets_modified/TARGET/cmd_tlm/...), which is loaded and
-  # executed as code by PacketConfig (GENERIC_*_CONVERSION eval).
+  # config/SCOPE/tmp/..., but NOT the code areas
+  # (config/SCOPE/targets_modified/TARGET/cmd_tlm/... and .../tables/config/...),
+  # whose GENERIC_*_CONVERSION blocks are evaluated as code.
   #
-  # The canonical-key and cmd_tlm rules live in OpenC3::ConfigOverlay so every
+  # The canonical-key and code-area rules live in OpenC3::ConfigOverlay so every
   # writer that can reach the overlay (this presigned upload, tables_controller,
   # scripts_controller) enforces exactly the same thing.
   def non_admin_config_overlay_write?(bucket_param, path)

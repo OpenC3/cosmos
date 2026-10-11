@@ -216,8 +216,18 @@ module OpenC3
     # some modified files while keeping others); when nil, every modified file
     # for the target is removed (the original behavior).
     def self.delete_modified(target_name, scope:, files: nil)
+      # Validate target_name to not allow directory traversal
+      unless OpenC3::LocalMode.safe_key?(target_name) and !target_name.include?('/')
+        raise ArgumentError, "Invalid target_name: #{target_name.inspect}"
+      end
       if files && !files.empty?
+        # Only delete names that are actually modified files of this target.
+        # Anything else (another target, another scope via '..') is ignored.
+        allowed = modified_files(target_name, scope: scope)
         files.each do |name|
+          next unless String === name
+          name = OpenC3::TargetFile.strip_modified(name)
+          next unless allowed.include?(name)
           # TargetFile.destroy handles both local mode and the bucket.
           OpenC3::TargetFile.destroy(scope, name)
         end
@@ -751,11 +761,12 @@ module OpenC3
     # Version History is an Enterprise feature. The plugin deploy runs in the
     # cmd-tlm-api process, which (unlike script-runner-api) doesn't otherwise
     # require the store, so lazily load it on demand. Returns false in Core
-    # builds where the Enterprise gem isn't present.
+    # builds where the Enterprise gem isn't present, and when the store is
+    # disabled (OPENC3_VERSION_HISTORY_DIR unset): its commits no-op there, so
+    # versioning would drop the modified copy without preserving it.
     def version_store_available?
-      return true if defined?(::VersionStore)
-      require 'openc3-enterprise/utilities/version_store'
-      defined?(::VersionStore) ? true : false
+      require 'openc3-enterprise/utilities/version_store' unless defined?(::VersionStore)
+      defined?(::VersionStore) && ::VersionStore.enabled? ? true : false
     rescue LoadError
       false
     end

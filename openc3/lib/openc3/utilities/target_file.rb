@@ -31,6 +31,15 @@ module OpenC3
       name.sub(/\*$/, '')
     end
 
+    # Reject names that could resolve outside the scope's targets_modified
+    # directory. The bucket normalizes '..' segments in keys just like the
+    # filesystem does, so this must be checked before any bucket call.
+    def self.validate_name(name)
+      unless OpenC3::LocalMode.safe_key?(name)
+        raise ArgumentError, "Invalid target file name: #{name.inspect}"
+      end
+    end
+
     def self.all(scope, path_matchers, target: nil)
       target = target.upcase if target
 
@@ -136,6 +145,7 @@ module OpenC3
       # file listing, not a name any caller means to write. Remove it to avoid 
       # creating a file with a '*' in the name.
       name = strip_modified(name)
+      validate_name(name)
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.put_target_file("#{scope}/targets_modified/#{name}", text, scope: scope)
       end
@@ -163,6 +173,7 @@ module OpenC3
       # Match body/create so deleting a name taken straight from a listing
       # removes the file the user actually picked
       name = strip_modified(name)
+      validate_name(name)
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.delete_local("#{scope}/targets_modified/#{name}")
       end

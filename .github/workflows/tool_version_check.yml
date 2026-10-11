@@ -13,8 +13,9 @@
 # dependabot would: one pull request, updated in place each week rather than
 # reopened, carrying the bump itself so it can be reviewed and merged:
 #
-#   * versions inside an Actions input (setup-uv's `version`) or a Dockerfile
-#     ARG consumed by pip -- dependabot parses neither
+#   * versions inside an Actions input (setup-uv's and setup-trivy's
+#     `version`) or a Dockerfile ARG consumed by pip -- dependabot parses
+#     neither
 #   * major releases, since every group in dependabot.yml is limited to
 #     update-types: [minor, patch]
 #   * PEP 723 script lockfiles (openc3/python/tools/*.py.lock)

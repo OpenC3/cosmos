@@ -17,7 +17,7 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
 from openc3.utilities.json import JsonDecoder, JsonEncoder
-from openc3.utilities.questdb_client import QuestDBClient
+from openc3.utilities.questdb_client import QuestDBClient, TlmItem
 from openc3.utilities.store import Store
 from openc3.utilities.store_queued import StoreQueued
 
@@ -220,13 +220,18 @@ class CvtModel(Model):
         # If a start_time is passed we're doing a QuestDB lookup and directly return the results
         # TODO: This currently does NOT support the override values
         if start_time is not None:
-            return cls.tsdb_lookup(items, start_time=start_time, end_time=end_time)
+            return cls.tsdb_lookup(items, start_time=start_time, end_time=end_time, scope=scope)
 
         # First generate a lookup dict of all the items represented so we can query the CVT
         for item in items:
             cls._parse_item(now, lookups, overrides, item, cache_timeout=cache_timeout, scope=scope)
 
-        for target_packet_key, target_name, packet_name, value_keys in lookups:
+        for lookup in lookups:
+            # Set in _parse_item for an item which doesn't exist
+            if lookup is None:
+                results.append([None, None])
+                continue
+            target_packet_key, target_name, packet_name, value_keys = lookup
             if target_packet_key not in packet_lookup:
                 packet_lookup[target_packet_key] = cls.get(
                     target_name,
@@ -438,7 +443,13 @@ class CvtModel(Model):
     # return an ordered array of dict with keys
     @classmethod
     def _parse_item(cls, now, lookups, overrides, item, cache_timeout, scope):
-        target_name, packet_name, item_name, value_type = item
+        # Items can be a TlmItem or a list of [target_name, packet_name, item_name, value_type]
+        # with an optional trailing limits element which is only used by the QuestDB lookup
+        target_name, packet_name, item_name, value_type, _limits = TlmItem(*item)
+        # They are all None when the item doesn't exist (see get_tlm_available)
+        if item_name is None:
+            lookups.append(None)
+            return
 
         # We build lookup keys by including all the less formatted types to gracefully degrade lookups
         # This allows the user to specify FORMATTED and if there is no conversions it will simply return the RAW value

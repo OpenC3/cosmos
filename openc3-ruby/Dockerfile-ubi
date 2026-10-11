@@ -53,13 +53,13 @@ COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 RUN microdnf update -y && \
     microdnf install -y --setopt=tsflags=nodocs $PACKAGES && \
     mkdir -p /usr/src && \
-    tar -xzf /tmp/ruby-3.4.10.tar.gz -C /usr/src/ && \
-    rm -f /tmp/ruby-3.4.10.tar.gz
-WORKDIR /usr/src/ruby-3.4.10
+    tar -xzf /tmp/ruby-3.4.11.tar.gz -C /usr/src/ && \
+    rm -f /tmp/ruby-3.4.11.tar.gz
+WORKDIR /usr/src/ruby-3.4.11
 RUN ./configure --disable-install-doc --enable-shared && \
     make -j "$(nproc)" && \
     make install && \
-    rm -rf /usr/src/ruby-3.4.10
+    rm -rf /usr/src/ruby-3.4.11
 
 # tini - https://github.com/krallin/tini
 WORKDIR /usr/src

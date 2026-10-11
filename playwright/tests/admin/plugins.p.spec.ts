@@ -513,9 +513,14 @@ test.describe(() => {
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
     await page.locator('data-test=edit-submit').click()
     await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
-    // The modified file is a script, so it gets a per-file choice that
-    // defaults to "Install file from plugin" (recoverable via Version
-    // History). Just confirm to take the plugin's version.
+    // Without Version History (Core, or Enterprise with it disabled) the
+    // dialog offers to delete the modified files; check it to take the
+    // plugin's version. With Version History there is no checkbox and the
+    // plugin's version is taken, with the prior content versioned.
+    const deleteModified = page.locator('text=DELETE MODIFIED')
+    if (await deleteModified.isVisible()) {
+      await deleteModified.click()
+    }
     await page.locator('data-test=modified-plugin-submit').click()
     await expect(page.locator('[data-test=plugin-alert]')).toContainText(
       'Started installing',

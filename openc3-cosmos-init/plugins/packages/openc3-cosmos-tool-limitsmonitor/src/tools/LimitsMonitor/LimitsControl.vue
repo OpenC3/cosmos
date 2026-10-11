@@ -320,7 +320,7 @@ export default {
     this.api = new OpenC3Api()
     // Value is passed in as the list of ignored items
     for (let item of this.modelValue) {
-      if (item.match(/.+__.+__.+/)) {
+      if (item.split('__').length >= 3) {
         // TARGET__PACKET__ITEM
         this.ignoreItem(item, true)
       } else {
