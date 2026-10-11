@@ -606,8 +606,11 @@ module OpenC3
       # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
       @queued = update_interval > 0.0
       if @queued
-        EphemeralStoreQueued.instance.set_update_interval(update_interval)
-        StoreQueued.instance.set_update_interval(update_interval)
+        db_shards = [0] + @interface.tlm_target_names.map { |target_name| Store.db_shard_for_target(target_name, scope: @scope) }
+        db_shards.uniq.each do |db_shard|
+          EphemeralStoreQueued.instance(db_shard: db_shard).set_update_interval(update_interval)
+          StoreQueued.instance(db_shard: db_shard).set_update_interval(update_interval)
+        end
       end
 
       @interface_thread_sleeper = Sleeper.new

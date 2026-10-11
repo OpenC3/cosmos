@@ -43,6 +43,7 @@ from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.utilities.json import JsonDecoder, JsonEncoder
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.store import Store
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
 from openc3.utilities.thread_manager import ThreadManager
 from openc3.utilities.time import from_nsec_from_epoch
@@ -692,8 +693,12 @@ class InterfaceMicroservice(Microservice):
         # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
         self.queued = update_interval > 0.0
         if self.queued:
-            EphemeralStoreQueued.instance().set_update_interval(update_interval)
-            StoreQueued.instance().set_update_interval(update_interval)
+            db_shards = {0}
+            for target_name in self.interface.tlm_target_names:
+                db_shards.add(Store.db_shard_for_target(target_name, scope=self.scope))
+            for db_shard in db_shards:
+                EphemeralStoreQueued.instance(db_shard=db_shard).set_update_interval(update_interval)
+                StoreQueued.instance(db_shard=db_shard).set_update_interval(update_interval)
 
         if self.interface_or_router == "INTERFACE":
             self.handler_thread = InterfaceCmdHandlerThread(

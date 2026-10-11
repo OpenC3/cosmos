@@ -192,6 +192,22 @@ module OpenC3
         sleep 0.1 # Allow threads to exit
       end
 
+      it "applies the default update interval to target shards" do
+        InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: []).update
+        allow(Store).to receive(:db_shard_for_target).and_return(1)
+        [EphemeralStoreQueued, StoreQueued].each do |store_class|
+          [0, 1].each do |db_shard|
+            queued_store = double("queued store")
+            allow(store_class).to receive(:instance).with(db_shard: db_shard).and_return(queued_store)
+            expect(queued_store).to receive(:set_update_interval).with(0.1)
+          end
+        end
+
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
       it "disables queued writes when UPDATE_INTERVAL is 0" do
         InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: [["UPDATE_INTERVAL", "0"]]).update
 
