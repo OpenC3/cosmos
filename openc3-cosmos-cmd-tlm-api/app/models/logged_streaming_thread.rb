@@ -194,90 +194,19 @@ class LoggedStreamingThread < StreamingThread
     end
   end
 
-  def redis_thread_body
-    if @last_tsdb_times.length > 0
-      # Override parent to filter overlap during TSDB→STREAM transition
-      topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
-      results = []
-      if topics.length > 0
-        db_shard_groups = build_db_shard_groups(topics, offsets, item_objects_by_topic, packet_objects_by_topic)
+  # Override parent to also filter overlap during TSDB→STREAM transition
+  def skip_message?(topic, msg_hash)
+    return true if super
 
-        timeout_per_db_shard = [500 / [db_shard_groups.length, 1].max, 100].max
-        any_result = false
-        db_shard_groups.each do |db_shard, group|
-          break if @cancel_thread
-          xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_db_shard, @max_batch_size, db_shard: db_shard) do |topic, msg_id, msg_hash, _|
-            stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
-            if stored
-              # Advance offsets past skipped messages so a capped read makes progress
-              advance_offsets(topic, msg_id, item_objects_by_topic, packet_objects_by_topic)
-              next
-            end
-
-            break if @cancel_thread
-
-            # Check per-topic overlap filter
-            last_time = @last_tsdb_times[topic]
-            if last_time
-              time = msg_hash['time'].to_i
-              if time <= last_time
-                # Skip messages already delivered from TSDB, but advance offsets
-                advance_offsets(topic, msg_id, item_objects_by_topic, packet_objects_by_topic)
-                next
-              end
-              # Past the overlap for this topic - clear its filter
-              @last_tsdb_times.delete(topic)
-            end
-
-            break if @cancel_thread
-
-            objects = item_objects_by_topic[topic]
-            break if @cancel_thread
-            if objects and objects.length > 0
-              objects.each do |object|
-                object.offset = msg_id
-              end
-              result_entry = handle_message(msg_hash, objects)
-              results << result_entry if result_entry
-            end
-            break if @cancel_thread
-
-            if results.length >= @max_batch_size
-              @streaming_api.transmit_results(results)
-              results.clear
-            end
-
-            objects = packet_objects_by_topic[topic]
-            if objects
-              objects.each do |object|
-                object.offset = msg_id
-              end
-              objects.each do |object|
-                break if @cancel_thread
-                result_entry = handle_message(msg_hash, [object])
-                results << result_entry if result_entry
-                if results.length >= @max_batch_size
-                  @streaming_api.transmit_results(results)
-                  results.clear
-                end
-              end
-            end
-
-            break if @cancel_thread
-          end
-          any_result = true if xread_result and xread_result.length > 0
-        end
-
-        @streaming_api.transmit_results(results)
-        results.clear
-
-        check_for_completed_objects() unless any_result
-      else
-        @cancel_thread = true
-      end
-    else
-      super
+    # Check per-topic overlap filter
+    last_time = @last_tsdb_times[topic]
+    if last_time
+      # Skip messages already delivered from TSDB
+      return true if msg_hash['time'].to_i <= last_time
+      # Past the overlap for this topic - clear its filter
+      @last_tsdb_times.delete(topic)
     end
+    false
   end
 
   def stream_items(objects_by_topic, topics, offsets)

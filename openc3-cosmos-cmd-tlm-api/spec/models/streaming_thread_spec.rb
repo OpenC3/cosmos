@@ -40,5 +40,18 @@ RSpec.describe StreamingThread, type: :model do
       thread.redis_thread_body
       expect(object.offset).to eql "5-0"
     end
+
+    it "skips and advances past messages already delivered from TSDB in LoggedStreamingThread" do
+      thread = LoggedStreamingThread.new(streaming_api, collection, 25, scope: "DEFAULT", token: nil)
+      thread.instance_variable_set(:@last_tsdb_times, { topic => 100 })
+      allow(OpenC3::Topic).to receive(:read_topics) do |*_args, **_kwargs, &block|
+        block.call(topic, "6-0", { "time" => "100" }, nil)
+        { topic => [["6-0", {}]] }
+      end
+      expect(thread).not_to receive(:handle_message)
+      thread.redis_thread_body
+      expect(object.offset).to eql "6-0"
+      expect(thread.instance_variable_get(:@last_tsdb_times)).to eql({ topic => 100 })
+    end
   end
 end
