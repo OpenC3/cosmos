@@ -44,7 +44,14 @@
 # Usage: uv-mirror-relock [uv lock args...]
 set -e
 
-if [ "${PYPI_URL:-https://pypi.org}" = "https://pypi.org" ]; then
+# Strip trailing slashes so https://pypi.org/ counts as the public index and a
+# mirror URL ending in / does not become .../pypi//simple below.
+MIRROR_URL="${PYPI_URL:-https://pypi.org}"
+while [ "${MIRROR_URL%/}" != "${MIRROR_URL}" ]; do
+  MIRROR_URL="${MIRROR_URL%/}"
+done
+
+if [ "${MIRROR_URL}" = "https://pypi.org" ]; then
   echo "--- relock skipped in $(pwd): PYPI_URL=${PYPI_URL:-<unset>} is the public index"
   exit 0
 fi
@@ -54,6 +61,6 @@ if [ ! -f pyproject.toml ] || [ ! -f uv.lock ]; then
   exit 0
 fi
 
-echo "--- relock $(pwd)/uv.lock against ${PYPI_URL}"
-uv lock --no-config --no-sources --default-index "${PYPI_URL}/simple" "$@"
+echo "--- relock $(pwd)/uv.lock against ${MIRROR_URL}"
+uv lock --no-config --no-sources --default-index "${MIRROR_URL}/simple" "$@"
 echo "=== relock complete"
