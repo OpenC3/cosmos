@@ -14,6 +14,24 @@ description: |
   lines locally without being rebuilt. After the build, only the newly
   built images are pushed to GHCR.
 
+  OS package freshness: the cache key only reflects repo files, so a hit would
+  otherwise pin the package upgrade each Dockerfile runs at build time forever.
+  When push-cache is true, a hit on an image that upgrades packages
+  (openc3-ruby, -buckets, -redis, -tsdb, -traefik) is probed by simulating the
+  upgrade (apt, apk or dnf) inside it. If fixes have been published, that image
+  and every image built FROM it are rebuilt (the probed image without the layer
+  cache) and pushed over the same cache tags. Cost on a clean run is one short
+  `docker run` per probed image.
+
+  Upstream republishes: bases like ruby:3.4-slim-trixie get rebuilt under the
+  same tag with patched binaries, which the package probe can't see. So the
+  registry digest of each image's external base (openc3-node's node image
+  included) is mixed into its cache key. A republished tag becomes an ordinary
+  miss and cascades to children. If a digest can't be looked up, the image and
+  its descendants are built but not pushed, rather than cached under a key
+  that claims to be fresh. Read-only consumers (push-cache false) compute the
+  same key, so they miss after a republish until core CI pushes the new key.
+
   Local developer builds via ./openc3.sh build are unaffected.
 
   Enterprise checks core out at cosmos/, so its workflow uses this action as
@@ -80,15 +98,58 @@ runs:
         misses_file="$RUNNER_TEMP/cosmos-misses-${slug}.txt"
         echo "images-file=$images_file" >> "$GITHUB_OUTPUT"
         echo "misses-file=$misses_file" >> "$GITHUB_OUTPUT"
+        parents_file="$RUNNER_TEMP/cosmos-parents-${slug}.txt"
+        stale_file="$RUNNER_TEMP/cosmos-stale-${slug}.txt"
+        echo "parents-file=$parents_file" >> "$GITHUB_OUTPUT"
+        echo "stale-file=$stale_file" >> "$GITHUB_OUTPUT"
+        nopush_file="$RUNNER_TEMP/cosmos-nopush-${slug}.txt"
+        echo "nopush-file=$nopush_file" >> "$GITHUB_OUTPUT"
 
         common=$(git ls-tree -r HEAD compose.yaml compose-build.yaml .env \
           | sha256sum | cut -c1-12)
 
         declare -A HASH
+        declare -A NOPUSH
         : > "$images_file"
+        : > "$parents_file"
+        : > "$nopush_file"
+
+        # Images with an external base whose tag upstream may republish.
+        # Parsed from the Dockerfile so the ref can't drift from the FROM.
+        DIGEST_IMAGES=" openc3-ruby openc3-buckets openc3-tsdb openc3-redis openc3-traefik openc3-node "
+
+        # Prints the first FROM of <dir>/Dockerfile with its pre-FROM ARG
+        # defaults substituted, letting .env override them (compose passes
+        # those through as build args).
+        base_ref() {
+          local line k ev ref=""
+          local -A args
+          while IFS= read -r line; do
+            case "$line" in
+              ARG\ *=*)
+                line=${line#ARG }
+                args[${line%%=*}]=${line#*=}
+                ;;
+              FROM\ *)
+                ref=${line#FROM }
+                ref=${ref%% *}
+                break
+                ;;
+            esac
+          done < "$1/Dockerfile"
+          for k in "${!args[@]}"; do
+            ev=$(grep -m1 "^${k}=" .env | cut -d= -f2- || true)
+            if [ -n "$ev" ]; then
+              args[$k]=$ev
+            fi
+            ref=${ref//"\${${k}}"/${args[$k]}}
+          done
+          printf '%s' "$ref"
+        }
 
         while IFS='|' read -r name ctx_str parents_str; do
           [ -z "$name" ] && continue
+          echo "${name}|${parents_str}" >> "$parents_file"
           read -ra ctx <<< "$ctx_str"
           own=$(git ls-tree -r HEAD "${ctx[@]}" | sha256sum | cut -c1-12)
           # openc3-cosmos-init consumes the COVERAGE_BUILD build arg (the
@@ -98,10 +159,31 @@ runs:
           if [ "$name" = "openc3-cosmos-init" ]; then
             own="${own}-cov${COVERAGE_BUILD:-0}"
           fi
+          # Mix in the base image's registry digest (see action description).
+          if [[ "$DIGEST_IMAGES" == *" $name "* ]]; then
+            ref=$(base_ref "${ctx[0]}")
+            d=$(docker buildx imagetools inspect "$ref" \
+              --format '{{json .Manifest.Digest}}' 2>/dev/null | tr -d '"')
+            if [[ "$ref" != *'${'* && "$d" == sha256:* ]]; then
+              own="${own}-${d#sha256:}"
+            else
+              echo "::warning::Could not resolve digest for ${name} base '${ref}'; building without caching it"
+              # Run-unique so nothing chained onto this hash (including
+              # enterprise images) can ever match a cache entry.
+              own="${own}-nodigest-${GITHUB_RUN_ID:-0}-${GITHUB_RUN_ATTEMPT:-0}"
+              NOPUSH[$name]=1
+            fi
+          fi
           parent_hashes=""
           for p in $parents_str; do
             parent_hashes="$parent_hashes ${HASH[$p]}"
+            if [ -n "${NOPUSH[$p]:-}" ]; then
+              NOPUSH[$name]=1
+            fi
           done
+          if [ -n "${NOPUSH[$name]:-}" ]; then
+            echo "$name" >> "$nopush_file"
+          fi
           h=$(printf '%s %s %s' "$common" "$own" "$parent_hashes" \
             | sha256sum | cut -c1-12)
           HASH[$name]=$h
@@ -135,19 +217,96 @@ runs:
         TAG: ${{ inputs.tag }}
         IMAGES_FILE: ${{ steps.hashes.outputs.images-file }}
         MISSES_FILE: ${{ steps.hashes.outputs.misses-file }}
+        PARENTS_FILE: ${{ steps.hashes.outputs.parents-file }}
+        STALE_FILE: ${{ steps.hashes.outputs.stale-file }}
+        PUSH_CACHE: ${{ inputs.push-cache }}
+        # Images whose Dockerfile upgrades OS packages at build time. Keep in
+        # step with the Dockerfiles: openc3-ruby/buckets/redis use apt-get,
+        # openc3-tsdb dnf, openc3-traefik apk or dnf. openc3-base and its
+        # children only inherit from openc3-ruby, so they need no probe.
+        PROBE_IMAGES: openc3-ruby openc3-buckets openc3-redis openc3-tsdb openc3-traefik
       # For each image, attempt to pull its per-hash cache tag. On hit, retag
       # to docker.io/openc3inc/${name}:${TAG} so it serves as a local FROM
       # source for any downstream miss. Misses are recorded for the build step.
+      #
+      # The cache key only reflects repo files, so a hit can hold OS packages
+      # that have since been fixed upstream. When this run may write the cache, a hit
+      # on a PROBE_IMAGES entry is probed: if a simulated package upgrade inside
+      # it would change anything, it is treated as a miss and rebuilt without
+      # the layer cache. Images are visited parents first, so everything built
+      # FROM a stale image (openc3-ruby's descendants) is forced to miss too.
+      # The rebuilt image is pushed over the same cache tag, so the next run
+      # probes clean and hits. Read-only consumers (push-cache false)
+      # skip the probe: they could not publish the refresh, so they would
+      # rebuild on every run until core CI refreshed the entry.
       run: |
         set -e
         : > "$MISSES_FILE"
+        : > "$STALE_FILE"
+        declare -A STALE
         hits=0
         misses=0
+
+        # Prints how many packages a package-manager upgrade would change,
+        # using whichever of apt, apk or dnf the image has. Fails (non-zero)
+        # when the probe could not run: no known package manager, no shell,
+        # or the mirror is unreachable.
+        PROBE_SCRIPT='
+        if command -v apt-get >/dev/null 2>&1; then
+          apt-get update -qq >/dev/null 2>&1 || exit 99
+          apt-get -s upgrade | grep -c "^Inst" || true
+        elif command -v apk >/dev/null 2>&1; then
+          apk update -q >/dev/null 2>&1 || exit 99
+          apk upgrade -s | grep -c "Upgrading" || true
+        elif command -v dnf >/dev/null 2>&1; then
+          out=$(dnf -q check-update 2>/dev/null); rc=$?
+          case $rc in
+            0) echo 0 ;;
+            100) printf "%s\n" "$out" | grep -cE "^[^[:space:]]+\.[^[:space:]]+[[:space:]]+[^[:space:]]+[[:space:]]+[^[:space:]]+" || true ;;
+            *) exit 99 ;;
+          esac
+        else
+          exit 99
+        fi'
+        pending_updates() {
+          docker run --rm --user 0 --entrypoint sh "$1" -c "$PROBE_SCRIPT"
+        }
+
         while IFS='=' read -r name hash; do
           [ -z "$name" ] && continue
           src="ghcr.io/openc3/${name}-buildcache:cache-${hash}"
+
+          parents=$(grep -m1 "^${name}|" "$PARENTS_FILE" | cut -d'|' -f2 || true)
+          stale_parent=""
+          for p in $parents; do
+            if [ -n "${STALE[$p]:-}" ]; then
+              stale_parent=$p
+            fi
+          done
+          if [ -n "$stale_parent" ]; then
+            STALE[$name]=1
+            echo "$name" >> "$MISSES_FILE"
+            misses=$((misses+1))
+            echo "::notice::Cache MISS ${name} (${hash}) - parent ${stale_parent} is being refreshed"
+            continue
+          fi
+
           if docker pull "$src" 2>/dev/null; then
             docker tag "$src" "docker.io/openc3inc/${name}:${TAG}"
+            if [ "$PUSH_CACHE" = "true" ] && [[ " $PROBE_IMAGES " == *" $name "* ]]; then
+              if pending=$(pending_updates "$src"); then
+                if [ "$pending" -gt 0 ]; then
+                  STALE[$name]=1
+                  echo "$name" >> "$STALE_FILE"
+                  echo "$name" >> "$MISSES_FILE"
+                  misses=$((misses+1))
+                  echo "::notice::Cache STALE ${name} (${hash}) - ${pending} package upgrades pending, rebuilding"
+                  continue
+                fi
+              else
+                echo "::warning::Could not check ${name} for pending package upgrades; using cached image"
+              fi
+            fi
             hits=$((hits+1))
             echo "::notice::Cache HIT  ${name} (${hash})"
           else
@@ -165,9 +324,13 @@ runs:
       env:
         OPENC3_TAG: ${{ inputs.tag }}
         MISSES_FILE: ${{ steps.hashes.outputs.misses-file }}
+        STALE_FILE: ${{ steps.hashes.outputs.stale-file }}
       # Misses are already in topological order (the hash step writes them
       # that way). Pulled parents are tagged locally as openc3inc/${name}:${TAG},
       # so a child-only miss resolves its FROM without rebuilding the parent.
+      # Stale images get --no-cache --pull so a warm BuildKit layer cache
+      # (self-hosted runners) can't replay the old `apt-get upgrade` layer.
+      # Children need no flag: their changed parent invalidates their layers.
       run: |
         set -e
         if [ ! -s "$MISSES_FILE" ]; then
@@ -180,7 +343,18 @@ runs:
         while read -r name; do
           [ -z "$name" ] && continue
           echo "::group::docker compose build ${name}"
-          docker compose -f compose.yaml -f compose-build.yaml build "$name"
+          build_args=()
+          # Images whose only FROM is external get --pull so a republished
+          # base isn't shadowed by a copy already on the runner. (openc3-node
+          # is left out: --pull would also try to fetch its openc3-ruby parent
+          # from Docker Hub.)
+          case " openc3-ruby openc3-buckets openc3-tsdb openc3-redis openc3-traefik " in
+            *" $name "*) build_args=(--pull) ;;
+          esac
+          if grep -qx "$name" "$STALE_FILE"; then
+            build_args=(--no-cache --pull)
+          fi
+          docker compose -f compose.yaml -f compose-build.yaml build "${build_args[@]}" "$name"
           echo "::endgroup::"
         done < "$MISSES_FILE"
 
@@ -191,6 +365,9 @@ runs:
         TAG: ${{ inputs.tag }}
         IMAGES_FILE: ${{ steps.hashes.outputs.images-file }}
         MISSES_FILE: ${{ steps.hashes.outputs.misses-file }}
+        NOPUSH_FILE: ${{ steps.hashes.outputs.nopush-file }}
+      # Images in NOPUSH_FILE had no base digest to key on (or descend from one
+      # that didn't), so they are built but not cached.
       # Best-effort: a push failure (e.g. fork PR with no packages:write) is
       # logged but does not fail the run.
       run: |
@@ -207,6 +384,10 @@ runs:
 
         while read -r name; do
           [ -z "$name" ] && continue
+          if grep -qx "$name" "$NOPUSH_FILE"; then
+            echo "::notice::Not caching ${name}: base digest unavailable"
+            continue
+          fi
           dst="ghcr.io/openc3/${name}-buildcache:cache-${H[$name]}"
           docker tag "docker.io/openc3inc/${name}:${TAG}" "$dst"
           if ! docker push "$dst"; then
