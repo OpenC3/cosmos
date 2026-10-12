@@ -121,6 +121,8 @@ module OpenC3
                 path = path.sub(/\A#{Regexp.escape(scope)}\//, '')
                 file = _get_storage_file(path, bucket: bucket, scope: scope)
                 file.filename = filename
+                file.bucket = bucket
+                file.bucket_path = input['path']
                 return file
               elsif (method.to_s.include?('open_file'))
                 files = input.map do |filename|
