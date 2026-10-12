@@ -46,9 +46,13 @@ cd ${FOLDER_NAME}
 # misses the frozen sync, and uvinstall falls back to `uv pip install` against
 # that setting. --no-build matches the sync below: no third-party
 # sdist gets built during the image build. A base image that predates the
-# helper skips the relock with a warning rather than failing the build.
+# helper skips the relock with a warning rather than failing the build. The
+# relock uses a throwaway cache, not UV_CACHE_PLUGINS, so whatever it downloads
+# while resolving the dev groups stays out of the image.
 if command -v uv-mirror-relock >/dev/null; then
-  UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv-mirror-relock --no-build
+  RELOCK_CACHE="$(mktemp -d)"
+  UV_CACHE_DIR="${RELOCK_CACHE}" uv-mirror-relock --no-build
+  rm -rf "${RELOCK_CACHE}"
 else
   echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL host ${PYPI_URL##*@})"
 fi

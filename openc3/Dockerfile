@@ -88,12 +88,19 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # reason: every locked runtime dependency has a cp312 manylinux wheel for both
 # amd64 and arm64, so a future sdist-only dependency fails the build loudly
 # instead of running its setup.py.
+#
+# The relock gets a throwaway cache rather than /openc3/uv_cache. It resolves
+# the dev groups too, and a mirror that does not serve wheel metadata files
+# makes uv download whole wheels to read it, which would ship dev-only wheels
+# in the seeded cache.
 RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
       PYPI_HOST="${PYPI_URL#*://}"; PYPI_HOST="${PYPI_HOST%%/*}"; \
       export UV_INSECURE_HOST="${PYPI_HOST##*@}"; \
     fi && \
     if command -v uv-mirror-relock >/dev/null; then \
-      UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock --no-build; \
+      RELOCK_CACHE="$(mktemp -d)" && \
+      UV_CACHE_DIR="${RELOCK_CACHE}" uv-mirror-relock --no-build && \
+      rm -rf "${RELOCK_CACHE}"; \
     else \
       echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL host ${PYPI_URL##*@})"; \
     fi && \
