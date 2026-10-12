@@ -27,12 +27,12 @@ ARG PYPI_URL=https://pypi.org
 # --allow-insecure-host. Build-time only: compose.yaml sets the runtime value.
 ARG OPENC3_PYPI_ALLOW_INSECURE=
 # Update Dockerfile-ubi and the python .github/workflow actions to match this version
-ARG UV_VERSION=0.12.5
+ARG OPENC3_UV_VERSION=0.12.5
 
 ENV APT_URL=${APT_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ENV PYPI_URL=${PYPI_URL}
-ENV UV_VERSION=${UV_VERSION}
+ENV OPENC3_UV_VERSION=${OPENC3_UV_VERSION}
 
 # The official ruby image redirects gem installs to /usr/local/bundle via
 # GEM_HOME. Reset it to Ruby's compiled-in default dir so that at runtime (where
@@ -153,7 +153,7 @@ RUN apt-get update && \
     # setup script from an sdist, even if the mirror serves one.
     PYPI_HOST="${PYPI_URL#*://}" && PYPI_HOST="${PYPI_HOST%%/*}" && \
     PIP_TRUSTED_HOST="${OPENC3_PYPI_ALLOW_INSECURE:+${PYPI_HOST##*@}}" python3 -m pip install --break-system-packages \
-      --only-binary :all: --index-url "${PYPI_URL%/}/simple" "uv==${UV_VERSION}" && \
+      --only-binary :all: --index-url "${PYPI_URL%/}/simple" "uv==${OPENC3_UV_VERSION}" && \
     rm -rf /var/lib/apt/lists/*
 
 # Configure UV for production container usage

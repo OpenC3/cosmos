@@ -16,9 +16,9 @@ ARG PYPI_URL=https://pypi.org
 # --allow-insecure-host. Build-time only: compose.yaml sets the runtime value.
 ARG OPENC3_PYPI_ALLOW_INSECURE=
 # Update Dockerfile and the python .github/workflow actions to match this version
-ARG UV_VERSION=0.12.5
+ARG OPENC3_UV_VERSION=0.12.5
 ENV PYPI_URL=${PYPI_URL}
-ENV UV_VERSION=${UV_VERSION}
+ENV OPENC3_UV_VERSION=${OPENC3_UV_VERSION}
 
 # We require a local certificate file so set that up.
 # You must place a valid cacert.pem file in your OpenC3 development folder for this work
@@ -118,7 +118,7 @@ RUN gem update --system 3.7.2 && \
     # setup script from an sdist, even if the mirror serves one.
     PYPI_HOST="${PYPI_URL#*://}" && PYPI_HOST="${PYPI_HOST%%/*}" && \
     PIP_TRUSTED_HOST="${OPENC3_PYPI_ALLOW_INSECURE:+${PYPI_HOST##*@}}" python3 -m pip install --break-system-packages \
-      --only-binary :all: --index-url "${PYPI_URL%/}/simple" uv=="${UV_VERSION}"
+      --only-binary :all: --index-url "${PYPI_URL%/}/simple" uv=="${OPENC3_UV_VERSION}"
 
 # Configure UV for production container usage
 ENV UV_LINK_MODE=copy
