@@ -332,6 +332,16 @@ class TestTlmApi(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
             override_tlm("INST", "HEALTH_STATUS", "BLAH", 1)
 
+    def test_overrides_and_normalizes_latest_in_every_packet_which_contains_the_item(self):
+        packet_names = TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")["CCSDSSEQCNT"]
+        self.assertGreater(len(packet_names), 1)
+        override_tlm("INST LATEST CCSDSSEQCNT = 5", type="RAW")
+        self.assertCountEqual([o["packet_name"] for o in get_overrides()], packet_names)
+        for packet_name in packet_names:
+            self.assertEqual(tlm("INST", packet_name, "CCSDSSEQCNT", type="RAW"), 5)
+        normalize_tlm("INST LATEST CCSDSSEQCNT")
+        self.assertEqual(get_overrides(), [])
+
     def test_overrides_complains_with_too_many_parameters(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid number of arguments"):
             override_tlm("INST", "HEALTH_STATUS", "TEMP1", "TEMP2", 0.0)

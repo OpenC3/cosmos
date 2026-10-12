@@ -212,17 +212,15 @@ def inject_tlm(
 #
 # @param args The args must either be a string followed by a value or
 #   three strings followed by a value (see the calling style in the
-#   description).
+#   description). A packet name of LATEST overrides the item in every
+#   packet which contains it.
 # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
 def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name, value = _set_tlm_process_args(args, "override_tlm", scope=scope)
-    authorize(
-        permission="tlm_set",
-        target_name=target_name,
-        packet_name=packet_name,
-        scope=scope,
-    )
-    CvtModel.override(target_name, packet_name, item_name, value, type=type, scope=scope)
+    target_name, packet_names, item_name, value = _set_tlm_process_args_all_packets(args, "override_tlm", scope=scope)
+    for packet_name in packet_names:
+        authorize(permission="tlm_set", target_name=target_name, packet_name=packet_name, scope=scope)
+    for packet_name in packet_names:
+        CvtModel.override(target_name, packet_name, item_name, value, type=type, scope=scope)
 
 
 # Get the list of CVT overrides
@@ -241,18 +239,16 @@ def get_overrides(scope=OPENC3_SCOPE):
 # Favor the first syntax where possible as it is more succinct.
 #
 # @param args The args must either be a string or three strings
-#   (see the calling style in the description).
+#   (see the calling style in the description). A packet name of LATEST
+#   normalizes the item in every packet which contains it.
 # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
 #   Also takes :ALL which means to normalize all telemetry types
 def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _tlm_process_args(args, "normalize_tlm", scope=scope)
-    authorize(
-        permission="tlm_set",
-        target_name=target_name,
-        packet_name=packet_name,
-        scope=scope,
-    )
-    CvtModel.normalize(target_name, packet_name, item_name, type=type, scope=scope)
+    target_name, packet_names, item_name = _tlm_process_args_all_packets(args, "normalize_tlm", scope=scope)
+    for packet_name in packet_names:
+        authorize(permission="tlm_set", target_name=target_name, packet_name=packet_name, scope=scope)
+    for packet_name in packet_names:
+        CvtModel.normalize(target_name, packet_name, item_name, type=type, scope=scope)
 
 
 # Returns the raw buffer for a telemetry packet.
@@ -722,6 +718,31 @@ def _validate_tlm_type(tlm_type):
 
 
 def _tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name = _tlm_extract_args(args, method_name)
+    packet_name = _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout, scope)
+    return target_name, packet_name, item_name
+
+
+def _set_tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name, value = _set_tlm_extract_args(args, method_name)
+    packet_name = _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout, scope)
+    return target_name, packet_name, item_name, value
+
+
+# Like _tlm_process_args but returns a list of packet names where LATEST
+# expands to every packet containing the item. Used by APIs which change
+# an item so the change applies wherever the item appears.
+def _tlm_process_args_all_packets(args, method_name, scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name = _tlm_extract_args(args, method_name)
+    return target_name, _tlm_packet_names(target_name, packet_name, item_name, scope), item_name
+
+
+def _set_tlm_process_args_all_packets(args, method_name, scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name, value = _set_tlm_extract_args(args, method_name)
+    return target_name, _tlm_packet_names(target_name, packet_name, item_name, scope), item_name, value
+
+
+def _tlm_extract_args(args, method_name):
     match len(args):
         case 1:
             target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
@@ -732,18 +753,10 @@ def _tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
         case _:
             # Invalid number of arguments
             raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
-    target_name = target_name.upper()
-    packet_name = packet_name.upper()
-    item_name = item_name.upper()
-    if packet_name == "LATEST":
-        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
-    else:
-        # Determine if this item exists, it will raise appropriate errors if not
-        TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
-    return target_name, packet_name, item_name
+    return target_name.upper(), packet_name.upper(), item_name.upper()
 
 
-def _set_tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
+def _set_tlm_extract_args(args, method_name):
     match len(args):
         case 1:
             target_name, packet_name, item_name, value = extract_fields_from_set_tlm_text(args[0])
@@ -755,13 +768,25 @@ def _set_tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCO
         case _:
             # Invalid number of arguments
             raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
-    target_name = target_name.upper()
-    packet_name = packet_name.upper()
-    item_name = item_name.upper()
-    if packet_name == "LATEST":
-        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
-    else:
-        # Determine if this item exists, it will raise appropriate errors if not
-        TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
+    return target_name.upper(), packet_name.upper(), item_name.upper(), value
 
-    return target_name, packet_name, item_name, value
+
+# Resolve LATEST to the most recently received packet containing the item
+def _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    if packet_name == "LATEST":
+        return CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
+    # Determine if this item exists, it will raise appropriate errors if not
+    TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
+    return packet_name
+
+
+# Expand LATEST to every packet containing the item
+def _tlm_packet_names(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
+    if packet_name == "LATEST":
+        packet_names = TargetModel.get_item_to_packet_map(target_name, scope=scope).get(item_name)
+        if packet_names is None:
+            raise RuntimeError(f"Item '{target_name} LATEST {item_name}' does not exist for scope: {scope}")
+        return packet_names
+    # Determine if this item exists, it will raise appropriate errors if not
+    TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
+    return [packet_name]

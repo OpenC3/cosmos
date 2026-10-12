@@ -278,6 +278,37 @@ class TestLimitsApi(unittest.TestCase):
         self.assertEqual(event["state_name"], "UNAVAILABLE")
         self.assertIsNone(event["color"])
 
+    def test_enables_and_disables_latest_limits_in_every_packet_which_contains_the_item(self):
+        packet_names = TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")["CCSDSSEQCNT"]
+        self.assertGreater(len(packet_names), 1)
+        disable_limits("INST LATEST CCSDSSEQCNT")
+        for packet_name in packet_names:
+            self.assertFalse(limits_enabled("INST", packet_name, "CCSDSSEQCNT"))
+        enable_limits("INST", "LATEST", "CCSDSSEQCNT")
+        for packet_name in packet_names:
+            self.assertTrue(limits_enabled("INST", packet_name, "CCSDSSEQCNT"))
+
+    def test_set_limits_through_latest(self):
+        set_limits("INST", "LATEST", "TEMP1", 0.0, 10.0, 20.0, 30.0)
+        self.assertEqual(get_limits("INST", "HEALTH_STATUS", "TEMP1")["CUSTOM"], [0.0, 10.0, 20.0, 30.0])
+
+    def test_set_limits_through_latest_sets_no_packet_if_any_packet_fails(self):
+        item_map = {"TEMP1": ["HEALTH_STATUS", "MECH"]}
+        with (
+            patch.object(TargetModel, "get_item_to_packet_map", return_value=item_map),
+            self.assertRaisesRegex(RuntimeError, "Item 'INST MECH TEMP1' does not exist while setting limits"),
+        ):
+            set_limits("INST", "LATEST", "TEMP1", 0.0, 10.0, 20.0, 30.0)
+        self.assertNotIn("CUSTOM", get_limits("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_set_state_color_through_latest_in_every_packet_which_contains_the_item(self):
+        packet_names = TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")["CCSDSTYPE"]
+        self.assertGreater(len(packet_names), 1)
+        set_state_color("INST", "LATEST", "CCSDSTYPE", "TLM", "GREEN")
+        for packet_name in packet_names:
+            item = TargetModel.packet_item("INST", packet_name, "CCSDSTYPE", scope="DEFAULT")
+            self.assertEqual(item["states"]["TLM"]["color"], "GREEN")
+
     def test_get_limits_groups_returns_all_the_limits_groups(self):
         self.assertEqual(
             get_limits_groups(),

@@ -392,6 +392,20 @@ module OpenC3
       end
     end
 
+    describe "override_tlm and normalize_tlm with LATEST" do
+      it "overrides and normalizes the item in every packet which contains it" do
+        packet_names = TargetModel.get_item_to_packet_map('INST', scope: 'DEFAULT')['CCSDSSEQCNT']
+        expect(packet_names.length).to be > 1
+        @api.override_tlm("INST LATEST CCSDSSEQCNT = 5", type: :RAW)
+        expect(@api.get_overrides().map { |o| o['packet_name'] }).to match_array(packet_names)
+        packet_names.each do |packet_name|
+          expect(@api.tlm("INST", packet_name, "CCSDSSEQCNT", type: :RAW)).to eql(5)
+        end
+        @api.normalize_tlm("INST LATEST CCSDSSEQCNT")
+        expect(@api.get_overrides()).to eql([])
+      end
+    end
+
     describe "get_overrides" do
       it "returns empty array with no overrides" do
         expect(@api.get_overrides()).to eql([])

@@ -174,12 +174,17 @@ module OpenC3
     #
     # @param args The args must either be a string followed by a value or
     #   three strings followed by a value (see the calling style in the
-    #   description).
+    #   description). A packet name of LATEST overrides the item in every
+    #   packet which contains it.
     # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
     def override_tlm(*args, type: :ALL, manual: false, scope: $openc3_scope, token: $openc3_token)
-      target_name, packet_name, item_name, value = _set_tlm_process_args(args, __method__, scope: scope)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
-      CvtModel.override(target_name, packet_name, item_name, value, type: type.intern, scope: scope)
+      target_name, packet_names, item_name, value = _set_tlm_process_args_all_packets(args, __method__, scope: scope)
+      packet_names.each do |packet_name|
+        authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
+      end
+      packet_names.each do |packet_name|
+        CvtModel.override(target_name, packet_name, item_name, value, type: type.intern, scope: scope)
+      end
     end
 
     # Get the list of CVT overrides
@@ -198,13 +203,18 @@ module OpenC3
     # Favor the first syntax where possible as it is more succinct.
     #
     # @param args The args must either be a string or three strings
-    #   (see the calling style in the description).
+    #   (see the calling style in the description). A packet name of LATEST
+    #   normalizes the item in every packet which contains it.
     # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
     #   Also takes :ALL which means to normalize all telemetry types
     def normalize_tlm(*args, type: :ALL, manual: false, scope: $openc3_scope, token: $openc3_token)
-      target_name, packet_name, item_name = _tlm_process_args(args, __method__, scope: scope)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
-      CvtModel.normalize(target_name, packet_name, item_name, type: type.intern, scope: scope)
+      target_name, packet_names, item_name = _tlm_process_args_all_packets(args, __method__, scope: scope)
+      packet_names.each do |packet_name|
+        authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
+      end
+      packet_names.each do |packet_name|
+        CvtModel.normalize(target_name, packet_name, item_name, type: type.intern, scope: scope)
+      end
     end
 
     # Returns the raw buffer for a telemetry packet.
@@ -593,6 +603,31 @@ module OpenC3
     end
 
     def _tlm_process_args(args, method_name, cache_timeout: nil, scope: $openc3_scope, token: $openc3_token)
+      target_name, packet_name, item_name = _tlm_extract_args(args, method_name)
+      packet_name = _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout: cache_timeout, scope: scope)
+      return [target_name, packet_name, item_name]
+    end
+
+    def _set_tlm_process_args(args, method_name, cache_timeout: nil, scope: $openc3_scope, token: $openc3_token)
+      target_name, packet_name, item_name, value = _set_tlm_extract_args(args, method_name)
+      packet_name = _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout: cache_timeout, scope: scope)
+      return [target_name, packet_name, item_name, value]
+    end
+
+    # Like _tlm_process_args but returns an array of packet names where LATEST
+    # expands to every packet containing the item. Used by APIs which change
+    # an item so the change applies wherever the item appears.
+    def _tlm_process_args_all_packets(args, method_name, scope: $openc3_scope)
+      target_name, packet_name, item_name = _tlm_extract_args(args, method_name)
+      return [target_name, _tlm_packet_names(target_name, packet_name, item_name, scope: scope), item_name]
+    end
+
+    def _set_tlm_process_args_all_packets(args, method_name, scope: $openc3_scope)
+      target_name, packet_name, item_name, value = _set_tlm_extract_args(args, method_name)
+      return [target_name, _tlm_packet_names(target_name, packet_name, item_name, scope: scope), item_name, value]
+    end
+
+    def _tlm_extract_args(args, method_name)
       case args.length
       when 1
         target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
@@ -604,21 +639,10 @@ module OpenC3
         # Invalid number of arguments
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
-      target_name = target_name.upcase
-      packet_name = packet_name.upcase
-      item_name = item_name.upcase
-
-      if packet_name == 'LATEST'
-        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
-      else
-        # Determine if this item exists, it will raise appropriate errors if not
-        TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
-      end
-
-      return [target_name, packet_name, item_name]
+      return [target_name.upcase, packet_name.upcase, item_name.upcase]
     end
 
-    def _set_tlm_process_args(args, method_name, cache_timeout: nil, scope: $openc3_scope, token: $openc3_token)
+    def _set_tlm_extract_args(args, method_name)
       case args.length
       when 1
         target_name, packet_name, item_name, value = extract_fields_from_set_tlm_text(args[0])
@@ -631,18 +655,31 @@ module OpenC3
         # Invalid number of arguments
         raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
       end
-      target_name = target_name.upcase
-      packet_name = packet_name.upcase
-      item_name = item_name.upcase
+      return [target_name.upcase, packet_name.upcase, item_name.upcase, value]
+    end
 
+    # Resolve LATEST to the most recently received packet containing the item
+    def _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout: nil, scope: $openc3_scope)
       if packet_name == 'LATEST'
         packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
       else
         # Determine if this item exists, it will raise appropriate errors if not
         TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
       end
+      return packet_name
+    end
 
-      return [target_name, packet_name, item_name, value]
+    # Expand LATEST to every packet containing the item
+    def _tlm_packet_names(target_name, packet_name, item_name, scope: $openc3_scope)
+      if packet_name == 'LATEST'
+        packet_names = TargetModel.get_item_to_packet_map(target_name, scope: scope)[item_name]
+        raise "Item '#{target_name} LATEST #{item_name}' does not exist for scope: #{scope}" unless packet_names
+        return packet_names
+      else
+        # Determine if this item exists, it will raise appropriate errors if not
+        TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
+        return [packet_name]
+      end
     end
   end
 end

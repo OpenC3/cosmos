@@ -233,6 +233,43 @@ module OpenC3
       end
     end
 
+    describe "LATEST limits changes" do
+      it "enables and disables limits in every packet which contains the item" do
+        packet_names = TargetModel.get_item_to_packet_map('INST', scope: 'DEFAULT')['CCSDSSEQCNT']
+        expect(packet_names.length).to be > 1
+        @api.disable_limits("INST LATEST CCSDSSEQCNT")
+        packet_names.each do |packet_name|
+          expect(@api.limits_enabled?("INST", packet_name, "CCSDSSEQCNT")).to be false
+        end
+        @api.enable_limits("INST", "LATEST", "CCSDSSEQCNT")
+        packet_names.each do |packet_name|
+          expect(@api.limits_enabled?("INST", packet_name, "CCSDSSEQCNT")).to be true
+        end
+      end
+
+      it "sets limits through LATEST" do
+        @api.set_limits("INST", "LATEST", "TEMP1", 0.0, 10.0, 20.0, 30.0)
+        expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1")['CUSTOM']).to eql([0.0, 10.0, 20.0, 30.0])
+      end
+
+      it "sets limits in no packet if any packet fails" do
+        allow(TargetModel).to receive(:get_item_to_packet_map).and_return({ 'TEMP1' => ['HEALTH_STATUS', 'MECH'] })
+        expect { @api.set_limits("INST", "LATEST", "TEMP1", 0.0, 10.0, 20.0, 30.0) }.to \
+          raise_error(RuntimeError, "Item 'INST MECH TEMP1' does not exist while setting limits")
+        expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1")['CUSTOM']).to be_nil
+      end
+
+      it "sets the state color in every packet which contains the item" do
+        packet_names = TargetModel.get_item_to_packet_map('INST', scope: 'DEFAULT')['CCSDSTYPE']
+        expect(packet_names.length).to be > 1
+        @api.set_state_color("INST", "LATEST", "CCSDSTYPE", "TLM", "GREEN")
+        packet_names.each do |packet_name|
+          item = TargetModel.packet_item("INST", packet_name, "CCSDSTYPE", scope: "DEFAULT")
+          expect(item['states']['TLM']['color']).to eql('GREEN')
+        end
+      end
+    end
+
     describe "get_limits_groups" do
       it "returns an empty hash with no groups" do
         # Remove all limits_groups
