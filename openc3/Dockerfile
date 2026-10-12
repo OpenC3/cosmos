@@ -71,19 +71,17 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # image that predates the helper skips the relock with a warning rather than
 # failing the build.
 RUN if command -v uv-mirror-relock >/dev/null; then \
-      UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock --no-build; \
+      UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock; \
     else \
       echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL=${PYPI_URL})"; \
     fi && \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project --no-build && \
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project && \
     cp uv.lock /tmp/uv.lock.relocked
 
 # Copy application code (excluding .venv from source)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 
-# Install the application itself with dependencies already present. This sync
-# must allow building the trusted local editable project; the dependency-only
-# sync above already rejects source distributions from third parties.
+# Install the application itself with dependencies already present.
 # The COPY above restored the committed uv.lock over the relocked one, so put
 # the saved lockfile back. Relocking again instead could resolve different
 # versions than the cached dependency layer if the mirror has changed since.
