@@ -84,7 +84,7 @@ RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
     if command -v uv-mirror-relock >/dev/null; then \
       UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock; \
     else \
-      echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL=${PYPI_URL})"; \
+      echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL host ${PYPI_URL##*@})"; \
     fi && \
     UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project && \
     cp uv.lock /tmp/uv.lock.relocked

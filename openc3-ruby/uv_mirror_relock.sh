@@ -52,9 +52,17 @@ while [ "${MIRROR_URL%/}" != "${MIRROR_URL}" ]; do
 done
 
 if [ "${MIRROR_URL}" = "https://pypi.org" ]; then
-  echo "--- relock skipped in $(pwd): PYPI_URL=${PYPI_URL:-<unset>} is the public index"
+  echo "--- relock skipped in $(pwd): ${MIRROR_URL} is the public index"
   exit 0
 fi
+
+# The same URL without any user:password@ credentials. uv strips credentials
+# from the registry URLs it writes to uv.lock, so this is the form to compare
+# the lockfile against, and the only form safe to print into a build log.
+MIRROR_REST="${MIRROR_URL#*://}"
+MIRROR_HOST="${MIRROR_REST%%/*}"
+MIRROR_PATH="${MIRROR_REST#"${MIRROR_HOST}"}"
+REDACTED_URL="${MIRROR_URL%%://*}://${MIRROR_HOST##*@}${MIRROR_PATH}"
 
 if [ ! -f pyproject.toml ] || [ ! -f uv.lock ]; then
   echo "--- relock skipped in $(pwd): no pyproject.toml + uv.lock to relock"
@@ -64,11 +72,11 @@ fi
 # A lockfile already generated against the mirror on the host (see the Offline
 # Building docs) is kept as committed, so the build installs exactly what was
 # locked instead of re-resolving it.
-if ! grep -o 'registry = "[^"]*"' uv.lock | grep -qvF "registry = \"${MIRROR_URL}/simple\""; then
-  echo "--- relock skipped in $(pwd): uv.lock already resolves only against ${MIRROR_URL}"
+if ! grep -o 'registry = "[^"]*"' uv.lock | grep -qvF "registry = \"${REDACTED_URL}/simple\""; then
+  echo "--- relock skipped in $(pwd): uv.lock already resolves only against ${REDACTED_URL}"
   exit 0
 fi
 
-echo "--- relock $(pwd)/uv.lock against ${MIRROR_URL}"
+echo "--- relock $(pwd)/uv.lock against ${REDACTED_URL}"
 uv lock --no-config --no-sources --default-index "${MIRROR_URL}/simple" "$@"
 echo "=== relock complete"

@@ -50,7 +50,7 @@ cd ${FOLDER_NAME}
 if command -v uv-mirror-relock >/dev/null; then
   UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv-mirror-relock --no-build
 else
-  echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL=${PYPI_URL})"
+  echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL host ${PYPI_URL##*@})"
 fi
 
 echo "--- packageBuild $1 pnpm run build"
