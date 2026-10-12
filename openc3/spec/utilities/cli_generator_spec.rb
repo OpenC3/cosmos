@@ -371,6 +371,17 @@ module OpenC3
         expect(spec.files).to include('requirements.txt')
       end
 
+      it "rewrites the gemspec only once for several python targets" do
+        run_gen(['target', 'EXAMPLE', '--python'])
+        run_gen(['target', 'OTHER', '--python'])
+        gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
+        gemspec = File.read(gemspec_file)
+        expect(gemspec.scan('python_dep_files = if').length).to eql(1)
+        expect(gemspec.scan(/^ *s\.files = Dir\.glob/).length).to eql(1)
+        spec = Gem::Specification.load(gemspec_file)
+        expect(spec.files).to include('requirements.txt')
+      end
+
       it "prevents duplicate target generation" do
         run_gen(['target', 'EXAMPLE', '--ruby'])
         expect { run_gen(['target', 'EXAMPLE', '--ruby']) }

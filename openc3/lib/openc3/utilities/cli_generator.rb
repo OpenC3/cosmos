@@ -484,18 +484,24 @@ module OpenC3
         end
         gemspec_filename = Dir['*.gemspec'][0]
         gemspec = File.read(gemspec_filename)
-        gemspec.gsub!(/^ *s\.files = Dir\.glob.*\n/) do |match|
-          <<~RUBY.gsub(/^/, '  ')
-            # Prefer pyproject.toml (plus uv.lock if committed) over requirements.txt
-            python_dep_files = if File.exist?('pyproject.toml')
-              ['pyproject.toml'] + Dir.glob('uv.lock')
-            else
-              ['requirements.txt']
-            end
-            s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt) + python_dep_files
-          RUBY
+        # Skip when a previous python target already rewrote s.files: the line it
+        # wrote matches the pattern below too, so rewriting again would nest a
+        # second dependency block. python_dep_file also covers the singular
+        # name older COSMOS versions generated.
+        unless gemspec.include?('python_dep_file')
+          gemspec.gsub!(/^ *s\.files = Dir\.glob.*\n/) do |match|
+            <<~RUBY.gsub(/^/, '  ')
+              # Prefer pyproject.toml (plus uv.lock if committed) over requirements.txt
+              python_dep_files = if File.exist?('pyproject.toml')
+                ['pyproject.toml'] + Dir.glob('uv.lock')
+              else
+                ['requirements.txt']
+              end
+              s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt) + python_dep_files
+            RUBY
+          end
+          File.write(gemspec_filename, gemspec)
         end
-        File.write(gemspec_filename, gemspec)
 
         target_txt_filename = "targets/#{target_name}/target.txt"
         target_txt = File.read(target_txt_filename)
