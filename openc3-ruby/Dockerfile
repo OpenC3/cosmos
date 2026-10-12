@@ -22,7 +22,10 @@ ARG DEBIAN_POINT_RELEASE=13.7
 ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
-# host[:port] of a plain-HTTP PYPI_URL mirror to trust; leave unset for HTTPS
+# host[:port] of a plain-HTTP PYPI_URL mirror to trust; leave unset for HTTPS.
+# Build-time only, deliberately never an ENV: uv reads UV_INSECURE_HOST itself,
+# so baking it into the image would disable TLS verification for that host in
+# every runtime plugin install, bypassing the OPENC3_PYPI_ALLOW_INSECURE opt-in.
 ARG UV_INSECURE_HOST=
 # Update Dockerfile-ubi and the python .github/workflow actions to match this version
 ARG UV_VERSION=0.12.5
@@ -30,7 +33,6 @@ ARG UV_VERSION=0.12.5
 ENV APT_URL=${APT_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ENV PYPI_URL=${PYPI_URL}
-ENV UV_INSECURE_HOST=${UV_INSECURE_HOST}
 ENV UV_VERSION=${UV_VERSION}
 
 # The official ruby image redirects gem installs to /usr/local/bundle via
