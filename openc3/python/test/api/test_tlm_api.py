@@ -31,6 +31,28 @@ from openc3.utilities.time import formatted
 from test.test_helper import System, mock_redis, setup_system
 
 
+ORIGINAL_PACKET_ITEM = TargetModel.packet_item
+PLAIN_TEMP1 = {"name": "TEMP1", "data_type": "UINT", "limits": {}}
+
+
+# Make TEMP1 a LATEST item in HEALTH_STATUS and PARAMS. PARAMS TEMP1 is the
+# same as HEALTH_STATUS TEMP1 unless params_temp1 is given.
+def latest_candidates(params_temp1=None):
+    def packet_item(target_name, packet_name, item_name, type="TLM", scope="DEFAULT"):
+        if packet_name == "PARAMS" and item_name == "TEMP1":
+            return params_temp1 or ORIGINAL_PACKET_ITEM("INST", "HEALTH_STATUS", "TEMP1", scope=scope)
+        return ORIGINAL_PACKET_ITEM(target_name, packet_name, item_name, type=type, scope=scope)
+
+    def item_map(target_name, scope="DEFAULT"):
+        return {"TEMP1": ["HEALTH_STATUS", "PARAMS"]}
+
+    def decorator(func):
+        func = patch.object(TargetModel, "packet_item", new=packet_item)(func)
+        return patch.object(TargetModel, "get_item_to_packet_map", new=item_map)(func)
+
+    return decorator
+
+
 class TestTlmApi(unittest.TestCase):
     def setUp(self):
         redis = mock_redis(self)
@@ -848,8 +870,8 @@ class TestTlmApi(unittest.TestCase):
     def _latest_history_item(self, packet_name, item_name, value_type="CONVERTED"):
         return TlmItem("INST", packet_name, item_name, value_type, None)
 
-    @patch.object(TargetModel, "get_item_to_packet_map", return_value={"TEMP1": ["HEALTH_STATUS", "PARAMS"]})
-    def test_get_tlm_values_historical_latest_queries_each_candidate_at_a_point_in_time(self, _):
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_queries_each_candidate_at_a_point_in_time(self):
         item = self._latest_history_item
         lookups = {
             (item("HEALTH_STATUS", "TEMP2"),): [[[5.0, None]]],
@@ -870,8 +892,8 @@ class TestTlmApi(unittest.TestCase):
             )
         self.assertEqual(vals, [[20.0, "RED"], [5.0, None]])
 
-    @patch.object(TargetModel, "get_item_to_packet_map", return_value={"TEMP1": ["HEALTH_STATUS", "PARAMS"]})
-    def test_get_tlm_values_historical_latest_ignores_candidates_without_data(self, _):
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_ignores_candidates_without_data(self):
         def tsdb_lookup(query, **_kw):
             return {} if query[0].packet_name == "PARAMS" else [[[10.0, None], [100.0, None]]]
 
@@ -879,8 +901,8 @@ class TestTlmApi(unittest.TestCase):
             vals = get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time="2026-09-13T00:00:00Z")
         self.assertEqual(vals, [[10.0, None]])
 
-    @patch.object(TargetModel, "get_item_to_packet_map", return_value={"TEMP1": ["HEALTH_STATUS", "PARAMS"]})
-    def test_get_tlm_values_historical_latest_returns_nothing_when_nothing_is_found(self, _):
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_returns_nothing_when_nothing_is_found(self):
         with patch.object(CvtModel, "tsdb_lookup", return_value={}):
             vals = get_tlm_values(
                 ["INST__LATEST__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED"],
@@ -888,8 +910,8 @@ class TestTlmApi(unittest.TestCase):
             )
         self.assertEqual(vals, {})
 
-    @patch.object(TargetModel, "get_item_to_packet_map", return_value={"TEMP1": ["HEALTH_STATUS", "PARAMS"]})
-    def test_get_tlm_values_historical_latest_joins_candidates_to_regular_rows_in_a_range(self, _):
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_joins_candidates_to_regular_rows_in_a_range(self):
         item = self._latest_history_item
         with patch.object(CvtModel, "tsdb_lookup") as tsdb_lookup:
             tsdb_lookup.return_value = [
@@ -915,8 +937,8 @@ class TestTlmApi(unittest.TestCase):
         self.assertFalse(tsdb_lookup.call_args.kwargs["flatten"])
         self.assertEqual(vals, [[[10.0, None], [5.0, None]], [[21.0, None], [6.0, None]], [[None, None], [7.0, None]]])
 
-    @patch.object(TargetModel, "get_item_to_packet_map", return_value={"TEMP1": ["HEALTH_STATUS", "PARAMS"]})
-    def test_get_tlm_values_historical_latest_range_of_only_latest_uses_the_current_packet(self, _):
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_range_of_only_latest_uses_the_current_packet(self):
         with (
             patch.object(CvtModel, "determine_latest_packet_for_item", return_value="PARAMS"),
             patch.object(CvtModel, "tsdb_lookup", return_value=[]) as tsdb_lookup,
@@ -929,9 +951,38 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(tsdb_lookup.call_args[0][0], [self._latest_history_item("PARAMS", "TEMP1")])
         self.assertNotIn("flatten", tsdb_lookup.call_args.kwargs)
 
-    @patch.object(TargetModel, "get_item_to_packet_map", return_value={"TEMP1": ["HEALTH_STATUS", "PARAMS"]})
+    @latest_candidates(params_temp1=PLAIN_TEMP1)
+    def test_get_tlm_values_historical_latest_queries_each_candidate_for_its_type_and_limits(self):
+        item = self._latest_history_item
+        queries = []
+
+        def tsdb_lookup(query, **_kw):
+            queries.append(query)
+            return {}
+
+        with patch.object(CvtModel, "tsdb_lookup", side_effect=tsdb_lookup):
+            get_tlm_values(["INST__LATEST__TEMP1__FORMATTED__LIMITS"], start_time="2026-09-13T00:00:00Z")
+        self.assertCountEqual(
+            queries,
+            [
+                [
+                    TlmItem("INST", "HEALTH_STATUS", "TEMP1", "FORMATTED", "LIMITS"),
+                    item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW"),
+                ],
+                [TlmItem("INST", "PARAMS", "TEMP1", "RAW", None), item("PARAMS", "PACKET_TIMESECONDS", "RAW")],
+            ],
+        )
+
+    @latest_candidates(params_temp1=PLAIN_TEMP1)
+    def test_get_tlm_available_returns_the_best_type_and_limits_of_any_latest_packet(self):
+        with patch.object(CvtModel, "determine_latest_packet_for_item", return_value="PARAMS"):
+            self.assertEqual(
+                get_tlm_available(["INST__LATEST__TEMP1__FORMATTED"]), ["INST__LATEST__TEMP1__FORMATTED__LIMITS"]
+            )
+
+    @latest_candidates()
     @patch("openc3.api.tlm_api.authorize")
-    def test_get_tlm_values_historical_latest_authorizes_every_candidate(self, mock_authorize, _):
+    def test_get_tlm_values_historical_latest_authorizes_every_candidate(self, mock_authorize):
         with patch.object(CvtModel, "tsdb_lookup", return_value={}):
             get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time="2026-09-13T00:00:00Z")
         self.assertCountEqual(

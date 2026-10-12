@@ -48,10 +48,13 @@ from openc3.utilities.questdb_client import QuestDBClient
 
 TARGET = "PY_LT"
 PACKET_DEF = {"items": [{"name": "VALUE", "data_type": "INT", "bit_size": 32}]}
+# Only PKT_B has units so only it has a formatted (VALUE__F) column
+UNITS_PACKET_DEF = {"items": [{"name": "VALUE", "data_type": "INT", "bit_size": 32, "units": "degC"}]}
+PACKET_DEFS = {"PKT_A": PACKET_DEF, "PKT_B": UNITS_PACKET_DEF, "REGULAR": PACKET_DEF}
 # Timeline in ms from the base time (VALUE written to each packet)
 ROWS = {
     "PKT_A": [(0, 1), (2000, 3)],
-    "PKT_B": [(1000, 2), (3000, 4)],
+    "PKT_B": [(1000, 2), (3000, 4)],  # Formatted as '2 degC' and '4 degC'
     "REGULAR": [(500, 10), (1500, 20), (2500, 30), (3500, 40)],
 }
 
@@ -68,17 +71,19 @@ class TestTlmApiLatestTsdb:
         for packet_name, rows in ROWS.items():
             table_name, _ = QuestDBClient.sanitize_table_name(TARGET, packet_name)
             clean_table(table_name)
-            questdb_client.create_table(TARGET, packet_name, PACKET_DEF)
+            questdb_client.create_table(TARGET, packet_name, PACKET_DEFS[packet_name])
             for i, (offset_ms, value) in enumerate(rows):
                 columns = questdb_client.process_json_data({"VALUE": value}, table_name)
                 columns["RECEIVED_COUNT"] = i
+                if packet_name == "PKT_B":
+                    columns["VALUE__F"] = f"{value} degC"
                 questdb_client.write_row(table_name, columns, base_ns + offset_ms * 1_000_000)
         questdb_client.flush()
         for packet_name, rows in ROWS.items():
             table_name, _ = QuestDBClient.sanitize_table_name(TARGET, packet_name)
             assert wait_for_data(questdb_client, table_name, len(rows)) >= len(rows)
         with (
-            patch.object(TargetModel, "packet", return_value=PACKET_DEF),
+            patch.object(TargetModel, "packet", side_effect=lambda _tgt, packet_name, **_kw: PACKET_DEFS[packet_name]),
             patch.object(TargetModel, "get_item_to_packet_map", return_value={"VALUE": ["PKT_A", "PKT_B"]}),
             patch("openc3.api.tlm_api.authorize"),
         ):
@@ -94,6 +99,21 @@ class TestTlmApiLatestTsdb:
     def test_returns_a_packet_received_after_the_last_row_of_the_first_candidate(self, base_ns):
         # PKT_A was last received at 2000 but PKT_B at 3000 so PKT_B is the latest at 3500
         assert get_tlm_values([f"{TARGET}__LATEST__VALUE__RAW"], start_time=self.at(base_ns, 3500)) == [[4, None]]
+
+    def test_returns_formatted_from_a_candidate_with_a_formatted_value(self, base_ns):
+        vals = get_tlm_values([f"{TARGET}__LATEST__VALUE__FORMATTED"], start_time=self.at(base_ns, 3500))
+        assert vals == [["4 degC", None]]
+
+    def test_returns_raw_from_a_candidate_without_a_formatted_value(self, base_ns):
+        assert get_tlm_values([f"{TARGET}__LATEST__VALUE__FORMATTED"], start_time=self.at(base_ns, 2500)) == [[3, None]]
+
+    def test_returns_formatted_from_each_candidate_as_available_in_a_range(self, base_ns):
+        vals = get_tlm_values(
+            [f"{TARGET}__LATEST__VALUE__FORMATTED", f"{TARGET}__REGULAR__VALUE__RAW"],
+            start_time=self.at(base_ns, 0),
+            end_time=self.at(base_ns, 4000),
+        )
+        assert [row[0][0] for row in vals] == [1, "2 degC", 3, "4 degC"]
 
     def test_returns_latest_alongside_a_regular_item_at_a_point_in_time(self, base_ns):
         vals = get_tlm_values(

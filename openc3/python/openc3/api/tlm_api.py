@@ -325,10 +325,16 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
 
         packet_name = orig_packet_name
         if orig_packet_name == "LATEST":
+            # A LATEST item can come from any packet containing it. Report the best value
+            # type and limits of any of them since the CVT falls back to the available
+            # type and historical lookups check the type available in each packet.
             # We can have a large cache_timeout of 1 because all we're trying to do is lookup a packet
             packet_name = CvtModel.determine_latest_packet_for_item(
                 target_name, item_name, cache_timeout=1, scope=scope
             )
+            packet_names = _tlm_packet_names(target_name, orig_packet_name, item_name, scope)
+        else:
+            packet_names = [packet_name]
 
         authorize(
             permission="tlm",
@@ -338,32 +344,15 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
         )
 
         try:
-            item_config = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
-            if item_name in Packet.RESERVED_ITEM_NAMES:
-                value_type = "RAW"  # Must request the raw value when dealing with the reserved items
-
-            # Arrays must be accessed as RAW since there's no conversion
-            if item_config.get("array_size") is not None:
-                value_type = "RAW"
-
-            # Determine the best available value type based on item configuration
-            if value_type == "FORMATTED" or value_type == "WITH_UNITS":
-                if item_config.get("format_string") or item_config.get("units"):
-                    result_item = "__".join([target_name, orig_packet_name, item_name, "FORMATTED"])
-                elif item_config.get("read_conversion") or item_config.get("states"):
-                    result_item = "__".join([target_name, orig_packet_name, item_name, "CONVERTED"])
-                else:
-                    result_item = "__".join([target_name, orig_packet_name, item_name, "RAW"])
-            elif value_type == "CONVERTED":
-                if item_config.get("read_conversion") or item_config.get("states"):
-                    result_item = "__".join([target_name, orig_packet_name, item_name, "CONVERTED"])
-                else:
-                    result_item = "__".join([target_name, orig_packet_name, item_name, "RAW"])
-            else:  # RAW or unknown
-                result_item = "__".join([target_name, orig_packet_name, item_name, "RAW"])
+            item_configs = [TargetModel.packet_item(target_name, name, item_name, scope=scope) for name in packet_names]
+            available_type = max(
+                (_tlm_available_value_type(item_config, item_name, value_type) for item_config in item_configs),
+                key=VALUE_TYPE_ORDER.index,
+            )
+            result_item = "__".join([target_name, orig_packet_name, item_name, available_type])
 
             # Tack on __LIMITS to notify that we have an available limits value
-            if item_config.get("limits", {}).get("DEFAULT"):
+            if any(item_config.get("limits", {}).get("DEFAULT") for item_config in item_configs):
                 result_item += "__LIMITS"
 
             results.append(result_item)
@@ -415,8 +404,14 @@ def get_tlm_values(
             if start_time is not None:
                 # The packet received most recently now isn't necessarily the one received most
                 # recently at start_time so keep every candidate packet for _tlm_latest_history
-                candidates = _tlm_packet_names(target_name, packet_name, item_name, scope)
-                packets.extend([target_name, candidate] for candidate in candidates)
+                # Each packet must be queried for the value type and limits it has or the query fails
+                candidates = []
+                for candidate in _tlm_packet_names(target_name, packet_name, item_name, scope):
+                    packets.append([target_name, candidate])
+                    candidate_item = TargetModel.packet_item(target_name, candidate, item_name, scope=scope)
+                    candidate_limits = limits if limits and candidate_item.get("limits", {}).get("DEFAULT") else None
+                    candidate_type = _tlm_available_value_type(candidate_item, item_name, value_type)
+                    candidates.append(TlmItem(target_name, candidate, item_name, candidate_type, candidate_limits))
                 latest_candidates[len(cvt_items)] = candidates
                 cvt_items.append(TlmItem(target_name, packet_name, item_name, value_type, limits))
                 continue
@@ -791,8 +786,29 @@ def _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout=
     return packet_name
 
 
+VALUE_TYPE_ORDER = ["RAW", "CONVERTED", "FORMATTED"]
+
+
+# Returns the value type available for an item given the requested value type
+def _tlm_available_value_type(item_config, item_name, value_type):
+    # Must request the raw value when dealing with the reserved items
+    if item_name in Packet.RESERVED_ITEM_NAMES:
+        return "RAW"
+    # Arrays must be accessed as RAW since there's no conversion
+    if item_config.get("array_size") is not None:
+        return "RAW"
+    converted = item_config.get("read_conversion") or item_config.get("states")
+    if value_type == "FORMATTED" or value_type == "WITH_UNITS":
+        if item_config.get("format_string") or item_config.get("units"):
+            return "FORMATTED"
+        return "CONVERTED" if converted else "RAW"
+    if value_type == "CONVERTED":
+        return "CONVERTED" if converted else "RAW"
+    return "RAW"  # RAW or unknown
+
+
 # Historical lookup where some items are LATEST. latest_candidates maps the index
-# of each LATEST item in cvt_items to every packet which contains the item.
+# of each LATEST item in cvt_items to the item to look up in every packet which contains it.
 def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cache_timeout, scope):
     regular = [index for index in range(len(cvt_items)) if index not in latest_candidates]
 
@@ -824,11 +840,10 @@ def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cach
         for index in regular:
             positions[index] = add(cvt_items[index])
         for index, candidates in latest_candidates.items():
-            cvt_item = cvt_items[index]
             positions[index] = [
                 (
-                    add(cvt_item._replace(packet_name=candidate)),
-                    add(TlmItem(cvt_item.target_name, candidate, "PACKET_TIMESECONDS", "RAW", None)),
+                    add(candidate),
+                    add(TlmItem(candidate.target_name, candidate.packet_name, "PACKET_TIMESECONDS", "RAW", None)),
                 )
                 for candidate in candidates
             ]
@@ -867,11 +882,8 @@ def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cach
     # Group the LATEST items by candidate packet so each packet is queried once
     by_packet = {}
     for index, candidates in latest_candidates.items():
-        cvt_item = cvt_items[index]
         for candidate in candidates:
-            by_packet.setdefault((cvt_item.target_name, candidate), {})[index] = cvt_item._replace(
-                packet_name=candidate
-            )
+            by_packet.setdefault((candidate.target_name, candidate.packet_name), {})[index] = candidate
     found_values = {}
     for (target_name, packet_name), packet_items in by_packet.items():
         query = list(dict.fromkeys(packet_items.values()))

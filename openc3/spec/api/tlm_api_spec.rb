@@ -699,6 +699,15 @@ module OpenC3
     end
 
     describe "get_tlm_available" do
+      it "returns the best value type and limits of any LATEST packet" do
+        allow(TargetModel).to receive(:get_item_to_packet_map).and_return({ 'TEMP1' => ['PARAMS', 'HEALTH_STATUS'] })
+        allow(CvtModel).to receive(:determine_latest_packet_for_item).and_return('PARAMS')
+        allow(TargetModel).to receive(:packet_item).and_call_original
+        plain = { 'name' => 'TEMP1', 'data_type' => 'UINT', 'limits' => {} }
+        allow(TargetModel).to receive(:packet_item).with('INST', 'PARAMS', 'TEMP1', scope: 'DEFAULT').and_return(plain)
+        expect(@api.get_tlm_available(['INST__LATEST__TEMP1__FORMATTED'])).to eql(['INST__LATEST__TEMP1__FORMATTED__LIMITS'])
+      end
+
       it "returns a valid list of items based on inputs" do
         items = []
         # Ask for WITH_UNITS for an item which has various formats
@@ -800,6 +809,10 @@ module OpenC3
       context "with a historical LATEST item" do
         before(:each) do
           allow(TargetModel).to receive(:get_item_to_packet_map).and_return({ 'TEMP1' => ['HEALTH_STATUS', 'PARAMS'] })
+          # Pretend PARAMS has the same TEMP1 as HEALTH_STATUS
+          temp1 = TargetModel.packet_item('INST', 'HEALTH_STATUS', 'TEMP1', scope: 'DEFAULT')
+          allow(TargetModel).to receive(:packet_item).and_call_original
+          allow(TargetModel).to receive(:packet_item).with('INST', 'PARAMS', 'TEMP1', scope: 'DEFAULT').and_return(temp1)
         end
 
         def item(packet_name, item_name, value_type = "CONVERTED")
@@ -859,6 +872,18 @@ module OpenC3
             [item("PARAMS", "TEMP1")], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z", scope: "DEFAULT"
           ).and_return([[[[20.0, nil]]], [[[21.0, nil]]]])
           @api.get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+        end
+
+        it "queries each candidate for the value type and limits it has" do
+          plain = { 'name' => 'TEMP1', 'data_type' => 'UINT', 'limits' => {} }
+          allow(TargetModel).to receive(:packet_item).with('INST', 'PARAMS', 'TEMP1', scope: 'DEFAULT').and_return(plain)
+          queries = []
+          allow(CvtModel).to receive(:tsdb_lookup) { |query, **| queries << query; {} }
+          @api.get_tlm_values(["INST__LATEST__TEMP1__FORMATTED__LIMITS"], start_time: "2026-09-13T00:00:00Z")
+          expect(queries).to contain_exactly(
+            [["INST", "HEALTH_STATUS", "TEMP1", "FORMATTED", "LIMITS"], item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")],
+            [["INST", "PARAMS", "TEMP1", "RAW", nil], item("PARAMS", "PACKET_TIMESECONDS", "RAW")],
+          )
         end
 
         it "authorizes every candidate packet" do

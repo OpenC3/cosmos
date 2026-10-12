@@ -32,15 +32,17 @@ RSpec.describe 'get_tlm_values with historical LATEST', :questdb do
 
   # Timeline in ms from the base time (VALUE written to each packet):
   #   PKT_A:   0 => 1, 2000 => 3
-  #   PKT_B:   1000 => 2, 3000 => 4
+  #   PKT_B:   1000 => 2, 3000 => 4 (with units so formatted as '2 degC' and '4 degC')
   #   REGULAR: 500 => 10, 1500 => 20, 2500 => 30, 3500 => 40
   before(:all) do
     @test_params = write_multi_table_data({
       'tables' => [
         { 'target' => 'RUBY_LT', 'packet' => 'PKT_A', 'data_type' => 'INT', 'bit_size' => 32,
           'rows' => [{ 'offset_ms' => 0, 'values' => { 'VALUE' => 1 } }, { 'offset_ms' => 2000, 'values' => { 'VALUE' => 3 } }] },
-        { 'target' => 'RUBY_LT', 'packet' => 'PKT_B', 'data_type' => 'INT', 'bit_size' => 32,
-          'rows' => [{ 'offset_ms' => 1000, 'values' => { 'VALUE' => 2 } }, { 'offset_ms' => 3000, 'values' => { 'VALUE' => 4 } }] },
+        # Only PKT_B has units so only it has a formatted (VALUE__F) column
+        { 'target' => 'RUBY_LT', 'packet' => 'PKT_B', 'data_type' => 'INT', 'bit_size' => 32, 'units' => 'degC',
+          'rows' => [{ 'offset_ms' => 1000, 'values' => { 'VALUE' => 2 }, 'formatted_values' => { 'VALUE' => '2 degC' } },
+                     { 'offset_ms' => 3000, 'values' => { 'VALUE' => 4 }, 'formatted_values' => { 'VALUE' => '4 degC' } }] },
         { 'target' => 'RUBY_LT', 'packet' => 'REGULAR', 'data_type' => 'INT', 'bit_size' => 32,
           'rows' => [500, 1500, 2500, 3500].each_with_index.map { |offset, i| { 'offset_ms' => offset, 'values' => { 'VALUE' => (i + 1) * 10 } } } },
       ]
@@ -73,6 +75,20 @@ RSpec.describe 'get_tlm_values with historical LATEST', :questdb do
   it 'returns a packet received after the last row of the first candidate' do
     # PKT_A was last received at 2000 but PKT_B at 3000 so PKT_B is the latest at 3500
     expect(@api.get_tlm_values(['RUBY_LT__LATEST__VALUE__RAW'], start_time: time_at(3500))).to eq([[4, nil]])
+  end
+
+  it 'returns FORMATTED from a candidate with a formatted value' do
+    expect(@api.get_tlm_values(['RUBY_LT__LATEST__VALUE__FORMATTED'], start_time: time_at(3500))).to eq([['4 degC', nil]])
+  end
+
+  it 'returns RAW from a candidate without a formatted value' do
+    expect(@api.get_tlm_values(['RUBY_LT__LATEST__VALUE__FORMATTED'], start_time: time_at(2500))).to eq([[3, nil]])
+  end
+
+  it 'returns FORMATTED from each candidate as available in a range' do
+    vals = @api.get_tlm_values(['RUBY_LT__LATEST__VALUE__FORMATTED', 'RUBY_LT__REGULAR__VALUE__RAW'],
+                               start_time: time_at(0), end_time: time_at(4000))
+    expect(vals.map { |row| row[0][0] }).to eq([1, '2 degC', 3, '4 degC'])
   end
 
   it 'returns LATEST alongside a regular item at a point in time' do

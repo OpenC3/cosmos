@@ -275,45 +275,22 @@ module OpenC3
         packet_name = orig_packet_name
         raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if target_name.nil? || packet_name.nil? || item_name.nil? || value_type.nil?
         if orig_packet_name == 'LATEST'
-          # TODO: Do we need to lookup ALL the possible packets for this item?
+          # A LATEST item can come from any packet containing it. Report the best value
+          # type and limits of any of them since the CVT falls back to the available
+          # type and historical lookups check the type available in each packet.
           # We can have a large cache_timeout of 1 because all we're trying to do is lookup a packet
           packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: 1, scope: scope)
+          packet_names = _tlm_packet_names(target_name, orig_packet_name, item_name, scope: scope)
+        else
+          packet_names = [packet_name]
         end
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
         begin
-          item = TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
-          if Packet::RESERVED_ITEM_NAMES.include?(item_name)
-            value_type = 'RAW' # Must request the raw value when dealing with the reserved items
-          end
-
-          # Arrays must be accessed as RAW since there's no conversion
-          if item['array_size']
-            value_type = 'RAW'
-          end
-
-          case value_type
-          when 'FORMATTED', 'WITH_UNITS'
-            if item['format_string'] or item['units']
-              results << [target_name, orig_packet_name, item_name, 'FORMATTED'].join('__')
-            # This logic must match the logic in Packet#decom
-            elsif item['states'] or (item['read_conversion'] and item['data_type'] != 'DERIVED')
-              results << [target_name, orig_packet_name, item_name, 'CONVERTED'].join('__')
-            else
-              results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')
-            end
-          when 'CONVERTED'
-            # This logic must match the logic in Packet#decom
-            if item['states'] or (item['read_conversion'] and item['data_type'] != 'DERIVED')
-              results << [target_name, orig_packet_name, item_name, 'CONVERTED'].join('__')
-            else
-              results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')
-            end
-          else # RAW or unknown
-            results << [target_name, orig_packet_name, item_name, 'RAW'].join('__')
-          end
-
+          packet_items = packet_names.map { |name| TargetModel.packet_item(target_name, name, item_name, scope: scope) }
+          available_type = packet_items.map { |packet_item| _tlm_available_value_type(packet_item, item_name, value_type) }.max_by { |type| VALUE_TYPE_ORDER.index(type) }
+          results << [target_name, orig_packet_name, item_name, available_type].join('__')
           # Tack on __LIMITS to notify that we have an available limits value
-          if item['limits']['DEFAULT']
+          if packet_items.any? { |packet_item| packet_item['limits']['DEFAULT'] }
             results[-1] += '__LIMITS'
           end
         rescue RuntimeError
@@ -355,8 +332,13 @@ module OpenC3
           if start_time
             # The packet received most recently now isn't necessarily the one received most
             # recently at start_time so keep every candidate packet for _tlm_latest_history
-            candidates = _tlm_packet_names(target_name, packet_name, item_name, scope: scope)
-            candidates.each { |candidate| packets << [target_name, candidate] }
+            # Each packet must be queried for the value type and limits it has or the query fails
+            candidates = _tlm_packet_names(target_name, packet_name, item_name, scope: scope).map do |candidate|
+              packets << [target_name, candidate]
+              candidate_item = TargetModel.packet_item(target_name, candidate, item_name, scope: scope)
+              candidate_limits = (limits and candidate_item['limits']['DEFAULT']) ? limits : nil
+              [target_name, candidate, item_name, _tlm_available_value_type(candidate_item, item_name, value_type), candidate_limits]
+            end
             cvt_items << [target_name, packet_name, item_name, value_type, limits, candidates]
             next
           end
@@ -680,8 +662,30 @@ module OpenC3
       return packet_name
     end
 
+    VALUE_TYPE_ORDER = %w(RAW CONVERTED FORMATTED).freeze
+
+    # Returns the value type available for an item given the requested value type
+    def _tlm_available_value_type(item, item_name, value_type)
+      # Must request the raw value when dealing with the reserved items
+      return 'RAW' if Packet::RESERVED_ITEM_NAMES.include?(item_name)
+      # Arrays must be accessed as RAW since there's no conversion
+      return 'RAW' if item['array_size']
+
+      # This logic must match the logic in Packet#decom
+      converted = (item['states'] or (item['read_conversion'] and item['data_type'] != 'DERIVED'))
+      case value_type
+      when 'FORMATTED', 'WITH_UNITS'
+        return 'FORMATTED' if item['format_string'] or item['units']
+        return converted ? 'CONVERTED' : 'RAW'
+      when 'CONVERTED'
+        return converted ? 'CONVERTED' : 'RAW'
+      else # RAW or unknown
+        return 'RAW'
+      end
+    end
+
     # Historical lookup where some items are LATEST. Those items have a 6th element
-    # holding every packet which contains the item.
+    # holding the item to look up in every packet which contains the item.
     def _tlm_latest_history(cvt_items, start_time:, end_time:, cache_timeout:, scope:)
       latest = cvt_items.each_index.select { |index| cvt_items[index].length == 6 }
       regular = cvt_items.each_index.reject { |index| cvt_items[index].length == 6 }
@@ -704,10 +708,9 @@ module OpenC3
         positions = Array.new(cvt_items.length)
         regular.each { |index| positions[index] = add.call(cvt_items[index]) }
         latest.each do |index|
-          target_name, _, item_name, value_type, limits, candidates = cvt_items[index]
-          positions[index] = candidates.map do |candidate|
-            [add.call([target_name, candidate, item_name, value_type, limits]),
-             add.call([target_name, candidate, 'PACKET_TIMESECONDS', 'RAW', nil])]
+          positions[index] = cvt_items[index][5].map do |candidate|
+            target_name, packet_name = candidate
+            [add.call(candidate), add.call([target_name, packet_name, 'PACKET_TIMESECONDS', 'RAW', nil])]
           end
         end
         rows = CvtModel.tsdb_lookup(query, start_time: start_time, end_time: end_time, scope: scope, flatten: false)
@@ -738,9 +741,9 @@ module OpenC3
       # Group the LATEST items by candidate packet so each packet is queried once
       by_packet = {}
       latest.each do |index|
-        target_name, _, item_name, value_type, limits, candidates = cvt_items[index]
-        candidates.each do |candidate|
-          (by_packet[[target_name, candidate]] ||= {})[index] = [target_name, candidate, item_name, value_type, limits]
+        cvt_items[index][5].each do |candidate|
+          target_name, packet_name = candidate
+          (by_packet[[target_name, packet_name]] ||= {})[index] = candidate
         end
       end
       found_values = Hash.new { |hash, key| hash[key] = [] }
