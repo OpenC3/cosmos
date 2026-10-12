@@ -559,6 +559,15 @@ module OpenC3
       end
     end
 
+    describe "packet APIs with LATEST" do
+      it "complains that LATEST does not identify a packet" do
+        %w(get_tlm_buffer get_tlm_packet get_tlm get_tlm_cnt get_packet_derived_items).each do |method_name|
+          expect { @api.public_send(method_name, "INST", "LATEST") }.to raise_error(RuntimeError, "ERROR: LATEST is not supported by #{method_name}(), specify a packet name")
+          expect { @api.public_send(method_name, "inst latest") }.to raise_error(RuntimeError, /LATEST is not supported/)
+        end
+      end
+    end
+
     describe "get_tlm_packet" do
       it "complains about non-existent targets" do
         expect { @api.get_tlm_packet("BLAH", "HEALTH_STATUS") }.to raise_error(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist")
@@ -569,7 +578,7 @@ module OpenC3
       end
 
       it "complains using LATEST" do
-        expect { @api.get_tlm_packet("INST", "LATEST") }.to raise_error(RuntimeError, "Packet definition 'INST LATEST' does not exist")
+        expect { @api.get_tlm_packet("INST", "LATEST") }.to raise_error(RuntimeError, "ERROR: LATEST is not supported by get_tlm_packet(), specify a packet name")
       end
 
       it "complains about non-existent value_types" do

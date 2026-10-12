@@ -541,6 +541,22 @@ RSpec.describe StreamingApi, type: :model do
       expect(collection.length).to eq(2)
     end
 
+    it 'rejects LATEST for commands' do
+      expect { build(['DECOM__CMD__INST__LATEST__TEMP1__CONVERTED']) }.to raise_error(/LATEST is only supported for telemetry/)
+    end
+
+    it 'skips LATEST packets the user cannot access' do
+      allow_any_instance_of(StreamingObject).to receive(:authorize) do |_object, packet_name:, **|
+        raise OpenC3::ForbiddenError, 'forbidden' if packet_name == 'PARAMS'
+      end
+      expect(build([latest_key]).objects.map(&:packet_name)).to eq(['HEALTH_STATUS'])
+    end
+
+    it 'raises when the user cannot access any LATEST packet' do
+      allow_any_instance_of(StreamingObject).to receive(:authorize).and_raise(OpenC3::ForbiddenError, 'forbidden')
+      expect { build([latest_key]) }.to raise_error(OpenC3::ForbiddenError)
+    end
+
     it 'removes an item added with an item_key when removed by key alone' do
       collection = build([[explicit_key, '0']])
       build([explicit_key]).objects.each { |o| collection.remove(o) }

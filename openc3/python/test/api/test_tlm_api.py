@@ -684,7 +684,7 @@ class TestTlmApi(unittest.TestCase):
             get_tlm_packet("INST BLAH")
 
     def test_complains_using_latest(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST LATEST' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "LATEST is not supported by get_tlm_packet"):
             get_tlm_packet("INST", "LATEST")
 
     def test_complains_about_non_existant_value_types(self):
@@ -988,6 +988,15 @@ class TestTlmApi(unittest.TestCase):
         self.assertCountEqual(
             [call.kwargs["packet_name"] for call in mock_authorize.call_args_list], ["HEALTH_STATUS", "PARAMS"]
         )
+
+    def test_packet_apis_complain_that_latest_does_not_identify_a_packet(self):
+        for method in [get_tlm_buffer, get_tlm_packet, get_tlm, get_tlm_cnt, get_packet_derived_items]:
+            with self.assertRaisesRegex(
+                RuntimeError, f"LATEST is not supported by {method.__name__}\\(\\), specify a packet name"
+            ):
+                method("INST", "LATEST")
+            with self.assertRaisesRegex(RuntimeError, "LATEST is not supported"):
+                method("inst latest")
 
     def test_get_tlm_values_accepts_the_limits_suffix_from_the_cvt(self):
         vals = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])

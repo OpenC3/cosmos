@@ -45,13 +45,23 @@ class StreamingApi
       # Unwrap LATEST packet into individual items
       parsed = StreamingKey.parse(key, item_key: true)
       if parsed.packet_name == 'LATEST'
+        # The item to packet map only covers telemetry
+        raise "LATEST is only supported for telemetry: #{key}" if parsed.cmd_or_tlm == :CMD
         item_map = OpenC3::TargetModel.get_item_to_packet_map(parsed.target_name, scope: scope)
         packet_names = item_map[parsed.item_name]
         raise "Item '#{parsed.target_name} LATEST #{parsed.item_name}' does not exist for scope: #{scope}" unless packet_names
+        # Skip packets the user can't access unless they can't access any of them
+        auth_error = nil
+        added = false
         packet_names.each do |packet_name|
           new_key = parsed.with(packet_name: packet_name).to_key_string
           collection.add(StreamingObject.new(new_key, start_time, end_time, item_key: item_key, scope: scope, token: token))
+          added = true
+        rescue OpenC3::AuthError, OpenC3::ForbiddenError => e
+          OpenC3::Logger.info("Skipping unauthorized LATEST packet: #{new_key}")
+          auth_error = e
         end
+        raise auth_error if auth_error and not added
       else
         collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token))
       end

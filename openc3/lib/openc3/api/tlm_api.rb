@@ -558,6 +558,8 @@ module OpenC3
       if target_name.nil? or packet_name.nil?
         raise "ERROR: Both target name and packet name required. Usage: #{method_name}(\"TGT PKT\") or #{method_name}(\"TGT\", \"PKT\")"
       end
+      # LATEST picks a packet per item so it can't identify a whole packet
+      raise "ERROR: LATEST is not supported by #{method_name}(), specify a packet name" if packet_name == 'LATEST'
       return [target_name, packet_name]
     end
 

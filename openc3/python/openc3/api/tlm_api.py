@@ -686,6 +686,9 @@ def _extract_target_packet_names(method_name, *args):
         raise RuntimeError(
             f'ERROR: Both target name and packet name required. Usage: {method_name}("TGT PKT") or {method_name}("TGT", "PKT")'
         )
+    # LATEST picks a packet per item so it can't identify a whole packet
+    if packet_name == "LATEST":
+        raise RuntimeError(f"ERROR: LATEST is not supported by {method_name}(), specify a packet name")
     return target_name, packet_name
 
 
