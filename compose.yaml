@@ -229,6 +229,7 @@ services:
       - OPENC3_LOCAL_MODE=${OPENC3_LOCAL_MODE}
       - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
       # Optional: bare pass-through (only forwarded if set in host env or .env)
+      - OPENC3_LOCAL_ONLY_TARGETS
       - OPENC3_DEFAULT_QUEUE
       - OPENC3_AUTH_RATE_LIMIT_TO
       - OPENC3_AUTH_RATE_LIMIT_WITHIN
@@ -307,6 +308,7 @@ services:
       - OPENC3_LOCAL_MODE=${OPENC3_LOCAL_MODE}
       - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
       # Optional: bare pass-through (only forwarded if set in host env or .env)
+      - OPENC3_LOCAL_ONLY_TARGETS
       - OPENC3_LOG_STDERR
       - OPENC3_SECRET_FILE_DIR
       - OPENC3_LOG_LEVEL
@@ -389,6 +391,7 @@ services:
       - OPENC3_LOCAL_MODE=${OPENC3_LOCAL_MODE}
       - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
       # Optional: bare pass-through (only forwarded if set in host env or .env)
+      - OPENC3_LOCAL_ONLY_TARGETS
       - OPENC3_LOG_STDERR
       - OPENC3_SECRET_FILE_DIR
       - OPENC3_LOG_LEVEL
@@ -512,6 +515,7 @@ services:
       - OPENC3_SERVICE_PASSWORD=${OPENC3_SERVICE_PASSWORD}
       # Install-time flags consumed by init.sh / openc3cli.
       # Bare pass-through: only forwarded if set in host env or .env.
+      - OPENC3_LOCAL_ONLY_TARGETS
       - OPENC3_DEMO
       - OPENC3_FORCE_INSTALL
       - OPENC3_NO_MIGRATE

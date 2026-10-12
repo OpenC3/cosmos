@@ -15,24 +15,27 @@ module OpenC3
   # Shared predicates describing which parts of the user-writable config overlay
   # (targets_modified) a non-admin may write.
   #
-  # The cmd_tlm overlay (targets_modified/<TARGET>/cmd_tlm/...) is loaded by
-  # System.setup_targets and processed by PacketConfig, which evaluates
-  # GENERIC_READ_CONVERSION / GENERIC_WRITE_CONVERSION blocks as code in the
-  # decom microservices. Writing it is therefore an admin operation, matching the
-  # tier COSMOS requires everywhere else code is introduced (plugin install).
-  # Only the server-side dynamic-packet mechanism (TargetModel#dynamic_update)
-  # writes that area without going through an API request.
+  # Two target subdirectories hold definitions whose GENERIC_READ_CONVERSION /
+  # GENERIC_WRITE_CONVERSION blocks are evaluated as code:
+  #   - <TARGET>/cmd_tlm/...: loaded by System.setup_targets and processed by
+  #     PacketConfig in the decom microservices. Only the server-side
+  #     dynamic-packet mechanism (TargetModel#dynamic_update) writes that area
+  #     without going through an API request.
+  #   - <TARGET>/tables/config/...: table definitions, processed by TableConfig
+  #     in cmd-tlm-api for every Table Manager operation.
+  # Writing either is therefore an admin operation, matching the tier COSMOS
+  # requires everywhere else code is introduced (plugin install).
   #
   # Every API writer that can reach the overlay must consult these predicates:
   #   - storage_controller#get_upload_presigned_request / delete (presigned S3 upload)
-  #   - tables_controller#save / save_as / generate / destroy (Table -> TargetFile)
+  #   - tables_controller#save / save_as / report / destroy (Table -> TargetFile)
   #   - scripts_controller#create / destroy (Script -> TargetFile)
   module ConfigOverlay
     # Config bucket areas a non-admin is allowed to write at all
     NON_ADMIN_AREAS = ['targets_modified', 'tmp'].freeze
 
-    # Target subdirectory whose contents are executed as code
-    CODE_AREA = 'cmd_tlm'
+    # Target subdirectories whose contents are executed as code
+    CODE_AREAS = [['cmd_tlm'], ['tables', 'config']].freeze
 
     # Split a path into segments, or nil if the path is not canonical.
     #
@@ -48,14 +51,23 @@ module OpenC3
       parts
     end
 
-    # True if the overlay-relative name targets the cmd_tlm subtree, i.e. writing
-    # it requires admin. Name is relative to targets_modified/, e.g.
-    # "<TARGET>/cmd_tlm/tlm.txt". Fails closed (true) on non-canonical names.
-    def self.cmd_tlm_overlay?(name)
+    # True if the overlay-relative name targets a code area (cmd_tlm or
+    # tables/config), i.e. writing it requires admin. Name is relative to
+    # targets_modified/, e.g. "<TARGET>/cmd_tlm/tlm.txt". Fails closed (true)
+    # on non-canonical names.
+    def self.code_overlay?(name)
       parts = canonical_parts(name)
       return true if parts.nil?
-      # parts: <TARGET> / <area> / ...
-      parts[1] == CODE_AREA
+      code_area?(parts)
+    end
+
+    # True if the target-relative name is a canonical table definition path,
+    # e.g. "<TARGET>/tables/config/table_def.txt". Table only parses definitions
+    # from here, so a definition can't be pointed at a non-admin overlay area.
+    def self.table_definition?(name)
+      parts = canonical_parts(name)
+      return false if parts.nil?
+      parts.length > 3 and parts[1, 2] == ['tables', 'config']
     end
 
     # True if the given config bucket key is an overlay path a non-admin may
@@ -68,8 +80,14 @@ module OpenC3
       # parts: <SCOPE> / <area> / <TARGET> / <subdir> / ...
       area = parts[1]
       return false unless NON_ADMIN_AREAS.include?(area)
-      return false if area == 'targets_modified' && parts[3] == CODE_AREA
+      return false if area == 'targets_modified' && code_area?(parts[2..])
       true
     end
+
+    # target_parts: <TARGET> / <subdir> / ...
+    def self.code_area?(target_parts)
+      CODE_AREAS.any? { |area| target_parts[1, area.length] == area }
+    end
+    private_class_method :code_area?
   end
 end
