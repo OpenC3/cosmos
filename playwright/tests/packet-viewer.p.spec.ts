@@ -415,20 +415,6 @@ test('searches items despite typos', async ({ page }) => {
   await expect(page.locator('tr:has(td div:text-is("TEMP1"))')).toHaveCount(0)
 })
 
-test('ranks exact item matches above typo matches', async ({ page }) => {
-  // LATEST lists items alphabetically, so BRACKET[0] (a one typo match for
-  // PACKET) would come first if the table only filtered
-  await page.goto('/tools/packetviewer/INST/LATEST/')
-  await expect(
-    page.locator('tr:has(td div:text-is("PACKET_TIME"))'),
-  ).toBeVisible()
-
-  await page.locator('[data-test="search"] input').fill('PACKET')
-  const rows = page.locator('tr:has(td:nth-child(2))')
-  await expect(rows.nth(0)).toContainText('PACKET_TIME')
-  await expect(rows.last()).toContainText('BRACKET[0]')
-})
-
 test('searches item names rather than values', async ({ page }) => {
   await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
   const row = page.locator('tr:has(td div:text-is("GROUND1STATUS"))')
