@@ -60,12 +60,12 @@ To pin your source tree to the mirror instead - which you want if the mirror doe
 
 ```bash
 % cd openc3/python
-% uv lock --default-index https://nexus.example.com/repository/pypi/simple
+% uv lock --no-config --no-sources --default-index https://nexus.example.com/repository/pypi/simple
 % cd ../../openc3-cosmos-init/plugins/packages/openc3-cosmos-demo
-% uv lock --default-index https://nexus.example.com/repository/pypi/simple
+% uv lock --no-config --no-sources --default-index https://nexus.example.com/repository/pypi/simple
 ```
 
-The build skips the relock for any `uv.lock` whose packages all resolve against `<PYPI_URL>/simple` and installs it as committed, so pass `--default-index` exactly that URL.
+The build skips the relock for any `uv.lock` whose packages all resolve against `<PYPI_URL>/simple` and installs it as committed, so pass `--default-index` exactly that URL. `--no-config --no-sources` match the build's own relock: without them, a project that declares its own `[tool.uv].index` or `[tool.uv].sources` locks some packages against that index, and the build relocks it anyway.
 
 :::
 
