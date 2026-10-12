@@ -445,9 +445,9 @@ class AuditError(Exception):
 # Lockfile parsing -- Ruby
 # ==========================================================================
 
-_GEM_SPEC = re.compile(r"^    ([A-Za-z0-9_.\-]+) \(([^)]+)\)$")
-_GEM_DEP = re.compile(r"^      ([A-Za-z0-9_.\-]+)")
-_GEM_ROOT = re.compile(r"^  ([A-Za-z0-9_.\-]+)")
+_GEM_SPEC = re.compile(r"^ {4}([A-Za-z0-9_.\-]+) \(([^)]+)\)$")
+_GEM_DEP = re.compile(r"^ {6}([A-Za-z0-9_.\-]+)")
+_GEM_ROOT = re.compile(r"^ {2}([A-Za-z0-9_.\-]+)")
 
 
 def split_gem_version(version: str) -> str:
@@ -477,7 +477,7 @@ def parse_gemspec_dev_gems(gemfile: Path) -> set[str]:
         base = (gemfile.parent / path.group(1)) if path else gemfile.parent
         for spec in sorted(base.glob(f"{name.group(1)}.gemspec" if name else "*.gemspec")):
             dev |= set(re.findall(
-                r"add_development_dependency\s*\(?\s*[\"']([^\"']+)[\"']",
+                r"add_development_dependency[\s(]*[\"']([^\"']+)[\"']",
                 spec.read_text(encoding="utf-8", errors="replace"),
             ))
     return dev
@@ -497,9 +497,9 @@ def parse_gemfile_dev_gems(gemfile: Path) -> set[str]:
     stack: list[set[str]] = []
     for line in gemfile.read_text(encoding="utf-8", errors="replace").splitlines():
         line = line.split("#", 1)[0].strip()
-        match = re.match(r"^group\s+(.+?)\s+do\b", line)
-        if match:
-            stack.append(group_names(match.group(1)))
+        words = line.split()
+        if len(words) >= 3 and words[0] == "group" and words[-1] == "do":
+            stack.append(group_names(" ".join(words[1:-1])))
             continue
         if line == "end" and stack:
             stack.pop()
@@ -617,7 +617,6 @@ def parse_uv_lock(path: Path, rel: str) -> list[Package]:
     entries = data.get("package", [])
     graph: dict[str, set[str]] = defaultdict(set)
     runtime_roots: set[str] = set()
-    dev_roots: set[str] = set()
     packages: dict[str, Package] = {}
 
     for entry in entries:
@@ -634,8 +633,6 @@ def parse_uv_lock(path: Path, rel: str) -> list[Package]:
             runtime_roots |= {dep["name"] for dep in entry.get("dependencies", [])}
             for group in entry.get("optional-dependencies", {}).values():
                 runtime_roots |= {dep["name"] for dep in group}
-            for group in entry.get("dev-dependencies", {}).values():
-                dev_roots |= {dep["name"] for dep in group}
         for group in entry.get("dev-dependencies", {}).values():
             for dep in group:
                 graph[name].add(dep["name"])
@@ -741,7 +738,7 @@ def parse_pnpm_lock(path: Path, rel: str) -> list[Package]:
                 continue
             # Package keys can be quoted and contain colons (git/tarball URLs).
             # Recognize those too, so unsupported sources fail instead of vanishing.
-            match = re.match(r"^  (\S.*):(?:\s*\{\})?\s*$", line)
+            match = re.match(r"^ {2}(\S.*):(?:\s*\{\})?\s*$", line)
             if match:
                 add_package(match.group(1), note="dev/runtime unknown (PyYAML not installed)")
 
@@ -757,7 +754,7 @@ def parse_pnpm_lock(path: Path, rel: str) -> list[Package]:
 
 
 def is_first_party_js(name: str) -> bool:
-    return name.startswith("@openc3/") or name.startswith("openc3-")
+    return name.startswith(("@openc3/", "openc3-"))
 
 
 # ==========================================================================
@@ -939,10 +936,17 @@ class LicenseCache:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             self.path.write_text(json.dumps(self.data, indent=0, sort_keys=True), encoding="utf-8")
         except OSError:
+            # The cache only saves registry round trips; failing to write it must not fail the audit.
             pass
 
 
+REGISTRY_HOSTS = frozenset({"rubygems.org", "pypi.org", "registry.npmjs.org"})
+
+
 def http_json(url: str, timeout: float = 20.0, attempts: int = 3) -> dict | None:
+    parsed = urllib.parse.urlsplit(url)
+    if parsed.scheme != "https" or parsed.hostname not in REGISTRY_HOSTS:
+        raise AuditError(f"refusing to query non-registry URL: {url}")
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": "application/json"})
     for attempt in range(attempts):
         try:
@@ -955,7 +959,7 @@ def http_json(url: str, timeout: float = 20.0, attempts: int = 3) -> dict | None
                 time.sleep(1.5 * (attempt + 1))
                 continue
             return None
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError, OSError):
+        except (json.JSONDecodeError, OSError):  # URLError and TimeoutError are OSErrors
             if attempt < attempts - 1:
                 time.sleep(1.0 * (attempt + 1))
                 continue
@@ -1124,7 +1128,7 @@ def repo_root_from(start: Path) -> Path:
         if result.returncode == 0:
             return Path(result.stdout.strip())
     except (OSError, subprocess.TimeoutExpired):
-        pass
+        pass  # git missing or hung: fall back to this script's location
     return start.parents[1]  # scripts/license_audit/ -> repo root
 
 
@@ -1137,7 +1141,7 @@ def git_ref(root: Path) -> str:
         if result.returncode == 0:
             return result.stdout.strip()
     except (OSError, subprocess.TimeoutExpired):
-        pass
+        pass  # the ref is informational only
     return "unknown"
 
 

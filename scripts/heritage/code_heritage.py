@@ -51,6 +51,7 @@ import subprocess
 import sys
 import threading
 from collections import Counter, defaultdict
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from difflib import SequenceMatcher
 
@@ -59,10 +60,13 @@ from difflib import SequenceMatcher
 # the credibility of the result depends entirely on what is counted.
 # --------------------------------------------------------------------------
 
+_TOOL_BASE_ASSET_DIR = re.compile(r"(^|/)(openc3|cosmosc2)-tool-base/public/(js|css)$")
+_VERSIONED_NAME = re.compile(r"-v?\d+\.\d")
+
 # Paths excluded from BOTH trees, because they are not human-authored source.
 # Counting generated or vendored third-party files would measure the churn of
 # other people's build tools rather than the heritage of this code base.
-EXCLUSIONS: list[tuple[str, re.Pattern]] = [
+EXCLUSIONS: list[tuple[str, re.Pattern | Callable[[str], bool]]] = [
     # `docs/` is the committed output of `docusaurus build --out-dir=../docs`.
     # The human-authored source for it lives in `docs.openc3.com/`.
     ("generated-docs-site", re.compile(r"^docs/")),
@@ -70,14 +74,15 @@ EXCLUSIONS: list[tuple[str, re.Pattern]] = [
         r"(^|/)(pnpm-lock\.yaml|package-lock\.json|yarn\.lock|uv\.lock|"
         r"poetry\.lock|Gemfile\.lock|Cargo\.lock|composer\.lock)$")),
     ("minified-or-sourcemap", re.compile(r"(\.min\.(js|css)|\.map)$")),
-    ("vendored", re.compile(r"(^|/)(node_modules|vendor|third_party|thirdparty)(/|$)")),
+    ("vendored", re.compile(r"(^|/)(node_modules|vendor|third_?party)(/|$)")),
     ("build-output", re.compile(r"(^|/)(dist|staticdocs|\.yarn|coverage)/")),
     # Third-party browser libraries checked into the tool-base plugin.  They are
     # identified by the version number in the filename (vue-2.6.14.min.js,
     # astro-web-components-7.24.0.css) -- OpenC3's own files there (auth.js,
     # bootstrap.js, browsercheck.js) carry no version and MUST still be counted.
-    ("vendored-web-asset", re.compile(
-        r"(^|/)(openc3|cosmosc2)-tool-base/public/(js|css)/[^/]*-v?\d+\.\d+[^/]*$")),
+    ("vendored-web-asset", lambda path: bool(
+        _TOOL_BASE_ASSET_DIR.search(os.path.dirname(path))
+        and _VERSIONED_NAME.search(os.path.basename(path)))),
     # Google Fonts-generated @font-face stylesheet, shipped verbatim.
     ("vendored-web-asset", re.compile(r"(^|/)roboto\.css$")),
     ("ci-temp", re.compile(r"^\.github/\.tmp/")),
@@ -120,6 +125,8 @@ TEST_PATTERNS = re.compile(
     r"|\.(spec|test)\.(js|mjs|cjs|ts|tsx|jsx)$"
 )
 
+FROM_BASELINE = "from baseline"
+
 SCOPES = {
     "code": {"source", "test"},   # default headline scope
     "source": {"source"},         # non-test program source only
@@ -151,6 +158,16 @@ def git(repo: str, *args: str, check: bool = True) -> str:
     return proc.stdout.decode("utf-8", "replace")
 
 
+def resolve_commit(repo: str, ref: str) -> str:
+    """Resolve a user-supplied ref to a full commit sha, refusing option-like input."""
+    if ref.startswith("-"):
+        raise RuntimeError(f"invalid ref {ref!r}: refs may not start with '-'")
+    sha = git(repo, "rev-parse", "--verify", "--end-of-options", f"{ref}^{{commit}}").strip()
+    if not re.fullmatch(r"[0-9a-f]{40}|[0-9a-f]{64}", sha):
+        raise RuntimeError(f"unexpected rev-parse output for {ref!r}: {sha!r}")
+    return sha
+
+
 def list_tree(repo: str, ref: str) -> dict[str, str]:
     """Return {path: blob_sha} for regular files in `ref` (no symlinks/submodules)."""
     out = git(repo, "ls-tree", "-r", "-z", ref)
@@ -180,6 +197,7 @@ def iter_blobs(repo: str, shas: list[str]):
                 proc.stdin.write(f"{sha}\n".encode())
             proc.stdin.close()
         except (BrokenPipeError, ValueError):
+            # cat-file exited early; the reader loop below notices the short output.
             pass
 
     threading.Thread(target=feed, daemon=True).start()
@@ -217,7 +235,7 @@ def is_binary(data: bytes) -> bool:
 
 def excluded_reason(path: str) -> str | None:
     for reason, pattern in EXCLUSIONS:
-        if pattern.search(path):
+        if pattern(path) if callable(pattern) else pattern.search(path):
             return reason
     return None
 
@@ -426,8 +444,8 @@ def main() -> int:
 
     # --- resolve refs and validate the baseline is actually in our history ---
     try:
-        baseline_sha = git(repo, "rev-parse", "--verify", f"{args.baseline}^{{commit}}").strip()
-        head_sha = git(repo, "rev-parse", "--verify", f"{args.head}^{{commit}}").strip()
+        baseline_sha = resolve_commit(repo, args.baseline)
+        head_sha = resolve_commit(repo, args.head)
     except RuntimeError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
@@ -460,7 +478,6 @@ def main() -> int:
     base_tree_all = list_tree(repo, baseline_sha)
 
     excluded: Counter = Counter()
-    binary_skipped = 0
 
     def in_scope_tree(tree: dict[str, str]) -> dict[str, str]:
         kept = {}
@@ -487,7 +504,6 @@ def main() -> int:
     head_files: dict[str, dict] = {}
     for path, sha in head_tree.items():
         if blob_binary.get(sha, True):
-            binary_skipped += 1
             excluded["binary"] += 1
             continue
         lang, category = classify(path)
@@ -608,7 +624,7 @@ def main() -> int:
         rows.append([cat + (" *" if cat in scope_categories else ""), f"{files:,}",
                      f"{lines:,}", f"{herit:,}", f"{pct(herit, lines):.2f}%"])
     add(" By category (* = included in the headline scope)")
-    add(table(["category", "files", "lines", "from baseline", "retention"],
+    add(table(["category", "files", "lines", FROM_BASELINE, "retention"],
               rows, "lrrrr"))
     add("")
 
@@ -618,7 +634,7 @@ def main() -> int:
         files, lines, herit = lang_agg[lang]
         rows.append([lang, f"{files:,}", f"{lines:,}", f"{herit:,}", f"{pct(herit, lines):.2f}%"])
     add(f" By language (scope: {args.scope})")
-    add(table(["language", "files", "lines", "from baseline", "retention"], rows, "lrrrr"))
+    add(table(["language", "files", "lines", FROM_BASELINE, "retention"], rows, "lrrrr"))
     add("")
 
     comp_agg = totals(scoped, lambda e: e["component"])
@@ -627,7 +643,7 @@ def main() -> int:
         files, lines, herit = comp_agg[comp]
         rows.append([comp, f"{files:,}", f"{lines:,}", f"{herit:,}", f"{pct(herit, lines):.2f}%"])
     add(f" By component (top {args.top}, scope: {args.scope})")
-    add(table(["component", "files", "lines", "from baseline", "retention"], rows, "lrrrr"))
+    add(table(["component", "files", "lines", FROM_BASELINE, "retention"], rows, "lrrrr"))
     add("")
 
     add(" Code age profile -- current lines by year of authoring commit")
