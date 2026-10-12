@@ -275,10 +275,19 @@ module OpenC3
 
       def goto(line_no_or_procedure_name, line_no = nil)
         if line_no.nil?
-          start(RunningScript.instance.current_filename, line_no: line_no_or_procedure_name, bind_variables: true, complete: true)
+          procedure_name = RunningScript.instance.current_filename
+          line_no = line_no_or_procedure_name
         else
-          start(line_no_or_procedure_name, line_no: line_no, bind_variables: true, complete: true)
+          procedure_name = line_no_or_procedure_name
         end
+        # goto typed at the debug prompt is evaluated on the thread that processes
+        # go/step/stop messages. Running the script there deadlocks at the next pause,
+        # so hand it to the run thread the same way the editor's goto does.
+        unless RunningScript.run_thread?
+          RunningScript.instance.execute_while_paused(procedure_name, line_no)
+          return
+        end
+        start(procedure_name, line_no: line_no, bind_variables: true, complete: true)
       end
 
       # Require an additional ruby file
@@ -795,6 +804,10 @@ class RunningScript
 
   def self.instance=(value)
     @@instance = value
+  end
+
+  def self.run_thread?
+    Thread.current == @@run_thread
   end
 
   def self.line_delay

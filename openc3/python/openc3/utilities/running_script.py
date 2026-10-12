@@ -1481,19 +1481,22 @@ openc3.script.start = start
 
 def goto(line_no_or_procedure_name, line_no=None):
     if line_no is None:
-        start(
-            RunningScript.instance.current_filename(),
-            line_no=line_no_or_procedure_name,
-            bind_variables=True,
-            complete=True,
-        )
+        procedure_name = RunningScript.instance.current_filename()
+        line_no = line_no_or_procedure_name
     else:
-        start(
-            line_no_or_procedure_name,
-            line_no=line_no,
-            bind_variables=True,
-            complete=True,
-        )
+        procedure_name = line_no_or_procedure_name
+    # goto typed at the debug prompt is executed on the thread that processes
+    # go/step/stop messages. Running the script there deadlocks at the next pause,
+    # so hand it to the run thread the same way the editor's goto does.
+    if threading.current_thread() is not RunningScript.run_thread:
+        RunningScript.instance.execute_while_paused(procedure_name, line_no)
+        return
+    start(
+        procedure_name,
+        line_no=line_no,
+        bind_variables=True,
+        complete=True,
+    )
 
 
 openc3.script.goto = goto

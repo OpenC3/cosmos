@@ -446,6 +446,40 @@ RSpec.describe RunningScript, type: :model do
       end
     end
 
+    describe "goto" do
+      let(:script_api) { Object.new.extend(OpenC3::Script) }
+
+      after do
+        RunningScript.class_variable_set(:@@run_thread, nil)
+      end
+
+      it "hands off to the run thread when called from another thread" do
+        # The debug prompt evals goto on the redis subscriber thread. Running the
+        # script there deadlocks at the next pause because that thread is the one
+        # that processes go/step/stop, so goto must defer to the run thread.
+        running_script = RunningScript.new(script_status)
+        script_status.state = "breakpoint"
+        RunningScript.class_variable_set(:@@run_thread, Thread.new {})
+        expect(script_api).not_to receive(:start)
+
+        script_api.send(:goto, 9)
+        expect(running_script.execute_while_paused_info).to eq({ filename: "test_script.rb", line_no: 9, end_line_no: nil })
+
+        script_api.send(:goto, "other.rb", 3)
+        expect(running_script.execute_while_paused_info).to eq({ filename: "other.rb", line_no: 3, end_line_no: nil })
+      end
+
+      it "runs the script directly when called from the run thread" do
+        RunningScript.new(script_status)
+        RunningScript.class_variable_set(:@@run_thread, Thread.current)
+        expect(script_api).to receive(:start).with("test_script.rb", line_no: 9, bind_variables: true, complete: true)
+        script_api.send(:goto, 9)
+
+        expect(script_api).to receive(:start).with("other.rb", line_no: 3, bind_variables: true, complete: true)
+        script_api.send(:goto, "other.rb", 3)
+      end
+    end
+
     describe "breakpoint management" do
       it "sets a breakpoint" do
         RunningScript.set_breakpoint("test.rb", 10)
