@@ -77,12 +77,20 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # image that predates the helper skips the relock with a warning rather than
 # failing the build. UV_INSECURE_HOST is the bare host:port, credentials and
 # path stripped, the same host pip trusts when openc3-ruby installs uv.
+#
+# --no-build keeps the relock from running any third-party setup code. The
+# relock resolves every dependency group, dev included, and without it uv
+# builds any sdist-only version the mirror offers just to read its metadata -
+# for packages this image may never install. Every locked package publishes
+# wheels and openc3's own metadata is static, so the resolve reads wheel
+# metadata only. A mirror that serves only an sdist fails the build here
+# rather than executing it. The syncs keep uv's default, as on a stock build.
 RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
       PYPI_HOST="${PYPI_URL#*://}"; PYPI_HOST="${PYPI_HOST%%/*}"; \
       export UV_INSECURE_HOST="${PYPI_HOST##*@}"; \
     fi && \
     if command -v uv-mirror-relock >/dev/null; then \
-      UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock; \
+      UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock --no-build; \
     else \
       echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL host ${PYPI_URL##*@})"; \
     fi && \
