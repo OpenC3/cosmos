@@ -566,6 +566,11 @@ module OpenC3
           expect { @api.public_send(method_name, "inst latest") }.to raise_error(RuntimeError, /LATEST is not supported/)
         end
       end
+
+      it "complains about LATEST in subscribe_packets and inject_tlm" do
+        expect { @api.subscribe_packets([["INST", "latest"]]) }.to raise_error(RuntimeError, "ERROR: LATEST is not supported by subscribe_packets(), specify a packet name")
+        expect { @api.inject_tlm("INST", "latest", { TEMP1: 10 }) }.to raise_error(RuntimeError, "ERROR: LATEST is not supported by inject_tlm(), specify a packet name")
+      end
     end
 
     describe "get_tlm_packet" do

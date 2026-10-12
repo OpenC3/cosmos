@@ -142,6 +142,7 @@ def inject_tlm(
     scope=OPENC3_SCOPE,
     received_time=None,
 ):
+    _tlm_reject_latest(str(packet_name).upper(), "inject_tlm")
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -548,6 +549,7 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
     for target_name, packet_name in packets:
         target_name = target_name.upper()
         packet_name = packet_name.upper()
+        _tlm_reject_latest(packet_name, "subscribe_packets")
         authorize(
             permission="tlm",
             target_name=target_name,
@@ -686,10 +688,14 @@ def _extract_target_packet_names(method_name, *args):
         raise RuntimeError(
             f'ERROR: Both target name and packet name required. Usage: {method_name}("TGT PKT") or {method_name}("TGT", "PKT")'
         )
-    # LATEST picks a packet per item so it can't identify a whole packet
+    _tlm_reject_latest(packet_name, method_name)
+    return target_name, packet_name
+
+
+# LATEST picks a packet per item so it can't identify a whole packet
+def _tlm_reject_latest(packet_name, method_name):
     if packet_name == "LATEST":
         raise RuntimeError(f"ERROR: LATEST is not supported by {method_name}(), specify a packet name")
-    return target_name, packet_name
 
 
 def _extract_target_packet_item_names(method_name, *args):

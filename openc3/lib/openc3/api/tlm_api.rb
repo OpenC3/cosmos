@@ -119,6 +119,7 @@ module OpenC3
     # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
     # @param received_time [Integer, nil] Optional received time as nanoseconds since Unix epoch
     def inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, stored: false, received_time: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
+      _tlm_reject_latest(packet_name.to_s.upcase, 'inject_tlm')
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       type = type.to_s.intern
       target_name = target_name.upcase
@@ -453,6 +454,7 @@ module OpenC3
       packets.each do |target_name, packet_name|
         target_name = target_name.upcase
         packet_name = packet_name.upcase
+        _tlm_reject_latest(packet_name, 'subscribe_packets')
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
         topic = "#{scope}__DECOM__{#{target_name}}__#{packet_name}"
         db_shard = Store.db_shard_for_target(target_name, scope: scope)
@@ -558,9 +560,13 @@ module OpenC3
       if target_name.nil? or packet_name.nil?
         raise "ERROR: Both target name and packet name required. Usage: #{method_name}(\"TGT PKT\") or #{method_name}(\"TGT\", \"PKT\")"
       end
-      # LATEST picks a packet per item so it can't identify a whole packet
-      raise "ERROR: LATEST is not supported by #{method_name}(), specify a packet name" if packet_name == 'LATEST'
+      _tlm_reject_latest(packet_name, method_name)
       return [target_name, packet_name]
+    end
+
+    # LATEST picks a packet per item so it can't identify a whole packet
+    def _tlm_reject_latest(packet_name, method_name)
+      raise "ERROR: LATEST is not supported by #{method_name}(), specify a packet name" if packet_name == 'LATEST'
     end
 
     def _extract_target_packet_item_names(method_name, *args)

@@ -998,6 +998,12 @@ class TestTlmApi(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "LATEST is not supported"):
                 method("inst latest")
 
+    def test_subscribe_packets_and_inject_tlm_complain_about_latest(self):
+        with self.assertRaisesRegex(RuntimeError, r"LATEST is not supported by subscribe_packets\(\)"):
+            subscribe_packets([["INST", "latest"]])
+        with self.assertRaisesRegex(RuntimeError, r"LATEST is not supported by inject_tlm\(\)"):
+            inject_tlm("INST", "latest", {"TEMP1": 10})
+
     def test_get_tlm_values_accepts_the_limits_suffix_from_the_cvt(self):
         vals = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])
         self.assertEqual(vals[0][0], (-100.0))
