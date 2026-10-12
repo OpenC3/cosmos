@@ -33,7 +33,10 @@ cd ${FOLDER_NAME}
 # references the mirror too - a gem pinned to pythonhosted.org URLs would miss
 # the cache warmed below and send the runtime plugin install to the public PyPI,
 # which is exactly what fails in an air-gapped cluster. No-op when PYPI_URL is
-# the default public pypi.org. --no-build matches the sync below: no third-party
+# the default public pypi.org. The trade-off: the shipped gem's lockfile names
+# the build-time mirror, so a cluster whose pypi_url setting points elsewhere
+# misses the frozen sync, and uvinstall falls back to `uv pip install` against
+# that setting. --no-build matches the sync below: no third-party
 # sdist gets built during the image build. A base image that predates the
 # helper skips the relock with a warning rather than failing the build.
 if command -v uv-mirror-relock >/dev/null; then
