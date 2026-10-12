@@ -90,6 +90,21 @@ module OpenC3
             eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
         end
       end
+
+      it "resolves a LATEST item in the requested scope" do
+        model = TargetModel.new(folder_name: 'INST', name: 'INST', scope: "OTHER")
+        model.create
+        model.update_store(System.new(['INST'], File.join(SPEC_DIR, 'install', 'config', 'targets')))
+        expect(CvtModel).to receive(:determine_latest_packet_for_item).with('INST', 'TEMP1', cache_timeout: nil, scope: 'OTHER').and_call_original
+        expect(@api.get_limits("INST", "LATEST", "TEMP1", scope: "OTHER")).to \
+          eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
+      end
+
+      it "authorizes the resolved packet rather than LATEST" do
+        allow(CvtModel).to receive(:determine_latest_packet_for_item).and_return('HEALTH_STATUS')
+        expect(@api).to receive(:authorize).with(hash_including(target_name: 'INST', packet_name: 'HEALTH_STATUS'))
+        @api.get_limits("inst", "latest", "temp1")
+      end
     end
 
     describe "set_limits" do

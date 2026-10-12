@@ -59,35 +59,46 @@ class StreamingObjectCollection
     @mutex.synchronize do
       found_object = @objects_by_id[object.id]
       if found_object
-        @objects.delete(found_object)
-        @objects_by_id.delete(found_object.id)
-        item_objects = @item_objects_by_topic[object.topic]
-        item_objects.delete(found_object) if item_objects
-        packet_objects = @packet_objects_by_topic[object.topic]
-        packet_objects.delete(found_object) if packet_objects
-        if item_objects
-          if item_objects.length == 0
-            if packet_objects
-              if packet_objects.length == 0
-                # Nothing left in either for this topic
-                @topics_and_offsets.delete(object.topic)
-              end
-            else
-              # Just item_objects and nothing left
-              @topics_and_offsets.delete(object.topic)
-            end
-          end
-        else
-          if packet_objects
-            if packet_objects.length == 0
-              # Just packet_objects and nothing left
-              @topics_and_offsets.delete(object.topic)
-            end
-          else
-            # Neither objects - Shouldn't happen
+        _remove_found(found_object)
+      elsif object.item_key
+        # Items can be added as [key, item_key] pairs but removed by key alone,
+        # so fall back to removing every item object with a matching key
+        @objects.select { |obj| obj.item_key and obj.key == object.key }.each do |obj|
+          _remove_found(obj)
+        end
+      end
+    end
+  end
+
+  # Must be called with @mutex held
+  def _remove_found(object)
+    @objects.delete(object)
+    @objects_by_id.delete(object.id)
+    item_objects = @item_objects_by_topic[object.topic]
+    item_objects.delete(object) if item_objects
+    packet_objects = @packet_objects_by_topic[object.topic]
+    packet_objects.delete(object) if packet_objects
+    if item_objects
+      if item_objects.length == 0
+        if packet_objects
+          if packet_objects.length == 0
+            # Nothing left in either for this topic
             @topics_and_offsets.delete(object.topic)
           end
+        else
+          # Just item_objects and nothing left
+          @topics_and_offsets.delete(object.topic)
         end
+      end
+    else
+      if packet_objects
+        if packet_objects.length == 0
+          # Just packet_objects and nothing left
+          @topics_and_offsets.delete(object.topic)
+        end
+      else
+        # Neither objects - Shouldn't happen
+        @topics_and_offsets.delete(object.topic)
       end
     end
   end

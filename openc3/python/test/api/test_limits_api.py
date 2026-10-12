@@ -117,6 +117,14 @@ class TestLimitsApi(unittest.TestCase):
             },
         )
 
+    @patch("openc3.api.limits_api.authorize")
+    def test_get_limits_authorizes_the_resolved_packet_rather_than_latest(self, mock_authorize):
+        with patch.object(CvtModel, "determine_latest_packet_for_item", return_value="HEALTH_STATUS"):
+            get_limits("inst", "latest", "temp1")
+        mock_authorize.assert_called_once_with(
+            permission="tlm", target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT"
+        )
+
     def test_set_limits_complains_about_non_existant_targets(self):
         with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             set_limits("BLAH", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0)
