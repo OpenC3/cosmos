@@ -38,7 +38,7 @@ export function useFlowMetrics(api) {
 
   onMounted(() => {
     active = true
-    update()
+    void update()
     // Refresh ages between metric reports without adding API requests.
     timer = setInterval(update, 1000)
   })
