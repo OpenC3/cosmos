@@ -59,6 +59,12 @@ RUN pnpm build:common
 ARG PYPI_URL_OVERRIDE=
 ENV PYPI_URL=${PYPI_URL_OVERRIDE:-$PYPI_URL}
 ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
+# Set when the PYPI_URL mirror is plain HTTP or has a self-signed certificate;
+# docker-package-build.sh turns it into UV_INSECURE_HOST. An ENV is safe here
+# because only the throwaway openc3-tmp* stages inherit it - the final image
+# starts from the base image and copies their output.
+ARG OPENC3_PYPI_ALLOW_INSECURE=
+ENV OPENC3_PYPI_ALLOW_INSECURE=${OPENC3_PYPI_ALLOW_INSECURE}
 
 # Copy in helper scripts for building
 COPY ./plugins/docker-package-build.sh ./plugins/eslint.config.mjs ./

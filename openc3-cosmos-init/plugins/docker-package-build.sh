@@ -25,6 +25,14 @@ mkdir -p ${GEMS}
 UV_CACHE_PLUGINS=/openc3/uv_cache_plugins
 mkdir -p ${UV_CACHE_PLUGINS}
 
+# Trust a plain-HTTP or self-signed PYPI_URL mirror for the relock and cache
+# warm below: uv gets the bare host:port, credentials and path stripped.
+if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then
+  PYPI_HOST="${PYPI_URL#*://}"
+  PYPI_HOST="${PYPI_HOST%%/*}"
+  export UV_INSECURE_HOST="${PYPI_HOST##*@}"
+fi
+
 echo "<<< packageBuild $1"
 cd ${FOLDER_NAME}
 

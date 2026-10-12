@@ -44,6 +44,12 @@ ARG PYPI_URL_OVERRIDE=
 ENV PYPI_URL=${PYPI_URL_OVERRIDE:-$PYPI_URL}
 ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
 
+# Set when the PYPI_URL mirror is plain HTTP or has a self-signed certificate.
+# Each uv step below turns it into UV_INSECURE_HOST for that step only. It stays
+# an ARG, never an ENV, so this image does not carry it into every uv call made
+# at run time.
+ARG OPENC3_PYPI_ALLOW_INSECURE=
+
 WORKDIR /openc3/python
 
 # Install openc3 Python package and dependencies using UV
@@ -69,8 +75,13 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # uses is the one this layer produced, and save that lockfile so the
 # application sync below reuses it rather than resolving a second time. A base
 # image that predates the helper skips the relock with a warning rather than
-# failing the build.
-RUN if command -v uv-mirror-relock >/dev/null; then \
+# failing the build. UV_INSECURE_HOST is the bare host:port, credentials and
+# path stripped, the same host pip trusts when openc3-ruby installs uv.
+RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
+      PYPI_HOST="${PYPI_URL#*://}"; PYPI_HOST="${PYPI_HOST%%/*}"; \
+      export UV_INSECURE_HOST="${PYPI_HOST##*@}"; \
+    fi && \
+    if command -v uv-mirror-relock >/dev/null; then \
       UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock; \
     else \
       echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL=${PYPI_URL})"; \
@@ -87,7 +98,11 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 # versions than the cached dependency layer if the mirror has changed since.
 # pyproject.toml and uv.lock were part of that layer's COPY, so the saved
 # lockfile always matches the source tree copied here.
-RUN cp /tmp/uv.lock.relocked uv.lock && rm /tmp/uv.lock.relocked && \
+RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
+      PYPI_HOST="${PYPI_URL#*://}"; PYPI_HOST="${PYPI_HOST%%/*}"; \
+      export UV_INSECURE_HOST="${PYPI_HOST##*@}"; \
+    fi && \
+    cp /tmp/uv.lock.relocked uv.lock && rm /tmp/uv.lock.relocked && \
     UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev # NOSONAR
 
 WORKDIR /openc3/
