@@ -134,7 +134,7 @@ ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
 # would never be contacted. Derived images run this helper before each frozen
 # sync to relock against PYPI_URL when a mirror is configured; it is a no-op at
 # the default pypi.org. See the script for the full explanation.
-COPY uv_mirror_relock.sh /usr/local/bin/uv-mirror-relock
+COPY --chmod=0755 uv_mirror_relock.sh /usr/local/bin/uv-mirror-relock
 
 # Set Python executable path for microservices (uses venv to support editable installs)
 ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python

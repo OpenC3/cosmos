@@ -170,7 +170,7 @@ ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
 # would never be contacted. Derived images run this helper before each frozen
 # sync to relock against PYPI_URL when a mirror is configured; it is a no-op at
 # the default pypi.org. See the script for the full explanation.
-COPY uv_mirror_relock.sh /usr/local/bin/uv-mirror-relock
+COPY --chmod=0755 uv_mirror_relock.sh /usr/local/bin/uv-mirror-relock
 
 # Use the Debian system Python instead of the project's .python-version pin
 # (which targets 3.12 for host development) since UV_PYTHON_DOWNLOADS is never.
