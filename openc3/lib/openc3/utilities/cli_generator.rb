@@ -88,7 +88,6 @@ module OpenC3
       flag_indices = []
       args.each_with_index do |arg, idx|
         next if idx == 0 # don't touch the generator name itself
-
         if arg == '--ruby' || arg == '--python'
           lang_flags << arg
           flag_indices << idx
@@ -119,7 +118,6 @@ module OpenC3
     # Returns 'rb', 'py', or nil if the file or comment is absent.
     def self.read_plugin_language
       return nil unless File.exist?('plugin.txt')
-
       File.foreach('plugin.txt') do |line|
         if line =~ /^\s*#\s*LANGUAGE\s+(ruby|python)\b/i
           return $1.downcase == 'python' ? 'py' : 'rb'
@@ -341,10 +339,8 @@ module OpenC3
           # Ignore ruby files if we're python
           next
         end
-
         base_name = file.sub("#{template_dir}/", '')
         next if yield base_name
-
         if File.directory?(file)
           FileUtils.mkdir_p(base_name)
           next
@@ -447,10 +443,8 @@ module OpenC3
     def self.write_python_version
       python_bin = ENV.fetch('OPENC3_PYTHON_BIN', nil)
       return if python_bin.nil? || !File.executable?(python_bin)
-
       version, status = Open3.capture2(python_bin, '-c', 'import sys; print("%d.%d" % sys.version_info[:2])')
       return unless status.success? && version.strip =~ /\A\d+\.\d+\z/
-
       File.write('.python-version', "#{version.strip}\n")
     rescue SystemCallError
       nil
@@ -458,8 +452,8 @@ module OpenC3
 
     def self.generate_target(args)
       validate_language_inheriting_args!('target', args,
-                                         example: ['cli generate target EXAMPLE --ruby', 'Creates: targets/EXAMPLE/'],
-                                         docs: 'https://docs.openc3.com/docs/configuration/target')
+        example: ['cli generate target EXAMPLE --ruby', 'Creates: targets/EXAMPLE/'],
+        docs: 'https://docs.openc3.com/docs/configuration/target')
 
       # Create the local variables
       target_name = args[1].upcase.gsub(/_+|-+/, '_')
@@ -536,8 +530,8 @@ module OpenC3
 
     def self.generate_microservice(args)
       validate_language_inheriting_args!('microservice', args,
-                                         example: ['cli generate microservice DATA_PROCESSOR --ruby', 'Creates: microservices/DATA_PROCESSOR/'],
-                                         docs: 'https://docs.openc3.com/docs/configuration/plugins#microservices')
+        example: ['cli generate microservice DATA_PROCESSOR --ruby', 'Creates: microservices/DATA_PROCESSOR/'],
+        docs: 'https://docs.openc3.com/docs/configuration/plugins#microservices')
 
       # Create the local variables
       microservice_name = args[1].upcase.gsub(/_+|-+/, '_')
@@ -572,7 +566,7 @@ module OpenC3
       File.open("plugin.txt", 'a') do |file|
         file.puts <<~DOC
 
-          MICROSERVICE #{microservice_name} #{microservice_name.downcase.gsub('_', '-')}-microservice
+          MICROSERVICE #{microservice_name} #{microservice_name.downcase.gsub('_','-')}-microservice
             #{cmd_line}
         DOC
       end
@@ -736,9 +730,9 @@ module OpenC3
       File.open("plugin.txt", 'a') do |file|
         file.puts <<~DOC
 
-          TOOL #{tool_name} "#{tool_name_display}"
-            INLINE_URL #{js_file}
-            ICON mdi-file-cad-box
+        TOOL #{tool_name} "#{tool_name_display}"
+          INLINE_URL #{js_file}
+          ICON mdi-file-cad-box
         DOC
       end
 
@@ -753,62 +747,62 @@ module OpenC3
 
     def self.generate_conversion(args)
       generate_target_artifact(args, {
-                                 suffix: 'CONVERSION',
-                                 kind: 'Conversion',
-                                 kind_plural: 'Conversions',
-                                 template: 'conversion',
-                                 template_source: 'conversion', # template file is conversion.rb / conversion.py
-                                 class_var: 'conversion_class',
-                                 usage_intro: 'To use the conversion add the following to a telemetry item:',
-                                 usage_directive: 'READ_CONVERSION %{basename}',
-                                 docs: 'https://docs.openc3.com/docs/configuration/telemetry#read_conversion',
-                                 help_example: 'STATUS',
-                               })
+        suffix: 'CONVERSION',
+        kind: 'Conversion',
+        kind_plural: 'Conversions',
+        template: 'conversion',
+        template_source: 'conversion', # template file is conversion.rb / conversion.py
+        class_var: 'conversion_class',
+        usage_intro: 'To use the conversion add the following to a telemetry item:',
+        usage_directive: 'READ_CONVERSION %{basename}',
+        docs: 'https://docs.openc3.com/docs/configuration/telemetry#read_conversion',
+        help_example: 'STATUS',
+      })
     end
 
     def self.generate_processor(args)
       generate_target_artifact(args, {
-                                 suffix: 'PROCESSOR',
-                                 kind: 'Processor',
-                                 kind_plural: 'Processors',
-                                 template: 'processor',
-                                 template_source: 'processor',
-                                 class_var: 'processor_class',
-                                 usage_intro: 'To use the processor add the following to a telemetry packet:',
-                                 usage_directive: 'PROCESSOR %{name_upcase} %{basename} <PARAMS...>',
-                                 docs: 'https://docs.openc3.com/docs/configuration/telemetry#processor',
-                                 help_example: 'DATA',
-                               })
+        suffix: 'PROCESSOR',
+        kind: 'Processor',
+        kind_plural: 'Processors',
+        template: 'processor',
+        template_source: 'processor',
+        class_var: 'processor_class',
+        usage_intro: 'To use the processor add the following to a telemetry packet:',
+        usage_directive: 'PROCESSOR %{name_upcase} %{basename} <PARAMS...>',
+        docs: 'https://docs.openc3.com/docs/configuration/telemetry#processor',
+        help_example: 'DATA',
+      })
     end
 
     def self.generate_limits_response(args)
       generate_target_artifact(args, {
-                                 suffix: 'LIMITS_RESPONSE',
-                                 kind: 'Limits response',
-                                 kind_plural: 'Limits responses',
-                                 template: 'limits_response',
-                                 template_source: 'response', # template file is response.rb / response.py
-                                 class_var: 'response_class',
-                                 usage_intro: 'To use the limits response add the following to a telemetry item:',
-                                 usage_directive: 'LIMITS_RESPONSE %{basename}',
-                                 docs: 'https://docs.openc3.com/docs/configuration/telemetry#limits_response',
-                                 help_example: 'CUSTOM',
-                               })
+        suffix: 'LIMITS_RESPONSE',
+        kind: 'Limits response',
+        kind_plural: 'Limits responses',
+        template: 'limits_response',
+        template_source: 'response', # template file is response.rb / response.py
+        class_var: 'response_class',
+        usage_intro: 'To use the limits response add the following to a telemetry item:',
+        usage_directive: 'LIMITS_RESPONSE %{basename}',
+        docs: 'https://docs.openc3.com/docs/configuration/telemetry#limits_response',
+        help_example: 'CUSTOM',
+      })
     end
 
     def self.generate_command_validator(args)
       generate_target_artifact(args, {
-                                 suffix: 'COMMAND_VALIDATOR',
-                                 kind: 'Command validator',
-                                 kind_plural: 'Command validators',
-                                 template: 'command_validator',
-                                 template_source: 'command_validator',
-                                 class_var: 'validator_class',
-                                 usage_intro: 'To use the command validator add the following to a command:',
-                                 usage_directive: 'VALIDATOR %{basename}',
-                                 docs: 'https://docs.openc3.com/docs/configuration/command#validator',
-                                 help_example: 'RANGE',
-                               })
+        suffix: 'COMMAND_VALIDATOR',
+        kind: 'Command validator',
+        kind_plural: 'Command validators',
+        template: 'command_validator',
+        template_source: 'command_validator',
+        class_var: 'validator_class',
+        usage_intro: 'To use the command validator add the following to a command:',
+        usage_directive: 'VALIDATOR %{basename}',
+        docs: 'https://docs.openc3.com/docs/configuration/command#validator',
+        help_example: 'RANGE',
+      })
     end
   end
 end
