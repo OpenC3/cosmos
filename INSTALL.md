@@ -33,7 +33,7 @@ If you're building and want to use a private Rubygems, PyPI, NPM or APK server (
 - NPM_URL=https://registry.npmjs.org
 - APK_URL=http://dl-cdn.alpinelinux.org
 
-Setting PYPI_URL to anything other than https://pypi.org makes the build re-resolve the `uv.lock` files against that mirror, because a lockfile pins absolute pypi.org download URLs that no index setting can redirect. Your mirror must therefore serve every Python dependency, dev dependency groups included. See [Offline Building](https://docs.openc3.com/docs/development/developing) for how to lock your source tree to the mirror instead.
+Setting PYPI_URL to anything other than https://pypi.org makes the build re-resolve the `uv.lock` files against that mirror, because a lockfile pins absolute pypi.org download URLs that no index setting can redirect. Your mirror must therefore serve every Python dependency, dev dependency groups included. If the mirror is plain HTTP or uses a self-signed certificate, also set OPENC3_PYPI_ALLOW_INSECURE=1. See [Offline Building](https://docs.openc3.com/docs/development/developing) for how to lock your source tree to the mirror instead.
 
 ### Windows
 

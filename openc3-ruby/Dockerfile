@@ -22,11 +22,10 @@ ARG DEBIAN_POINT_RELEASE=13.7
 ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
-# host[:port] of a plain-HTTP PYPI_URL mirror to trust; leave unset for HTTPS.
-# Build-time only, deliberately never an ENV: uv reads UV_INSECURE_HOST itself,
-# so baking it into the image would disable TLS verification for that host in
-# every runtime plugin install, bypassing the OPENC3_PYPI_ALLOW_INSECURE opt-in.
-ARG UV_INSECURE_HOST=
+# Set to any value to trust the PYPI_URL host when pip installs uv below, for a
+# plain-HTTP or self-signed mirror. Same switch the runtime uses for uv's
+# --allow-insecure-host. Build-time only: compose.yaml sets the runtime value.
+ARG OPENC3_PYPI_ALLOW_INSECURE=
 # Update Dockerfile-ubi and the python .github/workflow actions to match this version
 ARG UV_VERSION=0.12.5
 
@@ -148,11 +147,12 @@ RUN apt-get update && \
     chmod -R a+rX /etc/bundle && \
     # Install uv from the PYPI_URL mirror too - without --index-url pip always
     # reaches for pypi.org, which fails an air-gapped build before any relock.
-    # UV_INSECURE_HOST (host[:port]) opts a plain-HTTP mirror into being trusted;
-    # pip treats an empty PIP_TRUSTED_HOST as no trusted host.
+    # OPENC3_PYPI_ALLOW_INSECURE trusts the PYPI_URL host[:port] (scheme, user
+    # info and path stripped); pip treats an empty PIP_TRUSTED_HOST as none.
     # --only-binary: uv ships wheels for every platform we build, so never run a
     # setup script from an sdist, even if the mirror serves one.
-    PIP_TRUSTED_HOST="${UV_INSECURE_HOST}" python3 -m pip install --break-system-packages \
+    PYPI_HOST="${PYPI_URL#*://}" && PYPI_HOST="${PYPI_HOST%%/*}" && \
+    PIP_TRUSTED_HOST="${OPENC3_PYPI_ALLOW_INSECURE:+${PYPI_HOST##*@}}" python3 -m pip install --break-system-packages \
       --only-binary :all: --index-url "${PYPI_URL%/}/simple" "uv==${UV_VERSION}" && \
     rm -rf /var/lib/apt/lists/*
 

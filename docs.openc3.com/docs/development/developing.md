@@ -52,6 +52,8 @@ If you're building in a offline environment or want to use a private Rubygems, P
     NPM_URL=https://registry.npmjs.org<br/>
     APK_URL=http://dl-cdn.alpinelinux.org<br/>
 
+If your PyPI mirror is plain HTTP or uses a self-signed certificate, also set `OPENC3_PYPI_ALLOW_INSECURE=1` so the build trusts the PYPI_URL host.
+
 PYPI_URL covers the Python dependencies, with one extra consideration. A `uv.lock` pins an absolute `https://files.pythonhosted.org/...` URL for every wheel, and `uv sync --frozen` fetches exactly those URLs - no index setting redirects them. So whenever PYPI_URL is not `https://pypi.org` the build re-resolves each lockfile against your mirror before installing. That has two consequences: your mirror must serve every Python dependency, including the `dev` dependency groups the images never install, and the resolved versions can differ from the committed `uv.lock` if your mirror carries a different set of releases. The relocked `uv.lock` also ships inside the built-in plugin gems, so if the images run in a cluster whose `pypi_url` Admin setting names a different mirror, the locked install misses and COSMOS falls back to an unlocked `uv pip install` against `pypi_url`.
 
 To pin your source tree to the mirror instead - which you want if the mirror does not serve byte-identical artifacts, or if you need the build to resolve reproducibly - regenerate the lockfiles on the host before building:

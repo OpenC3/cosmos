@@ -20,7 +20,7 @@
 #    each one up first and restoring the backup on exit - including any
 #    uncommitted changes the file already had.
 # 3. Runs `./openc3.sh build` or `./openc3.sh build-ubi` with PYPI_URL and
-#    UV_INSECURE_HOST pointed at the mirror, and pypi.org plus
+#    OPENC3_PYPI_ALLOW_INSECURE set for the mirror, and pypi.org plus
 #    files.pythonhosted.org resolved to 127.0.0.1 inside every build container.
 # 4. Checks the result and exits non-zero if anything failed.
 #
@@ -29,8 +29,8 @@
 #   openc3-ruby/Dockerfile-ubi  (build-ubi) only when falling back to the public
 #                                           UBI image, which has no /bin/python
 #
-# No .env edits: PYPI_URL, UV_INSECURE_HOST and the UBI base are exported, and
-# openc3.sh gives shell variables precedence over .env.
+# No .env edits: PYPI_URL, OPENC3_PYPI_ALLOW_INSECURE and the UBI base are
+# exported, and openc3.sh gives shell variables precedence over .env.
 #
 # Usage: scripts/linux/test_pypi_mirror.sh [build|build-ubi] [options] [build flags...]
 
@@ -284,7 +284,7 @@ run_build() {
   local cache_flags=()
   [[ $USE_CACHE -eq 0 ]] && cache_flags=(--no-cache)
   export PYPI_URL="http://${MIRROR_HOST}"
-  export UV_INSECURE_HOST="${MIRROR_HOST}"
+  export OPENC3_PYPI_ALLOW_INSECURE=1
   export BUILDKIT_PROGRESS=plain
   echo "=== ./openc3.sh ${MODE} with PYPI_URL=${PYPI_URL}"
   echo "Logging to ${LOG_FILE}"
