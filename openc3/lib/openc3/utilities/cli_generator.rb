@@ -487,8 +487,9 @@ module OpenC3
         # Skip when a previous python target already rewrote s.files: the line it
         # wrote matches the pattern below too, so rewriting again would nest a
         # second dependency block. python_dep_file also covers the singular
-        # name older COSMOS versions generated.
-        unless gemspec.include?('python_dep_file')
+        # name older COSMOS versions generated. Also skip a gemspec from the
+        # python plugin template, which already ships pyproject.toml and uv.lock.
+        unless gemspec.include?('python_dep_file') || gemspec.include?('pyproject.toml')
           gemspec.gsub!(/^ *s\.files = Dir\.glob.*\n/) do
             <<~RUBY.gsub(/^/, '  ')
               # Prefer pyproject.toml (plus uv.lock if committed) over requirements.txt

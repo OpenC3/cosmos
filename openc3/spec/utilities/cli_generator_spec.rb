@@ -382,6 +382,18 @@ module OpenC3
         expect(spec.files).to include('requirements.txt')
       end
 
+      it "keeps the python plugin template gemspec as generated" do
+        Dir.chdir(@temp_dir)
+        FileUtils.rm_rf('openc3-cosmos-test-plugin')
+        run_gen(['plugin', 'test-plugin', '--python'])
+        gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
+        before = File.read(gemspec_file)
+        run_gen(['target', 'EXAMPLE', '--python'])
+        expect(File.read(gemspec_file)).to eql(before)
+        spec = Gem::Specification.load(gemspec_file)
+        expect(spec.files).to include('pyproject.toml')
+      end
+
       it "prevents duplicate target generation" do
         run_gen(['target', 'EXAMPLE', '--ruby'])
         expect { run_gen(['target', 'EXAMPLE', '--ruby']) }
