@@ -66,8 +66,13 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # when a PyPI mirror is configured, and does nothing otherwise - a frozen sync
 # fetches the absolute pythonhosted.org URLs in the lockfile, which no index
 # setting can redirect. Relock and sync in one layer so the lockfile the sync
-# uses is the one this layer produced.
-RUN UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock --no-build && \
+# uses is the one this layer produced. A base image that predates the helper
+# skips the relock with a warning rather than failing the build.
+RUN if command -v uv-mirror-relock >/dev/null; then \
+      UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock --no-build; \
+    else \
+      echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL=${PYPI_URL})"; \
+    fi && \
     UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project --no-build
 
 # Copy application code (excluding .venv from source)
@@ -83,7 +88,11 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 # the same rule as the sync above - resolution never builds a third-party
 # sdist, and the local project's metadata is static so locking never has to
 # build it either.
-RUN UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock --no-build && \
+RUN if command -v uv-mirror-relock >/dev/null; then \
+      UV_CACHE_DIR=/openc3/uv_cache uv-mirror-relock --no-build; \
+    else \
+      echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL=${PYPI_URL})"; \
+    fi && \
     UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev # NOSONAR
 
 WORKDIR /openc3/

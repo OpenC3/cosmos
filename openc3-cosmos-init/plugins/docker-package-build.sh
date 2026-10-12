@@ -34,8 +34,13 @@ cd ${FOLDER_NAME}
 # the cache warmed below and send the runtime plugin install to the public PyPI,
 # which is exactly what fails in an air-gapped cluster. No-op when PYPI_URL is
 # the default public pypi.org. --no-build matches the sync below: no third-party
-# sdist gets built during the image build.
-UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv-mirror-relock --no-build
+# sdist gets built during the image build. A base image that predates the
+# helper skips the relock with a warning rather than failing the build.
+if command -v uv-mirror-relock >/dev/null; then
+  UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv-mirror-relock --no-build
+else
+  echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL=${PYPI_URL})"
+fi
 
 echo "--- packageBuild $1 pnpm run build"
 pnpm run build
