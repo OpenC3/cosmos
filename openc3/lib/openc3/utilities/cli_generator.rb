@@ -489,7 +489,7 @@ module OpenC3
         # second dependency block. python_dep_file also covers the singular
         # name older COSMOS versions generated.
         unless gemspec.include?('python_dep_file')
-          gemspec.gsub!(/^ *s\.files = Dir\.glob.*\n/) do |match|
+          gemspec.gsub!(/^ *s\.files = Dir\.glob.*\n/) do
             <<~RUBY.gsub(/^/, '  ')
               # Prefer pyproject.toml (plus uv.lock if committed) over requirements.txt
               python_dep_files = if File.exist?('pyproject.toml')
