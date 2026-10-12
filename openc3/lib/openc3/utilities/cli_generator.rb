@@ -490,13 +490,13 @@ module OpenC3
         end
         gemspec_filename = Dir['*.gemspec'][0]
         gemspec = File.read(gemspec_filename)
-        gemspec.gsub!(/s\.files = Dir\.glob.*\n/) do |match|
-          <<~RUBY
+        gemspec.gsub!(/^ *s\.files = Dir\.glob.*\n/) do |match|
+          <<~RUBY.gsub(/^/, '  ')
             # Prefer pyproject.toml (plus uv.lock if committed) over requirements.txt
             python_dep_files = if File.exist?('pyproject.toml')
-            ['pyproject.toml'] + Dir.glob('uv.lock')
+              ['pyproject.toml'] + Dir.glob('uv.lock')
             else
-            ['requirements.txt']
+              ['requirements.txt']
             end
             s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt) + python_dep_files
           RUBY

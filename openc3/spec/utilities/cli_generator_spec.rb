@@ -348,6 +348,29 @@ module OpenC3
         expect(File.read('targets/EXAMPLE/target.txt')).to include('LANGUAGE python')
       end
 
+      it "ships pyproject.toml and uv.lock in the gemspec of a python target" do
+        run_gen(['target', 'EXAMPLE', '--python'])
+        # Absolute path: Gem::Specification.load caches by path, and other
+        # examples load a gemspec with the same relative name
+        gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
+        File.write('pyproject.toml', '')
+        File.write('uv.lock', '')
+        spec = Gem::Specification.load(gemspec_file)
+        expect(spec.files).to include('pyproject.toml', 'uv.lock')
+        expect(spec.files).to_not include('requirements.txt')
+        # The rewritten block keeps the 2-space indent of the gemspec body
+        lines = File.read(gemspec_file).lines
+        start = lines.index { |line| line.include?('python_dep_files = if') }
+        expect(lines[start..(start + 5)]).to all(start_with('  '))
+        expect(lines[start + 1]).to start_with("    ['pyproject.toml']")
+      end
+
+      it "falls back to requirements.txt in the gemspec of a python target without pyproject.toml" do
+        run_gen(['target', 'EXAMPLE', '--python'])
+        spec = Gem::Specification.load(File.expand_path('openc3-cosmos-test-plugin.gemspec'))
+        expect(spec.files).to include('requirements.txt')
+      end
+
       it "prevents duplicate target generation" do
         run_gen(['target', 'EXAMPLE', '--ruby'])
         expect { run_gen(['target', 'EXAMPLE', '--ruby']) }
