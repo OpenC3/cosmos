@@ -43,6 +43,7 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "  OPENC3_UBI_TAG           - UBI image tag"
   echo "  RUBYGEMS_URL             - RubyGems mirror URL (optional)"
   echo "  PYPI_URL                 - PyPI mirror URL (optional)"
+  echo "  OPENC3_PYPI_ALLOW_INSECURE - Set to 1 to trust a plain-HTTP or self-signed PYPI_URL (optional)"
   echo "  NPM_URL                  - NPM registry URL (optional)"
   echo "  OPENC3_UBI_NO_PULL       - Set to 1 to skip re-pulling external base images (optional)"
   echo ""
@@ -58,6 +59,10 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
 fi
 
 set -e
+
+# PIP_ENABLE_TRUSTED_HOST is the deprecated name, still honored at run time, so
+# honor it at build time too.
+OPENC3_PYPI_ALLOW_INSECURE="${OPENC3_PYPI_ALLOW_INSECURE:-${PIP_ENABLE_TRUSTED_HOST:-}}"
 
 # Match individual array entries exactly, including arguments containing spaces.
 contains_image() {
