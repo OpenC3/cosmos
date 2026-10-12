@@ -797,6 +797,78 @@ module OpenC3
         expect(vals).to eql([[0.0, nil], [-100.0, "RED_LOW"], [nil, nil]])
       end
 
+      context "with a historical LATEST item" do
+        before(:each) do
+          allow(TargetModel).to receive(:get_item_to_packet_map).and_return({ 'TEMP1' => ['HEALTH_STATUS', 'PARAMS'] })
+        end
+
+        def item(packet_name, item_name, value_type = "CONVERTED")
+          ["INST", packet_name, item_name, value_type, nil]
+        end
+
+        let(:items) { ["INST__LATEST__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED"] }
+
+        it "queries each candidate packet at a point in time and returns the newest" do
+          lookups = {
+            [item("HEALTH_STATUS", "TEMP2")] => [[[5.0, nil]]],
+            [item("HEALTH_STATUS", "TEMP1"), item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")] => [[[10.0, nil], [100.0, nil]]],
+            [item("PARAMS", "TEMP1"), item("PARAMS", "PACKET_TIMESECONDS", "RAW")] => [[[20.0, "RED"], [200.0, nil]]],
+          }
+          allow(CvtModel).to receive(:tsdb_lookup) do |query, start_time:, scope:, flatten:|
+            expect(start_time).to eql("2026-09-13T00:00:00Z")
+            expect(flatten).to be false
+            lookups.fetch(query)
+          end
+          expect(@api.get_tlm_values(items, start_time: "2026-09-13T00:00:00Z")).to eql([[20.0, "RED"], [5.0, nil]])
+        end
+
+        it "ignores candidate packets without data at a point in time" do
+          allow(CvtModel).to receive(:tsdb_lookup) do |query, **|
+            query[0][1] == "PARAMS" ? {} : [[[10.0, nil], [100.0, nil]]]
+          end
+          expect(@api.get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time: "2026-09-13T00:00:00Z")).to eql([[10.0, nil]])
+        end
+
+        it "returns no results when nothing is found at a point in time" do
+          allow(CvtModel).to receive(:tsdb_lookup).and_return({})
+          expect(@api.get_tlm_values(items, start_time: "2026-09-13T00:00:00Z")).to eql({})
+        end
+
+        it "joins the candidates to the rows of the regular items in a range" do
+          expect(CvtModel).to receive(:tsdb_lookup).with(
+            [
+              item("HEALTH_STATUS", "TEMP2"),
+              item("HEALTH_STATUS", "TEMP1"),
+              item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW"),
+              item("PARAMS", "TEMP1"),
+              item("PARAMS", "PACKET_TIMESECONDS", "RAW"),
+            ],
+            start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z", scope: "DEFAULT", flatten: false
+          ).and_return([
+            [[5.0, nil], [10.0, nil], [300.0, nil], [20.0, nil], [200.0, nil]],
+            [[6.0, nil], [11.0, nil], [300.0, nil], [21.0, nil], [400.0, nil]],
+            [[7.0, nil], [nil, nil], [nil, nil], [nil, nil], [nil, nil]],
+          ])
+          vals = @api.get_tlm_values(items, start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+          expect(vals).to eql([[[10.0, nil], [5.0, nil]], [[21.0, nil], [6.0, nil]], [[nil, nil], [7.0, nil]]])
+        end
+
+        it "uses the packet received most recently now for a range of only LATEST items" do
+          allow(CvtModel).to receive(:determine_latest_packet_for_item).and_return("PARAMS")
+          expect(CvtModel).to receive(:tsdb_lookup).with(
+            [item("PARAMS", "TEMP1")], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z", scope: "DEFAULT"
+          ).and_return([[[[20.0, nil]]], [[[21.0, nil]]]])
+          @api.get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+        end
+
+        it "authorizes every candidate packet" do
+          allow(CvtModel).to receive(:tsdb_lookup).and_return({})
+          expect(@api).to receive(:authorize).with(hash_including(packet_name: "HEALTH_STATUS"))
+          expect(@api).to receive(:authorize).with(hash_including(packet_name: "PARAMS"))
+          @api.get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time: "2026-09-13T00:00:00Z")
+        end
+      end
+
       it "accepts the limits suffix from get_tlm_available" do
         vals = @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])
         expect(vals[0][0]).to eql(-100.0)

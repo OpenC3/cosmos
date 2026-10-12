@@ -925,12 +925,16 @@ module OpenC3
     # @param start_time [String, Numeric] Start timestamp for the query
     # @param end_time [String, Numeric, nil] End timestamp, or nil for "latest single row"
     # @param scope [String] Scope name
+    # @param flatten [Boolean] Whether a single row result is returned as a flat array
     # @return [Array, Hash] Array of [value, limits_state] pairs per row, or {} if no results.
-    #   Single-row results return a flat array; multi-row results return array of arrays.
-    def self.tsdb_lookup(items, start_time:, end_time: nil, scope: "DEFAULT")
+    #   Single-row results return a flat array (unless flatten is false); multi-row results return array of arrays.
+    def self.tsdb_lookup(items, start_time:, end_time: nil, scope: "DEFAULT", flatten: true)
       # Every item is a placeholder for an item which doesn't exist, so there's
       # nothing to query. Return a single row of nil values, one per item.
-      return Array.new(items.length) { [nil, nil] } if items.all? { |item| item[2].nil? }
+      if items.all? { |item| item[2].nil? }
+        row = Array.new(items.length) { [nil, nil] }
+        return flatten ? row : [row]
+      end
 
       # Group items by db_shard number while preserving their original positions
       db_shard_groups = {} # db_shard => { positions: [], items: [] }
@@ -945,7 +949,7 @@ module OpenC3
       # Single-db_shard fast path (most common case)
       if db_shard_groups.length == 1
         db_shard, group = db_shard_groups.first
-        return tsdb_lookup_single_db_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard)
+        return tsdb_lookup_single_db_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard, flatten: flatten)
       end
 
       # Cross-db_shard: execute per-db_shard queries (as arrays of rows) and merge results
@@ -970,7 +974,7 @@ module OpenC3
         end
       end
       # Match the single db_shard behavior of returning a flat array for a single row
-      return merged[0] if max_rows == 1
+      return merged[0] if flatten and max_rows == 1
       merged
     end
 
@@ -986,6 +990,14 @@ module OpenC3
       calculated_items = {}
       needed_timestamps = {}
       current_position = 0
+      # Columns with the same name in different tables come back renamed by QuestDB
+      # (e.g. VALUE and VALUE_2) so alias every column and map it back when decoding
+      aliases = {}
+      add_column = lambda do |col_name|
+        alias_name = "__col#{aliases.length}"
+        aliases[alias_name] = col_name
+        names << "\"#{col_name}\" as #{alias_name}"
+      end
 
       items.each do |item|
         target_name, packet_name, orig_item_name, value_type, limits = item
@@ -1000,7 +1012,7 @@ module OpenC3
         index = tables.find_index {|k,_v| k == table_name }
 
         if STORED_TIMESTAMP_ITEMS.include?(orig_item_name)
-          names << "\"T#{index}.#{orig_item_name}\""
+          add_column.call("T#{index}.#{orig_item_name}")
           current_position += 1
           next
         end
@@ -1030,11 +1042,11 @@ module OpenC3
 
         suffix = column_suffix_for_value_type(value_type)
         col_name = "T#{index}.#{safe_item_name}#{suffix}"
-        names << "\"#{col_name}\""
+        add_column.call(col_name)
         item_types[col_name] = resolve_item_type(item_def, value_type)
         current_position += 1
         if limits
-          names << "\"T#{index}.#{safe_item_name}__L\""
+          add_column.call("T#{index}.#{safe_item_name}__L")
         end
       end
 
@@ -1080,7 +1092,7 @@ module OpenC3
         row_index = 0
         row_timestamps = {}
         tuples.each do |tuple|
-          col_name = tuple[0]
+          col_name = aliases.fetch(tuple[0], tuple[0])
           col_value = tuple[1]
           if col_name.include?("__L")
             data[row_num][row_index - 1][1] = col_value

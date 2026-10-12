@@ -192,9 +192,10 @@ class CvtModel(Model):
         start_time: str,
         end_time: str | None = None,
         scope: str = OPENC3_SCOPE,
+        flatten: bool = True,
     ):
         """Query historical telemetry data from TSDB"""
-        return QuestDBClient.tsdb_lookup(items, start_time=start_time, end_time=end_time, scope=scope)
+        return QuestDBClient.tsdb_lookup(items, start_time=start_time, end_time=end_time, scope=scope, flatten=flatten)
 
     # Return all item values and limit state from the CVT
     #

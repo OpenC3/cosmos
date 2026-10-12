@@ -394,6 +394,8 @@ def get_tlm_values(
         raise TypeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
     packets = []
     cvt_items = []
+    # Index of each historical LATEST item in cvt_items => every packet containing the item
+    latest_candidates = {}
     for item in items:
         # get_tlm_available returns None for items which don't exist and its result is
         # passed directly here, so None is a placeholder which returns a None value
@@ -410,8 +412,15 @@ def get_tlm_values(
         target_name, packet_name, item_name, value_type = parts[0:4]
         limits = parts[4] if len(parts) == 5 else None
         if packet_name == "LATEST":
+            if start_time is not None:
+                # The packet received most recently now isn't necessarily the one received most
+                # recently at start_time so keep every candidate packet for _tlm_latest_history
+                candidates = _tlm_packet_names(target_name, packet_name, item_name, scope)
+                packets.extend([target_name, candidate] for candidate in candidates)
+                latest_candidates[len(cvt_items)] = candidates
+                cvt_items.append(TlmItem(target_name, packet_name, item_name, value_type, limits))
+                continue
             packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
-        # Change packet_name in case of LATEST and ensure upcase
         # NOTE: limits is required by the historical (start_time) QuestDB lookup
         cvt_items.append(TlmItem(target_name, packet_name, item_name, value_type, limits))
         packets.append([target_name, packet_name])
@@ -424,6 +433,8 @@ def get_tlm_values(
             packet_name=name[1],
             scope=scope,
         )
+    if latest_candidates:
+        return _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cache_timeout, scope)
     return CvtModel.get_tlm_values(cvt_items, stale_time, cache_timeout, start_time, end_time, scope)
 
 
@@ -778,6 +789,114 @@ def _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout=
     # Determine if this item exists, it will raise appropriate errors if not
     TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
     return packet_name
+
+
+# Historical lookup where some items are LATEST. latest_candidates maps the index
+# of each LATEST item in cvt_items to every packet which contains the item.
+def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cache_timeout, scope):
+    regular = [index for index in range(len(cvt_items)) if index not in latest_candidates]
+
+    if end_time is not None:
+        # The QuestDB lookup ASOF JOINs every packet to the rows of the first, so
+        # a range needs a regular item first to drive the rows. Without one keep
+        # the realtime behavior of using the packet received most recently now.
+        if all(cvt_items[index].item_name is None for index in regular):
+            resolved = []
+            for cvt_item in cvt_items:
+                if cvt_item.packet_name == "LATEST":
+                    packet_name = CvtModel.determine_latest_packet_for_item(
+                        cvt_item.target_name, cvt_item.item_name, cache_timeout, scope
+                    )
+                    cvt_item = cvt_item._replace(packet_name=packet_name)
+                resolved.append(cvt_item)
+            return CvtModel.tsdb_lookup(resolved, start_time=start_time, end_time=end_time, scope=scope)
+
+        query = []
+        query_index = {}
+
+        def add(query_item):
+            if query_item not in query_index:
+                query_index[query_item] = len(query)
+                query.append(query_item)
+            return query_index[query_item]
+
+        positions = [None] * len(cvt_items)
+        for index in regular:
+            positions[index] = add(cvt_items[index])
+        for index, candidates in latest_candidates.items():
+            cvt_item = cvt_items[index]
+            positions[index] = [
+                (
+                    add(cvt_item._replace(packet_name=candidate)),
+                    add(TlmItem(cvt_item.target_name, candidate, "PACKET_TIMESECONDS", "RAW", None)),
+                )
+                for candidate in candidates
+            ]
+        rows = CvtModel.tsdb_lookup(query, start_time=start_time, end_time=end_time, scope=scope, flatten=False)
+        if not isinstance(rows, list) or len(rows) == 0:
+            return rows
+        collapsed = []
+        for row in rows:
+            values = []
+            for position in positions:
+                if isinstance(position, int):
+                    values.append(row[position])
+                else:
+                    # Take the candidate with the newest packet time at this row
+                    newest = _tlm_newest(
+                        [(row[time_index][0], row[value_index]) for value_index, time_index in position]
+                    )
+                    values.append(newest or [None, None])
+            collapsed.append(values)
+        # Match tsdb_lookup which returns a flat array for a single row
+        return collapsed[0] if len(collapsed) == 1 else collapsed
+
+    # A point in time returns the last row of the first packet before start_time
+    # with the other packets ASOF JOINed at that row. A candidate packet received
+    # after that row would be missed so query each candidate packet on its own.
+    found = False
+    row = [[None, None] for _ in cvt_items]
+    if not all(cvt_items[index].item_name is None for index in regular):
+        result = CvtModel.tsdb_lookup(
+            [cvt_items[index] for index in regular], start_time=start_time, scope=scope, flatten=False
+        )
+        if isinstance(result, list) and len(result) > 0:
+            found = True
+            for result_index, index in enumerate(regular):
+                row[index] = result[0][result_index]
+    # Group the LATEST items by candidate packet so each packet is queried once
+    by_packet = {}
+    for index, candidates in latest_candidates.items():
+        cvt_item = cvt_items[index]
+        for candidate in candidates:
+            by_packet.setdefault((cvt_item.target_name, candidate), {})[index] = cvt_item._replace(
+                packet_name=candidate
+            )
+    found_values = {}
+    for (target_name, packet_name), packet_items in by_packet.items():
+        query = list(dict.fromkeys(packet_items.values()))
+        query.append(TlmItem(target_name, packet_name, "PACKET_TIMESECONDS", "RAW", None))
+        result = CvtModel.tsdb_lookup(query, start_time=start_time, scope=scope, flatten=False)
+        if not isinstance(result, list) or len(result) == 0:
+            continue
+        values = result[0]
+        for index, query_item in packet_items.items():
+            found_values.setdefault(index, []).append((values[-1][0], values[query.index(query_item)]))
+    for index, candidates in found_values.items():
+        value = _tlm_newest(candidates)
+        if value is None:
+            continue
+        found = True
+        row[index] = value
+    return row if found else {}
+
+
+# Return the value with the newest time from (time, value) pairs, or None
+def _tlm_newest(candidates):
+    candidates = [candidate for candidate in candidates if candidate[0] is not None]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda candidate: candidate[0])[1]
 
 
 # Expand LATEST to every packet containing the item

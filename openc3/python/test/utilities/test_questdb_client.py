@@ -34,6 +34,21 @@ class TestTsdbLookup(unittest.TestCase):
             [[None, None]],
         )
 
+    def test_returns_a_list_of_rows_for_placeholders_when_not_flattening(self):
+        self.assertEqual(
+            QuestDBClient.tsdb_lookup([[None] * 5], start_time="2026-09-13T00:00:00Z", flatten=False),
+            [[[None, None]]],
+        )
+
+    def test_passes_flatten_to_a_single_db_shard_lookup(self):
+        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard", return_value=[[[1.0, None]]]) as single:
+            QuestDBClient.tsdb_lookup(
+                [["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None]],
+                start_time="2026-09-13T00:00:00Z",
+                flatten=False,
+            )
+        self.assertFalse(single.call_args.kwargs["flatten"])
+
 
 class TestTsdbLookupDbShards(unittest.TestCase):
     ITEMS = [
@@ -77,6 +92,10 @@ class TestTsdbLookupDbShards(unittest.TestCase):
         self.assertEqual([item.target_name for item in shards[1]], ["INST2"])
         for call in single.call_args_list:
             self.assertFalse(call.kwargs["flatten"])
+
+    def test_keeps_a_single_merged_row_as_a_list_of_rows_when_not_flattening(self):
+        result, _ = self.lookup({0: [[[1.0, None], [3.0, None]]], 1: [[[2.0, None]]]}, flatten=False)
+        self.assertEqual(result, [[[1.0, None], [2.0, None], [3.0, None]]])
 
     def test_merges_multiple_rows_filling_missing_rows_with_nones(self):
         result, _ = self.lookup(

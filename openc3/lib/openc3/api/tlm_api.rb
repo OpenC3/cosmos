@@ -351,7 +351,15 @@ module OpenC3
         parts = item.to_s.upcase.split('__')
         raise ArgumentError, "items must be formatted as TGT__PKT__ITEM__TYPE" if parts.length < 4 || parts.length > 5
         target_name, packet_name, item_name, value_type, limits = parts
-        if packet_name == 'LATEST' # Lookup packet_name in case of LATEST
+        if packet_name == 'LATEST'
+          if start_time
+            # The packet received most recently now isn't necessarily the one received most
+            # recently at start_time so keep every candidate packet for _tlm_latest_history
+            candidates = _tlm_packet_names(target_name, packet_name, item_name, scope: scope)
+            candidates.each { |candidate| packets << [target_name, candidate] }
+            cvt_items << [target_name, packet_name, item_name, value_type, limits, candidates]
+            next
+          end
           packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
         end
         # NOTE: limits is required by the historical (start_time) QuestDB lookup
@@ -361,6 +369,9 @@ module OpenC3
       packets.uniq!
       packets.each do |target_name, packet_name|
         authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
+      end
+      if cvt_items.any? { |cvt_item| cvt_item.length == 6 }
+        return _tlm_latest_history(cvt_items, start_time: start_time, end_time: end_time, cache_timeout: cache_timeout, scope: scope)
       end
       CvtModel.get_tlm_values(cvt_items, stale_time: stale_time, cache_timeout: cache_timeout, start_time: start_time, end_time: end_time, scope: scope)
     end
@@ -667,6 +678,92 @@ module OpenC3
         TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
       end
       return packet_name
+    end
+
+    # Historical lookup where some items are LATEST. Those items have a 6th element
+    # holding every packet which contains the item.
+    def _tlm_latest_history(cvt_items, start_time:, end_time:, cache_timeout:, scope:)
+      latest = cvt_items.each_index.select { |index| cvt_items[index].length == 6 }
+      regular = cvt_items.each_index.reject { |index| cvt_items[index].length == 6 }
+
+      if end_time
+        # The QuestDB lookup ASOF JOINs every packet to the rows of the first, so
+        # a range needs a regular item first to drive the rows. Without one keep
+        # the realtime behavior of using the packet received most recently now.
+        if regular.all? { |index| cvt_items[index][2].nil? }
+          cvt_items = cvt_items.map do |target_name, packet_name, item_name, value_type, limits, _|
+            packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope) if packet_name == 'LATEST'
+            [target_name, packet_name, item_name, value_type, limits]
+          end
+          return CvtModel.tsdb_lookup(cvt_items, start_time: start_time, end_time: end_time, scope: scope)
+        end
+
+        query = []
+        query_index = {}
+        add = lambda { |query_item| query_index[query_item] ||= (query << query_item; query.length - 1) }
+        positions = Array.new(cvt_items.length)
+        regular.each { |index| positions[index] = add.call(cvt_items[index]) }
+        latest.each do |index|
+          target_name, _, item_name, value_type, limits, candidates = cvt_items[index]
+          positions[index] = candidates.map do |candidate|
+            [add.call([target_name, candidate, item_name, value_type, limits]),
+             add.call([target_name, candidate, 'PACKET_TIMESECONDS', 'RAW', nil])]
+          end
+        end
+        rows = CvtModel.tsdb_lookup(query, start_time: start_time, end_time: end_time, scope: scope, flatten: false)
+        return rows unless rows.is_a?(Array) and rows.length > 0
+        rows = rows.map do |row|
+          positions.map do |position|
+            next row[position] if position.is_a?(Integer)
+            # Take the candidate with the newest packet time at this row
+            _tlm_newest(position.map { |value_index, time_index| [row[time_index][0], row[value_index]] }) || [nil, nil]
+          end
+        end
+        # Match tsdb_lookup which returns a flat array for a single row
+        return rows.length == 1 ? rows[0] : rows
+      end
+
+      # A point in time returns the last row of the first packet before start_time
+      # with the other packets ASOF JOINed at that row. A candidate packet received
+      # after that row would be missed so query each candidate packet on its own.
+      found = false
+      row = Array.new(cvt_items.length) { [nil, nil] }
+      unless regular.all? { |index| cvt_items[index][2].nil? }
+        result = CvtModel.tsdb_lookup(regular.map { |index| cvt_items[index] }, start_time: start_time, scope: scope, flatten: false)
+        if result.is_a?(Array) and result.length > 0
+          found = true
+          regular.each_with_index { |index, result_index| row[index] = result[0][result_index] }
+        end
+      end
+      # Group the LATEST items by candidate packet so each packet is queried once
+      by_packet = {}
+      latest.each do |index|
+        target_name, _, item_name, value_type, limits, candidates = cvt_items[index]
+        candidates.each do |candidate|
+          (by_packet[[target_name, candidate]] ||= {})[index] = [target_name, candidate, item_name, value_type, limits]
+        end
+      end
+      found_values = Hash.new { |hash, key| hash[key] = [] }
+      by_packet.each do |(target_name, packet_name), packet_items|
+        query = packet_items.values.uniq
+        query << [target_name, packet_name, 'PACKET_TIMESECONDS', 'RAW', nil]
+        result = CvtModel.tsdb_lookup(query, start_time: start_time, scope: scope, flatten: false)
+        next unless result.is_a?(Array) and result.length > 0
+        values = result[0]
+        packet_items.each { |index, query_item| found_values[index] << [values[-1][0], values[query.index(query_item)]] }
+      end
+      found_values.each do |index, candidates|
+        value = _tlm_newest(candidates)
+        next unless value
+        found = true
+        row[index] = value
+      end
+      return found ? row : {}
+    end
+
+    # Return the value with the newest time from [time, value] pairs, or nil
+    def _tlm_newest(candidates)
+      candidates.select { |time, _| time }.max_by { |time, _| time }&.last
     end
 
     # Expand LATEST to every packet containing the item
