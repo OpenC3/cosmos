@@ -53,7 +53,7 @@ module OpenC3
     SUM_METRICS['tsdb_ingest_total'] = 0
     SUM_METRICS['tsdb_ingest_error_total'] = 0
 
-    def get_metrics(manual: false, scope: $openc3_scope, token: $openc3_token)
+    def get_metrics(detailed: false, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', manual: manual, scope: scope, token: token)
 
       sum_metrics = SUM_METRICS.dup
@@ -61,6 +61,10 @@ module OpenC3
       delay_metrics = DELAY_METRICS.dup
 
       metrics = MetricModel.all(scope: scope)
+      # Data Flows needs individual services and their report timestamps to
+      # identify the affected interface or target, including stale reporters.
+      return metrics if detailed
+
       metrics.each do |_microservice_name, metrics|
         next unless metrics and metrics['values']
         metrics['values'].each do |metric_name, data|
