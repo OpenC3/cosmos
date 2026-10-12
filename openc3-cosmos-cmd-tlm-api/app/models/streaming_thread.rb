@@ -163,6 +163,8 @@ class StreamingThread
   # Called after each pass through Redis with the newest msg_id read per topic.
   # Subclasses that stream realtime data override this to react to falling behind.
   def check_lag(newest_msg_ids, item_objects_by_topic, packet_objects_by_topic)
+    # Intentionally empty: historical (logged) streams replay old data on
+    # purpose so being behind realtime is expected and not acted upon
   end
 
   def handle_message(msg_hash, objects)
