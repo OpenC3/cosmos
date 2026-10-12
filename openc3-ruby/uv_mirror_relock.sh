@@ -61,6 +61,14 @@ if [ ! -f pyproject.toml ] || [ ! -f uv.lock ]; then
   exit 0
 fi
 
+# A lockfile already generated against the mirror on the host (see the Offline
+# Building docs) is kept as committed, so the build installs exactly what was
+# locked instead of re-resolving it.
+if ! grep -o 'registry = "[^"]*"' uv.lock | grep -qvF "registry = \"${MIRROR_URL}/simple\""; then
+  echo "--- relock skipped in $(pwd): uv.lock already resolves only against ${MIRROR_URL}"
+  exit 0
+fi
+
 echo "--- relock $(pwd)/uv.lock against ${MIRROR_URL}"
 uv lock --no-config --no-sources --default-index "${MIRROR_URL}/simple" "$@"
 echo "=== relock complete"

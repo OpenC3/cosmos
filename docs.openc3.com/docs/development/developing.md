@@ -63,6 +63,8 @@ To pin your source tree to the mirror instead - which you want if the mirror doe
 % uv lock --default-index https://nexus.example.com/repository/pypi/simple
 ```
 
+The build skips the relock for any `uv.lock` whose packages all resolve against `<PYPI_URL>/simple` and installs it as committed, so pass `--default-index` exactly that URL.
+
 :::
 
 # Running COSMOS
