@@ -126,8 +126,9 @@ ENV UV_COMPILE_BYTECODE=1
 ENV UV_PYTHON_DOWNLOADS=never
 # Route uv at the configured PyPI mirror (no-op at the default pypi.org). Matches
 # the runtime pip -i <pypi_url>/simple convention so air-gapped builds resolve
-# Python deps from the same mirror the runtime plugin installs use.
-ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
+# Python deps from the same mirror the runtime plugin installs use. A trailing
+# slash on PYPI_URL is dropped so a mirror URL ending in / does not give //simple.
+ENV UV_DEFAULT_INDEX=${PYPI_URL%/}/simple
 
 # That index steers dependency *resolution* only - uv.lock pins absolute
 # pythonhosted.org URLs that `uv sync --frozen` fetches verbatim, so the mirror

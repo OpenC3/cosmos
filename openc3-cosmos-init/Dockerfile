@@ -58,7 +58,7 @@ RUN pnpm build:common
 # by every openc3-tmp* stage below, which is where the plugin builds run.
 ARG PYPI_URL_OVERRIDE=
 ENV PYPI_URL=${PYPI_URL_OVERRIDE:-$PYPI_URL}
-ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
+ENV UV_DEFAULT_INDEX=${PYPI_URL%/}/simple
 # Set when the PYPI_URL mirror is plain HTTP or has a self-signed certificate;
 # docker-package-build.sh turns it into UV_INSECURE_HOST. An ENV is safe here
 # because only the throwaway openc3-tmp* stages inherit it - the final image

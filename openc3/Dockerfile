@@ -42,7 +42,7 @@ RUN mkdir -p lib/openc3/ext \
 # keeps whatever the base image carries.
 ARG PYPI_URL_OVERRIDE=
 ENV PYPI_URL=${PYPI_URL_OVERRIDE:-$PYPI_URL}
-ENV UV_DEFAULT_INDEX=${PYPI_URL}/simple
+ENV UV_DEFAULT_INDEX=${PYPI_URL%/}/simple
 
 # Set when the PYPI_URL mirror is plain HTTP or has a self-signed certificate.
 # Each uv step below turns it into UV_INSECURE_HOST for that step only. It stays
