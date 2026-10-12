@@ -63,6 +63,9 @@ set -e
 # PIP_ENABLE_TRUSTED_HOST is the deprecated name, still honored at run time, so
 # honor it at build time too.
 OPENC3_PYPI_ALLOW_INSECURE="${OPENC3_PYPI_ALLOW_INSECURE:-${PIP_ENABLE_TRUSTED_HOST:-}}"
+# An empty --build-arg replaces the Dockerfile default rather than falling back
+# to it, and pip installs uv from "${PYPI_URL}/simple", so default it here.
+PYPI_URL="${PYPI_URL:-https://pypi.org}"
 
 # Match individual array entries exactly, including arguments containing spaces.
 contains_image() {
