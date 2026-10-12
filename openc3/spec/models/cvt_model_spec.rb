@@ -357,7 +357,7 @@ module OpenC3
         names = TargetModel.names(scope:"DEFAULT")
         expect(names.include?("INST"))
         # Clear the item_map cache to avoid interference from previous tests
-        TargetModel.class_variable_get(:@@item_map_cache)["INST"] = nil
+        TargetModel.class_variable_get(:@@item_map_cache)["DEFAULT__INST__item_to_packet_map"] = nil
         Store.set("DEFAULT__INST__item_to_packet_map", JSON.generate({"PACKET_ID" => ["PACKET1"]}))
         Store.hset("DEFAULT__tlm__INST", "PACKET1", JSON.generate({"PACKET_TIMESECONDS" => nil}))
         packet_name = CvtModel.determine_latest_packet_for_item("INST", "PACKET_ID", scope:"DEFAULT")

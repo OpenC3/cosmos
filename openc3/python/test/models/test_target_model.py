@@ -12,6 +12,7 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
+import json
 import unittest
 import unittest.mock
 from unittest.mock import patch
@@ -143,7 +144,16 @@ class TestTargetModelPackets(unittest.TestCase):
         cache = dict(TargetModel.item_map_cache)
         TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
         # Verify the cache time doesn't change
-        self.assertEqual(cache["INST"][0], (cache["INST"][0]))
+        self.assertEqual(
+            cache["DEFAULT__INST__item_to_packet_map"][0],
+            TargetModel.item_map_cache["DEFAULT__INST__item_to_packet_map"][0],
+        )
+
+    def test_caches_the_item_to_packet_map_per_scope(self):
+        TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
+        Store.set("OTHER__INST__item_to_packet_map", json.dumps({"OTHER_ITEM": ["OTHER_PKT"]}))
+        self.assertEqual(TargetModel.get_item_to_packet_map("INST", scope="OTHER"), {"OTHER_ITEM": ["OTHER_PKT"]})
+        self.assertIn("CCSDSVER", TargetModel.get_item_to_packet_map("INST", scope="DEFAULT"))
 
     def test_gets_item_to_packet_map_on_an_invalid_cache(self):
         TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
@@ -153,7 +163,10 @@ class TestTargetModelPackets(unittest.TestCase):
         TargetModel.ITEM_MAP_CACHE_TIMEOUT = 0
         TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
         # Verify cached time was updated
-        self.assertLess(cache["INST"][0], TargetModel.item_map_cache["INST"][0])
+        self.assertLess(
+            cache["DEFAULT__INST__item_to_packet_map"][0],
+            TargetModel.item_map_cache["DEFAULT__INST__item_to_packet_map"][0],
+        )
         TargetModel.ITEM_MAP_CACHE_TIMEOUT = timeout
 
     def test_raises_for_an_unknown_type(self):

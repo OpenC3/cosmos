@@ -228,11 +228,12 @@ class TargetModel(Model):
 
     @classmethod
     def get_item_to_packet_map(cls, target_name: str, scope: str = OPENC3_SCOPE):
-        if target_name in TargetModel.item_map_cache:
-            cache_time, item_map = TargetModel.item_map_cache[target_name]
+        # The cache is keyed by item_map_key since the same target can exist in multiple scopes
+        item_map_key = f"{scope}__{target_name}__item_to_packet_map"
+        if item_map_key in TargetModel.item_map_cache:
+            cache_time, item_map = TargetModel.item_map_cache[item_map_key]
             if (time.time() - cache_time) < TargetModel.ITEM_MAP_CACHE_TIMEOUT:
                 return item_map
-        item_map_key = f"{scope}__{target_name}__item_to_packet_map"
         target_name = target_name.upper()
         store = cls._store_for_target(target_name, scope)
         json_data = store.get(item_map_key)
@@ -241,7 +242,7 @@ class TargetModel(Model):
         else:
             item_map = cls.build_item_to_packet_map(target_name, scope=scope)
             store.set(item_map_key, json.dumps(item_map))
-        TargetModel.item_map_cache[target_name] = [time.time(), item_map]
+        TargetModel.item_map_cache[item_map_key] = [time.time(), item_map]
         return item_map
 
     @classmethod
@@ -573,7 +574,7 @@ class TargetModel(Model):
         item_map_key = f"{self.scope}__{self.name}__item_to_packet_map"
         item_map = TargetModel.build_item_to_packet_map(self.name, scope=self.scope)
         Store.instance(db_shard=self.db_shard).set(item_map_key, json.dumps(item_map))
-        TargetModel.item_map_cache[self.name] = [time.time(), item_map]
+        TargetModel.item_map_cache[item_map_key] = [time.time(), item_map]
 
     def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt"):
         # Build hash of targets/packets

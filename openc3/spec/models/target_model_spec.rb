@@ -462,7 +462,14 @@ module OpenC3
         expect(itpm["CCSDSVER"]).to eql(%w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS))
         # Verify cached time was NOT updated
         cache = TargetModel.class_variable_get(:@@item_map_cache)
-        expect(cache["INST"][0]).to eq(orig_cache["INST"][0])
+        expect(cache["DEFAULT__INST__item_to_packet_map"][0]).to eq(orig_cache["DEFAULT__INST__item_to_packet_map"][0])
+      end
+
+      it "caches the item-to-packet map per scope" do
+        TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
+        Store.set("OTHER__INST__item_to_packet_map", JSON.generate({ "OTHER_ITEM" => ["OTHER_PKT"] }))
+        expect(TargetModel.get_item_to_packet_map("INST", scope: "OTHER")).to eql({ "OTHER_ITEM" => ["OTHER_PKT"] })
+        expect(TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")["CCSDSVER"]).to be_a(Array)
       end
 
       it "gets item-to-packet map on an invalid cache" do
@@ -477,7 +484,7 @@ module OpenC3
         expect(itpm["CCSDSVER"]).to eql(%w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS))
         # Verify cached time was updated
         cache = TargetModel.class_variable_get(:@@item_map_cache)
-        expect(cache["INST"][0]).to be > orig_cache["INST"][0]
+        expect(cache["DEFAULT__INST__item_to_packet_map"][0]).to be > orig_cache["DEFAULT__INST__item_to_packet_map"][0]
         OpenC3.disable_warnings do
           TargetModel::ITEM_MAP_CACHE_TIMEOUT = timeout
         end
