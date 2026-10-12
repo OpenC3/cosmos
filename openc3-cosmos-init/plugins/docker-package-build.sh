@@ -46,7 +46,8 @@ cd ${FOLDER_NAME}
 # misses the frozen sync, and uvinstall falls back to `uv pip install` against
 # that setting. --no-build matches the sync below: no third-party
 # sdist gets built during the image build. A base image that predates the
-# helper skips the relock with a warning rather than failing the build. The
+# helper fails the build when PYPI_URL is a mirror, since the gem would ship a
+# lockfile pinned to pythonhosted.org, and skips the relock otherwise. The
 # relock uses a throwaway cache, not UV_CACHE_PLUGINS, so whatever it downloads
 # while resolving the dev groups stays out of the image.
 if command -v uv-mirror-relock >/dev/null; then
@@ -54,7 +55,10 @@ if command -v uv-mirror-relock >/dev/null; then
   UV_CACHE_DIR="${RELOCK_CACHE}" uv-mirror-relock --no-build
   rm -rf "${RELOCK_CACHE}"
 else
-  echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL host ${PYPI_URL##*@})"
+  case "${PYPI_URL%/}" in
+    ""|https://pypi.org) echo "--- relock skipped: base image has no uv-mirror-relock, PYPI_URL is the public index" ;;
+    *) echo "ERROR: base image has no uv-mirror-relock but PYPI_URL host ${PYPI_URL##*@} is a mirror; rebuild openc3-ruby" >&2; exit 1 ;;
+  esac
 fi
 
 echo "--- packageBuild $1 pnpm run build"

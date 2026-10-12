@@ -74,9 +74,11 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # setting can redirect. Relock and sync in one layer so the lockfile the sync
 # uses is the one this layer produced, and save that lockfile so the
 # application sync below reuses it rather than resolving a second time. A base
-# image that predates the helper skips the relock with a warning rather than
-# failing the build. UV_INSECURE_HOST is the bare host:port, credentials and
-# path stripped, the same host pip trusts when openc3-ruby installs uv.
+# image that predates the helper fails the build when PYPI_URL is a mirror, as
+# the frozen sync would otherwise ship a lockfile pinned to pythonhosted.org,
+# and skips the relock when it is the public index. UV_INSECURE_HOST is the
+# bare host:port, credentials and path stripped, the same host pip trusts when
+# openc3-ruby installs uv.
 #
 # --no-build keeps the relock from running any third-party setup code. The
 # relock resolves every dependency group, dev included, and without it uv
@@ -102,7 +104,10 @@ RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
       UV_CACHE_DIR="${RELOCK_CACHE}" uv-mirror-relock --no-build && \
       rm -rf "${RELOCK_CACHE}"; \
     else \
-      echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL host ${PYPI_URL##*@})"; \
+      case "${PYPI_URL%/}" in \
+        ""|https://pypi.org) echo "--- relock skipped: base image has no uv-mirror-relock, PYPI_URL is the public index" ;; \
+        *) echo "ERROR: base image has no uv-mirror-relock but PYPI_URL host ${PYPI_URL##*@} is a mirror; rebuild openc3-ruby" >&2; exit 1 ;; \
+      esac; \
     fi && \
     UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project --no-build && \
     cp uv.lock /tmp/uv.lock.relocked
