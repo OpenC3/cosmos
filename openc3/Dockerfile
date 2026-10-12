@@ -84,7 +84,10 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock p
 # for packages this image may never install. Every locked package publishes
 # wheels and openc3's own metadata is static, so the resolve reads wheel
 # metadata only. A mirror that serves only an sdist fails the build here
-# rather than executing it. The syncs keep uv's default, as on a stock build.
+# rather than executing it. The dependency sync takes --no-build for the same
+# reason: every locked runtime dependency has a cp312 manylinux wheel for both
+# amd64 and arm64, so a future sdist-only dependency fails the build loudly
+# instead of running its setup.py.
 RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
       PYPI_HOST="${PYPI_URL#*://}"; PYPI_HOST="${PYPI_HOST%%/*}"; \
       export UV_INSECURE_HOST="${PYPI_HOST##*@}"; \
@@ -94,7 +97,7 @@ RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
     else \
       echo "--- relock skipped: base image has no uv-mirror-relock (PYPI_URL host ${PYPI_URL##*@})"; \
     fi && \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project && \
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project --no-build && \
     cp uv.lock /tmp/uv.lock.relocked
 
 # Copy application code (excluding .venv from source)
@@ -106,6 +109,12 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 # versions than the cached dependency layer if the mirror has changed since.
 # pyproject.toml and uv.lock were part of that layer's COPY, so the saved
 # lockfile always matches the source tree copied here.
+#
+# No --no-build here: uv refuses to install the editable openc3 project under
+# it. openc3 is the only distribution this sync can build: its dependencies
+# come from the same lockfile the --no-build sync above already installed from
+# wheels alone, so the only setup code it runs is openc3's own, through its
+# setuptools build backend.
 RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
       PYPI_HOST="${PYPI_URL#*://}"; PYPI_HOST="${PYPI_HOST%%/*}"; \
       export UV_INSECURE_HOST="${PYPI_HOST##*@}"; \
