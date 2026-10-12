@@ -79,7 +79,7 @@
         :header-props="{
           style: 'width: 50%',
         }"
-        :items="rows"
+        :items="rankedRows"
         :custom-filter="filter"
         :filter-keys="filterKeys"
         :sort-by="sortBy"
@@ -233,7 +233,7 @@ import {
 } from '@openc3/vue-common/components'
 import { ValueWidget } from '@openc3/vue-common/widgets'
 import { useContainerHeight } from '@openc3/vue-common/composables'
-import { tokenizedFilter } from '@openc3/js-common/utils'
+import { tokenizedFilter, tokenizedSort } from '@openc3/js-common/utils'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {
@@ -316,6 +316,12 @@ export default {
   computed: {
     loading: function () {
       return this.loadingPacket || this.loadingTlmData
+    },
+    // The filter only decides which rows match, so rank them closest first.
+    // The table's own sort is stable, so pinned rows stay on top and a column
+    // sort still overrides this.
+    rankedRows: function () {
+      return tokenizedSort(this.rows, this.search, 'name')
     },
     menus: function () {
       return [
