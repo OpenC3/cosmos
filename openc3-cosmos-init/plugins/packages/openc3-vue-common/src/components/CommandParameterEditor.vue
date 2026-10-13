@@ -195,7 +195,8 @@ export default {
 .container {
   padding: 0px;
 }
-.hazardous :deep(.v-select__selection-text) {
+/* Extra .v-select specificity beats the themed override in _overrides.scss */
+.v-select.hazardous :deep(.v-select__selection-text) {
   color: rgb(255, 220, 0) !important;
 }
 </style>
