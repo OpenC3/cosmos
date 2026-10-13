@@ -382,6 +382,46 @@ module OpenC3
         expect(spec.files).to include('requirements.txt')
       end
 
+      it "upgrades a legacy python_dep_file gemspec to ship uv.lock" do
+        gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
+        legacy_block = <<~RUBY
+          # Prefer pyproject.toml over requirements.txt
+            python_dep_file = if File.exist?('pyproject.toml')
+              'pyproject.toml'
+            else
+              'requirements.txt'
+            end
+        RUBY
+        # Two nested copies, as two python targets wrote them before this fix
+        gemspec = File.read(gemspec_file).sub(/^ *s\.files = Dir\.glob.*\n/) do
+          "  #{legacy_block}#{legacy_block}" \
+            "  s.files = Dir.glob(\"{targets,lib,public,tools,microservices}/**/*\") + %w(Rakefile README.md LICENSE.md plugin.txt) + [python_dep_file]\n"
+        end
+        File.write(gemspec_file, gemspec)
+        File.write('pyproject.toml', "[project]\nname = \"test\"\n")
+        File.write('uv.lock', "version = 1\n")
+
+        run_gen(['target', 'EXAMPLE', '--python'])
+        gemspec = File.read(gemspec_file)
+        expect(gemspec).not_to include('python_dep_file =')
+        expect(gemspec).not_to include('[python_dep_file]')
+        expect(gemspec.scan('python_dep_files = if').length).to eql(1)
+        spec = Gem::Specification.load(gemspec_file)
+        expect(spec.files).to include('pyproject.toml', 'uv.lock')
+      end
+
+      it "keeps a hand-edited legacy python_dep_file gemspec" do
+        gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
+        gemspec = File.read(gemspec_file).sub(/^ *s\.files = Dir\.glob.*\n/) do
+          "  python_dep_file = 'pyproject.toml'\n" \
+            "  s.files = Dir.glob(\"{targets,lib}/**/*\") + %w(plugin.txt) + [python_dep_file]\n"
+        end
+        File.write(gemspec_file, gemspec)
+
+        run_gen(['target', 'EXAMPLE', '--python'])
+        expect(File.read(gemspec_file)).to eql(gemspec)
+      end
+
       it "keeps the python plugin template gemspec as generated" do
         Dir.chdir(@temp_dir)
         FileUtils.rm_rf('openc3-cosmos-test-plugin')
