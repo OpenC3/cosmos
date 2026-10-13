@@ -60,6 +60,10 @@ git -C "$ANYCABLE_DIR" remote -v
 - `UPSTREAM` = the remote whose URL is `github.com/anycable/anycable` (or `.git`)
 - `FORK` = the remote whose URL is `github.com/$GH_USER/anycable`, if any
 
+If there's no `UPSTREAM` remote (for example, a clone of the fork alone), add
+one with `git -C "$ANYCABLE_DIR" remote add upstream https://github.com/anycable/anycable.git`
+and use `UPSTREAM=upstream`.
+
 If `UPSTREAM_PR` = yes but there's no `FORK` remote, run
 `gh repo fork anycable/anycable --remote --remote-name fork` from inside the
 checkout and use `FORK=fork`. If the checkout has local commits or a dirty tree
@@ -72,11 +76,11 @@ checkout and use `FORK=fork`. If the checkout has local commits or a dirty tree
 git -C "$ANYCABLE_DIR" fetch "$UPSTREAM" --tags
 git -C "$ANYCABLE_DIR" switch main
 git -C "$ANYCABLE_DIR" merge --ff-only "$UPSTREAM/main"
-git -C "$ANYCABLE_DIR" push "$FORK" main      # only if FORK exists
 ```
 
 If the fast-forward fails, local `main` has diverged from upstream. Stop and
-ask the user. Don't rebase, reset, or force-push.
+ask the user. Don't rebase, reset, or force-push. Don't push `main` to the
+fork. Only the `go/$NEW` branch in step 9 goes there.
 
 ### 4. Check whether Go is out of date
 
