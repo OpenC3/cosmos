@@ -118,6 +118,7 @@ Set in `.env`, or overridden per service in `compose.override.yaml`:
 | `OPENC3_TAG` | `latest` | Image tag to deploy, e.g. `7.3.0` |
 | `OPENC3_EXTERNAL_URL` | `http://localhost:2900` | External domain name and port used to reach COSMOS |
 | `OPENC3_LOCAL_MODE` | `1` | Sync plugin and configuration changes to the `plugins` directory on the host. See [Local Mode](../guides/local-mode.md) |
+| `OPENC3_LOCAL_ONLY_TARGETS` | unset | Comma separated target names, e.g. `INST,INST2`, whose target files (procedures, screens, tables, etc.) are kept only in `plugins/<SCOPE>/targets_modified/<TARGET>` on the host and never in the bucket. See [Local Only Targets](../guides/local-mode.md#local-only-targets) |
 | `OPENC3_DEMO` | `true` | Install the Demo plugin. Accepts `false` and `0` to disable |
 | `OPENC3_REGISTRY`, `OPENC3_NAMESPACE` | `docker.io`, `openc3inc` | Where to pull COSMOS images from |
 | `OPENC3_LOGS_BUCKET`, `OPENC3_TOOLS_BUCKET`, `OPENC3_CONFIG_BUCKET` | `logs`, `tools`, `config` | Bucket names |

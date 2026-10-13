@@ -64,3 +64,39 @@ class TestLocalMode(unittest.TestCase):
     def test_save_setting_stays_in_scope(self):
         LocalMode.save_setting("DEFAULT", "../../OTHER/settings/x", "data")
         self.assertFalse(os.path.exists(f"{self.tmp_dir}/OTHER"))
+
+
+class TestLocalOnlyTargets(unittest.TestCase):
+    def setUp(self):
+        self.tmp_dir = tempfile.mkdtemp()
+        patcher = patch.object(LocalMode, "LOCAL_MODE_PATH", self.tmp_dir)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.addCleanup(shutil.rmtree, self.tmp_dir, ignore_errors=True)
+        env_patcher = patch.dict(os.environ, {"OPENC3_LOCAL_ONLY_TARGETS": " local, LOCAL2 ,,"})
+        env_patcher.start()
+        self.addCleanup(env_patcher.stop)
+
+    def test_local_only_targets(self):
+        self.assertEqual(LocalMode.local_only_targets(), ["LOCAL", "LOCAL2"])
+        self.assertTrue(LocalMode.local_only_target("LOCAL"))
+        self.assertTrue(LocalMode.local_only_target("local2"))
+        self.assertFalse(LocalMode.local_only_target("INST"))
+        self.assertFalse(LocalMode.local_only_target(None))
+        with patch.dict(os.environ, {"OPENC3_LOCAL_ONLY_TARGETS": ""}):
+            self.assertEqual(LocalMode.local_only_targets(), [])
+
+    def test_local_only_name_and_key(self):
+        self.assertTrue(LocalMode.local_only_name("LOCAL/procedures/test.py"))
+        self.assertFalse(LocalMode.local_only_name("INST/procedures/test.py"))
+        self.assertTrue(LocalMode.local_only_key("DEFAULT/targets_modified/LOCAL/procedures/test.py"))
+        self.assertTrue(LocalMode.local_only_key("DEFAULT/targets/LOCAL/screens/a.txt"))
+        self.assertFalse(LocalMode.local_only_key("DEFAULT/targets/INST/screens/a.txt"))
+        self.assertFalse(LocalMode.local_only_key("DEFAULT/tmp/LOCAL/a.txt"))
+        self.assertFalse(LocalMode.local_only_key("DEFAULT"))
+
+    def test_local_target_dir_exists(self):
+        os.makedirs(f"{self.tmp_dir}/DEFAULT/targets_modified/LOCAL/lib/utils")
+        self.assertTrue(LocalMode.local_target_dir_exists("LOCAL/lib/utils", scope="DEFAULT"))
+        self.assertFalse(LocalMode.local_target_dir_exists("LOCAL/lib/other", scope="DEFAULT"))
+        self.assertFalse(LocalMode.local_target_dir_exists("../OTHER", scope="DEFAULT"))

@@ -1468,7 +1468,7 @@ RANGEBAR INST HEALTH_STATUS TEMP1 -100 100
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Icon name | The astro UX icon to display. Valid choices are 'astro' icons taken from https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json. | True |
+| Icon name | The astro UX icon to display. Valid choices are 'astro' icons taken from https://www.astrouxds.com/components/icon-library/. | True |
 | Icon label | Text to apply to the icon label | False |
 | Icon sublabel | Text to apply to the icon sublabel | False |
 
