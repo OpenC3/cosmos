@@ -1192,6 +1192,16 @@ class TestTlmApi(unittest.TestCase):
         # DURATION should return RAW (no conversions)
         self.assertEqual(result[3], "INST__HEALTH_STATUS__DURATION__RAW")
 
+    def test_get_tlm_available_returns_raw_for_derived_items_with_a_read_conversion(self):
+        # Packet.decom stores a DERIVED item's read conversion as the raw value with no __C
+        items = [
+            "INST__HEALTH_STATUS__DERIVED_GENERIC__CONVERTED",
+            "INST__HEALTH_STATUS__DERIVED_GENERIC__FORMATTED",
+        ]
+        result = get_tlm_available(items)
+        self.assertEqual(result[0], "INST__HEALTH_STATUS__DERIVED_GENERIC__RAW")
+        self.assertEqual(result[1], "INST__HEALTH_STATUS__DERIVED_GENERIC__RAW")
+
     def test_get_tlm_available_handles_fallback_value_types(self):
         # Test fallback logic: WITH_UNITS -> FORMATTED -> CONVERTED -> RAW
         items = [

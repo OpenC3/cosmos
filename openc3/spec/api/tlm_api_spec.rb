@@ -722,6 +722,12 @@ module OpenC3
         expect(@api.get_tlm_available(['INST__LATEST__TEMP1__FORMATTED'])).to eql(['INST__LATEST__TEMP1__FORMATTED__LIMITS'])
       end
 
+      it "returns RAW for DERIVED items with a read conversion" do
+        # Packet#decom stores a DERIVED item's read conversion as the raw value with no __C
+        items = ['INST__HEALTH_STATUS__TEMP1HIGH__CONVERTED', 'INST__HEALTH_STATUS__TEMP1HIGH__FORMATTED']
+        expect(@api.get_tlm_available(items)).to eql(['INST__HEALTH_STATUS__TEMP1HIGH__RAW', 'INST__HEALTH_STATUS__TEMP1HIGH__RAW'])
+      end
+
       it "returns a valid list of items based on inputs" do
         items = []
         # Ask for WITH_UNITS for an item which has various formats

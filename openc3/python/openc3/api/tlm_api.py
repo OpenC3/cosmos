@@ -806,7 +806,10 @@ def _tlm_available_value_type(item_config, item_name, value_type):
     # Arrays must be accessed as RAW since there's no conversion
     if item_config.get("array_size") is not None:
         return "RAW"
-    converted = item_config.get("read_conversion") or item_config.get("states")
+    # This logic must match the logic in Packet.decom
+    converted = item_config.get("states") or (
+        item_config.get("read_conversion") and item_config.get("data_type") != "DERIVED"
+    )
     if value_type == "FORMATTED" or value_type == "WITH_UNITS":
         if item_config.get("format_string") or item_config.get("units"):
             return "FORMATTED"
