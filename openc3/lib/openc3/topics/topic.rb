@@ -71,7 +71,7 @@ module OpenC3
 
     # @return [Float] Configured safety max age in seconds (<= 0 means disabled)
     def self.stream_max_age_seconds
-      value = ENV['OPENC3_STREAM_MAX_AGE_SECONDS']
+      value = ENV.fetch('OPENC3_STREAM_MAX_AGE_SECONDS', nil)
       return STREAM_MAX_AGE_DEFAULT_SECONDS if value.nil?
       return value.to_f
     end
