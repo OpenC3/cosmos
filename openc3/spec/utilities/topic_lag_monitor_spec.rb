@@ -142,6 +142,14 @@ module OpenC3
         monitor.record(TOPIC, id_for(39), now: NOW)
       end
 
+      it "alerts when data was trimmed as lag starts" do
+        # Read while keeping up (fast path) so the id is still remembered
+        monitor.record(TOPIC, id_for(1), now: NOW)
+        expect(store).to receive(:xinfo).with(:stream, TOPIC).and_return({ 'max-deleted-entry-id' => id_for(50, 60) })
+        expect(logger).to receive(:error).with(/#{Regexp.escape(TOPIC)} \(~11.0s\)/, type: Logger::ALERT)
+        monitor.record(TOPIC, id_for(40, 60), now: NOW + 60)
+      end
+
       it "does not alert when the deleted data had already been processed" do
         monitor.record(TOPIC, id_for(40), now: NOW)
         expect(store).to receive(:xinfo).and_return({ 'max-deleted-entry-id' => id_for(50) })
@@ -175,6 +183,24 @@ module OpenC3
         expect(EphemeralStore).to receive(:instance).with(db_shard: 2).and_return(store)
         expect(store).to receive(:xinfo).and_return({})
         monitor.record(TOPIC, id_for(80), now: NOW)
+      end
+
+      it "falls back to the default db_shard if the target lookup fails" do
+        monitor.record(TOPIC, id_for(90), now: NOW)
+        expect(Store).to receive(:db_shard_for_target).and_raise(RuntimeError.new("no target"))
+        expect(EphemeralStore).to receive(:instance).with(db_shard: 0).and_return(store)
+        expect(store).to receive(:xinfo).and_return({})
+        monitor.record(TOPIC, id_for(80), now: NOW)
+      end
+
+      it "limits the number of topics listed in a data skipped alert" do
+        topics = (0...7).map { |i| "DEFAULT__DECOM__{INST}__PKT#{i}" }
+        topics.each { |topic| monitor.record(topic, id_for(90), now: NOW) }
+        allow(store).to receive(:xinfo).and_return({ 'max-deleted-entry-id' => id_for(40) })
+        monitor.instance_variable_set(:@last_skip_notify, NOW) # Hold the alert until every topic has skipped
+        topics.each { |topic| monitor.record(topic, id_for(39), now: NOW) }
+        expect(logger).to receive(:error).with(/and 2 more/, type: Logger::ALERT).once
+        monitor.record(topics[0], id_for(38), now: NOW + 301)
       end
 
       it "handles servers without max-deleted-entry-id and xinfo errors" do

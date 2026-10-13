@@ -116,24 +116,23 @@ class TestTopicLagMonitor(unittest.TestCase):
         self.assertEqual(self.logger.warn.call_count, 2)
 
     def test_thresholds_from_environment(self):
-        os.environ["OPENC3_LAG_WARN_SECONDS"] = "20"
-        os.environ["OPENC3_LAG_CRITICAL_SECONDS"] = "60"
-        monitor = self.monitor()
+        with patch.dict(os.environ, {"OPENC3_LAG_WARN_SECONDS": "20", "OPENC3_LAG_CRITICAL_SECONDS": "60"}):
+            monitor = self.monitor()
         self.rec(monitor, 10, 0)
         self.assertEqual(monitor.state, TopicLagMonitor.OK)
         self.logger.warn.assert_not_called()
 
     def test_zero_warning_disables_notifications(self):
-        os.environ["OPENC3_LAG_WARN_SECONDS"] = "0"
-        monitor = self.monitor()
+        with patch.dict(os.environ, {"OPENC3_LAG_WARN_SECONDS": "0"}):
+            monitor = self.monitor()
         monitor.record(TOPIC, id_for(100), metric_name="m", help="h", now=NOW)
         self.metric.set.assert_called_once()
         self.logger.warn.assert_not_called()
         self.logger.error.assert_not_called()
 
     def test_invalid_environment_uses_default(self):
-        os.environ["OPENC3_LAG_WARN_SECONDS"] = "abc"
-        monitor = self.monitor()
+        with patch.dict(os.environ, {"OPENC3_LAG_WARN_SECONDS": "abc"}):
+            monitor = self.monitor()
         self.rec(monitor, 6, 0)
         self.logger.warn.assert_called_once()
 
@@ -159,6 +158,17 @@ class TestTopicLagMonitor(unittest.TestCase):
         alerts = [c for c in self.logger.error.call_args_list if c.kwargs.get("type") == Logger.ALERT]
         self.assertEqual(len(alerts), 1)
         self.assertIn(f"data was trimmed before it was processed: {TOPIC} (~50.0s)", alerts[0].args[0])
+
+    def test_alerts_when_data_was_trimmed_as_lag_starts(self):
+        monitor = self.monitor()
+        # Read while keeping up (fast path) so the id is still remembered
+        monitor.record(TOPIC, id_for(1), now=NOW)
+        self.store.xinfo_stream.return_value = {"max-deleted-entry-id": id_for(50, at=60).encode()}
+        monitor.record(TOPIC, id_for(40, at=60), now=NOW + 60)
+        self.store.xinfo_stream.assert_called_once_with(TOPIC)
+        alerts = [c for c in self.logger.error.call_args_list if c.kwargs.get("type") == Logger.ALERT]
+        self.assertEqual(len(alerts), 1)
+        self.assertIn(f"{TOPIC} (~11.0s)", alerts[0].args[0])
 
     def test_no_alert_when_deleted_data_was_processed(self):
         monitor = self.monitor()
@@ -200,6 +210,27 @@ class TestTopicLagMonitor(unittest.TestCase):
         monitor.record(TOPIC, id_for(80), now=NOW)
         self.store_class.db_shard_for_target.assert_called_with("INST", scope="DEFAULT")
         self.ephemeral_store.instance.assert_called_with(db_shard=2)
+
+    def test_db_shard_falls_back_on_lookup_error(self):
+        self.store_class.db_shard_for_target.side_effect = RuntimeError("no target")
+        monitor = self.monitor()
+        monitor.record(TOPIC, id_for(90), now=NOW)
+        monitor.record(TOPIC, id_for(80), now=NOW)
+        self.ephemeral_store.instance.assert_called_with(db_shard=0)
+
+    def test_limits_topics_listed_in_skipped_alert(self):
+        monitor = self.monitor()
+        topics = [f"DEFAULT__DECOM__{{INST}}__PKT{i}" for i in range(7)]
+        for topic in topics:
+            monitor.record(topic, id_for(90), now=NOW)
+        self.store.xinfo_stream.return_value = {"max-deleted-entry-id": id_for(40)}
+        monitor.last_skip_notify = NOW  # Hold the alert until every topic has skipped
+        for topic in topics:
+            monitor.record(topic, id_for(39), now=NOW)
+        monitor.record(topics[0], id_for(38), now=NOW + 301)
+        alerts = [c for c in self.logger.error.call_args_list if c.kwargs.get("type") == Logger.ALERT]
+        self.assertEqual(len(alerts), 1)
+        self.assertIn("and 2 more", alerts[0].args[0])
 
     def test_handles_xinfo_errors(self):
         monitor = self.monitor()

@@ -75,6 +75,14 @@ module OpenC3
       @metric.set(name: metric_name, value: lag, type: 'gauge', unit: 'seconds', help: help) if @metric and metric_name
       return lag if @warn_seconds <= 0 # Notifications disabled
 
+      # Fast path for the common case of keeping up: skip the mutex and state
+      # machine but remember the id so a trim check has a starting point if
+      # we start lagging. Pending skipped alerts force the slow path to flush.
+      if @state == OK and lag < @warn_seconds and @skipped.empty?
+        @last_ids[topic] = msg_id
+        return lag
+      end
+
       @mutex.synchronize do
         update_state(lag, now)
         prev_id = @last_ids[topic]
@@ -169,7 +177,7 @@ module OpenC3
 
     def db_shard_for(topic)
       # Target topics carry the target name as a Redis hashtag, e.g. SCOPE__DECOM__{TGT}__PKT
-      match = topic.match(/\{([^}]+)\}/)
+      match = topic.match(/\{([^{}]+)\}/)
       return @db_shard unless match
       return Store.db_shard_for_target(match[1], scope: @scope || topic.split('__')[0])
     rescue
@@ -187,8 +195,8 @@ module OpenC3
     end
 
     def env_float(name, default)
-      value = ENV[name]
-      return default if value.nil? or value.strip.empty?
+      value = ENV.fetch(name, '').strip
+      return default if value.empty?
       Float(value)
     rescue ArgumentError
       default

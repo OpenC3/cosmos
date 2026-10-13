@@ -18,7 +18,7 @@ from openc3.utilities.logger import Logger
 from openc3.utilities.store import EphemeralStore, Store
 
 
-HASHTAG_RE = re.compile(r"\{([^}]+)\}")
+HASHTAG_RE = re.compile(r"\{([^{}]+)\}")
 
 
 class TopicLagMonitor:
@@ -76,6 +76,13 @@ class TopicLagMonitor:
         if self.metric is not None and metric_name:
             self.metric.set(name=metric_name, value=lag, type="gauge", unit="seconds", help=help)
         if self.warn_seconds <= 0:  # Notifications disabled
+            return lag
+
+        # Fast path for the common case of keeping up: skip the mutex and state
+        # machine but remember the id so a trim check has a starting point if
+        # we start lagging. Pending skipped alerts force the slow path to flush.
+        if self.state == self.OK and lag < self.warn_seconds and not self.skipped:
+            self.last_ids[topic] = msg_id
             return lag
 
         with self.mutex:
@@ -203,8 +210,8 @@ class TopicLagMonitor:
 
     @staticmethod
     def _env_float(name, default):
-        value = os.environ.get(name)
-        if value is None or value.strip() == "":
+        value = os.environ.get(name, "").strip()
+        if not value:
             return default
         try:
             return float(value)
