@@ -889,6 +889,12 @@ RSpec.describe ScriptsController, type: :controller do
         delete :destroy, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt"}
       end
 
+      it "blocks create into the tables/config overlay" do
+        expect(Script).not_to receive(:create)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/tables/config/table_def.txt", text: "TABLE x BIG_ENDIAN KEY_VALUE"}
+      end
+
       it "blocks non-canonical names that normalize into the cmd_tlm overlay" do
         expect(Script).not_to receive(:create)
 
@@ -915,6 +921,14 @@ RSpec.describe ScriptsController, type: :controller do
         allow(OpenC3::Logger).to receive(:info)
 
         post :create, params: {scope: "DEFAULT", name: "INST/cmd_tlm/tlm.txt", text: "TELEMETRY INST POC BIG_ENDIAN"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "allows create into the tables/config overlay" do
+        expect(Script).to receive(:create)
+        allow(OpenC3::Logger).to receive(:info)
+
+        post :create, params: {scope: "DEFAULT", name: "INST/tables/config/table_def.txt", text: "TABLE x BIG_ENDIAN KEY_VALUE"}
         expect(response).to have_http_status(:ok)
       end
 

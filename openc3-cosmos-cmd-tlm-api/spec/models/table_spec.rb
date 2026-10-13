@@ -404,4 +404,67 @@ RSpec.describe Table, :type => :model do
       expect(definition_filename).to eql 'INST/tables/config/table_binary_def.txt'
     end
   end
+  describe "definition sources" do
+    # Serve each key from a fixed map so we control which files come from the
+    # targets_modified overlay and which from the installed targets tree
+    def serve(files)
+      allow(@s3).to receive(:get_object) do |args|
+        contents = files[args[:key]]
+        raise Aws::S3::Errors::NoSuchKey.new('context', 'message') unless contents
+        resp = OpenStruct.new
+        resp.body = OpenStruct.new
+        resp.body.read = contents
+        resp
+      end
+    end
+
+    generic_def = <<~DEF
+      TABLE 'Test1' BIG_ENDIAN KEY_VALUE
+        APPEND_PARAMETER '8bit' 8 UINT 0 0xFF 1
+          GENERIC_READ_CONVERSION_START
+            raise 'generic conversion was evaluated'
+          GENERIC_READ_CONVERSION_END
+    DEF
+
+    it "rejects a definition outside TARGET/tables/config" do
+      serve('DEFAULT/targets_modified/INST/tables/bin/table.bin' => "\x01",
+            'DEFAULT/targets_modified/INST/screens/evil.txt' => generic_def)
+      expect(OpenC3::TableManagerCore).not_to receive(:build_json_hash)
+      expect { Table.load('DEFAULT', 'INST/tables/bin/table.bin', 'INST/screens/evil.txt') }.to \
+        raise_error(Table::NotFound, "Definition file 'INST/screens/evil.txt' must be under TARGET/tables/config")
+    end
+
+    it "rejects a non-canonical definition path" do
+      expect { Table.definition('DEFAULT', 'INST/tables/config/../../screens/evil.txt', 'TEST1') }.to \
+        raise_error(Table::NotFound, /must be under TARGET\/tables\/config/)
+      expect { Table.generate('DEFAULT', 'INST/tables/config//evil.txt') }.to \
+        raise_error(Table::NotFound, /must be under TARGET\/tables\/config/)
+    end
+
+    it "rejects a TABLEFILE that leaves TARGET/tables/config" do
+      serve('DEFAULT/targets/INST/tables/config/table_def.txt' => 'TABLEFILE "../../screens/evil.txt"')
+      expect { Table.definition('DEFAULT', 'INST/tables/config/table_def.txt', 'TEST1') }.to \
+        raise_error(Table::NotFound, /'INST\/tables\/config\/..\/..\/screens\/evil.txt' must be under TARGET\/tables\/config/)
+    end
+
+    it "uses an overlay definition and TABLEFILE (admin-written) over the installed one" do
+      installed = "TABLE 'Installed' BIG_ENDIAN KEY_VALUE\n  APPEND_PARAMETER '8bit' 8 UINT 0 0xFF 1\n"
+      modified = "TABLE 'Modified' BIG_ENDIAN KEY_VALUE\n  APPEND_PARAMETER '8bit' 8 UINT 0 0xFF 1\n"
+      serve('DEFAULT/targets_modified/INST/tables/bin/table.bin' => "\x01",
+            'DEFAULT/targets/INST/tables/config/table_def.txt' => "TABLEFILE 'a_def.txt'",
+            'DEFAULT/targets/INST/tables/config/a_def.txt' => installed,
+            'DEFAULT/targets_modified/INST/tables/config/a_def.txt' => modified)
+      report = Table.report('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/table_def.txt')
+      expect(report.contents).to include('MODIFIED')
+      expect(report.contents).not_to include('INSTALLED')
+    end
+
+    it "evaluates GENERIC conversions from an installed definition" do
+      serve('DEFAULT/targets_modified/INST/tables/bin/table.bin' => "\x01",
+            'DEFAULT/targets/INST/tables/config/good_def.txt' => generic_def)
+      # Reaching the conversion proves definitions from tables/config still run
+      expect { Table.report('DEFAULT', 'INST/tables/bin/table.bin', 'INST/tables/config/good_def.txt') }.to \
+        raise_error(RuntimeError, 'generic conversion was evaluated')
+    end
+  end
 end
