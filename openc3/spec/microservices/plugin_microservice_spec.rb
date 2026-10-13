@@ -28,6 +28,8 @@ module OpenC3
       # Avoid spawning the Metric update thread (would leak past the test)
       allow(Metric).to receive(:new).and_return(double("Metric").as_null_object)
       allow(MetricModel).to receive(:new).and_return(double("MetricModel").as_null_object)
+      @metric_queue = double("MetricQueue", shutdown: nil)
+      allow(MetricModel.store_queued).to receive(:instance).with(db_shard: 2).and_return(@metric_queue)
       config = { 'cmd' => ['rails', 's'], 'topics' => [], 'target_names' => [], 'secrets' => nil, 'plugin' => 'PLUGIN', 'work_dir' => '.', 'db_shard' => 2 }
       allow(MicroserviceModel).to receive(:get).and_return(config)
       client = double("BucketClient")
@@ -54,6 +56,7 @@ module OpenC3
       it "clears the bootstrap metrics row from the microservice's db_shard" do
         metric_model = double("MetricModel")
         expect(MetricModel).to receive(:new).with(name: "DEFAULT__USER__NAME", scope: 'DEFAULT', db_shard: 2).and_return(metric_model)
+        expect(@metric_queue).to receive(:shutdown).ordered
         expect(metric_model).to receive(:destroy).ordered
         expect(@microservice).to receive(:exec).with('rails', 's').ordered
         @microservice.run
