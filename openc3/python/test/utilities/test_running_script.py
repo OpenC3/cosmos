@@ -9,12 +9,42 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import sys
 import tempfile
+import types
 import unittest
 from unittest.mock import MagicMock, patch
 
-from openc3.utilities import running_script
-from openc3.utilities.running_script import RunningScript, running_script_method
+import openc3.script
+import openc3.script.api_shared
+
+
+# Importing running_script monkeypatches openc3.script and api_shared at module
+# level (RUNNING_SCRIPT, openc3_script_sleep, etc). Import it only while this
+# module's tests run and restore the originals afterwards so other test files
+# don't see a RunningScript with no instance.
+_PATCHED_MODULES = (openc3.script, openc3.script.api_shared)
+_saved_attrs = {}
+running_script = None
+
+
+def setUpModule():
+    global running_script
+    for module in _PATCHED_MODULES:
+        _saved_attrs[module] = dict(vars(module))
+    from openc3.utilities import running_script as rs
+
+    running_script = rs
+
+
+def tearDownModule():
+    for module, saved in _saved_attrs.items():
+        for name, value in list(vars(module).items()):
+            if name not in saved and not isinstance(value, types.ModuleType):
+                delattr(module, name)
+        for name, value in saved.items():
+            setattr(module, name, value)
+    sys.modules.pop("openc3.utilities.running_script", None)
 
 
 class TestOpenBucketDialog(unittest.TestCase):
@@ -26,7 +56,7 @@ class TestOpenBucketDialog(unittest.TestCase):
             "path": "DEFAULT/targets/INST/procedures/test.py",
             "filename": "test.py",
         }
-        patcher = patch.object(RunningScript, "instance", self.instance)
+        patcher = patch.object(running_script.RunningScript, "instance", self.instance)
         patcher.start()
         self.addCleanup(patcher.stop)
 
@@ -34,7 +64,7 @@ class TestOpenBucketDialog(unittest.TestCase):
         file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - closed below
         self.addCleanup(file.close)
         with patch.object(running_script, "_get_storage_file", return_value=file) as get_file:
-            result = running_script_method("open_bucket_dialog", "Title")
+            result = running_script.running_script_method("open_bucket_dialog", "Title")
         get_file.assert_called_once_with(
             "targets/INST/procedures/test.py", bucket="OPENC3_CONFIG_BUCKET", scope="DEFAULT"
         )
