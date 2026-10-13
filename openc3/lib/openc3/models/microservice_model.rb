@@ -310,7 +310,11 @@ module OpenC3
     def cleanup
       # Cleanup metrics - both the microservice's own and the process metrics
       # the operator reported for it
-      MetricModel.destroy(scope: @scope, name: @name)
+      # The MicroserviceModel has already been deleted during uninstall, so
+      # shard lookup by name can no longer find its configured database.
+      [MetricModel::PRIMARY_KEY, MetricModel::PROCESS_PRIMARY_KEY].each do |key|
+        MetricModel.new(name: @name, scope: @scope, db_shard: @db_shard, primary_key: key).destroy
+      end
     end
   end
 end

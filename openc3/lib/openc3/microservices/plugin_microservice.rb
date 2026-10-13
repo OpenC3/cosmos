@@ -46,6 +46,9 @@ module OpenC3
       # operator instead (see Operator#publish_process_metrics).
       begin
         @metric.shutdown
+        # Stop and drain pending writes before deleting the row, otherwise a
+        # queued bootstrap update can recreate it before exec.
+        MetricModel.store_queued.instance(db_shard: @db_shard).shutdown
         MetricModel.new(name: @name, scope: @scope, db_shard: @db_shard).destroy
       rescue Exception => e
         @logger.warn("Failed to clear bootstrap metrics for #{@name}: #{e.message}")
