@@ -58,6 +58,12 @@ ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
 ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
+# Limit glibc malloc arenas. Multi-threaded Ruby processes (Puma, microservice
+# threads) otherwise create up to 8x CPU arenas, and the resulting fragmentation
+# keeps RSS permanently elevated after transient allocation spikes.
+# Can be overridden at runtime by setting MALLOC_ARENA_MAX in the environment.
+ENV MALLOC_ARENA_MAX=2
+
 COPY .gemrc /root/.gemrc
 RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc && \
     cp /root/.gemrc /etc/gemrc
