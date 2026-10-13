@@ -80,6 +80,7 @@ module LocalS3
       data = File.open(File.expand_path(File.join(@fs_root, bucket, key))) do |file|
         file.read
       end
+      File.binwrite(response_target, data) if response_target
       s3_obj.body = StringIO.new(data)
       s3_obj
     rescue Errno::ENOENT

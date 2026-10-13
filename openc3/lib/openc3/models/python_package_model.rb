@@ -253,11 +253,7 @@ module OpenC3
       end
       pypi_url = PypiUrl.validate(pypi_url)
       Logger.info "Installing python package: #{name_or_path}"
-      if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-        pip_args = ["-i", pypi_url, package_file_path]
-      else
-        pip_args = ["-i", pypi_url, "--trusted-host", URI.parse(pypi_url).host, package_file_path]
-      end
+      pip_args = PypiUrl.build_args(pypi_url) + [package_file_path]
       spawn_env = {}
       if plugin
         venv_path = "#{PLUGIN_VENVS_DIR}/#{plugin}/.venv"
