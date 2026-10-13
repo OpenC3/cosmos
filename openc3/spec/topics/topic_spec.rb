@@ -18,7 +18,7 @@ module OpenC3
   describe Topic do
     before(:each) do
       mock_redis()
-      Topic.clear_log_cycle_times
+      Topic.clear_stream_max_age_cache
       @saved_max_age = ENV['OPENC3_STREAM_MAX_AGE_SECONDS']
       ENV.delete('OPENC3_STREAM_MAX_AGE_SECONDS')
     end
@@ -29,7 +29,7 @@ module OpenC3
       else
         ENV.delete('OPENC3_STREAM_MAX_AGE_SECONDS')
       end
-      Topic.clear_log_cycle_times
+      Topic.clear_stream_max_age_cache
     end
 
     describe "self.stream_max_age_seconds" do
@@ -44,28 +44,38 @@ module OpenC3
     end
 
     describe "self.stream_safety_minid" do
+      it "caches the max age" do
+        expect(Topic.stream_max_age_ms).to eql 600_000
+        ENV['OPENC3_STREAM_MAX_AGE_SECONDS'] = '120'
+        expect(Topic.stream_max_age_ms).to eql 600_000
+        Topic.clear_stream_max_age_cache
+        expect(Topic.stream_max_age_ms).to eql 120_000
+      end
+
       it "caps relative to now for auto generated ids" do
-        now = Time.now
-        allow(Time).to receive(:now).and_return(now)
-        expect(Topic.stream_safety_minid).to eql(((now.to_f * 1000).to_i - 600_000).to_s)
-        expect(Topic.stream_safety_minid(nil)).to eql(((now.to_f * 1000).to_i - 600_000).to_s)
+        allow(Process).to receive(:clock_gettime).and_call_original
+        allow(Process).to receive(:clock_gettime).with(Process::CLOCK_REALTIME, :millisecond).and_return(1700000000000)
+        expect(Topic.stream_safety_minid).to eql '1699999400000'
+        expect(Topic.stream_safety_minid(nil)).to eql '1699999400000'
       end
 
       it "caps relative to an explicit id so the added entry is kept" do
         expect(Topic.stream_safety_minid('1700000000000-5')).to eql '1699999400000'
       end
 
-      it "never trims younger than min_age_seconds" do
-        expect(Topic.stream_safety_minid('1700000000000-0', min_age_seconds: 1320)).to eql '1699998680000'
-        # A smaller min age does not reduce the configured max age
-        expect(Topic.stream_safety_minid('1700000000000-0', min_age_seconds: 10)).to eql '1699999400000'
+      it "uses an explicit max age" do
+        expect(Topic.stream_safety_minid('1700000000000-0', max_age_ms: 1_320_000)).to eql '1699998680000'
+        expect(Topic.stream_safety_minid('1700000000000-0', max_age_ms: 0)).to be_nil
       end
 
       it "returns nil when disabled" do
         ENV['OPENC3_STREAM_MAX_AGE_SECONDS'] = '0'
         expect(Topic.stream_safety_minid).to be_nil
+        expect(Topic.log_stream_safety_minid('INST', :TLM, scope: 'DEFAULT')).to be_nil
+        Topic.clear_stream_max_age_cache
         ENV['OPENC3_STREAM_MAX_AGE_SECONDS'] = ''
-        expect(Topic.stream_safety_minid(min_age_seconds: 1320)).to be_nil
+        expect(Topic.stream_safety_minid).to be_nil
+        expect(Topic.log_stream_safety_minid('INST', :TLM, scope: 'DEFAULT')).to be_nil
       end
 
       it "returns nil for ids younger than the max age since the epoch" do
@@ -85,10 +95,29 @@ module OpenC3
         expect(Topic.log_stream_min_age_seconds('INST', :CMD, scope: 'DEFAULT')).to eql 2520
       end
 
-      it "caches the log cycle time" do
-        expect(TargetModel).to receive(:get).once.and_return(nil)
-        Topic.log_stream_min_age_seconds('INST', :TLM, scope: 'DEFAULT')
-        Topic.log_stream_min_age_seconds('INST', :TLM, scope: 'DEFAULT')
+    end
+
+    describe "self.log_stream_safety_minid" do
+      before(:each) do
+        allow(Process).to receive(:clock_gettime).and_call_original
+        allow(Process).to receive(:clock_gettime).with(Process::CLOCK_REALTIME, :millisecond).and_return(1700000000000)
+      end
+
+      it "never trims younger than two log cycles plus the cleanup delay" do
+        expect(Topic.log_stream_safety_minid('INST', :TLM, scope: 'DEFAULT')).to eql '1699998680000'
+      end
+
+      it "uses the configured max age when larger" do
+        ENV['OPENC3_STREAM_MAX_AGE_SECONDS'] = '3600'
+        expect(Topic.log_stream_safety_minid('INST', :TLM, scope: 'DEFAULT')).to eql '1699996400000'
+      end
+
+      it "caches the max age per stream" do
+        expect(TargetModel).to receive(:get).twice.and_return(nil)
+        Topic.log_stream_safety_minid('INST', :TLM, scope: 'DEFAULT')
+        Topic.log_stream_safety_minid('INST', :TLM, scope: 'DEFAULT')
+        Topic.log_stream_safety_minid('INST', :CMD, scope: 'DEFAULT')
+        Topic.log_stream_safety_minid('INST', :CMD, scope: 'DEFAULT')
       end
     end
 
@@ -110,9 +139,9 @@ module OpenC3
         packet.received_time = Time.now
         packet.packet_time = Time.now
         packet.received_count = 1
-        now = Time.now
-        allow(Time).to receive(:now).and_return(now)
-        expected = ((now.to_f * 1000).to_i - 1_320_000).to_s
+        allow(Process).to receive(:clock_gettime).and_call_original
+        allow(Process).to receive(:clock_gettime).with(Process::CLOCK_REALTIME, :millisecond).and_return(1700000000000)
+        expected = '1699998680000'
         expect(Topic).to receive(:write_topic).with("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", kind_of(Hash), minid: expected, db_shard: 0)
         TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
 

@@ -22,8 +22,8 @@ from test.test_helper import mock_redis
 class TestTopicStreamSafetyTrim(unittest.TestCase):
     def setUp(self):
         self.redis = mock_redis(self)
-        Topic.clear_log_cycle_times()
-        self.addCleanup(Topic.clear_log_cycle_times)
+        Topic.clear_stream_max_age_cache()
+        self.addCleanup(Topic.clear_stream_max_age_cache)
         env_patch = patch.dict(os.environ)
         env_patch.start()
         self.addCleanup(env_patch.stop)
@@ -36,6 +36,13 @@ class TestTopicStreamSafetyTrim(unittest.TestCase):
         os.environ["OPENC3_STREAM_MAX_AGE_SECONDS"] = "120"
         self.assertEqual(Topic.stream_max_age_seconds(), 120.0)
 
+    def test_max_age_ms_is_cached(self):
+        self.assertEqual(Topic.stream_max_age_ms(), 600000)
+        os.environ["OPENC3_STREAM_MAX_AGE_SECONDS"] = "120"
+        self.assertEqual(Topic.stream_max_age_ms(), 600000)
+        Topic.clear_stream_max_age_cache()
+        self.assertEqual(Topic.stream_max_age_ms(), 120000)
+
     @patch("openc3.topics.topic.time.time", return_value=1700000000.0)
     def test_minid_relative_to_now_for_auto_ids(self, _time):
         self.assertEqual(Topic.stream_safety_minid(), "1699999400000")
@@ -45,15 +52,18 @@ class TestTopicStreamSafetyTrim(unittest.TestCase):
         self.assertEqual(Topic.stream_safety_minid("1700000000000-5"), "1699999400000")
         self.assertEqual(Topic.stream_safety_minid(b"1700000000000-5"), "1699999400000")
 
-    def test_minid_respects_min_age(self):
-        self.assertEqual(Topic.stream_safety_minid("1700000000000-0", min_age_seconds=1320), "1699998680000")
-        self.assertEqual(Topic.stream_safety_minid("1700000000000-0", min_age_seconds=10), "1699999400000")
+    def test_minid_explicit_max_age(self):
+        self.assertEqual(Topic.stream_safety_minid("1700000000000-0", max_age_ms=1320000), "1699998680000")
+        self.assertIsNone(Topic.stream_safety_minid("1700000000000-0", max_age_ms=0))
 
     def test_minid_disabled(self):
         os.environ["OPENC3_STREAM_MAX_AGE_SECONDS"] = "0"
         self.assertIsNone(Topic.stream_safety_minid())
+        self.assertIsNone(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"))
+        Topic.clear_stream_max_age_cache()
         os.environ["OPENC3_STREAM_MAX_AGE_SECONDS"] = ""
-        self.assertIsNone(Topic.stream_safety_minid(min_age_seconds=1320))
+        self.assertIsNone(Topic.stream_safety_minid())
+        self.assertIsNone(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"))
 
     def test_minid_none_for_small_ids(self):
         self.assertIsNone(Topic.stream_safety_minid("1000-0"))
@@ -66,8 +76,23 @@ class TestTopicStreamSafetyTrim(unittest.TestCase):
         with patch.object(TargetModel, "get", return_value=model) as get:
             self.assertEqual(Topic.log_stream_min_age_seconds("INST", "TLM", "DEFAULT"), 7320)
             self.assertEqual(Topic.log_stream_min_age_seconds("INST", "CMD", "DEFAULT"), 2520)
-            # Cached after the first lookup
-            self.assertEqual(Topic.log_stream_min_age_seconds("INST", "TLM", "DEFAULT"), 7320)
+            self.assertEqual(get.call_count, 2)
+
+    @patch("openc3.topics.topic.time.time", return_value=1700000000.0)
+    def test_log_stream_minid_uses_min_age(self, _time):
+        self.assertEqual(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"), "1699998680000")
+
+    @patch("openc3.topics.topic.time.time", return_value=1700000000.0)
+    def test_log_stream_minid_uses_larger_max_age(self, _time):
+        os.environ["OPENC3_STREAM_MAX_AGE_SECONDS"] = "3600"
+        self.assertEqual(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"), "1699996400000")
+
+    def test_log_stream_minid_is_cached_per_stream(self):
+        with patch.object(TargetModel, "get", return_value=None) as get:
+            Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT")
+            Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT")
+            Topic.log_stream_safety_minid("INST", "CMD", "DEFAULT")
+            Topic.log_stream_safety_minid("INST", "CMD", "DEFAULT")
             self.assertEqual(get.call_count, 2)
 
     def test_write_topic_trims_old_entries(self):

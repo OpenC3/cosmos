@@ -41,7 +41,11 @@ module OpenC3
     # Mirrors LogWriter::CLEANUP_DELAY and the TargetModel default log cycle time
     LOG_CLEANUP_DELAY_SECONDS = 60
     DEFAULT_LOG_CYCLE_TIME_SECONDS = 600
-    @@log_cycle_times = {}
+    # These are calculated on the write path of every packet so they are cached per process.
+    # The environment doesn't change while a microservice runs and the log cycle time only
+    # changes when the plugin (and therefore the microservices) are reinstalled.
+    @@stream_max_age_ms = nil
+    @@log_stream_max_age_ms = {}
 
     # Delegate all unknown class methods to EphemeralStore db_shard 0 (system-level topics)
     def self.method_missing(message, *args, **kwargs, &block)
@@ -72,57 +76,74 @@ module OpenC3
       return value.to_f
     end
 
+    # @return [Integer] Cached safety max age in milliseconds (0 means disabled)
+    def self.stream_max_age_ms
+      @@stream_max_age_ms ||= [(stream_max_age_seconds * 1000).to_i, 0].max
+    end
+
     # Calculates the MINID to pass to XADD to cap the age of entries in a target stream.
     # The cap is anchored to the id being written (or now for auto generated ids) so an
     # explicitly id'd entry (e.g. decom reusing the raw packet id) is never trimmed by its own add.
     #
     # @param id [String] The id being written ('*' or nil for auto generation)
-    # @param min_age_seconds [Numeric] Never trim entries younger than this
+    # @param max_age_ms [Integer] Max age to retain (<= 0 means disabled)
     # @return [String|nil] The minid or nil if the safety cap is disabled
-    def self.stream_safety_minid(id = '*', min_age_seconds: 0)
-      max_age = stream_max_age_seconds
-      return nil if max_age <= 0
-      max_age = min_age_seconds if min_age_seconds > max_age
+    def self.stream_safety_minid(id = '*', max_age_ms: stream_max_age_ms)
+      return nil if max_age_ms <= 0
       if id.nil? or id == '*'
-        base_ms = (Time.now.to_f * 1000).to_i
+        base_ms = Process.clock_gettime(Process::CLOCK_REALTIME, :millisecond)
       else
-        base_ms = id.to_s.split('-')[0].to_i
+        base_ms = id.to_s.to_i # Stops at the '-' sequence separator
       end
-      minid_ms = base_ms - (max_age * 1000).to_i
+      minid_ms = base_ms - max_age_ms
       return nil if minid_ms <= 0
       return minid_ms.to_s
     end
 
+    # Calculates the MINID for a TELEMETRY__ / COMMAND__ stream write which also never
+    # trims younger than log_stream_min_age_seconds. The resulting max age is cached per stream.
+    #
+    # @param target_name [String] Target name
+    # @param cmd_or_tlm [Symbol] :CMD or :TLM
+    # @return [String|nil] The minid or nil if the safety cap is disabled
+    def self.log_stream_safety_minid(target_name, cmd_or_tlm, scope:)
+      target_cache = ((@@log_stream_max_age_ms[scope] ||= {})[target_name] ||= {})
+      max_age_ms = target_cache[cmd_or_tlm]
+      unless max_age_ms
+        max_age_ms = stream_max_age_ms
+        if max_age_ms > 0
+          min_age_ms = log_stream_min_age_seconds(target_name, cmd_or_tlm, scope: scope) * 1000
+          max_age_ms = min_age_ms if min_age_ms > max_age_ms
+        end
+        target_cache[cmd_or_tlm] = max_age_ms
+      end
+      return stream_safety_minid(max_age_ms: max_age_ms)
+    end
+
     # Minimum age to retain in a TELEMETRY__ / COMMAND__ stream so the log microservice
     # and historical streaming always have the data not yet moved to the bucket.
-    # The log cycle time is cached per process since it only changes when the plugin
-    # (and therefore the microservices) are reinstalled.
     #
     # @param target_name [String] Target name
     # @param cmd_or_tlm [Symbol] :CMD or :TLM
     # @return [Integer] Minimum age in seconds
     def self.log_stream_min_age_seconds(target_name, cmd_or_tlm, scope:)
-      key = "#{scope}__#{target_name}__#{cmd_or_tlm}"
-      cycle_time = @@log_cycle_times[key]
-      unless cycle_time
-        cycle_time = DEFAULT_LOG_CYCLE_TIME_SECONDS
-        begin
-          require 'openc3/models/target_model'
-          model = TargetModel.get(name: target_name, scope: scope)
-          if model
-            value = model[cmd_or_tlm == :CMD ? 'cmd_log_cycle_time' : 'tlm_log_cycle_time'].to_i
-            cycle_time = value if value > 0
-          end
-        rescue => e
-          Logger.warn("Unable to determine log cycle time for #{target_name}: #{e.message}")
+      cycle_time = DEFAULT_LOG_CYCLE_TIME_SECONDS
+      begin
+        require 'openc3/models/target_model'
+        model = TargetModel.get(name: target_name, scope: scope)
+        if model
+          value = model[cmd_or_tlm == :CMD ? 'cmd_log_cycle_time' : 'tlm_log_cycle_time'].to_i
+          cycle_time = value if value > 0
         end
-        @@log_cycle_times[key] = cycle_time
+      rescue => e
+        Logger.warn("Unable to determine log cycle time for #{target_name}: #{e.message}")
       end
       return 2 * (cycle_time + LOG_CLEANUP_DELAY_SECONDS)
     end
 
-    def self.clear_log_cycle_times
-      @@log_cycle_times = {}
+    def self.clear_stream_max_age_cache
+      @@stream_max_age_ms = nil
+      @@log_stream_max_age_ms = {}
     end
 
     def self.read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil, db_shard: 0, &block)

@@ -33,7 +33,7 @@ module OpenC3
       msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       topic = "#{scope}__TELEMETRY__{#{packet.target_name}}__#{packet.packet_name}"
       db_shard = Store.db_shard_for_target(packet.target_name, scope: scope)
-      minid = Topic.stream_safety_minid(min_age_seconds: Topic.log_stream_min_age_seconds(packet.target_name, :TLM, scope: scope))
+      minid = Topic.log_stream_safety_minid(packet.target_name, :TLM, scope: scope)
       if queued
         EphemeralStoreQueued.instance(db_shard: db_shard).write_topic(topic, msg_hash, minid: minid)
       else

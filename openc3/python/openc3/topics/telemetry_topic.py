@@ -32,9 +32,7 @@ class TelemetryTopic(Topic):
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
-        minid = Topic.stream_safety_minid(
-            min_age_seconds=Topic.log_stream_min_age_seconds(packet.target_name, "TLM", scope)
-        )
+        minid = Topic.log_stream_safety_minid(packet.target_name, "TLM", scope)
         if queued:
             EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(
                 f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",

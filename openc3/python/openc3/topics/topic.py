@@ -45,7 +45,11 @@ class Topic(metaclass=TopicMeta):
     # Mirrors LogWriter::CLEANUP_DELAY and the TargetModel default log cycle time
     LOG_CLEANUP_DELAY_SECONDS = 60
     DEFAULT_LOG_CYCLE_TIME_SECONDS = 600
-    _log_cycle_times = {}
+    # These are calculated on the write path of every packet so they are cached per process.
+    # The environment doesn't change while a microservice runs and the log cycle time only
+    # changes when the plugin (and therefore the microservices) are reinstalled.
+    _stream_max_age_ms = None
+    _log_stream_max_age_ms = {}
 
     @classmethod
     def clear_topics(cls, topics, maxlen=0, db_shard=0):
@@ -91,59 +95,76 @@ class Topic(metaclass=TopicMeta):
             return 0.0
 
     @classmethod
-    def stream_safety_minid(cls, id="*", min_age_seconds=0):
+    def stream_max_age_ms(cls) -> int:
+        """Cached safety max age in milliseconds (0 means disabled)"""
+        if cls._stream_max_age_ms is None:
+            cls._stream_max_age_ms = max(int(cls.stream_max_age_seconds() * 1000), 0)
+        return cls._stream_max_age_ms
+
+    @classmethod
+    def stream_safety_minid(cls, id="*", max_age_ms=None):
         """Calculates the MINID to pass to XADD to cap the age of entries in a target stream.
 
         The cap is anchored to the id being written (or now for auto generated ids) so an
         explicitly id'd entry (e.g. decom reusing the raw packet id) is never trimmed by its own add.
+        max_age_ms defaults to the configured stream_max_age_ms.
         Returns None if the safety cap is disabled.
         """
-        max_age = cls.stream_max_age_seconds()
-        if max_age <= 0:
+        if max_age_ms is None:
+            max_age_ms = cls.stream_max_age_ms()
+        if max_age_ms <= 0:
             return None
-        max_age = max(max_age, min_age_seconds)
         if not id or id == "*":
             base_ms = int(time.time() * 1000)
         else:
             if isinstance(id, bytes):
                 id = id.decode()
-            base_ms = int(str(id).split("-")[0])
-        minid_ms = base_ms - int(max_age * 1000)
+            base_ms = int(str(id).partition("-")[0])
+        minid_ms = base_ms - max_age_ms
         if minid_ms <= 0:
             return None
         return str(minid_ms)
 
     @classmethod
+    def log_stream_safety_minid(cls, target_name, cmd_or_tlm, scope):
+        """Calculates the MINID for a TELEMETRY__ / COMMAND__ stream write which also never
+        trims younger than log_stream_min_age_seconds. The resulting max age is cached per stream.
+        """
+        key = (scope, target_name, cmd_or_tlm)
+        max_age_ms = cls._log_stream_max_age_ms.get(key)
+        if max_age_ms is None:
+            max_age_ms = cls.stream_max_age_ms()
+            if max_age_ms > 0:
+                min_age_ms = cls.log_stream_min_age_seconds(target_name, cmd_or_tlm, scope) * 1000
+                max_age_ms = max(max_age_ms, min_age_ms)
+            cls._log_stream_max_age_ms[key] = max_age_ms
+        return cls.stream_safety_minid(max_age_ms=max_age_ms)
+
+    @classmethod
     def log_stream_min_age_seconds(cls, target_name, cmd_or_tlm, scope):
         """Minimum age to retain in a TELEMETRY__ / COMMAND__ stream so the log microservice
         and historical streaming always have the data not yet moved to the bucket.
-
-        The log cycle time is cached per process since it only changes when the plugin
-        (and therefore the microservices) are reinstalled.
         """
-        key = f"{scope}__{target_name}__{cmd_or_tlm}"
-        cycle_time = cls._log_cycle_times.get(key)
-        if cycle_time is None:
-            cycle_time = cls.DEFAULT_LOG_CYCLE_TIME_SECONDS
-            try:
-                from openc3.models.target_model import TargetModel
+        cycle_time = cls.DEFAULT_LOG_CYCLE_TIME_SECONDS
+        try:
+            from openc3.models.target_model import TargetModel
 
-                model = TargetModel.get(name=target_name, scope=scope)
-                if model:
-                    field = "cmd_log_cycle_time" if cmd_or_tlm == "CMD" else "tlm_log_cycle_time"
-                    value = int(model.get(field) or 0)
-                    if value > 0:
-                        cycle_time = value
-            except Exception as error:
-                from openc3.utilities.logger import Logger
+            model = TargetModel.get(name=target_name, scope=scope)
+            if model:
+                field = "cmd_log_cycle_time" if cmd_or_tlm == "CMD" else "tlm_log_cycle_time"
+                value = int(model.get(field) or 0)
+                if value > 0:
+                    cycle_time = value
+        except Exception as error:
+            from openc3.utilities.logger import Logger
 
-                Logger.warn(f"Unable to determine log cycle time for {target_name}: {error}")
-            cls._log_cycle_times[key] = cycle_time
+            Logger.warn(f"Unable to determine log cycle time for {target_name}: {error}")
         return 2 * (cycle_time + cls.LOG_CLEANUP_DELAY_SECONDS)
 
     @classmethod
-    def clear_log_cycle_times(cls):
-        cls._log_cycle_times = {}
+    def clear_stream_max_age_cache(cls):
+        cls._stream_max_age_ms = None
+        cls._log_stream_max_age_ms = {}
 
     @classmethod
     def read_topics(cls, topics, offsets=None, timeout_ms=1000, count=None, db_shard=0):
