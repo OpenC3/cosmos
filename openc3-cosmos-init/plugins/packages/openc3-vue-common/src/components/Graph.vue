@@ -2164,7 +2164,7 @@ export default {
       // Coalesce repeated skips into one entry so a graph that can't keep up
       // doesn't bury every other error, and only re-report it to an embedding
       // screen (which keeps its own list) once a minute
-      const now = new Date().getTime()
+      const now = Date.now()
       const existing = this.errors.find((error) => error.type === 'skipped')
       const skippedSeconds =
         (existing?.skippedSeconds || 0) + notice.skipped_seconds
