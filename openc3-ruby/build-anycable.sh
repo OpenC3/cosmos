@@ -34,7 +34,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 ANYCABLE_DIR="${1:-${ANYCABLE_DIR:-$REPO_ROOT/../anycable}}"
 OUTDIR="${OUTDIR:-$SCRIPT_DIR}"
 
-if [ ! -f "$ANYCABLE_DIR/cmd/anycable-go/main.go" ]; then
+if [[ ! -f "$ANYCABLE_DIR/cmd/anycable-go/main.go" ]]; then
   echo "error: $ANYCABLE_DIR is not an anycable checkout" >&2
   echo "clone it with: gh repo fork anycable/anycable --clone (or git clone https://github.com/anycable/anycable.git)" >&2
   exit 1
@@ -53,7 +53,7 @@ TOKEN="${ANYCABLE_TELEMETRY_TOKEN:-}"
 LD_FLAGS="-s -w -X ${PKG}/telemetry.auth=${TOKEN} -X ${PKG}/version.version=${VERSION} -X ${PKG}/version.sha=${SHA}"
 
 echo "anycable=${ANYCABLE_DIR} version=${VERSION} sha=${SHA} outdir=${OUTDIR}"
-[ -z "$TOKEN" ] && echo "note: ANYCABLE_TELEMETRY_TOKEN unset, telemetry.auth will be empty"
+[[ -z "$TOKEN" ]] && echo "note: ANYCABLE_TELEMETRY_TOKEN unset, telemetry.auth will be empty"
 
 for goarch in amd64 arm64; do
   name="anycable-go-linux-${goarch}"
