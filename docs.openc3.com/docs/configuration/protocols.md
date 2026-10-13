@@ -40,7 +40,7 @@ For more information about how Protocols fit with Interfaces and Accessors see [
 
 COSMOS provides the following packet delineation protocols: COBS, SLIP, Burst, Fixed, Length, Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
 
-COSMOS Enterprise provides the GEMS packet delineation protocol as well as the CCSDS TCTF, CLTU, TMTF, USLP, COP-1 and SDLS protocols. See [CCSDS Protocols](#ccsds-protocols-enterprise) for details.
+COSMOS Enterprise provides the GEMS packet delineation protocol as well as the CCSDS TCTF, CLTU, TMTF and USLP framing protocols. It also provides COP-1 (a reliability layer on top of TC framing) and SDLS (a security engine used by the framing protocols), which do not delineate packets themselves. See [CCSDS Protocols](#ccsds-protocols-enterprise) for details.
 
 Note that all protocols take a final parameter called "Allow Empty Data". This indicates whether the protocol will allow an empty string to be passed down to later Protocols (instead of returning :STOP). Can be true, false, or nil, where nil is interpreted as true unless the Protocol is the last Protocol of the chain. End users of a protocol will almost always simply leave off this parameter. For more information read the [Custom Protocols](protocols.md#custom-protocols) documentation.
 
@@ -526,7 +526,7 @@ The classic ground station setup wraps a TCP/IP interface with TM deframing on R
 ```cosmos
 INTERFACE INST_INT tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None None
   PROTOCOL READ ccsds_tmtf_protocol.py 100
-  PROTOCOL WRITE ccsds_tctf_protocol.py
+  PROTOCOL WRITE ccsds_tctf_protocol.py True False 1 100
   PROTOCOL WRITE ccsds_cltu_protocol.py
 ```
 
@@ -536,7 +536,7 @@ INTERFACE INST_INT tcpip_client_interface.py host.docker.internal 8080 8080 10.0
 ```cosmos
 INTERFACE INST_INT tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil nil
   PROTOCOL READ CcsdsTmtfProtocol 100
-  PROTOCOL WRITE CcsdsTctfProtocol
+  PROTOCOL WRITE CcsdsTctfProtocol true false 1 100
   PROTOCOL WRITE CcsdsCltuProtocol
 ```
 
@@ -969,7 +969,7 @@ INTERFACE TM_INT sle_return_interface.py <host> <port> <service_instance_id> RCF
 
 # Uplink: TC frame + CLTU encoders -> SLE FCLTU
 INTERFACE CMD_INT sle_forward_interface.py <host> <port> <service_instance_id>
-  PROTOCOL WRITE ccsds_tctf_protocol.py
+  PROTOCOL WRITE ccsds_tctf_protocol.py True False 1 100
   PROTOCOL WRITE ccsds_cltu_protocol.py
 ```
 
