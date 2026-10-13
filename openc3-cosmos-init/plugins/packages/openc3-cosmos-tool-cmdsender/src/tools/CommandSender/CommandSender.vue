@@ -555,7 +555,9 @@ export default {
       this.sendDisabled = true
       this.api.get_cmd_hazardous(targetName, commandName, paramList).then(
         (hazardous) => {
-          if (hazardous) {
+          // Ignoring range checks allows arbitrary values (e.g. manually
+          // entered states) so treat every command as hazardous
+          if (hazardous || this.ignoreRangeChecks) {
             // If it was sent from history it's all in targetName
             if (commandName === undefined) {
               this.hazardousCommand = targetName
