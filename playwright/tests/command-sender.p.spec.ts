@@ -190,6 +190,12 @@ test('warns for hazardous parameters', async ({ page, utils }) => {
     'Starts a collect on the INST target',
   )
   await selectValue(page, 'TYPE', 'SPECIAL')
+  // Hazardous states are highlighted in yellow
+  await expect(
+    page
+      .locator('tr:has(td:text-is("TYPE"))')
+      .locator('.v-select__selection-text'),
+  ).toHaveCSS('color', 'rgb(255, 220, 0)')
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.locator('main')).toContainText('Hazardous command not sent')
@@ -243,6 +249,7 @@ test('handles NaN and Infinite values', async ({ page, utils }) => {
   await page.locator('text=Ignore Range Checks').click()
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('[data-test="select-send"]').click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
 
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST FLTCMD with FLOAT32 NaN, FLOAT64 NaN") sent',
@@ -255,6 +262,7 @@ test('handles NaN and Infinite values', async ({ page, utils }) => {
   await setValue(page, 'FLOAT32', 'INFINITY')
   await setValue(page, 'FLOAT64', '-infinity')
   await page.locator('[data-test="select-send"]').click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST FLTCMD with FLOAT32 Infinity, FLOAT64 -Infinity") sent',
   )
@@ -574,6 +582,7 @@ test('ignores normal range checks', async ({ page, utils }) => {
   await page.getByText('Ignore Range Checks').click()
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('[data-test="select-send"]').click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 171, TEMP 100") sent',
   )
@@ -753,8 +762,10 @@ test('sends manually entered state values', async ({ page, utils }) => {
   await row.locator('[data-test=cmd-param-value] input').first().fill('0')
   await row.locator('[data-test=cmd-param-value] input').first().press('Enter')
 
-  // Send the command
+  // Ignoring range checks makes every command hazardous
   await page.locator('[data-test="select-send"]').click()
+  await expect(page.getByRole('dialog')).toContainText('is Hazardous')
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST COLLECT with TYPE 0, DURATION 1, OPCODE 171, TEMP 0") sent',
   )
