@@ -556,6 +556,11 @@ module OpenC3
   class InterfaceMicroservice < Microservice
     UNKNOWN_BYTES_TO_PRINT = 16
 
+    # Interfaces never use descriptions so don't keep them in memory
+    def load_descriptions?
+      false
+    end
+
     def initialize(name)
       @mutex = Mutex.new
       super(name)
