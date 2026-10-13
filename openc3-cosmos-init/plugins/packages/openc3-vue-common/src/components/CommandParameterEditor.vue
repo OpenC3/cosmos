@@ -145,6 +145,10 @@ export default {
       if (!this.states) {
         return false
       }
+      // Manual entry requires ignoring range checks which is always hazardous
+      if (this.manuallyEntered) {
+        return true
+      }
       return (
         Object.entries(this.states)
           .find(([label, state]) => state.value === this.modelValue)

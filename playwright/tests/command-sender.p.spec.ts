@@ -754,6 +754,11 @@ test('sends manually entered state values', async ({ page, utils }) => {
   let row = page.locator('tr:has(td:text-is("TYPE"))')
   await row.locator('[data-test=cmd-param-select]').click({ force: true })
   await page.getByRole('option', { name: 'MANUALLY_ENTERED' }).click()
+  // Manual entry is hazardous so it's highlighted in yellow
+  await expect(row.locator('.v-select__selection-text')).toHaveCSS(
+    'color',
+    'rgb(255, 220, 0)',
+  )
 
   // Enter a raw numeric value in the manual entry text field
   await expect(
