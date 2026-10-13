@@ -33,15 +33,15 @@ class TestTopicStreamSafetyTrim(unittest.TestCase):
         self.assertEqual(Topic.stream_max_age_seconds(), 600)
 
     def test_max_age_reads_env(self):
-        os.environ["OPENC3_STREAM_MAX_AGE_SECONDS"] = "120"
-        self.assertEqual(Topic.stream_max_age_seconds(), 120.0)
+        with patch.dict(os.environ, {"OPENC3_STREAM_MAX_AGE_SECONDS": "120"}):
+            self.assertEqual(Topic.stream_max_age_seconds(), 120.0)
 
     def test_max_age_ms_is_cached(self):
         self.assertEqual(Topic.stream_max_age_ms(), 600000)
-        os.environ["OPENC3_STREAM_MAX_AGE_SECONDS"] = "120"
-        self.assertEqual(Topic.stream_max_age_ms(), 600000)
-        Topic.clear_stream_max_age_cache()
-        self.assertEqual(Topic.stream_max_age_ms(), 120000)
+        with patch.dict(os.environ, {"OPENC3_STREAM_MAX_AGE_SECONDS": "120"}):
+            self.assertEqual(Topic.stream_max_age_ms(), 600000)
+            Topic.clear_stream_max_age_cache()
+            self.assertEqual(Topic.stream_max_age_ms(), 120000)
 
     @patch("openc3.topics.topic.time.time", return_value=1700000000.0)
     def test_minid_relative_to_now_for_auto_ids(self, _time):
@@ -57,13 +57,13 @@ class TestTopicStreamSafetyTrim(unittest.TestCase):
         self.assertIsNone(Topic.stream_safety_minid("1700000000000-0", max_age_ms=0))
 
     def test_minid_disabled(self):
-        os.environ["OPENC3_STREAM_MAX_AGE_SECONDS"] = "0"
-        self.assertIsNone(Topic.stream_safety_minid())
-        self.assertIsNone(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"))
+        with patch.dict(os.environ, {"OPENC3_STREAM_MAX_AGE_SECONDS": "0"}):
+            self.assertIsNone(Topic.stream_safety_minid())
+            self.assertIsNone(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"))
         Topic.clear_stream_max_age_cache()
-        os.environ["OPENC3_STREAM_MAX_AGE_SECONDS"] = ""
-        self.assertIsNone(Topic.stream_safety_minid())
-        self.assertIsNone(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"))
+        with patch.dict(os.environ, {"OPENC3_STREAM_MAX_AGE_SECONDS": ""}):
+            self.assertIsNone(Topic.stream_safety_minid())
+            self.assertIsNone(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"))
 
     def test_minid_none_for_small_ids(self):
         self.assertIsNone(Topic.stream_safety_minid("1000-0"))
@@ -84,8 +84,8 @@ class TestTopicStreamSafetyTrim(unittest.TestCase):
 
     @patch("openc3.topics.topic.time.time", return_value=1700000000.0)
     def test_log_stream_minid_uses_larger_max_age(self, _time):
-        os.environ["OPENC3_STREAM_MAX_AGE_SECONDS"] = "3600"
-        self.assertEqual(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"), "1699996400000")
+        with patch.dict(os.environ, {"OPENC3_STREAM_MAX_AGE_SECONDS": "3600"}):
+            self.assertEqual(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"), "1699996400000")
 
     def test_log_stream_minid_is_cached_per_stream(self):
         with patch.object(TargetModel, "get", return_value=None) as get:

@@ -117,9 +117,8 @@ class Topic(metaclass=TopicMeta):
         if not id or id == "*":
             base_ms = int(time.time() * 1000)
         else:
-            if isinstance(id, bytes):
-                id = id.decode()
-            base_ms = int(str(id).partition("-")[0])
+            entry_id = id.decode() if isinstance(id, bytes) else str(id)
+            base_ms = int(entry_id.partition("-")[0])
         minid_ms = base_ms - max_age_ms
         if minid_ms <= 0:
             return None
