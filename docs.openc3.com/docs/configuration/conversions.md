@@ -51,7 +51,7 @@ class DoubleConversion(Conversion):
         # NOTE: You can also use packet.read("ITEM") to get additional values
         # return value / 2 * packet.read("OTHER_ITEM")
         #
-        # Read the latest value from a different packet in the same target
+        # In a READ_CONVERSION, read the latest value from a different packet in the same target
         # other = System.telemetry.packet(packet.target_name, "OTHER_PACKET")
         # return value * other.read("OTHER_ITEM")
         return value
@@ -63,6 +63,8 @@ There are a lot of comments to help you implement the `call` method.
 The `call` method passes in the current packet. To use values from a different packet in the same target, get that packet with `System.telemetry.packet(packet.target_name, "OTHER_PACKET")` and call `read` on it. This returns the most recently received value without a round trip to the database. For Python you need to add `from openc3.system.system import System`.
 
 Only packets from targets processed by the same decom microservice are available, normally just the conversion's own target. Each packet holds the values from its most recent arrival (all zeros until it is first received).
+
+This applies to a `READ_CONVERSION`, which runs in the decom microservice. A `WRITE_CONVERSION` runs wherever the command is built, typically the interface microservice, which only has current values for telemetry received on that same interface. To read telemetry from other targets in a `WRITE_CONVERSION`, use the `tlm()` API instead (for Python add `from openc3.api.tlm_api import tlm`).
 :::
 
 ### call

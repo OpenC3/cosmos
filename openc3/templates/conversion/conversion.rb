@@ -21,7 +21,7 @@ module OpenC3
       # NOTE: You can also use packet.read("ITEM") to get additional values
       # return value / 2 * packet.read("OTHER_ITEM")
       #
-      # Read the latest value from a different packet in the same target
+      # In a READ_CONVERSION, read the latest value from a different packet in the same target
       # other = System.telemetry.packet(packet.target_name, "OTHER_PACKET")
       # return value * other.read("OTHER_ITEM")
       return value
