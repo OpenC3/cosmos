@@ -138,6 +138,14 @@ module OpenC3
         expect(@pi.states).to be_nil
       end
 
+      it "does not create state_colors and shares state names" do
+        @pi.states = { "true" => 1, "false" => 0 }
+        expect(@pi.state_colors).to be_nil
+        other = PacketItem.new("other", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        other.states = { "TRUE" => 1 }
+        expect(other.states.keys[0]).to equal @pi.states.keys[0]
+      end
+
       it "complains about states that aren't Hashes" do
         expect { @pi.states = "state" }.to raise_error(ArgumentError, "#{@pi.name}: states must be a Hash but is a String")
       end
@@ -434,9 +442,26 @@ module OpenC3
         expect(config).to match(/LIMITS TVAC 3 ENABLED 100 200 800 900/)
       end
 
-      it "sets the limits to nil" do
+      it "resets to default limits when set to nil" do
+        limits = PacketItemLimits.new
+        limits.values = { DEFAULT: [10, 20, 80, 90] }
+        @pi.limits = limits
         @pi.limits = nil
-        expect(@pi.limits).to be_nil
+        expect(@pi.limits_values).to be_nil
+        expect(@pi.limits).to be_a PacketItemLimits
+        expect(@pi.limits.values).to be_nil
+      end
+
+      it "only creates limits when accessed" do
+        expect(@pi.instance_variable_get(:@limits)).to be_nil
+        expect(@pi.limits_state).to be_nil
+        expect(@pi.limits_values).to be_nil
+        @pi.as_json
+        @pi.to_config(:TELEMETRY, :BIG_ENDIAN)
+        @pi.clone
+        expect(@pi.instance_variable_get(:@limits)).to be_nil
+        @pi.limits.state = :RED
+        expect(@pi.limits_state).to eql :RED
       end
 
       it "complains about limits that aren't PacketItemLimits" do

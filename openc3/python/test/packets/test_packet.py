@@ -1357,6 +1357,16 @@ class PacketCheckLimits(unittest.TestCase):
         self.p.check_limits()
         mock.assert_not_called()
 
+    def test_handles_states_without_state_colors_on_an_item_with_limits_values(self):
+        test1 = self.p.get_item("TEST1")
+        test1.states = {"TRUE": 1, "FALSE": 0}
+        test1.limits.values = {"DEFAULT": [1, 2, 4, 5]}
+        self.p.update_limits_items_cache(test1)
+        self.p.enable_limits("TEST1")
+        self.p.write("TEST1", 0)
+        self.p.check_limits()
+        self.assertIsNone(test1.limits.state)
+
     def test_calls_the_limits_change_callback(self):
         test1 = self.p.get_item("TEST1")
         self.assertFalse(test1.limits.enabled)
