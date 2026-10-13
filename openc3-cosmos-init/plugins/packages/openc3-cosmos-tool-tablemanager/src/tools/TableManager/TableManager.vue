@@ -457,7 +457,6 @@ export default {
     setError(event) {
       this.errorTitle = 'Error'
       this.errorText = `Error: ${event}`
-      this.errorText = response.data.message
       this.showError = true
     },
     saveFile: function () {
@@ -470,7 +469,12 @@ export default {
       formData.append('tables', JSON.stringify(this.tables))
       Api.post(`/openc3-api/tables/${this.filename}`, {
         data: formData,
-        headers: { 'Content-Type': 'multipart/form-data' },
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          // A 403 (admin-only area) is shown in the Save Error dialog below,
+          // so skip the global network error banner
+          'Ignore-Errors': '403',
+        },
       })
         .then((response) => {
           this.fileModified = ''

@@ -603,21 +603,22 @@ RSpec.describe TablesController, type: :controller do
     end
   end
 
-  # The cmd_tlm overlay (targets_modified/<TARGET>/cmd_tlm/...) is ERB-rendered
-  # and eval'd as code by PacketConfig, so every Table writer must require admin
-  # to write it, not just the presigned-upload path in storage_controller.
-  describe "cmd_tlm overlay gate" do
-    describe "cmd_tlm_overlay?" do
-      let(:m) { :cmd_tlm_overlay? }
+  # The code areas (targets_modified/<TARGET>/cmd_tlm/... and
+  # <TARGET>/tables/config/...) hold definitions whose GENERIC_*_CONVERSION
+  # blocks are eval'd as code, so every Table writer must require admin to write
+  # them, not just the presigned-upload path in storage_controller.
+  describe "code overlay gate" do
+    describe "code_overlay?" do
+      let(:m) { :code_overlay? }
 
-      it "flags cmd_tlm overlay names (admin required)" do
+      it "flags code area names (admin required)" do
         expect(controller.send(m, "INST/cmd_tlm/tlm.txt")).to be true
         expect(controller.send(m, "INST/cmd_tlm/config/extra.txt")).to be true
+        expect(controller.send(m, "INST/tables/config/table_def.txt")).to be true
       end
 
-      it "allows non-cmd_tlm overlay names" do
+      it "allows other overlay names" do
         expect(controller.send(m, "INST/tables/bin/table.bin")).to be false
-        expect(controller.send(m, "INST/tables/config/table_def.txt")).to be false
         expect(controller.send(m, "INST/screens/x.txt")).to be false
       end
 
@@ -650,10 +651,35 @@ RSpec.describe TablesController, type: :controller do
         expect(Table).not_to have_received(:save_as)
       end
 
-      it "blocks generate into the cmd_tlm overlay" do
-        allow(Table).to receive(:generate)
+      it "blocks generate from a cmd_tlm definition" do
+        # generate has no overlay gate; Table only accepts tables/config definitions
+        expect(Table).not_to receive(:create)
         post :generate, params: {scope: "DEFAULT", definition: "INST/cmd_tlm/config/poc_def.txt"}
-        expect(Table).not_to have_received(:generate)
+        expect(response).to have_http_status(:not_found)
+      end
+
+      it "still allows generate from a tables/config definition" do
+        allow(Table).to receive(:generate).and_return("INST/tables/bin/table.bin")
+        post :generate, params: {scope: "DEFAULT", definition: "INST/tables/config/table_def.txt"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "blocks save_as into the tables/config overlay" do
+        allow(Table).to receive(:save_as)
+        post :save_as, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", new_name: "INST/tables/config/table_def.txt"}
+        expect(Table).not_to have_received(:save_as)
+      end
+
+      it "blocks a saved report next to a binary in tables/config" do
+        allow(Table).to receive(:report)
+        post :report, params: {scope: "DEFAULT", binary: "INST/tables/config/table.bin", definition: "INST/tables/config/table_def.txt", save: true}
+        expect(Table).not_to have_received(:report)
+      end
+
+      it "blocks destroy of the tables/config overlay" do
+        allow(Table).to receive(:destroy)
+        delete :destroy, params: {scope: "DEFAULT", name: "INST/tables/config/table_def.txt"}
+        expect(Table).not_to have_received(:destroy)
       end
 
       it "blocks destroy of the cmd_tlm overlay" do
@@ -681,6 +707,13 @@ RSpec.describe TablesController, type: :controller do
         post :save_as, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", new_name: "INST/cmd_tlm/tlm.txt"}
         expect(response).to have_http_status(:ok)
         expect(Table).to have_received(:save_as).with("DEFAULT", "INST/tables/bin/table.bin", "INST/cmd_tlm/tlm.txt")
+      end
+
+      it "allows save_as into the tables/config overlay" do
+        allow(Table).to receive(:save_as)
+        post :save_as, params: {scope: "DEFAULT", name: "INST/tables/config/table_def.txt", new_name: "INST/tables/config/copy_def.txt"}
+        expect(response).to have_http_status(:ok)
+        expect(Table).to have_received(:save_as)
       end
     end
   end

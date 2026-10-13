@@ -354,15 +354,15 @@ class ScriptsController < ApplicationController
   # Gates the Script writers (create, destroy) that funnel through
   # TargetFile.create/destroy into the targets_modified overlay. Script.all lists
   # every target file with no path matchers, so the Script Runner editor can reach
-  # targets_modified/<TARGET>/cmd_tlm/..., which PacketConfig evaluates as code
-  # (GENERIC_*_CONVERSION eval) in the decom microservices. Writing that area
-  # therefore requires admin even though script editing only requires
+  # targets_modified/<TARGET>/cmd_tlm/... and <TARGET>/tables/config/..., whose
+  # GENERIC_*_CONVERSION blocks are evaluated as code (see
+  # OpenC3::ConfigOverlay). Writing those areas therefore requires admin even though script editing only requires
   # 'script_edit'. Mirrors tables_controller#authorize_overlay_write and
   # storage_controller#non_admin_config_overlay_write?, the other two writers.
   # `name` is the overlay-relative path (e.g. "<TARGET>/procedures/x.rb").
   # Returns true if allowed; otherwise renders the 401/403 and returns false.
   def authorize_overlay_write(name)
-    return true unless OpenC3::ConfigOverlay.cmd_tlm_overlay?(name)
+    return true unless OpenC3::ConfigOverlay.code_overlay?(name)
     return false unless authorization('admin')
     true
   end
