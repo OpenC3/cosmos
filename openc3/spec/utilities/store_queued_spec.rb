@@ -45,5 +45,19 @@ module OpenC3
       expect(Store.hget("presence", "key2")).to eq "20"
       expect(Store.hget("presence", "key3")).to eq "30"
     end
+
+    it "writes straight through to the store after shutdown" do
+      StoreQueued.instance(10) # Long interval so only shutdown drains the queue
+
+      StoreQueued.hset("presence", "key1", 10)
+      expect(Store.hget("presence", "key1")).to be_nil
+      StoreQueued.shutdown
+      # Shutdown drains what was already queued
+      expect(Store.hget("presence", "key1")).to eq "10"
+
+      # Nothing will drain the queue again, so later writes must not be queued
+      StoreQueued.hset("presence", "key2", 20)
+      expect(Store.hget("presence", "key2")).to eq "20"
+    end
   end
 end

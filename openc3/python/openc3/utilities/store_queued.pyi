@@ -40,6 +40,7 @@ class StoreQueued(metaclass=StoreMeta):
     store_queue: Incomplete
     update_sleeper: Incomplete
     update_thread: Incomplete
+    is_shutdown: bool
 
     def __init__(self, update_interval, db_shard: int = 0) -> None: ...
     @classmethod

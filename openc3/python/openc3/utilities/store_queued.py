@@ -53,6 +53,7 @@ class StoreQueued(metaclass=StoreMeta):
             return cls.my_instances[db_shard]
 
     def __init__(self, update_interval, db_shard=0):
+        self.is_shutdown = False
         self.update_interval = update_interval
         self.db_shard = db_shard
         self.store = self.store_instance()
@@ -98,6 +99,9 @@ class StoreQueued(metaclass=StoreMeta):
                 break
 
     def shutdown(self):
+        # Nothing drains the queue once the thread is gone, so from here on write
+        # straight through rather than silently dropping whatever gets queued
+        self.is_shutdown = True
         if self.update_sleeper:
             self.update_sleeper.cancel()
         if self.update_thread:
@@ -111,6 +115,9 @@ class StoreQueued(metaclass=StoreMeta):
     # Record the message for pipelining by the thread
     def __getattr__(self, func):
         def method(*args, **kwargs):
+            # Read through __dict__ so a missing attribute can't recurse back into __getattr__
+            if self.__dict__.get("is_shutdown"):
+                return getattr(self.store, func)(*args, **kwargs)
             return self.store_queue.put([func, args, kwargs])
 
         return method

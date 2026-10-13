@@ -47,7 +47,8 @@ module OpenC3
       begin
         @metric.shutdown
         # Stop and drain pending writes before deleting the row, otherwise a
-        # queued bootstrap update can recreate it before exec.
+        # queued bootstrap update can recreate it before exec. Any later write
+        # through this StoreQueued goes straight to Redis instead of the queue.
         MetricModel.store_queued.instance(db_shard: @db_shard).shutdown
         MetricModel.new(name: @name, scope: @scope, db_shard: @db_shard).destroy
       rescue Exception => e

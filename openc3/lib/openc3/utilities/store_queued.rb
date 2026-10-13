@@ -99,6 +99,9 @@ module OpenC3
     end
 
     def shutdown
+      # Nothing drains the queue once the thread is gone, so from here on write
+      # straight through rather than silently dropping whatever gets queued
+      @shutdown = true
       @update_sleeper.cancel if @update_sleeper
       OpenC3.kill_thread(self, @update_thread) if @update_thread
       @update_thread = nil
@@ -114,6 +117,7 @@ module OpenC3
 
     # Record the message for pipelining by the thread
     def method_missing(message, *args, **kwargs, &block)
+      return @store.public_send(message, *args, **kwargs, &block) if @shutdown
       @store_queue.push(MessageStruct.new(message, args, kwargs, block))
     end
 
