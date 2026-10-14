@@ -30,10 +30,17 @@ module OpenC3
       end
 
       before(:each) do
+        @orig_scope = $openc3_scope
+        @orig_api_server = $api_server
         $openc3_scope = 'DEFAULT'
         $api_server = double("ApiServer")
         allow($api_server).to receive(:generate_url).and_return("http://localhost:2900")
         allow($api_server).to receive(:generate_auth).and_return(double("Auth", token: 'TOKEN'))
+      end
+
+      after(:each) do
+        $openc3_scope = @orig_scope
+        $api_server = @orig_api_server
       end
 
       def stub_http(body, success: true)

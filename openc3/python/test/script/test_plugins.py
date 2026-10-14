@@ -29,6 +29,8 @@ PLUGINS = [
 
 class TestPluginList(unittest.TestCase):
     def setUp(self):
+        original_api_server = openc3.script.API_SERVER
+        self.addCleanup(setattr, openc3.script, "API_SERVER", original_api_server)
         self.api_server_mock = Mock()
         openc3.script.API_SERVER = self.api_server_mock
 
