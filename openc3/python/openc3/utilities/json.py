@@ -26,10 +26,26 @@ class JsonEncoder(json.JSONEncoder):
 
 
 class JsonDecoder(json.JSONDecoder):
+    # Ruby's Float#as_json (openc3/io/json_rpc.rb) encodes non-finite floats as
+    # {"json_class": "Float", "raw": "NaN"|"Infinity"|"-Infinity"} because bare
+    # NaN/Infinity literals are not valid JSON. Python's json module writes those
+    # bare literals instead and reads them back natively, so only the decode side
+    # needs to understand both forms.
+    RUBY_SPECIAL_FLOATS = {
+        "NaN": float("nan"),
+        "Infinity": float("inf"),
+        "-Infinity": float("-inf"),
+    }
+
     def __init__(self, *args, **kwargs):
         json.JSONDecoder.__init__(self, object_hook=self.object_hook, *args, **kwargs)  # noqa: B026
 
     def object_hook(self, dct):
-        if dct.get("json_class") == "String":
+        json_class = dct.get("json_class")
+        if json_class == "String":
             return bytes(dct["raw"])
+        if json_class == "Float":
+            raw = dct.get("raw")
+            if isinstance(raw, str) and raw in self.RUBY_SPECIAL_FLOATS:
+                return self.RUBY_SPECIAL_FLOATS[raw]
         return dct
