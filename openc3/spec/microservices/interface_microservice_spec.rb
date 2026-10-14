@@ -468,6 +468,23 @@ module OpenC3
         im.shutdown
       end
 
+      it "cleans up on shutdown even if the interface disconnect raises" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        stream_log_pair = double("StreamLogPair", shutdown: [], cleanup: nil)
+        interface.stream_log_pair = stream_log_pair
+        expect(InterfaceStatusModel.get_model(name: "INST_INT", scope: "DEFAULT")).not_to be_nil
+        allow(interface).to receive(:disconnect).and_raise('test-error')
+
+        capture_io do |stdout|
+          im.shutdown
+          expect(stdout.string).to include("Disconnect failed during stop")
+        end
+        expect(InterfaceStatusModel.get_model(name: "INST_INT", scope: "DEFAULT")).to be_nil
+        expect(stream_log_pair).to have_received(:shutdown)
+        interface.stream_log_pair = nil # Don't leak the double past this example
+      end
+
       it "still reconnects if the interface disconnect leaves it connected" do
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
         interface = im.instance_variable_get(:@interface)

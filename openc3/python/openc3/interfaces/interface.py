@@ -358,7 +358,8 @@ class Interface:
         other_interface.bytes_read = self.bytes_read
         other_interface.bytes_written = self.bytes_written
         if self.stream_log_pair:
-            other_interface.stream_log_pair = self.stream_log_pair[:]
+            # The new interface takes over the running stream logs
+            other_interface.stream_log_pair = self.stream_log_pair
         # num_clients is per interface so don't copy
         # read_queue_size is the number of packets in the queue so don't copy
         # write_queue_size is the number of packets in the queue so don't copy
