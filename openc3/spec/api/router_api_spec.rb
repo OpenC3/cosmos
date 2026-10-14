@@ -69,6 +69,18 @@ module OpenC3
         expect(router['state']).to match(/CONNECTED|ATTEMPTING/)
         expect(router['clients']).to eql 0
       end
+
+      it "raises if the router does not exist" do
+        expect { @api.get_router("NONEXISTENT_ROUTER") }.to raise_error("Router 'NONEXISTENT_ROUTER' does not exist (get_router)")
+      end
+
+      it "defaults the state to UNKNOWN if the router status does not exist" do
+        model = RouterModel.new(name: "NO_STATUS_ROUTER", scope: "DEFAULT")
+        model.create
+        router = @api.get_router("NO_STATUS_ROUTER")
+        expect(router['name']).to eql "NO_STATUS_ROUTER"
+        expect(router['state']).to eql "UNKNOWN"
+      end
     end
 
     describe "get_router_names" do
