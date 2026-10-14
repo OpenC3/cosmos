@@ -42,7 +42,7 @@ module OpenC3
           end
         end
       rescue => e
-        raise "get_plugin_list failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
+        raise "plugin_list failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -65,7 +65,7 @@ module OpenC3
           end
         end
       rescue => e
-        raise "get_plugin failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
+        raise "plugin_get failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
