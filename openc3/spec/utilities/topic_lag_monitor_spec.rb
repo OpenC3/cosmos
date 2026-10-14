@@ -90,6 +90,19 @@ module OpenC3
       expect(monitor.state).to eq(TopicLagMonitor::WARN)
     end
 
+    it "requires the full hold below the warning clear threshold to recover from critical" do
+      rec(40, 0)
+      rec(10, 1)
+      rec(1, 11)
+      expect(monitor.state).to eq(TopicLagMonitor::WARN)
+      expect(logger).not_to have_received(:info)
+      rec(1, 20)
+      expect(logger).not_to have_received(:info)
+      rec(1, 21)
+      expect(monitor.state).to eq(TopicLagMonitor::OK)
+      expect(logger).to have_received(:info).once
+    end
+
     it "rate limits repeated notifications while lagging" do
       expect(logger).to receive(:warn).twice
       rec(6, 0)

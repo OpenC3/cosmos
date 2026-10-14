@@ -55,6 +55,7 @@ class TopicLagMonitor:
         self.max_lag = 0.0
         self.max_lag_topic = None
         self.below_since = None
+        self.below_ok_since = None
         self.last_notify = None
         self.last_notify_level = self.OK
         self.notified = False
@@ -101,6 +102,11 @@ class TopicLagMonitor:
         self.metric.set(name=metric_name, value=value, type="gauge", unit="seconds", help=help)
 
     def _update_state(self, topic, lag, now):
+        if lag < self.warn_seconds * self.CLEAR_RATIO:
+            if self.below_ok_since is None:
+                self.below_ok_since = now
+        else:
+            self.below_ok_since = None
         if lag > self.max_lag:
             self.max_lag = lag
             self.max_lag_topic = topic
@@ -130,8 +136,11 @@ class TopicLagMonitor:
                     self.below_since = now
                 if (now - self.below_since) >= self.clear_seconds:
                     self.below_since = None
-                    if self.state == self.CRITICAL and lag >= self.warn_seconds * self.CLEAR_RATIO:
+                    if self.state == self.CRITICAL and (
+                        self.below_ok_since is None or (now - self.below_ok_since) < self.clear_seconds
+                    ):
                         self.state = self.WARN
+                        self.below_since = self.below_ok_since
                     else:
                         self.state = self.OK
                         if self.notified:

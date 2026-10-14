@@ -53,6 +53,7 @@ module OpenC3
       @max_lag = 0.0
       @max_lag_topic = nil
       @below_since = nil
+      @below_ok_since = nil
       @last_notify = nil
       @last_notify_level = OK
       @notified = false
@@ -104,6 +105,11 @@ module OpenC3
     end
 
     def update_state(topic, lag, now)
+      if lag < @warn_seconds * CLEAR_RATIO
+        @below_ok_since ||= now
+      else
+        @below_ok_since = nil
+      end
       if lag > @max_lag
         @max_lag = lag
         @max_lag_topic = topic
@@ -131,8 +137,9 @@ module OpenC3
           @below_since ||= now
           if (now - @below_since) >= @clear_seconds
             @below_since = nil
-            if @state == CRITICAL and lag >= @warn_seconds * CLEAR_RATIO
+            if @state == CRITICAL and (@below_ok_since.nil? or (now - @below_ok_since) < @clear_seconds)
               @state = WARN
+              @below_since = @below_ok_since
             else
               @state = OK
               @logger.info("#{@name} has caught up processing (max lag #{@max_lag.round(1)}s on #{@max_lag_topic})", type: Logger::NOTIFICATION) if @notified

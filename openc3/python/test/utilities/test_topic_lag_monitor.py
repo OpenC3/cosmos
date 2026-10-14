@@ -111,6 +111,19 @@ class TestTopicLagMonitor(unittest.TestCase):
         self.assertEqual(monitor.state, TopicLagMonitor.WARN)
         self.logger.info.assert_not_called()
 
+    def test_critical_recovery_requires_hold_below_warning_clear_threshold(self):
+        monitor = self.monitor()
+        self.rec(monitor, 40, 0)
+        self.rec(monitor, 10, 1)
+        self.rec(monitor, 1, 11)
+        self.assertEqual(monitor.state, TopicLagMonitor.WARN)
+        self.logger.info.assert_not_called()
+        self.rec(monitor, 1, 20)
+        self.logger.info.assert_not_called()
+        self.rec(monitor, 1, 21)
+        self.assertEqual(monitor.state, TopicLagMonitor.OK)
+        self.logger.info.assert_called_once()
+
     def test_rate_limits_repeated_notifications(self):
         monitor = self.monitor()
         self.rec(monitor, 6, 0)
