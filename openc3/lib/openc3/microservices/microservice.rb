@@ -265,7 +265,7 @@ module OpenC3
     end
 
     # Update the lag metric for a message read from a topic and notify users
-    # if this microservice is falling behind or has skipped trimmed data
+    # if this microservice is falling behind
     #
     # @param topic [String] Redis stream the message was read from
     # @param msg_id [String] Redis stream id of the message
@@ -278,7 +278,7 @@ module OpenC3
 
     # @return [TopicLagMonitor] Lag monitor shared by this microservice's topic readers
     def topic_lag_monitor
-      @topic_lag_monitor ||= TopicLagMonitor.new(name: @name, logger: @logger || Logger, metric: @metric, scope: @scope, db_shard: @db_shard || 0)
+      @topic_lag_monitor ||= TopicLagMonitor.new(name: @name, logger: @logger || Logger, metric: @metric)
     end
 
     # Returns if the command was handled

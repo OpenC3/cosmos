@@ -56,7 +56,7 @@ module OpenC3
       @logger = logger
       @logger = Logger unless @logger
       @metric = metric
-      @lag_monitor = lag_monitor || TopicLagMonitor.new(name: "#{@scope}__INTERFACE__#{@interface.name}", logger: @logger, metric: @metric, scope: @scope, db_shard: @db_shard)
+      @lag_monitor = lag_monitor || TopicLagMonitor.new(name: "#{@scope}__INTERFACE__#{@interface.name}", logger: @logger, metric: @metric)
       @count = 0
       @directive_count = 0
       @metric.set(name: 'interface_directive_total', value: @directive_count, type: 'counter') if @metric
@@ -400,7 +400,7 @@ module OpenC3
       @logger = logger
       @logger = Logger unless @logger
       @metric = metric
-      @lag_monitor = lag_monitor || TopicLagMonitor.new(name: "#{@scope}__ROUTER__#{@router.name}", logger: @logger, metric: @metric, scope: @scope, db_shard: @db_shard)
+      @lag_monitor = lag_monitor || TopicLagMonitor.new(name: "#{@scope}__ROUTER__#{@router.name}", logger: @logger, metric: @metric)
       @count = 0
       @directive_count = 0
       @metric.set(name: 'router_directive_total', value: @directive_count, type: 'counter') if @metric

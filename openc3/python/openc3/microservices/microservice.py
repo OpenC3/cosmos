@@ -255,7 +255,7 @@ class Microservice:
 
     def update_topic_lag(self, topic, msg_id, metric_name, help):
         """Update the lag metric for a message read from a topic and notify users
-        if this microservice is falling behind or has skipped trimmed data"""
+        if this microservice is falling behind"""
         return self.topic_lag_monitor.record(topic, msg_id, metric_name=metric_name, help=help)
 
     @property
@@ -267,8 +267,6 @@ class Microservice:
                 name=self.name,
                 logger=getattr(self, "logger", None) or Logger,
                 metric=getattr(self, "metric", None),
-                scope=getattr(self, "scope", None),
-                db_shard=getattr(self, "db_shard", 0) or 0,
             )
             self._topic_lag_monitor = monitor
         return monitor

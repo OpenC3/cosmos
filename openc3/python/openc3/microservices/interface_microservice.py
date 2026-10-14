@@ -73,8 +73,6 @@ class InterfaceCmdHandlerThread:
             name=f"{scope}__INTERFACE__{interface.name}",
             logger=self.logger,
             metric=self.metric,
-            scope=scope,
-            db_shard=self.db_shard,
         )
         self.count = 0
         self.directive_count = 0
@@ -455,8 +453,6 @@ class RouterTlmHandlerThread:
             name=f"{scope}__ROUTER__{router.name}",
             logger=self.logger,
             metric=self.metric,
-            scope=scope,
-            db_shard=self.db_shard,
         )
         self.count = 0
         self.directive_count = 0

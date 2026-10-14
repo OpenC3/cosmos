@@ -17,7 +17,8 @@ require "openc3/utilities/topic_lag_monitor"
 module OpenC3
   describe TopicLagMonitor do
     TOPIC = "DEFAULT__DECOM__{INST}__HEALTH_STATUS"
-    NOW = 1_000_000.0
+    OTHER_TOPIC = "DEFAULT__DECOM__{INST}__ADCS"
+    NOW = 1_000_000.0 # Start of a gauge window
 
     # Build a stream id written lag seconds before NOW + at
     def id_for(lag, at = 0, seq = 0)
@@ -25,20 +26,18 @@ module OpenC3
     end
 
     # Record a message read at NOW + at that is lag seconds old
-    def rec(lag, at)
-      monitor.record(TOPIC, id_for(lag, at), now: NOW + at)
+    def rec(lag, at, topic = TOPIC)
+      monitor.record(topic, id_for(lag, at), now: NOW + at)
+    end
+
+    # Record a message with the gauge metric enabled
+    def rec_gauge(lag, at)
+      monitor.record(TOPIC, id_for(lag, at), metric_name: 'm', help: 'h', now: NOW + at)
     end
 
     let(:logger) { double("logger", info: nil, warn: nil, error: nil, debug: nil) }
     let(:metric) { double("metric", set: nil) }
-    let(:store) { double("store") }
-    let(:monitor) { TopicLagMonitor.new(name: "DEFAULT__DECOM__INST_INT", logger: logger, metric: metric, scope: "DEFAULT") }
-
-    before(:each) do
-      allow(EphemeralStore).to receive(:instance).and_return(store)
-      allow(Store).to receive(:db_shard_for_target).and_return(0)
-      allow(store).to receive(:xinfo).and_return({})
-    end
+    let(:monitor) { TopicLagMonitor.new(name: "DEFAULT__DECOM__INST_INT", logger: logger, metric: metric) }
 
     around(:each) do |example|
       saved = ENV.to_h.select { |k, _| k.start_with?('OPENC3_LAG_') }
@@ -68,7 +67,7 @@ module OpenC3
 
     it "recovers only after staying below the clear threshold for the hold time" do
       rec(6, 0)
-      expect(logger).to receive(:info).with(/has caught up processing \(max lag 6.0s\)/, type: Logger::NOTIFICATION).once
+      expect(logger).to receive(:info).with(/has caught up processing \(max lag 6.0s on #{Regexp.escape(TOPIC)}\)/, type: Logger::NOTIFICATION).once
       # Below the warning threshold but not below warn * CLEAR_RATIO
       rec(4, 1)
       # Below the clear threshold but not held long enough
@@ -121,95 +120,88 @@ module OpenC3
       rec(6, 0)
     end
 
-    context "trimmed data detection" do
-      it "does not check for trimmed data when not lagging" do
-        expect(store).not_to receive(:xinfo)
-        monitor.record(TOPIC, id_for(3), now: NOW)
-        monitor.record(TOPIC, id_for(1), now: NOW)
+    it "names the lagging topic and the topic with the max lag" do
+      expect(logger).to receive(:warn).with("DEFAULT__DECOM__INST_INT is falling behind processing: 6.0s behind on #{TOPIC} (max 6.0s on #{TOPIC})", type: Logger::NOTIFICATION)
+      rec(6, 0)
+      expect(logger).to receive(:error).with("DEFAULT__DECOM__INST_INT is falling behind processing: 31.0s behind on #{OTHER_TOPIC} (max 31.0s on #{OTHER_TOPIC})", type: Logger::NOTIFICATION)
+      rec(31, 1, OTHER_TOPIC)
+      expect(logger).to receive(:info).with("DEFAULT__DECOM__INST_INT has caught up processing (max lag 31.0s on #{OTHER_TOPIC})", type: Logger::NOTIFICATION)
+      rec(1, 2)
+      rec(1, 12)
+      expect(monitor.state).to eq(TopicLagMonitor::OK)
+    end
+
+    context "falling behind again after recovering" do
+      # Warn at 0 and recover at 11
+      def warn_and_recover
+        rec(6, 0)
+        rec(1, 1)
+        rec(1, 11)
+        expect(monitor.state).to eq(TopicLagMonitor::OK)
       end
 
-      it "does not check small gaps between messages" do
-        expect(store).not_to receive(:xinfo)
-        monitor.record(TOPIC, id_for(61), now: NOW)
-        monitor.record(TOPIC, id_for(60.5), now: NOW)
+      it "does not renotify or announce recovery within the renotify interval" do
+        expect(logger).to receive(:warn).once
+        expect(logger).to receive(:info).once
+        warn_and_recover
+        rec(6, 20)
+        expect(monitor.state).to eq(TopicLagMonitor::WARN)
+        rec(1, 21)
+        rec(1, 31)
+        expect(monitor.state).to eq(TopicLagMonitor::OK)
       end
 
-      it "alerts when data between messages was trimmed" do
-        monitor.record(TOPIC, id_for(90), now: NOW)
-        # Everything up through 40s ago was trimmed before we read it
-        expect(store).to receive(:xinfo).with(:stream, TOPIC).and_return({ 'max-deleted-entry-id' => id_for(40) })
-        expect(logger).to receive(:error).with(/data was trimmed before it was processed: #{Regexp.escape(TOPIC)} \(~50.0s\)/, type: Logger::ALERT)
-        monitor.record(TOPIC, id_for(39), now: NOW)
+      it "notifies again after the renotify interval" do
+        expect(logger).to receive(:warn).twice
+        warn_and_recover
+        rec(6, 300)
       end
 
-      it "alerts when data was trimmed as lag starts" do
-        # Read while keeping up (fast path) so the id is still remembered
-        monitor.record(TOPIC, id_for(1), now: NOW)
-        expect(store).to receive(:xinfo).with(:stream, TOPIC).and_return({ 'max-deleted-entry-id' => id_for(50, 60) })
-        expect(logger).to receive(:error).with(/#{Regexp.escape(TOPIC)} \(~11.0s\)/, type: Logger::ALERT)
-        monitor.record(TOPIC, id_for(40, 60), now: NOW + 60)
+      it "renotifies a continued episode once the renotify interval passes" do
+        expect(logger).to receive(:warn).twice
+        expect(logger).to receive(:info).twice
+        warn_and_recover
+        rec(6, 20)
+        rec(6, 300)
+        rec(1, 301)
+        rec(1, 311)
       end
 
-      it "does not alert when the deleted data had already been processed" do
-        monitor.record(TOPIC, id_for(40), now: NOW)
-        expect(store).to receive(:xinfo).and_return({ 'max-deleted-entry-id' => id_for(50) })
-        expect(logger).not_to receive(:error).with(anything, type: Logger::ALERT)
-        monitor.record(TOPIC, id_for(35), now: NOW)
+      it "always notifies an escalation past the last notified level" do
+        expect(logger).to receive(:error).with(/31.0s behind/, type: Logger::NOTIFICATION).once
+        warn_and_recover
+        rec(31, 20)
+        expect(monitor.state).to eq(TopicLagMonitor::CRITICAL)
+      end
+    end
+
+    context "gauge metric" do
+      it "reports the max lag within a window" do
+        expect(metric).to receive(:set).with(hash_including(value: be_within(0.01).of(3))).once.ordered
+        expect(metric).to receive(:set).with(hash_including(value: be_within(0.01).of(4))).once.ordered
+        rec_gauge(3, 0)
+        rec_gauge(1, 1) # Lower lag doesn't change the reported max
+        rec_gauge(4, 2)
       end
 
-      it "aggregates and rate limits data skipped alerts" do
-        topic2 = "DEFAULT__DECOM__{INST}__ADCS"
-        monitor.record(TOPIC, id_for(90), now: NOW)
-        monitor.record(topic2, id_for(90), now: NOW)
-        allow(store).to receive(:xinfo).and_return({ 'max-deleted-entry-id' => id_for(40) })
-        expect(logger).to receive(:error).with(/#{Regexp.escape(TOPIC)}/, type: Logger::ALERT).once
-        monitor.record(TOPIC, id_for(39), now: NOW)
-        # Second topic skip is held until the renotify interval passes
-        monitor.record(topic2, id_for(39), now: NOW + 2)
-        expect(logger).to receive(:error).with(/#{Regexp.escape(topic2)}/, type: Logger::ALERT).once
-        monitor.record(topic2, id_for(38), now: NOW + 301)
+      it "holds the previous window's max through the next window" do
+        rec_gauge(4, 0)
+        expect(metric).to receive(:set).with(hash_including(value: be_within(0.01).of(4))).once.ordered
+        expect(metric).to receive(:set).with(hash_including(value: be_within(0.01).of(1))).once.ordered
+        rec_gauge(1, 5)
+        rec_gauge(1, 10)
       end
 
-      it "rate limits xinfo checks per topic" do
-        monitor.record(TOPIC, id_for(90), now: NOW)
-        expect(store).to receive(:xinfo).once.and_return({})
-        monitor.record(TOPIC, id_for(80), now: NOW)
-        monitor.record(TOPIC, id_for(70), now: NOW + 0.5)
+      it "does not hold the max across an idle window" do
+        rec_gauge(4, 0)
+        expect(metric).to receive(:set).with(hash_including(value: be_within(0.01).of(1)))
+        rec_gauge(1, 12)
       end
 
-      it "looks up the db_shard from the target hashtag" do
-        monitor.record(TOPIC, id_for(90), now: NOW)
-        expect(Store).to receive(:db_shard_for_target).with("INST", scope: "DEFAULT").and_return(2)
-        expect(EphemeralStore).to receive(:instance).with(db_shard: 2).and_return(store)
-        expect(store).to receive(:xinfo).and_return({})
-        monitor.record(TOPIC, id_for(80), now: NOW)
-      end
-
-      it "falls back to the default db_shard if the target lookup fails" do
-        monitor.record(TOPIC, id_for(90), now: NOW)
-        expect(Store).to receive(:db_shard_for_target).and_raise(RuntimeError.new("no target"))
-        expect(EphemeralStore).to receive(:instance).with(db_shard: 0).and_return(store)
-        expect(store).to receive(:xinfo).and_return({})
-        monitor.record(TOPIC, id_for(80), now: NOW)
-      end
-
-      it "limits the number of topics listed in a data skipped alert" do
-        topics = (0...7).map { |i| "DEFAULT__DECOM__{INST}__PKT#{i}" }
-        topics.each { |topic| monitor.record(topic, id_for(90), now: NOW) }
-        allow(store).to receive(:xinfo).and_return({ 'max-deleted-entry-id' => id_for(40) })
-        monitor.instance_variable_set(:@last_skip_notify, NOW) # Hold the alert until every topic has skipped
-        topics.each { |topic| monitor.record(topic, id_for(39), now: NOW) }
-        expect(logger).to receive(:error).with(/and 2 more/, type: Logger::ALERT).once
-        monitor.record(topics[0], id_for(38), now: NOW + 301)
-      end
-
-      it "handles servers without max-deleted-entry-id and xinfo errors" do
-        monitor.record(TOPIC, id_for(90), now: NOW)
-        expect(store).to receive(:xinfo).and_return({})
-        monitor.record(TOPIC, id_for(80), now: NOW)
-        expect(store).to receive(:xinfo).and_raise(RuntimeError.new("ERR no such key"))
-        expect(logger).to receive(:debug).with(/unable to check/)
-        monitor.record(TOPIC, id_for(70), now: NOW + 2)
+      it "tracks each metric name separately" do
+        monitor.record(TOPIC, id_for(4), metric_name: 'a', help: 'h', now: NOW)
+        expect(metric).to receive(:set).with(hash_including(name: 'b', value: be_within(0.01).of(1)))
+        monitor.record(TOPIC, id_for(1), metric_name: 'b', help: 'h', now: NOW)
       end
     end
   end
