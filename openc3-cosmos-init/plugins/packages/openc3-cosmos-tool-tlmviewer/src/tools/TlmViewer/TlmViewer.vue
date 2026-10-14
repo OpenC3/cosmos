@@ -17,20 +17,7 @@
 
 <template>
   <top-bar :title="title" :menus="menus" />
-  <v-alert
-    v-if="playbackMode === 'playback'"
-    class="playback text-overline mb-1 py-0 align-center justify-center flex-0-0"
-    type="warning"
-    variant="tonal"
-    density="compact"
-    border="start"
-    :icon="false"
-  >
-    <span class="d-inline-flex align-center">
-      <v-icon icon="mdi-play-circle-outline" size="16" class="mr-2" />
-      Playback Mode
-    </span>
-  </v-alert>
+  <playback-banner v-if="playbackMode === 'playback'" class="mb-1" />
   <v-expansion-panels v-model="panel" class="mb-1">
     <v-expansion-panel>
       <v-expansion-panel-title class="pulse-i"></v-expansion-panel-title>
@@ -157,6 +144,7 @@ import {
   Config,
   Openc3Screen,
   OpenConfigDialog,
+  PlaybackBanner,
   PlaybackControls,
   SaveConfigDialog,
   TopBar,
@@ -168,6 +156,7 @@ export default {
   components: {
     TopBar,
     Openc3Screen,
+    PlaybackBanner,
     PlaybackControls,
     NewScreenDialog,
     OpenConfigDialog,
@@ -595,10 +584,6 @@ export default {
 </script>
 
 <style scoped>
-.playback :deep(.v-alert__content) {
-  /* v-alert pads content to fit its default 28px icon; ours is 18px */
-  padding-block: 0;
-}
 .v-application {
   /* fix for playwright scrolling I guess? */
   margin-bottom: 120px;

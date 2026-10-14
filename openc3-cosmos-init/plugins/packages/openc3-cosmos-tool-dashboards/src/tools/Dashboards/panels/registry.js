@@ -19,7 +19,8 @@
 //   component                   renders the panel body inside PanelFrame,
 //                               receives the `panel` prop
 //   content                     panel dialog editor for what the panel shows
-//                               (items, targets, a command); emits `update`
+//                               (items, targets, a command, a screen);
+//                               emits `update`
 //   defaults                    width and height for a new panel
 //   keywords                    keywords allowed inside PANEL ... END
 //   maxItems                    limit on ITEM lines (null = unlimited)
@@ -45,10 +46,12 @@ import LimitsPanel from './LimitsPanel.vue'
 import StatPanel from './StatPanel.vue'
 import StatePanel from './StatePanel.vue'
 import CommandPanel from './CommandPanel.vue'
+import ScreenPanel from './ScreenPanel.vue'
 import UnknownPanel from './UnknownPanel.vue'
 import ItemsConfig from './config/ItemsConfig.vue'
 import LimitsConfig from './config/LimitsConfig.vue'
 import CommandConfig from './config/CommandConfig.vue'
+import ScreenConfig from './config/ScreenConfig.vue'
 
 // Shared by panel types whose items are drawn as lines
 const COLOR_OPTION = {
@@ -56,6 +59,17 @@ const COLOR_OPTION = {
   type: 'color',
   label: 'Color',
   default: null,
+}
+
+// Minutes of history a graph shows, backfilled when the dashboard opens
+const DURATION_OPTION = {
+  name: 'DURATION',
+  type: 'number',
+  label: 'History shown',
+  unit: 'minutes',
+  default: 2,
+  min: 0.5,
+  max: 1440,
 }
 
 // Stands in for a panel whose type isn't installed (its plugin is missing)
@@ -85,6 +99,11 @@ export const PANEL_TYPES = {
         type: 'boolean',
         label: 'Show graph',
         default: true,
+      },
+      {
+        ...DURATION_OPTION,
+        label: 'Graph history',
+        when: (get) => get('GRAPH'),
       },
       {
         name: 'LIMITS_LINES',
@@ -134,15 +153,7 @@ export const PANEL_TYPES = {
       { ...COLOR_OPTION, help: 'Defaults to the next series color' },
     ],
     options: [
-      {
-        name: 'DURATION',
-        type: 'number',
-        label: 'History shown',
-        unit: 'minutes',
-        default: 2,
-        min: 0.5,
-        max: 1440,
-      },
+      DURATION_OPTION,
       {
         name: 'THRESHOLDS',
         type: 'item',
@@ -237,6 +248,21 @@ export const PANEL_TYPES = {
       },
     ],
   },
+  SCREEN: {
+    category: 'Telemetry',
+    label: 'Screen',
+    description: 'A Telemetry Viewer screen',
+    icon: 'mdi-monitor-dashboard',
+    component: ScreenPanel,
+    content: ScreenConfig,
+    title: (panel) => panel.screen?.screenName,
+    subtitle: (panel) => panel.screen?.targetName,
+    validate: (panel) => (panel.screen ? null : 'Pick a screen'),
+    defaults: { w: 6, h: 8 },
+    keywords: ['SCREEN', 'SETTING'],
+    maxItems: 0,
+    options: [],
+  },
 }
 
 PANEL_TYPES[UNKNOWN_TYPE] = {
@@ -258,6 +284,7 @@ export const CONTENT_EDITORS = {
   items: ItemsConfig,
   targets: LimitsConfig,
   command: CommandConfig,
+  screen: ScreenConfig,
 }
 
 // Add a panel type, e.g. from a plugin. Returns an error message, or null.

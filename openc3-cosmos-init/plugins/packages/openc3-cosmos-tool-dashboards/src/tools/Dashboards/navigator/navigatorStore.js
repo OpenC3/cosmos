@@ -66,6 +66,7 @@ function describe(text) {
     for (const item of panel.items) targets.add(item.targetName)
     for (const target of panel.targets) targets.add(target)
     if (panel.command) targets.add(panel.command.targetName)
+    if (panel.screen) targets.add(panel.screen.targetName)
   }
   return {
     ...dashboardStyle(model.settings),

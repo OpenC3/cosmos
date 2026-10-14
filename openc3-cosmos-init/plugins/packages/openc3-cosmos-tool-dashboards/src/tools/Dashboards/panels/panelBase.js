@@ -30,6 +30,8 @@ export default {
     live: { default: () => ({ on: true }) },
     // { on, time }: while playback is on, panels show telemetry as of `time`
     timeline: { default: () => ({ on: false, time: null }) },
+    // 'local' or 'UTC', from Admin > Settings: times show in it (format.js)
+    timeZone: { default: 'local' },
   },
   props: {
     panel: { type: Object, required: true },

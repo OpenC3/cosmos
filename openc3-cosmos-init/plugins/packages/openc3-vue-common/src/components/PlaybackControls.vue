@@ -12,7 +12,7 @@
 -->
 
 <template>
-  <div class="d-flex flex-wrap align-center">
+  <div class="d-flex flex-wrap align-center w-100">
     <v-text-field
       v-model="date"
       class="mr-4"

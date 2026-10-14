@@ -13,7 +13,7 @@
 
 import panelBase from './panelBase'
 import { itemKey, packetTimeKey } from '../composables/tlmPoller'
-import { formatTelemetry, toSeconds } from '../composables/format'
+import { formatItem, formatTime, toSeconds } from '../composables/format'
 import { option } from './options'
 import { stateToLevel } from '../status'
 
@@ -53,7 +53,12 @@ export default {
           label: itemLabel(this.panel.items, item),
           path: `${item.targetName} ${item.packetName} ${item.itemName}`,
           number: typeof polled?.value === 'number' ? polled.value : null,
-          text: formatTelemetry(polled?.value, raw ? null : info.formatString),
+          text: formatItem(
+            item.itemName,
+            polled?.value,
+            raw ? null : info.formatString,
+            this.timeZone,
+          ),
           units: raw ? '' : info.units,
           level: stateToLevel(polled?.state),
           stale: polled?.state === 'STALE',
@@ -71,7 +76,8 @@ export default {
         : null
     },
     packetTime() {
-      return toSeconds(this.poller.values[this.packetTimeKey]?.value ?? '')
+      const time = this.poller.values[this.packetTimeKey]?.value ?? ''
+      return toSeconds(formatTime(time, this.timeZone))
     },
     panelLevel() {
       return this.worstOf(

@@ -123,7 +123,8 @@ export const TABLET_MAX_WIDTH = 999 // px
 export const BREAKPOINT_NOTES = {
   tablet:
     'Tablet: panels 4 columns or narrower take half the width, the rest go full width.',
-  phone: 'Phone: every panel takes the full width, in reading order.',
+  phone:
+    'Phone: every panel takes the full width. Side-by-side panels read left column first, then the next column.',
 }
 
 // Breakpoint for an available width in pixels
@@ -155,6 +156,28 @@ function packInOrder(rects) {
   return placed
 }
 
+// Phone order: panels whose rows overlap form a band, read left to right by
+// column and top to bottom within a column; a panel below everything so far
+// (e.g. full width) starts the next band. So a tall panel beside a stack
+// reads as the tall one, then the stack, instead of interleaving the two.
+function phoneOrder(panels) {
+  const ordered = []
+  let band = []
+  let bottom = -Infinity
+  const flush = () => {
+    ordered.push(...band.sort((a, b) => a.x - b.x || a.y - b.y))
+    band = []
+  }
+  for (const panel of [...panels].sort((a, b) => a.y - b.y || a.x - b.x)) {
+    if (band.length && panel.y >= bottom) flush()
+    if (!band.length) bottom = -Infinity
+    band.push(panel)
+    bottom = Math.max(bottom, panel.y + panel.h)
+  }
+  flush()
+  return ordered
+}
+
 // { uid: {x, y, w, h} } for the panels visible at a breakpoint
 export function deriveLayout(panels, breakpoint) {
   if (breakpoint === 'desktop') {
@@ -168,15 +191,17 @@ export function deriveLayout(panels, breakpoint) {
   // Tablets pair up narrow panels; phones give every panel the full width
   const width = (panel) =>
     breakpoint === 'tablet' && panel.w <= 4 ? GRID_COLUMNS / 2 : GRID_COLUMNS
-  const ordered = [...panels]
-    .sort((a, b) => a.y - b.y || a.x - b.x)
-    .map((panel) => ({
-      uid: panel.uid,
-      x: 0,
-      y: 0,
-      w: width(panel),
-      h: panel.h,
-    }))
+  const sorted =
+    breakpoint === 'phone'
+      ? phoneOrder(panels)
+      : [...panels].sort((a, b) => a.y - b.y || a.x - b.x)
+  const ordered = sorted.map((panel) => ({
+    uid: panel.uid,
+    x: 0,
+    y: 0,
+    w: width(panel),
+    h: panel.h,
+  }))
   return Object.fromEntries(
     packInOrder(ordered).map(({ uid, ...rect }) => [uid, rect]),
   )

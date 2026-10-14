@@ -39,6 +39,14 @@ module OpenC3
         expect(PanelModel.names(scope: 'DEFAULT')).to eql ['GAUGE', 'MAP']
         expect(PanelModel.get(name: 'MAP', scope: 'DEFAULT')['url']).to eql '/tools/panels/MAP/MAP.js'
       end
+
+      # Plugin upgrade and uninstall rebuild models from their stored JSON
+      it "finds a plugin's panels from their stored JSON" do
+        PanelModel.new(name: 'MAP', plugin: 'plugin', scope: 'DEFAULT').create
+        models = PanelModel.find_all_by_plugin(plugin: 'plugin', scope: 'DEFAULT')
+        expect(models.keys).to eql ['MAP']
+        expect(models['MAP'].bucket_key).to eql 'panels/MAP/MAP.js'
+      end
     end
 
     describe "deploy / undeploy" do

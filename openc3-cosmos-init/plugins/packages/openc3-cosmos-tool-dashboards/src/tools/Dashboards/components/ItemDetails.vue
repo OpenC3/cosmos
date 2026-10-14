@@ -68,15 +68,22 @@
           />
         </div>
 
-        <div v-if="limits">
+        <!-- The limits are listed rather than marked under the bar, where
+             numbers can't line up with their zones -->
+        <div v-if="limits" class="d-flex flex-column ga-3">
           <limits-bar :limits="limits" :value="number" class="big-bar" />
-          <div
-            class="d-flex justify-space-between text-caption text-medium-emphasis num mt-1"
-          >
-            <span>{{ limits.red_low }}</span>
-            <span>{{ limits.yellow_low }}</span>
-            <span>{{ limits.yellow_high }}</span>
-            <span>{{ limits.red_high }}</span>
+          <div class="meta" data-test="item-details-limits">
+            <div v-for="limit in limitRows" :key="limit.label">
+              <div
+                class="d-flex align-center ga-1 text-caption text-medium-emphasis"
+              >
+                <status-symbol :level="limit.level" :size="10" decorative />
+                {{ limit.label }}
+              </div>
+              <div class="num text-truncate">
+                {{ limit.value }} {{ info.units }}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -103,10 +110,6 @@
             <div class="text-caption text-medium-emphasis">Limits set</div>
             <div>{{ limits ? itemInfo.state.limitsSet : 'No limits' }}</div>
           </div>
-          <div>
-            <div class="text-caption text-medium-emphasis">Range</div>
-            <div class="num">{{ range }}</div>
-          </div>
         </div>
 
         <v-btn
@@ -130,7 +133,12 @@ import LimitsBar from './LimitsBar.vue'
 import StatusSymbol from './StatusSymbol.vue'
 import modelShow from '../mixins/modelShow'
 import { itemKey, packetTimeKey } from '../composables/tlmPoller'
-import { formatTelemetry, toSeconds } from '../composables/format'
+import {
+  formatItem,
+  formatTelemetry,
+  formatTime,
+  toSeconds,
+} from '../composables/format'
 import { stateToLevel } from '../status'
 
 // Everything about one item: big value, status, limits, a short graph, raw
@@ -138,7 +146,11 @@ import { stateToLevel } from '../status'
 export default {
   components: { GraphPanel, LimitsBar, StatusSymbol },
   mixins: [modelShow],
-  inject: ['poller', 'itemInfo'],
+  inject: {
+    poller: 'poller',
+    itemInfo: 'itemInfo',
+    timeZone: { default: 'local' },
+  },
   props: {
     item: { type: Object, default: null },
     sheet: Boolean,
@@ -165,13 +177,19 @@ export default {
         : null
     },
     display() {
-      return formatTelemetry(this.converted?.value, this.info.formatString)
+      return formatItem(
+        this.item.itemName,
+        this.converted?.value,
+        this.info.formatString,
+        this.timeZone,
+      )
     },
     raw() {
       return formatTelemetry(this.poller.values[this.keys.raw]?.value)
     },
     packetTime() {
-      return toSeconds(this.poller.values[this.keys.packetTime]?.value ?? '--')
+      const time = this.poller.values[this.keys.packetTime]?.value ?? '--'
+      return toSeconds(formatTime(time, this.timeZone))
     },
     level() {
       return stateToLevel(this.converted?.state)
@@ -182,10 +200,23 @@ export default {
     limits() {
       return this.itemInfo.limits(this.item)
     },
-    range() {
+    // Low beside high, outermost first, in the bar's colors (operational
+    // limits, when the item has them, are the bar's blue zone)
+    limitRows() {
       const l = this.limits
-      if (!l) return '--'
-      return `${l.yellow_low} to ${l.yellow_high} ${this.info.units}`.trim()
+      const rows = [
+        ['critical', 'Red low', l.red_low],
+        ['critical', 'Red high', l.red_high],
+        ['caution', 'Yellow low', l.yellow_low],
+        ['caution', 'Yellow high', l.yellow_high],
+      ]
+      if (l.green_low !== undefined && l.green_high !== undefined) {
+        rows.push(
+          ['standby', 'Green low', l.green_low],
+          ['standby', 'Green high', l.green_high],
+        )
+      }
+      return rows.map(([level, label, value]) => ({ level, label, value }))
     },
     graphable() {
       return this.number !== null || !this.converted

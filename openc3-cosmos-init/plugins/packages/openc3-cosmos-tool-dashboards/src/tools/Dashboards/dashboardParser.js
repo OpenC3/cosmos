@@ -48,6 +48,7 @@ const USAGE = {
   TARGET: 'TARGET <Target>',
   COMMAND: 'COMMAND <Target> <Command>',
   SCRIPT: 'SCRIPT <Script file, e.g. INST/procedures/collect.rb>',
+  SCREEN: 'SCREEN <Target> <Screen>',
   PARAMETER: 'PARAMETER <Parameter> <Value>',
   SETTING: 'SETTING <Name> [Values...]',
   END: 'END',
@@ -75,6 +76,7 @@ export function newPanel(type, x, y, w, h, title = '') {
     targets: [],
     command: null,
     script: null,
+    screen: null,
     parameters: {},
     settings: {},
   }
@@ -86,6 +88,7 @@ const KEYWORD_FIELDS = {
   TARGET: ['targets', () => []],
   COMMAND: ['command', () => null],
   SCRIPT: ['script', () => null],
+  SCREEN: ['screen', () => null],
   PARAMETER: ['parameters', () => ({})],
 }
 
@@ -291,6 +294,14 @@ export function parseDashboard(text) {
           parser.verify_num_parameters(1, 1, USAGE.SCRIPT)
           panel.script = parameters[0]
           break
+        case 'SCREEN':
+          requireKeyword(keyword)
+          parser.verify_num_parameters(2, 2, USAGE.SCREEN)
+          panel.screen = {
+            targetName: parameters[0].toUpperCase(),
+            screenName: parameters[1].toUpperCase(),
+          }
+          break
         case 'PARAMETER':
           requireKeyword(keyword)
           parser.verify_num_parameters(2, 2, USAGE.PARAMETER)
@@ -376,6 +387,9 @@ function panelLines(panel) {
   }
   if (allowed.has('SCRIPT') && panel.script) {
     lines.push(`  SCRIPT ${quote(panel.script)}`)
+  }
+  if (allowed.has('SCREEN') && panel.screen) {
+    lines.push(`  SCREEN ${panel.screen.targetName} ${panel.screen.screenName}`)
   }
   if (allowed.has('PARAMETER')) {
     for (const [name, value] of Object.entries(panel.parameters || {})) {

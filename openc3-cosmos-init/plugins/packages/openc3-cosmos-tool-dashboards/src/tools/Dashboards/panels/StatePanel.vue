@@ -14,7 +14,7 @@
 <template>
   <div
     :class="[
-      'state-panel d-flex flex-column flex-grow-1 px-4 pt-2',
+      'state-panel d-flex flex-column flex-grow-1 px-4 pt-1 pb-2',
       { clickable: !!openDetails },
     ]"
     @click="openDetails && state.item && openDetails(state.item)"
@@ -30,7 +30,7 @@
     </div>
     <div
       v-if="packetTime"
-      class="d-flex align-center justify-end ga-1 pt-1 text-caption text-medium-emphasis num"
+      class="state-time d-flex align-center justify-end ga-1 mt-auto text-caption text-medium-emphasis num"
       :title="`Packet time ${packetTime}`"
       data-test="state-packet-time"
     >
@@ -67,6 +67,11 @@ export default {
   font-size: clamp(14px, 9cqw, 24px);
   font-weight: 500;
   letter-spacing: 0.01em;
-  line-height: 1.25;
+  line-height: 1.15;
+}
+/* At the bottom, and short enough that a 2 row panel (58px under the
+   header) fits the state and the time with padding below */
+.state-time {
+  line-height: 16px;
 }
 </style>

@@ -45,6 +45,8 @@
 <script>
 const TOP = 3
 const BOTTOM = 27
+// Long histories are thinned to the low and high of this many slots
+const MAX_BUCKETS = 150
 
 // Small line chart. With `limits` it also draws the yellow and red limits as
 // dashed lines; the scale always includes the yellow limits so the lines show
@@ -53,19 +55,21 @@ export default {
   props: {
     // Array of numbers, oldest first
     points: { type: Array, default: () => [] },
+    // With `window` ([start, end]): the time of each point, in the same
+    // units, to place them by time rather than evenly
+    times: { type: Array, default: null },
+    window: { type: Array, default: null },
     color: { type: String, default: 'rgb(var(--v-theme-secondary))' },
     // { red_low, yellow_low, yellow_high, red_high } or null
     limits: { type: Object, default: null },
   },
   computed: {
-    values() {
-      return this.points.filter((v) => typeof v === 'number')
-    },
     // One pass over the points, widened to include the yellow limits
     range() {
       let min = Infinity
       let max = -Infinity
-      for (const v of this.values) {
+      for (const v of this.points) {
+        if (typeof v !== 'number') continue
         if (v < min) min = v
         if (v > max) max = v
       }
@@ -76,16 +80,38 @@ export default {
       if (min === Infinity) return null
       return { min, span: max - min || 1 }
     },
+    // [x from 0 to 100, value] to draw. Thinned slots keep their low and
+    // high, so spikes still show.
+    samples() {
+      const points = this.points
+      const n = points.length
+      const [start, end] = this.window || []
+      const x =
+        this.times && end > start
+          ? (i) => ((this.times[i] - start) / (end - start)) * 100
+          : (i) => (n > 1 ? (i / (n - 1)) * 100 : 0)
+      const step = Math.max(1, Math.ceil(n / MAX_BUCKETS))
+      const samples = []
+      for (let from = 0; from < n; from += step) {
+        let low = -1
+        let high = -1
+        for (let i = from; i < Math.min(n, from + step); i++) {
+          if (typeof points[i] !== 'number') continue
+          if (low < 0 || points[i] < points[low]) low = i
+          if (high < 0 || points[i] > points[high]) high = i
+        }
+        if (low < 0) continue
+        const kept = low === high ? [low] : [low, high].sort((a, b) => a - b)
+        for (const i of kept) samples.push([x(i), points[i]])
+      }
+      return samples
+    },
     path() {
-      const values = this.values
-      if (values.length < 2 || !this.range) return ''
+      if (this.samples.length < 2 || !this.range) return ''
       return (
         'M' +
-        values
-          .map((v, i) => {
-            const x = (i / (values.length - 1)) * 100
-            return `${x.toFixed(1)} ${this.y(v).toFixed(1)}`
-          })
+        this.samples
+          .map(([x, v]) => `${x.toFixed(1)} ${this.y(v).toFixed(1)}`)
           .join('L')
       )
     },

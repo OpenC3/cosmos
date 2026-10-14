@@ -24,7 +24,7 @@
 // options too, declared as `itemOptions` and written after their ITEM line:
 //
 //   ITEM INST HEALTH_STATUS TEMP1
-//     ITEM_SETTING COLOR "#d95926"
+//     ITEM_SETTING COLOR "#938bdb"
 //
 // Optional fields:
 //   help        caption under the control
@@ -94,14 +94,14 @@ const OPTION_TYPES = {
     validate: (values) => (values.length ? null : 'expects some text'),
   },
   // rrggbb. A bare # starts a comment in dashboard files, so colors are
-  // written quoted ("#3987e5") or without the # (3987e5)
+  // written quoted ("#4dacff") or without the # (4dacff)
   color: {
     decode: (values) => normalizeColor(values[0]),
     encode: (value) => [value],
     validate: (values) =>
       values.length === 1 && normalizeColor(values[0])
         ? null
-        : 'expects a color like 3987e5 or "#3987e5" (a bare # starts a comment)',
+        : 'expects a color like 4dacff or "#4dacff" (a bare # starts a comment)',
   },
   // A telemetry item: SETTING NAME <TARGET> <PACKET> <ITEM>
   item: {

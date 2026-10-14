@@ -72,16 +72,14 @@
 <script>
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import { Cable } from '@openc3/js-common/services'
 import StatusSymbol from '../components/StatusSymbol.vue'
 import panelBase from './panelBase'
-import { itemLabel, pollType } from './tlmPanel'
+import tlmSeries from './tlmSeries'
+import { itemLabel } from './tlmPanel'
 import { option } from './options'
 import { seriesColor } from './colors'
 import { itemKey } from '../composables/tlmPoller'
-import { formatTelemetry, utcClock } from '../composables/format'
-
-const RENDER_MS = 1000
+import { clock, formatTelemetry } from '../composables/format'
 
 function withAlpha(color, alpha) {
   const hex = color.trim().replace('#', '')
@@ -100,33 +98,22 @@ function relativeLabel(seconds) {
   return `−${Math.round(abs / 3600)} h`
 }
 
-// Live time series. Backfills DURATION minutes of history from the streaming
-// API, then streams. THRESHOLDS <TGT> <PKT> <ITEM> picks the item whose limits
+// Live time series of up to 6 items (tlmSeries backfills and streams them).
+// THRESHOLDS <TGT> <PKT> <ITEM> picks the item whose limits
 // are drawn as bands (defaults to the first graphed item with limits).
 export default {
   components: { StatusSymbol },
-  mixins: [panelBase],
+  mixins: [panelBase, tlmSeries],
   data() {
     return {
       lastValues: [],
       tip: null,
-      now: Date.now() / 1000,
     }
   },
   computed: {
-    duration() {
-      // DURATION is in minutes
-      return Math.max(30, (Number(option(this.panel, 'DURATION')) || 2) * 60)
-    },
     colors() {
       return this.panel.items.map((item, index) =>
         seriesColor(this.panel, item, index),
-      )
-    },
-    // Streaming keys
-    keys() {
-      return this.panel.items.map(
-        (item) => `DECOM__TLM__${itemKey(item, pollType(item))}`,
       )
     },
     labels() {
@@ -167,7 +154,7 @@ export default {
     },
     legend() {
       return this.panel.items.map((item, index) => ({
-        key: this.keys[index],
+        key: this.streamKeys[index],
         label: this.labels[index],
         last: this.format(index, this.lastValues[index]),
         units: this.infos[index].units,
@@ -182,30 +169,6 @@ export default {
         for (const item of items) this.itemInfo.get(item)
       },
     },
-    keys() {
-      this.restart()
-    },
-    duration() {
-      this.restart()
-    },
-    // Editing stops the stream; leaving edit mode backfills and resumes
-    isLive() {
-      this.restart()
-    },
-    // Live streams; playback loads history around the playback time
-    isPlayback() {
-      this.restart()
-    },
-    // Stepping forward adds just the new range; anything else reloads
-    playbackTime(time, previous) {
-      if (!this.isPlayback || !time) return
-      const forward = previous && time > previous
-      if (forward && time - previous <= this.duration * 1000) {
-        this.loadRange(previous, time)
-      } else {
-        this.restart()
-      }
-    },
     // Series colors are fixed when the plot is built, so rebuild it, unless
     // restart() already did for the same change
     colors(colors) {
@@ -214,25 +177,12 @@ export default {
       }
     },
   },
-  created() {
-    this.socket = this.cable || new Cable()
-    this.subscription = null
-    // Newest value per series, kept as data arrives
-    this.plot = null
-    this.series = [[]]
-  },
   mounted() {
-    this.resolveColors()
     this.resizeObserver = new ResizeObserver(() => this.resize())
     this.resizeObserver.observe(this.$refs.plot)
-    this.restart()
-    this.renderTimer = setInterval(() => this.render(), RENDER_MS)
   },
   unmounted() {
-    clearInterval(this.renderTimer)
     this.resizeObserver?.disconnect()
-    this.subscription?.unsubscribe()
-    if (!this.cable) this.socket.disconnect()
     this.plot?.destroy()
   },
   methods: {
@@ -253,133 +203,13 @@ export default {
         label: theme(0.7),
       }
     },
-    restart() {
-      this.subscription?.unsubscribe()
-      this.subscription = null
-      this.series = [[], ...this.panel.items.map(() => [])]
-      this.latest = this.panel.items.map(() => null)
+    // tlmSeries hooks: a new plot when the series start over, new data
+    // about once a second
+    seriesReset() {
       this.lastValues = [...this.latest]
       this.createPlot()
-      // Nothing is streamed while the dashboard is being edited
-      if (!this.panel.items.length || !this.isLive) return
-      // Playback loads the window leading up to the playback time instead
-      if (this.isPlayback) {
-        if (this.playbackTime) {
-          this.loadRange(
-            new Date(this.playbackTime.getTime() - this.duration * 1000),
-            this.playbackTime,
-          )
-        }
-        return
-      }
-      this.startTime = (Date.now() - this.duration * 1000) * 1_000_000
-      this.needsAdd = false
-      this.socket
-        .createSubscription('StreamingChannel', window.openc3Scope, {
-          received: (rows) => {
-            this.socket.recordPing()
-            this.append(rows)
-          },
-          // connected can fire before or after the promise below resolves, and
-          // again after every reconnect, so both paths go through addItems
-          connected: () => {
-            this.needsAdd = true
-            this.addItems()
-          },
-        })
-        .then((subscription) => {
-          this.subscription = subscription
-          this.addItems()
-        })
     },
-    addItems() {
-      if (!this.subscription || !this.needsAdd) return
-      this.needsAdd = false
-      // Resume from the newest point we have so reconnects don't duplicate
-      const last = this.series[0].at(-1)
-      this.subscription.perform('add', {
-        scope: window.openc3Scope,
-        token: localStorage.openc3Token,
-        items: this.keys,
-        start_time: last ? Math.floor(last * 1e9) + 1 : this.startTime,
-      })
-    },
-    // Historical rows for playback, in the same shape the stream delivers
-    async loadRange(start, end) {
-      const items = this.panel.items
-      const timeKey = itemKey(
-        { ...items[0], itemName: 'PACKET_TIMESECONDS' },
-        'RAW',
-      )
-      const keys = [
-        timeKey,
-        ...items.map((item) => itemKey(item, pollType(item))),
-      ]
-      const poller = this.poller
-      poller.clock.loading++
-      try {
-        await poller.resolve(keys)
-        const data = await poller.api.get_tlm_values(
-          keys.map((key) => poller.available[key]),
-          30,
-          null,
-          start,
-          end,
-          { 'Ignore-Errors': '403' },
-        )
-        // The playback time moved on while this loaded
-        if (end !== this.playbackTime) return
-        // One row comes back unwrapped
-        const rows =
-          Array.isArray(data?.[0]) && Array.isArray(data[0][0]) ? data : [data]
-        this.append(
-          rows
-            .filter((row) => typeof row?.[0]?.[0] === 'number')
-            .map((row) =>
-              Object.fromEntries([
-                ['__time', row[0][0] * 1e9],
-                ...this.keys.map((key, i) => [key, row[i + 1]?.[0]]),
-              ]),
-            ),
-        )
-        this.render()
-      } catch (error) {
-        console.error('Dashboards graph playback failed:', error)
-      } finally {
-        poller.clock.loading--
-      }
-    },
-    append(rows) {
-      const [xs, ...ys] = this.series
-      for (const row of rows) {
-        if (!row.__time) continue
-        const t = row.__time / 1e9
-        let index = xs.length
-        while (index > 0 && xs[index - 1] > t) index--
-        if (index > 0 && xs[index - 1] === t) {
-          index--
-        } else {
-          xs.splice(index, 0, t)
-          ys.forEach((y) => y.splice(index, 0, null))
-        }
-        this.keys.forEach((key, i) => {
-          if (key in row) {
-            const value = typeof row[key] === 'number' ? row[key] : null
-            ys[i][index] = value
-            if (value !== null && index === xs.length - 1)
-              this.latest[i] = value
-          }
-        })
-      }
-    },
-    render() {
-      this.now = (this.playbackTime?.getTime() ?? Date.now()) / 1000
-      // Drop points that scrolled off the left edge
-      const cutoff = this.now - this.duration
-      const xs = this.series[0]
-      let drop = 0
-      while (drop < xs.length && xs[drop] < cutoff) drop++
-      if (drop > 0) this.series.forEach((series) => series.splice(0, drop))
+    seriesUpdated() {
       // Only touch the legend when a newest value changed
       if (this.latest.some((value, i) => value !== this.lastValues[i])) {
         this.lastValues = [...this.latest]
@@ -395,6 +225,8 @@ export default {
       })
     },
     createPlot() {
+      // The theme is read once the panel is in the page
+      if (!this.palette) this.resolveColors()
       this.plotColors = [...this.colors]
       this.plot?.destroy()
       this.tip = null
@@ -524,7 +356,7 @@ export default {
       this.tip = {
         left: left + u.over.offsetLeft,
         flip: left > u.over.clientWidth * 0.62,
-        time: utcClock(this.series[0][idx] * 1000),
+        time: clock(this.series[0][idx] * 1000, this.timeZone),
         rows: this.panel.items.map((item, index) => {
           const value = this.series[index + 1][idx]
           return {

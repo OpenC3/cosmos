@@ -15,7 +15,7 @@
 //
 //   DASHBOARD "INST Overview"
 //     SETTING ICON mdi-satellite-variant
-//     SETTING COLOR "#d95926"
+//     SETTING COLOR "#938bdb"
 
 import { SERIES_COLORS } from './panels/colors'
 

@@ -37,6 +37,8 @@
       <sparkline
         class="h-100"
         :points="points"
+        :times="times"
+        :window="[now - duration, now]"
         :limits="showLimitsLines ? stat.limits : null"
         :color="lineColor"
       />
@@ -56,20 +58,20 @@
 
 <script>
 import tlmPanel from './tlmPanel'
+import tlmSeries from './tlmSeries'
 import { itemOption, option } from './options'
 import LimitsBar from '../components/LimitsBar.vue'
 import Sparkline from '../components/Sparkline.vue'
 
-// Sparkline samples, one per poll
-const HISTORY_SAMPLES = 600
-
 // One value, big. Container queries hide the extras as the panel shrinks:
-// number only at the smallest size, then sparkline, then limits bar.
+// number only at the smallest size, then sparkline, then limits bar. The
+// sparkline shows DURATION minutes, backfilled when the dashboard opens
+// (tlmSeries).
 export default {
   components: { LimitsBar, Sparkline },
-  mixins: [tlmPanel],
+  mixins: [tlmPanel, tlmSeries],
   data() {
-    return { points: [] }
+    return { points: [], times: [] }
   },
   computed: {
     stat() {
@@ -87,6 +89,10 @@ export default {
     showGraph() {
       return option(this.panel, 'GRAPH')
     },
+    // Only streamed while the graph is shown
+    seriesItems() {
+      return this.showGraph ? this.panel.items.slice(0, 1) : []
+    },
     showLimitsLines() {
       return option(this.panel, 'LIMITS_LINES')
     },
@@ -94,22 +100,12 @@ export default {
       return option(this.panel, 'LIMITS_BAR')
     },
   },
-  watch: {
-    // Live and replayed samples don't belong on the same line
-    isPlayback() {
-      this.points = []
-    },
-    playbackTime(time, previous) {
-      if (!time || !previous || time < previous) this.points = []
-    },
-    // Sample once per poll, and only while the graph is shown
-    'poller.clock.tick'() {
-      if (!this.showGraph || this.stat.number === null) return
-      this.points.push(this.stat.number)
-      if (this.points.length > HISTORY_SAMPLES) this.points.shift()
-    },
-  },
   methods: {
+    // tlmSeries hook: copies, so the sparkline sees the change
+    seriesUpdated() {
+      this.times = [...this.series[0]]
+      this.points = [...(this.series[1] || [])]
+    },
     details() {
       if (this.openDetails && this.stat.item) this.openDetails(this.stat.item)
     },

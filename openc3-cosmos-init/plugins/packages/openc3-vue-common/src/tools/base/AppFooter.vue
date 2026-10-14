@@ -18,16 +18,22 @@
 <template>
   <v-footer v-if="!chromeless" id="footer" app height="33">
     <img :src="icon" alt="OpenC3" />
-    <span :class="footerClass" @click="upgrade">
-      OpenC3 {{ edition }} {{ version }} &copy; {{ currentYear }} - License:
-      {{ license }}
+    <!-- Mobile: just the edition and version, and the time without the date -->
+    <span :class="[footerClass, { 'text-truncate': mobile }]" @click="upgrade">
+      <template v-if="mobile">{{ edition }} {{ version }}</template>
+      <template v-else>
+        OpenC3 {{ edition }} {{ version }} &copy; {{ currentYear }} - License:
+        {{ license }}
+      </template>
     </span>
     <v-spacer />
-    <a :href="sourceUrl" class="text-white text-decoration-underline">
+    <a :href="sourceUrl" class="text-white text-decoration-underline mx-2">
       Source
     </a>
     <v-spacer />
-    <div class="justify-right"><clock-footer /></div>
+    <div class="justify-right text-no-wrap">
+      <clock-footer :compact="mobile" />
+    </div>
     <upgrade-to-enterprise-dialog
       v-model="showUpgradeToEnterpriseDialog"
       reason="Enterprise is Commercially Licensed"
@@ -60,6 +66,9 @@ export default {
     }
   },
   computed: {
+    mobile() {
+      return this.$vuetify.display.xs
+    },
     footerClass() {
       if (this.enterprise) {
         return 'enterprise'

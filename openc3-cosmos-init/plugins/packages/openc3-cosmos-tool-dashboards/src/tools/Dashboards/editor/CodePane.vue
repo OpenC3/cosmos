@@ -78,11 +78,17 @@ export default {
   },
   emits: ['apply'],
   data() {
-    return { value: this.text, errors: [], focused: false, timer: null }
+    return { value: '', errors: [], focused: false, timer: null }
   },
   watch: {
-    text(text) {
-      if (!this.focused) this.value = text
+    // The text can come in with problems (a file as it was written)
+    text: {
+      immediate: true,
+      handler(text) {
+        if (this.focused) return
+        this.value = text
+        this.errors = this.parse(text).errors
+      },
     },
   },
   unmounted() {

@@ -35,7 +35,13 @@ import tlmPanel, { itemLabel, pollType } from '../panels/tlmPanel'
 import { itemOption, option, withOption } from '../panels/options'
 import { SERIES_COLORS, seriesColor } from '../panels/colors'
 import { baseKey, itemKey, packetTimeKey } from './tlmPoller'
-import { formatTelemetry, toSeconds, utcClock } from './format'
+import {
+  clock,
+  formatItem,
+  formatTelemetry,
+  formatTime,
+  toSeconds,
+} from './format'
 import { stateToLevel, worstLevel } from '../status'
 import LimitsBar from '../components/LimitsBar.vue'
 import Sparkline from '../components/Sparkline.vue'
@@ -59,9 +65,12 @@ export const PANEL_SDK = Object.freeze({
   pollType,
   itemLabel,
   // Formatting and status
+  // Times: panels get the user's time zone as this.timeZone (panelBase)
   formatTelemetry,
+  formatItem,
+  formatTime,
   toSeconds,
-  utcClock,
+  clock,
   stateToLevel,
   worstLevel,
   SERIES_COLORS,

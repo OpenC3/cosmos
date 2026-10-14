@@ -34,7 +34,7 @@
           flat
           hide-details
           clearable
-          autofocus
+          :autofocus="!fullscreen"
           class="search"
           style="max-width: 520px"
           data-test="navigator-search"
@@ -165,7 +165,6 @@
                     @click.stop="duplicate(key)"
                   />
                   <v-btn
-                    v-if="!lean"
                     :icon="isStarred(key) ? 'mdi-star' : 'mdi-star-outline'"
                     :color="isStarred(key) ? 'warning' : undefined"
                     :class="{ 'text-medium-emphasis': !isStarred(key) }"

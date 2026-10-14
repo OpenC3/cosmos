@@ -55,7 +55,10 @@ module OpenC3
       end
     end
 
-    def initialize(name:, updated_at: nil, plugin: nil, scope:)
+    # url is accepted (and ignored, it's derived from the name) because models
+    # are rebuilt from their as_json, e.g. to find a plugin's models on
+    # upgrade or uninstall
+    def initialize(name:, updated_at: nil, plugin: nil, url: nil, scope:)
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
       @filename = "#{@name}.js"
       @bucket_key = "panels/#{@name}/#{@filename}"

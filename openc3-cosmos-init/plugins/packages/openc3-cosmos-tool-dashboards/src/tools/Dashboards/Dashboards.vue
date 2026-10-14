@@ -24,7 +24,9 @@
         class="d-flex align-center ga-2 text-body-1 flex-grow-1"
         style="min-width: 0"
       >
+        <!-- On phones the dashboard's name is the switcher instead -->
         <v-btn
+          v-if="!isPhone || !current"
           variant="text"
           :prepend-icon="isPhone ? undefined : 'mdi-view-dashboard-outline'"
           :icon="isPhone ? 'mdi-view-dashboard-outline' : undefined"
@@ -39,17 +41,34 @@
         </v-btn>
         <template v-if="current">
           <span v-if="!isPhone" class="text-disabled">/</span>
-          <dashboard-avatar
-            :icon="style.icon"
-            :color="style.color"
-            :size="32"
-          />
-          <span
-            class="font-weight-bold text-truncate"
-            data-test="dashboard-title"
+          <component
+            :is="isPhone ? 'button' : 'div'"
+            v-ripple="isPhone"
+            :type="isPhone ? 'button' : undefined"
+            :class="[
+              'd-flex align-center ga-2',
+              { 'phone-switcher rounded-lg pa-1 ml-n1 text-left': isPhone },
+            ]"
+            style="min-width: 0"
+            :aria-label="
+              isPhone ? `${model.title}, switch dashboard` : undefined
+            "
+            data-test="dashboard-switcher"
+            @click="isPhone && (navigatorOpen = true)"
           >
-            {{ model.title }}
-          </span>
+            <dashboard-avatar
+              :icon="style.icon"
+              :color="style.color"
+              :size="32"
+            />
+            <span
+              class="font-weight-bold text-truncate"
+              data-test="dashboard-title"
+            >
+              {{ model.title }}
+            </span>
+            <v-icon v-if="isPhone" icon="mdi-chevron-down" size="20" />
+          </component>
           <v-tooltip v-if="!isPhone" location="bottom" :text="starHelp">
             <template #activator="{ props }">
               <v-btn
@@ -207,14 +226,19 @@
       </v-btn>
     </header>
 
-    <playback-bar
-      v-if="playback.on && !editing"
-      :time="playback.time"
-      :loading="poller.clock.loading > 0"
-      :time-zone="timeZone"
-      @update:time="(time) => (playback.time = time)"
-      @live="goLive"
-    />
+    <!-- The same playback banner and controls as Telemetry Viewer. The
+         Playback button in the header goes back to live. -->
+    <template v-if="playback.on && !editing">
+      <playback-banner class="rounded-0" />
+      <div class="px-4 py-3 border-b" data-test="playback-bar">
+        <playback-controls
+          v-model="playback.time"
+          :time-zone="timeZone"
+          :loading="poller.clock.loading > 0"
+          storage-key="dashboards"
+        />
+      </div>
+    </template>
 
     <v-alert
       type="warning"
@@ -258,6 +282,15 @@
       <div>
         {{ loading ? 'Loading…' : 'Open a dashboard or create a new one.' }}
       </div>
+      <v-btn
+        v-if="!loading && dashboards.length"
+        variant="outlined"
+        prepend-icon="mdi-view-dashboard-outline"
+        data-test="dashboard-choose"
+        @click="navigatorOpen = true"
+      >
+        Choose a dashboard
+      </v-btn>
     </div>
 
     <main v-else-if="!editing" :class="isPhone ? 'pa-3' : 'pa-4'">
@@ -333,7 +366,7 @@
   />
   <code-dialog
     v-model="codeDialog"
-    :text="text"
+    :text="codeText"
     :path="filePath"
     @apply="applyModel"
   />
@@ -347,9 +380,13 @@
 </template>
 
 <script>
-import { markRaw, reactive } from 'vue'
+import { computed, markRaw, reactive } from 'vue'
 import { Api, Cable } from '@openc3/js-common/services'
-import { TopBar } from '@openc3/vue-common/components'
+import {
+  PlaybackBanner,
+  PlaybackControls,
+  TopBar,
+} from '@openc3/vue-common/components'
 import '@fontsource/ibm-plex-sans/400.css'
 import '@fontsource/ibm-plex-sans/500.css'
 import '@fontsource/ibm-plex-sans/600.css'
@@ -357,7 +394,6 @@ import '@fontsource/ibm-plex-mono/400.css'
 import '@fontsource/ibm-plex-mono/500.css'
 import './styles/dashboards.scss'
 import DashboardGrid from './DashboardGrid.vue'
-import PlaybackBar from './components/PlaybackBar.vue'
 import DashboardAvatar from './components/DashboardAvatar.vue'
 import DashboardStylePicker from './components/DashboardStylePicker.vue'
 import { dashboardStyle } from './dashboardStyle'
@@ -396,7 +432,8 @@ export default {
     DashboardDialog,
     DashboardAvatar,
     DashboardGrid,
-    PlaybackBar,
+    PlaybackBanner,
+    PlaybackControls,
     DashboardStylePicker,
     DashboardNavigator,
     ItemDetails,
@@ -412,6 +449,7 @@ export default {
       live: this.live,
       // { on, time }: panels show telemetry as of `time` while playback is on
       timeline: this.playback,
+      timeZone: computed(() => this.timeZone),
     }
   },
   // Leaving with unsaved edits asks first
@@ -440,6 +478,8 @@ export default {
       current: null, // { target, name }
       model: emptyDashboard(''),
       savedText: '',
+      // The file as it was opened, until the dashboard changes
+      fileText: null,
       errors: [],
       loading: true,
       saving: false,
@@ -491,6 +531,12 @@ export default {
     },
     dirty() {
       return !!this.current && this.text !== this.savedText
+    },
+    // The code dialog shows the file as written, comments and lines with
+    // problems included (the problems' line numbers point into it), until the
+    // dashboard changes; then the text made from the dashboard
+    codeText() {
+      return this.fileText !== null && !this.dirty ? this.fileText : this.text
     },
     style() {
       return dashboardStyle(this.model.settings)
@@ -668,13 +714,14 @@ export default {
         return
       }
       const { model, errors } = parseDashboard(text)
-      this.load({ target, name }, model, errors)
+      this.load({ target, name }, model, errors, text)
       this.rememberCurrent()
     },
-    load(current, model, errors = []) {
+    load(current, model, errors = [], fileText = null) {
       this.current = current
       this.model = model
       this.errors = errors
+      this.fileText = fileText
       this.editing = false
       this.savedText = this.text
     },
@@ -706,6 +753,7 @@ export default {
       try {
         await this.post(this.current.target, this.current.name, text)
         this.savedText = text
+        this.fileText = null
         remember(this.currentKey, text)
         this.$notify.normal({ title: 'Saved dashboard', body: this.currentKey })
       } catch (error) {
@@ -792,6 +840,7 @@ export default {
         this.current = null
         this.model = emptyDashboard('')
         this.savedText = ''
+        this.fileText = null
         this.editing = false
         localStorage.removeItem(LAST_KEY)
         this.$router.replace({ name: 'Dashboards', params: {} })
@@ -854,6 +903,7 @@ export default {
       reuseUids(this.model.panels, model.panels)
       this.model = model
       this.errors = []
+      this.fileText = null
     },
     applyPositions(layout) {
       for (const panel of this.model.panels) {
@@ -904,6 +954,9 @@ export default {
 </script>
 
 <style scoped>
+.phone-switcher {
+  color: inherit;
+}
 /* Same height viewing and editing so the page doesn't shift */
 .dashboard-header {
   min-height: 57px;

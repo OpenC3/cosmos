@@ -15,7 +15,7 @@
   <div
     :class="[
       'command-panel d-flex flex-column flex-grow-1 px-4',
-      isScript ? 'ga-1 pt-1 pb-2' : 'ga-2 pt-2 pb-4',
+      compact ? 'pb-2' : isScript ? 'ga-1 pt-1 pb-2' : 'ga-2 pt-2 pb-4',
     ]"
     style="min-height: 0"
   >
@@ -27,7 +27,7 @@
     </div>
     <template v-else>
       <v-chip
-        v-if="hazardous"
+        v-if="hazardous && !compact"
         size="small"
         variant="tonal"
         color="warning"
@@ -39,6 +39,7 @@
         Hazardous
       </v-chip>
       <div
+        v-if="!compact"
         class="d-flex flex-column ga-2 overflow-y-auto flex-grow-1"
         style="min-height: 0"
       >
@@ -87,25 +88,20 @@
           No parameters
         </div>
       </div>
-      <!-- Commands: status above a full width button. Scripts have little
-           else to show, so a small button with the status beside it fits
-           panels only 2 rows tall. -->
-      <div
-        :class="
-          isScript ? 'd-flex align-center ga-3' : 'd-flex flex-column ga-2 mt-2'
-        "
-      >
+      <!-- A full width button. Commands: the status above it. Scripts, and
+           panels only 2 rows tall, get a slim button with the status under
+           it. -->
+      <div :class="['d-flex flex-column', slim ? 'ga-1 mt-auto' : 'ga-2 mt-2']">
         <div
           :class="[
-            'text-caption text-medium-emphasis',
-            isScript ? 'order-last text-truncate flex-grow-1' : '',
+            'status text-caption text-medium-emphasis',
+            { 'order-last text-truncate slim': slim },
           ]"
-          style="min-height: 18px; min-width: 0"
-          :title="status"
+          :title="statusText"
           aria-live="polite"
           data-test="command-status"
         >
-          {{ timeline.on ? 'Off during playback' : status }}
+          {{ statusText }}
           <a
             v-if="scriptId"
             :href="`/tools/scriptrunner/${scriptId}`"
@@ -119,11 +115,11 @@
           v-if="confirm === 'HOLD'"
           type="button"
           :class="[
-            'hold d-flex align-center justify-center rounded-lg border text-body-2',
-            isScript ? 'slim flex-shrink-0' : 'w-100',
-            { holding, hz: hazardous },
+            'hold d-flex align-center justify-center w-100 position-relative overflow-hidden rounded-lg border text-body-2',
+            { slim, holding, hz: hazardous },
           ]"
           :disabled="!ready || sending"
+          :title="compact ? details : undefined"
           data-test="command-send"
           @pointerdown="startHold"
           @pointerup="cancelHold"
@@ -139,19 +135,19 @@
           <span
             class="d-inline-flex align-center ga-2 position-relative font-weight-bold"
           >
-            <v-icon :icon="icon" :size="isScript ? 16 : 18" />
+            <v-icon :icon="icon" :size="slim ? 16 : 18" />
             {{ holdLabel }}
           </span>
         </button>
         <v-btn
           v-else
-          :block="!isScript"
-          :size="isScript ? 'small' : 'large'"
-          :class="{ 'flex-shrink-0': isScript }"
+          block
+          :size="slim ? 'small' : 'large'"
           :color="hazardous ? 'warning' : 'primary'"
           :prepend-icon="icon"
           :disabled="!ready"
           :loading="sending"
+          :title="compact ? details : undefined"
           data-test="command-send"
           @click="clickSend"
         >
@@ -173,9 +169,10 @@ import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { CriticalCmdDialog } from '@openc3/vue-common/components'
 import { CmdUtilities } from '@openc3/vue-common/util'
 import StatusSymbol from '../components/StatusSymbol.vue'
+import panelBase from './panelBase'
 import { option } from './options'
 import { loadCommandParams } from './commandParams'
-import { utcClock } from '../composables/format'
+import { clock } from '../composables/format'
 
 const HOLD_MS = 800
 const HOLD_HAZARDOUS_MS = 2000
@@ -188,18 +185,8 @@ let nextUid = 1
 // Critical commands go through the standard critical command approval dialog.
 export default {
   components: { CriticalCmdDialog, StatusSymbol },
-  mixins: [CmdUtilities],
-  // Off while the dashboard is being edited, so nothing is sent by accident
-  // live is off while editing and timeline is on during playback: either
-  // way nothing is sent
-  inject: {
-    live: { default: () => ({ on: true }) },
-    timeline: { default: () => ({ on: false }) },
-  },
-  props: {
-    panel: { type: Object, required: true },
-  },
-  emits: ['level'],
+  // panelBase: nothing is sent while editing (isLive) or during playback
+  mixins: [panelBase, CmdUtilities],
   data() {
     return {
       api: new OpenC3Api(),
@@ -224,6 +211,33 @@ export default {
     isScript() {
       return !!this.panel.script
     },
+    // 2 rows tall: only the button and its status. Commands send their
+    // PARAMETER values; DETAILS shows as the button's tooltip.
+    compact() {
+      return this.panel.h <= 2
+    },
+    slim() {
+      return this.isScript || this.compact
+    },
+    // Required parameters without a value, which a compact panel has no
+    // form to ask for
+    unsetRequired() {
+      if (!this.compact) return []
+      return this.params
+        .filter(
+          (param) =>
+            param.required &&
+            [undefined, null, ''].includes(this.values[param.name]),
+        )
+        .map((param) => param.name)
+    },
+    statusText() {
+      if (this.isPlayback) return 'Off during playback'
+      if (this.unsetRequired.length) {
+        return `Needs ${this.unsetRequired.join(', ')}: make the panel taller to set it`
+      }
+      return this.status
+    },
     icon() {
       return this.isScript ? 'mdi-play' : 'mdi-send-outline'
     },
@@ -244,7 +258,13 @@ export default {
     },
     // Loaded, its hazard known, not editing and not in playback
     ready() {
-      return this.loaded && !this.checking && this.live.on && !this.timeline.on
+      return (
+        this.loaded &&
+        !this.checking &&
+        this.isLive &&
+        !this.isPlayback &&
+        !this.unsetRequired.length
+      )
     },
     holdMs() {
       return this.hazardous ? HOLD_HAZARDOUS_MS : HOLD_MS
@@ -285,7 +305,6 @@ export default {
     },
   },
   created() {
-    this.$emit('level', null)
     this.load()
   },
   unmounted() {
@@ -436,7 +455,7 @@ export default {
           { data: { environment: [] } },
         )
         this.scriptId = response.data
-        this.status = `Started ${utcClock()}`
+        this.status = `Started ${clock(Date.now(), this.timeZone)}`
         if (option(this.panel, 'OPEN_SCRIPT')) {
           window.open(`/tools/scriptrunner/${this.scriptId}`, '_blank')
         }
@@ -461,7 +480,7 @@ export default {
         await this.api[method](targetName, commandName, params, {
           'Ignore-Errors': '428 500',
         })
-        this.status = `Sent ${targetName} ${commandName} at ${utcClock()}`
+        this.status = `Sent ${targetName} ${commandName} at ${clock(Date.now(), this.timeZone)}`
       } catch (error) {
         this.handleError(error)
       } finally {
@@ -492,6 +511,15 @@ export default {
 </script>
 
 <style scoped>
+/* Room for one line, so the button and its status fit 2 rows */
+.status {
+  min-height: 18px;
+  min-width: 0;
+}
+.status.slim {
+  min-height: 16px;
+  line-height: 16px;
+}
 /* Narrow panels put parameter labels above their inputs */
 .command-panel {
   container-type: inline-size;
@@ -523,18 +551,26 @@ export default {
   }
 }
 .hold {
-  position: relative;
-  overflow: hidden;
   user-select: none;
   touch-action: none;
   min-height: 44px;
   cursor: pointer;
-  background: rgb(var(--v-theme-surface-light));
+  /* The theme's colors: a primary tint and fill, with the text and outline
+     in secondary, the lighter partner every theme gives primary (primary
+     itself is too dark to read on a dark panel). Warning for hazardous. */
+  --hold-color: var(--v-theme-primary);
+  --hold-ink: var(--v-theme-secondary);
+  color: rgb(var(--hold-ink));
+  background: rgba(var(--hold-color), 0.12);
+  border-color: rgba(var(--hold-ink), 0.5) !important;
 }
-/* Scripts have little else in the panel, so their button is small */
+.hold.hz {
+  --hold-color: var(--v-theme-warning);
+  --hold-ink: var(--v-theme-warning);
+}
+/* Scripts have little else in the panel, so their button is slim */
 .hold.slim {
   min-height: 28px;
-  padding: 0 14px;
   font-size: 12px;
 }
 .details {
@@ -548,12 +584,11 @@ export default {
   position: absolute;
   inset: 0 auto 0 0;
   width: 0;
-  background: color-mix(in srgb, var(--color-status-normal) 28%, transparent);
+  /* The lighter ink color, so the fill stands out from the primary tint
+     (hazardous is unchanged: its ink is warning too) */
+  background: rgba(var(--hold-ink), 0.35);
   transition-property: width;
   transition-timing-function: linear;
-}
-.hold.hz .hold-fill {
-  background: color-mix(in srgb, var(--color-status-serious) 34%, transparent);
 }
 .hold.holding .hold-fill {
   width: 100%;
