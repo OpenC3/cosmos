@@ -52,6 +52,19 @@ async function checkValue(page, param, value) {
   ).toHaveValue(value)
 }
 
+// Helper function to toggle a Command Sender mode menu option
+async function toggleMode(page, mode) {
+  await page.locator('[data-test=command-sender-mode]').click()
+  await page.getByText(mode).click()
+  await page.locator('[data-test=command-sender-mode]').click()
+}
+
+// Helper function to send the command and confirm the hazardous dialog
+async function sendHazardousCmd(page) {
+  await page.locator('[data-test="select-send"]').click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+}
+
 // Helper function to check command history
 async function checkHistory(page, value) {
   await page
@@ -130,42 +143,32 @@ test('warns for hazardous commands', async ({ page, utils }) => {
   )
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.locator('main')).toContainText('Hazardous command not sent')
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText('cmd("INST CLEAR") sent')
   await checkHistory(page, 'cmd("INST CLEAR")')
 
   // Disable range checks to confirm history output
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('text=Ignore Range Checks').click()
-  await page.locator('[data-test=command-sender-mode]').click()
+  await toggleMode(page, 'Ignore Range Checks')
 
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST CLEAR") sent',
   )
   await checkHistory(page, 'cmd_no_range_check("INST CLEAR")')
 
   // Disable parameter conversions to confirm history output
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('text=Disable Parameter').click()
-  await page.locator('[data-test=command-sender-mode]').click()
+  await toggleMode(page, 'Disable Parameter')
 
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText(
     'cmd_raw_no_range_check("INST CLEAR") sent',
   )
   await checkHistory(page, 'cmd_raw_no_range_check("INST CLEAR")')
 
   // Enable range checks to confirm history output
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('text=Ignore Range Checks').click()
-  await page.locator('[data-test=command-sender-mode]').click()
+  await toggleMode(page, 'Ignore Range Checks')
 
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText('cmd_raw("INST CLEAR") sent')
   await checkHistory(page, 'cmd_raw("INST CLEAR")')
 })
@@ -199,8 +202,7 @@ test('warns for hazardous parameters', async ({ page, utils }) => {
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.locator('main')).toContainText('Hazardous command not sent')
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+  await sendHazardousCmd(page)
   // Ensure the state is used, e.g. 'SPECIAL' and not the value
   await expect(page.locator('main')).toContainText(
     'cmd("INST COLLECT with TYPE \'SPECIAL\', DURATION 1, OPCODE 171, TEMP 0") sent',
@@ -245,11 +247,8 @@ test('handles NaN and Infinite values', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('not in valid range')
   await page.locator('button:has-text("Ok")').click()
   // Disable range checks
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('text=Ignore Range Checks').click()
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
+  await toggleMode(page, 'Ignore Range Checks')
+  await sendHazardousCmd(page)
 
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST FLTCMD with FLOAT32 NaN, FLOAT64 NaN") sent',
@@ -261,8 +260,7 @@ test('handles NaN and Infinite values', async ({ page, utils }) => {
 
   await setValue(page, 'FLOAT32', 'INFINITY')
   await setValue(page, 'FLOAT64', '-infinity')
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST FLTCMD with FLOAT32 Infinity, FLOAT64 -Infinity") sent',
   )
@@ -399,8 +397,7 @@ test('executes commands from history', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText(
     'Clears counters on the INST instrument',
   )
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText('cmd("INST CLEAR") sent')
   await checkHistory(page, 'cmd("INST CLEAR")')
   // Re-execute the command from the history
@@ -527,8 +524,7 @@ test('hazardous commands from history', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText(
     'Clears counters on the INST instrument',
   )
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText('cmd("INST CLEAR") sent')
   await checkHistory(page, 'cmd("INST CLEAR")')
   // Send a different command: INST ASCIICMD
@@ -536,8 +532,7 @@ test('hazardous commands from history', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText('Enumerated ASCII command')
   await selectValue(page, 'STRING', 'ARM LASER')
   await checkValue(page, 'STRING', 'ARM LASER')
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText(
     "cmd(\"INST ASCIICMD with STRING 'ARM LASER', BINARY 0xDEADBEEF, ASCII '0xDEADBEEF'\")",
   )
@@ -578,11 +573,8 @@ test('ignores normal range checks', async ({ page, utils }) => {
   )
   await page.locator('button:has-text("Ok")').click()
   // Disable range checks
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.getByText('Ignore Range Checks').click()
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
+  await toggleMode(page, 'Ignore Range Checks')
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 171, TEMP 100") sent',
   )
@@ -592,9 +584,7 @@ test('ignores normal range checks', async ({ page, utils }) => {
   )
 
   // Enable range checks
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.getByText('Ignore Range Checks').click()
-  await page.locator('[data-test=command-sender-mode]').click()
+  await toggleMode(page, 'Ignore Range Checks')
   await utils.selectTargetPacketItem('EXAMPLE', 'START')
   await expect(page.locator('main')).toContainText(
     'Starts something on the example target',
@@ -622,19 +612,15 @@ test('ignores hazardous range checks', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'COLLECT')
   await selectValue(page, 'TYPE', 'SPECIAL') // Special is hazardous
   await setValue(page, 'TEMP', '100')
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
+  await sendHazardousCmd(page)
   // Dialog should pop up with error
   await expect(page.locator('.v-dialog:has-text("Error")')).toContainText(
     'not in valid range',
   )
   await page.locator('button:has-text("Ok")').click()
   // Disable range checks
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('text=Ignore Range Checks').click()
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.locator('[data-test="select-send"]').click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
+  await toggleMode(page, 'Ignore Range Checks')
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST COLLECT with TYPE \'SPECIAL\', DURATION 1, OPCODE 171, TEMP 100") sent',
   )
@@ -746,9 +732,7 @@ test('sends manually entered state values', async ({ page, utils }) => {
   )
 
   // Enable Ignore Range Checks to unlock manual entry
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.getByText('Ignore Range Checks').click()
-  await page.locator('[data-test=command-sender-mode]').click()
+  await toggleMode(page, 'Ignore Range Checks')
 
   // Select MANUALLY_ENTERED from the TYPE state dropdown
   let row = page.locator('tr:has(td:text-is("TYPE"))')
@@ -780,9 +764,7 @@ test('sends manually entered state values', async ({ page, utils }) => {
   )
 
   // Disable Ignore Range Checks and verify MANUALLY_ENTERED option is gone
-  await page.locator('[data-test=command-sender-mode]').click()
-  await page.getByText('Ignore Range Checks').click()
-  await page.locator('[data-test=command-sender-mode]').click()
+  await toggleMode(page, 'Ignore Range Checks')
 
   // The TYPE dropdown should no longer have MANUALLY_ENTERED
   await row.locator('[data-test=cmd-param-select]').click({ force: true })
