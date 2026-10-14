@@ -132,7 +132,9 @@
           <v-spacer />
         </v-toolbar>
         <v-card-text class="mt-6">
-          Warning: Command {{ hazardousCommand }} is Hazardous. Send?
+          Warning: Command {{ hazardousCommand }} is Hazardous.
+          <span v-if="ignoreRangeChecks">Range checks are also ignored.</span>
+          Send?
           <div class="mt-1">Description: {{ commandDescription }}</div>
           <div
             v-if="hazardousDescription"
