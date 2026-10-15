@@ -82,13 +82,9 @@ export default {
           pluginsToShow.push(plugin)
         }
       })
-      pluginsToShow.sort((a, b) =>
-        a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-      )
+      pluginsToShow.sort((a, b) => a.name.localeCompare(b.name))
       if (this.showDefaultTools) {
-        defaultPluginsToShow.sort((a, b) =>
-          a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-        )
+        defaultPluginsToShow.sort((a, b) => a.name.localeCompare(b.name))
         return pluginsToShow.concat(defaultPluginsToShow)
       }
       return pluginsToShow
