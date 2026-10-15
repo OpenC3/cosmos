@@ -52,6 +52,12 @@ module OpenC3
         expect(Topic.stream_max_age_ms).to eql 120_000
       end
 
+      it "raises small max ages to the minimum" do
+        ENV['OPENC3_STREAM_MAX_AGE_SECONDS'] = '0.5'
+        expect(Logger).to receive(:warn).with(/below the minimum/)
+        expect(Topic.stream_max_age_ms).to eql 120_000
+      end
+
       it "caps relative to now for auto generated ids" do
         allow(Process).to receive(:clock_gettime).and_call_original
         allow(Process).to receive(:clock_gettime).with(Process::CLOCK_REALTIME, :millisecond).and_return(1700000000000)
@@ -95,6 +101,10 @@ module OpenC3
         expect(Topic.log_stream_min_age_seconds('INST', :CMD, scope: 'DEFAULT')).to eql 2520
       end
 
+      it "raises if the target lookup fails" do
+        allow(TargetModel).to receive(:get).and_raise(RuntimeError, 'down')
+        expect { Topic.log_stream_min_age_seconds('INST', :TLM, scope: 'DEFAULT') }.to raise_error(RuntimeError, 'down')
+      end
     end
 
     describe "self.log_stream_safety_minid" do
@@ -119,6 +129,29 @@ module OpenC3
         Topic.log_stream_safety_minid('INST', :CMD, scope: 'DEFAULT')
         Topic.log_stream_safety_minid('INST', :CMD, scope: 'DEFAULT')
       end
+
+      it "doesn't cap or cache when the log cycle lookup fails and retries later" do
+        monotonic = 1000.0
+        allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC) { monotonic }
+        model = { 'tlm_log_cycle_time' => 3600 }
+        calls = 0
+        allow(TargetModel).to receive(:get) do
+          calls += 1
+          raise 'down' if calls == 1
+          model
+        end
+        expect(Logger).to receive(:warn).with(/Unable to determine log cycle time for INST TLM/).once
+        expect(Topic.log_stream_safety_minid('INST', :TLM, scope: 'DEFAULT')).to be_nil
+        # Not retried until the retry interval passes
+        monotonic += Topic::LOG_CYCLE_LOOKUP_RETRY_SECONDS - 1
+        expect(Topic.log_stream_safety_minid('INST', :TLM, scope: 'DEFAULT')).to be_nil
+        expect(calls).to eql 1
+        monotonic += 1
+        expect(Topic.log_stream_safety_minid('INST', :TLM, scope: 'DEFAULT')).to eql (1700000000000 - 7_320_000).to_s
+        # Now cached
+        expect(Topic.log_stream_safety_minid('INST', :TLM, scope: 'DEFAULT')).to eql (1700000000000 - 7_320_000).to_s
+        expect(calls).to eql 2
+      end
     end
 
     describe "self.write_topic" do
@@ -130,6 +163,10 @@ module OpenC3
       it "uses maxlen when no minid is given" do
         expect_any_instance_of(MockRedis).to receive(:xadd).with('TOPIC', { 'a' => 1 }, id: '*', maxlen: 10, approximate: 'true').and_return('1-0')
         expect(Topic.write_topic('TOPIC', { 'a' => 1 }, '*', 10)).to eql '1-0'
+      end
+
+      it "raises if both maxlen and minid are given" do
+        expect { Topic.write_topic('TOPIC', { 'a' => 1 }, '*', 10, minid: '123') }.to raise_error(ArgumentError, /both maxlen and minid/)
       end
     end
 

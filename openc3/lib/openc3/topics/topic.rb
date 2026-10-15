@@ -33,19 +33,30 @@ module OpenC3
     # If a trimmer is absent (logging disabled, no TSDB) or falls far behind, the streams
     # would grow without bound. As a safety net every write to these streams also passes
     # an approximate XADD MINID so no entry older than the safety max age is retained.
-    # The max age is OPENC3_STREAM_MAX_AGE_SECONDS (default 600s, 0 or empty disables).
-    # For TELEMETRY__ / COMMAND__ the max age is never less than two log cycles plus the
-    # cleanup delay, because historical streaming reads data not yet in the bucket from
-    # the stream.
+    # The max age is OPENC3_STREAM_MAX_AGE_SECONDS (default 600s, 0 or empty disables) and is
+    # never less than STREAM_MAX_AGE_MIN_SECONDS. For TELEMETRY__ / COMMAND__ the max age is
+    # never less than two log cycles plus the cleanup delay, because historical streaming reads
+    # data not yet in the bucket from the stream.
+    #
+    # When the minid is calculated from now (auto generated ids) it uses this host's clock while
+    # Redis generates the ids from its own clock. A writer clock ahead of Redis by more than the
+    # max age would trim the entire stream (including the entry being added) so hosts must be
+    # time synchronized (NTP).
     STREAM_MAX_AGE_DEFAULT_SECONDS = 600
-    # Mirrors LogWriter::CLEANUP_DELAY and the TargetModel default log cycle time
+    # Twice TsdbMicroservice::TRIM_KEEP_MS. Also protects against small clock offsets.
+    STREAM_MAX_AGE_MIN_SECONDS = 120
+    # LogWriter::CLEANUP_DELAY is defined from this
     LOG_CLEANUP_DELAY_SECONDS = 60
+    # TargetModel default log cycle time
     DEFAULT_LOG_CYCLE_TIME_SECONDS = 600
+    # How long to wait before retrying a failed log cycle time lookup
+    LOG_CYCLE_LOOKUP_RETRY_SECONDS = 60
     # These are calculated on the write path of every packet so they are cached per process.
     # The environment doesn't change while a microservice runs and the log cycle time only
     # changes when the plugin (and therefore the microservices) are reinstalled.
     @@stream_max_age_ms = nil
     @@log_stream_max_age_ms = {}
+    @@log_cycle_lookup_retry_at = {}
 
     # Delegate all unknown class methods to EphemeralStore db_shard 0 (system-level topics)
     def self.method_missing(message, *args, **kwargs, &block)
@@ -78,7 +89,17 @@ module OpenC3
 
     # @return [Integer] Cached safety max age in milliseconds (0 means disabled)
     def self.stream_max_age_ms
-      @@stream_max_age_ms ||= [(stream_max_age_seconds * 1000).to_i, 0].max
+      @@stream_max_age_ms ||= begin
+        seconds = stream_max_age_seconds
+        if seconds <= 0
+          0
+        elsif seconds < STREAM_MAX_AGE_MIN_SECONDS
+          Logger.warn("OPENC3_STREAM_MAX_AGE_SECONDS of #{seconds} is below the minimum, using #{STREAM_MAX_AGE_MIN_SECONDS}")
+          STREAM_MAX_AGE_MIN_SECONDS * 1000
+        else
+          (seconds * 1000).to_i
+        end
+      end
     end
 
     # Calculates the MINID to pass to XADD to cap the age of entries in a target stream.
@@ -110,14 +131,35 @@ module OpenC3
       target_cache = ((@@log_stream_max_age_ms[scope] ||= {})[target_name] ||= {})
       max_age_ms = target_cache[cmd_or_tlm]
       unless max_age_ms
-        max_age_ms = stream_max_age_ms
-        if max_age_ms > 0
-          min_age_ms = log_stream_min_age_seconds(target_name, cmd_or_tlm, scope: scope) * 1000
-          max_age_ms = min_age_ms if min_age_ms > max_age_ms
-        end
+        max_age_ms = log_stream_max_age_ms(target_name, cmd_or_tlm, scope: scope)
+        return nil unless max_age_ms # Log cycle time unknown so don't cap yet
         target_cache[cmd_or_tlm] = max_age_ms
       end
       return stream_safety_minid(max_age_ms: max_age_ms)
+    end
+
+    # @param target_name [String] Target name
+    # @param cmd_or_tlm [Symbol] :CMD or :TLM
+    # @return [Integer|nil] Max age in milliseconds for a TELEMETRY__ / COMMAND__ stream (0 means
+    #   disabled) or nil if the log cycle time couldn't be determined. Guessing the log cycle time
+    #   could trim data historical streaming still needs, so the stream isn't capped until a
+    #   lookup (retried every LOG_CYCLE_LOOKUP_RETRY_SECONDS) succeeds.
+    def self.log_stream_max_age_ms(target_name, cmd_or_tlm, scope:)
+      max_age_ms = stream_max_age_ms
+      return max_age_ms if max_age_ms <= 0
+      key = [scope, target_name, cmd_or_tlm]
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      retry_at = @@log_cycle_lookup_retry_at[key]
+      return nil if retry_at and now < retry_at
+      begin
+        min_age_ms = log_stream_min_age_seconds(target_name, cmd_or_tlm, scope: scope) * 1000
+      rescue => e
+        Logger.warn("Unable to determine log cycle time for #{target_name} #{cmd_or_tlm}, stream age not capped: #{e.message}")
+        @@log_cycle_lookup_retry_at[key] = now + LOG_CYCLE_LOOKUP_RETRY_SECONDS
+        return nil
+      end
+      @@log_cycle_lookup_retry_at.delete(key)
+      return [max_age_ms, min_age_ms].max
     end
 
     # Minimum age to retain in a TELEMETRY__ / COMMAND__ stream so the log microservice
@@ -126,17 +168,14 @@ module OpenC3
     # @param target_name [String] Target name
     # @param cmd_or_tlm [Symbol] :CMD or :TLM
     # @return [Integer] Minimum age in seconds
+    # @raise If the TargetModel lookup fails
     def self.log_stream_min_age_seconds(target_name, cmd_or_tlm, scope:)
+      require 'openc3/models/target_model'
       cycle_time = DEFAULT_LOG_CYCLE_TIME_SECONDS
-      begin
-        require 'openc3/models/target_model'
-        model = TargetModel.get(name: target_name, scope: scope)
-        if model
-          value = model[cmd_or_tlm == :CMD ? 'cmd_log_cycle_time' : 'tlm_log_cycle_time'].to_i
-          cycle_time = value if value > 0
-        end
-      rescue => e
-        Logger.warn("Unable to determine log cycle time for #{target_name}: #{e.message}")
+      model = TargetModel.get(name: target_name, scope: scope)
+      if model
+        value = model[cmd_or_tlm == :CMD ? 'cmd_log_cycle_time' : 'tlm_log_cycle_time'].to_i
+        cycle_time = value if value > 0
       end
       return 2 * (cycle_time + LOG_CLEANUP_DELAY_SECONDS)
     end
@@ -144,6 +183,7 @@ module OpenC3
     def self.clear_stream_max_age_cache
       @@stream_max_age_ms = nil
       @@log_stream_max_age_ms = {}
+      @@log_cycle_lookup_retry_at = {}
     end
 
     def self.read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil, db_shard: 0, &block)

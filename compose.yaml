@@ -395,6 +395,7 @@ services:
       - OPENC3_LOG_STDERR
       - OPENC3_SECRET_FILE_DIR
       - OPENC3_LOG_LEVEL
+      - OPENC3_STREAM_MAX_AGE_SECONDS
     extra_hosts:
       - host.docker.internal:host-gateway
 

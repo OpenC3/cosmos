@@ -271,6 +271,7 @@ module OpenC3
     # @return [String] the entry id
     def write_topic(topic, msg_hash, id = '*', maxlen = nil, approximate = 'true', minid: nil)
       id = '*' if id.nil?
+      raise ArgumentError, "write_topic can't supply both maxlen and minid" if maxlen and minid
       @redis_pool.with do |redis|
         if minid
           return redis.xadd(topic, msg_hash, id: id, minid: minid, approximate: approximate)
