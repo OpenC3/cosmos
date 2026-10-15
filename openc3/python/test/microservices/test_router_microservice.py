@@ -190,6 +190,14 @@ class TestRouterMicroservice(unittest.TestCase):
         self.assertEqual(results[1], "SUCCESS")
         tlm.attempting.assert_called_once_with("host", 1)
 
+    def test_attempt_connection_updates_the_router_model(self):
+        im = RouterMicroservice("DEFAULT__ROUTER__TEST_INT")
+        self.addCleanup(im.shutdown)
+        im.attempt_connection("test-host", 54321)
+        self.assertEqual(im.interface.port, 54321)
+        model = RouterModel.get(name="TEST_INT", scope="DEFAULT")
+        self.assertEqual(model["config_params"][1:], ["test-host", 54321])
+
     def test_supports_router_cmd(self):
         im = RouterMicroservice("DEFAULT__ROUTER__TEST_INT")
         self._run(im)

@@ -568,6 +568,11 @@ module OpenC3
   class InterfaceMicroservice < Microservice
     UNKNOWN_BYTES_TO_PRINT = 16
 
+    # Interfaces never use descriptions so don't keep them in memory
+    def load_descriptions?
+      false
+    end
+
     def initialize(name)
       @mutex = Mutex.new
       super(name)
@@ -952,7 +957,12 @@ module OpenC3
         @handler_thread.stop if @handler_thread
         @interface_thread_sleeper.cancel if @interface_thread_sleeper
         if @interface
-          @interface.disconnect
+          begin
+            @interface.disconnect
+          rescue => e
+            # Still clean up the status and stream logs if disconnect fails
+            @logger.error "#{@interface.name}: Disconnect failed during stop: #{e.formatted}"
+          end
           if @interface_or_router == 'INTERFACE'
             valid_interface = InterfaceStatusModel.get_model(name: @interface.name, scope: @scope)
           else

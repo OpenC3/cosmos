@@ -283,6 +283,51 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
             self.assertEqual(im.interface.port, 54321)
 
+    def test_attempt_connection_keeps_the_original_interface_if_the_rebuild_fails(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        original = im.interface
+        for stdout in capture_io():
+            # MyInterface takes at most two parameters so this raises TypeError, not RuntimeError
+            result = im.attempt_connection("host", 1, "extra")
+            self.assertIn("Attempting connection", stdout.getvalue())
+        self.assertIs(result, original)
+        self.assertIs(im.interface, original)
+
+    def test_attempt_connection_carries_over_the_stream_log_pair(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        stream_log_pair = Mock()
+        im.interface.stream_log_pair = stream_log_pair
+        im.attempt_connection("test-host", 54321)
+        self.assertEqual(im.interface.port, 54321)
+        self.assertIs(im.interface.stream_log_pair, stream_log_pair)
+        model = InterfaceModel.get(name="INST_INT", scope="DEFAULT")
+        self.assertEqual(model["config_params"][1:], ["test-host", 54321])
+
+    def test_stop_cleans_up_even_if_the_interface_disconnect_raises(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        stream_log_pair = Mock()
+        stream_log_pair.shutdown.return_value = []
+        im.interface.stream_log_pair = stream_log_pair
+        self.assertIsNotNone(InterfaceStatusModel.get_model(name="INST_INT", scope="DEFAULT"))
+        for stdout in capture_io():
+            with patch.object(im.interface, "disconnect", side_effect=RuntimeError("test-error")):
+                im.shutdown()
+            self.assertIn("Disconnect failed during stop", stdout.getvalue())
+        self.assertIsNone(InterfaceStatusModel.get_model(name="INST_INT", scope="DEFAULT"))
+        stream_log_pair.shutdown.assert_called_once()
+
+    def test_process_cmd_shutdown_directive_clears_the_topics(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        topic = "{DEFAULT__CMD}INTERFACE__INST_INT"
+        msg_id = f"{int(time.time() * 1000)}-0"
+        with patch.object(InterfaceTopic, "clear_topics") as clear_topics:
+            result = im.handler_thread.process_cmd(topic, msg_id, {b"shutdown": b"true"}, None)
+        self.assertEqual(result, "SHUTDOWN")
+        clear_topics.assert_called_once()
+
     def test_ignores_connect_interface_on_a_connected_interface(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         im.interface.reconnect_delay = 0.1  # Override the reconnect delay to be quick

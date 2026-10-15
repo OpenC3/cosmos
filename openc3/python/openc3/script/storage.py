@@ -8,6 +8,7 @@
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+import base64
 import io
 import json
 import os
@@ -61,6 +62,15 @@ def put_target_file(path: str, io_or_string: io.IOBase | str, scope: str = OPENC
 
     upload_path = f"{scope}/targets_modified/{path}"
 
+    if LocalMode.local_only_name(path):
+        # The local mode volume is only mounted in the cluster so from outside
+        # write it through the API which never sends it to the bucket
+        if not openc3.script.OPENC3_IN_CLUSTER:
+            return _upload_api_file(upload_path, io_or_string, scope=scope)
+        print(f"Writing local {upload_path}")
+        LocalMode.put_target_file(upload_path, io_or_string, scope=scope)
+        return None
+
     if os.getenv("OPENC3_LOCAL_MODE") and openc3.script.OPENC3_IN_CLUSTER:
         LocalMode.put_target_file(upload_path, io_or_string, scope=scope)
         if hasattr(io_or_string, "read"):  # not str or bytes
@@ -103,6 +113,14 @@ def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE
     Return:
         (File | None)
     """
+    # Local only targets only exist in the local mode volume so original doesn't apply
+    if LocalMode.local_only_name(path):
+        # The local mode volume is only mounted in the cluster so from outside
+        # read it through the API which serves it from the volume
+        if not openc3.script.OPENC3_IN_CLUSTER:
+            return _get_api_file(f"targets_modified/{path}", scope=scope)
+        return _get_local_file(path, scope=scope)
+
     part = "targets"
     if original is False:
         part += "_modified"
@@ -110,12 +128,8 @@ def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE
     while True:
         try:
             if part == "targets_modified" and os.getenv("OPENC3_LOCAL_MODE"):
-                local_file = LocalMode.open_local_file(path, scope=scope)
-                if local_file:
-                    print(f"Reading local {scope}/{part}/{path}")
-                    file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
-                    file.write(local_file.read())
-                    file.seek(0)  # Rewind so the file is ready to read
+                file = _get_local_file(path, scope=scope)
+                if file:
                     return file
             return _get_storage_file(f"{part}/{path}", scope=scope)
         except Exception:
@@ -129,6 +143,55 @@ def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE
 # These are helper methods ... should not be used directly
 
 
+def _upload_api_file(path, io_or_string, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
+    """Write a file through the API instead of a presigned URL"""
+    data = io_or_string.read() if hasattr(io_or_string, "read") else io_or_string
+    if isinstance(data, str):
+        data = data.encode("utf-8")
+    endpoint = f"/openc3-api/storage/upload_file/{path}"
+    print(f"Writing {path}")
+    response = openc3.script.API_SERVER.request(
+        "put",
+        endpoint,
+        query={"bucket": bucket},
+        data={"contents": base64.b64encode(data).decode("ascii")},
+        json=True,
+        scope=scope,
+    )
+    if not response or response.status_code != 200:
+        raise RuntimeError(f"Failed to write {path}")
+    return None
+
+
+def _get_api_file(path, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
+    """Read a file through the API instead of a presigned URL. Returns None if the file doesn't exist"""
+    endpoint = f"/openc3-api/storage/download_file/{scope}/{path}"
+    response = openc3.script.API_SERVER.request("get", endpoint, query={"bucket": bucket}, scope=scope)
+    if response is not None and response.status_code == 404:
+        return None
+    if not response or response.status_code != 200:
+        raise RuntimeError(f"Failed to read {scope}/{path}")
+    print(f"Reading {scope}/{path}")
+    file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
+    file.write(base64.b64decode(response.json()["contents"]))
+    file.seek(0)  # Rewind so the file is ready to read
+    return file
+
+
+def _get_local_file(path, scope=OPENC3_SCOPE):
+    local_file = LocalMode.open_local_file(path, scope=scope)
+    if not local_file:
+        return None
+    print(f"Reading local {scope}/targets_modified/{path}")
+    file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
+    try:
+        file.write(local_file.read())
+    finally:
+        local_file.close()
+    file.seek(0)  # Rewind so the file is ready to read
+    return file
+
+
 def _get_download_url(path: str, scope: str = OPENC3_SCOPE):
     """Get a download url for object in block storage
 
@@ -136,6 +199,10 @@ def _get_download_url(path: str, scope: str = OPENC3_SCOPE):
         path (str) Path to a file in a target directory, e.g. "INST/procedures/test.rb"
         scope (str) Optional, defaults to env.OPENC3_SCOPE
     """
+    if LocalMode.local_only_name(path):
+        raise RuntimeError(
+            f"{path} belongs to a local only target (OPENC3_LOCAL_ONLY_TARGETS) and has no bucket download URL"
+        )
     targets = "targets_modified"  # First try targets_modified
     response = openc3.script.API_SERVER.request(
         "get",

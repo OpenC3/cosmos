@@ -19,8 +19,27 @@ ARG PNPM_VERSION=11.27.1
 FROM node:${NODE_VERSION}-trixie-slim AS nodejs
 
 ARG NPM_VERSION
+# No npm release yet bundles fixed brace-expansion/undici (11.21.0 and 12.2.0
+# both still ship brace-expansion 5.0.9 and undici 6.28.0), so swap the
+# bundled copies in place for patched releases of the same major version.
+# TODO: Drop these once npm picks up the fixes.
+ARG BRACE_EXPANSION_VERSION=5.0.12
+ARG UNDICI_VERSION=6.28.1
 RUN npm install --global --ignore-scripts "npm@${NPM_VERSION}" && \
-    npm --version | grep -qx "${NPM_VERSION}"
+    npm --version | grep -qx "${NPM_VERSION}" && \
+    cd /tmp && \
+    for pkg in "brace-expansion@${BRACE_EXPANSION_VERSION}" "undici@${UNDICI_VERSION}"; do \
+      name="${pkg%@*}" && \
+      npm pack --ignore-scripts "$pkg" >/dev/null && \
+      rm -rf "/usr/local/lib/node_modules/npm/node_modules/${name}" && \
+      mkdir "/usr/local/lib/node_modules/npm/node_modules/${name}" && \
+      tar xzf "${name}"-*.tgz -C "/usr/local/lib/node_modules/npm/node_modules/${name}" --strip-components=1 && \
+      rm -f "${name}"-*.tgz; \
+    done && \
+    grep -q "\"version\": \"${BRACE_EXPANSION_VERSION}\"" \
+      /usr/local/lib/node_modules/npm/node_modules/brace-expansion/package.json && \
+    grep -q "\"version\": \"${UNDICI_VERSION}\"" /usr/local/lib/node_modules/npm/node_modules/undici/package.json && \
+    npm --version
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_TAG}
 

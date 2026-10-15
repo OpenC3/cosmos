@@ -173,7 +173,7 @@ RSpec.describe StorageController, type: :controller do
       allow(FileUtils).to receive(:mkdir_p)
       allow(FileUtils).to receive(:rm_rf)
       allow(File).to receive(:read).and_return("file content")
-      allow(File).to receive(:exist?).and_return(true)
+      allow(File).to receive(:file?).and_return(true)
       allow(Base64).to receive(:encode64).and_return("encoded_content")
 
       get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "file.txt", scope: "DEFAULT"}
@@ -185,7 +185,7 @@ RSpec.describe StorageController, type: :controller do
 
     it "downloads a file from a volume" do
       allow(File).to receive(:read).and_return("file content")
-      allow(File).to receive(:exist?).and_return(true)
+      allow(File).to receive(:file?).and_return(true)
       allow(Base64).to receive(:encode64).and_return("encoded_content")
 
       get :download_file, params: {volume: "OPENC3_DATA_VOLUME", object_id: "file.txt", scope: "DEFAULT"}
@@ -298,7 +298,7 @@ RSpec.describe StorageController, type: :controller do
         allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
-        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:file?).and_return(true)
       end
 
       it "converts ruby test reports to CTRF format" do
@@ -577,6 +577,106 @@ RSpec.describe StorageController, type: :controller do
     end
   end
 
+  describe "PUT upload_file" do
+    before(:each) do
+      ENV["OPENC3_LOCAL_MODE"] = nil
+      @bucket_client = instance_double(OpenC3::Bucket)
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(@bucket_client)
+      @tmp_dir = Dir.mktmpdir
+      allow(OpenC3::LocalMode).to receive(:key_path) { |key| "#{@tmp_dir}/#{key}" }
+    end
+
+    after(:each) do
+      ENV["OPENC3_LOCAL_MODE"] = nil
+      ENV["OPENC3_LOCAL_ONLY_TARGETS"] = nil
+      FileUtils.rm_rf(@tmp_dir)
+    end
+
+    let(:data) { "\x00\xFFbinary".b }
+
+    def upload(key, contents = Base64.strict_encode64(data))
+      put :upload_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: key, contents: contents, scope: "DEFAULT"}, as: :json
+    end
+
+    it "writes the decoded contents to the bucket" do
+      key = "DEFAULT/targets_modified/INST/tables/table.bin"
+      expect(@bucket_client).to receive(:put_object).with(bucket: "config-bucket", key: key, body: data)
+      upload(key)
+      expect(response).to have_http_status(:ok)
+      expect(File.exist?("#{@tmp_dir}/#{key}")).to be false
+    end
+
+    it "writes anywhere in the bucket for admins" do
+      key = "DEFAULT/targets/INST/screens/a.txt"
+      expect(@bucket_client).to receive(:put_object).with(bucket: "config-bucket", key: key, body: data)
+      upload(key)
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "mirrors targets_modified writes to the local mode volume in local mode" do
+      ENV["OPENC3_LOCAL_MODE"] = "1"
+      key = "DEFAULT/targets_modified/INST/tables/table.bin"
+      expect(@bucket_client).to receive(:put_object).with(bucket: "config-bucket", key: key, body: data)
+      upload(key)
+      expect(response).to have_http_status(:ok)
+      expect(File.binread("#{@tmp_dir}/#{key}")).to eq(data)
+    end
+
+    it "writes local only targets only to the local mode volume" do
+      ENV["OPENC3_LOCAL_ONLY_TARGETS"] = "LOCAL"
+      key = "DEFAULT/targets_modified/LOCAL/tables/table.bin"
+      expect(@bucket_client).to_not receive(:put_object)
+      upload(key)
+      expect(response).to have_http_status(:ok)
+      expect(File.binread("#{@tmp_dir}/#{key}")).to eq(data)
+    end
+
+    it "writes an empty file" do
+      key = "DEFAULT/targets_modified/INST/procedures/empty.rb"
+      expect(@bucket_client).to receive(:put_object).with(bucket: "config-bucket", key: key, body: "")
+      upload(key, "")
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "requires contents" do
+      put :upload_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/a.txt", scope: "DEFAULT"}, as: :json
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)["message"]).to eq("Missing contents")
+    end
+
+    it "returns nothing without authorization" do
+      put :upload_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/a.txt", contents: ""}, as: :json
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    context "with a non-admin user (system_set but not admin)" do
+      before(:each) do
+        allow(controller).to receive(:authorize) do |args|
+          raise OpenC3::AuthError.new("admin required") if args[:permission] == 'admin'
+          'authorized_user'
+        end
+        allow(@bucket_client).to receive(:put_object)
+      end
+
+      it "allows a non-cmd_tlm targets_modified overlay upload" do
+        upload("DEFAULT/targets_modified/INST/screens/poc.txt")
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "rejects a cmd_tlm overlay upload (requires admin)" do
+        expect(@bucket_client).to_not receive(:put_object)
+        upload("DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt")
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "rejects an upload outside the overlay (requires admin)" do
+        expect(@bucket_client).to_not receive(:put_object)
+        upload("DEFAULT/targets/INST/screens/a.txt")
+        expect(response).to have_http_status(:unauthorized)
+      end
+    end
+  end
+
   describe "POST download_multiple_files" do
     let(:tmp_dir) { "/tmp/test_dir" }
     let(:zip_path) { "#{tmp_dir}/download.zip" }
@@ -751,6 +851,103 @@ RSpec.describe StorageController, type: :controller do
       delete :delete, params: {object_id: "file.txt", scope: "DEFAULT"}
       expect(response).to have_http_status(:internal_server_error)
       expect(JSON.parse(response.body)["message"]).to eq("Must pass bucket or volume parameter!")
+    end
+  end
+
+  describe "local only targets" do
+    before(:each) do
+      ENV["OPENC3_LOCAL_MODE"] = nil
+      ENV["OPENC3_LOCAL_ONLY_TARGETS"] = "LOCAL"
+      @bucket_client = instance_double(OpenC3::Bucket)
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(@bucket_client)
+      @tmp_dir = Dir.mktmpdir
+      allow(OpenC3::LocalMode).to receive(:key_path) { |key| "#{@tmp_dir}/#{key}" }
+    end
+
+    after(:each) do
+      ENV["OPENC3_LOCAL_ONLY_TARGETS"] = nil
+      FileUtils.rm_rf(@tmp_dir)
+    end
+
+    def write_local(key, data)
+      FileUtils.mkdir_p(File.dirname("#{@tmp_dir}/#{key}"))
+      File.write("#{@tmp_dir}/#{key}", data)
+    end
+
+    it "checks existence in the local mode volume" do
+      expect(@bucket_client).to_not receive(:check_object)
+      write_local("DEFAULT/targets_modified/LOCAL/procedures/test.rb", "puts 'hi'")
+      get :exists, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/LOCAL/procedures/test.rb", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      get :exists, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets/LOCAL/procedures/test.rb", scope: "DEFAULT"}
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "downloads from the local mode volume" do
+      expect(@bucket_client).to_not receive(:get_object)
+      write_local("DEFAULT/targets_modified/LOCAL/screens/a.txt", "SCREEN")
+      get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/LOCAL/screens/a.txt", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(Base64.decode64(JSON.parse(response.body)["contents"])).to eq("SCREEN")
+    end
+
+    it "refuses presigned requests" do
+      expect(@bucket_client).to_not receive(:presigned_request)
+      get :get_download_presigned_request, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets/LOCAL/screens/a.txt", scope: "DEFAULT"}
+      expect(response).to have_http_status(:bad_request)
+      get :get_upload_presigned_request, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/LOCAL/screens/a.txt", scope: "DEFAULT"}
+      expect(response).to have_http_status(:bad_request)
+      expect(JSON.parse(response.body)["message"]).to include("OPENC3_LOCAL_ONLY_TARGETS")
+    end
+
+    it "returns not found when downloading a directory" do
+      write_local("DEFAULT/targets_modified/LOCAL/screens/a.txt", "SCREEN")
+      get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/LOCAL/screens", scope: "DEFAULT"}
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "uses local contents in bulk downloads without falling back to stale bucket files" do
+      write_local("DEFAULT/targets_modified/LOCAL/screens/a.txt", "LOCAL SCREEN")
+      expect(@bucket_client).to_not receive(:get_object)
+      post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", path: "DEFAULT/targets_modified/LOCAL/screens/", files: ["a.txt", "missing.txt"], scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      zip_path = "#{@tmp_dir}/download.zip"
+      File.binwrite(zip_path, Base64.decode64(JSON.parse(response.body)["contents"]))
+      Zip::File.open(zip_path) do |zip|
+        expect(zip.map(&:name)).to eq(["a.txt"])
+        expect(zip.read("a.txt")).to eq("LOCAL SCREEN")
+      end
+    end
+
+    it "deletes local only files from a directory while leaving stale bucket copies alone" do
+      key = "DEFAULT/targets_modified/LOCAL/procedures/test.rb"
+      other_key = "DEFAULT/targets_modified/OTHER/procedures/test.rb"
+      write_local(key, "puts 'hi'")
+      write_local(other_key, "puts 'other'")
+      allow(@bucket_client).to receive(:list_objects).and_return([double(key: key), double(key: other_key)])
+      expect(@bucket_client).to receive(:delete_objects).with(bucket: "config-bucket", keys: [other_key])
+      delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["deleted_count"]).to eq(2)
+      expect(File.exist?("#{@tmp_dir}/#{key}")).to be false
+      expect(File.exist?("#{@tmp_dir}/#{other_key}")).to be true
+    end
+
+    it "does not create local mode directories when deleting a missing directory" do
+      allow(@bucket_client).to receive(:list_objects).and_return([])
+      delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "NOPE/targets_modified", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["deleted_count"]).to eq(0)
+      expect(File.exist?("#{@tmp_dir}/NOPE")).to be false
+    end
+
+    it "deletes only from the local mode volume" do
+      expect(@bucket_client).to_not receive(:delete_object)
+      key = "DEFAULT/targets_modified/LOCAL/procedures/test.rb"
+      write_local(key, "puts 'hi'")
+      delete :delete, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: key, scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(File.exist?("#{@tmp_dir}/#{key}")).to be false
     end
   end
 
@@ -1169,7 +1366,7 @@ RSpec.describe StorageController, type: :controller do
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
         allow(File).to receive(:read).and_return("file content")
-        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:file?).and_return(true)
 
         # Mock authorize to allow INST target with tlm permission
         allow(controller).to receive(:authorize) do |args|
@@ -1194,7 +1391,7 @@ RSpec.describe StorageController, type: :controller do
         allow(FileUtils).to receive(:mkdir_p)
         allow(FileUtils).to receive(:rm_rf)
         allow(File).to receive(:read).and_return("file content")
-        allow(File).to receive(:exist?).and_return(true)
+        allow(File).to receive(:file?).and_return(true)
 
         get :download_file, params: {bucket: "OPENC3_TOOLS_BUCKET", object_id: "tool/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)
