@@ -11,6 +11,7 @@
 
 import copy
 import re
+import sys
 
 from openc3.config.config_parser import ConfigParser
 from openc3.conversions.conversion import Conversion
@@ -22,6 +23,31 @@ from openc3.utilities.string import quote_if_necessary, simple_formatted
 class PacketItem(StructureItem):
     # The allowable state colors
     VALID_STATE_COLORS = ["GREEN", "YELLOW", "RED"]
+
+    # See StructureItem for why slots are used
+    __slots__ = (
+        "__format_string",
+        "__read_conversion",
+        "__write_conversion",
+        "__id_value",
+        "__states",
+        "__states_by_value",
+        "__description",
+        "__units_full",
+        "__units",
+        "__hazardous",
+        "__messages_disabled",
+        "__state_colors",
+        "__limits",
+        "__meta",
+        "default",
+        "minimum",
+        "maximum",
+        "required",
+        "obfuscate",
+        "persistence_setting",
+        "persistence_count",
+    )
 
     def __init__(
         self,
@@ -50,7 +76,7 @@ class PacketItem(StructureItem):
         self.hazardous = None
         self.messages_disabled = None
         self.state_colors = None
-        self.limits = PacketItemLimits()
+        self.limits = None
         self.persistence_setting = 1
         self.persistence_count = 0
         self.meta = None
@@ -127,11 +153,10 @@ class PacketItem(StructureItem):
             self.__states = {}
             self.__states_by_value = {}
             for key, value in states.items():
-                upper = key.upper()
+                # Intern since many items share the same state names
+                upper = sys.intern(key.upper())
                 self.__states[upper] = value
                 self.__states_by_value[value] = upper
-            if self.state_colors is None:
-                self.state_colors = {}
         else:
             self.__states = None
             self.__states_by_value = None
@@ -278,9 +303,23 @@ class PacketItem(StructureItem):
         else:
             self.__state_colors = None
 
+    # PacketItemLimits is created on first access since most items have no
+    # limits and large definitions have hundreds of thousands of items.
     @property
     def limits(self):
+        if self.__limits is None:
+            self.__limits = PacketItemLimits()
         return self.__limits
+
+    # The limits state without creating PacketItemLimits
+    @property
+    def limits_state(self):
+        return self.__limits.state if self.__limits is not None else None
+
+    # The limits values without creating PacketItemLimits
+    @property
+    def limits_values(self):
+        return self.__limits.values if self.__limits is not None else None
 
     @limits.setter
     def limits(self, limits):
@@ -292,8 +331,11 @@ class PacketItem(StructureItem):
         else:
             self.__limits = None
 
+    # Created on first access like limits since most items have no meta
     @property
     def meta(self):
+        if self.__meta is None:
+            self.__meta = {}
         return self.__meta
 
     @meta.setter
@@ -304,15 +346,15 @@ class PacketItem(StructureItem):
 
             self.__meta = meta
         else:
-            self.__meta = {}
+            self.__meta = None
 
     # Make a light weight clone of this item
     def clone(self):
         item = copy.copy(self)
         # Since we're copying and not calling the constructor
         # we have to manually update the create_index
-        item.create_index = StructureItem.create_index
-        StructureItem.create_index += 1
+        item.create_index = StructureItem._next_create_index
+        StructureItem._next_create_index += 1
         return item
 
     # def calculate_range(self):
@@ -386,19 +428,20 @@ class PacketItem(StructureItem):
         if self.write_conversion:
             config += self.write_conversion.to_config("WRITE")
 
-        if self.limits:
-            if self.limits.values:
-                for limits_set, limits_values in self.limits.values.items():
-                    config += f"    LIMITS {limits_set} {self.limits.persistence_setting} {'ENABLED' if self.limits.enabled else 'DISABLED'} {limits_values[0]} {limits_values[1]} {limits_values[2]} {limits_values[3]}"
+        limits = self.__limits
+        if limits:
+            if limits.values:
+                for limits_set, limits_values in limits.values.items():
+                    config += f"    LIMITS {limits_set} {limits.persistence_setting} {'ENABLED' if limits.enabled else 'DISABLED'} {limits_values[0]} {limits_values[1]} {limits_values[2]} {limits_values[3]}"
                     if len(limits_values) > 4:
                         config += f" {limits_values[4]} {limits_values[5]}\n"
                     else:
                         config += "\n"
-            if self.limits.response:
-                config += self.limits.response.to_config
+            if limits.response:
+                config += limits.response.to_config
 
-        if self.meta:
-            for key, values in self.meta.items():
+        if self.__meta:
+            for key, values in self.__meta.items():
                 vals = " ".join([quote_if_necessary(x) for x in values])
                 config += f"    META {quote_if_necessary(key)} {vals}\n"
 
@@ -438,17 +481,19 @@ class PacketItem(StructureItem):
         if self.write_conversion:
             config["write_conversion"] = self.write_conversion.as_json()
 
-        if self.limits:
-            config["limits"] = {}
-            if self.limits.enabled:
-                config["limits"]["enabled"] = True
-            else:
-                config["limits"]["enabled"] = False
-            if self.limits.values:
-                config["limits"]["persistence_setting"] = self.limits.persistence_setting
-                if self.limits.response:
-                    config["limits"]["response"] = self.limits.response
-                for limits_set, limits_values in self.limits.values.items():
+        # Items without limits act like default PacketItemLimits (disabled, no values)
+        item_limits = self.__limits
+        config["limits"] = {}
+        if item_limits and item_limits.enabled:
+            config["limits"]["enabled"] = True
+        else:
+            config["limits"]["enabled"] = False
+        if item_limits:
+            if item_limits.values:
+                config["limits"]["persistence_setting"] = item_limits.persistence_setting
+                if item_limits.response:
+                    config["limits"]["response"] = item_limits.response
+                for limits_set, limits_values in item_limits.values.items():
                     limits = {}
                     limits["red_low"] = limits_values[0]
                     limits["yellow_low"] = limits_values[1]
@@ -458,11 +503,11 @@ class PacketItem(StructureItem):
                         limits["green_low"] = limits_values[4]
                         limits["green_high"] = limits_values[5]
                     config["limits"][limits_set] = limits
-            if self.limits.response:
-                config["limits_response"] = self.limits.response.as_json()
+            if item_limits.response:
+                config["limits_response"] = item_limits.response.as_json()
 
-        if self.meta:
-            config["meta"] = self.meta
+        if self.__meta:
+            config["meta"] = self.__meta
 
         if self.obfuscate:
             config["obfuscate"] = self.obfuscate
