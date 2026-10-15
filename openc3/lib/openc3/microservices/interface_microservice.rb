@@ -238,7 +238,7 @@ module OpenC3
           end
 
           cmd_name = msg_hash['cmd_name']
-          manual = flag(msg_hash, 'manual', false)
+          manual = ConfigParser.handle_true_false(msg_hash['manual'], default: false)
           cmd_params = nil
           range_check = true
           raw = false
@@ -251,9 +251,9 @@ module OpenC3
               @logger.error "#{@interface.name}: Invalid cmd_params: #{e.message}"
               next "Invalid cmd_params: #{e.message}"
             end
-            range_check = flag(msg_hash, 'range_check', true)
-            raw = flag(msg_hash, 'raw', false)
-            hazardous_check = flag(msg_hash, 'hazardous_check', true)
+            range_check = ConfigParser.handle_true_false(msg_hash['range_check'], default: true)
+            raw = ConfigParser.handle_true_false(msg_hash['raw'], default: false)
+            hazardous_check = ConfigParser.handle_true_false(msg_hash['hazardous_check'], default: true)
           elsif msg_hash['cmd_buffer']
             cmd_buffer = msg_hash['cmd_buffer']
           end
@@ -330,7 +330,7 @@ module OpenC3
               end
             end
 
-            validate = flag(msg_hash, 'validate', true)
+            validate = ConfigParser.handle_true_false(msg_hash['validate'], default: true)
             begin
               if @interface.connected?
                 result = true
@@ -352,7 +352,7 @@ module OpenC3
                 @count += 1
                 @metric.set(name: 'interface_cmd_total', value: @count, type: 'counter') if @metric
 
-                log_message = flag(msg_hash, 'log_message', true)
+                log_message = ConfigParser.handle_true_false(msg_hash['log_message'], default: true)
                 if log_message
                   @logger.info(msg_hash['cmd_string'], user: msg_hash['username'], scope: @scope)
                 end
@@ -397,15 +397,6 @@ module OpenC3
           end
         end
       end
-    end
-
-    private
-
-    # Command message flags are 'true'/'false' strings; a missing flag uses its safe default
-    def flag(msg_hash, key, default)
-      value = msg_hash[key]
-      return default if value.nil?
-      ConfigParser.handle_true_false(value)
     end
   end
 
