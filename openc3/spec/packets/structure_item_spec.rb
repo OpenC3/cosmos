@@ -26,6 +26,13 @@ module OpenC3
         expect(StructureItem.new("test", 0, 8, :UINT, :BIG_ENDIAN, nil).name).to eql "TEST"
       end
 
+      it "dedups names and keys" do
+        si1 = StructureItem.new(+"TEST", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        si2 = StructureItem.new(+"TEST", 0, 8, :UINT, :BIG_ENDIAN, nil)
+        expect(si1.name).to equal si2.name
+        expect(si1.key).to equal si1.name
+      end
+
       it "complains about non String names" do
         expect { StructureItem.new(nil, 0, 8, :UINT, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "name must be a String but is a NilClass")
         expect { StructureItem.new(5.1, 0, 8, :UINT, :BIG_ENDIAN, nil) }.to raise_error(ArgumentError, "name must be a String but is a Float")

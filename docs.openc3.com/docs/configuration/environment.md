@@ -118,12 +118,16 @@ Set in `.env`, or overridden per service in `compose.override.yaml`:
 | `OPENC3_TAG` | `latest` | Image tag to deploy, e.g. `7.3.0` |
 | `OPENC3_EXTERNAL_URL` | `http://localhost:2900` | External domain name and port used to reach COSMOS |
 | `OPENC3_LOCAL_MODE` | `1` | Sync plugin and configuration changes to the `plugins` directory on the host. See [Local Mode](../guides/local-mode.md) |
+| `OPENC3_LOCAL_ONLY_TARGETS` | unset | Comma separated target names, e.g. `INST,INST2`, whose target files (procedures, screens, tables, etc.) are kept only in `plugins/<SCOPE>/targets_modified/<TARGET>` on the host and never in the bucket. See [Local Only Targets](../guides/local-mode.md#local-only-targets) |
 | `OPENC3_DEMO` | `true` | Install the Demo plugin. Accepts `false` and `0` to disable |
 | `OPENC3_REGISTRY`, `OPENC3_NAMESPACE` | `docker.io`, `openc3inc` | Where to pull COSMOS images from |
 | `OPENC3_LOGS_BUCKET`, `OPENC3_TOOLS_BUCKET`, `OPENC3_CONFIG_BUCKET` | `logs`, `tools`, `config` | Bucket names |
 | `OPENC3_REDIS_HOSTNAME`, `OPENC3_REDIS_PORT` | `openc3-redis`, `6379` | Redis / Valkey connection |
 | `OPENC3_CLOUD` | `local` | Cloud provider, for bucket and secret handling |
 | `RUBYGEMS_URL`, `PYPI_URL`, `NPM_URL`, `MAVEN_URL` | public mirrors | Package sources used at *build* time. To change the URLs COSMOS uses at *run* time, set the `rubygems_url` / `pypi_url` Admin settings |
+| `OPENC3_PYPI_ALLOW_INSECURE` | unset | Set to any value to pass uv `--allow-insecure-host` for the `pypi_url` host, for a private index with a self-signed certificate. `PIP_ENABLE_TRUSTED_HOST` is a deprecated alias |
+
+Pointing `pypi_url` (or `PYPI_URL`) at an index other than `https://pypi.org` makes that index authoritative for plugin Python dependencies: COSMOS passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. Your index has to serve every package a plugin asks for — a plugin depending on something published only to its author's private index fails to install rather than quietly fetching from that index. This applies only where uv resolves; see [plugin Python dependencies](plugins.md#phase-2-deploy) for how a plugin shipping a `uv.lock` behaves.
 
 Per-service runtime flags - `OPENC3_NO_*`, `OPENC3_FORCE_INSTALL`, `OPENC3_ALLOW_HTTP`, `OPENC3_DEFAULT_QUEUE`, `OPENC3_AUTH_RATE_LIMIT_*`, `OPENC3_LANGUAGE`, `OPENC3_LOG_STDERR` - are documented in `compose.override.yaml` under the service each one applies to, because a flag only takes effect on the container that reads it. See [Install and runtime flags](compose.md#install-and-runtime-flags) for how their values are interpreted.
 
