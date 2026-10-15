@@ -575,6 +575,26 @@ RSpec.describe StreamingApi, type: :model do
       build([latest_key]).objects.each { |o| collection.remove(o) }
       expect(collection.objects.map { |o| [o.key, o.item_key] }).to eq([[explicit_key, explicit_key]])
     end
+
+    it 'removes every item_key for a key when removed by key alone' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      expect(collection.length).to eq(2)
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection).to be_empty
+    end
+
+    it 'removing a key with an item_key only removes that item_key' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      build([[explicit_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key)).to eq([explicit_key])
+    end
+
+    it 'keeps a LATEST item and an explicit item with the same item_key' do
+      collection = build([[latest_key, '0'], [explicit_key, '0']])
+      expect(collection.length).to eq(3)
+      build([[latest_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map { |o| [o.key, o.source_key] }).to eq([[explicit_key, explicit_key]])
+    end
   end
 
   describe 'add with COSMOS_ALL packets and authorization' do

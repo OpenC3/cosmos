@@ -79,9 +79,9 @@ class StreamingObject
     @offset = "0-0"
     @offset = OpenC3::Topic.get_last_offset(@topic, db_shard: @db_shard) unless @start_time
     if @item_key
-      # Include the item_key so a LATEST item (which expands to concrete packet keys)
-      # doesn't collide with an explicit subscription to the same packet item
-      @id = "ITEM__#{key}__#{@item_key}"
+      # Include the source_key and item_key so a LATEST item (which expands to concrete
+      # packet keys) doesn't collide with an explicit subscription to the same packet item
+      @id = "ITEM__#{key}__#{@source_key}__#{@item_key}"
     else
       @id = 'PACKET__' + key
     end

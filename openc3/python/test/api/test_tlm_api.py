@@ -46,8 +46,12 @@ def latest_candidates(params_temp1=None):
     def item_map(target_name, scope="DEFAULT"):
         return {"TEMP1": ["HEALTH_STATUS", "PARAMS"]}
 
+    def packets_with_tables(packets, scope="DEFAULT"):
+        return set(packets)
+
     def decorator(func):
         func = patch.object(TargetModel, "packet_item", new=packet_item)(func)
+        func = patch.object(CvtModel, "tsdb_packets_with_tables", new=packets_with_tables)(func)
         return patch.object(TargetModel, "get_item_to_packet_map", new=item_map)(func)
 
     return decorator
@@ -57,6 +61,8 @@ class TestTlmApi(unittest.TestCase):
     def setUp(self):
         redis = mock_redis(self)
         setup_system()
+        # Other tests can leave a fake item map in the class level cache
+        TargetModel.item_map_cache = {}
 
         self.process = True
         orig_xread = redis.xread
@@ -950,6 +956,61 @@ class TestTlmApi(unittest.TestCase):
             )
         self.assertEqual(tsdb_lookup.call_args[0][0], [self._latest_history_item("PARAMS", "TEMP1")])
         self.assertNotIn("flatten", tsdb_lookup.call_args.kwargs)
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_skips_candidates_without_a_table_at_a_point_in_time(self):
+        item = self._latest_history_item
+        queries = []
+
+        def tsdb_lookup(query, **_kw):
+            queries.append(query)
+            return [[[10.0, None], [100.0, None]]]
+
+        with (
+            patch.object(CvtModel, "tsdb_packets_with_tables", return_value={("INST", "HEALTH_STATUS")}) as tables,
+            patch.object(CvtModel, "tsdb_lookup", side_effect=tsdb_lookup),
+        ):
+            vals = get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time="2026-09-13T00:00:00Z")
+        tables.assert_called_once_with([("INST", "HEALTH_STATUS"), ("INST", "PARAMS")], scope="DEFAULT")
+        self.assertEqual(
+            queries, [[item("HEALTH_STATUS", "TEMP1"), item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")]]
+        )
+        self.assertEqual(vals, [[10.0, None]])
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_skips_candidates_without_a_table_in_a_range(self):
+        item = self._latest_history_item
+        with (
+            patch.object(CvtModel, "tsdb_packets_with_tables", return_value={("INST", "HEALTH_STATUS")}),
+            patch.object(CvtModel, "tsdb_lookup", return_value=[[[5.0, None], [10.0, None], [300.0, None]]]) as lookup,
+        ):
+            vals = get_tlm_values(
+                ["INST__LATEST__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED"],
+                start_time="2026-09-13T00:00:00Z",
+                end_time="2026-09-13T01:00:00Z",
+            )
+        self.assertEqual(
+            lookup.call_args[0][0],
+            [
+                item("HEALTH_STATUS", "TEMP2"),
+                item("HEALTH_STATUS", "TEMP1"),
+                item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW"),
+            ],
+        )
+        self.assertEqual(vals, [[10.0, None], [5.0, None]])
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_returns_none_when_no_candidate_has_a_table(self):
+        with (
+            patch.object(CvtModel, "tsdb_packets_with_tables", return_value=set()),
+            patch.object(CvtModel, "tsdb_lookup", return_value=[[[5.0, None]]]) as lookup,
+        ):
+            vals = get_tlm_values(
+                ["INST__LATEST__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED"],
+                start_time="2026-09-13T00:00:00Z",
+            )
+        lookup.assert_called_once()
+        self.assertEqual(vals, [[None, None], [5.0, None]])
 
     @latest_candidates(params_temp1=PLAIN_TEMP1)
     def test_get_tlm_values_historical_latest_queries_each_candidate_for_its_type_and_limits(self):

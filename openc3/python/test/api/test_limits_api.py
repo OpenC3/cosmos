@@ -30,6 +30,8 @@ class TestLimitsApi(unittest.TestCase):
     def setUp(self, system):
         redis = mock_redis(self)
         setup_system()
+        # Other tests can leave a fake item map in the class level cache
+        TargetModel.item_map_cache = {}
 
         orig_xread = redis.xread
 

@@ -843,6 +843,7 @@ module OpenC3
           temp1 = TargetModel.packet_item('INST', 'HEALTH_STATUS', 'TEMP1', scope: 'DEFAULT')
           allow(TargetModel).to receive(:packet_item).and_call_original
           allow(TargetModel).to receive(:packet_item).with('INST', 'PARAMS', 'TEMP1', scope: 'DEFAULT').and_return(temp1)
+          allow(CvtModel).to receive(:tsdb_packets_with_tables) { |packets, **| packets.to_set }
         end
 
         def item(packet_name, item_name, value_type = "CONVERTED")
@@ -914,6 +915,30 @@ module OpenC3
             [["INST", "HEALTH_STATUS", "TEMP1", "FORMATTED", "LIMITS"], item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")],
             [["INST", "PARAMS", "TEMP1", "RAW", nil], item("PARAMS", "PACKET_TIMESECONDS", "RAW")],
           )
+        end
+
+        it "skips candidate packets without a table at a point in time" do
+          expect(CvtModel).to receive(:tsdb_packets_with_tables).with([["INST", "HEALTH_STATUS"], ["INST", "PARAMS"]], scope: "DEFAULT").and_return(Set[["INST", "HEALTH_STATUS"]])
+          queries = []
+          allow(CvtModel).to receive(:tsdb_lookup) { |query, **| queries << query; [[[10.0, nil], [100.0, nil]]] }
+          expect(@api.get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time: "2026-09-13T00:00:00Z")).to eql([[10.0, nil]])
+          expect(queries).to eql([[item("HEALTH_STATUS", "TEMP1"), item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")]])
+        end
+
+        it "skips candidate packets without a table in a range" do
+          allow(CvtModel).to receive(:tsdb_packets_with_tables).and_return(Set[["INST", "HEALTH_STATUS"]])
+          expect(CvtModel).to receive(:tsdb_lookup).with(
+            [item("HEALTH_STATUS", "TEMP2"), item("HEALTH_STATUS", "TEMP1"), item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")],
+            start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z", scope: "DEFAULT", flatten: false
+          ).and_return([[[5.0, nil], [10.0, nil], [300.0, nil]]])
+          vals = @api.get_tlm_values(items, start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+          expect(vals).to eql([[10.0, nil], [5.0, nil]])
+        end
+
+        it "returns nil for a LATEST item when no candidate has a table" do
+          allow(CvtModel).to receive(:tsdb_packets_with_tables).and_return(Set.new)
+          expect(CvtModel).to receive(:tsdb_lookup).once.with([item("HEALTH_STATUS", "TEMP2")], any_args).and_return([[[5.0, nil]]])
+          expect(@api.get_tlm_values(items, start_time: "2026-09-13T00:00:00Z")).to eql([[nil, nil], [5.0, nil]])
         end
 
         it "authorizes every candidate packet" do

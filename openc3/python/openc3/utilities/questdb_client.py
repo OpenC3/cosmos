@@ -781,6 +781,36 @@ class QuestDBClient:
         return Store.db_shard_for_target(target_name, scope=scope)
 
     @classmethod
+    def tlm_packets_with_tables(cls, packets, scope="DEFAULT"):
+        """Return the telemetry packets which have a table. The TSDB microservice only
+        creates tables for its initial packets so a packet added later has no table
+        until it's received.
+
+        Args:
+            packets: Iterable of (target_name, packet_name) pairs
+            scope: Scope name
+
+        Returns:
+            Set of the (target_name, packet_name) pairs which have a table
+        """
+        by_db_shard = {}
+        for target_name, packet_name in packets:
+            table_name, _ = cls.sanitize_table_name(target_name, packet_name, scope=scope)
+            db_shard = cls.db_shard_for_target(target_name, scope=scope)
+            by_db_shard.setdefault(db_shard, {})[table_name] = (target_name, packet_name)
+        existing = set()
+        for db_shard, table_names in by_db_shard.items():
+            placeholders = ", ".join(["%s"] * len(table_names))
+            rows = cls.query_with_retry(
+                f"SELECT table_name FROM tables() WHERE table_name IN ({placeholders})",
+                params=list(table_names),
+                label="tables",
+                db_shard=db_shard,
+            )
+            existing.update(table_names[row["table_name"]] for row in rows)
+        return existing
+
+    @classmethod
     def tsdb_lookup(cls, items, start_time, end_time=None, scope="DEFAULT", flatten=True):
         """Query historical telemetry data from QuestDB for a list of items.
         Builds the SQL query, executes it, and decodes all results.

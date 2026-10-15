@@ -701,18 +701,26 @@ module OpenC3
       latest = cvt_items.each_index.select { |index| cvt_items[index].length == 6 }
       regular = cvt_items.each_index.reject { |index| cvt_items[index].length == 6 }
 
-      if end_time
-        # The QuestDB lookup ASOF JOINs every packet to the rows of the first, so
-        # a range needs a regular item first to drive the rows. Without one keep
-        # the realtime behavior of using the packet received most recently now.
-        if regular.all? { |index| cvt_items[index][2].nil? }
-          cvt_items = cvt_items.map do |target_name, packet_name, item_name, value_type, limits, _|
-            packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope) if packet_name == 'LATEST'
-            [target_name, packet_name, item_name, value_type, limits]
-          end
-          return CvtModel.tsdb_lookup(cvt_items, start_time: start_time, end_time: end_time, scope: scope)
+      # The QuestDB lookup ASOF JOINs every packet to the rows of the first, so
+      # a range needs a regular item first to drive the rows. Without one keep
+      # the realtime behavior of using the packet received most recently now.
+      if end_time and regular.all? { |index| cvt_items[index][2].nil? }
+        cvt_items = cvt_items.map do |target_name, packet_name, item_name, value_type, limits, _|
+          packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope) if packet_name == 'LATEST'
+          [target_name, packet_name, item_name, value_type, limits]
         end
+        return CvtModel.tsdb_lookup(cvt_items, start_time: start_time, end_time: end_time, scope: scope)
+      end
 
+      # A packet without a table fails the query so skip those candidates
+      packets = latest.flat_map { |index| cvt_items[index][5].map { |candidate| candidate[0..1] } }.uniq
+      existing = CvtModel.tsdb_packets_with_tables(packets, scope: scope)
+      cvt_items = cvt_items.each_with_index.map do |cvt_item, index|
+        next cvt_item unless latest.include?(index)
+        cvt_item[0..4] + [cvt_item[5].select { |candidate| existing.include?(candidate[0..1]) }]
+      end
+
+      if end_time
         query = []
         query_index = {}
         add = lambda { |query_item| query_index[query_item] ||= (query << query_item; query.length - 1) }

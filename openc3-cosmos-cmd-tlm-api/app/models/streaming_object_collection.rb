@@ -58,16 +58,17 @@ class StreamingObjectCollection
   def remove(object)
     @mutex.synchronize do
       found_object = @objects_by_id[object.id]
-      if found_object
-        _remove_found(found_object)
-      elsif object.item_key
-        # Items can be added as [key, item_key] pairs but removed by key alone,
-        # so fall back to removing every item object subscribed with the same key.
-        # Match on source_key so removing an explicit item doesn't also remove a
-        # LATEST subscription which expanded to the same concrete key (and vice versa)
+      # Items can be added as [key, item_key] pairs but removed by key alone
+      # (the item_key defaults to the key) so remove every item object subscribed with the same key.
+      # Match on source_key so removing an explicit item doesn't also remove a
+      # LATEST subscription which expanded to the same concrete key (and vice versa)
+      key_only = (object.item_key and object.item_key.upcase == object.source_key)
+      if object.item_key and (key_only or not found_object)
         @objects.select { |obj| obj.item_key and obj.source_key == object.source_key }.each do |obj|
           _remove_found(obj)
         end
+      elsif found_object
+        _remove_found(found_object)
       end
     end
   end

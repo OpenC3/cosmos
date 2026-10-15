@@ -632,6 +632,23 @@ module OpenC3
       false
     end
 
+    # Return the telemetry packets which have a table. The TSDB microservice only
+    # creates tables for its initial packets so a packet added later has no table
+    # until it's received.
+    #
+    # @param packets [Array<Array(String, String)>] [target_name, packet_name] pairs
+    # @return [Set<Array(String, String)>] The pairs which have a table
+    def self.tlm_packets_with_tables(packets, scope: "DEFAULT")
+      existing = Set.new
+      packets.group_by { |target_name, _| db_shard_for_target(target_name, scope: scope) }.each do |db_shard, shard_packets|
+        table_names = shard_packets.to_h { |target_name, packet_name| [sanitize_table_name(target_name, packet_name, scope: scope), [target_name, packet_name]] }
+        placeholders = (1..table_names.length).map { |index| "$#{index}" }.join(", ")
+        result = query_with_retry("SELECT table_name FROM tables() WHERE table_name IN (#{placeholders})", params: table_names.keys, label: "tables", db_shard: db_shard)
+        result.each { |row| existing << table_names[row['table_name']] }
+      end
+      existing
+    end
+
     # QuestDB column types that can be aggregated with min/max/avg/stddev.
     # Used by reduced queries to decide whether a converted (__C) column is
     # numeric or must fall back to the raw column (e.g. states stored as VARCHAR).

@@ -826,21 +826,35 @@ def _tlm_available_value_type(item_config, item_name, value_type):
 def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cache_timeout, scope):
     regular = [index for index in range(len(cvt_items)) if index not in latest_candidates]
 
-    if end_time is not None:
-        # The QuestDB lookup ASOF JOINs every packet to the rows of the first, so
-        # a range needs a regular item first to drive the rows. Without one keep
-        # the realtime behavior of using the packet received most recently now.
-        if all(cvt_items[index].item_name is None for index in regular):
-            resolved = []
-            for cvt_item in cvt_items:
-                if cvt_item.packet_name == "LATEST":
-                    packet_name = CvtModel.determine_latest_packet_for_item(
-                        cvt_item.target_name, cvt_item.item_name, cache_timeout, scope
-                    )
-                    cvt_item = cvt_item._replace(packet_name=packet_name)
-                resolved.append(cvt_item)
-            return CvtModel.tsdb_lookup(resolved, start_time=start_time, end_time=end_time, scope=scope)
+    # The QuestDB lookup ASOF JOINs every packet to the rows of the first, so
+    # a range needs a regular item first to drive the rows. Without one keep
+    # the realtime behavior of using the packet received most recently now.
+    if end_time is not None and all(cvt_items[index].item_name is None for index in regular):
+        resolved = []
+        for cvt_item in cvt_items:
+            if cvt_item.packet_name == "LATEST":
+                packet_name = CvtModel.determine_latest_packet_for_item(
+                    cvt_item.target_name, cvt_item.item_name, cache_timeout, scope
+                )
+                cvt_item = cvt_item._replace(packet_name=packet_name)
+            resolved.append(cvt_item)
+        return CvtModel.tsdb_lookup(resolved, start_time=start_time, end_time=end_time, scope=scope)
 
+    # A packet without a table fails the query so skip those candidates
+    packets = list(
+        dict.fromkeys(
+            (candidate.target_name, candidate.packet_name)
+            for candidates in latest_candidates.values()
+            for candidate in candidates
+        )
+    )
+    existing = CvtModel.tsdb_packets_with_tables(packets, scope=scope)
+    latest_candidates = {
+        index: [candidate for candidate in candidates if (candidate.target_name, candidate.packet_name) in existing]
+        for index, candidates in latest_candidates.items()
+    }
+
+    if end_time is not None:
         query = []
         query_index = {}
 
