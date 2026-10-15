@@ -110,9 +110,6 @@ class InterfaceCmdHandlerThread:
         release_critical = False
         critical_model = None
 
-        if msg_hash.get(b"shutdown"):
-            return "Shutdown"
-
         msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
         delta = time.time() - msgid_seconds_from_epoch
         if self.metric is not None:
@@ -315,7 +312,11 @@ class InterfaceCmdHandlerThread:
                 else:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
 
-                if not self.interface.cmd_target_enabled.get(command.target_name, False):
+                # An unidentified buffer is sent as UNKNOWN on behalf of the target it was sent to
+                enabled_target_name = command.target_name
+                if enabled_target_name == "UNKNOWN" and target_name:
+                    enabled_target_name = target_name
+                if not self.interface.cmd_target_enabled.get(enabled_target_name, False):
                     return None  # Don't ack disabled targets
 
                 orig_command = System.commands.packet(command.target_name, command.packet_name)
@@ -644,6 +645,10 @@ class InterfaceMicroservice(Microservice):
     DISCONNECT_WAIT_TIME = 1
     DEFAULT_UPDATE_INTERVAL = 0.1  # seconds
 
+    # Interfaces never use descriptions so don't keep them in memory
+    def load_descriptions(self):
+        return False
+
     def __init__(self, name):
         self.mutex = threading.Lock()
         self.interface = None
@@ -763,7 +768,7 @@ class InterfaceMicroservice(Microservice):
                 else:
                     router_model = RouterModel.get(name=self.interface.name, scope=self.scope)
                     # config_params[0] is the filename so set the rest
-                    interface_model["config_params"][1:] = list(params)
+                    router_model["config_params"][1:] = list(params)
                     RouterModel.set(router_model, scope=self.scope)
 
             self.interface.state = "ATTEMPTING"
@@ -772,8 +777,8 @@ class InterfaceMicroservice(Microservice):
             else:
                 RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
             return self.interface  # Return the interface/router since we may have recreated it
-        # Need to rescue Exception so we cover LoadError
-        except RuntimeError:
+        # Catch Exception so any rebuild failure (bad parameters, import errors) keeps the original interface
+        except Exception:
             self.logger.error(
                 f"Attempting connection #{self.interface.connection_string} failed due to {traceback.format_exc()}"
             )
@@ -1041,7 +1046,11 @@ class InterfaceMicroservice(Microservice):
             if self.interface_thread_sleeper:
                 self.interface_thread_sleeper.cancel()
             if self.interface:
-                self.interface.disconnect()
+                try:
+                    self.interface.disconnect()
+                except Exception:
+                    # Still clean up the status and stream logs if disconnect fails
+                    self.logger.error(f"{self.interface.name}: Disconnect failed during stop: {traceback.format_exc()}")
                 if self.interface_or_router == "INTERFACE":
                     valid_interface = InterfaceStatusModel.get_model(name=self.interface.name, scope=self.scope)
                 else:
