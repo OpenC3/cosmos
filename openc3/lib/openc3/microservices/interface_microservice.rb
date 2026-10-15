@@ -592,6 +592,7 @@ module OpenC3
       end
 
       @queued = false
+      @unmapped_tlm_warned = Set.new
       @interface.options.each do |option_name, option_values|
         # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
         if option_name.upcase == 'UPDATE_INTERVAL' or option_name.upcase == 'OPTIMIZE_THROUGHPUT'
@@ -758,12 +759,22 @@ module OpenC3
       InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope) unless @cancel_thread
       packet.received_time = Time.now.sys unless packet.received_time
 
-      if packet.identified? and !known_tlm_packet?(packet)
-        # Packet identified but we don't know about it or it isn't mapped to this interface
-        # Clear packet_name and target_name and try to identify
-        @logger.warn "#{@interface.name}: Received unknown identified telemetry: #{packet.target_name} #{packet.packet_name}"
-        packet.target_name = nil
-        packet.packet_name = nil
+      if packet.identified?
+        unless @interface.tlm_target_names.include?(packet.target_name)
+          # Trust the identity but drop it because the target isn't mapped to this interface
+          key = "#{packet.target_name} #{packet.packet_name}"
+          if @unmapped_tlm_warned.add?(key)
+            @logger.warn "#{@interface.name}: Dropping telemetry for unmapped target: #{key}"
+          end
+          return
+        end
+        unless known_tlm_packet?(packet)
+          # Packet identified but we don't know about it
+          # Clear packet_name and target_name and try to identify
+          @logger.warn "#{@interface.name}: Received unknown identified telemetry: #{packet.target_name} #{packet.packet_name}"
+          packet.target_name = nil
+          packet.packet_name = nil
+        end
       end
 
       if packet.stored
@@ -818,9 +829,7 @@ module OpenC3
     end
 
     # @return [Boolean] Whether a pre-identified packet names a defined packet
-    #   in one of this interface's telemetry mapped targets
     def known_tlm_packet?(packet)
-      return false unless @interface.tlm_target_names.include?(packet.target_name)
       System.telemetry.packet(packet.target_name, packet.packet_name)
       true
     rescue RuntimeError

@@ -871,13 +871,22 @@ class TestInterfaceMicroservice(unittest.TestCase):
         packet.stored = stored
         im.handle_packet(packet)
 
-    def test_handle_packet_falls_back_for_a_target_not_mapped_to_the_interface(self):
+    def test_handle_packet_drops_a_target_not_mapped_to_the_interface_and_warns_once(self):
         im, warnings, written = self.setup_handle_packet()
-        self.handle(im, self.health_status_buffer(), "SYSTEM", "LIMITS_CHANGE")
-        self.assertIn("INST_INT: Received unknown identified telemetry: SYSTEM LIMITS_CHANGE", warnings)
-        self.assertEqual(len(written), 1)
-        self.assertEqual(written[0].target_name, "INST")
-        self.assertEqual(written[0].packet_name, "HEALTH_STATUS")
+        with (
+            patch.object(System.telemetry, "identify_and_set_buffer") as mock_identify,
+            patch.object(System.telemetry, "identify_and_define_packet") as mock_define,
+        ):
+            for _ in range(2):
+                self.handle(im, self.health_status_buffer(), "SYSTEM", "LIMITS_CHANGE")
+            self.handle(im, self.health_status_buffer(), "SYSTEM", "LIMITS_CHANGE", stored=True)
+            mock_identify.assert_not_called()
+            mock_define.assert_not_called()
+        self.assertEqual(
+            [w for w in warnings if "unmapped target" in w],
+            ["INST_INT: Dropping telemetry for unmapped target: SYSTEM LIMITS_CHANGE"],
+        )
+        self.assertEqual(written, [])
 
     def test_handle_packet_falls_back_for_a_stored_packet_with_an_unknown_packet(self):
         im, warnings, written = self.setup_handle_packet()
