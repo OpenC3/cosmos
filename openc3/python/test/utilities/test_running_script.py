@@ -60,14 +60,15 @@ class TestGoto(unittest.TestCase):
 
     def tearDown(self):
         RunningScript.instance = None
-        RunningScript.run_thread = None
 
     def test_goto_off_run_thread_hands_off_to_run_thread(self):
         mock_start = self.mock_start
         # The debug prompt execs goto on the redis subscriber thread. Running the
         # script there deadlocks at the next pause because that thread is the one
         # that processes go/step/stop, so goto must defer to the run thread.
-        RunningScript.run_thread = threading.Thread(target=lambda: None)
+        patcher = patch.object(RunningScript, "run_thread", threading.Thread(target=lambda: None))
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
         running_script.goto(9)
         self.assertEqual(
@@ -84,7 +85,9 @@ class TestGoto(unittest.TestCase):
 
     def test_goto_on_run_thread_starts_directly(self):
         mock_start = self.mock_start
-        RunningScript.run_thread = threading.current_thread()
+        patcher = patch.object(RunningScript, "run_thread", threading.current_thread())
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
         running_script.goto(9)
         mock_start.assert_called_with("test_script.py", line_no=9, bind_variables=True, complete=True)
