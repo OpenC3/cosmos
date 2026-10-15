@@ -19,6 +19,7 @@ module OpenC3
       response_body = nil
       begin
         endpoint = "/openc3-api/plugins?scope=#{scope}"
+        endpoint += "&exclude_default=true" unless default
         uri = URI.parse($api_server.generate_url + endpoint)
         auth = $api_server.generate_auth
 
@@ -30,17 +31,7 @@ module OpenC3
           http.request(request) do |response|
             response_body = response.body
             response.value() # Raises an HTTP error if the response is not 2xx (success)
-            plugins = JSON.parse(response.body, allow_nan: true, create_additions: true)
-            if default
-              return plugins
-            else
-              return plugins.select do |plugin|
-                !plugin.start_with?('openc3-cosmos-tool-') and
-                !plugin.start_with?('openc3-tool-base') and
-                !plugin.start_with?('openc3-cosmos-enterprise-tool-') and
-                !plugin.start_with?('openc3-enterprise-tool-base')
-              end
-            end
+            return JSON.parse(response.body, allow_nan: true, create_additions: true)
           end
         end
       rescue => e

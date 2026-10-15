@@ -71,6 +71,23 @@ class PluginsController < ModelController
     nil # indicates unreachable download location
   end
 
+  # Returns the plugin names. Pass exclude_default=true to leave out the plugins
+  # that ship with COSMOS.
+  def index
+    return unless authorization('system')
+    exclude_default = params[:exclude_default]
+    unless exclude_default.nil? || ['true', 'false'].include?(exclude_default)
+      render json: { status: 'error', message: "Invalid exclude_default: #{exclude_default}" }, status: :bad_request
+      return
+    end
+    names = @model_class.names(scope: params[:scope])
+    names = names.reject { |name| OpenC3::DefaultPlugins.default?(name) } if exclude_default == 'true'
+    render json: names
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
+    logger.error(error.formatted)
+  end
+
   def show
     return unless authorization('system')
     if params[:id].downcase == 'all'
