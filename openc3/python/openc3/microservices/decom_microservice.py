@@ -101,6 +101,10 @@ class DecomMicroservice(Microservice):
         "GREEN_HIGH": 5,
     }
 
+    # Decom never uses descriptions so don't keep them in memory
+    def load_descriptions(self):
+        return False
+
     def __init__(self, *args):
         super().__init__(*args)
         # Should only be one target, but there might be multiple decom microservices for a given target

@@ -148,7 +148,9 @@ class Microservice:
         if self.target_names is None:
             self.target_names = []
         if not is_plugin:
-            System.setup_targets(self.target_names, self.temp_dir, scope=self.scope)
+            System.setup_targets(
+                self.target_names, self.temp_dir, scope=self.scope, descriptions=self.load_descriptions()
+            )
 
         # Use atexit to shutdown cleanly no matter how we die
         atexit.register(self.shutdown)
@@ -224,6 +226,11 @@ class Microservice:
     # Must be implemented by a subclass
     def run(self):
         self.shutdown()
+
+    # Whether System keeps packet and item descriptions. Subclasses that never
+    # use them override this to return False to reduce memory.
+    def load_descriptions(self):
+        return True
 
     def shutdown(self, state="STOPPED"):
         if self.shutdown_complete:

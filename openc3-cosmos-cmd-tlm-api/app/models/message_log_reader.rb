@@ -20,19 +20,22 @@ class MessageLogReader
   end
 
   def reset
-    @lines = nil
+    @file&.close
+    @file = nil
     @next_line = nil
-    @index = 0
   end
 
+  # Lines are read one at a time as they are consumed rather than loading the
+  # whole (decompressed) file up front, so memory use stays constant no matter
+  # how large a message log grows.
   def open(path)
     reset()
-    @lines = File.read(path).to_s.lines
+    @file = File.open(path, 'r')
     process_line()
   end
 
   def close
-    # Nothing to do
+    reset()
   end
 
   def read
@@ -51,12 +54,15 @@ class MessageLogReader
   # private
 
   def process_line
-    line = @lines[@index]
+    line = @file&.gets
     if line and line[0] == '{'
-      @index += 1
       @next_line = JSON.parse(line.chomp, allow_nan: true, create_additions: true)
     else
+      # End of file (or a non-JSON line) - nothing more to read so release the
+      # file handle now instead of waiting on the caller to close
       @next_line = nil
+      @file&.close
+      @file = nil
     end
   end
 end

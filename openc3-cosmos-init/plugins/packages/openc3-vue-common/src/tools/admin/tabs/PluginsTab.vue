@@ -282,8 +282,9 @@ export default {
 
     // Detect whether the Enterprise Version History backend is enabled
     // (OPENC3_VERSION_HISTORY_DIR set) so per-plugin Export/Import History
-    // actions can be shown.
-    Api.get('/openc3-api/info')
+    // actions can be shown. The promise is kept so the upgrade flow can wait
+    // for it before opening ModifiedPluginDialog, which picks its flow once.
+    this.infoLoaded = Api.get('/openc3-api/info')
       .then((response) => {
         this.scriptVersionsEnabled = !!response.data?.script_versions
       })
@@ -413,13 +414,15 @@ export default {
           this.file = undefined
         })
     },
-    pluginCallback: function (pluginHash) {
+    pluginCallback: async function (pluginHash) {
       this.showPluginDialog = false
       if (this.currentPlugin !== null) {
         pluginHash['name'] = this.currentPlugin
       }
       this.pluginHashTmp = pluginHash
       if (this.isModified(this.currentPlugin)) {
+        // The upgrade flow depends on scriptVersionsEnabled
+        await this.infoLoaded
         this.pluginDelete = false
         this.showModifiedPluginDialog = true
       } else {
