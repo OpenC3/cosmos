@@ -176,6 +176,8 @@ Rails.application.routes.draw do
       get '/storage/reingest/:job_id', to: 'storage#reingest_status'
       get '/storage/repair_candidates', to: 'storage#repair_candidates'
       get '/storage/download/:object_id', to: 'storage#get_download_presigned_request', object_id: /.*/
+      get '/storage/volume_download/:object_id', to: 'storage#get_volume_download_token', object_id: /.*/
+      get '/storage/stream/:token', to: 'storage#stream_volume_file', token: /[A-Za-z0-9_-]+/
       get '/storage/upload/:object_id', to: 'storage#get_upload_presigned_request', object_id: /.*/
       put '/storage/upload_file/:object_id', to: 'storage#upload_file', object_id: /.*/
       delete '/storage/delete/:object_id', to: 'storage#delete', object_id: /.*/
