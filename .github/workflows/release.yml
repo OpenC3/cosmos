@@ -62,6 +62,10 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
+      # Only for `uv lock` after each version bump below - the package itself is
+      # still built with `python -m build`.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       - name: Install dependencies
         working-directory: openc3/python
         run: |
@@ -97,6 +101,13 @@ jobs:
         working-directory: scripts/release
         env:
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.version }}
+      # uv.lock records the project version that just changed in
+      # pyproject.toml, so it is stale until relocked. uv lock does not upgrade
+      # already-locked packages, so nothing else moves. Skipping this leaves
+      # main failing every `uv sync --locked`.
+      - name: Relock the Python project version
+        working-directory: openc3/python
+        run: uv lock
       - uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.version }}"
@@ -206,6 +217,10 @@ jobs:
         working-directory: scripts/release
         env:
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.next_version }}
+      # Relock as after the bump above.
+      - name: Relock the Python project version
+        working-directory: openc3/python
+        run: uv lock
       - uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.next_version }}"

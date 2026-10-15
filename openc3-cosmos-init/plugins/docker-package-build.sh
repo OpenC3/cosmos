@@ -58,6 +58,9 @@ echo "=== packageInstall $1 mv gem complete"
 # genuinely needs an sdist, drop --no-build here AND in verify-uv-cache.sh and
 # document why. Runtime plugin installs (uvinstall) intentionally stay
 # permissive - user plugins are allowed to depend on sdist-only packages.
+#
+# --frozen, not --locked, as in openc3/Dockerfile: a mirror build's index does
+# not match the lock. Revisit once #3891 lands.
 if [ -f uv.lock ] && [ -f pyproject.toml ]; then
   echo "--- packageBuild $1 warm UV cache (uv sync --frozen)"
   UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv sync --frozen --no-dev --no-install-project --no-build
