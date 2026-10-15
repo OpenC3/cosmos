@@ -501,7 +501,7 @@ Source code for [ignore_packet_protocol.rb](https://github.com/OpenC3/cosmos/blo
 
 ## CCSDS Protocols (Enterprise)
 
-COSMOS Enterprise implements the CCSDS Space Data Link protocols as Interface Protocols in the [openc3-cosmos-ccsds-protocols](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols) plugin. To use them, install the `openc3-cosmos-ccsds-protocols` plugin in [Admin - Plugins](../tools/admin#plugins).
+COSMOS Enterprise implements the CCSDS Space Data Link protocols as Interface Protocols in the [openc3-cosmos-ccsds-protocols](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols) plugin. To use them, install the `openc3-cosmos-ccsds-protocols` plugin in [Admin - Plugins](../tools/admin#plugins). The plugin repository and the source code links below require COSMOS Enterprise credentials.
 
 Every protocol ships in both Ruby and Python with identical class names and parameters. In Ruby use the class name (e.g. `CcsdsTmtfProtocol`) and in Python use the filename (e.g. `ccsds_tmtf_protocol.py`) on the `PROTOCOL` line.
 
@@ -526,8 +526,8 @@ The classic ground station setup wraps a TCP/IP interface with TM deframing on R
 ```cosmos
 INTERFACE INST_INT tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None None
   PROTOCOL READ ccsds_tmtf_protocol.py 100
-  PROTOCOL WRITE ccsds_tctf_protocol.py True False 1 100
   PROTOCOL WRITE ccsds_cltu_protocol.py
+  PROTOCOL WRITE ccsds_tctf_protocol.py True False 1 100
 ```
 
 </TabItem>
@@ -536,14 +536,14 @@ INTERFACE INST_INT tcpip_client_interface.py host.docker.internal 8080 8080 10.0
 ```cosmos
 INTERFACE INST_INT tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil nil
   PROTOCOL READ CcsdsTmtfProtocol 100
-  PROTOCOL WRITE CcsdsTctfProtocol true false 1 100
   PROTOCOL WRITE CcsdsCltuProtocol
+  PROTOCOL WRITE CcsdsTctfProtocol true false 1 100
 ```
 
 </TabItem>
 </Tabs>
 
-Since write protocols execute in reverse order, the TCTF protocol builds the transfer frame first and the CLTU protocol then wraps it.
+Since write protocols execute in reverse order, CLTU is declared before TCTF so the TCTF protocol builds the transfer frame first and the CLTU protocol then wraps it.
 
 ### CCSDS TCTF Protocol (Enterprise)
 
@@ -588,11 +588,11 @@ Source code for [ccsds_tctf_protocol.rb](https://repos.openc3.com/OpenC3/openc3-
 </TabItem>
 </Tabs>
 
-TC frames carry no sync marker so a desynchronized read stream cannot reliably re-anchor. A Frame Length too small to hold the configured fields is treated as a lost frame boundary: the byte is dropped and deframing retries. Use the CLTU layer (or another delimiter) ahead of it if you need true resynchronization. Frames are assumed to carry a single MAP SDU (no MAP packet blocking or segmentation beyond the Segment Header sequence flags).
+TC frames carry no sync marker so a desynchronized read stream cannot reliably re-anchor. A Frame Length too small to hold the configured fields is treated as a lost frame boundary: the byte is dropped and deframing retries. The CLTU protocol does not decode on read, so if you need true resynchronization decode the CLTUs externally (or use another delimiter that supports READ) ahead of it. Frames are assumed to carry a single MAP SDU (no MAP packet blocking or segmentation beyond the Segment Header sequence flags).
 
 ### CCSDS CLTU Protocol (Enterprise)
 
-The CCSDS CLTU Protocol wraps an already-built TC Transfer Frame in a Communications Link Transmission Unit (CCSDS 231.0-B-4): a start sequence, the frame split into BCH(63,56) codeblocks (7 data bytes + 1 parity byte each), and a tail sequence. It must be declared **after** the [CCSDS TCTF Protocol](#ccsds-tctf-protocol-enterprise) on the WRITE chain. The defaults are the CCSDS standard values so it is normally used with no parameters. The CLTU is used for the forward link only; there is no CLTU decoding on read.
+The CCSDS CLTU Protocol wraps an already-built TC Transfer Frame in a Communications Link Transmission Unit (CCSDS 231.0-B-4): a start sequence, the frame split into BCH(63,56) codeblocks (7 data bytes + 1 parity byte each), and a tail sequence. It must be declared **before** the [CCSDS TCTF Protocol](#ccsds-tctf-protocol-enterprise) on the WRITE chain so that, with write protocols running in reverse order, it wraps the finished frame. The defaults are the CCSDS standard values so it is normally used with no parameters. The CLTU is used for the forward link only; there is no CLTU decoding on read.
 
 | Parameter        | Description                                                       | Required | Default            |
 | ---------------- | ----------------------------------------------------------------- | -------- | ------------------ |
@@ -606,8 +606,8 @@ The CCSDS CLTU Protocol wraps an already-built TC Transfer Frame in a Communicat
 
 ```cosmos
 INTERFACE INTERFACE_NAME <params>
-  PROTOCOL WRITE ccsds_tctf_protocol.py
   PROTOCOL WRITE ccsds_cltu_protocol.py
+  PROTOCOL WRITE ccsds_tctf_protocol.py
 ```
 
 Source code for [ccsds_cltu_protocol.py](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols/src/branch/main/lib/ccsds_cltu_protocol.py)
@@ -617,8 +617,8 @@ Source code for [ccsds_cltu_protocol.py](https://repos.openc3.com/OpenC3/openc3-
 
 ```cosmos
 INTERFACE INTERFACE_NAME <params>
-  PROTOCOL WRITE CcsdsTctfProtocol
   PROTOCOL WRITE CcsdsCltuProtocol
+  PROTOCOL WRITE CcsdsTctfProtocol
 ```
 
 Source code for [ccsds_cltu_protocol.rb](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols/src/branch/main/lib/ccsds_cltu_protocol.rb)
@@ -969,8 +969,8 @@ INTERFACE TM_INT sle_return_interface.py <host> <port> <service_instance_id> RCF
 
 # Uplink: TC frame + CLTU encoders -> SLE FCLTU
 INTERFACE CMD_INT sle_forward_interface.py <host> <port> <service_instance_id>
-  PROTOCOL WRITE ccsds_tctf_protocol.py True False 1 100
   PROTOCOL WRITE ccsds_cltu_protocol.py
+  PROTOCOL WRITE ccsds_tctf_protocol.py True False 1 100
 ```
 
 **SLE Return Interface Parameters**
@@ -1006,7 +1006,7 @@ INTERFACE CMD_INT sle_forward_interface.py <host> <port> <service_instance_id>
 | Version               | SLE service version (4 also selects the v4 PDU definitions)                                          | No       | 5       |
 | Transfer Data Timeout | Seconds to wait for the provider to acknowledge each CLTU. 0 sends without waiting (fire and forget) | No       | 10      |
 
-Each CLTU write blocks until the provider returns the matching TRANSFER-DATA result and raises if the provider rejected it, so a refused CLTU is never counted as radiated. The association is kept alive with ISP1 heartbeats and COSMOS reconnects if the provider goes silent.
+With a positive Transfer Data Timeout, each CLTU write blocks until the provider returns the matching TRANSFER-DATA result and raises if the provider rejected it, so a refused CLTU is never counted as radiated. With a timeout of 0 the CLTU is sent fire and forget, so provider acceptance is not confirmed. The association is kept alive with ISP1 heartbeats and COSMOS reconnects if the provider goes silent.
 
 :::warning[SLE Replay Protection]
 Provider credentials are verified but the provider's time and random number are not checked against an acceptance window, so a captured provider credential remains replayable. Treat provider authentication as proof the peer knows the password, not as a live session guarantee.
