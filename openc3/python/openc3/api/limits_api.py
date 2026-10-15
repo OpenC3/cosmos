@@ -185,7 +185,7 @@ def get_limits(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
             vals["yellow_high"],
             vals["red_high"],
         ]
-        if vals.get("green_low"):
+        if vals.get("green_low") is not None:
             limits[key] += [vals["green_low"], vals["green_high"]]
     return limits
 
@@ -218,7 +218,7 @@ def set_limits(
         authorize(permission="tlm_set", target_name=target_name, packet_name=name, scope=scope)
     if (red_low > yellow_low) or (yellow_low >= yellow_high) or (yellow_high > red_high):
         raise RuntimeError("Invalid limits specified. Ensure yellow limits are within red limits.")
-    if (green_low and green_high) and (
+    if (green_low is not None and green_high is not None) and (
         (yellow_low > green_low) or (green_low >= green_high) or (green_high > yellow_high)
     ):
         raise RuntimeError("Invalid limits specified. Ensure green limits are within yellow limits.")
@@ -245,7 +245,7 @@ def set_limits(
         limits["yellow_low"] = yellow_low
         limits["yellow_high"] = yellow_high
         limits["red_high"] = red_high
-        if green_low and green_high:
+        if green_low is not None and green_high is not None:
             limits["green_low"] = green_low
             limits["green_high"] = green_high
         item["limits"][limits_set] = limits
@@ -253,7 +253,7 @@ def set_limits(
         message = (
             f"Setting '{target_name} {name} {item_name}' limits to {red_low} {yellow_low} {yellow_high} {red_high}"
         )
-        if green_low and green_high:
+        if green_low is not None and green_high is not None:
             message += f" {green_low} {green_high}"
         message += f" in set {limits_set} with persistence {persistence} as enabled {enabled}"
         Logger.info(message, scope=scope)

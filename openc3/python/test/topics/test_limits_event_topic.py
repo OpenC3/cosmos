@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import unittest
 from unittest.mock import *
 
@@ -144,6 +145,25 @@ class TestLimitsEventTopic(unittest.TestCase):
         self.assertEqual(events[1][1]["green_high"], 10.0)
         self.assertEqual(events[1][1]["persistence"], 5)
         self.assertEqual(events[1][1]["enabled"], True)
+
+    def test_stores_zero_green_limits_in_current_limits_settings(self):
+        event = {
+            "type": "LIMITS_SETTINGS",
+            "limits_set": "CUSTOM",
+            "target_name": "TGT1",
+            "packet_name": "PKT1",
+            "item_name": "ITEM1",
+            "red_low": -4.0,
+            "yellow_low": -3.0,
+            "yellow_high": 2.0,
+            "red_high": 3.0,
+            "green_low": 0.0,
+            "green_high": 1.0,
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        settings = json.loads(Store.hget("DEFAULT__current_limits_settings", "TGT1__PKT1__ITEM1"))
+        self.assertEqual(settings["CUSTOM"]["green_low"], 0.0)
+        self.assertEqual(settings["CUSTOM"]["green_high"], 1.0)
 
     def test_writes_and_reads_limits_event_state(self):
         event = {
