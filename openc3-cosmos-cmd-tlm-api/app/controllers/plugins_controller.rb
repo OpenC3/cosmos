@@ -15,6 +15,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/utilities/default_plugins'
 require 'openc3/utilities/process_manager'
 require 'openc3/models/plugin_store_model'
 require 'openc3/models/plugin_model'
@@ -92,6 +93,11 @@ class PluginsController < ModelController
             plugin.merge!(store_version) if store_version
           end
         end
+      end
+
+      # Flag the plugins that ship with COSMOS so clients can hide them by default
+      plugins.each do |plugin_name, plugin|
+        plugin['default'] = OpenC3::DefaultPlugins.default?(plugin_name)
       end
 
       render json: plugins
