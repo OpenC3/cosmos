@@ -24,12 +24,16 @@ class RealtimeStreamingThread < StreamingThread
   # Beyond this multiple of the max lag we skip immediately, even if catching up,
   # because Redis only retains a limited window and the data is about to be trimmed
   SKIP_IMMEDIATELY_FACTOR = 6
+  # Minimum seconds between lag checks. Each check costs a Redis round trip per
+  # db_shard so don't do it every pass; lag thresholds are many seconds anyway.
+  LAG_CHECK_INTERVAL_SECONDS = 1.0
 
   def initialize(streaming_api, collection, scope: nil)
     super(streaming_api, collection, scope: scope)
     @max_lag_seconds = ENV.fetch('OPENC3_STREAMING_MAX_LAG_SECONDS', DEFAULT_MAX_LAG_SECONDS).to_f
     @behind_since = nil
     @behind_lag = nil
+    @last_lag_check = nil
   end
 
   def thread_body
@@ -42,12 +46,25 @@ class RealtimeStreamingThread < StreamingThread
   # gets a grace window of @max_lag_seconds, and each window in which the lag
   # shrinks starts a new one. Only when the lag fails to shrink over a whole
   # window (or gets extreme) do we skip.
+  #
+  # Lag is how far the newest msg_id we read trails the newest msg_id in the
+  # stream. Both are stamped by the same Redis server (XADD '*') so the result
+  # is immune to clock skew between this container and Redis.
   def check_lag(newest_msg_ids, item_objects_by_topic, packet_objects_by_topic)
     return if @max_lag_seconds <= 0 or newest_msg_ids.empty?
 
-    now = Time.now.to_f
-    newest_ms = newest_msg_ids.values.map { |msg_id| msg_id.split('-')[0].to_i }
-    lag = now - (newest_ms.min / 1000.0)
+    now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    return if @last_lag_check and (now - @last_lag_check) < LAG_CHECK_INTERVAL_SECONDS
+    @last_lag_check = now
+
+    heads = stream_heads(newest_msg_ids.keys, item_objects_by_topic, packet_objects_by_topic)
+    topic_lags = {}
+    newest_msg_ids.each do |topic, msg_id|
+      head = heads[topic]
+      next unless head
+      topic_lags[topic] = (msg_id_ms(head) - msg_id_ms(msg_id)) / 1000.0
+    end
+    lag = topic_lags.values.max || 0.0
     if lag <= @max_lag_seconds
       @behind_since = nil
       @behind_lag = nil
@@ -69,20 +86,41 @@ class RealtimeStreamingThread < StreamingThread
       end
     end
 
-    skip_ahead(lag, item_objects_by_topic, packet_objects_by_topic)
+    skip_ahead(lag, topic_lags, heads, item_objects_by_topic, packet_objects_by_topic)
     @behind_since = nil
     @behind_lag = nil
   end
 
-  def skip_ahead(lag, item_objects_by_topic, packet_objects_by_topic)
+  # Only topics that are actually behind are advanced so up to date topics
+  # don't lose messages that arrived during this pass
+  def skip_ahead(lag, topic_lags, heads, item_objects_by_topic, packet_objects_by_topic)
     OpenC3::Logger.warn("Realtime streaming fell #{lag.round(1)}s behind, skipping ahead to the latest data")
-    (item_objects_by_topic.keys | packet_objects_by_topic.keys).each do |topic|
+    topic_lags.each do |topic, topic_lag|
+      next if topic_lag <= @max_lag_seconds
       objects = (item_objects_by_topic[topic] || []) + (packet_objects_by_topic[topic] || [])
-      next if objects.empty?
-      last_offset = OpenC3::Topic.get_last_offset(topic, db_shard: objects[0].db_shard)
-      next if last_offset == "0-0"
-      objects.each { |object| object.offset = last_offset }
+      objects.each { |object| object.offset = heads[topic] }
     end
     @streaming_api.transmit_notice('SKIPPED', "Streaming fell behind realtime, skipped #{lag.round(1)}s of data", skipped_seconds: lag.round(3))
+  end
+
+  # Returns the newest msg_id of each topic using one pipelined round trip per db_shard
+  def stream_heads(topics, item_objects_by_topic, packet_objects_by_topic)
+    heads = {}
+    topics_by_shard = topics.group_by do |topic|
+      objects = item_objects_by_topic[topic] || packet_objects_by_topic[topic]
+      objects&.first&.db_shard || 0
+    end
+    topics_by_shard.each do |db_shard, shard_topics|
+      store = OpenC3::EphemeralStore.instance(db_shard: db_shard)
+      results = store.redis_pool.pipelined do
+        shard_topics.each { |topic| store.xrevrange(topic, count: 1) }
+      end
+      shard_topics.zip(results) { |topic, result| heads[topic] = result&.dig(0, 0) }
+    end
+    heads
+  end
+
+  def msg_id_ms(msg_id)
+    msg_id.split('-')[0].to_i
   end
 end

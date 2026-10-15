@@ -615,9 +615,12 @@ RSpec.describe StreamingApi, type: :model do
           end
 
           it 'skips ahead and notifies when far behind realtime' do
-            # Messages were written 2 minutes ago so we're well past the max lag
+            # Messages read are 2 minutes older than the stream head so we're well past the max lag
             @time = @start_time - 120
-            allow(OpenC3::Topic).to receive(:get_last_offset).and_return("#{Time.now.to_i * 1000}-0")
+            head = "#{Time.now.to_i * 1000}-0"
+            allow_any_instance_of(RealtimeStreamingThread).to receive(:stream_heads) do |_thread, topics|
+              topics.to_h { |topic| [topic, head] }
+            end
             @send_count = 1
             data['notices'] = true
             @api.add(data)
@@ -625,7 +628,6 @@ RSpec.describe StreamingApi, type: :model do
             notice = @messages.find { |message| message.is_a?(Hash) }
             expect(notice['notice']).to eq('SKIPPED')
             expect(notice['skipped_seconds']).to be > 60
-            expect(OpenC3::Topic).to have_received(:get_last_offset).at_least(:once)
             @api.kill
           end
         end
