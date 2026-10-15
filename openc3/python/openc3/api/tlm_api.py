@@ -337,12 +337,14 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
         else:
             packet_names = [packet_name]
 
-        authorize(
-            permission="tlm",
-            target_name=target_name,
-            packet_name=packet_name,
-            scope=scope,
-        )
+        # Authorize every packet whose definition is read below, not just the latest one
+        for name in dict.fromkeys([*packet_names, packet_name]):
+            authorize(
+                permission="tlm",
+                target_name=target_name,
+                packet_name=name,
+                scope=scope,
+            )
 
         try:
             item_configs = [TargetModel.packet_item(target_name, name, item_name, scope=scope) for name in packet_names]

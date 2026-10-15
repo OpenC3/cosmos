@@ -30,6 +30,7 @@ from unittest.mock import patch
 
 import pytest
 
+
 # Add openc3 python path for imports
 # Path: openc3/test/integration/tsdb/python -> openc3/python
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "python"))
@@ -42,9 +43,11 @@ os.environ.setdefault("OPENC3_TSDB_PASSWORD", "admin")
 os.environ.setdefault("OPENC3_SCOPE", "DEFAULT")
 
 from conftest import requires_questdb
+
 from openc3.api.tlm_api import get_tlm_values
 from openc3.models.target_model import TargetModel
 from openc3.utilities.questdb_client import QuestDBClient
+
 
 TARGET = "PY_LT"
 PACKET_DEF = {"items": [{"name": "VALUE", "data_type": "INT", "bit_size": 32}]}
@@ -67,7 +70,8 @@ def ts_to_iso(ts_ns):
 class TestTlmApiLatestTsdb:
     @pytest.fixture
     def base_ns(self, questdb_client, clean_table, wait_for_data):
-        base_ns = int(time.time() * 1e9)
+        # Align to microseconds since ts_to_iso drops nanoseconds and could round the range start past the first row
+        base_ns = time.time_ns() // 1000 * 1000
         for packet_name, rows in ROWS.items():
             table_name, _ = QuestDBClient.sanitize_table_name(TARGET, packet_name)
             clean_table(table_name)

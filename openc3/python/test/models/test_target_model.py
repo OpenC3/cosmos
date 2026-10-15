@@ -149,6 +149,11 @@ class TestTargetModelPackets(unittest.TestCase):
             TargetModel.item_map_cache["DEFAULT__INST__item_to_packet_map"][0],
         )
 
+    def test_shares_the_item_to_packet_map_cache_entry_for_a_lowercase_target(self):
+        TargetModel.get_item_to_packet_map("inst", scope="DEFAULT")
+        self.assertIn("DEFAULT__INST__item_to_packet_map", TargetModel.item_map_cache)
+        self.assertNotIn("DEFAULT__inst__item_to_packet_map", TargetModel.item_map_cache)
+
     def test_caches_the_item_to_packet_map_per_scope(self):
         TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
         Store.set("OTHER__INST__item_to_packet_map", json.dumps({"OTHER_ITEM": ["OTHER_PKT"]}))

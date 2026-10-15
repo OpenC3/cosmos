@@ -285,7 +285,10 @@ module OpenC3
         else
           packet_names = [packet_name]
         end
-        authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, scope: scope, token: token)
+        # Authorize every packet whose definition is read below, not just the latest one
+        (packet_names | [packet_name]).each do |name|
+          authorize(permission: 'tlm', target_name: target_name, packet_name: name, scope: scope, token: token)
+        end
         begin
           packet_items = packet_names.map { |name| TargetModel.packet_item(target_name, name, item_name, scope: scope) }
           available_type = packet_items.map { |packet_item| _tlm_available_value_type(packet_item, item_name, value_type) }.max_by { |type| VALUE_TYPE_ORDER.index(type) }

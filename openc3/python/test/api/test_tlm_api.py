@@ -982,6 +982,15 @@ class TestTlmApi(unittest.TestCase):
 
     @latest_candidates()
     @patch("openc3.api.tlm_api.authorize")
+    def test_get_tlm_available_latest_authorizes_every_candidate(self, mock_authorize):
+        with patch.object(CvtModel, "determine_latest_packet_for_item", return_value="PARAMS"):
+            get_tlm_available(["INST__LATEST__TEMP1__CONVERTED"])
+        self.assertCountEqual(
+            [call.kwargs["packet_name"] for call in mock_authorize.call_args_list], ["HEALTH_STATUS", "PARAMS"]
+        )
+
+    @latest_candidates()
+    @patch("openc3.api.tlm_api.authorize")
     def test_get_tlm_values_historical_latest_authorizes_every_candidate(self, mock_authorize):
         with patch.object(CvtModel, "tsdb_lookup", return_value={}):
             get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time="2026-09-13T00:00:00Z")

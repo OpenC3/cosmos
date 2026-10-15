@@ -228,13 +228,15 @@ class TargetModel(Model):
 
     @classmethod
     def get_item_to_packet_map(cls, target_name: str, scope: str = OPENC3_SCOPE):
+        # Normalize before building the key so lowercase lookups share the entry
+        # that update_store_item_map refreshes
+        target_name = target_name.upper()
         # The cache is keyed by item_map_key since the same target can exist in multiple scopes
         item_map_key = f"{scope}__{target_name}__item_to_packet_map"
         if item_map_key in TargetModel.item_map_cache:
             cache_time, item_map = TargetModel.item_map_cache[item_map_key]
             if (time.time() - cache_time) < TargetModel.ITEM_MAP_CACHE_TIMEOUT:
                 return item_map
-        target_name = target_name.upper()
         store = cls._store_for_target(target_name, scope)
         json_data = store.get(item_map_key)
         if json_data:

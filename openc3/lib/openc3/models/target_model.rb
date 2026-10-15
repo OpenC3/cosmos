@@ -429,11 +429,13 @@ module OpenC3
     end
 
     def self.get_item_to_packet_map(target_name, scope:)
+      # Normalize before building the key so lowercase lookups share the entry
+      # that update_store_item_map and undeploy refresh and invalidate
+      target_name = target_name.upcase
       # The cache is keyed by item_map_key since the same target can exist in multiple scopes
       item_map_key = "#{scope}__#{target_name}__item_to_packet_map"
       cache_time, item_map = @@item_map_cache[item_map_key]
       return item_map if item_map and (Time.now - cache_time) < ITEM_MAP_CACHE_TIMEOUT
-      target_name = target_name.upcase
       store = store_for_target(target_name, scope: scope)
       json_data = store.get(item_map_key)
       if json_data

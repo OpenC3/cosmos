@@ -55,7 +55,7 @@ class StreamingApi
         added = false
         packet_names.each do |packet_name|
           new_key = parsed.with(packet_name: packet_name).to_key_string
-          collection.add(StreamingObject.new(new_key, start_time, end_time, item_key: item_key, scope: scope, token: token))
+          collection.add(StreamingObject.new(new_key, start_time, end_time, item_key: item_key, source_key: key, scope: scope, token: token))
           added = true
         rescue OpenC3::AuthError, OpenC3::ForbiddenError => e
           OpenC3::Logger.info("Skipping unauthorized LATEST packet: #{new_key}")

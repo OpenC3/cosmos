@@ -40,11 +40,14 @@ class StreamingObject
   attr_reader :id
   attr_reader :realtime
   attr_reader :item_key
+  # The key as subscribed, which differs from key when a LATEST item expands to a concrete packet
+  attr_reader :source_key
 
-  def initialize(key, start_time_nsec, end_time_nsec, item_key: nil, scope:, token: nil)
+  def initialize(key, start_time_nsec, end_time_nsec, item_key: nil, source_key: nil, scope:, token: nil)
     key = key.upcase
     @key = key
     @item_key = item_key
+    @source_key = source_key ? source_key.upcase : key
     parsed = StreamingKey.parse(key, item_key: !!item_key)
     @stream_mode = parsed.stream_mode
     @cmd_or_tlm = parsed.cmd_or_tlm

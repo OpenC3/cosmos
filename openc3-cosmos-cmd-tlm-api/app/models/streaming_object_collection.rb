@@ -62,8 +62,10 @@ class StreamingObjectCollection
         _remove_found(found_object)
       elsif object.item_key
         # Items can be added as [key, item_key] pairs but removed by key alone,
-        # so fall back to removing every item object with a matching key
-        @objects.select { |obj| obj.item_key and obj.key == object.key }.each do |obj|
+        # so fall back to removing every item object subscribed with the same key.
+        # Match on source_key so removing an explicit item doesn't also remove a
+        # LATEST subscription which expanded to the same concrete key (and vice versa)
+        @objects.select { |obj| obj.item_key and obj.source_key == object.source_key }.each do |obj|
           _remove_found(obj)
         end
       end

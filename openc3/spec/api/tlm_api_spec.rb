@@ -722,6 +722,16 @@ module OpenC3
         expect(@api.get_tlm_available(['INST__LATEST__TEMP1__FORMATTED'])).to eql(['INST__LATEST__TEMP1__FORMATTED__LIMITS'])
       end
 
+      it "authorizes every LATEST packet before reading its definition" do
+        allow(TargetModel).to receive(:get_item_to_packet_map).and_return({ 'TEMP1' => ['PARAMS', 'HEALTH_STATUS'] })
+        allow(CvtModel).to receive(:determine_latest_packet_for_item).and_return('PARAMS')
+        allow(@api).to receive(:authorize) do |packet_name:, **|
+          raise ForbiddenError, 'forbidden' if packet_name == 'HEALTH_STATUS'
+        end
+        expect(TargetModel).not_to receive(:packet_item)
+        expect { @api.get_tlm_available(['INST__LATEST__TEMP1__FORMATTED']) }.to raise_error(ForbiddenError)
+      end
+
       it "returns RAW for DERIVED items with a read conversion" do
         # Packet#decom stores a DERIVED item's read conversion as the raw value with no __C
         items = ['INST__HEALTH_STATUS__TEMP1HIGH__CONVERTED', 'INST__HEALTH_STATUS__TEMP1HIGH__FORMATTED']
