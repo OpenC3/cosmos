@@ -111,7 +111,7 @@ class MetricModel(DbShardedModel, EphemeralModel):
     def __init__(
         self,
         name: str,
-        values: dict = None,
+        values: dict | None = None,
         db_shard: int = 0,
         scope: str = OPENC3_SCOPE,
         primary_key: str = PRIMARY_KEY,
