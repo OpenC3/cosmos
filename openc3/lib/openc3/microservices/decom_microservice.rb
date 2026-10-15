@@ -84,6 +84,11 @@ module OpenC3
     include InterfaceDecomCommon
     LIMITS_STATE_INDEX = { RED_LOW: 0, YELLOW_LOW: 1, YELLOW_HIGH: 2, RED_HIGH: 3, GREEN_LOW: 4, GREEN_HIGH: 5 }
 
+    # Decom never uses descriptions so don't keep them in memory
+    def load_descriptions?
+      false
+    end
+
     def initialize(*args)
       super(*args)
       # Should only be one target, but there might be multiple decom microservices for a given target

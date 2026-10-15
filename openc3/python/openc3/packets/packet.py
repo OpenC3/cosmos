@@ -780,7 +780,7 @@ class Packet(Structure):
         with self.synchronize_allow_reads(True):
             result = self.read_all(value_type, buffer, False)
             for item in result:
-                item.append(self.items[item[0]].limits.state)
+                item.append(self.items[item[0]].limits_state)
         return result
 
     # Create a string that shows the name and value of each item in the packet
@@ -938,7 +938,7 @@ class Packet(Structure):
     # This is an optimization so we don't have to iterate through all the items case
     # checking for limits.
     def update_limits_items_cache(self, item):
-        if (item.limits.values or item.state_colors) and not self.limits_items_hash.get(item.name):
+        if (item.limits_values or item.state_colors) and not self.limits_items_hash.get(item.name):
             self.limits_items.append(item)
             self.limits_items_hash[item.name] = True
 
@@ -1214,7 +1214,7 @@ class Packet(Structure):
             if item.format_string or item.units:
                 json_hash[f"{item.name}__F"] = self.read_item(item, "FORMATTED", self.buffer, given_raw)
             if include_limits_states:
-                limits_state = item.limits.state
+                limits_state = item.limits_state
                 if limits_state:
                     json_hash[f"{item.name}__L"] = limits_state
 
@@ -1233,7 +1233,7 @@ class Packet(Structure):
 
     def handle_limits_states(self, item, value):
         # Retrieve limits state for the given value
-        limits_state = item.state_colors.get(value)
+        limits_state = item.state_colors.get(value) if item.state_colors else None
 
         if item.limits.state != limits_state:  # PacketItemLimits state has changed
             # Save old limits state
