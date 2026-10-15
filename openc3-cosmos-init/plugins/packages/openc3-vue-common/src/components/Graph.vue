@@ -2158,6 +2158,8 @@ export default {
       }
     },
     receivedNotice: function (notice) {
+      // Ignore anything we don't understand so new notice types added on the
+      // server don't break older clients
       if (notice.__type !== 'NOTICE' || notice.notice !== 'SKIPPED') {
         return
       }
@@ -2166,6 +2168,7 @@ export default {
       // screen (which keeps its own list) once a minute
       const now = Date.now()
       const existing = this.errors.find((error) => error.type === 'skipped')
+      // Accumulate the totals across every skip since the entry was created
       const skippedSeconds =
         (existing?.skippedSeconds || 0) + notice.skipped_seconds
       const count = (existing?.count || 0) + 1
@@ -2174,15 +2177,18 @@ export default {
         message += ` (${count} times)`
       }
       if (existing) {
+        // Update in place so the errors list shows the latest totals
         existing.skippedSeconds = skippedSeconds
         existing.count = count
         existing.message = message
         existing.time = now
+        // Throttle emits to the parent, which would otherwise add a new entry per skip
         if (now - existing.emitted > 60000) {
           existing.emitted = now
           this.$emit('error', existing)
         }
       } else {
+        // First skip: addError stamps the time and emits to the parent
         this.addError({
           type: 'skipped',
           message: message,

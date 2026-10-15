@@ -342,6 +342,8 @@ class StreamingApi
   # Send an out-of-band notice (e.g. that data was skipped) to clients that opted in
   def transmit_notice(notice, message, **extra)
     return unless @notices
+    # Notices are a Hash while normal results are an Array, which is how clients
+    # tell them apart. Extra keys are stringified to match the JSON the client sees.
     ActionCable.server.broadcast(@subscription_key, { "__type" => "NOTICE", "notice" => notice, "message" => message }.merge(extra.transform_keys(&:to_s)))
   end
 
