@@ -841,9 +841,10 @@ module OpenC3
           # Do not write an exception file for these extremely common cases
         else
           # Only log the backtrace the first time we see each distinct error
-          unless @connection_failed_messages.include?(connect_error.message)
+          key = [connect_error.class, connect_error.message]
+          unless @connection_failed_messages.include?(key)
             @logger.error "#{@interface.name}: #{connect_error.formatted}"
-            @connection_failed_messages << connect_error.message
+            @connection_failed_messages << key
           end
         end
       end
@@ -862,9 +863,10 @@ module OpenC3
           # Do not write an exception file for these extremely common cases
         else
           # Only log the backtrace the first time we see each distinct error
-          unless @connection_lost_messages.include?(err.message)
+          key = [err.class, err.message]
+          unless @connection_lost_messages.include?(key)
             @logger.error "#{@interface.name}: #{err.formatted}"
-            @connection_lost_messages << err.message
+            @connection_lost_messages << key
           end
         end
       else
@@ -899,7 +901,6 @@ module OpenC3
       else
         RouterStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
       end
-      clear_connection_messages()
       @logger.info "#{@interface.name}: Connection Success"
     end
 

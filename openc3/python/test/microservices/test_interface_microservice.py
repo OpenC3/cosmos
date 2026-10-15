@@ -312,7 +312,17 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(errors, [])
         im.shutdown()
 
-    def test_logs_backtraces_again_after_a_successful_connect_or_a_user_requested_connect(self):
+    def test_logs_a_backtrace_for_each_exception_type_raised_without_a_message(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        im.handle_connection_failed("INST_INT", self._raised(ValueError()))
+        im.handle_connection_failed("INST_INT", self._raised(KeyError()))
+        im.handle_connection_lost(self._raised(ValueError()))
+        im.handle_connection_lost(self._raised(KeyError()))
+        self.assertEqual(sum("Traceback" in msg for msg in errors), 4)
+        im.shutdown()
+
+    def test_logs_backtraces_again_only_after_a_user_requested_connect(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         errors = self._logged_errors(im)
 
@@ -325,8 +335,9 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(log_both(), 2)
         self.assertEqual(log_both(), 0)  # Already seen
 
-        im.connect()  # Connection Success clears them
-        self.assertEqual(log_both(), 2)
+        # Connection Success does not clear them, otherwise an error on the first
+        # read after every reconnect would log its backtrace every time
+        im.connect()
         self.assertEqual(log_both(), 0)
 
         im.interface.state = "ATTEMPTING"

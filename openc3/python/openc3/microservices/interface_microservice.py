@@ -941,10 +941,11 @@ class InterfaceMicroservice(Microservice):
         )
         if expected:
             pass  # Do not write an exception file for these extremely common cases
-        # Only log the backtrace the first time we see each distinct error
-        elif str(connect_error) not in self.connection_failed_messages:
+        # Only log the backtrace the first time we see each distinct error. Key on the
+        # type too since exceptions raised without arguments all have an empty str()
+        elif (type(connect_error), str(connect_error)) not in self.connection_failed_messages:
             self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(connect_error))}")
-            self.connection_failed_messages.append(str(connect_error))
+            self.connection_failed_messages.append((type(connect_error), str(connect_error)))
         self.disconnect()  # Ensure we do a clean disconnect
 
     def handle_connection_lost(self, error=None, reconnect=True):
@@ -954,9 +955,9 @@ class InterfaceMicroservice(Microservice):
             if self._expected_network_error(error, self.CONNECTION_LOST_ERRNOS):
                 pass  # Do not write an exception file for these extremely common cases
             # Only log the backtrace the first time we see each distinct error
-            elif str(error) not in self.connection_lost_messages:
+            elif (type(error), str(error)) not in self.connection_lost_messages:
                 self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
-                self.connection_lost_messages.append(str(error))
+                self.connection_lost_messages.append((type(error), str(error)))
         else:
             self.logger.info(f"{self.interface.name}: Connection Lost")
         self.disconnect(reconnect)  # Ensure we do a clean disconnect
@@ -986,7 +987,6 @@ class InterfaceMicroservice(Microservice):
             InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         else:
             RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
-        self.clear_connection_messages()
         self.logger.info(f"{self.interface.name}: Connection Success")
 
     def disconnect(self, allow_reconnect=True):

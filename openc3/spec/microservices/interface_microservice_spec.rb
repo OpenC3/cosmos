@@ -353,7 +353,21 @@ module OpenC3
           expect(errors).to be_empty
           im.shutdown
         end
-        it "logs backtraces again after a successful connect or a user requested connect" do
+
+        it "logs a backtrace for each exception class with the same message" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          im.handle_connection_failed("default:12345", raised(ArgumentError.new("bad thing")))
+          im.handle_connection_failed("default:12345", raised(TypeError.new("bad thing")))
+          im.handle_connection_lost(raised(ArgumentError.new("bad thing")))
+          im.handle_connection_lost(raised(TypeError.new("bad thing")))
+          expect(errors.count { |msg| msg.include?("interface_microservice_spec.rb") }).to eql 4
+          im.shutdown
+        end
+
+        it "logs backtraces again only after a user requested connect" do
           im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
           allow(im).to receive(:disconnect)
           errors = []
@@ -367,8 +381,9 @@ module OpenC3
           expect(log_both.call).to eql 2
           expect(log_both.call).to eql 0 # Already seen
 
-          im.connect # Connection Success clears them
-          expect(log_both.call).to eql 2
+          # Connection Success does not clear them, otherwise an error on the first
+          # read after every reconnect would log its backtrace every time
+          im.connect
           expect(log_both.call).to eql 0
 
           im.instance_variable_get(:@interface).state = 'ATTEMPTING'
