@@ -1,0 +1,45 @@
+# Builds the gem, tags the commit, and creates a GitHub release. Run it by hand
+# from the Actions tab and give it a version number.
+#
+# Both publish steps are off by default so a first release works with no setup
+# at all. Tick the box in the run dialog when you are ready to publish, after
+# adding the matching secret to the repo:
+#
+#   Deploy to OpenC3 App Store  ->  OPENC3_API_TOKEN  (your store account token)
+#   Publish the gem to RubyGems ->  RUBYGEMS_API_KEY  (your RubyGems API key)
+#
+# A tool or widget frontend needs nothing set here: once the plugin has a
+# package.json it is built with pnpm before the gem is packaged.
+
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number'
+        required: true
+        type: string
+      deploy_to_store:
+        description: 'Deploy to OpenC3 App Store'
+        required: false
+        type: boolean
+        default: false
+      deploy_to_rubygems:
+        description: 'Publish the gem to RubyGems'
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    uses: OpenC3/.github/.github/workflows/release-cosmos-plugin-reusable.yml@main
+    with:
+      version: ${{ inputs.version }}
+      deploy_to_store: ${{ inputs.deploy_to_store }}
+      deploy_to_rubygems: ${{ inputs.deploy_to_rubygems }}
+      plugin_directory: .
+      # is_tool: true  # Uncomment to fail the release if package.json is missing
+    secrets:
+      OPENC3_API_TOKEN: ${{ secrets.OPENC3_API_TOKEN }}
+      RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_KEY }}

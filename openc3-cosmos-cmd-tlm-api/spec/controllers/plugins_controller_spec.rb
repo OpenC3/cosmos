@@ -98,6 +98,15 @@ RSpec.describe PluginsController, type: :controller do
       expect(json["files"]).to eq(["INST/screen.txt"])
     end
 
+    it "returns internal_server_error when the diff fails" do
+      allow(OpenC3::PluginModel).to receive(:modified_diff).and_raise("boom")
+
+      post :modified_diff, params: {scope: "DEFAULT", plugin_hash: '{"name":"x"}'}
+      expect(response).to have_http_status(:internal_server_error)
+      json = JSON.parse(response.body)
+      expect(json["message"]).to eq("boom")
+    end
+
     it "returns bad_request on invalid plugin_hash JSON" do
       post :modified_diff, params: {scope: "DEFAULT", plugin_hash: "not json"}
       expect(response).to have_http_status(:bad_request)

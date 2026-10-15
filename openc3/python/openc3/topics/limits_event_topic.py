@@ -64,7 +64,7 @@ class LimitsEventTopic(Topic):
                 limits["yellow_low"] = event["yellow_low"]
                 limits["yellow_high"] = event["yellow_high"]
                 limits["red_high"] = event["red_high"]
-                if event.get("green_low") and event.get("green_high"):
+                if event.get("green_low") is not None and event.get("green_high") is not None:
                     limits["green_low"] = event["green_low"]
                     limits["green_high"] = event["green_high"]
                 limits_settings[event["limits_set"]] = limits

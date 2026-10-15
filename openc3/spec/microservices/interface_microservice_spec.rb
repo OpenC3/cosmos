@@ -412,6 +412,67 @@ module OpenC3
         expect(captured.extra['queue_username']).to eql("DEFAULT__MULTI__INST")
       end
 
+      it "identifies a routed command against the routed target" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        captured = nil
+        allow(CommandTopic).to receive(:write_packet) do |command, _scope|
+          captured = command
+        end
+        Thread.new { im.run }
+        sleep 0.01
+
+        # A router that did not identify the buffer forwards it unidentified
+        packet = Packet.new(nil, nil)
+        packet.buffer = System.commands.build_cmd("INST", "ABORT").buffer
+        RouterTopic.route_command(packet, ['INST'], scope: 'DEFAULT')
+        sleep 0.05
+        im.shutdown
+
+        expect(captured).to_not be_nil
+        expect([captured.target_name, captured.packet_name]).to eql(["INST", "ABORT"])
+      end
+
+      it "sends an unidentified routed command as UNKNOWN" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        captured = nil
+        allow(CommandTopic).to receive(:write_packet) do |command, _scope|
+          captured = command
+        end
+        # INST has a catch-all command, so force identification to fail
+        allow(System.commands).to receive(:identify).and_return(nil)
+        # Sent on behalf of the routed target, so UNKNOWN itself need not be enabled
+        im.instance_variable_get(:@interface).cmd_target_enabled.delete('UNKNOWN')
+        Thread.new { im.run }
+        sleep 0.01
+
+        # An unidentified buffer as a router would forward it
+        packet = Packet.new(nil, nil)
+        packet.buffer = "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
+        RouterTopic.route_command(packet, ['INST'], scope: 'DEFAULT')
+        sleep 0.05
+        im.shutdown
+
+        expect(captured).to_not be_nil
+        expect([captured.target_name, captured.packet_name]).to eql(["UNKNOWN", "UNKNOWN"])
+        expect(captured.packet_name).to eql("UNKNOWN")
+        expect(captured.buffer(false)).to eql("\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF")
+      end
+
+      it "drops an unidentified routed command for a disabled target" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        im.instance_variable_get(:@interface).cmd_target_enabled['INST'] = false
+        expect(CommandTopic).to_not receive(:write_packet)
+        allow(System.commands).to receive(:identify).and_return(nil)
+        Thread.new { im.run }
+        sleep 0.01
+
+        packet = Packet.new(nil, nil)
+        packet.buffer = "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
+        RouterTopic.route_command(packet, ['INST'], scope: 'DEFAULT')
+        sleep 0.05
+        im.shutdown
+      end
+
       it "handles obfuscated params" do
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
         all = InterfaceStatusModel.all(scope: "DEFAULT")
@@ -551,6 +612,23 @@ module OpenC3
 
         allow(interface).to receive(:disconnect).and_call_original # Allow a clean shutdown
         im.shutdown
+      end
+
+      it "cleans up on shutdown even if the interface disconnect raises" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        stream_log_pair = double("StreamLogPair", shutdown: [], cleanup: nil)
+        interface.stream_log_pair = stream_log_pair
+        expect(InterfaceStatusModel.get_model(name: "INST_INT", scope: "DEFAULT")).not_to be_nil
+        allow(interface).to receive(:disconnect).and_raise('test-error')
+
+        capture_io do |stdout|
+          im.shutdown
+          expect(stdout.string).to include("Disconnect failed during stop")
+        end
+        expect(InterfaceStatusModel.get_model(name: "INST_INT", scope: "DEFAULT")).to be_nil
+        expect(stream_log_pair).to have_received(:shutdown)
+        interface.stream_log_pair = nil # Don't leak the double past this example
       end
 
       it "still reconnects if the interface disconnect leaves it connected" do
