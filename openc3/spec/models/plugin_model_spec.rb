@@ -729,6 +729,24 @@ module OpenC3
         expect(PluginModel.resolve_pypi_url(scope: "DEFAULT")).to eql "https://custom.pypi.example.com/simple"
       end
 
+      it "drops a trailing slash from the pypi_url setting" do
+        allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://custom.pypi.example.com/")
+        expect(PluginModel.resolve_pypi_url(scope: "DEFAULT")).to eql "https://custom.pypi.example.com/simple"
+      end
+
+      it "treats the public index with a trailing slash as the default" do
+        allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://pypi.org/")
+        pypi_url = PluginModel.resolve_pypi_url(scope: "DEFAULT")
+        expect(pypi_url).to eql PypiUrl::DEFAULT
+        expect(PluginModel.build_pypi_args(pypi_url)).to_not include("--no-config")
+      end
+
+      it "drops a trailing slash from ENV PYPI_URL" do
+        allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(nil)
+        allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return("https://env.pypi.example.com/")
+        expect(PluginModel.resolve_pypi_url(scope: "DEFAULT")).to eql "https://env.pypi.example.com/simple"
+      end
+
       it "falls back to ENV PYPI_URL when the setting is nil" do
         allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return(nil)
         allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return("https://env.pypi.example.com")
