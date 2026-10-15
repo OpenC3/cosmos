@@ -278,13 +278,17 @@ class Store(metaclass=StoreMeta):
     # @option opts [String]  :id          the entry id, default value is `*`, it means auto generation,
     #   if `nil` id is passed it will be changed to `*`
     # @option opts [Integer] :maxlen      max length of entries, default value is `nil`, it means will grow forever
-    # @option opts [String] :approximate whether to add `~` modifier of maxlen or not, default value is 'true'
+    # @option opts [String] :approximate whether to add `~` modifier of maxlen or minid or not, default value is 'true'
+    # @option opts [String] :minid       trim entries with ids lower than this as part of the add (XADD MINID).
+    #   Cannot be combined with maxlen. See Topic.stream_safety_minid for the safety cap applied to target streams.
     #
     # @return [String] the entry id
-    def write_topic(self, topic, msg_hash, id="*", maxlen=None, approximate=True):
+    def write_topic(self, topic, msg_hash, id="*", maxlen=None, approximate=True, minid=None):
         if not id:
             id = "*"
         with self.redis_pool.get() as redis:
+            if minid:
+                return redis.xadd(topic, msg_hash, id=id, minid=minid, approximate=approximate)
             return redis.xadd(topic, msg_hash, id=id, maxlen=maxlen, approximate=approximate)
 
     # Trims older entries of the redis stream if needed.

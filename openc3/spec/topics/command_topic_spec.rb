@@ -42,7 +42,8 @@ module OpenC3
             packet_name: 'COMMAND',
             received_count: 1,
             stored: 'true'
-          )
+          ),
+          minid: kind_of(String)
         )
         CommandTopic.write_packet(packet, scope: 'DEFAULT')
       end

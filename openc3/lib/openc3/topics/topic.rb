@@ -16,9 +16,37 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/store'
+require 'openc3/utilities/logger'
 
 module OpenC3
   class Topic
+    # Stream trimming contract for the high rate target streams
+    # (TELEMETRY__, COMMAND__, DECOM__, DECOMCMD__):
+    #
+    # The streams are primarily trimmed by their consumers once the data is safely
+    # persisted elsewhere:
+    #   * TELEMETRY__ / COMMAND__ are trimmed by the log microservice (LogWriter) once a
+    #     log file has been moved to the bucket plus LogWriter::CLEANUP_DELAY.
+    #   * DECOM__ / DECOMCMD__ are trimmed by the TSDB microservice which keeps
+    #     TsdbMicroservice::TRIM_KEEP_MS of data.
+    #
+    # If a trimmer is absent (logging disabled, no TSDB) or falls far behind, the streams
+    # would grow without bound. As a safety net every write to these streams also passes
+    # an approximate XADD MINID so no entry older than the safety max age is retained.
+    # The max age is OPENC3_STREAM_MAX_AGE_SECONDS (default 600s, 0 or empty disables).
+    # For TELEMETRY__ / COMMAND__ the max age is never less than two log cycles plus the
+    # cleanup delay, because historical streaming reads data not yet in the bucket from
+    # the stream.
+    STREAM_MAX_AGE_DEFAULT_SECONDS = 600
+    # Mirrors LogWriter::CLEANUP_DELAY and the TargetModel default log cycle time
+    LOG_CLEANUP_DELAY_SECONDS = 60
+    DEFAULT_LOG_CYCLE_TIME_SECONDS = 600
+    # These are calculated on the write path of every packet so they are cached per process.
+    # The environment doesn't change while a microservice runs and the log cycle time only
+    # changes when the plugin (and therefore the microservices) are reinstalled.
+    @@stream_max_age_ms = nil
+    @@log_stream_max_age_ms = {}
+
     # Delegate all unknown class methods to EphemeralStore db_shard 0 (system-level topics)
     def self.method_missing(message, *args, **kwargs, &block)
       EphemeralStore.public_send(message, *args, **kwargs, &block)
@@ -37,8 +65,85 @@ module OpenC3
     # DB_Shard-aware topic methods for target-specific streams.
     # These explicitly route to the correct EphemeralStore db_shard.
 
-    def self.write_topic(topic, msg_hash, id = '*', maxlen = nil, approximate = 'true', db_shard: 0)
-      EphemeralStore.instance(db_shard: db_shard).write_topic(topic, msg_hash, id, maxlen, approximate)
+    def self.write_topic(topic, msg_hash, id = '*', maxlen = nil, approximate = 'true', minid: nil, db_shard: 0)
+      EphemeralStore.instance(db_shard: db_shard).write_topic(topic, msg_hash, id, maxlen, approximate, minid: minid)
+    end
+
+    # @return [Float] Configured safety max age in seconds (<= 0 means disabled)
+    def self.stream_max_age_seconds
+      value = ENV.fetch('OPENC3_STREAM_MAX_AGE_SECONDS', nil)
+      return STREAM_MAX_AGE_DEFAULT_SECONDS if value.nil?
+      return value.to_f
+    end
+
+    # @return [Integer] Cached safety max age in milliseconds (0 means disabled)
+    def self.stream_max_age_ms
+      @@stream_max_age_ms ||= [(stream_max_age_seconds * 1000).to_i, 0].max
+    end
+
+    # Calculates the MINID to pass to XADD to cap the age of entries in a target stream.
+    # The cap is anchored to the id being written (or now for auto generated ids) so an
+    # explicitly id'd entry (e.g. decom reusing the raw packet id) is never trimmed by its own add.
+    #
+    # @param id [String] The id being written ('*' or nil for auto generation)
+    # @param max_age_ms [Integer] Max age to retain (<= 0 means disabled)
+    # @return [String|nil] The minid or nil if the safety cap is disabled
+    def self.stream_safety_minid(id = '*', max_age_ms: stream_max_age_ms)
+      return nil if max_age_ms <= 0
+      if id.nil? or id == '*'
+        base_ms = Process.clock_gettime(Process::CLOCK_REALTIME, :millisecond)
+      else
+        base_ms = id.to_s.to_i # Stops at the '-' sequence separator
+      end
+      minid_ms = base_ms - max_age_ms
+      return nil if minid_ms <= 0
+      return minid_ms.to_s
+    end
+
+    # Calculates the MINID for a TELEMETRY__ / COMMAND__ stream write which also never
+    # trims younger than log_stream_min_age_seconds. The resulting max age is cached per stream.
+    #
+    # @param target_name [String] Target name
+    # @param cmd_or_tlm [Symbol] :CMD or :TLM
+    # @return [String|nil] The minid or nil if the safety cap is disabled
+    def self.log_stream_safety_minid(target_name, cmd_or_tlm, scope:)
+      target_cache = ((@@log_stream_max_age_ms[scope] ||= {})[target_name] ||= {})
+      max_age_ms = target_cache[cmd_or_tlm]
+      unless max_age_ms
+        max_age_ms = stream_max_age_ms
+        if max_age_ms > 0
+          min_age_ms = log_stream_min_age_seconds(target_name, cmd_or_tlm, scope: scope) * 1000
+          max_age_ms = min_age_ms if min_age_ms > max_age_ms
+        end
+        target_cache[cmd_or_tlm] = max_age_ms
+      end
+      return stream_safety_minid(max_age_ms: max_age_ms)
+    end
+
+    # Minimum age to retain in a TELEMETRY__ / COMMAND__ stream so the log microservice
+    # and historical streaming always have the data not yet moved to the bucket.
+    #
+    # @param target_name [String] Target name
+    # @param cmd_or_tlm [Symbol] :CMD or :TLM
+    # @return [Integer] Minimum age in seconds
+    def self.log_stream_min_age_seconds(target_name, cmd_or_tlm, scope:)
+      cycle_time = DEFAULT_LOG_CYCLE_TIME_SECONDS
+      begin
+        require 'openc3/models/target_model'
+        model = TargetModel.get(name: target_name, scope: scope)
+        if model
+          value = model[cmd_or_tlm == :CMD ? 'cmd_log_cycle_time' : 'tlm_log_cycle_time'].to_i
+          cycle_time = value if value > 0
+        end
+      rescue => e
+        Logger.warn("Unable to determine log cycle time for #{target_name}: #{e.message}")
+      end
+      return 2 * (cycle_time + LOG_CLEANUP_DELAY_SECONDS)
+    end
+
+    def self.clear_stream_max_age_cache
+      @@stream_max_age_ms = nil
+      @@log_stream_max_age_ms = {}
     end
 
     def self.read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil, db_shard: 0, &block)

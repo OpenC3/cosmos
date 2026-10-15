@@ -11,6 +11,7 @@
 
 import datetime
 import json
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -23,9 +24,10 @@ class TestCommandTopic(unittest.TestCase):
         mock_redis(self)
         self.captured = {}
 
-        def fake_write_topic(topic, msg_hash):
+        def fake_write_topic(topic, msg_hash, minid=None):
             self.captured["topic"] = topic
             self.captured["msg_hash"] = msg_hash
+            self.captured["minid"] = minid
 
         self.store_instance = MagicMock()
         self.store_instance.write_topic.side_effect = fake_write_topic
@@ -64,6 +66,8 @@ class TestCommandTopic(unittest.TestCase):
         self.assertEqual(msg_hash["packet_name"], "COMMAND")
         self.assertEqual(msg_hash["received_count"], 1)
         self.assertEqual(msg_hash["buffer"], b"\x01\x02\x03\x04")
+        # Safety cap is at least two default log cycles plus the cleanup delay
+        self.assertLessEqual(int(self.captured["minid"]), int(time.time() * 1000) - 1320000)
 
     def test_includes_extra_when_set(self):
         extra = {"foo": "bar", "count": 42}
