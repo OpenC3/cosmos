@@ -1275,7 +1275,7 @@ class Packet(Structure):
         # value of the item
         if value > yellow_low:
             if value < yellow_high:
-                if green_low:
+                if green_low is not None:
                     if value < green_high:
                         if value > green_low:
                             limits_state = "BLUE"
