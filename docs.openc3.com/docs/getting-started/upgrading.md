@@ -278,14 +278,29 @@ MINIO_ROOT_USER=your_user MINIO_ROOT_PASSWORD=your_pass ./scripts/linux/openc3_m
 OPENC3_BUCKET_USERNAME=your_user OPENC3_BUCKET_PASSWORD=your_pass ./scripts/linux/openc3_migrate_s3.sh migrate
 ```
 
-| Variable                 | Description                          | Default                |
-| :----------------------- | :----------------------------------- | :--------------------- |
-| `OLD_VOLUME`             | Source MINIO volume name             | `openc3-bucket-v`      |
-| `NEW_VOLUME`             | Destination versitygw volume name    | `openc3-object-v`      |
-| `MINIO_ROOT_USER`        | MINIO access key (COSMOS 6 source)   | `openc3minio`          |
-| `MINIO_ROOT_PASSWORD`    | MINIO secret key (COSMOS 6 source)   | `openc3miniopassword`  |
-| `OPENC3_BUCKET_USERNAME` | versitygw access key (COSMOS 7 dest) | `openc3bucket`         |
-| `OPENC3_BUCKET_PASSWORD` | versitygw secret key (COSMOS 7 dest) | `openc3bucketpassword` |
+| Variable                 | Description                          | Default                                    |
+| :----------------------- | :----------------------------------- | :----------------------------------------- |
+| `OLD_VOLUME`             | Source MINIO volume name             | `openc3-bucket-v`                          |
+| `NEW_VOLUME`             | Destination versitygw volume name    | `openc3-object-v`                          |
+| `MINIO_ROOT_USER`        | MINIO access key (COSMOS 6 source)   | `openc3minio`                              |
+| `MINIO_ROOT_PASSWORD`    | MINIO secret key (COSMOS 6 source)   | `openc3miniopassword`                      |
+| `OPENC3_BUCKET_USERNAME` | versitygw access key (COSMOS 7 dest) | `openc3bucket`                             |
+| `OPENC3_BUCKET_PASSWORD` | versitygw secret key (COSMOS 7 dest) | `openc3bucketpassword`                     |
+| `MC_IMAGE`               | COSMOS 6 init image used to run `mc` | `ghcr.io/openc3/openc3-cosmos-init:6.10.4` |
+
+:::info[Offline / Air-Gapped Systems]
+The script runs `mc` from a COSMOS 6 init image, which it pulls from `ghcr.io` by default. If your system can't reach `ghcr.io`, set `MC_IMAGE` to the COSMOS 6 init image you already have locally (Core `openc3-cosmos-init` or Enterprise `openc3-cosmos-enterprise-init`):
+
+```bash
+# Find the init image available locally
+docker images | grep init
+
+# Use it for the migration
+MC_IMAGE=my-registry.example.com/openc3inc/openc3-cosmos-init:6.10.4 ./openc3_migrate_s3.sh migrate
+```
+
+On Windows, run `set MC_IMAGE=...` before running `openc3_migrate_s3.bat`.
+:::
 
 :::tip[Docker Compose Volume Prefixes]
 The migration script automatically detects Docker Compose project prefixes. For example, if your volumes are named `cosmos_openc3-bucket-v` instead of `openc3-bucket-v`, the script handles this without additional configuration. You can also specify custom volume names with the `OLD_VOLUME` and `NEW_VOLUME` environment variables.
