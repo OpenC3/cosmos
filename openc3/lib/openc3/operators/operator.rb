@@ -302,19 +302,25 @@ module OpenC3
           pid = p.pid
           next unless pid
 
-          stats = @process_stats[name]
-          # A respawn gets a new pid, and the old cpu totals don't carry over
-          if stats.nil? or stats.pid != pid
-            stats = ProcessStats.new(pid)
-            @process_stats[name] = stats
-            @process_stats_db_shards[name] = MetricModel._lookup_db_shard(name, scope: p.scope)
-          end
-          next unless stats.sample
+          # Isolate each process so one failure doesn't starve the rest of metrics
+          begin
+            stats = @process_stats[name]
+            # A respawn gets a new pid, and the old cpu totals don't carry over
+            if stats.nil? or stats.pid != pid
+              # Look up the shard before caching stats so a failed lookup is retried next cycle
+              @process_stats_db_shards[name] = MetricModel._lookup_db_shard(name, scope: p.scope)
+              stats = ProcessStats.new(pid)
+              @process_stats[name] = stats
+            end
+            next unless stats.sample
 
-          MetricModel.set_process(
-            { 'name' => name, 'db_shard' => @process_stats_db_shards[name], 'values' => stats.values },
-            scope: p.scope
-          )
+            MetricModel.set_process(
+              { 'name' => name, 'db_shard' => @process_stats_db_shards[name], 'values' => stats.values },
+              scope: p.scope
+            )
+          rescue => e
+            Logger.error("#{self.class} failed to publish process metrics for #{name}: #{e.class} #{e.message}")
+          end
         end
 
         # Stop tracking microservices that have gone away. Their metrics rows

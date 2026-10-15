@@ -122,6 +122,40 @@ module OpenC3
         expect(operator.instance_variable_get(:@process_stats)).to be_empty
       end
 
+      it "keeps publishing other microservices when one fails" do
+        bad = sampler(pid: 1234)
+        allow(bad).to receive(:sample).and_raise(Errno::EACCES)
+        allow(ProcessStats).to receive(:new).with(1234).and_return(bad)
+        allow(ProcessStats).to receive(:new).with(5678).and_return(sampler(pid: 5678))
+
+        operator = Operator.new
+        operator.processes['DEFAULT__USER__BAD'] = process(pid: 1234)
+        operator.processes['DEFAULT__USER__GOOD'] = process(pid: 5678)
+        operator.publish_process_metrics
+
+        expect(MetricModel.all(scope: 'DEFAULT')['DEFAULT__USER__BAD']).to be_nil
+        expect(MetricModel.all(scope: 'DEFAULT')['DEFAULT__USER__GOOD']).not_to be_nil
+      end
+
+      it "retries the db_shard lookup when it fails" do
+        allow(ProcessStats).to receive(:new).with(1234).and_return(sampler(pid: 1234))
+        calls = 0
+        allow(MetricModel).to receive(:_lookup_db_shard) do
+          calls += 1
+          raise "redis unavailable" if calls == 1
+          0
+        end
+
+        operator = Operator.new
+        operator.processes['DEFAULT__USER__CFDP'] = process(pid: 1234)
+        operator.publish_process_metrics
+        expect(MetricModel.all(scope: 'DEFAULT')['DEFAULT__USER__CFDP']).to be_nil
+
+        operator.publish_process_metrics
+        expect(calls).to eql(2)
+        expect(MetricModel.all(scope: 'DEFAULT')['DEFAULT__USER__CFDP']).not_to be_nil
+      end
+
       it "does nothing on a platform without procfs" do
         allow(ProcessStats).to receive(:supported?).and_return(false)
         expect(ProcessStats).not_to receive(:new)
