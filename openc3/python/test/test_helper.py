@@ -55,6 +55,7 @@ def my_init(self, update_interval, db_shard=0):
     self.store = self.store_instance()
     # Queue to hold the store requests
     self.store_queue = queue.Queue()
+    self.shutdown_mutex = threading.Lock()
     # Sleeper used to delay update thread
     self.update_sleeper = Sleeper()
 

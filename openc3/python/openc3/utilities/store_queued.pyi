@@ -34,13 +34,14 @@ class StoreQueued(metaclass=StoreMeta):
 
     @classmethod
     def instance(cls, update_interval: int = 1, db_shard: int = 0): ...
+    is_shutdown: bool
     update_interval: Incomplete
     db_shard: Incomplete
     store: Incomplete
     store_queue: Incomplete
+    shutdown_mutex: Incomplete
     update_sleeper: Incomplete
     update_thread: Incomplete
-    is_shutdown: bool
 
     def __init__(self, update_interval, db_shard: int = 0) -> None: ...
     @classmethod

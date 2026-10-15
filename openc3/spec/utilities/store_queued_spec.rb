@@ -59,5 +59,20 @@ module OpenC3
       StoreQueued.hset("presence", "key2", 20)
       expect(Store.hget("presence", "key2")).to eq "20"
     end
+
+    it "drains the queue before writing straight through" do
+      # A direct write during the drain could be overwritten by an older queued
+      # write, so the flag must only flip once the queue is empty
+      store_queued = StoreQueued.instance(10)
+      StoreQueued.hset("presence", "key1", 10)
+      seen = []
+      allow(Store.instance).to receive(:hset).and_wrap_original do |m, *args|
+        seen << store_queued.instance_variable_get(:@shutdown)
+        m.call(*args)
+      end
+      StoreQueued.shutdown
+      expect(seen).to eql([nil])
+      expect(store_queued.instance_variable_get(:@shutdown)).to be true
+    end
   end
 end

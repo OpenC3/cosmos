@@ -11,10 +11,11 @@
 
 import importlib.util
 import queue
+import threading
 import unittest
 from unittest.mock import MagicMock
 
-from test.test_helper import *  # noqa: F403
+import test.test_helper  # noqa: F401
 
 
 def load_real_store_queued():
@@ -35,6 +36,7 @@ class TestStoreQueued(unittest.TestCase):
         self.store_queued.db_shard = 0
         self.store_queued.store = MagicMock()
         self.store_queued.store_queue = queue.Queue()
+        self.store_queued.shutdown_mutex = threading.Lock()
         self.store_queued.update_sleeper = None
         self.store_queued.update_thread = None
 
@@ -56,6 +58,16 @@ class TestStoreQueued(unittest.TestCase):
         self.store_queued.hset("presence", "key2", 20)
         self.store_queued.store.hset.assert_called_with("presence", "key2", 20)
         self.assertTrue(self.store_queued.store_queue.empty())
+
+    def test_shutdown_drains_before_writing_through(self):
+        # A direct write during the drain could be overwritten by an older queued
+        # write, so the flag must only flip once the queue is empty
+        seen = []
+        self.store_queued.store.hset.side_effect = lambda *args: seen.append(self.store_queued.is_shutdown)
+        self.store_queued.hset("presence", "key1", 10)
+        self.store_queued.shutdown()
+        self.assertEqual(seen, [False])
+        self.assertTrue(self.store_queued.is_shutdown)
 
 
 if __name__ == "__main__":

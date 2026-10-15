@@ -59,6 +59,8 @@ class StoreQueued(metaclass=StoreMeta):
         self.store = self.store_instance()
         # Queue to hold the store requests
         self.store_queue = queue.Queue()
+        # Orders queueing against the final drain in shutdown
+        self.shutdown_mutex = threading.Lock()
         # Sleeper used to delay update thread
         self.update_sleeper = Sleeper()
 
@@ -99,26 +101,32 @@ class StoreQueued(metaclass=StoreMeta):
                 break
 
     def shutdown(self):
-        # Nothing drains the queue once the thread is gone, so from here on write
-        # straight through rather than silently dropping whatever gets queued
-        self.is_shutdown = True
         if self.update_sleeper:
             self.update_sleeper.cancel()
         if self.update_thread:
             kill_thread(self, self.update_thread)
         self.update_thread = None
-        # Drain the queue before shutdown
-        # Best effort - Redis may already be unavailable during shutdown
-        with contextlib.suppress(Exception):
-            self.process_queue()
+        # Nothing drains the queue once the thread is gone, so from here on write
+        # straight through rather than silently dropping whatever gets queued.
+        # Drain first and flip the flag last, under the mutex, so a direct write
+        # can't be overwritten by an older queued one and nothing is queued after
+        # the drain.
+        with self.shutdown_mutex:
+            # Best effort - Redis may already be unavailable during shutdown
+            with contextlib.suppress(Exception):
+                self.process_queue()
+            self.is_shutdown = True
 
     # Record the message for pipelining by the thread
     def __getattr__(self, func):
         def method(*args, **kwargs):
             # Read through __dict__ so a missing attribute can't recurse back into __getattr__
-            if self.__dict__.get("is_shutdown"):
-                return getattr(self.store, func)(*args, **kwargs)
-            return self.store_queue.put([func, args, kwargs])
+            # is_shutdown never goes back to False, so once set the lock can be skipped
+            if not self.__dict__.get("is_shutdown"):
+                with self.__dict__["shutdown_mutex"]:
+                    if not self.is_shutdown:
+                        return self.store_queue.put([func, args, kwargs])
+            return getattr(self.store, func)(*args, **kwargs)
 
         return method
 
