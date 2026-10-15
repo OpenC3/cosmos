@@ -286,6 +286,8 @@ class Store(metaclass=StoreMeta):
     def write_topic(self, topic, msg_hash, id="*", maxlen=None, approximate=True, minid=None):
         if not id:
             id = "*"
+        if maxlen is not None and minid is not None:
+            raise ValueError("write_topic can't supply both maxlen and minid")
         with self.redis_pool.get() as redis:
             if minid:
                 return redis.xadd(topic, msg_hash, id=id, minid=minid, approximate=approximate)
