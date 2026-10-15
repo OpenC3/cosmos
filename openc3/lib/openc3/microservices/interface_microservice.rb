@@ -269,7 +269,10 @@ module OpenC3
                 raise "Invalid command received:\n #{msg_hash}"
               end
 
-              if @interface.cmd_target_enabled[command.target_name]
+              # An unidentified buffer is sent as UNKNOWN on behalf of the target it was sent to
+              enabled_target_name = command.target_name
+              enabled_target_name = target_name if enabled_target_name == 'UNKNOWN' and target_name
+              if @interface.cmd_target_enabled[enabled_target_name]
                 orig_command = System.commands.packet(command.target_name, command.packet_name)
                 orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope: @scope)
                 command.received_count = orig_command.received_count
