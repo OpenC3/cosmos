@@ -431,11 +431,9 @@ module OpenC3
     # Dry run: which modified files would this plugin's install supersede?
     # Returns a list of "TARGET/path" names whose live (modified) content
     # differs from the rendered plugin content. Read-only; no side effects.
+    # Errors propagate so callers can tell a failed check from an empty diff.
     def self.modified_diff(plugin_hash, scope:)
       install_phase2(plugin_hash, scope: scope, diff_only: true)
-    rescue => e
-      Logger.warn("PluginModel.modified_diff failed: #{e.message}")
-      []
     end
 
     def initialize(
@@ -614,11 +612,12 @@ module OpenC3
       PypiUrl.validate(pypi_url)
     end
 
-    # Build the argv array for pypi index and trusted-host arguments.
+    # Build the argv array of pypi index arguments. Kept as a delegate so
+    # callers that already reference PluginModel keep working; the logic lives
+    # in PypiUrl because PythonPackageModel needs it too and must not have to
+    # require this file.
     def self.build_pypi_args(pypi_url)
-      args = ["-i", pypi_url]
-      args += ["--trusted-host", URI.parse(pypi_url).host] unless ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-      args
+      PypiUrl.build_args(pypi_url)
     end
 
     # Build a sanitized venv directory name from scope and plugin name.
