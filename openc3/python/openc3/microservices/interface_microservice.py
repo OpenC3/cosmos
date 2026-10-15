@@ -677,6 +677,7 @@ class InterfaceMicroservice(Microservice):
             RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
 
         self.queued = False
+        self.unmapped_tlm_warned = set()
         for option_name, option_values in self.interface.options.items():
             # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
             if option_name.upper() == "UPDATE_INTERVAL" or option_name.upper() == "OPTIMIZE_THROUGHPUT":
@@ -847,14 +848,22 @@ class InterfaceMicroservice(Microservice):
         if packet.received_time is None:
             packet.received_time = datetime.now(timezone.utc)
 
-        if packet.identified() and not self._known_tlm_packet(packet):
-            # Packet identified but we don't know about it or it isn't mapped to this interface
-            # Clear packet_name and target_name and try to identify
-            self.logger.warn(
-                f"{self.interface.name}: Received unknown identified telemetry: {packet.target_name} {packet.packet_name}"
-            )
-            packet.target_name = None
-            packet.packet_name = None
+        if packet.identified():
+            if packet.target_name not in self.interface.tlm_target_names:
+                # Trust the identity but drop it because the target isn't mapped to this interface
+                key = f"{packet.target_name} {packet.packet_name}"
+                if key not in self.unmapped_tlm_warned:
+                    self.unmapped_tlm_warned.add(key)
+                    self.logger.warn(f"{self.interface.name}: Dropping telemetry for unmapped target: {key}")
+                return
+            if not self._known_tlm_packet(packet):
+                # Packet identified but we don't know about it
+                # Clear packet_name and target_name and try to identify
+                self.logger.warn(
+                    f"{self.interface.name}: Received unknown identified telemetry: {packet.target_name} {packet.packet_name}"
+                )
+                packet.target_name = None
+                packet.packet_name = None
 
         if packet.stored:
             # Stored telemetry does not update the current value table
@@ -907,11 +916,8 @@ class InterfaceMicroservice(Microservice):
             TargetModel.sync_tlm_packet_counts(packet, self.interface.tlm_target_names, scope=self.scope)
             TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
-    # Whether a pre-identified packet names a defined packet in one of this
-    # interface's telemetry mapped targets
+    # Whether a pre-identified packet names a defined packet
     def _known_tlm_packet(self, packet):
-        if packet.target_name not in self.interface.tlm_target_names:
-            return False
         try:
             System.telemetry.packet(packet.target_name, packet.packet_name)
             return True

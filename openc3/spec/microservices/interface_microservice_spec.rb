@@ -275,12 +275,13 @@ module OpenC3
           sleep 0.1 # Allow threads to exit
         end
 
-        it "falls back to identifying a packet pre-identified with a target not mapped to the interface" do
-          handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE')
-          expect(@warnings).to include("INST_INT: Received unknown identified telemetry: SYSTEM LIMITS_CHANGE")
-          expect(@written.length).to eql 1
-          expect(@written[0].target_name).to eql 'INST'
-          expect(@written[0].packet_name).to eql 'HEALTH_STATUS'
+        it "drops a packet pre-identified with a target not mapped to the interface and warns once" do
+          expect(System.telemetry).to_not receive(:identify!)
+          expect(System.telemetry).to_not receive(:identify_and_define_packet)
+          2.times { handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE') }
+          handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE', stored: true)
+          expect(@warnings.grep(/unmapped target/)).to eql ["INST_INT: Dropping telemetry for unmapped target: SYSTEM LIMITS_CHANGE"]
+          expect(@written).to be_empty
         end
 
         it "falls back to identifying a stored packet pre-identified with an unknown packet" do
