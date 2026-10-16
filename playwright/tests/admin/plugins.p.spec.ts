@@ -196,6 +196,43 @@ test.describe(() => {
   const pluginGem = 'openc3-cosmos-pw-test-1.0.0.gem'
   const pluginGem1 = 'openc3-cosmos-pw-test-1.0.1.gem'
 
+  /** Waits for a plugin install / uninstall process to finish. The `*Gem` values
+   * are regexp fragments; new installs append `'__<TIMESTAMP>'` so use `'__.*'`.
+   */
+  async function waitForPluginProcess(
+    page: Page,
+    {
+      alert,
+      runningGem,
+      completeGem,
+      process = 'plugin_install',
+    }: {
+      alert: string
+      runningGem: string
+      completeGem: string
+      process?: string
+    },
+  ) {
+    const processList = page.locator('[data-test=process-list]')
+    await expect(page.locator('[data-test=plugin-alert]')).toContainText(alert)
+    // The process can go so fast we can't count on 'Running' to be present so try catch this
+    const runningRegexp = new RegExp(
+      `Processing ${process}: ${runningGem}__.* - Running`,
+    )
+    try {
+      await expect(processList).toContainText(runningRegexp, {
+        timeout: 30000,
+      })
+    } catch {}
+    // Ensure no Running are left
+    await expect(processList).not.toContainText(runningRegexp, {
+      timeout: 30000,
+    })
+    await expect(processList).toContainText(
+      new RegExp(`Processing ${process}: ${completeGem} - Complete`),
+    )
+  }
+
   test.afterEach('delete the installed plugin', async ({ page }) => {
     await page
       .locator('[data-test=plugin-list-item]')
@@ -210,33 +247,12 @@ test.describe(() => {
     await page.locator('text=DELETE MODIFIED').click()
     await page.locator('data-test=modified-plugin-submit').click()
 
-    await expect(page.locator('[data-test=plugin-alert]')).toContainText(
-      'Removing plugin',
-    )
-    // Plugin uninstall can go so fast we can't count on 'Running' to be present so try catch this
-    let regexp = new RegExp(
-      `Processing plugin_install: ${pluginGem1}__.* - Running`,
-    )
-    try {
-      await expect(page.locator('[data-test=process-list]')).toContainText(
-        regexp,
-        {
-          timeout: 30000,
-        },
-      )
-    } catch {}
-    // Ensure no Running are left
-    await expect(page.locator('[data-test=process-list]')).not.toContainText(
-      regexp,
-      {
-        timeout: 30000,
-      },
-    )
-    // Check for Complete ... note new installs append '__<TIMESTAMP>'
-    regexp = new RegExp(
-      `Processing plugin_uninstall: ${pluginGem1}__.* - Complete`,
-    )
-    await expect(page.locator('[data-test=process-list]')).toContainText(regexp)
+    await waitForPluginProcess(page, {
+      alert: 'Removing plugin',
+      runningGem: pluginGem1,
+      process: 'plugin_uninstall',
+      completeGem: `${pluginGem1}__.*`,
+    })
     await expect(page.locator(`[data-test=plugin-list]`)).not.toContainText(
       plugin,
     )
@@ -297,35 +313,11 @@ test.describe(() => {
     await installFileChooser.setFiles(`./${plugin}/${pluginGem}`)
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
     await page.locator('data-test=edit-submit').click()
-    await expect(page.locator('[data-test=plugin-alert]')).toContainText(
-      'Started installing',
-    )
-    // Plugin install can go so fast we can't count on 'Running' to be present so try catch this
-    let installRegexp = new RegExp(
-      `Processing plugin_install: ${pluginGem}__.* - Running`,
-    )
-    try {
-      await expect(page.locator('[data-test=process-list]')).toContainText(
-        installRegexp,
-        {
-          timeout: 30000,
-        },
-      )
-    } catch {}
-    // Ensure no Running are left
-    await expect(page.locator('[data-test=process-list]')).not.toContainText(
-      installRegexp,
-      {
-        timeout: 30000,
-      },
-    )
-    // Check for Complete
-    installRegexp = new RegExp(
-      `Processing plugin_install: ${pluginGem} - Complete`,
-    )
-    await expect(page.locator('[data-test=process-list]')).toContainText(
-      installRegexp,
-    )
+    await waitForPluginProcess(page, {
+      alert: 'Started installing',
+      runningGem: pluginGem,
+      completeGem: pluginGem,
+    })
 
     await expect(
       page.locator(`[data-test=plugin-list] tr:has-text("${plugin}")`).first(),
@@ -444,35 +436,11 @@ test.describe(() => {
       await deleteModified.click()
     }
     await page.locator('data-test=modified-plugin-submit').click()
-    await expect(page.locator('[data-test=plugin-alert]')).toContainText(
-      'Started installing',
-    )
-    // Plugin install can go so fast we can't count on 'Running' to be present so try catch this
-    let upgradeRegexp = new RegExp(
-      `Processing plugin_install: ${pluginGem}__.* - Running`,
-    )
-    try {
-      await expect(page.locator('[data-test=process-list]')).toContainText(
-        upgradeRegexp,
-        {
-          timeout: 30000,
-        },
-      )
-    } catch {}
-    // Ensure no Running are left
-    await expect(page.locator('[data-test=process-list]')).not.toContainText(
-      upgradeRegexp,
-      {
-        timeout: 30000,
-      },
-    )
-    // Check for Complete
-    upgradeRegexp = new RegExp(
-      `Processing plugin_install: ${pluginGem1} - Complete`,
-    )
-    await expect(page.locator('[data-test=process-list]')).toContainText(
-      upgradeRegexp,
-    )
+    await waitForPluginProcess(page, {
+      alert: 'Started installing',
+      runningGem: pluginGem,
+      completeGem: pluginGem1,
+    })
 
     // Check that there are no longer any links (modified targets)
     await expect(
@@ -511,35 +479,11 @@ test.describe(() => {
       )
       .fill('NEW_TGT')
     await page.locator('data-test=edit-submit').click()
-    await expect(page.locator('[data-test=plugin-alert]')).toContainText(
-      'Started installing',
-    )
-    // Plugin install can go so fast we can't count on 'Running' to be present so try catch this
-    let editRegexp = new RegExp(
-      `Processing plugin_install: ${pluginGem}__.* - Running`,
-    )
-    try {
-      await expect(page.locator('[data-test=process-list]')).toContainText(
-        editRegexp,
-        {
-          timeout: 30000,
-        },
-      )
-    } catch {}
-    // Ensure no Running are left
-    await expect(page.locator('[data-test=process-list]')).not.toContainText(
-      editRegexp,
-      {
-        timeout: 30000,
-      },
-    )
-    // Check for Complete ... note new installs append '__<TIMESTAMP>'
-    editRegexp = new RegExp(
-      `Processing plugin_install: ${pluginGem1}__.* - Complete`,
-    )
-    await expect(page.locator('[data-test=process-list]')).toContainText(
-      editRegexp,
-    )
+    await waitForPluginProcess(page, {
+      alert: 'Started installing',
+      runningGem: pluginGem,
+      completeGem: `${pluginGem1}__.*`,
+    })
     // Ensure the target list is updated to show the new name
     // TODO: replace .nth(2) with a more robust selector, this is not robust to layout changes of plugin-list-item
     await expect(
