@@ -45,9 +45,9 @@ module OpenC3
       @im_shutdown = false
       allow_any_instance_of(OpenC3::Interface).to receive(:read_interface) { sleep(0.01) until @im_shutdown }
 
-      model = MicroserviceModel.new(name: "DEFAULT__INTERFACE__ROUTE_INT", scope: "DEFAULT", target_names: ["INST"])
+      model = MicroserviceModel.new(name: "DEFAULT__ROUTER__ROUTE_INT", scope: "DEFAULT", target_names: ["INST"])
       model.create
-      @im = RouterMicroservice.new("DEFAULT__INTERFACE__ROUTE_INT")
+      @im = RouterMicroservice.new("DEFAULT__ROUTER__ROUTE_INT")
       @im_thread = Thread.new { @im.run }
       sleep(0.01) # Allow the thread to run
 

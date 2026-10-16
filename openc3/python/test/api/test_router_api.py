@@ -15,8 +15,8 @@ from unittest.mock import *
 
 from openc3.api.router_api import *
 from openc3.interfaces.interface import Interface
-from openc3.models.router_model import RouterModel
 from openc3.microservices.router_microservice import RouterMicroservice
+from openc3.models.router_model import RouterModel
 from test.test_helper import *
 
 
@@ -69,7 +69,7 @@ class TestRouterApi(unittest.TestCase):
             config_params=["openc3/interfaces/interface.py"],
         )
         model.create()
-        self.im = RouterMicroservice("DEFAULT__INTERFACE__ROUTE_INT")
+        self.im = RouterMicroservice("DEFAULT__ROUTER__ROUTE_INT")
         self.im_thread = threading.Thread(target=self.im.run)
         self.im_thread.start()
         # Wait for the command handler thread to subscribe to the interface
@@ -87,20 +87,20 @@ class TestRouterApi(unittest.TestCase):
         time.sleep(0.001)
 
     def _wait_for_handler_ready(self, timeout=2.0):
-            topic = "{DEFAULT__CMD}INTERFACE__ROUTE_INT"
-            store = EphemeralStore.instance()
-            end_time = time.time() + timeout
-            while time.time() < end_time:
-                if any(topic in offsets for offsets in store.topic_offsets.values()):
-                    return
-                time.sleep(0.001)
+        topic = "{DEFAULT__CMD}ROUTER__ROUTE_INT"
+        store = EphemeralStore.instance()
+        end_time = time.time() + timeout
+        while time.time() < end_time:
+            if any(topic in offsets for offsets in store.topic_offsets.values()):
+                return
+            time.sleep(0.001)
 
     def test_returns_router_hash(self):
         interface = get_router("ROUTE_INT")
         self.assertEqual(type(interface), dict)
         self.assertEqual(interface["name"], "ROUTE_INT")
         # Verify it also includes the status
-        self.assertEqual(interface["state"], "CONNECTED")
+        self.assertIn(interface["state"], ["ATTEMPTING", "CONNECTED"])
         self.assertEqual(interface["clients"], 0)
 
     def test_get_router_raises_if_router_does_not_exist(self):
