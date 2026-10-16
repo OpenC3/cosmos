@@ -921,21 +921,25 @@ class InterfaceMicroservice(Microservice):
             TargetModel.sync_tlm_packet_counts(packet, self.interface.tlm_target_names, scope=self.scope)
             TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
-    # Equivalent of the Ruby Errno lists: ConnectionError covers refused, reset and
-    # aborted, and TimeoutError covers ETIMEDOUT
+    # Equivalent of the Ruby Errno lists. Use the specific ConnectionError subclasses
+    # rather than ConnectionError itself, which also covers BrokenPipeError (EPIPE)
+    CONNECTION_FAILED_ERRORS = (ConnectionRefusedError, ConnectionResetError, TimeoutError)
     CONNECTION_FAILED_ERRNOS = (errno.ENOTSOCK, errno.EHOSTUNREACH)
+    CONNECTION_LOST_ERRORS = (ConnectionAbortedError, ConnectionResetError, TimeoutError)
     CONNECTION_LOST_ERRNOS = (errno.EBADF, errno.ENOTSOCK)
 
     @staticmethod
-    def _expected_network_error(error, errnos):
-        if isinstance(error, (ConnectionError, TimeoutError)):
+    def _expected_network_error(error, error_classes, errnos):
+        if isinstance(error, error_classes):
             return True
         return isinstance(error, OSError) and error.errno in errnos
 
     def handle_connection_failed(self, connection, connect_error):
         self.error = connect_error
         self.logger.error(f"{self.interface.name}: Connection {connection} failed due to {repr(connect_error)}")
-        expected = self._expected_network_error(connect_error, self.CONNECTION_FAILED_ERRNOS) or (
+        expected = self._expected_network_error(
+            connect_error, self.CONNECTION_FAILED_ERRORS, self.CONNECTION_FAILED_ERRNOS
+        ) or (
             isinstance(connect_error, RuntimeError)
             and ("canceled" in str(connect_error) or "timeout" in str(connect_error))
         )
@@ -952,7 +956,7 @@ class InterfaceMicroservice(Microservice):
         if error:
             self.error = error
             self.logger.info(f"{self.interface.name}: Connection Lost: {repr(error)}")
-            if self._expected_network_error(error, self.CONNECTION_LOST_ERRNOS):
+            if self._expected_network_error(error, self.CONNECTION_LOST_ERRORS, self.CONNECTION_LOST_ERRNOS):
                 pass  # Do not write an exception file for these extremely common cases
             # Only log the backtrace the first time we see each distinct error
             elif (type(error), str(error)) not in self.connection_lost_messages:

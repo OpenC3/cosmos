@@ -301,6 +301,20 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(errors, [])
         im.shutdown()
 
+    # Matches the Ruby Errno lists which differ between the two phases
+    def test_logs_a_backtrace_for_network_errors_not_expected_in_that_phase(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        for error in [BrokenPipeError(), ConnectionAbortedError()]:
+            errors.clear()
+            im.handle_connection_failed("INST_INT", self._raised(error))
+            self.assertIn("Traceback", errors[-1])
+        for error in [BrokenPipeError(), ConnectionRefusedError()]:
+            errors.clear()
+            im.handle_connection_lost(self._raised(error))
+            self.assertIn("Traceback", errors[-1])
+        im.shutdown()
+
     def test_logs_an_unexpected_lost_connection_backtrace_only_once_per_message(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         errors = self._logged_errors(im)
