@@ -17,39 +17,11 @@ require 'openc3/core_ext/file'
 # require 'openc3/models/gem_model' # These are used but also create circular dependency
 # require 'openc3/models/plugin_model' # These are used but also create circular dependency
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/default_plugins'
 
 module OpenC3
   module LocalMode
     OPENC3_LOCAL_MODE_PATH = ENV['OPENC3_LOCAL_MODE_PATH'] || "/plugins"
-    # When updating update local_mode.py, PluginsTab.vue, plugins.p.spec.ts
-    DEFAULT_PLUGINS = [
-      'openc3-cosmos-tool-admin',
-      'openc3-cosmos-tool-bucketexplorer',
-      'openc3-cosmos-tool-cmdsender',
-      'openc3-cosmos-tool-cmdqueue', # Enterprise only
-      'openc3-cosmos-tool-cmdhistory', # Enterprise only
-      'openc3-cosmos-tool-cmdtlmserver',
-      'openc3-cosmos-tool-dataextractor',
-      'openc3-cosmos-tool-dataviewer',
-      'openc3-cosmos-tool-docs',
-      'openc3-cosmos-tool-handbooks',
-      'openc3-cosmos-tool-iframe',
-      'openc3-cosmos-tool-limitsmonitor',
-      'openc3-cosmos-tool-packetviewer',
-      'openc3-cosmos-tool-scriptrunner',
-      'openc3-cosmos-tool-tablemanager',
-      'openc3-cosmos-tool-tlmgrapher',
-      'openc3-cosmos-tool-tlmviewer',
-      'openc3-cosmos-enterprise-tool-admin', # Enterprise only
-      'openc3-cosmos-tool-autonomic', # Enterprise only
-      'openc3-cosmos-tool-calendar', # Enterprise only
-      'openc3-cosmos-tool-grafana', # Enterprise only
-      'openc3-cosmos-tool-logexplorer', # Enterprise only
-      'openc3-cosmos-tool-notebooks', # Enterprise only
-      'openc3-cosmos-tool-systemhealth', # Enterprise only
-      'openc3-enterprise-tool-base', # Enterprise only
-      'openc3-tool-base',
-    ]
 
     # Install plugins from local plugins folder
     # Can only be used from openc3cli because calls top_level load_plugin
@@ -280,7 +252,7 @@ module OpenC3
     end
 
     def self.update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
-      return if DEFAULT_PLUGINS.include?(gem_name)
+      return if DefaultPlugins::NAMES.include?(gem_name)
       puts "Updating local plugin files: #{full_folder_path}"
       FileUtils.mkdir_p(full_folder_path)
       gems = scan_plugin_dir(full_folder_path).first

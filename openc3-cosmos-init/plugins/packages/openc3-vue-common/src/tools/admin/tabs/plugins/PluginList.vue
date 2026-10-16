@@ -57,10 +57,6 @@ export default {
       type: Boolean,
       default: false,
     },
-    defaultPlugins: {
-      type: Array,
-      required: true,
-    },
     scriptVersionsEnabled: {
       type: Boolean,
       default: false,
@@ -79,22 +75,16 @@ export default {
       const pluginsToShow = []
       const defaultPluginsToShow = []
       this.plugins.forEach((plugin) => {
-        const pluginNameFirst = plugin.name.split('__')[0]
-        const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
-        const pluginNameShort = pluginNameSplit.join('-')
-        if (this.defaultPlugins.includes(pluginNameShort)) {
+        // The API flags the plugins that ship with COSMOS
+        if (plugin.default) {
           defaultPluginsToShow.push(plugin)
         } else {
           pluginsToShow.push(plugin)
         }
       })
-      pluginsToShow.sort((a, b) =>
-        a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-      )
+      pluginsToShow.sort((a, b) => a.name.localeCompare(b.name))
       if (this.showDefaultTools) {
-        defaultPluginsToShow.sort((a, b) =>
-          a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-        )
+        defaultPluginsToShow.sort((a, b) => a.name.localeCompare(b.name))
         return pluginsToShow.concat(defaultPluginsToShow)
       }
       return pluginsToShow
