@@ -598,14 +598,12 @@ module OpenC3
     def self.resolve_pypi_url(scope:)
       pypi_url = nil
       begin
-        pypi_url = get_setting('pypi_url', scope: scope)
-        pypi_url += '/simple' if pypi_url
+        pypi_url = PypiUrl.index_url(get_setting('pypi_url', scope: scope))
       rescue => e
         Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
       ensure
         if pypi_url.nil?
-          pypi_url = ENV.fetch('PYPI_URL', nil)
-          pypi_url += '/simple' if pypi_url
+          pypi_url = PypiUrl.index_url(ENV.fetch('PYPI_URL', nil))
           pypi_url ||= PypiUrl::DEFAULT
         end
       end

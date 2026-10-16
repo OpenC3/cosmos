@@ -235,19 +235,13 @@ module OpenC3
       end
       package_filename = File.basename(package_file_path)
       begin
-        pypi_url = get_setting('pypi_url', scope: scope)
-        if pypi_url
-          pypi_url += '/simple'
-        end
+        pypi_url = PypiUrl.index_url(get_setting('pypi_url', scope: scope))
       rescue => e
         Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
       ensure
         if pypi_url.nil?
           # If Redis isn't running try the ENV, then simply pypi.org/simple
-          pypi_url = ENV.fetch('PYPI_URL', nil)
-          if pypi_url
-            pypi_url += '/simple'
-          end
+          pypi_url = PypiUrl.index_url(ENV.fetch('PYPI_URL', nil))
           pypi_url ||= PypiUrl::DEFAULT
         end
       end
