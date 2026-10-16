@@ -274,7 +274,7 @@ test.describe(() => {
     expect(fileData).toBe('puts "modify the PW_TEST"')
   }
 
-  test.fixme('installs, modifies, and deletes a plugin', async ({
+  test('installs, modifies, and deletes a plugin', async ({
     page,
     utils,
   }) => {
@@ -541,11 +541,12 @@ test.describe(() => {
       editRegexp,
     )
     // Ensure the target list is updated to show the new name
+    // TODO: replace .nth(2) with a more robust selector, this is not robust to layout changes of plugin-list-item
     await expect(
-      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }),
+      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }).locator('div').nth(2),
     ).not.toContainText('PW_TEST')
     await expect(
-      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }),
+      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }).locator('div').nth(2),
     ).toContainText('NEW_TGT')
     // Show the process output
     await page
