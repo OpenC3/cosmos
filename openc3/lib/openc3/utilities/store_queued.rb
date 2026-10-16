@@ -49,6 +49,8 @@ module OpenC3
       @store = store_instance()
       # Queue to hold the store requests
       @store_queue = Queue.new
+      # Orders queueing against the final drain in shutdown
+      @shutdown_mutex = Mutex.new
       # Sleeper used to delay update thread
       @update_sleeper = Sleeper.new
 
@@ -102,11 +104,18 @@ module OpenC3
       @update_sleeper.cancel if @update_sleeper
       OpenC3.kill_thread(self, @update_thread) if @update_thread
       @update_thread = nil
-      # Drain the queue before shutdown
-      begin
-        process_queue()
-      rescue
-        # Best effort - Redis may already be unavailable during shutdown
+      # Nothing drains the queue once the thread is gone, so from here on write
+      # straight through rather than silently dropping whatever gets queued.
+      # Drain first and flip the flag last, under the mutex, so a direct write
+      # can't be overwritten by an older queued one and nothing is queued after
+      # the drain.
+      @shutdown_mutex.synchronize do
+        begin
+          process_queue()
+        rescue
+          # Best effort - Redis may already be unavailable during shutdown
+        end
+        @shutdown = true
       end
     end
 
@@ -114,7 +123,14 @@ module OpenC3
 
     # Record the message for pipelining by the thread
     def method_missing(message, *args, **kwargs, &block)
-      @store_queue.push(MessageStruct.new(message, args, kwargs, block))
+      # @shutdown never goes back to false, so once set the lock can be skipped
+      unless @shutdown
+        queued = @shutdown_mutex.synchronize do
+          @store_queue.push(MessageStruct.new(message, args, kwargs, block)) unless @shutdown
+        end
+        return queued if queued
+      end
+      @store.public_send(message, *args, **kwargs, &block)
     end
 
     # Returns the store we're working with
