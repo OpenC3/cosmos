@@ -156,7 +156,7 @@ test('warns for hazardous commands', async ({ page, utils }) => {
   // A hazardous command notes that range checks are also ignored
   await page.locator('[data-test="select-send"]').click()
   await expect(page.getByRole('dialog')).toContainText(
-    'Warning: Command INST CLEAR is Hazardous. Range checks are also ignored. Send?',
+    'Warning: Command INST CLEAR is Hazardous and range checks are ignored. Send?',
   )
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText(
@@ -167,7 +167,11 @@ test('warns for hazardous commands', async ({ page, utils }) => {
   // Disable parameter conversions to confirm history output
   await toggleMode(page, 'Disable Parameter')
 
-  await sendHazardousCmd(page)
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.getByRole('dialog')).toContainText(
+    'Warning: Command INST CLEAR is Hazardous and range checks are ignored and parameter conversions are disabled. Send?',
+  )
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText(
     'cmd_raw_no_range_check("INST CLEAR") sent',
   )
@@ -176,7 +180,11 @@ test('warns for hazardous commands', async ({ page, utils }) => {
   // Enable range checks to confirm history output
   await toggleMode(page, 'Ignore Range Checks')
 
-  await sendHazardousCmd(page)
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.getByRole('dialog')).toContainText(
+    'Warning: Command INST CLEAR is Hazardous and parameter conversions are disabled. Send?',
+  )
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText('cmd_raw("INST CLEAR") sent')
   await checkHistory(page, 'cmd_raw("INST CLEAR")')
 })
@@ -548,6 +556,16 @@ test('hazardous commands from history', async ({ page, utils }) => {
   await page.locator('[data-test=sender-history]').click()
   await page.locator('[data-test=sender-history]').press('ArrowDown')
   await page.locator('[data-test=sender-history]').press('Enter')
+  // The dialog describes the history command, not the selected INST ASCIICMD
+  await expect(page.getByRole('dialog')).toContainText(
+    'Warning: Command INST CLEAR is Hazardous. Send?',
+  )
+  await expect(page.getByRole('dialog')).toContainText(
+    'Description: Clears counters on the INST instrument',
+  )
+  await expect(
+    page.getByRole('dialog').locator('[data-test=hazardous-description]'),
+  ).toContainText('Clearing counters may lose valuable information.')
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText('cmd("INST CLEAR") sent')
   await page.locator('[data-test=sender-history]').click()
@@ -585,7 +603,7 @@ test('ignores normal range checks', async ({ page, utils }) => {
   // Ignoring range checks makes every command hazardous
   await page.locator('[data-test="select-send"]').click()
   await expect(page.getByRole('dialog')).toContainText(
-    'Warning: Command INST COLLECT is Hazardous. Range checks are also ignored. Send?',
+    'Warning: Command INST COLLECT is considered Hazardous because range checks are ignored. Send?',
   )
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText(
@@ -636,7 +654,7 @@ test('ignores hazardous range checks', async ({ page, utils }) => {
   // The dialog also notes that range checks are ignored
   await page.locator('[data-test="select-send"]').click()
   await expect(page.getByRole('dialog')).toContainText(
-    'Warning: Command INST COLLECT is Hazardous. Range checks are also ignored. Send?',
+    'Warning: Command INST COLLECT is Hazardous and range checks are ignored. Send?',
   )
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText(
@@ -660,7 +678,7 @@ test('confirms commands when ignoring range checks', async ({
   // Cancelling a command that's only hazardous due to ignored range checks
   await page.locator('[data-test="select-send"]').click()
   await expect(page.getByRole('dialog')).toContainText(
-    'Warning: Command INST COLLECT is Hazardous. Range checks are also ignored. Send?',
+    'Warning: Command INST COLLECT is considered Hazardous because range checks are ignored. Send?',
   )
   await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click()
   await expect(page.locator('main')).toContainText('Hazardous command not sent')
@@ -674,16 +692,45 @@ test('confirms commands when ignoring range checks', async ({
     'cmd_no_range_check("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 171, TEMP 0") sent',
   )
 
-  // Resending from history still requires confirmation and names the command
+  // Resending from history still requires confirmation and names the command.
+  // Select a different command to ensure the dialog describes the history
+  // command rather than the selected one.
+  await utils.selectTargetPacketItem('INST', 'CLEAR')
+  await expect(page.locator('main')).toContainText(
+    'Clears counters on the INST instrument',
+  )
   await page.locator('[data-test=sender-history]').click()
   await page.locator('[data-test=sender-history]').press('Enter')
   await expect(page.getByRole('dialog')).toContainText(
-    'Warning: Command INST COLLECT is Hazardous. Range checks are also ignored. Send?',
+    'Warning: Command INST COLLECT is considered Hazardous because range checks are ignored. Send?',
   )
+  await expect(page.getByRole('dialog')).toContainText(
+    'Description: Starts a collect on the INST target',
+  )
+  await expect(
+    page.getByRole('dialog').locator('[data-test=hazardous-description]'),
+  ).toHaveCount(0)
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText(
     'cmd_no_range_check("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 171, TEMP 0") sent',
   )
+})
+
+test('confirms commands when disabling parameter conversions', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await selectValue(page, 'TYPE', 'NORMAL')
+  await toggleMode(page, 'Disable Parameter')
+
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.getByRole('dialog')).toContainText(
+    'Warning: Command INST COLLECT is considered Hazardous because parameter conversions are disabled. Send?',
+  )
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+  await expect(page.locator('main')).toContainText('cmd_raw("INST COLLECT')
 })
 
 //
@@ -810,7 +857,7 @@ test('sends manually entered state values', async ({ page, utils }) => {
   // Ignoring range checks makes every command hazardous
   await page.locator('[data-test="select-send"]').click()
   await expect(page.getByRole('dialog')).toContainText(
-    'Warning: Command INST COLLECT is Hazardous. Range checks are also ignored. Send?',
+    'Warning: Command INST COLLECT is considered Hazardous because range checks are ignored. Send?',
   )
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText(
