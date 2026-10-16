@@ -8,9 +8,12 @@
 # See LICENSE.md for more details.
 */
 
-import { test, expect } from './../fixture'
+import type { Page } from '@playwright/test'
 import * as fs from 'fs'
+import { loadAsync } from 'jszip'
+import { pickBy, values } from 'lodash'
 import * as path from 'path'
+import { expect, test } from './../fixture'
 
 test.use({
   toolPath: '/tools/admin/plugins',
@@ -187,6 +190,25 @@ test.describe(() => {
   // Must be the operator to modify files
   test.use({ storageState: 'storageState.json' })
 
+  async function checkForSaveNewFile(page: Page, downloadTrigger: Promise<void>) {
+    const [download] = await Promise.all([
+      // Start waiting for the download
+      page.waitForEvent('download'),
+      // Download the modified plugin
+      downloadTrigger,
+    ])
+    // Wait for the download process to complete
+    const path = await download.path()
+    const data = await fs.promises.readFile(path)
+    const zip = await loadAsync(data)
+    const files = values(pickBy(zip.files, (file, filename) => filename.includes('save_new.rb')))
+    expect(files).toHaveLength(1)
+    const fileData = await files[0]?.async('string')
+    // Check the zip file contents
+    // We should have the new script:
+    expect(fileData).toBe('puts "modify the PW_TEST"')
+  }
+
   test.fixme('installs, modifies, and deletes a plugin', async ({
     page,
     utils,
@@ -310,70 +332,23 @@ test.describe(() => {
       page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }),
     ).toHaveCount(1)
 
-    const [download1] = await Promise.all([
-      // Start waiting for the download
-      page.waitForEvent('download'),
-      // Download the modified plugin
-      page
-        .locator('[data-test=plugin-list-item]')
-        .filter({ hasText: plugin })
-        .locator('a')
-        .click(),
-    ])
-    // Wait for the download process to complete
-    const JSZip = require('jszip')
-    const path1 = await download1.path()
-    fs.readFile(path1!, function (err, data) {
-      if (err) throw err
-      JSZip.loadAsync(data).then(function (zip) {
-        Object.keys(zip.files).forEach(function (filename) {
-          zip.files[filename].async('string').then(function (fileData) {
-            // Check the zip file contents
-            // We should have the new script:
-            if (filename.includes('save_new.rb')) {
-              expect(fileData).toBe('puts "modify the PW_TEST"')
-            }
-          })
-        })
-      })
-    })
+    await checkForSaveNewFile(page, page
+          .locator('[data-test=plugin-list-item]')
+          .filter({ hasText: plugin })
+          .locator('a')
+          .click())
 
     // Download the changes from the targets tab
     await page.goto('/tools/admin/targets')
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
     await page.locator('rux-icon-apps').getByRole('img').click()
 
-    const [download2] = await Promise.all([
-      // Start waiting for the download
-      page.waitForEvent('download'),
-      // Initiate the download
-      page
+    await checkForSaveNewFile(page, page
         .locator('.v-list-item')
         .filter({ hasText: 'PW_TEST' })
         .getByRole('button')
         .nth(0)
-        .click(),
-    ])
-    // Wait for the download process to complete
-    const path2 = await download2.path()
-    fs.readFile(path2!, function (err, data) {
-      if (err) throw err
-      JSZip.loadAsync(data).then(function (zip) {
-        Object.keys(zip.files).forEach(function (filename) {
-          zip.files[filename].async('string').then(function (fileData) {
-            // Check the zip file contents
-            // We should have the new script:
-            if (filename.includes('save_new.rb')) {
-              expect(fileData).toBe('puts "modify the PW_TEST"')
-            }
-            // We should have the new screen:
-            // if (filename.includes('new_screen.txt')) {
-            //   expect(fileData).toContain('SCREEN')
-            // }
-          })
-        })
-      })
-    })
+        .click())
 
     await page.goto('/tools/admin/plugins')
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
