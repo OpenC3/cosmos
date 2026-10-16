@@ -463,10 +463,29 @@ RSpec.describe RunningScript, type: :model do
         expect(script_api).not_to receive(:start)
 
         script_api.send(:goto, 9)
-        expect(running_script.execute_while_paused_info).to eq({ filename: "test_script.rb", line_no: 9, end_line_no: nil })
+        expect(running_script.execute_while_paused_info).to eq({ filename: "test_script.rb", line_no: 9, end_line_no: nil, bind_variables: true })
 
         script_api.send(:goto, "other.rb", 3)
-        expect(running_script.execute_while_paused_info).to eq({ filename: "other.rb", line_no: 3, end_line_no: nil })
+        expect(running_script.execute_while_paused_info).to eq({ filename: "other.rb", line_no: 3, end_line_no: nil, bind_variables: true })
+      end
+
+      it "keeps the script binding when the queued goto targets another file" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "breakpoint"
+        RunningScript.class_variable_set(:@@run_thread, Thread.new {})
+        script_api.send(:goto, "other.rb", 3)
+
+        expect(running_script).to receive(:start).with("other.rb", line_no: 3, bind_variables: true, complete: true)
+        running_script.check_execute_while_paused
+      end
+
+      it "binds the editor's goto only when it targets the current file" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "breakpoint"
+        running_script.execute_while_paused("other.rb", 3)
+
+        expect(running_script).to receive(:start).with("other.rb", line_no: 3, bind_variables: false, complete: true)
+        running_script.check_execute_while_paused
       end
 
       it "runs the script directly when called from the run thread" do

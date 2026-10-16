@@ -73,15 +73,30 @@ class TestGoto(unittest.TestCase):
         running_script.goto(9)
         self.assertEqual(
             self.running_script.execute_while_paused_info,
-            {"filename": "test_script.py", "line_no": 9, "end_line_no": None},
+            {"filename": "test_script.py", "line_no": 9, "end_line_no": None, "bind_variables": True},
         )
 
         running_script.goto("other.py", 3)
         self.assertEqual(
             self.running_script.execute_while_paused_info,
-            {"filename": "other.py", "line_no": 3, "end_line_no": None},
+            {"filename": "other.py", "line_no": 3, "end_line_no": None, "bind_variables": True},
         )
         mock_start.assert_not_called()
+
+    def test_queued_goto_to_another_file_keeps_binding(self):
+        patcher = patch.object(RunningScript, "run_thread", threading.Thread(target=lambda: None))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        running_script.goto("other.py", 3)
+
+        self.running_script.check_execute_while_paused()
+        self.mock_start.assert_called_with("other.py", line_no=3, bind_variables=True, complete=True)
+
+    def test_editor_goto_binds_only_for_current_file(self):
+        self.running_script.execute_while_paused("other.py", 3)
+
+        self.running_script.check_execute_while_paused()
+        self.mock_start.assert_called_with("other.py", line_no=3, bind_variables=False, complete=True)
 
     def test_goto_on_run_thread_starts_directly(self):
         mock_start = self.mock_start
