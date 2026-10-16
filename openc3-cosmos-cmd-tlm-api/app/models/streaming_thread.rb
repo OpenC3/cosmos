@@ -82,6 +82,16 @@ class StreamingThread
     @cancel_thread = true
   end
 
+  # Wait up to timeout seconds for the underlying Ruby thread to actually exit.
+  # Unlike alive?, which reports false as soon as stop has been requested, this
+  # reflects whether the thread has finished and released its resources.
+  # Returns true if the thread has finished.
+  def join(timeout)
+    return true unless @thread
+    return false if @thread == Thread.current
+    return !@thread.join([timeout, 0].max).nil?
+  end
+
   def redis_thread_body
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
     results = []
