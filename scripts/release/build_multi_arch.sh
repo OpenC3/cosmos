@@ -289,6 +289,7 @@ fi
 cd ../openc3-cosmos-cmd-tlm-api
 retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -301,6 +302,7 @@ if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -313,6 +315,7 @@ fi
 cd ../openc3-cosmos-script-runner-api
 retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -325,6 +328,7 @@ if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \

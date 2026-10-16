@@ -13,6 +13,12 @@ USER root
 
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
 
+# anycable-go is only run by the API images, so install it here instead of in
+# openc3-ruby. The anycable build context is provided by compose-build.yaml
+# (additional_contexts) or by --build-context in the other build scripts.
+RUN --mount=type=bind,from=anycable,target=/mnt/anycable \
+    /mnt/anycable/anycable_install.sh /mnt/anycable
+
 ENV SKIP_DEV_GEMS=1
 RUN bundle config set --local without 'development test' && \
     bundle install --quiet && \
