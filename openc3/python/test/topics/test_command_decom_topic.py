@@ -105,6 +105,17 @@ class TestCommandDecomTopic(unittest.TestCase):
         hash = self._json_data(packet)
         self.assertEqual(hash["VALUE__C"], 10)
 
+    def test_does_not_log_given_value_of_obfuscated_item(self):
+        packet = self._make_packet()
+        item = packet.get_item("VALUE")
+        item.obfuscate = True
+        packet.update_obfuscated_items_cache(item)
+        packet.given_values = {"VALUE": 5}
+        packet.obfuscate()
+        hash = self._json_data(packet)
+        self.assertEqual(hash["VALUE"], 0)
+        self.assertEqual(hash["VALUE__C"], 0)
+
     def test_reads_converted_state_rather_than_given_value(self):
         # The user can give either the state name or the state value so always
         # read the state name back out of the buffer
