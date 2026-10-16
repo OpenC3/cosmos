@@ -204,11 +204,21 @@ def running_script_method(method, *args, **kwargs):
                         path = path[len(scope) + 1 :]
                     file = _get_storage_file(path, bucket=bucket, scope=scope)
                     file._filename = the_filename
+                    file._bucket = bucket
+                    file._bucket_path = user_input["path"]
 
                     def filename(self):
                         return self._filename
 
+                    def bucket_name(self):
+                        return self._bucket
+
+                    def bucket_path(self):
+                        return self._bucket_path
+
                     type(file).filename = filename
+                    type(file).bucket = bucket_name
+                    type(file).bucket_path = bucket_path
                     return file
                 elif "open_file" in method:
                     files = []

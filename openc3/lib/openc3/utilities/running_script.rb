@@ -112,16 +112,7 @@ module OpenC3
               RunningScript.instance.perform_pause
             else
               if method.to_s == 'open_bucket_dialog'
-                bucket = input['bucket']
-                path = input['path']
-                filename = input['filename']
-                # Path from bucket dialog already includes scope prefix (e.g. DEFAULT/targets/...)
-                # _get_storage_file prepends scope, so strip it from the path to avoid doubling
-                scope = RunningScript.instance.scope
-                path = path.sub(/\A#{Regexp.escape(scope)}\//, '')
-                file = _get_storage_file(path, bucket: bucket, scope: scope)
-                file.filename = filename
-                return file
+                return _get_bucket_dialog_file(input, scope: RunningScript.instance.scope)
               elsif (method.to_s.include?('open_file'))
                 files = input.map do |filename|
                   file = _get_storage_file("tmp/#{filename}", scope: RunningScript.instance.scope)
