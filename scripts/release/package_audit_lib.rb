@@ -1032,9 +1032,17 @@ def check_container_version(client, containers, image_name)
   new_version
 end
 
-def check_anycable(client, container_name)
-  anycable = `docker run --rm #{container_name} /usr/bin/anycable-go --version`.strip
-  puts "Raw anycable-go version: #{anycable}"
+def check_anycable(client, container_names)
+  # Both API images install the same binary from openc3-anycable/, so audit the
+  # first and only warn if another image reports something different.
+  versions = container_names.map do |name|
+    [name, `docker run --rm #{name} /usr/bin/anycable-go --version`.strip]
+  end
+  versions.each { |name, version| puts "Raw anycable-go version (#{name}): #{version}" }
+  if versions.map(&:last).uniq.length > 1
+    puts "WARNING: anycable-go versions differ between images; rebuild stale images before auditing"
+  end
+  anycable = versions.first.last
   any_cable_version = anycable.split('version:')[-1].split('-')[0].strip
   # A fourth version component means this is one of our own anycable-go builds,
   # never an upstream release: every anycable/anycable release back to v0.5.0 is
@@ -1062,8 +1070,8 @@ def check_anycable(client, container_name)
   ver = new_version.sub(/^v/, '')
   amd_url = "https://github.com/anycable/anycable/releases/download/v#{ver}/anycable-go-linux-amd64"
   arm_url = "https://github.com/anycable/anycable/releases/download/v#{ver}/anycable-go-linux-arm64"
-  amd_path = File.join(ROOT_DIR, 'openc3-ruby/anycable-go-linux-amd64')
-  arm_path = File.join(ROOT_DIR, 'openc3-ruby/anycable-go-linux-arm64')
+  amd_path = File.join(ROOT_DIR, 'openc3-anycable/anycable-go-linux-amd64')
+  arm_path = File.join(ROOT_DIR, 'openc3-anycable/anycable-go-linux-arm64')
   system("curl -fSL #{amd_url} -o #{amd_path}") || (puts("ERROR: failed to download #{amd_url}"); return nil)
   system("curl -fSL #{arm_url} -o #{arm_path}") || (puts("ERROR: failed to download #{arm_url}"); return nil)
   if File.size(amd_path) < 1_000_000 || File.size(arm_path) < 1_000_000

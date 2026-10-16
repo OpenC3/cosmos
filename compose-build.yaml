@@ -80,6 +80,8 @@ services:
   openc3-cosmos-cmd-tlm-api:
     build:
       context: "openc3-cosmos-cmd-tlm-api"
+      additional_contexts:
+        anycable: "openc3-anycable"
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -92,6 +94,8 @@ services:
   openc3-cosmos-script-runner-api:
     build:
       context: "openc3-cosmos-script-runner-api"
+      additional_contexts:
+        anycable: "openc3-anycable"
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}

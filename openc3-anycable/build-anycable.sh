@@ -10,12 +10,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-# Build the anycable-go binaries bundled in openc3-ruby/ from an anycable
+# Build the anycable-go binaries bundled in openc3-anycable/ from an anycable
 # checkout. Mirrors anycable's .github/workflows/release-binaries.yml
 # (plain, non-mruby builds) and copies the results next to this script.
 #
 # Usage:
-#   openc3-ruby/build-anycable.sh [ANYCABLE_DIR]
+#   openc3-anycable/build-anycable.sh [ANYCABLE_DIR]
 #
 # ANYCABLE_DIR defaults to $ANYCABLE_DIR, then ../anycable relative to the
 # cosmos repo root. It must be a git clone of github.com/anycable/anycable
