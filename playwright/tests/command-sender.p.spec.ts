@@ -77,9 +77,7 @@ async function checkSent(page, cmd) {
 
 // Helper function to check command history
 async function checkHistory(page, value) {
-  await page
-    .locator('[data-test=sender-history] div')
-    .filter({ hasText: value })
+  await expect(page.locator('[data-test=sender-history]')).toContainText(value)
 }
 
 //
@@ -282,12 +280,9 @@ test('handles big integers', async ({ page, utils }) => {
   let value = '18446744073709551615'
   await setValue(page, 'BIGINT', value)
   await page.locator('[data-test="select-send"]').click()
-  await expect(page.locator('main')).toContainText(
-    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
-  )
-  await checkHistory(
+  await checkSent(
     page,
-    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
+    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}")`,
   )
   // Check the screen
   await expect(
@@ -301,12 +296,9 @@ test('handles big integers', async ({ page, utils }) => {
   value = '1740684371613049856'
   await setValue(page, 'BIGINT', value)
   await page.locator('[data-test="select-send"]').click()
-  await expect(page.locator('main')).toContainText(
-    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
-  )
-  await checkHistory(
+  await checkSent(
     page,
-    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
+    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}")`,
   )
   // Check the screen
   await expect(
@@ -319,12 +311,9 @@ test('handles big integers', async ({ page, utils }) => {
   value = '0' // Set the BIGINT value to 0 for later tests
   await setValue(page, 'BIGINT', value)
   await page.locator('[data-test="select-send"]').click()
-  await expect(page.locator('main')).toContainText(
-    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
-  )
-  await checkHistory(
+  await checkSent(
     page,
-    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}") sent.`,
+    `cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT ${value}")`,
   )
   // Check the screen
   await expect(
