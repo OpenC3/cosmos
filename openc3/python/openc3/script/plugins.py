@@ -21,7 +21,7 @@ def plugin_list(default: bool = False, scope: str = OPENC3_SCOPE):
         endpoint = f"/openc3-api/plugins?scope={scope}"
         response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if not response or response.status_code != 200:
-            raise RuntimeError(f"Unexpected response to plugins_list: {response}")
+            raise RuntimeError(f"Unexpected response to plugin_list: {response}")
         plugins = json.loads(response.text)
         if default:
             return plugins
@@ -36,7 +36,7 @@ def plugin_list(default: bool = False, scope: str = OPENC3_SCOPE):
             ]
 
     except Exception as error:
-        raise RuntimeError(f"plugins_list failed due to {traceback.format_exc()}") from error
+        raise RuntimeError(f"plugin_list failed due to {traceback.format_exc()}") from error
 
 
 def plugin_get(plugin_name: str, scope: str = OPENC3_SCOPE):

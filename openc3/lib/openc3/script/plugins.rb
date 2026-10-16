@@ -35,14 +35,16 @@ module OpenC3
               return plugins
             else
               return plugins.select do |plugin|
-                !plugin.include?('openc3-cosmos-tool-') and !plugin.include?('openc3-tool-base') and
-                !plugin.include?('openc3-cosmos-enterprise-tool-') and !plugin.include?('openc3-enterprise-tool-base')
+                !plugin.start_with?('openc3-cosmos-tool-') and
+                !plugin.start_with?('openc3-tool-base') and
+                !plugin.start_with?('openc3-cosmos-enterprise-tool-') and
+                !plugin.start_with?('openc3-enterprise-tool-base')
               end
             end
           end
         end
       rescue => e
-        raise "get_plugin_list failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
+        raise "plugin_list failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
@@ -65,7 +67,7 @@ module OpenC3
           end
         end
       rescue => e
-        raise "get_plugin failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
+        raise "plugin_get failed due to #{e.formatted}\nURI:#{uri}\nResponse:\n#{response_body}"
       end
     end
 
