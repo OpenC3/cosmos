@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import errno
 import json
 import math
 import threading
@@ -258,6 +259,107 @@ class TestInterfaceMicroservice(unittest.TestCase):
             MyInterface.read_interface_raise = False
             all_interfaces = self.wait_for_state("CONNECTED")  # Allow to reconnect
             self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+
+    @staticmethod
+    def _raised(error):
+        try:
+            raise error
+        except Exception as e:
+            return e
+
+    def _logged_errors(self, im):
+        errors = []
+        im.logger.error = lambda msg, *args, **kwargs: errors.append(msg)
+        im.disconnect = lambda *args, **kwargs: None
+        return errors
+
+    def test_does_not_log_a_backtrace_for_expected_connection_failures(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        for error in [ConnectionRefusedError(), TimeoutError(), OSError(errno.EHOSTUNREACH, "unreachable")]:
+            errors.clear()
+            im.handle_connection_failed("INST_INT", self._raised(error))
+            self.assertEqual(len(errors), 1)
+            self.assertIn("failed due to", errors[0])
+        im.shutdown()
+
+    def test_logs_an_unexpected_connection_failure_backtrace_only_once_per_message(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        im.handle_connection_failed("INST_INT", self._raised(ValueError("bad thing")))
+        self.assertEqual(len(errors), 2)
+        self.assertIn("Traceback", errors[1])
+        errors.clear()
+        im.handle_connection_failed("INST_INT", self._raised(ValueError("bad thing")))
+        self.assertEqual(len(errors), 1)
+        self.assertNotIn("Traceback", errors[0])
+        im.shutdown()
+
+    def test_does_not_log_a_backtrace_for_expected_lost_connections(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        for error in [ConnectionResetError(), ConnectionAbortedError(), OSError(errno.EBADF, "bad fd")]:
+            im.handle_connection_lost(self._raised(error))
+        self.assertEqual(errors, [])
+        im.shutdown()
+
+    # Matches the Ruby Errno lists which differ between the two phases
+    def test_logs_a_backtrace_for_network_errors_not_expected_in_that_phase(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        for error in [BrokenPipeError(), ConnectionAbortedError()]:
+            errors.clear()
+            im.handle_connection_failed("INST_INT", self._raised(error))
+            self.assertIn("Traceback", errors[-1])
+        for error in [BrokenPipeError(), ConnectionRefusedError()]:
+            errors.clear()
+            im.handle_connection_lost(self._raised(error))
+            self.assertIn("Traceback", errors[-1])
+        im.shutdown()
+
+    def test_logs_an_unexpected_lost_connection_backtrace_only_once_per_message(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        im.handle_connection_lost(self._raised(ValueError("bad thing")))
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Traceback", errors[0])
+        errors.clear()
+        im.handle_connection_lost(self._raised(ValueError("bad thing")))
+        self.assertEqual(errors, [])
+        im.shutdown()
+
+    def test_logs_a_backtrace_for_each_exception_type_raised_without_a_message(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        im.handle_connection_failed("INST_INT", self._raised(ValueError()))
+        im.handle_connection_failed("INST_INT", self._raised(KeyError()))
+        im.handle_connection_lost(self._raised(ValueError()))
+        im.handle_connection_lost(self._raised(KeyError()))
+        self.assertEqual(sum("Traceback" in msg for msg in errors), 4)
+        im.shutdown()
+
+    def test_logs_backtraces_again_only_after_a_user_requested_connect(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+
+        def log_both():
+            errors.clear()
+            im.handle_connection_failed("INST_INT", self._raised(ValueError("bad thing")))
+            im.handle_connection_lost(self._raised(ValueError("lost thing")))
+            return sum("Traceback" in msg for msg in errors)
+
+        self.assertEqual(log_both(), 2)
+        self.assertEqual(log_both(), 0)  # Already seen
+
+        # Connection Success does not clear them, otherwise an error on the first
+        # read after every reconnect would log its backtrace every time
+        im.connect()
+        self.assertEqual(log_both(), 0)
+
+        im.interface.state = "ATTEMPTING"
+        im.attempting()  # A user requested connect clears them
+        self.assertEqual(log_both(), 2)
+        im.shutdown()
 
     def test_connect_handles_parameters(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")

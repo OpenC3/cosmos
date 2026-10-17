@@ -638,7 +638,15 @@ module OpenC3
         return @interface
       end
 
+      # A user requested (re)connect starts fresh so backtraces are logged again
+      clear_connection_messages()
       attempt_connection(*params)
+    end
+
+    # Forget which errors have already had their backtrace logged
+    def clear_connection_messages
+      @connection_failed_messages.clear
+      @connection_lost_messages.clear
     end
 
     # Sets the state to 'ATTEMPTING', first rebuilding the interface/router if
@@ -832,9 +840,11 @@ module OpenC3
         if RuntimeError === connect_error and (connect_error.message =~ /canceled/ or connect_error.message =~ /timeout/)
           # Do not write an exception file for these extremely common cases
         else
-          @logger.error "#{@interface.name}: #{connect_error.formatted}"
-          unless @connection_failed_messages.include?(connect_error.message)
-            @connection_failed_messages << connect_error.message
+          # Only log the backtrace the first time we see each distinct error
+          key = [connect_error.class, connect_error.message]
+          unless @connection_failed_messages.include?(key)
+            @logger.error "#{@interface.name}: #{connect_error.formatted}"
+            @connection_failed_messages << key
           end
         end
       end
@@ -852,9 +862,11 @@ module OpenC3
         when Errno::ECONNABORTED, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::EBADF, Errno::ENOTSOCK, IOError
           # Do not write an exception file for these extremely common cases
         else
-          @logger.error "#{@interface.name}: #{err.formatted}"
-          unless @connection_lost_messages.include?(err.message)
-            @connection_lost_messages << err.message
+          # Only log the backtrace the first time we see each distinct error
+          key = [err.class, err.message]
+          unless @connection_lost_messages.include?(key)
+            @logger.error "#{@interface.name}: #{err.formatted}"
+            @connection_lost_messages << key
           end
         end
       else
