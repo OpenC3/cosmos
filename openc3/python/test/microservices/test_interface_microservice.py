@@ -29,6 +29,7 @@ from openc3.system.system import System
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.topic import Topic
+from openc3.utilities.store import Store
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
 from openc3.utilities.time import from_nsec_from_epoch
 from test.test_helper import *
@@ -941,6 +942,63 @@ class TestInterfaceMicroservice(unittest.TestCase):
         im.shutdown()
         time.sleep(0.1)  # Allow threads to exit
 
+    def test_queues_writes_by_default_with_default_update_interval(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[],
+        )
+        model.update()
+
+        # Set a different interval to verify the default gets applied
+        StoreQueued.instance().set_update_interval(1)
+        EphemeralStoreQueued.instance().set_update_interval(1)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        self.assertTrue(im.queued)
+        self.assertEqual(StoreQueued.instance().update_interval, InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL)
+        self.assertEqual(EphemeralStoreQueued.instance().update_interval, InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL)
+        self.assertEqual(InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL, 0.1)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    def test_update_interval_zero_disables_queued_writes(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["UPDATE_INTERVAL", "0"]],
+        )
+        model.update()
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        self.assertFalse(im.queued)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    def test_applies_default_update_interval_to_target_shards(self):
+        with (
+            patch.object(Store, "db_shard_for_target", return_value=1),
+            patch.object(EphemeralStoreQueued, "instance") as ephemeral_instance,
+            patch.object(StoreQueued, "instance") as store_instance,
+        ):
+            im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+            self.addCleanup(im.shutdown)
+            for instance in (ephemeral_instance, store_instance):
+                instance.assert_any_call(db_shard=0)
+                instance.assert_any_call(db_shard=1)
+                instance.return_value.set_update_interval.assert_called_with(0.1)
 
 class TestInterfaceCmdHandlerRoutedCommands(unittest.TestCase):
     def setUp(self):
