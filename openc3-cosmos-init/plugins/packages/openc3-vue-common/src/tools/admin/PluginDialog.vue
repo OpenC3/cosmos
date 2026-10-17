@@ -43,6 +43,15 @@
         <form @submit.prevent="onSubmit">
           <v-window v-model="tab">
             <v-window-item :value="0" eager="true" class="tab">
+              <!-- Markdown from PLUGIN_TEXT_START / PLUGIN_TEXT_END in plugin.txt -->
+              <!-- eslint-disable vue/no-v-html -->
+              <div
+                v-if="pluginTextHtml"
+                class="plugin-text pa-3"
+                data-test="plugin-text"
+                v-html="pluginTextHtml"
+              />
+              <!-- eslint-enable vue/no-v-html -->
               <div
                 v-if="Object.keys(localVariables).length === 0"
                 class="text-body-1 text-medium-emphasis pa-3"
@@ -51,7 +60,7 @@
               </div>
               <v-row v-else class="pt-2">
                 <v-col
-                  v-for="(variable, name) in localVariables"
+                  v-for="[name, variable] in visibleVariables"
                   :key="name"
                   cols="12"
                   sm="6"
@@ -60,7 +69,7 @@
                   <!-- Combobox for variables with options -->
                   <v-combobox
                     v-if="hasOptions(variable)"
-                    v-model="variable.value"
+                    :model-value="variable.value"
                     :items="getOptionItems(variable)"
                     item-title="text"
                     item-value="value"
@@ -71,6 +80,7 @@
                     density="comfortable"
                     variant="outlined"
                     data-test="variable-combobox"
+                    @update:model-value="setVariableValue(name, $event)"
                   >
                     <template #item="{ item, props }">
                       <v-list-item v-bind="props">
@@ -178,6 +188,8 @@ import AceDiff from 'ace-diff'
 import 'ace-diff/styles.css'
 import 'ace-diff/styles-twilight.css'
 import { Api } from '@openc3/js-common/services'
+import DOMPurify from 'dompurify'
+import { marked } from 'marked'
 import { toRaw } from 'vue'
 import * as semver from 'semver'
 import { AceEditorUtils } from '../../components/ace'
@@ -195,6 +207,11 @@ export default {
     pluginTxt: {
       type: String,
       required: true,
+    },
+    pluginText: {
+      type: String,
+      required: false,
+      default: null,
     },
     existingPluginTxt: {
       type: String,
@@ -241,6 +258,17 @@ export default {
       set(value) {
         this.$emit('update:modelValue', value)
       },
+    },
+    pluginTextHtml() {
+      if (!this.pluginText) return ''
+      return DOMPurify.sanitize(marked.parse(this.pluginText))
+    },
+    // Variables not hidden by the currently selected VARIABLE_STATE of another
+    // variable (see VARIABLE_STATE_SHOW)
+    visibleVariables() {
+      return Object.entries(this.localVariables).filter(([name]) =>
+        this.isVariableVisible(name),
+      )
     },
   },
   watch: {
@@ -359,7 +387,15 @@ export default {
       ).RubyHighlightRules
 
       // TODO: Grab from code
-      let keywords = ['VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE']
+      let keywords = [
+        'VARIABLE',
+        'VARIABLE_DESCRIPTION',
+        'VARIABLE_STATE',
+        'VARIABLE_STATE_SHOW',
+        'VARIABLE_STATE_SET',
+        'PLUGIN_TEXT_START',
+        'PLUGIN_TEXT_END',
+      ]
       let regex = new RegExp(`(\\b${keywords.join('\\b|\\b')}\\b)`)
       let PluginHighlightRules = function () {
         RubyHighlightRules.call(this)
@@ -451,6 +487,7 @@ export default {
         name: this.pluginName,
         variables: toRaw(this.localVariables),
         plugin_txt_lines: lines,
+        plugin_text: this.pluginText,
         store_plugin_id: this.storePluginId,
         store_version_id: this.storeVersionId,
       }
@@ -502,7 +539,46 @@ export default {
         // don't worry about this.differ since AceDiff replaces the editor anyway, and thus there's no context menu
       }
     },
+    // Set a variable and, if the new value selects a state, apply that
+    // state's VARIABLE_STATE_SET values (cascading into other states)
+    setVariableValue(name, value, visiting = new Set()) {
+      const variable = this.localVariables[name]
+      if (variable.value === value || visiting.has(name)) return
+      visiting.add(name)
+      variable.value = value
+      const selected = variable.options?.find((opt) => opt.value === value)
+      for (const [target, defaultValue] of Object.entries(
+        selected?.set || {},
+      )) {
+        this.setVariableValue(target, defaultValue, visiting)
+      }
+    },
     // Helper methods for variable display
+    isVariableVisible(name, visiting = new Set()) {
+      if (visiting.has(name)) return true // Guard against circular references
+      visiting.add(name)
+      try {
+        for (const [controlName, control] of Object.entries(
+          this.localVariables,
+        )) {
+          if (!control.options) continue
+          // Variables listed by any VARIABLE_STATE_SHOW of this variable are
+          // only visible when the selected state lists them
+          if (!control.options.some((opt) => opt.show?.includes(name))) continue
+          // A hidden variable can't be selected so nothing it shows is visible
+          if (!this.isVariableVisible(controlName, visiting)) return false
+          const selected = control.options.find(
+            (opt) => opt.value === control.value,
+          )
+          // Custom values that don't match a state don't affect visibility
+          if (!selected) continue
+          if (!selected.show?.includes(name)) return false
+        }
+        return true
+      } finally {
+        visiting.delete(name)
+      }
+    },
     hasOptions(variable) {
       return variable.options && variable.options.length > 0
     },
@@ -528,6 +604,55 @@ export default {
 }
 .tab {
   background-color: var(--color-background-surface-default);
+}
+.plugin-text :deep(:first-child) {
+  margin-top: 0;
+}
+.plugin-text :deep(:last-child) {
+  margin-bottom: 0;
+}
+.plugin-text :deep(h1),
+.plugin-text :deep(h2),
+.plugin-text :deep(h3),
+.plugin-text :deep(p),
+.plugin-text :deep(ul),
+.plugin-text :deep(ol),
+.plugin-text :deep(pre),
+.plugin-text :deep(table) {
+  margin-bottom: 8px;
+}
+.plugin-text :deep(h1) {
+  font-size: 1.5rem;
+  font-weight: 500;
+}
+.plugin-text :deep(h2) {
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+.plugin-text :deep(h3) {
+  font-size: 1.1rem;
+  font-weight: 500;
+}
+.plugin-text :deep(ul),
+.plugin-text :deep(ol) {
+  padding-left: 24px;
+}
+.plugin-text :deep(code) {
+  padding: 0 4px;
+  border-radius: 4px;
+  background-color: rgba(var(--v-theme-on-surface), 0.08);
+}
+.plugin-text :deep(pre code) {
+  display: block;
+  padding: 8px;
+}
+.plugin-text :deep(a) {
+  color: rgb(var(--v-theme-primary));
+}
+.plugin-text :deep(th),
+.plugin-text :deep(td) {
+  padding: 2px 8px;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.2);
 }
 .v-textarea :deep(textarea) {
   padding: 5px;

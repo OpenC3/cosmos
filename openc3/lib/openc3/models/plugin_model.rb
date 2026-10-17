@@ -55,6 +55,7 @@ module OpenC3
 
     attr_accessor :variables
     attr_accessor :plugin_txt_lines
+    attr_accessor :plugin_text
     attr_accessor :minimum_cosmos_version
     attr_accessor :needs_dependencies
     attr_accessor :store_plugin_id
@@ -129,11 +130,32 @@ module OpenC3
         # Phase 1 Gather Variables
         variables = {}
         current_variable_name = nil
+        plugin_text_blocks = []
+        plugin_text_lines = nil # Non-nil while inside PLUGIN_TEXT_START / PLUGIN_TEXT_END
+        # Yield non-keyword lines so blank lines and markdown headers (# lines) are captured in PLUGIN_TEXT
         parser.parse_file(plugin_txt_path,
-                          false,
+                          true,
                           true,
                           false) do |keyword, params|
+          if plugin_text_lines
+            if keyword == 'PLUGIN_TEXT_END'
+              parser.set_preserve_lines(false)
+              plugin_text_blocks << plugin_text_lines
+              plugin_text_lines = nil
+            else
+              plugin_text_lines << parser.line
+            end
+            next
+          end
+
           case keyword
+          when 'PLUGIN_TEXT_START'
+            parser.verify_num_parameters(0, 0, keyword)
+            # Preserve the raw lines (no stripping, quote or continuation processing) until PLUGIN_TEXT_END
+            parser.set_preserve_lines(true)
+            plugin_text_lines = []
+          when 'PLUGIN_TEXT_END'
+            raise "PLUGIN_TEXT_END must follow a PLUGIN_TEXT_START"
           when 'VARIABLE'
             usage = "#{keyword} <Variable Name> <Default Value>"
             parser.verify_num_parameters(2, nil, usage)
@@ -169,12 +191,62 @@ module OpenC3
             variables[current_variable_name]['options'] ||= []
             option = { 'value' => params[1] || params[0], 'text' => params[0] }
             variables[current_variable_name]['options'] << option
+          when 'VARIABLE_STATE_SHOW'
+            usage = "#{keyword} <Variable Name> <Variable Name (optional)> ..."
+            parser.verify_num_parameters(1, nil, usage)
+            options = variables[current_variable_name]['options'] if current_variable_name
+            unless options
+              raise "#{keyword} must follow a VARIABLE_STATE definition"
+            end
+            options[-1]['show'] ||= []
+            options[-1]['show'].concat(params)
+            options[-1]['show'].uniq!
+          when 'VARIABLE_STATE_SET'
+            usage = "#{keyword} <Variable Name> <Value>"
+            parser.verify_num_parameters(2, nil, usage)
+            options = variables[current_variable_name]['options'] if current_variable_name
+            unless options
+              raise "#{keyword} must follow a VARIABLE_STATE definition"
+            end
+            options[-1]['set'] ||= {}
+            options[-1]['set'][params[0]] = params[1..-1].join(" ")
+          end
+        end
+
+        raise "PLUGIN_TEXT_START without a matching PLUGIN_TEXT_END" if plugin_text_lines
+        plugin_markdown = plugin_text_blocks.empty? ? nil : plugin_text_blocks.map { |lines| unindent_lines(lines) }.join("\n\n")
+
+        # Variables can be defined after the VARIABLE_STATE_SHOW / SET that references them
+        # so validate the references once all variables are known
+        variables.each do |variable_name, variable|
+          next unless variable['options']
+          variable['options'].each do |option|
+            (Array(option['show']) + Array(option['set']&.keys)).each do |target_name|
+              if target_name == variable_name
+                raise "VARIABLE '#{variable_name}' state '#{option['text']}' cannot reference itself"
+              end
+              unless variables.key?(target_name)
+                raise "VARIABLE '#{variable_name}' state '#{option['text']}' references undefined VARIABLE '#{target_name}'"
+              end
+            end
+          end
+        end
+
+        # Apply the VARIABLE_STATE_SET values of each initially selected state (in file order so
+        # a set can select the state of a later variable). Values from an existing install win.
+        variables.each do |_variable_name, variable|
+          next unless variable['options']
+          selected = variable['options'].find { |option| option['value'] == variable['value'] }
+          next unless selected and selected['set']
+          selected['set'].each do |target_name, value|
+            next if existing_variables and existing_variables.key?(target_name)
+            variables[target_name]['value'] = value
           end
         end
 
         store_plugin_id = Integer(store_plugin_id) if store_plugin_id
         store_version_id = Integer(store_version_id) if store_version_id
-        model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, store_plugin_id: store_plugin_id, store_version_id: store_version_id, minimum_cosmos_version: minimum_cosmos_version, scope: scope)
+        model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, plugin_text: plugin_markdown, store_plugin_id: store_plugin_id, store_version_id: store_version_id, minimum_cosmos_version: minimum_cosmos_version, scope: scope)
         result = model.as_json()
         result['existing_plugin_txt_lines'] = existing_plugin_txt_lines if existing_plugin_txt_lines and not process_existing and existing_plugin_txt_lines != result['plugin_txt_lines']
         return result
@@ -371,9 +443,21 @@ module OpenC3
             parser = OpenC3::ConfigParser.new("https://openc3.com")
 
             current_model = nil
+            in_plugin_text = false
             parser.parse_file(plugin_txt_path, false, true, true, erb_variables) do |keyword, params|
+              # PLUGIN_TEXT was captured in phase 1 so skip it
+              if in_plugin_text
+                if keyword == 'PLUGIN_TEXT_END'
+                  parser.set_preserve_lines(false)
+                  in_plugin_text = false
+                end
+                next
+              end
               case keyword
-              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE', 'NEEDS_DEPENDENCIES'
+              when 'PLUGIN_TEXT_START'
+                parser.set_preserve_lines(true)
+                in_plugin_text = true
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin
@@ -436,10 +520,18 @@ module OpenC3
       install_phase2(plugin_hash, scope: scope, diff_only: true)
     end
 
+    # Remove the common leading whitespace so PLUGIN_TEXT can be indented in plugin.txt
+    # without turning the markdown into code blocks
+    def self.unindent_lines(lines)
+      indent = lines.reject { |line| line.strip.empty? }.map { |line| line[/\A[ \t]*/].length }.min || 0
+      lines.map { |line| line[indent..] || '' }.join("\n").strip
+    end
+
     def initialize(
       name:,
       variables: {},
       plugin_txt_lines: [],
+      plugin_text: nil,
       minimum_cosmos_version: nil,
       needs_dependencies: false,
       store_plugin_id: nil,
@@ -457,6 +549,7 @@ module OpenC3
       super("#{scope}__#{PRIMARY_KEY}", name: name, updated_at: updated_at, scope: scope)
       @variables = variables
       @plugin_txt_lines = plugin_txt_lines
+      @plugin_text = plugin_text
       @minimum_cosmos_version = minimum_cosmos_version
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
       @store_plugin_id = store_plugin_id
@@ -485,6 +578,7 @@ module OpenC3
         'name' => @name,
         'variables' => @variables,
         'plugin_txt_lines' => @plugin_txt_lines,
+        'plugin_text' => @plugin_text,
         'minimum_cosmos_version' => @minimum_cosmos_version,
         'needs_dependencies' => @needs_dependencies,
         'store_plugin_id' => @store_plugin_id,

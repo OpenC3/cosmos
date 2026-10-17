@@ -48,6 +48,80 @@ VARIABLE_STATE:
       required: true
       description: The value that will be used when this state is selected
       values: .+
+VARIABLE_STATE_SHOW:
+  summary: Show other plugin variables when this state is selected
+  description: The VARIABLE_STATE_SHOW keyword applies to the previously defined VARIABLE_STATE.
+    The listed variables are only displayed in the plugin installation dialog when this state is selected.
+    Variables listed in any VARIABLE_STATE_SHOW of a variable are hidden unless the selected state lists them,
+    or when the controlling variable is itself hidden. Variables never listed by a VARIABLE_STATE_SHOW are always shown. If a custom value is typed that doesn't match a state, all variables are shown.
+    Hidden variables keep their current values and are still passed to the plugin.
+    Multiple VARIABLE_STATE_SHOW keywords can be used and each can list multiple variables.
+    Must follow a VARIABLE_STATE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE interface_type tcp
+    VARIABLE_STATE "TCP/IP Client" tcp
+      VARIABLE_STATE_SHOW hostname port
+    VARIABLE_STATE "Serial" serial
+      VARIABLE_STATE_SHOW serial_port baud_rate
+    VARIABLE_STATE "Simulated" sim # hostname, port, serial_port, baud_rate all hidden
+    VARIABLE hostname 127.0.0.1
+    VARIABLE port 8080
+    VARIABLE serial_port /dev/ttyUSB0
+    VARIABLE baud_rate 115200
+  parameters:
+    - name: Variable Name
+      required: true
+      description: Name of a variable to show when this state is selected. Additional variable names can follow.
+      values: .+
+VARIABLE_STATE_SET:
+  summary: Set the value of another plugin variable when this state is selected
+  description: The VARIABLE_STATE_SET keyword applies to the previously defined VARIABLE_STATE.
+    When this state is selected in the plugin installation dialog, the named variable is set to the given value.
+    The user can still change the value afterwards. If the variable's new value selects a state that has its own
+    VARIABLE_STATE_SET keywords, those are applied as well. The VARIABLE_STATE_SET values of the initially selected state are
+    applied when the dialog opens, except for variables that already have a value from a previous install.
+    Often used together with VARIABLE_STATE_SHOW. Must follow a VARIABLE_STATE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE interface_type tcp
+    VARIABLE_STATE "TCP/IP Client" tcp
+      VARIABLE_STATE_SHOW port
+      VARIABLE_STATE_SET port 8080
+    VARIABLE_STATE "Serial" serial
+      VARIABLE_STATE_SHOW port baud_rate
+      VARIABLE_STATE_SET port /dev/ttyUSB0
+      VARIABLE_STATE_SET baud_rate 9600
+    VARIABLE port 8080
+    VARIABLE baud_rate 115200
+  parameters:
+    - name: Variable Name
+      required: true
+      description: Name of the variable to set when this state is selected
+      values: .+
+    - name: Value
+      required: true
+      description: Value to set the variable to
+      values: .+
+PLUGIN_TEXT_START:
+  summary: Start a block of markdown text shown in the plugin installation dialog
+  description: The PLUGIN_TEXT_START keyword begins a block of Markdown that is displayed at the top of the
+    Variables tab in the plugin installation dialog. Use it to explain how to configure the plugin, for example
+    which VARIABLE_STATE to choose for your hardware. All lines up to PLUGIN_TEXT_END are taken as-is
+    (keywords, quotes and markdown headings are not processed as plugin.txt syntax) and the common leading indentation is removed.
+    ERB is not evaluated in the text, but avoid ERB tags since the whole plugin.txt is still processed with ERB at install.
+    Multiple PLUGIN_TEXT_START / PLUGIN_TEXT_END blocks are joined together.
+  since: 7.5.0
+  example: |
+    PLUGIN_TEXT_START
+      # Power Supply Plugin
+      Supports both **TCP/IP** and **Serial** power supplies.
+      1. Choose the `interface_type` for your hardware
+      2. Fill in the connection settings that appear
+    PLUGIN_TEXT_END
+PLUGIN_TEXT_END:
+  summary: Complete a block of markdown text started by PLUGIN_TEXT_START
+  since: 7.5.0
 NEEDS_DEPENDENCIES:
   summary: Indicates the plugin needs dependencies and sets the GEM_HOME environment variable
   description: If the plugin has a top level lib folder or lists runtime dependencies in the gemspec,

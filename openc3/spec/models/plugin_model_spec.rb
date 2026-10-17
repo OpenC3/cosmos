@@ -167,6 +167,146 @@ module OpenC3
         })
       end
 
+      it "parses VARIABLE_STATE_SHOW" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "VARIABLE interface_type tcp"
+            file.puts '  VARIABLE_STATE "TCP/IP" tcp'
+            file.puts '    VARIABLE_STATE_SHOW hostname port'
+            file.puts '    VARIABLE_STATE_SHOW port'
+            file.puts '  VARIABLE_STATE "Serial" serial'
+            file.puts '    VARIABLE_STATE_SHOW serial_port'
+            file.puts '  VARIABLE_STATE "None" none'
+            file.puts "VARIABLE hostname 127.0.0.1"
+            file.puts "VARIABLE port 8080"
+            file.puts "VARIABLE serial_port /dev/ttyUSB0"
+          end
+        end
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        model = PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
+        expect(model['variables']['interface_type']).to eq({
+          'value' => 'tcp',
+          'options' => [
+            { 'value' => 'tcp', 'text' => 'TCP/IP', 'show' => ['hostname', 'port'] },
+            { 'value' => 'serial', 'text' => 'Serial', 'show' => ['serial_port'] },
+            { 'value' => 'none', 'text' => 'None' }
+          ]
+        })
+        expect(model['variables']['hostname']).to eq({ 'value' => '127.0.0.1' })
+      end
+
+      it "parses VARIABLE_STATE_SET and applies the selected state's values" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE interface_type serial',
+          '  VARIABLE_STATE "TCP/IP" tcp',
+          '    VARIABLE_STATE_SHOW port',
+          '    VARIABLE_STATE_SET port 8080',
+          '  VARIABLE_STATE "Serial" serial',
+          '    VARIABLE_STATE_SHOW port baud_rate',
+          '    VARIABLE_STATE_SET port /dev/ttyUSB0',
+          '    VARIABLE_STATE_SET baud_rate 9600',
+          '    VARIABLE_STATE_SET description Serial port interface',
+          'VARIABLE port 0',
+          'VARIABLE baud_rate 115200',
+          'VARIABLE description none',
+        ])
+        expect(model['variables']['interface_type']['options'][0]['set']).to eq({ 'port' => '8080' })
+        expect(model['variables']['interface_type']['options'][1]['set']).to eq({
+          'port' => '/dev/ttyUSB0', 'baud_rate' => '9600', 'description' => 'Serial port interface'
+        })
+        # Initially selected state is serial so its values are applied
+        expect(model['variables']['port']['value']).to eq '/dev/ttyUSB0'
+        expect(model['variables']['baud_rate']['value']).to eq '9600'
+        expect(model['variables']['description']['value']).to eq 'Serial port interface'
+      end
+
+      it "does not override existing variable values with VARIABLE_STATE_SET" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts 'VARIABLE interface_type serial'
+            file.puts '  VARIABLE_STATE serial'
+            file.puts '    VARIABLE_STATE_SET baud_rate 9600'
+            file.puts 'VARIABLE baud_rate 115200'
+          end
+        end
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        model = PluginModel.install_phase1(__FILE__, existing_variables: { 'baud_rate' => '19200' }, scope: "DEFAULT")
+        expect(model['variables']['baud_rate']['value']).to eq '19200'
+      end
+
+      it "raises error for VARIABLE_STATE_SET problems" do
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE_SET other 1', 'VARIABLE other 1']) }.to raise_error(/VARIABLE_STATE_SET must follow a VARIABLE_STATE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_SET missing 1']) }.to raise_error(/references undefined VARIABLE 'missing'/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_SET type udp']) }.to raise_error(/cannot reference itself/)
+      end
+
+      it "captures PLUGIN_TEXT_START / PLUGIN_TEXT_END markdown" do
+        model = phase1_with_plugin_txt([
+          'PLUGIN_TEXT_START',
+          '  # Instrument Plugin',
+          '',
+          '  Select the **interface type** first. Don\'t forget "quotes" \\',
+          '    - indented item',
+          '  VARIABLE not_a_variable 1',
+          'PLUGIN_TEXT_END',
+          'VARIABLE port 8080',
+          '  PLUGIN_TEXT_START',
+          '  Second block',
+          '  PLUGIN_TEXT_END',
+        ])
+        expect(model['plugin_text']).to eq "# Instrument Plugin\n\nSelect the **interface type** first. Don't forget \"quotes\" \\\n  - indented item\nVARIABLE not_a_variable 1\n\nSecond block"
+        expect(model['variables'].keys).to eq ['port']
+      end
+
+      it "returns nil plugin_text without PLUGIN_TEXT_START" do
+        model = phase1_with_plugin_txt(['VARIABLE port 8080'])
+        expect(model['plugin_text']).to be_nil
+      end
+
+      it "raises error for unbalanced PLUGIN_TEXT_START / PLUGIN_TEXT_END" do
+        expect { phase1_with_plugin_txt(['PLUGIN_TEXT_START', 'Text']) }.to raise_error(/PLUGIN_TEXT_START without a matching PLUGIN_TEXT_END/)
+        expect { phase1_with_plugin_txt(['PLUGIN_TEXT_END']) }.to raise_error(/PLUGIN_TEXT_END must follow a PLUGIN_TEXT_START/)
+      end
+
+      def phase1_with_plugin_txt(lines)
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            lines.each { |line| file.puts line }
+          end
+        end
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
+      end
+
+      it "raises error for VARIABLE_STATE_SHOW without VARIABLE_STATE" do
+        expect { phase1_with_plugin_txt(['VARIABLE_STATE_SHOW other']) }.to raise_error(/VARIABLE_STATE_SHOW must follow a VARIABLE_STATE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE_SHOW other', 'VARIABLE other 1']) }.to raise_error(/VARIABLE_STATE_SHOW must follow a VARIABLE_STATE definition/)
+      end
+
+      it "raises error for VARIABLE_STATE_SHOW referencing an undefined variable" do
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_SHOW missing']) }.to raise_error(/references undefined VARIABLE 'missing'/)
+      end
+
+      it "raises error for VARIABLE_STATE_SHOW referencing itself" do
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_SHOW type']) }.to raise_error(/cannot reference itself/)
+      end
+
       it "raises error for VARIABLE_DESCRIPTION without VARIABLE" do
         expect(GemModel).to receive(:put)
         gem = double("gem")
@@ -305,6 +445,33 @@ module OpenC3
         expect_tool_and_target_deploy(erb_variables)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql false
+      end
+
+      it "skips PLUGIN_TEXT during install and stores plugin_text" do
+        stub_s3_client
+
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        allow(gem).to receive(:spec).and_return(gem_spec_double)
+
+        variables = { "folder" => { "value" => "THE_FOLDER" }, "name" => { "value" => "THE_NAME" } }
+        erb_variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME", "scope" => 'DEFAULT' }
+        expect(GemModel).to receive(:install).and_return(nil)
+        expect_tool_and_target_deploy(erb_variables)
+        plugin_txt_lines = [
+          "PLUGIN_TEXT_START",
+          "  # Heading",
+          "  INTERFACE looks like a keyword \"but isn't",
+          "PLUGIN_TEXT_END",
+          "TOOL THE_FOLDER THE_NAME",
+          "  #{URL}",
+          "TARGET THE_FOLDER THE_NAME",
+        ]
+        plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => plugin_txt_lines, "plugin_text" => "# Heading"}, scope: "DEFAULT")
+        expect(plugin_model['plugin_text']).to eql "# Heading"
+        expect(PluginModel.get(name: plugin_model['name'], scope: "DEFAULT")['plugin_text']).to eql "# Heading"
       end
 
       it "threads version_history_files and username into the TargetModel upgrade_context" do

@@ -165,6 +165,73 @@ VARIABLE_STATE "48 hours" 172800
 VARIABLE_STATE 60 # Both description and value are set to 60
 ```
 
+## VARIABLE_STATE_SHOW
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Show other plugin variables when this state is selected**
+
+The VARIABLE_STATE_SHOW keyword applies to the previously defined VARIABLE_STATE. The listed variables are only displayed in the plugin installation dialog when this state is selected. Variables listed in any VARIABLE_STATE_SHOW of a variable are hidden unless the selected state lists them, or when the controlling variable is itself hidden. Variables never listed by a VARIABLE_STATE_SHOW are always shown. If a custom value is typed that doesn't match a state, all variables are shown. Hidden variables keep their current values and are still passed to the plugin. Multiple VARIABLE_STATE_SHOW keywords can be used and each can list multiple variables. Must follow a VARIABLE_STATE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Variable Name | Name of a variable to show when this state is selected. Additional variable names can follow. | True |
+
+Example Usage:
+```cosmos
+VARIABLE interface_type tcp
+VARIABLE_STATE "TCP/IP Client" tcp
+  VARIABLE_STATE_SHOW hostname port
+VARIABLE_STATE "Serial" serial
+  VARIABLE_STATE_SHOW serial_port baud_rate
+VARIABLE_STATE "Simulated" sim # hostname, port, serial_port, baud_rate all hidden
+VARIABLE hostname 127.0.0.1
+VARIABLE port 8080
+VARIABLE serial_port /dev/ttyUSB0
+VARIABLE baud_rate 115200
+```
+
+## VARIABLE_STATE_SET
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Set the value of another plugin variable when this state is selected**
+
+The VARIABLE_STATE_SET keyword applies to the previously defined VARIABLE_STATE. When this state is selected in the plugin installation dialog, the named variable is set to the given value. The user can still change the value afterwards. If the variable's new value selects a state that has its own VARIABLE_STATE_SET keywords, those are applied as well. The VARIABLE_STATE_SET values of the initially selected state are applied when the dialog opens, except for variables that already have a value from a previous install. Often used together with VARIABLE_STATE_SHOW. Must follow a VARIABLE_STATE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Variable Name | Name of the variable to set when this state is selected | True |
+| Value | Value to set the variable to | True |
+
+Example Usage:
+```cosmos
+VARIABLE interface_type tcp
+VARIABLE_STATE "TCP/IP Client" tcp
+  VARIABLE_STATE_SHOW port
+  VARIABLE_STATE_SET port 8080
+VARIABLE_STATE "Serial" serial
+  VARIABLE_STATE_SHOW port baud_rate
+  VARIABLE_STATE_SET port /dev/ttyUSB0
+  VARIABLE_STATE_SET baud_rate 9600
+VARIABLE port 8080
+VARIABLE baud_rate 115200
+```
+
+## PLUGIN_TEXT_START
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Start a block of markdown text shown in the plugin installation dialog**
+
+The PLUGIN_TEXT_START keyword begins a block of Markdown that is displayed at the top of the Variables tab in the plugin installation dialog. Use it to explain how to configure the plugin, for example which VARIABLE_STATE to choose for your hardware. All lines up to PLUGIN_TEXT_END are taken as-is (keywords, quotes and markdown headings are not processed as plugin.txt syntax) and the common leading indentation is removed. ERB is not evaluated in the text, but avoid ERB tags since the whole plugin.txt is still processed with ERB at install. Multiple PLUGIN_TEXT_START / PLUGIN_TEXT_END blocks are joined together.
+
+
+Example Usage:
+```cosmos
+PLUGIN_TEXT_START
+  # Power Supply Plugin
+  Supports both **TCP/IP** and **Serial** power supplies.
+  1. Choose the `interface_type` for your hardware
+  2. Fill in the connection settings that appear
+PLUGIN_TEXT_END
+```
+
+## PLUGIN_TEXT_END
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Complete a block of markdown text started by PLUGIN_TEXT_START**
+
+
 ## NEEDS_DEPENDENCIES
 <span class="badge badge--secondary since-right">Since 5.5.0</span>**Indicates the plugin needs dependencies and sets the GEM_HOME environment variable**
 

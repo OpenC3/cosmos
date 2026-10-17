@@ -883,6 +883,9 @@ importers:
       lodash:
         specifier: 4.18.1
         version: 4.18.1
+      marked:
+        specifier: 14.0.0
+        version: 14.0.0
       monaco-editor:
         specifier: 0.57.0
         version: 0.57.0

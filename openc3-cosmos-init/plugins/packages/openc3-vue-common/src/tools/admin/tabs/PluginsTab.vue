@@ -140,6 +140,7 @@
       :plugin-name="pluginName"
       :variables="variables"
       :plugin-txt="pluginTxt"
+      :plugin-text="pluginText"
       :existing-plugin-txt="existingPluginTxt"
       :store-plugin-id="storePluginId"
       :store-version-id="storeVersionId"
@@ -197,6 +198,7 @@ export default {
       storeVersionId: null,
       minCosmosVersion: null,
       pluginTxt: '',
+      pluginText: null,
       file: null,
       currentPlugin: null,
       pluginHashTmp: null,
@@ -279,6 +281,7 @@ export default {
       this.storeVersionId = null
       this.minCosmosVersion = null
       this.pluginTxt = ''
+      this.pluginText = null
       this.file = null
       this.currentPlugin = null
       this.pluginHashTmp = null
@@ -375,6 +378,7 @@ export default {
           this.storeVersionId = response.data.store_version_id
           this.minCosmosVersion = response.data.minimum_cosmos_version
           this.pluginTxt = pluginTxt
+          this.pluginText = response.data.plugin_text
           this.existingPluginTxt = existingPluginTxt
           this.showPluginDialog = true
           this.file = undefined
@@ -449,6 +453,7 @@ export default {
           this.file = undefined
           this.variables = {}
           this.pluginTxt = ''
+          this.pluginText = null
           this.existingPluginTxt = null
           this.storePluginId = null
           this.storeVersionId = null
@@ -472,6 +477,7 @@ export default {
           this.pluginName = response.data.name
           this.variables = response.data.variables
           this.pluginTxt = response.data.plugin_txt_lines.join('\n')
+          this.pluginText = response.data.plugin_text
           this.existingPluginTxt = existingPluginTxt
           this.showPluginDialog = true
         })
