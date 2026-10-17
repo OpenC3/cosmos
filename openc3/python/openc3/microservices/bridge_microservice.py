@@ -29,6 +29,8 @@ Two kinds of ALPN are served:
     bridge should run (from HostInterfaceMicroserviceModel); openc3-app polls it.
   * ``api/log`` receives host microservice stdout lines from openc3-app and
     re-emits them through the real COSMOS Logger.
+  * ``api/discovery`` long-polls for discovery requests (DiscoveryTopic) that
+    openc3-app runs on the host; ``api/discovery_result`` returns each result.
 
 The bridge keeps a stable Iroh identity across restarts: the private key lives
 in the secrets store and the public key + current ticket are published in the
@@ -54,6 +56,7 @@ from openc3.models.host_interface_microservice_model import HostInterfaceMicrose
 from openc3.models.model import Model
 from openc3.models.scope_model import ScopeModel
 from openc3.topics.config_topic import ConfigTopic
+from openc3.topics.discovery_topic import DiscoveryTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.store_queued import EphemeralStoreQueued
 
@@ -87,6 +90,14 @@ API_FILES = b"api/files"
 # Returns the latest host InterfaceStatus per interface (tapped from the control
 # channel), so openc3-app can display host interface status in its bridge section.
 API_INTERFACE_STATUS = b"api/interface_status"
+# Discovery: openc3-app long-polls api/discovery for pending discovery requests
+# (published by COSMOS on the DiscoveryTopic), runs them on the host, and posts
+# each result back on api/discovery_result.
+API_DISCOVERY = b"api/discovery"
+API_DISCOVERY_RESULT = b"api/discovery_result"
+# How long an api/discovery poll waits for a request before returning an empty
+# list. Kept under the QUIC idle timeout so the held connection stays alive.
+DISCOVERY_POLL_TIMEOUT = 20.0
 
 # The /gems volume (present in all deployments) holds the plugin gem cache.
 GEM_HOME = os.environ.get("GEM_HOME") or "/gems"
@@ -181,6 +192,10 @@ class BridgeMicroservice(Microservice):
         # connections (the hub process is long-lived), so only a genuine gem
         # change (or a hub restart) does the expensive work.
         self._gem_file_cache = {}
+        # Pending discovery requests ({"id", "discovery", "expires_at"}) read from
+        # the DiscoveryTopic, waiting for openc3-app to collect them on api/discovery.
+        self._discovery_requests = []
+        self._discovery_event = asyncio.Event()
 
     def _streams(self):
         """The stream (interface) names this bridge relays, from the
@@ -209,7 +224,16 @@ class BridgeMicroservice(Microservice):
             alpns.append(f"{HOST_ALPN_PREFIX}{s}".encode())
             alpns.append(f"{CTRL_ALPN_PREFIX}{s}".encode())
             alpns.append(f"{HOSTCTRL_ALPN_PREFIX}{s}".encode())
-        alpns += [API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_ENROLL, API_FILES, API_INTERFACE_STATUS]
+        alpns += [
+            API_HOST_MICROSERVICES,
+            API_LOG,
+            API_AUTHORIZE,
+            API_ENROLL,
+            API_FILES,
+            API_INTERFACE_STATUS,
+            API_DISCOVERY,
+            API_DISCOVERY_RESULT,
+        ]
         return alpns
 
     def _bridge_name(self):
@@ -305,6 +329,7 @@ class BridgeMicroservice(Microservice):
 
         watcher = asyncio.create_task(self._shutdown_watcher(endpoint))
         streams = asyncio.create_task(self._stream_watcher(endpoint))
+        discovery = asyncio.create_task(self._discovery_watcher())
         # Hold strong references to the per-connection handler tasks: asyncio
         # keeps only weak references, so an un-stored task can be garbage
         # collected mid-flight. Discard each when it finishes.
@@ -321,6 +346,7 @@ class BridgeMicroservice(Microservice):
         finally:
             watcher.cancel()
             streams.cancel()
+            discovery.cancel()
 
     async def _shutdown_watcher(self, endpoint):
         """Close the endpoint on shutdown so the accept loop wakes and exits."""
@@ -411,7 +437,15 @@ class BridgeMicroservice(Microservice):
             if alpn == API_ENROLL:
                 # Bootstrap: gated by a one-time code, not the app identity.
                 await self._serve_enroll(conn)
-            elif alpn in (API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_FILES, API_INTERFACE_STATUS):
+            elif alpn in (
+                API_HOST_MICROSERVICES,
+                API_LOG,
+                API_AUTHORIZE,
+                API_FILES,
+                API_INTERFACE_STATUS,
+                API_DISCOVERY,
+                API_DISCOVERY_RESULT,
+            ):
                 # Control APIs are restricted to the enrolled openc3-app identity.
                 if not self._authorized(conn):
                     self.logger.warn(f"Rejected unauthorized control connection from {conn.remote_id()} on {alpn!r}")
@@ -425,6 +459,10 @@ class BridgeMicroservice(Microservice):
                     await self._serve_files(conn)
                 elif alpn == API_INTERFACE_STATUS:
                     await self._serve_interface_status(conn)
+                elif alpn == API_DISCOVERY:
+                    await self._serve_discovery(conn)
+                elif alpn == API_DISCOVERY_RESULT:
+                    await self._serve_discovery_result(conn)
                 else:
                     await self._serve_log(conn)
             elif alpn.startswith(HOST_ALPN_PREFIX.encode()):
@@ -861,6 +899,83 @@ class BridgeMicroservice(Microservice):
             if os.path.exists(path):
                 return path
         return None
+
+    # --- Discovery ------------------------------------------------------------
+
+    def _read_discovery_requests(self, topic, offset, timeout_ms):
+        """Block (in an executor thread) until discovery requests are published or
+        timeout_ms elapses, returning [(msg_id, msg_hash), ...]."""
+        messages = []
+        with contextlib.suppress(Exception):
+            for _topic, msg_id, msg_hash, _redis in Topic.read_topics([topic], [offset], timeout_ms):
+                messages.append((msg_id, msg_hash))
+        return messages
+
+    async def _discovery_watcher(self):
+        """Queue discovery requests published for this bridge until openc3-app
+        collects them on api/discovery."""
+        loop = asyncio.get_event_loop()
+        topic = DiscoveryTopic.request_topic(self.bridge_name, self.scope)
+        # Start at the current end of the topic so stale requests are ignored
+        try:
+            offset = await loop.run_in_executor(None, Topic.get_last_offset, topic)
+        except Exception:
+            offset = "0-0"
+        while not self.cancel_thread:
+            messages = await loop.run_in_executor(None, self._read_discovery_requests, topic, offset, 1000)
+            for msg_id, msg_hash in messages:
+                offset = msg_id
+                try:
+                    self._discovery_requests.append(DiscoveryTopic.parse_request(msg_hash))
+                except Exception as error:
+                    self.logger.warn(f"Bridge '{self.bridge_name}': bad discovery request: {error}")
+            if self._discovery_requests:
+                self._discovery_event.set()
+
+    def _take_discovery_requests(self):
+        """Remove and return the pending, unexpired discovery requests."""
+        now = time.time()
+        requests = [request for request in self._discovery_requests if request["expires_at"] > now]
+        self._discovery_requests = []
+        self._discovery_event.clear()
+        return requests
+
+    async def _serve_discovery(self, conn):
+        """Long-poll: reply with the pending discovery requests as a JSON list of
+        {"id", "discovery"} as soon as any are available, or an empty list after
+        DISCOVERY_POLL_TIMEOUT."""
+        bi = await conn.accept_bi()
+        send = bi.send()
+        recv = bi.recv()
+        await self._read_request(recv)  # consume the (content-ignored) request
+        requests = self._take_discovery_requests()
+        if not requests:
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(self._discovery_event.wait(), timeout=DISCOVERY_POLL_TIMEOUT)
+            requests = self._take_discovery_requests()
+        payload = [{"id": request["id"], "discovery": request["discovery"]} for request in requests]
+        await send.write_all(json.dumps(payload).encode())
+        with contextlib.suppress(Exception):
+            await send.finish()
+        await self._drain_close(conn)
+
+    async def _serve_discovery_result(self, conn):
+        """Receive one discovery result from openc3-app ({"id", "results"} or
+        {"id", "error"}) and publish it for the waiting requester."""
+        bi = await conn.accept_bi()
+        send = bi.send()
+        recv = bi.recv()
+        request = await self._read_request(recv)
+        try:
+            data = json.loads(request or b"{}")
+            result = {"error": str(data["error"])} if data.get("error") else {"results": data.get("results") or []}
+            DiscoveryTopic.write_result(self.bridge_name, str(data["id"]), result, scope=self.scope)
+        except (ValueError, TypeError, KeyError) as error:
+            self.logger.warn(f"Bad api/discovery_result request: {error}")
+        with contextlib.suppress(Exception):
+            await send.write_all(b'{"ok":true}')
+            await send.finish()
+        await self._drain_close(conn)
 
     async def _serve_log(self, conn):
         """Ingest host microservice log lines from openc3-app and re-emit them

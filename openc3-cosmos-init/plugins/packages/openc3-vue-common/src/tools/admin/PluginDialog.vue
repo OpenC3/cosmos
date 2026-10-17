@@ -70,18 +70,29 @@
                   <v-combobox
                     v-if="hasOptions(variable)"
                     :model-value="variable.value"
-                    :items="getOptionItems(variable)"
+                    :items="getOptionItems(name, variable)"
                     item-title="text"
                     item-value="value"
                     :return-object="false"
                     :label="name"
-                    :hint="getDescription(variable)"
+                    :hint="getHint(name, variable)"
+                    :loading="discoveryLoading[name] || false"
                     persistent-hint
                     density="comfortable"
                     variant="outlined"
                     data-test="variable-combobox"
                     @update:model-value="setVariableValue(name, $event)"
                   >
+                    <template v-if="variable.discovery" #append-inner>
+                      <v-btn
+                        icon="mdi-refresh"
+                        size="x-small"
+                        variant="text"
+                        :disabled="discoveryLoading[name] || false"
+                        data-test="variable-discover"
+                        @click.stop="runDiscovery(name)"
+                      />
+                    </template>
                     <template #item="{ item, props }">
                       <v-list-item v-bind="props">
                         <template #title>
@@ -248,6 +259,13 @@ export default {
       contextMenu: false,
       menuX: 0,
       menuY: 0,
+      // VARIABLE_DISCOVERY results, loading state and errors by variable name
+      discoveryResults: {},
+      discoveryLoading: {},
+      discoveryErrors: {},
+      discoveryRuns: {},
+      // Available bridges for the VARIABLE_BRIDGE variable: [{ value, text }]
+      bridges: [],
     }
   },
   computed: {
@@ -301,6 +319,12 @@ export default {
         this.installedCosmosVersion = data.version
       })
       .catch(console.error)
+    if (
+      Object.values(this.localVariables).some((variable) => variable.bridge)
+    ) {
+      this.loadBridges()
+    }
+    this.runAllDiscovery()
   },
   mounted() {
     const pluginMode = this.buildPluginMode()
@@ -393,6 +417,9 @@ export default {
         'VARIABLE_STATE',
         'VARIABLE_STATE_SHOW',
         'VARIABLE_STATE_SET',
+        'VARIABLE_DISCOVERY',
+        'VARIABLE_DISCOVERY_SET',
+        'VARIABLE_BRIDGE',
         'PLUGIN_TEXT_START',
         'PLUGIN_TEXT_END',
       ]
@@ -552,6 +579,57 @@ export default {
       )) {
         this.setVariableValue(target, defaultValue, visiting)
       }
+      // Apply the VARIABLE_DISCOVERY_SETs of the discovery that found the value
+      const discovered = this.discoveryResults[name]?.find(
+        (result) => result.value === value,
+      )
+      if (discovered) {
+        const discovery = variable.discovery[discovered.discoveryIndex]
+        for (const [target, setValue] of Object.entries(discovery.set || {})) {
+          this.setVariableValue(target, setValue, visiting)
+        }
+      }
+      // Discovered values depend on the host behind the selected bridge
+      if (
+        variable.bridge &&
+        this.bridges.some((bridge) => bridge.value === value)
+      ) {
+        this.runAllDiscovery()
+      }
+    },
+    // List the bridges for the VARIABLE_BRIDGE variable's dropdown
+    async loadBridges() {
+      try {
+        const response = await Api.get('/openc3-api/bridges/ALL', {
+          headers: {
+            Accept: 'application/json',
+            // An empty list just leaves the bridge to be typed in
+            'Ignore-Errors': '403,500,502,503,504',
+          },
+        })
+        this.bridges = Object.values(response.data || {}).map((bridge) => ({
+          value: bridge.name,
+          text: bridge.app_public_key
+            ? bridge.name
+            : `${bridge.name} (not paired with openc3-app)`,
+        }))
+      } catch (error) {
+        this.bridges = []
+      }
+    },
+    // The bridge selected by VARIABLE_BRIDGE (or DEFAULT) used for discovery
+    selectedBridge() {
+      const variable = Object.values(this.localVariables).find(
+        (variable) => variable.bridge,
+      )
+      return variable?.value || 'DEFAULT'
+    },
+    runAllDiscovery() {
+      for (const [name, variable] of Object.entries(this.localVariables)) {
+        if (variable.discovery) {
+          this.runDiscovery(name)
+        }
+      }
     },
     // Helper methods for variable display
     isVariableVisible(name, visiting = new Set()) {
@@ -579,18 +657,87 @@ export default {
         visiting.delete(name)
       }
     },
+    // Ask the host (through openc3-app and the DEFAULT bridge) for the
+    // possible values of a VARIABLE_DISCOVERY variable
+    // Each of the variable's VARIABLE_DISCOVERYs runs in parallel and their
+    // results are combined, remembering which discovery found each value
+    // so its VARIABLE_DISCOVERY_SETs can be applied when it's selected.
+    async runDiscovery(name) {
+      const variable = this.localVariables[name]
+      // Ignore results from an older run (e.g. before the bridge changed)
+      const run = (this.discoveryRuns[name] || 0) + 1
+      this.discoveryRuns[name] = run
+      this.discoveryLoading[name] = true
+      this.discoveryErrors[name] = null
+      const bridge = this.selectedBridge()
+      const outcomes = await Promise.allSettled(
+        variable.discovery.map((entry) =>
+          Api.post('/openc3-api/discovery', {
+            data: { bridge, discovery: entry.discovery },
+            headers: {
+              Accept: 'application/json',
+              'Content-Type': 'application/json',
+              // Reported in the variable's hint rather than the global banner
+              'Ignore-Errors': '500,502,503,504',
+            },
+          }),
+        ),
+      )
+      if (this.discoveryRuns[name] !== run) return
+      const results = []
+      const errors = []
+      outcomes.forEach((outcome, index) => {
+        if (outcome.status === 'fulfilled') {
+          for (const result of outcome.value.data || []) {
+            results.push({ ...result, discoveryIndex: index })
+          }
+        } else {
+          errors.push(
+            outcome.reason.response?.data?.message || outcome.reason.message,
+          )
+        }
+      })
+      this.discoveryResults[name] = results
+      // Only report problems when nothing was found, e.g. one of several
+      // discoveries finding no devices is expected
+      if (results.length === 0) {
+        this.discoveryErrors[name] = errors[0] || 'nothing found'
+      }
+      this.discoveryLoading[name] = false
+    },
     hasOptions(variable) {
-      return variable.options && variable.options.length > 0
+      return (
+        (variable.options && variable.options.length > 0) ||
+        !!variable.discovery ||
+        !!variable.bridge
+      )
     },
     getDescription(variable) {
       return variable.description || ''
     },
-    getOptionItems(variable) {
-      if (!variable.options) return []
-      return variable.options.map((opt) => ({
+    getHint(name, variable) {
+      const description = this.getDescription(variable)
+      let discovery = ''
+      if (this.discoveryLoading[name]) {
+        discovery = 'Discovering...'
+      } else if (this.discoveryErrors[name]) {
+        discovery = `Discovery: ${this.discoveryErrors[name]}`
+      }
+      return [description, discovery].filter(Boolean).join(' - ')
+    },
+    getOptionItems(name, variable) {
+      const items = (variable.options || []).map((opt) => ({
         text: opt.text || opt.value,
         value: opt.value,
       }))
+      // Bridges and discovered values follow the VARIABLE_STATEs, skipping duplicates
+      const extra = variable.bridge ? this.bridges : []
+      for (const result of extra.concat(this.discoveryResults[name] || [])) {
+        if (!items.some((item) => item.value === result.value)) {
+          items.push({ text: result.text || result.value, value: result.value })
+        }
+      }
+      return items
     },
   },
 }

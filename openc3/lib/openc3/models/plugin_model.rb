@@ -51,6 +51,8 @@ module OpenC3
     PRIMARY_KEY = 'openc3_plugins'
     # Reserved VARIABLE names. See local_mode.rb: update_local_plugin()
     RESERVED_VARIABLE_NAMES = ['target_name', 'microservice_name', 'scope']
+    # Variable defined by VARIABLE_BRIDGE holding the selected bridge
+    BRIDGE_VARIABLE_NAME = 'bridge_name'
     PLUGIN_TXT = 'plugin.txt'
 
     attr_accessor :variables
@@ -156,15 +158,27 @@ module OpenC3
             plugin_text_lines = []
           when 'PLUGIN_TEXT_END'
             raise "PLUGIN_TEXT_END must follow a PLUGIN_TEXT_START"
-          when 'VARIABLE'
-            usage = "#{keyword} <Variable Name> <Default Value>"
-            parser.verify_num_parameters(2, nil, usage)
-            variable_name = params[0]
-            if RESERVED_VARIABLE_NAMES.include?(variable_name)
-              raise "VARIABLE name '#{variable_name}' is reserved"
+          when 'VARIABLE', 'VARIABLE_BRIDGE'
+            if keyword == 'VARIABLE'
+              usage = "#{keyword} <Variable Name> <Default Value>"
+              parser.verify_num_parameters(2, nil, usage)
+              variable_name = params[0]
+              if RESERVED_VARIABLE_NAMES.include?(variable_name)
+                raise "VARIABLE name '#{variable_name}' is reserved"
+              end
+              value = params[1..-1].join(" ")
+            else
+              usage = "#{keyword} <Default Bridge Name (optional)>"
+              parser.verify_num_parameters(0, 1, usage)
+              variable_name = BRIDGE_VARIABLE_NAME
+              value = (params[0] || 'DEFAULT').upcase
             end
-            value = params[1..-1].join(" ")
+            if variables[variable_name] and (keyword == 'VARIABLE_BRIDGE' or variables[variable_name]['bridge'])
+              raise "VARIABLE '#{BRIDGE_VARIABLE_NAME}' is defined by VARIABLE_BRIDGE and cannot be redefined"
+            end
             variables[variable_name] = { 'value' => value }
+            # Selected from the available bridges in the plugin dialog
+            variables[variable_name]['bridge'] = true if keyword == 'VARIABLE_BRIDGE'
             current_variable_name = variable_name
             if existing_variables && existing_variables.key?(variable_name)
               existing = existing_variables[variable_name]
@@ -191,6 +205,30 @@ module OpenC3
             variables[current_variable_name]['options'] ||= []
             option = { 'value' => params[1] || params[0], 'text' => params[0] }
             variables[current_variable_name]['options'] << option
+          when 'VARIABLE_DISCOVERY'
+            usage = "#{keyword} <Discovery Class Filename or Module> <Discovery Parameters (optional)> ..."
+            parser.verify_num_parameters(1, nil, usage)
+            unless current_variable_name
+              raise "VARIABLE_DISCOVERY must follow a VARIABLE definition"
+            end
+            # Either a filename (openc3/discovery/hid_discovery.py) or a module (openc3.discovery.hid_discovery)
+            unless params[0].end_with?('.py') or params[0] =~ /\A[A-Za-z_]\w*(\.[A-Za-z_]\w*)*\z/
+              raise "VARIABLE_DISCOVERY requires a Python discovery class filename (.py) or module name but got '#{params[0]}'"
+            end
+            # A variable can have multiple discoveries whose results are combined.
+            # Each is the discovery class followed by the parameters passed to it.
+            variables[current_variable_name]['discovery'] ||= []
+            variables[current_variable_name]['discovery'] << { 'discovery' => params }
+          when 'VARIABLE_DISCOVERY_SET'
+            usage = "#{keyword} <Variable Name> <Value>"
+            parser.verify_num_parameters(2, nil, usage)
+            discoveries = variables[current_variable_name]['discovery'] if current_variable_name
+            unless discoveries
+              raise "#{keyword} must follow a VARIABLE_DISCOVERY definition"
+            end
+            # Applied when the user selects a value found by this discovery
+            discoveries[-1]['set'] ||= {}
+            discoveries[-1]['set'][params[0]] = params[1..-1].join(" ")
           when 'VARIABLE_STATE_SHOW'
             usage = "#{keyword} <Variable Name> <Variable Name (optional)> ..."
             parser.verify_num_parameters(1, nil, usage)
@@ -216,18 +254,26 @@ module OpenC3
         raise "PLUGIN_TEXT_START without a matching PLUGIN_TEXT_END" if plugin_text_lines
         plugin_markdown = plugin_text_blocks.empty? ? nil : plugin_text_blocks.map { |lines| unindent_lines(lines) }.join("\n\n")
 
-        # Variables can be defined after the VARIABLE_STATE_SHOW / SET that references them
-        # so validate the references once all variables are known
+        # Variables can be defined after the VARIABLE_STATE_SHOW / SET and VARIABLE_DISCOVERY_SET
+        # that reference them so validate the references once all variables are known
         variables.each do |variable_name, variable|
-          next unless variable['options']
-          variable['options'].each do |option|
+          references = []
+          Array(variable['options']).each do |option|
             (Array(option['show']) + Array(option['set']&.keys)).each do |target_name|
-              if target_name == variable_name
-                raise "VARIABLE '#{variable_name}' state '#{option['text']}' cannot reference itself"
-              end
-              unless variables.key?(target_name)
-                raise "VARIABLE '#{variable_name}' state '#{option['text']}' references undefined VARIABLE '#{target_name}'"
-              end
+              references << [target_name, "state '#{option['text']}'"]
+            end
+          end
+          Array(variable['discovery']).each do |discovery|
+            Array(discovery['set']&.keys).each do |target_name|
+              references << [target_name, "discovery '#{discovery['discovery'].join(' ')}'"]
+            end
+          end
+          references.each do |target_name, source|
+            if target_name == variable_name
+              raise "VARIABLE '#{variable_name}' #{source} cannot reference itself"
+            end
+            unless variables.key?(target_name)
+              raise "VARIABLE '#{variable_name}' #{source} references undefined VARIABLE '#{target_name}'"
             end
           end
         end
@@ -457,7 +503,7 @@ module OpenC3
               when 'PLUGIN_TEXT_START'
                 parser.set_preserve_lines(true)
                 in_plugin_text = true
-              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'NEEDS_DEPENDENCIES'
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin

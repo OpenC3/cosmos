@@ -10,6 +10,8 @@
 # if purchased from OpenC3, Inc.
 
 import asyncio
+import json
+import time
 import unittest
 from unittest.mock import Mock, patch
 
@@ -179,3 +181,72 @@ class TestBridgeMicroservice(unittest.IsolatedAsyncioTestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FakeAcceptConnection(FakeConnection):
+    """A connection whose peer opens the bi-stream (as openc3-app does)."""
+
+    async def accept_bi(self):
+        return self.bi
+
+
+class TestBridgeDiscovery(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        self.service = BridgeMicroservice.__new__(BridgeMicroservice)
+        self.service.cancel_thread = False
+        self.service.logger = Mock()
+        self.service.bridge_name = "BRIDGE"
+        self.service.scope = "DEFAULT"
+        self.service._discovery_requests = []
+        self.service._discovery_event = asyncio.Event()
+
+    def response(self, connection):
+        return json.loads(b"".join(connection.bi.send().data))
+
+    async def test_discovery_returns_pending_requests_and_drops_expired(self):
+        self.service._discovery_requests = [
+            {"id": "1", "discovery": ["openc3/discovery/serial_discovery.py"], "expires_at": time.time() + 10},
+            {"id": "2", "discovery": ["old.py"], "expires_at": time.time() - 1},
+        ]
+        connection = FakeAcceptConnection([b"discovery", b""])
+        connection.disconnect()  # client closes after reading
+        await asyncio.wait_for(self.service._serve_discovery(connection), timeout=1)
+        self.assertEqual(
+            self.response(connection), [{"id": "1", "discovery": ["openc3/discovery/serial_discovery.py"]}]
+        )
+        self.assertEqual(self.service._discovery_requests, [])
+
+    async def test_discovery_long_polls_until_a_request_arrives(self):
+        connection = FakeAcceptConnection([b"discovery", b""])
+        connection.disconnect()
+        task = asyncio.create_task(self.service._serve_discovery(connection))
+        await asyncio.sleep(0.05)
+        self.assertFalse(task.done())
+        self.service._discovery_requests.append({"id": "3", "discovery": ["x.py", "1"], "expires_at": time.time() + 10})
+        self.service._discovery_event.set()
+        await asyncio.wait_for(task, timeout=1)
+        self.assertEqual(self.response(connection), [{"id": "3", "discovery": ["x.py", "1"]}])
+
+    async def test_discovery_returns_empty_list_after_timeout(self):
+        connection = FakeAcceptConnection([b"discovery", b""])
+        connection.disconnect()
+        with patch("openc3.microservices.bridge_microservice.DISCOVERY_POLL_TIMEOUT", 0.01):
+            await asyncio.wait_for(self.service._serve_discovery(connection), timeout=1)
+        self.assertEqual(self.response(connection), [])
+
+    async def test_discovery_result_is_published(self):
+        body = json.dumps({"id": "1", "results": [{"value": "/dev/ttyUSB0", "text": "USB"}]}).encode()
+        connection = FakeAcceptConnection([body, b""])
+        connection.disconnect()
+        with patch("openc3.microservices.bridge_microservice.DiscoveryTopic.write_result") as write_result:
+            await asyncio.wait_for(self.service._serve_discovery_result(connection), timeout=1)
+        write_result.assert_called_once_with(
+            "BRIDGE", "1", {"results": [{"value": "/dev/ttyUSB0", "text": "USB"}]}, scope="DEFAULT"
+        )
+
+    async def test_discovery_error_is_published(self):
+        connection = FakeAcceptConnection([json.dumps({"id": "1", "error": "boom"}).encode(), b""])
+        connection.disconnect()
+        with patch("openc3.microservices.bridge_microservice.DiscoveryTopic.write_result") as write_result:
+            await asyncio.wait_for(self.service._serve_discovery_result(connection), timeout=1)
+        write_result.assert_called_once_with("BRIDGE", "1", {"error": "boom"}, scope="DEFAULT")

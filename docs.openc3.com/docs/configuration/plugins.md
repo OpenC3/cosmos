@@ -147,6 +147,66 @@ VARIABLE port 8080
 VARIABLE_DESCRIPTION "TCP port for the target connection"
 ```
 
+## VARIABLE_BRIDGE
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Let the user select which bridge the plugin uses**
+
+The VARIABLE_BRIDGE keyword defines a variable named bridge_name whose value is selected from the bridges available in COSMOS when the plugin is installed. Bridges connect COSMOS to openc3-app running on a host computer, so this chooses which host the plugin's bridged interfaces and VARIABLE_DISCOVERY run on. Use bridge_name in ERB like any other variable, for example with the BRIDGE interface modifier. VARIABLE_DESCRIPTION, VARIABLE_STATE and the other VARIABLE modifiers can follow it. Defining VARIABLE bridge_name in the same plugin.txt is an error.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Default Bridge Name | Bridge selected by default. Defaults to DEFAULT, the bridge every scope has. | False |
+
+Example Usage:
+```cosmos
+VARIABLE_BRIDGE
+  VARIABLE_DESCRIPTION "Bridge to the computer the serial device is connected to"
+VARIABLE serial_port /dev/ttyUSB0
+  VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py
+INTERFACE SERIAL_INT serial_interface.py <%= serial_port %> <%= serial_port %> 115200 NONE 1 10.0 nil
+  BRIDGE <%= bridge_name %>
+```
+
+## VARIABLE_DISCOVERY
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Discover the possible values of a plugin variable from the host computer**
+
+The VARIABLE_DISCOVERY keyword runs a Python discovery class on the host computer paired with COSMOS through openc3-app, using the bridge selected by VARIABLE_BRIDGE (or the DEFAULT bridge). The values it finds are added to the dropdown for the previously defined VARIABLE in the plugin installation dialog, after any VARIABLE_STATE options. Discovery runs when the dialog opens and can be refreshed. If openc3-app is not running the variable can still be typed in by hand. Discovery classes subclass openc3/discovery/discovery.py and implement discover(). COSMOS provides openc3/discovery/serial_discovery.py (lists serial ports) and openc3/discovery/hid_discovery.py (lists the serial numbers of USB HID devices, optionally limited by Vendor ID and Product ID, and requires the hidapi package on the host). A variable can have multiple VARIABLE_DISCOVERY keywords and their results are combined. Each can be followed by VARIABLE_DISCOVERY_SET keywords that set other variables when a value it found is selected. Must follow a VARIABLE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Discovery Class Filename or Module | Python filename (e.g. openc3/discovery/serial_discovery.py) or module name (e.g. openc3.discovery.serial_discovery) of the discovery class, relative to the Python path on the host. The class is named after the file, e.g. SerialDiscovery. | True |
+| Discovery Parameters | Additional parameters are passed to the discovery class constructor | False |
+
+Example Usage:
+```cosmos
+VARIABLE serial_port /dev/ttyUSB0
+  VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py
+VARIABLE controller_serial nil
+  VARIABLE_STATE "First controller found" nil
+  VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x0CE6
+```
+
+## VARIABLE_DISCOVERY_SET
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Set another plugin variable when a value found by this discovery is selected**
+
+The VARIABLE_DISCOVERY_SET keyword applies to the previously defined VARIABLE_DISCOVERY. When the user selects a value in the plugin installation dialog that this discovery found, the named variable is set to the given value. This lets one variable configure others based on the kind of device found, for example the controller model. If several discoveries find the same value, the first one's sets apply. The user can still change the value afterwards. Multiple VARIABLE_DISCOVERY_SET keywords can be used. Must follow a VARIABLE_DISCOVERY definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Variable Name | Name of the variable to set when a value found by this discovery is selected | True |
+| Value | Value to set the variable to | True |
+
+Example Usage:
+```cosmos
+VARIABLE dual_sense_version 5
+  VARIABLE_STATE 5 5
+  VARIABLE_STATE 4 4
+VARIABLE dual_sense_serial_num None
+  VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x05C4
+    VARIABLE_DISCOVERY_SET dual_sense_version 4
+  VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x0CE6
+    VARIABLE_DISCOVERY_SET dual_sense_version 5
+```
+
 ## VARIABLE_STATE
 <span class="badge badge--secondary since-right">Since 7.0.0</span>**Add a selectable state for a plugin variable**
 

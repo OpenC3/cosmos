@@ -251,6 +251,98 @@ module OpenC3
         expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_SET type udp']) }.to raise_error(/cannot reference itself/)
       end
 
+      it "parses VARIABLE_DISCOVERY" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE port /dev/ttyUSB0',
+          '  VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py',
+          'VARIABLE serial_number nil',
+          '  VARIABLE_STATE "Any controller" nil',
+          '  VARIABLE_DISCOVERY openc3/discovery/hid_discovery.py 0x054C 0x0CE6',
+        ])
+        expect(model['variables']['port']).to eq({ 'value' => '/dev/ttyUSB0', 'discovery' => [{ 'discovery' => ['openc3/discovery/serial_discovery.py'] }] })
+        expect(model['variables']['serial_number']['discovery']).to eq [{ 'discovery' => ['openc3/discovery/hid_discovery.py', '0x054C', '0x0CE6'] }]
+        expect(model['variables']['serial_number']['options']).to eq [{ 'value' => 'nil', 'text' => 'Any controller' }]
+      end
+
+      it "parses multiple VARIABLE_DISCOVERY with VARIABLE_DISCOVERY_SET" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE dual_sense_target_name DUALSENSE',
+          'VARIABLE dual_sense_version 5',
+          '  VARIABLE_STATE 5 5',
+          '  VARIABLE_STATE 4 4',
+          'VARIABLE dual_sense_serial_num None',
+          '  VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x05C4',
+          '    VARIABLE_DISCOVERY_SET dual_sense_version 4',
+          '  VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x0CE6',
+          '    VARIABLE_DISCOVERY_SET dual_sense_version 5',
+          '    VARIABLE_DISCOVERY_SET dual_sense_target_name PS5 CONTROLLER',
+        ])
+        expect(model['variables']['dual_sense_serial_num']['discovery']).to eq [
+          { 'discovery' => ['openc3.discovery.hid_discovery', '0x054C', '0x05C4'], 'set' => { 'dual_sense_version' => '4' } },
+          { 'discovery' => ['openc3.discovery.hid_discovery', '0x054C', '0x0CE6'], 'set' => { 'dual_sense_version' => '5', 'dual_sense_target_name' => 'PS5 CONTROLLER' } },
+        ]
+      end
+
+      it "raises error for VARIABLE_DISCOVERY problems" do
+        expect { phase1_with_plugin_txt(['VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py']) }.to raise_error(/VARIABLE_DISCOVERY must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY serial-discovery']) }.to raise_error(/requires a Python discovery class filename/)
+        expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY openc3/discovery']) }.to raise_error(/requires a Python discovery class filename/)
+      end
+
+      it "raises error for VARIABLE_DISCOVERY_SET problems" do
+        expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY_SET other 1', 'VARIABLE other 1']) }.to raise_error(/VARIABLE_DISCOVERY_SET must follow a VARIABLE_DISCOVERY definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY a.b', 'VARIABLE_DISCOVERY_SET missing 1']) }.to raise_error(/discovery 'a.b' references undefined VARIABLE 'missing'/)
+        expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY a.b', 'VARIABLE_DISCOVERY_SET port 1']) }.to raise_error(/cannot reference itself/)
+      end
+
+      it "parses VARIABLE_BRIDGE" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE_BRIDGE',
+          '  VARIABLE_DESCRIPTION "Bridge to the host with the hardware"',
+          'VARIABLE port /dev/ttyUSB0',
+        ])
+        expect(model['variables']['bridge_name']).to eq({
+          'value' => 'DEFAULT', 'bridge' => true, 'description' => 'Bridge to the host with the hardware'
+        })
+        model = phase1_with_plugin_txt(['VARIABLE_BRIDGE lab'])
+        expect(model['variables']['bridge_name']['value']).to eq 'LAB'
+      end
+
+      it "keeps the existing bridge_name on upgrade" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') { |file| file.puts 'VARIABLE_BRIDGE' }
+        end
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        model = PluginModel.install_phase1(__FILE__, existing_variables: { 'bridge_name' => { 'value' => 'LAB' } }, scope: "DEFAULT")
+        expect(model['variables']['bridge_name']).to eq({ 'value' => 'LAB', 'bridge' => true })
+      end
+
+      it "raises error for redefining bridge_name" do
+        expect { phase1_with_plugin_txt(['VARIABLE_BRIDGE', 'VARIABLE bridge_name X']) }.to raise_error(/defined by VARIABLE_BRIDGE/)
+        expect { phase1_with_plugin_txt(['VARIABLE bridge_name X', 'VARIABLE_BRIDGE']) }.to raise_error(/defined by VARIABLE_BRIDGE/)
+        expect { phase1_with_plugin_txt(['VARIABLE_BRIDGE', 'VARIABLE_BRIDGE']) }.to raise_error(/defined by VARIABLE_BRIDGE/)
+        expect { phase1_with_plugin_txt(['VARIABLE_BRIDGE A B']) }.to raise_error(/Too many parameters/)
+      end
+
+      it "makes bridge_name available to ERB in phase 2" do
+        stub_s3_client
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        allow(gem).to receive(:spec).and_return(gem_spec_double)
+        expect(GemModel).to receive(:install).and_return(nil)
+        variables = { "bridge_name" => { "value" => "LAB", "bridge" => true } }
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, { "bridge_name" => "LAB", "scope" => "DEFAULT" }, validate_only: false).and_return(nil)
+        PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["VARIABLE_BRIDGE", "TOOL <%= bridge_name %> NAME", "  #{URL}"]}, scope: "DEFAULT")
+        expect(ToolModel.get(name: "NAME", scope: "DEFAULT")['folder_name']).to eq "LAB"
+      end
+
       it "captures PLUGIN_TEXT_START / PLUGIN_TEXT_END markdown" do
         model = phase1_with_plugin_txt([
           'PLUGIN_TEXT_START',
