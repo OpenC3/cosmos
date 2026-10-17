@@ -609,6 +609,8 @@ class TestCvtModel(unittest.TestCase):
         model.create()
         names = TargetModel.names(scope="DEFAULT")
         self.assertIn("INST", names)
+        # Clear the item_map cache to avoid interference from previous tests
+        TargetModel.item_map_cache.pop("DEFAULT__INST__item_to_packet_map", None)
         Store.set("DEFAULT__INST__item_to_packet_map", json.dumps({"PACKET_ID": ["PACKET1"]}))
         Store.hset("DEFAULT__tlm__INST", "PACKET1", json.dumps({"PACKET_TIMESECONDS": None}))
         packet_name = CvtModel.determine_latest_packet_for_item("INST", "PACKET_ID", scope="DEFAULT")

@@ -551,6 +551,105 @@ RSpec.describe StreamingApi, type: :model do
     end
   end
 
+  describe '#build_item_collection' do
+    before(:each) do
+      allow(OpenC3::TargetModel).to receive(:get_item_to_packet_map).with('INST', scope: 'DEFAULT').and_return({
+        'TEMP1' => ['HEALTH_STATUS', 'PARAMS'],
+      })
+    end
+
+    let(:latest_key) { 'DECOM__TLM__INST__LATEST__TEMP1__CONVERTED' }
+    let(:explicit_key) { 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED' }
+
+    def build(items)
+      collection = StreamingObjectCollection.new
+      @api.build_item_collection(collection, { 'items' => items }, scope: 'DEFAULT')
+      collection
+    end
+
+    it 'expands LATEST into one object per packet keyed by the LATEST key' do
+      collection = build([latest_key])
+      expect(collection.objects.map { |o| [o.key, o.item_key] }).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', latest_key],
+        ['DECOM__TLM__INST__PARAMS__TEMP1__CONVERTED', latest_key],
+      ])
+    end
+
+    it 'keeps a LATEST item and an explicit item for the same packet' do
+      collection = build([latest_key, explicit_key])
+      expect(collection.length).to eq(3)
+      expect(collection.objects.select { |o| o.key == explicit_key }.map(&:item_key)).to contain_exactly(latest_key, explicit_key)
+    end
+
+    it 'removing the LATEST item leaves the explicit item' do
+      collection = build([latest_key, explicit_key])
+      build([latest_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map { |o| [o.key, o.item_key] }).to eq([[explicit_key, explicit_key]])
+    end
+
+    it 'removing the explicit item leaves the LATEST item' do
+      collection = build([latest_key, explicit_key])
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key).uniq).to eq([latest_key])
+      expect(collection.length).to eq(2)
+    end
+
+    it 'rejects LATEST for commands' do
+      expect { build(['DECOM__CMD__INST__LATEST__TEMP1__CONVERTED']) }.to raise_error(/LATEST is only supported for telemetry/)
+    end
+
+    it 'skips LATEST packets the user cannot access' do
+      allow_any_instance_of(StreamingObject).to receive(:authorize) do |_object, packet_name:, **|
+        raise OpenC3::ForbiddenError, 'forbidden' if packet_name == 'PARAMS'
+      end
+      expect(build([latest_key]).objects.map(&:packet_name)).to eq(['HEALTH_STATUS'])
+    end
+
+    it 'raises when the user cannot access any LATEST packet' do
+      allow_any_instance_of(StreamingObject).to receive(:authorize).and_raise(OpenC3::ForbiddenError, 'forbidden')
+      expect { build([latest_key]) }.to raise_error(OpenC3::ForbiddenError)
+    end
+
+    it 'removes an item added with an item_key when removed by key alone' do
+      collection = build([[explicit_key, '0']])
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection).to be_empty
+    end
+
+    it 'removing an explicit item by key alone leaves the LATEST item' do
+      collection = build([latest_key, [explicit_key, '0']])
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key).uniq).to eq([latest_key])
+      expect(collection.length).to eq(2)
+    end
+
+    it 'removing a LATEST item by key alone leaves the explicit item' do
+      collection = build([[latest_key, '0'], explicit_key])
+      build([latest_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map { |o| [o.key, o.item_key] }).to eq([[explicit_key, explicit_key]])
+    end
+
+    it 'removes every item_key for a key when removed by key alone' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      expect(collection.length).to eq(2)
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection).to be_empty
+    end
+
+    it 'removing a key with an item_key only removes that item_key' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      build([[explicit_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key)).to eq([explicit_key])
+    end
+
+    it 'keeps a LATEST item and an explicit item with the same item_key' do
+      collection = build([[latest_key, '0'], [explicit_key, '0']])
+      expect(collection.length).to eq(3)
+      build([[latest_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map { |o| [o.key, o.source_key] }).to eq([[explicit_key, explicit_key]])
+    end
+  end
+
   describe 'add with COSMOS_ALL packets and authorization' do
     it 'skips unauthorized packets when using COSMOS_ALL' do
       $openc3_authorize = true

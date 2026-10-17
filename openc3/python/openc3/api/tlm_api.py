@@ -142,6 +142,7 @@ def inject_tlm(
     scope=OPENC3_SCOPE,
     received_time=None,
 ):
+    _tlm_reject_latest(str(packet_name).upper(), "inject_tlm")
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -212,17 +213,15 @@ def inject_tlm(
 #
 # @param args The args must either be a string followed by a value or
 #   three strings followed by a value (see the calling style in the
-#   description).
+#   description). A packet name of LATEST overrides the item in every
+#   packet which contains it.
 # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
 def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name, value = _set_tlm_process_args(args, "override_tlm", scope=scope)
-    authorize(
-        permission="tlm_set",
-        target_name=target_name,
-        packet_name=packet_name,
-        scope=scope,
-    )
-    CvtModel.override(target_name, packet_name, item_name, value, type=type, scope=scope)
+    target_name, packet_names, item_name, value = _set_tlm_process_args_all_packets(args, "override_tlm", scope=scope)
+    for packet_name in packet_names:
+        authorize(permission="tlm_set", target_name=target_name, packet_name=packet_name, scope=scope)
+    for packet_name in packet_names:
+        CvtModel.override(target_name, packet_name, item_name, value, type=type, scope=scope)
 
 
 # Get the list of CVT overrides
@@ -241,18 +240,16 @@ def get_overrides(scope=OPENC3_SCOPE):
 # Favor the first syntax where possible as it is more succinct.
 #
 # @param args The args must either be a string or three strings
-#   (see the calling style in the description).
+#   (see the calling style in the description). A packet name of LATEST
+#   normalizes the item in every packet which contains it.
 # @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
 #   Also takes :ALL which means to normalize all telemetry types
 def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _tlm_process_args(args, "normalize_tlm", scope=scope)
-    authorize(
-        permission="tlm_set",
-        target_name=target_name,
-        packet_name=packet_name,
-        scope=scope,
-    )
-    CvtModel.normalize(target_name, packet_name, item_name, type=type, scope=scope)
+    target_name, packet_names, item_name = _tlm_process_args_all_packets(args, "normalize_tlm", scope=scope)
+    for packet_name in packet_names:
+        authorize(permission="tlm_set", target_name=target_name, packet_name=packet_name, scope=scope)
+    for packet_name in packet_names:
+        CvtModel.normalize(target_name, packet_name, item_name, type=type, scope=scope)
 
 
 # Returns the raw buffer for a telemetry packet.
@@ -329,45 +326,36 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
 
         packet_name = orig_packet_name
         if orig_packet_name == "LATEST":
+            # A LATEST item can come from any packet containing it. Report the best value
+            # type and limits of any of them since the CVT falls back to the available
+            # type and historical lookups check the type available in each packet.
             # We can have a large cache_timeout of 1 because all we're trying to do is lookup a packet
             packet_name = CvtModel.determine_latest_packet_for_item(
                 target_name, item_name, cache_timeout=1, scope=scope
             )
+            packet_names = _tlm_packet_names(target_name, orig_packet_name, item_name, scope)
+        else:
+            packet_names = [packet_name]
 
-        authorize(
-            permission="tlm",
-            target_name=target_name,
-            packet_name=packet_name,
-            scope=scope,
-        )
+        # Authorize every packet whose definition is read below, not just the latest one
+        for name in dict.fromkeys([*packet_names, packet_name]):
+            authorize(
+                permission="tlm",
+                target_name=target_name,
+                packet_name=name,
+                scope=scope,
+            )
 
         try:
-            item_config = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
-            if item_name in Packet.RESERVED_ITEM_NAMES:
-                value_type = "RAW"  # Must request the raw value when dealing with the reserved items
-
-            # Arrays must be accessed as RAW since there's no conversion
-            if item_config.get("array_size") is not None:
-                value_type = "RAW"
-
-            # Determine the best available value type based on item configuration
-            if value_type == "FORMATTED" or value_type == "WITH_UNITS":
-                if item_config.get("format_string") or item_config.get("units"):
-                    result_item = "__".join([target_name, orig_packet_name, item_name, "FORMATTED"])
-                elif item_config.get("read_conversion") or item_config.get("states"):
-                    result_item = "__".join([target_name, orig_packet_name, item_name, "CONVERTED"])
-                else:
-                    result_item = "__".join([target_name, orig_packet_name, item_name, "RAW"])
-            elif value_type == "CONVERTED":
-                if item_config.get("read_conversion") or item_config.get("states"):
-                    result_item = "__".join([target_name, orig_packet_name, item_name, "CONVERTED"])
-                else:
-                    result_item = "__".join([target_name, orig_packet_name, item_name, "RAW"])
-            else:  # RAW or unknown
-                result_item = "__".join([target_name, orig_packet_name, item_name, "RAW"])
+            item_configs = [TargetModel.packet_item(target_name, name, item_name, scope=scope) for name in packet_names]
+            available_type = max(
+                (_tlm_available_value_type(item_config, item_name, value_type) for item_config in item_configs),
+                key=VALUE_TYPE_ORDER.index,
+            )
+            result_item = "__".join([target_name, orig_packet_name, item_name, available_type])
 
             # Tack on __LIMITS to notify that we have an available limits value
-            if item_config.get("limits", {}).get("DEFAULT"):
+            if any(item_config.get("limits", {}).get("DEFAULT") for item_config in item_configs):
                 result_item += "__LIMITS"
 
             results.append(result_item)
@@ -398,6 +386,8 @@ def get_tlm_values(
         raise TypeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
     packets = []
     cvt_items = []
+    # Index of each historical LATEST item in cvt_items => every packet containing the item
+    latest_candidates = {}
     for item in items:
         # get_tlm_available returns None for items which don't exist and its result is
         # passed directly here, so None is a placeholder which returns a None value
@@ -414,8 +404,21 @@ def get_tlm_values(
         target_name, packet_name, item_name, value_type = parts[0:4]
         limits = parts[4] if len(parts) == 5 else None
         if packet_name == "LATEST":
+            if start_time is not None:
+                # The packet received most recently now isn't necessarily the one received most
+                # recently at start_time so keep every candidate packet for _tlm_latest_history
+                # Each packet must be queried for the value type and limits it has or the query fails
+                candidates = []
+                for candidate in _tlm_packet_names(target_name, packet_name, item_name, scope):
+                    packets.append([target_name, candidate])
+                    candidate_item = TargetModel.packet_item(target_name, candidate, item_name, scope=scope)
+                    candidate_limits = limits if limits and candidate_item.get("limits", {}).get("DEFAULT") else None
+                    candidate_type = _tlm_available_value_type(candidate_item, item_name, value_type)
+                    candidates.append(TlmItem(target_name, candidate, item_name, candidate_type, candidate_limits))
+                latest_candidates[len(cvt_items)] = candidates
+                cvt_items.append(TlmItem(target_name, packet_name, item_name, value_type, limits))
+                continue
             packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
-        # Change packet_name in case of LATEST and ensure upcase
         # NOTE: limits is required by the historical (start_time) QuestDB lookup
         cvt_items.append(TlmItem(target_name, packet_name, item_name, value_type, limits))
         packets.append([target_name, packet_name])
@@ -428,6 +431,8 @@ def get_tlm_values(
             packet_name=name[1],
             scope=scope,
         )
+    if latest_candidates:
+        return _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cache_timeout, scope)
     return CvtModel.get_tlm_values(cvt_items, stale_time, cache_timeout, start_time, end_time, scope)
 
 
@@ -546,6 +551,7 @@ def subscribe_packets(packets, scope=OPENC3_SCOPE):
     for target_name, packet_name in packets:
         target_name = target_name.upper()
         packet_name = packet_name.upper()
+        _tlm_reject_latest(packet_name, "subscribe_packets")
         authorize(
             permission="tlm",
             target_name=target_name,
@@ -684,7 +690,14 @@ def _extract_target_packet_names(method_name, *args):
         raise RuntimeError(
             f'ERROR: Both target name and packet name required. Usage: {method_name}("TGT PKT") or {method_name}("TGT", "PKT")'
         )
+    _tlm_reject_latest(packet_name, method_name)
     return target_name, packet_name
+
+
+# LATEST picks a packet per item so it can't identify a whole packet
+def _tlm_reject_latest(packet_name, method_name):
+    if packet_name == "LATEST":
+        raise RuntimeError(f"ERROR: LATEST is not supported by {method_name}(), specify a packet name")
 
 
 def _extract_target_packet_item_names(method_name, *args):
@@ -722,6 +735,31 @@ def _validate_tlm_type(tlm_type):
 
 
 def _tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name = _tlm_extract_args(args, method_name)
+    packet_name = _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout, scope)
+    return target_name, packet_name, item_name
+
+
+def _set_tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name, value = _set_tlm_extract_args(args, method_name)
+    packet_name = _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout, scope)
+    return target_name, packet_name, item_name, value
+
+
+# Like _tlm_process_args but returns a list of packet names where LATEST
+# expands to every packet containing the item. Used by APIs which change
+# an item so the change applies wherever the item appears.
+def _tlm_process_args_all_packets(args, method_name, scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name = _tlm_extract_args(args, method_name)
+    return target_name, _tlm_packet_names(target_name, packet_name, item_name, scope), item_name
+
+
+def _set_tlm_process_args_all_packets(args, method_name, scope=OPENC3_SCOPE):
+    target_name, packet_name, item_name, value = _set_tlm_extract_args(args, method_name)
+    return target_name, _tlm_packet_names(target_name, packet_name, item_name, scope), item_name, value
+
+
+def _tlm_extract_args(args, method_name):
     match len(args):
         case 1:
             target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
@@ -732,18 +770,10 @@ def _tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
         case _:
             # Invalid number of arguments
             raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
-    target_name = target_name.upper()
-    packet_name = packet_name.upper()
-    item_name = item_name.upper()
-    if packet_name == "LATEST":
-        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
-    else:
-        # Determine if this item exists, it will raise appropriate errors if not
-        TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
-    return target_name, packet_name, item_name
+    return target_name.upper(), packet_name.upper(), item_name.upper()
 
 
-def _set_tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
+def _set_tlm_extract_args(args, method_name):
     match len(args):
         case 1:
             target_name, packet_name, item_name, value = extract_fields_from_set_tlm_text(args[0])
@@ -755,13 +785,167 @@ def _set_tlm_process_args(args, method_name, cache_timeout=0.1, scope=OPENC3_SCO
         case _:
             # Invalid number of arguments
             raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
-    target_name = target_name.upper()
-    packet_name = packet_name.upper()
-    item_name = item_name.upper()
-    if packet_name == "LATEST":
-        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
-    else:
-        # Determine if this item exists, it will raise appropriate errors if not
-        TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
+    return target_name.upper(), packet_name.upper(), item_name.upper(), value
 
-    return target_name, packet_name, item_name, value
+
+# Resolve LATEST to the most recently received packet containing the item
+def _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    if packet_name == "LATEST":
+        return CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
+    # Determine if this item exists, it will raise appropriate errors if not
+    TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
+    return packet_name
+
+
+VALUE_TYPE_ORDER = ["RAW", "CONVERTED", "FORMATTED"]
+
+
+# Returns the value type available for an item given the requested value type
+def _tlm_available_value_type(item_config, item_name, value_type):
+    # Must request the raw value when dealing with the reserved items
+    if item_name in Packet.RESERVED_ITEM_NAMES:
+        return "RAW"
+    # Arrays must be accessed as RAW since there's no conversion
+    if item_config.get("array_size") is not None:
+        return "RAW"
+    # This logic must match the logic in Packet.decom
+    converted = item_config.get("states") or (
+        item_config.get("read_conversion") and item_config.get("data_type") != "DERIVED"
+    )
+    if value_type == "FORMATTED" or value_type == "WITH_UNITS":
+        if item_config.get("format_string") or item_config.get("units"):
+            return "FORMATTED"
+        return "CONVERTED" if converted else "RAW"
+    if value_type == "CONVERTED":
+        return "CONVERTED" if converted else "RAW"
+    return "RAW"  # RAW or unknown
+
+
+# Historical lookup where some items are LATEST. latest_candidates maps the index
+# of each LATEST item in cvt_items to the item to look up in every packet which contains it.
+def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cache_timeout, scope):
+    regular = [index for index in range(len(cvt_items)) if index not in latest_candidates]
+
+    # The QuestDB lookup ASOF JOINs every packet to the rows of the first, so
+    # a range needs a regular item first to drive the rows. Without one keep
+    # the realtime behavior of using the packet received most recently now.
+    if end_time is not None and all(cvt_items[index].item_name is None for index in regular):
+        resolved = []
+        for cvt_item in cvt_items:
+            if cvt_item.packet_name == "LATEST":
+                packet_name = CvtModel.determine_latest_packet_for_item(
+                    cvt_item.target_name, cvt_item.item_name, cache_timeout, scope
+                )
+                cvt_item = cvt_item._replace(packet_name=packet_name)
+            resolved.append(cvt_item)
+        return CvtModel.tsdb_lookup(resolved, start_time=start_time, end_time=end_time, scope=scope)
+
+    # A packet without a table fails the query so skip those candidates
+    packets = list(
+        dict.fromkeys(
+            (candidate.target_name, candidate.packet_name)
+            for candidates in latest_candidates.values()
+            for candidate in candidates
+        )
+    )
+    existing = CvtModel.tsdb_packets_with_tables(packets, scope=scope)
+    latest_candidates = {
+        index: [candidate for candidate in candidates if (candidate.target_name, candidate.packet_name) in existing]
+        for index, candidates in latest_candidates.items()
+    }
+
+    if end_time is not None:
+        query = []
+        query_index = {}
+
+        def add(query_item):
+            if query_item not in query_index:
+                query_index[query_item] = len(query)
+                query.append(query_item)
+            return query_index[query_item]
+
+        positions = [None] * len(cvt_items)
+        for index in regular:
+            positions[index] = add(cvt_items[index])
+        for index, candidates in latest_candidates.items():
+            positions[index] = [
+                (
+                    add(candidate),
+                    add(TlmItem(candidate.target_name, candidate.packet_name, "PACKET_TIMESECONDS", "RAW", None)),
+                )
+                for candidate in candidates
+            ]
+        rows = CvtModel.tsdb_lookup(query, start_time=start_time, end_time=end_time, scope=scope, flatten=False)
+        if not isinstance(rows, list) or len(rows) == 0:
+            return rows
+        collapsed = []
+        for row in rows:
+            values = []
+            for position in positions:
+                if isinstance(position, int):
+                    values.append(row[position])
+                else:
+                    # Take the candidate with the newest packet time at this row
+                    newest = _tlm_newest(
+                        [(row[time_index][0], row[value_index]) for value_index, time_index in position]
+                    )
+                    values.append(newest or [None, None])
+            collapsed.append(values)
+        # Match tsdb_lookup which returns a flat array for a single row
+        return collapsed[0] if len(collapsed) == 1 else collapsed
+
+    # A point in time returns the last row of the first packet before start_time
+    # with the other packets ASOF JOINed at that row. A candidate packet received
+    # after that row would be missed so query each candidate packet on its own.
+    found = False
+    row = [[None, None] for _ in cvt_items]
+    if not all(cvt_items[index].item_name is None for index in regular):
+        result = CvtModel.tsdb_lookup(
+            [cvt_items[index] for index in regular], start_time=start_time, scope=scope, flatten=False
+        )
+        if isinstance(result, list) and len(result) > 0:
+            found = True
+            for result_index, index in enumerate(regular):
+                row[index] = result[0][result_index]
+    # Group the LATEST items by candidate packet so each packet is queried once
+    by_packet = {}
+    for index, candidates in latest_candidates.items():
+        for candidate in candidates:
+            by_packet.setdefault((candidate.target_name, candidate.packet_name), {})[index] = candidate
+    found_values = {}
+    for (target_name, packet_name), packet_items in by_packet.items():
+        query = list(dict.fromkeys(packet_items.values()))
+        query.append(TlmItem(target_name, packet_name, "PACKET_TIMESECONDS", "RAW", None))
+        result = CvtModel.tsdb_lookup(query, start_time=start_time, scope=scope, flatten=False)
+        if not isinstance(result, list) or len(result) == 0:
+            continue
+        values = result[0]
+        for index, query_item in packet_items.items():
+            found_values.setdefault(index, []).append((values[-1][0], values[query.index(query_item)]))
+    for index, candidates in found_values.items():
+        value = _tlm_newest(candidates)
+        if value is None:
+            continue
+        found = True
+        row[index] = value
+    return row if found else {}
+
+
+# Return the value with the newest time from (time, value) pairs, or None
+def _tlm_newest(candidates):
+    candidates = [candidate for candidate in candidates if candidate[0] is not None]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda candidate: candidate[0])[1]
+
+
+# Expand LATEST to every packet containing the item
+def _tlm_packet_names(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
+    if packet_name == "LATEST":
+        packet_names = TargetModel.get_item_to_packet_map(target_name, scope=scope).get(item_name)
+        if packet_names is None:
+            raise RuntimeError(f"Item '{target_name} LATEST {item_name}' does not exist for scope: {scope}")
+        return packet_names
+    # Determine if this item exists, it will raise appropriate errors if not
+    TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
+    return [packet_name]

@@ -1040,6 +1040,10 @@ class TestApiShared(unittest.TestCase):
         ):
             wait_check_expression("'STRING' == STRING", 0.01)
 
+    def test_wait_packet_complains_about_latest(self):
+        with self.assertRaisesRegex(RuntimeError, "LATEST is not supported by wait_packet"):
+            wait_packet("INST", "latest", 1, 0.1)
+
     def test_wait_packet_prints_warning_if_packet_not_received(self):
         global count
         count = False
