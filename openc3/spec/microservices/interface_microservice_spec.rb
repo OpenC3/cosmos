@@ -192,6 +192,29 @@ module OpenC3
       end
     end
 
+    describe "connect directive" do
+      it "acks malformed params with an error and keeps the handler running" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        tlm = double("tlm").as_null_object
+        allow(tlm).to receive(:attempting).and_return(interface)
+        handler = InterfaceCmdHandlerThread.new(interface, tlm, scope: "DEFAULT")
+        results = []
+        allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
+          msg_id = "#{(Time.now.to_f * 1000).to_i}-0"
+          results << block.call("{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, { 'connect' => 'true', 'params' => '{not json' }, nil)
+          results << block.call("{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, { 'connect' => 'true', 'params' => '["host", 1]' }, nil)
+        end
+        handler.run
+        expect(results[0]).to be_a(String)
+        expect(results[0]).not_to eql 'SUCCESS'
+        expect(results[1]).to eql 'SUCCESS'
+        expect(tlm).to have_received(:attempting).with("host", 1).once
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+    end
+
     describe "interface_details directive" do
       # Drive the command handler block directly. receive_commands is stubbed so
       # the block runs once with a crafted message and its return value (which
