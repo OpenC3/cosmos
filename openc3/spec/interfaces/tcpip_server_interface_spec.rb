@@ -176,6 +176,39 @@ module OpenC3
         expect(i.instance_variable_get(:@listen_address)).to eq '127.0.0.1'
         expect(i.connection_string).to eql "listening on 127.0.0.1:8888 (R/W)"
       end
+
+      it "passes READ_QUEUE_MAX_SIZE to each client connection" do
+        i = TcpipServerInterface.new(nil, '8890', nil, '5', 'burst')
+        i.set_option('READ_QUEUE_MAX_SIZE', ['1000'])
+        i.connect
+        socket = TCPSocket.new('127.0.0.1', 8890)
+        begin
+          read_interface_infos = i.instance_variable_get(:@read_interface_infos)
+          50.times do
+            break unless read_interface_infos.empty?
+
+            sleep(0.01)
+          end
+          expect(read_interface_infos.length).to eql 1
+          expect(read_interface_infos[0].interface.read_queue_max_size).to eql 1000
+        ensure
+          socket.close
+          i.disconnect
+        end
+      end
+    end
+
+    describe "read_queue_bytes" do
+      it "sums the bytes buffered by each client connection" do
+        i = TcpipServerInterface.new('8888', '8889', '5', '5', 'burst')
+        expect(i.read_queue_bytes).to eql 0
+        read_interface_infos = i.instance_variable_get(:@read_interface_infos)
+        [3, 4].each do |bytes|
+          interface = double('interface', read_queue_bytes: bytes)
+          read_interface_infos << TcpipServerInterface::InterfaceInfo.new(interface, nil, nil, nil)
+        end
+        expect(i.read_queue_bytes).to eql 7
+      end
     end
 
     describe "details" do
