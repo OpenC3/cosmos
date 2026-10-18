@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 from openc3.models.target_model import TargetModel
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.topics.topic import Topic
+from openc3.utilities.logger import Logger
 from test.test_helper import mock_redis
 
 
@@ -42,6 +43,14 @@ class TestTopicStreamSafetyTrim(unittest.TestCase):
             self.assertEqual(Topic.stream_max_age_ms(), 600000)
             Topic.clear_stream_max_age_cache()
             self.assertEqual(Topic.stream_max_age_ms(), 120000)
+
+    def test_max_age_raised_to_minimum(self):
+        with (
+            patch.dict(os.environ, {"OPENC3_STREAM_MAX_AGE_SECONDS": "0.5"}),
+            patch.object(Logger.instance(), "warn") as warn,
+        ):
+            self.assertEqual(Topic.stream_max_age_ms(), 120000)
+        self.assertIn("below the minimum", warn.call_args.args[0])
 
     @patch("openc3.topics.topic.time.time", return_value=1700000000.0)
     def test_minid_relative_to_now_for_auto_ids(self, _time):
@@ -94,6 +103,38 @@ class TestTopicStreamSafetyTrim(unittest.TestCase):
             Topic.log_stream_safety_minid("INST", "CMD", "DEFAULT")
             Topic.log_stream_safety_minid("INST", "CMD", "DEFAULT")
             self.assertEqual(get.call_count, 2)
+
+    def test_log_stream_min_age_raises_on_lookup_failure(self):
+        with (
+            patch.object(TargetModel, "get", side_effect=RuntimeError("down")),
+            self.assertRaisesRegex(RuntimeError, "down"),
+        ):
+            Topic.log_stream_min_age_seconds("INST", "TLM", "DEFAULT")
+
+    @patch("openc3.topics.topic.time.time", return_value=1700000000.0)
+    def test_log_stream_minid_not_cached_on_lookup_failure(self, _time):
+        model = {"tlm_log_cycle_time": 3600}
+        expected = str(1700000000000 - 7320000)
+        with (
+            patch("openc3.topics.topic.time.monotonic", return_value=1000.0) as monotonic,
+            patch.object(Logger.instance(), "warn") as warn,
+            patch.object(TargetModel, "get", side_effect=[RuntimeError("down"), model]) as get,
+        ):
+            self.assertIsNone(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"))
+            self.assertIn("Unable to determine log cycle time for INST TLM", warn.call_args.args[0])
+            # Not retried until the retry interval passes
+            monotonic.return_value = 1000.0 + Topic.LOG_CYCLE_LOOKUP_RETRY_SECONDS - 1
+            self.assertIsNone(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"))
+            self.assertEqual(get.call_count, 1)
+            monotonic.return_value = 1000.0 + Topic.LOG_CYCLE_LOOKUP_RETRY_SECONDS
+            self.assertEqual(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"), expected)
+            # Now cached
+            self.assertEqual(Topic.log_stream_safety_minid("INST", "TLM", "DEFAULT"), expected)
+            self.assertEqual(get.call_count, 2)
+
+    def test_write_topic_rejects_maxlen_and_minid(self):
+        with self.assertRaisesRegex(ValueError, "both maxlen and minid"):
+            Topic.write_topic("TOPIC", {"a": 1}, "*", 10, minid="123")
 
     def test_write_topic_trims_old_entries(self):
         Topic.write_topic("TOPIC", {"a": 1}, "1000-0")
