@@ -12,6 +12,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/bridge_model'
+require 'openc3/models/plugin_model'
 require 'openc3/topics/discovery_topic'
 
 # Runs a Python Discovery class on the host paired with a bridge (via openc3-app)
@@ -19,7 +20,10 @@ require 'openc3/topics/discovery_topic'
 class DiscoveryController < ApplicationController
   DISCOVERY_TIMEOUT_S = 15
 
-  # POST /discovery { bridge: 'DEFAULT', discovery: ['openc3/discovery/serial_discovery.py', ...] }
+  # POST /discovery { bridge: 'DEFAULT', discovery: ['openc3/discovery/serial_discovery.py', ...], exclude_plugin: 'name' }
+  # Returns { results: [{ value, text }], claimed: [{ value, text, plugin }] } where claimed are
+  # the discovered values already claimed by other installed plugins (see PluginModel.discovery_claims).
+  # exclude_plugin is the plugin being upgraded or edited, whose own claims don't count.
   def create
     # Discovery executes code on the host so restrict it like plugin installs
     return unless authorization('admin')
@@ -34,8 +38,11 @@ class DiscoveryController < ApplicationController
       render json: { status: 'error', message: "Bridge '#{bridge_name}' is not paired with openc3-app" }, status: :service_unavailable
       return
     end
-    results = OpenC3::DiscoveryTopic.discover(bridge_name, discovery.map(&:to_s), timeout: DISCOVERY_TIMEOUT_S, scope: params[:scope])
-    render json: results
+    discovery = discovery.map(&:to_s)
+    results = OpenC3::DiscoveryTopic.discover(bridge_name, discovery, timeout: DISCOVERY_TIMEOUT_S, scope: params[:scope])
+    claims = OpenC3::PluginModel.discovery_claims(bridge_name, discovery[0], exclude_plugin: params[:exclude_plugin].presence, scope: params[:scope])
+    available, claimed = results.partition { |result| !claims.key?(result['value'].to_s) }
+    render json: { 'results' => available, 'claimed' => claimed.map { |result| result.merge('plugin' => claims[result['value'].to_s]) } }
   rescue StandardError => error
     render json: { status: 'error', message: error.message }, status: :internal_server_error
     logger.error(error.formatted)

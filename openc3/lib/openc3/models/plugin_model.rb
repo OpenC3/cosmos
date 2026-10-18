@@ -566,6 +566,40 @@ module OpenC3
       install_phase2(plugin_hash, scope: scope, diff_only: true)
     end
 
+    # Discovery classes can be given as a filename or module name, so compare
+    # them as module names, e.g. openc3.discovery.serial_discovery
+    def self.discovery_class_key(name)
+      name.to_s.delete_suffix('.py').tr('/', '.')
+    end
+
+    # The value an installed plugin selected for a VARIABLE_DISCOVERY variable
+    # "claims" that device (e.g. a serial port or controller serial number) so
+    # discovery stops offering it to other plugins. Claims are per bridge, as
+    # each bridge is a different host, and per discovery class (not its
+    # parameters) so e.g. a HID serial number claimed through one product ID is
+    # claimed for every HID discovery. Uninstalling the plugin releases its claims.
+    #
+    # @param exclude_plugin [String] Plugin being upgraded or edited, which must
+    #   still be offered the devices it already holds
+    # @return [Hash] Claimed value => name of the plugin holding it
+    def self.discovery_claims(bridge_name, discovery_class, exclude_plugin: nil, scope:)
+      bridge_name = bridge_name.to_s.upcase
+      key = discovery_class_key(discovery_class)
+      claims = {}
+      all(scope: scope).each do |plugin_name, plugin|
+        next if plugin_name == exclude_plugin
+        variables = (plugin['variables'] || {}).values.select { |variable| variable.is_a?(Hash) }
+        bridge = variables.find { |variable| variable['bridge'] }
+        next unless (bridge ? bridge['value'] : 'DEFAULT').to_s.upcase == bridge_name
+        variables.each do |variable|
+          next unless variable['discovery'].is_a?(Array)
+          next unless variable['discovery'].any? { |entry| discovery_class_key(Array(entry['discovery'])[0]) == key }
+          claims[variable['value'].to_s] ||= plugin_name
+        end
+      end
+      claims
+    end
+
     # Remove the common leading whitespace so PLUGIN_TEXT can be indented in plugin.txt
     # without turning the markdown into code blocks
     def self.unindent_lines(lines)

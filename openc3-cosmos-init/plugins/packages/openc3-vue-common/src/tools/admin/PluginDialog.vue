@@ -224,6 +224,13 @@ export default {
       required: false,
       default: null,
     },
+    // Installed plugin being upgraded or edited. Devices it already claims
+    // are still offered by discovery.
+    excludePlugin: {
+      type: String,
+      required: false,
+      default: null,
+    },
     existingPluginTxt: {
       type: String,
       required: false,
@@ -264,6 +271,8 @@ export default {
       discoveryLoading: {},
       discoveryErrors: {},
       discoveryRuns: {},
+      // Discovered values hidden because other plugins claim them
+      discoveryClaimed: {},
       // Available bridges for the VARIABLE_BRIDGE variable: [{ value, text }]
       bridges: [],
     }
@@ -673,7 +682,11 @@ export default {
       const outcomes = await Promise.allSettled(
         variable.discovery.map((entry) =>
           Api.post('/openc3-api/discovery', {
-            data: { bridge, discovery: entry.discovery },
+            data: {
+              bridge,
+              discovery: entry.discovery,
+              exclude_plugin: this.excludePlugin,
+            },
             headers: {
               Accept: 'application/json',
               'Content-Type': 'application/json',
@@ -685,12 +698,14 @@ export default {
       )
       if (this.discoveryRuns[name] !== run) return
       const results = []
+      const claimed = []
       const errors = []
       outcomes.forEach((outcome, index) => {
         if (outcome.status === 'fulfilled') {
-          for (const result of outcome.value.data || []) {
+          for (const result of outcome.value.data.results || []) {
             results.push({ ...result, discoveryIndex: index })
           }
+          claimed.push(...(outcome.value.data.claimed || []))
         } else {
           errors.push(
             outcome.reason.response?.data?.message || outcome.reason.message,
@@ -698,9 +713,10 @@ export default {
         }
       })
       this.discoveryResults[name] = results
+      this.discoveryClaimed[name] = claimed
       // Only report problems when nothing was found, e.g. one of several
       // discoveries finding no devices is expected
-      if (results.length === 0) {
+      if (results.length === 0 && claimed.length === 0) {
         this.discoveryErrors[name] = errors[0] || 'nothing found'
       }
       this.discoveryLoading[name] = false
@@ -722,8 +738,30 @@ export default {
         discovery = 'Discovering...'
       } else if (this.discoveryErrors[name]) {
         discovery = `Discovery: ${this.discoveryErrors[name]}`
+      } else if (this.discoveryClaimed[name]?.length) {
+        discovery = this.discoveryClaimed[name]
+          .map(
+            (claim) => `${claim.text || claim.value} in use by ${claim.plugin}`,
+          )
+          .join(', ')
       }
       return [description, discovery].filter(Boolean).join(' - ')
+    },
+    // Values already chosen by this plugin's other variables that discover
+    // with the same class, e.g. so two serial port variables can't both use
+    // the same port. Mirrors the claims of installed plugins on the server.
+    claimedInDialog(name, variable) {
+      const classKey = (discovery) =>
+        discovery.discovery[0].replace(/\.py$/, '').replaceAll('/', '.')
+      const classes = new Set((variable.discovery || []).map(classKey))
+      const claimed = new Set()
+      for (const [otherName, other] of Object.entries(this.localVariables)) {
+        if (otherName === name || !other.discovery) continue
+        if (other.discovery.some((entry) => classes.has(classKey(entry)))) {
+          claimed.add(other.value)
+        }
+      }
+      return claimed
     },
     getOptionItems(name, variable) {
       const items = (variable.options || []).map((opt) => ({
@@ -732,8 +770,12 @@ export default {
       }))
       // Bridges and discovered values follow the VARIABLE_STATEs, skipping duplicates
       const extra = variable.bridge ? this.bridges : []
+      const claimed = this.claimedInDialog(name, variable)
       for (const result of extra.concat(this.discoveryResults[name] || [])) {
-        if (!items.some((item) => item.value === result.value)) {
+        if (
+          !items.some((item) => item.value === result.value) &&
+          !claimed.has(result.value)
+        ) {
           items.push({ text: result.text || result.value, value: result.value })
         }
       }

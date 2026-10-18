@@ -13,6 +13,7 @@
 
 require "rails_helper"
 require "openc3/models/bridge_model"
+require "openc3/models/plugin_model"
 require "openc3/topics/discovery_topic"
 
 RSpec.describe DiscoveryController, type: :controller do
@@ -33,7 +34,28 @@ RSpec.describe DiscoveryController, type: :controller do
       post :create, params: { scope: "DEFAULT", discovery: ["openc3/discovery/hid_discovery.py", "0x054C"] }, as: :json
 
       expect(response).to have_http_status(:ok)
-      expect(JSON.parse(response.body)).to eq([{ "value" => "abc", "text" => "DualSense (abc)" }])
+      expect(JSON.parse(response.body)).to eq({ "results" => [{ "value" => "abc", "text" => "DualSense (abc)" }], "claimed" => [] })
+    end
+
+    it "removes values claimed by other plugins" do
+      discovery = ["openc3/discovery/serial_discovery.py"]
+      OpenC3::PluginModel.new(name: "OTHER__0", scope: "DEFAULT", variables: {
+        "port" => { "value" => "/dev/ttyUSB0", "discovery" => [{ "discovery" => ["openc3.discovery.serial_discovery"] }] },
+      }).create
+      allow(OpenC3::DiscoveryTopic).to receive(:discover).and_return([
+        { "value" => "/dev/ttyUSB0", "text" => "/dev/ttyUSB0" },
+        { "value" => "/dev/ttyUSB1", "text" => "/dev/ttyUSB1" },
+      ])
+
+      post :create, params: { scope: "DEFAULT", discovery: discovery }, as: :json
+      expect(JSON.parse(response.body)).to eq({
+        "results" => [{ "value" => "/dev/ttyUSB1", "text" => "/dev/ttyUSB1" }],
+        "claimed" => [{ "value" => "/dev/ttyUSB0", "text" => "/dev/ttyUSB0", "plugin" => "OTHER__0" }],
+      })
+
+      # The plugin being upgraded still sees the port it holds
+      post :create, params: { scope: "DEFAULT", discovery: discovery, exclude_plugin: "OTHER__0" }, as: :json
+      expect(JSON.parse(response.body)["results"].length).to eq 2
     end
 
     it "rejects a missing discovery" do

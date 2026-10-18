@@ -141,6 +141,7 @@
       :variables="variables"
       :plugin-txt="pluginTxt"
       :plugin-text="pluginText"
+      :exclude-plugin="currentPlugin || pluginName"
       :existing-plugin-txt="existingPluginTxt"
       :store-plugin-id="storePluginId"
       :store-version-id="storeVersionId"

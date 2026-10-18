@@ -512,6 +512,45 @@ module OpenC3
       end
     end
 
+    describe "self.discovery_claims" do
+      def serial_variable(value, discovery = 'openc3/discovery/serial_discovery.py')
+        { 'value' => value, 'discovery' => [{ 'discovery' => [discovery] }] }
+      end
+
+      before(:each) do
+        PluginModel.new(name: "SERIAL__0", scope: "DEFAULT", variables: {
+          'port' => serial_variable('/dev/ttyUSB0'),
+          'other' => { 'value' => '/dev/ttyUSB9' },
+        }).create
+        PluginModel.new(name: "SERIAL__1", scope: "DEFAULT", variables: {
+          'port' => serial_variable('/dev/ttyUSB1', 'openc3.discovery.serial_discovery'),
+        }).create
+        PluginModel.new(name: "LAB__0", scope: "DEFAULT", variables: {
+          'bridge_name' => { 'value' => 'lab', 'bridge' => true },
+          'port' => serial_variable('/dev/ttyUSB2'),
+        }).create
+        PluginModel.new(name: "HID__0", scope: "DEFAULT", variables: {
+          'serial' => { 'value' => 'abc', 'discovery' => [
+            { 'discovery' => ['openc3.discovery.hid_discovery', '0x054C', '0x05C4'] },
+            { 'discovery' => ['openc3.discovery.hid_discovery', '0x054C', '0x0CE6'] },
+          ] },
+        }).create
+        PluginModel.new(name: "OLD__0", scope: "DEFAULT", variables: { 'port' => '/dev/ttyUSB3' }).create
+      end
+
+      it "returns values claimed on the bridge for the discovery class" do
+        expect(PluginModel.discovery_claims('DEFAULT', 'openc3.discovery.serial_discovery', scope: 'DEFAULT')).to eq({
+          '/dev/ttyUSB0' => 'SERIAL__0', '/dev/ttyUSB1' => 'SERIAL__1'
+        })
+        expect(PluginModel.discovery_claims('lab', 'openc3/discovery/serial_discovery.py', scope: 'DEFAULT')).to eq({ '/dev/ttyUSB2' => 'LAB__0' })
+        expect(PluginModel.discovery_claims('DEFAULT', 'openc3/discovery/hid_discovery.py', scope: 'DEFAULT')).to eq({ 'abc' => 'HID__0' })
+      end
+
+      it "excludes the plugin being upgraded" do
+        expect(PluginModel.discovery_claims('DEFAULT', 'openc3/discovery/serial_discovery.py', exclude_plugin: 'SERIAL__0', scope: 'DEFAULT')).to eq({ '/dev/ttyUSB1' => 'SERIAL__1' })
+      end
+    end
+
     describe "self.install_phase2" do
       it "creates the plugin by deploying models in the plugin.txt" do
         stub_s3_client

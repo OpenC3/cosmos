@@ -59,6 +59,10 @@ VARIABLE_DISCOVERY:
     (lists the serial numbers of USB HID devices, optionally limited by Vendor ID and Product ID, and requires the hidapi package on the host).
     A variable can have multiple VARIABLE_DISCOVERY keywords and their results are combined. Each can be followed by
     VARIABLE_DISCOVERY_SET keywords that set other variables when a value it found is selected.
+    Discovered values are claimed by the plugin that uses them. Once a plugin is installed, the value it chose
+    for a VARIABLE_DISCOVERY variable (for example a serial port) is no longer offered to other plugins
+    discovering with the same class on the same bridge, and the dialog notes which plugin is using it.
+    The claim is released when the plugin is uninstalled. Upgrading or editing the plugin still offers the values it holds.
     Must follow a VARIABLE definition.
   since: 7.5.0
   example: |
