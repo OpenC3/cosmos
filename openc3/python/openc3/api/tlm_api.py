@@ -858,7 +858,7 @@ def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cach
         query = []
         query_index = {}
 
-        def add(query_item):
+        def _add_query_item(query_item):
             if query_item not in query_index:
                 query_index[query_item] = len(query)
                 query.append(query_item)
@@ -866,12 +866,14 @@ def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cach
 
         positions = [None] * len(cvt_items)
         for index in regular:
-            positions[index] = add(cvt_items[index])
+            positions[index] = _add_query_item(cvt_items[index])
         for index, candidates in latest_candidates.items():
             positions[index] = [
                 (
-                    add(candidate),
-                    add(TlmItem(candidate.target_name, candidate.packet_name, "PACKET_TIMESECONDS", "RAW", None)),
+                    _add_query_item(candidate),
+                    _add_query_item(
+                        TlmItem(candidate.target_name, candidate.packet_name, "PACKET_TIMESECONDS", "RAW", None)
+                    ),
                 )
                 for candidate in candidates
             ]
