@@ -39,6 +39,12 @@ RSpec.describe TargetsController, :type => :controller do
   end
 
   describe "delete_modified" do
+    it "requires admin permission for the target" do
+      expect(controller).to receive(:authorization).with('admin', target_name: 'INST').and_return(false)
+      expect(OpenC3::TargetModel).to_not receive(:delete_modified)
+      post :delete_modified, params: { scope: "DEFAULT", id: "INST", files: ["INST/screens/a.txt"] }
+    end
+
     it "forwards a files list to the model" do
       expect(OpenC3::TargetModel).to receive(:delete_modified)
         .with("INST", scope: "DEFAULT", files: ["INST/screens/a.txt"])

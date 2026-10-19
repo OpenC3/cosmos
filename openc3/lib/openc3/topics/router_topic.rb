@@ -84,7 +84,8 @@ module OpenC3
         Topic.write_topic(topic, { 'target_name' => packet.target_name, 'cmd_name' => packet.packet_name, 'cmd_buffer' => packet.buffer(false) }, '*', 100)
       elsif target_names.length == 1
         topic = "{#{scope}__CMD}TARGET__#{target_names[0]}"
-        Topic.write_topic(topic, { 'target_name' => packet.target_name ? packet.target_name : 'UNKNOWN', 'cmd_name' => 'UNKNOWN', 'cmd_buffer' => packet.buffer(false) }, '*', 100)
+        # Name the routed target so the interface identifies against it (and sends it as UNKNOWN if that fails)
+        Topic.write_topic(topic, { 'target_name' => target_names[0], 'cmd_name' => 'UNKNOWN', 'cmd_buffer' => packet.buffer(false) }, '*', 100)
       else
         raise "No route for command: #{packet.target_name ? packet.target_name : 'UNKNOWN'} #{packet.packet_name ? packet.packet_name : 'UNKNOWN'}"
       end

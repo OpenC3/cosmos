@@ -128,7 +128,6 @@
       :plugins="plugins"
       :targets="targets"
       :show-default-tools="showDefaultTools"
-      :default-plugins="defaultPlugins"
       :script-versions-enabled="scriptVersionsEnabled"
       @edit="editPlugin"
       @upgrade="upgradePlugin"
@@ -154,6 +153,7 @@
       :targets="pluginTargets(currentPlugin)"
       :plugin-hash="pluginHashTmp"
       :plugin-delete="pluginDelete"
+      :version-history="scriptVersionsEnabled"
       @submit="modifiedSubmit"
     />
     <!-- <download-dialog v-model="showDownloadDialog" /> -->
@@ -222,35 +222,6 @@ export default {
       // set, reported by /openc3-api/info). Gates per-plugin Export/Import History.
       scriptVersionsEnabled: false,
       timeZone: 'local',
-      // When updating update local_mode.rb, local_mode.py, plugins.p.spec.ts
-      defaultPlugins: [
-        'openc3-cosmos-tool-admin',
-        'openc3-cosmos-tool-bucketexplorer',
-        'openc3-cosmos-tool-cmdsender',
-        'openc3-cosmos-tool-cmdqueue', // Enterprise only
-        'openc3-cosmos-tool-cmdhistory', // Enterprise only
-        'openc3-cosmos-tool-cmdtlmserver',
-        'openc3-cosmos-tool-dataextractor',
-        'openc3-cosmos-tool-dataviewer',
-        'openc3-cosmos-tool-docs',
-        'openc3-cosmos-tool-handbooks',
-        'openc3-cosmos-tool-iframe',
-        'openc3-cosmos-tool-limitsmonitor',
-        'openc3-cosmos-tool-packetviewer',
-        'openc3-cosmos-tool-scriptrunner',
-        'openc3-cosmos-tool-tablemanager',
-        'openc3-cosmos-tool-tlmgrapher',
-        'openc3-cosmos-tool-tlmviewer',
-        'openc3-cosmos-enterprise-tool-admin', // Enterprise only
-        'openc3-cosmos-tool-autonomic', // Enterprise only
-        'openc3-cosmos-tool-calendar', // Enterprise only
-        'openc3-cosmos-tool-grafana', // Enterprise only
-        'openc3-cosmos-tool-logexplorer', // Enterprise only
-        'openc3-cosmos-tool-notebooks', // Enterprise only
-        'openc3-cosmos-tool-systemhealth', // Enterprise only
-        'openc3-enterprise-tool-base', // Enterprise only
-        'openc3-tool-base',
-      ],
     }
   },
   watch: {
@@ -281,8 +252,9 @@ export default {
 
     // Detect whether the Enterprise Version History backend is enabled
     // (OPENC3_VERSION_HISTORY_DIR set) so per-plugin Export/Import History
-    // actions can be shown.
-    Api.get('/openc3-api/info')
+    // actions can be shown. The promise is kept so the upgrade flow can wait
+    // for it before opening ModifiedPluginDialog, which picks its flow once.
+    this.infoLoaded = Api.get('/openc3-api/info')
       .then((response) => {
         this.scriptVersionsEnabled = !!response.data?.script_versions
       })
@@ -412,13 +384,15 @@ export default {
           this.file = undefined
         })
     },
-    pluginCallback: function (pluginHash) {
+    pluginCallback: async function (pluginHash) {
       this.showPluginDialog = false
       if (this.currentPlugin !== null) {
         pluginHash['name'] = this.currentPlugin
       }
       this.pluginHashTmp = pluginHash
       if (this.isModified(this.currentPlugin)) {
+        // The upgrade flow depends on scriptVersionsEnabled
+        await this.infoLoaded
         this.pluginDelete = false
         this.showModifiedPluginDialog = true
       } else {
@@ -437,11 +411,17 @@ export default {
           byTarget[targetName] ||= []
           byTarget[targetName].push(fullName)
         }
-        for (const [targetName, files] of Object.entries(byTarget)) {
-          await Api.post(`/openc3-api/targets/${targetName}/delete_modified`, {
-            data: { files },
-          })
-        }
+        const deletePromises = Object.entries(byTarget).map(
+          async ([targetName, files]) => {
+            await Api.post(
+              `/openc3-api/targets/${targetName}/delete_modified`,
+              {
+                data: { files },
+              },
+            )
+          },
+        )
+        await Promise.all(deletePromises)
       }
       if (this.pluginDelete) {
         this.deletePlugin(this.currentPlugin)
@@ -528,28 +508,30 @@ export default {
         .catch(console.error)
       this.update()
     },
-    migrateToUv: function (plugin) {
-      this.$dialog
-        .confirm(
+    migrateToUv: async function (plugin) {
+      try {
+        await this.$dialog.confirm(
           `Migrate plugin ${plugin} to a per-plugin UV virtual environment?`,
           {
             okText: 'Migrate',
             cancelText: 'Cancel',
           },
         )
-        .then(() => {
-          Api.post(`/openc3-api/plugins/${plugin}/migrate_to_uv`)
-            .then((response) => {
-              this.alert = `Started migrating plugin ${plugin} to UV ...`
-              this.alertType = 'success'
-              this.showAlert = true
-              setTimeout(() => {
-                this.showAlert = false
-                this.updateProcesses()
-              }, 5000)
-            })
-            .catch(console.error)
-        })
+        try {
+          await Api.post(`/openc3-api/plugins/${plugin}/migrate_to_uv`)
+          this.alert = `Started migrating plugin ${plugin} to UV ...`
+          this.alertType = 'success'
+          this.showAlert = true
+          setTimeout(() => {
+            this.showAlert = false
+            this.updateProcesses()
+          }, 5000)
+        } catch (error) {
+          console.error(error)
+        }
+      } catch {
+        // user cancelled, do nothing
+      }
     },
     upgradePlugin(plugin) {
       this.resetControlState()

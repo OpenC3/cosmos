@@ -85,6 +85,35 @@ class TestExtractFieldsFromCmdText:
         result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1 ,KEY2 2, KEY3 '3' , KEY4 4.0")
         assert result == ("TARGET", "PACKET", {"KEY1": "VALUE1", "KEY2": 2, "KEY3": "3", "KEY4": 4.0})
 
+    def test_allows_extra_whitespace_around_with(self):
+        # SPLIT_WITH_REGEX matches a single whitespace character on each side of
+        # 'with', so the caller strips the rest of each run
+        for text in [
+            "TARGET PACKET  with  KEY1 VALUE1, KEY2 2",
+            "TARGET PACKET   with KEY1 VALUE1, KEY2 2",
+            "TARGET PACKET with   KEY1 VALUE1, KEY2 2",
+            "TARGET PACKET\twith\tKEY1 VALUE1, KEY2 2",
+            "TARGET PACKET \n with \n KEY1 VALUE1, KEY2 2",
+        ]:
+            result = extract_fields_from_cmd_text(text)
+            assert result == ("TARGET", "PACKET", {"KEY1": "VALUE1", "KEY2": 2}), text
+
+    def test_matches_with_case_insensitively(self):
+        for keyword in ["with", "WITH", "With", "wItH"]:
+            result = extract_fields_from_cmd_text(f"TARGET PACKET {keyword} KEY1 VALUE1")
+            assert result == ("TARGET", "PACKET", {"KEY1": "VALUE1"})
+
+    def test_complains_when_with_is_not_a_separate_word(self):
+        # 'with' only separates parameters when surrounded by whitespace, but any
+        # occurrence of it means parameters were intended
+        for text in ["TARGET PACKETwithKEY", "TARGET PACKETWITHKEY"]:
+            with pytest.raises(RuntimeError, match="must be followed by parameters"):
+                extract_fields_from_cmd_text(text)
+
+    def test_splits_on_the_first_with_only(self):
+        result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 'a with b'")
+        assert result == ("TARGET", "PACKET", {"KEY1": "a with b"})
+
     def test_allows_a_trailing_comma(self):
         result = extract_fields_from_cmd_text("TARGET PACKET with KEY1 VALUE1, KEY2 2,")
         assert result == ("TARGET", "PACKET", {"KEY1": "VALUE1", "KEY2": 2})

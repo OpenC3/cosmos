@@ -17,39 +17,11 @@ require 'openc3/core_ext/file'
 # require 'openc3/models/gem_model' # These are used but also create circular dependency
 # require 'openc3/models/plugin_model' # These are used but also create circular dependency
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/default_plugins'
 
 module OpenC3
   module LocalMode
     OPENC3_LOCAL_MODE_PATH = ENV['OPENC3_LOCAL_MODE_PATH'] || "/plugins"
-    # When updating update local_mode.py, PluginsTab.vue, plugins.p.spec.ts
-    DEFAULT_PLUGINS = [
-      'openc3-cosmos-tool-admin',
-      'openc3-cosmos-tool-bucketexplorer',
-      'openc3-cosmos-tool-cmdsender',
-      'openc3-cosmos-tool-cmdqueue', # Enterprise only
-      'openc3-cosmos-tool-cmdhistory', # Enterprise only
-      'openc3-cosmos-tool-cmdtlmserver',
-      'openc3-cosmos-tool-dataextractor',
-      'openc3-cosmos-tool-dataviewer',
-      'openc3-cosmos-tool-docs',
-      'openc3-cosmos-tool-handbooks',
-      'openc3-cosmos-tool-iframe',
-      'openc3-cosmos-tool-limitsmonitor',
-      'openc3-cosmos-tool-packetviewer',
-      'openc3-cosmos-tool-scriptrunner',
-      'openc3-cosmos-tool-tablemanager',
-      'openc3-cosmos-tool-tlmgrapher',
-      'openc3-cosmos-tool-tlmviewer',
-      'openc3-cosmos-enterprise-tool-admin', # Enterprise only
-      'openc3-cosmos-tool-autonomic', # Enterprise only
-      'openc3-cosmos-tool-calendar', # Enterprise only
-      'openc3-cosmos-tool-grafana', # Enterprise only
-      'openc3-cosmos-tool-logexplorer', # Enterprise only
-      'openc3-cosmos-tool-notebooks', # Enterprise only
-      'openc3-cosmos-tool-systemhealth', # Enterprise only
-      'openc3-enterprise-tool-base', # Enterprise only
-      'openc3-tool-base',
-    ]
 
     # Install plugins from local plugins folder
     # Can only be used from openc3cli because calls top_level load_plugin
@@ -280,7 +252,7 @@ module OpenC3
     end
 
     def self.update_local_plugin_files(full_folder_path, plugin_file_path, plugin_hash, gem_name)
-      return if DEFAULT_PLUGINS.include?(gem_name)
+      return if DefaultPlugins::NAMES.include?(gem_name)
       puts "Updating local plugin files: #{full_folder_path}"
       FileUtils.mkdir_p(full_folder_path)
       gems = scan_plugin_dir(full_folder_path).first
@@ -378,8 +350,8 @@ module OpenC3
     end
 
     def self.put_target_file(path, io_or_string, scope:) # NOSONAR - scope: is part of the caller-facing signature
-      full_folder_path = "#{OPENC3_LOCAL_MODE_PATH}/#{path}"
-      return unless File.expand_path(full_folder_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+      full_folder_path = key_path(path)
+      return unless full_folder_path and path.start_with?("#{scope}/")
       FileUtils.mkdir_p(File.dirname(full_folder_path))
       File.open(full_folder_path, 'wb') do |file|
         if String === io_or_string
@@ -392,8 +364,8 @@ module OpenC3
     end
 
     def self.open_local_file(path, scope:)
-      full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/targets_modified/#{path}"
-      if File.expand_path(full_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+      full_path = scope_path(scope, "targets_modified/#{path}")
+      if full_path and safe_key?(path)
         return File.open(full_path, 'rb')
       end
       nil
@@ -452,8 +424,8 @@ module OpenC3
     def self.save_tool_config(scope, tool, name, data)
       return unless ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
       json = JSON.parse(data, allow_nan: true, create_additions: true)
-      config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json"
-      return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+      config_path = scope_path(scope, "tool_config/#{tool}/#{name}.json")
+      return unless config_path and safe_key?("#{tool}/#{name}")
       FileUtils.mkdir_p(File.dirname(config_path))
       File.open(config_path, 'w') do |file|
         file.write(JSON.pretty_generate(json, allow_nan: true))
@@ -462,8 +434,8 @@ module OpenC3
 
     def self.delete_tool_config(scope, tool, name)
       return unless ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
-      config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/tool_config/#{tool}/#{name}.json"
-      return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+      config_path = scope_path(scope, "tool_config/#{tool}/#{name}.json")
+      return unless config_path and safe_key?("#{tool}/#{name}")
       FileUtils.rm_f(config_path)
     end
 
@@ -508,8 +480,8 @@ module OpenC3
 
     def self.save_setting(scope, name, data)
       return unless ENV['OPENC3_LOCAL_MODE'] and Dir.exist?(OPENC3_LOCAL_MODE_PATH)
-      config_path = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}/settings/#{name}.json"
-      return unless File.expand_path(config_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+      config_path = scope_path(scope, "settings/#{name}.json")
+      return unless config_path and safe_key?(name)
       FileUtils.mkdir_p(File.dirname(config_path))
       # Anything can be stored as a setting. Strings are written directly since
       # they're already the serialized form. Anything else is written as JSON so
@@ -518,26 +490,86 @@ module OpenC3
       File.write(config_path, data)
     end
 
+    # Target names from OPENC3_LOCAL_ONLY_TARGETS (comma separated). These
+    # targets keep their target files only in the local mode volume and never
+    # read or write them in the bucket. Read on every call so it can't go stale.
+    def self.local_only_targets
+      ENV['OPENC3_LOCAL_ONLY_TARGETS'].to_s.split(',').map { |name| name.strip.upcase }.reject(&:empty?)
+    end
+
+    def self.local_only_target?(target_name)
+      return false if target_name.nil? or target_name.to_s.empty?
+      local_only_targets.include?(target_name.to_s.upcase)
+    end
+
+    # name is relative to targets / targets_modified, e.g. "INST/procedures/test.rb"
+    def self.local_only_name?(name)
+      local_only_target?(name.to_s.split('/')[0])
+    end
+
+    # key is a config bucket key, e.g. "DEFAULT/targets_modified/INST/procedures/test.rb"
+    def self.local_only_key?(key)
+      split_key = key.to_s.split('/')
+      return false unless ['targets', 'targets_modified'].include?(split_key[1])
+      local_only_target?(split_key[2])
+    end
+
     # Helper methods
 
+    # True if the key has no '.' / '..' segments, no empty segments, no leading
+    # slash and no backslash. Such a key always resolves under its first
+    # segment (the scope), both on disk and in the bucket (the bucket
+    # normalizes '..' segments, so a traversal key reaches other scopes there too).
+    def self.safe_key?(key)
+      return false unless String === key
+      return false if key.empty? or key.start_with?('/') or key.include?('\\') or key.include?("\0")
+      key.split('/', -1).none? { |segment| segment.empty? or segment == '.' or segment == '..' }
+    end
+
+    # True if path resolves to root or somewhere beneath it. Compares against
+    # root plus a separator so a sibling such as /plugins_old never matches.
+    def self.path_within?(path, root)
+      expanded = File.expand_path(path)
+      root = File.expand_path(root)
+      expanded == root or expanded.start_with?(root + File::SEPARATOR)
+    end
+
+    # Local file path for a scope relative path, or nil if the path would
+    # leave the scope directory
+    def self.scope_path(scope, relative_path)
+      return nil unless safe_key?(scope) and !scope.include?('/')
+      scope_root = "#{OPENC3_LOCAL_MODE_PATH}/#{scope}"
+      full_path = "#{scope_root}/#{relative_path}"
+      return nil unless path_within?(full_path, scope_root)
+      full_path
+    end
+
+    # Local file path for a bucket key, or nil if the key is not a safe key
+    def self.key_path(key)
+      return nil unless safe_key?(key)
+      full_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
+      return nil unless path_within?(full_path, OPENC3_LOCAL_MODE_PATH)
+      full_path
+    end
+
     def self.sync_remote_to_local(bucket, key)
-      local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
-      return unless File.expand_path(local_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+      local_path = key_path(key)
+      return unless local_path
       FileUtils.mkdir_p(File.dirname(local_path))
       bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, path: local_path)
     end
 
     def self.sync_local_to_remote(bucket, key)
-      local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
-      return unless File.expand_path(local_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+      local_path = key_path(key)
+      return unless local_path
       File.open(local_path, 'rb') do |read_file|
         bucket.put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, body: read_file)
       end
     end
 
     def self.delete_local(key)
-      local_path = "#{OPENC3_LOCAL_MODE_PATH}/#{key}"
-      return unless File.expand_path(local_path).start_with?(OPENC3_LOCAL_MODE_PATH)
+      local_path = key_path(key)
+      return unless local_path
       File.delete(local_path) if File.exist?(local_path)
       nil
     end
@@ -580,6 +612,10 @@ module OpenC3
       # Build catalogs
       local_catalog = build_local_catalog(scope: scope)
       remote_catalog = build_remote_catalog(bucket, scope: scope)
+      # Local only targets never sync in either direction. Any stale copies
+      # already in the bucket are left alone rather than pulled down or deleted.
+      local_catalog.reject! { |key, _size| local_only_key?(key) }
+      remote_catalog.reject! { |key, _size| local_only_key?(key) }
 
       # Find and Handle Differences
       local_catalog.each do |key, size|

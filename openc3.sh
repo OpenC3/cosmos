@@ -1094,6 +1094,8 @@ case $1 in
       echo "  tag REPO1 REPO2 NS1 TAG1 [NS2] [TAG2] [SUFFIX]"
       echo "                              Tag images from one repo to another"
       echo "  push REPO NS TAG [SUFFIX]   Push images to docker repository"
+      echo "  mirror REPO1 REPO2 NS1 TAG1 [NS2] [TAG2] [SUFFIX]"
+      echo "                              Copy multi-arch images between registries"
       echo "  clean                       Remove node_modules, coverage, etc"
       echo "  hostsetup REPO NS TAG       Configure host kernel settings for redis and tsdb"
       echo "  hostenter                   Shell into VM host"

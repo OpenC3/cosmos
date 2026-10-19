@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1963
 
 import contextlib
+import errno
 import json
 import os
 import sys
@@ -108,9 +109,6 @@ class InterfaceCmdHandlerThread:
         # OpenC3.with_context(msg_hash) do
         release_critical = False
         critical_model = None
-
-        if msg_hash.get(b"shutdown"):
-            return "Shutdown"
 
         msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
         delta = time.time() - msgid_seconds_from_epoch
@@ -314,7 +312,11 @@ class InterfaceCmdHandlerThread:
                 else:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
 
-                if not self.interface.cmd_target_enabled.get(command.target_name, False):
+                # An unidentified buffer is sent as UNKNOWN on behalf of the target it was sent to
+                enabled_target_name = command.target_name
+                if enabled_target_name == "UNKNOWN" and target_name:
+                    enabled_target_name = target_name
+                if not self.interface.cmd_target_enabled.get(enabled_target_name, False):
                     return None  # Don't ack disabled targets
 
                 orig_command = System.commands.packet(command.target_name, command.packet_name)
@@ -657,6 +659,10 @@ class InterfaceMicroservice(Microservice):
     UNKNOWN_BYTES_TO_PRINT = 16
     DISCONNECT_WAIT_TIME = 1
 
+    # Interfaces never use descriptions so don't keep them in memory
+    def load_descriptions(self):
+        return False
+
     def __init__(self, name):
         self.mutex = threading.Lock()
         self.interface = None
@@ -738,7 +744,14 @@ class InterfaceMicroservice(Microservice):
             self.logger.info(f"{self.interface.name}: Connect ignored, already connected")
             return self.interface
 
+        # A user requested (re)connect starts fresh so backtraces are logged again
+        self.clear_connection_messages()
         return self.attempt_connection(*params)
+
+    # Forget which errors have already had their backtrace logged
+    def clear_connection_messages(self):
+        self.connection_failed_messages.clear()
+        self.connection_lost_messages.clear()
 
     # Sets the state to 'ATTEMPTING', first rebuilding the interface/router if
     # parameters are given, so the run method performs the actual connection.
@@ -769,7 +782,7 @@ class InterfaceMicroservice(Microservice):
                 else:
                     router_model = RouterModel.get(name=self.interface.name, scope=self.scope)
                     # config_params[0] is the filename so set the rest
-                    interface_model["config_params"][1:] = list(params)
+                    router_model["config_params"][1:] = list(params)
                     RouterModel.set(router_model, scope=self.scope)
 
             self.interface.state = "ATTEMPTING"
@@ -778,8 +791,8 @@ class InterfaceMicroservice(Microservice):
             else:
                 RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
             return self.interface  # Return the interface/router since we may have recreated it
-        # Need to rescue Exception so we cover LoadError
-        except RuntimeError:
+        # Catch Exception so any rebuild failure (bad parameters, import errors) keeps the original interface
+        except Exception:
             self.logger.error(
                 f"Attempting connection #{self.interface.connection_string} failed due to {traceback.format_exc()}"
             )
@@ -923,38 +936,47 @@ class InterfaceMicroservice(Microservice):
             TargetModel.sync_tlm_packet_counts(packet, self.interface.tlm_target_names, scope=self.scope)
             TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
+    # Equivalent of the Ruby Errno lists. Use the specific ConnectionError subclasses
+    # rather than ConnectionError itself, which also covers BrokenPipeError (EPIPE)
+    CONNECTION_FAILED_ERRORS = (ConnectionRefusedError, ConnectionResetError, TimeoutError)
+    CONNECTION_FAILED_ERRNOS = (errno.ENOTSOCK, errno.EHOSTUNREACH)
+    CONNECTION_LOST_ERRORS = (ConnectionAbortedError, ConnectionResetError, TimeoutError)
+    CONNECTION_LOST_ERRNOS = (errno.EBADF, errno.ENOTSOCK)
+
+    @staticmethod
+    def _expected_network_error(error, error_classes, errnos):
+        if isinstance(error, error_classes):
+            return True
+        return isinstance(error, OSError) and error.errno in errnos
+
     def handle_connection_failed(self, connection, connect_error):
         self.error = connect_error
         self.logger.error(f"{self.interface.name}: Connection {connection} failed due to {repr(connect_error)}")
-        # match connect_error:
-        #   case OSError:
-        #     self.logger.info(f"{self.interface.name}: Closing from signal")
-        #     self.cancel_thread = True
-        # case Errno='ECONNREFUSED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='ENOTSOCK', Errno='EHOSTUNREACH', IOError:
-        #   # Do not write an exception file for these extremely common cases
-        # else _:
-        if connect_error is Exception and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
+        expected = self._expected_network_error(
+            connect_error, self.CONNECTION_FAILED_ERRORS, self.CONNECTION_FAILED_ERRNOS
+        ) or (
+            isinstance(connect_error, RuntimeError)
+            and ("canceled" in str(connect_error) or "timeout" in str(connect_error))
+        )
+        if expected:
             pass  # Do not write an exception file for these extremely common cases
-        else:
+        # Only log the backtrace the first time we see each distinct error. Key on the
+        # type too since exceptions raised without arguments all have an empty str()
+        elif (type(connect_error), str(connect_error)) not in self.connection_failed_messages:
             self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(connect_error))}")
-            if str(connect_error) not in self.connection_failed_messages:
-                self.connection_failed_messages.append(str(connect_error))
+            self.connection_failed_messages.append((type(connect_error), str(connect_error)))
         self.disconnect()  # Ensure we do a clean disconnect
 
     def handle_connection_lost(self, error=None, reconnect=True):
         if error:
             self.error = error
             self.logger.info(f"{self.interface.name}: Connection Lost: {repr(error)}")
-            # match err:
-            #   case SignalException:
-            #     self.logger.info(f"{self.interface.name}: Closing from signal")
-            #     self.cancel_thread = True
-            #   # case Errno='ECONNABORTED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='EBADF', Errno='ENOTSOCK', IOError:
-            #     # Do not write an exception file for these extremely common cases
-            #   else _:
-            self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
-            if str(error) not in self.connection_lost_messages:
-                self.connection_lost_messages.append(str(error))
+            if self._expected_network_error(error, self.CONNECTION_LOST_ERRORS, self.CONNECTION_LOST_ERRNOS):
+                pass  # Do not write an exception file for these extremely common cases
+            # Only log the backtrace the first time we see each distinct error
+            elif (type(error), str(error)) not in self.connection_lost_messages:
+                self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
+                self.connection_lost_messages.append((type(error), str(error)))
         else:
             self.logger.info(f"{self.interface.name}: Connection Lost")
         self.disconnect(reconnect)  # Ensure we do a clean disconnect
@@ -1047,7 +1069,11 @@ class InterfaceMicroservice(Microservice):
             if self.interface_thread_sleeper:
                 self.interface_thread_sleeper.cancel()
             if self.interface:
-                self.interface.disconnect()
+                try:
+                    self.interface.disconnect()
+                except Exception:
+                    # Still clean up the status and stream logs if disconnect fails
+                    self.logger.error(f"{self.interface.name}: Disconnect failed during stop: {traceback.format_exc()}")
                 if self.interface_or_router == "INTERFACE":
                     valid_interface = InterfaceStatusModel.get_model(name=self.interface.name, scope=self.scope)
                 else:

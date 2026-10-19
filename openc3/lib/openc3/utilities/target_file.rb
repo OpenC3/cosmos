@@ -31,6 +31,15 @@ module OpenC3
       name.sub(/\*$/, '')
     end
 
+    # Reject names that could resolve outside the scope's targets_modified
+    # directory. The bucket normalizes '..' segments in keys just like the
+    # filesystem does, so this must be checked before any bucket call.
+    def self.validate_name(name)
+      unless OpenC3::LocalMode.safe_key?(name)
+        raise ArgumentError, "Invalid target file name: #{name.inspect}"
+      end
+    end
+
     def self.all(scope, path_matchers, target: nil)
       target = target.upcase if target
 
@@ -46,14 +55,26 @@ module OpenC3
         prefix = "#{scope}/targets/"
         modified_prefix = "#{scope}/targets_modified/"
       end
-      result, _ = remote_target_files(bucket_client: bucket, prefix: prefix, include_temp: false, path_matchers: path_matchers)
-      modified, temp = remote_target_files(bucket_client: bucket, prefix: modified_prefix, include_temp: include_temp, path_matchers: path_matchers)
+      if target and OpenC3::LocalMode.local_only_target?(target)
+        # Local only targets are never listed from the bucket
+        result = Set.new
+        modified = Set.new
+        temp = Set.new
+      else
+        result, _ = remote_target_files(bucket_client: bucket, prefix: prefix, include_temp: false, path_matchers: path_matchers)
+        modified, temp = remote_target_files(bucket_client: bucket, prefix: modified_prefix, include_temp: include_temp, path_matchers: path_matchers)
+      end
 
       # Add in local targets_modified if present
-      if ENV['OPENC3_LOCAL_MODE']
+      if ENV['OPENC3_LOCAL_MODE'] or !OpenC3::LocalMode.local_only_targets.empty?
         local_modified = OpenC3::LocalMode.local_target_files(scope: scope, target: target, path_matchers: path_matchers, include_temp: include_temp)
         local_modified.each do |filename|
-          if include_temp and filename.include?(TEMP_FOLDER)
+          if OpenC3::LocalMode.local_only_name?(filename)
+            # The local file is the only copy so it isn't marked as modified
+            result << filename
+          elsif !ENV['OPENC3_LOCAL_MODE']
+            next
+          elsif include_temp and filename.include?(TEMP_FOLDER)
             temp << filename
           else
             modified << filename unless modified.include?(filename)
@@ -100,16 +121,14 @@ module OpenC3
 
     def self.body(scope, name)
       name = strip_modified(name) # Remove '*' that indicates modified
+      # Local only targets are read from the local mode volume and never the bucket
+      if OpenC3::LocalMode.local_only_name?(name)
+        return local_body(scope, name)
+      end
       # First try opening a potentially modified version by looking for the modified target
       if ENV['OPENC3_LOCAL_MODE']
-        local_file = OpenC3::LocalMode.open_local_file(name, scope: scope)
-        if local_file
-          if File.extname(name) == ".bin"
-            return local_file.read
-          else
-            return local_file.read.force_encoding('UTF-8')
-          end
-        end
+        text = local_body(scope, name)
+        return text if text
       end
 
       bucket = Bucket.getClient()
@@ -136,6 +155,11 @@ module OpenC3
       # file listing, not a name any caller means to write. Remove it to avoid 
       # creating a file with a '*' in the name.
       name = strip_modified(name)
+      validate_name(name)
+      if OpenC3::LocalMode.local_only_name?(name)
+        OpenC3::LocalMode.put_target_file("#{scope}/targets_modified/#{name}", text, scope: scope)
+        return true
+      end
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.put_target_file("#{scope}/targets_modified/#{name}", text, scope: scope)
       end
@@ -163,6 +187,11 @@ module OpenC3
       # Match body/create so deleting a name taken straight from a listing
       # removes the file the user actually picked
       name = strip_modified(name)
+      validate_name(name)
+      if OpenC3::LocalMode.local_only_name?(name)
+        OpenC3::LocalMode.delete_local("#{scope}/targets_modified/#{name}")
+        return true
+      end
       if ENV['OPENC3_LOCAL_MODE']
         OpenC3::LocalMode.delete_local("#{scope}/targets_modified/#{name}")
       end
@@ -176,6 +205,20 @@ module OpenC3
     end
 
     # protected
+
+    def self.local_body(scope, name)
+      local_file = OpenC3::LocalMode.open_local_file(name, scope: scope)
+      return nil unless local_file
+      begin
+        if File.extname(name) == ".bin"
+          local_file.read
+        else
+          local_file.read.force_encoding('UTF-8')
+        end
+      ensure
+        local_file.close
+      end
+    end
 
     def self.remote_target_files(bucket_client:, prefix:, include_temp: false, path_matchers: nil)
       result = Set.new
@@ -191,6 +234,8 @@ module OpenC3
           temp << split_key[2..-1].join('/') if include_temp
           next
         end
+        # Local only targets are never read from the bucket
+        next if OpenC3::LocalMode.local_only_target?(split_key[2])
 
         if path_matchers
           found = false

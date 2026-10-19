@@ -1,0 +1,113 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+
+# Adversarial AI review: once every CI run for the PR head has finished, the PR
+# is scanned for obfuscated code, prompt injection, and other malicious changes,
+# and if the scan passes, Claude and Codex take turns reviewing the PR, fixing
+# CI failures and other issues, and committing fixes until one of them approves
+# without changes. The workflow, scanner, scripts and prompt live in
+# OpenC3/.github (ai-review-reusable.yml).
+#
+# workflow_run fires once per completed CI workflow; the run that sees all CI
+# done goes on to the scan and review. workflow_run only uses the copy of this
+# file on the default branch, so edits here take effect after they merge.
+#
+# When the scan blocks a PR, the review does not run and the PR's AI review
+# comment says why (the findings are in the run's summary). A maintainer (write
+# access or above) who has checked them adds the `malicious-scan-override` label
+# and then runs this workflow by hand for the PR. A new push is scanned again.
+#
+# To review a PR by hand, run this workflow from the Actions tab with the PR
+# number. The run fails with the reason if it cannot review.
+#
+# Secrets: ANTHROPIC_API_KEY (review and scan), OPENAI_API_KEY, AI_REVIEW_PUSH_TOKEN (to push
+#   fixes: a GitHub App token or fine-grained PAT with contents:write and no workflows permission,
+#   so GitHub refuses a fix that changes a workflow)
+# Variables (optional): AI_REVIEW_MAX_TURNS, AI_REVIEW_MAX_CI_ROUNDS, AI_REVIEW_CLAUDE_MODEL
+#   (review and scan), AI_REVIEW_CODEX_MODEL, AI_REVIEW_CLAUDE_MAX_BUDGET_USD,
+#   AI_REVIEW_CODEX_SANDBOX
+# Add the `skip-ai-review` label to a PR to opt out.
+
+name: AI Review
+
+on:
+  # workflow_run:
+  #   # Every workflow that runs on pull_request, plus GitHub's CodeQL default setup. Each run warns
+  #   # about a missing one; the gate waits only on pull_request runs, not built-in ones like CodeQL.
+  #   workflows:
+  #     - API Tests
+  #     - Build UBI
+  #     - CLI Tests
+  #     - CodeQL
+  #     - Dependency Review
+  #     - eslint
+  #     - Frontend Generator Tests
+  #     - Playwright Tests
+  #     - Python Lint
+  #     - Python Type Check
+  #     - Python Unit Tests
+  #     - Ruby Unit Tests
+  #     - Shell Lint
+  #     - Check Spelling
+  #     - Tool Version Check
+  #     - Trivy Scan
+  #     - TSDB Integration Tests
+  #   types:
+  #     - completed
+  #   # Pushes to main run CI too; skip them here instead of starting a run that does nothing
+  #   branches-ignore:
+  #     - main
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to review
+        required: true
+      force:
+        description: Review even if this commit was already reviewed
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  review:
+    uses: OpenC3/.github/.github/workflows/ai-review-reusable.yml@main
+    permissions:
+      actions: read
+      checks: read
+      contents: read
+      pull-requests: write
+    with:
+      pr_number: ${{ inputs.pr_number }}
+      force: ${{ inputs.force || false }}
+      review_instructions: |
+        - Ruby/Python parity: COSMOS keeps equivalent Ruby (openc3/lib) and Python (openc3/python)
+          implementations, so a change to one usually needs the same change to the other.
+      max_turns: ${{ vars.AI_REVIEW_MAX_TURNS }}
+      max_ci_rounds: ${{ vars.AI_REVIEW_MAX_CI_ROUNDS }}
+      claude_model: ${{ vars.AI_REVIEW_CLAUDE_MODEL }}
+      codex_model: ${{ vars.AI_REVIEW_CODEX_MODEL }}
+      claude_max_budget_usd: ${{ vars.AI_REVIEW_CLAUDE_MAX_BUDGET_USD }}
+      codex_sandbox: ${{ vars.AI_REVIEW_CODEX_SANDBOX }}
+      scan_project_description: >-
+        OpenC3 COSMOS, an open-source command and control system for spacecraft and embedded systems
+        (Ruby, Python, Vue/JS, shell, Docker)
+      # The built docs site (Docusaurus output published to GitHub Pages; the source is docs.openc3.com/)
+      scan_generated_paths: |
+        docs/**/*.html
+        docs/assets/**
+        docs/search-*.json
+    secrets:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      AI_REVIEW_PUSH_TOKEN: ${{ secrets.AI_REVIEW_PUSH_TOKEN }}

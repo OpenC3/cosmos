@@ -17,41 +17,75 @@ from openc3.environment import OPENC3_LOCAL_MODE_PATH
 
 class LocalMode:
     LOCAL_MODE_PATH = OPENC3_LOCAL_MODE_PATH or "/plugins"
-    # When updating update local_mode.rb, PluginsTab.vue, plugins.p.spec.ts
-    DEFAULT_PLUGINS = [
-        "openc3-cosmos-tool-admin",
-        "openc3-cosmos-tool-bucketexplorer",
-        "openc3-cosmos-tool-cmdsender",
-        "openc3-cosmos-tool-cmdqueue",  # Enterprise only
-        "openc3-cosmos-tool-cmdhistory",  # Enterprise only
-        "openc3-cosmos-tool-cmdtlmserver",
-        "openc3-cosmos-tool-dataextractor",
-        "openc3-cosmos-tool-dataviewer",
-        "openc3-cosmos-tool-docs",
-        "openc3-cosmos-tool-handbooks",
-        "openc3-cosmos-tool-iframe",
-        "openc3-cosmos-tool-limitsmonitor",
-        "openc3-cosmos-tool-packetviewer",
-        "openc3-cosmos-tool-scriptrunner",
-        "openc3-cosmos-tool-tablemanager",
-        "openc3-cosmos-tool-tlmgrapher",
-        "openc3-cosmos-tool-tlmviewer",
-        "openc3-cosmos-enterprise-tool-admin",  # Enterprise only
-        "openc3-cosmos-tool-autonomic",  # Enterprise only
-        "openc3-cosmos-tool-calendar",  # Enterprise only
-        "openc3-cosmos-tool-grafana",  # Enterprise only
-        "openc3-cosmos-tool-logexplorer",  # Enterprise only
-        "openc3-cosmos-tool-notebooks",  # Enterprise only
-        "openc3-cosmos-tool-systemhealth",  # Enterprise only
-        "openc3-enterprise-tool-base",  # Enterprise only
-        "openc3-tool-base",
-    ]
+
+    @staticmethod
+    def local_only_targets():
+        """Target names from OPENC3_LOCAL_ONLY_TARGETS (comma separated). These targets keep
+        their target files only in the local mode volume and never read or write them in the
+        bucket. Read on every call so it can't go stale."""
+        names = os.environ.get("OPENC3_LOCAL_ONLY_TARGETS") or ""
+        return [name.strip().upper() for name in names.split(",") if name.strip()]
+
+    @classmethod
+    def local_only_target(cls, target_name):
+        if not target_name:
+            return False
+        return str(target_name).upper() in cls.local_only_targets()
+
+    @classmethod
+    def local_only_name(cls, name):
+        """name is relative to targets / targets_modified, e.g. "INST/procedures/test.py" """
+        return cls.local_only_target(str(name).split("/")[0])
+
+    @classmethod
+    def local_only_key(cls, key):
+        """key is a config bucket key, e.g. "DEFAULT/targets_modified/INST/procedures/test.py" """
+        split_key = str(key).split("/")
+        if len(split_key) < 3 or split_key[1] not in ("targets", "targets_modified"):
+            return False
+        return cls.local_only_target(split_key[2])
+
+    @classmethod
+    def local_target_dir_exists(cls, path, scope):
+        """True if path, relative to targets_modified (e.g. "INST/lib/utils"), is a local directory"""
+        full_path = cls.scope_path(scope, f"targets_modified/{path}")
+        return bool(full_path and cls.safe_key(path) and os.path.isdir(full_path))
+
+    @staticmethod
+    def safe_key(key):
+        """True if the key has no '.' / '..' segments, no empty segments, no leading
+        slash and no backslash. Such a key always resolves under its first segment
+        (the scope), both on disk and in the bucket (the bucket normalizes '..')."""
+        if not isinstance(key, str) or not key:
+            return False
+        if key.startswith("/") or "\\" in key or "\0" in key:
+            return False
+        return all(segment not in ("", ".", "..") for segment in key.split("/"))
+
+    @staticmethod
+    def path_within(path, root):
+        """True if path resolves to root or somewhere beneath it. Compares against
+        root plus a separator so a sibling such as /plugins_old never matches."""
+        expanded = os.path.abspath(path)
+        root = os.path.abspath(root)
+        return expanded == root or expanded.startswith(root + os.sep)
+
+    @classmethod
+    def scope_path(cls, scope, relative_path):
+        """Local file path for a scope relative path, or None if it would leave the scope directory"""
+        if not cls.safe_key(scope) or "/" in scope:
+            return None
+        scope_root = f"{cls.LOCAL_MODE_PATH}/{scope}"
+        full_path = f"{scope_root}/{relative_path}"
+        if not cls.path_within(full_path, scope_root):
+            return None
+        return full_path
 
     @classmethod
     def put_target_file(cls, path, io_or_string, scope):
-        full_folder_path = f"{cls.LOCAL_MODE_PATH}/{path}"
-        if not os.path.normpath(full_folder_path).startswith(cls.LOCAL_MODE_PATH):
+        if not cls.safe_key(path) or not path.startswith(f"{scope}/"):
             return
+        full_folder_path = f"{cls.LOCAL_MODE_PATH}/{path}"
         os.makedirs(os.path.dirname(full_folder_path), exist_ok=True)
         with open(full_folder_path, "wb") as file:
             if hasattr(io_or_string, "read"):
@@ -65,8 +99,8 @@ class LocalMode:
     @classmethod
     def open_local_file(cls, path, scope):
         try:
-            full_path = f"{cls.LOCAL_MODE_PATH}/{scope}/targets_modified/{path}"
-            if os.path.normpath(full_path).startswith(cls.LOCAL_MODE_PATH):
+            full_path = cls.scope_path(scope, f"targets_modified/{path}")
+            if full_path and cls.safe_key(path):
                 return open(full_path, "rb")
             return None
         except OSError:
@@ -75,22 +109,22 @@ class LocalMode:
     @classmethod
     def save_tool_config(cls, scope, tool, name, data):
         json_data = json.loads(data)
-        config_path = f"{cls.LOCAL_MODE_PATH}/{scope}/tool_config/{tool}/{name}.json"
-        if os.path.normpath(config_path).startswith(cls.LOCAL_MODE_PATH):
+        config_path = cls.scope_path(scope, f"tool_config/{tool}/{name}.json")
+        if config_path and cls.safe_key(f"{tool}/{name}"):
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
             with open(config_path, "w") as file:
                 file.write(json.dumps(json_data, indent=2))
 
     @classmethod
     def delete_tool_config(cls, scope, tool, name):
-        config_path = f"{cls.LOCAL_MODE_PATH}/{scope}/tool_config/{tool}/{name}.json"
-        if os.path.normpath(config_path).startswith(cls.LOCAL_MODE_PATH):
+        config_path = cls.scope_path(scope, f"tool_config/{tool}/{name}.json")
+        if config_path and cls.safe_key(f"{tool}/{name}"):
             os.remove(config_path)
 
     @classmethod
     def save_setting(cls, scope, name, data):
-        config_path = f"{cls.LOCAL_MODE_PATH}/{scope}/settings/{name}.json"
-        if os.path.normpath(config_path).startswith(cls.LOCAL_MODE_PATH):
+        config_path = cls.scope_path(scope, f"settings/{name}.json")
+        if config_path and cls.safe_key(name):
             os.makedirs(os.path.dirname(config_path), exist_ok=True)
             # Anything can be stored as a setting so write it out directly
             with open(config_path, "w") as file:

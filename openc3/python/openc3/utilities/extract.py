@@ -46,8 +46,13 @@ INTERPOLATION_REGEX = re.compile(r"^(?:[fF][rRbB]?|[rRbB][fF])['\"]")
 # rather than a literal so literal_eval rejects it.
 BYTEARRAY_REGEX = re.compile(r"^bytearray\((.*)\)$", re.DOTALL)
 
-SPLIT_WITH_REGEX = re.compile(r"\s+with\s+", re.IGNORECASE)
-SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX = re.compile(r"\s*with\s*", re.IGNORECASE)
+# Matches the 'with' that separates the command from its parameters. Only a
+# single whitespace character is matched on each side (the rest of each run is
+# stripped by the caller) so the pattern stays free of quantifiers, which a
+# leading \s+ would make super-linear to search for.
+SPLIT_WITH_REGEX = re.compile(r"\swith\s", re.IGNORECASE)  # codespell:ignore
+# 'with' surrounded by optional whitespace is simply 'with' appearing anywhere
+SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX = re.compile(r"with", re.IGNORECASE)
 
 # Regular expression to identify a String as a floating point number
 FLOAT_CHECK_REGEX = re.compile(r"\A\s*[-+]?\d*\.\d+\s*\Z")
@@ -162,6 +167,10 @@ def add_cmd_parameter(keyword, value, cmd_params):
 
 def extract_fields_from_cmd_text(text):
     split_string = re.split(SPLIT_WITH_REGEX, text, maxsplit=1)  # 1 split, therefore 2 elements
+    if len(split_string) == 2:
+        # SPLIT_WITH_REGEX matches a single whitespace character on each side of
+        # 'with', so drop the rest of each run to match a r"\s+with\s+" split
+        split_string = [split_string[0].rstrip(), split_string[1].lstrip()]
     if len(split_string) == 0 or split_string[0] == "":
         raise RuntimeError("ERROR: text must not be empty")
     if (len(split_string) == 1 and re.search(SPLIT_WITH_OPTIONAL_WHITESPACE_REGEX, text)) or (

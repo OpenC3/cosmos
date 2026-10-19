@@ -79,3 +79,48 @@ test('inserts and edits commands', async ({ page, utils }) => {
     'cmd("INST COLLECT with TYPE \'NORMAL\', DURATION 1, OPCODE 0xAB, TEMP 0")\n',
   )
 })
+
+test('preserves a trailing comment when editing a command', async ({
+  page,
+  utils,
+}) => {
+  // Editing an existing command rebuilds the whole line, so the indentation and
+  // any trailing comment have to be carried across to the replacement
+  await page.locator('textarea').fill('cmd("INST ABORT")  # keep this comment')
+  await page.locator('.ace_content').click({ button: 'right' })
+  await page.getByText('Edit Command').click()
+  // The dialog loads the existing command before it can be rebuilt
+  await expect(page.locator('[data-test="select-target"]')).toContainText(
+    'INST',
+  )
+  await expect(page.locator('[data-test="select-packet"]')).toContainText(
+    'ABORT',
+  )
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+  await expect(page.locator('.ace_content')).toContainText(
+    'cmd("INST ABORT")  # keep this comment',
+  )
+
+  // Changing the command keeps the comment attached to the rebuilt line
+  await page.locator('.ace_content').click({ button: 'right' })
+  await page.getByText('Edit Command').click()
+  await utils.selectTargetPacketItem('INST', 'CLEAR')
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+  await expect(page.locator('.ace_content')).toContainText(
+    'cmd("INST CLEAR")  # keep this comment',
+  )
+})
+
+test('edits a command on a line with no trailing comment', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('textarea').fill('cmd("INST ABORT")')
+  await page.locator('.ace_content').click({ button: 'right' })
+  await page.getByText('Edit Command').click()
+  await utils.selectTargetPacketItem('INST', 'CLEAR')
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+  await expect(page.locator('.ace_content')).toContainText('cmd("INST CLEAR")')
+  // No comment existed, so none is invented
+  await expect(page.locator('.ace_content')).not.toContainText('#')
+})

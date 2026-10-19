@@ -255,7 +255,7 @@ class RunningScript:
     # Matches the following test cases:
     # class MySuite(TestSuite)
     # class MySuite(Suite)
-    PYTHON_SUITE_REGEX = re.compile(r"\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)")
+    PYTHON_SUITE_REGEX = re.compile(r"class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)")
 
     # Can't use isoformat because it appends "+00:00" instead of "Z"
     STRFTIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -702,7 +702,8 @@ class RunningScript:
                 trace.append(f"{filename}:{lineno}:{name}:{line}")
         return trace
 
-    def execute_while_paused(self, filename, line_no=1, end_line_no=None):
+    # bind_variables of None binds only when filename is the currently running file
+    def execute_while_paused(self, filename, line_no=1, end_line_no=None, bind_variables=None):
         if (
             self.script_status.state == "paused"
             or self.script_status.state == "error"
@@ -712,6 +713,7 @@ class RunningScript:
                 "filename": filename,
                 "line_no": line_no,
                 "end_line_no": end_line_no,
+                "bind_variables": bind_variables,
             }
         else:
             self.scriptrunner_puts(
@@ -864,10 +866,10 @@ class RunningScript:
     def check_execute_while_paused(self):
         try:
             if self.execute_while_paused_info is not None:
-                if self.script_status.current_filename == self.execute_while_paused_info.get("filename"):
-                    bind_variables = True
-                else:
-                    bind_variables = False
+                filename = self.execute_while_paused_info.get("filename")
+                bind_variables = self.execute_while_paused_info.get("bind_variables")
+                if bind_variables is None:
+                    bind_variables = self.script_status.current_filename == filename
                 if self.execute_while_paused_info.get("end_line_no"):
                     # Execute Selection While Paused
                     state = self.script_status.state
@@ -1481,19 +1483,22 @@ openc3.script.start = start
 
 def goto(line_no_or_procedure_name, line_no=None):
     if line_no is None:
-        start(
-            RunningScript.instance.current_filename(),
-            line_no=line_no_or_procedure_name,
-            bind_variables=True,
-            complete=True,
-        )
+        procedure_name = RunningScript.instance.current_filename()
+        line_no = line_no_or_procedure_name
     else:
-        start(
-            line_no_or_procedure_name,
-            line_no=line_no,
-            bind_variables=True,
-            complete=True,
-        )
+        procedure_name = line_no_or_procedure_name
+    # goto typed at the debug prompt is executed on the thread that processes
+    # go/step/stop messages. Running the script there deadlocks at the next pause,
+    # so hand it to the run thread the same way the editor's goto does.
+    if threading.current_thread() is not RunningScript.run_thread:
+        RunningScript.instance.execute_while_paused(procedure_name, line_no, bind_variables=True)
+        return
+    start(
+        procedure_name,
+        line_no=line_no,
+        bind_variables=True,
+        complete=True,
+    )
 
 
 openc3.script.goto = goto

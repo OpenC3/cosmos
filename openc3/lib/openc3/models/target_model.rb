@@ -109,10 +109,14 @@ module OpenC3
       modified_targets = []
       if ENV['OPENC3_LOCAL_MODE']
         modified_targets += OpenC3::LocalMode.modified_targets(scope: scope)
+      elsif !OpenC3::LocalMode.local_only_targets.empty?
+        modified_targets += OpenC3::LocalMode.modified_targets(scope: scope).select { |name| OpenC3::LocalMode.local_only_target?(name) }
       end
       # Always list the bucket, even in local mode, since the local directory
-      # only holds what COSMOS itself wrote there
-      modified_targets += Bucket.getClient().list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "#{scope}/targets_modified/", only_directories: true)
+      # only holds what COSMOS itself wrote there. Local only targets are
+      # never read from the bucket.
+      bucket_targets = Bucket.getClient().list_files(bucket: ENV['OPENC3_CONFIG_BUCKET'], path: "#{scope}/targets_modified/", only_directories: true)
+      modified_targets += bucket_targets.reject { |name| OpenC3::LocalMode.local_only_target?(name) }
       modified_targets.each do |target_name|
         # A target could have been deleted without removing the modified files
         # Thus we have to check for the existence of the target_name key
@@ -186,13 +190,15 @@ module OpenC3
     def self.modified_files(target_name, scope:)
       modified = []
 
-      if ENV['OPENC3_LOCAL_MODE']
+      if ENV['OPENC3_LOCAL_MODE'] or OpenC3::LocalMode.local_only_target?(target_name)
         # LocalMode reports target relative paths, i.e. "procedures/new.rb",
         # so add the target name to match the bucket listing below
         modified += OpenC3::LocalMode.modified_files(target_name, scope: scope).map do |file_path|
           "#{target_name}/#{file_path}"
         end
       end
+      # Local only targets are never read from the bucket
+      return modified.uniq.sort if OpenC3::LocalMode.local_only_target?(target_name)
       # Always list the bucket, even in local mode. The local directory only
       # holds what COSMOS itself wrote there, so a file placed directly in the
       # bucket is modified but has no local copy.
@@ -216,16 +222,28 @@ module OpenC3
     # some modified files while keeping others); when nil, every modified file
     # for the target is removed (the original behavior).
     def self.delete_modified(target_name, scope:, files: nil)
+      # Validate target_name to not allow directory traversal
+      unless OpenC3::LocalMode.safe_key?(target_name) and !target_name.include?('/')
+        raise ArgumentError, "Invalid target_name: #{target_name.inspect}"
+      end
       if files && !files.empty?
+        # Only delete names that are actually modified files of this target.
+        # Anything else (another target, another scope via '..') is ignored.
+        allowed = modified_files(target_name, scope: scope)
         files.each do |name|
+          next unless String === name
+          name = OpenC3::TargetFile.strip_modified(name)
+          next unless allowed.include?(name)
           # TargetFile.destroy handles both local mode and the bucket.
           OpenC3::TargetFile.destroy(scope, name)
         end
         return
       end
-      if ENV['OPENC3_LOCAL_MODE']
+      if ENV['OPENC3_LOCAL_MODE'] or OpenC3::LocalMode.local_only_target?(target_name)
         OpenC3::LocalMode.delete_modified(target_name, scope: scope)
       end
+      # Local only targets are never written to the bucket
+      return if OpenC3::LocalMode.local_only_target?(target_name)
       bucket = Bucket.getClient()
       # Delete the remote files as well
       resp = bucket.list_objects(
@@ -249,7 +267,7 @@ module OpenC3
         Zip.continue_on_exists_proc = true
         zip = Zip::File.open(zip_filename, create: true)
 
-        if ENV['OPENC3_LOCAL_MODE']
+        if ENV['OPENC3_LOCAL_MODE'] or OpenC3::LocalMode.local_only_target?(target_name)
           OpenC3::LocalMode.zip_target(target_name, zip, scope: scope)
         else
           bucket = Bucket.getClient()
@@ -751,11 +769,12 @@ module OpenC3
     # Version History is an Enterprise feature. The plugin deploy runs in the
     # cmd-tlm-api process, which (unlike script-runner-api) doesn't otherwise
     # require the store, so lazily load it on demand. Returns false in Core
-    # builds where the Enterprise gem isn't present.
+    # builds where the Enterprise gem isn't present, and when the store is
+    # disabled (OPENC3_VERSION_HISTORY_DIR unset): its commits no-op there, so
+    # versioning would drop the modified copy without preserving it.
     def version_store_available?
-      return true if defined?(::VersionStore)
-      require 'openc3-enterprise/utilities/version_store'
-      defined?(::VersionStore) ? true : false
+      require 'openc3-enterprise/utilities/version_store' unless defined?(::VersionStore)
+      defined?(::VersionStore) && ::VersionStore.enabled? ? true : false
     rescue LoadError
       false
     end
@@ -765,6 +784,8 @@ module OpenC3
     # copy), commits it, removes it, then commits the incoming plugin content.
     # Best-effort: a versioning failure must not abort the plugin upgrade.
     def apply_upgrade_version(name, new_data, ctx)
+      # Local only targets have no modified copy in the bucket
+      return if OpenC3::LocalMode.local_only_name?(name)
       modified_key = "#{@scope}/targets_modified/#{name}"
       resp = @bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: modified_key)
       return unless resp && resp.body
@@ -791,6 +812,7 @@ module OpenC3
     # a modified copy exists and differs (by bytes) from the rendered plugin
     # content. Read-only.
     def collect_modified_diff(name, new_data, collector)
+      return if OpenC3::LocalMode.local_only_name?(name)
       resp = @bucket.get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "#{@scope}/targets_modified/#{name}")
       return unless resp && resp.body
       collector << name if resp.body.read.b != new_data.b
