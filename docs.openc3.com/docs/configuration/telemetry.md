@@ -339,6 +339,12 @@ define additional named sets (e.g. TVAC), the DEFAULT set must be defined first.
 Attempting to define a named set before DEFAULT will raise an error of the form
 "DEFAULT limits set must be defined for TARGET PACKET ITEM before setting limits set NAME".
 
+A value exactly equal to a limit is placed in the outer (more severe) state.
+For example, with LIMITS DEFAULT 1 ENABLED 1 3 7 9 4 6 an integer item reports
+RED_LOW at 1 and below, YELLOW_LOW at 2-3, GREEN_LOW at 4, BLUE at 5,
+GREEN_HIGH at 6, YELLOW_HIGH at 7-8 and RED_HIGH at 9 and above. Without
+the green limits, 4-6 would all be GREEN.
+
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -349,8 +355,8 @@ Attempting to define a named set before DEFAULT will raise an error of the form
 | Yellow Low Limit | If the telemetry value is less than or equal to this value, but greater than the Red Low Limit, a Yellow Low condition will be detected | True |
 | Yellow High Limit | If the telemetry value is greater than or equal to this value, but less than the Red High Limit, a Yellow High condition will be detected | True |
 | Red High Limit | If the telemetry value is greater than or equal to this value a Red High condition will be detected | True |
-| Green Low Limit | Setting the Green Low and Green High limits defines an "operational limit" which is colored blue by OpenC3. This allows for a distinct desired operational range which is narrower than the green safety limit. If the telemetry value is greater than or equal to this value, but less than the Green High Limit, a Blue operational condition will be detected. | False |
-| Green High Limit | Setting the Green Low and Green High limits defines an "operational limit" which is colored blue by OpenC3. This allows for a distinct desired operational range which is narrower than the green safety limit. If the telemetry value is less than or equal to this value, but greater than the Green Low Limit, a Blue operational condition will be detected. | False |
+| Green Low Limit | Setting the Green Low and Green High limits defines an "operational limit" which is colored blue by OpenC3. This allows for a distinct desired operational range which is narrower than the green safety limit. If the telemetry value is greater than this value, but less than the Green High Limit, a Blue operational condition will be detected. If the telemetry value is less than or equal to this value, but greater than the Yellow Low Limit, a Green Low condition will be detected. | False |
+| Green High Limit | Setting the Green Low and Green High limits defines an "operational limit" which is colored blue by OpenC3. This allows for a distinct desired operational range which is narrower than the green safety limit. If the telemetry value is less than this value, but greater than the Green Low Limit, a Blue operational condition will be detected. If the telemetry value is greater than or equal to this value, but less than the Yellow High Limit, a Green High condition will be detected. | False |
 
 Example Usage:
 ```cosmos
