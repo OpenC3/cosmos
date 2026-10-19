@@ -26,6 +26,24 @@ VARIABLE_DESCRIPTION:
     - name: Description
       required: true
       description: Human-readable description of the variable's purpose
+VARIABLE_HIDDEN:
+  summary: Hide a plugin variable from the plugin installation dialog
+  description: The VARIABLE_HIDDEN keyword hides the previously defined VARIABLE in the plugin installation dialog.
+    Its value is set by the VARIABLE_STATE_SET and VARIABLE_DISCOVERY_SET keywords of other variables and can be used
+    in ERB and as a VARIABLE_DISCOVERY parameter, for example to pass per state parameters to a discovery.
+    Since it can't be edited, a hidden variable always takes the values set by the selected states of the installed
+    plugin.txt, including when upgrading. Must follow a VARIABLE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE device shelly
+      VARIABLE_STATE Shelly shelly
+        VARIABLE_STATE_SET mdns_types _shelly._tcp.local.
+      VARIABLE_STATE "Philips Hue" hue
+        VARIABLE_STATE_SET mdns_types _hue._tcp.local.
+    VARIABLE mdns_types ""
+      VARIABLE_HIDDEN
+    VARIABLE host ""
+      VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}
       values: .+
 VARIABLE_BRIDGE:
   summary: Let the user select which bridge the plugin uses
@@ -53,10 +71,18 @@ VARIABLE_DISCOVERY:
   description: The VARIABLE_DISCOVERY keyword runs a Python discovery class on the host computer paired with
     COSMOS through openc3-app, using the bridge selected by VARIABLE_BRIDGE (or the DEFAULT bridge). The values it finds are added to the dropdown for the
     previously defined VARIABLE in the plugin installation dialog, after any VARIABLE_STATE options.
-    Discovery runs when the dialog opens and can be refreshed. If openc3-app is not running the variable can
+    Discovery runs when the dialog opens and can be refreshed. When installing a new plugin, the first available
+    discovered value is selected automatically unless a value was already chosen. If openc3-app is not running the variable can
     still be typed in by hand. Discovery classes subclass openc3/discovery/discovery.py and implement discover().
-    COSMOS provides openc3/discovery/serial_discovery.py (lists serial ports) and openc3/discovery/hid_discovery.py
-    (lists the serial numbers of USB HID devices, optionally limited by Vendor ID and Product ID, and requires the hidapi package on the host).
+    Parameters can include the value of another variable as ${name}. A variable holding several space separated values passes
+    each as a parameter. The discovery reruns when a referenced variable changes, and is skipped when they are all blank.
+    COSMOS provides openc3/discovery/serial_discovery.py (lists serial ports, optionally limited to USB VID:PID parameters (the PID can be omitted)
+    like 10C4:EA60), openc3/discovery/hid_discovery.py (lists the serial numbers of USB HID devices, optionally limited by
+    Vendor ID and Product ID, and requires the hidapi package on the host), openc3/discovery/zeroconf_discovery.py
+    (lists the IP addresses of devices advertising the mDNS service types given as parameters, each optionally followed by
+    |name=glob or |property=glob filters, e.g. _http._tcp.local.|name=shelly*) and openc3/discovery/bluetooth_discovery.py
+    (lists the addresses of Bluetooth LE devices matching any of the matchers given as parameters, each made of
+    local_name=glob, service_uuid=uuid, service_data_uuid=uuid or manufacturer_id=id joined with |).
     A variable can have multiple VARIABLE_DISCOVERY keywords and their results are combined. Each can be followed by
     VARIABLE_DISCOVERY_SET keywords that set other variables when a value it found is selected.
     Discovered values are claimed by the plugin that uses them. Once a plugin is installed, the value it chose
@@ -71,6 +97,8 @@ VARIABLE_DISCOVERY:
     VARIABLE controller_serial nil
       VARIABLE_STATE "First controller found" nil
       VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x0CE6
+    VARIABLE light_host ""
+      VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py _hue._tcp.local.
   parameters:
     - name: Discovery Class Filename or Module
       required: true

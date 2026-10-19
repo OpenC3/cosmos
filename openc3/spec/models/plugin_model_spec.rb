@@ -289,6 +289,50 @@ module OpenC3
         expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY openc3/discovery']) }.to raise_error(/requires a Python discovery class filename/)
       end
 
+      it "parses VARIABLE_HIDDEN" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE device shelly',
+          '  VARIABLE_STATE Shelly shelly',
+          '    VARIABLE_STATE_SET mdns_types _shelly._tcp.local.',
+          '  VARIABLE_STATE Hue hue',
+          '    VARIABLE_STATE_SET mdns_types _hue._tcp.local.',
+          'VARIABLE mdns_types ""',
+          '  VARIABLE_HIDDEN',
+        ])
+        expect(model['variables']['mdns_types']).to eq({ 'value' => '_shelly._tcp.local.', 'hidden' => true })
+        expect { phase1_with_plugin_txt(['VARIABLE_HIDDEN']) }.to raise_error(/VARIABLE_HIDDEN must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_HIDDEN true']) }.to raise_error(/Too many parameters/)
+      end
+
+      it "sets hidden variables from the selected state on upgrade" do
+        lines = [
+          'VARIABLE device hue',
+          '  VARIABLE_STATE Hue hue',
+          '    VARIABLE_STATE_SET mdns_types _hue._tcp.local.',
+          '    VARIABLE_STATE_SET host ""',
+          'VARIABLE host ""',
+          'VARIABLE mdns_types ""',
+          '  VARIABLE_HIDDEN',
+        ]
+        existing = { 'device' => 'hue', 'host' => '10.0.0.5', 'mdns_types' => '_old._tcp.local.' }
+        model = phase1_with_plugin_txt(lines, existing_variables: existing)
+        # A user entered value is kept but the hidden value follows the new plugin.txt
+        expect(model['variables']['host']['value']).to eq('10.0.0.5')
+        expect(model['variables']['mdns_types']['value']).to eq('_hue._tcp.local.')
+      end
+
+      it "parses VARIABLE_DISCOVERY references to other variables" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE host ""',
+          '  VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}',
+          'VARIABLE mdns_types _hue._tcp.local.',
+          '  VARIABLE_HIDDEN',
+        ])
+        expect(model['variables']['host']['discovery']).to eq([{ 'discovery' => ['openc3/discovery/zeroconf_discovery.py', '${mdns_types}'] }])
+        expect { phase1_with_plugin_txt(['VARIABLE host ""', 'VARIABLE_DISCOVERY a.b ${missing}']) }.to raise_error(/discovery 'a.b \$\{missing\}' references undefined VARIABLE 'missing'/)
+        expect { phase1_with_plugin_txt(['VARIABLE host ""', 'VARIABLE_DISCOVERY a.b x${host}']) }.to raise_error(/cannot reference itself/)
+      end
+
       it "raises error for VARIABLE_DISCOVERY_SET problems" do
         expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY_SET other 1', 'VARIABLE other 1']) }.to raise_error(/VARIABLE_DISCOVERY_SET must follow a VARIABLE_DISCOVERY definition/)
         expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY a.b', 'VARIABLE_DISCOVERY_SET missing 1']) }.to raise_error(/discovery 'a.b' references undefined VARIABLE 'missing'/)
@@ -371,7 +415,7 @@ module OpenC3
         expect { phase1_with_plugin_txt(['PLUGIN_TEXT_END']) }.to raise_error(/PLUGIN_TEXT_END must follow a PLUGIN_TEXT_START/)
       end
 
-      def phase1_with_plugin_txt(lines)
+      def phase1_with_plugin_txt(lines, existing_variables: nil)
         expect(GemModel).to receive(:put)
         gem = double("gem")
         expect(gem).to receive(:extract_files) do |path|
@@ -383,7 +427,7 @@ module OpenC3
         allow(spec).to receive(:metadata).and_return({})
         allow(gem).to receive(:spec).and_return(spec)
         expect(Gem::Package).to receive(:new).and_return(gem)
-        PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
+        PluginModel.install_phase1(__FILE__, existing_variables: existing_variables, scope: "DEFAULT")
       end
 
       it "raises error for VARIABLE_STATE_SHOW without VARIABLE_STATE" do
@@ -913,6 +957,29 @@ module OpenC3
           expect(install_plugin['needs_dependencies']).to eql true
         end
 
+        {
+          'requirements.txt' => ["-c constraints.txt\n<%= driver %>==1.0", "-c constraints.txt\naioshelly==1.0\n"],
+          'pyproject.toml' => ["[project]\ndependencies = [\"<%= driver %>==1.0\"]", "[project]\ndependencies = [\"aioshelly==1.0\"]\n"],
+        }.each do |dep_file, (template, expected)|
+          it "renders ERB in #{dep_file} with the plugin variables before installing" do
+            stub_plugin_gem(dep_file: dep_file, dep_body: template)
+            stub_uv_on_path(true)
+            allow(PythonVenv).to receive(:purge_reserved_packages).and_return([])
+            rendered = nil
+            expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "--default-index", anything) do |_, _, gem_path, *_|
+              rendered = File.read(File.join(gem_path, dep_file))
+              ["ok", success_status]
+            end
+
+            PluginModel.install_phase2({"name" => "name", "variables" => {"driver" => {"value" => "aioshelly"}}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+            expect(rendered).to eql(expected)
+            if dep_file == 'requirements.txt'
+              # Stored rendered for bridges to provision the host
+              expect(PluginModel.get(name: "name__0", scope: "DEFAULT")['python_requirements']).to eql(expected)
+            end
+          end
+        end
+
         it "purges a plugin-supplied openc3 from the venv after uvinstall succeeds" do
           stub_plugin_gem
           stub_uv_on_path(true)
@@ -1012,6 +1079,33 @@ module OpenC3
           result = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines},
             scope: "DEFAULT", diff_only: true)
           expect(result).to eql([])
+        end
+      end
+    end
+
+    describe "self.render_python_dependency_erb" do
+      it "renders variables and resolves files relative to the dependency file" do
+        Dir.mktmpdir do |dir|
+          path = File.join(dir, 'requirements.txt')
+          File.write(File.join(dir, 'drivers.json'), '{"shelly": ["aioshelly==13.23.1", "bleak==2.1.1"]}')
+          File.write(path, <<~ERB)
+            # Comment mentioning <%= not_a_variable %>
+            homeassistant==2026.2.3
+            <%- require 'json' -%>
+            <%= JSON.parse(File.read(File.join(File.dirname(__FILE__), 'drivers.json')))[integration].join("\\n") %>
+          ERB
+          PluginModel.render_python_dependency_erb(path, {'integration' => 'shelly'})
+          expect(File.read(path)).to eql("# Comment mentioning \nhomeassistant==2026.2.3\naioshelly==13.23.1\nbleak==2.1.1\n")
+        end
+      end
+
+      it "leaves files without ERB untouched" do
+        Dir.mktmpdir do |dir|
+          path = File.join(dir, 'requirements.txt')
+          File.write(path, "requests\n")
+          expect(File).not_to receive(:write)
+          PluginModel.render_python_dependency_erb(path, {})
+          expect(File.read(path)).to eql("requests\n")
         end
       end
     end

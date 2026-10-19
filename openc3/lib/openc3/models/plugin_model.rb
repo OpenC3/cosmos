@@ -53,6 +53,8 @@ module OpenC3
     RESERVED_VARIABLE_NAMES = ['target_name', 'microservice_name', 'scope']
     # Variable defined by VARIABLE_BRIDGE holding the selected bridge
     BRIDGE_VARIABLE_NAME = 'bridge_name'
+    # ${name} in a VARIABLE_DISCOVERY parameter is replaced by the value of variable name
+    DISCOVERY_REFERENCE = /\$\{(\w+)\}/
     PLUGIN_TXT = 'plugin.txt'
 
     attr_accessor :variables
@@ -60,6 +62,9 @@ module OpenC3
     attr_accessor :plugin_text
     attr_accessor :minimum_cosmos_version
     attr_accessor :needs_dependencies
+    # The plugin's requirements.txt as installed, which bridges send to the host
+    # (openc3-app) to provision bridged interfaces
+    attr_accessor :python_requirements
     attr_accessor :store_plugin_id
     attr_accessor :store_version_id
     attr_accessor :title
@@ -196,6 +201,14 @@ module OpenC3
               raise "VARIABLE_DESCRIPTION must follow a VARIABLE definition"
             end
             variables[current_variable_name]['description'] = params[0]
+          when 'VARIABLE_HIDDEN'
+            parser.verify_num_parameters(0, 0, keyword)
+            unless current_variable_name
+              raise "VARIABLE_HIDDEN must follow a VARIABLE definition"
+            end
+            # Never shown in the plugin dialog. Its value comes from VARIABLE_STATE_SET or
+            # VARIABLE_DISCOVERY_SET for use in ERB and VARIABLE_DISCOVERY parameters.
+            variables[current_variable_name]['hidden'] = true
           when 'VARIABLE_STATE'
             usage = "#{keyword} <Display Text> <Value>"
             parser.verify_num_parameters(1, 2, usage)
@@ -264,8 +277,15 @@ module OpenC3
             end
           end
           Array(variable['discovery']).each do |discovery|
+            source = "discovery '#{discovery['discovery'].join(' ')}'"
             Array(discovery['set']&.keys).each do |target_name|
-              references << [target_name, "discovery '#{discovery['discovery'].join(' ')}'"]
+              references << [target_name, source]
+            end
+            # Discovery parameters can use the value of another variable as ${name}
+            discovery['discovery'][1..].each do |param|
+              param.scan(DISCOVERY_REFERENCE).flatten.each do |target_name|
+                references << [target_name, source]
+              end
             end
           end
           references.each do |target_name, source|
@@ -279,13 +299,14 @@ module OpenC3
         end
 
         # Apply the VARIABLE_STATE_SET values of each initially selected state (in file order so
-        # a set can select the state of a later variable). Values from an existing install win.
+        # a set can select the state of a later variable). Values from an existing install win,
+        # except for hidden variables which always follow the state (they can't be edited).
         variables.each do |_variable_name, variable|
           next unless variable['options']
           selected = variable['options'].find { |option| option['value'] == variable['value'] }
           next unless selected and selected['set']
           selected['set'].each do |target_name, value|
-            next if existing_variables and existing_variables.key?(target_name)
+            next if existing_variables and existing_variables.key?(target_name) and not variables[target_name]['hidden']
             variables[target_name]['value'] = value
           end
         end
@@ -300,6 +321,28 @@ module OpenC3
         FileUtils.remove_entry_secure(temp_dir, true)
         tf.unlink if tf
       end
+    end
+
+    # Extract simple key-value pairs for ERB substitution
+    # Variables can be either new format (hash with 'value' key) or old format (string)
+    def self.erb_variables(plugin_hash, scope:)
+      erb_variables = {}
+      (plugin_hash['variables'] || {}).each do |name, var|
+        erb_variables[name] = var.is_a?(Hash) ? var['value'] : var
+      end
+      erb_variables['scope'] = scope
+      erb_variables
+    end
+
+    # Renders ERB in a plugin's Python dependency file (requirements.txt or
+    # pyproject.toml) in place using the plugin variables. The ERB filename is
+    # set so templates can locate files next to it with File.dirname(__FILE__).
+    def self.render_python_dependency_erb(path, erb_variables)
+      data = File.read(path).force_encoding("UTF-8")
+      return unless data.include?('<%')
+      erb = ERB.new(data.comment_erb(), trim_mode: "-")
+      erb.filename = path
+      File.write(path, erb.result(binding.set_variables(erb_variables)))
     end
 
     # Called by the PluginsController to create the plugin
@@ -393,6 +436,15 @@ module OpenC3
         # Handle python dependencies (pyproject.toml or requirements.txt)
         pyproject_path = File.join(gem_path, 'pyproject.toml')
         requirements_path = File.join(gem_path, 'requirements.txt')
+        # Dependency files may use ERB so plugin variables can select dependencies
+        [pyproject_path, requirements_path].each do |path|
+          render_python_dependency_erb(path, self.erb_variables(plugin_hash, scope: scope)) if File.exist?(path)
+        end
+
+        if File.exist?(requirements_path)
+          plugin_model.python_requirements = File.read(requirements_path)
+          plugin_model.update unless dry_run
+        end
 
         if File.exist?(pyproject_path) || File.exist?(requirements_path)
           pypi_url = resolve_pypi_url(scope: scope)
@@ -476,15 +528,7 @@ module OpenC3
           tf.write(file_data)
           tf.close
           plugin_txt_path = tf.path
-          variables = plugin_hash['variables']
-          variables ||= {}
-          # Extract simple key-value pairs for ERB substitution
-          # Variables can be either new format (hash with 'value' key) or old format (string)
-          erb_variables = {}
-          variables.each do |name, var|
-            erb_variables[name] = var.is_a?(Hash) ? var['value'] : var
-          end
-          erb_variables['scope'] = scope
+          erb_variables = self.erb_variables(plugin_hash, scope: scope)
           if File.exist?(plugin_txt_path)
             parser = OpenC3::ConfigParser.new("https://openc3.com")
 
@@ -503,7 +547,7 @@ module OpenC3
               when 'PLUGIN_TEXT_START'
                 parser.set_preserve_lines(true)
                 in_plugin_text = true
-              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'NEEDS_DEPENDENCIES'
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_HIDDEN', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin
@@ -614,6 +658,7 @@ module OpenC3
       plugin_text: nil,
       minimum_cosmos_version: nil,
       needs_dependencies: false,
+      python_requirements: nil,
       store_plugin_id: nil,
       store_version_id: nil,
       title: nil,
@@ -632,6 +677,7 @@ module OpenC3
       @plugin_text = plugin_text
       @minimum_cosmos_version = minimum_cosmos_version
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
+      @python_requirements = python_requirements
       @store_plugin_id = store_plugin_id
       @store_version_id = store_version_id
       @title = title
@@ -661,6 +707,7 @@ module OpenC3
         'plugin_text' => @plugin_text,
         'minimum_cosmos_version' => @minimum_cosmos_version,
         'needs_dependencies' => @needs_dependencies,
+        'python_requirements' => @python_requirements,
         'store_plugin_id' => @store_plugin_id,
         'store_version_id' => @store_version_id,
         'title' => @title,

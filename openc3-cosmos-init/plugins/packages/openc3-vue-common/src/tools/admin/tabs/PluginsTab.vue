@@ -142,6 +142,7 @@
       :plugin-txt="pluginTxt"
       :plugin-text="pluginText"
       :exclude-plugin="currentPlugin || pluginName"
+      :installed="currentPlugin !== null"
       :existing-plugin-txt="existingPluginTxt"
       :store-plugin-id="storePluginId"
       :store-version-id="storeVersionId"

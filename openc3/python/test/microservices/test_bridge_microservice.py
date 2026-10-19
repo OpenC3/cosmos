@@ -10,7 +10,12 @@
 # if purchased from OpenC3, Inc.
 
 import asyncio
+import base64
+import io
 import json
+import os
+import tarfile
+import tempfile
 import time
 import unittest
 from unittest.mock import Mock, patch
@@ -250,3 +255,66 @@ class TestBridgeDiscovery(unittest.IsolatedAsyncioTestCase):
         with patch("openc3.microservices.bridge_microservice.DiscoveryTopic.write_result") as write_result:
             await asyncio.wait_for(self.service._serve_discovery_result(connection), timeout=1)
         write_result.assert_called_once_with("BRIDGE", "1", {"error": "boom"}, scope="DEFAULT")
+
+
+class TestBridgeFiles(unittest.TestCase):
+    def setUp(self):
+        self.service = BridgeMicroservice.__new__(BridgeMicroservice)
+        self.service.logger = Mock()
+        self.service._gem_file_cache = {}
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def make_gem(self, files):
+        data = io.BytesIO()
+        with tarfile.open(fileobj=data, mode="w:gz") as tar:
+            for name, content in files.items():
+                info = tarfile.TarInfo(name)
+                info.size = len(content)
+                tar.addfile(info, io.BytesIO(content))
+        path = os.path.join(self.tmp.name, "plugin-1.0.0.gem")
+        with tarfile.open(path, "w") as gem:
+            info = tarfile.TarInfo("data.tar.gz")
+            info.size = len(data.getvalue())
+            gem.addfile(info, io.BytesIO(data.getvalue()))
+        return path
+
+    def test_ships_host_files(self):
+        path = self.make_gem(
+            {
+                "lib/plugin.py": b"gem lib",
+                "targets/HA/lib/interface.py": b"target lib",
+                "targets/HA/cmd_tlm/cmd.txt": b"not needed",
+                "requirements.txt": b"-c constraints.txt\n--requirement=more/extra.txt\n-r https://x/y.txt\nrequests\n",
+                "constraints.txt": b"requests<3",
+                "more/extra.txt": b"six",
+                "README.md": b"not needed",
+            }
+        )
+        with patch.object(self.service, "_find_gem", return_value=path):
+            payload = json.loads(
+                self.service._build_files_payload(
+                    {"plugin-1.0.0.gem"}, {}, {"plugin-1.0.0": "rendered\n", "other-1.0.0": "ignored"}
+                )
+            )
+        files = {entry["path"]: base64.b64decode(entry["content"]) for entry in payload["files"]}
+        self.assertEqual(
+            files,
+            {
+                "plugin-1.0.0/lib/plugin.py": b"gem lib",
+                "plugin-1.0.0/targets/HA/lib/interface.py": b"target lib",
+                # The installed (e.g. ERB rendered) requirements replace the gem's
+                "plugin-1.0.0/requirements.txt": b"rendered\n",
+                "plugin-1.0.0/constraints.txt": b"requests<3",
+                "plugin-1.0.0/more/extra.txt": b"six",
+            },
+        )
+
+    def test_installed_requirements(self):
+        plugins = {
+            "plugin-1.0.0.gem__0": {"python_requirements": "requests\n"},
+            "other-1.0.0.gem__0": {"python_requirements": None},
+        }
+        with patch("openc3.microservices.bridge_microservice.Model.all", return_value=plugins):
+            self.service.scope = "DEFAULT"
+            self.assertEqual(self.service._installed_requirements(), {"plugin-1.0.0": "requests\n"})

@@ -65,6 +65,15 @@ COSMOS supports two formats for declaring Python dependencies:
 - **`pyproject.toml`** (recommended) — When paired with a `uv.lock` file, enables reproducible installs via `uv sync --frozen`. COSMOS uses `uv sync` for `pyproject.toml`-based plugins.
 - **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins.
 
+Both files are processed with [ERB](/docs/configuration/format#erb) using the plugin variables before installation, so variables can select which dependencies are installed. ERB code can read files shipped next to the dependency file with `File.dirname(__FILE__)`. For example, a `requirements.txt` that installs only the driver for the selected device:
+
+```
+<%- require 'json' -%>
+<%= JSON.parse(File.read(File.join(File.dirname(__FILE__), 'drivers.json')))[device_type].join("\n") %>
+```
+
+A `uv.lock` is used as-is, so a plugin whose `pyproject.toml` dependencies depend on variables should not ship a `uv.lock`.
+
 System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning.
 
 Dependencies are resolved against the `pypi_url` Admin Console setting, falling back to the `PYPI_URL` environment variable and then to public PyPI. When that setting names an index other than `https://pypi.org`, COSMOS treats it as authoritative and passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. A plugin depending on a package published only to its author's private index therefore fails to install unless your index serves that package too.
@@ -147,6 +156,26 @@ VARIABLE port 8080
 VARIABLE_DESCRIPTION "TCP port for the target connection"
 ```
 
+## VARIABLE_HIDDEN
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Hide a plugin variable from the plugin installation dialog**
+
+The VARIABLE_HIDDEN keyword hides the previously defined VARIABLE in the plugin installation dialog. Its value is set by the VARIABLE_STATE_SET and VARIABLE_DISCOVERY_SET keywords of other variables and can be used in ERB and as a VARIABLE_DISCOVERY parameter, for example to pass per state parameters to a discovery. Since it can't be edited, a hidden variable always takes the values set by the selected states of the installed plugin.txt, including when upgrading. Must follow a VARIABLE definition.
+
+
+Example Usage:
+```cosmos
+VARIABLE device shelly
+  VARIABLE_STATE Shelly shelly
+    VARIABLE_STATE_SET mdns_types _shelly._tcp.local.
+  VARIABLE_STATE "Philips Hue" hue
+    VARIABLE_STATE_SET mdns_types _hue._tcp.local.
+VARIABLE mdns_types ""
+  VARIABLE_HIDDEN
+VARIABLE host ""
+  VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}
+  values: .+
+```
+
 ## VARIABLE_BRIDGE
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Let the user select which bridge the plugin uses**
 
@@ -169,7 +198,7 @@ INTERFACE SERIAL_INT serial_interface.py <%= serial_port %> <%= serial_port %> 1
 ## VARIABLE_DISCOVERY
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Discover the possible values of a plugin variable from the host computer**
 
-The VARIABLE_DISCOVERY keyword runs a Python discovery class on the host computer paired with COSMOS through openc3-app, using the bridge selected by VARIABLE_BRIDGE (or the DEFAULT bridge). The values it finds are added to the dropdown for the previously defined VARIABLE in the plugin installation dialog, after any VARIABLE_STATE options. Discovery runs when the dialog opens and can be refreshed. If openc3-app is not running the variable can still be typed in by hand. Discovery classes subclass openc3/discovery/discovery.py and implement discover(). COSMOS provides openc3/discovery/serial_discovery.py (lists serial ports) and openc3/discovery/hid_discovery.py (lists the serial numbers of USB HID devices, optionally limited by Vendor ID and Product ID, and requires the hidapi package on the host). A variable can have multiple VARIABLE_DISCOVERY keywords and their results are combined. Each can be followed by VARIABLE_DISCOVERY_SET keywords that set other variables when a value it found is selected. Discovered values are claimed by the plugin that uses them. Once a plugin is installed, the value it chose for a VARIABLE_DISCOVERY variable (for example a serial port) is no longer offered to other plugins discovering with the same class on the same bridge, and the dialog notes which plugin is using it. The claim is released when the plugin is uninstalled. Upgrading or editing the plugin still offers the values it holds. Must follow a VARIABLE definition.
+The VARIABLE_DISCOVERY keyword runs a Python discovery class on the host computer paired with COSMOS through openc3-app, using the bridge selected by VARIABLE_BRIDGE (or the DEFAULT bridge). The values it finds are added to the dropdown for the previously defined VARIABLE in the plugin installation dialog, after any VARIABLE_STATE options. Discovery runs when the dialog opens and can be refreshed. When installing a new plugin, the first available discovered value is selected automatically unless a value was already chosen. If openc3-app is not running the variable can still be typed in by hand. Discovery classes subclass openc3/discovery/discovery.py and implement discover(). Parameters can include the value of another variable as ${name}. A variable holding several space separated values passes each as a parameter. The discovery reruns when a referenced variable changes, and is skipped when they are all blank. COSMOS provides openc3/discovery/serial_discovery.py (lists serial ports, optionally limited to USB VID:PID parameters (the PID can be omitted) like 10C4:EA60), openc3/discovery/hid_discovery.py (lists the serial numbers of USB HID devices, optionally limited by Vendor ID and Product ID, and requires the hidapi package on the host), openc3/discovery/zeroconf_discovery.py (lists the IP addresses of devices advertising the mDNS service types given as parameters, each optionally followed by |name=glob or |property=glob filters, e.g. _http._tcp.local.|name=shelly*) and openc3/discovery/bluetooth_discovery.py (lists the addresses of Bluetooth LE devices matching any of the matchers given as parameters, each made of local_name=glob, service_uuid=uuid, service_data_uuid=uuid or manufacturer_id=id joined with |). A variable can have multiple VARIABLE_DISCOVERY keywords and their results are combined. Each can be followed by VARIABLE_DISCOVERY_SET keywords that set other variables when a value it found is selected. Discovered values are claimed by the plugin that uses them. Once a plugin is installed, the value it chose for a VARIABLE_DISCOVERY variable (for example a serial port) is no longer offered to other plugins discovering with the same class on the same bridge, and the dialog notes which plugin is using it. The claim is released when the plugin is uninstalled. Upgrading or editing the plugin still offers the values it holds. Must follow a VARIABLE definition.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -183,6 +212,8 @@ VARIABLE serial_port /dev/ttyUSB0
 VARIABLE controller_serial nil
   VARIABLE_STATE "First controller found" nil
   VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x0CE6
+VARIABLE light_host ""
+  VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py _hue._tcp.local.
 ```
 
 ## VARIABLE_DISCOVERY_SET

@@ -45,6 +45,7 @@ import inspect
 import io
 import json
 import os
+import re
 import tarfile
 import time
 import traceback
@@ -137,6 +138,21 @@ MAX_REQUEST_BYTES = 1024 * 1024
 # close before tearing the connection down (avoids a close race that truncates
 # the response with "connection lost" over real networking).
 CLOSE_DRAIN_TIMEOUT = 10
+
+
+# Plugin gem files needed to run interfaces on the host
+HOST_FILE_PATTERN = re.compile(r"^(lib/|targets/[^/]+/lib/|requirements\.txt$|pyproject\.toml$)")
+
+
+def requirement_includes(content):
+    """The relative paths of the files a requirements.txt includes with
+    -r/--requirement or -c/--constraint."""
+    includes = []
+    for line in content.decode(errors="replace").splitlines():
+        match = re.match(r"^\s*(?:-r|-c|--requirement|--constraint)(?:\s+|=)(\S+)", line)
+        if match and "://" not in match.group(1) and not os.path.isabs(match.group(1)):
+            includes.append(os.path.normpath(match.group(1)))
+    return includes
 
 
 def _iroh_error_detail(error):
@@ -801,8 +817,9 @@ class BridgeMicroservice(Microservice):
         # bridged stream. The plugin list is a fast Redis read done on the loop;
         # the heavy disk/CPU work runs in a thread so byte pumping keeps going.
         gems = self._plugin_gem_names()
+        requirements = self._installed_requirements()
         loop = asyncio.get_event_loop()
-        payload = await loop.run_in_executor(None, self._build_files_payload, gems, have)
+        payload = await loop.run_in_executor(None, self._build_files_payload, gems, have, requirements)
         with contextlib.suppress(Exception):
             await send.write_all(payload)
             await send.finish()
@@ -813,11 +830,28 @@ class BridgeMicroservice(Microservice):
         plugins = Model.all(f"{self.scope}__openc3_plugins")
         return {str(name).split("__")[0] for name in plugins}
 
-    def _build_files_payload(self, gems, have):
+    def _installed_requirements(self):
+        """{gem stem: requirements.txt as installed} (Redis read). Installed
+        requirements can differ from the gem's (e.g. rendered from ERB with the
+        plugin variables) so they're sent to the host in place of the gem's."""
+        requirements = {}
+        for name, plugin in Model.all(f"{self.scope}__openc3_plugins").items():
+            content = plugin.get("python_requirements") if isinstance(plugin, dict) else None
+            if content is not None:
+                gem = str(name).split("__")[0]
+                requirements[gem[:-4] if gem.endswith(".gem") else gem] = content
+        return requirements
+
+    def _build_files_payload(self, gems, have, requirements=None):
         """Build the api/files hash-delta JSON (changed/new files + deletions) for
         `gems` vs the client's `have` manifest. Pure disk/CPU work (no Redis) so it
         runs in a thread off the event loop — see `_serve_files`."""
         current = self._collect_plugin_files(gems)
+        for stem, content in (requirements or {}).items():
+            path = f"{stem}/requirements.txt"
+            if path in current:
+                data = content.encode()
+                current[path] = (data, hashlib.sha256(data).hexdigest())
         files = []
         for path, (content, digest) in current.items():
             if have.get(path) != digest:
@@ -828,9 +862,10 @@ class BridgeMicroservice(Microservice):
     def _collect_plugin_files(self, gems):
         """Return {relative_path: (content_bytes, sha256_hex)} of the files host
         interfaces may need from the given plugin `gems`: everything under
-        ``lib/`` plus any ``requirements.txt`` / ``pyproject.toml`` (used to
-        provision the host venv). Read from the .gem files cached on the /gems
-        volume.
+        ``lib/`` and ``targets/<TARGET>/lib/`` plus any ``requirements.txt`` /
+        ``pyproject.toml`` (used to provision the host venv) and the files
+        ``requirements.txt`` includes with -r / -c. Read from the .gem files
+        cached on the /gems volume.
 
         A gem is only opened/unzipped/hashed when it is new or its file has
         changed (by mtime + size); otherwise the cached result is reused, so
@@ -880,14 +915,24 @@ class BridgeMicroservice(Microservice):
                 if data_member is None:
                     return gem_files
                 with tarfile.open(fileobj=io.BytesIO(data_member.read()), mode="r:gz") as data:
-                    for member in data.getmembers():
-                        if not member.isfile():
-                            continue
-                        if member.name.startswith("lib/") or member.name in ("requirements.txt", "pyproject.toml"):
-                            extracted = data.extractfile(member)
-                            if extracted is not None:
-                                content = extracted.read()
-                                gem_files[f"{stem}/{member.name}"] = (content, hashlib.sha256(content).hexdigest())
+                    members = {member.name: member for member in data.getmembers() if member.isfile()}
+
+                    def add(name):
+                        extracted = data.extractfile(members[name])
+                        if extracted is not None:
+                            content = extracted.read()
+                            gem_files[f"{stem}/{name}"] = (content, hashlib.sha256(content).hexdigest())
+
+                    for name in members:
+                        if HOST_FILE_PATTERN.match(name):
+                            add(name)
+                    # Constraint / requirement files included by requirements.txt
+                    # are resolved relative to it by pip so ship those too
+                    requirements = gem_files.get(f"{stem}/requirements.txt")
+                    if requirements is not None:
+                        for name in requirement_includes(requirements[0]):
+                            if name in members:
+                                add(name)
         except Exception as error:
             self.logger.warn(f"Failed reading files from {gem}: {type(error).__name__}: {error}")
             return None

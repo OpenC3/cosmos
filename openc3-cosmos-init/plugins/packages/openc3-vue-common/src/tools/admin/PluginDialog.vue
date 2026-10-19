@@ -81,7 +81,7 @@
                     density="comfortable"
                     variant="outlined"
                     data-test="variable-combobox"
-                    @update:model-value="setVariableValue(name, $event)"
+                    @update:model-value="chooseVariableValue(name, $event)"
                   >
                     <template v-if="variable.discovery" #append-inner>
                       <v-btn
@@ -231,6 +231,12 @@ export default {
       required: false,
       default: null,
     },
+    // Upgrading or editing an installed plugin, so its existing values are
+    // kept rather than replaced by discovered ones
+    installed: {
+      type: Boolean,
+      default: false,
+    },
     existingPluginTxt: {
       type: String,
       required: false,
@@ -273,6 +279,8 @@ export default {
       discoveryRuns: {},
       // Discovered values hidden because other plugins claim them
       discoveryClaimed: {},
+      // Variables the user picked a value for, so discovery leaves them alone
+      discoveryChosen: {},
       // Available bridges for the VARIABLE_BRIDGE variable: [{ value, text }]
       bridges: [],
     }
@@ -290,6 +298,29 @@ export default {
       if (!this.pluginText) return ''
       return DOMPurify.sanitize(marked.parse(this.pluginText))
     },
+    // VARIABLE_STATE_SHOW lookups: the variables whose states list each
+    // variable, and each such variable's state values and what they show.
+    // Only depends on the options so typing values doesn't rebuild it, which
+    // matters for plugins with hundreds of variables and states.
+    showIndex() {
+      const controllers = {}
+      const states = {}
+      for (const [controlName, control] of Object.entries(
+        this.localVariables,
+      )) {
+        if (!control.options) continue
+        const shows = new Map()
+        for (const opt of control.options) {
+          shows.set(opt.value, new Set(opt.show || []))
+          for (const name of opt.show || []) {
+            controllers[name] ||= []
+            controllers[name].push(controlName)
+          }
+        }
+        states[controlName] = shows
+      }
+      return { controllers, states }
+    },
     // Variables not hidden by the currently selected VARIABLE_STATE of another
     // variable (see VARIABLE_STATE_SHOW)
     visibleVariables() {
@@ -299,6 +330,14 @@ export default {
     },
   },
   watch: {
+    // Variables shown by a VARIABLE_STATE_SHOW get a discovered value then,
+    // so hidden variables don't claim devices they won't use
+    visibleVariables(visible, previous) {
+      const before = new Set(previous.map(([name]) => name))
+      for (const [name] of visible) {
+        if (!before.has(name)) this.autoSelectDiscovered(name)
+      }
+    },
     value: {
       immediate: true,
       handler: function () {
@@ -423,6 +462,7 @@ export default {
       let keywords = [
         'VARIABLE',
         'VARIABLE_DESCRIPTION',
+        'VARIABLE_HIDDEN',
         'VARIABLE_STATE',
         'VARIABLE_STATE_SHOW',
         'VARIABLE_STATE_SET',
@@ -575,6 +615,11 @@ export default {
         // don't worry about this.differ since AceDiff replaces the editor anyway, and thus there's no context menu
       }
     },
+    // A value chosen in the dialog, which discovery won't replace
+    chooseVariableValue(name, value) {
+      this.discoveryChosen[name] = true
+      this.setVariableValue(name, value)
+    },
     // Set a variable and, if the new value selects a state, apply that
     // state's VARIABLE_STATE_SET values (cascading into other states)
     setVariableValue(name, value, visiting = new Set()) {
@@ -605,6 +650,51 @@ export default {
       ) {
         this.runAllDiscovery()
       }
+      // and on the variables their parameters reference as ${name}
+      for (const [other, otherVariable] of Object.entries(
+        this.localVariables,
+      )) {
+        if (
+          otherVariable.discovery?.some((entry) =>
+            entry.discovery.some((param) => param.includes(`\${${name}}`)),
+          )
+        ) {
+          this.scheduleDiscovery(other)
+        }
+      }
+    },
+    // Run a variable's discovery once after the current changes, which can
+    // set several of the variables it references
+    scheduleDiscovery(name) {
+      this.pendingDiscovery ||= new Set()
+      if (this.pendingDiscovery.size === 0) {
+        queueMicrotask(() => {
+          const names = [...this.pendingDiscovery]
+          this.pendingDiscovery.clear()
+          names.forEach((pending) => this.runDiscovery(pending))
+        })
+      }
+      this.pendingDiscovery.add(name)
+    },
+    // The discovery class and parameters to request, with ${name} replaced by
+    // the value of variable name (which may hold several space separated
+    // parameters). Null when every referenced variable is blank, e.g. a
+    // discovery that doesn't apply to the selected state.
+    discoveryRequest(entry) {
+      let references = 0
+      let filled = 0
+      const params = entry.discovery.slice(1).flatMap((param) => {
+        if (!/\$\{\w+\}/.test(param)) return [param]
+        const replaced = param.replace(/\$\{(\w+)\}/g, (match, ref) => {
+          references++
+          const value = String(this.localVariables[ref]?.value ?? '').trim()
+          if (value) filled++
+          return value
+        })
+        return replaced.split(/\s+/).filter(Boolean)
+      })
+      if (references > 0 && filled === 0) return null
+      return [entry.discovery[0], ...params]
     },
     // List the bridges for the VARIABLE_BRIDGE variable's dropdown
     async loadBridges() {
@@ -643,23 +733,26 @@ export default {
     // Helper methods for variable display
     isVariableVisible(name, visiting = new Set()) {
       if (visiting.has(name)) return true // Guard against circular references
+      if (this.localVariables[name]?.hidden) return false // VARIABLE_HIDDEN
       visiting.add(name)
       try {
-        for (const [controlName, control] of Object.entries(
-          this.localVariables,
-        )) {
-          if (!control.options) continue
-          // Variables listed by any VARIABLE_STATE_SHOW of this variable are
-          // only visible when the selected state lists them
-          if (!control.options.some((opt) => opt.show?.includes(name))) continue
-          // A hidden variable can't be selected so nothing it shows is visible
-          if (!this.isVariableVisible(controlName, visiting)) return false
-          const selected = control.options.find(
-            (opt) => opt.value === control.value,
+        const { controllers, states } = this.showIndex
+        // Variables listed by any VARIABLE_STATE_SHOW of a variable are only
+        // visible when its selected state lists them
+        for (const controlName of new Set(controllers[name] || [])) {
+          // A hidden variable can't be selected so nothing it shows is visible,
+          // unless it is VARIABLE_HIDDEN and so only set by other states
+          if (
+            !this.localVariables[controlName].hidden &&
+            !this.isVariableVisible(controlName, visiting)
+          )
+            return false
+          const shows = states[controlName].get(
+            this.localVariables[controlName].value,
           )
           // Custom values that don't match a state don't affect visibility
-          if (!selected) continue
-          if (!selected.show?.includes(name)) return false
+          if (!shows) continue
+          if (!shows.has(name)) return false
         }
         return true
       } finally {
@@ -679,21 +772,27 @@ export default {
       this.discoveryLoading[name] = true
       this.discoveryErrors[name] = null
       const bridge = this.selectedBridge()
+      const requests = variable.discovery.map((entry) =>
+        this.discoveryRequest(entry),
+      )
       const outcomes = await Promise.allSettled(
-        variable.discovery.map((entry) =>
-          Api.post('/openc3-api/discovery', {
-            data: {
-              bridge,
-              discovery: entry.discovery,
-              exclude_plugin: this.excludePlugin,
-            },
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-              // Reported in the variable's hint rather than the global banner
-              'Ignore-Errors': '500,502,503,504',
-            },
-          }),
+        requests.map((discovery) =>
+          // Discoveries that don't apply are skipped (and not an error)
+          discovery === null
+            ? Promise.resolve({ data: { results: [], claimed: [] } })
+            : Api.post('/openc3-api/discovery', {
+                data: {
+                  bridge,
+                  discovery,
+                  exclude_plugin: this.excludePlugin,
+                },
+                headers: {
+                  Accept: 'application/json',
+                  'Content-Type': 'application/json',
+                  // Reported in the variable's hint rather than the global banner
+                  'Ignore-Errors': '500,502,503,504',
+                },
+              }),
         ),
       )
       if (this.discoveryRuns[name] !== run) return
@@ -714,12 +813,30 @@ export default {
       })
       this.discoveryResults[name] = results
       this.discoveryClaimed[name] = claimed
+      this.autoSelectDiscovered(name)
       // Only report problems when nothing was found, e.g. one of several
       // discoveries finding no devices is expected
-      if (results.length === 0 && claimed.length === 0) {
+      const applicable = requests.some((discovery) => discovery !== null)
+      if (applicable && results.length === 0 && claimed.length === 0) {
         this.discoveryErrors[name] = errors[0] || 'nothing found'
       }
       this.discoveryLoading[name] = false
+    },
+    // Select the first available discovered value for a new install unless
+    // the user already picked a value or the current one is still available
+    autoSelectDiscovered(name) {
+      const variable = this.localVariables[name]
+      if (this.installed || this.discoveryChosen[name] || !variable?.discovery)
+        return
+      if (!this.isVariableVisible(name)) return
+      const items = this.getOptionItems(name, variable)
+      const available = (this.discoveryResults[name] || []).filter((result) =>
+        items.some((item) => item.value === result.value),
+      )
+      if (available.some((result) => result.value === variable.value)) return
+      if (available.length > 0) {
+        this.setVariableValue(name, available[0].value)
+      }
     },
     hasOptions(variable) {
       return (

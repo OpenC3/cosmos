@@ -17,9 +17,11 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import Mock, patch
 
+from openc3.discovery.bluetooth_discovery import BluetoothDiscovery
 from openc3.discovery.discovery_runner import main, normalize_results
 from openc3.discovery.hid_discovery import HidDiscovery
 from openc3.discovery.serial_discovery import SerialDiscovery
+from openc3.discovery.zeroconf_discovery import ZeroconfDiscovery
 
 
 class TestDiscoveryRunner(unittest.TestCase):
@@ -83,6 +85,117 @@ class TestSerialDiscovery(unittest.TestCase):
                 {"value": "/dev/ttyUSB1", "text": "/dev/ttyUSB1"},
             ],
         )
+
+    def test_filters_by_usb_id(self):
+        ports = [
+            Mock(device="/dev/ttyUSB0", description="CP2102", vid=0x10C4, pid=0xEA60),
+            Mock(device="/dev/ttyUSB1", description="FT232R", vid=0x0403, pid=0x6001),
+            Mock(device="/dev/ttyS0", description="n/a", vid=None, pid=None),
+        ]
+        with patch("openc3.discovery.serial_discovery.list_ports.comports", return_value=ports):
+            results = SerialDiscovery("10C4:EA60").discover()
+        self.assertEqual(results, [{"value": "/dev/ttyUSB0", "text": "/dev/ttyUSB0 - CP2102"}])
+        with patch("openc3.discovery.serial_discovery.list_ports.comports", return_value=ports):
+            results = SerialDiscovery("0403:*", "10C4").discover()
+        self.assertEqual([result["value"] for result in results], ["/dev/ttyUSB0", "/dev/ttyUSB1"])
+        with self.assertRaisesRegex(ValueError, "VID:PID"):
+            SerialDiscovery("USB")
+
+
+class TestZeroconfDiscovery(unittest.TestCase):
+    def fake_zeroconf(self, services):
+        """A zeroconf module whose browser finds services: {name: (type, properties, addresses)}"""
+        module = types.ModuleType("zeroconf")
+        module.IPVersion = types.SimpleNamespace(V4Only="v4")
+
+        class FakeZeroconf:
+            closed = False
+
+            def get_service_info(self, service_type, name, timeout):
+                found_type, properties, addresses = services[name]
+                info = Mock(properties=properties)
+                info.parsed_addresses = Mock(return_value=addresses)
+                return info
+
+            def close(self):
+                FakeZeroconf.closed = True
+
+        class FakeBrowser:
+            def __init__(self, zeroconf, service_types, handlers):
+                for name, (service_type, _, _) in services.items():
+                    if service_type in service_types:
+                        handlers[0](zeroconf, service_type, name, None)
+
+            def cancel(self):
+                pass
+
+        module.Zeroconf = FakeZeroconf
+        module.ServiceBrowser = FakeBrowser
+        return module
+
+    def test_lists_matching_addresses(self):
+        services = {
+            "shellyplus1-a1._http._tcp.local.": ("_http._tcp.local.", {b"gen": b"2"}, ["192.168.1.50"]),
+            "printer._http._tcp.local.": ("_http._tcp.local.", {}, ["192.168.1.60"]),
+            "Hue Bridge._hue._tcp.local.": ("_hue._tcp.local.", {}, ["192.168.1.70", "192.168.1.71"]),
+            "ignored._ipp._tcp.local.": ("_ipp._tcp.local.", {}, ["192.168.1.80"]),
+        }
+        module = self.fake_zeroconf(services)
+        discovery = ZeroconfDiscovery("_http._tcp.local.|name=shelly*|gen=2", "_hue._tcp.local")
+        with patch.dict(sys.modules, {"zeroconf": module}), patch("time.sleep"):
+            results = discovery.discover()
+        self.assertEqual(
+            results,
+            [
+                {"value": "192.168.1.70", "text": "Hue Bridge (192.168.1.70)"},
+                {"value": "192.168.1.50", "text": "shellyplus1-a1 (192.168.1.50)"},
+            ],
+        )
+        self.assertTrue(module.Zeroconf.closed)
+
+    def test_no_matchers_or_package(self):
+        self.assertEqual(ZeroconfDiscovery().discover(), [])
+        with patch.dict(sys.modules, {"zeroconf": None}), self.assertRaisesRegex(RuntimeError, "zeroconf"):
+            ZeroconfDiscovery("_hue._tcp.local.").discover()
+
+
+class TestBluetoothDiscovery(unittest.TestCase):
+    def test_lists_matching_devices(self):
+        def advertisement(name, uuids=(), data=None, manufacturer=None):
+            return Mock(
+                local_name=name,
+                service_uuids=list(uuids),
+                service_data=data or {},
+                manufacturer_data=manufacturer or {},
+            )
+
+        devices = {
+            "AA:01": (types.SimpleNamespace(name=None), advertisement("Govee_H6159", manufacturer={34818: b"x"})),
+            "AA:02": (
+                types.SimpleNamespace(name=None),
+                advertisement("Other", uuids=["0000FE95-0000-1000-8000-00805F9B34FB"]),
+            ),
+            "AA:03": (types.SimpleNamespace(name=None), advertisement("Nope")),
+        }
+
+        async def scan(timeout, return_adv):
+            return devices
+
+        bleak = types.ModuleType("bleak")
+        bleak.BleakScanner = Mock(discover=scan)
+        discovery = BluetoothDiscovery(
+            "local_name=Govee*|manufacturer_id=34818", "service_uuid=0000fe95-0000-1000-8000-00805f9b34fb"
+        )
+        with patch.dict(sys.modules, {"bleak": bleak}):
+            results = discovery.discover()
+        self.assertEqual(
+            results,
+            [{"value": "AA:01", "text": "Govee_H6159 (AA:01)"}, {"value": "AA:02", "text": "Other (AA:02)"}],
+        )
+
+    def test_bad_matcher(self):
+        with self.assertRaisesRegex(ValueError, "Unknown Bluetooth matcher"):
+            BluetoothDiscovery("color=red")
 
 
 class TestHidDiscovery(unittest.TestCase):
