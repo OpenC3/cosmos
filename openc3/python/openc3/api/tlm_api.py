@@ -831,12 +831,16 @@ def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cach
     # the realtime behavior of using the packet received most recently now.
     if end_time is not None and all(cvt_items[index].item_name is None for index in regular):
         resolved = []
-        for cvt_item in cvt_items:
+        for index, cvt_item in enumerate(cvt_items):
             if cvt_item.packet_name == "LATEST":
                 packet_name = CvtModel.determine_latest_packet_for_item(
                     cvt_item.target_name, cvt_item.item_name, cache_timeout, scope
                 )
-                cvt_item = cvt_item._replace(packet_name=packet_name)
+                # Use the candidate so the query asks for the value type and limits that packet has
+                cvt_item = next(
+                    (candidate for candidate in latest_candidates[index] if candidate.packet_name == packet_name),
+                    cvt_item._replace(packet_name=packet_name),
+                )
             resolved.append(cvt_item)
         return CvtModel.tsdb_lookup(resolved, start_time=start_time, end_time=end_time, scope=scope)
 

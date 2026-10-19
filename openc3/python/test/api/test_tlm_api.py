@@ -1035,6 +1035,19 @@ class TestTlmApi(unittest.TestCase):
         )
 
     @latest_candidates(params_temp1=PLAIN_TEMP1)
+    def test_get_tlm_values_historical_latest_range_of_only_latest_uses_the_current_packet_type_and_limits(self):
+        with (
+            patch.object(CvtModel, "determine_latest_packet_for_item", return_value="PARAMS"),
+            patch.object(CvtModel, "tsdb_lookup", return_value=[]) as tsdb_lookup,
+        ):
+            get_tlm_values(
+                ["INST__LATEST__TEMP1__FORMATTED__LIMITS"],
+                start_time="2026-09-13T00:00:00Z",
+                end_time="2026-09-13T01:00:00Z",
+            )
+        self.assertEqual(tsdb_lookup.call_args[0][0], [TlmItem("INST", "PARAMS", "TEMP1", "RAW", None)])
+
+    @latest_candidates(params_temp1=PLAIN_TEMP1)
     def test_get_tlm_available_returns_the_best_type_and_limits_of_any_latest_packet(self):
         with patch.object(CvtModel, "determine_latest_packet_for_item", return_value="PARAMS"):
             self.assertEqual(

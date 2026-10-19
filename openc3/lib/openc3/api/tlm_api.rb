@@ -705,9 +705,11 @@ module OpenC3
       # a range needs a regular item first to drive the rows. Without one keep
       # the realtime behavior of using the packet received most recently now.
       if end_time and regular.all? { |index| cvt_items[index][2].nil? }
-        cvt_items = cvt_items.map do |target_name, packet_name, item_name, value_type, limits, _|
-          packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope) if packet_name == 'LATEST'
-          [target_name, packet_name, item_name, value_type, limits]
+        cvt_items = cvt_items.map do |target_name, packet_name, item_name, value_type, limits, candidates|
+          next [target_name, packet_name, item_name, value_type, limits] unless packet_name == 'LATEST'
+          packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
+          # Use the candidate so the query asks for the value type and limits that packet has
+          candidates.find { |candidate| candidate[1] == packet_name } || [target_name, packet_name, item_name, value_type, limits]
         end
         return CvtModel.tsdb_lookup(cvt_items, start_time: start_time, end_time: end_time, scope: scope)
       end

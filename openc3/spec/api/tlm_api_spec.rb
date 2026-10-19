@@ -917,6 +917,16 @@ module OpenC3
           )
         end
 
+        it "queries the current packet for the value type and limits it has in a range of only LATEST items" do
+          plain = { 'name' => 'TEMP1', 'data_type' => 'UINT', 'limits' => {} }
+          allow(TargetModel).to receive(:packet_item).with('INST', 'PARAMS', 'TEMP1', scope: 'DEFAULT').and_return(plain)
+          allow(CvtModel).to receive(:determine_latest_packet_for_item).and_return("PARAMS")
+          expect(CvtModel).to receive(:tsdb_lookup).with(
+            [["INST", "PARAMS", "TEMP1", "RAW", nil]], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z", scope: "DEFAULT"
+          ).and_return([])
+          @api.get_tlm_values(["INST__LATEST__TEMP1__FORMATTED__LIMITS"], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+        end
+
         it "skips candidate packets without a table at a point in time" do
           expect(CvtModel).to receive(:tsdb_packets_with_tables).with([["INST", "HEALTH_STATUS"], ["INST", "PARAMS"]], scope: "DEFAULT").and_return(Set[["INST", "HEALTH_STATUS"]])
           queries = []
