@@ -121,7 +121,7 @@ Versions 5.13.0 and 6.0.0 _REQUIRE_ a stop to evaluate the upgrade. Thus if you'
 | [5.15.0](https://github.com/OpenC3/cosmos/releases/tag/v5.15.0)     | The internal Traefik port was changed to 2900 to match our standard external port and to better support unprivileged runtime environments.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | \*[6.0.0](https://github.com/OpenC3/cosmos/releases/tag/v6.0.0)\*   | Upgrade to Vue 3 and Vuetify 3 requires custom GUI tools to follow the [COSMOS 6 migration guide](upgrading#migrating-from-cosmos-5-to-cosmos-6).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | [6.1.0](https://github.com/OpenC3/cosmos/releases/tag/v6.1.0)       | Changed from ActionCable to AnyCable. We also broke apart the COSMOS helm charts from a single chart to 3 charts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| [7.0.0](https://github.com/OpenC3/cosmos/releases/tag/v7.0.0)       | Added a new time series database (TSDB) container. Switched from MINIO to versitygw and renamed the container from openc3-bucket to openc3-buckets. Running the migration script is required. See [MINIO to Versitygw Migration](/docs/getting-started/upgrading#minio-to-versitygw-migration). Once COSMOS 7 is running the [TSDB Migration](https://github.com/OpenC3/openc3-cosmos-tsdb-migration) plugin (also on the [OpenC3 Store](https://store.openc3.com/cosmos_plugins/21)) is required to move data from existing bin files to the new TSDB.<br/><br/>NOTE: Due to QuestDB issues in 7.0.0, upgrade directly to the latest 7.x release rather than stopping at 7.0.0. The migration applies to any 6.x to 7.x upgrade.                                                                                                                                                                                                                                    |
+| [7.0.0](https://github.com/OpenC3/cosmos/releases/tag/v7.0.0)       | Added a new time series database (TSDB) container. Switched from MINIO to versitygw and renamed the container from openc3-bucket to openc3-buckets. Running the migration script is required. See [MINIO to Versitygw Migration](/docs/getting-started/upgrading#minio-to-versitygw-migration). Once COSMOS 7 is running the [TSDB Migration](https://github.com/OpenC3/openc3-cosmos-tsdb-migration) plugin (also on the [OpenC3 Store](https://store.openc3.com/cosmos_plugins/21)) is required to move data from existing bin files to the new TSDB.<br/><br/>NOTE: Due to QuestDB issues in 7.0.0, upgrade directly to the latest 7.x release rather than stopping at 7.0.0. The migration applies to any 6.x to 7.x upgrade.                                                          |
 
 :::warning[Downgrades]
 Downgrades are not necessarily supported. When upgrading COSMOS we need to upgrade databases and sometimes migrate internal data structures. While we perform a full regression test on every release, we recommend upgrading an individual machine with your specific plugins and do local testing before rolling out the upgrade to your production system.
@@ -238,7 +238,7 @@ chmod +x openc3_migrate_s3.sh
 ./openc3_migrate_s3.sh cleanup
 
 # 5. Upgrade to COSMOS 7+ and start
-./openc3.sh upgrade v7.3.0
+./openc3.sh upgrade v7.x.y  # Use the latest COSMOS 7 release
 ./openc3.sh run
 ```
 
@@ -251,7 +251,7 @@ Stop COSMOS 6 first, then migrate after upgrading:
 ./openc3.sh stop
 
 # 2. Upgrade to COSMOS 7+ and start (versitygw will be running)
-./openc3.sh upgrade v7.3.0
+./openc3.sh upgrade v7.x.y  # Use the latest COSMOS 7 release
 ./openc3.sh run
 
 # 3. Pull the migration script from COSMOS 7
@@ -309,7 +309,9 @@ The migration script automatically detects Docker Compose project prefixes. For 
 After verifying COSMOS 7 works correctly, you can remove the old COSMOS 6 MINIO volume:
 
 ```bash
-docker volume rm openc3-bucket-v
+docker volume ls | grep openc3-bucket  # Find the openc3-bucket volume
+local     cosmos-enterprise-project_openc3-bucket-v
+docker volume rm cosmos-enterprise-project_openc3-bucket-v
 ```
 
 ### Migrating COSMOS Decom Bin Files to TSDB
