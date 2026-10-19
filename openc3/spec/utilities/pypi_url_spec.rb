@@ -16,6 +16,25 @@ require "openc3/utilities/pypi_url"
 
 module OpenC3
   describe PypiUrl do
+    describe ".index_url" do
+      it "appends /simple to a base url" do
+        expect(PypiUrl.index_url("https://mirror.example.com")).to eql "https://mirror.example.com/simple"
+      end
+
+      it "drops trailing slashes before appending /simple" do
+        expect(PypiUrl.index_url("https://mirror.example.com/")).to eql "https://mirror.example.com/simple"
+        expect(PypiUrl.index_url("https://mirror.example.com/pypi//")).to eql "https://mirror.example.com/pypi/simple"
+      end
+
+      it "maps the public index with a trailing slash to DEFAULT" do
+        expect(PypiUrl.index_url("https://pypi.org/")).to eql PypiUrl::DEFAULT
+      end
+
+      it "returns nil for nil" do
+        expect(PypiUrl.index_url(nil)).to be_nil
+      end
+    end
+
     describe ".validate" do
       context "with a valid http(s) url" do
         it "returns https urls unchanged" do

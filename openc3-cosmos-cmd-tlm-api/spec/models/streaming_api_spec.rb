@@ -139,6 +139,59 @@ RSpec.describe StreamingApi, type: :model do
     expect(@api.instance_variable_get('@logged_threads')).to be_empty
   end
 
+  describe '#kill' do
+    class FakeStreamingThread < StreamingThread
+      def initialize(streaming_api, stop_delay)
+        super(streaming_api, nil)
+        @stop_delay = stop_delay
+      end
+
+      def thread_body
+        sleep 0.01
+        sleep @stop_delay if @cancel_thread
+      end
+    end
+
+    def start_fake_thread(stop_delay)
+      thread = FakeStreamingThread.new(@api, stop_delay)
+      thread.start
+      thread
+    end
+
+    it 'returns as soon as the threads have exited' do
+      threads = [start_fake_thread(0), start_fake_thread(0)]
+      @api.instance_variable_set('@realtime_thread', threads[0])
+      @api.instance_variable_set('@logged_threads', [threads[1]])
+      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @api.kill
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+      expect(elapsed).to be < 0.5
+      threads.each { |thread| expect(thread.instance_variable_get('@thread').alive?).to be false }
+      expect(@api.instance_variable_get('@realtime_thread')).to be_nil
+      expect(@api.instance_variable_get('@logged_threads')).to be_empty
+    end
+
+    it 'waits on the actual threads, not just the stop request' do
+      thread = start_fake_thread(0.3)
+      sleep 0.05 # Let the thread enter thread_body
+      @api.instance_variable_set('@logged_threads', [thread])
+      @api.kill
+      expect(thread.instance_variable_get('@thread').alive?).to be false
+    end
+
+    it 'shares a single deadline across all threads' do
+      threads = [start_fake_thread(5), start_fake_thread(5)]
+      sleep 0.05 # Let the threads enter thread_body
+      @api.instance_variable_set('@logged_threads', threads)
+      expect(OpenC3::Logger).to receive(:warn).twice
+      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @api.kill
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+      expect(elapsed).to be_within(0.3).of(StreamingApi::KILL_TIMEOUT_SECONDS)
+      threads.each { |thread| thread.instance_variable_get('@thread').kill }
+    end
+  end
+
   describe '#expand_all_packets' do
     before(:each) do
       allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST', 'SYSTEM', 'EMPTY', 'UNKNOWN'])

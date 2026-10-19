@@ -128,7 +128,6 @@
       :plugins="plugins"
       :targets="targets"
       :show-default-tools="showDefaultTools"
-      :default-plugins="defaultPlugins"
       :script-versions-enabled="scriptVersionsEnabled"
       @edit="editPlugin"
       @upgrade="upgradePlugin"
@@ -223,35 +222,6 @@ export default {
       // set, reported by /openc3-api/info). Gates per-plugin Export/Import History.
       scriptVersionsEnabled: false,
       timeZone: 'local',
-      // When updating update local_mode.rb, local_mode.py, plugins.p.spec.ts
-      defaultPlugins: [
-        'openc3-cosmos-tool-admin',
-        'openc3-cosmos-tool-bucketexplorer',
-        'openc3-cosmos-tool-cmdsender',
-        'openc3-cosmos-tool-cmdqueue', // Enterprise only
-        'openc3-cosmos-tool-cmdhistory', // Enterprise only
-        'openc3-cosmos-tool-cmdtlmserver',
-        'openc3-cosmos-tool-dataextractor',
-        'openc3-cosmos-tool-dataviewer',
-        'openc3-cosmos-tool-docs',
-        'openc3-cosmos-tool-handbooks',
-        'openc3-cosmos-tool-iframe',
-        'openc3-cosmos-tool-limitsmonitor',
-        'openc3-cosmos-tool-packetviewer',
-        'openc3-cosmos-tool-scriptrunner',
-        'openc3-cosmos-tool-tablemanager',
-        'openc3-cosmos-tool-tlmgrapher',
-        'openc3-cosmos-tool-tlmviewer',
-        'openc3-cosmos-enterprise-tool-admin', // Enterprise only
-        'openc3-cosmos-tool-autonomic', // Enterprise only
-        'openc3-cosmos-tool-calendar', // Enterprise only
-        'openc3-cosmos-tool-grafana', // Enterprise only
-        'openc3-cosmos-tool-logexplorer', // Enterprise only
-        'openc3-cosmos-tool-notebooks', // Enterprise only
-        'openc3-cosmos-tool-systemhealth', // Enterprise only
-        'openc3-enterprise-tool-base', // Enterprise only
-        'openc3-tool-base',
-      ],
     }
   },
   watch: {

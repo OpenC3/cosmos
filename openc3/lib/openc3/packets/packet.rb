@@ -1339,6 +1339,12 @@ module OpenC3
       return unless @buffer
       return unless @obfuscated_items
 
+      # Given values hold the plaintext the user sent, so drop them for obfuscated items
+      if @given_values
+        obfuscated_names = @obfuscated_items.map { |item| item.name.upcase }
+        @given_values.delete_if { |key, _| obfuscated_names.include?(key.to_s.upcase) }
+      end
+
       @obfuscated_items.each do |item|
         next if item.data_type == :DERIVED
 

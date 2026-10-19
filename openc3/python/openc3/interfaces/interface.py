@@ -245,7 +245,8 @@ class Interface:
                         f"{self.name}: Protocol {protocol.__class__.__name__} write_packet requested disconnect"
                     )
                     self.disconnect()
-                    return
+                    # Nothing was written so reject rather than report success
+                    raise WriteRejectError(f"Protocol {protocol.__class__.__name__} write_packet requested disconnect")
                 if packet == "STOP":
                     return
 
@@ -259,7 +260,8 @@ class Interface:
                 if data == "DISCONNECT":
                     Logger.info(f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect")
                     self.disconnect()
-                    return
+                    # Nothing was written so reject rather than report success
+                    raise WriteRejectError(f"Protocol {protocol.__class__.__name__} write_data requested disconnect")
                 if data == "STOP":
                     return
 
