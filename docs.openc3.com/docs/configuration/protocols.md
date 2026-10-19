@@ -40,7 +40,7 @@ For more information about how Protocols fit with Interfaces and Accessors see [
 
 COSMOS provides the following packet delineation protocols: COBS, SLIP, Burst, Fixed, Length, Terminated and Preidentified. Each of these protocols has the primary purpose of separating out packets from a byte stream.
 
-COSMOS Enterprise provides the GEMS packet delineation protocol as well as the CCSDS TCTF, CLTU, TMTF and USLP framing protocols. It also provides COP-1 (a reliability layer on top of TC framing) and SDLS (a security engine used by the framing protocols), which do not delineate packets themselves. See [CCSDS Protocols](#ccsds-protocols-enterprise) for details.
+COSMOS Enterprise provides the GEMS packet delineation protocol as well as the CCSDS TCTF, CLTU, TMTF, USLP and AOS framing protocols. It also provides COP-1 (a reliability layer on top of TC or USLP framing) and SDLS (a security engine used by the framing protocols), which do not delineate packets themselves. See [CCSDS Protocols](#ccsds-protocols-enterprise) for details.
 
 Note that all protocols take a final parameter called "Allow Empty Data". This indicates whether the protocol will allow an empty string to be passed down to later Protocols (instead of returning :STOP). Can be true, false, or nil, where nil is interpreted as true unless the Protocol is the last Protocol of the chain. End users of a protocol will almost always simply leave off this parameter. For more information read the [Custom Protocols](protocols.md#custom-protocols) documentation.
 
@@ -511,6 +511,7 @@ Every protocol ships in both Ruby and Python with identical class names and para
 | [CCSDS CLTU](#ccsds-cltu-protocol-enterprise)         | 231.0-B-4                     | CLTU wrap (BCH codeblocks) around TC frames                   | WRITE         |
 | [CCSDS TMTF](#ccsds-tmtf-protocol-enterprise)         | 132.0-B-2                     | TM Transfer Frame (telemetry downlink deframing)              | READ (+WRITE) |
 | [CCSDS USLP](#ccsds-uslp-protocol-enterprise)         | 732.1-B-3                     | Unified Space Data Link Protocol (uplink and downlink)        | READ / WRITE  |
+| [CCSDS AOS](#ccsds-aos-protocol-enterprise)           | 732.0-B-4                     | AOS Transfer Frame (high-rate return link)                    | READ / WRITE  |
 | [CCSDS COP-1 FOP](#ccsds-cop-1-protocols-enterprise)  | 232.1-B-2                     | COP-1 FOP-1 (reliable AD service, ground sender)              | READ_WRITE    |
 | [CCSDS COP-1 FARM](#ccsds-cop-1-protocols-enterprise) | 232.1-B-2                     | COP-1 FARM-1 (spacecraft-side simulator)                      | READ_WRITE    |
 | [SDLS](#ccsds-sdls-enterprise)                        | 355.0-B-2                     | Space Data Link Security engine used by the framing protocols | Any framing   |
@@ -676,6 +677,8 @@ Source code for [ccsds_tmtf_protocol.rb](https://repos.openc3.com/OpenC3/openc3-
 
 The Operational Control Field is treated as a CLCW (Type-1 report). A non-CLCW OCF (Type-2 / PLCW variants) is passed through as raw bytes but not interpreted.
 
+Without a sync pattern there is nothing to resynchronize on, so a frame that fails its FECF or header checks is discarded whole and parsing continues at the next frame boundary. A gap in the Virtual Channel Frame Count means frames were lost, so any packet partially reassembled on that Virtual Channel is discarded rather than completed with unrelated bytes.
+
 ### CCSDS USLP Protocol (Enterprise)
 
 The CCSDS USLP Protocol implements the Unified Space Data Link Protocol (CCSDS 732.1-B-3). USLP uses a single Transfer Frame format for both the forward (command) and return (telemetry) links so the same protocol serves a READ or a WRITE chain. On read it returns `VCID`, `MAP_ID`, `VC_FRM_CNT` and, when present, `INSERT_ZONE` and `OCF` in the packet extra.
@@ -731,6 +734,58 @@ The non-truncated Primary Header is supported along with TFDZ Construction Rules
 
 On read, a frame whose VC Frame Count length disagrees with the configured VC Count Length is rejected, and a VC Frame Count discontinuity discards any partial packet held for that Virtual Channel. Without a sync pattern there is nothing to resynchronize on, so a frame that fails its CRC or header checks is discarded whole.
 
+### CCSDS AOS Protocol (Enterprise)
+
+The CCSDS AOS Protocol implements the AOS ("Version-2") Transfer Frame (CCSDS 732.0-B-4) used for high-rate return links. Like USLP the frame format is direction independent, so the same protocol serves a READ or a WRITE chain. AOS frames have no length field so the Frame Length is required. On read it returns `VCID`, `REPLAY`, `VC_FRM_CNT` and, when present, `INSERT_ZONE` and `OCF` in the packet extra. The Insert Zone and OCF are returned on every frame including Only Idle Data frames, so an AOS downlink can carry a CLCW for [COP-1](#ccsds-cop-1-protocols-enterprise) even when no telemetry is queued.
+
+```
+| Primary Header (6 or 8) | [Insert Zone] | Data Field (M_PDU) | [OCF 4] | [FECF 2] |
+```
+
+| Parameter          | Description                                                                                                       | Required | Default    |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------- | -------- | ---------- |
+| SCID               | Spacecraft Identifier (8 bits)                                                                                    | Yes      |            |
+| Frame Length       | Fixed frame length in bytes (not including the sync pattern)                                                      | Yes      |            |
+| Randomization      | Whether the transfer frame is randomized                                                                          | No       | false      |
+| Sync Pattern       | Hex string sync pattern. Set to nil to disable.                                                                   | No       | 0x1ACFFC1D |
+| Error Control      | Whether the frame has a Frame Error Control Field (16 bit CRC)                                                    | No       | false      |
+| FHEC               | Whether the primary header has the Frame Header Error Control field (Reed-Solomon (10,6) code)                    | No       | false      |
+| Insert Zone Length | Length of the Insert Zone in bytes                                                                                | No       | 0          |
+| OCF                | Whether the frame has the 4 byte Operational Control Field (CLCW)                                                 | No       | false      |
+| VCID               | Virtual Channel Identifier used when writing frames. 63 writes Only Idle Data frames.                             | No       | 0          |
+| Replay Flag        | Replay Flag used when writing frames                                                                              | No       | 0          |
+| VC Count Cycle     | Virtual Channel Frame Count Cycle used when writing frames                                                        | No       | 0          |
+| Allow Empty Data   | See [Packet Delineation Protocols](#packet-delineation-protocols)                                                 | No       | nil        |
+
+The Frame Length must exceed the overhead implied by the other parameters (primary header, M_PDU header, Insert Zone, OCF, FECF and any SDLS header and trailer) or the protocol raises an error on startup.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```cosmos
+INTERFACE INTERFACE_NAME <params>
+  # AOS return link: 1024 byte frames, randomized, FECF + FHEC + OCF, VC 1
+  PROTOCOL READ ccsds_aos_protocol.py 0xAB 1024 True 0x1ACFFC1D True True 0 True 1
+```
+
+Source code for [ccsds_aos_protocol.py](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols/src/branch/main/lib/ccsds_aos_protocol.py)
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```cosmos
+INTERFACE INTERFACE_NAME <params>
+  # AOS return link: 1024 byte frames, randomized, FECF + FHEC + OCF, VC 1
+  PROTOCOL READ CcsdsAosProtocol 0xAB 1024 true 0x1ACFFC1D true true 0 true 1
+```
+
+Source code for [ccsds_aos_protocol.rb](https://repos.openc3.com/OpenC3/openc3-cosmos-ccsds-protocols/src/branch/main/lib/ccsds_aos_protocol.rb)
+
+</TabItem>
+</Tabs>
+
+The M_PDU (packet) service is implemented with the First Header Pointer, and packets may span frames in both directions: on write a packet that does not fit in one frame is split across as many frames as needed, and on read it is reassembled per Virtual Channel. The optional FHEC is generated on write and, on read, corrects up to two symbol errors in the primary header before the FECF is verified. Only Idle Data frames (VCID 63) are discarded on read. The B_PDU (bitstream) and VCA_SDU (Virtual Channel Access) services are not implemented.
+
 ### CCSDS COP-1 Protocols (Enterprise)
 
 The Communications Operation Procedure-1 (CCSDS 232.1-B-2) provides a reliable, retransmitting data link service on top of the TC or USLP transfer frames. It has two halves:
@@ -738,7 +793,9 @@ The Communications Operation Procedure-1 (CCSDS 232.1-B-2) provides a reliable, 
 - **FOP-1** (`CcsdsCop1FopProtocol`) - the ground sender. It stamps each Type-AD frame's sequence number N(S), buffers it, retransmits on a timeout or when requested by the CLCW, and consumes the CLCW carried in the downlink Operational Control Field.
 - **FARM-1** (`CcsdsCop1FarmProtocol`) - the spacecraft receiver, for building a COP-1 aware simulator. It accepts in-sequence frames, discards duplicates and gaps, handles the Type-BC Unlock / Set V(R) control commands, and generates the CLCW.
 
-Both work with either TC or USLP framing (Frame Type parameter). Because the CLCW arrives in the downlink frame's OCF, you must enable OCF on the return link [TMTF](#ccsds-tmtf-protocol-enterprise) or [USLP](#ccsds-uslp-protocol-enterprise) protocol. The frame geometry parameters (Frame Length, Insert Zone Length, and the security lengths) must match the framing protocol on the same interface.
+Both work with either TC or USLP framing (Frame Type parameter). Because the CLCW arrives in the downlink frame's OCF, you must enable OCF on the return link [TMTF](#ccsds-tmtf-protocol-enterprise) or [USLP](#ccsds-uslp-protocol-enterprise) protocol. The frame geometry parameters (Frame Length, Insert Zone Length, and the security lengths) must match the framing protocol on the same interface. On a secured link pass the same SDLS engine to both and the security geometry is taken from the engine.
+
+FARM-1 validates each frame completely (FECF, Transfer Frame Version, SCID, VCID and, with an SDLS engine, authentication) **before** running FARM-1 acceptance. Acknowledging a frame the deframer then drops would advance V(R) past data that never arrived, which COP-1 cannot recover from since the sender sees it acknowledged and never retransmits.
 
 **FOP-1 Parameters**
 
@@ -860,13 +917,13 @@ The full FOP-1 state machine and FARM-1 (Open / Wait / Lockout, Unlock / Set V(R
 
 ### CCSDS SDLS (Enterprise)
 
-The Space Data Link Security Protocol (CCSDS 355.0-B-2) adds a Security Header before the Transfer Frame Data Field and a Security Trailer after it, providing authentication, encryption, or authenticated encryption per a Security Association (SA). It is implemented as an engine (`Sdls` + `SecurityAssociation`) which is passed to the TCTF, TMTF, USLP and COP-1 protocols via the keyword-only `sdls` parameter. The frame's primary header is authenticated as additional data and only the Transfer Frame Data Field is encrypted.
+The Space Data Link Security Protocol (CCSDS 355.0-B-2) adds a Security Header before the Transfer Frame Data Field and a Security Trailer after it, providing authentication, encryption, or authenticated encryption per a Security Association (SA). It is implemented as an engine (`Sdls` + `SecurityAssociation`) which is passed to the TCTF, TMTF, USLP, AOS and COP-1 protocols via the keyword-only `sdls` parameter. The frame's primary header is authenticated as additional data and only the Transfer Frame Data Field is encrypted.
 
-| Service                  | Algorithms                                                                      |
-| ------------------------ | ------------------------------------------------------------------------------- |
-| Authenticated encryption | AES-GCM (the CCSDS baseline for TM / USLP: 256 bit key, 96 bit IV, 128 bit tag) |
-| Authentication only      | AES-CMAC (the CCSDS baseline for TC), HMAC-SHA-256, GMAC                        |
-| Encryption only          | AES-CTR                                                                         |
+| Service                  | Algorithms                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------- |
+| Authenticated encryption | AES-GCM (the CCSDS baseline for TM / AOS / USLP: 256 bit key, 96 bit IV, 128 bit tag) |
+| Authentication only      | AES-CMAC (the CCSDS baseline for TC), HMAC-SHA-256, GMAC                              |
+| Encryption only          | AES-CTR                                                                               |
 
 Since the SDLS engine is an object it cannot be written on a `PROTOCOL` line. Build the Security Association(s) and engine in a small [custom interface](interfaces#custom-interfaces) and pass the engine to the framing protocol. Keys should be stored in [COSMOS Secrets](../guides/secrets) rather than hard coded.
 
@@ -878,7 +935,7 @@ from sdls import Sdls
 from security_association import SecurityAssociation
 
 # Baseline SAs
-sa = SecurityAssociation.aes_gcm(spi=1, key=key_bytes)   # AES-256-GCM (TM / USLP)
+sa = SecurityAssociation.aes_gcm(spi=1, key=key_bytes)   # AES-256-GCM (TM / AOS / USLP)
 sa = SecurityAssociation.aes_cmac(spi=2, key=key_bytes)  # AES-CMAC (TC)
 
 # Non-baseline services use the full constructor, e.g. HMAC-SHA-256 authentication
@@ -904,7 +961,7 @@ require 'sdls'
 require 'security_association'
 
 # Baseline SAs
-sa = OpenC3::SecurityAssociation.aes_gcm(spi: 1, key: key_bytes)   # AES-256-GCM (TM / USLP)
+sa = OpenC3::SecurityAssociation.aes_gcm(spi: 1, key: key_bytes)   # AES-256-GCM (TM / AOS / USLP)
 sa = OpenC3::SecurityAssociation.aes_cmac(spi: 2, key: key_bytes)  # AES-CMAC (TC)
 
 # Non-baseline services use the full keyword constructor, e.g. HMAC-SHA-256 authentication
@@ -942,12 +999,12 @@ The **receive** counter also needs a trusted baseline after a restart, otherwise
 Additional SDLS details:
 
 - **Channel binding** - pass `gvcids` (e.g. `[{'scid': 42, 'vcid': 0}]`) so a valid SA on one Virtual Channel cannot be replayed onto another. TC and USLP also support binding to a `map_id`. A mismatch raises `ChannelMismatchError`.
-- **Authentication bit mask** - each framing protocol supplies a baseline mask (`SDLS_HEADER_MASK`) of the header bits covered by the MAC. TM excludes the Master Channel Frame Count while TC and USLP exclude their spare bits. Set the SA's `auth_mask` to override it.
+- **Authentication bit mask** - each framing protocol supplies a baseline mask of the header bits covered by the MAC, excluding the fields a sender fills in after the MAC is computed. TM excludes the Master and Virtual Channel Frame Counts, AOS excludes the Virtual Channel Frame Count, its cycle in the Signaling Field and the FHEC, while TC and USLP exclude only their spare bits (USLP's VC Frame Count stays authenticated). The SCID and VCID are always authenticated. Set the SA's `auth_mask` to replace the protocol baseline entirely.
 - **Encryption only** - AES-CTR provides confidentiality only. It has no MAC, so frame contents can be modified undetected, and it has no replay protection. Prefer AES-GCM unless an external authentication layer covers the frame.
 - **Type-C frames** - TC control command frames carry COP-1 directives and are never secured (CCSDS 232.0-B-4 6.3.4.1).
 - **COP-1 + SDLS** - COP-1 stamps the frame sequence number after the MAC is computed, so those bytes must be excluded from the authenticated region. Build the SA's mask with `SecurityAssociation.uslp_auth_mask(vc_count_length: 1, length_iv: 12)` (USLP) or `SecurityAssociation.tc_auth_mask(length_sn: 4)` (TC), and pass the same engine to both the framing protocol and the COP-1 protocol.
 
-The SDLS Extended Procedures (CCSDS 355.1-B: key management / OTAR, SA management, monitoring & control) are not implemented.
+The SDLS Extended Procedures (CCSDS 355.1-B: key management / OTAR, SA management, monitoring & control) are not implemented. The Pad Length field is honored on receive but always sent as 0 since none of the supported algorithms require padding.
 
 ### CCSDS SLE Interfaces (Enterprise)
 
