@@ -48,7 +48,7 @@ def get_interface(interface_name, scope=OPENC3_SCOPE):
     interface = InterfaceModel.get(name=interface_name, scope=scope)
     if not interface:
         raise RuntimeError(f"Interface '{interface_name}' does not exist (get_interface)")
-    return interface | (InterfaceStatusModel.get(name=interface_name, scope=scope) or {"state": "UNKNOWN"})
+    return interface | InterfaceStatusModel.get_or_default(name=interface_name, scope=scope)
 
 
 # @return [Array<String>] All the interface names

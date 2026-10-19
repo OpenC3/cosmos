@@ -48,7 +48,7 @@ def get_router(router_name, scope=OPENC3_SCOPE):
     router = RouterModel.get(name=router_name, scope=scope)
     if not router:
         raise RuntimeError(f"Router '{router_name}' does not exist (get_router)")
-    return router | (RouterStatusModel.get(name=router_name, scope=scope) or {"state": "UNKNOWN"})
+    return router | RouterStatusModel.get_or_default(name=router_name, scope=scope)
 
 
 # @return [Array<String>] All the router names
