@@ -106,13 +106,13 @@ SURFACES = [
     Surface(
         "uv (openc3-ruby image)",
         "openc3-ruby/Dockerfile",
-        r"ARG UV_VERSION=([\d.]+)",
+        r"ARG OPENC3_UV_VERSION=([\d.]+)",
         UV,
     ),
     Surface(
         "uv (openc3-ruby ubi image)",
         "openc3-ruby/Dockerfile-ubi",
-        r"ARG UV_VERSION=([\d.]+)",
+        r"ARG OPENC3_UV_VERSION=([\d.]+)",
         UV,
     ),
     # The trivy release the scan workflows install through setup-trivy, which

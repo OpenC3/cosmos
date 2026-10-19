@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1963
 
 import contextlib
+import errno
 import json
 import os
 import sys
@@ -738,7 +739,14 @@ class InterfaceMicroservice(Microservice):
             self.logger.info(f"{self.interface.name}: Connect ignored, already connected")
             return self.interface
 
+        # A user requested (re)connect starts fresh so backtraces are logged again
+        self.clear_connection_messages()
         return self.attempt_connection(*params)
+
+    # Forget which errors have already had their backtrace logged
+    def clear_connection_messages(self):
+        self.connection_failed_messages.clear()
+        self.connection_lost_messages.clear()
 
     # Sets the state to 'ATTEMPTING', first rebuilding the interface/router if
     # parameters are given, so the run method performs the actual connection.
@@ -925,38 +933,47 @@ class InterfaceMicroservice(Microservice):
                 packet, queued=self.queued, update_interval=self.update_interval, scope=self.scope
             )
 
+    # Equivalent of the Ruby Errno lists. Use the specific ConnectionError subclasses
+    # rather than ConnectionError itself, which also covers BrokenPipeError (EPIPE)
+    CONNECTION_FAILED_ERRORS = (ConnectionRefusedError, ConnectionResetError, TimeoutError)
+    CONNECTION_FAILED_ERRNOS = (errno.ENOTSOCK, errno.EHOSTUNREACH)
+    CONNECTION_LOST_ERRORS = (ConnectionAbortedError, ConnectionResetError, TimeoutError)
+    CONNECTION_LOST_ERRNOS = (errno.EBADF, errno.ENOTSOCK)
+
+    @staticmethod
+    def _expected_network_error(error, error_classes, errnos):
+        if isinstance(error, error_classes):
+            return True
+        return isinstance(error, OSError) and error.errno in errnos
+
     def handle_connection_failed(self, connection, connect_error):
         self.error = connect_error
         self.logger.error(f"{self.interface.name}: Connection {connection} failed due to {repr(connect_error)}")
-        # match connect_error:
-        #   case OSError:
-        #     self.logger.info(f"{self.interface.name}: Closing from signal")
-        #     self.cancel_thread = True
-        # case Errno='ECONNREFUSED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='ENOTSOCK', Errno='EHOSTUNREACH', IOError:
-        #   # Do not write an exception file for these extremely common cases
-        # else _:
-        if connect_error is Exception and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
+        expected = self._expected_network_error(
+            connect_error, self.CONNECTION_FAILED_ERRORS, self.CONNECTION_FAILED_ERRNOS
+        ) or (
+            isinstance(connect_error, RuntimeError)
+            and ("canceled" in str(connect_error) or "timeout" in str(connect_error))
+        )
+        if expected:
             pass  # Do not write an exception file for these extremely common cases
-        else:
+        # Only log the backtrace the first time we see each distinct error. Key on the
+        # type too since exceptions raised without arguments all have an empty str()
+        elif (type(connect_error), str(connect_error)) not in self.connection_failed_messages:
             self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(connect_error))}")
-            if str(connect_error) not in self.connection_failed_messages:
-                self.connection_failed_messages.append(str(connect_error))
+            self.connection_failed_messages.append((type(connect_error), str(connect_error)))
         self.disconnect()  # Ensure we do a clean disconnect
 
     def handle_connection_lost(self, error=None, reconnect=True):
         if error:
             self.error = error
             self.logger.info(f"{self.interface.name}: Connection Lost: {repr(error)}")
-            # match err:
-            #   case SignalException:
-            #     self.logger.info(f"{self.interface.name}: Closing from signal")
-            #     self.cancel_thread = True
-            #   # case Errno='ECONNABORTED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='EBADF', Errno='ENOTSOCK', IOError:
-            #     # Do not write an exception file for these extremely common cases
-            #   else _:
-            self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
-            if str(error) not in self.connection_lost_messages:
-                self.connection_lost_messages.append(str(error))
+            if self._expected_network_error(error, self.CONNECTION_LOST_ERRORS, self.CONNECTION_LOST_ERRNOS):
+                pass  # Do not write an exception file for these extremely common cases
+            # Only log the backtrace the first time we see each distinct error
+            elif (type(error), str(error)) not in self.connection_lost_messages:
+                self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
+                self.connection_lost_messages.append((type(error), str(error)))
         else:
             self.logger.info(f"{self.interface.name}: Connection Lost")
         self.disconnect(reconnect)  # Ensure we do a clean disconnect
