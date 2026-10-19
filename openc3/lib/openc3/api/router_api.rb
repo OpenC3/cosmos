@@ -47,9 +47,7 @@ module OpenC3
       authorize(permission: 'system', router_name: router_name, manual: manual, scope: scope, token: token)
       router = RouterModel.get(name: router_name, scope: scope)
       raise "Router '#{router_name}' does not exist (get_router)" unless router
-      router_status = RouterStatusModel.get(name: router_name, scope: scope)
-      router_status ||= {'state' => 'UNKNOWN'}
-      router.merge(router_status)
+      router.merge(RouterStatusModel.get(name: router_name, scope: scope) || { 'state' => 'UNKNOWN' })
     end
 
     # @return [Array<String>] All the router names

@@ -48,9 +48,7 @@ module OpenC3
       authorize(permission: 'system', interface_name: interface_name, manual: manual, scope: scope, token: token)
       interface = InterfaceModel.get(name: interface_name, scope: scope)
       raise "Interface '#{interface_name}' does not exist (get_interface)" unless interface
-      interface_status = InterfaceStatusModel.get(name: interface_name, scope: scope)
-      interface_status ||= { 'state' => 'UNKNOWN' }
-      interface.merge(interface_status)
+      interface.merge(InterfaceStatusModel.get(name: interface_name, scope: scope) || { 'state' => 'UNKNOWN' })
     end
 
     # @return [Array<String>] All the interface names
