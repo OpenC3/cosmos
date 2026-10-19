@@ -43,7 +43,10 @@ REM Container/image names
 set "MINIO_MIGRATION_CONTAINER=openc3-minio-migration"
 set "VERSITY_MIGRATION_CONTAINER=openc3-versity-migration"
 set "MINIO_IMAGE=ghcr.io/openc3/openc3-minio:latest"
-set "MC_IMAGE=ghcr.io/openc3/openc3-cosmos-init:6.10.4"
+REM COSMOS 6 init image containing the patched mc client used for the migration.
+REM Defaults to the Core init image. Set MC_IMAGE to use a different init image,
+REM e.g. one already available locally on an offline / air-gapped system.
+if "%MC_IMAGE%"=="" set "MC_IMAGE=ghcr.io/openc3/openc3-cosmos-init:6.10.4"
 if "%OPENC3_REGISTRY%"=="" (set "OPENC3_REGISTRY=docker.io")
 if "%OPENC3_NAMESPACE%"=="" (set "OPENC3_NAMESPACE=openc3inc")
 if "%OPENC3_TAG%"=="" (set "OPENC3_TAG=latest")
@@ -58,6 +61,7 @@ set "VERSITY_DEST="
 set "DOCKER_NETWORK="
 
 REM Parse command
+set "COMMAND=%~1"
 if "%1"=="" goto :usage
 if "%1"=="help" goto :usage
 if "%1"=="--help" goto :usage
@@ -69,6 +73,8 @@ if "%1"=="cleanup" goto :cmd_cleanup
 goto :usage
 
 :cmd_start
+call :ensure_mc_image
+if errorlevel 1 exit /b 1
 call :detect_environment
 if errorlevel 1 exit /b 1
 if "%MINIO_SOURCE%"=="" call :start_temp_minio
@@ -84,6 +90,8 @@ echo Run '%~nx0 migrate' to start migration
 exit /b 0
 
 :cmd_migrate
+call :ensure_mc_image
+if errorlevel 1 exit /b 1
 call :detect_environment
 if errorlevel 1 exit /b 1
 if "%MINIO_SOURCE%"=="" call :start_temp_minio
@@ -94,6 +102,8 @@ call :migrate_data
 exit /b %errorlevel%
 
 :cmd_status
+call :ensure_mc_image
+if errorlevel 1 exit /b 1
 call :detect_environment
 if errorlevel 1 exit /b 1
 call :show_status
@@ -140,8 +150,25 @@ echo   OLD_VOLUME    Old MINIO volume name (default: openc3-bucket-v)
 echo   NEW_VOLUME    New versitygw volume name (default: openc3-object-v)
 echo   OPENC3_BUCKET_USERNAME  S3 credentials (default: openc3minio)
 echo   OPENC3_BUCKET_PASSWORD  S3 credentials (default: openc3miniopassword)
+echo   MC_IMAGE      COSMOS 6 init image used to run mc
+echo                 (default: ghcr.io/openc3/openc3-cosmos-init:6.10.4)
+echo                 If offline, set this to an init image available locally.
 echo.
 exit /b 0
+
+:ensure_mc_image
+REM Ensure the image used to run mc is available locally
+echo [INFO] Using mc image: %MC_IMAGE%
+docker image inspect "%MC_IMAGE%" >nul 2>&1
+if not errorlevel 1 exit /b 0
+echo [INFO] Pulling mc image: %MC_IMAGE%
+docker pull "%MC_IMAGE%"
+if not errorlevel 1 exit /b 0
+echo [ERROR] Failed to pull mc image: %MC_IMAGE%
+echo If you are offline, set MC_IMAGE to a COSMOS 6 init image available locally, e.g.:
+echo   set MC_IMAGE=^<registry^>/^<namespace^>/openc3-cosmos-init:^<tag^>
+echo   %~nx0 %COMMAND%
+exit /b 1
 
 :detect_environment
 echo [==>] Detecting environment...

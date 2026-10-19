@@ -18,7 +18,7 @@
         ref="targetPacketChooser"
         :initial-target-name="targetName"
         :initial-packet-name="commandName"
-        :disabled="sendDisabled"
+        :disabled="sendDisabled || commandLoading"
         :disable-button-text="readOnly ? 'Viewers cannot send commands' : null"
         :button-text="showCommandButton ? 'Send' : null"
         :show-queue-select="showQueueSelect"
@@ -176,6 +176,9 @@ export default {
       targetName: '',
       commandName: '',
       commandDescription: '',
+      // Keep Send disabled until the selected command's parameters and
+      // descriptions are loaded so we never send with stale values
+      commandLoading: false,
       ignoredParams: [],
       computedRows: [],
       reservedItemNames: [
@@ -250,6 +253,7 @@ export default {
       this.computedRows = []
       this.hazardousParameters = {}
       if (this.targetName && this.commandName) {
+        this.commandLoading = true
         this.api
           .get_target(this.targetName)
           .then(
@@ -263,6 +267,7 @@ export default {
           )
           .then(
             (command) => {
+              this.commandLoading = false
               if (command) {
                 // Identify length fields that are auto-managed by variable_bit_size arrays
                 // These should be shown but disabled - they will be set when the array is written
@@ -343,6 +348,7 @@ export default {
               }
             },
             (error) => {
+              this.commandLoading = false
               console.error('Error getting command parameters:', error)
               this.$emit('command-loaded', null)
             },
