@@ -27,6 +27,11 @@ on:
 env:
   TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
   TRIVY_JAVA_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db:1,ghcr.io/aquasecurity/trivy-java-db:1
+  # Trivy fetches the VEX hub through the GitHub API. Unauthenticated that is
+  # 60 requests/hour per runner IP and fails with "403 API rate limit exceeded";
+  # trivy authenticates with GITHUB_TOKEN if set. trivy-action does not pass it
+  # through, so it has to be set here.
+  GITHUB_TOKEN: ${{ github.token }}
 
 permissions:
   contents: read

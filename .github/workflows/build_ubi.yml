@@ -30,6 +30,11 @@ concurrency:
 env:
   TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
   TRIVY_JAVA_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db:1,ghcr.io/aquasecurity/trivy-java-db:1
+  # Trivy fetches the VEX hub through the GitHub API. Unauthenticated that is
+  # 60 requests/hour per runner IP and fails with "403 API rate limit exceeded";
+  # trivy authenticates with GITHUB_TOKEN if set. trivy-action does not pass it
+  # through, so it has to be set here.
+  GITHUB_TOKEN: ${{ github.token }}
 
 permissions:
   contents: read
@@ -150,16 +155,28 @@ jobs:
           # it trivy falls back to pulling the published image of the same name
           # from Docker Hub, which would scan the last release, not this PR.
           #
-          # trivy.yaml sets exit-code 1 on CRITICAL/HIGH, so record the failure
-          # and keep going: one vulnerable base image should not hide the
-          # findings in the other ten.
+          # Trivy exits 1 on any fatal error (e.g. a DB or VEX download
+          # failure), which is also the exit-code trivy.yaml sets for findings.
+          # --exit-code 2 overrides that so a scan that never ran is not
+          # reported as a vulnerable image. Record either and keep going: one
+          # bad image should not hide the results for the other ten.
           failed=()
+          errored=()
           for image in $UBI_IMAGES; do
             echo "::group::trivy ${image}"
-            trivy image --config trivy.yaml --image-src docker \
-              "${registry}/${namespace}/${image}:${tag}" || failed+=("$image")
+            rc=0
+            trivy image --config trivy.yaml --exit-code 2 --image-src docker \
+              "${registry}/${namespace}/${image}:${tag}" || rc=$?
+            case $rc in
+              0) ;;
+              2) failed+=("$image") ;;
+              *) errored+=("$image") ;;
+            esac
             echo "::endgroup::"
           done
+          if [ ${#errored[@]} -gt 0 ]; then
+            echo "errored=true" >> "$GITHUB_OUTPUT"
+          fi
 
           # Each image's output is inside a collapsed ::group:: and a clean
           # image still prints a full all-zero Report Summary, so a reader who
@@ -167,17 +184,25 @@ jobs:
           # expanding every one. Name them where they are visible unexpanded.
           {
             echo "### Trivy UBI scan"
-            if [ ${#failed[@]} -eq 0 ]; then
+            if [ ${#failed[@]} -eq 0 ] && [ ${#errored[@]} -eq 0 ]; then
               echo "No fixable CRITICAL/HIGH vulnerabilities."
-            else
+            fi
+            if [ ${#failed[@]} -gt 0 ]; then
               echo "Fixable CRITICAL/HIGH vulnerabilities in:"
               printf -- '- `%s`\n' "${failed[@]}"
+            fi
+            if [ ${#errored[@]} -gt 0 ]; then
+              echo "Trivy failed to scan (see the log for the error):"
+              printf -- '- `%s`\n' "${errored[@]}"
             fi
           } >> "$GITHUB_STEP_SUMMARY"
           for image in "${failed[@]}"; do
             echo "::error title=Trivy::${image} has fixable CRITICAL/HIGH vulnerabilities"
           done
-          [ ${#failed[@]} -eq 0 ]
+          for image in "${errored[@]}"; do
+            echo "::error title=Trivy::trivy failed to scan ${image}"
+          done
+          [ ${#failed[@]} -eq 0 ] && [ ${#errored[@]} -eq 0 ]
 
       # Published as a commit status rather than left as this job's outcome so
       # "did the UBI images build and come up" and "is a base image currently
@@ -192,12 +217,19 @@ jobs:
           # which is not the commit the PR shows checks against.
           SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           OUTCOME: ${{ steps.trivy.outcome }}
+          ERRORED: ${{ steps.trivy.outputs.errored }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           case "$OUTCOME" in
             success) state=success; desc="No fixable CRITICAL/HIGH vulnerabilities" ;;
             skipped) state=error;   desc="Image build failed, scan did not run" ;;
-            *)       state=failure; desc="Fixable CRITICAL/HIGH vulnerabilities found" ;;
+            *)
+              if [ "$ERRORED" = "true" ]; then
+                state=error; desc="Trivy failed to scan one or more images"
+              else
+                state=failure; desc="Fixable CRITICAL/HIGH vulnerabilities found"
+              fi
+              ;;
           esac
           gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
             -f state="$state" \
