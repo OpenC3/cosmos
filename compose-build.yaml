@@ -19,7 +19,6 @@ services:
   openc3-ruby:
     build:
       context: "openc3-ruby"
-      network: host
       args:
         DEBIAN_RELEASE: ${DEBIAN_RELEASE}
         DEBIAN_POINT_RELEASE: ${DEBIAN_POINT_RELEASE}
@@ -27,17 +26,21 @@ services:
         APT_URL: ${APT_URL}
         RUBYGEMS_URL: ${RUBYGEMS_URL}
         PYPI_URL: ${PYPI_URL}
+        OPENC3_PYPI_ALLOW_INSECURE: ${OPENC3_PYPI_ALLOW_INSECURE:-${PIP_ENABLE_TRUSTED_HOST:-}}
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby:${OPENC3_TAG}"
 
   openc3-base:
     build:
       context: "openc3"
-      network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
         OPENC3_TAG: ${OPENC3_TAG}
+        # Keeps the uv.lock relock aimed at the same mirror even when this
+        # image is rebuilt on its own against an older openc3-ruby.
+        PYPI_URL_OVERRIDE: ${PYPI_URL}
+        OPENC3_PYPI_ALLOW_INSECURE: ${OPENC3_PYPI_ALLOW_INSECURE:-${PIP_ENABLE_TRUSTED_HOST:-}}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base:${OPENC3_TAG}"
     depends_on:
       - "openc3-ruby"
@@ -45,7 +48,6 @@ services:
   openc3-node:
     build:
       context: "openc3-node"
-      network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -57,7 +59,6 @@ services:
   openc3-buckets:
     build:
       context: "openc3-buckets"
-      network: host
       args:
         DEBIAN_RELEASE: ${DEBIAN_RELEASE}
         DEBIAN_POINT_RELEASE: ${DEBIAN_POINT_RELEASE}
@@ -68,7 +69,6 @@ services:
   openc3-tsdb:
     build:
       context: "openc3-tsdb"
-      network: host
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb:${OPENC3_TAG}"
@@ -76,7 +76,6 @@ services:
   openc3-redis:
     build:
       context: "openc3-redis"
-      network: host
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
         DEBIAN_POINT_RELEASE: ${DEBIAN_POINT_RELEASE}
@@ -86,7 +85,6 @@ services:
   openc3-cosmos-cmd-tlm-api:
     build:
       context: "openc3-cosmos-cmd-tlm-api"
-      network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -99,7 +97,6 @@ services:
   openc3-cosmos-script-runner-api:
     build:
       context: "openc3-cosmos-script-runner-api"
-      network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -112,7 +109,6 @@ services:
   openc3-operator:
     build:
       context: "openc3-operator"
-      network: host
       args:
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
@@ -124,7 +120,6 @@ services:
   openc3-traefik:
     build:
       context: "openc3-traefik"
-      network: host
       args:
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
     image: "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik:${OPENC3_TAG}"
@@ -134,13 +129,16 @@ services:
       context: "openc3-cosmos-init"
       additional_contexts:
         docs: "docs.openc3.com"
-      network: host
       args:
         NPM_URL: ${NPM_URL}
         OPENC3_DEPENDENCY_REGISTRY: ${OPENC3_DEPENDENCY_REGISTRY}
         OPENC3_REGISTRY: ${OPENC3_REGISTRY}
         OPENC3_NAMESPACE: ${OPENC3_NAMESPACE}
         OPENC3_TAG: ${OPENC3_TAG}
+        # Keeps each plugin's uv.lock relock aimed at the same mirror even when
+        # this image is rebuilt on its own against an older openc3-node.
+        PYPI_URL_OVERRIDE: ${PYPI_URL}
+        OPENC3_PYPI_ALLOW_INSECURE: ${OPENC3_PYPI_ALLOW_INSECURE:-${PIP_ENABLE_TRUSTED_HOST:-}}
         # 1 = build the tool bundles with sourcemaps so Playwright V8
         # coverage can map back to original sources. Never set for
         # production images (maps roughly triple the tool footprint).

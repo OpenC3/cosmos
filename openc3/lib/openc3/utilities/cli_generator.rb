@@ -11,6 +11,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'open3'
+
 module OpenC3
   class CliGenerator
     GENERATORS = %w(plugin target microservice widget conversion processor limits_response tool tool_vue tool_angular tool_react tool_svelte command_validator)
@@ -392,9 +394,26 @@ module OpenC3
       end
       FileUtils.mkdir(plugin_name)
       Dir.chdir(plugin_name) # Change to the plugin path to make copying easier
+      # Every installed plugin's lib/ goes on sys.path, so python code shared
+      # across the plugin lives in a package named after the plugin rather than
+      # directly in lib/, where a same-named module in another plugin collides.
+      package_name = plugin_name.gsub(/[^a-z0-9]+/, '_')
 
       process_template("#{TEMPLATES_DIR}/plugin", binding) do |filename|
         filename.sub!("plugin.gemspec", "#{plugin_name}.gemspec")
+        filename.sub!("lib/PACKAGE", "lib/#{package_name}")
+        # Only python plugins get a pyproject.toml. Shipping one in every plugin
+        # would make install_phase2 take the python dependency path (and build a
+        # per-plugin venv) for plugins that have no python code at all.
+        #
+        # lib/ comes with it because pyproject.toml sets ty's extra-paths to
+        # lib/, and ty exits non-zero rather than warning when a configured path
+        # does not exist. The package's __init__.py does reach the gem, which is
+        # harmless: the gem's pyproject.toml already sets needs_dependencies.
+        if @@language != 'py'
+          next true if filename == 'pyproject.toml'
+          next true if filename == 'lib' or filename.start_with?('lib/')
+        end
         false
       end
 
@@ -409,8 +428,26 @@ module OpenC3
         end
       end
 
+      write_python_version if @@language == 'py'
+
       puts "Plugin #{plugin_name} successfully generated!"
       return plugin_name
+    end
+
+    # Pin the plugin's local uv environment to the Python minor version COSMOS
+    # runs, read from the interpreter itself rather than hardcoded in the
+    # template: it differs between images (Debian vs UBI) and moves with the base
+    # image. `cli generate` runs in the cmd-tlm-api image, which sets
+    # OPENC3_PYTHON_BIN. Outside an image (e.g. the gem installed on a dev
+    # machine) there is no COSMOS Python to match, so no file is written.
+    def self.write_python_version
+      python_bin = ENV.fetch('OPENC3_PYTHON_BIN', nil)
+      return if python_bin.nil? || !File.executable?(python_bin)
+      version, status = Open3.capture2(python_bin, '-c', 'import sys; print("%d.%d" % sys.version_info[:2])')
+      return unless status.success? && version.strip =~ /\A\d+\.\d+\z/
+      File.write('.python-version', "#{version.strip}\n")
+    rescue SystemCallError
+      nil
     end
 
     def self.generate_target(args)
@@ -447,18 +484,33 @@ module OpenC3
         end
         gemspec_filename = Dir['*.gemspec'][0]
         gemspec = File.read(gemspec_filename)
-        gemspec.gsub!(/s\.files = Dir\.glob.*\n/) do |match|
-          <<RUBY
-# Prefer pyproject.toml over requirements.txt
-  python_dep_file = if File.exist?('pyproject.toml')
-    'pyproject.toml'
-  else
-    'requirements.txt'
-  end
-  s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt) + [python_dep_file]
-RUBY
+        # Older COSMOS versions wrote a singular python_dep_file block that never
+        # ships uv.lock, and a second python target nested another copy of it.
+        # Strip every copy plus its use on the s.files line so the rewrite below
+        # replaces it. A hand-edited block that no longer matches leaves some
+        # python_dep_file reference behind, so the gemspec is kept as it was.
+        legacy_block = /^ *# Prefer pyproject\.toml over requirements\.txt\n *python_dep_file = if File\.exist\?\('pyproject\.toml'\)\n *'pyproject\.toml'\n *else\n *'requirements\.txt'\n *end\n/
+        upgraded = gemspec.gsub(legacy_block, '').sub(' + [python_dep_file]', '')
+        gemspec = upgraded unless upgraded.include?('python_dep_file')
+        # Skip when a previous python target already rewrote s.files: the line it
+        # wrote matches the pattern below too, so rewriting again would nest a
+        # second dependency block. python_dep_file also covers a legacy block
+        # the upgrade above left alone. Also skip a gemspec from the
+        # python plugin template, which already ships pyproject.toml and uv.lock.
+        unless gemspec.include?('python_dep_file') || gemspec.include?('pyproject.toml')
+          gemspec.gsub!(/^ *s\.files = Dir\.glob.*\n/) do
+            <<~RUBY.gsub(/^/, '  ')
+              # Prefer pyproject.toml (plus uv.lock if committed) over requirements.txt
+              python_dep_files = if File.exist?('pyproject.toml')
+                ['pyproject.toml'] + Dir.glob('uv.lock')
+              else
+                ['requirements.txt']
+              end
+              s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt) + python_dep_files
+            RUBY
+          end
+          File.write(gemspec_filename, gemspec)
         end
-        File.write(gemspec_filename, gemspec)
 
         target_txt_filename = "targets/#{target_name}/target.txt"
         target_txt = File.read(target_txt_filename)
