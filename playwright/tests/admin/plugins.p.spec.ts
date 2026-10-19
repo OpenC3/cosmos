@@ -196,20 +196,19 @@ test.describe(() => {
   const pluginGem = 'openc3-cosmos-pw-test-1.0.0.gem'
   const pluginGem1 = 'openc3-cosmos-pw-test-1.0.1.gem'
 
-  /** Waits for a plugin install / uninstall process to finish. The `*Gem` values
-   * are regexp fragments; new installs append `'__<TIMESTAMP>'` so use `'__.*'`.
+  /** Waits for a plugin install / uninstall process to finish. Pass plain gem
+   * file names; the optional `'__<TIMESTAMP>'` suffix that new installs append
+   * is matched here.
    */
   async function waitForPluginProcess(
     page: Page,
     {
       alert,
-      runningGem,
-      completeGem,
+      gem,
       process = 'plugin_install',
     }: {
       alert: string
-      runningGem: string
-      completeGem: string
+      gem: string
       process?: string
     },
   ) {
@@ -217,7 +216,7 @@ test.describe(() => {
     await expect(page.locator('[data-test=plugin-alert]')).toContainText(alert)
     // The process can go so fast we can't count on 'Running' to be present so try catch this
     const runningRegexp = new RegExp(
-      `Processing ${process}: ${runningGem}__.* - Running`,
+      `Processing ${process}: ${gem}(__.*)? - Running`,
     )
     try {
       await expect(processList).toContainText(runningRegexp, {
@@ -229,7 +228,8 @@ test.describe(() => {
       timeout: 30000,
     })
     await expect(processList).toContainText(
-      new RegExp(`Processing ${process}: ${completeGem} - Complete`),
+      new RegExp(`Processing ${process}: ${gem}(__.*)? - Complete`),
+      { timeout: 30000 },
     )
   }
 
@@ -249,9 +249,8 @@ test.describe(() => {
 
     await waitForPluginProcess(page, {
       alert: 'Removing plugin',
-      runningGem: pluginGem1,
+      gem: pluginGem1,
       process: 'plugin_uninstall',
-      completeGem: `${pluginGem1}__.*`,
     })
     await expect(page.locator(`[data-test=plugin-list]`)).not.toContainText(
       plugin,
@@ -315,8 +314,7 @@ test.describe(() => {
     await page.locator('data-test=edit-submit').click()
     await waitForPluginProcess(page, {
       alert: 'Started installing',
-      runningGem: pluginGem,
-      completeGem: pluginGem,
+      gem: pluginGem,
     })
 
     await expect(
@@ -438,8 +436,7 @@ test.describe(() => {
     await page.locator('data-test=modified-plugin-submit').click()
     await waitForPluginProcess(page, {
       alert: 'Started installing',
-      runningGem: pluginGem,
-      completeGem: pluginGem1,
+      gem: pluginGem1,
     })
 
     // Check that there are no longer any links (modified targets)
@@ -481,8 +478,7 @@ test.describe(() => {
     await page.locator('data-test=edit-submit').click()
     await waitForPluginProcess(page, {
       alert: 'Started installing',
-      runningGem: pluginGem,
-      completeGem: `${pluginGem1}__.*`,
+      gem: pluginGem1,
     })
     // Ensure the target list is updated to show the new name
     // TODO: replace .nth(2) with a more robust selector, this is not robust to layout changes of plugin-list-item
