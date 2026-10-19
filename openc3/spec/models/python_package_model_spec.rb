@@ -434,6 +434,13 @@ module OpenC3
         expect(cmd).to include("https://custom.pypi.example.com/simple")
       end
 
+      it "drops a trailing slash from the pypi_url setting" do
+        allow(PythonPackageModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://custom.pypi.example.com/")
+
+        cmd, _kw = install_spawn
+        expect(cmd).to include("https://custom.pypi.example.com/simple")
+      end
+
       it "falls back to ENV PYPI_URL when get_setting raises" do
         allow(ENV).to receive(:fetch).with('PYPI_URL', nil).and_return("https://env.pypi.example.com")
         allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")

@@ -3189,7 +3189,6 @@ print(packets)
 #  "packet_name"=>"ADCS",
 #  "endianness"=>"BIG_ENDIAN",
 #  "description"=>"Position and attitude data",
-#  "stale"=>true,
 #  "items"=>
 #   [{"name"=>"CCSDSVER",
 #     "bit_offset"=>0,
@@ -3208,7 +3207,6 @@ puts packets
 #  "packet_name"=>"ADCS",
 #  "endianness"=>"BIG_ENDIAN",
 #  "description"=>"Position and attitude data",
-#  "stale"=>true,
 #  "items"=>
 #   [{"name"=>"CCSDSVER",
 #     "bit_offset"=>0,
@@ -3352,7 +3350,6 @@ print(packet)
 # "packet_name"=>"HEALTH_STATUS",
 # "endianness"=>"BIG_ENDIAN",
 # "description"=>"Health and status from the instrument",
-# "stale"=>true,
 # "processors"=>
 #  [{"name"=>"TEMP1STAT",
 #    "class"=>"OpenC3::StatisticsProcessor",
@@ -3378,7 +3375,6 @@ puts packet
 # "packet_name"=>"HEALTH_STATUS",
 # "endianness"=>"BIG_ENDIAN",
 # "description"=>"Health and status from the instrument",
-# "stale"=>true,
 # "processors"=>
 #  [{"name"=>"TEMP1STAT",
 #    "class"=>"OpenC3::StatisticsProcessor",

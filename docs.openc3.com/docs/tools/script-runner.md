@@ -65,6 +65,7 @@ When saving a file for the first time, or using File Save As, the File Save As D
 - Display the [debug](script-runner.md#debugging-scripts) prompt
 - Disconnect from real interfaces
 - Delete all script breakpoints
+- View the script [Version History](script-runner.md#version-history-enterprise) (Enterprise)
 
 The Execution Status popup lists the currently running scripts. This allows other users to connect to running scripts and follow along with the currently executing script. It also lists previously executed scripts so you can download the script log.
 
@@ -125,6 +126,38 @@ Users with the script_edit permission (e.g. Operators) can move scripts between 
 Once a script is Approved it cannot be modified or deleted. The editor becomes read-only and the Save and Delete menu items are disabled. This is also enforced by the server, so the script cannot be changed through the API. To edit an approved script, a user with the script_approver permission must first move it back to In Review or In Development.
 
 In addition, users with only the runner role (or the script_run permission) can only run Approved scripts. This ensures operators in a production environment only execute scripts that have completed the review process. Users who can edit scripts can run scripts in any lifecycle state.
+
+## Version History (Enterprise)
+
+<span class="badge badge--secondary since-heading">Since 7.3.0</span>
+
+Script Runner keeps a history of every saved version of a script. Each save creates a new version recording who saved it and when. Deleting a script is also recorded, so a deleted script's history is preserved. Temporary (unsaved) scripts are not tracked.
+
+Open a saved script and select Script → Version History to open the full-screen Version History dialog. The menu item is disabled for new, unsaved scripts and while a script is running.
+
+<img
+  src={require("@site/static/img/script_runner/version-history-file-menu.png").default}
+  alt="Version History Menu"
+  style={{ display: "block", margin: "0 auto", height: 400 + "px" }}
+/>
+
+The left pane lists versions newest first, so the highest numbered version is the latest. Each entry shows the timestamp and the user who saved it. Scripts installed by a plugin start with an initial version recording the plugin that installed them. Versions created when a plugin upgrade overwrote a modified script show the plugin name and a **Plugin upgrade** chip. Hover over an entry to see its full details.
+
+When the dialog opens, it diffs the latest version against the previous one. If there is only one version, that version is shown instead.
+
+- **Click a version** to view it read-only. Click it again to close the view.
+- **Click the diff icon** to compare a version with the version before it. In diff mode, use the **Left** and **Right** dropdowns to compare any two versions side by side.
+- **Click Restore** on an older version to make it the current script contents. Restore saves the older contents as a new version, so no history is lost. Restoring requires the script_edit permission.
+
+The latest version always shows the current editor contents, including unsaved edits. This makes it easy to review your changes against the last saved version before saving.
+
+![version-history](/img/script_runner/version-history.png)
+
+### Storage and Plugins
+
+Version History is stored in a git repository on the server, one per installed plugin, at the location given by the `OPENC3_VERSION_HISTORY_DIR` environment variable. The feature is only available when this variable is set (it is set by default in COSMOS Enterprise). All versions are kept; there is no automatic pruning. History is preserved across plugin upgrades and removed when the plugin is uninstalled.
+
+To move a plugin's history between COSMOS installations, use Export History and Import History from the plugin's menu in the [Admin Console](admin.md) Plugins tab. Importing preserves the current contents of the plugin's scripts as the latest version.
 
 ## Script Environment Variables
 
