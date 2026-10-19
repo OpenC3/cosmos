@@ -5,18 +5,19 @@ ARG OPENC3_IMAGE=openc3-base
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG}
 
+# anycable-go is only run by the API images, so install it here instead of in
+# openc3-ruby. The anycable build context is provided by compose-build.yaml
+# (additional_contexts) or by --build-context in the other build scripts.
+# Copied before the source so API edits don't invalidate this layer.
+ARG TARGETARCH
+COPY --from=anycable --chmod=755 anycable-go-linux-${TARGETARCH} /usr/bin/anycable-go
+
 WORKDIR /src/
 
 RUN ["chown", "-R", "openc3:openc3", "/src/"]
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
 
 USER root
-
-# anycable-go is only run by the API images, so install it here instead of in
-# openc3-ruby. The anycable build context is provided by compose-build.yaml
-# (additional_contexts) or by --build-context in the other build scripts.
-RUN --mount=type=bind,from=anycable,target=/mnt/anycable \
-    /mnt/anycable/anycable_install.sh /mnt/anycable
 
 ENV SKIP_DEV_GEMS=1
 RUN bundle config set --local without 'development test' && \
