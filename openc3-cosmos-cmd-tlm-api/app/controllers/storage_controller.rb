@@ -38,14 +38,17 @@ end
 class StorageController < ApplicationController
   class StorageError < StandardError; end
 
-  # Check if a bucket requires RBAC (config and logs do, tools does not)
+  # Buckets COSMOS itself manages. Writes to these are admin-only (apart from the
+  # config overlay, see non_admin_bucket_write?) because COSMOS loads their contents:
+  # tools holds the tool JavaScript, config the target definitions, logs the data.
+  STANDARD_BUCKETS = ['OPENC3_CONFIG_BUCKET', 'OPENC3_LOGS_BUCKET', 'OPENC3_TOOLS_BUCKET'].freeze
+
+  # Check if a bucket requires RBAC (config and logs do, tools and user-defined buckets do not)
   def bucket_requires_rbac?(bucket_param)
-    # Tools bucket is accessible to all users with system permission
-    return false if bucket_param == 'OPENC3_TOOLS_BUCKET'
-    # Config and logs buckets require scope-based RBAC
-    return true if bucket_param == 'OPENC3_CONFIG_BUCKET' || bucket_param == 'OPENC3_LOGS_BUCKET'
-    # Default to requiring RBAC for unknown buckets
-    true
+    # Config and logs buckets require scope-based RBAC. The tools bucket and
+    # user-defined buckets have no path conventions and are accessible to all
+    # users with system permission.
+    bucket_param == 'OPENC3_CONFIG_BUCKET' || bucket_param == 'OPENC3_LOGS_BUCKET'
   end
 
   # Extract the scope from a bucket path (first component)
@@ -106,7 +109,7 @@ class StorageController < ApplicationController
 
   # Authorize access to a bucket path based on scope and optionally target
   # Returns true if authorized, false otherwise
-  # For tools bucket: always authorized (with basic system permission)
+  # For tools and user-defined buckets: always authorized (with basic system permission)
   # For config/logs buckets: checks if user has access to the scope and target in the path
   # When a target is in the path, uses 'tlm' permission as the baseline for access
   def authorize_bucket_path(bucket_param, path, permission: 'system')
@@ -456,10 +459,11 @@ class StorageController < ApplicationController
       end
     end
 
-    # Non-admins may only write the user-writable overlay (config/SCOPE/targets_modified
-    # or config/SCOPE/tmp), and never the cmd_tlm or tables/config overlay, whose
-    # GENERIC_*_CONVERSION blocks are evaluated as code. Everything else is admin.
-    return if !non_admin_config_overlay_write?(params[:bucket], path) && !authorization('admin')
+    # Non-admins may write user-defined buckets and the user-writable config overlay
+    # (config/SCOPE/targets_modified or config/SCOPE/tmp), but never the cmd_tlm or
+    # tables/config overlay, whose GENERIC_*_CONVERSION blocks are evaluated as code.
+    # Everything else in the standard buckets is admin.
+    return if !non_admin_bucket_write?(params[:bucket], path) && !authorization('admin')
 
     if local_only_config_key?(params[:bucket], path)
       render_local_only_error(path)
@@ -498,9 +502,9 @@ class StorageController < ApplicationController
       return
     end
 
-    # Same rule as get_upload_presigned_request: non-admins may only write the
-    # user-writable overlay, and never the cmd_tlm overlay. Everything else is admin.
-    return if !non_admin_config_overlay_write?(params[:bucket], path) && !authorization('admin')
+    # Same rule as get_upload_presigned_request: non-admins may only write user-defined
+    # buckets and the user-writable overlay, never the cmd_tlm overlay. Everything else is admin.
+    return if !non_admin_bucket_write?(params[:bucket], path) && !authorization('admin')
 
     data = Base64.decode64(params[:contents].to_s)
     local_only = local_only_config_key?(params[:bucket], path)
@@ -673,6 +677,15 @@ class StorageController < ApplicationController
 
   private
 
+  # True if a non-admin (system_set) user may write the given bucket key.
+  # User-defined buckets (any other OPENC3_*_BUCKET) are writable by non-admins
+  # anywhere, with no scope-based path requirements (see bucket_requires_rbac?).
+  # In the standard buckets only the config overlay is non-admin writable.
+  def non_admin_bucket_write?(bucket_param, path)
+    return true unless STANDARD_BUCKETS.include?(bucket_param)
+    non_admin_config_overlay_write?(bucket_param, path)
+  end
+
   # True if the given config-bucket key is an overlay path a non-admin is allowed
   # to write. Non-admins may write config/SCOPE/targets_modified/... and
   # config/SCOPE/tmp/..., but NOT the code areas
@@ -725,9 +738,10 @@ class StorageController < ApplicationController
       end
     end
 
-    # Non-admins may only touch the user-writable config overlay (targets_modified or
-    # tmp), never the cmd_tlm overlay which is evaluated as code. Everything else is admin.
-    authorized = non_admin_config_overlay_write?(params[:bucket], path) || authorization('admin')
+    # Non-admins may only touch user-defined buckets and the user-writable config overlay
+    # (targets_modified or tmp), never the cmd_tlm overlay which is evaluated as code.
+    # Everything else is admin.
+    authorized = non_admin_bucket_write?(params[:bucket], path) || authorization('admin')
 
     if authorized
       if ENV.fetch('OPENC3_LOCAL_MODE', false) || local_only_config_key?(params[:bucket], path)
@@ -761,9 +775,9 @@ class StorageController < ApplicationController
     bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
 
     path = sanitize_path(params[:object_id])
-    # Evaluate the overlay check on the canonical (un-slashed) path before appending
-    # the trailing slash, since the helper rejects trailing slashes.
-    overlay_write = non_admin_config_overlay_write?(params[:bucket], path)
+    # Evaluate the non-admin check on the canonical (un-slashed) path before appending
+    # the trailing slash, since the overlay helper rejects trailing slashes.
+    non_admin_write = non_admin_bucket_write?(params[:bucket], path)
     path = "#{path}/" unless path.end_with?('/')
 
     # Check scope-based RBAC
@@ -773,9 +787,10 @@ class StorageController < ApplicationController
       return false
     end
 
-    # Non-admins may only touch the user-writable config overlay (targets_modified or
-    # tmp), never the cmd_tlm overlay which is evaluated as code. Everything else is admin.
-    return false unless overlay_write || authorization('admin')
+    # Non-admins may only touch user-defined buckets and the user-writable config overlay
+    # (targets_modified or tmp), never the cmd_tlm overlay which is evaluated as code.
+    # Everything else is admin.
+    return false unless non_admin_write || authorization('admin')
 
     # List all objects under the prefix (same pattern as TargetModel#undeploy)
     bucket = OpenC3::Bucket.getClient()

@@ -23,6 +23,7 @@ RSpec.describe StorageController, type: :controller do
     ENV["OPENC3_CONFIG_BUCKET"] = "config-bucket"
     ENV["OPENC3_LOGS_BUCKET"] = "logs-bucket"
     ENV["OPENC3_TOOLS_BUCKET"] = "tools-bucket"
+    ENV["OPENC3_CUSTOM_BUCKET"] = "custom-bucket"
     ENV["OPENC3_DATA_VOLUME"] = "data-volume"
     ENV["OPENC3_TEMP_VOLUME"] = "temp-volume"
   end
@@ -574,6 +575,27 @@ RSpec.describe StorageController, type: :controller do
         }
         expect(response).to have_http_status(:created)
       end
+      
+      it "allows an upload to a user-defined bucket" do
+        get :get_upload_presigned_request, params: {
+          bucket: "OPENC3_CUSTOM_BUCKET", object_id: "DEFAULT/data/file.txt", scope: "DEFAULT"
+        }
+        expect(response).to have_http_status(:created)
+      end
+      
+      it "rejects an upload to the tools bucket (requires admin)" do
+        get :get_upload_presigned_request, params: {
+          bucket: "OPENC3_TOOLS_BUCKET", object_id: "tool/index.js", scope: "DEFAULT"
+        }
+        expect(response).to have_http_status(:unauthorized)
+      end
+      
+      it "rejects an upload to the logs bucket (requires admin)" do
+        get :get_upload_presigned_request, params: {
+          bucket: "OPENC3_LOGS_BUCKET", object_id: "DEFAULT/raw_logs/tlm/INST/file.bin.gz", scope: "DEFAULT"
+        }
+        expect(response).to have_http_status(:unauthorized)
+      end
     end
   end
 
@@ -673,6 +695,24 @@ RSpec.describe StorageController, type: :controller do
         expect(@bucket_client).to_not receive(:put_object)
         upload("DEFAULT/targets/INST/screens/a.txt")
         expect(response).to have_http_status(:unauthorized)
+      end
+      
+      it "allows an upload to a user-defined bucket" do
+        key = "DEFAULT/data/file.bin"
+        expect(@bucket_client).to receive(:put_object).with(bucket: "custom-bucket", key: key, body: data)
+        put :upload_file, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: key, contents: Base64.strict_encode64(data), scope: "DEFAULT"}, as: :json
+        expect(response).to have_http_status(:ok)
+      end
+      
+      it "does not apply scope RBAC to a user-defined bucket path" do
+        allow(controller).to receive(:authorize) do |args|
+          raise OpenC3::AuthError.new("admin required") if args[:permission] == "admin"
+          raise OpenC3::ForbiddenError.new("forbidden") if args[:scope] != "DEFAULT"
+          "authorized_user"
+        end
+        expect(@bucket_client).to receive(:put_object).with(bucket: "custom-bucket", key: "OTHER/data/file.bin", body: "")
+        put :upload_file, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: "OTHER/data/file.bin", contents: "", scope: "DEFAULT"}, as: :json
+        expect(response).to have_http_status(:ok)
       end
     end
   end
@@ -833,6 +873,29 @@ RSpec.describe StorageController, type: :controller do
       expect(response).to have_http_status(:unauthorized)
     end
 
+    it "deletes a user-defined bucket item without admin authorization" do
+      ENV["OPENC3_LOCAL_MODE"] = nil
+      allow(controller).to receive(:authorize) do |args|
+        raise OpenC3::AuthError.new("admin required") if args[:permission] == "admin"
+        "authorized_user"
+      end
+      bucket_client = instance_double(OpenC3::Bucket)
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      expect(bucket_client).to receive(:delete_object).with(bucket: "custom-bucket", key: "DEFAULT/data/file.txt")
+    
+      delete :delete, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: "DEFAULT/data/file.txt", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+    end
+    
+    it "rejects a tools bucket delete without admin authorization" do
+      allow(controller).to receive(:authorize) do |args|
+        raise OpenC3::AuthError.new("admin required") if args[:permission] == "admin"
+        "authorized_user"
+      end
+      delete :delete, params: {bucket: "OPENC3_TOOLS_BUCKET", object_id: "tool/index.js", scope: "DEFAULT"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+    
     it "returns nothing without admin authorization for volume delete" do
       delete :delete, params: {volume: "OPENC3_DATA_VOLUME", object_id: "file.txt"}
       expect(response).to have_http_status(:unauthorized)
@@ -1028,6 +1091,20 @@ RSpec.describe StorageController, type: :controller do
         expect(result["deleted_count"]).to eq(1)
       end
 
+      it "allows non-admin for user-defined bucket directories" do
+        ENV["OPENC3_LOCAL_MODE"] = nil
+        allow(controller).to receive(:authorize) do |args|
+          raise OpenC3::AuthError.new("admin required") if args[:permission] == "admin"
+          "authorized_user"
+        end
+        allow(bucket_client).to receive(:list_objects).and_return([double(key: "DEFAULT/data/file1.txt")])
+        expect(bucket_client).to receive(:delete_objects).with(bucket: "custom-bucket", keys: ["DEFAULT/data/file1.txt"])
+      
+        delete :delete_directory, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: "DEFAULT/data", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)["deleted_count"]).to eq(1)
+      end
+      
       it "allows non-admin for tmp directories" do
         objects = [double(key: "scope/tmp/tempfile.txt")]
         allow(bucket_client).to receive(:list_objects).and_return(objects)
@@ -1116,8 +1193,8 @@ RSpec.describe StorageController, type: :controller do
         expect(controller.send(:bucket_requires_rbac?, 'OPENC3_LOGS_BUCKET')).to be true
       end
 
-      it "returns true for unknown buckets" do
-        expect(controller.send(:bucket_requires_rbac?, 'OPENC3_UNKNOWN_BUCKET')).to be true
+      it "returns false for user-defined buckets" do
+        expect(controller.send(:bucket_requires_rbac?, 'OPENC3_CUSTOM_BUCKET')).to be false
       end
     end
 
@@ -1159,6 +1236,26 @@ RSpec.describe StorageController, type: :controller do
       end
     end
 
+    describe "non_admin_bucket_write?" do
+      let(:m) { :non_admin_bucket_write? }
+    
+      it "allows any path in a user-defined bucket" do
+        expect(controller.send(m, "OPENC3_CUSTOM_BUCKET", "DEFAULT/data/file.txt")).to be true
+        expect(controller.send(m, "OPENC3_CUSTOM_BUCKET", "file.txt")).to be true
+      end
+    
+      it "requires admin for the standard buckets outside the config overlay" do
+        expect(controller.send(m, "OPENC3_TOOLS_BUCKET", "tool/index.js")).to be false
+        expect(controller.send(m, "OPENC3_LOGS_BUCKET", "DEFAULT/raw_logs/tlm/INST/x.bin")).to be false
+        expect(controller.send(m, "OPENC3_CONFIG_BUCKET", "DEFAULT/targets/INST/screens/x.txt")).to be false
+        expect(controller.send(m, "OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt")).to be false
+      end
+    
+      it "allows the config overlay" do
+        expect(controller.send(m, "OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/screens/poc.txt")).to be true
+      end
+    end
+    
     describe "non_admin_config_overlay_write?" do
       let(:m) { :non_admin_config_overlay_write? }
 
@@ -1329,6 +1426,24 @@ RSpec.describe StorageController, type: :controller do
     end
 
     describe "GET download_file with RBAC" do
+      it "does not apply scope RBAC to a user-defined bucket path" do
+        bucket_client = instance_double(OpenC3::Bucket)
+        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+        allow(bucket_client).to receive(:get_object)
+        allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
+        allow(FileUtils).to receive(:mkdir_p)
+        allow(FileUtils).to receive(:rm_rf)
+        allow(File).to receive(:read).and_return("file content")
+        allow(File).to receive(:file?).and_return(true)
+        allow(controller).to receive(:authorize) do |args|
+          raise OpenC3::ForbiddenError.new("forbidden") if args[:scope] != "DEFAULT"
+          "authorized_user"
+        end
+      
+        get :download_file, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: "data/file.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+      end
+      
       it "returns 403 for unauthorized scope in config bucket" do
         allow(controller).to receive(:authorize) do |args|
           if args[:scope] == 'DEFAULT'

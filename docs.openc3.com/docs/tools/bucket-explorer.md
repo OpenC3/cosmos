@@ -21,7 +21,7 @@ Using bucket storage allows COSMOS to directly serve the tools as a static websi
 
 ### Upload
 
-Click the Upload icon to bring up a file browser to select a file to upload into the current bucket and path. Note that in [COSMOS Enterprise](https://openc3.com/cosmos-enterprise) you can only upload files to the config/DEFAULT/targets_modified folder unless you're an Admin.
+Click the Upload icon to bring up a file browser to select a file to upload into the current bucket and path. Note that in [COSMOS Enterprise](https://openc3.com/cosmos-enterprise) you can only upload files to the config/DEFAULT/targets_modified folder or to user-defined buckets (any bucket other than config, logs and tools) unless you're an Admin.
 
 ### Download
 
@@ -37,4 +37,4 @@ File selections are automatically cleared when navigating to a different folder,
 
 ### Delete
 
-Click the Trash icon to delete an individual file. Note that in [COSMOS Enterprise](https://openc3.com/cosmos-enterprise) you can only delete files in the config/DEFAULT/targets_modified folder unless you're an Admin.
+Click the Trash icon to delete an individual file. Note that in [COSMOS Enterprise](https://openc3.com/cosmos-enterprise) you can only delete files in the config/DEFAULT/targets_modified folder or in user-defined buckets unless you're an Admin.
