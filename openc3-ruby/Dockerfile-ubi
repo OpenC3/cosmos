@@ -50,9 +50,6 @@ ENV GEMRC=/etc/gemrc
 
 COPY *.tar.gz /tmp/
 
-COPY anycable* /usr/bin/
-RUN /usr/bin/anycable_install.sh
-
 COPY shoreman.sh /usr/bin/shoreman
 
 ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
