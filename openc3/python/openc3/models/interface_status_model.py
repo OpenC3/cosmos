@@ -51,11 +51,11 @@ class InterfaceStatusModel(DbShardedModel, Model):
 
     # Like get but returns default instead of None when no status exists
     @classmethod
-    def get_or_default(cls, name: str, scope: str, default: dict = {"state": "UNKNOWN"}):
+    def get_or_default(cls, name: str, scope: str, default: dict | None = None):
         status = cls.get(name=name, scope=scope)
         if status is not None:
             return status
-        return default
+        return default if default is not None else {"state": "UNKNOWN"}
 
     @classmethod
     def names(cls, scope: str):
