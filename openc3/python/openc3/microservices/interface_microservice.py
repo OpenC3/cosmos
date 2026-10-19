@@ -696,6 +696,7 @@ class InterfaceMicroservice(Microservice):
             if option_name.upper() == "SYNC_PACKET_COUNT_DELAY_SECONDS":
                 TargetModel.sync_packet_count_delay_seconds = float(option_values[0])
         # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
+        self.update_interval = update_interval
         self.queued = update_interval > 0.0
         if self.queued:
             db_shards = {0}
@@ -920,7 +921,9 @@ class InterfaceMicroservice(Microservice):
         # Write to stream
         if self.interface.tlm_target_enabled.get(packet.target_name, False):
             TargetModel.sync_tlm_packet_counts(packet, self.interface.tlm_target_names, scope=self.scope)
-            TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
+            TelemetryTopic.write_packet(
+                packet, queued=self.queued, update_interval=self.update_interval, scope=self.scope
+            )
 
     def handle_connection_failed(self, connection, connect_error):
         self.error = connect_error

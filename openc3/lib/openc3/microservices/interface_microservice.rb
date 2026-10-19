@@ -612,6 +612,7 @@ module OpenC3
         end
       end
       # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
+      @update_interval = update_interval
       @queued = update_interval > 0.0
       if @queued
         db_shards = [0] + @interface.tlm_target_names.map { |target_name| Store.db_shard_for_target(target_name, scope: @scope) }
@@ -823,7 +824,7 @@ module OpenC3
       # Write to stream
       if @interface.tlm_target_enabled[packet.target_name]
         TargetModel.sync_tlm_packet_counts(packet, @interface.tlm_target_names, scope: @scope)
-        TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
+        TelemetryTopic.write_packet(packet, queued: @queued, update_interval: @update_interval, scope: @scope)
       end
     end
 

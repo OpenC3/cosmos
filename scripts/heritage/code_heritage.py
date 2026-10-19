@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
@@ -9,7 +10,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-#!/usr/bin/env python3
 """
 code_heritage.py -- How much of the current code base is still Ball Aerospace
 COSMOS 5.0.5?
