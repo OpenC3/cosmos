@@ -6,8 +6,8 @@ argument-hint: "[go-minor, e.g. 1.26] [--force-build]"
 
 # Update the anycable-go binaries
 
-COSMOS ships prebuilt `anycable-go` binaries in `openc3-anycable/` (installed by
-`openc3-anycable/anycable_install.sh` in the API Dockerfiles). We build them ourselves
+COSMOS ships prebuilt `anycable-go` binaries in `openc3-anycable/` (copied into
+the API images by their Dockerfiles). We build them ourselves
 so they pick up Go security releases faster than upstream anycable does.
 
 ## Inputs
