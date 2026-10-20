@@ -12,12 +12,132 @@
 # All Rights Reserved
 */
 
+import type { Browser, Page } from '@playwright/test'
 import { test, expect } from './../fixture'
+
+const ADMIN_STORAGE_STATE = 'adminStorageState.json'
 
 test.use({
   toolPath: '/tools/admin/settings',
   toolName: 'Administrator',
-  storageState: 'adminStorageState.json',
+  storageState: ADMIN_STORAGE_STATE,
+})
+
+// These settings are global and are consumed by plugin installs, Script Runner,
+// and every page's layout, so a test that fails midway would otherwise leave
+// them changed for later specs. Record them before the first test and put back
+// anything that differs afterwards.
+type OriginalSettings = {
+  sourceUrl: string
+  rubygemsUrl: string
+  pypiUrl: string
+  hideAstroClock: boolean
+  topBanner: boolean
+  language: 'Python' | 'Ruby'
+  vimMode: boolean
+}
+let original: OriginalSettings | undefined
+
+async function openSettings(browser: Browser, baseURL: string | undefined) {
+  const context = await browser.newContext({
+    storageState: ADMIN_STORAGE_STATE,
+  })
+  const page = await context.newPage()
+  await page.goto(`${baseURL}/tools/admin/settings`, {
+    waitUntil: 'domcontentloaded',
+  })
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator', {
+    timeout: 20000,
+  })
+  // Wait for the settings forms to populate before reading or writing them
+  await expect(page.getByText('Pypi URL').first()).toBeVisible()
+  return { context, page }
+}
+
+const urlInput = (page: Page, name: string) =>
+  page.locator(`[data-test=${name}]`).locator('input')
+
+async function readSettings(page: Page): Promise<OriginalSettings> {
+  const language = await page
+    .locator('[data-test=default-language]')
+    .textContent()
+  return {
+    sourceUrl: await urlInput(page, 'source-url').inputValue(),
+    rubygemsUrl: await urlInput(page, 'rubygems-url').inputValue(),
+    pypiUrl: await urlInput(page, 'pypi-url').inputValue(),
+    hideAstroClock: await page
+      .getByRole('checkbox', { name: 'Hide Astro Clock' })
+      .isChecked(),
+    topBanner: await page
+      .getByRole('checkbox', { name: 'Display top banner' })
+      .isChecked(),
+    language: language?.includes('Ruby') ? 'Ruby' : 'Python',
+    vimMode: await page.getByRole('checkbox', { name: 'Vim mode' }).isChecked(),
+  }
+}
+
+// Click a save button, wait for the save to persist, then reload so the next
+// restore starts from what the server actually has.
+async function save(page: Page, saveButton: string) {
+  await page.locator(`[data-test=${saveButton}]`).click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Pypi URL').first()).toBeVisible()
+}
+
+async function restoreSettings(page: Page, want: OriginalSettings) {
+  const urls: [string, string, string][] = [
+    ['source-url', 'save-source-url', want.sourceUrl],
+    ['rubygems-url', 'save-rubygems-url', want.rubygemsUrl],
+    ['pypi-url', 'save-pypi-url', want.pypiUrl],
+  ]
+  for (const [name, saveButton, value] of urls) {
+    if ((await urlInput(page, name).inputValue()) !== value) {
+      await urlInput(page, name).fill(value)
+      await save(page, saveButton)
+    }
+  }
+
+  const astro = page.getByRole('checkbox', { name: 'Hide Astro Clock' })
+  if ((await astro.isChecked()) !== want.hideAstroClock) {
+    await astro.setChecked(want.hideAstroClock)
+    await save(page, 'save-astro-settings')
+  }
+
+  const banner = page.getByRole('checkbox', { name: 'Display top banner' })
+  if ((await banner.isChecked()) !== want.topBanner) {
+    await banner.setChecked(want.topBanner)
+    await save(page, 'save-classification-banner')
+  }
+
+  const language = await page
+    .locator('[data-test=default-language]')
+    .textContent()
+  const vim = page.getByRole('checkbox', { name: 'Vim mode' })
+  if (
+    !language?.includes(want.language) ||
+    (await vim.isChecked()) !== want.vimMode
+  ) {
+    await page.locator('[data-test=default-language]').click()
+    await page
+      .locator(`.v-list-item-title:has-text("${want.language}")`)
+      .click()
+    await vim.setChecked(want.vimMode)
+    await save(page, 'save-editor-settings')
+  }
+}
+
+test.beforeAll(async ({ browser, baseURL }) => {
+  const { context, page } = await openSettings(browser, baseURL)
+  original = await readSettings(page)
+  await context.close()
+})
+
+test.afterAll(async ({ browser, baseURL }) => {
+  if (!original) return
+  const { context, page } = await openSettings(browser, baseURL)
+  await restoreSettings(page, original)
+  await context.close()
 })
 
 test('resets clock sync warning suppression', async ({ page, utils }) => {
@@ -103,6 +223,7 @@ test('sets a classification banner', async ({ page, utils }) => {
     .locator(`.v-list-item-title:has-text("${bannerTextColor}")`)
     .click()
   await page.locator('[data-test=save-classification-banner]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
   await page.reload()
   await expect(page.locator('#app')).toHaveAttribute(
     'style',
@@ -121,6 +242,7 @@ test('sets a classification banner', async ({ page, utils }) => {
   await page.locator('[data-test="classification-banner-font-color"]').click()
   await page.locator('.v-list-item-title:has-text("Green")').click()
   await page.locator('[data-test=save-classification-banner]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
   await page.reload()
   await expect(page.locator('#app')).toHaveAttribute(
     'style',
@@ -129,6 +251,7 @@ test('sets a classification banner', async ({ page, utils }) => {
   // Disable the classification banner
   await page.uncheck('text=Display top banner')
   await page.locator('[data-test=save-classification-banner]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
   await page.reload()
   await expect(page.locator('#app')).not.toHaveAttribute(
     'style',
