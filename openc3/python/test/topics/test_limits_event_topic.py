@@ -224,7 +224,7 @@ class TestLimitsEventTopic(unittest.TestCase):
         self.assertEqual(events[0][1]["type"], "LIMITS_GROUP_ENABLE_STATE")
         self.assertEqual(events[0][1]["group_name"], "GROUP")
         self.assertEqual(events[0][1]["items"], items)
-        self.assertEqual(events[0][1]["enabled"], False)
+        self.assertFalse(events[0][1]["enabled"])
         self.assertEqual(events[0][1]["message"], "TEST1")
 
         settings = {k.decode(): json.loads(v) for k, v in Store.hgetall("DEFAULT__current_limits_settings").items()}
@@ -418,7 +418,7 @@ class TestLimitsEventTopic(unittest.TestCase):
         for i in range(1500):
             LimitsEventTopic.write(self.limits_change_event(i), scope="DEFAULT")
         LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")
-        self.assertEqual(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"), False)
+        self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
     def test_sync(self):
         for method in ["sync_system", "sync_system_thread_body"]:
@@ -542,13 +542,13 @@ class TestLimitsEventTopic(unittest.TestCase):
             }
             LimitsEventTopic.write(event, scope="DEFAULT")
             getattr(LimitsEventTopic, method)(scope="DEFAULT")
-            self.assertEqual(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"), False)
-            self.assertEqual(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP2"), True)
-            self.assertEqual(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"), False)
+            self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+            self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP2"))
+            self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
 
             event["enabled"] = True
             event["message"] = "TEST2"
             LimitsEventTopic.write(event, scope="DEFAULT")
             getattr(LimitsEventTopic, method)(scope="DEFAULT")
-            self.assertEqual(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"), True)
-            self.assertEqual(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"), True)
+            self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+            self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
