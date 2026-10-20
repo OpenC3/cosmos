@@ -33,6 +33,7 @@ class TestRouterTopicRouteCommand(unittest.TestCase):
             {"target_name": "INST", "cmd_name": "ABORT", "cmd_buffer": b"\x01\x02"},
             "*",
             100,
+            db_shard=0,
         )
 
     def test_routes_an_unidentified_command_to_the_only_target_naming_that_target(self):
@@ -44,6 +45,7 @@ class TestRouterTopicRouteCommand(unittest.TestCase):
             {"target_name": "INST", "cmd_name": "UNKNOWN", "cmd_buffer": b"\x01\x02"},
             "*",
             100,
+            db_shard=0,
         )
 
     def test_raises_if_an_unidentified_command_has_more_than_one_possible_target(self):

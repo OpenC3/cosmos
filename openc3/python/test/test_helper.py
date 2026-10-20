@@ -171,6 +171,49 @@ def mock_redis(self):
     return redis
 
 
+def mock_redis_db_shards(self):
+    """Like mock_redis but every db_shard gets its own FakeValkey (mock_redis shares
+    one between all db_shards) so a test can verify which db_shard data is written to
+    and read from. The Store and EphemeralStore hostnames get SHARDNUM like a
+    db_sharded deployment so each db_shard connects to its own host. Use
+    Store.instance(db_shard=N) and EphemeralStore.instance(db_shard=N) to inspect
+    a db_shard. Returns a dict of host => FakeValkey.
+    """
+    redises = {}
+
+    def valkey_for_host(host, **_kwargs):
+        if host not in redises:
+            # Each FakeServer holds its own data, FakeValkey instances otherwise share it
+            redis = fakeredis.FakeValkey(server=fakeredis.FakeServer())
+            redis.openc3_xread_tracker = XreadTracker(redis.xread)
+            redis.xread = redis.openc3_xread_tracker
+            redises[host] = redis
+        return redises[host]
+
+    for patcher in (
+        patch("valkey.Valkey", side_effect=valkey_for_host),
+        patch("openc3.utilities.store_implementation.OPENC3_REDIS_HOSTNAME", "redis-SHARDNUM"),
+        patch("openc3.utilities.store_implementation.OPENC3_REDIS_EPHEMERAL_HOSTNAME", "redis-ephemeral-SHARDNUM"),
+    ):
+        patcher.start()
+        self.addCleanup(patcher.stop)
+    EphemeralStore.my_instances = {}
+    Store.my_instances = {}
+    Store._db_shard_cache = {}
+    EphemeralStoreQueued.my_instances = {}
+    StoreQueued.my_instances = {}
+    return redises
+
+
+def set_target_db_shard(target_name, db_shard, scope="DEFAULT"):
+    """Put a target on a db_shard the way TargetModel stores it
+    (Store.db_shard_for_target reads the target json from db_shard 0)"""
+    Store.instance(db_shard=0).hset(
+        f"{scope}__openc3_targets", target_name, json.dumps({"name": target_name, "db_shard": db_shard})
+    )
+    Store._db_shard_cache = {}
+
+
 import zlib
 
 

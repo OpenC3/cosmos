@@ -628,7 +628,8 @@ module OpenC3
       query += " LIMIT 1"
       result = query_with_retry(query, max_retries: 1, label: "table_has_data", db_shard: db_shard)
       result && result.ntuples > 0
-    rescue RuntimeError
+    rescue QuestDBError, RuntimeError
+      # A table which doesn't exist fails the query
       false
     end
 
@@ -918,7 +919,7 @@ module OpenC3
     # Query historical telemetry data from QuestDB for a list of items.
     # Builds the SQL query, executes it, and decodes all results.
     # Supports cross-db_shard queries by grouping items by db_shard, executing
-    # separate queries per db_shard, and aligning range results by packet time.
+    # separate queries per db_shard, and aligning the results by packet time.
     #
     # @param items [Array] Array of [target_name, packet_name, item_name, value_type, limits]
     #   item_name may be nil to indicate a placeholder (non-existent item)
@@ -948,87 +949,92 @@ module OpenC3
         return tsdb_lookup_single_db_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard)
       end
 
-      # Cross-db_shard: execute per-db_shard queries (as arrays of rows) and merge results
-      return tsdb_lookup_range_db_shards(items, db_shard_groups, start_time: start_time, end_time: end_time, scope: scope) if end_time
-
-      db_shard_rows = {} # db_shard => rows
-      db_shard_groups.each do |db_shard, group|
-        result = tsdb_lookup_single_db_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard, flatten: false)
-        db_shard_rows[db_shard] = result.is_a?(Array) ? result : []
-      end
-
-      # A point in time returns at most one row per db_shard: the last row before start_time.
-      # Merge results positionally back into the original item order. Each db_shard
-      # may have different row counts so use the maximum row count and fill missing
-      # positions with [nil, nil]. If all db_shards returned empty, return empty.
-      max_rows = db_shard_rows.values.map(&:length).max
-      return {} if max_rows == 0
-
-      merged = Array.new(max_rows) { Array.new(items.length) { [nil, nil] } }
-      db_shard_groups.each do |db_shard, group|
-        db_shard_rows[db_shard].each_with_index do |row, row_num|
-          group[:positions].each_with_index do |orig_pos, db_shard_idx|
-            merged[row_num][orig_pos] = row[db_shard_idx] if row[db_shard_idx]
-          end
-        end
-      end
-      # Match the single db_shard behavior of returning a flat array for a single row
-      return merged[0] if max_rows == 1
-
-      merged
+      # Cross-db_shard: a single query can't ASOF JOIN tables on different QuestDBs
+      tsdb_lookup_db_shards(items, db_shard_groups, start_time: start_time, end_time: end_time, scope: scope)
     end
 
-    # Cross-db_shard range lookup. Each db_shard returns its own rows so they can't be
-    # merged by row number. Instead the db_shard of the first item drives the rows (like
-    # the first table does in a single db_shard query) and every other db_shard is aligned
-    # to it by packet time, using its last row at or before each driving row (like ASOF JOIN).
-    def self.tsdb_lookup_range_db_shards(items, db_shard_groups, start_time:, end_time:, scope:)
-      db_shard_rows = {} # db_shard => rows with their packet time as the last value
-      db_shard_groups.each do |db_shard, group|
-        # Every item in this db_shard is a placeholder so leave its positions as nils
-        first = group[:items].find { |item| item[2] }
-        next unless first
-
-        query = group[:items] + [[first[0], first[1], 'PACKET_TIMESECONDS', 'RAW', nil]]
-        result = tsdb_lookup_single_db_shard(query, start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard, flatten: false)
-        db_shard_rows[db_shard] = result.is_a?(Array) ? result : []
-      end
-
+    # Cross-db_shard lookup which matches the rows of a single db_shard ASOF JOIN.
+    # The packet of the first item drives the rows (like T0 in a single db_shard query) so
+    # its db_shard is queried as usual. Every packet on another db_shard is queried on its
+    # own and aligned to each driving row's packet time, using its last row at or before
+    # that time (like ASOF JOIN). Each packet is aligned independently and includes its
+    # last row before start_time, so its value carries forward like it would in ASOF JOIN.
+    def self.tsdb_lookup_db_shards(items, db_shard_groups, start_time:, end_time:, scope:)
       driver = db_shard_for_target(items.find { |item| item[2] }[0], scope: scope)
-      return {} if db_shard_rows[driver].empty?
+      driver_rows = tsdb_lookup_single_db_shard(db_shard_groups[driver][:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: driver, flatten: false, with_time: true)
+      return {} if !driver_rows.is_a?(Array) or driver_rows.empty?
 
-      indexes = Hash.new(-1) # db_shard => index of the row aligned to the current driving row
-      merged = db_shard_rows[driver].map do |driver_row|
-        time = driver_row[-1][0]
+      # The packet time in nanoseconds is the last value of each row
+      times = driver_rows.map { |row| row[-1][0] }
+
+      merged = driver_rows.map do |driver_row|
         row = Array.new(items.length) { [nil, nil] }
-        db_shard_groups.each do |db_shard, group|
-          rows = db_shard_rows[db_shard]
-          next unless rows
-
-          if db_shard == driver
-            shard_row = driver_row
-          else
-            indexes[db_shard] += 1 while indexes[db_shard] + 1 < rows.length and rows[indexes[db_shard] + 1][-1][0] <= time
-            next if indexes[db_shard] < 0
-
-            shard_row = rows[indexes[db_shard]]
-          end
-          group[:positions].each_with_index do |orig_pos, db_shard_idx|
-            row[orig_pos] = shard_row[db_shard_idx] if shard_row[db_shard_idx]
-          end
+        db_shard_groups[driver][:positions].each_with_index do |orig_pos, db_shard_idx|
+          row[orig_pos] = driver_row[db_shard_idx] if driver_row[db_shard_idx]
         end
         row
       end
+
+      db_shard_groups.each do |db_shard, group|
+        next if db_shard == driver
+
+        # Group the items by packet, leaving placeholders as nils
+        packets = {} # [target_name, packet_name] => { positions: [], items: [] }
+        group[:positions].zip(group[:items]).each do |orig_pos, item|
+          next unless item[2]
+
+          packet = (packets[[item[0], item[1]]] ||= { positions: [], items: [] })
+          packet[:positions] << orig_pos
+          packet[:items] << item
+        end
+
+        packets.each_value do |packet|
+          rows = tsdb_lookup_packet_rows(packet[:items], times, start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard)
+          index = -1 # Index of the last packet row at or before the driving row
+          times.each_with_index do |driver_time, row_num|
+            index += 1 while index + 1 < rows.length and rows[index + 1][-1][0] <= driver_time
+            next if index < 0
+
+            packet[:positions].each_with_index do |orig_pos, packet_idx|
+              merged[row_num][orig_pos] = rows[index][packet_idx] if rows[index][packet_idx]
+            end
+          end
+        end
+      end
+
       # Match the single db_shard behavior of returning a flat array for a single row
       return merged[0] if merged.length == 1
 
       merged
     end
 
+    # Query the rows of a single packet needed to align it to the driving row times.
+    # Each row ends with its packet time in nanoseconds.
+    def self.tsdb_lookup_packet_rows(items, times, start_time:, end_time:, scope:, db_shard:)
+      if end_time
+        # The last row before start_time followed by the rows in the range
+        queries = [{ start_time: start_time }, { start_time: start_time, end_time: end_time }]
+      else
+        # The single driving row is before start_time so get the last row at or before it
+        queries = [{ start_time: nsec_to_iso(times[0]), inclusive: true }]
+      end
+      queries.flat_map do |query|
+        result = tsdb_lookup_single_db_shard(items, scope: scope, db_shard: db_shard, flatten: false, with_time: true, **query)
+        result.is_a?(Array) ? result : []
+      end
+    end
+
+    # Convert a nanosecond integer timestamp to an ISO 8601 string with nanosecond precision
+    def self.nsec_to_iso(nsec)
+      Time.at(nsec / 1_000_000_000, nsec % 1_000_000_000, :nsec).utc.strftime('%Y-%m-%dT%H:%M:%S.%9NZ')
+    end
+
     # Execute a tsdb_lookup query against a single db_shard.
     # This contains the original ASOF JOIN logic for items all on the same QuestDB instance.
     # When flatten is true a single row result is returned as a flat array rather than an array of rows.
-    def self.tsdb_lookup_single_db_shard(items, start_time:, end_time: nil, scope: "DEFAULT", db_shard: 0, flatten: true)
+    # When inclusive is true a query without an end_time returns the last row at or before start_time.
+    # When with_time is true each row ends with its packet time in nanoseconds.
+    def self.tsdb_lookup_single_db_shard(items, start_time:, end_time: nil, scope: "DEFAULT", db_shard: 0, flatten: true, inclusive: false, with_time: false)
       tables = {}
       names = []
       nil_count = 0
@@ -1100,6 +1106,7 @@ module OpenC3
           names << "T#{table_index}.#{ts_col} as T#{table_index}___ts_#{ts_col}"
         end
       end
+      names << "cast(T0.PACKET_TIMESECONDS as long) as __time" if with_time
 
       # Build the SQL query
       query = "SELECT #{names.join(", ")} FROM "
@@ -1112,7 +1119,7 @@ module OpenC3
       end
       query_params = []
       if start_time && !end_time
-        query += "WHERE T0.PACKET_TIMESECONDS < $1 LIMIT -1"
+        query += "WHERE T0.PACKET_TIMESECONDS #{inclusive ? '<=' : '<'} $1 LIMIT -1"
         query_params << start_time
       elsif start_time && end_time
         query += "WHERE T0.PACKET_TIMESECONDS >= $1 AND T0.PACKET_TIMESECONDS < $2"
@@ -1137,6 +1144,9 @@ module OpenC3
             data[row_num][row_index - 1][1] = col_value
           elsif col_name =~ /^__nil/
             data[row_num][row_index] = [nil, nil]
+            row_index += 1
+          elsif col_name == '__time'
+            data[row_num][row_index] = [Integer(col_value), nil]
             row_index += 1
           elsif col_name =~ /^T(\d+)___ts_(.+)$/
             table_idx = $1.to_i

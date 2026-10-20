@@ -157,3 +157,8 @@ jobs:
         working-directory: openc3/test/integration/tsdb/ruby
         run: |
           bundle exec rspec tsdb_lookup_db_shards_spec.rb -fd
+
+      - name: Run Ruby QuestDB db_shard integration tests
+        working-directory: openc3/test/integration/tsdb/ruby
+        run: |
+          bundle exec rspec questdb_db_shards_spec.rb -fd

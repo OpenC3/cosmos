@@ -79,9 +79,10 @@ module OpenC3
       groups = {}
       topics.each do |topic|
         if topic.include?(target_pattern)
-          target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
-          # Handle CMD}TARGET__ pattern where target is after TARGET__
-          target_name = topic.split('TARGET__')[1] if target_pattern.include?('TARGET__') && target_name.nil?
+          # The target name follows the pattern, e.g. {DEFAULT__CMD}TARGET__INST
+          # or DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS
+          target_name = topic.split(target_pattern, 2)[1]
+          target_name = target_name[/\A\{([^}]+)\}/, 1] if target_name.start_with?('{')
           db_shard = (Store.db_shard_for_target(target_name, scope: scope) || 0).to_i
         else
           db_shard = 0

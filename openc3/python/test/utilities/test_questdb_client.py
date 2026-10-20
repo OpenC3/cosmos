@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import psycopg
@@ -35,163 +36,192 @@ class TestTsdbLookup(unittest.TestCase):
         )
 
 
-class DbShardTestCase(unittest.TestCase):
-    ITEMS = [
-        ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
-        ["INST2", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
-        ["INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", None],
-    ]
+# Base time for the db_shard tests. Table times are in seconds after it.
+BASE_NS = 1_789_257_600_000_000_000  # 2026-09-13T00:00:00Z
+# Target name => db_shard
+DB_SHARDS = {"INST": 0, "INST2": 1}
+# (target_name, packet_name) => [(seconds, {item_name: value})]
+TABLES = {
+    ("INST", "HEALTH_STATUS"): [
+        (10, {"TEMP1": 1, "TEMP2": 2}),
+        (30, {"TEMP1": 3, "TEMP2": 4}),
+        (50, {"TEMP1": 5, "TEMP2": 6}),
+    ],
+    ("INST2", "HEALTH_STATUS"): [(20, {"TEMP1": 20}), (30, {"TEMP1": 30}), (40, {"TEMP1": 40}), (60, {"TEMP1": 60})],
+    # Only a row before the start of the range lookups
+    ("INST2", "EARLY"): [(0, {"TEMP1": 0})],
+    # A row between the last two INST2 HEALTH_STATUS rows in the range lookups
+    ("INST2", "LATER"): [(45, {"TEMP1": 45})],
+}
 
+
+def iso(seconds):
+    return QuestDBClient.nsec_to_iso(BASE_NS + seconds * 1_000_000_000)
+
+
+def iso_to_nsec(value):
+    seconds, fraction = value.rstrip("Z").split(".")
+    whole = datetime.strptime(seconds, "%Y-%m-%dT%H:%M:%S").replace(tzinfo=timezone.utc)
+    return int(whole.timestamp()) * 1_000_000_000 + int(fraction.ljust(9, "0"))
+
+
+def fake_single_db_shard(
+    items, start_time, end_time=None, scope="DEFAULT", db_shard=0, flatten=True, inclusive=False, with_time=False
+):
+    """Stands in for one QuestDB query: the first packet (T0) is filtered by time and
+    every other packet is ASOF JOINed to it, using its last row at or before each T0 row
+    """
+    assert not flatten
+    real_items = [item for item in items if item.item_name is not None]
+    for item in real_items:
+        assert DB_SHARDS[item.target_name] == db_shard, f"{item.target_name} queried on db_shard {db_shard}"
+    first = real_items[0]
+    start = iso_to_nsec(start_time)
+    rows = [
+        (BASE_NS + seconds * 1_000_000_000, values)
+        for seconds, values in TABLES[(first.target_name, first.packet_name)]
+    ]
+    if end_time:
+        rows = [row for row in rows if start <= row[0] < iso_to_nsec(end_time)]
+    else:
+        rows = [row for row in rows if row[0] < start or (inclusive and row[0] == start)][-1:]
+
+    result = []
+    for time_ns, _ in rows:
+        row = []
+        for item in items:
+            if item.item_name is None:
+                row.append([None, None])
+                continue
+            joined = [
+                values
+                for seconds, values in TABLES[(item.target_name, item.packet_name)]
+                if BASE_NS + seconds * 1_000_000_000 <= time_ns
+            ]
+            if item.item_name == "PACKET_TIMESECONDS":
+                row.append([time_ns / 1_000_000_000, None])
+            else:
+                row.append([joined[-1][item.item_name] if joined else None, None])
+        if with_time:
+            row.append([time_ns, None])
+        result.append(row)
+    return result or {}
+
+
+class TestTsdbLookupDbShards(unittest.TestCase):
     def setUp(self):
-        # INST is on db_shard 0 and INST2 is on db_shard 1
         patcher = patch.object(
-            QuestDBClient,
-            "db_shard_for_target",
-            side_effect=lambda target_name, scope: 1 if target_name == "INST2" else 0,
+            QuestDBClient, "db_shard_for_target", side_effect=lambda target_name, scope: DB_SHARDS.get(target_name, 0)
         )
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def lookup(self, results, **kwargs):
-        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard") as single:
-            single.side_effect = lambda items, db_shard, **_kw: results[db_shard]
-            return QuestDBClient.tsdb_lookup(self.ITEMS, start_time="2026-09-13T00:00:00Z", **kwargs), single
+    def lookup(self, items, start, end=None):
+        """Items are "TARGET PACKET ITEM", or "TARGET PACKET" for a placeholder"""
+        items = [
+            [*item.split(), "CONVERTED", None] if len(item.split()) == 3 else [*item.split(), None, None, None]
+            for item in items
+        ]
+        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard", side_effect=fake_single_db_shard) as single:
+            result = QuestDBClient.tsdb_lookup(
+                items, start_time=iso(start), end_time=iso(end) if end is not None else None
+            )
+        self.queries = [
+            (call.kwargs["db_shard"], [item.packet_name for item in call[0][0]]) for call in single.call_args_list
+        ]
+        return result
 
-
-class TestTsdbLookupDbShards(DbShardTestCase):
     def test_uses_the_single_db_shard_fast_path(self):
         with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard", return_value="result") as single:
-            items = [self.ITEMS[0], self.ITEMS[2]]
-            self.assertEqual(
-                QuestDBClient.tsdb_lookup(items, start_time="2026-09-13T00:00:00Z", scope="OTHER"), "result"
-            )
+            items = [
+                ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
+                ["INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", None],
+            ]
+            self.assertEqual(QuestDBClient.tsdb_lookup(items, start_time=iso(0), scope="OTHER"), "result")
         single.assert_called_once()
         self.assertEqual(single.call_args.kwargs["db_shard"], 0)
         self.assertEqual(single.call_args.kwargs["scope"], "OTHER")
         self.assertEqual(single.call_args[0][0][1].item_name, "TEMP2")
 
-    def test_queries_each_db_shard_and_merges_a_single_row(self):
-        result, single = self.lookup({0: [[[1.0, None], [3.0, "RED"]]], 1: [[[2.0, None]]]})
-        self.assertEqual(result, [[1.0, None], [2.0, None], [3.0, "RED"]])
-        self.assertEqual(single.call_count, 2)
-        shards = {call.kwargs["db_shard"]: call[0][0] for call in single.call_args_list}
-        self.assertEqual([item.item_name for item in shards[0]], ["TEMP1", "TEMP2"])
-        self.assertEqual([item.target_name for item in shards[1]], ["INST2"])
-        for call in single.call_args_list:
-            self.assertFalse(call.kwargs["flatten"])
-
-    def test_fills_a_db_shard_with_no_results_with_nones(self):
-        result, _ = self.lookup({0: [[[1.0, None], [3.0, None]]], 1: {}})
-        self.assertEqual(result, [[1.0, None], [None, None], [3.0, None]])
-
-    def test_returns_empty_when_no_db_shard_has_results(self):
-        result, _ = self.lookup({0: {}, 1: {}})
-        self.assertEqual(result, {})
-
-
-class TestTsdbLookupDbShardsRange(DbShardTestCase):
-    """Range rows end with the packet time added to each db_shard query"""
-
-    def range_lookup(self, results, items=None):
-        if items is not None:
-            self.ITEMS = items
-        return self.lookup(results, end_time="2026-09-13T01:00:00Z")
-
-    def test_adds_the_packet_time_of_the_first_packet_to_each_db_shard_query(self):
-        _, single = self.range_lookup({0: [[[1.0, None], [3.0, None], [10.0, None]]], 1: [[[2.0, None], [10.0, None]]]})
-        shards = {call.kwargs["db_shard"]: call[0][0] for call in single.call_args_list}
+    def test_aligns_the_other_db_shards_to_the_first_items_db_shard_by_packet_time(self):
         self.assertEqual(
-            [tuple(item) for item in shards[0]],
+            self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1", "INST HEALTH_STATUS TEMP2"], 5, 55),
             [
-                ("INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None),
-                ("INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", None),
-                ("INST", "HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW", None),
-            ],
-        )
-        self.assertEqual(
-            [tuple(item) for item in shards[1]],
-            [
-                ("INST2", "HEALTH_STATUS", "TEMP1", "CONVERTED", None),
-                ("INST2", "HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW", None),
-            ],
-        )
-
-    def test_merges_a_single_row_of_a_multi_row_query(self):
-        # A db_shard with a single row must not be mistaken for multiple rows
-        result, _ = self.range_lookup({0: [[[1.0, None], [3.0, None], [10.0, None]]], 1: [[[2.0, None], [10.0, None]]]})
-        self.assertEqual(result, [[1.0, None], [2.0, None], [3.0, None]])
-
-    def test_merges_array_values(self):
-        # An array item's value is itself a list which must not be mistaken for a row
-        result, _ = self.range_lookup(
-            {0: [[[[1, 2], None], [[5, 6], None], [10.0, None]]], 1: [[[[3, 4], None], [10.0, None]]]}
-        )
-        self.assertEqual(result, [[[1, 2], None], [[3, 4], None], [[5, 6], None]])
-
-    def test_aligns_the_other_db_shards_to_the_rows_of_the_first_items_db_shard_by_packet_time(self):
-        result, _ = self.range_lookup(
-            {
-                0: [
-                    [[1.0, None], [3.0, None], [10.0, None]],
-                    [[4.0, None], [6.0, None], [30.0, None]],
-                    [[7.0, None], [9.0, None], [50.0, None]],
-                ],
-                1: [
-                    [[2.0, None], [20.0, None]],
-                    [[5.0, None], [30.0, None]],
-                    [[8.0, None], [40.0, None]],
-                    [[11.0, None], [60.0, None]],
-                ],
-            }
-        )
-        self.assertEqual(
-            result,
-            [
-                # No db_shard 1 row at or before time 10
-                [[1.0, None], [None, None], [3.0, None]],
-                # The db_shard 1 row at the same time 30
-                [[4.0, None], [5.0, None], [6.0, None]],
-                # The last db_shard 1 row before time 50 (time 40) and never the later time 60
-                [[7.0, None], [8.0, None], [9.0, None]],
+                # No INST2 row at or before 10 seconds
+                [[1, None], [None, None], [2, None]],
+                # The INST2 row at the same time
+                [[3, None], [30, None], [4, None]],
+                # The last INST2 row before 50 seconds and never the later 60 second row
+                [[5, None], [40, None], [6, None]],
             ],
         )
 
     def test_drives_the_rows_from_the_db_shard_of_the_first_item(self):
-        items = self.ITEMS[1:] + self.ITEMS[:1]
-        result, _ = self.range_lookup(
-            {
-                0: [[[1.0, None], [3.0, None], [10.0, None]], [[4.0, None], [6.0, None], [30.0, None]]],
-                1: [[[5.0, None], [30.0, None]]],
-            },
-            items=items,
-        )
-        # INST2 is now first so db_shard 1 drives a single row at time 30 and
-        # db_shard 0 contributes its row at time 30 (never its time 10 row)
-        self.assertEqual(result, [[5.0, None], [4.0, None], [6.0, None]])
-
-    def test_fills_a_db_shard_with_no_results_with_nones(self):
-        result, _ = self.range_lookup(
-            {0: [[[1.0, None], [3.0, None], [10.0, None]], [[4.0, None], [6.0, None], [30.0, None]]], 1: {}}
-        )
         self.assertEqual(
-            result,
-            [[[1.0, None], [None, None], [3.0, None]], [[4.0, None], [None, None], [6.0, None]]],
+            self.lookup(["INST2 HEALTH_STATUS TEMP1", "INST HEALTH_STATUS TEMP1"], 5, 55),
+            [[[20, None], [1, None]], [[30, None], [3, None]], [[40, None], [3, None]]],
         )
 
-    def test_returns_empty_when_the_db_shard_of_the_first_item_has_no_results(self):
-        result, _ = self.range_lookup({0: {}, 1: [[[2.0, None], [10.0, None]]]})
-        self.assertEqual(result, {})
+    def test_carries_forward_a_row_before_start_time(self):
+        self.assertEqual(
+            self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 EARLY TEMP1"], 5, 55),
+            [[[1, None], [0, None]], [[3, None], [0, None]], [[5, None], [0, None]]],
+        )
+
+    def test_aligns_each_packet_on_a_db_shard_independently(self):
+        items = ["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1", "INST2 LATER TEMP1"]
+        # INST2 LATER is aligned to INST at 50 seconds, not INST2 HEALTH_STATUS at 40 seconds
+        self.assertEqual(
+            self.lookup(items, 5, 55),
+            [
+                [[1, None], [None, None], [None, None]],
+                [[3, None], [30, None], [None, None]],
+                [[5, None], [40, None], [45, None]],
+            ],
+        )
+        self.assertEqual(self.lookup(items, 55), [[5, None], [40, None], [45, None]])
+        # Each packet on another db_shard is queried on its own
+        self.assertEqual(
+            {tuple(packets) for db_shard, packets in self.queries if db_shard == 1}, {("HEALTH_STATUS",), ("LATER",)}
+        )
+
+    def test_returns_the_last_row_at_or_before_the_driving_row(self):
+        # INST drives at 50 seconds so INST2 returns its 40 second row, not its 60 second row
+        self.assertEqual(
+            self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 70), [[5, None], [40, None]]
+        )
+        # Including a row at the same time as the driving row
+        self.assertEqual(
+            self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 31), [[3, None], [30, None]]
+        )
+
+    def test_returns_a_single_row_as_a_flat_list(self):
+        self.assertEqual(
+            self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 25, 35), [[3, None], [30, None]]
+        )
+
+    def test_fills_an_other_db_shard_with_no_rows_with_nones(self):
+        self.assertEqual(
+            self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 5, 15), [[1, None], [None, None]]
+        )
+
+    def test_returns_empty_when_the_db_shard_of_the_first_item_has_no_rows(self):
+        self.assertEqual(self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 55, 58), {})
+        self.assertEqual(self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 5), {})
 
     def test_does_not_query_a_db_shard_with_only_placeholders(self):
-        items = [self.ITEMS[0], ["INST2", "HEALTH_STATUS", None, None, None], self.ITEMS[2]]
-        result, single = self.range_lookup(
-            {0: [[[1.0, None], [3.0, None], [10.0, None]], [[4.0, None], [6.0, None], [30.0, None]]]}, items=items
-        )
         self.assertEqual(
-            result,
-            [[[1.0, None], [None, None], [3.0, None]], [[4.0, None], [None, None], [6.0, None]]],
+            self.lookup(["INST2 HEALTH_STATUS", "INST HEALTH_STATUS TEMP1", "INST2 LATER"], 25, 35),
+            [[None, None], [3, None], [None, None]],
         )
-        self.assertEqual([call.kwargs["db_shard"] for call in single.call_args_list], [0])
+        self.assertEqual(self.queries, [(0, ["HEALTH_STATUS"])])
+
+    def test_does_not_query_the_placeholders_on_another_db_shard(self):
+        self.assertEqual(
+            self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1", "INST2 LATER"], 25, 35),
+            [[3, None], [30, None], [None, None]],
+        )
+        self.assertNotIn((1, ["LATER"]), self.queries)
 
 
 class TestQueryWithRetry(unittest.TestCase):

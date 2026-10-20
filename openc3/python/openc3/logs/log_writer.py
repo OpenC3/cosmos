@@ -169,6 +169,18 @@ class LogWriter:
             else:
                 return filename
 
+    @staticmethod
+    def db_shard_for_topic(redis_topic):
+        """The db_shard of a target topic like DEFAULT__DECOM__{INST}__HEALTH_STATUS
+        or db_shard 0 for a topic without a target"""
+        from openc3.utilities.store import Store
+
+        scope, _, rest = redis_topic.removeprefix("{").partition("__")
+        # The target is a {TARGET} part between two others, e.g. DECOM__{INST}__HEALTH_STATUS
+        parts = rest.split("__")[1:-1]
+        target = next((part for part in parts if len(part) > 2 and part[0] == "{" and part[-1] == "}"), None)
+        return Store.db_shard_for_target(target[1:-1], scope=scope) if scope and target else 0
+
     def cycle_thread_body(self):
         LogWriter.cycle_sleeper = Sleeper()
         while True:
@@ -213,11 +225,10 @@ class LogWriter:
                             if cleanup_time <= utc_now:
                                 # Now that the file is in S3, trim the Redis stream up until the previous file.
                                 # This keeps one minute of data in Redis
-                                for (
-                                    redis_topic,
-                                    cleanup_offset,
-                                ) in instance.cleanup_offsets[index]:
-                                    Topic.trim_topic(redis_topic, cleanup_offset)
+                                for redis_topic, cleanup_offset in instance.cleanup_offsets[index].items():
+                                    Topic.trim_topic(
+                                        redis_topic, cleanup_offset, db_shard=LogWriter.db_shard_for_topic(redis_topic)
+                                    )
                                 indexes_to_clear.append(index)
                         if len(indexes_to_clear) > 0:
                             for index in indexes_to_clear:
@@ -313,7 +324,7 @@ class LogWriter:
                 threads.append(BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key))
                 # Now that the file is in storage, trim the Redis stream after a delay
                 self.cleanup_offsets.append({})
-                for redis_topic, last_offset in self.last_offsets:
+                for redis_topic, last_offset in self.last_offsets.items():
                     self.cleanup_offsets[-1][redis_topic] = last_offset
                 self.cleanup_times.append(datetime.now(timezone.utc) + timedelta(seconds=LogWriter.CLEANUP_DELAY))
                 self.last_offsets.clear()
