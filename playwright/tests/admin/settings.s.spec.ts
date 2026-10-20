@@ -38,6 +38,17 @@ type OriginalSettings = {
 }
 let original: OriginalSettings | undefined
 
+const urlInput = (page: Page, name: string) =>
+  page.locator(`[data-test=${name}]`).locator('input')
+
+// The URL inputs are disabled until the saved settings have loaded
+async function waitForSettingsLoaded(page: Page) {
+  await expect(page.getByText('Pypi URL').first()).toBeVisible()
+  await expect(urlInput(page, 'source-url')).toBeEnabled()
+  await expect(urlInput(page, 'rubygems-url')).toBeEnabled()
+  await expect(urlInput(page, 'pypi-url')).toBeEnabled()
+}
+
 async function openSettings(browser: Browser, baseURL: string | undefined) {
   const context = await browser.newContext({
     storageState: ADMIN_STORAGE_STATE,
@@ -50,12 +61,9 @@ async function openSettings(browser: Browser, baseURL: string | undefined) {
     timeout: 20000,
   })
   // Wait for the settings forms to populate before reading or writing them
-  await expect(page.getByText('Pypi URL').first()).toBeVisible()
+  await waitForSettingsLoaded(page)
   return { context, page }
 }
-
-const urlInput = (page: Page, name: string) =>
-  page.locator(`[data-test=${name}]`).locator('input')
 
 async function readSettings(page: Page): Promise<OriginalSettings> {
   const language = await page
@@ -82,7 +90,7 @@ async function save(page: Page, saveButton: string) {
   await page.locator(`[data-test=${saveButton}]`).click()
   await expect(page.getByText('Saved!').first()).toBeVisible()
   await page.reload()
-  await expect(page.getByText('Pypi URL').first()).toBeVisible()
+  await waitForSettingsLoaded(page)
 }
 
 async function restoreSettings(page: Page, want: OriginalSettings) {
