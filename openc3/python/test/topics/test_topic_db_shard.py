@@ -229,10 +229,15 @@ class TestRouterTopicDbShard(DbShardTestCase):
     def receive(self, router, db_shard, received):
         generator = RouterTopic.receive_telemetry(router, scope="DEFAULT", db_shard=db_shard)
         with self.assertRaises(StopReceivingError):
-            topic, _msg_id, msg_hash, _redis = next(generator)
-            while True:
-                received.append((topic, msg_hash))
-                topic, _msg_id, msg_hash, _redis = generator.send("SUCCESS")
+            self.ack_all(generator, received)
+
+    # Ack each packet the generator yields until it raises
+    @staticmethod
+    def ack_all(generator, received):
+        topic, _msg_id, msg_hash, _redis = next(generator)
+        while True:
+            received.append((topic, msg_hash))
+            topic, _msg_id, msg_hash, _redis = generator.send("SUCCESS")
 
     def test_reads_each_targets_telemetry_from_its_db_shard_and_acks_router_commands_on_the_routers_db_shard(self):
         router = SimpleNamespace(name="ROUTER_INT", tlm_target_names=["INST", "INST2"])

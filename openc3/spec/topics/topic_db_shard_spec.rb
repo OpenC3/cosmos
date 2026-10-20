@@ -34,7 +34,7 @@ module OpenC3
     before(:each) do
       mock_redis_db_shards()
       # Topic offsets are kept per thread so don't carry them between tests
-      Thread.current[:topic_offsets] = nil
+      Topic.clear_topic_offsets
       set_target_db_shard('INST', 0)
       set_target_db_shard('INST2', 1)
       set_model_db_shard('interfaces', 'INST_INT', 2)
@@ -68,6 +68,7 @@ module OpenC3
       begin
         yield received
       rescue StopReceiving
+        # Expected: read_topics raised to end the receive loop
       end
       received
     end

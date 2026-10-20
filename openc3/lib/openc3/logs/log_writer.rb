@@ -214,8 +214,9 @@ module OpenC3
     # The db_shard of a target topic like DEFAULT__DECOM__{INST}__HEALTH_STATUS
     # or db_shard 0 for a topic without a target
     def self.db_shard_for_topic(redis_topic)
-      match = redis_topic.match(/\A\{?(.+?)__.*__\{([^}]+)\}__/)
-      match ? Store.db_shard_for_target(match[2], scope: match[1]) : 0
+      scope, _, rest = redis_topic.delete_prefix('{').partition('__')
+      match = rest.match(/__\{([^}]+)\}__/)
+      (!scope.empty? and match) ? Store.db_shard_for_target(match[1], scope: scope) : 0
     end
 
     def cycle_thread_body

@@ -176,8 +176,9 @@ class LogWriter:
         or db_shard 0 for a topic without a target"""
         from openc3.utilities.store import Store
 
-        match = re.match(r"\{?(.+?)__.*__\{([^}]+)\}__", redis_topic)
-        return Store.db_shard_for_target(match.group(2), scope=match.group(1)) if match else 0
+        scope, _, rest = redis_topic.removeprefix("{").partition("__")
+        match = re.search(r"__\{([^}]+)\}__", rest)
+        return Store.db_shard_for_target(match.group(1), scope=scope) if scope and match else 0
 
     def cycle_thread_body(self):
         LogWriter.cycle_sleeper = Sleeper()

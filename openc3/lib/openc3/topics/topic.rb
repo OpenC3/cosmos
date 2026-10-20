@@ -61,6 +61,11 @@ module OpenC3
       EphemeralStore.instance(db_shard: db_shard).update_topic_offsets(topics)
     end
 
+    # Forget this thread's topic offsets so the next read starts from the latest message
+    def self.clear_topic_offsets
+      Thread.current[:topic_offsets] = nil
+    end
+
     def self.trim_topic(topic, minid, approximate = true, limit: 0, db_shard: 0)
       EphemeralStore.instance(db_shard: db_shard).trim_topic(topic, minid, approximate, limit: limit)
     end

@@ -14,6 +14,7 @@
 
 import json
 import unittest
+from unittest.mock import patch
 
 from openc3.models.cvt_model import CvtModel
 from openc3.models.interface_model import InterfaceModel
@@ -69,11 +70,12 @@ class TestInterfaceStatusModelDbShard(DbShardModelTestCase):
     def test_checks_for_an_existing_status_on_the_db_shard_of_its_interface(self):
         # A status on another db_shard doesn't count
         store(0).hset("DEFAULT__openc3_interface_status", "INT1", json.dumps({"state": "OLD"}))
+        status = self.status("INT1")
         with self.assertRaisesRegex(RuntimeError, "doesn't exist at update"):
-            self.status("INT1").create(update=True)
-        self.status("INT1").create()
+            status.create(update=True)
+        status.create()
         with self.assertRaisesRegex(RuntimeError, "already exists at create"):
-            self.status("INT1").create()
+            status.create()
         self.status("INT1", "DISCONNECTED").create(update=True)
         self.assertEqual(InterfaceStatusModel.get("INT1", "DEFAULT")["state"], "DISCONNECTED")
         self.status("INT1", "ATTEMPTING").create(force=True)
@@ -166,9 +168,9 @@ class TestTargetDbShard(DbShardModelTestCase):
         super().setUp()
         setup_system()
         TargetModel.clear_packet_cache()
-        TargetModel.item_map_cache = {}
-        CvtModel.packet_cache = {}
-        CvtModel.override_cache = {}
+        self.clear_cache(TargetModel, "item_map_cache")
+        self.clear_cache(CvtModel, "packet_cache")
+        self.clear_cache(CvtModel, "override_cache")
         # setup_system stores every target on db_shard 0 so remove INST from there
         for key in ("DEFAULT__openc3tlm__INST", "DEFAULT__openc3cmd__INST", "DEFAULT__tlm__INST"):
             store(0).delete(key)
@@ -180,6 +182,12 @@ class TestTargetDbShard(DbShardModelTestCase):
         self.model.update_store_telemetry({"INST": System.telemetry.packets("INST")})
         self.model.update_store_commands({"INST": System.commands.packets("INST")})
         self.model.update_store_item_map()
+
+    def clear_cache(self, model, cache):
+        # Empty a class level cache until the test ends
+        patcher = patch.object(model, cache, {})
+        patcher.start()
+        self.addCleanup(patcher.stop)
 
     def test_stores_the_target_definition_on_db_shard_0_and_its_packets_on_its_db_shard(self):
         self.assertIsNotNone(store(0).hget("DEFAULT__openc3_targets", "INST"))
@@ -200,7 +208,7 @@ class TestTargetDbShard(DbShardModelTestCase):
         packet_names = [packet["packet_name"] for packet in TargetModel.packets("INST", scope="DEFAULT")]
         self.assertIn("HEALTH_STATUS", packet_names)
         self.assertIn(b"TEMP1", TargetModel.all_item_names("INST", scope="DEFAULT"))
-        TargetModel.item_map_cache = {}
+        self.clear_cache(TargetModel, "item_map_cache")
         self.assertEqual(TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")["TEMP1"], ["HEALTH_STATUS"])
 
         packet = TargetModel.packet("INST", "HEALTH_STATUS", scope="DEFAULT")
@@ -232,7 +240,7 @@ class TestTargetDbShard(DbShardModelTestCase):
         CvtModel.set({"TEMP1": 1.5}, "INST", "HEALTH_STATUS", scope="DEFAULT")
         self.assertEqual(json.loads(store(1).hget("DEFAULT__tlm__INST", "HEALTH_STATUS")), {"TEMP1": 1.5})
         self.assertIsNone(store(0).hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))
-        CvtModel.packet_cache = {}
+        self.clear_cache(CvtModel, "packet_cache")
         self.assertEqual(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="RAW", scope="DEFAULT"), 1.5)
 
         CvtModel.set({"TEMP1": 2.5}, "INST", "HEALTH_STATUS", queued=True, scope="DEFAULT")
@@ -242,7 +250,7 @@ class TestTargetDbShard(DbShardModelTestCase):
         self.assertIsNotNone(store(1).hget("DEFAULT__override__INST", "HEALTH_STATUS"))
         self.assertIsNone(store(0).hget("DEFAULT__override__INST", "HEALTH_STATUS"))
         self.assertEqual([item["value"] for item in CvtModel.overrides(scope="DEFAULT")], [10])
-        CvtModel.override_cache = {}
+        self.clear_cache(CvtModel, "override_cache")
         self.assertEqual(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="RAW", scope="DEFAULT"), 10)
         CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type="RAW", scope="DEFAULT")
         self.assertIsNone(store(1).hget("DEFAULT__override__INST", "HEALTH_STATUS"))

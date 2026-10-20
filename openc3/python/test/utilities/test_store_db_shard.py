@@ -28,8 +28,9 @@ class TestStoreDbShardInstance(unittest.TestCase):
         self.assertEqual(EphemeralStore.instance(db_shard=2).redis_host, "redis-ephemeral-2")
 
     def test_keeps_a_singleton_per_db_shard(self):
-        self.assertIs(Store.instance(db_shard=1), Store.instance(db_shard=1))
-        self.assertIsNot(Store.instance(db_shard=1), Store.instance(db_shard=0))
+        db_shard_1 = Store.instance(db_shard=1)
+        self.assertIs(Store.instance(db_shard=1), db_shard_1)
+        self.assertIsNot(db_shard_1, Store.instance(db_shard=0))
         self.assertIsNot(EphemeralStore.instance(db_shard=1), Store.instance(db_shard=1))
 
     def test_delegates_class_methods_to_db_shard_0(self):
@@ -76,8 +77,9 @@ class TestStoreQueuedDbShard(unittest.TestCase):
         mock_redis_db_shards(self)
 
     def test_keeps_a_singleton_per_db_shard_which_writes_to_that_db_shard(self):
-        self.assertIs(StoreQueued.instance(db_shard=1), StoreQueued.instance(db_shard=1))
-        self.assertIsNot(StoreQueued.instance(db_shard=1), StoreQueued.instance(db_shard=0))
+        db_shard_1 = StoreQueued.instance(db_shard=1)
+        self.assertIs(StoreQueued.instance(db_shard=1), db_shard_1)
+        self.assertIsNot(db_shard_1, StoreQueued.instance(db_shard=0))
 
         StoreQueued.instance(db_shard=1).hset("HASH", "KEY", "one")
         self.assertEqual(Store.instance(db_shard=1).hget("HASH", "KEY"), b"one")
