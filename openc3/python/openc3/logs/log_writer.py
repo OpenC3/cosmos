@@ -10,7 +10,6 @@
 # if purchased from OpenC3, Inc.
 
 import os
-import re
 import tempfile
 import threading
 import traceback
@@ -177,8 +176,10 @@ class LogWriter:
         from openc3.utilities.store import Store
 
         scope, _, rest = redis_topic.removeprefix("{").partition("__")
-        match = re.search(r"__\{([^}]+)\}__", rest)
-        return Store.db_shard_for_target(match.group(1), scope=scope) if scope and match else 0
+        # The target is a {TARGET} part between two others, e.g. DECOM__{INST}__HEALTH_STATUS
+        parts = rest.split("__")[1:-1]
+        target = next((part for part in parts if len(part) > 2 and part[0] == "{" and part[-1] == "}"), None)
+        return Store.db_shard_for_target(target[1:-1], scope=scope) if scope and target else 0
 
     def cycle_thread_body(self):
         LogWriter.cycle_sleeper = Sleeper()

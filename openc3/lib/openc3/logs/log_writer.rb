@@ -215,8 +215,9 @@ module OpenC3
     # or db_shard 0 for a topic without a target
     def self.db_shard_for_topic(redis_topic)
       scope, _, rest = redis_topic.delete_prefix('{').partition('__')
-      match = rest.match(/__\{([^}]+)\}__/)
-      (!scope.empty? and match) ? Store.db_shard_for_target(match[1], scope: scope) : 0
+      # The target is a {TARGET} part between two others, e.g. DECOM__{INST}__HEALTH_STATUS
+      target = rest.split('__', -1)[1...-1]&.find { |part| part.length > 2 and part.start_with?('{') and part.end_with?('}') }
+      (!scope.empty? and target) ? Store.db_shard_for_target(target[1...-1], scope: scope) : 0
     end
 
     def cycle_thread_body

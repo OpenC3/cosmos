@@ -33,8 +33,6 @@ module OpenC3
 
     before(:each) do
       mock_redis_db_shards()
-      # Topic offsets are kept per thread so don't carry them between tests
-      Topic.clear_topic_offsets
       set_target_db_shard('INST', 0)
       set_target_db_shard('INST2', 1)
       set_model_db_shard('interfaces', 'INST_INT', 2)
