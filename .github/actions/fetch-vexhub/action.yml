@@ -39,9 +39,11 @@ runs:
         repo="${CACHE_DIR}/vex/repositories/default"
         rm -rf "$repo"
         mkdir -p "$repo/0.1"
-        curl -fsSL --retry 3 -o "$repo/vex-repository.json" \
+        # -L follows github.com/archive to codeload; --proto(-redir) keeps every hop on https.
+        curl -fsSL --proto =https --proto-redir =https --retry 3 -o "$repo/vex-repository.json" \
           https://raw.githubusercontent.com/aquasecurity/vexhub/main/vex-repository.json
-        curl -fsSL --retry 3 https://github.com/aquasecurity/vexhub/archive/refs/heads/main.tar.gz \
+        curl -fsSL --proto =https --proto-redir =https --retry 3 \
+          https://github.com/aquasecurity/vexhub/archive/refs/heads/main.tar.gz \
           | tar -xz -C "$repo/0.1" --strip-components=1
         # trivy only reads cache.json to decide whether an update is due, which
         # TRIVY_SKIP_VEX_REPO_UPDATE skips. Written anyway so a run without it
