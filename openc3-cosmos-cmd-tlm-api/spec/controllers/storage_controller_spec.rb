@@ -887,6 +887,17 @@ RSpec.describe StorageController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
     
+    it "does not delete local mode files for a user-defined bucket item" do
+      ENV["OPENC3_LOCAL_MODE"] = "true"
+      bucket_client = instance_double(OpenC3::Bucket)
+      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      expect(bucket_client).to receive(:delete_object).with(bucket: "custom-bucket", key: "DEFAULT/targets_modified/INST/file.txt")
+      expect(OpenC3::LocalMode).not_to receive(:delete_local)
+
+      delete :delete, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: "DEFAULT/targets_modified/INST/file.txt", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+    end
+
     it "rejects a tools bucket delete without admin authorization" do
       allow(controller).to receive(:authorize) do |args|
         raise OpenC3::AuthError.new("admin required") if args[:permission] == "admin"
@@ -1071,6 +1082,17 @@ RSpec.describe StorageController, type: :controller do
         delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "scope/targets_modified/INST", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)
         expect(OpenC3::LocalMode).to have_received(:delete_local).with("scope/targets_modified/INST/file1.txt")
+      end
+
+      it "does not delete local mode files for user-defined bucket directories" do
+        ENV["OPENC3_LOCAL_MODE"] = "true"
+        allow(bucket_client).to receive(:list_objects).and_return([double(key: "DEFAULT/targets_modified/INST/file1.txt")])
+        expect(bucket_client).to receive(:delete_objects).with(bucket: "custom-bucket", keys: ["DEFAULT/targets_modified/INST/file1.txt"])
+        expect(OpenC3::LocalMode).not_to receive(:delete_local)
+
+        delete :delete_directory, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: "DEFAULT/targets_modified/INST", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)["deleted_count"]).to eq(1)
       end
 
       it "requires admin for most bucket directories" do

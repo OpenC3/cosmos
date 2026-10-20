@@ -706,6 +706,13 @@ class StorageController < ApplicationController
     bucket_param == 'OPENC3_CONFIG_BUCKET' && OpenC3::LocalMode.local_only_key?(path)
   end
 
+  # True if local mode is enabled and the bucket is the config bucket, the only
+  # bucket mirrored into the local mode volume. Other buckets can share key names
+  # with config keys, so they must never touch the local mode volume.
+  def local_mode_config_bucket?(bucket_param)
+    ENV.fetch('OPENC3_LOCAL_MODE', false) && bucket_param == 'OPENC3_CONFIG_BUCKET'
+  end
+
   def render_local_only_error(path)
     render json: { status: 'error', message: "#{path} belongs to a local only target (OPENC3_LOCAL_ONLY_TARGETS) and is not stored in the bucket" }, status: :bad_request
   end
@@ -744,7 +751,8 @@ class StorageController < ApplicationController
     authorized = non_admin_bucket_write?(params[:bucket], path) || authorization('admin')
 
     if authorized
-      if ENV.fetch('OPENC3_LOCAL_MODE', false) || local_only_config_key?(params[:bucket], path)
+      # The local mode volume only mirrors the config bucket
+      if local_mode_config_bucket?(params[:bucket]) || local_only_config_key?(params[:bucket], path)
         OpenC3::LocalMode.delete_local(path)
       end
 
@@ -823,7 +831,7 @@ class StorageController < ApplicationController
 
       # Handle local mode
       key_batch.each do |key|
-        if ENV.fetch('OPENC3_LOCAL_MODE', false) || local_only_config_key?(params[:bucket], key)
+        if local_mode_config_bucket?(params[:bucket]) || local_only_config_key?(params[:bucket], key)
           OpenC3::LocalMode.delete_local(key)
         end
       end
