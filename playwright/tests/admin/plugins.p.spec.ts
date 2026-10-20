@@ -276,12 +276,15 @@ test.describe(() => {
     await page.locator('.v-dialog >> button:has-text("Ok")').click()
   })
 
-  async function checkForSaveNewFile(page: Page, downloadTrigger: Promise<void>) {
+  async function checkForSaveNewFile(
+    page: Page,
+    downloadTrigger: () => Promise<void>,
+  ) {
     const [download] = await Promise.all([
       // Start waiting for the download
       page.waitForEvent('download'),
       // Download the modified plugin
-      downloadTrigger,
+      downloadTrigger(),
     ])
     // Wait for the download process to complete
     const path = await download.path()
@@ -387,7 +390,7 @@ test.describe(() => {
       page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }),
     ).toHaveCount(1)
 
-    await checkForSaveNewFile(page, page
+    await checkForSaveNewFile(page, () => page
           .locator('[data-test=plugin-list-item]')
           .filter({ hasText: plugin })
           .locator('a')
@@ -398,7 +401,7 @@ test.describe(() => {
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
     await page.locator('rux-icon-apps').getByRole('img').click()
 
-    await checkForSaveNewFile(page, page
+    await checkForSaveNewFile(page, () => page
         .locator('.v-list-item')
         .filter({ hasText: 'PW_TEST' })
         .getByRole('button')
