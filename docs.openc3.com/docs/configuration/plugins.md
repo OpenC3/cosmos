@@ -176,6 +176,20 @@ VARIABLE host ""
   values: .+
 ```
 
+## VARIABLE_ADVANCED
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Show a plugin variable in the advanced section of the plugin installation dialog**
+
+The VARIABLE_ADVANCED keyword marks the previously defined VARIABLE as advanced. Advanced variables are shown in a section of the plugin installation dialog that is collapsed by default, for settings that normally don't need to change. VARIABLE_STATE_SHOW still controls whether an advanced variable is shown. Must follow a VARIABLE definition.
+
+
+Example Usage:
+```cosmos
+VARIABLE host 127.0.0.1
+VARIABLE timeout 10
+  VARIABLE_DESCRIPTION Connection timeout in seconds
+  VARIABLE_ADVANCED
+```
+
 ## VARIABLE_BRIDGE
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Let the user select which bridge the plugin uses**
 
@@ -198,7 +212,7 @@ INTERFACE SERIAL_INT serial_interface.py <%= serial_port %> <%= serial_port %> 1
 ## VARIABLE_DISCOVERY
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Discover the possible values of a plugin variable from the host computer**
 
-The VARIABLE_DISCOVERY keyword runs a Python discovery class on the host computer paired with COSMOS through openc3-app, using the bridge selected by VARIABLE_BRIDGE (or the DEFAULT bridge). The values it finds are added to the dropdown for the previously defined VARIABLE in the plugin installation dialog, after any VARIABLE_STATE options. Discovery runs when the dialog opens and can be refreshed. When installing a new plugin, the first available discovered value is selected automatically unless a value was already chosen. If openc3-app is not running the variable can still be typed in by hand. Discovery classes subclass openc3/discovery/discovery.py and implement discover(). Parameters can include the value of another variable as ${name}. A variable holding several space separated values passes each as a parameter. The discovery reruns when a referenced variable changes, and is skipped when they are all blank. COSMOS provides openc3/discovery/serial_discovery.py (lists serial ports, optionally limited to USB VID:PID parameters (the PID can be omitted) like 10C4:EA60), openc3/discovery/hid_discovery.py (lists the serial numbers of USB HID devices, optionally limited by Vendor ID and Product ID, and requires the hidapi package on the host), openc3/discovery/zeroconf_discovery.py (lists the IP addresses of devices advertising the mDNS service types given as parameters, each optionally followed by |name=glob or |property=glob filters, e.g. _http._tcp.local.|name=shelly*) and openc3/discovery/bluetooth_discovery.py (lists the addresses of Bluetooth LE devices matching any of the matchers given as parameters, each made of local_name=glob, service_uuid=uuid, service_data_uuid=uuid or manufacturer_id=id joined with |). A variable can have multiple VARIABLE_DISCOVERY keywords and their results are combined. Each can be followed by VARIABLE_DISCOVERY_SET keywords that set other variables when a value it found is selected. Discovered values are claimed by the plugin that uses them. Once a plugin is installed, the value it chose for a VARIABLE_DISCOVERY variable (for example a serial port) is no longer offered to other plugins discovering with the same class on the same bridge, and the dialog notes which plugin is using it. The claim is released when the plugin is uninstalled. Upgrading or editing the plugin still offers the values it holds. Must follow a VARIABLE definition.
+The VARIABLE_DISCOVERY keyword runs a Python discovery class on the host computer paired with COSMOS through openc3-app, using the bridge selected by VARIABLE_BRIDGE (or the DEFAULT bridge). The values it finds are added to the dropdown for the previously defined VARIABLE in the plugin installation dialog, after any VARIABLE_STATE options. Discovery runs when the dialog opens and can be refreshed. When installing a new plugin, the first available discovered value is selected automatically unless a value was already chosen. If openc3-app is not running the variable can still be typed in by hand. Discovery classes subclass openc3/discovery/discovery.py and implement discover(). Parameters can include the value of another variable as `${name}`. A variable holding several space separated values passes each as a parameter. The discovery reruns when a referenced variable changes, and is skipped when they are all blank. COSMOS provides openc3/discovery/serial_discovery.py (lists serial ports, optionally limited to USB VID:PID parameters (the PID can be omitted) like `10C4:EA60`), openc3/discovery/hid_discovery.py (lists the serial numbers of USB HID devices, optionally limited by Vendor ID and Product ID, and requires the hidapi package on the host), openc3/discovery/zeroconf_discovery.py (lists the IP addresses of devices advertising the mDNS service types given as parameters, each optionally followed by `|name=glob` or `|property=glob` filters, e.g. `_http._tcp.local.|name=shelly*`) and openc3/discovery/bluetooth_discovery.py (lists the addresses of Bluetooth LE devices matching any of the matchers given as parameters, each made of `local_name=glob`, `service_uuid=uuid`, `service_data_uuid=uuid` or `manufacturer_id=id` joined with `|`). A variable can have multiple VARIABLE_DISCOVERY keywords and their results are combined. Each can be followed by VARIABLE_DISCOVERY_SET keywords that set other variables when a value it found is selected. Discovered values are claimed by the plugin that uses them. Once a plugin is installed, the value it chose for a VARIABLE_DISCOVERY variable (for example a serial port) is no longer offered to other plugins discovering with the same class on the same bridge, and the dialog notes which plugin is using it. The claim is released when the plugin is uninstalled. Upgrading or editing the plugin still offers the values it holds. Must follow a VARIABLE definition.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -321,6 +335,31 @@ PLUGIN_TEXT_END
 
 ## PLUGIN_TEXT_END
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Complete a block of markdown text started by PLUGIN_TEXT_START**
+
+
+## VARIABLE_TEXT_START
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Start a block of markdown text shown when a VARIABLE_STATE is selected**
+
+The VARIABLE_TEXT_START keyword begins a block of Markdown that belongs to the previous VARIABLE_STATE. While that state is selected (and its variable is shown) the text is displayed in the plugin installation dialog below the PLUGIN_TEXT, for directions specific to the choice made. The text of each variable's selected state is shown in the order the variables are defined. The lines up to VARIABLE_TEXT_END are taken as-is like PLUGIN_TEXT, and multiple blocks for the same state are joined together. Must follow a VARIABLE_STATE definition.
+
+
+Example Usage:
+```cosmos
+VARIABLE interface_type tcp
+  VARIABLE_STATE "TCP/IP" tcp
+    VARIABLE_STATE_SHOW hostname port
+    VARIABLE_TEXT_START
+      Enter the power supply's **hostname** and **port** from its network settings menu.
+    VARIABLE_TEXT_END
+  VARIABLE_STATE Serial serial
+    VARIABLE_STATE_SHOW serial_port
+    VARIABLE_TEXT_START
+      Connect the power supply's RS-232 port and select the **serial_port**.
+    VARIABLE_TEXT_END
+```
+
+## VARIABLE_TEXT_END
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Complete a block of markdown text started by VARIABLE_TEXT_START**
 
 
 ## NEEDS_DEPENDENCIES

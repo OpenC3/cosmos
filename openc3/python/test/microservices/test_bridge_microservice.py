@@ -318,3 +318,14 @@ class TestBridgeFiles(unittest.TestCase):
         with patch("openc3.microservices.bridge_microservice.Model.all", return_value=plugins):
             self.service.scope = "DEFAULT"
             self.assertEqual(self.service._installed_requirements(), {"plugin-1.0.0": "requests\n"})
+
+    def test_host_microservices_name_their_plugin_files(self):
+        self.service.scope = "DEFAULT"
+        self.service.bridge_name = "BRIDGE"
+        models = {
+            "INT": {"name": "INT", "bridge_name": "BRIDGE", "plugin": "my-plugin-1.0.0.gem__0"},
+            "OTHER": {"name": "OTHER", "bridge_name": "ELSEWHERE", "plugin": "x.gem__0"},
+        }
+        with patch("openc3.microservices.bridge_microservice.HostInterfaceMicroserviceModel.all", return_value=models):
+            payload = json.loads(self.service._host_microservices_payload())
+        self.assertEqual([(entry["name"], entry["plugin_files"]) for entry in payload], [("INT", "my-plugin-1.0.0")])

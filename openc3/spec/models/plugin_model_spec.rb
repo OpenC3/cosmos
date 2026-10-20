@@ -304,6 +304,18 @@ module OpenC3
         expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_HIDDEN true']) }.to raise_error(/Too many parameters/)
       end
 
+      it "parses VARIABLE_ADVANCED" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE host 127.0.0.1',
+          'VARIABLE timeout 10',
+          '  VARIABLE_ADVANCED',
+        ])
+        expect(model['variables']['host']).to eq({ 'value' => '127.0.0.1' })
+        expect(model['variables']['timeout']).to eq({ 'value' => '10', 'advanced' => true })
+        expect { phase1_with_plugin_txt(['VARIABLE_ADVANCED']) }.to raise_error(/VARIABLE_ADVANCED must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_ADVANCED true']) }.to raise_error(/Too many parameters/)
+      end
+
       it "sets hidden variables from the selected state on upgrade" do
         lines = [
           'VARIABLE device hue',
@@ -403,6 +415,34 @@ module OpenC3
         ])
         expect(model['plugin_text']).to eq "# Instrument Plugin\n\nSelect the **interface type** first. Don't forget \"quotes\" \\\n  - indented item\nVARIABLE not_a_variable 1\n\nSecond block"
         expect(model['variables'].keys).to eq ['port']
+      end
+
+      it "captures VARIABLE_TEXT_START / VARIABLE_TEXT_END markdown for the previous VARIABLE_STATE" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE type tcp',
+          '  VARIABLE_STATE TCP tcp',
+          '    VARIABLE_TEXT_START',
+          '    ## TCP',
+          '    Enter the **host**.',
+          '      VARIABLE_STATE_SHOW not_a_keyword',
+          '    VARIABLE_TEXT_END',
+          '    VARIABLE_TEXT_START',
+          '    More',
+          '    VARIABLE_TEXT_END',
+          '  VARIABLE_STATE Serial serial',
+          '    VARIABLE_STATE_SET port 1',
+          'VARIABLE port 0',
+        ])
+        expect(model['variables']['type']['options']).to eq [
+          { 'value' => 'tcp', 'text' => 'TCP', 'markdown' => "## TCP\nEnter the **host**.\n  VARIABLE_STATE_SHOW not_a_keyword\n\nMore" },
+          { 'value' => 'serial', 'text' => 'Serial', 'set' => { 'port' => '1' } },
+        ]
+      end
+
+      it "raises error for VARIABLE_TEXT_START / VARIABLE_TEXT_END problems" do
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_TEXT_START', 'VARIABLE_TEXT_END']) }.to raise_error(/VARIABLE_TEXT_START must follow a VARIABLE_STATE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_STATE One 1', 'VARIABLE_TEXT_START', 'Text']) }.to raise_error(/VARIABLE_TEXT_START without a matching VARIABLE_TEXT_END/)
+        expect { phase1_with_plugin_txt(['VARIABLE_TEXT_END']) }.to raise_error(/VARIABLE_TEXT_END must follow a VARIABLE_TEXT_START/)
       end
 
       it "returns nil plugin_text without PLUGIN_TEXT_START" do
@@ -622,7 +662,7 @@ module OpenC3
         expect(plugin_model['needs_dependencies']).to eql false
       end
 
-      it "skips PLUGIN_TEXT during install and stores plugin_text" do
+      it "skips PLUGIN_TEXT and VARIABLE_TEXT during install and stores plugin_text" do
         stub_s3_client
 
         expect(GemModel).to receive(:get).and_return("my_plugin.gem")
@@ -640,6 +680,11 @@ module OpenC3
           "  # Heading",
           "  INTERFACE looks like a keyword \"but isn't",
           "PLUGIN_TEXT_END",
+          "VARIABLE folder THE_FOLDER",
+          "  VARIABLE_STATE Folder THE_FOLDER",
+          "    VARIABLE_TEXT_START",
+          "    TARGET looks like a keyword",
+          "    VARIABLE_TEXT_END",
           "TOOL THE_FOLDER THE_NAME",
           "  #{URL}",
           "TARGET THE_FOLDER THE_NAME",

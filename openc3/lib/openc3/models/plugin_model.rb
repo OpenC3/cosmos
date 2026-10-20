@@ -139,6 +139,7 @@ module OpenC3
         current_variable_name = nil
         plugin_text_blocks = []
         plugin_text_lines = nil # Non-nil while inside PLUGIN_TEXT_START / PLUGIN_TEXT_END
+        variable_text_lines = nil # Non-nil while inside VARIABLE_TEXT_START / VARIABLE_TEXT_END
         # Yield non-keyword lines so blank lines and markdown headers (# lines) are captured in PLUGIN_TEXT
         parser.parse_file(plugin_txt_path,
                           true,
@@ -154,6 +155,18 @@ module OpenC3
             end
             next
           end
+          if variable_text_lines
+            if keyword == 'VARIABLE_TEXT_END'
+              parser.set_preserve_lines(false)
+              # Shown below the PLUGIN_TEXT when the VARIABLE_STATE is selected
+              option = variables[current_variable_name]['options'][-1]
+              option['markdown'] = [option['markdown'], unindent_lines(variable_text_lines)].compact.join("\n\n")
+              variable_text_lines = nil
+            else
+              variable_text_lines << parser.line
+            end
+            next
+          end
 
           case keyword
           when 'PLUGIN_TEXT_START'
@@ -163,6 +176,15 @@ module OpenC3
             plugin_text_lines = []
           when 'PLUGIN_TEXT_END'
             raise "PLUGIN_TEXT_END must follow a PLUGIN_TEXT_START"
+          when 'VARIABLE_TEXT_START'
+            parser.verify_num_parameters(0, 0, keyword)
+            unless current_variable_name and variables[current_variable_name]['options']
+              raise "VARIABLE_TEXT_START must follow a VARIABLE_STATE definition"
+            end
+            parser.set_preserve_lines(true)
+            variable_text_lines = []
+          when 'VARIABLE_TEXT_END'
+            raise "VARIABLE_TEXT_END must follow a VARIABLE_TEXT_START"
           when 'VARIABLE', 'VARIABLE_BRIDGE'
             if keyword == 'VARIABLE'
               usage = "#{keyword} <Variable Name> <Default Value>"
@@ -209,6 +231,13 @@ module OpenC3
             # Never shown in the plugin dialog. Its value comes from VARIABLE_STATE_SET or
             # VARIABLE_DISCOVERY_SET for use in ERB and VARIABLE_DISCOVERY parameters.
             variables[current_variable_name]['hidden'] = true
+          when 'VARIABLE_ADVANCED'
+            parser.verify_num_parameters(0, 0, keyword)
+            unless current_variable_name
+              raise "VARIABLE_ADVANCED must follow a VARIABLE definition"
+            end
+            # Shown in a collapsed section of the plugin dialog
+            variables[current_variable_name]['advanced'] = true
           when 'VARIABLE_STATE'
             usage = "#{keyword} <Display Text> <Value>"
             parser.verify_num_parameters(1, 2, usage)
@@ -265,6 +294,7 @@ module OpenC3
         end
 
         raise "PLUGIN_TEXT_START without a matching PLUGIN_TEXT_END" if plugin_text_lines
+        raise "VARIABLE_TEXT_START without a matching VARIABLE_TEXT_END" if variable_text_lines
         plugin_markdown = plugin_text_blocks.empty? ? nil : plugin_text_blocks.map { |lines| unindent_lines(lines) }.join("\n\n")
 
         # Variables can be defined after the VARIABLE_STATE_SHOW / SET and VARIABLE_DISCOVERY_SET
@@ -533,21 +563,21 @@ module OpenC3
             parser = OpenC3::ConfigParser.new("https://openc3.com")
 
             current_model = nil
-            in_plugin_text = false
+            text_end = nil # The END keyword while inside a PLUGIN_TEXT or VARIABLE_TEXT block
             parser.parse_file(plugin_txt_path, false, true, true, erb_variables) do |keyword, params|
-              # PLUGIN_TEXT was captured in phase 1 so skip it
-              if in_plugin_text
-                if keyword == 'PLUGIN_TEXT_END'
+              # PLUGIN_TEXT and VARIABLE_TEXT were captured in phase 1 so skip them
+              if text_end
+                if keyword == text_end
                   parser.set_preserve_lines(false)
-                  in_plugin_text = false
+                  text_end = nil
                 end
                 next
               end
               case keyword
-              when 'PLUGIN_TEXT_START'
+              when 'PLUGIN_TEXT_START', 'VARIABLE_TEXT_START'
                 parser.set_preserve_lines(true)
-                in_plugin_text = true
-              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_HIDDEN', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'NEEDS_DEPENDENCIES'
+                text_end = keyword.sub('_START', '_END')
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin

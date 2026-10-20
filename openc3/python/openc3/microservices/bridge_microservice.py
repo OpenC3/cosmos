@@ -144,6 +144,16 @@ CLOSE_DRAIN_TIMEOUT = 10
 HOST_FILE_PATTERN = re.compile(r"^(lib/|targets/[^/]+/lib/|requirements\.txt$|pyproject\.toml$)")
 
 
+def plugin_files_dir(plugin):
+    """The directory a plugin's files are synced to on the host: its gem
+    filename without .gem, e.g. openc3-cosmos-demo-1.0.0 for the plugin
+    openc3-cosmos-demo-1.0.0.gem__0."""
+    if not plugin:
+        return None
+    gem = str(plugin).split("__")[0]
+    return gem[:-4] if gem.endswith(".gem") else gem
+
+
 def requirement_includes(content):
     """The relative paths of the files a requirements.txt includes with
     -r/--requirement or -c/--constraint."""
@@ -773,6 +783,9 @@ class BridgeMicroservice(Microservice):
                     "env": data.get("env") or {},
                     "container": data.get("container"),
                     "needs_dependencies": data.get("needs_dependencies", False),
+                    # The plugin's synced files (see api/files), whose Python
+                    # dependencies the host installs for this microservice
+                    "plugin_files": plugin_files_dir(data.get("plugin")),
                 }
             )
         return json.dumps(entries).encode()
@@ -838,8 +851,7 @@ class BridgeMicroservice(Microservice):
         for name, plugin in Model.all(f"{self.scope}__openc3_plugins").items():
             content = plugin.get("python_requirements") if isinstance(plugin, dict) else None
             if content is not None:
-                gem = str(name).split("__")[0]
-                requirements[gem[:-4] if gem.endswith(".gem") else gem] = content
+                requirements[plugin_files_dir(name)] = content
         return requirements
 
     def _build_files_payload(self, gems, have, requirements=None):

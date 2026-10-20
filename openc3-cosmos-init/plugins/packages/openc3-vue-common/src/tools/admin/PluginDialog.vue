@@ -51,6 +51,14 @@
                 data-test="plugin-text"
                 v-html="pluginTextHtml"
               />
+              <!-- Markdown from VARIABLE_TEXT_START / VARIABLE_TEXT_END of the selected states -->
+              <div
+                v-for="(html, index) in variableTextHtml"
+                :key="index"
+                class="plugin-text pa-3"
+                data-test="variable-text-markdown"
+                v-html="html"
+              />
               <!-- eslint-enable vue/no-v-html -->
               <div
                 v-if="Object.keys(localVariables).length === 0"
@@ -58,64 +66,86 @@
               >
                 No variables defined for this plugin.
               </div>
-              <v-row v-else class="pt-2">
-                <v-col
-                  v-for="[name, variable] in visibleVariables"
-                  :key="name"
-                  cols="12"
-                  sm="6"
-                  md="3"
+              <template
+                v-for="section in variableSections"
+                v-else
+                :key="section.advanced"
+              >
+                <!-- VARIABLE_ADVANCED variables are collapsed by default -->
+                <v-btn
+                  v-if="section.advanced"
+                  :prepend-icon="
+                    showAdvanced ? 'mdi-chevron-down' : 'mdi-chevron-right'
+                  "
+                  variant="text"
+                  class="mt-3"
+                  data-test="variable-advanced"
+                  @click="showAdvanced = !showAdvanced"
                 >
-                  <!-- Combobox for variables with options -->
-                  <v-combobox
-                    v-if="hasOptions(variable)"
-                    :model-value="variable.value"
-                    :items="getOptionItems(name, variable)"
-                    item-title="text"
-                    item-value="value"
-                    :return-object="false"
-                    :label="name"
-                    :hint="getHint(name, variable)"
-                    :loading="discoveryLoading[name] || false"
-                    persistent-hint
-                    density="comfortable"
-                    variant="outlined"
-                    data-test="variable-combobox"
-                    @update:model-value="chooseVariableValue(name, $event)"
+                  Advanced ({{ section.variables.length }})
+                </v-btn>
+                <v-row
+                  v-if="!section.advanced || showAdvanced"
+                  :class="section.advanced ? 'pt-1' : 'pt-2'"
+                >
+                  <v-col
+                    v-for="[name, variable] in section.variables"
+                    :key="name"
+                    cols="12"
+                    sm="6"
+                    md="3"
                   >
-                    <template v-if="variable.discovery" #append-inner>
-                      <v-btn
-                        icon="mdi-refresh"
-                        size="x-small"
-                        variant="text"
-                        :disabled="discoveryLoading[name] || false"
-                        data-test="variable-discover"
-                        @click.stop="runDiscovery(name)"
-                      />
-                    </template>
-                    <template #item="{ item, props }">
-                      <v-list-item v-bind="props">
-                        <template #title>
-                          {{ item.raw.text }}
-                        </template>
-                      </v-list-item>
-                    </template>
-                  </v-combobox>
+                    <!-- Combobox for variables with options -->
+                    <v-combobox
+                      v-if="hasOptions(variable)"
+                      :model-value="variable.value"
+                      :items="getOptionItems(name, variable)"
+                      item-title="text"
+                      item-value="value"
+                      :return-object="false"
+                      :label="name"
+                      :hint="getHint(name, variable)"
+                      :loading="discoveryLoading[name] || false"
+                      persistent-hint
+                      density="comfortable"
+                      variant="outlined"
+                      data-test="variable-combobox"
+                      @update:model-value="chooseVariableValue(name, $event)"
+                    >
+                      <template v-if="variable.discovery" #append-inner>
+                        <v-btn
+                          icon="mdi-refresh"
+                          size="x-small"
+                          variant="text"
+                          :disabled="discoveryLoading[name] || false"
+                          data-test="variable-discover"
+                          @click.stop="runDiscovery(name)"
+                        />
+                      </template>
+                      <template #item="{ item, props }">
+                        <v-list-item v-bind="props">
+                          <template #title>
+                            {{ item.raw.text }}
+                          </template>
+                        </v-list-item>
+                      </template>
+                    </v-combobox>
 
-                  <!-- Text field for variables without options -->
-                  <v-text-field
-                    v-else
-                    v-model="variable.value"
-                    :label="name"
-                    :hint="getDescription(variable)"
-                    persistent-hint
-                    clearable
-                    density="comfortable"
-                    variant="outlined"
-                    data-test="variable-text"
-                  />
-                </v-col>
-              </v-row>
+                    <!-- Text field for variables without options -->
+                    <v-text-field
+                      v-else
+                      v-model="variable.value"
+                      :label="name"
+                      :hint="getDescription(variable)"
+                      persistent-hint
+                      clearable
+                      density="comfortable"
+                      variant="outlined"
+                      data-test="variable-text"
+                    />
+                  </v-col>
+                </v-row>
+              </template>
             </v-window-item>
             <v-window-item
               v-if="existingPluginTxt === null"
@@ -283,6 +313,8 @@ export default {
       discoveryChosen: {},
       // Available bridges for the VARIABLE_BRIDGE variable: [{ value, text }]
       bridges: [],
+      // Expand the VARIABLE_ADVANCED section
+      showAdvanced: false,
     }
   },
   computed: {
@@ -297,6 +329,17 @@ export default {
     pluginTextHtml() {
       if (!this.pluginText) return ''
       return DOMPurify.sanitize(marked.parse(this.pluginText))
+    },
+    // Markdown of the selected VARIABLE_STATE of each shown variable
+    variableTextHtml() {
+      const html = []
+      for (const [, variable] of this.visibleVariables) {
+        const markdown = variable.options?.find(
+          (option) => option.value === variable.value,
+        )?.markdown
+        if (markdown) html.push(DOMPurify.sanitize(marked.parse(markdown)))
+      }
+      return html
     },
     // VARIABLE_STATE_SHOW lookups: the variables whose states list each
     // variable, and each such variable's state values and what they show.
@@ -327,6 +370,18 @@ export default {
       return Object.entries(this.localVariables).filter(([name]) =>
         this.isVariableVisible(name),
       )
+    },
+    // Visible variables split into the normal ones and the collapsed
+    // VARIABLE_ADVANCED ones, leaving out a section with no variables
+    variableSections() {
+      const sections = [
+        { advanced: false, variables: [] },
+        { advanced: true, variables: [] },
+      ]
+      for (const entry of this.visibleVariables) {
+        sections[entry[1].advanced ? 1 : 0].variables.push(entry)
+      }
+      return sections.filter((section) => section.variables.length > 0)
     },
   },
   watch: {
@@ -463,6 +518,7 @@ export default {
         'VARIABLE',
         'VARIABLE_DESCRIPTION',
         'VARIABLE_HIDDEN',
+        'VARIABLE_ADVANCED',
         'VARIABLE_STATE',
         'VARIABLE_STATE_SHOW',
         'VARIABLE_STATE_SET',
@@ -471,6 +527,8 @@ export default {
         'VARIABLE_BRIDGE',
         'PLUGIN_TEXT_START',
         'PLUGIN_TEXT_END',
+        'VARIABLE_TEXT_START',
+        'VARIABLE_TEXT_END',
       ]
       let regex = new RegExp(`(\\b${keywords.join('\\b|\\b')}\\b)`)
       let PluginHighlightRules = function () {
