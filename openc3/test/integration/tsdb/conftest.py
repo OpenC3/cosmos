@@ -18,6 +18,7 @@ Usage:
     3. Stop QuestDB: docker compose -f docker-compose.test.yml down
 """
 
+import contextlib
 import os
 import sys
 import time
@@ -33,6 +34,9 @@ os.environ.setdefault("OPENC3_TSDB_INGEST_PORT", "9000")
 os.environ.setdefault("OPENC3_TSDB_QUERY_PORT", "8812")
 os.environ.setdefault("OPENC3_TSDB_USERNAME", "admin")
 os.environ.setdefault("OPENC3_TSDB_PASSWORD", "admin")
+# db_shard 1 (questdb-shard1 in docker-compose.test.yml) for the cross-db_shard tests
+os.environ.setdefault("OPENC3_TSDB_SHARD1_INGEST_PORT", "9010")
+os.environ.setdefault("OPENC3_TSDB_SHARD1_QUERY_PORT", "8822")
 
 from openc3.utilities.questdb_client import QuestDBClient
 
@@ -48,6 +52,42 @@ def is_questdb_available():
 # Skip marker for tests requiring QuestDB
 requires_questdb = pytest.mark.skipif(
     not is_questdb_available(), reason="QuestDB not available"
+)
+
+
+@contextlib.contextmanager
+def db_shard_ports(db_shard):
+    """Point the QuestDB port env vars at the given db_shard while in this context.
+
+    Production resolves each db_shard by hostname (SHARDNUM) but locally every
+    db_shard is on 127.0.0.1, so db_shard N > 0 is selected by the
+    OPENC3_TSDB_SHARD<N>_INGEST_PORT and OPENC3_TSDB_SHARD<N>_QUERY_PORT ports.
+    """
+    if db_shard == 0:
+        yield
+        return
+    saved = {name: os.environ[name] for name in ("OPENC3_TSDB_INGEST_PORT", "OPENC3_TSDB_QUERY_PORT")}
+    os.environ["OPENC3_TSDB_INGEST_PORT"] = os.environ[f"OPENC3_TSDB_SHARD{db_shard}_INGEST_PORT"]
+    os.environ["OPENC3_TSDB_QUERY_PORT"] = os.environ[f"OPENC3_TSDB_SHARD{db_shard}_QUERY_PORT"]
+    try:
+        yield
+    finally:
+        os.environ.update(saved)
+
+
+def is_questdb_shard1_available():
+    """Check if the db_shard 1 QuestDB is available for testing."""
+    try:
+        with db_shard_ports(1):
+            return QuestDBClient.check_connection(db_shard=1)
+    except Exception:
+        return False
+
+
+# Skip marker for tests requiring both QuestDB db_shards
+requires_questdb_shards = pytest.mark.skipif(
+    not (is_questdb_available() and is_questdb_shard1_available()),
+    reason="QuestDB db_shards not available",
 )
 
 

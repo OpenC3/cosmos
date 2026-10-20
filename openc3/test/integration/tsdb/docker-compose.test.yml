@@ -25,3 +25,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  # Second QuestDB acting as db_shard 1 for the cross-db_shard tests. Production
+  # resolves each db_shard by hostname (SHARDNUM) but locally both run on
+  # 127.0.0.1 so the tests select this one by its ports instead.
+  questdb-shard1:
+    image: questdb/questdb:9.3.5
+    ports:
+      - "127.0.0.1:9010:9000" # HTTP ILP ingest + Console
+      - "127.0.0.1:8822:8812" # PostgreSQL wire protocol
+    environment:
+      QDB_PG_USER: admin
+      QDB_PG_PASSWORD: admin
+      QDB_HTTP_USER: admin
+      QDB_HTTP_PASSWORD: admin
+      QDB_LINE_AUTO_CREATE_NEW_TABLES: "false"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9000'"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
