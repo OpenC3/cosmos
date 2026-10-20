@@ -208,7 +208,7 @@ COSMOS 7 uses [Versity Gateway (versitygw)](https://github.com/versity/versitygw
 | `start`   | Start temporary containers needed for migration    |
 | `migrate` | Mirror data from MINIO to versitygw (idempotent)   |
 | `status`  | Check migration status and compare bucket contents |
-| `cleanup` | Remove temporary migration containers              |
+| `stop`    | Stop and remove temporary migration containers     |
 | `help`    | Show usage information                             |
 
 The script is **idempotent** — it uses `mc mirror --preserve` which only copies new or changed files, making it safe to run multiple times. This enables incremental syncing to minimize downtime.
@@ -227,7 +227,7 @@ chmod +x openc3_migrate_s3.sh
 # 2. Run the migration (COSMOS 6 MINIO -> temporary versitygw container)
 ./openc3_migrate_s3.sh migrate
 ./openc3_migrate_s3.sh status
-./openc3_migrate_s3.sh cleanup
+./openc3_migrate_s3.sh stop
 
 # 3. Stop COSMOS 6
 ./openc3.sh stop
@@ -235,7 +235,7 @@ chmod +x openc3_migrate_s3.sh
 # 4. Rerun the migration (only copies new files since the previous migration)
 ./openc3_migrate_s3.sh migrate
 ./openc3_migrate_s3.sh status
-./openc3_migrate_s3.sh cleanup
+./openc3_migrate_s3.sh stop
 
 # 5. Upgrade to COSMOS 7+ and start
 ./openc3.sh upgrade v7.3.0
@@ -263,7 +263,7 @@ chmod +x openc3_migrate_s3.sh
 
 # 5. Verify your data migrated correctly
 ./openc3_migrate_s3.sh status
-./openc3_migrate_s3.sh cleanup
+./openc3_migrate_s3.sh stop
 ```
 
 #### Custom Credentials

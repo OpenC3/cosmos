@@ -21,7 +21,7 @@
 # 2. Stop COSMOS 6: ./openc3.sh stop
 # 3. Upgrade to COSMOS 7
 # 4. Run final migration: ./openc3_migrate_s3.sh migrate
-# 5. Cleanup: ./openc3_migrate_s3.sh cleanup
+# 5. Stop the migration containers: ./openc3_migrate_s3.sh stop
 # 6. Start COSMOS 7: ./openc3.sh run
 
 set -e
@@ -73,11 +73,12 @@ NC='\033[0m' # No Color
 # State variables
 MINIO_SOURCE=""        # Where to read MINIO data from (live or temp container)
 VERSITY_DEST=""        # Where to write versitygw data to (live or temp container)
+VOLUME_PREFIX=""       # docker compose project prefix detected on OLD_VOLUME
 DOCKER_NETWORK=""
 
 usage() {
     cat << EOF
-Usage: $0 [start|migrate|status|cleanup|help]
+Usage: $0 [start|migrate|status|stop|help]
 
 Migrate data from MINIO (COSMOS 6) to versitygw (COSMOS 7).
 
@@ -90,7 +91,7 @@ Commands:
   start     Start temporary containers needed for migration
   migrate   Mirror data from MINIO to versitygw (idempotent)
   status    Check migration status and compare bucket contents
-  cleanup   Remove temporary migration containers
+  stop      Stop and remove temporary migration containers
   help      Show this help message
 
 Migration workflow:
@@ -104,8 +105,8 @@ Migration workflow:
   3. Final migration:
      $0 migrate
 
-  4. Cleanup and start COSMOS 7:
-     $0 cleanup
+  4. Stop the migration containers and start COSMOS 7:
+     $0 stop
      ./openc3.sh run
 
 Configuration (via environment variables):
@@ -217,33 +218,75 @@ ensure_network() {
     return 0
 }
 
+# Resolve OLD_VOLUME to an existing volume, with or without a docker compose
+# project prefix. If more than one volume matches, ask the user which to use.
+# Sets OLD_VOLUME and VOLUME_PREFIX.
+# Returns 0 if resolved, 1 if no volume matches, 2 if no volume was selected.
+resolve_old_volume() {
+    local candidates=()
+    local name
+    while IFS= read -r name; do
+        [[ -n "$name" ]] && candidates+=("$name")
+    done < <(docker volume ls --format '{{.Name}}' 2>/dev/null | grep -E "^(.+_)?${OLD_VOLUME}$")
+
+    if [[ ${#candidates[@]} -eq 0 ]]; then
+        return 1
+    fi
+
+    local selected="${candidates[0]}"
+    if [[ ${#candidates[@]} -gt 1 ]]; then
+        if [[ ! -t 0 ]]; then
+            log_error "Multiple volumes match '$OLD_VOLUME':"
+            printf '  %s\n' "${candidates[@]}"
+            echo "Set OLD_VOLUME to the volume you want to use, e.g.:"
+            echo "  OLD_VOLUME=${candidates[0]} $0 ${COMMAND}"
+            return 2
+        fi
+        log_warn "Multiple volumes match '$OLD_VOLUME':"
+        local i
+        for i in "${!candidates[@]}"; do
+            echo "  $((i + 1))) ${candidates[$i]}"
+        done
+        local choice
+        while true; do
+            if ! read -r -p "Select the volume to use [1-${#candidates[@]}]: " choice; then
+                echo ""
+                log_error "No volume selected"
+                return 2
+            fi
+            if [[ "$choice" =~ ^[0-9]+$ ]] && [[ $choice -ge 1 ]] && [[ $choice -le ${#candidates[@]} ]]; then
+                break
+            fi
+            echo "Invalid selection: $choice"
+        done
+        selected="${candidates[$((choice - 1))]}"
+    fi
+
+    VOLUME_PREFIX="${selected%"${OLD_VOLUME}"}"
+    OLD_VOLUME="$selected"
+    return 0
+}
+
 # Detect the current environment and set up source/destination
 detect_environment() {
     log_step "Detecting environment..."
 
-    # Check for old volume
-    local volume_prefix=""
-    if ! volume_exists "$OLD_VOLUME"; then
-        # Check with common prefixes (docker compose adds project name)
-        local prefixed_old
-        prefixed_old=$(docker volume ls --format '{{.Name}}' 2>/dev/null | grep -E "^.+_${OLD_VOLUME}$" | head -1)
-        if [[ -n "$prefixed_old" ]]; then
-            volume_prefix="${prefixed_old%"${OLD_VOLUME}"}"
-            OLD_VOLUME="$prefixed_old"
-            log_info "Found old volume with prefix: $OLD_VOLUME"
-        else
-            log_error "Old MINIO volume '$OLD_VOLUME' not found"
-            echo "This volume should exist from your COSMOS 6 installation."
-            echo "If you haven't run COSMOS 6 before, there's nothing to migrate."
-            return 1
-        fi
-    else
-        log_info "Found old MINIO volume: $OLD_VOLUME"
+    # Check for old volume (docker compose may prefix it with the project name)
+    local rc=0
+    resolve_old_volume || rc=$?
+    if [[ $rc -eq 1 ]]; then
+        log_error "Old MINIO volume '$OLD_VOLUME' not found"
+        echo "This volume should exist from your COSMOS 6 installation."
+        echo "If you haven't run COSMOS 6 before, there's nothing to migrate."
+        return 1
+    elif [[ $rc -ne 0 ]]; then
+        return 1
     fi
+    log_info "Using old MINIO volume: $OLD_VOLUME"
 
     # Apply the same prefix to new volume if one was detected
-    if [[ -n "$volume_prefix" ]]; then
-        NEW_VOLUME="${volume_prefix}${NEW_VOLUME}"
+    if [[ -n "$VOLUME_PREFIX" ]]; then
+        NEW_VOLUME="${VOLUME_PREFIX}${NEW_VOLUME}"
         log_info "Using matching prefix for new volume: $NEW_VOLUME"
     fi
 
@@ -541,19 +584,16 @@ cmd_status() {
     return 0
 }
 
-# Cleanup command - remove temporary containers
-cmd_cleanup() {
+# Stop command - stop and remove temporary containers
+cmd_stop() {
     # Resolve volume names with prefix detection for display
-    if ! volume_exists "$OLD_VOLUME"; then
-        local prefixed_old
-        prefixed_old=$(docker volume ls --format '{{.Name}}' 2>/dev/null | grep -E "^.+_${OLD_VOLUME}$" | head -1)
-        if [[ -n "$prefixed_old" ]]; then
-            NEW_VOLUME="${prefixed_old%"${OLD_VOLUME}"}${NEW_VOLUME}"
-            OLD_VOLUME="$prefixed_old"
-        fi
+    local rc=0
+    resolve_old_volume || rc=$?
+    if [[ $rc -eq 0 ]]; then
+        NEW_VOLUME="${VOLUME_PREFIX}${NEW_VOLUME}"
     fi
 
-    log_step "Cleaning up migration containers..."
+    log_step "Stopping migration containers..."
 
     if container_exists "$MINIO_MIGRATION_CONTAINER"; then
         docker stop "$MINIO_MIGRATION_CONTAINER" 2>/dev/null || true
@@ -573,12 +613,13 @@ cmd_cleanup() {
     fi
 
     echo ""
-    log_info "Cleanup complete"
+    log_info "Migration containers stopped"
     echo ""
+    # Don't name the new volume when we couldn't tell which old volume was used
+    if [[ $rc -eq 2 ]]; then
+        return 0
+    fi
     echo "Your data has been migrated to volume '$NEW_VOLUME'."
-    echo ""
-    echo "After verifying COSMOS 7 works correctly, you can remove the old volume:"
-    echo "  docker volume rm $OLD_VOLUME"
     echo ""
     return 0
 }
@@ -601,8 +642,8 @@ case "$COMMAND" in
         cmd_status
         exit $?
         ;;
-    cleanup)
-        cmd_cleanup
+    stop)
+        cmd_stop
         exit $?
         ;;
     help|--help|-h|*)

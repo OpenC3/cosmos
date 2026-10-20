@@ -22,7 +22,7 @@ REM 1. (Optional) While COSMOS 6 is running, run: openc3_migrate_s3.bat start &&
 REM 2. Stop COSMOS 6: openc3.bat stop
 REM 3. Upgrade to COSMOS 7
 REM 4. Run final migration: openc3_migrate_s3.bat migrate
-REM 5. Cleanup: openc3_migrate_s3.bat cleanup
+REM 5. Stop the migration containers: openc3_migrate_s3.bat stop
 REM 6. Start COSMOS 7: openc3.bat run
 
 REM Configuration - can be overridden by environment variables
@@ -69,7 +69,7 @@ if "%1"=="-h" goto :usage
 if "%1"=="start" goto :cmd_start
 if "%1"=="migrate" goto :cmd_migrate
 if "%1"=="status" goto :cmd_status
-if "%1"=="cleanup" goto :cmd_cleanup
+if "%1"=="stop" goto :cmd_stop
 goto :usage
 
 :cmd_start
@@ -109,12 +109,12 @@ if errorlevel 1 exit /b 1
 call :show_status
 exit /b %errorlevel%
 
-:cmd_cleanup
-call :cleanup
+:cmd_stop
+call :stop_containers
 exit /b %errorlevel%
 
 :usage
-echo Usage: %~nx0 [start^|migrate^|status^|cleanup^|help]
+echo Usage: %~nx0 [start^|migrate^|status^|stop^|help]
 echo.
 echo Migrate data from MINIO (COSMOS 6) to versitygw (COSMOS 7).
 echo.
@@ -127,7 +127,7 @@ echo Commands:
 echo   start     Start temporary containers needed for migration
 echo   migrate   Mirror data from MINIO to versitygw (idempotent)
 echo   status    Check migration status and compare bucket contents
-echo   cleanup   Remove temporary migration containers
+echo   stop      Stop and remove temporary migration containers
 echo   help      Show this help message
 echo.
 echo Migration workflow:
@@ -141,8 +141,8 @@ echo.
 echo   3. Final migration:
 echo      %~nx0 migrate
 echo.
-echo   4. Cleanup and start COSMOS 7:
-echo      %~nx0 cleanup
+echo   4. Stop the migration containers and start COSMOS 7:
+echo      %~nx0 stop
 echo      openc3.bat run
 echo.
 echo Configuration (via environment variables):
@@ -463,7 +463,7 @@ if not "%MINIO_SOURCE%"=="" if not "%VERSITY_DEST%"=="" (
 echo.
 exit /b 0
 
-:cleanup
+:stop_containers
 REM Resolve volume names with prefix detection for display
 set "VOLUME_FOUND="
 for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do set "VOLUME_FOUND=1"
@@ -479,7 +479,7 @@ if "%VOLUME_FOUND%"=="" (
     )
 )
 
-echo [==>] Cleaning up migration containers...
+echo [==>] Stopping migration containers...
 
 set "CONTAINER_EXISTS="
 for /f "tokens=*" %%i in ('docker ps -a --format "{{.Names}}" 2^>nul ^| findstr /x "%MINIO_MIGRATION_CONTAINER%"') do set "CONTAINER_EXISTS=1"
@@ -505,12 +505,9 @@ if "%NET_EXISTS%"=="1" (
 )
 
 echo.
-echo [INFO] Cleanup complete
+echo [INFO] Migration containers stopped
 echo.
 echo Your data has been migrated to volume '%NEW_VOLUME%'.
-echo.
-echo After verifying COSMOS 7 works correctly, you can remove the old volume:
-echo   docker volume rm %OLD_VOLUME%
 echo.
 exit /b 0
 
