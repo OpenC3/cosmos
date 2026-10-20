@@ -172,6 +172,32 @@ RSpec.describe PluginsController, type: :controller do
     end
   end
 
+  describe "POST preview" do
+    it "returns the rendered plugin.txt" do
+      plugin_hash = {"variables" => {"folder" => {"value" => "INST"}}, "plugin_txt_lines" => ["VARIABLE folder X", "TARGET <%= folder %> <%= folder %>"]}
+      post :preview, params: {scope: "DEFAULT", plugin_hash: JSON.generate(plugin_hash)}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq({"plugin_txt" => "TARGET INST INST"})
+    end
+
+    it "returns ERB errors" do
+      plugin_hash = {"variables" => {}, "plugin_txt_lines" => ["TARGET <%= missing %> X"]}
+      post :preview, params: {scope: "DEFAULT", plugin_hash: JSON.generate(plugin_hash)}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["error"]).to match(/ERB error at line 1/)
+    end
+
+    it "returns bad_request on invalid plugin_hash JSON" do
+      post :preview, params: {scope: "DEFAULT", plugin_hash: "not json"}
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it "returns nothing without authorization" do
+      post :preview, params: {plugin_hash: "{}"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe "POST create" do
     before(:each) do
       @file = Tempfile.new(["test-plugin", ".gem"])

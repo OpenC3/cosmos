@@ -19,12 +19,14 @@
   <v-dialog
     v-model="show"
     persistent
+    scrollable
     width="80vw"
     @keydown.esc.stop="handleEsc"
   >
+    <!-- The title, tabs and actions stay in place while the tab content scrolls -->
     <v-card>
       <v-card-title>{{ pluginName }}</v-card-title>
-      <v-card-text class="pt-0">
+      <div class="px-6 flex-shrink-0">
         <v-alert
           v-if="existingPluginTxt !== null"
           type="warning"
@@ -39,182 +41,296 @@
         <v-tabs v-model="tab" class="mb-3">
           <v-tab :key="0"> Variables </v-tab>
           <v-tab :key="1"> plugin.txt </v-tab>
+          <v-tab :key="2" data-test="plugin-preview-tab"> Preview </v-tab>
         </v-tabs>
-        <form @submit.prevent="onSubmit">
-          <v-window v-model="tab">
-            <v-window-item :value="0" eager="true" class="tab">
-              <!-- Markdown from PLUGIN_TEXT_START / PLUGIN_TEXT_END in plugin.txt -->
-              <!-- eslint-disable vue/no-v-html -->
-              <div
-                v-if="pluginTextHtml"
-                class="plugin-text pa-3"
-                data-test="plugin-text"
-                v-html="pluginTextHtml"
-              />
-              <!-- Markdown from VARIABLE_TEXT_START / VARIABLE_TEXT_END of the selected states -->
-              <div
-                v-for="(html, index) in variableTextHtml"
-                :key="index"
-                class="plugin-text pa-3"
-                data-test="variable-text-markdown"
-                v-html="html"
-              />
-              <!-- eslint-enable vue/no-v-html -->
-              <div
-                v-if="Object.keys(localVariables).length === 0"
-                class="text-body-1 text-medium-emphasis pa-3"
-              >
-                No variables defined for this plugin.
-              </div>
-              <template
-                v-for="section in variableSections"
-                v-else
-                :key="section.advanced"
-              >
-                <!-- VARIABLE_ADVANCED variables are collapsed by default -->
-                <v-btn
-                  v-if="section.advanced"
-                  :prepend-icon="
-                    showAdvanced ? 'mdi-chevron-down' : 'mdi-chevron-right'
-                  "
-                  variant="text"
-                  class="mt-3"
-                  data-test="variable-advanced"
-                  @click="showAdvanced = !showAdvanced"
-                >
-                  Advanced ({{ section.variables.length }})
-                </v-btn>
-                <v-row
-                  v-if="!section.advanced || showAdvanced"
-                  :class="section.advanced ? 'pt-1' : 'pt-2'"
-                >
-                  <v-col
-                    v-for="[name, variable] in section.variables"
-                    :key="name"
-                    cols="12"
-                    sm="6"
-                    md="3"
-                  >
-                    <!-- Combobox for variables with options -->
-                    <v-combobox
-                      v-if="hasOptions(variable)"
-                      :model-value="variable.value"
-                      :items="getOptionItems(name, variable)"
-                      item-title="text"
-                      item-value="value"
-                      :return-object="false"
-                      :label="name"
-                      :hint="getHint(name, variable)"
-                      :loading="discoveryLoading[name] || false"
-                      persistent-hint
-                      density="comfortable"
-                      variant="outlined"
-                      data-test="variable-combobox"
-                      @update:model-value="chooseVariableValue(name, $event)"
-                    >
-                      <template v-if="variable.discovery" #append-inner>
-                        <v-btn
-                          icon="mdi-refresh"
-                          size="x-small"
-                          variant="text"
-                          :disabled="discoveryLoading[name] || false"
-                          data-test="variable-discover"
-                          @click.stop="runDiscovery(name)"
-                        />
-                      </template>
-                      <template #item="{ item, props }">
-                        <v-list-item v-bind="props">
-                          <template #title>
-                            {{ item.raw.text }}
-                          </template>
-                        </v-list-item>
-                      </template>
-                    </v-combobox>
-
-                    <!-- Text field for variables without options -->
-                    <v-text-field
-                      v-else
-                      v-model="variable.value"
-                      :label="name"
-                      :hint="getDescription(variable)"
-                      persistent-hint
-                      clearable
-                      density="comfortable"
-                      variant="outlined"
-                      data-test="variable-text"
-                    />
-                  </v-col>
-                </v-row>
-              </template>
-            </v-window-item>
-            <v-window-item
-              v-if="existingPluginTxt === null"
-              :value="1"
-              eager="true"
-              class="tab"
+      </div>
+      <v-card-text ref="body" class="pt-0">
+        <v-window v-model="tab">
+          <v-window-item :value="0" eager="true" class="tab">
+            <!-- Markdown from PLUGIN_TEXT_START / PLUGIN_TEXT_END in plugin.txt -->
+            <!-- eslint-disable vue/no-v-html -->
+            <div
+              v-if="pluginTextHtml"
+              class="plugin-text pa-3"
+              data-test="plugin-text"
+              v-html="pluginTextHtml"
+            />
+            <!-- Markdown from VARIABLE_TEXT_START / VARIABLE_TEXT_END of the selected states -->
+            <div
+              v-for="(html, index) in variableTextHtml"
+              :key="index"
+              class="plugin-text pa-3"
+              data-test="variable-text-markdown"
+              v-html="html"
+            />
+            <!-- eslint-enable vue/no-v-html -->
+            <div
+              v-if="Object.keys(localVariables).length === 0"
+              class="text-body-1 text-medium-emphasis pa-3"
             >
-              <v-row class="pa-3">
-                <v-col> This can be edited before installation. </v-col>
-              </v-row>
-              <pre
-                ref="editor"
-                class="editor"
-                @contextmenu.prevent="showContextMenu"
-              ></pre>
-              <v-menu v-model="contextMenu" :target="[menuX, menuY]">
-                <v-list>
-                  <v-list-item link>
-                    <v-list-item-title @click="openDocumentation">
-                      {{ docsKeyword }} documentation
-                    </v-list-item-title>
-                  </v-list-item>
-                  <v-divider />
-                  <v-list-item
-                    title="Toggle Vim mode"
-                    prepend-icon="extras:vim"
-                    @click="toggleVimMode"
-                  />
-                </v-list>
-              </v-menu>
-            </v-window-item>
-            <v-window-item v-else :value="1" eager="true" class="tab">
-              <v-row class="pa-3">
-                <v-col>
-                  Existing plugin.txt. This can be edited before installation.
-                </v-col>
-                <v-col class="ml-6">
-                  Uneditable plugin.txt from the new plugin.
-                </v-col>
-              </v-row>
-              <pre ref="editor" class="editor"></pre>
-            </v-window-item>
-          </v-window>
-
-          <v-card-actions class="px-2 mt-2">
-            <div v-if="existingPluginTxt !== null">
-              <v-btn variant="text" @click="nextDiff"> Next Diff </v-btn>
-              <v-btn variant="text" @click="previousDiff">
-                Previous Diff
-              </v-btn>
+              No variables defined for this plugin.
             </div>
-            <v-spacer />
-            <v-btn
-              variant="outlined"
-              data-test="edit-cancel"
-              @click.prevent="close"
+            <template
+              v-for="section in variableSections"
+              v-else
+              :key="section.advanced"
             >
-              Cancel
-            </v-btn>
-            <v-btn
-              variant="flat"
-              data-test="edit-submit"
-              @click="checkVersionAndSubmit"
+              <!-- VARIABLE_ADVANCED variables are collapsed by default -->
+              <v-btn
+                v-if="section.advanced"
+                :prepend-icon="
+                  showAdvanced ? 'mdi-chevron-down' : 'mdi-chevron-right'
+                "
+                variant="text"
+                class="mt-3"
+                data-test="variable-advanced"
+                @click="showAdvanced = !showAdvanced"
+              >
+                Advanced ({{ section.variables.length }})
+              </v-btn>
+              <v-row
+                v-if="!section.advanced || showAdvanced"
+                :class="section.advanced ? 'pt-1' : 'pt-2'"
+              >
+                <v-col
+                  v-for="[name, variable] in section.variables"
+                  :key="name"
+                  cols="12"
+                  :sm="variable.type === 'JSON' ? 12 : 6"
+                  :md="variable.type === 'JSON' ? 12 : 3"
+                  :title="name"
+                >
+                  <!-- Switch for VARIABLE_TYPE BOOLEAN, indeterminate while blank -->
+                  <v-switch
+                    v-if="variable.type === 'BOOLEAN'"
+                    :model-value="variable.value === 'true'"
+                    :indeterminate="!['true', 'false'].includes(variable.value)"
+                    :label="fieldLabel(name, variable)"
+                    :hint="getHint(name, variable)"
+                    :error-messages="variableErrors[name]"
+                    persistent-hint
+                    color="primary"
+                    density="comfortable"
+                    data-test="variable-switch"
+                    @update:model-value="
+                      chooseVariableValue(name, $event ? 'true' : 'false')
+                    "
+                  >
+                    <template
+                      v-if="variable.value && !requiredVariables.has(name)"
+                      #append
+                    >
+                      <v-btn
+                        icon="mdi-close"
+                        size="x-small"
+                        variant="text"
+                        title="Clear to use the default"
+                        @click="chooseVariableValue(name, '')"
+                      />
+                    </template>
+                  </v-switch>
+
+                  <!-- Combobox for variables with options -->
+                  <v-combobox
+                    v-else-if="hasOptions(variable)"
+                    :model-value="variable.value"
+                    :items="getOptionItems(name, variable)"
+                    item-title="text"
+                    item-value="value"
+                    :return-object="false"
+                    :label="fieldLabel(name, variable)"
+                    :hint="getHint(name, variable)"
+                    :error-messages="variableErrors[name]"
+                    :loading="discoveryLoading[name] || false"
+                    persistent-hint
+                    density="comfortable"
+                    variant="outlined"
+                    data-test="variable-combobox"
+                    @update:model-value="chooseVariableValue(name, $event)"
+                  >
+                    <template v-if="variable.discovery" #append-inner>
+                      <v-btn
+                        icon="mdi-refresh"
+                        size="x-small"
+                        variant="text"
+                        :disabled="discoveryLoading[name] || false"
+                        data-test="variable-discover"
+                        @click.stop="runDiscovery(name)"
+                      />
+                    </template>
+                    <template #item="{ item, props }">
+                      <v-list-item v-bind="props">
+                        <template #title>
+                          {{ item.raw.text }}
+                        </template>
+                      </v-list-item>
+                    </template>
+                  </v-combobox>
+
+                  <!-- Multiline monospace field for VARIABLE_TYPE JSON -->
+                  <v-textarea
+                    v-else-if="variable.type === 'JSON'"
+                    v-model="variable.value"
+                    :label="fieldLabel(name, variable)"
+                    :hint="getHint(name, variable)"
+                    :error-messages="variableErrors[name]"
+                    persistent-hint
+                    auto-grow
+                    rows="1"
+                    class="json-field"
+                    density="comfortable"
+                    variant="outlined"
+                    data-test="variable-json"
+                  />
+
+                  <!-- Text field for other variables -->
+                  <v-text-field
+                    v-else
+                    v-model="variable.value"
+                    :type="
+                      variable.type === 'PASSWORD' && !revealed[name]
+                        ? 'password'
+                        : 'text'
+                    "
+                    :inputmode="inputMode(variable)"
+                    :append-inner-icon="
+                      variable.type === 'PASSWORD'
+                        ? revealed[name]
+                          ? 'mdi-eye-off'
+                          : 'mdi-eye'
+                        : undefined
+                    "
+                    :autocomplete="
+                      variable.type === 'PASSWORD' ? 'new-password' : 'off'
+                    "
+                    :label="fieldLabel(name, variable)"
+                    :hint="getHint(name, variable)"
+                    :error-messages="variableErrors[name]"
+                    persistent-hint
+                    clearable
+                    density="comfortable"
+                    variant="outlined"
+                    data-test="variable-text"
+                    @click:append-inner="revealed[name] = !revealed[name]"
+                  />
+                </v-col>
+              </v-row>
+            </template>
+          </v-window-item>
+          <v-window-item
+            v-if="existingPluginTxt === null"
+            :value="1"
+            eager="true"
+            class="tab"
+          >
+            <v-row class="pa-3">
+              <v-col> This can be edited before installation. </v-col>
+            </v-row>
+            <pre
+              ref="editor"
+              class="editor"
+              @contextmenu.prevent="showContextMenu"
+            ></pre>
+            <v-menu v-model="contextMenu" :target="[menuX, menuY]">
+              <v-list>
+                <v-list-item link>
+                  <v-list-item-title @click="openDocumentation">
+                    {{ docsKeyword }} documentation
+                  </v-list-item-title>
+                </v-list-item>
+                <v-divider />
+                <v-list-item
+                  title="Toggle Vim mode"
+                  prepend-icon="extras:vim"
+                  @click="toggleVimMode"
+                />
+              </v-list>
+            </v-menu>
+          </v-window-item>
+          <v-window-item v-else :value="1" eager="true" class="tab">
+            <v-row class="pa-3">
+              <v-col>
+                Existing plugin.txt. This can be edited before installation.
+              </v-col>
+              <v-col class="ml-6">
+                Uneditable plugin.txt from the new plugin.
+              </v-col>
+            </v-row>
+            <pre ref="editor" class="editor"></pre>
+          </v-window-item>
+          <v-window-item :value="2" eager="true" class="tab">
+            <v-row class="pa-3">
+              <v-col>
+                The plugin.txt that will be installed with the current
+                variables.
+              </v-col>
+              <v-col cols="auto">
+                <v-btn
+                  prepend-icon="mdi-refresh"
+                  variant="text"
+                  :loading="previewLoading"
+                  data-test="plugin-preview-refresh"
+                  @click="loadPreview"
+                >
+                  Refresh
+                </v-btn>
+              </v-col>
+            </v-row>
+            <v-alert
+              v-if="previewError"
+              type="error"
+              variant="tonal"
+              class="mb-3"
+              data-test="plugin-preview-error"
             >
-              Install
-            </v-btn>
-          </v-card-actions>
-        </form>
+              {{ previewError }}
+            </v-alert>
+            <pre
+              v-show="!previewError"
+              ref="preview"
+              class="editor"
+              data-test="plugin-preview"
+            ></pre>
+          </v-window-item>
+        </v-window>
       </v-card-text>
+      <div class="px-6 pb-2 flex-shrink-0">
+        <v-alert
+          v-if="showRequired && errorCount > 0"
+          type="error"
+          variant="tonal"
+          density="compact"
+          class="mt-3"
+          data-test="variable-errors"
+        >
+          Fix the {{ errorCount }} highlighted variable{{
+            errorCount === 1 ? '' : 's'
+          }}
+          before installing.
+        </v-alert>
+
+        <v-card-actions class="px-2 mt-2">
+          <div v-if="existingPluginTxt !== null">
+            <v-btn variant="text" @click="nextDiff"> Next Diff </v-btn>
+            <v-btn variant="text" @click="previousDiff"> Previous Diff </v-btn>
+          </div>
+          <v-spacer />
+          <v-btn
+            variant="outlined"
+            data-test="edit-cancel"
+            @click.prevent="close"
+          >
+            Cancel
+          </v-btn>
+          <v-btn
+            variant="flat"
+            data-test="edit-submit"
+            @click="checkVersionAndSubmit"
+          >
+            Install
+          </v-btn>
+        </v-card-actions>
+      </div>
     </v-card>
   </v-dialog>
 </template>
@@ -315,6 +431,13 @@ export default {
       bridges: [],
       // Expand the VARIABLE_ADVANCED section
       showAdvanced: false,
+      // Report blank required variables, set when Install is pressed
+      showRequired: false,
+      // PASSWORD variables shown in plain text
+      revealed: {},
+      previewEditor: null,
+      previewLoading: false,
+      previewError: null,
     }
   },
   computed: {
@@ -371,6 +494,35 @@ export default {
         this.isVariableVisible(name),
       )
     },
+    // Variables required by VARIABLE_REQUIRED or the VARIABLE_STATE_REQUIRED
+    // of a selected state
+    requiredVariables() {
+      const required = new Set()
+      for (const [name, variable] of Object.entries(this.localVariables)) {
+        if (variable.required) required.add(name)
+        if (!variable.hidden && !this.isVariableVisible(name)) continue
+        const selected = variable.options?.find(
+          (option) => option.value === variable.value,
+        )
+        for (const target of selected?.required || []) required.add(target)
+      }
+      return required
+    },
+    // Error messages of the shown variables by name. Blank required variables
+    // are only reported once Install is pressed.
+    variableErrors() {
+      const errors = {}
+      for (const [name, variable] of this.visibleVariables) {
+        const error = this.validateVariable(name, variable)
+        if (error && (error !== 'Required' || this.showRequired)) {
+          errors[name] = error
+        }
+      }
+      return errors
+    },
+    errorCount() {
+      return Object.keys(this.variableErrors).length
+    },
     // Visible variables split into the normal ones and the collapsed
     // VARIABLE_ADVANCED ones, leaving out a section with no variables
     variableSections() {
@@ -387,6 +539,9 @@ export default {
   watch: {
     // Variables shown by a VARIABLE_STATE_SHOW get a discovered value then,
     // so hidden variables don't claim devices they won't use
+    tab(value) {
+      if (value === 2) this.loadPreview()
+    },
     visibleVariables(visible, previous) {
       const before = new Set(previous.map(([name]) => name))
       for (const [name] of visible) {
@@ -477,6 +632,9 @@ export default {
     if (this.differ) {
       this.differ.destroy()
     }
+    if (this.previewEditor) {
+      this.previewEditor.destroy()
+    }
   },
   methods: {
     previousDiff() {
@@ -517,11 +675,16 @@ export default {
       let keywords = [
         'VARIABLE',
         'VARIABLE_DESCRIPTION',
+        'VARIABLE_LABEL',
+        'VARIABLE_TYPE',
+        'VARIABLE_REQUIRED',
+        'VARIABLE_PATTERN',
         'VARIABLE_HIDDEN',
         'VARIABLE_ADVANCED',
         'VARIABLE_STATE',
         'VARIABLE_STATE_SHOW',
         'VARIABLE_STATE_SET',
+        'VARIABLE_STATE_REQUIRED',
         'VARIABLE_DISCOVERY',
         'VARIABLE_DISCOVERY_SET',
         'VARIABLE_BRIDGE',
@@ -564,7 +727,106 @@ export default {
       }).call(Mode.prototype)
       return Mode
     },
+    // Variables with errors stop the install and are shown on the Variables tab
+    validate() {
+      this.showRequired = true
+      const names = Object.keys(this.variableErrors)
+      if (names.length === 0) return true
+      this.tab = 0
+      if (names.some((name) => this.localVariables[name].advanced)) {
+        this.showAdvanced = true
+      }
+      // Bring the first problem into view in the scrolling content
+      this.$nextTick(() => {
+        this.$refs.body?.$el
+          .querySelector('.v-input--error')
+          ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      })
+      return false
+    },
+    validateVariable(name, variable) {
+      const value = String(variable.value ?? '').trim()
+      if (!value) {
+        return this.requiredVariables.has(name) ? 'Required' : null
+      }
+      switch (variable.type) {
+        case 'BOOLEAN':
+          if (!['true', 'false'].includes(value)) return 'Must be true or false'
+          break
+        case 'INTEGER':
+          if (!/^[-+]?\d+$/.test(value)) return 'Must be a whole number'
+          break
+        case 'NUMBER':
+          if (!Number.isFinite(Number(value))) return 'Must be a number'
+          break
+        case 'JSON':
+          try {
+            JSON.parse(value)
+          } catch (error) {
+            return `Invalid JSON: ${error.message}`
+          }
+          break
+      }
+      if (variable.pattern) {
+        let regex = null
+        try {
+          regex = new RegExp(`^(?:${variable.pattern})$`)
+        } catch {
+          // A Ruby only regular expression can't be checked here
+        }
+        if (regex && !regex.test(value)) {
+          return variable.pattern_message || `Must match ${variable.pattern}`
+        }
+      }
+      return null
+    },
+    fieldLabel(name, variable) {
+      const label = variable.label || name
+      return this.requiredVariables.has(name) ? `${label} *` : label
+    },
+    inputMode(variable) {
+      if (variable.type === 'INTEGER') return 'numeric'
+      if (variable.type === 'NUMBER') return 'decimal'
+      return undefined
+    },
+    // The plugin.txt lines that would be installed, including edits
+    currentPluginTxtLines() {
+      if (this.existingPluginTxt === null) {
+        return this.editor.getValue().split('\n')
+      }
+      return this.differ.getEditors().left.getValue().split('\n')
+    },
+    async loadPreview() {
+      this.previewLoading = true
+      try {
+        const { data } = await Api.post('/openc3-api/plugins/preview', {
+          data: {
+            plugin_hash: JSON.stringify({
+              variables: toRaw(this.localVariables),
+              plugin_txt_lines: this.currentPluginTxtLines(),
+            }),
+          },
+        })
+        this.previewError = data.error || null
+        if (!this.previewEditor) {
+          this.previewEditor = ace.edit(this.$refs.preview)
+          this.previewEditor.setTheme('ace/theme/twilight')
+          this.previewEditor.session.setMode(new (this.buildPluginMode())())
+          this.previewEditor.session.setTabSize(2)
+          this.previewEditor.setReadOnly(true)
+          this.previewEditor.setHighlightActiveLine(false)
+          this.previewEditor.$blockScrolling = Infinity
+        }
+        this.previewEditor.setValue(data.plugin_txt || '')
+        this.previewEditor.clearSelection()
+      } catch (error) {
+        this.previewError = `Preview failed: ${error.message}`
+      } finally {
+        this.previewLoading = false
+      }
+    },
     checkVersionAndSubmit: function () {
+      if (!this.validate()) return
       const versionsAreCompatible =
         !this.installedCosmosVersion ||
         !this.minCosmosVersion ||
@@ -590,7 +852,7 @@ export default {
     },
     submit: function () {
       if (this.existingPluginTxt === null) {
-        this.emitSubmit(this.editor.getValue().split('\n'))
+        this.emitSubmit(this.currentPluginTxtLines())
       } else {
         // Existing plugin.txt with all diffs resolved
         if (this.differ.diffs.length === 0) {
@@ -968,6 +1230,9 @@ export default {
 }
 .tab {
   background-color: var(--color-background-surface-default);
+}
+.json-field :deep(textarea) {
+  font-family: monospace;
 }
 .plugin-text :deep(:first-child) {
   margin-top: 0;

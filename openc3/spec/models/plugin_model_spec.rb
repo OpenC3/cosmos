@@ -445,6 +445,47 @@ module OpenC3
         expect { phase1_with_plugin_txt(['VARIABLE_TEXT_END']) }.to raise_error(/VARIABLE_TEXT_END must follow a VARIABLE_TEXT_START/)
       end
 
+      it "parses VARIABLE_LABEL, VARIABLE_TYPE, VARIABLE_REQUIRED and VARIABLE_PATTERN" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE port 8080',
+          '  VARIABLE_LABEL "TCP Port"',
+          '  VARIABLE_TYPE integer',
+          '  VARIABLE_REQUIRED',
+          'VARIABLE name ""',
+          '  VARIABLE_PATTERN "[A-Z_]+" "Use capital letters"',
+          'VARIABLE id ""',
+          '  VARIABLE_PATTERN "\\d+"',
+        ])
+        expect(model['variables']['port']).to eq({ 'value' => '8080', 'label' => 'TCP Port', 'type' => 'INTEGER', 'required' => true })
+        expect(model['variables']['name']).to eq({ 'value' => '', 'pattern' => '[A-Z_]+', 'pattern_message' => 'Use capital letters' })
+        expect(model['variables']['id']).to eq({ 'value' => '', 'pattern' => '\\d+' })
+      end
+
+      it "raises error for VARIABLE_LABEL, VARIABLE_TYPE, VARIABLE_REQUIRED and VARIABLE_PATTERN problems" do
+        %w(VARIABLE_LABEL VARIABLE_TYPE VARIABLE_REQUIRED VARIABLE_PATTERN).each do |keyword|
+          expect { phase1_with_plugin_txt(["#{keyword} x"]) }.to raise_error(/#{keyword} must follow a VARIABLE definition|Too many parameters/)
+        end
+        expect { phase1_with_plugin_txt(['VARIABLE_REQUIRED']) }.to raise_error(/VARIABLE_REQUIRED must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_TYPE DATE']) }.to raise_error(/VARIABLE_TYPE must be one of TEXT, BOOLEAN/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_PATTERN "("']) }.to raise_error(/not a valid regular expression/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_LABEL']) }.to raise_error(/Not enough parameters/)
+      end
+
+      it "parses VARIABLE_STATE_REQUIRED" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE type tcp',
+          '  VARIABLE_STATE TCP tcp',
+          '    VARIABLE_STATE_SHOW host port',
+          '    VARIABLE_STATE_REQUIRED host',
+          '    VARIABLE_STATE_REQUIRED host port',
+          'VARIABLE host ""',
+          'VARIABLE port 80',
+        ])
+        expect(model['variables']['type']['options'][0]['required']).to eq ['host', 'port']
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE_REQUIRED host']) }.to raise_error(/VARIABLE_STATE_REQUIRED must follow a VARIABLE_STATE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_REQUIRED missing']) }.to raise_error(/references undefined VARIABLE 'missing'/)
+      end
+
       it "returns nil plugin_text without PLUGIN_TEXT_START" do
         model = phase1_with_plugin_txt(['VARIABLE port 8080'])
         expect(model['plugin_text']).to be_nil
@@ -660,6 +701,33 @@ module OpenC3
         expect_tool_and_target_deploy(erb_variables)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql false
+      end
+
+      it "previews the plugin.txt install lines with ERB rendered" do
+        plugin_txt_lines = [
+          "PLUGIN_TEXT_START",
+          "  TARGET not_a_target",
+          "PLUGIN_TEXT_END",
+          "# Comment",
+          "VARIABLE folder INST",
+          "  VARIABLE_LABEL Folder",
+          "  VARIABLE_STATE Inst INST",
+          "    VARIABLE_TEXT_START",
+          "    INTERFACE not_an_interface",
+          "    VARIABLE_TEXT_END",
+          "",
+          "",
+          "TARGET <%= folder %> <%= folder %>_2",
+          "<% if folder == 'NONE' %>",
+          "INTERFACE NONE_INT",
+          "<% end %>",
+          "",
+        ]
+        variables = { "folder" => { "value" => "INST" } }
+        result = PluginModel.preview({ "variables" => variables, "plugin_txt_lines" => plugin_txt_lines }, scope: "DEFAULT")
+        expect(result).to eq({ 'plugin_txt' => "TARGET INST INST_2" })
+        result = PluginModel.preview({ "variables" => variables, "plugin_txt_lines" => ["TARGET A", "", "TARGET <%= missing %> B"] }, scope: "DEFAULT")
+        expect(result['error']).to match(/ERB error at line 3: undefined local variable or method .missing/)
       end
 
       it "skips PLUGIN_TEXT and VARIABLE_TEXT during install and stores plugin_text" do

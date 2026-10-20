@@ -55,6 +55,8 @@ module OpenC3
     BRIDGE_VARIABLE_NAME = 'bridge_name'
     # ${name} in a VARIABLE_DISCOVERY parameter is replaced by the value of variable name
     DISCOVERY_REFERENCE = /\$\{(\w+)\}/
+    # Input types of VARIABLE_TYPE in the plugin dialog
+    VARIABLE_TYPES = ['TEXT', 'BOOLEAN', 'INTEGER', 'NUMBER', 'PASSWORD', 'JSON']
     PLUGIN_TXT = 'plugin.txt'
 
     attr_accessor :variables
@@ -223,6 +225,46 @@ module OpenC3
               raise "VARIABLE_DESCRIPTION must follow a VARIABLE definition"
             end
             variables[current_variable_name]['description'] = params[0]
+          when 'VARIABLE_LABEL'
+            usage = "#{keyword} <Label>"
+            parser.verify_num_parameters(1, 1, usage)
+            unless current_variable_name
+              raise "VARIABLE_LABEL must follow a VARIABLE definition"
+            end
+            # Shown in the plugin dialog instead of the variable name
+            variables[current_variable_name]['label'] = params[0]
+          when 'VARIABLE_TYPE'
+            usage = "#{keyword} <#{VARIABLE_TYPES.join(' | ')}>"
+            parser.verify_num_parameters(1, 1, usage)
+            unless current_variable_name
+              raise "VARIABLE_TYPE must follow a VARIABLE definition"
+            end
+            type = params[0].upcase
+            unless VARIABLE_TYPES.include?(type)
+              raise "VARIABLE_TYPE must be one of #{VARIABLE_TYPES.join(', ')} but got '#{params[0]}'"
+            end
+            variables[current_variable_name]['type'] = type
+          when 'VARIABLE_REQUIRED'
+            parser.verify_num_parameters(0, 0, keyword)
+            unless current_variable_name
+              raise "VARIABLE_REQUIRED must follow a VARIABLE definition"
+            end
+            # The plugin dialog won't install while it is shown and blank
+            variables[current_variable_name]['required'] = true
+          when 'VARIABLE_PATTERN'
+            usage = "#{keyword} <Regular Expression> <Error Message (optional)>"
+            parser.verify_num_parameters(1, 2, usage)
+            unless current_variable_name
+              raise "VARIABLE_PATTERN must follow a VARIABLE definition"
+            end
+            begin
+              Regexp.new(params[0])
+            rescue RegexpError => e
+              raise "VARIABLE_PATTERN '#{params[0]}' is not a valid regular expression: #{e.message}"
+            end
+            # Matched against the whole value of a non-blank variable in the plugin dialog
+            variables[current_variable_name]['pattern'] = params[0]
+            variables[current_variable_name]['pattern_message'] = params[1] if params[1]
           when 'VARIABLE_HIDDEN'
             parser.verify_num_parameters(0, 0, keyword)
             unless current_variable_name
@@ -281,6 +323,17 @@ module OpenC3
             options[-1]['show'] ||= []
             options[-1]['show'].concat(params)
             options[-1]['show'].uniq!
+          when 'VARIABLE_STATE_REQUIRED'
+            usage = "#{keyword} <Variable Name> <Variable Name (optional)> ..."
+            parser.verify_num_parameters(1, nil, usage)
+            options = variables[current_variable_name]['options'] if current_variable_name
+            unless options
+              raise "#{keyword} must follow a VARIABLE_STATE definition"
+            end
+            # Required in the plugin dialog while the state is selected
+            options[-1]['required'] ||= []
+            options[-1]['required'].concat(params)
+            options[-1]['required'].uniq!
           when 'VARIABLE_STATE_SET'
             usage = "#{keyword} <Variable Name> <Value>"
             parser.verify_num_parameters(2, nil, usage)
@@ -302,7 +355,7 @@ module OpenC3
         variables.each do |variable_name, variable|
           references = []
           Array(variable['options']).each do |option|
-            (Array(option['show']) + Array(option['set']&.keys)).each do |target_name|
+            (Array(option['show']) + Array(option['required']) + Array(option['set']&.keys)).each do |target_name|
               references << [target_name, "state '#{option['text']}'"]
             end
           end
@@ -577,7 +630,7 @@ module OpenC3
               when 'PLUGIN_TEXT_START', 'VARIABLE_TEXT_START'
                 parser.set_preserve_lines(true)
                 text_end = keyword.sub('_START', '_END')
-              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'NEEDS_DEPENDENCIES'
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin
@@ -638,6 +691,39 @@ module OpenC3
     # Errors propagate so callers can tell a failed check from an empty diff.
     def self.modified_diff(plugin_hash, scope:)
       install_phase2(plugin_hash, scope: scope, diff_only: true)
+    end
+
+    # The plugin.txt lines that install the plugin with ERB rendered using the
+    # plugin_hash variables, without the variable definitions and text blocks.
+    # Returns { 'plugin_txt' => text } or { 'error' => message } if ERB fails.
+    def self.preview(plugin_hash, scope:)
+      erb_variables = self.erb_variables(plugin_hash, scope: scope)
+      text = Array(plugin_hash['plugin_txt_lines']).join("\n")
+      begin
+        output = ERB.new(text.comment_erb(), trim_mode: "-").result(binding.set_variables(erb_variables))
+      rescue Exception => e # SyntaxError and NameError are common ERB mistakes
+        line = e.backtrace_locations&.find { |location| location.path == '(erb)' }&.lineno
+        line ||= e.message[/\(erb\):(\d+)/, 1]
+        return { 'error' => "ERB error#{" at line #{line}" if line}: #{e.message.lines.first&.strip}" }
+      end
+      lines = []
+      text_end = nil
+      output.each_line(chomp: true) do |line|
+        keyword = line.strip.split(/\s+/, 2)[0]
+        if text_end
+          text_end = nil if keyword == text_end
+          next
+        end
+        if keyword.nil?
+          lines << '' unless lines.empty? or lines[-1].empty?
+        elsif keyword == 'PLUGIN_TEXT_START' or keyword == 'VARIABLE_TEXT_START'
+          text_end = keyword.sub('_START', '_END')
+        elsif not keyword.start_with?('VARIABLE', '#')
+          lines << line
+        end
+      end
+      lines.pop while lines[-1] == ''
+      { 'plugin_txt' => lines.join("\n") }
     end
 
     # Discovery classes can be given as a filename or module name, so compare

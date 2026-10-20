@@ -156,6 +156,68 @@ VARIABLE port 8080
 VARIABLE_DESCRIPTION "TCP port for the target connection"
 ```
 
+## VARIABLE_LABEL
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Set the label of a plugin variable in the plugin installation dialog**
+
+The VARIABLE_LABEL keyword sets the label shown for the previously defined VARIABLE in the plugin installation dialog instead of the variable name. The variable name is still used in ERB and is shown when hovering over the field. Must follow a VARIABLE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Label | Label shown in the plugin installation dialog | True |
+
+Example Usage:
+```cosmos
+VARIABLE port_tgt 8080
+  VARIABLE_LABEL "Target Port"
+```
+
+## VARIABLE_TYPE
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Set the input type of a plugin variable in the plugin installation dialog**
+
+The VARIABLE_TYPE keyword sets how the previously defined VARIABLE is entered and checked in the plugin installation dialog. BOOLEAN is a switch that sets true or false (and can be cleared to blank unless required). INTEGER and NUMBER must be numbers. PASSWORD hides the value while typing. JSON is a multiline field that must hold valid JSON. TEXT is the default. Blank values are allowed unless the variable is required (see VARIABLE_REQUIRED and VARIABLE_STATE_REQUIRED). The plugin installation dialog won't install with invalid values. The value is still passed to ERB as a string. Must follow a VARIABLE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Type | Input type of the variable<br/><br/>Valid Values: <span class="values">TEXT, BOOLEAN, INTEGER, NUMBER, PASSWORD, JSON</span> | True |
+
+Example Usage:
+```cosmos
+VARIABLE port 8080
+  VARIABLE_TYPE INTEGER
+VARIABLE use_ssl false
+  VARIABLE_TYPE BOOLEAN
+VARIABLE password ""
+  VARIABLE_TYPE PASSWORD
+```
+
+## VARIABLE_REQUIRED
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Require a value for a plugin variable in the plugin installation dialog**
+
+The VARIABLE_REQUIRED keyword marks the previously defined VARIABLE as required. The plugin installation dialog won't install while the variable is shown and blank. Required variables are marked with *. Use VARIABLE_STATE_REQUIRED to require a variable only while a state is selected. Must follow a VARIABLE definition.
+
+
+Example Usage:
+```cosmos
+VARIABLE hostname ""
+  VARIABLE_REQUIRED
+```
+
+## VARIABLE_PATTERN
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Check the value of a plugin variable against a regular expression**
+
+The VARIABLE_PATTERN keyword gives a regular expression that the whole value of the previously defined VARIABLE must match in the plugin installation dialog. Blank values aren't checked (see VARIABLE_REQUIRED). The plugin installation dialog won't install while a shown variable doesn't match, and shows the error message. The pattern is checked in the browser so use regular expressions that JavaScript supports. Must follow a VARIABLE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Regular Expression | Regular expression the whole value must match | True |
+| Error Message | Message shown when the value doesn't match. Defaults to showing the regular expression. | False |
+
+Example Usage:
+```cosmos
+VARIABLE target_name INST
+  VARIABLE_PATTERN "[A-Z][A-Z0-9_]*" "Use capital letters, numbers and underscores"
+```
+
 ## VARIABLE_HIDDEN
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Hide a plugin variable from the plugin installation dialog**
 
@@ -315,6 +377,27 @@ VARIABLE_STATE "Serial" serial
   VARIABLE_STATE_SET baud_rate 9600
 VARIABLE port 8080
 VARIABLE baud_rate 115200
+```
+
+## VARIABLE_STATE_REQUIRED
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Require values for plugin variables while this state is selected**
+
+The VARIABLE_STATE_REQUIRED keyword applies to the previously defined VARIABLE_STATE. While this state is selected (and its variable is shown) the listed variables are required in the plugin installation dialog, like VARIABLE_REQUIRED. Useful when a variable is shown by several states but only some need it. Multiple VARIABLE_STATE_REQUIRED keywords can be used. Must follow a VARIABLE_STATE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Variable Name | Name of a variable required while this state is selected. Multiple names can be given. | True |
+
+Example Usage:
+```cosmos
+VARIABLE interface_type tcp
+VARIABLE_STATE "TCP/IP Client" tcp
+  VARIABLE_STATE_SHOW hostname port
+  VARIABLE_STATE_REQUIRED hostname
+VARIABLE_STATE "TCP/IP Server" server
+  VARIABLE_STATE_SHOW hostname port
+VARIABLE hostname ""
+VARIABLE port 8080
 ```
 
 ## PLUGIN_TEXT_START

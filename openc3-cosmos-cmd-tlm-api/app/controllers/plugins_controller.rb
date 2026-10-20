@@ -234,6 +234,24 @@ class PluginsController < ModelController
     end
   end
 
+  # Renders the plugin.txt ERB with the plugin dialog's variables so the user
+  # can see what will be installed. ERB errors are returned as { error: }.
+  def preview
+    return unless authorization('admin')
+    begin
+      scope = sanitize_params([:scope])
+      return unless scope
+      scope = scope[0]
+      plugin_hash = JSON.parse(params[:plugin_hash])
+      render json: OpenC3::PluginModel.preview(plugin_hash, scope: scope)
+    rescue JSON::ParserError => error
+      render json: { status: 'error', message: error.message }, status: :bad_request
+    rescue Exception => error
+      logger.error(error.formatted)
+      render json: { status: 'error', message: error.message }, status: :internal_server_error
+    end
+  end
+
   def install
     return unless authorization('admin')
     begin
