@@ -296,6 +296,15 @@ module OpenC3
         LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT")
         expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
       end
+
+      it "process_event applies the rest of a group when one item fails" do
+        allow(System.limits).to receive(:disable).and_call_original
+        allow(System.limits).to receive(:disable).with("INST", "HEALTH_STATUS", "TEMP1").and_raise("boom")
+        event = { 'type' => 'LIMITS_GROUP_ENABLE_STATE', 'group_name' => "FIRST", 'enabled' => false,
+                  'items' => { "INST" => { "HEALTH_STATUS" => ["TEMP1", "TEMP3"] } } }
+        LimitsEventTopic.process_event(event)
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be false
+      end
     end
 
     ['sync_system', 'sync_system_thread_body'].each do |method|

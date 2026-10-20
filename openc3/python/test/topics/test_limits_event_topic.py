@@ -420,6 +420,24 @@ class TestLimitsEventTopic(unittest.TestCase):
         LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")
         self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
+    def test_process_event_applies_the_rest_of_a_group_when_one_item_fails(self):
+        original_disable = System.limits.disable
+
+        def disable(target_name, packet_name, item_name):
+            if item_name == "TEMP1":
+                raise RuntimeError("boom")
+            original_disable(target_name, packet_name, item_name)
+
+        event = {
+            "type": "LIMITS_GROUP_ENABLE_STATE",
+            "group_name": "FIRST",
+            "enabled": False,
+            "items": {"INST": {"HEALTH_STATUS": ["TEMP1", "TEMP3"]}},
+        }
+        with patch.object(System.limits, "disable", side_effect=disable):
+            LimitsEventTopic.process_event(event)
+        self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
+
     def test_sync(self):
         for method in ["sync_system", "sync_system_thread_body"]:
             # Make initial call to set the stream offset so we don't miss anything

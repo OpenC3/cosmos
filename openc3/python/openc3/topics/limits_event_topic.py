@@ -15,7 +15,8 @@ import re
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonDecoder, JsonEncoder
-from openc3.utilities.store import Store
+from openc3.utilities.logger import Logger
+from openc3.utilities.store import EphemeralStore, Store
 
 
 # LimitsEventTopic keeps track of not only the <SCOPE>__openc3_limits_events topic
@@ -140,12 +141,18 @@ class LimitsEventTopic(Topic):
         # Write to all active db_shards so each decom microservice can read limits events inline
         msg_hash = {"event": json.dumps(event, cls=JsonEncoder)}
         for db_shard in cls._active_db_shards(scope):
-            Topic.write_topic(f"{scope}__openc3_limits_events", msg_hash, "*", 1000, db_shard=db_shard)
-            # Decom microservices read control events (everything except LIMITS_CHANGE) from
-            # a separate low volume stream. A flood of LIMITS_CHANGE events from many items
-            # changing state would otherwise trim control events before they are read.
-            if event["type"] != "LIMITS_CHANGE":
-                Topic.write_topic(f"{scope}__openc3_limits_control", msg_hash, "*", 1000, db_shard=db_shard)
+            if event["type"] == "LIMITS_CHANGE":
+                Topic.write_topic(f"{scope}__openc3_limits_events", msg_hash, "*", 1000, db_shard=db_shard)
+            else:
+                # Decom microservices read control events (everything except LIMITS_CHANGE) from
+                # a separate low volume stream. A flood of LIMITS_CHANGE events from many items
+                # changing state would otherwise trim control events before they are read.
+                # Write both streams in a transaction so event readers and decom can't diverge.
+                with EphemeralStore.instance(db_shard=db_shard).redis_pool.get() as redis:
+                    transaction = redis.pipeline(transaction=True)
+                    transaction.xadd(f"{scope}__openc3_limits_events", msg_hash, maxlen=1000, approximate=True)
+                    transaction.xadd(f"{scope}__openc3_limits_control", msg_hash, maxlen=1000, approximate=True)
+                    transaction.execute()
 
     # Remove the JSON encoding to return hashes directly
     @classmethod
@@ -359,10 +366,18 @@ class LimitsEventTopic(Topic):
                         for item_name in item_names:
                             if item_name not in packet.items:
                                 continue
-                            if enabled:
-                                System.limits.enable(target_name, packet_name, item_name)
-                            else:
-                                System.limits.disable(target_name, packet_name, item_name)
+                            # The stream offset has already advanced past this event so isolate
+                            # failures to a single item rather than skipping the rest of the group
+                            try:
+                                if enabled:
+                                    System.limits.enable(target_name, packet_name, item_name)
+                                else:
+                                    System.limits.disable(target_name, packet_name, item_name)
+                            except Exception as error:
+                                action = "enabling" if enabled else "disabling"
+                                Logger.error(
+                                    f"Error {action} limits for {target_name} {packet_name} {item_name}: {repr(error)}"
+                                )
 
             case "LIMITS_STATE_COLOR":
                 target_name = event["target_name"]

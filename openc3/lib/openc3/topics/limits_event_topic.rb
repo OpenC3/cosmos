@@ -137,12 +137,19 @@ module OpenC3
       # Write to all active db_shards so each decom microservice can read limits events inline
       msg_hash = { event: JSON.generate(event, allow_nan: true) }
       _active_db_shards(scope: scope).each do |db_shard|
-        Topic.write_topic("#{scope}__openc3_limits_events", msg_hash, '*', 1000, db_shard: db_shard)
-        # Decom microservices read control events (everything except LIMITS_CHANGE) from
-        # a separate low volume stream. A flood of LIMITS_CHANGE events from many items
-        # changing state would otherwise trim control events before they are read.
-        unless event[:type] == :LIMITS_CHANGE
-          Topic.write_topic("#{scope}__openc3_limits_control", msg_hash, '*', 1000, db_shard: db_shard)
+        if event[:type] == :LIMITS_CHANGE
+          Topic.write_topic("#{scope}__openc3_limits_events", msg_hash, '*', 1000, db_shard: db_shard)
+        else
+          # Decom microservices read control events (everything except LIMITS_CHANGE) from
+          # a separate low volume stream. A flood of LIMITS_CHANGE events from many items
+          # changing state would otherwise trim control events before they are read.
+          # Write both streams in a transaction so event readers and decom can't diverge.
+          EphemeralStore.instance(db_shard: db_shard).redis_pool.with do |redis|
+            redis.multi do |transaction|
+              transaction.xadd("#{scope}__openc3_limits_events", msg_hash, maxlen: 1000, approximate: true)
+              transaction.xadd("#{scope}__openc3_limits_control", msg_hash, maxlen: 1000, approximate: true)
+            end
+          end
         end
       end
     end
@@ -333,10 +340,16 @@ module OpenC3
             item_names.each do |item_name|
               next unless packet.items[item_name]
 
-              if enabled
-                System.limits.enable(target_name, packet_name, item_name)
-              else
-                System.limits.disable(target_name, packet_name, item_name)
+              # The stream offset has already advanced past this event so isolate
+              # failures to a single item rather than skipping the rest of the group
+              begin
+                if enabled
+                  System.limits.enable(target_name, packet_name, item_name)
+                else
+                  System.limits.disable(target_name, packet_name, item_name)
+                end
+              rescue => e
+                Logger.error("Error #{enabled ? 'enabling' : 'disabling'} limits for #{target_name} #{packet_name} #{item_name}: #{e.formatted}")
               end
             end
           end
