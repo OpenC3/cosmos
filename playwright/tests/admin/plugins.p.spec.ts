@@ -206,10 +206,14 @@ test.describe(() => {
       alert,
       gem,
       process = 'plugin_install',
+      previousCompleteCount = 0,
     }: {
       alert: string
       gem: string
       process?: string
+      // Set when an earlier process for the same gem already shows Complete, so
+      // that only a new Complete entry satisfies the wait
+      previousCompleteCount?: number
     },
   ) {
     const processList = page.locator('[data-test=process-list]')
@@ -227,10 +231,12 @@ test.describe(() => {
     await expect(processList).not.toContainText(runningRegexp, {
       timeout: 30000,
     })
-    await expect(processList).toContainText(
-      new RegExp(`Processing ${process}: ${gem}(__.*)? - Complete`),
-      { timeout: 30000 },
+    const completeRegexp = new RegExp(
+      `Processing ${process}: ${gem}(__.*)? - Complete`,
     )
+    await expect(
+      processList.locator('.v-list-item').filter({ hasText: completeRegexp }),
+    ).toHaveCount(previousCompleteCount + 1, { timeout: 30000 })
   }
 
   test.afterEach('delete the installed plugin', async ({ page }) => {
@@ -475,10 +481,17 @@ test.describe(() => {
         '.v-dialog:has-text("Variables") .v-input:has-text("pw_test_target_name") >> input',
       )
       .fill('NEW_TGT')
+    const completeCount = await page
+      .locator('[data-test=process-list] .v-list-item')
+      .filter({
+        hasText: new RegExp(`Processing plugin_install: ${pluginGem1}(__.*)? - Complete`),
+      })
+      .count()
     await page.locator('data-test=edit-submit').click()
     await waitForPluginProcess(page, {
       alert: 'Started installing',
       gem: pluginGem1,
+      previousCompleteCount: completeCount,
     })
     // Ensure the target list is updated to show the new name
     // TODO: replace .nth(2) with a more robust selector, this is not robust to layout changes of plugin-list-item
