@@ -1,0 +1,51 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+name: Fetch VEX Hub
+description: |
+  Download the Aqua VEX Hub into the trivy cache so trivy can apply it without
+  fetching it itself. Run trivy afterwards with TRIVY_SKIP_VEX_REPO_UPDATE=true.
+
+  trivy reads vex-repository.json through the GitHub contents API. Without a
+  token that is rate limited per runner IP ("403 API rate limit exceeded");
+  with GITHUB_TOKEN it is rejected outright because the aquasecurity org has an
+  IP allow list. The manifest from raw.githubusercontent.com and the archive
+  tarball are plain downloads that hit neither limit.
+
+  The layout written here is what trivy's pkg/vex/repo expects under
+  $CACHE_DIR/vex/repositories/default/ for the default repository config.
+inputs:
+  cache-dir:
+    description: Trivy cache dir. The default matches trivy-action's cache-dir default.
+    required: false
+    default: ${{ github.workspace }}/.cache/trivy
+runs:
+  using: composite
+  steps:
+    - name: Download VEX Hub
+      shell: bash
+      env:
+        CACHE_DIR: ${{ inputs.cache-dir }}
+      run: |
+        set -euo pipefail
+        repo="${CACHE_DIR}/vex/repositories/default"
+        rm -rf "$repo"
+        mkdir -p "$repo/0.1"
+        curl -fsSL --retry 3 -o "$repo/vex-repository.json" \
+          https://raw.githubusercontent.com/aquasecurity/vexhub/main/vex-repository.json
+        curl -fsSL --retry 3 https://github.com/aquasecurity/vexhub/archive/refs/heads/main.tar.gz \
+          | tar -xz -C "$repo/0.1" --strip-components=1
+        # trivy only reads cache.json to decide whether an update is due, which
+        # TRIVY_SKIP_VEX_REPO_UPDATE skips. Written anyway so a run without it
+        # sees a fresh repo instead of re-downloading.
+        printf '{"UpdatedAt":"%s","ETags":{}}\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$repo/cache.json"
+        test -s "$repo/0.1/index.json"
+        echo "VEX Hub: $(grep -o '"id"' "$repo/0.1/index.json" | wc -l) packages"
