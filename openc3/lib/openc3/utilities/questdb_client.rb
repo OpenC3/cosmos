@@ -628,7 +628,8 @@ module OpenC3
       query += " LIMIT 1"
       result = query_with_retry(query, max_retries: 1, label: "table_has_data", db_shard: db_shard)
       result && result.ntuples > 0
-    rescue RuntimeError
+    rescue QuestDBError, RuntimeError
+      # A table which doesn't exist fails the query
       false
     end
 

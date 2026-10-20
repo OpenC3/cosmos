@@ -26,7 +26,7 @@ module OpenC3
         packet = Packet.new("INST", "ABORT")
         packet.buffer = "\x01\x02"
         expect(Topic).to receive(:write_topic).with("{DEFAULT__CMD}TARGET__INST",
-          { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_buffer' => "\x01\x02" }, '*', 100)
+          { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_buffer' => "\x01\x02" }, '*', 100, db_shard: 0)
         RouterTopic.route_command(packet, ["INST", "INST2"], scope: "DEFAULT")
       end
 
@@ -34,7 +34,7 @@ module OpenC3
         packet = Packet.new(nil, nil)
         packet.buffer = "\x01\x02"
         expect(Topic).to receive(:write_topic).with("{DEFAULT__CMD}TARGET__INST",
-          { 'target_name' => 'INST', 'cmd_name' => 'UNKNOWN', 'cmd_buffer' => "\x01\x02" }, '*', 100)
+          { 'target_name' => 'INST', 'cmd_name' => 'UNKNOWN', 'cmd_buffer' => "\x01\x02" }, '*', 100, db_shard: 0)
         RouterTopic.route_command(packet, ["INST"], scope: "DEFAULT")
       end
 
