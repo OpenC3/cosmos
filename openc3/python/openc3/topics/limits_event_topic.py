@@ -92,6 +92,22 @@ class LimitsEventTopic(Topic):
                     json.dumps(limits_settings),
                 )
 
+            case "LIMITS_GROUP_ENABLE_STATE":
+                # Groups can contain many thousands of items so read and write the settings in bulk
+                fields = []
+                for target_name, packets in event["items"].items():
+                    for packet_name, item_names in packets.items():
+                        for item_name in item_names:
+                            fields.append(f"{target_name}__{packet_name}__{item_name}")
+                if fields:
+                    all_settings = Store.hmget(f"{scope}__current_limits_settings", fields)
+                    updates = {}
+                    for field, limits_settings in zip(fields, all_settings, strict=True):
+                        limits_settings = json.loads(limits_settings) if limits_settings else {}
+                        limits_settings["enabled"] = event["enabled"]
+                        updates[field] = json.dumps(limits_settings)
+                    Store.hset(f"{scope}__current_limits_settings", mapping=updates)
+
             case "LIMITS_STATE_COLOR":
                 # Persist the state color so it survives a decom microservice restart (applied by sync_system)
                 field = f"{event['target_name']}__{event['packet_name']}__{event['item_name']}"
@@ -122,14 +138,14 @@ class LimitsEventTopic(Topic):
                 raise RuntimeError(f"Invalid limits event type '{event['type']}'")
 
         # Write to all active db_shards so each decom microservice can read limits events inline
+        msg_hash = {"event": json.dumps(event, cls=JsonEncoder)}
         for db_shard in cls._active_db_shards(scope):
-            Topic.write_topic(
-                f"{scope}__openc3_limits_events",
-                {"event": json.dumps(event, cls=JsonEncoder)},
-                "*",
-                1000,
-                db_shard=db_shard,
-            )
+            Topic.write_topic(f"{scope}__openc3_limits_events", msg_hash, "*", 1000, db_shard=db_shard)
+            # Decom microservices read control events (everything except LIMITS_CHANGE) from
+            # a separate low volume stream. A flood of LIMITS_CHANGE events from many items
+            # changing state would otherwise trim control events before they are read.
+            if event["type"] != "LIMITS_CHANGE":
+                Topic.write_topic(f"{scope}__openc3_limits_control", msg_hash, "*", 1000, db_shard=db_shard)
 
     # Remove the JSON encoding to return hashes directly
     @classmethod
@@ -330,6 +346,24 @@ class LimitsEventTopic(Topic):
                         else:
                             System.limits.disable(target_name, packet_name, item_name)
 
+            case "LIMITS_GROUP_ENABLE_STATE":
+                enabled = event.get("enabled", False)
+                for target_name, packets in event["items"].items():
+                    target = telemetry.get(target_name)
+                    if not target:
+                        continue
+                    for packet_name, item_names in packets.items():
+                        packet = target.get(packet_name)
+                        if not packet:
+                            continue
+                        for item_name in item_names:
+                            if item_name not in packet.items:
+                                continue
+                            if enabled:
+                                System.limits.enable(target_name, packet_name, item_name)
+                            else:
+                                System.limits.disable(target_name, packet_name, item_name)
+
             case "LIMITS_STATE_COLOR":
                 target_name = event["target_name"]
                 packet_name = event["packet_name"]
@@ -350,7 +384,7 @@ class LimitsEventTopic(Topic):
     @classmethod
     def sync_system_thread_body(cls, scope):
         telemetry = System.telemetry.all()
-        topics = [f"{scope}__openc3_limits_events"]
+        topics = [f"{scope}__openc3_limits_control"]
         for _, _, event, _ in Topic.read_topics(topics, timeout_ms=None):
             event = json.loads(event[b"event"], cls=JsonDecoder)
             cls.process_event(event, telemetry=telemetry)
