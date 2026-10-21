@@ -642,6 +642,25 @@ RSpec.describe StreamingApi, type: :model do
       expect(collection.objects.map(&:item_key)).to eq([explicit_key])
     end
 
+    it 'removing an unknown item_key does not remove other item_keys' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      build([[explicit_key, '1']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key)).to contain_exactly(explicit_key, '0')
+    end
+
+    it 'falls back to matching source_key and item_key when the exact object is not found' do
+      allow(OpenC3::TargetModel).to receive(:get_item_to_packet_map).with('INST', scope: 'DEFAULT').and_return({
+        'TEMP1' => ['PARAMS'],
+      })
+      collection = build([[latest_key, '0'], [latest_key, '1']])
+      allow(OpenC3::TargetModel).to receive(:get_item_to_packet_map).with('INST', scope: 'DEFAULT').and_return({
+        'TEMP1' => ['HEALTH_STATUS'],
+      })
+      # The HEALTH_STATUS object was never added so the removal falls back to the sweep
+      build([[latest_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key)).to eq(['1'])
+    end
+
     it 'keeps a LATEST item and an explicit item with the same item_key' do
       collection = build([[latest_key, '0'], [explicit_key, '0']])
       expect(collection.length).to eq(3)

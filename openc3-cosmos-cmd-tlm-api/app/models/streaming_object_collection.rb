@@ -64,7 +64,11 @@ class StreamingObjectCollection
       # LATEST subscription which expanded to the same concrete key (and vice versa)
       key_only = (object.item_key and object.item_key.upcase == object.source_key)
       if object.item_key and (key_only or not found_object)
-        @objects.select { |obj| obj.item_key and obj.source_key == object.source_key }.each do |obj|
+        # An explicit item_key that wasn't found exactly must also match on item_key
+        # so an unknown [key, item_key] pair can't remove other subscriptions
+        @objects.select do |obj|
+          obj.item_key and obj.source_key == object.source_key and (key_only or obj.item_key == object.item_key)
+        end.each do |obj|
           _remove_found(obj)
         end
       elsif found_object
