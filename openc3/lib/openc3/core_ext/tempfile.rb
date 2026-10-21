@@ -15,4 +15,6 @@ require 'tempfile'
 
 class Tempfile
   attr_accessor :filename
+  # Set by open_bucket_dialog to identify where the file came from
+  attr_accessor :bucket, :bucket_path
 end
