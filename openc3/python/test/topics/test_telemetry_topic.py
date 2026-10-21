@@ -31,19 +31,13 @@ class TestTelemetryTopic(unittest.TestCase):
         self.packet.received_count = 1
 
     @patch("openc3.topics.telemetry_topic.EphemeralStoreQueued.instance")
-    def test_creates_queued_store_for_target_shard_with_update_interval(self, instance):
+    def test_writes_to_queued_store_for_target_shard(self, instance):
         instance.return_value = MagicMock()
-        TelemetryTopic.write_packet(self.packet, queued=True, update_interval=0.25, scope="DEFAULT")
-        instance.assert_called_once_with(update_interval=0.25, db_shard=3)
+        TelemetryTopic.write_packet(self.packet, queued=True, scope="DEFAULT")
+        instance.assert_called_once_with(db_shard=3)
         topic, msg_hash = instance.return_value.write_topic.call_args.args
         self.assertEqual(topic, "DEFAULT__TELEMETRY__{TARGET}__PACKET")
         self.assertEqual(msg_hash["target_name"], "TARGET")
-
-    @patch("openc3.topics.telemetry_topic.EphemeralStoreQueued.instance")
-    def test_defaults_queued_store_update_interval_to_1_second(self, instance):
-        instance.return_value = MagicMock()
-        TelemetryTopic.write_packet(self.packet, queued=True, scope="DEFAULT")
-        instance.assert_called_once_with(update_interval=1, db_shard=3)
 
     @patch("openc3.topics.telemetry_topic.Topic.write_topic")
     @patch("openc3.topics.telemetry_topic.EphemeralStoreQueued.instance")

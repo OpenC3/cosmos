@@ -19,7 +19,7 @@ from openc3.utilities.time import to_nsec_from_epoch
 
 class TelemetryTopic(Topic):
     @classmethod
-    def write_packet(cls, packet, scope, queued=False, update_interval=1):
+    def write_packet(cls, packet, scope, queued=False):
         msg_hash = {
             "time": to_nsec_from_epoch(packet.packet_time),
             "received_time": to_nsec_from_epoch(packet.received_time),
@@ -33,8 +33,7 @@ class TelemetryTopic(Topic):
             msg_hash["extra"] = json.dumps(packet.extra)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
         if queued:
-            # update_interval only applies if this creates the instance for a shard not configured at startup
-            EphemeralStoreQueued.instance(update_interval=update_interval, db_shard=db_shard).write_topic(
+            EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(
                 f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",
                 msg_hash,
             )

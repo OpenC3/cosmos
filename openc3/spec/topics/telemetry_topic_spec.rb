@@ -31,16 +31,10 @@ module OpenC3
         allow(Store).to receive(:db_shard_for_target).and_return(3)
       end
 
-      it "creates the queued store for the target shard with the given update interval" do
+      it "writes to the queued store for the target shard" do
         queued_store = double("queued store")
-        expect(EphemeralStoreQueued).to receive(:instance).with(0.25, db_shard: 3).and_return(queued_store)
+        expect(EphemeralStoreQueued).to receive(:instance).with(db_shard: 3).and_return(queued_store)
         expect(queued_store).to receive(:write_topic).with("DEFAULT__TELEMETRY__{TARGET}__PACKET", hash_including(target_name: 'TARGET'))
-        TelemetryTopic.write_packet(packet, queued: true, update_interval: 0.25, scope: 'DEFAULT')
-      end
-
-      it "defaults the queued store update interval to 1 second" do
-        queued_store = double("queued store", write_topic: nil)
-        expect(EphemeralStoreQueued).to receive(:instance).with(1, db_shard: 3).and_return(queued_store)
         TelemetryTopic.write_packet(packet, queued: true, scope: 'DEFAULT')
       end
 

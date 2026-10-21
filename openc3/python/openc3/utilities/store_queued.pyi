@@ -31,9 +31,13 @@ def kill_thread(owner, thread, timeout: float = 1.0) -> None: ...
 class StoreQueued(metaclass=StoreMeta):
     my_instances: Incomplete
     instance_mutex: Incomplete
+    DEFAULT_UPDATE_INTERVAL: int
+    all_shards_update_interval: Incomplete
 
     @classmethod
-    def instance(cls, update_interval: int = 1, db_shard: int = 0): ...
+    def instance(cls, update_interval=None, db_shard: int = 0): ...
+    @classmethod
+    def set_update_interval_all_shards(cls, interval) -> None: ...
     is_shutdown: bool
     update_interval: Incomplete
     db_shard: Incomplete
@@ -60,6 +64,7 @@ class StoreQueued(metaclass=StoreMeta):
 
 class EphemeralStoreQueued(StoreQueued):
     my_instances: Incomplete
+    all_shards_update_interval: Incomplete
 
     @classmethod
     def store_instance(cls): ...

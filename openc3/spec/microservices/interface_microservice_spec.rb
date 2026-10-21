@@ -192,18 +192,19 @@ module OpenC3
         sleep 0.1 # Allow threads to exit
       end
 
-      it "applies the default update interval to target shards" do
-        InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: []).update
-        allow(Store).to receive(:db_shard_for_target).and_return(1)
-        [EphemeralStoreQueued, StoreQueued].each do |store_class|
-          [0, 1].each do |db_shard|
-            queued_store = double("queued store")
-            allow(store_class).to receive(:instance).with(db_shard: db_shard).and_return(queued_store)
-            expect(queued_store).to receive(:set_update_interval).with(0.1)
-          end
-        end
+      it "applies UPDATE_INTERVAL to every db_shard" do
+        InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: [["UPDATE_INTERVAL", "0.25"]]).update
+        existing_store = StoreQueued.instance(db_shard: 2)
+        existing_ephemeral = EphemeralStoreQueued.instance(db_shard: 2)
 
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        # Instances that already existed
+        expect(existing_store.update_interval).to eql 0.25
+        expect(existing_ephemeral.update_interval).to eql 0.25
+        # Instances first used after startup, e.g. a target on another shard
+        expect(StoreQueued.instance(db_shard: 1).update_interval).to eql 0.25
+        expect(EphemeralStoreQueued.instance(db_shard: 1).update_interval).to eql 0.25
+
         im.shutdown
         sleep 0.1 # Allow threads to exit
       end

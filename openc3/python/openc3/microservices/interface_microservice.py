@@ -44,7 +44,6 @@ from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.utilities.json import JsonDecoder, JsonEncoder
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
-from openc3.utilities.store import Store
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
 from openc3.utilities.thread_manager import ThreadManager
 from openc3.utilities.time import from_nsec_from_epoch
@@ -697,15 +696,11 @@ class InterfaceMicroservice(Microservice):
             if option_name.upper() == "SYNC_PACKET_COUNT_DELAY_SECONDS":
                 TargetModel.sync_packet_count_delay_seconds = float(option_values[0])
         # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
-        self.update_interval = update_interval
         self.queued = update_interval > 0.0
         if self.queued:
-            db_shards = {0}
-            for target_name in self.interface.tlm_target_names:
-                db_shards.add(Store.db_shard_for_target(target_name, scope=self.scope))
-            for db_shard in db_shards:
-                EphemeralStoreQueued.instance(db_shard=db_shard).set_update_interval(update_interval)
-                StoreQueued.instance(db_shard=db_shard).set_update_interval(update_interval)
+            # Apply to every db_shard since writes are routed to the shard of each target
+            EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
+            StoreQueued.set_update_interval_all_shards(update_interval)
 
         if self.interface_or_router == "INTERFACE":
             self.handler_thread = InterfaceCmdHandlerThread(
@@ -929,9 +924,7 @@ class InterfaceMicroservice(Microservice):
         # Write to stream
         if self.interface.tlm_target_enabled.get(packet.target_name, False):
             TargetModel.sync_tlm_packet_counts(packet, self.interface.tlm_target_names, scope=self.scope)
-            TelemetryTopic.write_packet(
-                packet, queued=self.queued, update_interval=self.update_interval, scope=self.scope
-            )
+            TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
     # Equivalent of the Ruby Errno lists. Use the specific ConnectionError subclasses
     # rather than ConnectionError itself, which also covers BrokenPipeError (EPIPE)

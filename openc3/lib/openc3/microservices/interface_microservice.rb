@@ -612,14 +612,11 @@ module OpenC3
         end
       end
       # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
-      @update_interval = update_interval
       @queued = update_interval > 0.0
       if @queued
-        db_shards = [0] + @interface.tlm_target_names.map { |target_name| Store.db_shard_for_target(target_name, scope: @scope) }
-        db_shards.uniq.each do |db_shard|
-          EphemeralStoreQueued.instance(db_shard: db_shard).set_update_interval(update_interval)
-          StoreQueued.instance(db_shard: db_shard).set_update_interval(update_interval)
-        end
+        # Apply to every db_shard since writes are routed to the shard of each target
+        EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
+        StoreQueued.set_update_interval_all_shards(update_interval)
       end
 
       @interface_thread_sleeper = Sleeper.new
@@ -832,7 +829,7 @@ module OpenC3
       # Write to stream
       if @interface.tlm_target_enabled[packet.target_name]
         TargetModel.sync_tlm_packet_counts(packet, @interface.tlm_target_names, scope: @scope)
-        TelemetryTopic.write_packet(packet, queued: @queued, update_interval: @update_interval, scope: @scope)
+        TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
       end
     end
 
