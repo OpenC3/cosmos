@@ -1,0 +1,44 @@
+SCREEN AUTO AUTO 1.0
+
+TITLE "<%= target_name %> Memory Dump"
+
+HORIZONTAL
+  VERTICALBOX "Commands"
+    MATRIXBYCOLUMNS 2
+      LABEL "Offset:"
+      NAMED_WIDGET OFFSET TEXTFIELD 10 "0"
+      LABEL "Size:"
+      NAMED_WIDGET SIZE TEXTFIELD 10 "256"
+    END
+    # The command CRC over OFFSET and SIZE is calculated automatically
+    BUTTON 'Dump Memory' "var offset=screen.getNamedWidget('OFFSET').text();" +
+      "var size=screen.getNamedWidget('SIZE').text();" +
+      "api.cmd('<%= target_name %> MEMDUMP with OFFSET '+offset+', SIZE '+size)"
+    # Flips a random bit in the next dump after the target calculates its CRC
+    BUTTON 'Flip Bit in Next Dump' "api.cmd('<%= target_name %> MEMDUMP_FAULT with TYPE BITFLIP')"
+    # Discards the next dump response so it never arrives
+    BUTTON 'Drop Next Reply' "api.cmd('<%= target_name %> MEMDUMP_FAULT with TYPE DROP')"
+    # cmd_raw skips the CRC write conversion so the target rejects the command
+    BUTTON 'Send Bad Command CRC' "api.cmd_raw('<%= target_name %> MEMDUMP with OFFSET 0, SIZE 16, CRC 0')"
+    # The script resumes from its last checkpoint if a previous run was interrupted
+    BUTTON 'Run Dump Script' "runScript('<%= target_name %>/procedures/memdump.rb', true)"
+    BUTTON 'Run Dump Script with Bit Flip' "runScript('<%= target_name %>/procedures/memdump.rb', true, {'FAULT': 'BITFLIP'})"
+    BUTTON 'Run Dump Script with Dropped Reply' "runScript('<%= target_name %>/procedures/memdump.rb', true, {'FAULT': 'DROP'})"
+  END
+
+  VERTICALBOX "Last Dump"
+    LABELVALUE <%= target_name %> MEMDUMP OFFSET
+    LABELVALUE <%= target_name %> MEMDUMP SIZE
+    LABELVALUE <%= target_name %> MEMDUMP CRC
+    LABELVALUE <%= target_name %> MEMDUMP CALC_CRC
+    LABELLED <%= target_name %> MEMDUMP CRC_OK
+      SETTING LED_COLOR TRUE GREEN
+      SETTING LED_COLOR FALSE RED
+    LABELVALUE <%= target_name %> MEMDUMP RECEIVED_COUNT
+    LABELVALUE <%= target_name %> MEMDUMP PACKET_TIME
+  END
+END
+
+VERTICALBOX "Data"
+  BLOCK <%= target_name %> MEMDUMP DATA 680 200 "%02X" 4 8 "0x%08X: "
+END

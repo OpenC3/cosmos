@@ -279,6 +279,24 @@ COMMAND <%= target_name %> BLOCK BIG_ENDIAN "Send variable block of data"
     HIDDEN
   RELATED_ITEM <%= target_name %> HEALTH_STATUS BLOCKTEST
 
+COMMAND <%= target_name %> MEMDUMP BIG_ENDIAN "Dump a block of simulated memory"
+  <%= render "_ccsds_cmd.txt", locals: {id: 17} %>
+  APPEND_PARAMETER OFFSET 32 UINT MIN MAX 0 "Memory offset in bytes to start the dump"
+  APPEND_PARAMETER SIZE 32 UINT 1 4096 1024 "Number of bytes to dump"
+    UNITS Bytes B
+  APPEND_PARAMETER CRC 32 UINT MIN MAX 0 "CRC32 over OFFSET and SIZE (calculated automatically, use cmd_raw to override)"
+    FORMAT_STRING "0x%08X"
+    WRITE_CONVERSION memdump_cmd_crc_conversion.py
+  RELATED_ITEM <%= target_name %> MEMDUMP DATA
+
+COMMAND <%= target_name %> MEMDUMP_FAULT BIG_ENDIAN "Inject a fault into the next MEMDUMP response to simulate a bad downlink"
+  VALIDATOR inst2_cmd_validator.py
+  <%= render "_ccsds_cmd.txt", locals: {id: 18} %>
+  APPEND_PARAMETER TYPE 8 UINT 0 1 0 "Type of fault to inject"
+    STATE BITFLIP 0 # Flip a random bit in the data after the CRC is calculated
+    STATE DROP 1 # Discard the response so it never arrives
+  RELATED_ITEM <%= target_name %> MEMDUMP CRC_OK
+
 # Throughput Testing Commands (for use with external throughput server)
 COMMAND <%= target_name %> START_STREAM BIG_ENDIAN "Start telemetry streaming from throughput server"
   <%= render "_ccsds_cmd.txt", locals: {id: 200} %>

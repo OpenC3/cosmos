@@ -21,6 +21,7 @@ require 'openc3'
 require 'stringio'
 require 'base64'
 require 'openc3/accessors/binary_accessor'
+require 'openc3/utilities/crc'
 
 module OpenC3
   # Simulated instrument for the demo. Populates several packets and cycles
@@ -128,6 +129,10 @@ module OpenC3
       packet.CcsdsSeqFlags = 'NOGROUP'
       packet.CcsdsLength = packet.buffer.length - 7
 
+      packet = @tlm_packets['MEMDUMP']
+      packet.enable_method_missing
+      packet.CcsdsSeqFlags = 'NOGROUP'
+
       @solar_panel_positions = SOLAR_PANEL_DFLTS.dup
       @solar_panel_thread = nil
       @solar_panel_thread_cancel = false
@@ -150,6 +155,9 @@ module OpenC3
       @time_offset = 0
       @ip_address = 0
       @variable_arrays_updated = false
+      @memdump_pending = false
+      @memdump_fault = nil
+      @crc = Crc32.new
     end
 
     def set_rates
@@ -269,6 +277,37 @@ module OpenC3
         # Write only arrays - variable_bit_size will auto-update length fields
         arrays_packet.write('ARRAY1', packet.read('ARRAY1'))
         arrays_packet.write('ARRAY2', packet.read('ARRAY2'))
+      when 'MEMDUMP'
+        offset = packet.read('OFFSET')
+        size = packet.read('SIZE')
+        # Reject the command if the CRC over OFFSET and SIZE doesn't match
+        return unless packet.read('CRC') == @crc.calc([offset, size].pack('NN'))
+        # Reject sizes outside the command's range since cmd_raw skips range checks
+        return unless (1..4096).cover?(size)
+        hs_packet.cmd_acpt_cnt += 1
+        # Simulated memory is a byte counter where each byte holds its address
+        data = Array.new(size) { |i| (offset + i) & 0xFF }.pack('C*')
+        memdump_packet = @tlm_packets['MEMDUMP']
+        memdump_packet.write('OFFSET', offset)
+        # Writing DATA resizes the packet and updates SIZE due to VARIABLE_BIT_SIZE
+        memdump_packet.write('DATA', data)
+        memdump_packet.write('CRC', @crc.calc(data))
+        fault = @memdump_fault
+        @memdump_fault = nil
+        case fault
+        when 'BITFLIP'
+          # Flip a random bit after calculating the CRC to simulate downlink corruption
+          bit = rand(size * 8)
+          data.setbyte(bit / 8, data.getbyte(bit / 8) ^ (0x80 >> (bit % 8)))
+          memdump_packet.write('DATA', data)
+        when 'DROP'
+          # The command was accepted but the response is lost on the downlink
+          return
+        end
+        @memdump_pending = true
+      when 'MEMDUMP_FAULT'
+        hs_packet.cmd_acpt_cnt += 1
+        @memdump_fault = packet.read('TYPE')
       end
     end
 
@@ -467,6 +506,16 @@ module OpenC3
         arrays_packet.write('TIMEUS', time.tv_usec)
         arrays_packet.write('CCSDSSEQCNT', arrays_packet.read('CCSDSSEQCNT') + 1)
         pending_packets << arrays_packet
+      end
+
+      if @memdump_pending
+        @memdump_pending = false
+        memdump_packet = @tlm_packets['MEMDUMP']
+        memdump_packet.write('CCSDSLENGTH', memdump_packet.buffer(false).length - 7)
+        memdump_packet.write('TIMESEC', time.tv_sec - @time_offset)
+        memdump_packet.write('TIMEUS', time.tv_usec)
+        memdump_packet.write('CCSDSSEQCNT', memdump_packet.read('CCSDSSEQCNT') + 1)
+        pending_packets << memdump_packet
       end
 
       pending_packets
