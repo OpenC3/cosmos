@@ -28,6 +28,49 @@ RSpec.describe StorageController, type: :controller do
     ENV["OPENC3_TEMP_VOLUME"] = "temp-volume"
   end
 
+  def stub_bucket_client
+    bucket_client = instance_double(OpenC3::Bucket)
+    allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+    bucket_client
+  end
+
+  # Stub the temp file round trip download_file uses to read a bucket object
+  def stub_bucket_download(contents = "file content")
+    bucket_client = stub_bucket_client
+    allow(bucket_client).to receive(:get_object)
+    allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
+    allow(FileUtils).to receive(:mkdir_p)
+    allow(FileUtils).to receive(:rm_rf)
+    allow(File).to receive(:read).and_return(contents)
+    allow(File).to receive(:file?).and_return(true)
+    bucket_client
+  end
+
+  # Grant every permission, minus admin when admin: false, and only in the
+  # DEFAULT scope when default_scope_only: true
+  def stub_authorize(admin: true, default_scope_only: false)
+    allow(controller).to receive(:authorize) do |args|
+      raise OpenC3::AuthError.new("admin required") if !admin && args[:permission] == "admin"
+      if default_scope_only && args[:scope] != "DEFAULT"
+        raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
+      end
+      "authorized_user"
+    end
+  end
+
+  # Grant scope level system access plus tlm access to the INST target only
+  def stub_authorize_inst_target_only
+    allow(controller).to receive(:authorize) do |args|
+      if args[:permission] == "system" && args[:target_name].nil?
+        "authorized_user"
+      elsif args[:permission] == "tlm" && args[:target_name] == "INST"
+        "authorized_user"
+      else
+        raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
+      end
+    end
+  end
+
   describe "GET buckets" do
     it "returns a list of buckets" do
       get :buckets, params: {scope: "DEFAULT"}
@@ -61,8 +104,7 @@ RSpec.describe StorageController, type: :controller do
 
   describe "GET files" do
     it "returns bucket files" do
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
 
       file_list = [{"Key" => "file1.txt", "Size" => 100, "LastModified" => Time.now}]
       allow(bucket_client).to receive(:list_files).and_return(file_list)
@@ -96,8 +138,7 @@ RSpec.describe StorageController, type: :controller do
 
     it "handles not found error" do
       allow(controller).to receive(:authorization).and_return(true)
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
 
       allow(bucket_client).to receive(:list_files).and_raise(OpenC3::Bucket::NotFound.new("Not found"))
 
@@ -108,8 +149,7 @@ RSpec.describe StorageController, type: :controller do
 
     it "handles general errors" do
       allow(controller).to receive(:authorization).and_return(true)
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
 
       allow(bucket_client).to receive(:list_files).and_raise(StandardError.new("General error"))
 
@@ -126,8 +166,7 @@ RSpec.describe StorageController, type: :controller do
 
   describe "GET exists" do
     it "returns true if the object exists" do
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
 
       allow(bucket_client).to receive(:check_object).and_return(true)
 
@@ -137,8 +176,7 @@ RSpec.describe StorageController, type: :controller do
     end
 
     it "returns 404 if the object doesn't exist" do
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
 
       allow(bucket_client).to receive(:check_object).and_return(false)
 
@@ -148,8 +186,7 @@ RSpec.describe StorageController, type: :controller do
     end
 
     it "handles errors" do
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
 
       allow(bucket_client).to receive(:check_object).and_raise(StandardError.new("General error"))
 
@@ -166,15 +203,7 @@ RSpec.describe StorageController, type: :controller do
 
   describe "GET download_file" do
     it "downloads a file from a bucket" do
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
-
-      allow(bucket_client).to receive(:get_object)
-      allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
-      allow(FileUtils).to receive(:mkdir_p)
-      allow(FileUtils).to receive(:rm_rf)
-      allow(File).to receive(:read).and_return("file content")
-      allow(File).to receive(:file?).and_return(true)
+      stub_bucket_download
       allow(Base64).to receive(:encode64).and_return("encoded_content")
 
       get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "file.txt", scope: "DEFAULT"}
@@ -292,185 +321,76 @@ RSpec.describe StorageController, type: :controller do
         REPORT
       end
 
-      before do
-        bucket_client = instance_double(OpenC3::Bucket)
-        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
-        allow(bucket_client).to receive(:get_object)
-        allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
-        allow(FileUtils).to receive(:mkdir_p)
-        allow(FileUtils).to receive(:rm_rf)
-        allow(File).to receive(:file?).and_return(true)
+      # [name, status, minimum duration] of each test in both reports
+      let(:expected_tests) do
+        [
+          ["MySuite:setup", "passed", 10], # Time between executing and setup
+          ["ExampleGroup:setup", "passed", 10],
+          ["ExampleGroup:script_2", "passed", 2000],
+          ["ExampleGroup:script_3", "skipped", 10],
+          ["ExampleGroup:script_run_method_with_long_name", "failed", 100],
+          ["ExampleGroup:teardown", "passed", 10]
+        ]
       end
 
-      it "converts ruby test reports to CTRF format" do
-        allow(File).to receive(:read).and_return(ruby_report)
+      {"ruby" => :ruby_report, "python" => :python_report}.each do |language, report|
+        it "converts #{language} test reports to CTRF format" do
+          stub_bucket_download(send(report))
 
-        get :download_file, params: {
-          bucket: "OPENC3_LOGS_BUCKET",
-          object_id: "test_report.txt",
-          format: "ctrf",
-          scope: "DEFAULT"
-        }
+          get :download_file, params: {
+            bucket: "OPENC3_LOGS_BUCKET",
+            object_id: "test_report.txt",
+            format: "ctrf",
+            scope: "DEFAULT"
+          }
 
-        expect(response).to have_http_status(:ok)
-        result = JSON.parse(response.body)
+          expect(response).to have_http_status(:ok)
+          result = JSON.parse(response.body)
 
-        # Verify filename transformation
-        expect(result["filename"]).to eq("test_report.ctrf.json")
+          # Verify filename transformation
+          expect(result["filename"]).to eq("test_report.ctrf.json")
 
-        # Decode and parse the CTRF content
-        ctrf_content = JSON.parse(Base64.decode64(result["contents"]))
+          # Decode and parse the CTRF content
+          ctrf_content = JSON.parse(Base64.decode64(result["contents"]))
 
-        # Verify CTRF structure
-        expect(ctrf_content).to have_key("results")
+          # Verify CTRF structure
+          expect(ctrf_content).to have_key("results")
 
-        results = ctrf_content["results"]
-        expect(results).to have_key("tool")
-        expect(results).to have_key("summary")
-        expect(results).to have_key("tests")
+          results = ctrf_content["results"]
+          expect(results).to have_key("tool")
+          expect(results).to have_key("summary")
+          expect(results).to have_key("tests")
 
-        # Verify tool information
-        expect(results["tool"]["name"]).to eq("COSMOS Script Runner")
+          # Verify tool information
+          expect(results["tool"]["name"]).to eq("COSMOS Script Runner")
 
-        # Verify summary
-        summary = results["summary"]
-        expect(summary["tests"]).to eq(6)
-        expect(summary["passed"]).to eq(4)
-        expect(summary["failed"]).to eq(1)
-        expect(summary["skipped"]).to eq(1)
-        expect(summary["pending"]).to eq(0)
-        expect(summary["other"]).to eq(0)
-        expect(summary).to have_key("start")
-        expect(summary).to have_key("stop")
+          # Verify summary
+          summary = results["summary"]
+          expect(summary["tests"]).to eq(6)
+          expect(summary["passed"]).to eq(4)
+          expect(summary["failed"]).to eq(1)
+          expect(summary["skipped"]).to eq(1)
+          expect(summary["pending"]).to eq(0)
+          expect(summary["other"]).to eq(0)
+          expect(summary).to have_key("start")
+          expect(summary).to have_key("stop")
 
-        # Verify individual tests
-        tests = results["tests"]
-        expect(tests.length).to eq(6)
-
-        # Test 1: MySuite:setup
-        test = tests[0]
-        expect(test["name"]).to eq("MySuite:setup")
-        expect(test["status"]).to eq("passed")
-        expect(test["duration"]).to be > 10 # Time between executing and setup
-
-        # Test 2: ExampleGroup:setup
-        test = tests[1]
-        expect(test["name"]).to eq("ExampleGroup:setup")
-        expect(test["status"]).to eq("passed")
-        expect(test["duration"]).to be > 10 # Time between setup and next setup
-
-        # Test 3: ExampleGroup:script_2
-        test = tests[2]
-        expect(test["name"]).to eq("ExampleGroup:script_2")
-        expect(test["status"]).to eq("passed")
-        expect(test["duration"]).to be > 2000
-
-        # Test 4: ExampleGroup:script_3
-        test = tests[3]
-        expect(test["name"]).to eq("ExampleGroup:script_3")
-        expect(test["status"]).to eq("skipped")
-        expect(test["duration"]).to be > 10
-        # Test 5: ExampleGroup:script_run_method_with_long_name
-        test = tests[4]
-        expect(test["name"]).to eq("ExampleGroup:script_run_method_with_long_name")
-        expect(test["status"]).to eq("failed")
-        expect(test["duration"]).to be > 100
-
-        # Test 6: ExampleGroup:teardown
-        test = tests[5]
-        expect(test["name"]).to eq("ExampleGroup:teardown")
-        expect(test["status"]).to eq("passed")
-        expect(test["duration"]).to be > 10
-      end
-
-      it "converts python test reports to CTRF format" do
-        allow(File).to receive(:read).and_return(python_report)
-
-        get :download_file, params: {
-          bucket: "OPENC3_LOGS_BUCKET",
-          object_id: "test_report.txt",
-          format: "ctrf",
-          scope: "DEFAULT"
-        }
-
-        expect(response).to have_http_status(:ok)
-        result = JSON.parse(response.body)
-
-        # Verify filename transformation
-        expect(result["filename"]).to eq("test_report.ctrf.json")
-
-        # Decode and parse the CTRF content
-        ctrf_content = JSON.parse(Base64.decode64(result["contents"]))
-
-        # Verify CTRF structure
-        expect(ctrf_content).to have_key("results")
-
-        results = ctrf_content["results"]
-        expect(results).to have_key("tool")
-        expect(results).to have_key("summary")
-        expect(results).to have_key("tests")
-
-        # Verify tool information
-        expect(results["tool"]["name"]).to eq("COSMOS Script Runner")
-
-        # Verify summary
-        summary = results["summary"]
-        expect(summary["tests"]).to eq(6)
-        expect(summary["passed"]).to eq(4)
-        expect(summary["failed"]).to eq(1)
-        expect(summary["skipped"]).to eq(1)
-        expect(summary["pending"]).to eq(0)
-        expect(summary["other"]).to eq(0)
-        expect(summary).to have_key("start")
-        expect(summary).to have_key("stop")
-
-        # Verify individual tests
-        tests = results["tests"]
-        expect(tests.length).to eq(6)
-
-        # Test 1: MySuite:setup
-        test = tests[0]
-        expect(test["name"]).to eq("MySuite:setup")
-        expect(test["status"]).to eq("passed")
-        expect(test["duration"]).to be > 10 # Time between executing and setup
-
-        # Test 2: ExampleGroup:setup
-        test = tests[1]
-        expect(test["name"]).to eq("ExampleGroup:setup")
-        expect(test["status"]).to eq("passed")
-        expect(test["duration"]).to be > 10
-
-        # Test 3: ExampleGroup:script_2
-        test = tests[2]
-        expect(test["name"]).to eq("ExampleGroup:script_2")
-        expect(test["status"]).to eq("passed")
-        expect(test["duration"]).to be > 2000
-
-        # Test 4: ExampleGroup:script_3
-        test = tests[3]
-        expect(test["name"]).to eq("ExampleGroup:script_3")
-        expect(test["status"]).to eq("skipped")
-        expect(test["duration"]).to be > 10
-
-        # Test 5: ExampleGroup:script_run_method_with_long_name
-        test = tests[4]
-        expect(test["name"]).to eq("ExampleGroup:script_run_method_with_long_name")
-        expect(test["status"]).to eq("failed")
-        expect(test["duration"]).to be > 100
-
-        # Test 6: ExampleGroup:teardown
-        test = tests[5]
-        expect(test["name"]).to eq("ExampleGroup:teardown")
-        expect(test["status"]).to eq("passed")
-        expect(test["duration"]).to be > 10
+          # Verify individual tests
+          tests = results["tests"]
+          expect(tests.length).to eq(6)
+          expected_tests.each_with_index do |(name, status, min_duration), index|
+            expect(tests[index]["name"]).to eq(name)
+            expect(tests[index]["status"]).to eq(status)
+            expect(tests[index]["duration"]).to be > min_duration
+          end
+        end
       end
     end
   end
 
   describe "GET get_download_presigned_request" do
     it "returns a presigned request URL" do
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
 
       presigned_url = {url: "https://bucket.s3.amazonaws.com/file.txt?signature"}
       allow(bucket_client).to receive(:presigned_request).and_return(presigned_url)
@@ -481,8 +401,7 @@ RSpec.describe StorageController, type: :controller do
     end
 
     it "handles errors" do
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
 
       allow(bucket_client).to receive(:presigned_request).and_raise(StandardError.new("General error"))
 
@@ -499,8 +418,7 @@ RSpec.describe StorageController, type: :controller do
 
   describe "GET get_upload_presigned_request" do
     it "returns a presigned upload URL for admin" do
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
 
       presigned_url = {url: "https://bucket.s3.amazonaws.com/file.txt?signature"}
       allow(bucket_client).to receive(:presigned_request).and_return(presigned_url)
@@ -519,8 +437,7 @@ RSpec.describe StorageController, type: :controller do
     end
 
     it "handles errors" do
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
 
       allow(bucket_client).to receive(:presigned_request).and_raise(StandardError.new("General error"))
 
@@ -532,68 +449,52 @@ RSpec.describe StorageController, type: :controller do
     context "with a non-admin user (system_set but not admin)" do
       before(:each) do
         # Grant every permission except admin to simulate a non-admin operator
-        allow(controller).to receive(:authorize) do |args|
-          raise OpenC3::AuthError.new("admin required") if args[:permission] == 'admin'
-          'authorized_user'
-        end
-        bucket_client = instance_double(OpenC3::Bucket)
-        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+        stub_authorize(admin: false)
+        bucket_client = stub_bucket_client
         allow(bucket_client).to receive(:presigned_request).and_return({url: "https://bucket/x"})
       end
 
+      def presign_upload(bucket, key)
+        get :get_upload_presigned_request, params: {bucket: bucket, object_id: key, scope: "DEFAULT"}
+      end
+
       it "allows a non-cmd_tlm targets_modified overlay upload" do
-        get :get_upload_presigned_request, params: {
-          bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/screens/poc.txt", scope: "DEFAULT"
-        }
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/screens/poc.txt")
         expect(response).to have_http_status(:created)
       end
 
       it "rejects a cmd_tlm overlay upload (requires admin)" do
-        get :get_upload_presigned_request, params: {
-          bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt", scope: "DEFAULT"
-        }
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt")
         expect(response).to have_http_status(:unauthorized)
       end
 
       it "rejects a non-canonical overlay key that hides cmd_tlm (requires admin)" do
-        get :get_upload_presigned_request, params: {
-          bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST//cmd_tlm/tlm.txt", scope: "DEFAULT"
-        }
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST//cmd_tlm/tlm.txt")
         expect(response).to have_http_status(:unauthorized)
       end
 
       it "rejects a table definition overlay upload (requires admin)" do
-        get :get_upload_presigned_request, params: {
-          bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/tables/config/table_def.txt", scope: "DEFAULT"
-        }
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/tables/config/table_def.txt")
         expect(response).to have_http_status(:unauthorized)
       end
 
       it "allows a table binary overlay upload" do
-        get :get_upload_presigned_request, params: {
-          bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/tables/bin/table.bin", scope: "DEFAULT"
-        }
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/tables/bin/table.bin")
         expect(response).to have_http_status(:created)
       end
       
       it "allows an upload to a user-defined bucket" do
-        get :get_upload_presigned_request, params: {
-          bucket: "OPENC3_CUSTOM_BUCKET", object_id: "DEFAULT/data/file.txt", scope: "DEFAULT"
-        }
+        presign_upload("OPENC3_CUSTOM_BUCKET", "DEFAULT/data/file.txt")
         expect(response).to have_http_status(:created)
       end
       
       it "rejects an upload to the tools bucket (requires admin)" do
-        get :get_upload_presigned_request, params: {
-          bucket: "OPENC3_TOOLS_BUCKET", object_id: "tool/index.js", scope: "DEFAULT"
-        }
+        presign_upload("OPENC3_TOOLS_BUCKET", "tool/index.js")
         expect(response).to have_http_status(:unauthorized)
       end
       
       it "rejects an upload to the logs bucket (requires admin)" do
-        get :get_upload_presigned_request, params: {
-          bucket: "OPENC3_LOGS_BUCKET", object_id: "DEFAULT/raw_logs/tlm/INST/file.bin.gz", scope: "DEFAULT"
-        }
+        presign_upload("OPENC3_LOGS_BUCKET", "DEFAULT/raw_logs/tlm/INST/file.bin.gz")
         expect(response).to have_http_status(:unauthorized)
       end
     end
@@ -602,8 +503,7 @@ RSpec.describe StorageController, type: :controller do
   describe "PUT upload_file" do
     before(:each) do
       ENV["OPENC3_LOCAL_MODE"] = nil
-      @bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(@bucket_client)
+      @bucket_client = stub_bucket_client
       @tmp_dir = Dir.mktmpdir
       allow(OpenC3::LocalMode).to receive(:key_path) { |key| "#{@tmp_dir}/#{key}" }
     end
@@ -616,8 +516,8 @@ RSpec.describe StorageController, type: :controller do
 
     let(:data) { "\x00\xFFbinary".b }
 
-    def upload(key, contents = Base64.strict_encode64(data))
-      put :upload_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: key, contents: contents, scope: "DEFAULT"}, as: :json
+    def upload(key, contents = Base64.strict_encode64(data), bucket: "OPENC3_CONFIG_BUCKET")
+      put :upload_file, params: {bucket: bucket, object_id: key, contents: contents, scope: "DEFAULT"}, as: :json
     end
 
     it "writes the decoded contents to the bucket" do
@@ -673,10 +573,7 @@ RSpec.describe StorageController, type: :controller do
 
     context "with a non-admin user (system_set but not admin)" do
       before(:each) do
-        allow(controller).to receive(:authorize) do |args|
-          raise OpenC3::AuthError.new("admin required") if args[:permission] == 'admin'
-          'authorized_user'
-        end
+        stub_authorize(admin: false)
         allow(@bucket_client).to receive(:put_object)
       end
 
@@ -700,18 +597,14 @@ RSpec.describe StorageController, type: :controller do
       it "allows an upload to a user-defined bucket" do
         key = "DEFAULT/data/file.bin"
         expect(@bucket_client).to receive(:put_object).with(bucket: "custom-bucket", key: key, body: data)
-        put :upload_file, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: key, contents: Base64.strict_encode64(data), scope: "DEFAULT"}, as: :json
+        upload(key, bucket: "OPENC3_CUSTOM_BUCKET")
         expect(response).to have_http_status(:ok)
       end
-      
+
       it "does not apply scope RBAC to a user-defined bucket path" do
-        allow(controller).to receive(:authorize) do |args|
-          raise OpenC3::AuthError.new("admin required") if args[:permission] == "admin"
-          raise OpenC3::ForbiddenError.new("forbidden") if args[:scope] != "DEFAULT"
-          "authorized_user"
-        end
+        stub_authorize(admin: false, default_scope_only: true)
         expect(@bucket_client).to receive(:put_object).with(bucket: "custom-bucket", key: "OTHER/data/file.bin", body: "")
-        put :upload_file, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: "OTHER/data/file.bin", contents: "", scope: "DEFAULT"}, as: :json
+        upload("OTHER/data/file.bin", "", bucket: "OPENC3_CUSTOM_BUCKET")
         expect(response).to have_http_status(:ok)
       end
     end
@@ -895,10 +788,16 @@ RSpec.describe StorageController, type: :controller do
   end
 
   describe "DELETE delete" do
+    around(:each) do |example|
+      original_local_mode = ENV["OPENC3_LOCAL_MODE"]
+      example.run
+    ensure
+      ENV["OPENC3_LOCAL_MODE"] = original_local_mode
+    end
+
     it "deletes a bucket item with admin authorization" do
       ENV["OPENC3_LOCAL_MODE"] = nil
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
       allow(bucket_client).to receive(:delete_object)
 
       delete :delete, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "file.txt", scope: "DEFAULT"}
@@ -907,8 +806,7 @@ RSpec.describe StorageController, type: :controller do
 
     it "deletes a bucket item with local mode" do
       ENV["OPENC3_LOCAL_MODE"] = "true"
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
       allow(bucket_client).to receive(:delete_object)
       allow(OpenC3::LocalMode).to receive(:delete_local)
 
@@ -930,8 +828,7 @@ RSpec.describe StorageController, type: :controller do
     end
 
     it "deletes a targets_modified item without admin authorization" do
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
       allow(bucket_client).to receive(:delete_object)
 
       delete :delete, params: {
@@ -943,12 +840,8 @@ RSpec.describe StorageController, type: :controller do
 
     it "deletes a user-defined bucket item without admin authorization" do
       ENV["OPENC3_LOCAL_MODE"] = nil
-      allow(controller).to receive(:authorize) do |args|
-        raise OpenC3::AuthError.new("admin required") if args[:permission] == "admin"
-        "authorized_user"
-      end
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      stub_authorize(admin: false)
+      bucket_client = stub_bucket_client
       expect(bucket_client).to receive(:delete_object).with(bucket: "custom-bucket", key: "DEFAULT/data/file.txt")
     
       delete :delete, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: "DEFAULT/data/file.txt", scope: "DEFAULT"}
@@ -957,8 +850,7 @@ RSpec.describe StorageController, type: :controller do
     
     it "does not delete local mode files for a user-defined bucket item" do
       ENV["OPENC3_LOCAL_MODE"] = "true"
-      bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
+      bucket_client = stub_bucket_client
       expect(bucket_client).to receive(:delete_object).with(bucket: "custom-bucket", key: "DEFAULT/targets_modified/INST/file.txt")
       expect(OpenC3::LocalMode).not_to receive(:delete_local)
 
@@ -967,10 +859,7 @@ RSpec.describe StorageController, type: :controller do
     end
 
     it "rejects a tools bucket delete without admin authorization" do
-      allow(controller).to receive(:authorize) do |args|
-        raise OpenC3::AuthError.new("admin required") if args[:permission] == "admin"
-        "authorized_user"
-      end
+      stub_authorize(admin: false)
       delete :delete, params: {bucket: "OPENC3_TOOLS_BUCKET", object_id: "tool/index.js", scope: "DEFAULT"}
       expect(response).to have_http_status(:unauthorized)
     end
@@ -1000,8 +889,7 @@ RSpec.describe StorageController, type: :controller do
     before(:each) do
       ENV["OPENC3_LOCAL_MODE"] = nil
       ENV["OPENC3_LOCAL_ONLY_TARGETS"] = "LOCAL"
-      @bucket_client = instance_double(OpenC3::Bucket)
-      allow(OpenC3::Bucket).to receive(:getClient).and_return(@bucket_client)
+      @bucket_client = stub_bucket_client
       @tmp_dir = Dir.mktmpdir
       allow(OpenC3::LocalMode).to receive(:key_path) { |key| "#{@tmp_dir}/#{key}" }
     end
@@ -1183,10 +1071,7 @@ RSpec.describe StorageController, type: :controller do
 
       it "allows non-admin for user-defined bucket directories" do
         ENV["OPENC3_LOCAL_MODE"] = nil
-        allow(controller).to receive(:authorize) do |args|
-          raise OpenC3::AuthError.new("admin required") if args[:permission] == "admin"
-          "authorized_user"
-        end
+        stub_authorize(admin: false)
         allow(bucket_client).to receive(:list_objects).and_return([double(key: "DEFAULT/data/file1.txt")])
         expect(bucket_client).to receive(:delete_objects).with(bucket: "custom-bucket", keys: ["DEFAULT/data/file1.txt"])
       
@@ -1207,13 +1092,7 @@ RSpec.describe StorageController, type: :controller do
       end
 
       it "returns 403 for unauthorized scope" do
-        allow(controller).to receive(:authorize) do |args|
-          if args[:scope] == 'DEFAULT'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
-          end
-        end
+        stub_authorize(default_scope_only: true)
 
         delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "SCOPE2/targets_modified/INST", scope: "DEFAULT"}
         expect(response).to have_http_status(:forbidden)
@@ -1415,13 +1294,7 @@ RSpec.describe StorageController, type: :controller do
         allow(bucket_client).to receive(:list_files).and_return([['DEFAULT', 'SCOPE2', 'SCOPE3'], []])
 
         # Mock authorize to only allow DEFAULT scope
-        allow(controller).to receive(:authorize) do |args|
-          if args[:scope] == 'DEFAULT'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
-          end
-        end
+        stub_authorize(default_scope_only: true)
 
         get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "/", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)
@@ -1433,13 +1306,7 @@ RSpec.describe StorageController, type: :controller do
 
       it "returns 403 when accessing unauthorized scope in config bucket" do
         # Mock authorize to reject non-DEFAULT scopes
-        allow(controller).to receive(:authorize) do |args|
-          if args[:scope] == 'DEFAULT'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
-          end
-        end
+        stub_authorize(default_scope_only: true)
 
         get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "SCOPE2/targets", scope: "DEFAULT"}
         expect(response).to have_http_status(:forbidden)
@@ -1458,16 +1325,7 @@ RSpec.describe StorageController, type: :controller do
         allow(bucket_client).to receive(:list_files).and_return([['INST', 'INST2', 'SYSTEM'], []])
 
         # Mock authorize to only allow INST target with tlm permission
-        allow(controller).to receive(:authorize) do |args|
-          # Allow system permission for scope-level access, tlm permission for INST target only
-          if args[:permission] == 'system' && args[:target_name].nil?
-            'authorized_user'
-          elsif args[:permission] == 'tlm' && args[:target_name] == 'INST'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
-          end
-        end
+        stub_authorize_inst_target_only
 
         get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "DEFAULT/targets", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)
@@ -1479,15 +1337,7 @@ RSpec.describe StorageController, type: :controller do
 
       it "returns 403 when accessing unauthorized target files" do
         # Mock authorize to reject INST2 target (user only has tlm permission for INST)
-        allow(controller).to receive(:authorize) do |args|
-          if args[:permission] == 'system' && args[:target_name].nil?
-            'authorized_user'
-          elsif args[:permission] == 'tlm' && args[:target_name] == 'INST'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
-          end
-        end
+        stub_authorize_inst_target_only
 
         get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "DEFAULT/targets/INST2/cmd_tlm", scope: "DEFAULT"}
         expect(response).to have_http_status(:forbidden)
@@ -1497,15 +1347,7 @@ RSpec.describe StorageController, type: :controller do
         allow(bucket_client).to receive(:list_files).and_return([['INST', 'INST2'], []])
 
         # Mock authorize to only allow INST target with tlm permission
-        allow(controller).to receive(:authorize) do |args|
-          if args[:permission] == 'system' && args[:target_name].nil?
-            'authorized_user'
-          elsif args[:permission] == 'tlm' && args[:target_name] == 'INST'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
-          end
-        end
+        stub_authorize_inst_target_only
 
         get :files, params: {root: "OPENC3_LOGS_BUCKET", path: "DEFAULT/decom_logs/tlm", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)
@@ -1517,31 +1359,15 @@ RSpec.describe StorageController, type: :controller do
 
     describe "GET download_file with RBAC" do
       it "does not apply scope RBAC to a user-defined bucket path" do
-        bucket_client = instance_double(OpenC3::Bucket)
-        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
-        allow(bucket_client).to receive(:get_object)
-        allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
-        allow(FileUtils).to receive(:mkdir_p)
-        allow(FileUtils).to receive(:rm_rf)
-        allow(File).to receive(:read).and_return("file content")
-        allow(File).to receive(:file?).and_return(true)
-        allow(controller).to receive(:authorize) do |args|
-          raise OpenC3::ForbiddenError.new("forbidden") if args[:scope] != "DEFAULT"
-          "authorized_user"
-        end
-      
+        stub_bucket_download
+        stub_authorize(default_scope_only: true)
+
         get :download_file, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: "data/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)
       end
       
       it "returns 403 for unauthorized scope in config bucket" do
-        allow(controller).to receive(:authorize) do |args|
-          if args[:scope] == 'DEFAULT'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
-          end
-        end
+        stub_authorize(default_scope_only: true)
 
         get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "SCOPE2/targets/INST/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:forbidden)
@@ -1549,54 +1375,24 @@ RSpec.describe StorageController, type: :controller do
 
       it "returns 403 for unauthorized target in config bucket" do
         # User has tlm permission for INST only
-        allow(controller).to receive(:authorize) do |args|
-          if args[:permission] == 'system' && args[:target_name].nil?
-            'authorized_user'
-          elsif args[:permission] == 'tlm' && args[:target_name] == 'INST'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
-          end
-        end
+        stub_authorize_inst_target_only
 
         get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets/INST2/cmd_tlm/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:forbidden)
       end
 
       it "allows download from authorized target" do
-        bucket_client = instance_double(OpenC3::Bucket)
-        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
-        allow(bucket_client).to receive(:get_object)
-        allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
-        allow(FileUtils).to receive(:mkdir_p)
-        allow(FileUtils).to receive(:rm_rf)
-        allow(File).to receive(:read).and_return("file content")
-        allow(File).to receive(:file?).and_return(true)
+        stub_bucket_download
 
         # Mock authorize to allow INST target with tlm permission
-        allow(controller).to receive(:authorize) do |args|
-          if args[:permission] == 'system' && args[:target_name].nil?
-            'authorized_user'
-          elsif args[:permission] == 'tlm' && args[:target_name] == 'INST'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for target: #{args[:target_name]}")
-          end
-        end
+        stub_authorize_inst_target_only
 
         get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets/INST/cmd_tlm/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)
       end
 
       it "allows download from tools bucket without scope check" do
-        bucket_client = instance_double(OpenC3::Bucket)
-        allow(OpenC3::Bucket).to receive(:getClient).and_return(bucket_client)
-        allow(bucket_client).to receive(:get_object)
-        allow(Dir).to receive(:mktmpdir).and_return("/tmp/dir")
-        allow(FileUtils).to receive(:mkdir_p)
-        allow(FileUtils).to receive(:rm_rf)
-        allow(File).to receive(:read).and_return("file content")
-        allow(File).to receive(:file?).and_return(true)
+        stub_bucket_download
 
         get :download_file, params: {bucket: "OPENC3_TOOLS_BUCKET", object_id: "tool/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:ok)
@@ -1605,13 +1401,7 @@ RSpec.describe StorageController, type: :controller do
 
     describe "GET exists with RBAC" do
       it "returns 403 for unauthorized scope in logs bucket" do
-        allow(controller).to receive(:authorize) do |args|
-          if args[:scope] == 'DEFAULT'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
-          end
-        end
+        stub_authorize(default_scope_only: true)
 
         get :exists, params: {bucket: "OPENC3_LOGS_BUCKET", object_id: "SCOPE2/20251220/log.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:forbidden)
@@ -1621,13 +1411,7 @@ RSpec.describe StorageController, type: :controller do
 
     describe "GET get_download_presigned_request with RBAC" do
       it "returns 403 for unauthorized scope" do
-        allow(controller).to receive(:authorize) do |args|
-          if args[:scope] == 'DEFAULT'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
-          end
-        end
+        stub_authorize(default_scope_only: true)
 
         get :get_download_presigned_request, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "SCOPE2/targets/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:forbidden)
@@ -1636,13 +1420,7 @@ RSpec.describe StorageController, type: :controller do
 
     describe "POST download_multiple_files with RBAC" do
       it "returns 403 for unauthorized scope" do
-        allow(controller).to receive(:authorize) do |args|
-          if args[:scope] == 'DEFAULT'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
-          end
-        end
+        stub_authorize(default_scope_only: true)
 
         post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", path: "SCOPE2/targets/", files: ["file1.txt"], scope: "DEFAULT"}
         expect(response).to have_http_status(:forbidden)
@@ -1651,13 +1429,7 @@ RSpec.describe StorageController, type: :controller do
 
     describe "DELETE delete with RBAC" do
       it "returns 403 for unauthorized scope in config bucket" do
-        allow(controller).to receive(:authorize) do |args|
-          if args[:scope] == 'DEFAULT'
-            'authorized_user'
-          else
-            raise OpenC3::ForbiddenError.new("Not authorized for scope: #{args[:scope]}")
-          end
-        end
+        stub_authorize(default_scope_only: true)
 
         delete :delete, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "SCOPE2/targets_modified/file.txt", scope: "DEFAULT"}
         expect(response).to have_http_status(:forbidden)
