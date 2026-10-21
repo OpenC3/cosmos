@@ -1079,6 +1079,77 @@ class TestInterfaceMicroservice(unittest.TestCase):
         im.shutdown()
         time.sleep(0.1)  # Allow threads to exit
 
+    def test_queues_writes_by_default_with_default_update_interval(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[],
+        )
+        model.update()
+
+        # Set a different interval to verify the default gets applied
+        StoreQueued.instance().set_update_interval(1)
+        EphemeralStoreQueued.instance().set_update_interval(1)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        self.assertTrue(im.queued)
+        self.assertEqual(StoreQueued.instance().update_interval, InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL)
+        self.assertEqual(EphemeralStoreQueued.instance().update_interval, InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL)
+        self.assertEqual(InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL, 0.1)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    def test_update_interval_zero_disables_queued_writes(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["UPDATE_INTERVAL", "0"]],
+        )
+        model.update()
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        self.assertFalse(im.queued)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    def test_applies_update_interval_to_every_db_shard(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["UPDATE_INTERVAL", "0.25"]],
+        )
+        model.update()
+        existing_store = StoreQueued.instance(db_shard=2)
+        existing_ephemeral = EphemeralStoreQueued.instance(db_shard=2)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        # Instances that already existed
+        self.assertEqual(existing_store.update_interval, 0.25)
+        self.assertEqual(existing_ephemeral.update_interval, 0.25)
+        # Instances first used after startup, e.g. a target on another shard
+        self.assertEqual(StoreQueued.instance(db_shard=1).update_interval, 0.25)
+        self.assertEqual(EphemeralStoreQueued.instance(db_shard=1).update_interval, 0.25)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
 
 class TestInterfaceCmdHandlerRoutedCommands(unittest.TestCase):
     def setUp(self):
