@@ -85,12 +85,10 @@ class StorageController < ApplicationController
       if CONFIG_TARGET_DIRECTORIES.include?(parts[1])
         return parts[2] if parts.length >= 3
       end
-    elsif logs_bucket?(bucket_param)
+    elsif logs_bucket?(bucket_param) && parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
       # Logs bucket: {SCOPE}/{type}_logs/{tlm|cmd}/{TARGET_NAME}/...
       # Examples: DEFAULT/decom_logs/tlm/INST/..., DEFAULT/raw_logs/cmd/INST/...
-      if parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
-        return parts[3] if parts.length >= 4
-      end
+      return parts[3] if parts.length >= 4
     end
     nil
   end
@@ -106,11 +104,9 @@ class StorageController < ApplicationController
       if parts.length == 2 && CONFIG_TARGET_DIRECTORIES.include?(parts[1])
         return 2
       end
-    elsif logs_bucket?(bucket_param)
+    elsif logs_bucket?(bucket_param) && parts.length == 3 && parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
       # Targets are listed at depth 3: {SCOPE}/{type}_logs/{tlm|cmd}/
-      if parts.length == 3 && parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
-        return 3
-      end
+      return 3
     end
     nil
   end
@@ -747,8 +743,8 @@ class StorageController < ApplicationController
   # that bucket's access controls.
   def resolves_to_bucket?(bucket_param, standard_param)
     return false unless bucket_param?(bucket_param)
-    bucket_name = ENV[bucket_param]
-    !bucket_name.to_s.empty? && bucket_name == ENV[standard_param]
+    bucket_name = ENV.fetch(bucket_param, '')
+    !bucket_name.empty? && bucket_name == ENV.fetch(standard_param, nil)
   end
 
   def config_bucket?(bucket_param)
