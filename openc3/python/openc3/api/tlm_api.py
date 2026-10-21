@@ -868,7 +868,8 @@ def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cach
                 query.append(query_item)
             return query_index[query_item]
 
-        positions = [None] * len(cvt_items)
+        # Regular items go in the query first so the first packet drives the rows
+        positions: dict[int, int | list[tuple[int, int]]] = {}
         for index in regular:
             positions[index] = _add_query_item(cvt_items[index])
         for index, candidates in latest_candidates.items():
@@ -887,7 +888,8 @@ def _tlm_latest_history(cvt_items, latest_candidates, start_time, end_time, cach
         collapsed = []
         for row in rows:
             values = []
-            for position in positions:
+            for index in range(len(cvt_items)):
+                position = positions[index]
                 if isinstance(position, int):
                     values.append(row[position])
                 else:
