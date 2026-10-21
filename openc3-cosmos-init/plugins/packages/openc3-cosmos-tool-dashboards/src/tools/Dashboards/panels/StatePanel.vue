@@ -15,50 +15,40 @@
   <div
     :class="[
       'state-panel d-flex flex-column flex-grow-1 px-4 pt-1 pb-2',
-      { clickable: !!openDetails },
+      { 'cursor-pointer': !!openDetails },
     ]"
-    @click="openDetails && state.item && openDetails(state.item)"
+    @click="showDetails()"
   >
     <div class="d-flex align-center ga-2">
-      <status-symbol :level="state.level" :size="16" />
+      <status-symbol :level="first.level" :size="16" />
       <span
-        :class="['state-value text-truncate', { 'text-disabled': state.stale }]"
+        :class="['state-value text-truncate', { 'text-disabled': first.stale }]"
         data-test="state-value"
       >
-        {{ state.text }}
+        {{ first.text }}
       </span>
     </div>
-    <div
+    <packet-time
       v-if="packetTime"
-      class="state-time d-flex align-center justify-end ga-1 mt-auto text-caption text-medium-emphasis num"
-      :title="`Packet time ${packetTime}`"
+      :time="packetTime"
+      class="state-time mt-auto"
       data-test="state-packet-time"
-    >
-      <v-icon icon="mdi-clock-outline" size="12" />
-      <span class="text-truncate">{{ packetTime }}</span>
-    </div>
+    />
   </div>
 </template>
 
 <script>
 import tlmPanel from './tlmPanel'
+import PacketTime from '../components/PacketTime.vue'
 import StatusSymbol from '../components/StatusSymbol.vue'
 
 export default {
-  components: { StatusSymbol },
+  components: { PacketTime, StatusSymbol },
   mixins: [tlmPanel],
-  computed: {
-    state() {
-      return this.itemStates[0] || { text: '--' }
-    },
-  },
 }
 </script>
 
 <style scoped>
-.clickable {
-  cursor: pointer;
-}
 .state-panel {
   container-type: inline-size;
 }

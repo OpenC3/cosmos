@@ -65,6 +65,7 @@
 </template>
 
 <script>
+import { computed } from 'vue'
 import PanelFrame from './components/PanelFrame.vue'
 import { PANEL_TYPES } from './panels/registry'
 import {
@@ -86,6 +87,11 @@ import {
 // { uid: rect }.
 export default {
   components: { PanelFrame },
+  // Where each panel is drawn right now, while dragging too, so panels can
+  // re-render for their new size before the drop (panelBase `rect`)
+  provide() {
+    return { gridRects: computed(() => this.preview || this.layout) }
+  },
   props: {
     panels: { type: Array, required: true },
     editing: { type: Boolean, default: false },

@@ -35,7 +35,7 @@
 </template>
 
 <script>
-import { OpenC3Api } from '@openc3/js-common/services'
+import { targetNames } from '../../composables/targets'
 
 export default {
   props: {
@@ -46,7 +46,7 @@ export default {
     return { targetNames: [] }
   },
   async created() {
-    this.targetNames = (await new OpenC3Api().get_target_names()).sort()
+    this.targetNames = await targetNames()
   },
 }
 </script>

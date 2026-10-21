@@ -20,7 +20,7 @@
     <v-icon icon="mdi-history" size="24" />
     Limits show the live state only. Go back to live to see them.
   </div>
-  <div v-else class="d-flex flex-column flex-grow-1" style="min-height: 0">
+  <div v-else class="d-flex flex-column flex-grow-1 min-h-0">
     <div class="d-flex flex-wrap ga-2 px-4 pt-2">
       <v-chip
         v-for="count in counts"
@@ -43,7 +43,7 @@
         data-test="limits-row"
       >
         <status-symbol :level="row.level" />
-        <div class="flex-grow-1" style="min-width: 0">
+        <div class="flex-grow-1 min-w-0">
           <div class="mono text-caption font-weight-bold text-truncate">
             {{ row.path }}
           </div>
@@ -129,7 +129,11 @@ export default {
       }))
     },
     streaming() {
-      return this.isLive && !this.isPlayback
+      return !this.isPlayback
+    },
+    // The duration text only changes while something is out of limits
+    ticking() {
+      return this.streaming && this.visible.length > 0
     },
     pollKeys() {
       if (!this.streaming) return []
@@ -141,9 +145,7 @@ export default {
     },
   },
   watch: {
-    // Nothing is fetched while the dashboard is being edited
-    // Live only: not while editing (nothing is fetched) or in playback (past
-    // limits states aren't available)
+    // Live only: not in playback (past limits states aren't available)
     streaming(live) {
       if (live) {
         this.entries = {}
@@ -155,13 +157,22 @@ export default {
     visible(entries) {
       for (const entry of entries) this.itemInfo.get(entry)
     },
+    ticking: {
+      immediate: true,
+      handler(on) {
+        clearInterval(this.clock)
+        this.clock = null
+        if (!on) return
+        this.now = Date.now()
+        this.clock = setInterval(() => {
+          this.now = Date.now()
+        }, 1000)
+      },
+    },
   },
   created() {
     this.api = new OpenC3Api()
     this.socket = this.cable || new Cable()
-    this.clock = setInterval(() => {
-      this.now = Date.now()
-    }, 1000)
     if (this.streaming) this.start()
   },
   unmounted() {

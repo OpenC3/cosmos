@@ -88,6 +88,11 @@ END
 All values are as of the dashboard's polling, about once a second. Panels
 show limits colors and status symbols on their own.
 
+Graphs and sparklines show the time range picked at the top right of the
+dashboard: the last 2 minutes by default, 5, 15 or 30 minutes, or a custom
+range from 30 seconds to 24 hours. The range is remembered in the browser,
+not saved in the dashboard file.
+
 ### STAT: one value, big
 One `ITEM`. The number, units, an optional limits bar, and a sparkline.
 
@@ -95,13 +100,38 @@ One `ITEM`. The number, units, an optional limits bar, and a sparkline.
 | --- | --- | --- |
 | `PACKET_TIME` | `TRUE` | Show the packet time |
 | `GRAPH` | `TRUE` | Show the sparkline |
-| `DURATION` | `2` | Sparkline history in minutes (0.5 to 1440), backfilled when opened |
 | `LIMITS_LINES` | `TRUE` | Limits lines on the sparkline |
 | `LIMITS_BAR` | `TRUE` | Limits bar under the value |
 
 - `ITEM_SETTING COLOR "<#rrggbb>"` colors the sparkline.
 - **Sizes:** 3 wide is typical. At height 2 the panel shows the number only.
   Height 3 adds the sparkline, and height 4 or more adds the limits bar.
+
+### GAUGE: one value on a dial
+One `ITEM`. The value and units inside an arc with red, yellow and green
+limits zones, and a marker at the current value.
+
+| Setting | Default | |
+| --- | --- | --- |
+| `PACKET_TIME` | `TRUE` | Show the packet time |
+| `LIMITS` | `ITEM` | `ITEM` uses the item's limits (current limits set); `CUSTOM` uses the four settings below |
+| `RED_LOW` `YELLOW_LOW` `YELLOW_HIGH` `RED_HIGH` | none | Custom limits, all four required with `LIMITS CUSTOM`, in increasing order |
+| `MIN` / `MAX` | limits ± 10% | Scale ends. Needed for items with no limits |
+
+- With `LIMITS CUSTOM` the panel's status (and border) comes from the custom
+  limits, not the item's limits state.
+- **Sizes:** 3×4 is typical.
+
+```
+PANEL GAUGE 0 0 3 4 "Battery"
+  ITEM INST HEALTH_STATUS TEMP2
+  SETTING LIMITS CUSTOM
+  SETTING RED_LOW -60
+  SETTING YELLOW_LOW -40
+  SETTING YELLOW_HIGH 40
+  SETTING RED_HIGH 60
+END
+```
 
 ### STATE: a state value
 One `ITEM`, usually one with states (CONNECTED, ON, NORMAL…). It shows the
@@ -114,12 +144,11 @@ state with its status symbol and the packet time.
 - **Sizes:** 3×2 is typical.
 
 ### GRAPH: time series
-Up to 6 `ITEM`s, which can mix targets. It backfills `DURATION` when opened,
-then streams.
+Up to 6 `ITEM`s, which can mix targets. It backfills the dashboard's time
+range when opened, then streams.
 
 | Setting | Default | |
 | --- | --- | --- |
-| `DURATION` | `2` | Minutes shown (0.5 to 1440) |
 | `THRESHOLDS` | first item with limits | `<Target> <Packet> <Item>`: whose limits are drawn as bands |
 
 - `ITEM_SETTING COLOR "<#rrggbb>"` sets a line color.
@@ -153,19 +182,26 @@ approval.
 | --- | --- | --- |
 | `CONFIRM` | `HOLD` | `HOLD`: hold the button 0.8 s (2 s when hazardous). `CLICK`: one click, plus a confirmation when hazardous |
 | `DETAILS` | none | Text shown above the button; `\n` for line breaks |
+| `HIDE` | none | `<Parameter>...`: parameters left out of the form. They still send their `PARAMETER` value or the command default |
 | `OPEN_SCRIPT` | `FALSE` | Scripts only: open Script Runner when it starts |
 
 - **Sizes:** 4×6 for a command with parameters, 4×4 for a script or a command
-  with none.
-- **Height 2:** just the button and its status, for a one-tap action. The
-  parameter form and `DETAILS` are hidden; details become the button's
-  tooltip. The command sends its `PARAMETER` values, so give every required
-  parameter one: the button stays disabled while a required parameter has no
-  value.
+  with none. Wider panels fit more parameters per line: 1 up to width 3, 2 up
+  to 6, 3 up to 9, 4 up to 12 (fewer when the fields would get too narrow).
+- A hidden required parameter needs a `PARAMETER` value, or the button stays
+  disabled.
+- **Height 2 or 3:** just the button and its status, for a one-tap action
+  (a slim button at height 2). The parameter form and `DETAILS` are hidden;
+  details become the button's tooltip. The command sends its `PARAMETER`
+  values, so give every required parameter one: the button stays disabled
+  while a required parameter has no value.
 
 ### SCREEN: a Telemetry Viewer screen
 `SCREEN <Target> <Screen>`. The screen runs as it does in Telemetry Viewer.
-No settings.
+No settings. The panel dialog also creates screens (blank, or a LABELVALUE
+per item of a packet) and edits the screen's definition with Telemetry
+Viewer's screen editor; saving the panel writes the screen file, which
+changes the screen everywhere it's shown.
 
 - **Sizes:** size it to the screen, e.g. 6×8 or 4×12.
 
@@ -210,7 +246,6 @@ END
 
 PANEL STAT 3 0 3 4 "Temperature 4"
   ITEM INST2 HEALTH_STATUS TEMP4
-  SETTING DURATION 30
 END
 
 PANEL STATE 6 0 3 2 "Ground station 1"
@@ -231,7 +266,6 @@ PANEL GRAPH 0 4 8 7 "Temperatures"
   ITEM INST HEALTH_STATUS TEMP2
   ITEM INST2 HEALTH_STATUS TEMP1
     ITEM_SETTING COLOR "#938bdb"
-  SETTING DURATION 5
   SETTING THRESHOLDS INST HEALTH_STATUS TEMP1
 END
 
@@ -272,6 +306,7 @@ The COSMOS demo plugin has more examples in
    when the file is parsed; a wrong name only shows as missing data.
 2. **Pick the panel for the job:**
    - STAT for a headline number
+   - GAUGE for a number where its place in a range matters
    - STATE for a status with states
    - GRAPH for trends
    - VALUES for a group of related values
@@ -285,7 +320,7 @@ The COSMOS demo plugin has more examples in
    - one `END` per `PANEL`
    - `ITEM_SETTING` right after its `ITEM`
    - only the keywords each type allows (the table above)
-   - item limits: STAT and STATE take 1 item, GRAPH up to 6
+   - item limits: STAT, GAUGE and STATE take 1 item, GRAPH up to 6
 5. **Check it.** Open the dashboard: a banner lists any problems with line
    numbers, and **Code** shows the file with the problems marked. Problems
    include unknown keywords or settings, out-of-range values, and panels

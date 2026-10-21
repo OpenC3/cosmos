@@ -19,7 +19,7 @@
     scrollable
   >
     <v-card
-      class="dashboards-root navigator"
+      class="dashboards-root"
       :style="fullscreen ? null : { height: '80vh' }"
       data-test="dashboard-navigator"
     >
@@ -30,8 +30,8 @@
           placeholder="Search dashboards and targets"
           prepend-inner-icon="mdi-magnify"
           density="comfortable"
-          variant="solo-filled"
-          flat
+          variant="outlined"
+          color="secondary"
           hide-details
           clearable
           :autofocus="!fullscreen"
@@ -98,7 +98,7 @@
         >
           No dashboards match "{{ search }}"
         </div>
-        <v-list v-else class="py-0 bg-transparent">
+        <v-list v-else class="db-current-list py-0 bg-transparent">
           <template v-for="section in sections" :key="section.label">
             <div
               class="d-flex align-center ga-2 px-4 pt-4 pb-2 text-body-2 font-weight-bold text-medium-emphasis text-uppercase"
@@ -107,7 +107,7 @@
               {{ section.label }}
             </div>
             <v-list-item
-              v-for="key in section.keys"
+              v-for="{ key, starred } in section.rows"
               :key="`${section.label}-${key}`"
               :class="['px-4 py-3', { current: key === currentKey }]"
               :active="false"
@@ -165,15 +165,13 @@
                     @click.stop="duplicate(key)"
                   />
                   <v-btn
-                    :icon="isStarred(key) ? 'mdi-star' : 'mdi-star-outline'"
-                    :color="isStarred(key) ? 'warning' : undefined"
-                    :class="{ 'text-medium-emphasis': !isStarred(key) }"
+                    :icon="starred ? 'mdi-star' : 'mdi-star-outline'"
+                    :color="starred ? 'warning' : undefined"
+                    :class="{ 'text-medium-emphasis': !starred }"
                     variant="text"
-                    :aria-label="
-                      isStarred(key) ? `Unstar ${key}` : `Star ${key}`
-                    "
-                    :aria-pressed="isStarred(key)"
-                    :title="isStarred(key) ? 'Unstar' : 'Star to list first'"
+                    :aria-label="starred ? `Unstar ${key}` : `Star ${key}`"
+                    :aria-pressed="starred"
+                    :title="starred ? 'Unstar' : 'Star to list first'"
                     data-test="navigator-star"
                     @click.stop="toggleStar(key)"
                   />
@@ -200,7 +198,7 @@
 <script>
 import modelShow from '../mixins/modelShow'
 import DashboardAvatar from '../components/DashboardAvatar.vue'
-import { isStarred, loadInfo, navigator, toggleStar } from './navigatorStore'
+import { loadInfo, navigator, toggleStar } from './navigatorStore'
 
 // Find, open and duplicate dashboards: search across titles, names and
 // targets, filter by target, with starred dashboards up top.
@@ -248,15 +246,23 @@ export default {
         return query.split(/\s+/).every((word) => haystack.includes(word))
       })
     },
+    // Each row is { key, starred } so the template checks stars once a row
     sections() {
       const keys = this.filtered
+      const starredKeys = new Set(navigator.starred)
+      const rows = (list) =>
+        list.map((key) => ({ key, starred: starredKeys.has(key) }))
       if (this.search || this.targetFilter) {
-        return keys.length ? [{ label: 'Results', keys }] : []
+        return keys.length ? [{ label: 'Results', rows: rows(keys) }] : []
       }
       const sections = []
       const starred = navigator.starred.filter((key) => keys.includes(key))
       if (starred.length) {
-        sections.push({ label: 'Starred', icon: 'mdi-star', keys: starred })
+        sections.push({
+          label: 'Starred',
+          icon: 'mdi-star',
+          rows: rows(starred),
+        })
       }
       const byTarget = {}
       for (const key of keys) {
@@ -264,7 +270,7 @@ export default {
         ;(byTarget[target] ||= []).push(key)
       }
       for (const target of Object.keys(byTarget).sort()) {
-        sections.push({ label: target, keys: byTarget[target] })
+        sections.push({ label: target, rows: rows(byTarget[target]) })
       }
       return sections
     },
@@ -278,7 +284,6 @@ export default {
     },
   },
   methods: {
-    isStarred,
     toggleStar,
     titleOf(key) {
       return this.info[key]?.title || key.split('/')[1]
@@ -288,7 +293,7 @@ export default {
       this.show = false
     },
     openFirst() {
-      const first = this.sections[0]?.keys[0]
+      const first = this.sections[0]?.rows[0]?.key
       if (first) this.open(first)
     },
     create() {
@@ -307,11 +312,9 @@ export default {
 .search :deep(input) {
   font-size: 16px;
 }
-.navigator :deep(.v-list-item) {
-  border-left: 3px solid transparent;
-}
-.navigator :deep(.v-list-item.current) {
-  border-left-color: rgb(var(--v-theme-secondary));
-  background: rgba(var(--v-theme-on-surface), 0.05);
+/* It's focused whenever the navigator opens, so keep the focus outline as
+   thin as the resting one rather than a heavy white ring */
+.search :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-width: 1px;
 }
 </style>

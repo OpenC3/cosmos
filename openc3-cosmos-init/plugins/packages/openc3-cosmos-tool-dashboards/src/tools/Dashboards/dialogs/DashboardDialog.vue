@@ -14,17 +14,7 @@
 <template>
   <v-dialog v-model="show" persistent width="560" @keydown.esc="show = false">
     <v-card>
-      <v-toolbar height="24">
-        <v-spacer />
-        <span>{{ heading }}</span>
-        <v-spacer />
-        <v-btn
-          icon="mdi-close-box"
-          variant="text"
-          density="compact"
-          @click="show = false"
-        />
-      </v-toolbar>
+      <dialog-toolbar :title="heading" @close="show = false" />
       <v-card-text class="d-flex flex-column ga-4 pt-4">
         <div class="text-body-2 text-medium-emphasis">
           Dashboards are saved with a target, like screens, but can show items
@@ -69,11 +59,13 @@
 
 <script>
 import modelShow from '../mixins/modelShow'
-import { OpenC3Api } from '@openc3/js-common/services'
+import DialogToolbar from '../components/DialogToolbar.vue'
+import { targetNames } from '../composables/targets'
 
 // Where a dashboard is saved: its target and file name. Used to create a new
 // dashboard ('new') or copy an existing one ('duplicate').
 export default {
+  components: { DialogToolbar },
   mixins: [modelShow],
   props: {
     mode: { type: String, default: 'new' },
@@ -102,15 +94,20 @@ export default {
     },
   },
   watch: {
-    modelValue(open) {
+    async modelValue(open) {
       if (!open) return
       if (this.initialTarget) this.target = this.initialTarget
       this.name = this.initialName
+      // Fetched the first time it opens (cached after that)
+      if (!this.targets.length) {
+        try {
+          this.targets = await targetNames()
+        } catch {
+          return
+        }
+      }
+      this.target ||= this.targets[0] || null
     },
-  },
-  async created() {
-    this.targets = (await new OpenC3Api().get_target_names()).sort()
-    this.target = this.initialTarget || this.targets[0] || null
   },
   methods: {
     submit() {

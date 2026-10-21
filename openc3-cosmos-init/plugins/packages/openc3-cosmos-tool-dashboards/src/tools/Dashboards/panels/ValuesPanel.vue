@@ -25,7 +25,7 @@
       ]"
       :title="openDetails ? `${row.path}: details` : row.path"
       data-test="values-row"
-      @click="openDetails && openDetails(row.item)"
+      @click="showDetails(row.item)"
     >
       <span class="d-flex flex-shrink-0" style="width: 12px">
         <status-symbol :level="row.level" />
@@ -38,7 +38,6 @@
       <limits-bar
         v-if="showBars"
         class="values-bar flex-shrink-0"
-        style="width: 56px"
         :limits="row.limits"
         :value="row.number"
       />
@@ -97,6 +96,10 @@ export default {
 .value-label {
   font-size: 12px;
 }
+.values-bar {
+  --limits-bar-track: 8px;
+  width: 96px;
+}
 /* Narrow panels use smaller text and rows, then drop the limits bars (the
    row tint still shows status) */
 @container (max-width: 340px) {
@@ -108,6 +111,10 @@ export default {
   }
   .value-label {
     font-size: 11px;
+  }
+  .values-bar {
+    --limits-bar-track: 6px;
+    width: 64px;
   }
 }
 @container (max-width: 280px) {

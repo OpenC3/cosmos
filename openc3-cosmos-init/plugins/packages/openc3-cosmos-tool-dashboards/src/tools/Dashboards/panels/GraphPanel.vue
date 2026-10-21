@@ -12,7 +12,7 @@
 -->
 
 <template>
-  <div class="d-flex flex-column flex-grow-1" style="min-height: 0">
+  <div class="d-flex flex-column flex-grow-1 min-h-0">
     <div
       class="d-flex flex-wrap align-center px-4 pt-1 text-caption text-medium-emphasis"
       style="gap: 4px 16px"
@@ -22,7 +22,10 @@
         :key="entry.key"
         class="d-inline-flex align-center ga-2"
       >
-        <span class="swatch" :style="{ background: colors[index] }" />
+        <span
+          class="swatch d-inline-block"
+          :style="{ background: colors[index] }"
+        />
         {{ entry.label }}
         <b class="num text-high-emphasis" data-test="graph-legend-value">{{
           entry.last
@@ -30,18 +33,18 @@
         {{ entry.units }}
       </span>
       <span v-if="thresholdLimits" class="d-inline-flex align-center ga-2">
-        <span class="swatch-dashed" />
+        <span class="swatch-dashed d-inline-block" />
         {{ thresholdLabel }} limits
       </span>
     </div>
     <div
       ref="plot"
-      class="plot flex-grow-1 position-relative mx-2 mb-2 mt-2"
+      class="flex-grow-1 min-h-0 position-relative mx-2 mb-2 mt-2"
       data-test="graph-plot"
     >
       <div
         v-if="tip"
-        class="tip text-caption bg-surface-light rounded-lg border pa-2 elevation-4"
+        class="tip position-absolute pointer-events-none text-caption bg-surface-light rounded-lg border pa-2 elevation-4"
         :style="{
           left: `${tip.left}px`,
           transform: tip.flip
@@ -56,7 +59,10 @@
           class="d-flex align-center justify-space-between ga-3"
         >
           <span class="d-inline-flex align-center ga-2 text-medium-emphasis">
-            <span class="swatch" :style="{ background: row.color }" />
+            <span
+              class="swatch d-inline-block"
+              :style="{ background: row.color }"
+            />
             {{ row.label }}
           </span>
           <span class="d-inline-flex align-center ga-1">
@@ -75,11 +81,12 @@ import 'uplot/dist/uPlot.min.css'
 import StatusSymbol from '../components/StatusSymbol.vue'
 import panelBase from './panelBase'
 import tlmSeries from './tlmSeries'
-import { itemLabel } from './tlmPanel'
+import { itemLabels } from './tlmPanel'
 import { option } from './options'
 import { seriesColor } from './colors'
 import { itemKey } from '../composables/tlmPoller'
 import { clock, formatTelemetry } from '../composables/format'
+import { levelOf, limitLines } from '../limits'
 
 function withAlpha(color, alpha) {
   const hex = color.trim().replace('#', '')
@@ -117,7 +124,7 @@ export default {
       )
     },
     labels() {
-      return this.panel.items.map((item) => itemLabel(this.panel.items, item))
+      return itemLabels(this.panel.items)
     },
     infos() {
       return this.panel.items.map((item) => this.itemInfo.get(item))
@@ -176,6 +183,15 @@ export default {
         this.createPlot()
       }
     },
+    // Axis, grid and threshold colors are baked into the canvas, so a light
+    // or dark theme switch needs them read again once the page restyles
+    '$vuetify.theme.global.name': {
+      flush: 'post',
+      handler() {
+        this.palette = null
+        this.createPlot()
+      },
+    },
   },
   mounted() {
     this.resizeObserver = new ResizeObserver(() => this.resize())
@@ -186,7 +202,7 @@ export default {
     this.plot?.destroy()
   },
   methods: {
-    // Canvas drawing needs concrete colors, so read the theme once
+    // Canvas drawing needs concrete colors, so read them from the theme
     resolveColors() {
       const style = getComputedStyle(this.$el)
       // Vuetify theme variables are bare "r,g,b" triples
@@ -321,16 +337,7 @@ export default {
       ctx.lineWidth = ratio
       ctx.font = `600 ${10 * ratio}px 'IBM Plex Sans', system-ui, sans-serif`
       ctx.textAlign = 'right'
-      const l = this.thresholdLimits
-      const lines = l
-        ? [
-            ['critical', 'RED HIGH', l.red_high],
-            ['caution', 'YELLOW HIGH', l.yellow_high],
-            ['caution', 'YELLOW LOW', l.yellow_low],
-            ['critical', 'RED LOW', l.red_low],
-          ]
-        : []
-      for (const [level, name, value] of lines) {
+      for (const { level, name, value } of limitLines(this.thresholdLimits)) {
         if (value < u.scales.y.min || value > u.scales.y.max) continue
         const pos = Math.round(u.valToPos(value, 'y', true)) + 0.5
         ctx.strokeStyle = this.palette[level]
@@ -364,19 +371,15 @@ export default {
             color: this.colors[index],
             value: this.format(index, value),
             units: this.infos[index].units,
-            level: index === this.thresholdIndex ? this.levelOf(value) : null,
+            // Past points are checked here; the live status comes from the
+            // server's limits state (panelLevel)
+            level:
+              index === this.thresholdIndex
+                ? levelOf(value, this.thresholdLimits)
+                : null,
           }
         }),
       }
-    },
-    // Status of a past point for the tooltip; the live status comes from the
-    // server's limits state (panelLevel)
-    levelOf(value) {
-      const l = this.thresholdLimits
-      if (!l || typeof value !== 'number') return null
-      if (value > l.red_high || value < l.red_low) return 'critical'
-      if (value > l.yellow_high || value < l.yellow_low) return 'caution'
-      return 'normal'
     },
     // With the item's format string, else a compact number
     format(index, value) {
@@ -392,25 +395,18 @@ export default {
 </script>
 
 <style scoped>
-.plot {
-  min-height: 0;
-}
 .swatch {
   width: 14px;
   height: 2px;
   border-radius: 1px;
-  display: inline-block;
 }
 .swatch-dashed {
   width: 14px;
   border-top: 1px dashed var(--color-status-caution);
-  display: inline-block;
 }
 .tip {
-  position: absolute;
   top: 4px;
   min-width: 160px;
-  pointer-events: none;
   z-index: 2;
 }
 </style>

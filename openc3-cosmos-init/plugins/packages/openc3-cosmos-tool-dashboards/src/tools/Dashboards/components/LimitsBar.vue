@@ -12,7 +12,11 @@
 -->
 
 <template>
-  <span v-if="zones.length" class="limits-bar" aria-hidden="true">
+  <span
+    v-if="zones.length"
+    class="limits-bar position-relative d-block"
+    aria-hidden="true"
+  >
     <span class="track">
       <span
         v-for="(zone, index) in zones"
@@ -30,10 +34,13 @@
 </template>
 
 <script>
+import { limitZones, paddedScale } from '../limits'
+
 // Thin limits bar from the style system: red, yellow, green (and blue for
 // operational limits) zones with a
 // marker at the current value. The scale extends 10% of the yellow range past
-// the red limits on each side, like the COSMOS LimitsBar widget.
+// the red limits on each side, like the COSMOS LimitsBar widget. Parents set
+// --limits-bar-track to change the track thickness.
 export default {
   props: {
     limits: { type: Object, default: null },
@@ -41,26 +48,12 @@ export default {
   },
   computed: {
     scale() {
-      const l = this.limits
-      if (!l || l.red_low === undefined || l.red_high === undefined) return null
-      const pad = Math.max((l.red_high - l.red_low) * 0.1, Number.EPSILON)
-      return { min: l.red_low - pad, max: l.red_high + pad }
+      return paddedScale(this.limits)
     },
     zones() {
       if (!this.scale) return []
-      const l = this.limits
-      const stops = [
-        ['critical', this.scale.min, l.red_low],
-        ['caution', l.red_low, l.yellow_low],
-        ['normal', l.yellow_low, l.yellow_high],
-        ['caution', l.yellow_high, l.red_high],
-        ['critical', l.red_high, this.scale.max],
-      ]
-      // Operational limits: the inner green_low..green_high range is BLUE
-      if (l.green_low !== undefined && l.green_high !== undefined) {
-        stops.push(['standby', l.green_low, l.green_high])
-      }
-      return stops.map(([level, from, to]) => ({
+      const { min, max } = this.scale
+      return limitZones(this.limits, min, max).map(({ level, from, to }) => ({
         level,
         left: this.percent(from),
         width: this.percent(to) - this.percent(from),
@@ -83,39 +76,27 @@ export default {
 
 <style scoped>
 .limits-bar {
-  position: relative;
-  display: block;
-  height: 12px;
+  height: calc(var(--limits-bar-track, 6px) + 6px);
 }
 .track {
   position: absolute;
   inset: 3px 0;
   border-radius: 3px;
   overflow: hidden;
-  background: rgba(var(--v-border-color), var(--v-border-opacity));
+  background: var(--track-color);
 }
+/* Zone colors (--zone) come from dashboards.scss */
 .zone {
   position: absolute;
   top: 0;
   bottom: 0;
-}
-.z-critical {
-  background: color-mix(in srgb, var(--color-status-critical) 55%, transparent);
-}
-.z-caution {
-  background: color-mix(in srgb, var(--color-status-caution) 45%, transparent);
-}
-.z-standby {
-  background: color-mix(in srgb, var(--color-status-standby) 35%, transparent);
-}
-.z-normal {
-  background: color-mix(in srgb, var(--color-status-normal) 22%, transparent);
+  background: var(--zone);
 }
 .marker {
   position: absolute;
   top: 0;
+  bottom: 0;
   width: 2px;
-  height: 12px;
   border-radius: 1px;
   background: rgb(var(--v-theme-on-surface));
   transform: translateX(-1px);

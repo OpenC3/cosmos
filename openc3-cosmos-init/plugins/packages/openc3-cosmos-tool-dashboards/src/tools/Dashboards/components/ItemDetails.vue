@@ -26,7 +26,7 @@
       data-test="item-details"
     >
       <div class="d-flex align-start ga-2 pl-5 pr-2 pt-4">
-        <div class="flex-grow-1" style="min-width: 0">
+        <div class="flex-grow-1 min-w-0">
           <div class="mono text-h6 text-truncate">{{ item.itemName }}</div>
           <div class="text-caption text-medium-emphasis text-truncate">
             {{ item.targetName }} {{ item.packetName }}
@@ -45,7 +45,7 @@
       </div>
       <v-card-text class="d-flex flex-column ga-4">
         <div class="d-flex align-center ga-3">
-          <div class="d-flex align-baseline ga-2" style="min-width: 0">
+          <div class="d-flex align-baseline ga-2 min-w-0">
             <span
               :class="[
                 'big-value num text-truncate',
@@ -88,7 +88,9 @@
         </div>
 
         <div>
-          <div class="text-caption text-medium-emphasis mb-1">Last 2 min</div>
+          <div class="text-caption text-medium-emphasis mb-1">
+            {{ graphLabel }}
+          </div>
           <div class="d-flex flex-column" style="height: 180px">
             <graph-panel v-if="graphable" :panel="graphPanel" />
             <div v-else class="text-caption text-medium-emphasis">
@@ -139,6 +141,7 @@ import {
   formatTime,
   toSeconds,
 } from '../composables/format'
+import { timeRangeLabel } from '../composables/timeRange'
 import { stateToLevel } from '../status'
 
 // Everything about one item: big value, status, limits, a short graph, raw
@@ -150,6 +153,8 @@ export default {
     poller: 'poller',
     itemInfo: 'itemInfo',
     timeZone: { default: 'local' },
+    // { seconds } from the header's time range picker, which the graph follows
+    timeRange: { default: () => ({ seconds: 120 }) },
   },
   props: {
     item: { type: Object, default: null },
@@ -218,6 +223,9 @@ export default {
       }
       return rows.map(([level, label, value]) => ({ level, label, value }))
     },
+    graphLabel() {
+      return timeRangeLabel(this.timeRange.seconds)
+    },
     graphable() {
       return this.number !== null || !this.converted
     },
@@ -226,7 +234,7 @@ export default {
         uid: 0,
         type: 'GRAPH',
         items: [{ ...this.item, valueType: 'CONVERTED' }],
-        settings: { DURATION: ['2'] },
+        settings: {},
       }
     },
     grapherUrl() {

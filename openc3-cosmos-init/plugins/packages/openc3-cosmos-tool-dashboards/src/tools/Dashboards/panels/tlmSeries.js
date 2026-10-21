@@ -14,29 +14,33 @@
 import { Cable } from '@openc3/js-common/services'
 import { itemKey } from '../composables/tlmPoller'
 import { pollType } from './tlmPanel'
-import { option } from './options'
 
 const RENDER_MS = 1000
 
 // Panels that draw their items over time. When the dashboard opens, the
-// streaming API backfills DURATION minutes of history and then streams live
-// (the way Telemetry Grapher does); during playback the DURATION before the
-// playback time is loaded instead. Use with panelBase or tlmPanel.
+// streaming API backfills the dashboard's time range (picked in the header)
+// and then streams live (the way Telemetry Grapher does); during playback the
+// range before the playback time is loaded instead. Use with panelBase or
+// tlmPanel.
 //
 // Panels can override `seriesItems` (default: the panel's items) and get
 // `series` ([times in seconds, then one array of values per item], oldest
 // first) and `latest` (each item's newest value). About once a second
-// `seriesUpdated()` is called with points older than DURATION dropped;
+// `seriesUpdated()` is called with points older than the range dropped;
 // `seriesReset()` is called whenever the series start over (by default it
 // calls `seriesUpdated()`).
 export default {
+  inject: {
+    // { seconds } from the header's time range picker
+    timeRange: { default: () => ({ seconds: 120 }) },
+  },
   data() {
     return { now: Date.now() / 1000 }
   },
   computed: {
-    // DURATION is in minutes
+    // Seconds of history shown
     duration() {
-      return Math.max(30, (Number(option(this.panel, 'DURATION')) || 2) * 60)
+      return this.timeRange.seconds
     },
     seriesItems() {
       return this.panel.items
@@ -52,10 +56,6 @@ export default {
       if (JSON.stringify(keys) !== JSON.stringify(previous)) this.restart()
     },
     duration() {
-      this.restart()
-    },
-    // Editing stops the stream; leaving edit mode backfills and resumes
-    isLive() {
       this.restart()
     },
     // Live streams; playback loads history around the playback time
@@ -81,14 +81,14 @@ export default {
     this.generation = 0
     this.series = [[]]
     this.latest = []
+    this.renderTimer = null
   },
   mounted() {
     this.restart()
-    this.renderTimer = setInterval(() => this.render(), RENDER_MS)
   },
   unmounted() {
     this.generation++
-    clearInterval(this.renderTimer)
+    this.stopRender()
     this.subscription?.unsubscribe()
     if (!this.cable) this.socket.disconnect()
   },
@@ -104,8 +104,12 @@ export default {
       this.series = [[], ...this.seriesItems.map(() => [])]
       this.latest = this.seriesItems.map(() => null)
       this.seriesReset()
-      // Nothing is streamed while the dashboard is being edited
-      if (!this.seriesItems.length || !this.isLive) return
+      // Nothing to draw, so no need to tick
+      if (!this.seriesItems.length) {
+        this.stopRender()
+        return
+      }
+      this.renderTimer ??= setInterval(() => this.render(), RENDER_MS)
       // Playback loads the window leading up to the playback time instead
       if (this.isPlayback) {
         if (this.playbackTime) {
@@ -141,6 +145,10 @@ export default {
           this.subscription = subscription
           this.addItems()
         })
+    },
+    stopRender() {
+      clearInterval(this.renderTimer)
+      this.renderTimer = null
     },
     addItems() {
       if (!this.subscription || !this.needsAdd) return

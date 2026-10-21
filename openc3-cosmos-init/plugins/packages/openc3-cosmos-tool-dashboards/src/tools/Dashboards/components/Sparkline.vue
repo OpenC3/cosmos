@@ -43,6 +43,8 @@
 </template>
 
 <script>
+import { limitLines } from '../limits'
+
 const TOP = 3
 const BOTTOM = 27
 // Long histories are thinned to the low and high of this many slots
@@ -116,17 +118,15 @@ export default {
       )
     },
     lines() {
-      const l = this.limits
-      if (!l || !this.range) return []
+      if (!this.range) return []
       const { min, span } = this.range
-      return [
-        ['rh', l.red_high, 'var(--color-status-critical)'],
-        ['yh', l.yellow_high, 'var(--color-status-caution)'],
-        ['yl', l.yellow_low, 'var(--color-status-caution)'],
-        ['rl', l.red_low, 'var(--color-status-critical)'],
-      ]
-        .filter(([, value]) => value >= min && value <= min + span)
-        .map(([key, value, color]) => ({ key, y: this.y(value), color }))
+      return limitLines(this.limits)
+        .filter(({ value }) => value >= min && value <= min + span)
+        .map(({ key, level, value }) => ({
+          key,
+          y: this.y(value),
+          color: `var(--color-status-${level})`,
+        }))
     },
   },
   methods: {

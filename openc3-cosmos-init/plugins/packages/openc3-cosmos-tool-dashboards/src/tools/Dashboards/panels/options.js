@@ -33,6 +33,8 @@
 //   items       select choices, [{ title, value }]
 //   min / max / unit   number limits and suffix
 //   multiline   text options edited in a text area
+//   span        width in the panel dialog, of 12 columns (default 4)
+//   newRow      starts a new line in the panel dialog
 //
 // To add an option type, add an entry to OPTION_TYPES (decode the SETTING
 // values, encode a value back, validate) and a control in OptionsEditor.vue
@@ -102,6 +104,12 @@ const OPTION_TYPES = {
       values.length === 1 && normalizeColor(values[0])
         ? null
         : 'expects a color like 4dacff or "#4dacff" (a bare # starts a comment)',
+  },
+  // Names, e.g. command parameters: SETTING HIDE DURATION TYPE
+  list: {
+    decode: (values) => values.map((value) => String(value).toUpperCase()),
+    encode: (value) => value,
+    validate: (values) => (values.length ? null : 'expects one or more names'),
   },
   // A telemetry item: SETTING NAME <TARGET> <PACKET> <ITEM>
   item: {

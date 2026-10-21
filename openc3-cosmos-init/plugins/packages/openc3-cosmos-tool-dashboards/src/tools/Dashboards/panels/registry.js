@@ -35,6 +35,12 @@
 //   validate                    optional (panel) => message when the panel is
 //                               incomplete; panels with ITEM need one item
 //   hidden                      left out of the panel type picker
+//   fillDialog                  the panel dialog takes most of the window and
+//                               its content editor fills the space left
+//                               (e.g. the screen editor)
+//   beforeSave                  optional async (panel) => void, run when the
+//                               panel dialog saves; throw to keep it open
+//                               with the error shown
 //
 // To add a panel type: write the panel component, reuse or write a content
 // editor, and add an entry below. Plugins add types the same way through
@@ -44,6 +50,7 @@ import GraphPanel from './GraphPanel.vue'
 import ValuesPanel from './ValuesPanel.vue'
 import LimitsPanel from './LimitsPanel.vue'
 import StatPanel from './StatPanel.vue'
+import GaugePanel from './GaugePanel.vue'
 import StatePanel from './StatePanel.vue'
 import CommandPanel from './CommandPanel.vue'
 import ScreenPanel from './ScreenPanel.vue'
@@ -52,6 +59,8 @@ import ItemsConfig from './config/ItemsConfig.vue'
 import LimitsConfig from './config/LimitsConfig.vue'
 import CommandConfig from './config/CommandConfig.vue'
 import ScreenConfig from './config/ScreenConfig.vue'
+import { option } from './options'
+import { saveScreen } from './screens'
 
 // Shared by panel types whose items are drawn as lines
 const COLOR_OPTION = {
@@ -61,15 +70,39 @@ const COLOR_OPTION = {
   default: null,
 }
 
-// Minutes of history a graph shows, backfilled when the dashboard opens
-const DURATION_OPTION = {
-  name: 'DURATION',
-  type: 'number',
-  label: 'History shown',
-  unit: 'minutes',
-  default: 2,
-  min: 0.5,
-  max: 1440,
+// Shared by the single value panels (STAT, GAUGE, STATE)
+const PACKET_TIME_OPTION = {
+  name: 'PACKET_TIME',
+  type: 'boolean',
+  label: 'Show packet time',
+  default: true,
+}
+
+// A gauge's own limits, used with SETTING LIMITS CUSTOM
+const GAUGE_LIMITS = [
+  ['RED_LOW', 'Red low'],
+  ['YELLOW_LOW', 'Yellow low'],
+  ['YELLOW_HIGH', 'Yellow high'],
+  ['RED_HIGH', 'Red high'],
+]
+
+// Custom limits need all four, in order; MIN must be below MAX
+function gaugeProblem(panel) {
+  if (option(panel, 'LIMITS') === 'CUSTOM') {
+    const values = GAUGE_LIMITS.map(([name]) => option(panel, name))
+    if (values.some((value) => value === null)) {
+      return 'Set the red and yellow limits'
+    }
+    if (values.some((value, index) => index && value < values[index - 1])) {
+      return 'Limits must go red low ≤ yellow low ≤ yellow high ≤ red high'
+    }
+  }
+  const min = option(panel, 'MIN')
+  const max = option(panel, 'MAX')
+  if (min !== null && max !== null && min >= max) {
+    return 'Scale minimum must be below the maximum'
+  }
+  return null
 }
 
 // Stands in for a panel whose type isn't installed (its plugin is missing)
@@ -88,22 +121,12 @@ export const PANEL_TYPES = {
     maxItems: 1,
     itemOptions: [{ ...COLOR_OPTION, help: 'Color of the graph line' }],
     options: [
-      {
-        name: 'PACKET_TIME',
-        type: 'boolean',
-        label: 'Show packet time',
-        default: true,
-      },
+      PACKET_TIME_OPTION,
       {
         name: 'GRAPH',
         type: 'boolean',
         label: 'Show graph',
         default: true,
-      },
-      {
-        ...DURATION_OPTION,
-        label: 'Graph history',
-        when: (get) => get('GRAPH'),
       },
       {
         name: 'LIMITS_LINES',
@@ -120,6 +143,56 @@ export const PANEL_TYPES = {
       },
     ],
   },
+  GAUGE: {
+    category: 'Telemetry',
+    label: 'Gauge',
+    description: 'One value on a dial with limits zones',
+    icon: 'mdi-gauge',
+    component: GaugePanel,
+    content: ItemsConfig,
+    validate: gaugeProblem,
+    defaults: { w: 3, h: 4 },
+    keywords: ['ITEM', 'SETTING'],
+    maxItems: 1,
+    options: [
+      PACKET_TIME_OPTION,
+      {
+        name: 'LIMITS',
+        type: 'select',
+        label: 'Limits',
+        default: 'ITEM',
+        items: [
+          { title: 'Item limits', value: 'ITEM' },
+          { title: 'Custom', value: 'CUSTOM' },
+        ],
+        help: "Item limits follow the current limits set; custom limits are this gauge's own",
+      },
+      ...GAUGE_LIMITS.map(([name, label], index) => ({
+        name,
+        type: 'number',
+        label,
+        default: null,
+        span: 3,
+        newRow: index === 0,
+        when: (get) => get('LIMITS') === 'CUSTOM',
+      })),
+      {
+        name: 'MIN',
+        type: 'number',
+        label: 'Scale minimum',
+        default: null,
+        newRow: true,
+        help: 'Defaults to red low minus 10% of the limits range',
+      },
+      {
+        name: 'MAX',
+        type: 'number',
+        label: 'Scale maximum',
+        default: null,
+        help: 'Defaults to red high plus 10% of the limits range',
+      },
+    ],
+  },
   STATE: {
     category: 'Telemetry',
     label: 'State',
@@ -130,14 +203,7 @@ export const PANEL_TYPES = {
     defaults: { w: 3, h: 3 },
     keywords: ['ITEM', 'SETTING'],
     maxItems: 1,
-    options: [
-      {
-        name: 'PACKET_TIME',
-        type: 'boolean',
-        label: 'Show packet time',
-        default: true,
-      },
-    ],
+    options: [PACKET_TIME_OPTION],
   },
   GRAPH: {
     category: 'Telemetry',
@@ -153,7 +219,6 @@ export const PANEL_TYPES = {
       { ...COLOR_OPTION, help: 'Defaults to the next series color' },
     ],
     options: [
-      DURATION_OPTION,
       {
         name: 'THRESHOLDS',
         type: 'item',
@@ -238,6 +303,14 @@ export const PANEL_TYPES = {
         ],
         help: 'Hold takes 0.8 s, or 2 s when hazardous. Click asks for confirmation when hazardous.',
       },
+      // Set from the eye buttons in CommandConfig, not the options form
+      {
+        name: 'HIDE',
+        type: 'list',
+        label: 'Hidden parameters',
+        default: [],
+        when: () => false,
+      },
       {
         name: 'OPEN_SCRIPT',
         type: 'boolean',
@@ -258,6 +331,13 @@ export const PANEL_TYPES = {
     title: (panel) => panel.screen?.screenName,
     subtitle: (panel) => panel.screen?.targetName,
     validate: (panel) => (panel.screen ? null : 'Pick a screen'),
+    fillDialog: true,
+    // Definition edits from ScreenConfig go to the screen file
+    beforeSave: async (panel) => {
+      if (typeof panel.screenText === 'string') {
+        await saveScreen(panel.screen, panel.screenText)
+      }
+    },
     defaults: { w: 6, h: 8 },
     keywords: ['SCREEN', 'SETTING'],
     maxItems: 0,
@@ -285,6 +365,12 @@ export const CONTENT_EDITORS = {
   targets: LimitsConfig,
   command: CommandConfig,
   screen: ScreenConfig,
+}
+
+// The type a new panel starts as: the first one in the panel type picker,
+// which lists types in this table's order
+export function defaultPanelType() {
+  return Object.keys(PANEL_TYPES).find((type) => !PANEL_TYPES[type].hidden)
 }
 
 // Add a panel type, e.g. from a plugin. Returns an error message, or null.

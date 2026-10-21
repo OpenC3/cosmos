@@ -12,26 +12,30 @@
 -->
 
 <template>
-  <div class="screen-panel flex-grow-1 overflow-auto" data-test="screen-panel">
+  <!-- Inert while editing: values keep updating, but clicks arrange panels
+       instead of pressing the screen's buttons -->
+  <div
+    class="screen-panel flex-grow-1 overflow-auto"
+    :inert="isEditing"
+    data-test="screen-panel"
+  >
     <div
       v-if="message"
       class="d-flex align-center justify-center h-100 pa-4 text-body-2 text-medium-emphasis text-center"
     >
       {{ message }}
     </div>
-    <!-- Remounts when editing ends: a frozen screen doesn't look up its
-         items, so it has to start over to begin polling -->
+    <!-- load() clears the definition first, so a saved screen remounts -->
     <openc3-screen
       v-else
       ref="screen"
-      :key="`${screenKey}-${isLive}`"
+      :key="screenKey"
       :target="panel.screen.targetName"
       :screen="panel.screen.screenName"
       :definition="definition"
       :time-zone="timeZone"
       :playback-mode="isPlayback ? 'playback' : 'realtime'"
       :playback-date-time="playbackTime"
-      :frozen="!isLive"
       :show-close="false"
       inline
       @vue:mounted="trackLevel"
@@ -40,13 +44,14 @@
 </template>
 
 <script>
-import { Api } from '@openc3/js-common/services'
 import { Openc3Screen } from '@openc3/vue-common/components'
 import panelBase from './panelBase'
 import { stateToLevel, worstLevel } from '../status'
+import { loadScreen, screenKey, screenRevisions } from './screens'
 
 // A Telemetry Viewer screen inside a panel. The screen polls its own items
-// (Openc3Screen does), follows playback, and stops while editing.
+// (Openc3Screen does) and follows playback. Its definition is edited from
+// the panel dialog (ScreenConfig); saving there reloads it here.
 export default {
   components: { Openc3Screen },
   mixins: [panelBase],
@@ -55,8 +60,10 @@ export default {
   },
   computed: {
     screenKey() {
-      const screen = this.panel.screen
-      return screen ? `${screen.targetName}/${screen.screenName}` : null
+      return screenKey(this.panel.screen)
+    },
+    revision() {
+      return screenRevisions[this.screenKey] || 0
     },
     message() {
       if (!this.screenKey) return 'Pick a screen'
@@ -75,6 +82,9 @@ export default {
         this.load()
       },
     },
+    revision() {
+      this.load()
+    },
   },
   methods: {
     async load() {
@@ -84,10 +94,8 @@ export default {
       const key = this.screenKey
       if (!key) return
       try {
-        const response = await Api.get(`/openc3-api/screen/${key}`, {
-          headers: { Accept: 'text/plain', 'Ignore-Errors': '404' },
-        })
-        if (key === this.screenKey) this.definition = response.data
+        const text = await loadScreen(this.panel.screen)
+        if (key === this.screenKey) this.definition = text
       } catch {
         if (key === this.screenKey) this.error = `Screen ${key} not found`
       }

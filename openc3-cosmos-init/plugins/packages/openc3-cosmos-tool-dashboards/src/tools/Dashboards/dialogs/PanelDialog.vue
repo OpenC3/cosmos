@@ -20,27 +20,27 @@
     scrollable
     @keydown.esc="show = false"
   >
-    <v-card v-if="draft" style="max-height: 90vh" data-test="panel-dialog">
-      <v-toolbar height="24">
-        <v-spacer />
-        <span>{{ isNew ? 'Add Panel' : 'Configure Panel' }}</span>
-        <v-spacer />
-        <v-btn
-          icon="mdi-close-box"
-          variant="text"
-          density="compact"
-          aria-label="Close"
-          @click="show = false"
-        />
-      </v-toolbar>
+    <v-card
+      v-if="draft"
+      :style="fill ? { height: '92vh' } : { maxHeight: '90vh' }"
+      data-test="panel-dialog"
+    >
+      <dialog-toolbar
+        :title="isNew ? 'Add Panel' : 'Configure Panel'"
+        @close="show = false"
+      />
       <v-tabs v-model="tab" density="compact">
         <v-tab value="settings" data-test="panel-tab-settings">Settings</v-tab>
         <v-tab value="code" data-test="panel-tab-code">Code</v-tab>
       </v-tabs>
       <v-divider />
-      <v-card-text>
+      <v-card-text
+        :class="{ 'd-flex flex-column': fill && tab === 'settings' }"
+      >
         <panel-settings
           v-if="tab === 'settings'"
+          :class="{ 'flex-grow-1': fill }"
+          :fill="fill"
           :panel="draft"
           @update="update"
           @resize="resize"
@@ -57,14 +57,19 @@
       </v-card-text>
       <v-divider />
       <v-card-actions class="px-2">
-        <span v-if="problem" class="text-caption text-error px-2">
-          {{ problem }}
+        <span
+          v-if="problem || saveError"
+          class="text-caption text-error px-2"
+          data-test="panel-dialog-error"
+        >
+          {{ problem || saveError }}
         </span>
         <v-spacer />
         <v-btn variant="outlined" @click="show = false">Cancel</v-btn>
         <v-btn
           variant="flat"
           :disabled="!!problem"
+          :loading="saving"
           data-test="panel-save"
           @click="save"
         >
@@ -77,6 +82,7 @@
 
 <script>
 import modelShow from '../mixins/modelShow'
+import DialogToolbar from '../components/DialogToolbar.vue'
 import PanelSettings from '../editor/PanelSettings.vue'
 import CodePane from '../editor/CodePane.vue'
 import { PANEL_TYPES, panelProblem } from '../panels/registry'
@@ -86,7 +92,7 @@ import { parsePanel, serializePanel } from '../dashboardParser'
 // Edits a copy of a panel, as settings or as its PANEL ... END code; the
 // dashboard only changes on Add / Apply
 export default {
-  components: { CodePane, PanelSettings },
+  components: { CodePane, DialogToolbar, PanelSettings },
   mixins: [modelShow],
   props: {
     panel: { type: Object, default: null },
@@ -94,7 +100,7 @@ export default {
   },
   emits: ['save'],
   data() {
-    return { draft: null, tab: 'settings' }
+    return { draft: null, tab: 'settings', saving: false, saveError: null }
   },
   computed: {
     code() {
@@ -102,6 +108,10 @@ export default {
     },
     problem() {
       return this.draft ? panelProblem(this.draft) : null
+    },
+    // Types like SCREEN give their content editor the rest of a tall dialog
+    fill() {
+      return !!PANEL_TYPES[this.draft?.type]?.fillDialog
     },
   },
   watch: {
@@ -111,6 +121,7 @@ export default {
         if (open && this.panel) {
           this.draft = JSON.parse(JSON.stringify(this.panel))
           this.tab = 'settings'
+          this.saveError = null
         }
       },
     },
@@ -127,13 +138,34 @@ export default {
     // Code edits replace the draft but keep it the same panel
     applyCode(panel) {
       if (!panel) return
-      this.draft = { ...panel, uid: this.draft.uid }
+      // Unsaved screen edits stay while it's the same screen
+      const sameScreen =
+        JSON.stringify(panel.screen) === JSON.stringify(this.draft.screen)
+      this.draft = {
+        ...panel,
+        uid: this.draft.uid,
+        screenText: sameScreen ? this.draft.screenText : null,
+        screenNew: sameScreen ? this.draft.screenNew : false,
+      }
     },
     resize({ w, h }) {
       Object.assign(this.draft, clampRect({ ...this.draft, w, h }))
     },
-    save() {
-      this.$emit('save', this.draft)
+    // Type hooks run first (a SCREEN panel writes its screen file); edits
+    // that aren't part of the dashboard are dropped from the panel
+    async save() {
+      this.saving = true
+      this.saveError = null
+      try {
+        await PANEL_TYPES[this.draft.type].beforeSave?.(this.draft)
+      } catch (error) {
+        this.saveError = `Unable to save: ${error.message || error}`
+        return
+      } finally {
+        this.saving = false
+      }
+      const { screenText, screenNew, ...panel } = this.draft
+      this.$emit('save', panel)
       this.show = false
     },
   },

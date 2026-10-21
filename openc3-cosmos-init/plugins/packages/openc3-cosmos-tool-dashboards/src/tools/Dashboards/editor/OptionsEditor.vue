@@ -16,7 +16,8 @@
     <div
       v-for="def in defs"
       :key="def.name"
-      :class="{ 'full-row': def.multiline }"
+      :class="{ 'full-row': def.multiline, 'new-row': def.newRow }"
+      :style="{ '--span': def.span || 4 }"
     >
       <v-switch
         v-if="def.type === 'boolean'"
@@ -128,8 +129,10 @@ export default {
       })
     },
     setNumber(def, value) {
+      // Clearing the field goes back to the default
+      if (value === '' || value === null) return this.set(def, null)
       const number = Number(value)
-      if (value === '' || Number.isNaN(number)) return
+      if (Number.isNaN(number)) return
       this.set(def, number)
     },
     itemKey(item) {
@@ -146,19 +149,26 @@ export default {
 </script>
 
 <style scoped>
-/* Three options per line, one column on narrow screens */
+/* 12 columns: options span 4 (three per line) unless they set `span`, and
+   `newRow` starts a line. One column on narrow screens. */
 .options-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 12px 16px;
   align-items: start;
 }
-.full-row {
+.options-grid > * {
+  grid-column: span var(--span);
+}
+.options-grid > .new-row {
+  grid-column: 1 / span var(--span);
+}
+.options-grid > .full-row {
   grid-column: 1 / -1;
 }
 @media (max-width: 700px) {
-  .options-grid {
-    grid-template-columns: minmax(0, 1fr);
+  .options-grid > * {
+    grid-column: 1 / -1 !important;
   }
 }
 </style>

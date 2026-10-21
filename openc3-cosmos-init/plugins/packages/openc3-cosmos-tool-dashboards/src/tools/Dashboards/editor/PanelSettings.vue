@@ -12,7 +12,11 @@
 -->
 
 <template>
-  <div data-test="panel-settings">
+  <div
+    :class="{ 'd-flex flex-column': fill }"
+    style="min-height: 0"
+    data-test="panel-settings"
+  >
     <section class="settings-grid pb-2">
       <v-autocomplete
         :model-value="panel.type"
@@ -25,6 +29,8 @@
         variant="outlined"
         hide-details
         auto-select-first
+        no-auto-scroll
+        :menu-props="typeMenuProps"
         data-test="panel-type"
         @update:model-value="changeType"
       >
@@ -67,9 +73,13 @@
     </div>
     <v-divider />
 
-    <section v-if="types[panel.type].content" class="py-3">
+    <section
+      v-if="types[panel.type].content"
+      :class="['py-3', { 'fill-content': fill }]"
+    >
       <component
         :is="types[panel.type].content"
+        :class="{ 'h-100': fill }"
         :panel="panel"
         @update="(change) => $emit('update', change)"
       />
@@ -158,12 +168,12 @@
           v-for="column in columns"
           :key="column"
           :class="[
-            'flex-grow-1 rounded-sm',
+            'flex-grow-1 rounded-sm opacity-80',
             column > panel.x && column <= panel.x + panel.w
               ? 'bg-primary'
               : 'bg-surface-variant',
           ]"
-          style="height: 6px; opacity: 0.8"
+          style="height: 6px"
         />
       </div>
     </section>
@@ -184,6 +194,8 @@ export default {
   components: { OptionsEditor },
   props: {
     panel: { type: Object, required: true },
+    // The content editor fills the height left (fillDialog types)
+    fill: { type: Boolean, default: false },
   },
   emits: ['update', 'resize'],
   data() {
@@ -204,6 +216,11 @@ export default {
     }
   },
   computed: {
+    // Tall enough to show most types at once. Pixels: the menu reads a CSS
+    // length like '60vh' as 60px.
+    typeMenuProps() {
+      return { maxHeight: Math.round(window.innerHeight * 0.6) }
+    },
     // Types grouped by category, so a long list of panel types stays easy to
     // scan; the dropdown is searchable by name
     typeItems() {
@@ -261,5 +278,10 @@ export default {
 }
 .span-2 {
   grid-column: span 2;
+}
+/* A fillDialog type's content editor takes the height left over; it sets
+   its own minimum, and the dialog scrolls below that */
+.fill-content {
+  flex: 1 0 auto;
 }
 </style>

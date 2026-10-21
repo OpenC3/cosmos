@@ -41,29 +41,19 @@
         />
       </div>
       <div class="text-subtitle-2 mb-2">Color</div>
-      <div class="d-flex flex-wrap ga-2">
-        <button
-          type="button"
-          :class="['swatch default rounded', { selected: !style.color }]"
-          aria-label="Default color"
-          title="Default"
-          @click="update({ color: null })"
-        />
-        <button
-          v-for="color in colors"
-          :key="color"
-          type="button"
-          :class="['swatch rounded', { selected: color === style.color }]"
-          :style="{ background: color }"
-          :aria-label="color"
-          @click="update({ color })"
-        />
-      </div>
+      <color-swatches
+        :colors="colors"
+        :model-value="style.color"
+        :size="26"
+        allow-default
+        @update:model-value="(color) => update({ color })"
+      />
     </v-card>
   </v-menu>
 </template>
 
 <script>
+import ColorSwatches from './ColorSwatches.vue'
 import DashboardAvatar from './DashboardAvatar.vue'
 import {
   DASHBOARD_COLORS,
@@ -74,7 +64,7 @@ import {
 
 // Pick a dashboard's icon and color; emits the dashboard's new settings
 export default {
-  components: { DashboardAvatar },
+  components: { ColorSwatches, DashboardAvatar },
   props: {
     settings: { type: Object, required: true },
   },
@@ -113,17 +103,5 @@ export default {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
   gap: 2px;
-}
-.swatch {
-  width: 26px;
-  height: 26px;
-  cursor: pointer;
-  border: 2px solid transparent;
-}
-.swatch.default {
-  background: rgb(var(--v-theme-secondary));
-}
-.swatch.selected {
-  border-color: rgb(var(--v-theme-on-surface));
 }
 </style>

@@ -18,7 +18,7 @@
 //   PANEL GRAPH 0 3 8 7 "Temperatures"
 //     ITEM INST HEALTH_STATUS TEMP1
 //     ITEM INST2 HEALTH_STATUS TEMP1
-//     SETTING DURATION 120
+//     SETTING THRESHOLDS INST HEALTH_STATUS TEMP1
 //   END
 //
 // PANEL <TYPE> <Column> <Row> <Width> <Height> [Title] places a panel on the
@@ -352,31 +352,34 @@ export function parseDashboard(text) {
   return { model, errors }
 }
 
-// Titles always read as text, even single words
-function quoteTitle(value) {
+// Quoted when it would otherwise split or be empty; titles pass `always` so
+// they read as text, even single words
+function quote(value, always = false) {
   const string = String(value)
-  return string.includes('"') ? `'${string}'` : `"${string}"`
-}
-
-function quote(value) {
-  const string = String(value)
-  if (string === '' || /[\s#]/.test(string)) {
+  if (always || string === '' || /[\s#]/.test(string)) {
     return string.includes('"') ? `'${string}'` : `"${string}"`
   }
   return string
 }
 
+// SETTING / ITEM_SETTING lines, one per setting
+function settingLines(keyword, indent, settings) {
+  return Object.entries(settings || {}).map(
+    ([name, values]) =>
+      `${indent}${keyword} ${[name, ...values].map((value) => quote(value)).join(' ')}`,
+  )
+}
+
 // PANEL ... END lines for one panel
 function panelLines(panel) {
-  const lines = []
-  if (panel.type === UNKNOWN_TYPE) {
-    let header = `PANEL ${panel.originalType} ${panel.x} ${panel.y} ${panel.w} ${panel.h}`
-    if (panel.title) header += ` ${quoteTitle(panel.title)}`
+  const unknown = panel.type === UNKNOWN_TYPE
+  const type = unknown ? panel.originalType : panel.type
+  let header = `PANEL ${type} ${panel.x} ${panel.y} ${panel.w} ${panel.h}`
+  if (panel.title) header += ` ${quote(panel.title, true)}`
+  if (unknown) {
     return [header, ...panel.raw.map((line) => `  ${line}`), 'END']
   }
-  let header = `PANEL ${panel.type} ${panel.x} ${panel.y} ${panel.w} ${panel.h}`
-  if (panel.title) header += ` ${quoteTitle(panel.title)}`
-  lines.push(header)
+  const lines = [header]
   // Only what this type allows, so a field left over from another type can't
   // produce a file the parser rejects
   const allowed = new Set(PANEL_TYPES[panel.type].keywords)
@@ -408,14 +411,10 @@ function panelLines(panel) {
         line += ` ${item.valueType}`
       }
       lines.push(line)
-      for (const [name, values] of Object.entries(item.settings || {})) {
-        lines.push(`    ITEM_SETTING ${[name, ...values].map(quote).join(' ')}`)
-      }
+      lines.push(...settingLines('ITEM_SETTING', '    ', item.settings))
     }
   }
-  for (const [name, values] of Object.entries(panel.settings || {})) {
-    lines.push(`  SETTING ${[name, ...values].map(quote).join(' ')}`)
-  }
+  lines.push(...settingLines('SETTING', '  ', panel.settings))
   lines.push('END')
   return lines
 }
@@ -423,11 +422,9 @@ function panelLines(panel) {
 export function serializeDashboard(model) {
   const lines = [
     BETA_NOTICE,
-    `DASHBOARD ${quoteTitle(model.title || 'Dashboard')}`,
+    `DASHBOARD ${quote(model.title || 'Dashboard', true)}`,
+    ...settingLines('SETTING', '  ', model.settings),
   ]
-  for (const [name, values] of Object.entries(model.settings || {})) {
-    lines.push(`  SETTING ${[name, ...values].map(quote).join(' ')}`)
-  }
   const panels = [...model.panels].sort((a, b) => a.y - b.y || a.x - b.x)
   for (const panel of panels) {
     lines.push('', ...panelLines(panel))

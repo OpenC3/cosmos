@@ -36,7 +36,8 @@ async function selectDashboard(page, key: string) {
 }
 
 async function createDashboard(page, name: string) {
-  await page.locator('[data-test="dashboard-new"]').click()
+  await page.locator('[data-test="dashboards-file"]').click()
+  await page.locator('text=New Dashboard').click()
   await page.locator('[data-test="new-dashboard-target"]').click()
   await page.getByRole('option', { name: 'INST', exact: true }).click()
   await page.locator('[data-test="new-dashboard-name"] input').fill(name)
@@ -101,6 +102,7 @@ test('builds a multi-target panel and saves it', async ({ page, utils }) => {
   await createDashboard(page, name)
 
   await page.locator('[data-test="panel-add"]').click()
+  await page.locator('[data-test="panel-type"]').click()
   await page.locator('[data-test="panel-type-VALUES"]').click()
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
   await utils.addTargetPacketItem('INST2', 'HEALTH_STATUS', 'TEMP1')
@@ -161,7 +163,6 @@ test('edits the definition as code', async ({ page }) => {
       'PANEL GRAPH 0 3 6 6',
       '  ITEM INST HEALTH_STATUS TEMP1',
       '  ITEM INST2 HEALTH_STATUS TEMP1',
-      '  SETTING DURATION 60',
       'END',
     ].join('\n'),
   )

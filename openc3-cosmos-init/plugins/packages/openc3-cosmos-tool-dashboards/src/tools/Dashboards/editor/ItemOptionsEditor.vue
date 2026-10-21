@@ -32,17 +32,12 @@
         </template>
         <v-card class="pa-3" width="280">
           <div class="text-subtitle-2 mb-2">{{ def.label }}</div>
-          <div class="d-flex flex-wrap ga-2 mb-3">
-            <button
-              v-for="color in palette"
-              :key="color"
-              type="button"
-              :class="['swatch rounded', { selected: color === value(def) }]"
-              :style="{ background: color }"
-              :aria-label="color"
-              @click="set(def, color)"
-            />
-          </div>
+          <color-swatches
+            :colors="palette"
+            :model-value="value(def)"
+            class="mb-3"
+            @update:model-value="(color) => set(def, color)"
+          />
           <v-color-picker
             :model-value="value(def) || fallback"
             mode="hex"
@@ -69,6 +64,7 @@
 </template>
 
 <script>
+import ColorSwatches from '../components/ColorSwatches.vue'
 import { itemOption, itemOptionDefs, withItemOption } from '../panels/options'
 import { SERIES_COLORS } from '../panels/colors'
 
@@ -76,6 +72,7 @@ import { SERIES_COLORS } from '../panels/colors'
 // panels/registry.js), shown on each item row. Only colors exist today; add a
 // control here alongside a new option type.
 export default {
+  components: { ColorSwatches },
   props: {
     panel: { type: Object, required: true },
     item: { type: Object, required: true },
@@ -115,14 +112,5 @@ export default {
   border: 1px solid rgba(var(--v-border-color), 0.4);
   cursor: pointer;
   flex: none;
-}
-.swatch {
-  width: 24px;
-  height: 24px;
-  cursor: pointer;
-  border: 2px solid transparent;
-}
-.swatch.selected {
-  border-color: rgb(var(--v-theme-on-surface));
 }
 </style>

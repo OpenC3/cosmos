@@ -41,7 +41,6 @@
     <template v-else>
       <target-packet-item-chooser
         mode="cmd"
-        vertical
         button-text="Select"
         @add-item="selectCommand"
       />
@@ -57,35 +56,62 @@
       <div class="text-subtitle-2 mb-1">Preset parameters</div>
       <div class="text-caption text-medium-emphasis mb-3">
         Values shown in the panel when it opens. Leave blank to use the command
-        default.
+        default. Hidden parameters get no field in the panel and send their
+        preset or default.
       </div>
       <div class="d-flex flex-column ga-2">
-        <v-select
-          v-for="param in params.filter((p) => p.states)"
+        <div
+          v-for="param in params"
           :key="param.name"
-          :model-value="panel.parameters[param.name] ?? null"
-          :items="Object.keys(param.states)"
-          :label="param.name"
-          clearable
-          density="compact"
-          variant="outlined"
-          hide-details
-          @update:model-value="(value) => setParameter(param.name, value)"
-        />
-        <v-text-field
-          v-for="param in params.filter((p) => !p.states)"
-          :key="param.name"
-          :model-value="panel.parameters[param.name] ?? ''"
-          :label="param.name"
-          :suffix="param.units"
-          :placeholder="
-            param.default === undefined ? '' : String(param.default)
-          "
-          density="compact"
-          variant="outlined"
-          hide-details
-          @update:model-value="(value) => setParameter(param.name, value)"
-        />
+          class="d-flex align-center ga-2"
+        >
+          <v-select
+            v-if="param.states"
+            :model-value="panel.parameters[param.name] ?? null"
+            :items="Object.keys(param.states)"
+            :label="param.name"
+            clearable
+            density="compact"
+            variant="outlined"
+            hide-details
+            :data-test="`config-param-${param.name}`"
+            @update:model-value="(value) => setParameter(param.name, value)"
+          />
+          <v-text-field
+            v-else
+            :model-value="panel.parameters[param.name] ?? ''"
+            :label="param.name"
+            :suffix="param.units"
+            :placeholder="
+              param.default === undefined ? '' : String(param.default)
+            "
+            density="compact"
+            variant="outlined"
+            hide-details
+            :data-test="`config-param-${param.name}`"
+            @update:model-value="(value) => setParameter(param.name, value)"
+          />
+          <v-btn
+            :icon="isHidden(param) ? 'mdi-eye-off-outline' : 'mdi-eye-outline'"
+            :color="isHidden(param) ? undefined : 'primary'"
+            variant="text"
+            size="small"
+            :aria-pressed="isHidden(param)"
+            :aria-label="`${isHidden(param) ? 'Show' : 'Hide'} ${param.name} in the panel`"
+            :title="`${isHidden(param) ? 'Show' : 'Hide'} in the panel`"
+            :data-test="`config-hide-${param.name}`"
+            @click="toggleHidden(param)"
+          />
+        </div>
+        <div
+          v-if="hiddenUnset.length"
+          class="text-caption text-warning"
+          data-test="config-hidden-required"
+        >
+          {{ hiddenUnset.join(', ') }}
+          {{ hiddenUnset.length === 1 ? 'is' : 'are' }} required: preset a value
+          or the panel can't send
+        </div>
       </div>
     </template>
   </div>
@@ -93,7 +119,8 @@
 
 <script>
 import { OpenC3Api } from '@openc3/js-common/services'
-import { loadCommandParams } from '../commandParams'
+import { loadCommandParams, unsetRequired } from '../commandParams'
+import { option, withOption } from '../options'
 import {
   ScriptChooser,
   TargetPacketItemChooser,
@@ -113,6 +140,13 @@ export default {
   computed: {
     mode() {
       return this.panel.script || this.scriptMode ? 'script' : 'command'
+    },
+    hidden() {
+      return option(this.panel, 'HIDE')
+    },
+    // Hidden required parameters with nothing preset
+    hiddenUnset() {
+      return unsetRequired(this.params, this.panel.parameters, this.hidden)
     },
   },
   watch: {
@@ -135,7 +169,17 @@ export default {
         command: { targetName, commandName: packetName },
         script: null,
         parameters: {},
+        settings: withOption(this.panel, 'HIDE', []),
       })
+    },
+    isHidden(param) {
+      return this.hidden.includes(param.name)
+    },
+    toggleHidden(param) {
+      const hidden = this.isHidden(param)
+        ? this.hidden.filter((name) => name !== param.name)
+        : [...this.hidden, param.name]
+      this.$emit('update', { settings: withOption(this.panel, 'HIDE', hidden) })
     },
     async loadParams() {
       this.params = []

@@ -14,18 +14,7 @@
 <template>
   <v-dialog v-model="show" width="960" scrollable>
     <v-card data-test="code-dialog">
-      <v-toolbar height="24">
-        <v-spacer />
-        <span>Dashboard Code</span>
-        <v-spacer />
-        <v-btn
-          icon="mdi-close-box"
-          variant="text"
-          density="compact"
-          aria-label="Close"
-          @click="show = false"
-        />
-      </v-toolbar>
+      <dialog-toolbar title="Dashboard Code" @close="show = false" />
       <v-card-text class="pa-3">
         <code-pane
           :text="text"
@@ -40,12 +29,13 @@
 
 <script>
 import modelShow from '../mixins/modelShow'
+import DialogToolbar from '../components/DialogToolbar.vue'
 import CodePane from '../editor/CodePane.vue'
 
 // The dashboard as text. Edits apply live (when they parse) and the dashboard
 // behind the dialog updates as you type; Undo reverts them.
 export default {
-  components: { CodePane },
+  components: { CodePane, DialogToolbar },
   mixins: [modelShow],
   props: {
     text: { type: String, required: true },

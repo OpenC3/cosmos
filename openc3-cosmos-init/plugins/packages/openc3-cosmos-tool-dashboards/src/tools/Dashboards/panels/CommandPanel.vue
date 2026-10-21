@@ -14,10 +14,9 @@
 <template>
   <div
     :class="[
-      'command-panel d-flex flex-column flex-grow-1 px-4',
-      compact ? 'pb-2' : isScript ? 'ga-1 pt-1 pb-2' : 'ga-2 pt-2 pb-4',
+      'command-panel d-flex flex-column flex-grow-1 min-h-0 px-4',
+      compact ? 'pb-2' : isScript ? 'ga-1 pt-1 pb-3' : 'ga-2 pt-2 pb-3',
     ]"
-    style="min-height: 0"
   >
     <div
       v-if="!panel.command && !panel.script"
@@ -40,62 +39,51 @@
       </v-chip>
       <div
         v-if="!compact"
-        class="d-flex flex-column ga-2 overflow-y-auto flex-grow-1"
-        style="min-height: 0"
+        class="d-flex flex-column ga-2 overflow-y-auto flex-grow-1 min-h-0"
       >
         <div
           v-if="details"
-          class="details text-body-2 text-medium-emphasis"
+          class="text-pre-line text-body-2 text-medium-emphasis"
           data-test="command-details"
         >
           {{ details }}
         </div>
-        <div v-for="param in params" :key="param.name" class="param-row">
-          <label
-            :for="`${uid}-${param.name}`"
-            class="param-label mono text-caption text-medium-emphasis text-truncate"
-            :title="param.description"
-          >
-            {{ param.name }}
-          </label>
-          <v-select
-            v-if="param.states"
-            :id="`${uid}-${param.name}`"
-            v-model="values[param.name]"
-            :items="Object.keys(param.states)"
-            density="compact"
-            variant="outlined"
-            hide-details
-            :data-test="`command-param-${param.name}`"
-          />
-          <v-text-field
-            v-else
-            :id="`${uid}-${param.name}`"
-            v-model="values[param.name]"
-            class="num"
-            density="compact"
-            variant="outlined"
-            hide-details
-            :suffix="param.units"
-            :placeholder="param.required ? 'Required' : ''"
-            :data-test="`command-param-${param.name}`"
-          />
+        <div
+          v-if="shownParams.length"
+          class="param-grid"
+          :style="{ '--param-cols': columns, '--label-chars': labelChars }"
+        >
+          <div v-for="param in shownParams" :key="param.name" class="param-row">
+            <label
+              :for="`${uid}-${param.name}`"
+              class="param-label flex-shrink-0 mono text-caption text-medium-emphasis text-truncate"
+              :title="
+                [param.name, param.description].filter(Boolean).join(': ')
+              "
+            >
+              {{ param.name }}
+            </label>
+            <command-param-field
+              :id="`${uid}-${param.name}`"
+              v-model="values[param.name]"
+              :param="param"
+            />
+          </div>
         </div>
         <div
-          v-if="!isScript && loaded && !params.length"
+          v-if="!isScript && loaded && !shownParams.length"
           class="text-caption text-medium-emphasis"
         >
-          No parameters
+          {{ params.length ? 'All parameters are preset' : 'No parameters' }}
         </div>
       </div>
-      <!-- A full width button. Commands: the status above it. Scripts, and
-           panels only 2 rows tall, get a slim button with the status under
-           it. -->
-      <div :class="['d-flex flex-column', slim ? 'ga-1 mt-auto' : 'ga-2 mt-2']">
+      <!-- The button sits at the bottom with its status above it. Scripts
+           and 2-row panels get a slim one. -->
+      <div :class="['d-flex flex-column mt-auto', slim ? 'ga-1' : 'ga-2']">
         <div
           :class="[
             'status text-caption text-medium-emphasis',
-            { 'order-last text-truncate slim': slim },
+            { 'text-truncate slim': slim },
           ]"
           :title="statusText"
           aria-live="polite"
@@ -115,11 +103,12 @@
           v-if="confirm === 'HOLD'"
           type="button"
           :class="[
-            'hold d-flex align-center justify-center w-100 position-relative overflow-hidden rounded-lg border text-body-2',
+            'hold d-flex align-center justify-center position-relative overflow-hidden rounded-lg border text-body-2',
+            'w-100',
             { slim, holding, hz: hazardous },
           ]"
           :disabled="!ready || sending"
-          :title="compact ? details : undefined"
+          :title="buttonTitle"
           data-test="command-send"
           @pointerdown="startHold"
           @pointerup="cancelHold"
@@ -129,7 +118,7 @@
           @keyup="cancelHold"
         >
           <span
-            class="hold-fill"
+            class="hold-fill position-absolute"
             :style="{ transitionDuration: holding ? `${holdMs}ms` : '0ms' }"
           />
           <span
@@ -147,7 +136,7 @@
           :prepend-icon="icon"
           :disabled="!ready"
           :loading="sending"
-          :title="compact ? details : undefined"
+          :title="buttonTitle"
           data-test="command-send"
           @click="clickSend"
         >
@@ -169,9 +158,10 @@ import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { CriticalCmdDialog } from '@openc3/vue-common/components'
 import { CmdUtilities } from '@openc3/vue-common/util'
 import StatusSymbol from '../components/StatusSymbol.vue'
+import CommandParamField from './CommandParamField.vue'
 import panelBase from './panelBase'
 import { option } from './options'
-import { loadCommandParams } from './commandParams'
+import { loadCommandParams, unsetRequired as findUnset } from './commandParams'
 import { clock } from '../composables/format'
 
 const HOLD_MS = 800
@@ -184,12 +174,11 @@ let nextUid = 1
 // hazardous), CLICK sends on click and asks for confirmation when hazardous.
 // Critical commands go through the standard critical command approval dialog.
 export default {
-  components: { CriticalCmdDialog, StatusSymbol },
-  // panelBase: nothing is sent while editing (isLive) or during playback
+  components: { CommandParamField, CriticalCmdDialog, StatusSymbol },
+  // panelBase: nothing is sent while editing (isEditing) or during playback
   mixins: [panelBase, CmdUtilities],
   data() {
     return {
-      api: new OpenC3Api(),
       uid: `cmd${nextUid++}`,
       cmdRaw: false, // used by CmdUtilities.convertToValue
       command: null,
@@ -211,30 +200,54 @@ export default {
     isScript() {
       return !!this.panel.script
     },
-    // 2 rows tall: only the button and its status. Commands send their
-    // PARAMETER values; DETAILS shows as the button's tooltip.
+    // 2 or 3 rows tall: only the button and its status, which is too
+    // small for a usable form. Commands send their PARAMETER values; DETAILS
+    // shows as the button's tooltip. rect follows a resize while it's
+    // dragged, so the layout switches live.
     compact() {
-      return this.panel.h <= 2
+      return this.rect.h <= 3
     },
+    // Scripts, and 2-row panels that only fit a slim button
     slim() {
-      return this.isScript || this.compact
+      return this.isScript || this.rect.h <= 2
     },
-    // Required parameters without a value, which a compact panel has no
-    // form to ask for
+    buttonTitle() {
+      return this.compact ? this.details : undefined
+    },
+    hidden() {
+      return option(this.panel, 'HIDE')
+    },
+    // Parameters with a field in the panel; hidden ones still send their
+    // preset or default
+    shownParams() {
+      return this.params.filter((param) => !this.hidden.includes(param.name))
+    },
+    // Parameters per line from the panel's grid width: 1 up to 3 columns,
+    // 2 up to 6, 3 up to 9, 4 up to 12. The CSS still drops to fewer when
+    // fields would get too narrow, e.g. on phones.
+    columns() {
+      return Math.max(1, Math.min(4, Math.ceil(this.rect.w / 3)))
+    },
+    // Every label gets the longest name's width so the fields line up
+    labelChars() {
+      return Math.max(4, ...this.shownParams.map((p) => p.name.length))
+    },
+    // Required parameters without a value that the panel has no field for:
+    // all of them in a compact panel, otherwise the hidden ones
     unsetRequired() {
-      if (!this.compact) return []
-      return this.params
-        .filter(
-          (param) =>
-            param.required &&
-            [undefined, null, ''].includes(this.values[param.name]),
-        )
-        .map((param) => param.name)
+      return findUnset(
+        this.params,
+        this.values,
+        this.compact ? null : this.hidden,
+      )
     },
     statusText() {
       if (this.isPlayback) return 'Off during playback'
       if (this.unsetRequired.length) {
-        return `Needs ${this.unsetRequired.join(', ')}: make the panel taller to set it`
+        const fix = this.compact
+          ? 'make the panel taller to set it, or preset it'
+          : 'preset or unhide it in the panel settings'
+        return `Needs ${this.unsetRequired.join(', ')}: ${fix}`
       }
       return this.status
     },
@@ -261,7 +274,7 @@ export default {
       return (
         this.loaded &&
         !this.checking &&
-        this.isLive &&
+        !this.isEditing &&
         !this.isPlayback &&
         !this.unsetRequired.length
       )
@@ -278,11 +291,9 @@ export default {
     },
   },
   watch: {
-    'panel.command': {
-      deep: true,
-      handler() {
-        this.load()
-      },
+    // Replaced whole when the command changes, never edited in place
+    'panel.command'() {
+      this.load()
     },
     'panel.script'() {
       this.load()
@@ -305,6 +316,7 @@ export default {
     },
   },
   created() {
+    this.api = new OpenC3Api()
     this.load()
   },
   unmounted() {
@@ -528,14 +540,33 @@ export default {
 .command-panel :deep(.v-field__input) {
   font-size: 13px;
 }
+.param-grid {
+  /* At most --param-cols per line, each at least 160px wide (or the whole
+     line when the panel is narrower than that) */
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fill,
+    minmax(
+      max(
+        min(160px, 100%),
+        calc((100% - (var(--param-cols) - 1) * 16px) / var(--param-cols))
+      ),
+      1fr
+    )
+  );
+  gap: 8px 16px;
+}
 .param-row {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
 }
+/* As wide as the longest name (labels are monospace, so ch fits), leaving
+   the field at least 100px; longer names truncate with the full name as a
+   tooltip */
 .param-label {
-  width: 96px;
-  flex-shrink: 0;
+  width: min(calc(var(--label-chars) * 1ch + 2px), calc(100% - 112px));
 }
 @container (max-width: 300px) {
   .command-panel :deep(.v-field__input) {
@@ -573,15 +604,11 @@ export default {
   min-height: 28px;
   font-size: 12px;
 }
-.details {
-  white-space: pre-line;
-}
 .hold:disabled {
   opacity: 0.5;
   cursor: default;
 }
 .hold-fill {
-  position: absolute;
   inset: 0 auto 0 0;
   width: 0;
   /* The lighter ink color, so the fill stands out from the primary tint

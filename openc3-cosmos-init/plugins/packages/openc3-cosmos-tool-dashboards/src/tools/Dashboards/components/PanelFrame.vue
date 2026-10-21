@@ -44,15 +44,13 @@
         aria-hidden="true"
       />
       <h3
-        class="panel-title text-truncate flex-shrink-1"
-        style="min-width: 0"
+        class="panel-title font-weight-bold text-truncate flex-shrink-1 min-w-0"
         data-test="panel-title"
       >
         {{ title }}
       </h3>
       <span
-        class="panel-subtitle mono text-medium-emphasis text-truncate"
-        style="min-width: 0"
+        class="panel-subtitle mono text-medium-emphasis text-truncate min-w-0"
       >
         {{ subtitle }}
       </span>
@@ -98,7 +96,7 @@
         </v-list>
       </v-menu>
     </div>
-    <div class="d-flex flex-column flex-grow-1" style="min-height: 0">
+    <div class="d-flex flex-column flex-grow-1 min-h-0">
       <slot />
     </div>
     <button
@@ -204,7 +202,6 @@ export default {
 }
 .panel-title {
   font-size: 14px;
-  font-weight: 700;
 }
 .panel-subtitle {
   font-size: 12px;

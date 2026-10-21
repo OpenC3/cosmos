@@ -25,21 +25,34 @@ export default {
     cable: { default: null },
     // Opens the item details sheet; absent where details aren't offered
     openDetails: { default: null },
-    // { on } is false while the dashboard is being edited; panels stop
-    // fetching telemetry and sending commands until it's back on
-    live: { default: () => ({ on: true }) },
+    // { on } while the dashboard is being edited: telemetry keeps flowing,
+    // but panels don't send commands or run anything
+    editing: { default: () => ({ on: false }) },
     // { on, time }: while playback is on, panels show telemetry as of `time`
     timeline: { default: () => ({ on: false, time: null }) },
     // 'local' or 'UTC', from Admin > Settings: times show in it (format.js)
     timeZone: { default: 'local' },
+    // { uid: rect } as drawn, including mid-drag (DashboardGrid)
+    gridRects: { default: null },
   },
   props: {
     panel: { type: Object, required: true },
   },
   emits: ['level'],
   computed: {
+    isEditing() {
+      return this.editing.on
+    },
+    // Not editing, so actions are allowed. Kept for plugin panels written
+    // when editing also stopped telemetry; built-in panels use isEditing.
     isLive() {
-      return this.live.on
+      return !this.editing.on
+    },
+    // The panel's size and place as drawn: follows a resize while it's being
+    // dragged and the tablet / phone layouts. Use instead of panel.w / h.
+    rect() {
+      // Injected computeds are unwrapped, like timeZone
+      return this.gridRects?.[this.panel.uid] ?? this.panel
     },
     isPlayback() {
       return this.timeline.on

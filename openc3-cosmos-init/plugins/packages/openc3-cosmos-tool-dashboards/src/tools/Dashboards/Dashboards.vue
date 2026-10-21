@@ -14,88 +14,79 @@
 <template>
   <top-bar :title="title" :menus="menus" />
   <div class="dashboards-root">
-    <!-- Viewing -->
+    <!-- Same header viewing and editing; the Code button is shared -->
     <header
-      v-if="!editing"
       class="dashboard-header d-flex flex-wrap align-center ga-3 px-4 py-2 border-b"
+      :data-test="editing ? 'editor-header' : undefined"
     >
-      <nav
-        aria-label="Breadcrumb"
-        class="d-flex align-center ga-2 text-body-1 flex-grow-1"
-        style="min-width: 0"
-      >
-        <!-- On phones the dashboard's name is the switcher instead -->
-        <v-btn
-          v-if="!isPhone || !current"
-          variant="text"
-          :prepend-icon="isPhone ? undefined : 'mdi-view-dashboard-outline'"
-          :icon="isPhone ? 'mdi-view-dashboard-outline' : undefined"
-          :append-icon="isPhone ? undefined : 'mdi-chevron-down'"
-          class="text-medium-emphasis flex-shrink-0"
-          :aria-label="isPhone ? 'All dashboards' : undefined"
-          title="All dashboards (Ctrl+K)"
-          data-test="dashboard-navigator-btn"
-          @click="navigatorOpen = true"
+      <template v-if="!editing">
+        <nav
+          aria-label="Breadcrumb"
+          class="d-flex align-center ga-2 text-body-1 flex-grow-1 min-w-0"
         >
-          <template v-if="!isPhone">Dashboards</template>
-        </v-btn>
-        <template v-if="current">
-          <span v-if="!isPhone" class="text-disabled">/</span>
-          <component
-            :is="isPhone ? 'button' : 'div'"
-            v-ripple="isPhone"
-            :type="isPhone ? 'button' : undefined"
-            :class="[
-              'd-flex align-center ga-2',
-              { 'phone-switcher rounded-lg pa-1 ml-n1 text-left': isPhone },
-            ]"
-            style="min-width: 0"
-            :aria-label="
-              isPhone ? `${model.title}, switch dashboard` : undefined
-            "
-            data-test="dashboard-switcher"
-            @click="isPhone && (navigatorOpen = true)"
+          <!-- On phones the dashboard's name is the switcher instead -->
+          <v-btn
+            v-if="!isPhone || !current"
+            variant="text"
+            :prepend-icon="isPhone ? undefined : 'mdi-view-dashboard-outline'"
+            :icon="isPhone ? 'mdi-view-dashboard-outline' : undefined"
+            :append-icon="isPhone ? undefined : 'mdi-chevron-down'"
+            class="text-medium-emphasis flex-shrink-0"
+            :aria-label="isPhone ? 'All dashboards' : undefined"
+            title="All dashboards (Ctrl+K)"
+            data-test="dashboard-navigator-btn"
+            @click="navigatorOpen = true"
           >
-            <dashboard-avatar
-              :icon="style.icon"
-              :color="style.color"
-              :size="32"
-            />
-            <span
-              class="font-weight-bold text-truncate"
-              data-test="dashboard-title"
+            <template v-if="!isPhone">Dashboards</template>
+          </v-btn>
+          <template v-if="current">
+            <span v-if="!isPhone" class="text-disabled">/</span>
+            <component
+              :is="isPhone ? 'button' : 'div'"
+              v-ripple="isPhone"
+              :type="isPhone ? 'button' : undefined"
+              :class="[
+                'd-flex align-center ga-2 min-w-0',
+                { 'phone-switcher rounded-lg pa-1 ml-n1 text-left': isPhone },
+              ]"
+              :aria-label="
+                isPhone ? `${model.title}, switch dashboard` : undefined
+              "
+              data-test="dashboard-switcher"
+              @click="isPhone && (navigatorOpen = true)"
             >
-              {{ model.title }}
-            </span>
-            <v-icon v-if="isPhone" icon="mdi-chevron-down" size="20" />
-          </component>
-          <v-tooltip v-if="!isPhone" location="bottom" :text="starHelp">
-            <template #activator="{ props }">
-              <v-btn
-                v-bind="props"
-                :icon="starred ? 'mdi-star' : 'mdi-star-outline'"
-                :color="starred ? 'warning' : undefined"
-                variant="text"
-                size="small"
-                :aria-label="starred ? 'Unstar dashboard' : 'Star dashboard'"
-                :aria-pressed="starred"
-                data-test="dashboard-star"
-                @click="toggleStar(currentKey)"
+              <dashboard-avatar
+                :icon="style.icon"
+                :color="style.color"
+                :size="32"
               />
-            </template>
-          </v-tooltip>
-        </template>
-      </nav>
-      <template v-if="!isPhone">
+              <span
+                class="font-weight-bold text-truncate"
+                data-test="dashboard-title"
+              >
+                {{ model.title }}
+              </span>
+              <v-icon v-if="isPhone" icon="mdi-chevron-down" size="20" />
+            </component>
+            <v-tooltip v-if="!isPhone" location="bottom" :text="starHelp">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  :icon="starred ? 'mdi-star' : 'mdi-star-outline'"
+                  :color="starred ? 'warning' : undefined"
+                  variant="text"
+                  size="small"
+                  :aria-label="starred ? 'Unstar dashboard' : 'Star dashboard'"
+                  :aria-pressed="starred"
+                  data-test="dashboard-star"
+                  @click="toggleStar(currentKey)"
+                />
+              </template>
+            </v-tooltip>
+          </template>
+        </nav>
         <v-btn
-          variant="outlined"
-          prepend-icon="mdi-plus"
-          data-test="dashboard-new"
-          @click="openDashboardDialog('new')"
-        >
-          New
-        </v-btn>
-        <v-btn
+          v-if="!isPhone"
           :variant="playback.on ? 'flat' : 'outlined'"
           :color="playback.on ? 'secondary' : undefined"
           prepend-icon="mdi-history"
@@ -106,16 +97,53 @@
         >
           Playback
         </v-btn>
+      </template>
+      <template v-else>
+        <dashboard-style-picker
+          :settings="model.settings"
+          @update="(settings) => (model.settings = settings)"
+        />
+        <v-text-field
+          :model-value="model.title"
+          label="Dashboard title"
+          density="compact"
+          variant="outlined"
+          hide-details
+          style="max-width: 280px; min-width: 180px"
+          data-test="dashboard-title-input"
+          @update:model-value="(title) => (model.title = title)"
+        />
+        <v-chip
+          size="small"
+          variant="text"
+          :class="dirty ? 'text-warning' : 'text-medium-emphasis'"
+          data-test="dashboard-status"
+        >
+          {{ dirty ? 'Unsaved changes' : 'Saved' }}
+        </v-chip>
+        <v-spacer />
         <v-btn
           variant="outlined"
-          prepend-icon="mdi-code-tags"
-          :disabled="!current"
-          data-test="dashboard-code-btn"
-          @click="openCode"
+          prepend-icon="mdi-plus-box-outline"
+          data-test="panel-add"
+          @click="addPanel"
         >
-          Code
+          Add panel
         </v-btn>
+      </template>
+      <v-btn
+        v-if="editing || !isPhone"
+        variant="outlined"
+        prepend-icon="mdi-code-tags"
+        :disabled="!current"
+        data-test="dashboard-code-btn"
+        @click="openCode"
+      >
+        Code
+      </v-btn>
+      <template v-if="!editing">
         <v-btn
+          v-if="!isPhone"
           color="primary"
           variant="flat"
           prepend-icon="mdi-pencil"
@@ -125,105 +153,65 @@
         >
           Edit
         </v-btn>
+        <time-range-picker
+          v-if="current"
+          v-model="timeRange.seconds"
+          :compact="isPhone"
+        />
       </template>
-    </header>
-
-    <!-- Editing -->
-    <header
-      v-else
-      class="dashboard-header d-flex flex-wrap align-center ga-3 px-4 py-2 border-b"
-      data-test="editor-header"
-    >
-      <dashboard-style-picker
-        :settings="model.settings"
-        @update="(settings) => (model.settings = settings)"
-      />
-      <v-text-field
-        :model-value="model.title"
-        label="Dashboard title"
-        density="compact"
-        variant="outlined"
-        hide-details
-        style="max-width: 280px; min-width: 180px"
-        data-test="dashboard-title-input"
-        @update:model-value="(title) => (model.title = title)"
-      />
-      <v-chip
-        size="small"
-        variant="text"
-        :class="dirty ? 'text-warning' : 'text-medium-emphasis'"
-        data-test="dashboard-status"
-      >
-        {{ dirty ? 'Unsaved changes' : 'Saved' }}
-      </v-chip>
-      <v-spacer />
-      <v-btn
-        variant="outlined"
-        prepend-icon="mdi-plus-box-outline"
-        data-test="panel-add"
-        @click="addPanel"
-      >
-        Add panel
-      </v-btn>
-      <v-btn
-        variant="outlined"
-        prepend-icon="mdi-code-tags"
-        data-test="dashboard-code-btn"
-        @click="codeDialog = true"
-      >
-        Code
-      </v-btn>
-      <div class="d-flex">
+      <template v-else>
+        <div class="d-flex">
+          <v-btn
+            icon="mdi-undo"
+            variant="text"
+            size="small"
+            aria-label="Undo"
+            title="Undo (Ctrl+Z)"
+            :disabled="!history.canUndo"
+            data-test="editor-undo"
+            @click="undo"
+          />
+          <v-btn
+            icon="mdi-redo"
+            variant="text"
+            size="small"
+            aria-label="Redo"
+            title="Redo (Ctrl+Shift+Z)"
+            :disabled="!history.canRedo"
+            data-test="editor-redo"
+            @click="redo"
+          />
+        </div>
         <v-btn
-          icon="mdi-undo"
-          variant="text"
-          size="small"
-          aria-label="Undo"
-          title="Undo (Ctrl+Z)"
-          :disabled="!history.canUndo"
-          data-test="editor-undo"
-          @click="undo"
-        />
+          variant="outlined"
+          prepend-icon="mdi-content-save"
+          :disabled="!dirty"
+          :loading="saving"
+          data-test="dashboard-save"
+          @click="save"
+        >
+          Save
+        </v-btn>
         <v-btn
-          icon="mdi-redo"
-          variant="text"
-          size="small"
-          aria-label="Redo"
-          title="Redo (Ctrl+Shift+Z)"
-          :disabled="!history.canRedo"
-          data-test="editor-redo"
-          @click="redo"
-        />
-      </div>
-      <v-btn
-        variant="outlined"
-        prepend-icon="mdi-content-save"
-        :disabled="!dirty"
-        :loading="saving"
-        data-test="dashboard-save"
-        @click="save"
-      >
-        Save
-      </v-btn>
-      <v-btn
-        variant="outlined"
-        prepend-icon="mdi-close"
-        :disabled="saving"
-        data-test="dashboard-cancel"
-        @click="cancelEditing"
-      >
-        Cancel
-      </v-btn>
-      <v-btn
-        color="primary"
-        variant="flat"
-        prepend-icon="mdi-check"
-        :loading="saving"
-        data-test="dashboard-done"
-        @click="done"
-      >
-        Save and Done
-      </v-btn>
+          variant="outlined"
+          prepend-icon="mdi-close"
+          :disabled="saving"
+          data-test="dashboard-cancel"
+          @click="cancelEditing"
+        >
+          Cancel
+        </v-btn>
+        <v-btn
+          color="primary"
+          variant="flat"
+          prepend-icon="mdi-check"
+          :loading="saving"
+          data-test="dashboard-done"
+          @click="done"
+        >
+          Save and Done
+        </v-btn>
+      </template>
     </header>
 
     <!-- The same playback banner and controls as Telemetry Viewer. The
@@ -231,8 +219,10 @@
     <template v-if="playback.on && !editing">
       <playback-banner class="rounded-0" />
       <div class="px-4 py-3 border-b" data-test="playback-bar">
+        <!-- Centered, wrapped lines too (class lands on the controls' row) -->
         <playback-controls
           v-model="playback.time"
+          class="justify-center"
           :time-zone="timeZone"
           :loading="poller.clock.loading > 0"
           storage-key="dashboards"
@@ -324,7 +314,7 @@
           <button
             key="add-panel"
             type="button"
-            class="add-panel d-flex align-center justify-center ga-2 rounded-lg text-medium-emphasis"
+            class="add-panel d-flex align-center justify-center ga-2 rounded-lg border border-dashed cursor-pointer text-medium-emphasis"
             :style="{
               gridColumn: '1 / span 3',
               gridRow: `${nextRow + 1} / span 2`,
@@ -398,6 +388,9 @@ import DashboardAvatar from './components/DashboardAvatar.vue'
 import DashboardStylePicker from './components/DashboardStylePicker.vue'
 import { dashboardStyle } from './dashboardStyle'
 import ItemDetails from './components/ItemDetails.vue'
+import TimeRangePicker from './components/TimeRangePicker.vue'
+import { loadTimeRange, saveTimeRange } from './composables/timeRange'
+import { readString, writeString } from './composables/storage'
 import DashboardDialog from './dialogs/DashboardDialog.vue'
 import DashboardNavigator from './navigator/DashboardNavigator.vue'
 import {
@@ -411,7 +404,8 @@ import PanelDialog from './dialogs/PanelDialog.vue'
 import CodeDialog from './dialogs/CodeDialog.vue'
 import { History } from './editor/history'
 import { loadPanelPlugins } from './composables/panelPlugins'
-import { PANEL_TYPES } from './panels/registry'
+import { PANEL_TYPES, defaultPanelType } from './panels/registry'
+import { clearCommandCache } from './panels/commandParams'
 import { TlmPoller } from './composables/tlmPoller'
 import { ItemInfo } from './composables/itemInfo'
 import {
@@ -438,6 +432,7 @@ export default {
     DashboardNavigator,
     ItemDetails,
     PanelDialog,
+    TimeRangePicker,
     TopBar,
   },
   provide() {
@@ -446,18 +441,20 @@ export default {
       itemInfo: this.itemInfo,
       cable: this.cable,
       openDetails: this.openDetails,
-      live: this.live,
+      editing: this.editMode,
       // { on, time }: panels show telemetry as of `time` while playback is on
       timeline: this.playback,
+      // { seconds }: how much history graphs and sparklines show
+      timeRange: this.timeRange,
       timeZone: computed(() => this.timeZone),
     }
   },
-  // Leaving with unsaved edits asks first
-  beforeRouteLeave(to, from, next) {
-    this.confirmDiscard().then((ok) => next(ok))
+  // Leaving with unsaved edits asks first; resolving false cancels
+  beforeRouteLeave() {
+    return this.confirmDiscard()
   },
-  beforeRouteUpdate(to, from, next) {
-    this.confirmDiscard().then((ok) => next(ok))
+  beforeRouteUpdate() {
+    return this.confirmDiscard()
   },
   data() {
     return {
@@ -469,10 +466,13 @@ export default {
       history: markRaw(new History()),
       // One streaming connection shared by every panel
       cable: markRaw(new Cable()),
-      // Off while editing: panels don't fetch telemetry or send commands
-      live: reactive({ on: true }),
+      // On while editing: panels keep showing telemetry but don't send
+      // commands
+      editMode: reactive({ on: false }),
       // Playback: replay every panel from a past time
       playback: reactive({ on: false, time: null }),
+      // Picked in the header, shared by every dashboard
+      timeRange: reactive({ seconds: loadTimeRange() }),
       timeZone: 'local',
       dashboards: [],
       current: null, // { target, name }
@@ -497,12 +497,11 @@ export default {
       // Item details sheet
       detailsItem: null,
       detailsOpen: false,
-      windowWidth: window.innerWidth,
     }
   },
   computed: {
     breakpoint() {
-      return breakpointFor(this.windowWidth)
+      return breakpointFor(this.$vuetify.display.width)
     },
     isPhone() {
       return this.breakpoint === 'phone'
@@ -541,6 +540,11 @@ export default {
     style() {
       return dashboardStyle(this.model.settings)
     },
+    // A number, so replacing the model with the same period (undo, code
+    // edits, reopening) doesn't restart the poller
+    pollingPeriod() {
+      return Number(this.model.settings.POLLING_PERIOD?.[0]) || 1
+    },
     starred() {
       return isStarred(this.currentKey)
     },
@@ -557,6 +561,11 @@ export default {
         {
           label: 'File',
           items: [
+            {
+              label: 'New Dashboard',
+              icon: 'mdi-plus',
+              command: () => this.openDashboardDialog('new'),
+            },
             {
               label: 'Delete Dashboard',
               icon: 'mdi-delete',
@@ -579,14 +588,14 @@ export default {
     'playback.time'(time) {
       this.poller.setPlaybackTime(time)
     },
-    // Editing arranges panels without fetching telemetry
-    editing(editing) {
-      this.live.on = !editing
-      if (editing) this.poller.pause()
-      else this.poller.resume()
+    'timeRange.seconds'(seconds) {
+      saveTimeRange(seconds)
     },
-    'model.settings.POLLING_PERIOD'(values) {
-      this.poller.start(Number(values?.[0]) || 1)
+    editing(editing) {
+      this.editMode.on = editing
+    },
+    pollingPeriod(seconds) {
+      this.poller.start(seconds)
     },
     // Every edit, from any part of the editor, lands in the undo history
     text(text) {
@@ -623,8 +632,8 @@ export default {
     let key = null
     if (target && dashboard) {
       key = `${target.toUpperCase()}/${dashboard.toUpperCase()}`
-    } else if (this.dashboards.includes(localStorage[LAST_KEY])) {
-      key = localStorage[LAST_KEY]
+    } else if (this.dashboards.includes(readString(LAST_KEY))) {
+      key = readString(LAST_KEY)
     } else {
       key = this.dashboards[0]
     }
@@ -633,12 +642,10 @@ export default {
   },
   mounted() {
     window.addEventListener('beforeunload', this.beforeUnload)
-    window.addEventListener('resize', this.onResize)
     window.addEventListener('keydown', this.onKeydown)
   },
   unmounted() {
     window.removeEventListener('beforeunload', this.beforeUnload)
-    window.removeEventListener('resize', this.onResize)
     window.removeEventListener('keydown', this.onKeydown)
     this.poller.stop()
     this.itemInfo.stop()
@@ -648,9 +655,6 @@ export default {
     toggleStar,
     beforeUnload(event) {
       if (this.dirty) event.preventDefault()
-    },
-    onResize() {
-      this.windowWidth = window.innerWidth
     },
     // Ctrl/Cmd+K opens the navigator. While editing, Ctrl/Cmd+Z undoes and
     // Ctrl/Cmd+Shift+Z or Ctrl+Y redoes, outside text fields.
@@ -672,21 +676,22 @@ export default {
         this.redo()
       }
     },
-    async confirmDiscard() {
-      if (!this.dirty) return true
+    // Confirm dialog as true / false ($dialog.confirm rejects on cancel)
+    async ask(message, options) {
       try {
-        await this.$dialog.confirm(
-          `Discard unsaved changes to ${this.model.title}?`,
-          {
-            okText: 'Discard',
-            cancelText: 'Keep editing',
-            okClass: 'error',
-          },
-        )
+        await this.$dialog.confirm(message, options)
         return true
       } catch {
         return false
       }
+    },
+    confirmDiscard() {
+      if (!this.dirty) return Promise.resolve(true)
+      return this.ask(`Discard unsaved changes to ${this.model.title}?`, {
+        okText: 'Discard',
+        cancelText: 'Keep editing',
+        okClass: 'error',
+      })
     },
     async loadList() {
       try {
@@ -705,6 +710,9 @@ export default {
       this.open(key)
     },
     async open(key) {
+      // Panels share command definitions; opening a dashboard refetches them
+      // so changed definitions show without a page reload
+      clearCommandCache()
       const [target, name] = key.split('/')
       let text
       try {
@@ -729,8 +737,8 @@ export default {
     // the dashboard that's showing
     rememberCurrent() {
       const { target, name } = this.current
-      remember(this.currentKey, this.text)
-      localStorage[LAST_KEY] = this.currentKey
+      remember(this.currentKey, this.model)
+      writeString(LAST_KEY, this.currentKey)
       if (
         this.$route.params.target !== target ||
         this.$route.params.dashboard !== name
@@ -754,7 +762,7 @@ export default {
         await this.post(this.current.target, this.current.name, text)
         this.savedText = text
         this.fileText = null
-        remember(this.currentKey, text)
+        remember(this.currentKey, this.model)
         this.$notify.normal({ title: 'Saved dashboard', body: this.currentKey })
       } catch (error) {
         this.$notify.serious({
@@ -807,14 +815,11 @@ export default {
     },
     async deleteDashboard() {
       if (!this.current) return
-      try {
-        await this.$dialog.confirm(
-          `Delete ${this.currentKey}? Dashboards installed by a plugin go back to the plugin's version.`,
-          { okText: 'Delete', cancelText: 'Cancel', okClass: 'error' },
-        )
-      } catch {
-        return
-      }
+      const ok = await this.ask(
+        `Delete ${this.currentKey}? Dashboards installed by a plugin go back to the plugin's version.`,
+        { okText: 'Delete', cancelText: 'Cancel', okClass: 'error' },
+      )
+      if (!ok) return
       try {
         await Api.delete(
           `/openc3-api/dashboard/${this.current.target}/${this.current.name}`,
@@ -842,13 +847,13 @@ export default {
         this.savedText = ''
         this.fileText = null
         this.editing = false
-        localStorage.removeItem(LAST_KEY)
+        writeString(LAST_KEY, null)
         this.$router.replace({ name: 'Dashboards', params: {} })
       }
     },
 
-    // Tapping a value opens its details sheet (not while editing, when
-    // there's no live data)
+    // Tapping a value opens its details sheet (not while editing, when taps
+    // arrange panels)
     openDetails(item) {
       if (this.editing) return
       this.detailsItem = {
@@ -916,7 +921,7 @@ export default {
       this.applyPositions(resolveLayout(this.model.panels, fixed))
     },
     addPanel() {
-      const type = 'VALUES'
+      const type = defaultPanelType()
       const { w, h } = PANEL_TYPES[type].defaults
       this.editPanel = newPanel(type, 0, 0, w, h)
       this.editPanelIsNew = true
@@ -961,10 +966,11 @@ export default {
 .dashboard-header {
   min-height: 57px;
 }
+/* Stronger than the default border; background stays here (not
+   bg-transparent) so :hover can change it */
 .add-panel {
-  border: 1px dashed rgba(var(--v-border-color), 0.3);
+  --v-border-opacity: 0.3;
   background: transparent;
-  cursor: pointer;
 }
 .add-panel:hover {
   background: rgba(var(--v-theme-on-surface), 0.04);

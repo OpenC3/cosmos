@@ -67,4 +67,39 @@
   .db-row + .db-row {
     border-top: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
   }
+
+  // Limits zones (LimitsBar, GaugePanel): each sets --zone, and the
+  // component paints it as a background or an SVG stroke
+  .z-critical {
+    --zone: color-mix(in srgb, var(--color-status-critical) 55%, transparent);
+  }
+  .z-caution {
+    --zone: color-mix(in srgb, var(--color-status-caution) 45%, transparent);
+  }
+  .z-standby {
+    --zone: color-mix(in srgb, var(--color-status-standby) 35%, transparent);
+  }
+  .z-normal {
+    --zone: color-mix(in srgb, var(--color-status-normal) 22%, transparent);
+  }
+  // Empty part of a limits track
+  --track-color: rgba(var(--v-border-color), var(--v-border-opacity));
+
+  // The current choice in a list (navigator, time range picker): a
+  // secondary bar on the left that doesn't shift the text
+  .db-current-list .v-list-item {
+    border-left: 3px solid transparent;
+  }
+  .db-current-list .v-list-item.current {
+    border-left-color: rgb(var(--v-theme-secondary));
+    background: rgba(var(--v-theme-on-surface), 0.05);
+  }
+
+  // Vuetify has no min-size utilities; flex children need them to shrink
+  .min-h-0 {
+    min-height: 0;
+  }
+  .min-w-0 {
+    min-width: 0;
+  }
 }
