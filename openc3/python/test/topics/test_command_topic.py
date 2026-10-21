@@ -65,6 +65,13 @@ class TestCommandTopic(unittest.TestCase):
         self.assertEqual(msg_hash["received_count"], 1)
         self.assertEqual(msg_hash["buffer"], b"\x01\x02\x03\x04")
 
+    def test_writes_stored_as_lowercase_like_ruby(self):
+        for stored, expected in [(True, "true"), (False, "false")]:
+            packet = self._make_packet()
+            packet.stored = stored
+            CommandTopic.write_packet(packet, scope="DEFAULT")
+            self.assertEqual(self.captured["msg_hash"]["stored"], expected)
+
     def test_includes_extra_when_set(self):
         extra = {"foo": "bar", "count": 42}
         CommandTopic.write_packet(self._make_packet(extra=extra), scope="DEFAULT")

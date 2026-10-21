@@ -65,6 +65,26 @@ module OpenC3
       end
     end
 
+    describe "self.get_or_default" do
+      it "returns UNKNOWN state for nonexistent" do
+        result = InterfaceStatusModel.get_or_default(name: 'IS', scope: 'DEFAULT')
+        expect(result).to eq({ 'state' => 'UNKNOWN' })
+      end
+
+      it "returns a custom default for nonexistent" do
+        result = InterfaceStatusModel.get_or_default(name: 'IS', scope: 'DEFAULT', default: { 'state' => 'OTHER' })
+        expect(result).to eq({ 'state' => 'OTHER' })
+      end
+
+      it "returns the status when it exists" do
+        InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT").create
+        InterfaceStatusModel.set({ name: 'TEST_INT', state: 'CONNECTED' }, scope: 'DEFAULT')
+        result = InterfaceStatusModel.get_or_default(name: 'TEST_INT', scope: 'DEFAULT')
+        expect(result['name']).to eq('TEST_INT')
+        expect(result['state']).to eq('CONNECTED')
+      end
+    end
+
     describe "self.names" do
       it "returns empty for no statuses" do
         names = InterfaceStatusModel.names(scope: 'DEFAULT')
