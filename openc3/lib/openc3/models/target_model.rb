@@ -51,7 +51,8 @@ module OpenC3
     ERB_EXTENSIONS = %w(.txt .rb .py .json .yaml .yml)
     ITEM_MAP_CACHE_TIMEOUT = 10.0
     PACKET_CACHE_TIMEOUT = 10.0
-    MAX_COLUMN_HEADER_LENGTH = 127 # QuestDB column header limit for item/param names
+    MAX_COLUMN_HEADER_LENGTH = 127 # QuestDB column header limit (cairo.max.file.name.length default)
+    COLUMN_SUFFIX_LENGTH = 3 # __C, __F or __L appended to the item name in QuestDB column names
     @@item_map_cache = {}
     @@packet_cache = {}
     @@packet_cache_mutex = Mutex.new
@@ -820,21 +821,35 @@ module OpenC3
       Logger.warn("Modified diff check failed for #{@scope}/#{name}: #{e.message}")
     end
 
+    # QuestDB limits column names to cairo.max.file.name.length (127 by default), which a
+    # deployment raises with QDB_CAIRO_MAX_FILE_NAME_LENGTH on the openc3-tsdb service. The
+    # same variable on the API services sizes this check. Columns carry the item name plus a
+    # value type suffix (__C, __F, __L), so item names get 3 less. Lengths are UTF-8 bytes,
+    # the unit of the QuestDB limit.
+    def self.max_column_header_length
+      limit = Integer(ENV.fetch('QDB_CAIRO_MAX_FILE_NAME_LENGTH', MAX_COLUMN_HEADER_LENGTH))
+      limit = MAX_COLUMN_HEADER_LENGTH unless limit > 0
+      limit - COLUMN_SUFFIX_LENGTH
+    rescue ArgumentError, TypeError
+      MAX_COLUMN_HEADER_LENGTH - COLUMN_SUFFIX_LENGTH
+    end
+
     def check_column_header_lengths(system)
+      limit = TargetModel.max_column_header_length
       too_long = []
       [system.packet_config.telemetry, system.packet_config.commands].each do |packets_by_target|
         packets_by_target.each do |target_name, packets|
           packets.each do |packet_name, packet|
             packet.sorted_items.each do |item|
-              if item.name.length > MAX_COLUMN_HEADER_LENGTH
-                too_long << "#{target_name} #{packet_name} #{item.name} (#{item.name.length})"
+              if item.name.bytesize > limit
+                too_long << "#{target_name} #{packet_name} #{item.name} (#{item.name.bytesize})"
               end
             end
           end
         end
       end
       unless too_long.empty?
-        raise "Item / parameter names must be #{MAX_COLUMN_HEADER_LENGTH} characters or less (QuestDB column header limit). The following are too long:\n  #{too_long.join("\n  ")}"
+        raise "Item / parameter names must be #{limit} bytes or less (QuestDB column header limit #{limit + COLUMN_SUFFIX_LENGTH} minus the #{COLUMN_SUFFIX_LENGTH} byte value type suffix). The following are too long:\n  #{too_long.join("\n  ")}"
       end
     end
 

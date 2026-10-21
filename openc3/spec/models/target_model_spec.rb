@@ -1166,6 +1166,14 @@ module OpenC3
     end
 
     describe "check_column_header_lengths" do
+      before(:each) do
+        @saved_limit = ENV.delete('QDB_CAIRO_MAX_FILE_NAME_LENGTH')
+      end
+
+      after(:each) do
+        ENV['QDB_CAIRO_MAX_FILE_NAME_LENGTH'] = @saved_limit
+      end
+
       def build_system(packet)
         packet_config = double("PacketConfig", telemetry: { "INST" => { "PKT" => packet } }, commands: {})
         double("System", packet_config: packet_config)
@@ -1174,15 +1182,42 @@ module OpenC3
       it "raises if an item name exceeds the QuestDB column header limit" do
         model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
         packet = Packet.new("INST", "PKT")
-        packet.define_item("A" * 128, 0, 8, :UINT)
-        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/127 characters or less/)
+        packet.define_item("A" * 125, 0, 8, :UINT)
+        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/124 bytes or less/)
       end
 
       it "does not raise for names within the limit" do
         model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
         packet = Packet.new("INST", "PKT")
-        packet.define_item("A" * 127, 0, 8, :UINT)
+        packet.define_item("A" * 124, 0, 8, :UINT)
         expect { model.check_column_header_lengths(build_system(packet)) }.to_not raise_error
+      end
+
+      it "takes the limit from QDB_CAIRO_MAX_FILE_NAME_LENGTH less the column suffix" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
+        packet = Packet.new("INST", "PKT")
+        packet.define_item("A" * 252, 0, 8, :UINT)
+        ENV['QDB_CAIRO_MAX_FILE_NAME_LENGTH'] = '255'
+        expect { model.check_column_header_lengths(build_system(packet)) }.to_not raise_error
+        ENV['QDB_CAIRO_MAX_FILE_NAME_LENGTH'] = '254'
+        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/251 bytes or less/)
+      end
+
+      it "keeps the default when the variable is not a positive integer" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
+        packet = Packet.new("INST", "PKT")
+        packet.define_item("A" * 125, 0, 8, :UINT)
+        ['', '0', '-5', 'abc', '255x'].each do |value|
+          ENV['QDB_CAIRO_MAX_FILE_NAME_LENGTH'] = value
+          expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/124 bytes or less/)
+        end
+      end
+
+      it "measures the name in UTF-8 bytes" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
+        packet = Packet.new("INST", "PKT")
+        packet.define_item("É" * 70, 0, 8, :UINT) # 70 characters, 140 bytes
+        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/\(140\)/)
       end
     end
 
