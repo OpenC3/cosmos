@@ -24,17 +24,29 @@ module OpenC3
     # Mutex used to ensure that only one instance is created
     @@instance_mutex = Mutex.new
 
+    DEFAULT_UPDATE_INTERVAL = 1 # seconds
+
     # Get the singleton instance for the given db_shard
-    # Sets the update interval to 1 second by default
-    def self.instance(update_interval = 1, db_shard: 0) # seconds
+    # Uses the interval from set_update_interval_all_shards if not given
+    def self.instance(update_interval = nil, db_shard: 0)
       @instances ||= []
       the_instance = @instances[db_shard]
       return the_instance if the_instance
 
       @@instance_mutex.synchronize do
         @instances ||= []
-        @instances[db_shard] ||= self.new(update_interval, db_shard: db_shard)
+        @instances[db_shard] ||= self.new(update_interval || @update_interval || DEFAULT_UPDATE_INTERVAL, db_shard: db_shard)
         return @instances[db_shard]
+      end
+    end
+
+    # Set the update interval on every db_shard instance, including ones created later
+    def self.set_update_interval_all_shards(interval)
+      return unless interval > 0.0
+
+      @@instance_mutex.synchronize do
+        @update_interval = interval
+        (@instances || []).compact.each { |the_instance| the_instance.set_update_interval(interval) }
       end
     end
 

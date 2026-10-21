@@ -37,6 +37,9 @@ concurrency:
 env:
   TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
   TRIVY_JAVA_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db:1,ghcr.io/aquasecurity/trivy-java-db:1
+  # The Fetch VEX Hub step puts the VEX hub in the trivy cache; trivy's own
+  # fetch goes through the GitHub API and fails (see fetch-vexhub/action.yml).
+  TRIVY_SKIP_VEX_REPO_UPDATE: "true"
 
 permissions:
   contents: read
@@ -76,6 +79,24 @@ jobs:
         with:
           cache: true
           version: v0.76.0
+      # trivy-action's own cache (cache: false on each scan below) restores all
+      # of .cache/trivy at every scan step, which would overwrite the VEX Hub
+      # checkout with whatever was cached and save that back, so a VEX Hub pin
+      # bump would never take effect. Cache only the vulnerability DBs, once,
+      # before the VEX Hub is fetched. Keyed by day like trivy-action's.
+      - name: Get current date
+        id: date
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - name: Restore Trivy DB cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ github.workspace }}/.cache/trivy/db
+            ${{ github.workspace }}/.cache/trivy/java-db
+          key: trivy-db-${{ steps.date.outputs.date }}
+          restore-keys: trivy-db-
+      - name: Fetch VEX Hub
+        uses: ./.github/actions/fetch-vexhub
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         # See https://github.com/aquasecurity/trivy-action
@@ -85,6 +106,7 @@ jobs:
           # output: "trivy-ruby.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # NOTE: Disabling upload of SARIF files so we can see the output in the job
       # like with COSMOS Enterprise. To re-enable, uncomment the Upload lines,
       # and output: "trivy-ruby.sarif" as well as setting format: "sarif" in trivy.yaml.
@@ -103,6 +125,7 @@ jobs:
           # output: "trivy-node.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -117,6 +140,7 @@ jobs:
           # output: "trivy-base.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -131,6 +155,7 @@ jobs:
           # output: "trivy-init.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -145,6 +170,7 @@ jobs:
           # output: "trivy-redis.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -159,6 +185,7 @@ jobs:
           # output: "trivy-bucket.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -173,6 +200,7 @@ jobs:
           # output: "trivy-tsdb.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -187,6 +215,7 @@ jobs:
           # output: "trivy-operator.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -201,6 +230,7 @@ jobs:
           # output: "trivy-cmd-tlm-api.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -215,6 +245,7 @@ jobs:
           # output: "trivy-script-runner-api.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -229,6 +260,7 @@ jobs:
           # output: "trivy-traefik.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
