@@ -1167,6 +1167,71 @@ RSpec.describe StorageController, type: :controller do
       end
     end
 
+    describe "bucket parameters" do
+      # Aliases of the standard buckets must get the standard bucket controls
+      around(:each) do |example|
+        ENV["OPENC3_ALIAS_CONFIG_BUCKET"] = "config-bucket"
+        ENV["OPENC3_ALIAS_LOGS_BUCKET"] = "logs-bucket"
+        ENV["OPENC3_ALIAS_TOOLS_BUCKET"] = "tools-bucket"
+        ENV["OPENC3_SECRET_BUCKET_PASSWORD"] = "s3cr3t"
+        example.run
+      ensure
+        ["OPENC3_ALIAS_CONFIG_BUCKET", "OPENC3_ALIAS_LOGS_BUCKET", "OPENC3_ALIAS_TOOLS_BUCKET", "OPENC3_SECRET_BUCKET_PASSWORD"].each { |name| ENV.delete(name) }
+      end
+
+      it "classifies buckets by the bucket they resolve to" do
+        expect(controller.send(:bucket_requires_rbac?, "OPENC3_ALIAS_CONFIG_BUCKET")).to be true
+        expect(controller.send(:bucket_requires_rbac?, "OPENC3_ALIAS_LOGS_BUCKET")).to be true
+        expect(controller.send(:bucket_requires_rbac?, "OPENC3_ALIAS_TOOLS_BUCKET")).to be false
+        expect(controller.send(:non_admin_bucket_write?, "OPENC3_ALIAS_TOOLS_BUCKET", "tool/index.js")).to be false
+        expect(controller.send(:non_admin_bucket_write?, "OPENC3_ALIAS_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt")).to be false
+        expect(controller.send(:non_admin_bucket_write?, "OPENC3_ALIAS_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/screens/poc.txt")).to be true
+        expect(controller.send(:extract_target_from_path, "OPENC3_ALIAS_CONFIG_BUCKET", "DEFAULT/targets/INST")).to eq("INST")
+        expect(controller.send(:extract_target_from_path, "OPENC3_ALIAS_LOGS_BUCKET", "DEFAULT/raw_logs/tlm/INST")).to eq("INST")
+        expect(controller.send(:target_list_depth, "OPENC3_ALIAS_CONFIG_BUCKET", "DEFAULT/targets")).to eq(2)
+      end
+
+      it "does not treat parameters that are not bucket variables as buckets" do
+        expect(controller.send(:bucket_requires_rbac?, "OPENC3_SECRET_BUCKET_PASSWORD")).to be false
+        expect(controller.send(:standard_bucket?, "OPENC3_SECRET_BUCKET_PASSWORD")).to be false
+      end
+
+      it "requires admin to write the cmd_tlm overlay through an alias of the config bucket" do
+        stub_authorize(admin: false)
+        bucket_client = stub_bucket_client
+        expect(bucket_client).not_to receive(:presigned_request)
+
+        get :get_upload_presigned_request, params: {bucket: "OPENC3_ALIAS_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "applies scope RBAC through an alias of the logs bucket" do
+        stub_authorize(default_scope_only: true)
+
+        get :exists, params: {bucket: "OPENC3_ALIAS_LOGS_BUCKET", object_id: "SCOPE2/20251220/log.txt", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "rejects a parameter that is not an OPENC3_*_BUCKET variable" do
+        bucket_client = stub_bucket_client
+        expect(bucket_client).not_to receive(:presigned_request)
+
+        get :get_download_presigned_request, params: {bucket: "OPENC3_SECRET_BUCKET_PASSWORD", object_id: "DEFAULT/x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:internal_server_error)
+        expect(response.body).not_to include("s3cr3t")
+        expect(JSON.parse(response.body)["message"]).to eq("Unknown bucket OPENC3_SECRET_BUCKET_PASSWORD")
+      end
+
+      it "does not list a parameter that is not an OPENC3_*_BUCKET variable" do
+        bucket_client = stub_bucket_client
+        expect(bucket_client).not_to receive(:list_files)
+
+        get :files, params: {root: "OPENC3_SECRET_BUCKET_PASSWORD", path: "", scope: "DEFAULT"}
+        expect(response).to have_http_status(:internal_server_error)
+        expect(response.body).not_to include("s3cr3t")
+      end
+    end
+
     describe "extract_scope_from_path" do
       it "returns nil for empty path" do
         expect(controller.send(:extract_scope_from_path, '')).to be_nil
