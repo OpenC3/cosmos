@@ -85,10 +85,10 @@ class StorageController < ApplicationController
       if CONFIG_TARGET_DIRECTORIES.include?(parts[1])
         return parts[2] if parts.length >= 3
       end
-    elsif logs_bucket?(bucket_param) && parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
+    elsif logs_bucket?(bucket_param) && parts.length >= 4 && parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
       # Logs bucket: {SCOPE}/{type}_logs/{tlm|cmd}/{TARGET_NAME}/...
       # Examples: DEFAULT/decom_logs/tlm/INST/..., DEFAULT/raw_logs/cmd/INST/...
-      return parts[3] if parts.length >= 4
+      return parts[3]
     end
     nil
   end
