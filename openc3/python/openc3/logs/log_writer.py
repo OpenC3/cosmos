@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import re
 import tempfile
 import threading
 import traceback
@@ -21,6 +22,7 @@ from openc3.topics.topic import Topic
 from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.store import Store
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.time import from_nsec_from_epoch, to_timestamp
 
@@ -45,6 +47,15 @@ class LogWriter:
 
     # Sleeper used to delay cycle thread
     cycle_sleeper = None
+
+    @staticmethod
+    def db_shard_for_topic(redis_topic):
+        """Returns the Redis db_shard holding a target stream such as
+        SCOPE__TELEMETRY__{TARGET}__PACKET, or 0 if no target can be determined"""
+        target_match = re.search(r"\{([^}]+)\}", redis_topic)
+        if not target_match:
+            return 0
+        return Store.db_shard_for_target(target_match.group(1), scope=redis_topic.split("__")[0])
 
     # self.param remote_log_directory [String] The path to store the log files
     # self.param logging_enabled [Boolean] Whether to start with logging enabled
@@ -192,7 +203,7 @@ class LogWriter:
                                 instance.cycle_hour
                                 and instance.cycle_minute
                                 and utc_now.hour == instance.cycle_hour
-                                and utc_now.min == instance.cycle_minute
+                                and utc_now.minute == instance.cycle_minute
                                 and instance.start_time.day != utc_now.day
                             ):
                                 Logger.debug("Log writer start new file daily")
@@ -201,30 +212,13 @@ class LogWriter:
                             elif (
                                 instance.cycle_minute
                                 and not instance.cycle_hour
-                                and utc_now.min == instance.cycle_minute
+                                and utc_now.minute == instance.cycle_minute
                                 and instance.start_time.hour != utc_now.hour
                             ):
                                 Logger.debug("Log writer start new file hourly")
                                 instance.close_file(False)
 
-                        # Check for cleanup time
-                        indexes_to_clear = []
-                        for index, cleanup_time in enumerate(instance.cleanup_times):
-                            if cleanup_time <= utc_now:
-                                # Now that the file is in S3, trim the Redis stream up until the previous file.
-                                # This keeps one minute of data in Redis
-                                for (
-                                    redis_topic,
-                                    cleanup_offset,
-                                ) in instance.cleanup_offsets[index]:
-                                    Topic.trim_topic(redis_topic, cleanup_offset)
-                                indexes_to_clear.append(index)
-                        if len(indexes_to_clear) > 0:
-                            for index in indexes_to_clear:
-                                instance.cleanup_offsets[index] = None
-                                instance.cleanup_times[index] = None
-                            instance.cleanup_offsets = [x for x in instance.cleanup_offsets if x is not None]
-                            instance.cleanup_times = [x for x in instance.cleanup_times if x is not None]
+                        instance.trim_due_cleanups(utc_now)
 
             # Only check whether to cycle at a set interval
             run_time = (datetime.now(timezone.utc) - start_time).total_seconds()
@@ -233,6 +227,24 @@ class LogWriter:
                 sleep_time = 0
             if self.cancel_threads or LogWriter.cycle_sleeper.sleep(sleep_time):
                 break
+
+    # Trims the Redis streams for log files whose cleanup delay has expired
+    # Assumes the instance mutex has already been taken
+    def trim_due_cleanups(self, utc_now):
+        indexes_to_clear = []
+        for index, cleanup_time in enumerate(self.cleanup_times):
+            if cleanup_time <= utc_now:
+                # Now that the file is in S3, trim the Redis stream up until the previous file.
+                # This keeps one minute of data in Redis
+                for redis_topic, cleanup_offset in self.cleanup_offsets[index].items():
+                    Topic.trim_topic(redis_topic, cleanup_offset, db_shard=LogWriter.db_shard_for_topic(redis_topic))
+                indexes_to_clear.append(index)
+        if len(indexes_to_clear) > 0:
+            for index in indexes_to_clear:
+                self.cleanup_offsets[index] = None
+                self.cleanup_times[index] = None
+            self.cleanup_offsets = [x for x in self.cleanup_offsets if x is not None]
+            self.cleanup_times = [x for x in self.cleanup_times if x is not None]
 
     # Starting a new log file is a critical operation so the entire method is
     # wrapped with a except: and handled with handle_critical_exception
@@ -313,7 +325,7 @@ class LogWriter:
                 threads.append(BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key))
                 # Now that the file is in storage, trim the Redis stream after a delay
                 self.cleanup_offsets.append({})
-                for redis_topic, last_offset in self.last_offsets:
+                for redis_topic, last_offset in self.last_offsets.items():
                     self.cleanup_offsets[-1][redis_topic] = last_offset
                 self.cleanup_times.append(datetime.now(timezone.utc) + timedelta(seconds=LogWriter.CLEANUP_DELAY))
                 self.last_offsets.clear()
