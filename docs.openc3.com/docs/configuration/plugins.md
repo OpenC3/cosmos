@@ -174,11 +174,11 @@ VARIABLE port_tgt 8080
 ## VARIABLE_TYPE
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Set the input type of a plugin variable in the plugin installation dialog**
 
-The VARIABLE_TYPE keyword sets how the previously defined VARIABLE is entered and checked in the plugin installation dialog. BOOLEAN is a switch that sets true or false (and can be cleared to blank unless required). INTEGER and NUMBER must be numbers. PASSWORD hides the value while typing. JSON is a multiline field that must hold valid JSON. TEXT is the default. Blank values are allowed unless the variable is required (see VARIABLE_REQUIRED and VARIABLE_STATE_REQUIRED). The plugin installation dialog won't install with invalid values. The value is still passed to ERB as a string. Must follow a VARIABLE definition.
+The VARIABLE_TYPE keyword sets how the previously defined VARIABLE is entered and checked in the plugin installation dialog. BOOLEAN is a switch that sets true or false (and can be cleared to blank unless required). INTEGER and NUMBER must be numbers. PASSWORD hides the value while typing. JSON is a full width monospace field that must hold valid JSON. SECRET picks the name of a COSMOS secret from the scope's secrets, and a new secret can be created from the dialog. TEXT is the default. Blank values are allowed unless the variable is required (see VARIABLE_REQUIRED and VARIABLE_STATE_REQUIRED). The plugin installation dialog won't install with invalid values. The value is still passed to ERB as a string. Must follow a VARIABLE definition.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Type | Input type of the variable<br/><br/>Valid Values: <span class="values">TEXT, BOOLEAN, INTEGER, NUMBER, PASSWORD, JSON</span> | True |
+| Type | Input type of the variable<br/><br/>Valid Values: <span class="values">TEXT, BOOLEAN, INTEGER, NUMBER, PASSWORD, JSON, SECRET</span> | True |
 
 Example Usage:
 ```cosmos
@@ -188,6 +188,25 @@ VARIABLE use_ssl false
   VARIABLE_TYPE BOOLEAN
 VARIABLE password ""
   VARIABLE_TYPE PASSWORD
+```
+
+## VARIABLE_GROUP
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Show a plugin variable in a titled section of the plugin installation dialog**
+
+The VARIABLE_GROUP keyword puts the previously defined VARIABLE in a titled section of the plugin installation dialog, e.g. Connection or Authentication. Variables without a group are shown first, then each group in the order it is first used. VARIABLE_ADVANCED variables are shown in the collapsed Advanced section whatever their group. Must follow a VARIABLE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Group Name | Title of the section | True |
+
+Example Usage:
+```cosmos
+VARIABLE hostname localhost
+  VARIABLE_GROUP Connection
+VARIABLE port 8080
+  VARIABLE_GROUP Connection
+VARIABLE username ""
+  VARIABLE_GROUP Authentication
 ```
 
 ## VARIABLE_REQUIRED
@@ -317,7 +336,7 @@ VARIABLE dual_sense_serial_num None
 ## VARIABLE_STATE
 <span class="badge badge--secondary since-right">Since 7.0.0</span>**Add a selectable state for a plugin variable**
 
-The VARIABLE_STATE keyword defines a selectable state for a previously defined VARIABLE. When states are defined for a variable, it renders as a dropdown/combobox in the plugin installation dialog instead of a text field. Users can still type custom values if needed. Multiple VARIABLE_STATE keywords can be used to define multiple states. Must follow a VARIABLE definition.
+The VARIABLE_STATE keyword defines a selectable state for a previously defined VARIABLE. When states are defined for a variable, it renders as a dropdown/combobox in the plugin installation dialog instead of a text field. Users can still type custom values if needed. Multiple VARIABLE_STATE keywords can be used to define multiple states. The dropdown is searched by typing words in any order, allowing small typos, with the closest matches first. Text left in the field that doesn't name a state is kept as a custom value, unless it was a search that found states without one being picked. That is text with spaces, or any such search when the variable's states show, set or require other variables (or have VARIABLE_TEXT). Enter picks the closest match for those searches. Must follow a VARIABLE definition.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
@@ -379,6 +398,42 @@ VARIABLE port 8080
 VARIABLE baud_rate 115200
 ```
 
+## VARIABLE_STATE_DESCRIPTION
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Describe a VARIABLE_STATE in the plugin installation dialog dropdown**
+
+The VARIABLE_STATE_DESCRIPTION keyword adds a line of text below the previously defined VARIABLE_STATE in the plugin installation dialog dropdown. The dropdown can be searched by it as well as the state's text. Must follow a VARIABLE_STATE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Description | Text shown below the state | True |
+
+Example Usage:
+```cosmos
+VARIABLE interface_type tcp
+  VARIABLE_STATE "TCP/IP" tcp
+    VARIABLE_STATE_DESCRIPTION "Ethernet or Wi-Fi"
+    VARIABLE_STATE_ICON mdi-lan
+  VARIABLE_STATE Serial serial
+    VARIABLE_STATE_DESCRIPTION "RS-232 or USB serial adapter"
+    VARIABLE_STATE_ICON mdi-serial-port
+```
+
+## VARIABLE_STATE_ICON
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Show an icon for a VARIABLE_STATE in the plugin installation dialog dropdown**
+
+The VARIABLE_STATE_ICON keyword shows an icon beside the previously defined VARIABLE_STATE in the plugin installation dialog dropdown. Use a [Material Design Icons](https://pictogrammers.com/library/mdi/) name like mdi-lan. Must follow a VARIABLE_STATE definition.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Icon Name | Material Design Icons name, e.g. mdi-lan | True |
+
+Example Usage:
+```cosmos
+VARIABLE interface_type tcp
+  VARIABLE_STATE "TCP/IP" tcp
+    VARIABLE_STATE_ICON mdi-lan
+```
+
 ## VARIABLE_STATE_REQUIRED
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Require values for plugin variables while this state is selected**
 
@@ -403,7 +458,7 @@ VARIABLE port 8080
 ## PLUGIN_TEXT_START
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Start a block of markdown text shown in the plugin installation dialog**
 
-The PLUGIN_TEXT_START keyword begins a block of Markdown that is displayed at the top of the Variables tab in the plugin installation dialog. Use it to explain how to configure the plugin, for example which VARIABLE_STATE to choose for your hardware. All lines up to PLUGIN_TEXT_END are taken as-is (keywords, quotes and markdown headings are not processed as plugin.txt syntax) and the common leading indentation is removed. ERB is not evaluated in the text, but avoid ERB tags since the whole plugin.txt is still processed with ERB at install. Multiple PLUGIN_TEXT_START / PLUGIN_TEXT_END blocks are joined together.
+The PLUGIN_TEXT_START keyword begins a block of Markdown that is displayed at the top of the Variables tab in the plugin installation dialog. Use it to explain how to configure the plugin, for example which VARIABLE_STATE to choose for your hardware. All lines up to PLUGIN_TEXT_END are taken as-is (keywords, quotes and markdown headings are not processed as plugin.txt syntax) and the common leading indentation is removed. ERB is not evaluated in the text, but avoid ERB tags since the whole plugin.txt is still processed with ERB at install. Multiple PLUGIN_TEXT_START / PLUGIN_TEXT_END blocks are joined together. The text can be hidden in the dialog, which is remembered for the plugin.
 
 
 Example Usage:
@@ -423,7 +478,7 @@ PLUGIN_TEXT_END
 ## VARIABLE_TEXT_START
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Start a block of markdown text shown when a VARIABLE_STATE is selected**
 
-The VARIABLE_TEXT_START keyword begins a block of Markdown that belongs to the previous VARIABLE_STATE. While that state is selected (and its variable is shown) the text is displayed in the plugin installation dialog below the PLUGIN_TEXT, for directions specific to the choice made. The text of each variable's selected state is shown in the order the variables are defined. The lines up to VARIABLE_TEXT_END are taken as-is like PLUGIN_TEXT, and multiple blocks for the same state are joined together. Must follow a VARIABLE_STATE definition.
+The VARIABLE_TEXT_START keyword begins a block of Markdown that belongs to the previous VARIABLE_STATE. While that state is selected (and its variable is shown) the text is displayed in the plugin installation dialog below the PLUGIN_TEXT (or beside the variables on wide screens), for directions specific to the choice made. The text of each variable's selected state is shown in the order the variables are defined. The lines up to VARIABLE_TEXT_END are taken as-is like PLUGIN_TEXT, and multiple blocks for the same state are joined together. Must follow a VARIABLE_STATE definition.
 
 
 Example Usage:

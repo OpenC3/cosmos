@@ -47,175 +47,280 @@
       <v-card-text ref="body" class="pt-0">
         <v-window v-model="tab">
           <v-window-item :value="0" eager="true" class="tab">
-            <!-- Markdown from PLUGIN_TEXT_START / PLUGIN_TEXT_END in plugin.txt -->
-            <!-- eslint-disable vue/no-v-html -->
-            <div
-              v-if="pluginTextHtml"
-              class="plugin-text pa-3"
-              data-test="plugin-text"
-              v-html="pluginTextHtml"
-            />
-            <!-- Markdown from VARIABLE_TEXT_START / VARIABLE_TEXT_END of the selected states -->
-            <div
-              v-for="(html, index) in variableTextHtml"
-              :key="index"
-              class="plugin-text pa-3"
-              data-test="variable-text-markdown"
-              v-html="html"
-            />
-            <!-- eslint-enable vue/no-v-html -->
+            <!-- Markdown from PLUGIN_TEXT_START / PLUGIN_TEXT_END in plugin.txt, collapsible -->
+            <template v-if="pluginTextHtml">
+              <div
+                v-if="pluginTextPanel"
+                class="plugin-text-panel mb-2"
+                data-test="plugin-text-panel"
+              >
+                <v-btn
+                  icon="mdi-chevron-up"
+                  size="small"
+                  variant="text"
+                  class="plugin-text-hide"
+                  title="Hide the plugin description"
+                  data-test="plugin-text-hide"
+                  @click="pluginTextPanel = null"
+                />
+                <!-- eslint-disable vue/no-v-html -->
+                <div
+                  class="plugin-text pa-3 pr-12"
+                  data-test="plugin-text"
+                  v-html="pluginTextHtml"
+                />
+                <!-- eslint-enable vue/no-v-html -->
+              </div>
+              <v-btn
+                v-else
+                prepend-icon="mdi-chevron-down"
+                variant="text"
+                size="small"
+                class="mb-2"
+                data-test="plugin-text-show"
+                @click="pluginTextPanel = 'text'"
+              >
+                Show plugin description
+              </v-btn>
+            </template>
             <div
               v-if="Object.keys(localVariables).length === 0"
               class="text-body-1 text-medium-emphasis pa-3"
             >
               No variables defined for this plugin.
             </div>
-            <template
-              v-for="section in variableSections"
-              v-else
-              :key="section.advanced"
-            >
-              <!-- VARIABLE_ADVANCED variables are collapsed by default -->
-              <v-btn
-                v-if="section.advanced"
-                :prepend-icon="
-                  showAdvanced ? 'mdi-chevron-down' : 'mdi-chevron-right'
-                "
-                variant="text"
-                class="mt-3"
-                data-test="variable-advanced"
-                @click="showAdvanced = !showAdvanced"
-              >
-                Advanced ({{ section.variables.length }})
-              </v-btn>
-              <v-row
-                v-if="!section.advanced || showAdvanced"
-                :class="section.advanced ? 'pt-1' : 'pt-2'"
-              >
-                <v-col
-                  v-for="[name, variable] in section.variables"
-                  :key="name"
-                  cols="12"
-                  :sm="variable.type === 'JSON' ? 12 : 6"
-                  :md="variable.type === 'JSON' ? 12 : 3"
-                  :title="name"
+            <v-row v-else no-gutters>
+              <v-col cols="12" :lg="sidePanel ? 8 : 12">
+                <!-- Markdown from VARIABLE_TEXT_START / VARIABLE_TEXT_END of the selected states,
+                     beside the variables on wide screens -->
+                <template v-if="!sidePanel">
+                  <!-- eslint-disable vue/no-v-html -->
+                  <div
+                    v-for="(html, index) in variableTextHtml"
+                    :key="index"
+                    class="plugin-text pa-3"
+                    data-test="variable-text-markdown"
+                    v-html="html"
+                  />
+                  <!-- eslint-enable vue/no-v-html -->
+                </template>
+                <template
+                  v-for="section in variableSections"
+                  :key="section.key"
                 >
-                  <!-- Switch for VARIABLE_TYPE BOOLEAN, indeterminate while blank -->
-                  <v-switch
-                    v-if="variable.type === 'BOOLEAN'"
-                    :model-value="variable.value === 'true'"
-                    :indeterminate="!['true', 'false'].includes(variable.value)"
-                    :label="fieldLabel(name, variable)"
-                    :hint="getHint(name, variable)"
-                    :error-messages="variableErrors[name]"
-                    persistent-hint
-                    color="primary"
-                    density="comfortable"
-                    data-test="variable-switch"
-                    @update:model-value="
-                      chooseVariableValue(name, $event ? 'true' : 'false')
+                  <!-- VARIABLE_ADVANCED variables are collapsed by default -->
+                  <v-btn
+                    v-if="section.advanced"
+                    :prepend-icon="
+                      showAdvanced ? 'mdi-chevron-down' : 'mdi-chevron-right'
                     "
+                    variant="text"
+                    class="mt-3"
+                    data-test="variable-advanced"
+                    @click="showAdvanced = !showAdvanced"
                   >
-                    <template
-                      v-if="variable.value && !requiredVariables.has(name)"
-                      #append
+                    Advanced ({{ section.variables.length }})
+                  </v-btn>
+                  <!-- VARIABLE_GROUP title -->
+                  <div
+                    v-else-if="section.title"
+                    class="variable-group text-subtitle-1 font-weight-medium mt-4 px-1"
+                    data-test="variable-group"
+                  >
+                    {{ section.title }}
+                  </div>
+                  <v-row v-if="!section.advanced || showAdvanced" class="pt-2">
+                    <v-col
+                      v-for="[name, variable] in section.variables"
+                      :key="name"
+                      v-bind="fieldColumns(variable)"
+                      :title="name"
                     >
-                      <v-btn
-                        icon="mdi-close"
-                        size="x-small"
-                        variant="text"
-                        title="Clear to use the default"
-                        @click="chooseVariableValue(name, '')"
-                      />
-                    </template>
-                  </v-switch>
-
-                  <!-- Combobox for variables with options -->
-                  <v-combobox
-                    v-else-if="hasOptions(variable)"
-                    :model-value="variable.value"
-                    :items="getOptionItems(name, variable)"
-                    item-title="text"
-                    item-value="value"
-                    :return-object="false"
-                    :label="fieldLabel(name, variable)"
-                    :hint="getHint(name, variable)"
-                    :error-messages="variableErrors[name]"
-                    :loading="discoveryLoading[name] || false"
-                    persistent-hint
-                    density="comfortable"
-                    variant="outlined"
-                    data-test="variable-combobox"
-                    @update:model-value="chooseVariableValue(name, $event)"
-                  >
-                    <template v-if="variable.discovery" #append-inner>
-                      <v-btn
-                        icon="mdi-refresh"
-                        size="x-small"
-                        variant="text"
-                        :disabled="discoveryLoading[name] || false"
-                        data-test="variable-discover"
-                        @click.stop="runDiscovery(name)"
-                      />
-                    </template>
-                    <template #item="{ item, props }">
-                      <v-list-item v-bind="props">
-                        <template #title>
-                          {{ item.raw.text }}
+                      <!-- Switch for VARIABLE_TYPE BOOLEAN, indeterminate while blank -->
+                      <v-switch
+                        v-if="variable.type === 'BOOLEAN'"
+                        :model-value="variable.value === 'true'"
+                        :indeterminate="
+                          !['true', 'false'].includes(variable.value)
+                        "
+                        :label="fieldLabel(name, variable)"
+                        :hint="getHint(name, variable)"
+                        :error-messages="variableErrors[name]"
+                        persistent-hint
+                        color="primary"
+                        density="comfortable"
+                        data-test="variable-switch"
+                        @update:model-value="
+                          chooseVariableValue(name, $event ? 'true' : 'false')
+                        "
+                      >
+                        <template
+                          v-if="variable.value && !requiredVariables.has(name)"
+                          #append
+                        >
+                          <v-btn
+                            icon="mdi-close"
+                            size="x-small"
+                            variant="text"
+                            title="Clear to use the default"
+                            @click="chooseVariableValue(name, '')"
+                          />
                         </template>
-                      </v-list-item>
-                    </template>
-                  </v-combobox>
+                      </v-switch>
 
-                  <!-- Multiline monospace field for VARIABLE_TYPE JSON -->
-                  <v-textarea
-                    v-else-if="variable.type === 'JSON'"
-                    v-model="variable.value"
-                    :label="fieldLabel(name, variable)"
-                    :hint="getHint(name, variable)"
-                    :error-messages="variableErrors[name]"
-                    persistent-hint
-                    auto-grow
-                    rows="1"
-                    class="json-field"
-                    density="comfortable"
-                    variant="outlined"
-                    data-test="variable-json"
-                  />
+                      <!-- Searchable combobox for variables with states, discovery, bridges or secrets -->
+                      <v-combobox
+                        v-else-if="hasOptions(variable)"
+                        :ref="(el) => (comboboxRefs[name] = el)"
+                        :model-value="
+                          name in comboboxTyped
+                            ? comboboxTyped[name]
+                            : variable.value
+                        "
+                        :items="rankedOptionItems(name, variable)"
+                        item-title="text"
+                        item-value="value"
+                        :return-object="false"
+                        :custom-filter="tokenizedFilter"
+                        :filter-keys="['title', 'raw.description']"
+                        :auto-select-first="
+                          isController(variable) ||
+                          /\s/.test(searches[name] || '')
+                        "
+                        :label="fieldLabel(name, variable)"
+                        :hint="getHint(name, variable)"
+                        :error-messages="variableErrors[name]"
+                        :loading="discoveryLoading[name] || false"
+                        persistent-hint
+                        density="comfortable"
+                        variant="outlined"
+                        data-test="variable-combobox"
+                        @update:model-value="
+                          comboboxModelChanged(name, variable, $event)
+                        "
+                        @update:search="searches[name] = $event"
+                        @focus="comboboxFocused(name, $event)"
+                        @blur="comboboxBlurred(name, variable, $event)"
+                        @update:menu="
+                          comboboxMenuChanged(name, variable, $event)
+                        "
+                        @keydown.enter="commitTyped(name, variable)"
+                      >
+                        <template
+                          v-if="
+                            variable.discovery || variable.type === 'SECRET'
+                          "
+                          #append-inner
+                        >
+                          <v-btn
+                            v-if="variable.discovery"
+                            icon="mdi-refresh"
+                            size="x-small"
+                            variant="text"
+                            title="Discover again"
+                            :disabled="discoveryLoading[name] || false"
+                            data-test="variable-discover"
+                            @click.stop="runDiscovery(name)"
+                          />
+                          <v-btn
+                            v-if="variable.type === 'SECRET'"
+                            icon="mdi-plus"
+                            size="x-small"
+                            variant="text"
+                            title="Create a secret"
+                            data-test="variable-secret-create"
+                            @click.stop="openSecretDialog(name, variable)"
+                          />
+                        </template>
+                        <template #item="{ item, props }">
+                          <v-list-item
+                            v-bind="props"
+                            :subtitle="item.raw.description"
+                            :prepend-icon="item.raw.icon"
+                            @click="pickItem(name, item.raw)"
+                          >
+                            <template #title>
+                              <span
+                                v-for="(part, index) in highlightParts(
+                                  item.raw.text,
+                                  searches[name],
+                                )"
+                                :key="index"
+                                :class="{ 'search-match': part.match }"
+                                >{{ part.text }}</span
+                              >
+                            </template>
+                          </v-list-item>
+                        </template>
+                      </v-combobox>
 
-                  <!-- Text field for other variables -->
-                  <v-text-field
-                    v-else
-                    v-model="variable.value"
-                    :type="
-                      variable.type === 'PASSWORD' && !revealed[name]
-                        ? 'password'
-                        : 'text'
-                    "
-                    :inputmode="inputMode(variable)"
-                    :append-inner-icon="
-                      variable.type === 'PASSWORD'
-                        ? revealed[name]
-                          ? 'mdi-eye-off'
-                          : 'mdi-eye'
-                        : undefined
-                    "
-                    :autocomplete="
-                      variable.type === 'PASSWORD' ? 'new-password' : 'off'
-                    "
-                    :label="fieldLabel(name, variable)"
-                    :hint="getHint(name, variable)"
-                    :error-messages="variableErrors[name]"
-                    persistent-hint
-                    clearable
-                    density="comfortable"
-                    variant="outlined"
-                    data-test="variable-text"
-                    @click:append-inner="revealed[name] = !revealed[name]"
+                      <!-- Full width monospace field for VARIABLE_TYPE JSON. Plugin
+                           variable values are a single line. -->
+                      <v-text-field
+                        v-else-if="variable.type === 'JSON'"
+                        v-model="variable.value"
+                        :label="fieldLabel(name, variable)"
+                        :hint="getHint(name, variable)"
+                        :error-messages="variableErrors[name]"
+                        persistent-hint
+                        clearable
+                        autocomplete="off"
+                        spellcheck="false"
+                        class="json-field"
+                        density="comfortable"
+                        variant="outlined"
+                        data-test="variable-json"
+                      />
+
+                      <!-- Text field for other variables -->
+                      <v-text-field
+                        v-else
+                        v-model="variable.value"
+                        :type="
+                          variable.type === 'PASSWORD' && !revealed[name]
+                            ? 'password'
+                            : 'text'
+                        "
+                        :inputmode="inputMode(variable)"
+                        :append-inner-icon="
+                          variable.type === 'PASSWORD'
+                            ? revealed[name]
+                              ? 'mdi-eye-off'
+                              : 'mdi-eye'
+                            : undefined
+                        "
+                        :autocomplete="
+                          variable.type === 'PASSWORD' ? 'new-password' : 'off'
+                        "
+                        :label="fieldLabel(name, variable)"
+                        :hint="getHint(name, variable)"
+                        :error-messages="variableErrors[name]"
+                        persistent-hint
+                        clearable
+                        density="comfortable"
+                        variant="outlined"
+                        data-test="variable-text"
+                        @click:append-inner="revealed[name] = !revealed[name]"
+                      />
+                    </v-col>
+                  </v-row>
+                </template>
+              </v-col>
+              <!-- Directions for the selected states, kept in view while scrolling -->
+              <v-col v-if="sidePanel" cols="12" lg="4" class="pl-4">
+                <div class="side-panel" data-test="variable-text-panel">
+                  <!-- eslint-disable vue/no-v-html -->
+                  <div
+                    v-for="(html, index) in variableTextHtml"
+                    :key="index"
+                    class="plugin-text pa-3"
+                    data-test="variable-text-markdown"
+                    v-html="html"
                   />
-                </v-col>
-              </v-row>
-            </template>
+                  <!-- eslint-enable vue/no-v-html -->
+                </div>
+              </v-col>
+            </v-row>
           </v-window-item>
           <v-window-item
             v-if="existingPluginTxt === null"
@@ -332,6 +437,56 @@
         </v-card-actions>
       </div>
     </v-card>
+    <!-- Creates a COSMOS secret for a VARIABLE_TYPE SECRET variable -->
+    <v-dialog v-model="secretDialog" width="500">
+      <v-card>
+        <v-card-title>Create Secret</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="secretName"
+            label="Secret name"
+            density="comfortable"
+            variant="outlined"
+            data-test="secret-name"
+          />
+          <v-textarea
+            v-model="secretValue"
+            label="Secret value"
+            :hint="secretHint"
+            persistent-hint
+            auto-grow
+            rows="1"
+            density="comfortable"
+            variant="outlined"
+            data-test="secret-value"
+          />
+          <v-alert
+            v-if="secretError"
+            type="error"
+            variant="tonal"
+            density="compact"
+            class="mt-3"
+          >
+            {{ secretError }}
+          </v-alert>
+        </v-card-text>
+        <v-card-actions>
+          <v-spacer />
+          <v-btn variant="outlined" @click="secretDialog = false">
+            Cancel
+          </v-btn>
+          <v-btn
+            variant="flat"
+            :disabled="!secretName.trim() || !secretValue"
+            :loading="secretSaving"
+            data-test="secret-create"
+            @click="createSecret"
+          >
+            Create
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-dialog>
 </template>
 
@@ -345,6 +500,7 @@ import AceDiff from 'ace-diff'
 import 'ace-diff/styles.css'
 import 'ace-diff/styles-twilight.css'
 import { Api } from '@openc3/js-common/services'
+import { tokenizedFilter, tokenizedSort } from '@openc3/js-common/utils'
 import DOMPurify from 'dompurify'
 import { marked } from 'marked'
 import { toRaw } from 'vue'
@@ -438,6 +594,25 @@ export default {
       previewEditor: null,
       previewLoading: false,
       previewError: null,
+      // Text typed into each combobox, used to rank and highlight its items
+      searches: {},
+      // Comboboxes being typed in. Typed text is a search until an item is
+      // picked or the combobox loses focus, so it is shown in the combobox
+      // but isn't applied as the value (and doesn't select states) on every
+      // keystroke.
+      comboboxTyping: {},
+      comboboxTyped: {},
+      comboboxRefs: {},
+      // The PLUGIN_TEXT is shown unless the user hid it for this plugin
+      pluginTextPanel: this.loadPluginTextPanel(),
+      // VARIABLE_TYPE SECRET: the scope's secret names and the create dialog
+      secrets: [],
+      secretDialog: false,
+      secretVariable: null,
+      secretName: '',
+      secretValue: '',
+      secretSaving: false,
+      secretError: null,
     }
   },
   computed: {
@@ -526,22 +701,58 @@ export default {
     // Visible variables split into the normal ones and the collapsed
     // VARIABLE_ADVANCED ones, leaving out a section with no variables
     variableSections() {
-      const sections = [
-        { advanced: false, variables: [] },
-        { advanced: true, variables: [] },
-      ]
+      // Ungrouped variables, then each VARIABLE_GROUP in the order it is first
+      // used, then the collapsed VARIABLE_ADVANCED variables
+      const ungrouped = { key: '', title: null, variables: [] }
+      const groups = new Map()
+      const advanced = { key: 'advanced', advanced: true, variables: [] }
       for (const entry of this.visibleVariables) {
-        sections[entry[1].advanced ? 1 : 0].variables.push(entry)
+        const variable = entry[1]
+        if (variable.advanced) {
+          advanced.variables.push(entry)
+        } else if (variable.group) {
+          if (!groups.has(variable.group)) {
+            groups.set(variable.group, {
+              key: `group-${variable.group}`,
+              title: variable.group,
+              variables: [],
+            })
+          }
+          groups.get(variable.group).variables.push(entry)
+        } else {
+          ungrouped.variables.push(entry)
+        }
       }
-      return sections.filter((section) => section.variables.length > 0)
+      return [ungrouped, ...groups.values(), advanced].filter(
+        (section) => section.variables.length > 0,
+      )
+    },
+    // Directions for the selected states go beside the variables when there
+    // is room
+    sidePanel() {
+      return this.variableTextHtml.length > 0 && this.$vuetify.display.lgAndUp
+    },
+    secretHint() {
+      const variable = this.localVariables[this.secretVariable]
+      const description = variable?.description
+      return description
+        ? `Stored as a COSMOS secret. ${description}`
+        : 'Stored as a COSMOS secret'
     },
   },
   watch: {
-    // Variables shown by a VARIABLE_STATE_SHOW get a discovered value then,
-    // so hidden variables don't claim devices they won't use
     tab(value) {
       if (value === 2) this.loadPreview()
     },
+    pluginTextPanel(value) {
+      try {
+        localStorage[this.pluginTextStorageKey()] = value ? 'open' : 'closed'
+      } catch {
+        // Storage can be unavailable, e.g. in private browsing
+      }
+    },
+    // Variables shown by a VARIABLE_STATE_SHOW get a discovered value then,
+    // so hidden variables don't claim devices they won't use
     visibleVariables(visible, previous) {
       const before = new Set(previous.map(([name]) => name))
       for (const [name] of visible) {
@@ -583,6 +794,13 @@ export default {
       this.loadBridges()
     }
     this.runAllDiscovery()
+    if (
+      Object.values(this.localVariables).some(
+        (variable) => variable.type === 'SECRET',
+      )
+    ) {
+      this.loadSecrets()
+    }
   },
   mounted() {
     const pluginMode = this.buildPluginMode()
@@ -677,6 +895,7 @@ export default {
         'VARIABLE_DESCRIPTION',
         'VARIABLE_LABEL',
         'VARIABLE_TYPE',
+        'VARIABLE_GROUP',
         'VARIABLE_REQUIRED',
         'VARIABLE_PATTERN',
         'VARIABLE_HIDDEN',
@@ -685,6 +904,8 @@ export default {
         'VARIABLE_STATE_SHOW',
         'VARIABLE_STATE_SET',
         'VARIABLE_STATE_REQUIRED',
+        'VARIABLE_STATE_DESCRIPTION',
+        'VARIABLE_STATE_ICON',
         'VARIABLE_DISCOVERY',
         'VARIABLE_DISCOVERY_SET',
         'VARIABLE_BRIDGE',
@@ -940,6 +1161,177 @@ export default {
       this.discoveryChosen[name] = true
       this.setVariableValue(name, value)
     },
+    tokenizedFilter,
+    // A combobox's items, closest matches to what was typed first
+    rankedOptionItems(name, variable) {
+      return tokenizedSort(
+        this.getOptionItems(name, variable),
+        this.searches[name],
+        'text',
+      )
+    },
+    // An item's text split into the parts that match the search, to highlight
+    highlightParts(text, search) {
+      const ranges = search ? tokenizedFilter(text, search) : false
+      if (!Array.isArray(ranges)) return [{ text, match: false }]
+      const parts = []
+      let index = 0
+      for (const [start, end] of ranges) {
+        if (start > index) {
+          parts.push({ text: text.slice(index, start), match: false })
+        }
+        parts.push({ text: text.slice(start, end), match: true })
+        index = end
+      }
+      if (index < text.length) {
+        parts.push({ text: text.slice(index), match: false })
+      }
+      return parts
+    },
+    // The item a typed value names, by value or by its text ignoring case
+    matchingItem(name, variable, value) {
+      const items = this.getOptionItems(name, variable)
+      const text = String(value).trim().toLowerCase()
+      return (
+        items.find((item) => item.value === value) ||
+        items.find(
+          (item) =>
+            String(item.value).toLowerCase() === text ||
+            String(item.text).toLowerCase() === text,
+        )
+      )
+    },
+    // Whether choosing a state of this variable does something (shows or sets
+    // variables, has directions), so it is a choice rather than a suggestion
+    isController(variable) {
+      return (variable.options || []).some(
+        (option) =>
+          option.show || option.set || option.required || option.markdown,
+      )
+    },
+    comboboxModelChanged(name, variable, value) {
+      const text = value ?? ''
+      if (this.comboboxTyping[name]) {
+        // Typing, or Vuetify selecting the first match on Enter or Tab, which
+        // is applied by commitTyped() or when focus leaves
+        if (text === variable.value) {
+          delete this.comboboxTyped[name]
+        } else {
+          this.comboboxTyped[name] = text
+        }
+      } else {
+        this.chooseVariableValue(name, text)
+      }
+    },
+    pickItem(name, item) {
+      delete this.comboboxTyped[name]
+      this.chooseVariableValue(name, item.value)
+    },
+    comboboxFocused(name, event) {
+      this.comboboxTyping[name] = true
+      // Show the whole list in its usual order until something is typed
+      this.searches[name] = ''
+      // Select the text so typing replaces it with a search, after the
+      // combobox has handled the focus itself (as TargetPacketItemChooser does)
+      const input = event?.target
+      this.$nextTick(() => input?.select?.())
+    },
+    // Focus can leave through the dropdown without the input blurring, e.g.
+    // arrowing into the list then clicking elsewhere
+    comboboxMenuChanged(name, variable, open) {
+      if (open || !this.comboboxTyping[name]) return
+      this.$nextTick(() => {
+        const element = this.comboboxRefs[name]?.$el
+        if (element && !element.contains(document.activeElement)) {
+          this.comboboxBlurred(name, variable)
+        }
+      })
+    },
+    comboboxBlurred(name, variable, event) {
+      // Focus moving into the dropdown, e.g. to click an item, isn't leaving
+      if (event?.relatedTarget?.closest?.('.v-overlay__content')) return
+      this.comboboxTyping[name] = false
+      this.commitTyped(name, variable, true)
+    },
+    // Apply what was typed into a combobox. Text naming an item selects it.
+    // Otherwise it is a custom value, unless it was a search for items that
+    // wasn't picked from: text with spaces (as in the packet chooser), or any
+    // search of a variable whose states choose what is shown.
+    commitTyped(name, variable, leaving = false) {
+      if (!(name in this.comboboxTyped)) return
+      const typed = this.comboboxTyped[name]
+      const item = this.matchingItem(name, variable, typed)
+      if (item) {
+        delete this.comboboxTyped[name]
+        this.chooseVariableValue(name, item.value)
+        return
+      }
+      if (!leaving) return // Enter without a match keeps typing
+      delete this.comboboxTyped[name]
+      const searched = this.getOptionItems(name, variable).some((option) =>
+        tokenizedFilter(option.text, typed),
+      )
+      // Throwing the search away shows the variable's value again
+      if (!searched || !(/\s/.test(typed) || this.isController(variable))) {
+        this.chooseVariableValue(name, typed)
+      }
+    },
+    // Columns for a variable's field, narrower beside the directions panel
+    fieldColumns(variable) {
+      if (variable.type === 'JSON') return { cols: 12 }
+      return { cols: 12, sm: 6, md: this.sidePanel ? 4 : 3 }
+    },
+    pluginTextStorageKey() {
+      // Remembered across versions of the plugin
+      const plugin = this.pluginName.replace(/-\d[\w.]*(\.gem)?$/, '')
+      return `PluginDialog__pluginText__${plugin}`
+    },
+    loadPluginTextPanel() {
+      try {
+        if (localStorage[this.pluginTextStorageKey()] === 'closed') {
+          return null
+        }
+      } catch {
+        // Storage can be unavailable, e.g. in private browsing
+      }
+      return 'text'
+    },
+    async loadSecrets() {
+      try {
+        const { data } = await Api.get('/openc3-api/secrets')
+        this.secrets = data || []
+      } catch (error) {
+        // The dropdown just has no secrets to offer
+        this.secrets = []
+      }
+    },
+    openSecretDialog(name, variable) {
+      this.secretVariable = name
+      this.secretName = variable.value || ''
+      this.secretValue = ''
+      this.secretError = null
+      this.secretDialog = true
+    },
+    async createSecret() {
+      this.secretSaving = true
+      this.secretError = null
+      const secretName = this.secretName.trim()
+      try {
+        await Api.post(
+          `/openc3-api/secrets/${encodeURIComponent(secretName)}`,
+          { data: { value: this.secretValue } },
+        )
+        await this.loadSecrets()
+        this.chooseVariableValue(this.secretVariable, secretName)
+        this.secretDialog = false
+      } catch (error) {
+        this.secretError =
+          error.response?.data?.message || error.message || String(error)
+      } finally {
+        this.secretSaving = false
+        this.secretValue = ''
+      }
+    },
     // Set a variable and, if the new value selects a state, apply that
     // state's VARIABLE_STATE_SET values (cascading into other states)
     setVariableValue(name, value, visiting = new Set()) {
@@ -1162,7 +1554,8 @@ export default {
       return (
         (variable.options && variable.options.length > 0) ||
         !!variable.discovery ||
-        !!variable.bridge
+        !!variable.bridge ||
+        variable.type === 'SECRET'
       )
     },
     getDescription(variable) {
@@ -1182,7 +1575,16 @@ export default {
           )
           .join(', ')
       }
-      return [description, discovery].filter(Boolean).join(' - ')
+      let secret = ''
+      if (
+        variable.type === 'SECRET' &&
+        variable.value &&
+        !this.secrets.includes(variable.value)
+      ) {
+        // Not an error: secrets can also be set outside COSMOS, e.g. in Kubernetes
+        secret = `No secret named ${variable.value} was found`
+      }
+      return [description, discovery, secret].filter(Boolean).join(' - ')
     },
     // Values already chosen by this plugin's other variables that discover
     // with the same class, e.g. so two serial port variables can't both use
@@ -1204,9 +1606,15 @@ export default {
       const items = (variable.options || []).map((opt) => ({
         text: opt.text || opt.value,
         value: opt.value,
+        description: opt.description,
+        icon: opt.icon,
       }))
-      // Bridges and discovered values follow the VARIABLE_STATEs, skipping duplicates
-      const extra = variable.bridge ? this.bridges : []
+      // Bridges, secrets and discovered values follow the VARIABLE_STATEs,
+      // skipping duplicates
+      const extra = variable.bridge ? [...this.bridges] : []
+      if (variable.type === 'SECRET') {
+        extra.push(...this.secrets.map((secret) => ({ value: secret })))
+      }
       const claimed = this.claimedInDialog(name, variable)
       for (const result of extra.concat(this.discoveryResults[name] || [])) {
         if (
@@ -1231,8 +1639,29 @@ export default {
 .tab {
   background-color: var(--color-background-surface-default);
 }
-.json-field :deep(textarea) {
+.json-field :deep(input) {
   font-family: monospace;
+}
+.variable-group {
+  border-bottom: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.search-match {
+  font-weight: bold;
+  text-decoration: underline;
+}
+.side-panel {
+  position: sticky;
+  top: 0;
+  max-height: 100%;
+  border-left: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+}
+.plugin-text-panel {
+  position: relative;
+}
+.plugin-text-hide {
+  position: absolute;
+  top: 4px;
+  right: 4px;
 }
 .plugin-text :deep(:first-child) {
   margin-top: 0;

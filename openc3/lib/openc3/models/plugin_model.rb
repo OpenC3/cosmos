@@ -56,7 +56,7 @@ module OpenC3
     # ${name} in a VARIABLE_DISCOVERY parameter is replaced by the value of variable name
     DISCOVERY_REFERENCE = /\$\{(\w+)\}/
     # Input types of VARIABLE_TYPE in the plugin dialog
-    VARIABLE_TYPES = ['TEXT', 'BOOLEAN', 'INTEGER', 'NUMBER', 'PASSWORD', 'JSON']
+    VARIABLE_TYPES = ['TEXT', 'BOOLEAN', 'INTEGER', 'NUMBER', 'PASSWORD', 'JSON', 'SECRET']
     PLUGIN_TXT = 'plugin.txt'
 
     attr_accessor :variables
@@ -244,6 +244,14 @@ module OpenC3
               raise "VARIABLE_TYPE must be one of #{VARIABLE_TYPES.join(', ')} but got '#{params[0]}'"
             end
             variables[current_variable_name]['type'] = type
+          when 'VARIABLE_GROUP'
+            usage = "#{keyword} <Group Name>"
+            parser.verify_num_parameters(1, 1, usage)
+            unless current_variable_name
+              raise "VARIABLE_GROUP must follow a VARIABLE definition"
+            end
+            # Shown in a titled section of the plugin dialog
+            variables[current_variable_name]['group'] = params[0]
           when 'VARIABLE_REQUIRED'
             parser.verify_num_parameters(0, 0, keyword)
             unless current_variable_name
@@ -323,6 +331,23 @@ module OpenC3
             options[-1]['show'] ||= []
             options[-1]['show'].concat(params)
             options[-1]['show'].uniq!
+          when 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON'
+            usage = keyword == 'VARIABLE_STATE_ICON' ? "#{keyword} <Icon Name>" : "#{keyword} <Description>"
+            parser.verify_num_parameters(1, 1, usage)
+            options = variables[current_variable_name]['options'] if current_variable_name
+            unless options
+              raise "#{keyword} must follow a VARIABLE_STATE definition"
+            end
+            if keyword == 'VARIABLE_STATE_ICON'
+              # Material Design Icons like mdi-cloud, or another icon set's prefix:name
+              unless params[0] =~ /\A[\w:-]+\z/
+                raise "VARIABLE_STATE_ICON '#{params[0]}' is not a valid icon name like mdi-cloud"
+              end
+              options[-1]['icon'] = params[0]
+            else
+              # Shown below the state's text in the plugin dialog dropdown
+              options[-1]['description'] = params[0]
+            end
           when 'VARIABLE_STATE_REQUIRED'
             usage = "#{keyword} <Variable Name> <Variable Name (optional)> ..."
             parser.verify_num_parameters(1, nil, usage)
@@ -630,7 +655,7 @@ module OpenC3
               when 'PLUGIN_TEXT_START', 'VARIABLE_TEXT_START'
                 parser.set_preserve_lines(true)
                 text_end = keyword.sub('_START', '_END')
-              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'NEEDS_DEPENDENCIES'
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_GROUP', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin

@@ -471,6 +471,37 @@ module OpenC3
         expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_LABEL']) }.to raise_error(/Not enough parameters/)
       end
 
+      it "parses VARIABLE_GROUP and VARIABLE_TYPE SECRET" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE host ""',
+          '  VARIABLE_GROUP Connection',
+          'VARIABLE password_secret ""',
+          '  VARIABLE_TYPE secret',
+          '  VARIABLE_GROUP "Sign In"',
+        ])
+        expect(model['variables']['host']).to eq({ 'value' => '', 'group' => 'Connection' })
+        expect(model['variables']['password_secret']).to eq({ 'value' => '', 'type' => 'SECRET', 'group' => 'Sign In' })
+        expect { phase1_with_plugin_txt(['VARIABLE_GROUP Connection']) }.to raise_error(/VARIABLE_GROUP must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_GROUP']) }.to raise_error(/Not enough parameters/)
+      end
+
+      it "parses VARIABLE_STATE_DESCRIPTION and VARIABLE_STATE_ICON" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE type tcp',
+          '  VARIABLE_STATE "TCP/IP" tcp',
+          '    VARIABLE_STATE_DESCRIPTION "Ethernet or Wi-Fi"',
+          '    VARIABLE_STATE_ICON mdi-lan',
+          '  VARIABLE_STATE Serial serial',
+        ])
+        expect(model['variables']['type']['options']).to eq [
+          { 'value' => 'tcp', 'text' => 'TCP/IP', 'description' => 'Ethernet or Wi-Fi', 'icon' => 'mdi-lan' },
+          { 'value' => 'serial', 'text' => 'Serial' },
+        ]
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE_ICON mdi-lan']) }.to raise_error(/VARIABLE_STATE_ICON must follow a VARIABLE_STATE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_ICON "<b>"']) }.to raise_error(/not a valid icon name/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE_DESCRIPTION Text']) }.to raise_error(/VARIABLE_STATE_DESCRIPTION must follow a VARIABLE_STATE definition/)
+      end
+
       it "parses VARIABLE_STATE_REQUIRED" do
         model = phase1_with_plugin_txt([
           'VARIABLE type tcp',
