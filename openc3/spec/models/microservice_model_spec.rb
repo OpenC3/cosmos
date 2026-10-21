@@ -255,6 +255,21 @@ module OpenC3
       end
     end
 
+    describe "cleanup" do
+      it "clears both metric rows on the configured shard after the model is deleted" do
+        name = 'DEFAULT__USER__EXAMPLE'
+        model = MicroserviceModel.new(folder_name: 'EXAMPLE', name: name, scope: 'DEFAULT', plugin: 'PLUGIN', db_shard: 2)
+        # Uninstall removes the configuration before invoking cleanup.
+        expect(Store.hget('openc3_microservices', name)).to be_nil
+        shard_store = double('ShardStore')
+        expect(EphemeralStore).to receive(:instance).with(db_shard: 2).twice.and_return(shard_store)
+        expect(shard_store).to receive(:hdel).with("DEFAULT#{MetricModel::PRIMARY_KEY}", name)
+        expect(shard_store).to receive(:hdel).with("DEFAULT#{MetricModel::PROCESS_PRIMARY_KEY}", name)
+
+        model.cleanup
+      end
+    end
+
     describe "undeploy" do
       it "calls destroy on a deployed MicroserviceModel" do
         s3 = instance_double("Aws::S3::Client")

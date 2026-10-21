@@ -278,14 +278,29 @@ MINIO_ROOT_USER=your_user MINIO_ROOT_PASSWORD=your_pass ./scripts/linux/openc3_m
 OPENC3_BUCKET_USERNAME=your_user OPENC3_BUCKET_PASSWORD=your_pass ./scripts/linux/openc3_migrate_s3.sh migrate
 ```
 
-| Variable                 | Description                          | Default                |
-| :----------------------- | :----------------------------------- | :--------------------- |
-| `OLD_VOLUME`             | Source MINIO volume name             | `openc3-bucket-v`      |
-| `NEW_VOLUME`             | Destination versitygw volume name    | `openc3-object-v`      |
-| `MINIO_ROOT_USER`        | MINIO access key (COSMOS 6 source)   | `openc3minio`          |
-| `MINIO_ROOT_PASSWORD`    | MINIO secret key (COSMOS 6 source)   | `openc3miniopassword`  |
-| `OPENC3_BUCKET_USERNAME` | versitygw access key (COSMOS 7 dest) | `openc3bucket`         |
-| `OPENC3_BUCKET_PASSWORD` | versitygw secret key (COSMOS 7 dest) | `openc3bucketpassword` |
+| Variable                 | Description                          | Default                                    |
+| :----------------------- | :----------------------------------- | :----------------------------------------- |
+| `OLD_VOLUME`             | Source MINIO volume name             | `openc3-bucket-v`                          |
+| `NEW_VOLUME`             | Destination versitygw volume name    | `openc3-object-v`                          |
+| `MINIO_ROOT_USER`        | MINIO access key (COSMOS 6 source)   | `openc3minio`                              |
+| `MINIO_ROOT_PASSWORD`    | MINIO secret key (COSMOS 6 source)   | `openc3miniopassword`                      |
+| `OPENC3_BUCKET_USERNAME` | versitygw access key (COSMOS 7 dest) | `openc3bucket`                             |
+| `OPENC3_BUCKET_PASSWORD` | versitygw secret key (COSMOS 7 dest) | `openc3bucketpassword`                     |
+| `MC_IMAGE`               | COSMOS 6 init image used to run `mc` | `ghcr.io/openc3/openc3-cosmos-init:6.10.4` |
+
+:::info[Offline / Air-Gapped Systems]
+The script runs `mc` from a COSMOS 6 init image, which it pulls from `ghcr.io` by default. If your system can't reach `ghcr.io`, set `MC_IMAGE` to the COSMOS 6 init image you already have locally (Core `openc3-cosmos-init` or Enterprise `openc3-cosmos-enterprise-init`):
+
+```bash
+# Find the init image available locally
+docker images | grep init
+
+# Use it for the migration
+MC_IMAGE=my-registry.example.com/openc3inc/openc3-cosmos-init:6.10.4 ./openc3_migrate_s3.sh migrate
+```
+
+On Windows, run `set MC_IMAGE=...` before running `openc3_migrate_s3.bat`.
+:::
 
 :::tip[Docker Compose Volume Prefixes]
 The migration script automatically detects Docker Compose project prefixes. For example, if your volumes are named `cosmos_openc3-bucket-v` instead of `openc3-bucket-v`, the script handles this without additional configuration. You can also specify custom volume names with the `OLD_VOLUME` and `NEW_VOLUME` environment variables.
@@ -309,13 +324,17 @@ You will notice CmdTlmServer log messages indicating that the Decom log files ar
 {"time":"1774626662373466880","@timestamp":"2026-03-27T15:51:02.373467Z","level":"INFO","microservice_name":"DEFAULT__USER__TSDB-MIGRATION-MICROSERVICE","container_name":"47c6c5a1cc82","message":"Migration complete! Files: 16, Packets: 42452, Errors: 0","type":"log"}
 ```
 
+Each file is moved out of `decom_logs` as it completes: to `processed/decom_logs/` when it ingested cleanly, or to `error/decom_logs/` when any row was dropped. The final `Migration complete!` message reports how many files hit errors. A non-zero `Errors` count means the files under `error/` did not fully migrate, so check the log messages above it for the cause before deleting them. Since the migration only lists files still under `decom_logs`, moving a file back from `error/` to its original path lets it be retried after the underlying problem is fixed.
+
 At this point you should be able to use any COSMOS applications that access the streaming API to ensure the data has been migrated. Open Telemetry Grapher or Data Extractor and either graph or extract historical data and verify the contents.
 
 If you change a command or telemetry definition after migrating, see [Packet Structure Changes](/docs/guides/packet-structure-changes) for how COSMOS reconciles the TSDB table schema and what happens to the data already stored.
 
-Once the data has been verified you can remove the imported data using Bucket Explorer. Navigate to the `logs` bucket and remove the `processed`, `reduced_minute_logs`, `reduced_hour_logs`, `reduced_day_logs` directories using the Trash icon.
+Once the data has been verified you can remove the imported data using Bucket Explorer. Navigate to the `logs` bucket and remove the `processed`, `error`, `reduced_minute_logs`, `reduced_hour_logs`, `reduced_day_logs` directories using the Trash icon.
 
 ![Bucket Explorer](/img/upgrading/bucket_explorer.png)
+
+The migration microservice idles once it finishes so COSMOS doesn't restart it. After you've verified the data, uninstall the TSDB Migration plugin from the Admin Console since it has nothing left to do.
 
 ### COSMOS Configuration Changes
 

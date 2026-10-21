@@ -466,5 +466,80 @@ module OpenC3
         end
       end
     end
+
+    describe "local only targets" do
+      before(:each) do
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = 'LOCAL'
+        @tmp_dir = Dir.mktmpdir
+        saved_verbose = $VERBOSE; $VERBOSE = nil
+        @saved_path = LocalMode::OPENC3_LOCAL_MODE_PATH
+        LocalMode.const_set(:OPENC3_LOCAL_MODE_PATH, @tmp_dir)
+        $VERBOSE = saved_verbose
+        @saved_api_server = $api_server
+        $api_server = double('api_server')
+        @saved_in_cluster = $openc3_in_cluster
+        $openc3_in_cluster = true
+      end
+
+      after(:each) do
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = nil
+        $api_server = @saved_api_server
+        $openc3_in_cluster = @saved_in_cluster
+        saved_verbose = $VERBOSE; $VERBOSE = nil
+        LocalMode.const_set(:OPENC3_LOCAL_MODE_PATH, @saved_path)
+        $VERBOSE = saved_verbose
+        FileUtils.rm_rf(@tmp_dir)
+      end
+
+      it "reads and writes the local mode volume in the cluster" do
+        expect($api_server).to_not receive(:request)
+        put_target_file('LOCAL/procedures/test.rb', file_content, scope: test_scope)
+        expect(File.read("#{@tmp_dir}/DEFAULT/targets_modified/LOCAL/procedures/test.rb")).to eql file_content
+        file = get_target_file('LOCAL/procedures/test.rb', scope: test_scope)
+        expect(file.read).to eql file_content
+        expect(get_target_file('LOCAL/procedures/missing.rb', original: true, scope: test_scope)).to be_nil
+      end
+
+      it "reads and writes through the API outside the cluster" do
+        $openc3_in_cluster = false
+        data = "\x00\xFF".b
+        expect($api_server).to receive(:request).with('put', '/openc3-api/storage/upload_file/DEFAULT/targets_modified/LOCAL/tables/table.bin',
+          query: { bucket: 'OPENC3_CONFIG_BUCKET' }, data: { contents: Base64.strict_encode64(data) }, json: true, scope: test_scope
+        ).and_return(double(status: 200))
+        put_target_file('LOCAL/tables/table.bin', data, scope: test_scope)
+        expect(File.exist?("#{@tmp_dir}/DEFAULT/targets_modified/LOCAL/tables/table.bin")).to be false
+
+        expect($api_server).to receive(:request).with('get', '/openc3-api/storage/download_file/DEFAULT/targets_modified/LOCAL/tables/table.bin',
+          query: { bucket: 'OPENC3_CONFIG_BUCKET' }, scope: test_scope
+        ).and_return(double(status: 200, body: JSON.generate({ contents: Base64.encode64(data) })))
+        file = get_target_file('LOCAL/tables/table.bin', scope: test_scope)
+        expect(file.read).to eql data
+
+        allow($api_server).to receive(:request).and_return(double(status: 404))
+        expect(get_target_file('LOCAL/tables/missing.bin', scope: test_scope)).to be_nil
+        allow($api_server).to receive(:request).and_return(double(status: 500))
+        expect { put_target_file('LOCAL/tables/table.bin', data, scope: test_scope) }.to raise_error(/Failed to write/)
+      end
+    end
+
+    describe "_get_bucket_dialog_file" do
+      include OpenC3::Script
+
+      it "returns the file with its bucket and bucket path" do
+        file = Tempfile.new('bucket_dialog')
+        expect(self).to receive(:_get_storage_file).with('targets/INST/procedures/test.rb', bucket: 'OPENC3_CONFIG_BUCKET', scope: 'DEFAULT').and_return(file)
+        input = {
+          'bucket' => 'OPENC3_CONFIG_BUCKET',
+          'path' => 'DEFAULT/targets/INST/procedures/test.rb',
+          'filename' => 'test.rb',
+        }
+        result = _get_bucket_dialog_file(input, scope: 'DEFAULT')
+        expect(result).to be(file)
+        expect(result.filename).to eql 'test.rb'
+        expect(result.bucket).to eql 'OPENC3_CONFIG_BUCKET'
+        expect(result.bucket_path).to eql 'DEFAULT/targets/INST/procedures/test.rb'
+        file.close!
+      end
+    end
   end
 end
