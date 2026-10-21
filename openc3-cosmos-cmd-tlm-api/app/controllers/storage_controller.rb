@@ -38,6 +38,9 @@ end
 class StorageController < ApplicationController
   class StorageError < StandardError; end
 
+  VOLUME_DOWNLOAD_KEY_PREFIX = 'openc3_volume_download__'
+  VOLUME_DOWNLOAD_TOKEN_EXPIRE_SECONDS = 60
+
   # Buckets COSMOS itself manages. Writes to these are admin-only (apart from the
   # config overlay, see non_admin_bucket_write?) because COSMOS loads their contents:
   # tools holds the tool JavaScript, config the target definitions, logs the data.
@@ -366,6 +369,53 @@ class StorageController < ApplicationController
     ensure
       FileUtils.remove_entry_secure(tmp_dir, true) if tmp_dir
     end
+  end
+
+  # Volume equivalent of get_download_presigned_request. Returns a short lived,
+  # single use URL the browser can download directly so large files are streamed
+  # rather than base64 encoded into JSON (which fails above ~2GB).
+  def get_volume_download_token
+    return unless authorization('system')
+    params.require(:volume)
+    volume_name = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
+    object_id = sanitize_path(params[:object_id])
+    if object_id.empty? || object_id == 'null'
+      render json: { status: 'error', message: "Invalid object_id: #{params[:object_id]}" }, status: :not_found
+      return
+    end
+
+    filename = sanitize_path("/#{volume_name}/#{object_id}")
+    unless File.file?(filename)
+      render json: { status: 'error', message: "File not found: #{params[:object_id]}" }, status: :not_found
+      return
+    end
+
+    token = SecureRandom.urlsafe_base64(32)
+    OpenC3::EphemeralStore.set("#{VOLUME_DOWNLOAD_KEY_PREFIX}#{token}", filename, ex: VOLUME_DOWNLOAD_TOKEN_EXPIRE_SECONDS)
+    render json: { url: "/openc3-api/storage/stream/#{token}" }, status: :created
+  rescue Exception => e
+    log_error(e)
+    OpenC3::Logger.error("Download request failed: #{e.message}", user: username())
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
+  # Streams a volume file previously authorized by get_volume_download_token.
+  # The token is the authorization since browser downloads can't send headers.
+  def stream_volume_file
+    filename = OpenC3::EphemeralStore.getdel("#{VOLUME_DOWNLOAD_KEY_PREFIX}#{params[:token]}")
+    unless filename
+      render json: { status: 'error', message: 'Invalid or expired download token' }, status: :unauthorized
+      return
+    end
+    unless File.file?(filename)
+      render json: { status: 'error', message: "File not found: #{File.basename(filename)}" }, status: :not_found
+      return
+    end
+    send_file(filename, filename: File.basename(filename), type: 'application/octet-stream', disposition: 'attachment')
+  rescue Exception => e
+    log_error(e)
+    OpenC3::Logger.error("Download failed: #{e.message}")
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def download_multiple_files

@@ -82,9 +82,6 @@ ENV GEMRC=/etc/gemrc
 # the apt step below (once bundler is installed).
 ENV BUNDLE_USER_CONFIG=/etc/bundle/config
 
-COPY anycable* /usr/bin/
-RUN /usr/bin/anycable_install.sh
-
 COPY shoreman.sh /usr/bin/shoreman
 
 RUN apt-get update && \

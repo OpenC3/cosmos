@@ -717,6 +717,74 @@ RSpec.describe StorageController, type: :controller do
     end
   end
 
+  describe "GET volume_download and stream" do
+    let(:tmp_dir) { Dir.mktmpdir }
+
+    before(:each) do
+      ENV["OPENC3_DATA_VOLUME"] = tmp_dir
+      File.binwrite(File.join(tmp_dir, "file.bin"), "\x00\x01binary\xFF")
+    end
+
+    after(:each) do
+      FileUtils.remove_entry_secure(tmp_dir, true)
+    end
+
+    def request_token
+      get :get_volume_download_token, params: {volume: "OPENC3_DATA_VOLUME", object_id: "file.bin", scope: "DEFAULT"}
+      expect(response).to have_http_status(:created)
+      url = JSON.parse(response.body)["url"]
+      expect(url).to match(%r{\A/openc3-api/storage/stream/[A-Za-z0-9_-]+\z})
+      url.split("/").last
+    end
+
+    it "streams the file with a single use token" do
+      token = request_token
+      get :stream_volume_file, params: {token: token}
+      expect(response).to have_http_status(:ok)
+      expect(response.headers["Content-Disposition"]).to include('attachment; filename="file.bin"')
+      expect(response.media_type).to eq("application/octet-stream")
+      expect(response.body.b).to eq("\x00\x01binary\xFF".b)
+
+      # Token can't be reused
+      get :stream_volume_file, params: {token: token}
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "rejects an unknown token" do
+      get :stream_volume_file, params: {token: "bogus"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+
+    it "returns 404 if the file is removed before streaming" do
+      token = request_token
+      File.delete(File.join(tmp_dir, "file.bin"))
+      get :stream_volume_file, params: {token: token}
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "returns 404 for a missing file" do
+      get :get_volume_download_token, params: {volume: "OPENC3_DATA_VOLUME", object_id: "nope.bin", scope: "DEFAULT"}
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it "rejects path traversal" do
+      get :get_volume_download_token, params: {volume: "OPENC3_DATA_VOLUME", object_id: "../../etc/passwd", scope: "DEFAULT"}
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)["message"]).to eq("Invalid path: ../../etc/passwd")
+    end
+
+    it "handles an unknown volume" do
+      get :get_volume_download_token, params: {volume: "OPENC3_UNKNOWN_VOLUME", object_id: "file.bin", scope: "DEFAULT"}
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)["message"]).to eq("Unknown volume OPENC3_UNKNOWN_VOLUME")
+    end
+
+    it "returns nothing without authorization" do
+      get :get_volume_download_token, params: {volume: "OPENC3_DATA_VOLUME", object_id: "file.bin"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe "POST download_multiple_files" do
     let(:tmp_dir) { "/tmp/test_dir" }
     let(:zip_path) { "#{tmp_dir}/download.zip" }
