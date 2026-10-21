@@ -191,7 +191,8 @@ find_container() {
 
 # Get the name of the volume a container mounts at /data
 container_data_volume() {
-    docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$1" 2>/dev/null
+    local container="$1"
+    docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$container" 2>/dev/null
 }
 
 # Get the network a container is connected to
@@ -648,9 +649,11 @@ cmd_status() {
 
 # Stop command - stop and remove temporary containers
 cmd_stop() {
-    # Resolve volume names for display
-    local rc=0
-    resolve_volumes || rc=$?
+    # Read the destination volume from the temp versitygw container before removing it
+    local dest_volume=""
+    if container_exists "$VERSITY_MIGRATION_CONTAINER"; then
+        dest_volume=$(container_data_volume "$VERSITY_MIGRATION_CONTAINER" || true)
+    fi
 
     log_step "Stopping migration containers..."
 
@@ -674,11 +677,11 @@ cmd_stop() {
     echo ""
     log_info "Migration containers stopped"
     echo ""
-    # Don't name the new volume when we couldn't tell which old volume was used
-    if [[ $rc -ne 0 ]]; then
+    # Only name the new volume when a temp versitygw container recorded it
+    if [[ -z "$dest_volume" ]]; then
         return 0
     fi
-    echo "Your data has been migrated to volume '$NEW_VOLUME'."
+    echo "Your data has been migrated to volume '$dest_volume'."
     echo ""
     return 0
 }
@@ -688,6 +691,9 @@ COMMAND="${1:-help}"
 case "$COMMAND" in
     start|migrate|status|stop)
         check_volume_env || exit 1
+        ;;
+    *)
+        # help and unknown commands are handled below
         ;;
 esac
 case "$COMMAND" in

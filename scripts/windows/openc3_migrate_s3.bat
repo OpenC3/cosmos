@@ -40,6 +40,8 @@ REM Volume names - set both OLD_VOLUME and NEW_VOLUME to full volume names, or
 REM neither to detect them (including any docker compose project prefix)
 set "OLD_VOLUME_BASE=openc3-bucket-v"
 set "NEW_VOLUME_BASE=openc3-object-v"
+REM Length of OLD_VOLUME_BASE, used to strip it from the end of a volume name
+set "OLD_VOLUME_BASE_LENGTH=15"
 
 REM Container/image names
 set "MINIO_MIGRATION_CONTAINER=openc3-minio-migration"
@@ -334,7 +336,7 @@ echo [ERROR] No volume selected
 echo Set OLD_VOLUME and NEW_VOLUME for the volume you want to use, then run %~nx0 %COMMAND%:
 for /l %%n in (1,1,%CANDIDATE_COUNT%) do (
     set "HINT_OLD=!CANDIDATE_%%n!"
-    set "HINT_PREFIX=!HINT_OLD:%OLD_VOLUME_BASE%=!"
+    set "HINT_PREFIX=!HINT_OLD:~0,-%OLD_VOLUME_BASE_LENGTH%!"
     echo   set OLD_VOLUME=!HINT_OLD!
     echo   set NEW_VOLUME=!HINT_PREFIX!%NEW_VOLUME_BASE%
     echo.
@@ -343,7 +345,7 @@ exit /b 2
 
 :resolve_selected
 set "OLD_VOLUME=!CANDIDATE_%CHOICE%!"
-set "VOLUME_PREFIX=!OLD_VOLUME:%OLD_VOLUME_BASE%=!"
+set "VOLUME_PREFIX=!OLD_VOLUME:~0,-%OLD_VOLUME_BASE_LENGTH%!"
 set "NEW_VOLUME=!VOLUME_PREFIX!%NEW_VOLUME_BASE%"
 exit /b 0
 
@@ -559,9 +561,9 @@ echo.
 exit /b 0
 
 :stop_containers
-REM Resolve volume names for display
-call :resolve_volumes
-set "RESOLVE_RC=%errorlevel%"
+REM Read the destination volume from the temp versitygw container before removing it
+set "DEST_VOLUME="
+for /f "tokens=*" %%v in ('docker inspect --format "{{range .Mounts}}{{if eq .Destination `/data`}}{{.Name}}{{end}}{{end}}" "%VERSITY_MIGRATION_CONTAINER%" 2^>nul') do set "DEST_VOLUME=%%v"
 
 echo [==>] Stopping migration containers...
 
@@ -591,9 +593,9 @@ if "%NET_EXISTS%"=="1" (
 echo.
 echo [INFO] Migration containers stopped
 echo.
-REM Don't name the new volume when we couldn't tell which old volume was used
-if not "%RESOLVE_RC%"=="0" exit /b 0
-echo Your data has been migrated to volume '%NEW_VOLUME%'.
+REM Only name the new volume when a temp versitygw container recorded it
+if not defined DEST_VOLUME exit /b 0
+echo Your data has been migrated to volume '%DEST_VOLUME%'.
 echo.
 exit /b 0
 
