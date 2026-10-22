@@ -10,6 +10,8 @@
 # if purchased from OpenC3, Inc.
 
 import errno
+import os
+import select
 import socket
 
 from openc3.config.config_parser import ConfigParser
@@ -87,36 +89,26 @@ class TcpipClientStream(TcpipSocketStream):
             raise
         super().connect()
 
-    def _connect(self, socket, hostname, port):
-        while True:
-            try:
-                socket.connect((hostname, port))
-            except BlockingIOError:
-                # select.select([], [socket], [], self.connect_timeout)
-                # This is not an error condition
-                continue
-            except OSError as error:
-                if error.errno == errno.EINPROGRESS:
-                    continue
-                if error.errno == errno.EISCONN or error.errno == errno.EALREADY:
-                    break
-                else:
-                    raise error
-
-    # except:
-    #   try:
-    #     _, sockets, _ = IO.select(None, [socket], None, self.connect_timeout) # wait 3-way handshake completion
-    #   except IOError, Errno='ENOTSOCK':
-    #     raise "Connect canceled"
-    #   if sockets and !sockets.empty?:
-    #     try:
-    #       socket.connect_nonblock(addr) # check connection failure
-    #     except IOError, Errno='ENOTSOCK':
-    #       raise "Connect canceled"
-    #     except Errno='EINPROGRESS':
-    #       retry
-    #     except Errno='EISCONN', Errno='EALREADY':
-    #   else:
-    #     raise "Connect timeout"
-    # except IOError, Errno='ENOTSOCK':
-    #   raise "Connect canceled"
+    def _connect(self, sock, hostname, port):
+        # The sockets are non-blocking so connect_ex returns immediately. Wait for
+        # the socket to become writable (3-way handshake done or failed) and then
+        # read SO_ERROR to learn the outcome. Retrying connect() instead is not
+        # portable: on macOS a retry while the handshake is still pending returns
+        # EALREADY, which would wrongly be treated as connected.
+        try:
+            result = sock.connect_ex((hostname, port))
+            if result in (errno.EINPROGRESS, errno.EWOULDBLOCK, errno.EALREADY):
+                # Windows reports a failed connect through the exceptional set
+                _, writeable, exceptional = select.select([], [sock], [sock], self.connect_timeout)
+                if not writeable and not exceptional:
+                    raise TimeoutError(f"Connect timeout to {hostname}:{port}")
+                result = sock.getsockopt(socket.SOL_SOCKET, socket.SO_ERROR)
+        except (ValueError, OSError) as error:
+            # Python sets fileno() to -1 once a socket is closed, so a disconnect
+            # from another thread surfaces as ValueError, EBADF or ENOTSOCK
+            if isinstance(error, ValueError) or error.errno in (errno.EBADF, errno.ENOTSOCK):
+                raise RuntimeError("Connect canceled") from error
+            raise
+        if result not in (0, errno.EISCONN):
+            # OSError maps the errno to its subclass, e.g. ConnectionRefusedError
+            raise OSError(result, os.strerror(result))
