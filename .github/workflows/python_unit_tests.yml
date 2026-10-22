@@ -80,3 +80,16 @@ jobs:
       #       -Dsonar.tests=test/
       #   env:
       #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  python-unit-tests:
+    needs: unit-test
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Ensure all Python unit tests passed as expected on all matrix versions
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          if echo "$RESULTS" | grep -Eq 'failure|cancelled'; then exit 1; fi
