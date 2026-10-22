@@ -68,18 +68,22 @@ WHITELIST.extend(
 )
 
 
-# Request a telemetry item from a packet.
-#
-# Accepts two different calling styles:
-#   tlm("TGT PKT ITEM")
-#   tlm('TGT','PKT','ITEM')
-#
-# Favor the first syntax where possible as it is more succinct.
-#
-# @param args [String|Array<String>] See the description for calling style
-# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
-# @return [Object] The telemetry value formatted as requested
 def tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
+    """Request a telemetry item from a packet.
+
+    Accepts two different calling styles:
+      tlm("TGT PKT ITEM")
+      tlm('TGT','PKT','ITEM')
+
+    Favor the first syntax where possible as it is more succinct.
+
+    Args:
+        args (str|List[str]) See the description for calling style
+        type (str) Telemetry type, RAW, CONVERTED (default), FORMATTED
+
+    Return:
+        (Object) The telemetry value formatted as requested
+    """
     target_name, packet_name, item_name = _tlm_process_args(args, "tlm", cache_timeout=cache_timeout, scope=scope)
     authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     return CvtModel.get_item(target_name, packet_name, item_name, type, cache_timeout, scope)
@@ -93,27 +97,29 @@ def tlm_formatted(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
     return tlm(*args, type="FORMATTED", cache_timeout=cache_timeout, scope=scope)
 
 
-# DEPRECATED
 def tlm_with_units(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
+    """DEPRECATED, use tlm_formatted"""
     return tlm(*args, type="FORMATTED", cache_timeout=cache_timeout, scope=scope)
 
 
-# Set a telemetry item in the current value table.
-#
-# Note: If this is done while OpenC3 is currently receiving telemetry,
-# this value could get overwritten at any time. Thus this capability is
-# best used for testing or for telemetry items that are not received
-# regularly through the target interface.
-#
-# Accepts two different calling styles:
-#   set_tlm("TGT PKT ITEM = 1.0")
-#   set_tlm('TGT','PKT','ITEM', 10.0)
-#
-# Favor the first syntax where possible as it is more succinct.
-#
-# @param args [String|Array<String>] See the description for calling style
-# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
 def set_tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
+    """Set a telemetry item in the current value table.
+
+    Note: If this is done while OpenC3 is currently receiving telemetry,
+    this value could get overwritten at any time. Thus this capability is
+    best used for testing or for telemetry items that are not received
+    regularly through the target interface.
+
+    Accepts two different calling styles:
+      set_tlm("TGT PKT ITEM = 1.0")
+      set_tlm('TGT','PKT','ITEM', 10.0)
+
+    Favor the first syntax where possible as it is more succinct.
+
+    Args:
+        args (str|List[str]) See the description for calling style
+        type (str) Telemetry type, RAW, CONVERTED (default), FORMATTED
+    """
     target_name, packet_name, item_name, value = _set_tlm_process_args(
         args, "set_tlm", cache_timeout=cache_timeout, scope=scope
     )
@@ -126,13 +132,6 @@ def set_tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
     CvtModel.set_item(target_name, packet_name, item_name, value, type, scope)
 
 
-# Injects a packet into the system as if it was received from an interface
-#
-# @param target_name [String] Target name of the packet
-# @param packet_name [String] Packet name of the packet
-# @param item_hash [Hash] Hash of item_name and value for each item you want to change from the current value table
-# @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
-# @param received_time [Integer|None] Optional received time as nanoseconds since Unix epoch
 def inject_tlm(
     target_name,
     packet_name,
@@ -142,6 +141,15 @@ def inject_tlm(
     scope=OPENC3_SCOPE,
     received_time=None,
 ):
+    """Injects a packet into the system as if it was received from an interface
+
+    Args:
+        target_name (str) Target name of the packet
+        packet_name (str) Packet name of the packet
+        item_hash (dict) Dict of item_name and value for each item you want to change from the current value table
+        type (str) Telemetry type, RAW, CONVERTED (default), FORMATTED
+        received_time (int|None) Optional received time as nanoseconds since Unix epoch
+    """
     authorize(
         permission="tlm_set",
         target_name=target_name,
@@ -200,21 +208,23 @@ def inject_tlm(
         )
 
 
-# Override the current value table such that a particular item always
-# returns the same value (for a given type) even when new telemetry
-# packets are received from the target.
-#
-# Accepts two different calling styles:
-#   override_tlm("TGT PKT ITEM = 1.0")
-#   override_tlm('TGT','PKT','ITEM', 10.0)
-#
-# Favor the first syntax where possible as it is more succinct.
-#
-# @param args The args must either be a string followed by a value or
-#   three strings followed by a value (see the calling style in the
-#   description).
-# @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
 def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
+    """Override the current value table such that a particular item always
+    returns the same value (for a given type) even when new telemetry
+    packets are received from the target.
+
+    Accepts two different calling styles:
+      override_tlm("TGT PKT ITEM = 1.0")
+      override_tlm('TGT','PKT','ITEM', 10.0)
+
+    Favor the first syntax where possible as it is more succinct.
+
+    Args:
+        args The args must either be a string followed by a value or
+            three strings followed by a value (see the calling style in the
+            description).
+        type (str) Telemetry type, ALL (default), RAW, CONVERTED, FORMATTED
+    """
     target_name, packet_name, item_name, value = _set_tlm_process_args(args, "override_tlm", scope=scope)
     authorize(
         permission="tlm_set",
@@ -225,26 +235,28 @@ def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
     CvtModel.override(target_name, packet_name, item_name, value, type=type, scope=scope)
 
 
-# Get the list of CVT overrides
 def get_overrides(scope=OPENC3_SCOPE):
+    """Get the list of CVT overrides"""
     authorize(permission="tlm", scope=scope)
     return CvtModel.overrides(scope=scope)
 
 
-# Normalize a telemetry item in a packet to its default behavior. Called
-# after override_tlm to restore standard processing.
-#
-# Accepts two different calling styles:
-#   normalize_tlm("TGT PKT ITEM")
-#   normalize_tlm('TGT','PKT','ITEM')
-#
-# Favor the first syntax where possible as it is more succinct.
-#
-# @param args The args must either be a string or three strings
-#   (see the calling style in the description).
-# @param type [Symbol] Telemetry type, :ALL (default), :RAW, :CONVERTED, :FORMATTED
-#   Also takes :ALL which means to normalize all telemetry types
 def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
+    """Normalize a telemetry item in a packet to its default behavior. Called
+    after override_tlm to restore standard processing.
+
+    Accepts two different calling styles:
+      normalize_tlm("TGT PKT ITEM")
+      normalize_tlm('TGT','PKT','ITEM')
+
+    Favor the first syntax where possible as it is more succinct.
+
+    Args:
+        args The args must either be a string or three strings
+            (see the calling style in the description).
+        type (str) Telemetry type, ALL (default), RAW, CONVERTED, FORMATTED
+            ALL means to normalize all telemetry types
+    """
     target_name, packet_name, item_name = _tlm_process_args(args, "normalize_tlm", scope=scope)
     authorize(
         permission="tlm_set",
@@ -255,12 +267,16 @@ def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
     CvtModel.normalize(target_name, packet_name, item_name, type=type, scope=scope)
 
 
-# Returns the raw buffer for a telemetry packet.
-#
-# @param target_name [String] Name of the target
-# @param packet_name [String] Name of the packet
-# @return [Hash] telemetry hash with last telemetry buffer
 def get_tlm_buffer(*args, scope=OPENC3_SCOPE, timeout=5):
+    """Returns the raw buffer for a telemetry packet.
+
+    Args:
+        target_name (str) Name of the target
+        packet_name (str) Name of the packet
+
+    Return:
+        (dict) telemetry hash with last telemetry buffer
+    """
     target_name, packet_name = _extract_target_packet_names("get_tlm_buffer", *args)
     authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     model = TargetModel.packet(target_name, packet_name, scope=scope)
@@ -377,15 +393,6 @@ def get_tlm_available(items, manual=False, scope=OPENC3_SCOPE):
     return results
 
 
-# Returns all the item values (along with their limits state). The items
-# can be from any target and packet and thus must be fully qualified with
-# their target and packet names.
-#
-# @param items [Array<String>] Array of items consisting of 'tgt__pkt__item__type'
-# @param stale_time [Integer] Time in seconds from Time.now that data will be marked stale
-# @return [Array<Object, Symbol>]
-#   Array consisting of the item value and limits state
-#   given as symbols such as :RED, :YELLOW, :STALE
 def get_tlm_values(
     items,
     stale_time=30,
@@ -394,6 +401,18 @@ def get_tlm_values(
     end_time=None,
     scope=OPENC3_SCOPE,
 ):
+    """Returns all the item values (along with their limits state). The items
+    can be from any target and packet and thus must be fully qualified with
+    their target and packet names.
+
+    Args:
+        items (List[str]) List of items consisting of 'tgt__pkt__item__type'
+        stale_time (int) Time in seconds from Time.now that data will be marked stale
+
+    Return:
+        (List[Object, str]) List consisting of the item value and limits state
+        given as strings such as RED, YELLOW, STALE
+    """
     if not isinstance(items, list) or len(items) == 0:
         raise TypeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
     packets = []
@@ -431,11 +450,15 @@ def get_tlm_values(
     return CvtModel.get_tlm_values(cvt_items, stale_time, cache_timeout, start_time, end_time, scope)
 
 
-# Returns an array of all the telemetry packet hashes
-#
-# @param target_name [String] Name of the target
-# @return [Array<Hash>] Array of all telemetry packet hashes
 def get_all_tlm(target_name, scope=OPENC3_SCOPE):
+    """Returns an array of all the telemetry packet hashes
+
+    Args:
+        target_name (str) Name of the target
+
+    Return:
+        (List[dict]) List of all telemetry packet hashes
+    """
     target_name = target_name.upper()
     authorize(permission="tlm", target_name=target_name, scope=scope)
     return TargetModel.packets(target_name, type="TLM", scope=scope)
@@ -490,7 +513,7 @@ get_all_telemetry_names = get_all_tlm_names
 
 
 def get_tlm(*args, scope: str = OPENC3_SCOPE):
-    """Returns a telemetry packet hash
+    """Returns a telemetry packet definition hash
 
     Args:
         scope (str) Name of the scope
