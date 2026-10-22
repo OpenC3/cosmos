@@ -96,8 +96,10 @@ module OpenC3
       if @name =~ /__DECOM__/
         @topics << "#{@scope}__DECOMINTERFACE__{#{@target_names[0]}}"
       end
-      @limits_event_topic = "#{@scope}__openc3_limits_events"
-      @topics << @limits_event_topic
+      # Limits control events (settings, enable state, limits set, etc) are read from a
+      # dedicated stream so they can't be trimmed by a flood of LIMITS_CHANGE events
+      @limits_control_topic = "#{@scope}__openc3_limits_control"
+      @topics << @limits_control_topic
       Topic.update_topic_offsets(@topics, db_shard: @db_shard)
       # Initialize before assigning limits_change_callback - sync_system below
       # can fire the callback synchronously for any persisted-disabled items.
@@ -126,7 +128,7 @@ module OpenC3
               break if @cancel_thread
               if topic == @microservice_topic
                 microservice_cmd(topic, msg_id, msg_hash, redis)
-              elsif topic == @limits_event_topic
+              elsif topic == @limits_control_topic
                 event = JSON.parse(msg_hash['event'], allow_nan: true, create_additions: true)
                 LimitsEventTopic.process_event(event)
               elsif topic =~ /__DECOMINTERFACE/

@@ -131,6 +131,28 @@ module OpenC3
         expect(events[1][1]["message"]).to eql "TEST2"
       end
 
+      it "writes and reads LIMITS_GROUP_ENABLE_STATE" do
+        # Existing settings for an item must be preserved
+        Store.hset("DEFAULT__current_limits_settings", "TGT1__PKT1__ITEM1", JSON.generate({ 'persistence_setting' => 3, 'enabled' => true }))
+        items = { "TGT1" => { "PKT1" => ["ITEM1", "ITEM2"] }, "TGT2" => { "PKT1" => ["ITEM1"] } }
+        event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: "GROUP", items: items, enabled: false,
+            time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+
+        events = LimitsEventTopic.read("0-0", scope: "DEFAULT")
+        expect(events.length).to eql 1
+        expect(events[0][1]["type"]).to eql "LIMITS_GROUP_ENABLE_STATE"
+        expect(events[0][1]["group_name"]).to eql "GROUP"
+        expect(events[0][1]["items"]).to eql items
+        expect(events[0][1]["enabled"]).to eql false
+        expect(events[0][1]["message"]).to eql "TEST1"
+
+        settings = Store.hgetall("DEFAULT__current_limits_settings").transform_values { |v| JSON.parse(v) }
+        expect(settings).to eql({ "TGT1__PKT1__ITEM1" => { 'persistence_setting' => 3, 'enabled' => false },
+                                  "TGT1__PKT1__ITEM2" => { 'enabled' => false },
+                                  "TGT2__PKT1__ITEM1" => { 'enabled' => false } })
+      end
+
       it "writes and reads LIMITS_SET" do
         sets = LimitsEventTopic.sets(scope: "DEFAULT")
         expect(sets).to eql({})
@@ -246,6 +268,45 @@ module OpenC3
       end
     end
 
+    describe "limits control stream" do
+      def limits_change_event(i)
+        { type: :LIMITS_CHANGE, target_name: "TGT1", packet_name: "PKT1", item_name: "ITEM#{i}",
+          old_limits_state: "GREEN", new_limits_state: "RED_HIGH", time_nsec: Time.now.to_nsec_from_epoch, message: "TEST" }
+      end
+
+      it "writes all events except LIMITS_CHANGE to the control stream" do
+        LimitsEventTopic.write(limits_change_event(1), scope: "DEFAULT")
+        event = { type: :LIMITS_ENABLE_STATE, target_name: "TGT1", packet_name: "PKT1",
+            item_name: "ITEM1", enabled: false, time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+
+        expect(EphemeralStore.xlen("DEFAULT__openc3_limits_events")).to eql 2
+        control = Topic.read_topics(["DEFAULT__openc3_limits_control"], ["0-0"])["DEFAULT__openc3_limits_control"]
+        expect(control.length).to eql 1
+        expect(JSON.parse(control[0][1]['event'])['type']).to eql "LIMITS_ENABLE_STATE"
+      end
+
+      it "sync_system_thread_body applies control events after a flood of LIMITS_CHANGE events" do
+        LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT") # Set the stream offset
+        event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: "FIRST", enabled: false,
+            items: { "INST" => { "HEALTH_STATUS" => ["TEMP1"] } }, time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        # More LIMITS_CHANGE events than the ~1000 entries the limits event stream keeps
+        1500.times { |i| LimitsEventTopic.write(limits_change_event(i), scope: "DEFAULT") }
+        LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT")
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+      end
+
+      it "process_event applies the rest of a group when one item fails" do
+        allow(System.limits).to receive(:disable).and_call_original
+        allow(System.limits).to receive(:disable).with("INST", "HEALTH_STATUS", "TEMP1").and_raise("boom")
+        event = { 'type' => 'LIMITS_GROUP_ENABLE_STATE', 'group_name' => "FIRST", 'enabled' => false,
+                  'items' => { "INST" => { "HEALTH_STATUS" => ["TEMP1", "TEMP3"] } } }
+        LimitsEventTopic.process_event(event)
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be false
+      end
+    end
+
     ['sync_system', 'sync_system_thread_body'].each do |method|
       describe "self.#{method}" do
         it "syncs our system after evemts" do
@@ -307,6 +368,27 @@ module OpenC3
             sleep 0.01
             expect(System.limits_set).to eql :TVAC
           end
+        end
+
+        it "syncs our system after LIMITS_GROUP_ENABLE_STATE events" do
+          items = { "INST" => { "HEALTH_STATUS" => ["TEMP1", "TEMP3"] },
+                    "NOTGT" => { "NOPKT" => ["NOITEM"] } } # Targets not in this System are ignored
+          event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: "FIRST", items: items, enabled: false,
+              time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
+          LimitsEventTopic.write(event, scope: "DEFAULT")
+          LimitsEventTopic.send(method, scope: "DEFAULT")
+          sleep 0.01
+          expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+          expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP2")).to be true
+          expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be false
+
+          event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: "FIRST", items: items, enabled: true,
+              time_nsec: Time.now.to_nsec_from_epoch, message: "TEST2" }
+          LimitsEventTopic.write(event, scope: "DEFAULT")
+          LimitsEventTopic.send(method, scope: "DEFAULT")
+          sleep 0.01
+          expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+          expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be true
         end
       end
     end

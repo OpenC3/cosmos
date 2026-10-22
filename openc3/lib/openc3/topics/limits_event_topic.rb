@@ -85,6 +85,30 @@ module OpenC3
         limits_settings['enabled'] = event[:enabled]
         Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, allow_nan: true))
 
+      when :LIMITS_GROUP_ENABLE_STATE
+        # Groups can contain many thousands of items so read and write the settings in bulk
+        fields = []
+        event[:items].each do |target_name, packets|
+          packets.each do |packet_name, item_names|
+            item_names.each { |item_name| fields << "#{target_name}__#{packet_name}__#{item_name}" }
+          end
+        end
+        unless fields.empty?
+          all_settings = Store.hmget("#{scope}__current_limits_settings", *fields)
+          updates = {}
+          fields.each_with_index do |field, index|
+            limits_settings = all_settings[index]
+            if limits_settings
+              limits_settings = JSON.parse(limits_settings, allow_nan: true, create_additions: true)
+            else
+              limits_settings = {}
+            end
+            limits_settings['enabled'] = event[:enabled]
+            updates[field] = JSON.generate(limits_settings, allow_nan: true)
+          end
+          Store.hmset("#{scope}__current_limits_settings", *updates.flatten)
+        end
+
       when :LIMITS_STATE_COLOR
         # Persist the state color so it survives a decom microservice restart (applied by sync_system)
         field = "#{event[:target_name]}__#{event[:packet_name]}__#{event[:item_name]}"
@@ -111,8 +135,22 @@ module OpenC3
       end
 
       # Write to all active db_shards so each decom microservice can read limits events inline
+      msg_hash = { event: JSON.generate(event, allow_nan: true) }
       _active_db_shards(scope: scope).each do |db_shard|
-        Topic.write_topic("#{scope}__openc3_limits_events", {event: JSON.generate(event, allow_nan: true)}, '*', 1000, db_shard: db_shard)
+        if event[:type] == :LIMITS_CHANGE
+          Topic.write_topic("#{scope}__openc3_limits_events", msg_hash, '*', 1000, db_shard: db_shard)
+        else
+          # Decom microservices read control events (everything except LIMITS_CHANGE) from
+          # a separate low volume stream. A flood of LIMITS_CHANGE events from many items
+          # changing state would otherwise trim control events before they are read.
+          # Write both streams in a transaction so event readers and decom can't diverge.
+          EphemeralStore.instance(db_shard: db_shard).redis_pool.with do |redis|
+            redis.multi do |transaction|
+              transaction.xadd("#{scope}__openc3_limits_events", msg_hash, maxlen: 1000, approximate: true)
+              transaction.xadd("#{scope}__openc3_limits_control", msg_hash, maxlen: 1000, approximate: true)
+            end
+          end
+        end
       end
     end
 
@@ -289,6 +327,34 @@ module OpenC3
           end
         end
 
+      when 'LIMITS_GROUP_ENABLE_STATE'
+        enabled = ConfigParser.handle_true_false_nil(event['enabled'])
+        event['items'].each do |target_name, packets|
+          target = telemetry[target_name]
+          next unless target
+
+          packets.each do |packet_name, item_names|
+            packet = target[packet_name]
+            next unless packet
+
+            item_names.each do |item_name|
+              next unless packet.items[item_name]
+
+              # The stream offset has already advanced past this event so isolate
+              # failures to a single item rather than skipping the rest of the group
+              begin
+                if enabled
+                  System.limits.enable(target_name, packet_name, item_name)
+                else
+                  System.limits.disable(target_name, packet_name, item_name)
+                end
+              rescue => e
+                Logger.error("Error #{enabled ? 'enabling' : 'disabling'} limits for #{target_name} #{packet_name} #{item_name}: #{e.formatted}")
+              end
+            end
+          end
+        end
+
       when 'LIMITS_STATE_COLOR'
         target_name = event['target_name']
         packet_name = event['packet_name']
@@ -310,7 +376,7 @@ module OpenC3
     # Still available for non-decom consumers that need to sync limits.
     def self.sync_system_thread_body(scope:, block_ms: nil)
       telemetry = System.telemetry.all
-      topics = ["#{scope}__openc3_limits_events"]
+      topics = ["#{scope}__openc3_limits_control"]
       Topic.read_topics(topics, nil, block_ms) do |_topic, _msg_id, event, _redis|
         event = JSON.parse(event['event'], allow_nan: true, create_additions: true)
         process_event(event, telemetry: telemetry)

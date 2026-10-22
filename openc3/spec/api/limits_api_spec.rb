@@ -261,6 +261,28 @@ module OpenC3
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be false
       end
+
+      it "accepts a lowercase group name" do
+        @api.disable_limits_group("first")
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+      end
+
+      it "writes a single limits event for the whole group" do
+        # A large group must not flood the limits event stream (capped at ~1000 entries)
+        # with one event per item or decom microservices can miss events
+        @redis.del("DEFAULT__openc3_limits_events")
+        @api.disable_limits_group("FIRST")
+        events = LimitsEventTopic.read("0-0", scope: "DEFAULT")
+        expect(events.length).to eql 1
+        expect(events[0][1]["type"]).to eql "LIMITS_GROUP_ENABLE_STATE"
+        expect(events[0][1]["group_name"]).to eql "FIRST"
+        expect(events[0][1]["enabled"]).to eql false
+        expect(events[0][1]["items"]).to eql({ "INST" => { "HEALTH_STATUS" => ["TEMP1", "TEMP3"] } })
+
+        settings = Store.hgetall("DEFAULT__current_limits_settings")
+        expect(JSON.parse(settings["INST__HEALTH_STATUS__TEMP1"])["enabled"]).to be false
+        expect(JSON.parse(settings["INST__HEALTH_STATUS__TEMP3"])["enabled"]).to be false
+      end
     end
 
     describe "get_limits_sets, get_limits_set, set_limits_set" do

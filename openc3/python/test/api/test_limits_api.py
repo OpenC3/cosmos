@@ -333,6 +333,26 @@ class TestLimitsApi(unittest.TestCase):
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP3"))
 
+    def test_disable_limits_groups_accepts_a_lowercase_group_name(self):
+        disable_limits_group("first")
+        self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_disable_limits_groups_writes_a_single_limits_event_for_the_whole_group(self):
+        # A large group must not flood the limits event stream (capped at ~1000 entries)
+        # with one event per item or decom microservices can miss events
+        Store.delete("DEFAULT__openc3_limits_events")
+        disable_limits_group("FIRST")
+        events = LimitsEventTopic.read("0-0", scope="DEFAULT")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0][1]["type"], "LIMITS_GROUP_ENABLE_STATE")
+        self.assertEqual(events[0][1]["group_name"], "FIRST")
+        self.assertFalse(events[0][1]["enabled"])
+        self.assertEqual(events[0][1]["items"], {"INST": {"HEALTH_STATUS": ["TEMP1", "TEMP3"]}})
+
+        for item in ["TEMP1", "TEMP3"]:
+            settings = json.loads(Store.hget("DEFAULT__current_limits_settings", f"INST__HEALTH_STATUS__{item}"))
+            self.assertFalse(settings["enabled"])
+
     def test_gets_and_set_the_active_limits_set(self):
         self.assertEqual(get_limits_sets(), ["DEFAULT", "TVAC"])
         set_limits_set("TVAC")
