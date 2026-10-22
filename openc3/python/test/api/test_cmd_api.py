@@ -764,6 +764,15 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(result[1], ("ABORT"))
         self.assertAlmostEqual(result[2], int(now), delta=1)
 
+    def test_get_cmd_time_returns_the_target_of_the_latest_command(self):
+        # A target sorted after INST with no commands sent must not be returned
+        TargetModel(folder_name="ZZZ", name="ZZZ", scope="DEFAULT").create()
+        cmd("INST ABORT")
+        time.sleep(0.001)
+        result = get_cmd_time()
+        self.assertEqual(result[0], "INST")
+        self.assertEqual(result[1], "ABORT")
+
     def test_get_cmd_time_returns_0_if_no_times_are_set(self):
         self.assertEqual(get_cmd_time("INST", "ABORT"), ("INST", "ABORT", 0, 0))
         self.assertEqual(get_cmd_time("INST"), (None, None, 0, 0))
