@@ -159,8 +159,8 @@ importers:
         specifier: workspace:*
         version: link:../openc3-vue-common
       ace-builds:
-        specifier: 1.44.0
-        version: 1.44.0
+        specifier: 1.45.2
+        version: 1.45.2
       axios:
         specifier: 1.20.0
         version: 1.20.0(debug@4.4.3)
@@ -548,8 +548,8 @@ importers:
         specifier: workspace:*
         version: link:../openc3-vue-common
       ace-builds:
-        specifier: 1.44.0
-        version: 1.44.0
+        specifier: 1.45.2
+        version: 1.45.2
       axios:
         specifier: 1.20.0
         version: 1.20.0(debug@4.4.3)
@@ -698,8 +698,8 @@ importers:
         specifier: workspace:*
         version: link:../openc3-vue-common
       ace-builds:
-        specifier: 1.44.0
-        version: 1.44.0
+        specifier: 1.45.2
+        version: 1.45.2
       axios:
         specifier: 1.20.0
         version: 1.20.0(debug@4.4.3)
@@ -860,8 +860,8 @@ importers:
         specifier: workspace:*
         version: link:../openc3-js-common
       ace-builds:
-        specifier: 1.44.0
-        version: 1.44.0
+        specifier: 1.45.2
+        version: 1.45.2
       ace-diff:
         specifier: 4.0.0
         version: 4.0.0
@@ -1681,8 +1681,8 @@ packages:
   '@vueuse/shared@10.11.1':
     resolution: {integrity: sha512-LHpC8711VFZlDaYUXEBbFBCQ7GS3dVU9mjOhhMhXP6txTV4EhYQg/KGnQuvt/sPAtoUKq7VVUnL6mVtFoL42sA==}
 
-  ace-builds@1.44.0:
-    resolution: {integrity: sha512-PFNMSYqFdEUkul2Ntud0HvA09AgY+F1ag0UYdpMH60wNI/qOA8cB8tlTgoALMEwIdUPJK2CjrIQ7OnbiSS/ugQ==}
+  ace-builds@1.45.2:
+    resolution: {integrity: sha512-a0IADaETGBnBW5CIkniUJn7F+NyTuHWKqlv1A8FXaMmFflJsMGnU3TzkiyslInqIZ3odfcVKOdXBGIKBefzFDA==}
 
   ace-diff@4.0.0:
     resolution: {integrity: sha512-LBSKguMsxoCF/BaQHgt9xOdKbTa+ln1p0wNWM/+Oq4AC9gj9Itj9Z3o2TcuMa/UdV5XkOsmXk29aihT7XKo98g==}
@@ -3208,7 +3208,7 @@ snapshots:
       - '@vue/composition-api'
       - vue
 
-  ace-builds@1.44.0: {}
+  ace-builds@1.45.2: {}
 
   ace-diff@4.0.0:
     dependencies:

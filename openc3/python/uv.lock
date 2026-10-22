@@ -18,30 +18,30 @@ wheels = [
 
 [[package]]
 name = "boto3"
-version = "1.43.117"
+version = "1.43.118"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore" },
     { name = "jmespath" },
     { name = "s3transfer" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/94/a7/61f0295f79dfdcebb5aa01f86c614fac7e1294faabbd66259d3609c50539/boto3-1.43.117.tar.gz", hash = "sha256:f3d314908d866b577ee6b74ed432c21e565c4c4dbd640ef3fd5e0da30fa13a98", size = 112677, upload-time = "2026-10-21T19:30:03.849Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/8b/5694c8433b5202f34a82def4edee274f7df1eba2919c66d9d389d2202ec8/boto3-1.43.118.tar.gz", hash = "sha256:c0620f799e0f0c222ba42c337b65cdbcd3da38a3121187f634d8926cbbb28a9c", size = 112649, upload-time = "2026-10-22T19:22:09.629Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f3/3b/22b05a545fb95983733d84681364c6b0a36afb0710d832f77732d1fc4c0b/boto3-1.43.117-py3-none-any.whl", hash = "sha256:a5b6cd7e67653987fcf0e212187c16f7b58af2ae192e368f7212ddab7c05b25d", size = 140043, upload-time = "2026-10-21T19:30:02.114Z" },
+    { url = "https://files.pythonhosted.org/packages/bb/a3/65bb3d64928f3c2da17640b92044084150317f02adf22442cb0c52af2a8b/boto3-1.43.118-py3-none-any.whl", hash = "sha256:ab8f3d2c622ef039338b4f228d97ea55f1abd573d84bb9b9a5ee8cb6780c0ccd", size = 140045, upload-time = "2026-10-22T19:22:08.353Z" },
 ]
 
 [[package]]
 name = "botocore"
-version = "1.43.117"
+version = "1.43.118"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "jmespath" },
     { name = "python-dateutil" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/6e/a0/d0a5c44ad6a01f195681ddcb4ce203f06c712811daf1d15f8f8785e8a9f8/botocore-1.43.117.tar.gz", hash = "sha256:71993702832cc37c2495048b9945f2929d306fccb3fb767e9964e437e637fa6c", size = 16366888, upload-time = "2026-10-21T19:29:59.274Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d4/b8/3e55154ddaf1a6d1d4ddda85c0e5983205a3b7657edacd8ebba8c6fd774c/botocore-1.43.118.tar.gz", hash = "sha256:7f3f9d88cc9e847587690f82a42e3c3c292c3026c92c1e60d68a9310018e003f", size = 16420126, upload-time = "2026-10-22T19:22:04.81Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/10/94/050e35c9febf6dd2fce4a76be587ae4a323964865700467d9d7b082f7133/botocore-1.43.117-py3-none-any.whl", hash = "sha256:5920ef9b3002e1361846549078549d9154a6e0004c22853c01ce7b279d05d495", size = 16061765, upload-time = "2026-10-21T19:29:56.001Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/ce/61b39a8e7a69af5ea43c1c3e1b0065a4866b42ccddf107e16686a3143614/botocore-1.43.118-py3-none-any.whl", hash = "sha256:a45d7ae570674161e4a3542d8c68633bf7503f92d1de781ef7361b79488eda6f", size = 16122016, upload-time = "2026-10-22T19:22:00.414Z" },
 ]
 
 [[package]]
@@ -492,13 +492,13 @@ wheels = [
 
 [[package]]
 name = "iroh"
-version = "1.1.0"
+version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/94/2a/f9f1cee7b0d3c71b95c06304b4e60381a7107dbccff7183ed9ff58b38141/iroh-1.1.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:b1c920f14323badc451e45b747da02d07a6e40ea2c1c97eeed5539e3ebc2b8b7", size = 6317758, upload-time = "2026-07-16T13:54:08.111Z" },
-    { url = "https://files.pythonhosted.org/packages/3e/dd/2f0a2bc113ced26981fb141cecc75e0682996ec1f49a4398c97b351c2196/iroh-1.1.0-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:abdf089cad4420e2e474a0fe8694aa32f91d7a49f569b559e18edd247a29af03", size = 7281850, upload-time = "2026-07-16T13:54:10.326Z" },
-    { url = "https://files.pythonhosted.org/packages/b8/ed/bcc0599f186ca75936b883299596b88871075a4c4312255a7c2b752b6783/iroh-1.1.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:4989c7b8f6ab2ebe7afc0c2cf55b7608f7fd05f02bffee1af8d937e05de0e768", size = 7507226, upload-time = "2026-07-16T13:54:12.663Z" },
-    { url = "https://files.pythonhosted.org/packages/c3/44/4b53f0dbc6ea161ed560b1a4b4cc317e2be77a32b00fa86cfab9fd6e5cb9/iroh-1.1.0-py3-none-win_amd64.whl", hash = "sha256:45f95b56651d32163628449727f7f3c3e311870e83599c74bc88725541ca1829", size = 6548858, upload-time = "2026-07-16T13:54:14.554Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/47/562411d054f7b15e8aaca8fd965c42e8d61acae0c58773c3a2d0266a03ef/iroh-1.2.0-py3-none-macosx_11_0_arm64.whl", hash = "sha256:d7c407d9483c8e0c7680e569f906e892a19d4c13af537ba9127f7de130c0d399", size = 5752039, upload-time = "2026-10-22T19:40:22.634Z" },
+    { url = "https://files.pythonhosted.org/packages/61/5d/7082a1eafa89da2ff72800344d179a89619b69f924b1a9e717784ad5b472/iroh-1.2.0-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:049eef820a5710093cb0cc9d645da00f69dfbf5b0ac7647741da2168b79d0c10", size = 6950433, upload-time = "2026-10-22T19:40:25.237Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/09/15cf50f36f90e364cde73b4df392d7bb91cec412455b06226c2ec660716a/iroh-1.2.0-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:61222adc81745009f34ca1fed42633f6cac865c9ed35a4701eb8c0174cb8399a", size = 7198245, upload-time = "2026-10-22T19:40:27.434Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/c0/f0fe409eee4b0afaee56ae9a8cb6a15d2f4d443d1e12ef5529141a7b0a62/iroh-1.2.0-py3-none-win_amd64.whl", hash = "sha256:1eedafeb906f57d4252b69379673b039894e28a35bbb9b54ddfdcae83411cfa5", size = 6048862, upload-time = "2026-10-22T19:40:29.281Z" },
 ]
 
 [[package]]
