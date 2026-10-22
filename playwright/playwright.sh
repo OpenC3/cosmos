@@ -94,7 +94,9 @@ case $1 in
             exit 1
         }
         ../../openc3.sh cli rake build VERSION=1.0.0
-        cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
+        # Build 1.0.1 rather than copying 1.0.0: the gem's internal version must
+        # match its filename or an upgrade installs 1.0.0 and uninstalling 1.0.1 fails
+        ../../openc3.sh cli rake build VERSION=1.0.1
         ../../openc3.sh cli validate openc3-cosmos-pw-test-1.0.0.gem
         cd - || exit 1
         ;;
