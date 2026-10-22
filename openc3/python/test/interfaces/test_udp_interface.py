@@ -11,7 +11,6 @@
 
 import socket
 import threading
-import time
 import unittest
 from unittest.mock import patch
 
@@ -196,10 +195,11 @@ class TestUdpInterface(unittest.TestCase):
         sock = mock_socket.return_value
         sock.recvfrom.side_effect = OSError(socket.EWOULDBLOCK)
         i = UdpInterface("localhost", "None", "8889")
+        self.addCleanup(i.disconnect)
         i.connect()
         thread = threading.Thread(target=i.read)
         thread.start()
-        time.sleep(0.001)
+        thread.join(timeout=5)
         self.assertFalse(thread.is_alive())
 
     def test_counts_the_packets_received(self):
