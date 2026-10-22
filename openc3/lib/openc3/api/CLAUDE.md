@@ -1,0 +1,1 @@
+When any files in this directory are modified, update the appropriate documentation in cosmos/docs.openc3.com/guides/scripting-api.md and cosmos/docs.openc3.com/guides/script-writing.md
