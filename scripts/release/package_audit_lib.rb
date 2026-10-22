@@ -1044,14 +1044,36 @@ def check_anycable(client, container_names)
     [name, `docker run --rm #{name} /usr/bin/anycable-go --version`.strip]
   end
   versions.each { |name, version| puts "Raw anycable-go version (#{name}): #{version}" }
-  # The binaries are linux-only, so run the one matching the image's arch inside it.
-  local_cmd = 'a=amd64; [ "$(uname -m)" = aarch64 ] && a=arm64; /anycable/anycable-go-linux-$a --version'
-  anycable = `docker run --rm -v #{File.join(ROOT_DIR, 'openc3-anycable')}:/anycable:ro --entrypoint sh #{container_names.first} -c '#{local_cmd}'`.strip
-  puts "Raw anycable-go version (openc3-anycable/): #{anycable}"
+  # Audit both checked-in binaries, not just the host's arch: a failed or partial
+  # update can leave them at different versions. They are static linux binaries,
+  # so run each in busybox under its own --platform (Docker Desktop emulates the
+  # foreign arch; a plain Linux Docker Engine needs qemu binfmt for it).
+  anycable_dir = File.join(ROOT_DIR, 'openc3-anycable')
+  local = %w[amd64 arm64].to_h do |arch|
+    out, _stderr, status = Open3.capture3('docker', 'run', '--rm', '--platform', "linux/#{arch}",
+                                          '-v', "#{anycable_dir}:/anycable:ro",
+                                          '--entrypoint', "/anycable/anycable-go-linux-#{arch}",
+                                          'busybox:1.37', '--version')
+    [arch, status.success? && !out.strip.empty? ? out.strip.lines.last.strip : nil]
+  end
+  local.each { |arch, raw| puts "Raw anycable-go version (openc3-anycable/ #{arch}): #{raw || 'FAILED to run'}" }
+  readable = local.values.compact
+  if readable.empty?
+    puts "ERROR: could not run either openc3-anycable/ binary; skipping anycable-go audit"
+    return nil
+  end
+  parse_version = ->(raw) { raw.split('version:')[-1].split('-')[0].strip }
+  if readable.length != local.length || readable.uniq.length != 1
+    # Audit against the oldest binary so any newer release is offered, and
+    # accepting it rewrites both. If the failure is the foreign arch not running
+    # at all, check qemu/binfmt before trusting this.
+    puts "ERROR: openc3-anycable/ binaries are not the same version; auditing against the oldest"
+  end
+  anycable = readable.min_by { |raw| Gem::Version.new(parse_version.(raw)) }
   if (versions.map(&:last) - [anycable]).any?
     puts "WARNING: built images don't match openc3-anycable/; rebuild them to pick up the binaries"
   end
-  any_cable_version = anycable.split('version:')[-1].split('-')[0].strip
+  any_cable_version = parse_version.(anycable)
   # A fourth version component means this is one of our own anycable-go builds,
   # never an upstream release: every anycable/anycable release back to v0.5.0 is
   # three-part. 1.6.16.1 is built from anycable/anycable#334 while that PR is
@@ -1386,7 +1408,7 @@ end
 # that may not exist yet), so we point OPENC3_PATH at the openc3/ directory in
 # this repo for every bundle call.
 # Pass the same `approved` hash across calls to auto-approve gems already
-# accepted in an earlier directory (keyed by "name newest"), so overlapping
+# accepted in an earlier directory (keyed by "name installed newest"), so overlapping
 # gems in cmd-tlm-api and script-runner-api are only prompted once.
 def update_outdated_gems(dir, extra_env = {}, approved: {})
   label = dir.sub(ROOT_DIR + '/', '')
@@ -1402,7 +1424,7 @@ def update_outdated_gems(dir, extra_env = {}, approved: {})
       next unless m
       name, newest, installed = m.captures
       next if newest == installed
-      key = "#{name} #{newest}"
+      key = "#{name} #{installed} #{newest}"
       if approved[key]
         puts "  [#{label}] Auto-approving gem #{name} #{installed} -> #{newest} (previously approved)"
         system(env, "bundle update #{name}")
