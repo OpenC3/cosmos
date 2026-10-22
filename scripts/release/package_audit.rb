@@ -83,8 +83,10 @@ puts "\n*** If you update a container version re-run to ensure there aren't addi
 
 # Per-language outdated dependency prompts. Each helper enumerates outdated
 # packages and asks the user yes/no before updating that single package.
+# Gems approved in one directory are auto-approved in the following ones.
+approved_gems = {}
 %w(openc3 openc3-cosmos-cmd-tlm-api openc3-cosmos-script-runner-api).each do |dir|
-  update_outdated_gems(File.join(__dir__, '..', '..', dir))
+  update_outdated_gems(File.join(__dir__, '..', '..', dir), approved: approved_gems)
 end
 
 update_outdated_wheels(File.join(__dir__, '..', '..', 'openc3', 'python'))

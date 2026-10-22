@@ -901,8 +901,11 @@ def validate_versions(versions, version, name)
     end
   end
 
-  patch_full = "#{prefix}#{major}.#{minor}.#{patch.to_i + 1}#{suffix}"
-  patch_candidate = versions.include?(patch_full) ? patch_full : nil
+  # Offer the newest patch on the current minor line, not just patch + 1, so a
+  # release that skipped an audit cycle doesn't need several runs to catch up.
+  patch_re = /\A#{Regexp.escape(prefix)}#{major}\.#{minor}\.(\d+)#{Regexp.escape(suffix)}\z/
+  newest_patch = versions.filter_map { |v| v[patch_re, 1]&.to_i }.select { |p| p > patch.to_i }.max
+  patch_candidate = newest_patch ? "#{prefix}#{major}.#{minor}.#{newest_patch}#{suffix}" : nil
 
   candidates = [major_candidate, minor_candidate, patch_candidate].compact
   if candidates.empty?
@@ -1033,16 +1036,21 @@ def check_container_version(client, containers, image_name)
 end
 
 def check_anycable(client, container_names)
-  # Both API images install the same binary from openc3-anycable/, so audit the
-  # first and only warn if another image reports something different.
+  # Both API images install the same binary from openc3-anycable/, so report
+  # what each built image has, but audit the checked-in binary: that is what the
+  # next build ships, and it's what an earlier accepted update rewrote. Auditing
+  # the images instead re-offers the same update until they are rebuilt.
   versions = container_names.map do |name|
     [name, `docker run --rm #{name} /usr/bin/anycable-go --version`.strip]
   end
   versions.each { |name, version| puts "Raw anycable-go version (#{name}): #{version}" }
-  if versions.map(&:last).uniq.length > 1
-    puts "WARNING: anycable-go versions differ between images; rebuild stale images before auditing"
+  # The binaries are linux-only, so run the one matching the image's arch inside it.
+  local_cmd = 'a=amd64; [ "$(uname -m)" = aarch64 ] && a=arm64; /anycable/anycable-go-linux-$a --version'
+  anycable = `docker run --rm -v #{File.join(ROOT_DIR, 'openc3-anycable')}:/anycable:ro --entrypoint sh #{container_names.first} -c '#{local_cmd}'`.strip
+  puts "Raw anycable-go version (openc3-anycable/): #{anycable}"
+  if (versions.map(&:last) - [anycable]).any?
+    puts "WARNING: built images don't match openc3-anycable/; rebuild them to pick up the binaries"
   end
-  anycable = versions.first.last
   any_cable_version = anycable.split('version:')[-1].split('-')[0].strip
   # A fourth version component means this is one of our own anycable-go builds,
   # never an upstream release: every anycable/anycable release back to v0.5.0 is
@@ -1377,7 +1385,10 @@ end
 # local `openc3` gem via ENV['OPENC3_PATH'] (falling back to a rubygems version
 # that may not exist yet), so we point OPENC3_PATH at the openc3/ directory in
 # this repo for every bundle call.
-def update_outdated_gems(dir, extra_env = {})
+# Pass the same `approved` hash across calls to auto-approve gems already
+# accepted in an earlier directory (keyed by "name newest"), so overlapping
+# gems in cmd-tlm-api and script-runner-api are only prompted once.
+def update_outdated_gems(dir, extra_env = {}, approved: {})
   label = dir.sub(ROOT_DIR + '/', '')
   puts "\nChecking outdated gems in #{label}:"
   updated = 0
@@ -1391,7 +1402,13 @@ def update_outdated_gems(dir, extra_env = {})
       next unless m
       name, newest, installed = m.captures
       next if newest == installed
-      if prompt_update?("[#{label}] Update gem #{name} from #{installed} to #{newest}?", installed, newest)
+      key = "#{name} #{newest}"
+      if approved[key]
+        puts "  [#{label}] Auto-approving gem #{name} #{installed} -> #{newest} (previously approved)"
+        system(env, "bundle update #{name}")
+        updated += 1
+      elsif prompt_update?("[#{label}] Update gem #{name} from #{installed} to #{newest}?", installed, newest)
+        approved[key] = true
         system(env, "bundle update #{name}")
         updated += 1
       end
