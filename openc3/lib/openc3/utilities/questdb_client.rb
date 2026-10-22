@@ -918,7 +918,7 @@ module OpenC3
     # Query historical telemetry data from QuestDB for a list of items.
     # Builds the SQL query, executes it, and decodes all results.
     # Supports cross-db_shard queries by grouping items by db_shard, executing
-    # separate queries per db_shard, and merging results positionally.
+    # separate queries per db_shard, and aligning range results by packet time.
     #
     # @param items [Array] Array of [target_name, packet_name, item_name, value_type, limits]
     #   item_name may be nil to indicate a placeholder (non-existent item)
@@ -949,12 +949,15 @@ module OpenC3
       end
 
       # Cross-db_shard: execute per-db_shard queries (as arrays of rows) and merge results
+      return tsdb_lookup_range_db_shards(items, db_shard_groups, start_time: start_time, end_time: end_time, scope: scope) if end_time
+
       db_shard_rows = {} # db_shard => rows
       db_shard_groups.each do |db_shard, group|
         result = tsdb_lookup_single_db_shard(group[:items], start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard, flatten: false)
         db_shard_rows[db_shard] = result.is_a?(Array) ? result : []
       end
 
+      # A point in time returns at most one row per db_shard: the last row before start_time.
       # Merge results positionally back into the original item order. Each db_shard
       # may have different row counts so use the maximum row count and fill missing
       # positions with [nil, nil]. If all db_shards returned empty, return empty.
@@ -971,6 +974,54 @@ module OpenC3
       end
       # Match the single db_shard behavior of returning a flat array for a single row
       return merged[0] if max_rows == 1
+
+      merged
+    end
+
+    # Cross-db_shard range lookup. Each db_shard returns its own rows so they can't be
+    # merged by row number. Instead the db_shard of the first item drives the rows (like
+    # the first table does in a single db_shard query) and every other db_shard is aligned
+    # to it by packet time, using its last row at or before each driving row (like ASOF JOIN).
+    def self.tsdb_lookup_range_db_shards(items, db_shard_groups, start_time:, end_time:, scope:)
+      db_shard_rows = {} # db_shard => rows with their packet time as the last value
+      db_shard_groups.each do |db_shard, group|
+        # Every item in this db_shard is a placeholder so leave its positions as nils
+        first = group[:items].find { |item| item[2] }
+        next unless first
+
+        query = group[:items] + [[first[0], first[1], 'PACKET_TIMESECONDS', 'RAW', nil]]
+        result = tsdb_lookup_single_db_shard(query, start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard, flatten: false)
+        db_shard_rows[db_shard] = result.is_a?(Array) ? result : []
+      end
+
+      driver = db_shard_for_target(items.find { |item| item[2] }[0], scope: scope)
+      return {} if db_shard_rows[driver].empty?
+
+      indexes = Hash.new(-1) # db_shard => index of the row aligned to the current driving row
+      merged = db_shard_rows[driver].map do |driver_row|
+        time = driver_row[-1][0]
+        row = Array.new(items.length) { [nil, nil] }
+        db_shard_groups.each do |db_shard, group|
+          rows = db_shard_rows[db_shard]
+          next unless rows
+
+          if db_shard == driver
+            shard_row = driver_row
+          else
+            indexes[db_shard] += 1 while indexes[db_shard] + 1 < rows.length and rows[indexes[db_shard] + 1][-1][0] <= time
+            next if indexes[db_shard] < 0
+
+            shard_row = rows[indexes[db_shard]]
+          end
+          group[:positions].each_with_index do |orig_pos, db_shard_idx|
+            row[orig_pos] = shard_row[db_shard_idx] if shard_row[db_shard_idx]
+          end
+        end
+        row
+      end
+      # Match the single db_shard behavior of returning a flat array for a single row
+      return merged[0] if merged.length == 1
+
       merged
     end
 

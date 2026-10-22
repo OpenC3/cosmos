@@ -788,7 +788,7 @@ class QuestDBClient:
         """Query historical telemetry data from QuestDB for a list of items.
         Builds the SQL query, executes it, and decodes all results.
         Supports cross-db_shard queries by grouping items by db_shard, executing
-        separate queries per db_shard, and merging results positionally.
+        separate queries per db_shard, and aligning range results by packet time.
 
         Args:
             items: List of TlmItem (or [target_name, packet_name, item_name, value_type, limits]).
@@ -824,6 +824,11 @@ class QuestDBClient:
             )
 
         # Cross-db_shard: execute per-db_shard queries (as lists of rows) and merge results
+        if end_time:
+            return cls._tsdb_lookup_range_db_shards(
+                items, db_shard_groups, start_time=start_time, end_time=end_time, scope=scope
+            )
+
         db_shard_rows = {}
         for db_shard, group in db_shard_groups.items():
             result = cls._tsdb_lookup_single_db_shard(
@@ -831,6 +836,7 @@ class QuestDBClient:
             )
             db_shard_rows[db_shard] = result if isinstance(result, list) else []
 
+        # A point in time returns at most one row per db_shard: the last row before start_time.
         # Merge results positionally back into the original item order. Each db_shard
         # may have different row counts so use the maximum row count and fill missing
         # positions with [None, None]. If all db_shards returned empty, return empty.
@@ -846,6 +852,56 @@ class QuestDBClient:
                         merged[row_num][orig_pos] = row[db_shard_idx]
         # Match the single db_shard behavior of returning a flat array for a single row
         if max_rows == 1:
+            return merged[0]
+        return merged
+
+    @classmethod
+    def _tsdb_lookup_range_db_shards(cls, items, db_shard_groups, start_time, end_time, scope):
+        """Cross-db_shard range lookup. Each db_shard returns its own rows so they can't be
+        merged by row number. Instead the db_shard of the first item drives the rows (like
+        the first table does in a single db_shard query) and every other db_shard is aligned
+        to it by packet time, using its last row at or before each driving row (like ASOF JOIN).
+        """
+        db_shard_rows = {}  # db_shard => rows with their packet time as the last value
+        for db_shard, group in db_shard_groups.items():
+            # Every item in this db_shard is a placeholder so leave its positions as Nones
+            first = next((item for item in group["items"] if item.item_name is not None), None)
+            if first is None:
+                continue
+            query = [*group["items"], TlmItem(first.target_name, first.packet_name, "PACKET_TIMESECONDS", "RAW", None)]
+            result = cls._tsdb_lookup_single_db_shard(
+                query, start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard, flatten=False
+            )
+            db_shard_rows[db_shard] = result if isinstance(result, list) else []
+
+        first = next(item for item in items if item.item_name is not None)
+        driver = cls.db_shard_for_target(first.target_name, scope=scope)
+        if not db_shard_rows[driver]:
+            return {}
+
+        indexes = dict.fromkeys(db_shard_rows, -1)  # db_shard => index of the row aligned to the driving row
+        merged = []
+        for driver_row in db_shard_rows[driver]:
+            time = driver_row[-1][0]
+            row = [[None, None] for _ in items]
+            for db_shard, group in db_shard_groups.items():
+                rows = db_shard_rows.get(db_shard)
+                if rows is None:
+                    continue
+                if db_shard == driver:
+                    shard_row = driver_row
+                else:
+                    while indexes[db_shard] + 1 < len(rows) and rows[indexes[db_shard] + 1][-1][0] <= time:
+                        indexes[db_shard] += 1
+                    if indexes[db_shard] < 0:
+                        continue
+                    shard_row = rows[indexes[db_shard]]
+                for db_shard_idx, orig_pos in enumerate(group["positions"]):
+                    if db_shard_idx < len(shard_row) and shard_row[db_shard_idx]:
+                        row[orig_pos] = shard_row[db_shard_idx]
+            merged.append(row)
+        # Match the single db_shard behavior of returning a flat array for a single row
+        if len(merged) == 1:
             return merged[0]
         return merged
 

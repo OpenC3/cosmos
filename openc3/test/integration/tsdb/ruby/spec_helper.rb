@@ -19,6 +19,9 @@ ENV['OPENC3_TSDB_INGEST_PORT'] ||= '9000'
 ENV['OPENC3_TSDB_QUERY_PORT'] ||= '8812'
 ENV['OPENC3_TSDB_USERNAME'] ||= 'admin'
 ENV['OPENC3_TSDB_PASSWORD'] ||= 'admin'
+# db_shard 1 (questdb-shard1 in docker-compose.test.yml) for the cross-db_shard tests
+ENV['OPENC3_TSDB_SHARD1_INGEST_PORT'] ||= '9010'
+ENV['OPENC3_TSDB_SHARD1_QUERY_PORT'] ||= '8822'
 ENV['OPENC3_SCOPE'] ||= 'DEFAULT'
 
 # Set global scope variable used by OpenC3 models
@@ -44,6 +47,30 @@ module QuestDBTestHelpers
     result['available'] == true
   rescue StandardError
     false
+  end
+
+  # Check if the db_shard 1 QuestDB is available
+  def questdb_shard1_available?
+    result = run_python_helper('check', db_shard: '1')
+    result['available'] == true
+  rescue StandardError
+    false
+  end
+
+  # Point the QuestDB query port at the given db_shard while in the block.
+  # Production resolves each db_shard by hostname (SHARDNUM) but locally every
+  # db_shard is on 127.0.0.1, so db_shard N > 0 is selected by the
+  # OPENC3_TSDB_SHARD<N>_QUERY_PORT port.
+  def with_db_shard_port(db_shard)
+    return yield if db_shard == 0
+
+    saved = ENV['OPENC3_TSDB_QUERY_PORT']
+    ENV['OPENC3_TSDB_QUERY_PORT'] = ENV.fetch("OPENC3_TSDB_SHARD#{db_shard}_QUERY_PORT")
+    begin
+      yield
+    ensure
+      ENV['OPENC3_TSDB_QUERY_PORT'] = saved
+    end
   end
 
   # Run the Python helper script with given arguments
@@ -84,8 +111,8 @@ module QuestDBTestHelpers
   end
 
   # Clean up a test table
-  def cleanup_table(table_name)
-    run_python_helper('cleanup', table: table_name)
+  def cleanup_table(table_name, db_shard: 0)
+    run_python_helper('cleanup', table: table_name, db_shard: db_shard.to_s)
   rescue StandardError
     # Ignore cleanup errors
   end

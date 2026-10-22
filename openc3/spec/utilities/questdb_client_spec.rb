@@ -55,23 +55,77 @@ module OpenC3
           expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[1]], hash_including(db_shard: 1))
         end
 
-        it "merges a single row of a multi-row query" do
-          # A db_shard with a single row must not be mistaken for multiple rows
-          result = lookup({ 0 => [[[1.0, nil], [3.0, nil]]], 1 => [[[2.0, nil]]] }, end_time: "2026-09-13T01:00:00Z")
-          expect(result).to eq([[1.0, nil], [2.0, nil], [3.0, nil]])
-        end
-
-        it "merges multiple rows filling missing rows with nils" do
-          result = lookup({ 0 => [[[1.0, nil], [3.0, nil]], [[4.0, nil], [6.0, nil]]], 1 => [[[2.0, nil]]] }, end_time: "2026-09-13T01:00:00Z")
-          expect(result).to eq([[[1.0, nil], [2.0, nil], [3.0, nil]], [[4.0, nil], [nil, nil], [6.0, nil]]])
-        end
-
         it "fills a db_shard with no results with nils" do
           expect(lookup({ 0 => [[[1.0, nil], [3.0, nil]]], 1 => {} })).to eq([[1.0, nil], [nil, nil], [3.0, nil]])
         end
 
-        it "returns empty when no db_shard has results" do
-          expect(lookup({ 0 => {}, 1 => {} }, end_time: "2026-09-13T01:00:00Z")).to eq({})
+        context "with an end_time" do
+          # Range rows end with the packet time added to each db_shard query
+          def range_lookup(results)
+            lookup(results, end_time: "2026-09-13T01:00:00Z")
+          end
+
+          it "adds the packet time of the first packet to each db_shard query" do
+            range_lookup({ 0 => [[[1.0, nil], [3.0, nil], [10.0, nil]]], 1 => [[[2.0, nil], [10.0, nil]]] })
+            time = ["INST", "HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW", nil]
+            time2 = ["INST2", "HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW", nil]
+            expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[0], items[2], time], hash_including(db_shard: 0))
+            expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[1], time2], hash_including(db_shard: 1))
+          end
+
+          it "merges a single row of a multi-row query" do
+            # A db_shard with a single row must not be mistaken for multiple rows
+            result = range_lookup({ 0 => [[[1.0, nil], [3.0, nil], [10.0, nil]]], 1 => [[[2.0, nil], [10.0, nil]]] })
+            expect(result).to eq([[1.0, nil], [2.0, nil], [3.0, nil]])
+          end
+
+          it "aligns the other db_shards to the rows of the first item's db_shard by packet time" do
+            shard0 = [
+              [[1.0, nil], [3.0, nil], [10.0, nil]],
+              [[4.0, nil], [6.0, nil], [30.0, nil]],
+              [[7.0, nil], [9.0, nil], [50.0, nil]],
+            ]
+            shard1 = [
+              [[2.0, nil], [20.0, nil]],
+              [[5.0, nil], [30.0, nil]],
+              [[8.0, nil], [40.0, nil]],
+              [[11.0, nil], [60.0, nil]],
+            ]
+            expected = [
+              # No db_shard 1 row at or before time 10
+              [[1.0, nil], [nil, nil], [3.0, nil]],
+              # The db_shard 1 row at the same time 30
+              [[4.0, nil], [5.0, nil], [6.0, nil]],
+              # The last db_shard 1 row before time 50 (time 40) and never the later time 60
+              [[7.0, nil], [8.0, nil], [9.0, nil]],
+            ]
+            expect(range_lookup({ 0 => shard0, 1 => shard1 })).to eq(expected)
+          end
+
+          it "drives the rows from the db_shard of the first item" do
+            items.rotate!
+            shard0 = [[[1.0, nil], [3.0, nil], [10.0, nil]], [[4.0, nil], [6.0, nil], [30.0, nil]]]
+            result = range_lookup({ 0 => shard0, 1 => [[[5.0, nil], [30.0, nil]]] })
+            # INST2 is now first so db_shard 1 drives a single row at time 30 and
+            # db_shard 0 contributes its row at time 30 (never its time 10 row)
+            expect(result).to eq([[5.0, nil], [4.0, nil], [6.0, nil]])
+          end
+
+          it "fills a db_shard with no results with nils" do
+            result = range_lookup({ 0 => [[[1.0, nil], [3.0, nil], [10.0, nil]], [[4.0, nil], [6.0, nil], [30.0, nil]]], 1 => {} })
+            expect(result).to eq([[[1.0, nil], [nil, nil], [3.0, nil]], [[4.0, nil], [nil, nil], [6.0, nil]]])
+          end
+
+          it "returns empty when the db_shard of the first item has no results" do
+            expect(range_lookup({ 0 => {}, 1 => [[[2.0, nil], [10.0, nil]]] })).to eq({})
+          end
+
+          it "doesn't query a db_shard with only placeholders" do
+            items[1] = ["INST2", "HEALTH_STATUS", nil, nil, nil]
+            result = range_lookup({ 0 => [[[1.0, nil], [3.0, nil], [10.0, nil]], [[4.0, nil], [6.0, nil], [30.0, nil]]] })
+            expect(result).to eq([[[1.0, nil], [nil, nil], [3.0, nil]], [[4.0, nil], [nil, nil], [6.0, nil]]])
+            expect(QuestDBClient).not_to have_received(:tsdb_lookup_single_db_shard).with(anything, hash_including(db_shard: 1))
+          end
         end
       end
     end
