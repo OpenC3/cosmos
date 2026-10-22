@@ -23,7 +23,7 @@
     "prettier": "^3.9.10"
   },
   "devDependencies": {
-    "@types/node": "^25.9.9",
+    "@types/node": "^26.6.5",
     "eslint": "^10.13.0",
     "globals": "^17.13.0",
     "typescript": "^6.0.3",
