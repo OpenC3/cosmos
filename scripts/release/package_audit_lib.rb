@@ -840,6 +840,99 @@ def download_ubi_ruby(version, release)
   true
 end
 
+CACERT_BASE_URL = 'https://curl.se/ca'
+# Service directories whose Dockerfiles COPY their own cacert.pem. Must match
+# the copies made by scripts/linux/openc3_setup.sh and build_multi_arch.sh.
+CACERT_COPY_DIRS = %w(openc3-ruby openc3-redis openc3-traefik openc3-buckets openc3-tsdb)
+
+# cacert.pem is the Mozilla CA bundle published by curl. curl versions each
+# conversion by date (cacert-YYYY-MM-DD.pem) and publishes a sha256 alongside
+# it, so identify our copy by hashing it against those published sums rather
+# than trusting the "as of" date in the file header.
+def check_cacert(client, path: File.join(ROOT_DIR, 'cacert.pem'), copy_dirs: CACERT_COPY_DIRS.map { |d| File.join(ROOT_DIR, d) })
+  new_version = check_root_cacert(client, path)
+  sync_cacert_copies(path, copy_dirs)
+  new_version
+end
+
+# Copy the root cacert.pem into each service directory that differs. Runs even
+# when the root file is current so stale copies left by an earlier setup are fixed.
+def sync_cacert_copies(path, copy_dirs)
+  return unless File.exist?(path)
+  sha256 = Digest::SHA256.file(path).hexdigest
+  copy_dirs.each do |dir|
+    next puts("WARN: #{dir} does not exist") unless File.directory?(dir)
+    dest = File.join(dir, 'cacert.pem')
+    next if File.exist?(dest) && Digest::SHA256.file(dest).hexdigest == sha256
+    FileUtils.cp(path, dest)
+    puts "  Copied cacert.pem to #{dest.sub(ROOT_DIR + '/', '')}"
+  end
+end
+
+def check_root_cacert(client, path)
+  resp = client.get('https://curl.se/docs/caextract.html')
+  unless resp.status == 200
+    puts "WARN: Could not read https://curl.se/docs/caextract.html"
+    return nil
+  end
+  versions = resp.body.scan(%r{/ca/cacert-(\d{4}-\d{2}-\d{2})\.pem\b}).flatten.uniq.sort.reverse
+  if versions.empty?
+    puts "WARN: no cacert-YYYY-MM-DD.pem versions found in caextract.html"
+    return nil
+  end
+  latest = versions.first
+  latest_sha256 = cacert_sha256(client, latest)
+  return nil if latest_sha256.nil?
+
+  local_sha256 = File.exist?(path) ? Digest::SHA256.file(path).hexdigest : nil
+  if local_sha256 == latest_sha256
+    puts "cacert.pem is up to date with #{latest}"
+    return nil
+  end
+
+  # Only walk the older releases when we're behind, to report what we have.
+  current = if local_sha256.nil?
+    'missing'
+  else
+    versions.drop(1).find { |v| cacert_sha256(client, v) == local_sha256 } || 'unknown (sha256 matches no curl release)'
+  end
+  puts "NOTE: cacert.pem has a newer release: #{latest}, Current Version: #{current}"
+  return nil unless prompt_yes_no("Update cacert.pem from #{current} to #{latest}?")
+  download_cacert(client, latest, latest_sha256, path) ? latest : nil
+end
+
+def cacert_sha256(client, version)
+  url = "#{CACERT_BASE_URL}/cacert-#{version}.pem.sha256"
+  resp = client.get(url)
+  sha256 = resp.body.to_s[/\A\h{64}\b/] if resp.status == 200
+  puts "WARN: Could not read sha256 from #{url}" if sha256.nil?
+  sha256
+end
+
+# Download the dated (immutable) file rather than the floating cacert.pem so the
+# bytes we verify are the ones the sha256 was published for. The existing file
+# is only replaced after the sha256 matches.
+def download_cacert(client, version, sha256, path)
+  url = "#{CACERT_BASE_URL}/cacert-#{version}.pem"
+  puts "  Downloading #{url}"
+  resp = client.get(url)
+  unless resp.status == 200
+    puts "ERROR: failed to download #{url} (HTTP #{resp.status})"
+    return false
+  end
+  actual = Digest::SHA256.hexdigest(resp.body)
+  unless actual == sha256
+    puts "ERROR: sha256 mismatch for cacert-#{version}.pem"
+    puts "  expected #{sha256}"
+    puts "  actual   #{actual}"
+    return false
+  end
+  File.binwrite(path, resp.body)
+  puts "  Verified sha256 #{actual}"
+  puts "  Updated cacert.pem to #{version}"
+  true
+end
+
 # Sync the traefik/versitygw versions referenced from the build scripts with
 # whatever the canonical Dockerfile says (used as a safety check after the
 # per-image prompts above run, in case the user previously edited only one).

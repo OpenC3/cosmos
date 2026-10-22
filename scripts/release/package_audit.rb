@@ -64,6 +64,7 @@ check_container_version(client, containers, 'traefik')
 check_container_version(client, containers, 'redis') # valkey base image
 new_versitygw = check_versitygw(client, versitygw_version)
 check_tsdb(client, tsdb_version)
+check_cacert(client)
 # Re-read RUBY_VERSION rather than using the local captured at startup:
 # check_debian above may have accepted a Ruby minor bump, and update_debian_files
 # writes the new value back into ENV. Using the stale local would audit
