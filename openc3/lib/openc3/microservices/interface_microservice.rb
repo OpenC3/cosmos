@@ -275,7 +275,10 @@ module OpenC3
                 raise "Invalid command received:\n #{msg_hash}"
               end
 
-              if @interface.cmd_target_enabled[command.target_name]
+              # An unidentified buffer is sent as UNKNOWN on behalf of the target it was sent to
+              enabled_target_name = command.target_name
+              enabled_target_name = target_name if enabled_target_name == 'UNKNOWN' and target_name
+              if @interface.cmd_target_enabled[enabled_target_name]
                 orig_command = System.commands.packet(command.target_name, command.packet_name)
                 orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope: @scope)
                 command.received_count = orig_command.received_count
@@ -567,6 +570,7 @@ module OpenC3
 
   class InterfaceMicroservice < Microservice
     UNKNOWN_BYTES_TO_PRINT = 16
+    DEFAULT_UPDATE_INTERVAL = 0.1 # seconds
 
     # Interfaces never use descriptions so don't keep them in memory
     def load_descriptions?
@@ -608,18 +612,23 @@ module OpenC3
         RouterStatusModel.set(@interface.as_json(), scope: @scope)
       end
 
-      @queued = false
+      # Queue Redis writes by default and flush them every update_interval seconds
+      update_interval = DEFAULT_UPDATE_INTERVAL
       @interface.options.each do |option_name, option_values|
         # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
         if option_name.upcase == 'UPDATE_INTERVAL' or option_name.upcase == 'OPTIMIZE_THROUGHPUT'
-          @queued = true
           update_interval = option_values[0].to_f
-          EphemeralStoreQueued.instance.set_update_interval(update_interval)
-          StoreQueued.instance.set_update_interval(update_interval)
         end
         if option_name.upcase == 'SYNC_PACKET_COUNT_DELAY_SECONDS'
           TargetModel.sync_packet_count_delay_seconds = option_values[0].to_f
         end
+      end
+      # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
+      @queued = update_interval > 0.0
+      if @queued
+        # Apply to every db_shard since writes are routed to the shard of each target
+        EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
+        StoreQueued.set_update_interval_all_shards(update_interval)
       end
 
       @interface_thread_sleeper = Sleeper.new
@@ -647,7 +656,15 @@ module OpenC3
         return @interface
       end
 
+      # A user requested (re)connect starts fresh so backtraces are logged again
+      clear_connection_messages()
       attempt_connection(*params)
+    end
+
+    # Forget which errors have already had their backtrace logged
+    def clear_connection_messages
+      @connection_failed_messages.clear
+      @connection_lost_messages.clear
     end
 
     # Sets the state to 'ATTEMPTING', first rebuilding the interface/router if
@@ -841,9 +858,11 @@ module OpenC3
         if RuntimeError === connect_error and (connect_error.message =~ /canceled/ or connect_error.message =~ /timeout/)
           # Do not write an exception file for these extremely common cases
         else
-          @logger.error "#{@interface.name}: #{connect_error.formatted}"
-          unless @connection_failed_messages.include?(connect_error.message)
-            @connection_failed_messages << connect_error.message
+          # Only log the backtrace the first time we see each distinct error
+          key = [connect_error.class, connect_error.message]
+          unless @connection_failed_messages.include?(key)
+            @logger.error "#{@interface.name}: #{connect_error.formatted}"
+            @connection_failed_messages << key
           end
         end
       end
@@ -861,9 +880,11 @@ module OpenC3
         when Errno::ECONNABORTED, Errno::ECONNRESET, Errno::ETIMEDOUT, Errno::EBADF, Errno::ENOTSOCK, IOError
           # Do not write an exception file for these extremely common cases
         else
-          @logger.error "#{@interface.name}: #{err.formatted}"
-          unless @connection_lost_messages.include?(err.message)
-            @connection_lost_messages << err.message
+          # Only log the backtrace the first time we see each distinct error
+          key = [err.class, err.message]
+          unless @connection_lost_messages.include?(key)
+            @logger.error "#{@interface.name}: #{err.formatted}"
+            @connection_lost_messages << key
           end
         end
       else

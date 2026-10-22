@@ -145,6 +145,10 @@ export default {
       if (!this.states) {
         return false
       }
+      // Manual entry requires ignoring range checks which is always hazardous
+      if (this.manuallyEntered) {
+        return true
+      }
       return (
         Object.entries(this.states)
           .find(([label, state]) => state.value === this.modelValue)
@@ -195,7 +199,8 @@ export default {
 .container {
   padding: 0px;
 }
-.hazardous :deep(.v-select__selection-text) {
+/* Extra .v-select specificity beats the themed override in _overrides.scss */
+.v-select.hazardous :deep(.v-select__selection-text) {
   color: rgb(255, 220, 0) !important;
 }
 </style>

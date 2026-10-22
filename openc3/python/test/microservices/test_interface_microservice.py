@@ -9,7 +9,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import errno
 import json
+import math
 import threading
 import time
 import unittest
@@ -18,7 +20,8 @@ from unittest.mock import *
 
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.interface import Interface
-from openc3.microservices.interface_microservice import InterfaceMicroservice
+from openc3.interfaces.protocols.protocol import Protocol
+from openc3.microservices.interface_microservice import InterfaceCmdHandlerThread, InterfaceMicroservice
 from openc3.models.cvt_model import CvtModel
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
@@ -256,6 +259,107 @@ class TestInterfaceMicroservice(unittest.TestCase):
             MyInterface.read_interface_raise = False
             all_interfaces = self.wait_for_state("CONNECTED")  # Allow to reconnect
             self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+
+    @staticmethod
+    def _raised(error):
+        try:
+            raise error
+        except Exception as e:
+            return e
+
+    def _logged_errors(self, im):
+        errors = []
+        im.logger.error = lambda msg, *args, **kwargs: errors.append(msg)
+        im.disconnect = lambda *args, **kwargs: None
+        return errors
+
+    def test_does_not_log_a_backtrace_for_expected_connection_failures(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        for error in [ConnectionRefusedError(), TimeoutError(), OSError(errno.EHOSTUNREACH, "unreachable")]:
+            errors.clear()
+            im.handle_connection_failed("INST_INT", self._raised(error))
+            self.assertEqual(len(errors), 1)
+            self.assertIn("failed due to", errors[0])
+        im.shutdown()
+
+    def test_logs_an_unexpected_connection_failure_backtrace_only_once_per_message(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        im.handle_connection_failed("INST_INT", self._raised(ValueError("bad thing")))
+        self.assertEqual(len(errors), 2)
+        self.assertIn("Traceback", errors[1])
+        errors.clear()
+        im.handle_connection_failed("INST_INT", self._raised(ValueError("bad thing")))
+        self.assertEqual(len(errors), 1)
+        self.assertNotIn("Traceback", errors[0])
+        im.shutdown()
+
+    def test_does_not_log_a_backtrace_for_expected_lost_connections(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        for error in [ConnectionResetError(), ConnectionAbortedError(), OSError(errno.EBADF, "bad fd")]:
+            im.handle_connection_lost(self._raised(error))
+        self.assertEqual(errors, [])
+        im.shutdown()
+
+    # Matches the Ruby Errno lists which differ between the two phases
+    def test_logs_a_backtrace_for_network_errors_not_expected_in_that_phase(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        for error in [BrokenPipeError(), ConnectionAbortedError()]:
+            errors.clear()
+            im.handle_connection_failed("INST_INT", self._raised(error))
+            self.assertIn("Traceback", errors[-1])
+        for error in [BrokenPipeError(), ConnectionRefusedError()]:
+            errors.clear()
+            im.handle_connection_lost(self._raised(error))
+            self.assertIn("Traceback", errors[-1])
+        im.shutdown()
+
+    def test_logs_an_unexpected_lost_connection_backtrace_only_once_per_message(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        im.handle_connection_lost(self._raised(ValueError("bad thing")))
+        self.assertEqual(len(errors), 1)
+        self.assertIn("Traceback", errors[0])
+        errors.clear()
+        im.handle_connection_lost(self._raised(ValueError("bad thing")))
+        self.assertEqual(errors, [])
+        im.shutdown()
+
+    def test_logs_a_backtrace_for_each_exception_type_raised_without_a_message(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+        im.handle_connection_failed("INST_INT", self._raised(ValueError()))
+        im.handle_connection_failed("INST_INT", self._raised(KeyError()))
+        im.handle_connection_lost(self._raised(ValueError()))
+        im.handle_connection_lost(self._raised(KeyError()))
+        self.assertEqual(sum("Traceback" in msg for msg in errors), 4)
+        im.shutdown()
+
+    def test_logs_backtraces_again_only_after_a_user_requested_connect(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        errors = self._logged_errors(im)
+
+        def log_both():
+            errors.clear()
+            im.handle_connection_failed("INST_INT", self._raised(ValueError("bad thing")))
+            im.handle_connection_lost(self._raised(ValueError("lost thing")))
+            return sum("Traceback" in msg for msg in errors)
+
+        self.assertEqual(log_both(), 2)
+        self.assertEqual(log_both(), 0)  # Already seen
+
+        # Connection Success does not clear them, otherwise an error on the first
+        # read after every reconnect would log its backtrace every time
+        im.connect()
+        self.assertEqual(log_both(), 0)
+
+        im.interface.state = "ATTEMPTING"
+        im.attempting()  # A user requested connect clears them
+        self.assertEqual(log_both(), 2)
+        im.shutdown()
 
     def test_connect_handles_parameters(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
@@ -701,6 +805,41 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(result, "SUCCESS")
         handler.tlm.attempting.assert_called_once_with("host", 1)
 
+    def test_process_cmd_acks_success_for_write_stop_but_rejects_disconnect(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        thread = threading.Thread(target=im.run)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(im.shutdown)
+        time.sleep(0.1)
+
+        class ResultProtocol(Protocol):
+            result = None
+
+            def write_packet(self, packet):
+                return ResultProtocol.result
+
+        im.interface.write_protocols.append(ResultProtocol())
+        handler = im.handler_thread
+        topic = "{DEFAULT__CMD}TARGET__INST"
+        msg_id = f"{int(time.time() * 1000)}-0"
+        msg_hash = {b"target_name": b"INST", b"cmd_name": b"ABORT", b"cmd_params": json.dumps({}).encode()}
+
+        with (
+            patch("openc3.microservices.interface_microservice.CommandTopic.write_packet") as cmd_write,
+            patch("openc3.microservices.interface_microservice.CommandDecomTopic.write_packet"),
+        ):
+            # STOP means the protocol handled the command, so it is acked and published
+            ResultProtocol.result = "STOP"
+            self.assertEqual(handler.process_cmd(topic, msg_id, msg_hash, None), "SUCCESS")
+            self.assertEqual(cmd_write.call_count, 1)
+
+            # DISCONNECT means nothing was written, so the command is rejected and not published
+            ResultProtocol.result = "DISCONNECT"
+            result = handler.process_cmd(topic, msg_id, msg_hash, None)
+            self.assertIn("write_packet requested disconnect", result)
+            self.assertEqual(cmd_write.call_count, 1)
+
     def test_process_cmd_supports_interface_directives(self):
         """Directive messages on the CMD}INTERFACE topic: interface_details and
         target_control (enable/disable and the error path)."""
@@ -829,6 +968,32 @@ class TestInterfaceMicroservice(unittest.TestCase):
         )
         self.assertEqual(result, "Interface not connected: INST_INT")
 
+    def test_process_cmd_decodes_ruby_nan_cmd_params(self):
+        """cmd_params from a Ruby caller encode NaN as a json_class Float object;
+        it must reach build_cmd as a float, not a dict."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        topic = "{DEFAULT__CMD}TARGET__INST"
+        msg_id = f"{int(time.time() * 1000)}-0"
+        cmd_params = '{"DURATION": {"json_class": "Float", "raw": "NaN"}}'
+        with patch("openc3.microservices.interface_microservice.System.commands.build_cmd") as build_cmd:
+            build_cmd.side_effect = RuntimeError("stop after build_cmd")
+            handler.process_cmd(
+                topic,
+                msg_id,
+                {
+                    b"target_name": b"INST",
+                    b"cmd_name": b"COLLECT",
+                    b"cmd_params": cmd_params.encode(),
+                    b"range_check": b"FALSE",
+                },
+                None,
+            )
+        params = build_cmd.call_args[0][2]
+        self.assertIsInstance(params["DURATION"], float)
+        self.assertTrue(math.isnan(params["DURATION"]))
+
     def test_process_cmd_identifies_a_cmd_buffer(self):
         """A command sent as a raw cmd_buffer is identified and written to the
         connected interface."""
@@ -928,3 +1093,133 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         im.shutdown()
         time.sleep(0.1)  # Allow threads to exit
+
+    def test_queues_writes_by_default_with_default_update_interval(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[],
+        )
+        model.update()
+
+        # Set a different interval to verify the default gets applied
+        StoreQueued.instance().set_update_interval(1)
+        EphemeralStoreQueued.instance().set_update_interval(1)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        self.assertTrue(im.queued)
+        self.assertEqual(StoreQueued.instance().update_interval, InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL)
+        self.assertEqual(EphemeralStoreQueued.instance().update_interval, InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL)
+        self.assertEqual(InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL, 0.1)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    def test_update_interval_zero_disables_queued_writes(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["UPDATE_INTERVAL", "0"]],
+        )
+        model.update()
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        self.assertFalse(im.queued)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    def test_applies_update_interval_to_every_db_shard(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["UPDATE_INTERVAL", "0.25"]],
+        )
+        model.update()
+        existing_store = StoreQueued.instance(db_shard=2)
+        existing_ephemeral = EphemeralStoreQueued.instance(db_shard=2)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        # Instances that already existed
+        self.assertEqual(existing_store.update_interval, 0.25)
+        self.assertEqual(existing_ephemeral.update_interval, 0.25)
+        # Instances first used after startup, e.g. a target on another shard
+        self.assertEqual(StoreQueued.instance(db_shard=1).update_interval, 0.25)
+        self.assertEqual(EphemeralStoreQueued.instance(db_shard=1).update_interval, 0.25)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+
+class TestInterfaceCmdHandlerRoutedCommands(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
+        self.interface = MyInterface()
+        self.interface.name = "INST_INT"
+        self.interface._connected = True
+        self.interface.cmd_target_names = ["INST"]
+        self.interface.cmd_target_enabled = {"INST": True, "UNKNOWN": True}
+        self.written = []
+        for target in [
+            "openc3.microservices.interface_microservice.CommandTopic.write_packet",
+            "openc3.microservices.interface_microservice.CommandDecomTopic.write_packet",
+            "openc3.microservices.interface_microservice.InterfaceStatusModel.set",
+        ]:
+            p = patch(target)
+            mock = p.start()
+            self.addCleanup(p.stop)
+            if "CommandTopic.write_packet" in target and "Decom" not in target:
+                mock.side_effect = lambda packet, scope: self.written.append(packet)
+        p = patch(
+            "openc3.microservices.interface_microservice.TargetModel.increment_command_count",
+            return_value=1,
+        )
+        p.start()
+        self.addCleanup(p.stop)
+        self.handler = InterfaceCmdHandlerThread(self.interface, None, logger=Mock(), scope="DEFAULT")
+
+    def routed_msg(self, target_name, buffer):
+        # The message RouterTopic.route_command writes for an unidentified buffer
+        return {b"target_name": target_name.encode(), b"cmd_name": b"UNKNOWN", b"cmd_buffer": buffer}
+
+    def test_identifies_a_routed_command_against_the_routed_target(self):
+        buffer = bytes(System.commands.build_cmd("INST", "ABORT", {}).buffer)
+        result = self.handler.process_cmd("{DEFAULT__CMD}TARGET__INST", "1-0", self.routed_msg("INST", buffer), None)
+        self.assertEqual(result, "SUCCESS")
+        self.assertEqual([self.written[0].target_name, self.written[0].packet_name], ["INST", "ABORT"])
+
+    def test_sends_an_unidentified_routed_command_as_unknown(self):
+        # Sent on behalf of the routed target, so UNKNOWN itself need not be enabled
+        del self.interface.cmd_target_enabled["UNKNOWN"]
+        with patch.object(System.commands, "identify", return_value=None):
+            result = self.handler.process_cmd(
+                "{DEFAULT__CMD}TARGET__INST", "1-0", self.routed_msg("INST", b"\xff" * 8), None
+            )
+        self.assertEqual(result, "SUCCESS")
+        self.assertEqual([self.written[0].target_name, self.written[0].packet_name], ["UNKNOWN", "UNKNOWN"])
+        self.assertEqual(bytes(self.written[0].buffer), b"\xff" * 8)
+
+    def test_drops_an_unidentified_routed_command_for_a_disabled_target(self):
+        self.interface.cmd_target_enabled["INST"] = False
+        with patch.object(System.commands, "identify", return_value=None):
+            result = self.handler.process_cmd(
+                "{DEFAULT__CMD}TARGET__INST", "1-0", self.routed_msg("INST", b"\xff" * 8), None
+            )
+        self.assertIsNone(result)
+        self.assertEqual(self.written, [])

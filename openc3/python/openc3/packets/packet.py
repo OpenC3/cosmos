@@ -1275,7 +1275,7 @@ class Packet(Structure):
         # value of the item
         if value > yellow_low:
             if value < yellow_high:
-                if green_low:
+                if green_low is not None:
                     if value < green_high:
                         if value > green_low:
                             limits_state = "BLUE"
@@ -1346,6 +1346,13 @@ class Packet(Structure):
             return
         if not self.obfuscated_items or len(self.obfuscated_items) == 0:
             return
+
+        # Given values hold the plaintext the user sent, so drop them for obfuscated items
+        if self.given_values:
+            obfuscated_names = {item.name.upper() for item in self.obfuscated_items}
+            self.given_values = {
+                key: value for key, value in self.given_values.items() if str(key).upper() not in obfuscated_names
+            }
 
         for item in self.obfuscated_items:
             if item.data_type == "DERIVED":

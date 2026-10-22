@@ -136,6 +136,22 @@ class TestLimitsApi(unittest.TestCase):
             ([0.0, 10.0, 20.0, 30.0]),
         )
 
+    def test_set_limits_keeps_zero_green_limits(self):
+        set_limits("INST", "HEALTH_STATUS", "TEMP1", -4.0, -3.0, 2.0, 3.0, 0.0, 1.0)
+        self.assertEqual(
+            get_limits("INST", "HEALTH_STATUS", "TEMP1")["CUSTOM"],
+            ([-4.0, -3.0, 2.0, 3.0, 0.0, 1.0]),
+        )
+        set_limits("INST", "HEALTH_STATUS", "TEMP1", -4.0, -3.0, 2.0, 3.0, -1.0, 0.0)
+        self.assertEqual(
+            get_limits("INST", "HEALTH_STATUS", "TEMP1")["CUSTOM"],
+            ([-4.0, -3.0, 2.0, 3.0, -1.0, 0.0]),
+        )
+
+    def test_set_limits_validates_zero_green_limits(self):
+        with self.assertRaisesRegex(RuntimeError, "Ensure green limits are within yellow limits"):
+            set_limits("INST", "HEALTH_STATUS", "TEMP1", -4.0, -3.0, 2.0, 3.0, 0.0, 5.0)
+
     def test_set_limits_complains_about_invalid_limits(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid limits specified"):
             set_limits("INST", "HEALTH_STATUS", "TEMP1", 2.0, 1.0, 4.0, 5.0)

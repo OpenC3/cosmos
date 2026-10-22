@@ -18,6 +18,18 @@ module OpenC3
   class PypiUrl
     DEFAULT = 'https://pypi.org/simple'
 
+    # Turn a configured PyPI base URL (the pypi_url setting or PYPI_URL) into
+    # its simple index URL. Trailing slashes are dropped first, matching the
+    # ${PYPI_URL%/}/simple the image builds use, so https://mirror/ does not
+    # give https://mirror//simple and https://pypi.org/ still equals DEFAULT.
+    #
+    # @param base_url [String, nil] the configured base url
+    # @return [String, nil] the simple index url, or nil when base_url is nil
+    def self.index_url(base_url)
+      return nil if base_url.nil?
+      "#{base_url.sub(%r{/+\z}, '')}/simple"
+    end
+
     # Validate that a resolved pypi_url is an http(s) URL before it is handed to
     # pip. The value can come from a user-writable setting or ENV, so a malformed
     # or non-http value is rejected and replaced with the default rather than

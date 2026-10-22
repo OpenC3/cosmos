@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1963
 
 import contextlib
+import errno
 import json
 import os
 import sys
@@ -314,7 +315,11 @@ class InterfaceCmdHandlerThread:
                 else:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
 
-                if not self.interface.cmd_target_enabled.get(command.target_name, False):
+                # An unidentified buffer is sent as UNKNOWN on behalf of the target it was sent to
+                enabled_target_name = command.target_name
+                if enabled_target_name == "UNKNOWN" and target_name:
+                    enabled_target_name = target_name
+                if not self.interface.cmd_target_enabled.get(enabled_target_name, False):
                     return None  # Don't ack disabled targets
 
                 orig_command = System.commands.packet(command.target_name, command.packet_name)
@@ -644,6 +649,7 @@ class RouterTlmHandlerThread:
 class InterfaceMicroservice(Microservice):
     UNKNOWN_BYTES_TO_PRINT = 16
     DISCONNECT_WAIT_TIME = 1
+    DEFAULT_UPDATE_INTERVAL = 0.1  # seconds
 
     # Interfaces never use descriptions so don't keep them in memory
     def load_descriptions(self):
@@ -687,16 +693,20 @@ class InterfaceMicroservice(Microservice):
         else:
             RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
 
-        self.queued = False
+        # Queue Redis writes by default and flush them every update_interval seconds
+        update_interval = InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL
         for option_name, option_values in self.interface.options.items():
             # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
             if option_name.upper() == "UPDATE_INTERVAL" or option_name.upper() == "OPTIMIZE_THROUGHPUT":
-                self.queued = True
                 update_interval = float(option_values[0])
-                EphemeralStoreQueued.instance().set_update_interval(update_interval)
-                StoreQueued.instance().set_update_interval(update_interval)
             if option_name.upper() == "SYNC_PACKET_COUNT_DELAY_SECONDS":
                 TargetModel.sync_packet_count_delay_seconds = float(option_values[0])
+        # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
+        self.queued = update_interval > 0.0
+        if self.queued:
+            # Apply to every db_shard since writes are routed to the shard of each target
+            EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
+            StoreQueued.set_update_interval_all_shards(update_interval)
 
         if self.interface_or_router == "INTERFACE":
             self.handler_thread = InterfaceCmdHandlerThread(
@@ -730,7 +740,14 @@ class InterfaceMicroservice(Microservice):
             self.logger.info(f"{self.interface.name}: Connect ignored, already connected")
             return self.interface
 
+        # A user requested (re)connect starts fresh so backtraces are logged again
+        self.clear_connection_messages()
         return self.attempt_connection(*params)
+
+    # Forget which errors have already had their backtrace logged
+    def clear_connection_messages(self):
+        self.connection_failed_messages.clear()
+        self.connection_lost_messages.clear()
 
     # Sets the state to 'ATTEMPTING', first rebuilding the interface/router if
     # parameters are given, so the run method performs the actual connection.
@@ -915,38 +932,47 @@ class InterfaceMicroservice(Microservice):
             TargetModel.sync_tlm_packet_counts(packet, self.interface.tlm_target_names, scope=self.scope)
             TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
+    # Equivalent of the Ruby Errno lists. Use the specific ConnectionError subclasses
+    # rather than ConnectionError itself, which also covers BrokenPipeError (EPIPE)
+    CONNECTION_FAILED_ERRORS = (ConnectionRefusedError, ConnectionResetError, TimeoutError)
+    CONNECTION_FAILED_ERRNOS = (errno.ENOTSOCK, errno.EHOSTUNREACH)
+    CONNECTION_LOST_ERRORS = (ConnectionAbortedError, ConnectionResetError, TimeoutError)
+    CONNECTION_LOST_ERRNOS = (errno.EBADF, errno.ENOTSOCK)
+
+    @staticmethod
+    def _expected_network_error(error, error_classes, errnos):
+        if isinstance(error, error_classes):
+            return True
+        return isinstance(error, OSError) and error.errno in errnos
+
     def handle_connection_failed(self, connection, connect_error):
         self.error = connect_error
         self.logger.error(f"{self.interface.name}: Connection {connection} failed due to {repr(connect_error)}")
-        # match connect_error:
-        #   case OSError:
-        #     self.logger.info(f"{self.interface.name}: Closing from signal")
-        #     self.cancel_thread = True
-        # case Errno='ECONNREFUSED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='ENOTSOCK', Errno='EHOSTUNREACH', IOError:
-        #   # Do not write an exception file for these extremely common cases
-        # else _:
-        if connect_error is Exception and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
+        expected = self._expected_network_error(
+            connect_error, self.CONNECTION_FAILED_ERRORS, self.CONNECTION_FAILED_ERRNOS
+        ) or (
+            isinstance(connect_error, RuntimeError)
+            and ("canceled" in str(connect_error) or "timeout" in str(connect_error))
+        )
+        if expected:
             pass  # Do not write an exception file for these extremely common cases
-        else:
+        # Only log the backtrace the first time we see each distinct error. Key on the
+        # type too since exceptions raised without arguments all have an empty str()
+        elif (type(connect_error), str(connect_error)) not in self.connection_failed_messages:
             self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(connect_error))}")
-            if str(connect_error) not in self.connection_failed_messages:
-                self.connection_failed_messages.append(str(connect_error))
+            self.connection_failed_messages.append((type(connect_error), str(connect_error)))
         self.disconnect()  # Ensure we do a clean disconnect
 
     def handle_connection_lost(self, error=None, reconnect=True):
         if error:
             self.error = error
             self.logger.info(f"{self.interface.name}: Connection Lost: {repr(error)}")
-            # match err:
-            #   case SignalException:
-            #     self.logger.info(f"{self.interface.name}: Closing from signal")
-            #     self.cancel_thread = True
-            #   # case Errno='ECONNABORTED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='EBADF', Errno='ENOTSOCK', IOError:
-            #     # Do not write an exception file for these extremely common cases
-            #   else _:
-            self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
-            if str(error) not in self.connection_lost_messages:
-                self.connection_lost_messages.append(str(error))
+            if self._expected_network_error(error, self.CONNECTION_LOST_ERRORS, self.CONNECTION_LOST_ERRNOS):
+                pass  # Do not write an exception file for these extremely common cases
+            # Only log the backtrace the first time we see each distinct error
+            elif (type(error), str(error)) not in self.connection_lost_messages:
+                self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
+                self.connection_lost_messages.append((type(error), str(error)))
         else:
             self.logger.info(f"{self.interface.name}: Connection Lost")
         self.disconnect(reconnect)  # Ensure we do a clean disconnect
