@@ -146,7 +146,7 @@ class InterfaceCmdHandlerThread:
                 if msg_hash.get(b"params"):
                     try:
                         params = json.loads(msg_hash[b"params"])
-                    except json.JSONDecodeError as e:
+                    except (json.JSONDecodeError, UnicodeDecodeError) as e:
                         # Reject malformed params rather than killing the handler thread
                         self.logger.error(f"{self.interface.name}: Invalid connect params: {e}")
                         return str(e)
@@ -521,7 +521,7 @@ class RouterTlmHandlerThread:
                     params = None
                     try:
                         params = json.loads(msg_hash[b"params"]) if msg_hash.get(b"params") else []
-                    except json.JSONDecodeError as e:
+                    except (json.JSONDecodeError, UnicodeDecodeError) as e:
                         # Reject malformed params rather than killing the handler thread
                         self.logger.error(f"{self.router.name}: Invalid connect params: {e}")
                         result = str(e)

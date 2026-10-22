@@ -178,6 +178,7 @@ class TestRouterMicroservice(unittest.TestCase):
 
         def receive_telemetry(*args, **kwargs):
             results.append((yield (topic, msg_id, {b"connect": b"true", b"params": b"{not json"}, None)))
+            results.append((yield (topic, msg_id, {b"connect": b"true", b"params": b"\xff\xfe\xfa"}, None)))
             results.append((yield (topic, msg_id, {b"connect": b"true", b"params": b'["host", 1]'}, None)))
             yield (topic, msg_id, {b"shutdown": b"true"}, None)
 
@@ -187,7 +188,8 @@ class TestRouterMicroservice(unittest.TestCase):
         ):
             handler.run()
         self.assertIn("Expecting", results[0])
-        self.assertEqual(results[1], "SUCCESS")
+        self.assertIn("can't decode", results[1])
+        self.assertEqual(results[2], "SUCCESS")
         tlm.attempting.assert_called_once_with("host", 1)
 
     def test_attempt_connection_updates_the_router_model(self):
