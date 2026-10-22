@@ -161,7 +161,7 @@ openc3/python/
 
 ## Python Version Support
 
-This library supports Python 3.11 through 3.15. The library uses environment markers to install version-specific dependencies (e.g., different numpy versions for different Python versions).
+This library supports Python 3.11 through 3.14. The library uses environment markers to install version-specific dependencies (e.g., different numpy versions for different Python versions).
 
 ## Code Style
 

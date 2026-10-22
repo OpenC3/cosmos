@@ -27,6 +27,9 @@
     {
       "path": "../openc3-news",
     },
+    {
+      "path": "../openc3-cosmos-fprime",
+    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",
