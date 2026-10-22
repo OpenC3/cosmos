@@ -51,8 +51,10 @@ Then exercise the workflow from docs/guides/backups.md:
 
 import argparse
 import base64
+import ipaddress
 import math
 import os
+import socket
 import sys
 import time
 import urllib.error
@@ -65,6 +67,11 @@ def parse_args():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--host", default=os.environ.get("OPENC3_TSDB_HOSTNAME", "127.0.0.1"))
     p.add_argument("--port", type=int, default=int(os.environ.get("OPENC3_TSDB_INGEST_PORT", "9000")))
+    p.add_argument(
+        "--tls",
+        action="store_true",
+        help="Connect with HTTPS. QuestDB open source only serves plain HTTP, so this is off by default.",
+    )
     p.add_argument("--user", default=os.environ.get("OPENC3_TSDB_USERNAME", "admin"))
     p.add_argument("--password", default=os.environ.get("OPENC3_TSDB_PASSWORD", "admin"))
     p.add_argument("--scope", default="DEFAULT")
@@ -110,8 +117,31 @@ def build_ilp_line(table, item, value, ts_ns, is_int):
     return f"{table} {item}={field} {ts_ns}"
 
 
-def post_ilp(host, port, user, password, body):
-    url = f"http://{host}:{port}/write"
+def questdb_url(host, port, tls, path, query=""):
+    """Build the QuestDB HTTP URL, refusing anything but a local/private QuestDB.
+
+    This is a test-data script for a local COSMOS install, so the host must
+    resolve only to loopback or private addresses (e.g. openc3-tsdb on the
+    docker network). That keeps a bad --host from sending credentials and
+    requests to an arbitrary external server.
+    """
+    if not 0 < port < 65536:
+        raise ValueError(f"Invalid port: {port}")
+    try:
+        infos = socket.getaddrinfo(host, port, proto=socket.IPPROTO_TCP)
+    except socket.gaierror as e:
+        raise ValueError(f"Cannot resolve host {host!r}: {e}") from e
+    for info in infos:
+        addr = ipaddress.ip_address(info[4][0])
+        if not (addr.is_loopback or addr.is_private):
+            raise ValueError(f"Host {host!r} resolves to non-local address {addr}; refusing to connect")
+    netloc = f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
+    scheme = "https" if tls else "http"
+    return urllib.parse.urlunsplit((scheme, netloc, path, query, ""))
+
+
+def post_ilp(host, port, tls, user, password, body):
+    url = questdb_url(host, port, tls, "/write")
     req = urllib.request.Request(url, data=body.encode("utf-8"), method="POST")
     auth = base64.b64encode(f"{user}:{password}".encode()).decode()
     req.add_header("Authorization", f"Basic {auth}")
@@ -123,9 +153,8 @@ def post_ilp(host, port, user, password, body):
         return e.code, e.read().decode("utf-8", errors="replace")
 
 
-def query_exec(host, port, user, password, sql):
-    qs = urllib.parse.urlencode({"query": sql})
-    url = f"http://{host}:{port}/exec?{qs}"
+def query_exec(host, port, tls, user, password, sql):
+    url = questdb_url(host, port, tls, "/exec", urllib.parse.urlencode({"query": sql}))
     req = urllib.request.Request(url)
     auth = base64.b64encode(f"{user}:{password}".encode()).decode()
     req.add_header("Authorization", f"Basic {auth}")
@@ -136,6 +165,11 @@ def query_exec(host, port, user, password, sql):
 def main():
     args = parse_args()
     table = f"{args.scope}__TLM__{args.target}__{args.packet}"
+    try:
+        write_url = questdb_url(args.host, args.port, args.tls, "/write")
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
 
     now = datetime.now(timezone.utc)
     first_day = (now - timedelta(days=args.start_days_ago)).replace(hour=0, minute=0, second=0, microsecond=0)
@@ -144,7 +178,7 @@ def main():
     total = args.days * args.rows_per_day
 
     print(f"Table:         {table}")
-    print(f"Endpoint:      http://{args.host}:{args.port}/write")
+    print(f"Endpoint:      {write_url}")
     print(f"Item:          {args.item}")
     print(f"Days:          {args.days}  Rows/day: {args.rows_per_day}  Total rows: {total}")
     print(f"First day UTC: {first_day.isoformat()}")
@@ -162,7 +196,9 @@ def main():
             value = 25.0 + 5.0 * math.sin((i / args.rows_per_day) * 2 * math.pi) + day * 0.1
             lines.append(build_ilp_line(table, args.item, value, ts_ns, args.is_int))
             if len(lines) >= args.batch:
-                status, body = post_ilp(args.host, args.port, args.user, args.password, "\n".join(lines) + "\n")
+                status, body = post_ilp(
+                    args.host, args.port, args.tls, args.user, args.password, "\n".join(lines) + "\n"
+                )
                 if status >= 300:
                     print(f"ILP error {status}: {body}", file=sys.stderr)
                     sys.exit(1)
@@ -171,7 +207,7 @@ def main():
                 print(f"  wrote {written}/{total} rows...")
 
     if lines:
-        status, body = post_ilp(args.host, args.port, args.user, args.password, "\n".join(lines) + "\n")
+        status, body = post_ilp(args.host, args.port, args.tls, args.user, args.password, "\n".join(lines) + "\n")
         if status >= 300:
             print(f"ILP error {status}: {body}", file=sys.stderr)
             sys.exit(1)
@@ -184,12 +220,9 @@ def main():
         # ILP HTTP flushes asynchronously to disk; give the WAL a moment to commit
         time.sleep(2)
         print("\nPartitions:")
-        sql = (
-            "SELECT name, minTimestamp, maxTimestamp, numRows "
-            f"FROM table_partitions('{table}') ORDER BY minTimestamp"
-        )
+        sql = f"SELECT name, minTimestamp, maxTimestamp, numRows FROM table_partitions('{table}') ORDER BY minTimestamp"
         try:
-            print(query_exec(args.host, args.port, args.user, args.password, sql))
+            print(query_exec(args.host, args.port, args.tls, args.user, args.password, sql))
         except Exception as e:
             print(f"Verify query failed: {e}", file=sys.stderr)
 
