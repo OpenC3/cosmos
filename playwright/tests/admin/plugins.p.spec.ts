@@ -251,12 +251,23 @@ test.describe(() => {
     await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
     // Check the delete box
     await page.locator('text=DELETE MODIFIED').click()
+    // Completed processes stay listed for a while so a retried test can still
+    // see the previous cleanup's uninstall; only count a new one
+    const completeCount = await page
+      .locator('[data-test=process-list] .v-list-item')
+      .filter({
+        hasText: new RegExp(
+          `Processing plugin_uninstall: ${pluginGem1}(__.*)? - Complete`,
+        ),
+      })
+      .count()
     await page.locator('data-test=modified-plugin-submit').click()
 
     await waitForPluginProcess(page, {
       alert: 'Removing plugin',
       gem: pluginGem1,
       process: 'plugin_uninstall',
+      previousCompleteCount: completeCount,
     })
     await expect(page.locator(`[data-test=plugin-list]`)).not.toContainText(
       plugin,
