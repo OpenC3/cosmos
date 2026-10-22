@@ -416,6 +416,51 @@ module OpenC3
         expect(result).to be_a Array
         expect(result[0]).to be_a String
       end
+
+      it "excludes hidden commands unless hidden is true" do
+        names = @api.get_all_cmd_names("inst")
+        expect(names).to eql names.sort
+        expect(names).to include("ABORT", "COLLECT")
+        expect(names).not_to include("DISABLED")
+        expect(@api.get_all_cmd_names("inst", hidden: true)).to include("ABORT", "COLLECT", "DISABLED")
+      end
+
+      it "does not parse the packet definitions" do
+        expect(TargetModel).not_to receive(:packets)
+        expect(@api.get_all_cmd_names("inst")).not_to include("DISABLED")
+      end
+
+      it "builds the hidden list once for targets installed without it" do
+        Store.del(TargetModel.hidden_packets_key("INST", type: :CMD, scope: "DEFAULT"))
+        expect(TargetModel).to receive(:packets).once.and_call_original
+        expect(@api.get_all_cmd_names("inst")).not_to include("DISABLED")
+        expect(@api.get_all_cmd_names("inst")).not_to include("DISABLED")
+      end
+
+      it "stores an empty hidden list so it is not rebuilt" do
+        Store.del(TargetModel.hidden_packets_key("INST", type: :CMD, scope: "DEFAULT"))
+        expect(TargetModel).to receive(:packets).once.and_wrap_original do |method, *args, **kwargs|
+          method.call(*args, **kwargs).each { |packet| packet.delete('hidden') }
+        end
+        expect(@api.get_all_cmd_names("inst")).to include("DISABLED")
+        expect(@api.get_all_cmd_names("inst")).to include("DISABLED")
+      end
+
+      it "merges updates of individual commands into the hidden list" do
+        model = TargetModel.get_model(name: "INST", scope: "DEFAULT")
+        abort_cmd = System.commands.packet("INST", "ABORT").clone
+        abort_cmd.hidden = true
+        model.update_store_commands({ "INST" => { "ABORT" => abort_cmd } }, clear_old: false)
+        names = @api.get_all_cmd_names("inst")
+        expect(names).not_to include("ABORT", "DISABLED")
+        expect(names).to include("COLLECT")
+
+        abort_cmd.hidden = false
+        model.update_store_commands({ "INST" => { "ABORT" => abort_cmd } }, clear_old: false)
+        names = @api.get_all_cmd_names("inst")
+        expect(names).to include("ABORT")
+        expect(names).not_to include("DISABLED")
+      end
     end
 
     describe "get_param" do
