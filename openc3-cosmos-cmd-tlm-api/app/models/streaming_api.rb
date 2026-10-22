@@ -80,21 +80,21 @@ class StreamingApi
         targets.each do |target_name|
           next if target_name == 'UNKNOWN' and parsed.stream_mode != :RAW
 
-          packets = fetch_target_packets(target_name, type: parsed.packet_type, scope: scope)
-          next unless packets
+          packet_names = fetch_target_packet_names(target_name, type: parsed.packet_type, scope: scope)
+          next unless packet_names
 
-          packets.each do |packet|
-            expanded << build_packet_key(parsed, target_name: target_name, packet_name: packet['packet_name'], value_type: value_type)
+          packet_names.each do |packet_name|
+            expanded << build_packet_key(parsed, target_name: target_name, packet_name: packet_name, value_type: value_type)
           end
         end
       elsif parsed.packet_name == 'COSMOS_ALL'
         # MODE__CMDORTLM__TARGET__COSMOS_ALL[__VALUETYPE]
         value_type = (parsed.stream_mode != :RAW) ? parsed.value_type : nil
-        packets = fetch_target_packets(parsed.target_name, type: parsed.packet_type, scope: scope)
-        next unless packets
+        packet_names = fetch_target_packet_names(parsed.target_name, type: parsed.packet_type, scope: scope)
+        next unless packet_names
 
-        packets.each do |packet|
-          expanded << build_packet_key(parsed, packet_name: packet['packet_name'], value_type: value_type)
+        packet_names.each do |packet_name|
+          expanded << build_packet_key(parsed, packet_name: packet_name, value_type: value_type)
         end
       else
         expanded << key
@@ -129,17 +129,16 @@ class StreamingApi
       else
         # Determine which packets to iterate over
         if parsed.packet_glob?
-          packets = fetch_target_packets(parsed.target_name, type: parsed.packet_type, scope: scope)
-          next unless packets
+          packet_names = fetch_target_packet_names(parsed.target_name, type: parsed.packet_type, scope: scope)
+          next unless packet_names
 
-          matched_packets = packets.select { |pkt| File.fnmatch(escape_array_brackets(parsed.packet_name.to_s), pkt['packet_name'], File::FNM_CASEFOLD) }
+          packet_pattern = escape_array_brackets(parsed.packet_name.to_s)
+          matched_packet_names = packet_names.select { |name| File.fnmatch(packet_pattern, name, File::FNM_CASEFOLD) }
         else
-          matched_packets = [{ 'packet_name' => parsed.packet_name.to_s }]
+          matched_packet_names = [parsed.packet_name.to_s]
         end
 
-        matched_packets.each do |pkt|
-          pkt_name = pkt['packet_name']
-
+        matched_packet_names.each do |pkt_name|
           if parsed.item_glob? || (parsed.packet_glob? && parsed.item_name)
             # Fetch packet items and filter by item name (glob or exact match)
             packet_def = fetch_packet_definition(parsed.target_name, pkt_name, type: parsed.packet_type, scope: scope)
@@ -355,9 +354,11 @@ class StreamingApi
 
   private
 
-  # Fetch all packets for a target, returning nil if the target/type doesn't exist.
-  def fetch_target_packets(target_name, type:, scope:)
-    OpenC3::TargetModel.packets(target_name, type: type, scope: scope)
+  # Fetch all packet names for a target, returning nil if the target/type doesn't exist.
+  # Only the names are needed for expansion and parsing every packet definition is
+  # very expensive for targets with thousands of packets.
+  def fetch_target_packet_names(target_name, type:, scope:)
+    OpenC3::TargetModel.packet_names(target_name, type: type, scope: scope)
   rescue RuntimeError
     nil
   end

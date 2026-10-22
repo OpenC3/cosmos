@@ -118,6 +118,19 @@ class TargetModel(Model):
         return result
 
     @classmethod
+    def packet_names(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE) -> list[str]:
+        """Returns just the packet names without fetching and parsing every packet
+        definition, which is expensive for targets with thousands of packets.
+        @return [Array<String>] Sorted packet names under the target_name"""
+        if type not in cls.VALID_TYPES:
+            raise RuntimeError(f"Unknown type {type} for {target_name}")
+        if not cls.get(name=target_name, scope=scope):
+            raise RuntimeError(f"Target '{target_name}' does not exist for scope: {scope} (TargetModel)")
+
+        names = cls._store_for_target(target_name, scope).hkeys(f"{scope}__openc3{type.lower()}__{target_name}")
+        return sorted(name.decode() if isinstance(name, bytes) else name for name in names)
+
+    @classmethod
     def set_packet(
         cls,
         target_name: str,
