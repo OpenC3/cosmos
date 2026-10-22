@@ -14,7 +14,7 @@ import os
 import sys
 import time
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock, patch
 
 from websockets.exceptions import ConnectionClosedOK
@@ -131,8 +131,8 @@ class TestMessagesWebSocketApiConnectionClosed(unittest.TestCase):
         mock_auth = Mock()
         mock_auth.token.return_value = "test-token"
         api = MessagesWebSocketApi(
-            start_time=to_nsec_from_epoch(datetime.now(timezone.utc) - timedelta(minutes=5)),
-            end_time=to_nsec_from_epoch(datetime.now(timezone.utc)),
+            start_time=to_nsec_from_epoch(datetime.now(UTC) - timedelta(minutes=5)),
+            end_time=to_nsec_from_epoch(datetime.now(UTC)),
             authentication=mock_auth,
         )
 
@@ -958,8 +958,8 @@ class TestStreamingWebSocketApiActions(unittest.TestCase):
     # The channel expects 64-bit nanoseconds from the epoch, not a datetime
     def test_add_converts_datetimes_to_nanoseconds(self):
         api = self._make_api()
-        start_time = datetime(2026, 1, 1, tzinfo=timezone.utc)
-        end_time = datetime(2026, 1, 2, tzinfo=timezone.utc)
+        start_time = datetime(2026, 1, 1, tzinfo=UTC)
+        end_time = datetime(2026, 1, 2, tzinfo=UTC)
         api.add(items=["ITEM"], start_time=start_time, end_time=end_time)
         data = self._action_data(api)[0]
         self.assertEqual(data["start_time"], to_nsec_from_epoch(start_time))
@@ -1010,12 +1010,12 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
             '{"message":[]}',
             '{"message":[{"__time":4}]}',  # must never be read
         )
-        data = StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc))
+        data = StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=UTC))
         self.assertEqual(data, [{"__time": 1}, {"__time": 2}, {"__time": 3}])
 
     def test_sends_the_add_action_for_the_requested_range(self):
-        start_time = datetime(2026, 1, 1, tzinfo=timezone.utc)
-        end_time = datetime(2026, 1, 2, tzinfo=timezone.utc)
+        start_time = datetime(2026, 1, 1, tzinfo=UTC)
+        end_time = datetime(2026, 1, 2, tzinfo=UTC)
         self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
         StreamingWebSocketApi.read_all(items=["ITEM"], start_time=start_time, end_time=end_time, scope="OTHER")
         self.assertEqual(
@@ -1039,7 +1039,7 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
         )
         data = StreamingWebSocketApi.read_all(
             items=["ITEM"],
-            end_time=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            end_time=datetime(2026, 1, 1, tzinfo=UTC),
             timeout=0.0,
         )
         self.assertEqual(data, [{"__time": 1}])
@@ -1052,7 +1052,7 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
             '{"message":[{"__time":1}]}',
             # Socket closes without ever sending the empty-batch end marker
         )
-        end = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        end = datetime(2026, 1, 1, tzinfo=UTC)
         with self.assertRaisesRegex(RuntimeError, "WebSocket closed before end marker"):
             StreamingWebSocketApi.read_all(items=["ITEM"], end_time=end)
 
@@ -1080,7 +1080,7 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
 
     def test_disconnects_the_stream_when_done(self):
         self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
-        StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc))
+        StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=UTC))
         self.assertEqual(self.stream.disconnect_count, 1)
 
 

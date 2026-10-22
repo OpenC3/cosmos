@@ -12,7 +12,7 @@
 import threading
 import time
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import *
 
 from openc3.interfaces.interface import Interface
@@ -90,7 +90,7 @@ class TestRouterMicroservice(unittest.TestCase):
         model.create()
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         packet.stored = False
         packet.check_limits()
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
@@ -225,7 +225,7 @@ class TestRouterMicroservice(unittest.TestCase):
         self.assertEqual(data["TEST_INT"]["state"], "CONNECTED")
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         packet.received_count = 1
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
         time.sleep(0.2)

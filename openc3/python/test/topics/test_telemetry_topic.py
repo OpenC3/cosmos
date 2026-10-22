@@ -26,8 +26,8 @@ class TestTelemetryTopic(unittest.TestCase):
         self.addCleanup(shard_patch.stop)
 
         self.packet = Packet("TARGET", "PACKET")
-        self.packet.received_time = datetime.datetime.now(datetime.timezone.utc)
-        self.packet.packet_time = datetime.datetime.now(datetime.timezone.utc)
+        self.packet.received_time = datetime.datetime.now(datetime.UTC)
+        self.packet.packet_time = datetime.datetime.now(datetime.UTC)
         self.packet.received_count = 1
 
     @patch("openc3.topics.telemetry_topic.EphemeralStoreQueued.instance")

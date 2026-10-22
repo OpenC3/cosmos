@@ -26,7 +26,7 @@ protocol like LENGTH.
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
-- Requires a host Python 3.10+ installation
+- Requires a host Python 3.11+ installation
 - Install the OpenC3 package (recommend using a venv)
 
 ```bash

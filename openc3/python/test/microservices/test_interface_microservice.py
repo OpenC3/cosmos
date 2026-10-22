@@ -15,7 +15,7 @@ import math
 import threading
 import time
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import *
 
 from openc3.config.config_parser import ConfigParser
@@ -105,7 +105,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
         model.create()
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         packet.stored = False
         packet.check_limits()
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")

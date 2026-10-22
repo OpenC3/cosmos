@@ -13,7 +13,7 @@ import json
 import os
 import struct
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import *
 
 from openc3.interfaces.protocols.preidentified_protocol import PreidentifiedProtocol
@@ -98,7 +98,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.interface.stream = TestPreidentifiedProtocol.PreStream()
         self.interface.add_protocol(PreidentifiedProtocol, [None, 5], "READ_WRITE")
         pkt = System.telemetry.packet("SYSTEM", "META")
-        pkt.received_time = datetime.now(timezone.utc)
+        pkt.received_time = datetime.now(UTC)
         self.interface.write(pkt)
         with self.assertRaises(RuntimeError):
             self.interface.read()
@@ -237,7 +237,7 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "META")
         self.assertTrue(packet.identified())
-        time = datetime(2025, 5, 1, 18, 0, 0, tzinfo=timezone.utc)
+        time = datetime(2025, 5, 1, 18, 0, 0, tzinfo=UTC)
         for i in range(0, 10):
             packet = self.interface.read()
             self.assertEqual(packet.target_name, "INST")

@@ -609,16 +609,8 @@ def reachable(roots: set[str], graph: dict[str, set[str]]) -> set[str]:
 
 
 def load_toml(path: Path) -> dict:
-    try:
-        import tomllib
-    except ModuleNotFoundError:  # Python 3.10
-        try:
-            import tomli as tomllib  # type: ignore[no-redef]
-        except ModuleNotFoundError as exc:
-            raise AuditError(
-                f"cannot parse {path}: Python 3.11+ (tomllib) or the tomli "
-                f"package is required"
-            ) from exc
+    import tomllib
+
     with path.open("rb") as handle:
         return tomllib.load(handle)
 

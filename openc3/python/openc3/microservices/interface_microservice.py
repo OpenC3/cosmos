@@ -21,7 +21,7 @@ import threading
 import time
 import traceback
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.interface import WriteRejectError
@@ -171,7 +171,7 @@ class InterfaceCmdHandlerThread:
                         )
                         command = command.clone()
                         command.buffer = msg_hash[b"raw"]
-                        command.received_time = datetime.now(timezone.utc)
+                        command.received_time = datetime.now(UTC)
                         CommandTopic.write_packet(command, scope=self.scope)
                         self.logger.info(
                             f"write_raw sent {len(msg_hash[b'raw'])} bytes to {self.interface.name}",
@@ -324,7 +324,7 @@ class InterfaceCmdHandlerThread:
                     command.target_name, command.packet_name, 1, scope=self.scope
                 )
                 command.received_count = orig_command.received_count
-                command.received_time = datetime.now(timezone.utc)
+                command.received_time = datetime.now(UTC)
             except ValueError as e:
                 # Command parameter out of range is a user error, not a bug,
                 # so only log the message and not the full stack trace
@@ -867,7 +867,7 @@ class InterfaceMicroservice(Microservice):
         if not self.cancel_thread:
             InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         if packet.received_time is None:
-            packet.received_time = datetime.now(timezone.utc)
+            packet.received_time = datetime.now(UTC)
 
         if packet.stored:
             # Stored telemetry does not update the current value table

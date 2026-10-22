@@ -13,7 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1963
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.models.target_model import TargetModel
 from openc3.system.system import System
@@ -37,9 +37,7 @@ def handle_inject_tlm(inject_tlm_json, scope):
     stored = inject_tlm_hash.get("stored", False)
     packet.stored = str(stored).lower() == "true"
     received_time = inject_tlm_hash.get("received_time")
-    packet.received_time = (
-        from_nsec_from_epoch(received_time) if received_time is not None else datetime.now(timezone.utc)
-    )
+    packet.received_time = from_nsec_from_epoch(received_time) if received_time is not None else datetime.now(UTC)
     packet.received_count = TargetModel.increment_telemetry_count(
         packet.target_name, packet.packet_name, 1, scope=scope
     )

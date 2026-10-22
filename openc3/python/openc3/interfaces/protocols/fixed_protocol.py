@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
@@ -125,7 +125,7 @@ class FixedProtocol(BurstProtocol):
 
                 # Set some variables so we can update the packet in
                 # read_packet
-                self.received_time = datetime.now(timezone.utc)
+                self.received_time = datetime.now(UTC)
                 self.target_name = identified_packet.target_name
                 self.packet_name = identified_packet.packet_name
 

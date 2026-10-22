@@ -528,7 +528,7 @@ class HostInterfaceMicroservice:
                 loop.run_in_executor(None, operation),
                 timeout=DEVICE_OPERATION_TIMEOUT,
             )
-        except asyncio.TimeoutError as error:
+        except TimeoutError as error:
             raise TimeoutError(
                 f"{self.name}: device {name} timed out after {DEVICE_OPERATION_TIMEOUT:g} seconds"
             ) from error

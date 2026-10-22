@@ -202,7 +202,7 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 
 - **Ruby 3.4** - Backend APIs and core library
 - **Rails 7.2** - REST APIs with AnyCable for WebSockets
-- **Python 3.10-3.14** - Alternative scripting language
+- **Python 3.11-3.15** - Alternative scripting language
 - **UV** - Python package manager (fast Rust-based replacement for pip/poetry)
 - **Ruff** - Python linter and formatter (fast Rust-based replacement for flake8/black)
 - **Vue.js 3 + Vuetify 3** - Frontend UI framework
@@ -227,9 +227,9 @@ PWDEBUG=1 pnpm test:parallel --headed     # Debug mode
 - **Linter & Formatter**: Ruff (replaces flake8, black, isort)
 - **Active Rules**: E, F, I, N, UP, B, W, C4, SIM (pycodestyle, Pyflakes, isort, naming, pyupgrade, bugbear, simplify)
 - **Line Length**: 120
-- **Target Python**: 3.10 (minimum ruff target for backwards compatibility)
+- **Target Python**: 3.11 (minimum ruff target for backwards compatibility)
 - **Docker Python**: 3.12 (used in Alpine/UBI base images)
-- **Supported Versions**: 3.11, 3.12, 3.13 (Docker version ±1)
+- **Supported Versions**: 3.11, 3.12, 3.13, 3.14, 3.15 (Docker version ±1)
 - **Config**: `openc3/python/pyproject.toml`
 - **Lockfile**: `openc3/python/uv.lock` (replaces poetry.lock)
 - **Python Version**: `openc3/python/.python-version` (default: 3.12)
