@@ -17,6 +17,7 @@
 
 import contextlib
 import json
+import warnings
 
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
@@ -98,7 +99,12 @@ def tlm_formatted(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
 
 
 def tlm_with_units(*args, cache_timeout=0.1, scope=OPENC3_SCOPE):
-    """DEPRECATED, use tlm_formatted"""
+    """Request the formatted value of a telemetry item from a packet.
+
+    .. deprecated:: 7.0.0
+       WITH_UNITS was removed, use tlm_formatted instead.
+    """
+    warnings.warn("tlm_with_units is deprecated, use tlm_formatted", FutureWarning, stacklevel=2)
     return tlm(*args, type="FORMATTED", cache_timeout=cache_timeout, scope=scope)
 
 
@@ -464,8 +470,14 @@ def get_all_tlm(target_name, scope=OPENC3_SCOPE):
     return TargetModel.packets(target_name, type="TLM", scope=scope)
 
 
-# get_all_telemetry is DEPRECATED
-get_all_telemetry = get_all_tlm
+def get_all_telemetry(*args, **kwargs):
+    """Returns a list of all the telemetry packet dicts
+
+    .. deprecated:: 5.13.0
+       Use get_all_tlm instead.
+    """
+    warnings.warn("get_all_telemetry is deprecated, use get_all_tlm", FutureWarning, stacklevel=2)
+    return get_all_tlm(*args, **kwargs)
 
 
 def get_all_tlm_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE):
@@ -512,8 +524,14 @@ def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = 
     return items
 
 
-# get_all_telemetry_names is DEPRECATED
-get_all_telemetry_names = get_all_tlm_names
+def get_all_telemetry_names(*args, **kwargs):
+    """Returns a list of all the telemetry packet names
+
+    .. deprecated:: 5.13.0
+       Use get_all_tlm_names instead.
+    """
+    warnings.warn("get_all_telemetry_names is deprecated, use get_all_tlm_names", FutureWarning, stacklevel=2)
+    return get_all_tlm_names(*args, **kwargs)
 
 
 def get_tlm(*args, scope: str = OPENC3_SCOPE):
@@ -531,8 +549,14 @@ def get_tlm(*args, scope: str = OPENC3_SCOPE):
     return TargetModel.packet(target_name, packet_name, scope=scope)
 
 
-# get_telemetry is DEPRECATED
-get_telemetry = get_tlm
+def get_telemetry(*args, **kwargs):
+    """Returns a telemetry packet definition dict
+
+    .. deprecated:: 5.13.0
+       Use get_tlm instead.
+    """
+    warnings.warn("get_telemetry is deprecated, use get_tlm", FutureWarning, stacklevel=2)
+    return get_tlm(*args, **kwargs)
 
 
 def get_item(*args, scope: str = OPENC3_SCOPE, cache_timeout=0.1):
