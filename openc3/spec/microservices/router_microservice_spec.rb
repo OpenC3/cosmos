@@ -143,6 +143,27 @@ module OpenC3
     #   end
     # end
 
+    it "acks malformed connect params with an error and keeps the handler running" do
+      rm = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
+      router = rm.instance_variable_get(:@interface)
+      tlm = double("tlm").as_null_object
+      allow(tlm).to receive(:attempting).and_return(router)
+      handler = RouterTlmHandlerThread.new(router, tlm, scope: "DEFAULT")
+      results = []
+      allow(RouterTopic).to receive(:receive_telemetry) do |*_args, **_kwargs, &block|
+        msg_id = "#{(Time.now.to_f * 1000).to_i}-0"
+        results << block.call("{DEFAULT__CMD}ROUTER__TEST_INT", msg_id, { 'connect' => 'true', 'params' => '{not json' }, nil)
+        results << block.call("{DEFAULT__CMD}ROUTER__TEST_INT", msg_id, { 'connect' => 'true', 'params' => '["host", 1]' }, nil)
+      end
+      handler.run
+      expect(results[0]).to be_a(String)
+      expect(results[0]).not_to eql 'SUCCESS'
+      expect(results[1]).to eql 'SUCCESS'
+      expect(tlm).to have_received(:attempting).with("host", 1).once
+      rm.shutdown
+      sleep 0.1 # Allow threads to exit
+    end
+
     it "supports router_cmd" do
       init_threads = Thread.list.count
       uservice = RouterMicroservice.new("DEFAULT__ROUTER__TEST_INT")
