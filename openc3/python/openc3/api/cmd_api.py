@@ -472,11 +472,12 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE, manual
 
         time = 0
         command_name = None
-        for target_name in targets:
-            for packet in TargetModel.packets(target_name, type="CMD", scope=scope):
+        for cur_target in targets:
+            # Only the names are needed so avoid parsing every packet definition
+            for packet_name in TargetModel.packet_names(cur_target, type="CMD", scope=scope):
                 cur_time = CommandDecomTopic.get_cmd_item(
-                    target_name,
-                    packet["packet_name"],
+                    cur_target,
+                    packet_name,
                     "RECEIVED_TIMESECONDS",
                     type="CONVERTED",
                     scope=scope,
@@ -486,7 +487,8 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE, manual
 
                 if cur_time > time:
                     time = cur_time
-                    command_name = packet["packet_name"]
+                    command_name = packet_name
+                    target_name = cur_target
 
         if not command_name:
             target_name = None
