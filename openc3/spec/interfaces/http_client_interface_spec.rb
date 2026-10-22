@@ -78,6 +78,16 @@ module OpenC3
         @interface.connect
         expect(@interface.instance_variable_get(:@http)).to_not be_nil
       end
+
+      it "discards disconnect markers left over from a previous connection" do
+        @interface.connect
+        @interface.disconnect
+        expect(@interface.read_interface).to be_nil
+        # A second disconnect queues a marker nothing consumes
+        @interface.disconnect
+        @interface.connect
+        expect(@interface.instance_variable_get(:@response_queue).empty?).to be true
+      end
     end
 
     describe "#connected?" do
