@@ -455,6 +455,20 @@ class TestTargetModelDynamic(unittest.TestCase):
         model = MicroserviceModel.get_model(name="DEFAULT__DECOM__INST", scope=self.scope)
         self.assertIn("DEFAULT__TELEMETRY__{INST}__NEW_TLM", model.topics)
 
+    def test_merges_new_hidden_commands_into_the_hidden_list(self):
+        cmd_log_model = MicroserviceModel(folder_name="INST", name="DEFAULT__COMMANDLOG__INST", scope=self.scope)
+        cmd_log_model.create()
+        self.assertEqual(TargetModel.hidden_packet_names("INST", type="CMD", scope=self.scope), ["DISABLED"])
+
+        packet = Packet("INST", "NEW_CMD")
+        packet.hidden = True
+        self.model.dynamic_update([packet], "COMMAND")
+        self.assertEqual(TargetModel.hidden_packet_names("INST", type="CMD", scope=self.scope), ["DISABLED", "NEW_CMD"])
+
+        packet.hidden = False
+        self.model.dynamic_update([packet], "COMMAND")
+        self.assertEqual(TargetModel.hidden_packet_names("INST", type="CMD", scope=self.scope), ["DISABLED"])
+
 
 # Tests for GitHub issue #2855:
 # Stale tlmcnt Redis keys cause interface disconnect loops.

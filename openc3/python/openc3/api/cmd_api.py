@@ -287,17 +287,16 @@ get_all_commands = get_all_cmds
 # @param target_name [String] Name of the target
 # @return [Array<String>] Array of all command packet names
 def get_all_cmd_names(target_name, hidden=False, scope=OPENC3_SCOPE, manual=False):
+    target_name = target_name.upper()
+    # Only the names are needed so avoid parsing every packet definition
     try:
-        packets = get_all_cmds(target_name, scope=scope, manual=manual)
+        authorize(permission="cmd_info", target_name=target_name, scope=scope, manual=manual)
+        names = TargetModel.packet_names(target_name, type="CMD", scope=scope)
+        if not hidden:
+            hidden_names = set(TargetModel.hidden_packet_names(target_name, type="CMD", scope=scope))
+            names = [name for name in names if name not in hidden_names]
     except Exception:
-        packets = []
-    names = []
-    for packet in packets:
-        if hidden:
-            names.append(packet["packet_name"])
-        else:
-            if "hidden" not in packet:
-                names.append(packet["packet_name"])
+        names = []
     return names
 
 
