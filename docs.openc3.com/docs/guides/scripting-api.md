@@ -3115,7 +3115,7 @@ Returns the values and current limits state for a specified set of telemetry ite
 <TabItem value="python" label="Python Syntax">
 
 ```python
-values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
+values = get_tlm_values(<Items>, stale_time=30, cache_timeout=0.1, start_time=None, end_time=None)
 ```
 
 </TabItem>
@@ -3123,22 +3123,26 @@ values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
+values = get_tlm_values(<Items>, stale_time: 30, cache_timeout: 0.1, start_time: nil, end_time: nil)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                 |
-| --------- | ----------------------------------------------------------- |
-| Items     | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ] |
+| Parameter     | Description                                                                                                                       |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| items         | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ]                                                                       |
+| stale_time    | Time in seconds from now that data will be marked stale. Default is 30.                                                           |
+| cache_timeout | Time in seconds to cache the current value table lookup. Default is 0.1.                                                          |
+| start_time    | Optional start of a historical query. If given, values are read from the time series database instead of the current value table. |
+| end_time      | Optional end of a historical query. If not given, the latest single row is returned.                                              |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
-print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
+print(values) # [[-100.0, 'RED_LOW'], [0, None]]
 ```
 
 </TabItem>
@@ -3147,7 +3151,7 @@ print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 
 ```ruby
 values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
-puts values # [[-100.0, :RED_LOW], [0, :RED_LOW]]
+puts values.inspect # [[-100.0, :RED_LOW], [0, nil]]
 ```
 
 </TabItem>
