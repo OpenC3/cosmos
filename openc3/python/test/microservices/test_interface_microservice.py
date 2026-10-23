@@ -216,7 +216,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
     # def test_preserves_existing_packet_counts(self):
     #     # Initialize the telemetry topic with a non-zero RECEIVED_COUNT
     #     for _, packet in System.telemetry.packets("INST").items():
-    #         packet.received_time = datetime.now(timezone.utc)
+    #         packet.received_time = datetime.now(UTC)
     #         packet.received_count = 10
     #         TelemetryTopic.write_packet(packet, scope="DEFAULT")
     #     im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")

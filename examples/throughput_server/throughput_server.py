@@ -104,7 +104,7 @@ class ClientHandler:
                     self._buffer += data
                     await self._process_buffer()
 
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     # No data, continue loop (allows checking self.running)
                     continue
                 except ConnectionResetError:
