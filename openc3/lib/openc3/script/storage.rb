@@ -224,6 +224,20 @@ module OpenC3
       return file
     end
 
+    # Retrieve the file selected in open_bucket_dialog
+    # input is the hash returned by the frontend: { 'bucket', 'path', 'filename' }
+    def _get_bucket_dialog_file(input, scope: $openc3_scope)
+      bucket = input['bucket']
+      # Path from bucket dialog already includes scope prefix (e.g. DEFAULT/targets/...)
+      # _get_storage_file prepends scope, so strip it from the path to avoid doubling
+      path = input['path'].sub(/\A#{Regexp.escape(scope)}\//, '')
+      file = _get_storage_file(path, bucket: bucket, scope: scope)
+      file.filename = input['filename']
+      file.bucket = bucket
+      file.bucket_path = input['path']
+      file
+    end
+
     def _get_uri(url)
       if $openc3_in_cluster
         case ENV.fetch('OPENC3_CLOUD', nil)

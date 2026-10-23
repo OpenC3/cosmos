@@ -22,7 +22,7 @@ import os
 import re
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import NamedTuple
 
@@ -362,7 +362,10 @@ class QuestDBClient:
         self.pending_rows = []
 
     def _log_info(self, msg):
-        print(f"INFO: {msg}")
+        if self.logger:
+            self.logger.info(msg)
+        else:
+            print(f"INFO: {msg}")
 
     def _log_warn(self, msg):
         if self.logger:
@@ -600,7 +603,7 @@ class QuestDBClient:
         seconds = nsec / 1_000_000_000
         remainder_ns = nsec % 1_000_000_000
         microseconds = remainder_ns / 1000
-        return datetime.fromtimestamp(seconds, tz=timezone.utc).replace(microsecond=int(microseconds))
+        return datetime.fromtimestamp(seconds, tz=UTC).replace(microsecond=int(microseconds))
 
     @staticmethod
     def coerce_to_utc(value):
@@ -618,17 +621,17 @@ class QuestDBClient:
             return None
         if isinstance(value, datetime):
             if value.tzinfo is None:
-                return value.replace(tzinfo=timezone.utc)
-            return value.astimezone(timezone.utc)
+                return value.replace(tzinfo=UTC)
+            return value.astimezone(UTC)
         elif isinstance(value, float):
-            return datetime.fromtimestamp(value, tz=timezone.utc)
+            return datetime.fromtimestamp(value, tz=UTC)
         elif isinstance(value, int):
             return QuestDBClient.nsec_to_utc_time(value)
         elif isinstance(value, str):
             from datetime import datetime as dt
 
             parsed = dt.fromisoformat(value.replace("Z", "+00:00"))
-            return parsed.astimezone(timezone.utc)
+            return parsed.astimezone(UTC)
         else:
             # Assume PG timestamp-like object
             return QuestDBClient.pg_timestamp_to_utc(value)
@@ -1050,7 +1053,7 @@ class QuestDBClient:
         if pg_time is None:
             return None
         # Replace timezone info with UTC (psycopg may return naive datetimes)
-        return pg_time.replace(tzinfo=timezone.utc)
+        return pg_time.replace(tzinfo=UTC)
 
     @staticmethod
     def format_timestamp(utc_time, format_type):
@@ -1635,7 +1638,7 @@ class QuestDBClient:
         """
         if rx_timestamp_ns is not None:
             # Convert nanoseconds to datetime for QuestDB timestamp column
-            columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=timezone.utc)
+            columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=UTC)
         self.pending_rows.append((table_name, columns.copy(), timestamp_ns))
         self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
         # Flush in batches to avoid overwhelming QuestDB's HTTP endpoint

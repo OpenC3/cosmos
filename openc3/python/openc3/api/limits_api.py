@@ -9,7 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.api import WHITELIST
 from openc3.api.tlm_api import _tlm_process_args
@@ -158,7 +158,7 @@ def enable_limits(*args, scope=OPENC3_SCOPE):
         "packet_name": packet_name,
         "item_name": item_name,
         "enabled": True,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -202,7 +202,7 @@ def disable_limits(*args, scope=OPENC3_SCOPE):
         "packet_name": packet_name,
         "item_name": item_name,
         "enabled": False,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -231,7 +231,7 @@ def get_limits(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
             vals["yellow_high"],
             vals["red_high"],
         ]
-        if vals.get("green_low"):
+        if vals.get("green_low") is not None:
             limits[key] += [vals["green_low"], vals["green_high"]]
     return limits
 
@@ -261,7 +261,7 @@ def set_limits(
     )
     if (red_low > yellow_low) or (yellow_low >= yellow_high) or (yellow_high > red_high):
         raise RuntimeError("Invalid limits specified. Ensure yellow limits are within red limits.")
-    if (green_low and green_high) and (
+    if (green_low is not None and green_high is not None) and (
         (yellow_low > green_low) or (green_low >= green_high) or (green_high > yellow_high)
     ):
         raise RuntimeError("Invalid limits specified. Ensure green limits are within yellow limits.")
@@ -281,9 +281,9 @@ def set_limits(
                 limits["yellow_low"] = yellow_low
                 limits["yellow_high"] = yellow_high
                 limits["red_high"] = red_high
-                if green_low and green_high:
+                if green_low is not None and green_high is not None:
                     limits["green_low"] = green_low
-                if green_low and green_high:
+                if green_low is not None and green_high is not None:
                     limits["green_high"] = green_high
                 item["limits"][limits_set] = limits
                 found_item = item
@@ -295,7 +295,7 @@ def set_limits(
     message = (
         f"Setting '{target_name} {packet_name} {item_name}' limits to {red_low} {yellow_low} {yellow_high} {red_high}"
     )
-    if green_low and green_high:
+    if green_low is not None and green_high is not None:
         message += f" {green_low} {green_high}"
     message += f" in set {limits_set} with persistence {persistence} as enabled {enabled}"
     Logger.info(message, scope=scope)
@@ -316,7 +316,7 @@ def set_limits(
         "limits_set": limits_set,
         "persistence": persistence,
         "enabled": enabled,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -381,7 +381,7 @@ def set_state_color(target_name, packet_name, item_name, state_name, color, scop
         "item_name": item_name,
         "state_name": state_name,
         "color": color,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -430,7 +430,7 @@ def set_limits_set(limits_set, scope=OPENC3_SCOPE):
         {
             "type": "LIMITS_SET",
             "set": str(limits_set),
-            "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+            "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
             "message": message,
         },
         scope=scope,
@@ -520,7 +520,7 @@ def _limits_group(group_name, action, scope):
                     "packet_name": packet_name,
                     "item_name": item_name,
                     "enabled": enabled,
-                    "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+                    "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
                     "message": message,
                 }
                 LimitsEventTopic.write(event, scope=scope)

@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import *
 
 from openc3.conversions.unix_time_seconds_conversion import UnixTimeSecondsConversion
@@ -28,7 +28,7 @@ class TestUnixTimeSecondsConversion(unittest.TestCase):
         utsc = UnixTimeSecondsConversion("TIME")
         packet = Packet("TGT", "PKT")
         packet.append_item("TIME", 32, "UINT")
-        time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=timezone.utc).timestamp()
+        time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=UTC).timestamp()
         packet.write("TIME", time)
         self.assertEqual(utsc.call(None, packet, packet.buffer), time)
 
@@ -36,7 +36,7 @@ class TestUnixTimeSecondsConversion(unittest.TestCase):
         utsc = UnixTimeSecondsConversion("TIME", "TIME_US")
         packet = Packet("TGT", "PKT")
         packet.append_item("TIME", 32, "UINT")
-        time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=timezone.utc).timestamp()
+        time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=UTC).timestamp()
         packet.write("TIME", time)
         packet.append_item("TIME_US", 32, "UINT")
         packet.write("TIME_US", 500000)
@@ -73,7 +73,7 @@ class TestUnixTimeSecondsConversion(unittest.TestCase):
         new_utsc = UnixTimeSecondsConversion(*json.get("params"))
         packet = Packet("TGT", "PKT")
         packet.append_item("TIME", 32, "UINT")
-        time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=timezone.utc).timestamp()
+        time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=UTC).timestamp()
         packet.write("TIME", time)
         packet.append_item("TIME_US", 32, "UINT")
         packet.write("TIME_US", 500000)

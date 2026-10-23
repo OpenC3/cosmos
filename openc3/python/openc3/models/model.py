@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.utilities.store import EphemeralStore, Store
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
@@ -116,7 +116,7 @@ class Model:
                 raise RuntimeError(f"{self.primary_key}:{self.name} already exists at create")
             if not existing and update:
                 raise RuntimeError(f"{self.primary_key}:{self.name} doesn't exist at update")
-        self.updated_at = to_nsec_from_epoch(datetime.now(timezone.utc))
+        self.updated_at = to_nsec_from_epoch(datetime.now(UTC))
 
         write_store = self.store_queued() if queued else self.store()
         write_store.hset(self.primary_key, self.name, json.dumps(self.as_json()))

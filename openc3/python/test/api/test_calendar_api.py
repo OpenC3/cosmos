@@ -11,7 +11,7 @@
 
 import time
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from openc3.api.calendar_api import (
@@ -53,7 +53,7 @@ class TestCalendarApi(unittest.TestCase):
         self.addCleanup(patcher.stop)
 
     def _future_window(self, offset_hours=1, duration_hours=1):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         start = now + timedelta(hours=offset_hours)
         stop = now + timedelta(hours=offset_hours + duration_hours)
         return start, stop
@@ -228,7 +228,7 @@ class TestCalendarApi(unittest.TestCase):
 
     def test_create_activity_rejects_past_start(self):
         self._make_timeline()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with self.assertRaises(ActivityInputError):
             create_timeline_activity(
                 TIMELINE,
@@ -240,7 +240,7 @@ class TestCalendarApi(unittest.TestCase):
 
     def test_create_activity_rejects_too_long(self):
         self._make_timeline()
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with self.assertRaises(ActivityInputError):
             create_timeline_activity(
                 TIMELINE,
@@ -325,8 +325,8 @@ class TestCalendarApi(unittest.TestCase):
         self._make_timeline()
         start, stop = self._future_window()
         create_timeline_activity(TIMELINE, kind="COMMAND", start=start, stop=stop, scope=SCOPE)
-        far = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
-        far_stop = (datetime.now(timezone.utc) + timedelta(days=31)).isoformat()
+        far = (datetime.now(UTC) + timedelta(days=30)).isoformat()
+        far_stop = (datetime.now(UTC) + timedelta(days=31)).isoformat()
         self.assertEqual(get_timeline_activities(TIMELINE, start=far, stop=far_stop, scope=SCOPE), [])
 
     # --- delete_timeline_activity ----------------------------------------
@@ -411,20 +411,20 @@ class TestCalendarApi(unittest.TestCase):
         self.assertEqual(_cal_to_epoch("-7"), -7)
 
     def test_cal_to_epoch_iso_string(self):
-        dt = datetime(2031, 4, 16, 1, 2, 3, tzinfo=timezone.utc)
+        dt = datetime(2031, 4, 16, 1, 2, 3, tzinfo=UTC)
         self.assertEqual(_cal_to_epoch(dt.isoformat()), int(dt.timestamp()))
 
     def test_cal_to_epoch_iso_string_with_z(self):
-        dt = datetime(2031, 4, 16, 1, 2, 3, tzinfo=timezone.utc)
+        dt = datetime(2031, 4, 16, 1, 2, 3, tzinfo=UTC)
         self.assertEqual(_cal_to_epoch("2031-04-16T01:02:03Z"), int(dt.timestamp()))
 
     def test_cal_to_epoch_datetime_naive_treated_as_utc(self):
         dt = datetime(2031, 4, 16, 1, 2, 3)
-        expected = int(dt.replace(tzinfo=timezone.utc).timestamp())
+        expected = int(dt.replace(tzinfo=UTC).timestamp())
         self.assertEqual(_cal_to_epoch(dt), expected)
 
     def test_cal_to_epoch_datetime_with_tz(self):
-        dt = datetime(2031, 4, 16, 1, 2, 3, tzinfo=timezone.utc)
+        dt = datetime(2031, 4, 16, 1, 2, 3, tzinfo=UTC)
         self.assertEqual(_cal_to_epoch(dt), int(dt.timestamp()))
 
     def test_cal_to_epoch_invalid_string_raises(self):

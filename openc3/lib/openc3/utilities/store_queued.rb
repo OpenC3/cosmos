@@ -24,17 +24,29 @@ module OpenC3
     # Mutex used to ensure that only one instance is created
     @@instance_mutex = Mutex.new
 
+    DEFAULT_UPDATE_INTERVAL = 1 # seconds
+
     # Get the singleton instance for the given db_shard
-    # Sets the update interval to 1 second by default
-    def self.instance(update_interval = 1, db_shard: 0) # seconds
+    # Uses the interval from set_update_interval_all_shards if not given
+    def self.instance(update_interval = nil, db_shard: 0)
       @instances ||= []
       the_instance = @instances[db_shard]
       return the_instance if the_instance
 
       @@instance_mutex.synchronize do
         @instances ||= []
-        @instances[db_shard] ||= self.new(update_interval, db_shard: db_shard)
+        @instances[db_shard] ||= self.new(update_interval || @update_interval || DEFAULT_UPDATE_INTERVAL, db_shard: db_shard)
         return @instances[db_shard]
+      end
+    end
+
+    # Set the update interval on every db_shard instance, including ones created later
+    def self.set_update_interval_all_shards(interval)
+      return unless interval > 0.0
+
+      @@instance_mutex.synchronize do
+        @update_interval = interval
+        (@instances || []).compact.each { |the_instance| the_instance.set_update_interval(interval) }
       end
     end
 
@@ -49,6 +61,8 @@ module OpenC3
       @store = store_instance()
       # Queue to hold the store requests
       @store_queue = Queue.new
+      # Orders queueing against the final drain in shutdown
+      @shutdown_mutex = Mutex.new
       # Sleeper used to delay update thread
       @update_sleeper = Sleeper.new
 
@@ -102,11 +116,18 @@ module OpenC3
       @update_sleeper.cancel if @update_sleeper
       OpenC3.kill_thread(self, @update_thread) if @update_thread
       @update_thread = nil
-      # Drain the queue before shutdown
-      begin
-        process_queue()
-      rescue
-        # Best effort - Redis may already be unavailable during shutdown
+      # Nothing drains the queue once the thread is gone, so from here on write
+      # straight through rather than silently dropping whatever gets queued.
+      # Drain first and flip the flag last, under the mutex, so a direct write
+      # can't be overwritten by an older queued one and nothing is queued after
+      # the drain.
+      @shutdown_mutex.synchronize do
+        begin
+          process_queue()
+        rescue
+          # Best effort - Redis may already be unavailable during shutdown
+        end
+        @shutdown = true
       end
     end
 
@@ -114,7 +135,14 @@ module OpenC3
 
     # Record the message for pipelining by the thread
     def method_missing(message, *args, **kwargs, &block)
-      @store_queue.push(MessageStruct.new(message, args, kwargs, block))
+      # @shutdown never goes back to false, so once set the lock can be skipped
+      unless @shutdown
+        queued = @shutdown_mutex.synchronize do
+          @store_queue.push(MessageStruct.new(message, args, kwargs, block)) unless @shutdown
+        end
+        return queued if queued
+      end
+      @store.public_send(message, *args, **kwargs, &block)
     end
 
     # Returns the store we're working with

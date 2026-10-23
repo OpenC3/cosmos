@@ -15,6 +15,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/utilities/default_plugins'
 require 'openc3/utilities/process_manager'
 require 'openc3/models/plugin_store_model'
 require 'openc3/models/plugin_model'
@@ -70,6 +71,23 @@ class PluginsController < ModelController
     nil # indicates unreachable download location
   end
 
+  # Returns the plugin names. Pass exclude_default=true to leave out the plugins
+  # that ship with COSMOS.
+  def index
+    return unless authorization('system')
+    exclude_default = params[:exclude_default]
+    unless exclude_default.nil? || ['true', 'false'].include?(exclude_default)
+      render json: { status: 'error', message: "Invalid exclude_default: #{exclude_default}" }, status: :bad_request
+      return
+    end
+    names = @model_class.names(scope: params[:scope])
+    names = names.reject { |name| OpenC3::DefaultPlugins.default?(name) } if exclude_default == 'true'
+    render json: names
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
+    logger.error(error.formatted)
+  end
+
   def show
     return unless authorization('system')
     if params[:id].downcase == 'all'
@@ -92,6 +110,11 @@ class PluginsController < ModelController
             plugin.merge!(store_version) if store_version
           end
         end
+      end
+
+      # Flag the plugins that ship with COSMOS so clients can hide them by default
+      plugins.each do |plugin_name, plugin|
+        plugin['default'] = OpenC3::DefaultPlugins.default?(plugin_name)
       end
 
       render json: plugins

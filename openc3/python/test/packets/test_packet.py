@@ -14,7 +14,7 @@
 
 import math
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import *
 
 from cbor2 import dumps
@@ -123,13 +123,13 @@ class Buffer(unittest.TestCase):
 
     def test_sets_the_received_time_fast_to_a_time(self):
         p = Packet("tgt", "pkt")
-        t = datetime.now(timezone.utc)
+        t = datetime.now(UTC)
         p.set_received_time_fast(t)
         self.assertEqual(p.received_time, t)
 
     def test_sets_the_received_time_to_a_time(self):
         p = Packet("tgt", "pkt")
-        t = datetime.now(timezone.utc)
+        t = datetime.now(UTC)
         p.received_time = t
         self.assertEqual(p.received_time, t)
 
@@ -601,14 +601,14 @@ class PacketReadDerived(unittest.TestCase):
         self.assertEqual(0, seconds)
         seconds = self.p.read("RECEIVED_TIMESECONDS")
         self.assertEqual(0, seconds)
-        time = datetime.now(timezone.utc)
+        time = datetime.now(UTC)
         self.p.received_time = time
         seconds = self.p.read("PACKET_TIMESECONDS")
         self.assertEqual(time.timestamp(), seconds)
         seconds = self.p.read("RECEIVED_TIMESECONDS")
         self.assertEqual(time.timestamp(), seconds)
 
-        time2 = datetime.now(timezone.utc)
+        time2 = datetime.now(UTC)
         self.p.packet_time = time2
         seconds = self.p.read("PACKET_TIMESECONDS")
         self.assertAlmostEqual(time2.timestamp(), seconds, 3)
@@ -1357,6 +1357,16 @@ class PacketCheckLimits(unittest.TestCase):
         self.p.check_limits()
         mock.assert_not_called()
 
+    def test_handles_states_without_state_colors_on_an_item_with_limits_values(self):
+        test1 = self.p.get_item("TEST1")
+        test1.states = {"TRUE": 1, "FALSE": 0}
+        test1.limits.values = {"DEFAULT": [1, 2, 4, 5]}
+        self.p.update_limits_items_cache(test1)
+        self.p.enable_limits("TEST1")
+        self.p.write("TEST1", 0)
+        self.p.check_limits()
+        self.assertIsNone(test1.limits.state)
+
     def test_calls_the_limits_change_callback(self):
         test1 = self.p.get_item("TEST1")
         self.assertFalse(test1.limits.enabled)
@@ -1455,6 +1465,33 @@ class PacketCheckLimitsValues(unittest.TestCase):
         self.assertEqual(self.p.get_item("TEST1").limits.state, "GREEN")
         self.assertEqual(self.p.get_item("TEST2").limits.state, "BLUE")
         self.assertEqual(self.p.get_item("TEST3").limits.state, "GREEN")
+
+    def test_limit_boundaries_with_zero_green_low(self):
+        self.p.append_item("test4", 16, "INT")
+        test4 = self.p.get_item("TEST4")
+        test4.limits.values = {"DEFAULT": [-4, -2, 4, 6, 0, 2]}
+        self.p.update_limits_items_cache(test4)
+        self.p.enable_limits("TEST4")
+        # A value equal to a limit is in the outer (more severe) state
+        expected = {
+            -5: "RED_LOW",
+            -4: "RED_LOW",
+            -3: "YELLOW_LOW",
+            -2: "YELLOW_LOW",
+            -1: "GREEN_LOW",
+            0: "GREEN_LOW",
+            1: "BLUE",
+            2: "GREEN_HIGH",
+            3: "GREEN_HIGH",
+            4: "YELLOW_HIGH",
+            5: "YELLOW_HIGH",
+            6: "RED_HIGH",
+            7: "RED_HIGH",
+        }
+        for value, state in expected.items():
+            self.p.write("TEST4", value)
+            self.p.check_limits(ignore_persistence=True)
+            self.assertEqual(test4.limits.state, state, f"value {value}")
 
     def test_clears_persistence_case_initial_state_is_None(self):
         self.p.get_item("TEST1").limits.persistence_count = 2
@@ -1697,7 +1734,7 @@ class Clone(unittest.TestCase):
 class Reset(unittest.TestCase):
     def test_does_nothing_to_the_system_meta_packet(self):
         p = Packet("SYSTEM", "META")
-        time = datetime.now(timezone.utc)
+        time = datetime.now(UTC)
         p.received_time = time
         p.received_count = 50
         p.reset()
@@ -1707,7 +1744,7 @@ class Reset(unittest.TestCase):
     def test_resets_the_received_time_and_received_count(self):
         p = Packet("tgt", "pkt")
         # p.processors['processor'] = double("reset", :reset : True)
-        p.received_time = datetime.now(timezone.utc)
+        p.received_time = datetime.now(UTC)
         p.received_count = 50
         p.reset()
         self.assertEqual(p.received_time, None)
@@ -1918,8 +1955,11 @@ class PacketObfuscation(unittest.TestCase):
         i.obfuscate = True
         p.update_obfuscated_items_cache(i)
         p.buffer = b"\x01\x02\x03\x04"
+        # Given values of obfuscated items are removed regardless of key case
+        p.given_values = {"test1": 1, "TEST2": 2}
         p.obfuscate()
         self.assertEqual(p.buffer, b"\x00\x02\x03\x04")
+        self.assertEqual(p.given_values, {"TEST2": 2})
 
     def test_obfuscates_multiple_items(self):
         p = Packet("tgt", "pkt")

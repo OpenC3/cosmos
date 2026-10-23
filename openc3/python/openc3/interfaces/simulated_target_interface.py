@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.interfaces.interface import Interface
 from openc3.top_level import get_class_from_module
@@ -124,7 +124,7 @@ class SimulatedTargetInterface(Interface):
             # Update count of commands sent through this interface
             self.write_count += 1
             self.bytes_written += len(packet.buffer)
-            self.written_raw_data_time = datetime.now(timezone.utc)
+            self.written_raw_data_time = datetime.now(UTC)
             self.written_raw_data = packet.buffer
 
             # Have simulated target handle the packet
@@ -147,6 +147,6 @@ class SimulatedTargetInterface(Interface):
             self.read_count += 1
             packet = self.pending_packets.pop(0).clone()
             self.bytes_read += len(packet.buffer)
-            self.read_raw_data_time = datetime.now(timezone.utc)
+            self.read_raw_data_time = datetime.now(UTC)
             self.read_raw_data = packet.buffer
         return packet

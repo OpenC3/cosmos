@@ -14,7 +14,7 @@
 import json
 import time
 import uuid as uuid_module
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.models.model import Model
 from openc3.topics.timeline_topic import TimelineTopic
@@ -235,8 +235,8 @@ class ActivityModel(Model):
     # - A task MUST have a data object/dict.
     def validate_input(self, start, stop, kind, data):
         try:
-            datetime.fromtimestamp(int(start), tz=timezone.utc)
-            datetime.fromtimestamp(int(stop), tz=timezone.utc)
+            datetime.fromtimestamp(int(start), tz=UTC)
+            datetime.fromtimestamp(int(stop), tz=UTC)
         except (TypeError, ValueError, OverflowError, OSError) as e:
             raise ActivityInputError(f"start and stop must be seconds: {start}, {stop}") from e
         now_f = time.time()
@@ -320,7 +320,7 @@ class ActivityModel(Model):
             last_stop = None
 
             # Update updated_at and add an event assuming it all completes ok
-            self.updated_at = to_nsec_from_epoch(datetime.now(timezone.utc))
+            self.updated_at = to_nsec_from_epoch(datetime.now(UTC))
             self.add_event(status="created", username=username)
 
             start_time = self.start
@@ -352,7 +352,7 @@ class ActivityModel(Model):
                 collision = self.validate_time(self.start, self.stop)
                 if collision is not None:
                     raise ActivityOverlapError(f"activity overlaps existing at {collision}")
-            self.updated_at = to_nsec_from_epoch(datetime.now(timezone.utc))
+            self.updated_at = to_nsec_from_epoch(datetime.now(UTC))
             self.add_event(status="created", username=username)
             Store.zadd(self._zset_key, {json.dumps(self.as_json()): self.start})
             self.notify(kind="created")
@@ -390,7 +390,7 @@ class ActivityModel(Model):
             self.diff_field(changes, f"data.{key}", old_data.get(key), new_data.get(key))
 
         self.set_input(start=start, stop=stop, kind=kind, data=data, events=self.events)
-        self.updated_at = to_nsec_from_epoch(datetime.now(timezone.utc))
+        self.updated_at = to_nsec_from_epoch(datetime.now(UTC))
 
         self.add_event(status="updated", username=username, changes=changes if changes else None)
         json_values = Store.zrangebyscore(self._zset_key, old_start, old_start)

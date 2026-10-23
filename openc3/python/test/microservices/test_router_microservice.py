@@ -12,7 +12,7 @@
 import threading
 import time
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import *
 
 from openc3.interfaces.interface import Interface
@@ -90,7 +90,7 @@ class TestRouterMicroservice(unittest.TestCase):
         model.create()
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         packet.stored = False
         packet.check_limits()
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
@@ -165,6 +165,14 @@ class TestRouterMicroservice(unittest.TestCase):
         im.handler_thread.thread.join(5)  # Wait for the handler to exit (no fixed sleep race)
         self.assertFalse(im.handler_thread.thread.is_alive())
 
+    def test_attempt_connection_updates_the_router_model(self):
+        im = RouterMicroservice("DEFAULT__ROUTER__TEST_INT")
+        self.addCleanup(im.shutdown)
+        im.attempt_connection("test-host", 54321)
+        self.assertEqual(im.interface.port, 54321)
+        model = RouterModel.get(name="TEST_INT", scope="DEFAULT")
+        self.assertEqual(model["config_params"][1:], ["test-host", 54321])
+
     def test_supports_router_cmd(self):
         im = RouterMicroservice("DEFAULT__ROUTER__TEST_INT")
         self._run(im)
@@ -217,7 +225,7 @@ class TestRouterMicroservice(unittest.TestCase):
         self.assertEqual(data["TEST_INT"]["state"], "CONNECTED")
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         packet.received_count = 1
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
         time.sleep(0.2)

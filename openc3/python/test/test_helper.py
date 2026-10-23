@@ -55,6 +55,7 @@ def my_init(self, update_interval, db_shard=0):
     self.store = self.store_instance()
     # Queue to hold the store requests
     self.store_queue = queue.Queue()
+    self.shutdown_mutex = threading.Lock()
     # Sleeper used to delay update thread
     self.update_sleeper = Sleeper()
 
@@ -89,7 +90,7 @@ def setup_system(targets=None):
                     json.dumps(packet.as_json()),
                 )
                 packet = System.telemetry.packet(target_name, packet_name)
-                # packet.received_time = datetime.now(timezone.utc)
+                # packet.received_time = datetime.now(UTC)
                 json_hash = {}
                 for item in packet.sorted_items:
                     # Initialize all items to None like TargetModel::update_store does in Ruby
@@ -167,6 +168,8 @@ def mock_redis(self):
     Store._db_shard_cache = {}
     EphemeralStoreQueued.my_instances = {}
     StoreQueued.my_instances = {}
+    EphemeralStoreQueued.all_shards_update_interval = None
+    StoreQueued.all_shards_update_interval = None
     return redis
 
 

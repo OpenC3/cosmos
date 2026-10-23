@@ -19,7 +19,7 @@ This is a port of the Ruby PacketLogWriter class.
 import json
 import os
 import struct
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import cbor2
 
@@ -118,7 +118,7 @@ class PacketLogWriter:
             self.close_file()
 
         # Generate filename
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S%f")[:20]
+        timestamp = datetime.now(UTC).strftime("%Y%m%d%H%M%S%f")[:20]
         self._filename = os.path.join(self.log_directory, f"{timestamp}__{self.label}.bin")
 
         self._file = open(self._filename, "wb")  # noqa: SIM115

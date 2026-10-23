@@ -12,7 +12,7 @@
 import json
 import socket
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import IntEnum
 from threading import Lock
 
@@ -227,7 +227,7 @@ class Logger(metaclass=LoggerMeta):
         url=None,
         other=None,
     ):
-        now_time = datetime.now(timezone.utc)
+        now_time = datetime.now(UTC)
         data = {
             "time": int(now_time.timestamp() * 1000000000),
             # Can't use isoformat because it appends "+00:00" instead of "Z"

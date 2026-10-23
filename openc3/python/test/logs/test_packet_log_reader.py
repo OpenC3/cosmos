@@ -20,7 +20,7 @@ import os
 import tempfile
 import time
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.logs.packet_log_constants import (
     COSMOS2_FILE_HEADER,
@@ -96,7 +96,7 @@ class TestPacketLogReaderWithJsonTelemetry(unittest.TestCase):
     def setUp(self):
         self.plr = PacketLogReader()
         self.temp_dir = tempfile.mkdtemp()
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
         self.start_nsec = int(self.start_time.timestamp() * 1_000_000_000)
         self.times = [
             self.start_nsec,
@@ -159,7 +159,7 @@ class TestPacketLogReaderWithJsonCommands(unittest.TestCase):
     def setUp(self):
         self.plr = PacketLogReader()
         self.temp_dir = tempfile.mkdtemp()
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
         self.start_nsec = int(self.start_time.timestamp() * 1_000_000_000)
         self.times = [
             self.start_nsec,
@@ -218,7 +218,7 @@ class TestPacketLogReaderWithRawTelemetry(unittest.TestCase):
     def setUp(self):
         self.plr = PacketLogReader()
         self.temp_dir = tempfile.mkdtemp()
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
         self.start_nsec = int(self.start_time.timestamp() * 1_000_000_000)
         self.times = [
             self.start_nsec,
@@ -275,7 +275,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
     def setUp(self):
         self.plr = PacketLogReader()
         self.temp_dir = tempfile.mkdtemp()
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
         self.start_nsec = int(self.start_time.timestamp() * 1_000_000_000)
         self.times = [
             self.start_nsec,
@@ -316,7 +316,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
 
     def test_returns_all_packets_if_start_time_before_all(self):
         """returns all packets if the start time is before all"""
-        start = datetime.fromtimestamp((self.start_nsec - NSEC_PER_SECOND) / 1e9, tz=timezone.utc)
+        start = datetime.fromtimestamp((self.start_nsec - NSEC_PER_SECOND) / 1e9, tz=UTC)
         index = 0
         for packet in self.plr.each(self.logfile, start_time=start):
             self.assertEqual(packet.time_nsec, self.times[index])
@@ -325,7 +325,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
 
     def test_returns_no_packets_if_start_time_after_all(self):
         """returns no packets if the start time is after all"""
-        start = datetime.fromtimestamp((self.start_nsec + 10 * NSEC_PER_SECOND) / 1e9, tz=timezone.utc)
+        start = datetime.fromtimestamp((self.start_nsec + 10 * NSEC_PER_SECOND) / 1e9, tz=UTC)
         index = 0
         for _packet in self.plr.each(self.logfile, start_time=start):
             index += 1
@@ -334,7 +334,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
     def test_returns_all_packets_after_start_time(self):
         """returns all packets after a start time"""
         # Start after first packet (use half second offset since datetime has only microsecond precision)
-        start = datetime.fromtimestamp((self.start_nsec + NSEC_PER_SECOND // 2) / 1e9, tz=timezone.utc)
+        start = datetime.fromtimestamp((self.start_nsec + NSEC_PER_SECOND // 2) / 1e9, tz=UTC)
         index = 1  # Start at index 1
         for packet in self.plr.each(self.logfile, start_time=start):
             self.assertEqual(packet.time_nsec, self.times[index])
@@ -343,7 +343,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
 
     def test_returns_no_packets_if_end_time_before_all(self):
         """returns no packets if the end time is before all"""
-        end = datetime.fromtimestamp((self.start_nsec - NSEC_PER_SECOND) / 1e9, tz=timezone.utc)
+        end = datetime.fromtimestamp((self.start_nsec - NSEC_PER_SECOND) / 1e9, tz=UTC)
         index = 0
         for _packet in self.plr.each(self.logfile, end_time=end):
             index += 1
@@ -351,7 +351,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
 
     def test_returns_all_packets_if_end_time_after_all(self):
         """returns all packets if the end time is after all"""
-        end = datetime.fromtimestamp((self.start_nsec + 4 * NSEC_PER_SECOND) / 1e9, tz=timezone.utc)
+        end = datetime.fromtimestamp((self.start_nsec + 4 * NSEC_PER_SECOND) / 1e9, tz=UTC)
         index = 0
         for packet in self.plr.each(self.logfile, end_time=end):
             self.assertEqual(packet.time_nsec, self.times[index])
@@ -361,7 +361,7 @@ class TestPacketLogReaderWithStartEndTimes(unittest.TestCase):
     def test_returns_all_packets_before_end_time(self):
         """returns all packets before an end time"""
         # End at second packet (exactly)
-        end = datetime.fromtimestamp((self.start_nsec + NSEC_PER_SECOND) / 1e9, tz=timezone.utc)
+        end = datetime.fromtimestamp((self.start_nsec + NSEC_PER_SECOND) / 1e9, tz=UTC)
         index = 0
         for packet in self.plr.each(self.logfile, end_time=end):
             self.assertEqual(packet.time_nsec, self.times[index])

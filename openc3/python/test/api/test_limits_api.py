@@ -13,7 +13,7 @@ import contextlib
 import threading
 import time
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import *
 
 from openc3.api.limits_api import *
@@ -99,12 +99,12 @@ class TestLimitsApi(unittest.TestCase):
 
     def test_gets_limits_for_a_latest_item(self):
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         packet.stored = False
         packet.check_limits()
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
         time.sleep(0.01)  # Allow the write to happen
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         packet.check_limits()
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
         time.sleep(0.01)  # Allow the write to happen
@@ -135,6 +135,22 @@ class TestLimitsApi(unittest.TestCase):
             get_limits("INST", "HEALTH_STATUS", "TEMP1")["CUSTOM"],
             ([0.0, 10.0, 20.0, 30.0]),
         )
+
+    def test_set_limits_keeps_zero_green_limits(self):
+        set_limits("INST", "HEALTH_STATUS", "TEMP1", -4.0, -3.0, 2.0, 3.0, 0.0, 1.0)
+        self.assertEqual(
+            get_limits("INST", "HEALTH_STATUS", "TEMP1")["CUSTOM"],
+            ([-4.0, -3.0, 2.0, 3.0, 0.0, 1.0]),
+        )
+        set_limits("INST", "HEALTH_STATUS", "TEMP1", -4.0, -3.0, 2.0, 3.0, -1.0, 0.0)
+        self.assertEqual(
+            get_limits("INST", "HEALTH_STATUS", "TEMP1")["CUSTOM"],
+            ([-4.0, -3.0, 2.0, 3.0, -1.0, 0.0]),
+        )
+
+    def test_set_limits_validates_zero_green_limits(self):
+        with self.assertRaisesRegex(RuntimeError, "Ensure green limits are within yellow limits"):
+            set_limits("INST", "HEALTH_STATUS", "TEMP1", -4.0, -3.0, 2.0, 3.0, 0.0, 5.0)
 
     def test_set_limits_complains_about_invalid_limits(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid limits specified"):
@@ -377,7 +393,7 @@ class TestLimitsApi(unittest.TestCase):
             "message": "nope",
         }
         LimitsEventTopic.write(event, scope="DEFAULT")
-        time = datetime.now(timezone.utc)
+        time = datetime.now(UTC)
         event = {
             "type": "LIMITS_CHANGE",
             "target_name": "TGT",

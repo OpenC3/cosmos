@@ -12,7 +12,7 @@
 import re
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from queue import Empty, SimpleQueue
 
 from openc3.config.config_parser import ConfigParser
@@ -282,7 +282,7 @@ class TemplateProtocol(TerminatedProtocol):
         result["response_timeout"] = self.response_timeout
         result["response_polling_period"] = self.response_polling_period
         if self.connect_complete_time:
-            result["connect_complete_time"] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).strftime(
+            result["connect_complete_time"] = datetime.fromtimestamp(self.connect_complete_time, UTC).strftime(
                 self.DATETIME_FORMAT
             )
         else:
@@ -301,7 +301,7 @@ class TemplateProtocol(TerminatedProtocol):
         result["response_timeout"] = self.response_timeout
         result["response_polling_period"] = self.response_polling_period
         if self.connect_complete_time:
-            result["connect_complete_time"] = datetime.fromtimestamp(self.connect_complete_time, timezone.utc).strftime(
+            result["connect_complete_time"] = datetime.fromtimestamp(self.connect_complete_time, UTC).strftime(
                 self.DATETIME_FORMAT
             )
         else:

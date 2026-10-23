@@ -27,6 +27,9 @@
     {
       "path": "../openc3-news",
     },
+    {
+      "path": "../openc3-cosmos-fprime",
+    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",
@@ -80,6 +83,8 @@
       "app-store/openc3-cosmos-clam/targets",
       "cosmos/plugins/openc3-cosmos-demo/openc3-cosmos-demo-5.21.0.pre.beta0.gem/targets",
       "cosmos-enterprise-plugins/openc3-cosmos-gems-interface-python/targets",
+      "cosmos-enterprise/openc3-enterprise-gem/spec/install/config/targets",
+      "cosmos/openc3/test/integration/cmd_tlm/generated/targets",
     ],
   },
 }

@@ -11,7 +11,7 @@
 
 import importlib
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import *
 
 from openc3.utilities.logger import Logger
@@ -103,7 +103,7 @@ class TestFormatted(unittest.TestCase):
 
 class TestBuildTimestampedFilename(unittest.TestCase):
     def test_formats_the_time(self):
-        time = datetime.now(timezone.utc)
+        time = datetime.now(UTC)
         timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
         self.assertIn(timestamp, build_timestamped_filename(None, ".txt", time))
 

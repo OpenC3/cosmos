@@ -16,7 +16,7 @@ import sys
 import threading
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.config.config_parser import ConfigParser
 from openc3.microservices.interface_decom_common import (
@@ -100,6 +100,10 @@ class DecomMicroservice(Microservice):
         "GREEN_LOW": 4,
         "GREEN_HIGH": 5,
     }
+
+    # Decom never uses descriptions so don't keep them in memory
+    def load_descriptions(self):
+        return False
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -309,7 +313,7 @@ class DecomMicroservice(Microservice):
         if packet.packet_time is not None:
             packet_time = packet.packet_time
         else:
-            packet_time = datetime.now(timezone.utc)
+            packet_time = datetime.now(UTC)
         if value is not None:
             message = f"{packet.target_name} {packet.packet_name} {item.name} = {value} is {item.limits.state}"
             if item.limits.values:

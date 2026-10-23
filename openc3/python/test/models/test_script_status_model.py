@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.models.script_status_model import ScriptStatusModel
 from openc3.utilities.time import to_nsec_from_epoch
@@ -22,10 +22,10 @@ class TestScriptStatusModel(unittest.TestCase):
         self.redis = mock_redis(self)
 
     def test_sets_updated_at_to_nsec_from_epoch_on_create(self):
-        before = to_nsec_from_epoch(datetime.now(timezone.utc))
+        before = to_nsec_from_epoch(datetime.now(UTC))
         model = ScriptStatusModel(name="1000", state="running", scope="DEFAULT")
         model.create()
-        after = to_nsec_from_epoch(datetime.now(timezone.utc))
+        after = to_nsec_from_epoch(datetime.now(UTC))
 
         # updated_at should be an integer number of nanoseconds since the epoch,
         # not the previous ISO 8601 string representation

@@ -10,7 +10,6 @@
 # if purchased from OpenC3, Inc.
 
 import ast
-import sys
 
 
 # For details on the AST, see https://docs.python.org/3/library/ast.html
@@ -44,9 +43,7 @@ else:
         self.filename = filename
         self.line_offset = line_offset
         self.try_count = 0
-        self.try_nodes = [ast.Try]
-        if sys.version_info >= (3, 11):
-            self.try_nodes.append(ast.TryStar)
+        self.try_nodes = [ast.Try, ast.TryStar]
 
     # What we're trying to do is wrap executable statements in a while True try/except block
     # For example if the input code is "print('HI')", we want to transform it to:
@@ -188,8 +185,7 @@ else:
 
     visit_Raise = track_enter_leave
     visit_Try = track_reached
-    if sys.version_info >= (3, 11):
-        visit_TryStar = track_reached
+    visit_TryStar = track_reached
     visit_Assert = track_enter_leave
 
     visit_Import = track_enter_leave

@@ -131,8 +131,8 @@ import threading
 import time
 import traceback
 import uuid
+from datetime import UTC
 from datetime import datetime as cdatetime
-from datetime import timezone
 from io import StringIO
 from threading import Lock
 
@@ -204,11 +204,21 @@ def running_script_method(method, *args, **kwargs):
                         path = path[len(scope) + 1 :]
                     file = _get_storage_file(path, bucket=bucket, scope=scope)
                     file._filename = the_filename
+                    file._bucket = bucket
+                    file._bucket_path = user_input["path"]
 
                     def filename(self):
                         return self._filename
 
+                    def bucket_name(self):
+                        return self._bucket
+
+                    def bucket_path(self):
+                        return self._bucket_path
+
                     type(file).filename = filename
+                    type(file).bucket = bucket_name
+                    type(file).bucket_path = bucket_path
                     return file
                 elif "open_file" in method:
                     files = []
@@ -331,7 +341,7 @@ class RunningScript:
         self.debug_history = []
         self.debug_code_completion = None
         self.top_level_instrumented_cache = None
-        self.output_time = cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
+        self.output_time = cdatetime.now(UTC).strftime(RunningScript.STRFTIME_FORMAT)
         self.output_time_value = _time.time()
         self.script_globals = globals()
         self.suite_report = None
@@ -469,9 +479,7 @@ class RunningScript:
     def do_stop(self):
         if RunningScript.run_thread:
             self.stop = True
-            self.script_status.end_time = (
-                cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-            )
+            self.script_status.end_time = cdatetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
             self.update_running_script_store("stopped")
             kill_thread(self, RunningScript.run_thread)
             RunningScript.run_thread = None
@@ -702,7 +710,8 @@ class RunningScript:
                 trace.append(f"{filename}:{lineno}:{name}:{line}")
         return trace
 
-    def execute_while_paused(self, filename, line_no=1, end_line_no=None):
+    # bind_variables of None binds only when filename is the currently running file
+    def execute_while_paused(self, filename, line_no=1, end_line_no=None, bind_variables=None):
         if (
             self.script_status.state == "paused"
             or self.script_status.state == "error"
@@ -712,6 +721,7 @@ class RunningScript:
                 "filename": filename,
                 "line_no": line_no,
                 "end_line_no": end_line_no,
+                "bind_variables": bind_variables,
             }
         else:
             self.scriptrunner_puts(
@@ -719,9 +729,7 @@ class RunningScript:
             )
 
     def scriptrunner_puts(self, string, color="BLACK"):
-        line_to_write = (
-            cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT) + " (SCRIPTRUNNER): " + string
-        )
+        line_to_write = cdatetime.now(UTC).strftime(RunningScript.STRFTIME_FORMAT) + " (SCRIPTRUNNER): " + string
         print(line_to_write)
         running_script_anycable_publish(
             f"running-script-channel:{self.script_status.id}",
@@ -742,7 +750,7 @@ class RunningScript:
             filename = self.script_status.current_filename
         if not line_number:
             line_number = self.script_status.line_no
-        self.output_time = cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
+        self.output_time = cdatetime.now(UTC).strftime(RunningScript.STRFTIME_FORMAT)
         self.output_time_value = _time.time()
         string = self.output_io.getvalue()
         self.output_io.truncate(0)
@@ -864,10 +872,10 @@ class RunningScript:
     def check_execute_while_paused(self):
         try:
             if self.execute_while_paused_info is not None:
-                if self.script_status.current_filename == self.execute_while_paused_info.get("filename"):
-                    bind_variables = True
-                else:
-                    bind_variables = False
+                filename = self.execute_while_paused_info.get("filename")
+                bind_variables = self.execute_while_paused_info.get("bind_variables")
+                if bind_variables is None:
+                    bind_variables = self.script_status.current_filename == filename
                 if self.execute_while_paused_info.get("end_line_no"):
                     # Execute Selection While Paused
                     state = self.script_status.state
@@ -953,7 +961,7 @@ class RunningScript:
         )
 
     def mark_crashed(self):
-        self.script_status.end_time = cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        self.script_status.end_time = cdatetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
         self.update_running_script_store("crashed")
         running_script_anycable_publish(
             f"running-script-channel:{self.script_status.id}",
@@ -966,7 +974,7 @@ class RunningScript:
         )
 
     def mark_completed(self):
-        self.script_status.end_time = cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        self.script_status.end_time = cdatetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
         self.update_running_script_store("completed")
         running_script_anycable_publish(
             f"running-script-channel:{self.script_status.id}",
@@ -1467,7 +1475,7 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
     if complete:
         RunningScript.instance.script_status.state = "completed"
         RunningScript.instance.script_status.end_time = (
-            cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+            cdatetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
         )
         RunningScript.instance.script_status.update(queued=True)
         raise StopScriptError
@@ -1481,19 +1489,22 @@ openc3.script.start = start
 
 def goto(line_no_or_procedure_name, line_no=None):
     if line_no is None:
-        start(
-            RunningScript.instance.current_filename(),
-            line_no=line_no_or_procedure_name,
-            bind_variables=True,
-            complete=True,
-        )
+        procedure_name = RunningScript.instance.current_filename()
+        line_no = line_no_or_procedure_name
     else:
-        start(
-            line_no_or_procedure_name,
-            line_no=line_no,
-            bind_variables=True,
-            complete=True,
-        )
+        procedure_name = line_no_or_procedure_name
+    # goto typed at the debug prompt is executed on the thread that processes
+    # go/step/stop messages. Running the script there deadlocks at the next pause,
+    # so hand it to the run thread the same way the editor's goto does.
+    if threading.current_thread() is not RunningScript.run_thread:
+        RunningScript.instance.execute_while_paused(procedure_name, line_no, bind_variables=True)
+        return
+    start(
+        procedure_name,
+        line_no=line_no,
+        bind_variables=True,
+        complete=True,
+    )
 
 
 openc3.script.goto = goto

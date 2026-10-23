@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from openc3.api import *
 from openc3.config.config_parser import ConfigParser
@@ -50,7 +50,7 @@ class Protocol:
     # Called to provide insight into the protocol read_data for the input data
     def read_protocol_input_base(self, data, _extra=None):
         if self.interface is not None and self.interface.save_raw_data:
-            self.read_data_input_time = datetime.now(timezone.utc)
+            self.read_data_input_time = datetime.now(UTC)
             self.read_data_input = data
             # Todo in future enhancement with packet logger
             # if self.interface.stream_log_pair is not None:
@@ -59,7 +59,7 @@ class Protocol:
     # Called to provide insight into the protocol read_data for the output data
     def read_protocol_output_base(self, data, _extra=None):
         if self.interface is not None and self.interface.save_raw_data:
-            self.read_data_output_time = datetime.now(timezone.utc)
+            self.read_data_output_time = datetime.now(UTC)
             self.read_data_output = data
             # Todo in future enhancement with packet logger
             # if self.interface.stream_log_pair is not None:
@@ -68,7 +68,7 @@ class Protocol:
     # Called to provide insight into the protocol write_data for the input data
     def write_protocol_input_base(self, data, _extra=None):
         if self.interface is not None and self.interface.save_raw_data:
-            self.write_data_input_time = datetime.now(timezone.utc)
+            self.write_data_input_time = datetime.now(UTC)
             self.write_data_input = data
             # Todo in future enhancement with packet logger
             # if self.interface.stream_log_pair is not None:
@@ -77,7 +77,7 @@ class Protocol:
     # Called to provide insight into the protocol write_data for the output data
     def write_protocol_output_base(self, data, _extra=None):
         if self.interface is not None and self.interface.save_raw_data:
-            self.write_data_output_time = datetime.now(timezone.utc)
+            self.write_data_output_time = datetime.now(UTC)
             self.write_data_output = data
             # Todo in future enhancement with packet logger
             # if self.interface.stream_log_pair is not None:

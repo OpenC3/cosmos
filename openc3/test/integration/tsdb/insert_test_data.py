@@ -18,7 +18,7 @@ import argparse
 import math
 import random
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import psycopg
 
@@ -134,11 +134,11 @@ def main():
             if earliest:
                 # Ensure timezone-aware
                 if earliest.tzinfo is None:
-                    earliest = earliest.replace(tzinfo=timezone.utc)
+                    earliest = earliest.replace(tzinfo=UTC)
                 print(f"Earliest existing timestamp: {earliest.isoformat()}")
                 start_time = earliest - timedelta(seconds=args.interval)
             else:
-                start_time = datetime.now(timezone.utc)
+                start_time = datetime.now(UTC)
                 print(f"Table empty, starting from now: {start_time.isoformat()}")
 
             end_time = start_time - timedelta(hours=args.hours)

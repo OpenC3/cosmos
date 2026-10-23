@@ -12,7 +12,7 @@
 import re
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.utilities.extract import remove_quotes
 
@@ -133,7 +133,7 @@ class SuiteResults:
 
     def write(self, string):
         # Can't use isoformat because it appends "+00:00" instead of "Z"
-        self._report.append(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string)
+        self._report.append(datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string)
 
     # Define a few aliases
     puts = write

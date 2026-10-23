@@ -13,7 +13,7 @@ import os
 import tempfile
 import threading
 import traceback
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from openc3.config.config_parser import ConfigParser
 from openc3.top_level import kill_thread
@@ -90,7 +90,7 @@ class LogWriter:
         self.label = None
         self.file_size = 0
         self.filename = None
-        self.start_time = datetime.now(timezone.utc)
+        self.start_time = datetime.now(UTC)
         self.first_time = None
         self.last_time = None
         self.cancel_threads = False
@@ -172,13 +172,13 @@ class LogWriter:
     def cycle_thread_body(self):
         LogWriter.cycle_sleeper = Sleeper()
         while True:
-            start_time = datetime.now(timezone.utc)
+            start_time = datetime.now(UTC)
             with LogWriter.mutex:
                 for instance in LogWriter.instances:
                     # The check against start_time needs to be mutex protected to prevent a packet coming in between the check
                     # and closing the file
                     with instance.mutex:
-                        utc_now = datetime.now(timezone.utc)
+                        utc_now = datetime.now(UTC)
                         if instance.logging_enabled and instance.filename:  # Logging and file opened
                             # Cycle based on total time logging
                             if (
@@ -227,7 +227,7 @@ class LogWriter:
                             instance.cleanup_times = [x for x in instance.cleanup_times if x is not None]
 
             # Only check whether to cycle at a set interval
-            run_time = (datetime.now(timezone.utc) - start_time).total_seconds()
+            run_time = (datetime.now(UTC) - start_time).total_seconds()
             sleep_time = LogWriter.CYCLE_TIME_INTERVAL - run_time
             if sleep_time < 0:
                 sleep_time = 0
@@ -247,7 +247,7 @@ class LogWriter:
             self.file = open(self.filename, "bx")  # noqa: SIM115
             self.file_size = 0
 
-            self.start_time = datetime.now(timezone.utc)
+            self.start_time = datetime.now(UTC)
             self.out_of_order = False
             self.first_time = None
             self.last_time = None
@@ -315,7 +315,7 @@ class LogWriter:
                 self.cleanup_offsets.append({})
                 for redis_topic, last_offset in self.last_offsets:
                     self.cleanup_offsets[-1][redis_topic] = last_offset
-                self.cleanup_times.append(datetime.now(timezone.utc) + timedelta(seconds=LogWriter.CLEANUP_DELAY))
+                self.cleanup_times.append(datetime.now(UTC) + timedelta(seconds=LogWriter.CLEANUP_DELAY))
                 self.last_offsets.clear()
                 self.file = None
                 self.file_size = 0

@@ -11,7 +11,7 @@
 
 import copy
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.logger import Logger
@@ -95,7 +95,7 @@ class StreamLog(LogWriter):
 
         try:
             with self.mutex:
-                time_nsec_since_epoch = to_nsec_from_epoch(datetime.now(timezone.utc))
+                time_nsec_since_epoch = to_nsec_from_epoch(datetime.now(UTC))
                 self.prepare_write(time_nsec_since_epoch, len(data))
                 if self.file:
                     self.write_entry(time_nsec_since_epoch, data)

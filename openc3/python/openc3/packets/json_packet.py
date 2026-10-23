@@ -18,7 +18,7 @@ raw binary data.
 """
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 
@@ -97,7 +97,7 @@ class JsonPacket:
     def _nsec_to_datetime(nsec: int) -> datetime:
         """Convert nanoseconds since epoch to datetime."""
         seconds = nsec / 1_000_000_000
-        return datetime.fromtimestamp(seconds, tz=timezone.utc)
+        return datetime.fromtimestamp(seconds, tz=UTC)
 
     def read(self, name: str, value_type: str = "CONVERTED", reduced_type: str | None = None) -> Any:
         """
