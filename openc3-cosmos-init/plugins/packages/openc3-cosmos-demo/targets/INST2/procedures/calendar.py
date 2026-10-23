@@ -11,7 +11,7 @@ print(tls[0])  #=> {'name': 'PythonTL', 'color': '#FF0000', 'execute': True, 'sh
 set_timeline_color("PythonTL", "#4287f5")
 print(get_timeline("PythonTL")) #=> {'name': 'PythonTL', 'color': '#4287f5', 'execute': True, 'shard': 0, 'scope': 'DEFAULT', 'updated_at': 1737129508391137136}
 
-now = datetime.datetime.now(datetime.timezone.utc)
+now = datetime.datetime.now(datetime.UTC)
 start = now + datetime.timedelta(hours=1)
 stop = start + datetime.timedelta(hours=1)
 act1 = create_timeline_activity("PythonTL", kind="reserve", start=start, stop=stop)
@@ -45,8 +45,8 @@ print(act) #=>
 #   "events"=>[{"time"=>1737128761, "event"=>"created"}], "recurring"=>{}}
 
 # Update act2 with a custom title and notes
-new_start = datetime.datetime.fromtimestamp(act2['start'], tz=datetime.timezone.utc)
-new_stop = datetime.datetime.fromtimestamp(act2['stop'], tz=datetime.timezone.utc) + datetime.timedelta(minutes=30)
+new_start = datetime.datetime.fromtimestamp(act2['start'], tz=datetime.UTC)
+new_stop = datetime.datetime.fromtimestamp(act2['stop'], tz=datetime.UTC) + datetime.timedelta(minutes=30)
 updated = update_timeline_activity("PythonTL",
     id=act2['start'],
     kind="COMMAND", start=new_start, stop=new_stop,

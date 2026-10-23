@@ -1,4 +1,4 @@
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 from openc3.script.web_socket_api import StreamingWebSocketApi
 
 
@@ -17,7 +17,7 @@ with StreamingWebSocketApi() as api:
         print(api.read())
 
 # Warning this saves all data to RAM. Do not use for large queries
-now = datetime.now(timezone.utc)
+now = datetime.now(UTC)
 data = StreamingWebSocketApi.read_all(
     items=[
         "DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED",

@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 
 # Example Use
@@ -43,7 +43,7 @@ with StreamingWebSocketApi() as api:
 
 
 # Warning this saves all data to RAM. Do not use for large queries
-now = datetime.now(timezone.utc)
+now = datetime.now(UTC)
 data = StreamingWebSocketApi.read_all(
     items=[
         "DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED",
@@ -55,7 +55,7 @@ data = StreamingWebSocketApi.read_all(
 print(data)
 
 
-now = datetime.now(timezone.utc)
+now = datetime.now(UTC)
 with MessagesWebSocketApi(
     history_count=0,
     start_time=to_nsec_from_epoch(now - timedelta(seconds=3600)),

@@ -28,7 +28,7 @@ import os
 import sys
 import time
 import pytest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 # Add openc3 python path for imports
@@ -54,7 +54,7 @@ def ts_to_iso(ts_ns: int) -> str:
     """Convert nanosecond timestamp to ISO string, truncating to microseconds to match QuestDB storage."""
     ts_us = ts_ns // 1000
     ts_s = ts_us / 1_000_000
-    return datetime.fromtimestamp(ts_s, tz=timezone.utc).strftime(
+    return datetime.fromtimestamp(ts_s, tz=UTC).strftime(
         "%Y-%m-%dT%H:%M:%S.%fZ"
     )
 
@@ -652,7 +652,7 @@ class TestTimestampItemsRoundtrip:
                 ), f"Expected ISO 8601 format at index {i}, got {actual}"
                 # Verify the formatted string can be parsed back to approximately the same time
                 parsed = datetime.strptime(actual, "%Y-%m-%dT%H:%M:%S.%fZ")
-                parsed_ts = parsed.replace(tzinfo=timezone.utc).timestamp()
+                parsed_ts = parsed.replace(tzinfo=UTC).timestamp()
                 assert (
                     abs(parsed_ts - expected_ts_seconds) < 0.001
                 ), f"Timestamp formatted mismatch at index {i}: expected {expected_ts_seconds}, got {actual}"

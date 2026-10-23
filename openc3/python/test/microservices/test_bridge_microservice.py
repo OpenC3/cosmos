@@ -134,7 +134,7 @@ class TestBridgeMicroservice(unittest.IsolatedAsyncioTestCase):
         recv = FakeRecv()
         with (
             patch("openc3.microservices.bridge_microservice.REQUEST_TIMEOUT", 0.01),
-            self.assertRaises(asyncio.TimeoutError),
+            self.assertRaises(TimeoutError),
         ):
             await self.service._read_request(recv)
 
