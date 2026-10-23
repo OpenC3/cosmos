@@ -94,6 +94,8 @@ import { parsePanel, serializePanel } from '../dashboardParser'
 export default {
   components: { CodePane, DialogToolbar, PanelSettings },
   mixins: [modelShow],
+  // The dashboard's grid width (COLUMNS)
+  inject: { columns: { default: 12 } },
   props: {
     panel: { type: Object, default: null },
     isNew: Boolean,
@@ -133,8 +135,14 @@ export default {
         Object.assign(this.draft, PANEL_TYPES[change.type].defaults)
       }
       Object.assign(this.draft, change)
+      // Grown to the new type's minimum size
+      if (change.type) {
+        Object.assign(this.draft, clampRect(this.draft, this.columns))
+      }
     },
-    parsePanel,
+    parsePanel(text) {
+      return parsePanel(text, this.columns)
+    },
     // Code edits replace the draft but keep it the same panel
     applyCode(panel) {
       if (!panel) return
@@ -149,7 +157,10 @@ export default {
       }
     },
     resize({ w, h }) {
-      Object.assign(this.draft, clampRect({ ...this.draft, w, h }))
+      Object.assign(
+        this.draft,
+        clampRect({ ...this.draft, w, h }, this.columns),
+      )
     },
     // Type hooks run first (a SCREEN panel writes its screen file); edits
     // that aren't part of the dashboard are dropped from the panel

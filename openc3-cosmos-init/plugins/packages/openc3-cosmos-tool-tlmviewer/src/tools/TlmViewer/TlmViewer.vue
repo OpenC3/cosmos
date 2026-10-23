@@ -264,27 +264,9 @@ export default {
       },
       deep: true,
     },
-    playbackMode: function () {
-      this.store.updatePlayback({
-        playbackMode: this.playbackMode,
-        playbackDateTime: this.playbackDateTime,
-        playbackStep: this.playbackStep,
-      })
-    },
-    playbackDateTime: function () {
-      this.store.updatePlayback({
-        playbackMode: this.playbackMode,
-        playbackDateTime: this.playbackDateTime,
-        playbackStep: this.playbackStep,
-      })
-    },
-    playbackStep: function () {
-      this.store.updatePlayback({
-        playbackMode: this.playbackMode,
-        playbackDateTime: this.playbackDateTime,
-        playbackStep: this.playbackStep,
-      })
-    },
+    playbackMode: 'updatePlayback',
+    playbackDateTime: 'updatePlayback',
+    playbackStep: 'updatePlayback',
   },
   async created() {
     // Ensure Offline Access Is Setup For the Current User
@@ -348,6 +330,13 @@ export default {
     this.grid.on('dragEnd', this.refreshLayout)
   },
   methods: {
+    updatePlayback() {
+      this.store.updatePlayback({
+        playbackMode: this.playbackMode,
+        playbackDateTime: this.playbackDateTime,
+        playbackStep: this.playbackStep,
+      })
+    },
     targetSelect(target) {
       this.selectedTarget = target
       this.selectedScreen = this.screens[target][0]

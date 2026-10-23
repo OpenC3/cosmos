@@ -98,6 +98,9 @@ async function load() {
   }
   const results = await Promise.all(
     names.map(async (name) => {
+      // Plugins can only install plain names (PanelModel); anything else
+      // isn't loaded as a script path
+      if (!/^[A-Z0-9_-]+$/.test(name)) return `Invalid panel name ${name}`
       try {
         const module = await window.System.import(
           `/tools/panels/${name}/${name}.js`,

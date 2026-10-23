@@ -14,7 +14,7 @@
 <template>
   <div
     :class="[
-      'state-panel d-flex flex-column flex-grow-1 px-4 pt-1 pb-2',
+      'state-panel d-flex flex-column flex-grow-1 min-h-0',
       { 'cursor-pointer': !!openDetails },
     ]"
     @click="showDetails()"
@@ -50,7 +50,9 @@ export default {
 
 <style scoped>
 .state-panel {
-  container-type: inline-size;
+  container-type: size;
+  /* Padding in CSS rather than utilities so the queries below can change it */
+  padding: 4px 16px 8px;
 }
 .state-value {
   /* Scales with the panel so narrow tiles show the whole state */
@@ -63,5 +65,11 @@ export default {
    header) fits the state and the time with padding below */
 .state-time {
   line-height: 16px;
+}
+/* One column wide */
+@container (max-width: 120px) {
+  .state-panel {
+    padding-inline: 8px;
+  }
 }
 </style>

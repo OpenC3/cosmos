@@ -169,6 +169,17 @@ const HOLD_HAZARDOUS_MS = 2000
 
 let nextUid = 1
 
+// The script's run endpoint. The path comes from the dashboard file, so each
+// segment is encoded and dot segments, which would walk out of /scripts, are
+// refused.
+function scriptRunUrl(script) {
+  const segments = String(script).split('/')
+  if (segments.some((s) => s === '' || s === '.' || s === '..')) {
+    throw new Error(`Invalid script path ${script}`)
+  }
+  return `/script-api/scripts/${segments.map(encodeURIComponent).join('/')}/run`
+}
+
 // Sends one command with parameters preset from PARAMETER lines, or runs a
 // script (SCRIPT). CONFIRM HOLD requires holding the button (longer when
 // hazardous), CLICK sends on click and asks for confirmation when hazardous.
@@ -422,8 +433,7 @@ export default {
       )
     },
     startHold(event) {
-      if (event.repeat || this.holding || this.sending || !this.loaded) return
-      if (!this.ready) return
+      if (event.repeat || this.holding || this.sending || !this.ready) return
       this.holding = true
       this.holdTimer = setTimeout(() => {
         this.holding = false
@@ -462,10 +472,9 @@ export default {
       this.sending = true
       this.scriptId = null
       try {
-        const response = await Api.post(
-          `/script-api/scripts/${this.panel.script}/run`,
-          { data: { environment: [] } },
-        )
+        const response = await Api.post(scriptRunUrl(this.panel.script), {
+          data: { environment: [] },
+        })
         this.scriptId = response.data
         this.status = `Started ${clock(Date.now(), this.timeZone)}`
         if (option(this.panel, 'OPEN_SCRIPT')) {
@@ -512,8 +521,11 @@ export default {
         this.status = 'Critical command queued for approval'
       } else if (message.includes('is Hazardous')) {
         // The server knows about hazards we didn't (e.g. a hazardous range)
+        // serverHazard too, as it wins over the definition until the
+        // values change
         this.status = `Hazardous: ${message}. Confirm and send again.`
         if (this.command) this.command.hazardous = true
+        this.serverHazard = true
       } else {
         this.status = `Error: ${message}`
       }

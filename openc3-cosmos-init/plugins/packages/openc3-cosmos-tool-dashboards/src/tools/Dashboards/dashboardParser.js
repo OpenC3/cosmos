@@ -14,6 +14,7 @@
 // Parses and serializes the DASHBOARD text format:
 //
 //   DASHBOARD "INST Overview"
+//     COLUMNS 24
 //     SETTING POLLING_PERIOD 1
 //   PANEL GRAPH 0 3 8 7 "Temperatures"
 //     ITEM INST HEALTH_STATUS TEMP1
@@ -21,8 +22,9 @@
 //     SETTING THRESHOLDS INST HEALTH_STATUS TEMP1
 //   END
 //
-// PANEL <TYPE> <Column> <Row> <Width> <Height> [Title] places a panel on the
-// 12 column grid. Column and row are 0 based, height is in grid rows. The
+// COLUMNS sets the grid to 12 (the default) or 24 columns, and comes before
+// the first PANEL. PANEL <TYPE> <Column> <Row> <Width> <Height> [Title]
+// places a panel on that grid. Column and row are 0 based, height is in grid rows. The
 // keywords a panel accepts come from its entry in panels/registry.js.
 
 import {
@@ -30,7 +32,7 @@ import {
   ConfigParserService,
 } from '@openc3/js-common/services'
 import { PANEL_TYPES, UNKNOWN_TYPE, panelProblem } from './panels/registry'
-import { GRID_COLUMNS, MAX_H } from './layout'
+import { COLUMN_CHOICES, GRID_COLUMNS, MAX_H, clampRect } from './layout'
 import { validateItemOption, validateOption } from './panels/options'
 
 export const VALUE_TYPES = ['RAW', 'CONVERTED', 'FORMATTED', 'WITH_UNITS']
@@ -42,6 +44,7 @@ const BETA_NOTICE =
 
 const USAGE = {
   DASHBOARD: 'DASHBOARD <Title>',
+  COLUMNS: `COLUMNS <${COLUMN_CHOICES.join(' or ')}>`,
   PANEL: 'PANEL <Type> <Column> <Row> <Width> <Height> [Title]',
   ITEM: 'ITEM <Target> <Packet> <Item> [Value Type]',
   ITEM_SETTING: 'ITEM_SETTING <Name> [Values...] (applies to the ITEM above)',
@@ -59,8 +62,11 @@ export function panelUid() {
   return nextUid++
 }
 
-export function emptyDashboard(title = 'New Dashboard') {
-  return { title, settings: {}, panels: [] }
+export function emptyDashboard(
+  title = 'New Dashboard',
+  columns = GRID_COLUMNS,
+) {
+  return { title, columns, settings: {}, panels: [] }
 }
 
 export function newPanel(type, x, y, w, h, title = '') {
@@ -151,6 +157,27 @@ export function parseDashboard(text) {
           parser.verify_num_parameters(1, 1, USAGE.DASHBOARD)
           model.title = parameters[0]
           break
+        case 'COLUMNS': {
+          parser.verify_num_parameters(1, 1, USAGE.COLUMNS)
+          // Panels are checked against the grid as they're read
+          if (panel || model.panels.length) {
+            throw new ConfigParserError(
+              parser,
+              'COLUMNS must come before the first PANEL',
+              USAGE.COLUMNS,
+            )
+          }
+          const columns = Number(parameters[0])
+          if (!COLUMN_CHOICES.includes(columns)) {
+            throw new ConfigParserError(
+              parser,
+              `COLUMNS must be ${COLUMN_CHOICES.join(' or ')}, got '${parameters[0]}'`,
+              USAGE.COLUMNS,
+            )
+          }
+          model.columns = columns
+          break
+        }
         case 'PANEL': {
           parser.verify_num_parameters(5, 6, USAGE.PANEL)
           if (panel) {
@@ -168,7 +195,7 @@ export function parseDashboard(text) {
             'Column',
             USAGE.PANEL,
             0,
-            GRID_COLUMNS - 1,
+            model.columns - 1,
           )
           const w = toInt(
             parser,
@@ -176,13 +203,13 @@ export function parseDashboard(text) {
             'Width',
             USAGE.PANEL,
             1,
-            GRID_COLUMNS,
+            model.columns,
           )
           panel = newPanel(
             known ? type : UNKNOWN_TYPE,
             x,
             toInt(parser, parameters[2], 'Row', USAGE.PANEL, 0, 1000),
-            Math.min(w, GRID_COLUMNS - x),
+            Math.min(w, model.columns - x),
             // Taller than the screen is clamped, like width past the grid
             Math.min(
               toInt(parser, parameters[4], 'Height', USAGE.PANEL, 1, 100),
@@ -202,6 +229,9 @@ export function parseDashboard(text) {
               USAGE.PANEL,
             )
           }
+          // At least the type's minimum size (e.g. a 2 x 2 GRAPH grows to
+          // 3 x 3), moving left if it would run off the grid
+          Object.assign(panel, clampRect(panel, model.columns))
           break
         }
         case 'END':
@@ -423,6 +453,10 @@ export function serializeDashboard(model) {
   const lines = [
     BETA_NOTICE,
     `DASHBOARD ${quote(model.title || 'Dashboard', true)}`,
+    // The default isn't written
+    ...(model.columns && model.columns !== GRID_COLUMNS
+      ? [`  COLUMNS ${model.columns}`]
+      : []),
     ...settingLines('SETTING', '  ', model.settings),
   ]
   const panels = [...model.panels].sort((a, b) => a.y - b.y || a.x - b.x)
@@ -438,12 +472,13 @@ export function serializePanel(panel) {
 }
 
 // Parse one PANEL ... END block. Returns { model: panel, errors } with line
-// numbers relative to the block.
-export function parsePanel(text) {
-  const { model, errors } = parseDashboard(`DASHBOARD "Panel"\n${text}`)
+// numbers relative to the block. `columns` is the dashboard's grid.
+export function parsePanel(text, columns = GRID_COLUMNS) {
+  const header = `DASHBOARD "Panel"\nCOLUMNS ${columns}\n`
+  const { model, errors } = parseDashboard(header + text)
   const shifted = errors.map((error) => ({
     ...error,
-    lineNumber: error.lineNumber - 1,
+    lineNumber: error.lineNumber - 2,
   }))
   if (!shifted.length && model.panels.length !== 1) {
     shifted.push({

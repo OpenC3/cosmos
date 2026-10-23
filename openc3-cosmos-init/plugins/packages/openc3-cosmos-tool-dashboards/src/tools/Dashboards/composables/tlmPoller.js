@@ -14,6 +14,8 @@
 import { reactive } from 'vue'
 import { OpenC3Api } from '@openc3/js-common/services'
 
+const MAX_PERIOD = 3600 // seconds
+
 // TGT__PKT__ITEM, the identity of an item regardless of value type
 export function baseKey(item) {
   return `${item.targetName}__${item.packetName}__${item.itemName}`
@@ -60,17 +62,6 @@ export class TlmPoller {
     this.timer = null
     this.busy = false
     this.pending = false
-    // Paused while a dashboard is being edited: nothing is fetched
-    this.paused = false
-  }
-
-  pause() {
-    this.paused = true
-  }
-
-  resume() {
-    this.paused = false
-    this.poll()
   }
 
   register(keys) {
@@ -104,7 +95,8 @@ export class TlmPoller {
 
   start(periodSeconds = this.period) {
     this.stop()
-    this.period = Math.max(0.1, periodSeconds)
+    // Longer than setInterval's 24.8 day limit would fire right away
+    this.period = Math.min(MAX_PERIOD, Math.max(0.1, periodSeconds))
     // Playback fetches when its time changes, not on a timer
     if (this.playbackTime) return
     this.timer = setInterval(() => this.poll(), this.period * 1000)
@@ -144,7 +136,7 @@ export class TlmPoller {
   }
 
   async poll() {
-    if (this.paused || this.counts.size === 0) return
+    if (this.counts.size === 0) return
     if (this.busy) {
       // Run again when the current poll finishes so new keys aren't skipped
       this.pending = true

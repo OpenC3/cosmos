@@ -41,8 +41,9 @@ export function stateToLevel(state) {
   if (!state) return null
   if (state.startsWith('RED')) return 'critical'
   if (state.startsWith('YELLOW')) return 'caution'
-  if (state.startsWith('GREEN')) return 'normal'
-  if (state === 'BLUE') return 'standby'
+  // BLUE (inside COSMOS's operational limits) is good too; nominal shows
+  // green, as in other systems
+  if (state.startsWith('GREEN') || state === 'BLUE') return 'normal'
   if (state === 'STALE') return 'off'
   return null
 }

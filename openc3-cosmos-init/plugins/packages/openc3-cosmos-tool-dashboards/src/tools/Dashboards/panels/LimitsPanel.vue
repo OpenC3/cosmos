@@ -35,29 +35,41 @@
         {{ count.label }}
       </v-chip>
     </div>
-    <div class="flex-grow-1 overflow-y-auto mt-2" aria-live="polite">
-      <div
-        v-for="row in rows"
-        :key="row.key"
-        :class="['db-row d-flex align-center ga-3 px-4 py-2', `t-${row.level}`]"
-        data-test="limits-row"
+    <!-- Virtual rows: only the ones in view are rendered -->
+    <div class="flex-grow-1 min-h-0 mt-2" aria-live="polite">
+      <v-virtual-scroll
+        v-if="rows.length"
+        :items="rows"
+        :item-height="52"
+        class="h-100"
       >
-        <status-symbol :level="row.level" />
-        <div class="flex-grow-1 min-w-0">
-          <div class="mono text-caption font-weight-bold text-truncate">
-            {{ row.path }}
+        <template #default="{ item: row }">
+          <div
+            :key="row.key"
+            :class="[
+              'db-row d-flex align-center ga-3 px-4 py-2',
+              `t-${row.level}`,
+            ]"
+            data-test="limits-row"
+          >
+            <status-symbol :level="row.level" />
+            <div class="flex-grow-1 min-w-0">
+              <div class="mono text-caption font-weight-bold text-truncate">
+                {{ row.path }}
+              </div>
+              <div class="text-caption text-medium-emphasis text-truncate">
+                {{ row.reason }}
+              </div>
+            </div>
+            <div class="num text-right text-caption flex-shrink-0">
+              <div class="text-body-2 font-weight-bold">{{ row.value }}</div>
+              <div class="text-medium-emphasis">{{ durationOf(row) }}</div>
+            </div>
           </div>
-          <div class="text-caption text-medium-emphasis text-truncate">
-            {{ row.reason }}
-          </div>
-        </div>
-        <div class="num text-right text-caption flex-shrink-0">
-          <div class="text-body-2 font-weight-bold">{{ row.value }}</div>
-          <div class="text-medium-emphasis">{{ durationOf(row) }}</div>
-        </div>
-      </div>
+        </template>
+      </v-virtual-scroll>
       <div
-        v-if="!rows.length"
+        v-else
         class="d-flex align-center ga-2 pa-4 text-caption text-medium-emphasis"
       >
         <status-symbol level="normal" decorative />
@@ -173,6 +185,9 @@ export default {
   created() {
     this.api = new OpenC3Api()
     this.socket = this.cable || new Cable()
+    // Bumped by start and stop, so a seed or subscription still loading
+    // from an earlier start is dropped
+    this.generation = 0
     if (this.streaming) this.start()
   },
   unmounted() {
@@ -184,9 +199,11 @@ export default {
     // Load what's out of limits now and follow the event stream. The seed
     // and the stream are independent; setEntry keeps the earliest known time.
     start() {
+      const generation = ++this.generation
       this.api
         .get_out_of_limits()
         .then((items) => {
+          if (generation !== this.generation) return
           for (const [targetName, packetName, itemName, state] of items) {
             this.setEntry(targetName, packetName, itemName, state, null)
           }
@@ -200,6 +217,7 @@ export default {
           window.openc3Scope,
           {
             received: (messages) => {
+              if (generation !== this.generation) return
               this.socket.recordPing()
               this.handleMessages(messages)
             },
@@ -207,10 +225,15 @@ export default {
           { history_count: HISTORY_COUNT },
         )
         .then((subscription) => {
+          if (generation !== this.generation) {
+            subscription.unsubscribe()
+            return
+          }
           this.subscription = subscription
         })
     },
     stop() {
+      this.generation++
       this.subscription?.unsubscribe()
       this.subscription = null
     },

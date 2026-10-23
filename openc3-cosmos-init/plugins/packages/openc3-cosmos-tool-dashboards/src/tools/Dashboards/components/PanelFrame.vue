@@ -102,7 +102,7 @@
     <button
       v-if="editing"
       type="button"
-      class="resize-handle text-medium-emphasis"
+      class="resize-handle position-absolute d-flex align-center justify-center text-medium-emphasis"
       aria-label="Resize panel"
       title="Drag to resize"
       data-test="panel-resize"
@@ -116,7 +116,7 @@
 <script>
 import StatusSymbol from './StatusSymbol.vue'
 import { ringClass } from '../status'
-import { PANEL_TYPES } from '../panels/registry'
+import { PANEL_TYPES, panelTitle } from '../panels/registry'
 
 export default {
   components: { StatusSymbol },
@@ -142,11 +142,7 @@ export default {
     },
     // The panel's own title, else its type's, else its single item's name
     title() {
-      if (this.panel.title) return this.panel.title
-      const own = this.type.title?.(this.panel)
-      if (own) return own
-      if (this.panel.items.length === 1) return this.panel.items[0].itemName
-      return this.type.label
+      return panelTitle(this.panel)
     },
     // Its type's subtitle, else TARGET PACKET for every packet shown, so
     // multi-target panels say so
@@ -160,9 +156,11 @@ export default {
     ring() {
       return ringClass(this.level)
     },
-    // Single item panels name their status in the header
+    // The status symbol in the header: single item panels always name their
+    // status, and any panel with a caution or critical ring shows it
     pill() {
-      return this.level && this.panel.items.length === 1
+      if (!this.level) return false
+      return this.panel.items.length === 1 || !!this.ring
     },
   },
   methods: {
@@ -229,14 +227,13 @@ export default {
   cursor: grabbing;
 }
 .resize-handle {
-  position: absolute;
+  /* Above panel content that layers itself (e.g. a STAT value over its
+     graph), so small panels can still be resized */
+  z-index: 2;
   right: 2px;
   bottom: 2px;
   width: 24px;
   height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-radius: 6px;
   cursor: nwse-resize;
   touch-action: none;

@@ -34,18 +34,24 @@ class Dashboard < OpenC3::TargetFile
     dashboards
   end
 
+  # The file a dashboard lives in. Filenames are lowercase. Also the name
+  # Enterprise version history tracks it by, so it's validated here (raising
+  # ArgumentError) before it reaches the bucket or git.
+  def self.path(target, dashboard)
+    path = "#{target}/dashboards/#{strip_modified(dashboard).downcase}.txt"
+    validate_name(path)
+    path
+  end
+
   def self.find(scope, target, dashboard)
-    name = strip_modified(dashboard).downcase # Filenames are lowercase
-    body(scope, "#{target}/dashboards/#{name}.txt")
+    body(scope, path(target, dashboard))
   end
 
   def self.create(scope, target, dashboard, text)
-    name = "#{target}/dashboards/#{dashboard.downcase}.txt"
-    super(scope, name, text)
+    super(scope, path(target, dashboard), text)
   end
 
   def self.destroy(scope, target, dashboard)
-    name = "#{target}/dashboards/#{dashboard.downcase}.txt"
-    super(scope, name)
+    super(scope, path(target, dashboard))
   end
 end

@@ -63,6 +63,15 @@ RSpec.describe Dashboard, :type => :model do
     end
   end
 
+  describe "self.path" do
+    it "rejects names that resolve outside the target" do
+      expect { Dashboard.path('.', 'x') }.to raise_error(ArgumentError)
+      expect { Dashboard.path('..', 'x') }.to raise_error(ArgumentError)
+      expect { Dashboard.path('INST', '../../x') }.to raise_error(ArgumentError)
+      expect(Dashboard.path('INST', 'OVERVIEW*')).to eql 'INST/dashboards/overview.txt'
+    end
+  end
+
   describe "self.destroy" do
     it "downcases the dashboard name and deletes the dashboard file" do
       expect(OpenC3::TargetFile).to receive(:destroy).with('DEFAULT', 'INST/dashboards/overview.txt')

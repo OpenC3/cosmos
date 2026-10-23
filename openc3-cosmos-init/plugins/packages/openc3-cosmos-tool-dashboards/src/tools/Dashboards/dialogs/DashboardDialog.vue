@@ -39,6 +39,28 @@
           data-test="dashboard-dialog-name"
           @keyup.enter="submit"
         />
+        <!-- A copy keeps its source's grid -->
+        <div v-if="mode === 'new'">
+          <div class="text-body-2 mb-2">Grid columns</div>
+          <v-btn-toggle
+            v-model="columns"
+            mandatory
+            divided
+            variant="outlined"
+            density="compact"
+            color="secondary"
+            data-test="dashboard-dialog-columns"
+          >
+            <v-btn :value="12" prepend-icon="mdi-monitor">12 columns</v-btn>
+            <v-btn :value="24" prepend-icon="mdi-monitor-screenshot">
+              24 columns
+            </v-btn>
+          </v-btn-toggle>
+          <div class="text-caption text-medium-emphasis mt-2">
+            Fits most screens. Choose 24 for big monitors and ultra wide
+            screens.
+          </div>
+        </div>
       </v-card-text>
       <v-divider />
       <v-card-actions class="px-2">
@@ -61,9 +83,11 @@
 import modelShow from '../mixins/modelShow'
 import DialogToolbar from '../components/DialogToolbar.vue'
 import { targetNames } from '../composables/targets'
+import { GRID_COLUMNS } from '../layout'
 
-// Where a dashboard is saved: its target and file name. Used to create a new
-// dashboard ('new') or copy an existing one ('duplicate').
+// Where a dashboard is saved: its target and file name, and for a new one its
+// grid (COLUMNS). Used to create a new dashboard ('new') or copy an existing
+// one ('duplicate').
 export default {
   components: { DialogToolbar },
   mixins: [modelShow],
@@ -77,7 +101,7 @@ export default {
   },
   emits: ['submit'],
   data() {
-    return { targets: [], target: null, name: '' }
+    return { targets: [], target: null, name: '', columns: GRID_COLUMNS }
   },
   computed: {
     heading() {
@@ -98,6 +122,7 @@ export default {
       if (!open) return
       if (this.initialTarget) this.target = this.initialTarget
       this.name = this.initialName
+      this.columns = GRID_COLUMNS
       // Fetched the first time it opens (cached after that)
       if (!this.targets.length) {
         try {
@@ -115,6 +140,7 @@ export default {
       this.$emit('submit', {
         target: this.target,
         name: this.name.toUpperCase(),
+        columns: this.columns,
       })
       this.name = ''
       this.show = false

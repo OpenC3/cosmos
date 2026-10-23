@@ -22,6 +22,12 @@
 //                               (items, targets, a command, a screen);
 //                               emits `update`
 //   defaults                    width and height for a new panel
+//   virtual                     true to stop rendering the panel while it's
+//                               far off screen (big dashboards). Only for
+//                               types that keep no state of their own; the
+//                               grid polls their ITEMs for status meanwhile.
+//   minSize                     optional { w, h } smallest size, when the
+//                               type needs other than the usual 2 x 2
 //   keywords                    keywords allowed inside PANEL ... END
 //   maxItems                    limit on ITEM lines (null = unlimited)
 //   itemOptions                 ITEM_SETTINGs each item understands, same
@@ -116,7 +122,9 @@ export const PANEL_TYPES = {
     icon: 'mdi-numeric',
     component: StatPanel,
     content: ItemsConfig,
+    virtual: true,
     defaults: { w: 3, h: 3 },
+    minSize: { w: 1, h: 2 },
     keywords: ['ITEM', 'ITEM_SETTING', 'SETTING'],
     maxItems: 1,
     itemOptions: [{ ...COLOR_OPTION, help: 'Color of the graph line' }],
@@ -200,7 +208,9 @@ export const PANEL_TYPES = {
     icon: 'mdi-toggle-switch-outline',
     component: StatePanel,
     content: ItemsConfig,
+    virtual: true,
     defaults: { w: 3, h: 3 },
+    minSize: { w: 1, h: 2 },
     keywords: ['ITEM', 'SETTING'],
     maxItems: 1,
     options: [PACKET_TIME_OPTION],
@@ -212,7 +222,10 @@ export const PANEL_TYPES = {
     icon: 'mdi-chart-line',
     component: GraphPanel,
     content: ItemsConfig,
+    virtual: true,
     defaults: { w: 8, h: 7 },
+    // Smaller and the axes and legend crowd out the plot
+    minSize: { w: 3, h: 3 },
     keywords: ['ITEM', 'ITEM_SETTING', 'SETTING'],
     maxItems: 6,
     itemOptions: [
@@ -235,6 +248,7 @@ export const PANEL_TYPES = {
     icon: 'mdi-table',
     component: ValuesPanel,
     content: ItemsConfig,
+    virtual: true,
     defaults: { w: 4, h: 7 },
     keywords: ['ITEM', 'SETTING'],
     maxItems: null,
@@ -338,6 +352,7 @@ export const PANEL_TYPES = {
         await saveScreen(panel.screen, panel.screenText)
       }
     },
+    virtual: true,
     defaults: { w: 6, h: 8 },
     keywords: ['SCREEN', 'SETTING'],
     maxItems: 0,
@@ -365,6 +380,17 @@ export const CONTENT_EDITORS = {
   targets: LimitsConfig,
   command: CommandConfig,
   screen: ScreenConfig,
+}
+
+// The panel's own title, else its type's, else its single item's name, else
+// the type's label
+export function panelTitle(panel) {
+  if (panel.title) return panel.title
+  const type = PANEL_TYPES[panel.type]
+  const own = type.title?.(panel)
+  if (own) return own
+  if (panel.items.length === 1) return panel.items[0].itemName
+  return type.label
 }
 
 // The type a new panel starts as: the first one in the panel type picker,

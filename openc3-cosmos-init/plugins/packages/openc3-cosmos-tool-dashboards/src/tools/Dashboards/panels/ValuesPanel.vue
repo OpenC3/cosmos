@@ -12,56 +12,63 @@
 -->
 
 <template>
-  <div class="values-panel flex-grow-1 overflow-y-auto mt-2">
-    <component
-      :is="openDetails ? 'button' : 'div'"
-      v-for="row in itemStates"
-      :key="row.key"
-      :type="openDetails ? 'button' : undefined"
-      :class="[
-        'db-row value-row d-flex align-center w-100 text-left',
-        row.level ? `t-${row.level}` : '',
-        { 'value-button': openDetails },
-      ]"
-      :title="openDetails ? `${row.path}: details` : row.path"
-      data-test="values-row"
-      @click="showDetails(row.item)"
+  <!-- Rows are virtual: only the ones in view are rendered, so panels with
+       hundreds of items stay fast -->
+  <div class="values-panel flex-grow-1 min-h-0 mt-2">
+    <v-virtual-scroll
+      v-if="panel.items.length"
+      :items="itemStates"
+      :item-height="36"
+      class="h-100"
     >
-      <span class="d-flex flex-shrink-0" style="width: 12px">
-        <status-symbol :level="row.level" />
-      </span>
-      <span
-        class="value-label mono text-medium-emphasis text-truncate flex-grow-1"
-      >
-        {{ row.label }}
-      </span>
-      <limits-bar
-        v-if="showBars"
-        class="values-bar flex-shrink-0"
-        :limits="row.limits"
-        :value="row.number"
-      />
-      <span
-        :class="[
-          'num font-weight-medium text-right text-no-wrap',
-          { 'text-disabled': row.stale },
-        ]"
-        style="min-width: 64px"
-        data-test="values-value"
-      >
-        {{ row.text }}
-      </span>
-      <span
-        class="text-caption text-disabled flex-shrink-0"
-        style="width: 28px"
-      >
-        {{ row.units }}
-      </span>
-    </component>
-    <div
-      v-if="!panel.items.length"
-      class="pa-4 text-caption text-medium-emphasis"
-    >
+      <template #default="{ item: row }">
+        <component
+          :is="openDetails ? 'button' : 'div'"
+          :key="row.key"
+          :type="openDetails ? 'button' : undefined"
+          :class="[
+            'db-row value-row d-flex align-center w-100 text-left',
+            row.level ? `t-${row.level}` : '',
+            { 'value-button cursor-pointer': openDetails },
+          ]"
+          :title="openDetails ? `${row.path}: details` : row.path"
+          data-test="values-row"
+          @click="showDetails(row.item)"
+        >
+          <span class="d-flex flex-shrink-0" style="width: 12px">
+            <status-symbol :level="row.level" />
+          </span>
+          <span
+            class="value-label mono text-medium-emphasis text-truncate flex-grow-1"
+          >
+            {{ row.label }}
+          </span>
+          <limits-bar
+            v-if="showBars"
+            class="values-bar flex-shrink-0"
+            :limits="row.limits"
+            :value="row.number"
+          />
+          <span
+            :class="[
+              'num font-weight-medium text-right text-no-wrap',
+              { 'text-disabled': row.stale },
+            ]"
+            style="min-width: 64px"
+            data-test="values-value"
+          >
+            {{ row.text }}
+          </span>
+          <span
+            class="text-caption text-disabled flex-shrink-0"
+            style="width: 28px"
+          >
+            {{ row.units }}
+          </span>
+        </component>
+      </template>
+    </v-virtual-scroll>
+    <div v-else class="pa-4 text-caption text-medium-emphasis">
       No items. Configure this panel to add some.
     </div>
   </div>
@@ -123,7 +130,6 @@ export default {
   }
 }
 .value-button {
-  cursor: pointer;
   color: inherit;
 }
 .value-button:hover {

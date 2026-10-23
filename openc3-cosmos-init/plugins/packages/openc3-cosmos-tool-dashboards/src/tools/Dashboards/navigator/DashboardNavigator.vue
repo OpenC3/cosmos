@@ -15,19 +15,18 @@
   <v-dialog
     v-model="show"
     :fullscreen="fullscreen"
-    :max-width="fullscreen ? undefined : 1000"
+    :max-width="fullscreen ? undefined : 1040"
     scrollable
   >
     <v-card
-      class="dashboards-root"
+      class="dashboards-root d-flex flex-column"
       :style="fullscreen ? null : { height: '80vh' }"
       data-test="dashboard-navigator"
     >
-      <div class="d-flex align-center ga-3 pa-4 border-b">
+      <div class="d-flex align-center ga-3 pa-3 border-b">
         <v-text-field
-          ref="search"
           v-model="search"
-          placeholder="Search dashboards and targets"
+          placeholder="Search all dashboards"
           prepend-inner-icon="mdi-magnify"
           density="comfortable"
           variant="outlined"
@@ -36,11 +35,9 @@
           clearable
           :autofocus="!fullscreen"
           class="search"
-          style="max-width: 520px"
           data-test="navigator-search"
-          @keydown.enter="openFirst"
+          @keydown="onKey"
         />
-        <v-spacer />
         <v-btn
           v-if="!lean"
           variant="outlined"
@@ -58,138 +55,147 @@
           @click="show = false"
         />
       </div>
-      <div v-if="targets.length > 1" class="d-flex align-center ga-3 px-4 pt-3">
-        <span class="text-body-2 text-medium-emphasis">Target</span>
-        <v-chip-group
-          v-model="targetFilter"
-          selected-class="bg-secondary"
-          data-test="navigator-targets"
+      <div class="d-flex flex-grow-1 min-h-0">
+        <!-- Places, then one folder per target -->
+        <nav
+          v-if="showPlaces"
+          :class="[
+            'overflow-y-auto',
+            lean ? 'flex-grow-1' : 'places flex-shrink-0 border-e',
+          ]"
+          aria-label="Dashboard folders"
         >
-          <v-chip
-            v-for="target in targets"
-            :key="target"
-            :value="target"
-            variant="outlined"
-            filter
+          <v-list
+            density="compact"
+            nav
+            color="secondary"
+            class="bg-transparent"
           >
-            {{ target }}
-          </v-chip>
-        </v-chip-group>
-      </div>
-      <v-card-text class="pa-0">
-        <div
-          v-if="!dashboards.length"
-          class="d-flex flex-column align-center ga-3 pa-12 text-body-1 text-medium-emphasis"
-        >
-          <v-icon icon="mdi-view-dashboard-outline" size="48" />
-          No dashboards yet.
-          <v-btn
-            v-if="!lean"
-            variant="outlined"
-            prepend-icon="mdi-plus"
-            @click="create"
-          >
-            Create one
-          </v-btn>
-        </div>
-        <div
-          v-else-if="!sections.length"
-          class="pa-12 text-center text-body-1 text-medium-emphasis"
-        >
-          No dashboards match "{{ search }}"
-        </div>
-        <v-list v-else class="db-current-list py-0 bg-transparent">
-          <template v-for="section in sections" :key="section.label">
-            <div
-              class="d-flex align-center ga-2 px-4 pt-4 pb-2 text-body-2 font-weight-bold text-medium-emphasis text-uppercase"
-            >
-              <v-icon v-if="section.icon" :icon="section.icon" size="16" />
-              {{ section.label }}
-            </div>
             <v-list-item
-              v-for="{ key, starred } in section.rows"
-              :key="`${section.label}-${key}`"
-              :class="['px-4 py-3', { current: key === currentKey }]"
-              :active="false"
-              data-test="navigator-item"
-              @click="open(key)"
+              v-for="place in places"
+              :key="place.value"
+              :active="place.value === activeView"
+              :prepend-icon="place.icon"
+              :title="place.label"
+              :data-test="`navigator-place-${place.value}`"
+              @click="view = place.value"
             >
-              <template #prepend>
-                <dashboard-avatar
-                  :icon="info[key]?.icon"
-                  :color="info[key]?.color"
-                  class="mr-3"
-                />
-              </template>
-              <div class="d-flex align-center ga-2">
-                <span
-                  class="text-subtitle-1 font-weight-bold text-high-emphasis"
-                >
-                  {{ titleOf(key) }}
-                </span>
-                <v-chip
-                  v-if="key === currentKey"
-                  size="x-small"
-                  color="secondary"
-                  variant="flat"
-                  label
-                >
-                  Open
-                </v-chip>
-              </div>
-              <div
-                class="d-flex align-center ga-2 flex-wrap text-body-2 text-medium-emphasis"
-              >
-                <span class="mono">{{ key }}</span>
-                <template v-if="info[key]">
-                  <span>
-                    · {{ info[key].panels }} panel{{
-                      info[key].panels === 1 ? '' : 's'
-                    }}
-                  </span>
-                  <span v-if="info[key].targets.length">
-                    · {{ info[key].targets.join(', ') }}
-                  </span>
-                </template>
-              </div>
               <template #append>
-                <div class="d-flex align-center ga-2">
-                  <v-btn
-                    v-if="!lean"
-                    icon="mdi-content-copy"
-                    variant="text"
-                    class="text-medium-emphasis"
-                    :aria-label="`Duplicate ${key}`"
-                    title="Duplicate"
-                    data-test="navigator-duplicate"
-                    @click.stop="duplicate(key)"
-                  />
-                  <v-btn
-                    :icon="starred ? 'mdi-star' : 'mdi-star-outline'"
-                    :color="starred ? 'warning' : undefined"
-                    :class="{ 'text-medium-emphasis': !starred }"
-                    variant="text"
-                    :aria-label="starred ? `Unstar ${key}` : `Star ${key}`"
-                    :aria-pressed="starred"
-                    :title="starred ? 'Unstar' : 'Star to list first'"
-                    data-test="navigator-star"
-                    @click.stop="toggleStar(key)"
-                  />
-                </div>
+                <span class="text-caption text-medium-emphasis num">
+                  {{ place.count }}
+                </span>
               </template>
             </v-list-item>
-          </template>
-        </v-list>
-      </v-card-text>
+            <v-list-subheader>Folders</v-list-subheader>
+            <v-list-item
+              v-for="folder in folders"
+              :key="folder.target"
+              :active="`folder:${folder.target}` === activeView"
+              :prepend-icon="
+                `folder:${folder.target}` === activeView
+                  ? 'mdi-folder-open-outline'
+                  : 'mdi-folder-outline'
+              "
+              :disabled="!folder.count"
+              :data-test="`navigator-folder-${folder.target}`"
+              @click="view = `folder:${folder.target}`"
+            >
+              <v-list-item-title class="mono">
+                {{ folder.target }}/
+              </v-list-item-title>
+              <template #append>
+                <span class="text-caption text-medium-emphasis num">
+                  {{ folder.count }}
+                </span>
+              </template>
+            </v-list-item>
+          </v-list>
+        </nav>
+        <section
+          v-if="showRows"
+          class="d-flex flex-column flex-grow-1 min-w-0"
+          data-test="navigator-pane"
+        >
+          <div class="d-flex align-center ga-2 px-4 py-2 border-b">
+            <v-btn
+              v-if="lean"
+              icon="mdi-arrow-left"
+              variant="text"
+              size="small"
+              aria-label="Folders"
+              @click="back"
+            />
+            <v-icon :icon="heading.icon" size="18" />
+            <span
+              class="text-subtitle-1 font-weight-bold"
+              :class="heading.class"
+            >
+              {{ heading.label }}
+            </span>
+            <span
+              v-if="heading.path"
+              class="mono text-body-2 text-medium-emphasis text-truncate"
+            >
+              {{ heading.path }}
+            </span>
+            <v-spacer />
+            <span
+              class="text-body-2 text-medium-emphasis text-no-wrap"
+              data-test="navigator-count"
+            >
+              {{ rows.length }} dashboard{{ rows.length === 1 ? '' : 's' }}
+            </span>
+          </div>
+          <div
+            v-if="!rows.length"
+            class="d-flex flex-column align-center ga-3 pa-12 text-body-1 text-medium-emphasis text-center"
+          >
+            <v-icon :icon="empty.icon" size="48" />
+            {{ empty.text }}
+            <v-btn
+              v-if="!dashboards.length && !lean"
+              variant="outlined"
+              prepend-icon="mdi-plus"
+              @click="create"
+            >
+              Create one
+            </v-btn>
+          </div>
+          <v-list
+            v-else
+            class="db-current-list flex-grow-1 min-h-0 pa-0 bg-transparent"
+          >
+            <v-virtual-scroll
+              ref="scroller"
+              :items="rows"
+              :item-height="ROW_HEIGHT"
+              class="h-100"
+            >
+              <template #default="{ item, index }">
+                <navigator-row
+                  :dashboard-key="item"
+                  :starred="starredKeys.has(item)"
+                  :current="item === currentKey"
+                  :highlighted="index === highlight"
+                  :show-folder="!activeView.startsWith('folder:')"
+                  :lean="lean"
+                  @open="open(item)"
+                  @star="toggleStar(item)"
+                  @duplicate="duplicate(item)"
+                  @folder="openFolder(item)"
+                />
+              </template>
+            </v-virtual-scroll>
+          </v-list>
+        </section>
+      </div>
       <div
         v-if="!lean"
-        class="d-flex align-center ga-2 px-4 py-3 border-t text-body-2 text-medium-emphasis"
+        class="d-flex align-center ga-4 px-4 py-2 border-t text-body-2 text-medium-emphasis"
       >
-        <v-icon icon="mdi-star-outline" size="18" />
-        Star a dashboard to keep it at the top. Stars are saved in this browser
-        only.
+        <span> <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>Enter</kbd> opens </span>
         <v-spacer />
-        <span class="d-none d-sm-inline">Enter opens the first match</span>
+        <span>Stars and recents are saved in this browser only</span>
       </div>
     </v-card>
   </v-dialog>
@@ -197,104 +203,218 @@
 
 <script>
 import modelShow from '../mixins/modelShow'
-import DashboardAvatar from '../components/DashboardAvatar.vue'
-import { loadInfo, navigator, toggleStar } from './navigatorStore'
+import NavigatorRow from './NavigatorRow.vue'
+import { navigator, toggleStar } from './navigatorStore'
 
-// Find, open and duplicate dashboards: search across titles, names and
-// targets, filter by target, with starred dashboards up top.
+// Matches NavigatorRow's min-height
+const ROW_HEIGHT = 56
+
+// Find and open dashboards like a file explorer: Starred, Recent and All on
+// the left, then a folder per target, since each dashboard is a file saved
+// in a target (TARGET/dashboards/name.txt). Search covers every folder, and
+// the folders then count the matches. Rows scroll virtually and fetch their
+// titles as they're shown, so hundreds of dashboards stay quick.
 export default {
-  components: { DashboardAvatar },
+  components: { NavigatorRow },
   mixins: [modelShow],
   props: {
     dashboards: { type: Array, default: () => [] },
     currentKey: { type: String, default: null },
     fullscreen: Boolean,
-    // Phones: just find and open dashboards, no creating or starring
+    // Phones: just find and open dashboards, no creating or duplicating.
+    // The folders and the list take turns on the screen.
     lean: Boolean,
   },
   emits: ['open', 'new', 'duplicate'],
+  setup() {
+    return { ROW_HEIGHT }
+  },
   data() {
-    return { search: '', targetFilter: null }
+    return {
+      search: '',
+      // 'starred', 'recent', 'all' or 'folder:TARGET'; null until chosen
+      view: null,
+      // Row the arrow keys are on
+      highlight: 0,
+    }
   },
   computed: {
-    info() {
-      return navigator.info
+    starredKeys() {
+      return new Set(navigator.starred)
     },
-    // Targets a dashboard is saved with or shows data from
-    targets() {
-      const targets = new Set()
-      for (const key of this.dashboards) {
-        targets.add(key.split('/')[0])
-        for (const target of this.info[key]?.targets || []) targets.add(target)
-      }
-      return [...targets].sort()
+    query() {
+      return (this.search || '').trim().toLowerCase()
     },
-    filtered() {
-      const query = (this.search || '').trim().toLowerCase()
-      return this.dashboards.filter((key) => {
-        const info = this.info[key]
-        if (this.targetFilter) {
-          const inTarget =
-            key.startsWith(`${this.targetFilter}/`) ||
-            info?.targets.includes(this.targetFilter)
-          if (!inTarget) return false
-        }
-        if (!query) return true
-        const haystack = [key, info?.title, ...(info?.targets || [])]
-          .join(' ')
-          .toLowerCase()
-        return query.split(/\s+/).every((word) => haystack.includes(word))
-      })
+    // Dashboards matching the search, in name order
+    matches() {
+      const words = this.query.split(/\s+/).filter(Boolean)
+      const keys = words.length
+        ? this.dashboards.filter((key) => {
+            const haystack =
+              `${key} ${navigator.info[key]?.title || ''}`.toLowerCase()
+            return words.every((word) => haystack.includes(word))
+          })
+        : this.dashboards
+      return [...keys].sort()
     },
-    // Each row is { key, starred } so the template checks stars once a row
-    sections() {
-      const keys = this.filtered
-      const starredKeys = new Set(navigator.starred)
-      const rows = (list) =>
-        list.map((key) => ({ key, starred: starredKeys.has(key) }))
-      if (this.search || this.targetFilter) {
-        return keys.length ? [{ label: 'Results', rows: rows(keys) }] : []
-      }
-      const sections = []
-      const starred = navigator.starred.filter((key) => keys.includes(key))
-      if (starred.length) {
-        sections.push({
+    // Keeps starred and recent in their own orders
+    starred() {
+      const keys = new Set(this.matches)
+      return navigator.starred.filter((key) => keys.has(key))
+    },
+    recent() {
+      const keys = new Set(this.matches)
+      return navigator.recent.filter((key) => keys.has(key))
+    },
+    places() {
+      return [
+        {
+          value: 'starred',
           label: 'Starred',
-          icon: 'mdi-star',
-          rows: rows(starred),
-        })
+          icon: 'mdi-star-outline',
+          count: this.starred.length,
+        },
+        {
+          value: 'recent',
+          label: 'Recent',
+          icon: 'mdi-history',
+          count: this.recent.length,
+        },
+        {
+          value: 'all',
+          label: 'All dashboards',
+          icon: 'mdi-view-dashboard-outline',
+          count: this.matches.length,
+        },
+      ]
+    },
+    // Every target with dashboards, counting the matches
+    folders() {
+      const counts = {}
+      for (const key of this.dashboards) counts[key.split('/')[0]] = 0
+      for (const key of this.matches) counts[key.split('/')[0]]++
+      return Object.keys(counts)
+        .sort()
+        .map((target) => ({ target, count: counts[target] }))
+    },
+    // Searching shows every match unless a folder is picked
+    activeView() {
+      if (this.view) return this.view
+      if (this.query) return 'all'
+      if (this.lean) return null
+      return this.defaultView
+    },
+    defaultView() {
+      if (navigator.starred.length) return 'starred'
+      if (this.currentKey) return `folder:${this.currentKey.split('/')[0]}`
+      return 'all'
+    },
+    rows() {
+      const view = this.activeView
+      if (view === 'starred') return this.starred
+      if (view === 'recent') return this.recent
+      if (view?.startsWith('folder:')) {
+        const prefix = `${view.slice(7)}/`
+        return this.matches.filter((key) => key.startsWith(prefix))
       }
-      const byTarget = {}
-      for (const key of keys) {
-        const target = key.split('/')[0]
-        ;(byTarget[target] ||= []).push(key)
+      return this.matches
+    },
+    heading() {
+      const view = this.activeView
+      if (view?.startsWith('folder:')) {
+        const target = view.slice(7)
+        return {
+          icon: 'mdi-folder-open-outline',
+          label: target,
+          path: `${target}/dashboards/`,
+          class: 'mono',
+        }
       }
-      for (const target of Object.keys(byTarget).sort()) {
-        sections.push({ label: target, rows: rows(byTarget[target]) })
+      const place = this.places.find((p) => p.value === view)
+      if (view === 'all' && this.query) {
+        return { icon: 'mdi-magnify', label: 'Search results' }
       }
-      return sections
+      return { icon: place?.icon, label: place?.label }
+    },
+    empty() {
+      if (!this.dashboards.length) {
+        return {
+          icon: 'mdi-view-dashboard-outline',
+          text: 'No dashboards yet.',
+        }
+      }
+      if (this.query) {
+        return {
+          icon: 'mdi-magnify',
+          text: `No dashboards match "${this.search}"`,
+        }
+      }
+      if (this.activeView === 'starred') {
+        return {
+          icon: 'mdi-star-outline',
+          text: 'Star a dashboard to keep it here.',
+        }
+      }
+      return { icon: 'mdi-history', text: 'Dashboards you open show here.' }
+    },
+    // Phones show the folders, or the list once one's picked or searching
+    showPlaces() {
+      return !this.lean || this.activeView === null
+    },
+    showRows() {
+      return !this.lean || this.activeView !== null
     },
   },
   watch: {
     modelValue(open) {
       if (open) {
         this.search = ''
-        loadInfo(this.dashboards)
+        if (this.lean) this.view = null
       }
+    },
+    // A new search starts from every match; the folders narrow it
+    query(query, before) {
+      if (!before && query) this.view = null
+    },
+    rows() {
+      this.highlight = 0
     },
   },
   methods: {
     toggleStar,
-    titleOf(key) {
-      return this.info[key]?.title || key.split('/')[1]
-    },
     open(key) {
       this.$emit('open', key)
       this.show = false
     },
-    openFirst() {
-      const first = this.sections[0]?.rows[0]?.key
-      if (first) this.open(first)
+    openFolder(key) {
+      this.view = `folder:${key.split('/')[0]}`
+    },
+    back() {
+      this.view = null
+      this.search = ''
+    },
+    onKey(event) {
+      const last = this.rows.length - 1
+      if (event.key === 'Enter') {
+        const key = this.rows[this.highlight]
+        if (key) this.open(key)
+        return
+      }
+      const step = { ArrowDown: 1, ArrowUp: -1 }[event.key]
+      if (!step || last < 0) return
+      event.preventDefault()
+      this.highlight = Math.min(last, Math.max(0, this.highlight + step))
+      this.reveal(this.highlight)
+    },
+    // Scroll just enough to show the row, rather than to the top
+    reveal(index) {
+      const box = this.$refs.scroller?.$el
+      if (!box) return
+      const top = index * ROW_HEIGHT
+      if (top < box.scrollTop) box.scrollTop = top
+      else if (top + ROW_HEIGHT > box.scrollTop + box.clientHeight) {
+        box.scrollTop = top + ROW_HEIGHT - box.clientHeight
+      }
     },
     create() {
       this.$emit('new')
@@ -309,6 +429,9 @@ export default {
 </script>
 
 <style scoped>
+.places {
+  width: 220px;
+}
 .search :deep(input) {
   font-size: 16px;
 }
@@ -316,5 +439,12 @@ export default {
    thin as the resting one rather than a heavy white ring */
 .search :deep(.v-field--focused .v-field__outline) {
   --v-field-border-width: 1px;
+}
+kbd {
+  padding: 0 4px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.85em;
 }
 </style>

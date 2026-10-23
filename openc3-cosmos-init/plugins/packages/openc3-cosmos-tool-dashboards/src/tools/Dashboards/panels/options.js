@@ -45,7 +45,9 @@ import { PANEL_TYPES } from './registry'
 const TRUE_WORDS = ['TRUE', 'ON', 'YES']
 const FALSE_WORDS = ['FALSE', 'OFF', 'NO']
 
-function normalizeColor(value) {
+// '#rrggbb' from 'rrggbb' or '#RRGGBB'; null for anything else, so file text
+// never reaches a style binding
+export function normalizeColor(value) {
   const match = /^#?([0-9a-f]{6})$/i.exec(String(value).trim())
   return match ? `#${match[1].toLowerCase()}` : null
 }

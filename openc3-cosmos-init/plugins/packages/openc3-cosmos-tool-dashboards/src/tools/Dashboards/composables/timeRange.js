@@ -19,10 +19,10 @@ import { readString, writeString } from './storage'
 
 const STORAGE_KEY = 'dashboards__time_range'
 
-export const DEFAULT_TIME_RANGE = 120
+const DEFAULT_TIME_RANGE = 120
 export const TIME_RANGE_PRESETS = [120, 300, 900, 1800]
-export const MIN_TIME_RANGE = 30
-export const MAX_TIME_RANGE = 24 * 3600
+const MIN_TIME_RANGE = 30
+const MAX_TIME_RANGE = 24 * 3600
 
 export const TIME_RANGE_UNITS = [
   { title: 'seconds', value: 1 },

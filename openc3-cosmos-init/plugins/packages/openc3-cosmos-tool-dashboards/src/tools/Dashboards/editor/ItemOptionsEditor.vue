@@ -23,7 +23,7 @@
           <button
             v-bind="props"
             type="button"
-            class="swatch-btn rounded"
+            class="swatch-btn rounded cursor-pointer flex-0-0"
             :style="{ background: colorOf(def) }"
             :aria-label="`${def.label} for ${item.itemName}`"
             :title="def.label"
@@ -110,7 +110,5 @@ export default {
   width: 22px;
   height: 22px;
   border: 1px solid rgba(var(--v-border-color), 0.4);
-  cursor: pointer;
-  flex: none;
 }
 </style>

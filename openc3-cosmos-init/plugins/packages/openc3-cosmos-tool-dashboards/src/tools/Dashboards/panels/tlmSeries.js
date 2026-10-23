@@ -11,6 +11,7 @@
 # if purchased from OpenC3, Inc.
 */
 
+import { reactive } from 'vue'
 import { Cable } from '@openc3/js-common/services'
 import { itemKey } from '../composables/tlmPoller'
 import { pollType } from './tlmPanel'
@@ -33,6 +34,8 @@ export default {
   inject: {
     // { seconds } from the header's time range picker
     timeRange: { default: () => ({ seconds: 120 }) },
+    // { time, source }: hover shared across the dashboard's graphs
+    hover: { default: () => reactive({ time: null, source: null }) },
   },
   data() {
     return { now: Date.now() / 1000 }
@@ -93,6 +96,17 @@ export default {
     if (!this.cable) this.socket.disconnect()
   },
   methods: {
+    // Share the time under the mouse (seconds, or null on leave)
+    setHover(time) {
+      if (time === null) {
+        // Only the panel that set it clears it
+        if (this.hover.source !== this.panel.uid) return
+        this.hover.source = null
+      } else {
+        this.hover.source = this.panel.uid
+      }
+      this.hover.time = time
+    },
     seriesReset() {
       this.seriesUpdated()
     },

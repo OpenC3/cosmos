@@ -27,25 +27,39 @@ function mixesTargets(items) {
   return new Set(items.map((i) => i.targetName)).size > 1
 }
 
+function label(item, multiTarget) {
+  return multiTarget ? `${item.targetName} ${item.itemName}` : item.itemName
+}
+
 // Label for an item, with its target only when the items mix targets
 export function itemLabel(items, item) {
-  return mixesTargets(items)
-    ? `${item.targetName} ${item.itemName}`
-    : item.itemName
+  return label(item, mixesTargets(items))
 }
 
 // Labels for all the items, checking for mixed targets once
 export function itemLabels(items) {
   const multiTarget = mixesTargets(items)
-  return items.map((item) =>
-    multiTarget ? `${item.targetName} ${item.itemName}` : item.itemName,
-  )
+  return items.map((item) => label(item, multiTarget))
+}
+
+// Fetches units, format and limits for the panel's items before the
+// computeds read them. Part of tlmPanel; panels that only need panelBase
+// (e.g. GRAPH) mix it in themselves.
+export const prefetchItemInfo = {
+  watch: {
+    'panel.items': {
+      immediate: true,
+      handler(items) {
+        for (const item of items) this.itemInfo.get(item)
+      },
+    },
+  },
 }
 
 // Panels that show polled telemetry for their ITEMs. `itemStates` has what
 // each item needs to render: formatted text, number, units, limits, status.
 export default {
-  mixins: [panelBase],
+  mixins: [panelBase, prefetchItemInfo],
   computed: {
     pollKeys() {
       const keys = new Set(
@@ -99,15 +113,6 @@ export default {
     },
     panelLevel() {
       return worstLevel(this.itemStates.map((state) => state.level))
-    },
-  },
-  watch: {
-    // Fetch units, format and limits before the computeds read them
-    'panel.items': {
-      immediate: true,
-      handler(items) {
-        for (const item of items) this.itemInfo.get(item)
-      },
     },
   },
   methods: {

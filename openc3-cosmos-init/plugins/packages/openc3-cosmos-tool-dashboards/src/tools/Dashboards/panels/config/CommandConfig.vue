@@ -185,12 +185,23 @@ export default {
       this.params = []
       if (!this.panel.command) return
       const { targetName, commandName } = this.panel.command
-      const { params } = await loadCommandParams(
-        new OpenC3Api(),
-        targetName,
-        commandName,
-      )
-      this.params = params
+      try {
+        const { params } = await loadCommandParams(
+          new OpenC3Api(),
+          targetName,
+          commandName,
+        )
+        // Ignore an answer for a command that has since been replaced
+        const current = this.panel.command
+        if (
+          current?.targetName === targetName &&
+          current?.commandName === commandName
+        ) {
+          this.params = params
+        }
+      } catch (error) {
+        console.error('Dashboards command parameters failed to load:', error)
+      }
     },
     setParameter(name, value) {
       const parameters = { ...this.panel.parameters }

@@ -11,16 +11,20 @@
 # if purchased from OpenC3, Inc.
 */
 
-// Grid layout rules for dashboard panels. Panels live on a 12 column grid of
-// fixed height rows. Edits never leave overlaps or holes: a moved or resized
+import { PANEL_TYPES } from './panels/registry'
+
+// Grid layout rules for dashboard panels. Panels live on a 12 column grid (24
+// with COLUMNS 24, for big monitors) of fixed height rows. Edits never leave overlaps or holes: a moved or resized
 // panel keeps its spot, anything it lands on is pushed down, then every panel
 // floats up as far as it can.
 
 export const GRID_COLUMNS = 12
+// The grid sizes a dashboard can choose (COLUMNS)
+export const COLUMN_CHOICES = [12, 24]
 export const ROW_HEIGHT = 40 // px, grid-auto-rows
 export const GRID_GAP = 16 // px, gap
-export const MIN_W = 2
-export const MIN_H = 2
+const MIN_W = 2
+const MIN_H = 2
 // Taller than this doesn't fit on a screen
 export const MAX_H = 18
 
@@ -28,11 +32,21 @@ function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value))
 }
 
-// Keep a panel on the grid: width 2..12, column so the right edge is <= 12
-export function clampRect(rect) {
-  const w = clamp(Math.round(rect.w), MIN_W, GRID_COLUMNS)
-  const h = clamp(Math.round(rect.h), MIN_H, MAX_H)
-  const x = clamp(Math.round(rect.x), 0, GRID_COLUMNS - w)
+// Smallest size for a panel type: MIN_W x MIN_H unless the type sets its own
+// `minSize` (e.g. STAT goes down to one cell, GRAPH needs 3 x 3). In columns
+// either way: 24 column dashboards are for screens about twice as wide, so a
+// column is about the same width.
+export function minSize(type) {
+  return PANEL_TYPES[type]?.minSize ?? { w: MIN_W, h: MIN_H }
+}
+
+// Keep a panel on the grid: at least its type's minSize, column so the right
+// edge is <= columns. Pass `type` in the rect to get the type's minimum.
+export function clampRect(rect, columns = GRID_COLUMNS) {
+  const min = minSize(rect.type)
+  const w = clamp(Math.round(rect.w), min.w, columns)
+  const h = clamp(Math.round(rect.h), min.h, MAX_H)
+  const x = clamp(Math.round(rect.x), 0, columns - w)
   const y = Math.max(0, Math.round(rect.y))
   return { x, y, w, h }
 }
@@ -48,8 +62,17 @@ function collides(a, b) {
 // `origin` is where that panel started: a panel it lands on moves into the
 // vacated spot when it fits there, so dropping one panel onto another swaps
 // them instead of shoving the whole dashboard down.
-export function resolveLayout(panels, fixed = null, origin = null) {
-  const rects = panels.map((panel) => ({ uid: panel.uid, ...clampRect(panel) }))
+export function resolveLayout(
+  panels,
+  fixed = null,
+  origin = null,
+  columns = GRID_COLUMNS,
+) {
+  const rects = panels.map((panel) => ({
+    uid: panel.uid,
+    type: panel.type,
+    ...clampRect(panel, columns),
+  }))
   const pinned = rects.find((rect) => rect.uid === fixed)
   const others = rects
     .filter((rect) => rect !== pinned)
@@ -61,7 +84,7 @@ export function resolveLayout(panels, fixed = null, origin = null) {
   let swapped = false
   for (const rect of others) {
     if (pinned && origin && !swapped && collides(rect, pinned)) {
-      const swap = clampRect({ ...rect, x: origin.x, y: origin.y })
+      const swap = clampRect({ ...rect, x: origin.x, y: origin.y }, columns)
       if (!placed.some((other) => collides(swap, other))) {
         Object.assign(rect, swap)
         swapped = true
@@ -85,7 +108,9 @@ export function resolveLayout(panels, fixed = null, origin = null) {
     settled.push(rect)
   }
 
-  return Object.fromEntries(settled.map(({ uid, ...rect }) => [uid, rect]))
+  return Object.fromEntries(
+    settled.map(({ uid, type: _type, ...rect }) => [uid, rect]),
+  )
 }
 
 // First empty row below every rect
@@ -94,12 +119,12 @@ export function bottomRow(rects) {
 }
 
 // First spot, scanning rows top to bottom then columns left to right, where a
-// w x h panel fits without overlapping anything
-export function firstFit(panels, w, h) {
-  const size = clampRect({ x: 0, y: 0, w, h })
+// panel of `type`, w x h, fits without overlapping anything
+export function firstFit(panels, type, w, h, columns = GRID_COLUMNS) {
+  const size = clampRect({ type, x: 0, y: 0, w, h }, columns)
   const bottom = bottomRow(panels)
   for (let y = 0; y <= bottom; y++) {
-    for (let x = 0; x + size.w <= GRID_COLUMNS; x++) {
+    for (let x = 0; x + size.w <= columns; x++) {
       const rect = { x, y, w: size.w, h: size.h }
       if (!panels.some((panel) => collides(rect, panel))) return rect
     }
@@ -109,20 +134,20 @@ export function firstFit(panels, w, h) {
 
 // Pixel size of one grid cell including its gap, for converting pointer
 // movement into grid units
-export function cellSize(gridElement) {
+export function cellSize(gridElement, columns = GRID_COLUMNS) {
   const width = gridElement.clientWidth
-  const column = (width - GRID_GAP * (GRID_COLUMNS - 1)) / GRID_COLUMNS
+  const column = (width - GRID_GAP * (columns - 1)) / columns
   return { x: column + GRID_GAP, y: ROW_HEIGHT + GRID_GAP }
 }
 
-// Responsive layouts. Only the desktop (12 column) layout is authored; tablet
+// Responsive layouts. Only the desktop layout is authored; tablet
 // and phone layouts are derived from it, so nothing extra is saved.
-export const PHONE_MAX_WIDTH = 599 // px
-export const TABLET_MAX_WIDTH = 999 // px
+const PHONE_MAX_WIDTH = 599 // px
+const TABLET_MAX_WIDTH = 999 // px
 
 export const BREAKPOINT_NOTES = {
   tablet:
-    'Tablet: panels 4 columns or narrower take half the width, the rest go full width.',
+    'Tablet: panels a third of the grid wide or narrower take half the width, the rest go full width.',
   phone:
     'Phone: every panel takes the full width. Side-by-side panels read left column first, then the next column.',
 }
@@ -136,13 +161,13 @@ export function breakpointFor(width) {
 
 // Place rects in reading order: each goes in the first spot at or below the
 // previous one, so the derived layout reads in the same order as the desktop
-function packInOrder(rects) {
+function packInOrder(rects, columns) {
   const placed = []
   let row = 0
   for (const rect of rects) {
     let spot = null
     for (let y = row; !spot; y++) {
-      for (let x = 0; x + rect.w <= GRID_COLUMNS; x++) {
+      for (let x = 0; x + rect.w <= columns; x++) {
         const candidate = { ...rect, x, y }
         if (!placed.some((other) => collides(candidate, other))) {
           spot = candidate
@@ -179,7 +204,7 @@ function phoneOrder(panels) {
 }
 
 // { uid: {x, y, w, h} } for the panels visible at a breakpoint
-export function deriveLayout(panels, breakpoint) {
+export function deriveLayout(panels, breakpoint, columns = GRID_COLUMNS) {
   if (breakpoint === 'desktop') {
     return Object.fromEntries(
       panels.map((panel) => [
@@ -188,9 +213,10 @@ export function deriveLayout(panels, breakpoint) {
       ]),
     )
   }
-  // Tablets pair up narrow panels; phones give every panel the full width
+  // Tablets pair up narrow panels (a third of the grid or less); phones give
+  // every panel the full width
   const width = (panel) =>
-    breakpoint === 'tablet' && panel.w <= 4 ? GRID_COLUMNS / 2 : GRID_COLUMNS
+    breakpoint === 'tablet' && panel.w <= columns / 3 ? columns / 2 : columns
   const sorted =
     breakpoint === 'phone'
       ? phoneOrder(panels)
@@ -203,6 +229,6 @@ export function deriveLayout(panels, breakpoint) {
     h: panel.h,
   }))
   return Object.fromEntries(
-    packInOrder(ordered).map(({ uid, ...rect }) => [uid, rect]),
+    packInOrder(ordered, columns).map(({ uid, ...rect }) => [uid, rect]),
   )
 }

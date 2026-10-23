@@ -30,6 +30,14 @@ module OpenC3
         expect(model.bucket_key).to eql 'panels/MAP/MAP.js'
         expect { PanelModel.handle_config(parser, "WIDGET", ["MAP"], scope: "DEFAULT") }.to raise_error(ConfigParser::Error)
       end
+
+      it "rejects types that would escape tools/panels/" do
+        parser = OpenC3::ConfigParser.new("https://openc3.com")
+        allow(parser).to receive(:verify_num_parameters)
+        ['../MAP', 'A/B', 'MAP.js', 'MY MAP', ''].each do |name|
+          expect { PanelModel.handle_config(parser, "PANEL", [name], scope: "DEFAULT") }.to raise_error(ConfigParser::Error, /Invalid PANEL type/)
+        end
+      end
     end
 
     describe "names / as_json" do

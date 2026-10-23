@@ -49,7 +49,13 @@ module OpenC3
       case keyword
       when 'PANEL'
         parser.verify_num_parameters(1, 1, "PANEL <Panel Type>")
-        return self.new(name: parameters[0].upcase, plugin: plugin, scope: scope)
+        name = parameters[0].upcase
+        # The name becomes a bucket key and a URL path segment
+        # (tools/panels/<NAME>/<NAME>.js) so keep it to a plain identifier
+        unless name.match?(/\A[A-Z0-9_-]+\z/)
+          raise ConfigParser::Error.new(parser, "Invalid PANEL type: #{parameters[0]}. Must only contain letters, numbers, '_' and '-'")
+        end
+        return self.new(name: name, plugin: plugin, scope: scope)
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Panel: #{keyword} #{parameters.join(" ")}")
       end

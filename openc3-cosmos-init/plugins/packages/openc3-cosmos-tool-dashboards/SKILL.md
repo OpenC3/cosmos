@@ -5,7 +5,8 @@ description: Write OpenC3 COSMOS Dashboards definition files (TARGET/dashboards/
 
 # Building COSMOS dashboards
 
-A dashboard is a plain text file that lays out **panels** on a 12 column grid.
+A dashboard is a plain text file that lays out **panels** on a 12 column grid
+(or 24, for big monitors).
 Each panel shows telemetry items (from any targets), out of limits items, a
 command or script button, or a Telemetry Viewer screen. The Dashboards tool
 (beta) opens, edits and saves these files; you can also write them by hand.
@@ -34,6 +35,7 @@ target.
 ```
 # Dashboards is a beta feature: this file format can change in any release
 DASHBOARD "Power Overview"
+  COLUMNS 12
   SETTING ICON mdi-battery-outline
   SETTING COLOR "#938bdb"
 
@@ -45,6 +47,7 @@ END
 | Keyword | Where | Usage |
 | --- | --- | --- |
 | `DASHBOARD` | first | `DASHBOARD "<Title>"` |
+| `COLUMNS` | before the first `PANEL` | `COLUMNS <12\|24>`, the grid's width (default 12) |
 | `SETTING` (dashboard) | before the first `PANEL` | `ICON <mdi-icon>`, `COLOR "<#rrggbb>"`, `POLLING_PERIOD <seconds>` (default 1) |
 | `PANEL` | | `PANEL <Type> <Column> <Row> <Width> <Height> ["Title"]` |
 | `ITEM` | in a panel | `ITEM <Target> <Packet> <Item> [RAW\|CONVERTED\|FORMATTED\|WITH_UNITS]` |
@@ -71,16 +74,23 @@ END
 
 ## The grid
 
-- **Columns:** 12. `Column` is 0 to 11, `Width` is 1 to 12, and
-  `Column + Width` must be 12 or less.
+- **Columns:** 12, or 24 with `COLUMNS 24` (for big monitors and ultra
+  wide screens; leave it off otherwise). On 12 columns, `Column` is 0 to 11,
+  `Width` is 1 to 12, and `Column + Width` must be 12 or less; on 24, the
+  same up to 24. A column is about the same width either way on the screen
+  it's meant for, so minimum sizes are the same number of columns.
 - **Rows:** 40px each, with 16px gaps, so a panel `h` rows tall is
-  `56h - 16` pixels. `Row` starts at 0, and `Height` is 2 to 18.
+  `56h - 16` pixels. `Row` starts at 0, and `Height` is up to 18.
+- **Minimum sizes:** 2 rows tall for every panel. 2 columns wide, except
+  STAT and STATE go down to 1, and GRAPH needs 3×3. Smaller panels are grown
+  to the minimum.
 - **Panel header:** about 36px of every panel.
 - **No overlaps:** panels must not overlap; a file is shown as written. Build
   rows left to right, then start the next row at the bottom of the tallest
   panel above.
 - **Smaller screens:** only this desktop layout is written. Tablets give
-  panels 4 columns wide or narrower half the width, and the rest full width.
+  panels a third of the grid wide or narrower (4 of 12, 8 of 24) half the
+  width, and the rest full width.
   Phones stack every panel full width, reading left column first.
 
 ## Panel types
@@ -104,8 +114,10 @@ One `ITEM`. The number, units, an optional limits bar, and a sparkline.
 | `LIMITS_BAR` | `TRUE` | Limits bar under the value |
 
 - `ITEM_SETTING COLOR "<#rrggbb>"` colors the sparkline.
-- **Sizes:** 3 wide is typical. At height 2 the panel shows the number only.
-  Height 3 adds the sparkline, and height 4 or more adds the limits bar.
+- **Sizes:** 3 wide is typical, down to 1×2 for a tile of numbers. At
+  height 3 or less the number shows in its limits color over an area graph
+  along the bottom; height 4 or more puts the sparkline under the number and
+  adds the limits bar.
 
 ### GAUGE: one value on a dial
 One `ITEM`. The value and units inside an arc with red, yellow and green
@@ -141,7 +153,7 @@ state with its status symbol and the packet time.
 | --- | --- | --- |
 | `PACKET_TIME` | `TRUE` | Show the packet time |
 
-- **Sizes:** 3×2 is typical.
+- **Sizes:** 3×2 is typical; 1×2 is the smallest.
 
 ### GRAPH: time series
 Up to 6 `ITEM`s, which can mix targets. It backfills the dashboard's time

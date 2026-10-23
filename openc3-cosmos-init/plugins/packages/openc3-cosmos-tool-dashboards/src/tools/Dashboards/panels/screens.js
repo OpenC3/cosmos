@@ -49,7 +49,10 @@ export function listScreens() {
 
 // The screen's definition text. Throws when it doesn't exist.
 export async function loadScreen(screen) {
-  const response = await Api.get(`/openc3-api/screen/${screenKey(screen)}`, {
+  // Names come from the dashboard file, so they're encoded
+  const target = encodeURIComponent(screen.targetName)
+  const name = encodeURIComponent(screen.screenName)
+  const response = await Api.get(`/openc3-api/screen/${target}/${name}`, {
     headers: { Accept: 'text/plain', 'Ignore-Errors': '404' },
   })
   return response.data

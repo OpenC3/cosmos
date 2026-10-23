@@ -17,7 +17,10 @@
     <button
       v-if="allowDefault"
       type="button"
-      :class="['swatch default rounded', { selected: !modelValue }]"
+      :class="[
+        'swatch default rounded cursor-pointer',
+        { selected: !modelValue },
+      ]"
       :style="sizeStyle"
       aria-label="Default color"
       title="Default"
@@ -27,7 +30,10 @@
       v-for="color in colors"
       :key="color"
       type="button"
-      :class="['swatch rounded', { selected: color === modelValue }]"
+      :class="[
+        'swatch rounded cursor-pointer',
+        { selected: color === modelValue },
+      ]"
       :style="{ ...sizeStyle, background: color }"
       :aria-label="color"
       @click="$emit('update:modelValue', color)"
@@ -57,7 +63,6 @@ export default {
 
 <style scoped>
 .swatch {
-  cursor: pointer;
   border: 2px solid transparent;
 }
 .swatch.default {

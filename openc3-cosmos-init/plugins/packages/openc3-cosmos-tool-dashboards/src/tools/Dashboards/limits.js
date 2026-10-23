@@ -15,7 +15,7 @@
 // yellow_high, red_high } plus green_low/green_high for operational limits),
 // as the limits bar, gauge, graph and sparkline draw them.
 
-export function hasLimits(l) {
+function hasLimits(l) {
   return !!l && l.red_low !== undefined && l.red_high !== undefined
 }
 

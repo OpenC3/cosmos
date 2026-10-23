@@ -217,8 +217,8 @@ export default {
       ]
       if (l.green_low !== undefined && l.green_high !== undefined) {
         rows.push(
-          ['standby', 'Green low', l.green_low],
-          ['standby', 'Green high', l.green_high],
+          ['normal', 'Green low', l.green_low],
+          ['normal', 'Green high', l.green_high],
         )
       }
       return rows.map(([level, label, value]) => ({ level, label, value }))
@@ -239,7 +239,9 @@ export default {
     },
     grapherUrl() {
       const { targetName, packetName, itemName } = this.item
-      return `/tools/tlmgrapher/${targetName}/${packetName}/${itemName}`
+      return `/tools/tlmgrapher/${[targetName, packetName, itemName]
+        .map(encodeURIComponent)
+        .join('/')}`
     },
   },
   watch: {

@@ -17,7 +17,7 @@
       <button
         v-bind="props"
         type="button"
-        class="picker-btn rounded-lg"
+        class="picker-btn rounded-lg pa-0 border-0 bg-transparent cursor-pointer"
         aria-label="Dashboard icon and color"
         title="Dashboard icon and color"
         data-test="dashboard-style"
@@ -89,12 +89,6 @@ export default {
 </script>
 
 <style scoped>
-.picker-btn {
-  border: 0;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-}
 .picker-btn:focus-visible {
   outline: 2px solid rgb(var(--v-theme-primary));
   outline-offset: 2px;

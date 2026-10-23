@@ -119,7 +119,10 @@ export default {
     },
     // Screen buttons that open other screens open them in Telemetry Viewer
     showScreen(target, screen) {
-      window.open(`/tools/tlmviewer/${target}/${screen}`, '_blank')
+      window.open(
+        `/tools/tlmviewer/${encodeURIComponent(target)}/${encodeURIComponent(screen)}`,
+        '_blank',
+      )
     },
     closeScreenByName() {},
     closeAll() {},

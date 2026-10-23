@@ -46,7 +46,10 @@
 
   // Panel border for the worst status in the panel
   .ring-caution {
-    border-color: color-mix(in srgb, var(--color-status-caution) 55%, transparent) !important;
+    border-color: color-mix(in srgb, var(--color-status-caution) 60%, transparent) !important;
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-status-caution) 25%, transparent),
+      0 10px 30px -14px color-mix(in srgb, var(--color-status-caution) 60%, transparent);
   }
   .ring-critical {
     border-color: color-mix(in srgb, var(--color-status-critical) 70%, transparent) !important;
@@ -64,7 +67,8 @@
   }
 
   // Thin dividers between rows, matching the Vuetify border color
-  .db-row + .db-row {
+  .db-row + .db-row,
+  .v-virtual-scroll__item + .v-virtual-scroll__item > .db-row {
     border-top: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
   }
 

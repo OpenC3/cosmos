@@ -86,8 +86,8 @@
         label="Screen name"
         density="compact"
         variant="outlined"
-        :error-messages="newProblem && draftNew.name ? newProblem : []"
-        :hide-details="!(newProblem && draftNew.name)"
+        :error-messages="nameErrors"
+        :hide-details="!nameErrors.length"
         autofocus
         data-test="config-new-screen-name"
       />
@@ -152,8 +152,7 @@
           v-if="loading"
           indeterminate
           color="secondary"
-          class="position-absolute"
-          style="top: 0"
+          class="position-absolute top-0"
         />
         <div
           v-if="overlay"
@@ -206,6 +205,8 @@ export default {
       packets: [],
       draftNew: { target: null, packet: null, name: '' },
       generating: false,
+      // Shown in the new screen form, which hides the editor's overlay
+      createError: null,
     }
   },
   computed: {
@@ -245,6 +246,10 @@ export default {
       }
       return null
     },
+    nameErrors() {
+      if (this.createError) return [this.createError]
+      return this.newProblem && this.draftNew.name ? [this.newProblem] : []
+    },
   },
   watch: {
     editorKey: {
@@ -273,7 +278,11 @@ export default {
   async created() {
     this.api = new OpenC3Api()
     // A copy: create() lists a new screen here before it's saved
-    this.screens = { ...(await listScreens()) }
+    try {
+      this.screens = { ...(await listScreens()) }
+    } catch (error) {
+      console.error('Dashboards screen list failed to load:', error)
+    }
   },
   methods: {
     selectTarget(target) {
@@ -291,6 +300,7 @@ export default {
     },
     startCreate() {
       this.draftNew = { target: this.target, packet: null, name: '' }
+      this.createError = null
       this.creating = true
       if (!this.allTargets.length) {
         targetNames()
@@ -304,6 +314,7 @@ export default {
       if (this.newProblem) return
       const { target, packet } = this.draftNew
       const screenName = this.draftNew.name.toUpperCase()
+      this.createError = null
       this.generating = true
       try {
         const text = await newScreenText(this.api, target, packet)
@@ -320,7 +331,7 @@ export default {
         })
         this.creating = false
       } catch (error) {
-        this.loadError = `Unable to read ${target} ${packet}: ${error.message || error}`
+        this.createError = `Unable to read ${target} ${packet}: ${error.message || error}`
       } finally {
         this.generating = false
       }

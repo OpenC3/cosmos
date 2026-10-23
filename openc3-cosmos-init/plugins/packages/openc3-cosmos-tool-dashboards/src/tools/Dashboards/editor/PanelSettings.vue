@@ -184,7 +184,7 @@
 import OptionsEditor from './OptionsEditor.vue'
 import { PANEL_TYPES } from '../panels/registry'
 import { optionDefs, settingsForType } from '../panels/options'
-import { GRID_COLUMNS, MAX_H, MIN_H, MIN_W } from '../layout'
+import { MAX_H, minSize } from '../layout'
 import { clearedFieldsFor } from '../dashboardParser'
 
 // Everything about one panel: type, title, what it shows, its options and
@@ -192,6 +192,8 @@ import { clearedFieldsFor } from '../dashboardParser'
 // as `resize`.
 export default {
   components: { OptionsEditor },
+  // The dashboard's grid width (COLUMNS)
+  inject: { columns: { default: 12 } },
   props: {
     panel: { type: Object, required: true },
     // The content editor fills the height left (fillDialog types)
@@ -201,21 +203,33 @@ export default {
   data() {
     return {
       types: PANEL_TYPES,
-      columns: GRID_COLUMNS,
-      minW: MIN_W,
-      minH: MIN_H,
       maxH: MAX_H,
-      widthPresets: [
-        { label: '¼', w: 3 },
-        { label: '⅓', w: 4 },
-        { label: '½', w: 6 },
-        { label: '⅔', w: 8 },
-        { label: '¾', w: 9 },
-        { label: 'Full', w: 12 },
-      ],
     }
   },
   computed: {
+    // Fractions of the grid, so they work on 12 and 24 columns
+    widthPresets() {
+      const fractions = [
+        ['¼', 1 / 4],
+        ['⅓', 1 / 3],
+        ['½', 1 / 2],
+        ['⅔', 2 / 3],
+        ['¾', 3 / 4],
+        ['Full', 1],
+      ]
+      return fractions
+        .map(([label, fraction]) => ({
+          label,
+          w: Math.round(this.columns * fraction),
+        }))
+        .filter(({ w }) => w >= this.minW)
+    },
+    minW() {
+      return minSize(this.panel.type).w
+    },
+    minH() {
+      return minSize(this.panel.type).h
+    },
     // Tall enough to show most types at once. Pixels: the menu reads a CSS
     // length like '60vh' as 60px.
     typeMenuProps() {

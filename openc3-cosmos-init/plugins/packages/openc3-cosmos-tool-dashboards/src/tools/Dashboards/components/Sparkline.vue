@@ -17,6 +17,8 @@
     preserveAspectRatio="none"
     aria-hidden="true"
     class="d-block w-100"
+    @mousemove="move"
+    @mouseleave="leave"
   >
     <line
       v-for="line in lines"
@@ -32,6 +34,13 @@
       data-test="sparkline-limit"
     />
     <path
+      v-if="area && path"
+      :d="areaPath"
+      :fill="color"
+      fill-opacity="0.18"
+      class="spark-area"
+    />
+    <path
       :d="path"
       fill="none"
       :stroke="color"
@@ -39,6 +48,30 @@
       stroke-linejoin="round"
       vector-effect="non-scaling-stroke"
     />
+    <!-- The hovered time: a crosshair, and a dot on the nearest point (a
+         zero-length round-capped line stays round when the svg stretches) -->
+    <template v-if="marker">
+      <line
+        :x1="marker.x"
+        :x2="marker.x"
+        y1="0"
+        y2="30"
+        class="crosshair"
+        stroke-width="1"
+        vector-effect="non-scaling-stroke"
+      />
+      <line
+        v-if="marker.y !== null"
+        :x1="marker.x"
+        :x2="marker.x"
+        :y1="marker.y"
+        :y2="marker.y"
+        :stroke="color"
+        stroke-width="7"
+        stroke-linecap="round"
+        vector-effect="non-scaling-stroke"
+      />
+    </template>
   </svg>
 </template>
 
@@ -64,7 +97,13 @@ export default {
     color: { type: String, default: 'rgb(var(--v-theme-secondary))' },
     // { red_low, yellow_low, yellow_high, red_high } or null
     limits: { type: Object, default: null },
+    // Also fill under the line (Grafana's area graph mode)
+    area: { type: Boolean, default: false },
+    // A time in `window` to mark, e.g. hovered on another graph
+    hoverTime: { type: Number, default: null },
   },
+  // hover: the time under the mouse, in `window` units, or null on leave
+  emits: ['hover'],
   computed: {
     // One pass over the points, widened to include the yellow limits
     range() {
@@ -117,6 +156,26 @@ export default {
           .join('L')
       )
     },
+    // The line closed down to the bottom edge
+    areaPath() {
+      const first = this.samples[0][0].toFixed(1)
+      const last = this.samples.at(-1)[0].toFixed(1)
+      return `${this.path}L${last} 30L${first} 30Z`
+    },
+    // The crosshair sits exactly at the hovered time, like the graphs'; the
+    // dot is on the nearest real point (not a thinned one, which jumps
+    // between a slot's low and high)
+    marker() {
+      const [start, end] = this.window || []
+      if (this.hoverTime === null || !(end > start)) return null
+      const x = ((this.hoverTime - start) / (end - start)) * 100
+      if (x < 0 || x > 100) return null
+      const value = this.valueAt(this.hoverTime)
+      return {
+        x: x.toFixed(2),
+        y: value !== null && this.range ? this.y(value).toFixed(2) : null,
+      }
+    },
     lines() {
       if (!this.range) return []
       const { min, span } = this.range
@@ -129,7 +188,44 @@ export default {
         }))
     },
   },
+  unmounted() {
+    cancelAnimationFrame(this.frame)
+  },
   methods: {
+    // Once per frame at most, so a fast mouse doesn't redraw every graph on
+    // the dashboard for each move event
+    move(event) {
+      const [start, end] = this.window || []
+      if (!(end > start)) return
+      const box = event.currentTarget.getBoundingClientRect()
+      const fraction = (event.clientX - box.left) / box.width
+      this.pending = start + fraction * (end - start)
+      this.frame ??= requestAnimationFrame(() => {
+        this.frame = null
+        this.$emit('hover', this.pending)
+      })
+    },
+    leave() {
+      cancelAnimationFrame(this.frame)
+      this.frame = null
+      this.$emit('hover', null)
+    },
+    // The value of the point nearest `time`; the newest past the end
+    valueAt(time) {
+      const times = this.times
+      const points = this.points
+      if (!times?.length || time < times[0]) return null
+      let low = 0
+      let high = times.length - 1
+      if (time >= times[high]) low = high
+      while (high - low > 1) {
+        const mid = (low + high) >> 1
+        if (times[mid] < time) low = mid
+        else high = mid
+      }
+      const index = time - times[low] <= times[high] - time ? low : high
+      return typeof points[index] === 'number' ? points[index] : null
+    },
     y(value) {
       const { min, span } = this.range
       return BOTTOM - ((value - min) / span) * (BOTTOM - TOP)
@@ -137,3 +233,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.crosshair {
+  stroke: rgba(var(--v-theme-on-surface), 0.5);
+}
+</style>

@@ -22,25 +22,42 @@ class DashboardsController < ApplicationController
 
   def show
     return unless authorization('system')
-    result = sanitize_params([:scope, :target, :dashboard])
-    return unless result
-    dashboard = Dashboard.find(*result)
+    scope, target, name = sanitize_params([:scope, :target, :dashboard])
+    return unless scope
+    path = Dashboard.path(target, name)
+    dashboard = Dashboard.find(scope, target, name)
     if dashboard
+      # Enterprise-only (constant loaded by the openc3-enterprise gem): give
+      # dashboards installed by a plugin a baseline version before any edit
+      if defined?(::VersionStore)
+        plugin = OpenC3::TargetModel.plugin_version_label(target, scope: scope)
+        ::VersionStore.seed_initial_if_empty(scope: scope, name: path, body: dashboard, plugin: plugin)
+      end
       render json: dashboard
     else
       head :not_found
     end
+  rescue ArgumentError => e
+    render json: { status: 'error', message: e.message }, status: :bad_request
   end
 
   def create
     return unless authorization('system_set')
-    result = sanitize_params([:scope, :target, :dashboard])
-    return unless result
+    scope, target, name = sanitize_params([:scope, :target, :dashboard])
+    return unless scope
     text = params.require([:text])[0]
-    result << text
-    dashboard = Dashboard.create(*result)
-    OpenC3::Logger.info("Dashboard saved: #{params[:target]} #{params[:dashboard]}", scope: params[:scope], user: username())
-    render json: dashboard
+    path = Dashboard.path(target, name)
+    Dashboard.create(scope, target, name, text)
+    results = {}
+    # Enterprise-only: record who saved what as a version in git history
+    if defined?(::VersionStore)
+      sha = ::VersionStore.commit(scope: scope, name: path, text: text, username: username())
+      results['version_id'] = sha if sha
+    end
+    OpenC3::Logger.info("Dashboard saved: #{path}", scope: scope, user: username())
+    render json: results
+  rescue ArgumentError => e
+    render json: { status: 'error', message: e.message }, status: :bad_request
   rescue => e
     log_error(e)
     render json: { status: 'error', message: e.message }, status: :internal_server_error
@@ -48,11 +65,16 @@ class DashboardsController < ApplicationController
 
   def destroy
     return unless authorization('system_set')
-    result = sanitize_params([:scope, :target, :dashboard])
-    return unless result
-    Dashboard.destroy(*result)
-    OpenC3::Logger.info("Dashboard deleted: #{params[:target]} #{params[:dashboard]}", scope: params[:scope], user: username())
+    scope, target, name = sanitize_params([:scope, :target, :dashboard])
+    return unless scope
+    path = Dashboard.path(target, name)
+    Dashboard.destroy(scope, target, name)
+    # Enterprise-only: record the deletion in git history
+    ::VersionStore.delete(scope: scope, name: path, username: username()) if defined?(::VersionStore)
+    OpenC3::Logger.info("Dashboard deleted: #{path}", scope: scope, user: username())
     head :ok
+  rescue ArgumentError => e
+    render json: { status: 'error', message: e.message }, status: :bad_request
   rescue => e
     log_error(e)
     render json: { status: 'error', message: e.message }, status: :internal_server_error

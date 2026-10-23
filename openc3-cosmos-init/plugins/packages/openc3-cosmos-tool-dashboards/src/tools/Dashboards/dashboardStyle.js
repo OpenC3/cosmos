@@ -18,6 +18,7 @@
 //     SETTING COLOR "#938bdb"
 
 import { SERIES_COLORS } from './panels/colors'
+import { normalizeColor } from './panels/options'
 
 export const DEFAULT_ICON = 'mdi-view-dashboard-outline'
 
@@ -54,15 +55,14 @@ function first(settings, name) {
   return settings?.[name]?.[0] || null
 }
 
-// { icon, color } from a dashboard's settings; color null = theme default
+// { icon, color } from a dashboard's settings; color null = theme default.
+// Both come from the file, so only an mdi icon name and a hex color are used.
 export function dashboardStyle(settings) {
+  const icon = first(settings, 'ICON')
   const color = first(settings, 'COLOR')
   return {
-    icon: first(settings, 'ICON') || DEFAULT_ICON,
-    color:
-      color && /^#?[0-9a-f]{6}$/i.test(color)
-        ? `#${color.replace('#', '').toLowerCase()}`
-        : null,
+    icon: icon && /^mdi-[a-z0-9-]+$/.test(icon) ? icon : DEFAULT_ICON,
+    color: color && normalizeColor(color),
   }
 }
 

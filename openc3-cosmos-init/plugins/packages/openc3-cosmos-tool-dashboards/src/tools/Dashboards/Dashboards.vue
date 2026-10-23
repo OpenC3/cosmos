@@ -83,6 +83,20 @@
                 />
               </template>
             </v-tooltip>
+            <!-- Overall health: the worst status of any panel. Click to go
+                 to the worst panel. -->
+            <v-chip
+              v-if="healthText"
+              size="small"
+              variant="tonal"
+              :class="['health flex-shrink-0', `h-${health.level}`]"
+              :title="`Dashboard health: ${healthText}`"
+              data-test="dashboard-health"
+              @click="goToWorst"
+            >
+              <status-symbol :level="health.level" decorative class="mr-2" />
+              {{ healthText }}
+            </v-chip>
           </template>
         </nav>
         <v-btn
@@ -284,7 +298,12 @@
     </div>
 
     <main v-else-if="!editing" :class="isPhone ? 'pa-3' : 'pa-4'">
-      <dashboard-grid :panels="model.panels" />
+      <dashboard-grid
+        ref="grid"
+        :panels="model.panels"
+        :columns="columns"
+        @health="(value) => (health = value)"
+      />
       <div
         v-if="!model.panels.length"
         class="d-flex flex-column align-center ga-3 py-12 text-medium-emphasis"
@@ -304,6 +323,7 @@
     <main v-else class="pa-4">
       <dashboard-grid
         :panels="model.panels"
+        :columns="columns"
         editing
         @configure="configurePanel"
         @layout="applyPositions"
@@ -360,6 +380,16 @@
     :path="filePath"
     @apply="applyModel"
   />
+  <version-history-dialog
+    v-if="historyOpen"
+    v-model="historyOpen"
+    :filename="filePath"
+    :url="dashboardUrl(currentKey)"
+    noun="dashboard"
+    :current-body="savedText"
+    :describe="describeDashboardChange"
+    @restored="open(currentKey)"
+  />
   <item-details
     v-if="detailsItem"
     v-model="detailsOpen"
@@ -370,7 +400,7 @@
 </template>
 
 <script>
-import { computed, markRaw, reactive } from 'vue'
+import { computed, defineAsyncComponent, markRaw, reactive } from 'vue'
 import { Api, Cable } from '@openc3/js-common/services'
 import {
   PlaybackBanner,
@@ -389,16 +419,19 @@ import DashboardStylePicker from './components/DashboardStylePicker.vue'
 import { dashboardStyle } from './dashboardStyle'
 import ItemDetails from './components/ItemDetails.vue'
 import TimeRangePicker from './components/TimeRangePicker.vue'
+import StatusSymbol from './components/StatusSymbol.vue'
 import { loadTimeRange, saveTimeRange } from './composables/timeRange'
 import { readString, writeString } from './composables/storage'
 import DashboardDialog from './dialogs/DashboardDialog.vue'
 import DashboardNavigator from './navigator/DashboardNavigator.vue'
 import {
+  dashboardUrl,
   fetchDashboardText,
   forget,
   isStarred,
   remember,
   toggleStar,
+  visited,
 } from './navigator/navigatorStore'
 import PanelDialog from './dialogs/PanelDialog.vue'
 import CodeDialog from './dialogs/CodeDialog.vue'
@@ -416,9 +449,17 @@ import {
   reuseUids,
   serializeDashboard,
 } from './dashboardParser'
-import { breakpointFor, firstFit, resolveLayout } from './layout'
+import { describeDashboardChange } from './dashboardChanges'
+import { GRID_COLUMNS, breakpointFor, firstFit, resolveLayout } from './layout'
 
 const LAST_KEY = 'dashboards__last'
+
+// 'TARGET/NAME' from the page URL, or null when it doesn't name one
+function routeKey({ target, dashboard }) {
+  return target && dashboard
+    ? `${target.toUpperCase()}/${dashboard.toUpperCase()}`
+    : null
+}
 
 export default {
   components: {
@@ -432,8 +473,15 @@ export default {
     DashboardNavigator,
     ItemDetails,
     PanelDialog,
+    StatusSymbol,
     TimeRangePicker,
     TopBar,
+    // Monaco-based, so only loaded when opened
+    VersionHistoryDialog: defineAsyncComponent(() =>
+      import('@openc3/vue-common/tools/versionhistory').then(
+        (module) => module.VersionHistoryDialog,
+      ),
+    ),
   },
   provide() {
     return {
@@ -446,7 +494,12 @@ export default {
       timeline: this.playback,
       // { seconds }: how much history graphs and sparklines show
       timeRange: this.timeRange,
+      // { time, source }: the time under the mouse on any graph or sparkline
+      // (seconds) and the panel uid it came from, so they all show it
+      hover: this.hover,
       timeZone: computed(() => this.timeZone),
+      // The grid's COLUMNS, 12 or 24, for the panel dialog
+      columns: computed(() => this.columns),
     }
   },
   // Leaving with unsaved edits asks first; resolving false cancels
@@ -473,6 +526,12 @@ export default {
       playback: reactive({ on: false, time: null }),
       // Picked in the header, shared by every dashboard
       timeRange: reactive({ seconds: loadTimeRange() }),
+      hover: reactive({ time: null, source: null }),
+      // Enterprise version history (VersionStore) is on for this install
+      versionsEnabled: false,
+      historyOpen: false,
+      // Worst panel status and counts, from DashboardGrid
+      health: { level: null, critical: 0, caution: 0, worstUid: null },
       timeZone: 'local',
       dashboards: [],
       current: null, // { target, name }
@@ -500,6 +559,10 @@ export default {
     }
   },
   computed: {
+    // The grid's width in columns: COLUMNS 24 for big monitors
+    columns() {
+      return this.model.columns || GRID_COLUMNS
+    },
     breakpoint() {
       return breakpointFor(this.$vuetify.display.width)
     },
@@ -543,15 +606,27 @@ export default {
     // A number, so replacing the model with the same period (undo, code
     // edits, reopening) doesn't restart the poller
     pollingPeriod() {
-      return Number(this.model.settings.POLLING_PERIOD?.[0]) || 1
+      const seconds = Number(this.model.settings.POLLING_PERIOD?.[0])
+      return Number.isFinite(seconds) && seconds > 0 ? seconds : 1
+    },
+    // "2 critical · 1 caution", or one word when nothing is out of limits
+    healthText() {
+      const { level, critical, caution } = this.health
+      const parts = []
+      if (critical) parts.push(`${critical} critical`)
+      if (caution) parts.push(`${caution} caution`)
+      if (parts.length) return parts.join(' · ')
+      if (level === 'off') return 'Stale'
+      if (level === 'normal') return 'Nominal'
+      return null
     },
     starred() {
       return isStarred(this.currentKey)
     },
     starHelp() {
       return this.starred
-        ? 'Starred: listed first in the dashboard navigator (Ctrl+K). Stars are saved in this browser only.'
-        : 'Star to list this dashboard first in the dashboard navigator (Ctrl+K). Stars are saved in this browser only.'
+        ? 'Starred: listed under Starred in the dashboard navigator (Ctrl+K). Stars are saved in this browser only.'
+        : 'Star to list this dashboard under Starred in the dashboard navigator (Ctrl+K). Stars are saved in this browser only.'
     },
     // Everything else has a button on the page
     menus() {
@@ -566,6 +641,17 @@ export default {
               icon: 'mdi-plus',
               command: () => this.openDashboardDialog('new'),
             },
+            // Enterprise: who changed what, when, with diffs and restore
+            ...(this.versionsEnabled
+              ? [
+                  {
+                    label: 'Version History',
+                    icon: 'mdi-history',
+                    disabled: !this.current || this.editing,
+                    command: () => (this.historyOpen = true),
+                  },
+                ]
+              : []),
             {
               label: 'Delete Dashboard',
               icon: 'mdi-delete',
@@ -580,9 +666,8 @@ export default {
   watch: {
     // Browser back / forward between dashboards
     '$route.params'(params) {
-      if (this.loading || !params.target || !params.dashboard) return
-      const key = `${params.target.toUpperCase()}/${params.dashboard.toUpperCase()}`
-      if (key !== this.currentKey) this.open(key)
+      const key = routeKey(params)
+      if (!this.loading && key && key !== this.currentKey) this.open(key)
     },
     // The poller looks values up at the playback time instead of polling
     'playback.time'(time) {
@@ -613,6 +698,12 @@ export default {
   async created() {
     this.itemInfo.start()
     this.poller.start()
+    // Enterprise reports whether version history is on; Core has none
+    Api.get('/openc3-api/info')
+      .then(({ data }) => {
+        this.versionsEnabled = !!(data?.enterprise && data?.script_versions)
+      })
+      .catch(() => {})
     // Playback times are entered and shown in the COSMOS time zone setting
     this.itemInfo.api
       .get_setting('time_zone')
@@ -628,15 +719,10 @@ export default {
         body: problems.join('; '),
       })
     }
-    const { target, dashboard } = this.$route.params
-    let key = null
-    if (target && dashboard) {
-      key = `${target.toUpperCase()}/${dashboard.toUpperCase()}`
-    } else if (this.dashboards.includes(readString(LAST_KEY))) {
-      key = readString(LAST_KEY)
-    } else {
-      key = this.dashboards[0]
-    }
+    const last = readString(LAST_KEY)
+    const key =
+      routeKey(this.$route.params) ||
+      (this.dashboards.includes(last) ? last : this.dashboards[0])
     if (key) await this.open(key)
     this.loading = false
   },
@@ -653,6 +739,13 @@ export default {
   },
   methods: {
     toggleStar,
+    dashboardUrl,
+    describeDashboardChange,
+    goToWorst() {
+      if (this.health.worstUid != null) {
+        this.$refs.grid?.scrollToPanel(this.health.worstUid)
+      }
+    },
     beforeUnload(event) {
       if (this.dirty) event.preventDefault()
     },
@@ -738,6 +831,7 @@ export default {
     rememberCurrent() {
       const { target, name } = this.current
       remember(this.currentKey, this.model)
+      visited(this.currentKey)
       writeString(LAST_KEY, this.currentKey)
       if (
         this.$route.params.target !== target ||
@@ -799,14 +893,14 @@ export default {
       await this.loadList()
       await this.selectDashboard(`${target}/${name}`)
     },
-    async createDashboard({ target, name }) {
+    async createDashboard({ target, name, columns }) {
       if (!(await this.confirmDiscard())) return
       const title = name
         .toLowerCase()
         .split(/[_-]/)
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ')
-      this.load({ target, name }, emptyDashboard(title))
+      this.load({ target, name }, emptyDashboard(title, columns))
       this.savedText = ''
       await this.save()
       await this.loadList()
@@ -821,9 +915,7 @@ export default {
       )
       if (!ok) return
       try {
-        await Api.delete(
-          `/openc3-api/dashboard/${this.current.target}/${this.current.name}`,
-        )
+        await Api.delete(dashboardUrl(this.currentKey))
         this.$notify.normal({
           title: 'Deleted dashboard',
           body: this.currentKey,
@@ -918,7 +1010,9 @@ export default {
     },
     // Re-flow around `fixed` after a change
     reflow(fixed = null) {
-      this.applyPositions(resolveLayout(this.model.panels, fixed))
+      this.applyPositions(
+        resolveLayout(this.model.panels, fixed, null, this.columns),
+      )
     },
     addPanel() {
       const type = defaultPanelType()
@@ -937,7 +1031,16 @@ export default {
       const index = this.model.panels.findIndex((p) => p.uid === draft.uid)
       if (index === -1) {
         // New panels go in the first open spot that fits
-        Object.assign(draft, firstFit(this.model.panels, draft.w, draft.h))
+        Object.assign(
+          draft,
+          firstFit(
+            this.model.panels,
+            draft.type,
+            draft.w,
+            draft.h,
+            this.columns,
+          ),
+        )
         this.model.panels.push(draft)
       } else {
         this.model.panels.splice(index, 1, draft)
@@ -947,7 +1050,10 @@ export default {
     duplicatePanel(panel) {
       const copy = JSON.parse(JSON.stringify(panel))
       copy.uid = panelUid()
-      Object.assign(copy, firstFit(this.model.panels, copy.w, copy.h))
+      Object.assign(
+        copy,
+        firstFit(this.model.panels, copy.type, copy.w, copy.h, this.columns),
+      )
       this.model.panels.push(copy)
     },
     deletePanel(panel) {
@@ -959,6 +1065,16 @@ export default {
 </script>
 
 <style scoped>
+/* The health chip in its status color */
+.health.h-critical {
+  color: var(--color-status-critical);
+}
+.health.h-caution {
+  color: var(--color-status-caution);
+}
+.health.h-normal {
+  color: var(--color-status-normal);
+}
 .phone-switcher {
   color: inherit;
 }

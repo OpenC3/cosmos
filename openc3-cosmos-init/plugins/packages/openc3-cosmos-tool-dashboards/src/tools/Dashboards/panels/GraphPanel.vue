@@ -65,8 +65,7 @@
             />
             {{ row.label }}
           </span>
-          <span class="d-inline-flex align-center ga-1">
-            <status-symbol :level="row.level" />
+          <span>
             <b class="num">{{ row.value }}</b> {{ row.units }}
           </span>
         </div>
@@ -78,15 +77,14 @@
 <script>
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import StatusSymbol from '../components/StatusSymbol.vue'
 import panelBase from './panelBase'
 import tlmSeries from './tlmSeries'
-import { itemLabels } from './tlmPanel'
+import { itemLabels, prefetchItemInfo } from './tlmPanel'
 import { option } from './options'
 import { seriesColor } from './colors'
-import { itemKey } from '../composables/tlmPoller'
+import { baseKey, itemKey } from '../composables/tlmPoller'
 import { clock, formatTelemetry } from '../composables/format'
-import { levelOf, limitLines } from '../limits'
+import { limitLines } from '../limits'
 
 function withAlpha(color, alpha) {
   const hex = color.trim().replace('#', '')
@@ -97,20 +95,13 @@ function withAlpha(color, alpha) {
   return color
 }
 
-function relativeLabel(seconds) {
-  if (seconds > -1) return 'now'
-  const abs = Math.abs(seconds)
-  if (abs < 120) return `−${Math.round(abs)} s`
-  if (abs < 7200) return `−${Math.round(abs / 60)} min`
-  return `−${Math.round(abs / 3600)} h`
-}
-
 // Live time series of up to 6 items (tlmSeries backfills and streams them).
 // THRESHOLDS <TGT> <PKT> <ITEM> picks the item whose limits
 // are drawn as bands (defaults to the first graphed item with limits).
+// Hovering shares the time with the dashboard's other graphs and
+// sparklines (tlmSeries setHover), and follows theirs.
 export default {
-  components: { StatusSymbol },
-  mixins: [panelBase, tlmSeries],
+  mixins: [panelBase, prefetchItemInfo, tlmSeries],
   data() {
     return {
       lastValues: [],
@@ -149,16 +140,6 @@ export default {
     thresholdLabel() {
       return this.thresholdItem?.itemName
     },
-    thresholdIndex() {
-      const t = this.thresholdItem
-      if (!t) return -1
-      return this.panel.items.findIndex(
-        (i) =>
-          i.targetName === t.targetName &&
-          i.packetName === t.packetName &&
-          i.itemName === t.itemName,
-      )
-    },
     legend() {
       return this.panel.items.map((item, index) => ({
         key: this.streamKeys[index],
@@ -169,19 +150,17 @@ export default {
     },
   },
   watch: {
-    // Fetch units, format and limits before the computeds read them
-    'panel.items': {
-      immediate: true,
-      handler(items) {
-        for (const item of items) this.itemInfo.get(item)
-      },
-    },
     // Series colors are fixed when the plot is built, so rebuild it, unless
     // restart() already did for the same change
     colors(colors) {
       if (JSON.stringify(colors) !== JSON.stringify(this.plotColors)) {
         this.createPlot()
       }
+    },
+    // Another panel's hover: move this plot's cursor and tooltip to the same
+    // time, or hide them
+    'hover.time'() {
+      this.followHover()
     },
     // Axis, grid and threshold colors are baked into the canvas, so a light
     // or dark theme switch needs them read again once the page restyles
@@ -198,6 +177,7 @@ export default {
     this.resizeObserver.observe(this.$refs.plot)
   },
   unmounted() {
+    cancelAnimationFrame(this.hoverFrame)
     this.resizeObserver?.disconnect()
     this.plot?.destroy()
   },
@@ -231,6 +211,21 @@ export default {
         this.lastValues = [...this.latest]
       }
       this.plot?.setData(this.series)
+      // The plot scrolled, so put a followed cursor back on its time
+      if (this.hover.time !== null) this.followHover()
+    },
+    followHover() {
+      const u = this.plot
+      if (!u || this.hovering) return
+      const time = this.hover.time
+      const left = time === null ? -10 : u.valToPos(time, 'x')
+      const inside = left >= 0 && left <= u.over.clientWidth
+      this.following = true
+      u.setCursor({
+        left: inside ? left : -10,
+        top: inside ? u.over.clientHeight / 2 : -10,
+      })
+      this.following = false
     },
     resize() {
       const el = this.$refs.plot
@@ -260,7 +255,14 @@ export default {
           width: el.clientWidth,
           height: Math.max(60, el.clientHeight),
           legend: { show: false },
-          cursor: { drag: { x: false, y: false }, points: { size: 8 } },
+          cursor: {
+            drag: { x: false, y: false },
+            points: { size: 8 },
+            // Each series' own nearest point, since items from different
+            // packets rarely share a timestamp
+            dataIdx: (u, seriesIdx, closestIdx) =>
+              this.nearestIdx(u, seriesIdx, closestIdx),
+          },
           scales: {
             x: {
               time: false,
@@ -271,8 +273,7 @@ export default {
             {
               ...axis,
               space: 70,
-              values: (u, splits) =>
-                splits.map((s) => relativeLabel(s - this.now)),
+              values: (u, splits) => splits.map((s) => this.axisLabel(s)),
             },
             { ...axis, size: 48 },
           ],
@@ -295,6 +296,51 @@ export default {
         this.series,
         el,
       )
+      // Only the plot under the mouse shares its hover. uPlot also moves the
+      // cursor when data arrives, which mustn't count as hovering.
+      this.hovering = false
+      this.plot.over.addEventListener('mouseenter', () => {
+        this.hovering = true
+      })
+      this.plot.over.addEventListener('mouseleave', () => {
+        this.hovering = false
+        cancelAnimationFrame(this.hoverFrame)
+        this.hoverFrame = null
+        this.setHover(null)
+      })
+    },
+    // Nearest index with a value for a series, within a few seconds of the
+    // cursor (further off, the series shows nothing there)
+    nearestIdx(u, seriesIdx, closestIdx) {
+      const ys = u.data[seriesIdx]
+      if (seriesIdx === 0 || ys[closestIdx] != null) return closestIdx
+      const xs = u.data[0]
+      const x = xs[closestIdx]
+      const reach = Math.max(5, this.duration / 40)
+      let best = closestIdx
+      let bestGap = Infinity
+      for (let i = closestIdx - 1; i >= 0 && x - xs[i] <= reach; i--) {
+        if (ys[i] != null) {
+          best = i
+          bestGap = x - xs[i]
+          break
+        }
+      }
+      for (let i = closestIdx + 1; i < xs.length; i++) {
+        const gap = xs[i] - x
+        if (gap > reach || gap >= bestGap) break
+        if (ys[i] != null) return i
+      }
+      return best
+    },
+    // Once per frame at most, so a fast mouse doesn't redraw every graph on
+    // the dashboard for each move event
+    publishHover(time) {
+      this.pendingHover = time
+      this.hoverFrame ??= requestAnimationFrame(() => {
+        this.hoverFrame = null
+        if (this.hovering) this.setHover(this.pendingHover)
+      })
     },
     // Shaded limits bands behind the series
     drawBands(u) {
@@ -354,29 +400,40 @@ export default {
       }
       ctx.restore()
     },
+    // Clock time at the tick, hh:mm:ss, or hh:mm for ranges over an hour.
+    // The axis leaves off " UTC"; the tooltip still says it.
+    axisLabel(seconds) {
+      const time = clock(seconds * 1000, this.timeZone).replace(' UTC', '')
+      return this.duration > 3600 ? time.slice(0, 5) : time
+    },
     updateTip(u) {
-      const { left, idx } = u.cursor
-      if (idx === null || idx === undefined || left === undefined || left < 0) {
+      const { left, idx, idxs } = u.cursor
+      const off =
+        idx === null || idx === undefined || left === undefined || left < 0
+      const time = off ? null : u.posToVal(left, 'x')
+      // The mouse is on this plot: tell the others
+      if (this.hovering && !this.following) this.publishHover(time)
+      if (off) {
         this.tip = null
         return
       }
+      // Flips sides past 62% across and back under 38%, so it doesn't
+      // flicker from side to side around one spot
+      const width = u.over.clientWidth
+      const flip = this.tip?.flip ? left > width * 0.38 : left > width * 0.62
       this.tip = {
         left: left + u.over.offsetLeft,
-        flip: left > u.over.clientWidth * 0.62,
-        time: clock(this.series[0][idx] * 1000, this.timeZone),
+        flip,
+        // The cursor's time, not the nearest sample's, so it moves smoothly
+        time: clock(time * 1000, this.timeZone),
         rows: this.panel.items.map((item, index) => {
-          const value = this.series[index + 1][idx]
+          const rowIdx = idxs?.[index + 1] ?? idx
+          const value = this.series[index + 1][rowIdx]
           return {
             label: this.labels[index],
             color: this.colors[index],
             value: this.format(index, value),
             units: this.infos[index].units,
-            // Past points are checked here; the live status comes from the
-            // server's limits state (panelLevel)
-            level:
-              index === this.thresholdIndex
-                ? levelOf(value, this.thresholdLimits)
-                : null,
           }
         }),
       }
