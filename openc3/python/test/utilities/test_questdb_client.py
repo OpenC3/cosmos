@@ -34,6 +34,21 @@ class TestTsdbLookup(unittest.TestCase):
             [[None, None]],
         )
 
+    def test_returns_a_list_of_rows_for_placeholders_when_not_flattening(self):
+        self.assertEqual(
+            QuestDBClient.tsdb_lookup([[None] * 5], start_time="2026-09-13T00:00:00Z", flatten=False),
+            [[[None, None]]],
+        )
+
+    def test_passes_flatten_to_a_single_db_shard_lookup(self):
+        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard", return_value=[[[1.0, None]]]) as single:
+            QuestDBClient.tsdb_lookup(
+                [["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None]],
+                start_time="2026-09-13T00:00:00Z",
+                flatten=False,
+            )
+        self.assertFalse(single.call_args.kwargs["flatten"])
+
 
 class TestTsdbLookupDbShards(unittest.TestCase):
     ITEMS = [
@@ -77,6 +92,10 @@ class TestTsdbLookupDbShards(unittest.TestCase):
         self.assertEqual([item.target_name for item in shards[1]], ["INST2"])
         for call in single.call_args_list:
             self.assertFalse(call.kwargs["flatten"])
+
+    def test_keeps_a_single_merged_row_as_a_list_of_rows_when_not_flattening(self):
+        result, _ = self.lookup({0: [[[1.0, None], [3.0, None]]], 1: [[[2.0, None]]]}, flatten=False)
+        self.assertEqual(result, [[[1.0, None], [2.0, None], [3.0, None]]])
 
     def test_merges_multiple_rows_filling_missing_rows_with_nones(self):
         result, _ = self.lookup(
@@ -122,6 +141,29 @@ class TestQueryWithRetry(unittest.TestCase):
             self.assertEqual(QuestDBClient.query_with_retry("SELECT 1", db_shard=2), [{"A": 1}])
         connection.assert_called_with(db_shard=2)
         disconnect.assert_called_once_with(db_shard=2)
+
+
+class TestTlmPacketsWithTables(unittest.TestCase):
+    def test_returns_the_packets_with_a_table_queried_by_db_shard(self):
+        tables = {0: ["DEFAULT__TLM__INST__HEALTH_STATUS"], 1: ["DEFAULT__TLM__INST2__ADCS"]}
+
+        def query_with_retry(query, params, label, db_shard):
+            self.assertIn("FROM tables()", query)
+            self.assertEqual(query.count("%s"), len(params))
+            return [{"table_name": table} for table in tables[db_shard] if table in params]
+
+        packets = [("INST", "HEALTH_STATUS"), ("INST", "PARAMS"), ("INST2", "ADCS")]
+        with (
+            patch.object(QuestDBClient, "db_shard_for_target", side_effect=lambda t, scope: 1 if t == "INST2" else 0),
+            patch.object(QuestDBClient, "query_with_retry", side_effect=query_with_retry),
+        ):
+            result = QuestDBClient.tlm_packets_with_tables(packets)
+        self.assertEqual(result, {("INST", "HEALTH_STATUS"), ("INST2", "ADCS")})
+
+    def test_does_not_query_without_packets(self):
+        with patch.object(QuestDBClient, "query_with_retry") as query_with_retry:
+            self.assertEqual(QuestDBClient.tlm_packets_with_tables([]), set())
+        query_with_retry.assert_not_called()
 
 
 class TestBuildAggregationSelects(unittest.TestCase):
