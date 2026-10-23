@@ -29,7 +29,7 @@ RESPONSE_TIMEOUT = 5 # Seconds to wait for each MEMDUMP response
 LINK_TIMEOUT = 60 # Seconds to wait for a lost link to come back
 
 crc = OpenC3::Crc32.new
-bad_crc = ENV['BAD_CRC']
+bad_crc = ENV.fetch('BAD_CRC', nil)
 end_offset = START_OFFSET + TOTAL_SIZE
 dump_data = ''.b # The verified dump is small enough to keep in memory
 offset = START_OFFSET

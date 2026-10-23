@@ -29,7 +29,7 @@ module OpenC3
     #   a string, integer, float, or array of values.
     # @param packet [Packet] The packet object where the conversion is defined
     # @param buffer [String] The raw packet buffer
-    def call(value, packet, buffer)
+    def call(_value, packet, _buffer)
       # Write conversions run before the given parameters are written to the
       # buffer so use the given values and fall back to the defaults.
       # Given names keep the caller's case so upcase them to match the items.

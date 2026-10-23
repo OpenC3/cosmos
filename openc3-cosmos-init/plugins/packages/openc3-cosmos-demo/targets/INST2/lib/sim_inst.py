@@ -268,7 +268,7 @@ class SimInst(SimulatedTarget):
                 crc = self.crc.calc(data)
                 if bad_crc == 1:
                     # Flip a random bit after calculating the CRC to simulate downlink corruption
-                    bit = random.randrange(size * 8)
+                    bit = random.randrange(size * 8)  # NOSONAR - simulated bit error, not security related
                     data[bit // 8] ^= 0x80 >> (bit % 8)
                 # Commands arrive on a different thread than read so only hand off the
                 # values here and let read write them into the MEMDUMP packet

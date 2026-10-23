@@ -31,7 +31,7 @@ module OpenC3
     #   a string, integer, float, or array of values.
     # @param packet [Packet] The packet object where the conversion is defined
     # @param buffer [String] The raw packet buffer
-    def call(value, packet, buffer)
+    def call(_value, packet, buffer)
       @crc.calc(packet.read(@item_name, :RAW, buffer))
     end
   end
