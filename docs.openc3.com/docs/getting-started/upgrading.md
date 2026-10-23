@@ -208,7 +208,7 @@ COSMOS 7 uses [Versity Gateway (versitygw)](https://github.com/versity/versitygw
 | `start`   | Start temporary containers needed for migration    |
 | `migrate` | Mirror data from MINIO to versitygw (idempotent)   |
 | `status`  | Check migration status and compare bucket contents |
-| `cleanup` | Remove temporary migration containers              |
+| `stop`    | Stop and remove temporary migration containers     |
 | `help`    | Show usage information                             |
 
 The script is **idempotent** — it uses `mc mirror --preserve` which only copies new or changed files, making it safe to run multiple times. This enables incremental syncing to minimize downtime.
@@ -227,7 +227,7 @@ chmod +x openc3_migrate_s3.sh
 # 2. Run the migration (COSMOS 6 MINIO -> temporary versitygw container)
 ./openc3_migrate_s3.sh migrate
 ./openc3_migrate_s3.sh status
-./openc3_migrate_s3.sh cleanup
+./openc3_migrate_s3.sh stop
 
 # 3. Stop COSMOS 6
 ./openc3.sh stop
@@ -235,7 +235,7 @@ chmod +x openc3_migrate_s3.sh
 # 4. Rerun the migration (only copies new files since the previous migration)
 ./openc3_migrate_s3.sh migrate
 ./openc3_migrate_s3.sh status
-./openc3_migrate_s3.sh cleanup
+./openc3_migrate_s3.sh stop
 
 # 5. Upgrade to COSMOS 7+ and start
 ./openc3.sh upgrade v7.x.y  # Use the latest COSMOS 7 release
@@ -263,7 +263,7 @@ chmod +x openc3_migrate_s3.sh
 
 # 5. Verify your data migrated correctly
 ./openc3_migrate_s3.sh status
-./openc3_migrate_s3.sh cleanup
+./openc3_migrate_s3.sh stop
 ```
 
 #### Custom Credentials
@@ -280,8 +280,8 @@ OPENC3_BUCKET_USERNAME=your_user OPENC3_BUCKET_PASSWORD=your_pass ./scripts/linu
 
 | Variable                 | Description                          | Default                                    |
 | :----------------------- | :----------------------------------- | :----------------------------------------- |
-| `OLD_VOLUME`             | Source MINIO volume name             | `openc3-bucket-v`                          |
-| `NEW_VOLUME`             | Destination versitygw volume name    | `openc3-object-v`                          |
+| `OLD_VOLUME`             | Full source MINIO volume name        | auto-detected                              |
+| `NEW_VOLUME`             | Full destination versitygw volume    | auto-detected                              |
 | `MINIO_ROOT_USER`        | MINIO access key (COSMOS 6 source)   | `openc3minio`                              |
 | `MINIO_ROOT_PASSWORD`    | MINIO secret key (COSMOS 6 source)   | `openc3miniopassword`                      |
 | `OPENC3_BUCKET_USERNAME` | versitygw access key (COSMOS 7 dest) | `openc3bucket`                             |
@@ -303,7 +303,7 @@ On Windows, run `set MC_IMAGE=...` before running `openc3_migrate_s3.bat`.
 :::
 
 :::tip[Docker Compose Volume Prefixes]
-The migration script automatically detects Docker Compose project prefixes. For example, if your volumes are named `cosmos_openc3-bucket-v` instead of `openc3-bucket-v`, the script handles this without additional configuration. You can also specify custom volume names with the `OLD_VOLUME` and `NEW_VOLUME` environment variables.
+The migration script automatically detects Docker Compose project prefixes. For example, if your volumes are named `cosmos_openc3-bucket-v` instead of `openc3-bucket-v`, the script handles this without additional configuration. If more than one matching volume exists, the script asks which one to use. You can also set the `OLD_VOLUME` and `NEW_VOLUME` environment variables. They must be set together, as full volume names (e.g. `OLD_VOLUME=cosmos_openc3-bucket-v NEW_VOLUME=cosmos_openc3-object-v`), and are used exactly as given.
 :::
 
 After verifying COSMOS 7 works correctly, you can remove the old COSMOS 6 MINIO volume:
