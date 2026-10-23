@@ -468,11 +468,11 @@ def get_tlm_values(
         # NOTE: limits is required by the historical (start_time) QuestDB lookup
         cvt_items.append(TlmItem(target_name, packet_name, item_name, value_type, limits))
         packets.add((target_name, packet_name))
-    for name in packets:
+    for target, packet in packets:
         authorize(
             permission="tlm",
-            target_name=name[0],
-            packet_name=name[1],
+            target_name=target,
+            packet_name=packet,
             scope=scope,
         )
     return CvtModel.get_tlm_values(cvt_items, stale_time, cache_timeout, start_time, end_time, scope)
