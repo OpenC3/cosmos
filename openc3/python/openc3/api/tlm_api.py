@@ -81,6 +81,8 @@ def tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
     Args:
         args (str|List[str]) See the description for calling style
         type (str) Telemetry type, RAW, CONVERTED (default), FORMATTED
+        cache_timeout (float) Time in seconds to cache the current value table lookup
+        scope (str) Name of the scope
 
     Return:
         (Object) The telemetry value formatted as requested
@@ -125,6 +127,8 @@ def set_tlm(*args, type="CONVERTED", cache_timeout=0.1, scope=OPENC3_SCOPE):
     Args:
         args (str|List[str]) See the description for calling style
         type (str) Telemetry type, RAW, CONVERTED (default), FORMATTED
+        cache_timeout (float) Time in seconds to cache the current value table lookup
+        scope (str) Name of the scope
     """
     target_name, packet_name, item_name, value = _set_tlm_process_args(
         args, "set_tlm", cache_timeout=cache_timeout, scope=scope
@@ -154,6 +158,8 @@ def inject_tlm(
         packet_name (str) Packet name of the packet
         item_hash (dict) Dict of item_name and value for each item you want to change from the current value table
         type (str) Telemetry type, RAW, CONVERTED (default), FORMATTED
+        stored (bool) Whether to mark the packet as stored (historical) telemetry
+        scope (str) Name of the scope
         received_time (int|None) Optional received time as nanoseconds since Unix epoch
     """
     authorize(
@@ -230,6 +236,7 @@ def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
             three strings followed by a value (see the calling style in the
             description).
         type (str) Telemetry type, ALL (default), RAW, CONVERTED, FORMATTED
+        scope (str) Name of the scope
     """
     target_name, packet_name, item_name, value = _set_tlm_process_args(args, "override_tlm", scope=scope)
     authorize(
@@ -242,7 +249,14 @@ def override_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
 
 
 def get_overrides(scope=OPENC3_SCOPE):
-    """Get the list of CVT overrides"""
+    """Get the list of CVT overrides
+
+    Args:
+        scope (str) Name of the scope
+
+    Return:
+        (List[dict]) List of the current overrides
+    """
     authorize(permission="tlm", scope=scope)
     return CvtModel.overrides(scope=scope)
 
@@ -262,6 +276,7 @@ def normalize_tlm(*args, type="ALL", scope=OPENC3_SCOPE):
             (see the calling style in the description).
         type (str) Telemetry type, ALL (default), RAW, CONVERTED, FORMATTED
             ALL means to normalize all telemetry types
+        scope (str) Name of the scope
     """
     target_name, packet_name, item_name = _tlm_process_args(args, "normalize_tlm", scope=scope)
     authorize(
@@ -279,6 +294,8 @@ def get_tlm_buffer(*args, scope=OPENC3_SCOPE, timeout=5):
     Args:
         target_name (str) Name of the target
         packet_name (str) Name of the packet
+        scope (str) Name of the scope
+        timeout (int|float) Time in seconds to wait for a subpacket buffer response
 
     Return:
         (dict) telemetry dict with last telemetry buffer
@@ -307,6 +324,7 @@ def get_tlm_packet(*args, stale_time: int = 30, type: str = "CONVERTED", scope: 
         packet_name (str) Name of the packet
         stale_time (int) Time in seconds from now that packet will be marked stale
         type (str) Types returned, RAW, CONVERTED (default), FORMATTED
+        scope (str) Name of the scope
 
     Return:
         (List[List[str, Object, str|None]]) Returns a list of
@@ -414,6 +432,12 @@ def get_tlm_values(
     Args:
         items (List[str]) List of items consisting of 'tgt__pkt__item__type'
         stale_time (int) Time in seconds from now that data will be marked stale
+        cache_timeout (float) Time in seconds to cache the current value table lookup
+        start_time (str|None) Start of a historical query. If given, values are
+            read from the time series database instead of the current value table
+        end_time (str|None) End of a historical query. If None, the latest single
+            row is returned
+        scope (str) Name of the scope
 
     Return:
         (List[Object, str]) List consisting of the item value and limits state
@@ -565,6 +589,8 @@ def get_item(*args, scope: str = OPENC3_SCOPE, cache_timeout=0.1):
     Args:
         args (str) target_name, packet_name, item_name or 'TGT PKT ITEM'
         scope (str) Name of the scope
+        cache_timeout (float) Time in seconds to cache the lookup of the latest packet
+            when the packet name is LATEST
 
     Return:
         (dict) Telemetry packet item dict
