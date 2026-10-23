@@ -16,6 +16,13 @@ import openc3.script
 from openc3.environment import OPENC3_SCOPE
 
 
+# NOTE: plugin_list and plugin_get are intentionally NOT in openc3.api (and not in
+# api.WHITELIST) like most other script methods. Python has no PluginModel and no
+# way to read default_plugins.yaml (it lives outside the python package and Python
+# has no yaml dependency), so a shared api implementation can't be mirrored in both
+# languages. Instead these call the PluginsController REST endpoints directly,
+# which also gives the same results in Ruby and Python scripts.
+
 def plugin_list(default: bool = False, scope: str = OPENC3_SCOPE):
     try:
         endpoint = f"/openc3-api/plugins?scope={scope}"
