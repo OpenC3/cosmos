@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-import type { Route } from '@playwright/test'
 import { test, expect } from './../fixture'
 import { format } from 'date-fns'
 
@@ -155,7 +154,7 @@ test('sets environment variables', async ({ page, utils }) => {
   await page.locator('[data-test="confirm-dialog-delete"]').click()
 })
 
-test.fixme('show overrides', async ({ page, utils }) => {
+test('show overrides', async ({ page, utils }) => {
   await page.locator('textarea').fill(`
 set_tlm("INST HEALTH_STATUS COLLECTS = 5")
 override_tlm("INST HEALTH_STATUS COLLECTS = 10")
@@ -218,12 +217,14 @@ override_tlm("INST", "HEALTH_STATUS", "DURATION", "10", type: :CONVERTED)`)
   await expect(page.locator('.v-dialog >> tbody')).toContainText(
     'INSTHEALTH_STATUSDURATIONCONVERTED10',
   )
-  await page
-    .locator('.v-dialog >> tbody > tr')
-    .nth(0)
-    .getByRole('button')
-    .click()
-  await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(4)
+  const firstRow = page.locator('.v-dialog >> tbody > tr').nth(0)
+  const deletedText = (await firstRow.textContent()) ?? ''
+  await firstRow.getByRole('button').click()
+  // check that the text from the deleted row is gone, not just that the count dropped
+  await expect(page.locator('.v-dialog >> tbody')).not.toContainText(
+    deletedText,
+  )
+  await expect(page.locator('.v-dialog >> tbody > tr')).toHaveCount(3)
   // Clear all overrides
   await page.locator('[data-test="overrides-dialog-clear-all"]').click()
   await expect(

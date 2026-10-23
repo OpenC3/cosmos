@@ -140,7 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     permissions:
       contents: read
 
@@ -201,3 +201,16 @@ jobs:
   #           -Dsonar.test.exclusions=openc3-cosmos-cmd-tlm-api/spec/fixtures/**/*
   #       env:
   #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  api-tests:
+    needs: [cmd-tlm-api, script-runner-api-ruby, script-runner-api-python]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Ensure all API tests passed as expected on all matrix versions
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          if echo "$RESULTS" | grep -Eq 'failure|cancelled'; then exit 1; fi
