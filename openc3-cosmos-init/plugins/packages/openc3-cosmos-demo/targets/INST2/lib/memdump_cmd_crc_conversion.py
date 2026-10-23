@@ -30,8 +30,9 @@ class MemdumpCmdCrcConversion(Conversion):
     # @param buffer [String] The raw packet buffer
     def call(self, value, packet, buffer):
         # Write conversions run before the given parameters are written to the
-        # buffer so use the given values and fall back to the defaults
-        given = packet.given_values or {}
+        # buffer so use the given values and fall back to the defaults.
+        # Given names keep the caller's case so upcase them to match the items.
+        given = {str(key).upper(): value for key, value in (packet.given_values or {}).items()}
         offset = int(given.get("OFFSET", packet.get_item("OFFSET").default))
         size = int(given.get("SIZE", packet.get_item("SIZE").default))
         # BAD_CRC may be given as a state name so convert it to its value
