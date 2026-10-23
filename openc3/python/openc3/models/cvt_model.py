@@ -207,12 +207,12 @@ class CvtModel(Model):
         items: list,
         stale_time: int = 30,
         cache_timeout: float = 0.1,
-        start_time: str = None,
-        end_time: str = None,
+        start_time: str | None = None,
+        end_time: str | None = None,
         scope: str = OPENC3_SCOPE,
-    ):
+    ) -> list[list[object | str | None]]:
         now = time.time()
-        results = []
+        results: list[list[object | str | None]] = []
         lookups = []
         packet_lookup = {}
         overrides = {}
