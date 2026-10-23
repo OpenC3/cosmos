@@ -350,6 +350,16 @@ module OpenC3
       result
     end
 
+    # Returns just the packet names without fetching and parsing every packet
+    # definition, which is expensive for targets with thousands of packets.
+    # @return [Array<String>] Sorted packet names under the target_name
+    def self.packet_names(target_name, type: :TLM, scope:)
+      raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
+      raise "Target '#{target_name}' does not exist for scope: #{scope} (TargetModel)" unless get(name: target_name, scope: scope)
+
+      store_for_target(target_name, scope: scope).hkeys("#{scope}__openc3#{type.to_s.downcase}__#{target_name}").sort
+    end
+
     # @return [Array<Hash>] All packet hashes under the target_name
     def self.all_packet_name_descriptions(target_name, type: :TLM, scope:)
       self.packets(target_name, type: type, scope: scope).map! { |hash| hash.slice("packet_name", "description") }

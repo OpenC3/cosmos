@@ -164,6 +164,20 @@ class TestTargetModelPackets(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, r"Target 'NOPE' does not exist.*\(TargetModel\)"):
             TargetModel.packets("NOPE", type="TLM", scope="DEFAULT")
 
+    def test_packet_names_raises_for_an_unknown_type(self):
+        with self.assertRaisesRegex(RuntimeError, "Unknown type OTHER for INST"):
+            TargetModel.packet_names("INST", type="OTHER", scope="DEFAULT")
+
+    def test_packet_names_raises_for_a_non_existent_target(self):
+        with self.assertRaisesRegex(RuntimeError, r"Target 'NOPE' does not exist.*\(TargetModel\)"):
+            TargetModel.packet_names("NOPE", type="TLM", scope="DEFAULT")
+
+    def test_packet_names_returns_sorted_packet_names(self):
+        names = TargetModel.packet_names("INST", type="TLM", scope="DEFAULT")
+        self.assertEqual(names, sorted(names))
+        pkts = TargetModel.packets("INST", type="TLM", scope="DEFAULT")
+        self.assertEqual(names, sorted(pkt["packet_name"] for pkt in pkts))
+
     def test_returns_all_telemetry_packets(self):
         pkts = TargetModel.packets("INST", type="TLM", scope="DEFAULT")
         # Verify result is Array of packet Hashes
