@@ -155,7 +155,7 @@ module OpenC3
       @time_offset = 0
       @ip_address = 0
       @variable_arrays_updated = false
-      @memdump_pending = false
+      @memdump_response = nil
       @crc = Crc32.new
     end
 
@@ -283,22 +283,19 @@ module OpenC3
         # Reject the command if the CRC over OFFSET, SIZE and BAD_CRC doesn't match
         return unless packet.read('CRC') == @crc.calc([offset, size, bad_crc].pack('NNC'))
         # Reject sizes outside the command's range since cmd_raw skips range checks
-        return unless (1..4096).cover?(size)
+        return unless packet.get_item('SIZE').range.cover?(size)
         hs_packet.cmd_acpt_cnt += 1
         # Simulated memory is a byte counter where each byte holds its address
         data = Array.new(size) { |i| (offset + i) & 0xFF }.pack('C*')
-        memdump_packet = @tlm_packets['MEMDUMP']
-        memdump_packet.write('OFFSET', offset)
-        # Writing DATA resizes the packet and updates SIZE due to VARIABLE_BIT_SIZE
-        memdump_packet.write('DATA', data)
-        memdump_packet.write('CRC', @crc.calc(data))
+        crc = @crc.calc(data)
         if bad_crc == 1
           # Flip a random bit after calculating the CRC to simulate downlink corruption
           bit = rand(size * 8)
           data.setbyte(bit / 8, data.getbyte(bit / 8) ^ (0x80 >> (bit % 8)))
-          memdump_packet.write('DATA', data)
         end
-        @memdump_pending = true
+        # Commands arrive on a different thread than read so only hand off the
+        # values here and let read write them into the MEMDUMP packet
+        @memdump_response = [offset, data, crc]
       end
     end
 
@@ -499,9 +496,14 @@ module OpenC3
         pending_packets << arrays_packet
       end
 
-      if @memdump_pending
-        @memdump_pending = false
+      memdump_response, @memdump_response = @memdump_response, nil
+      if memdump_response
+        offset, data, crc = memdump_response
         memdump_packet = @tlm_packets['MEMDUMP']
+        memdump_packet.write('OFFSET', offset)
+        # Writing DATA resizes the packet and updates SIZE due to VARIABLE_BIT_SIZE
+        memdump_packet.write('DATA', data)
+        memdump_packet.write('CRC', crc)
         memdump_packet.write('CCSDSLENGTH', memdump_packet.buffer(false).length - 7)
         memdump_packet.write('TIMESEC', time.tv_sec - @time_offset)
         memdump_packet.write('TIMEUS', time.tv_usec)

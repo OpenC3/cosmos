@@ -16,12 +16,9 @@
 #   * Chunks with no response are requested again
 #   * Chunks with a bad CRC prompt the operator to retry or stop the dump
 #   * If the link is down the script waits for it to come back
-#   * Progress is checkpointed to the bucket so an interrupted dump resumes
-#     where it left off the next time the script runs
 #
 # Environment variables:
 #   BAD_CRC=1 flips a bit in one chunk part way through the dump to show recovery from a bad CRC
-#   RESTART=1 discards any saved progress and starts over
 require 'openc3/utilities/crc'
 
 START_OFFSET = 0
@@ -30,58 +27,19 @@ CHUNK_SIZE = 1024 # Bytes per MEMDUMP command (max 4096)
 MAX_ATTEMPTS = 3 # Times to request a chunk with no response before giving up
 RESPONSE_TIMEOUT = 5 # Seconds to wait for each MEMDUMP response
 LINK_TIMEOUT = 60 # Seconds to wait for a lost link to come back
-CHECKPOINT_CHUNKS = 2 # Save progress to the bucket every N chunks
-PROGRESS_KEY = 'INST_MEMDUMP_PROGRESS' # Stash key holding the checkpoint
 
 crc = OpenC3::Crc32.new
 bad_crc = ENV['BAD_CRC']
 end_offset = START_OFFSET + TOTAL_SIZE
 dump_data = ''.b # The verified dump is small enough to keep in memory
 offset = START_OFFSET
-filename = nil
-checkpointed = false # Whether a partial file exists in the bucket
-progress = stash_get(PROGRESS_KEY)
-if progress
-  data = nil
-  # Only resume a dump of the same region and only if the checkpoint is intact
-  if !ENV['RESTART'] and progress['start_offset'] == START_OFFSET and progress['total_size'] == TOTAL_SIZE
-    partial = get_target_file(progress['partial_path'])
-    if partial
-      data = partial.read
-      partial.delete
-    end
-  end
-  if data and data.length == progress['next_offset'] - START_OFFSET and crc.calc(data) == progress['crc']
-    dump_data << data.b
-    offset = progress['next_offset']
-    filename = progress['filename']
-    checkpointed = true
-    puts "Resuming #{filename} at OFFSET #{offset} (#{data.length} bytes already verified)"
-  else
-    if ENV['RESTART']
-      puts "Discarding saved progress because RESTART is set"
-    else
-      puts "WARN: Discarding saved progress which doesn't match this dump"
-    end
-    stash_delete(PROGRESS_KEY)
-    # Remove the old partial file so it doesn't linger in the bucket
-    begin
-      delete_target_file(progress['partial_path']) if progress['partial_path']
-    rescue => e
-      puts "WARN: Unable to delete old partial file: #{e.message}"
-    end
-  end
-end
-filename ||= "INST_memdump_#{Time.now.utc.strftime('%Y%m%d%H%M%S')}.bin"
-bucket_path = "INST/memdumps/#{filename}"
-partial_path = "#{bucket_path}.partial"
+bucket_path = "INST/memdumps/INST_memdump_#{Time.now.utc.strftime('%Y%m%d%H%M%S')}.bin"
 
 bad_crc_offset = START_OFFSET + (TOTAL_SIZE / CHUNK_SIZE / 2) * CHUNK_SIZE
-chunks = 0
 while offset < end_offset
   size = [CHUNK_SIZE, end_offset - offset].min
   # Request a bad CRC on the first request for the chunk in the middle of
-  # the dump (or the first chunk if resuming past the middle)
+  # the dump
   chunk_bad_crc = 'FALSE'
   if bad_crc and offset >= bad_crc_offset
     chunk_bad_crc = 'TRUE'
@@ -136,10 +94,10 @@ while offset < end_offset
       next
     end
 
-    # CRC_OK is a derived item comparing the target CRC to the ground CRC
-    # but we also check it here to show how to calculate a CRC in a script
+    # Calculate the CRC in the script (the CRC_OK derived item does the same
+    # check on the ground for display on the screen)
     calculated = crc.calc(dump['DATA'])
-    if calculated == dump['CRC'] and dump['CRC_OK'] == 1
+    if calculated == dump['CRC']
       puts "CRC passed at OFFSET #{offset}"
       data = dump['DATA']
     else
@@ -148,7 +106,7 @@ while offset < end_offset
       # Let the operator decide whether to request the chunk again
       answer = message_box("Bad CRC at OFFSET #{offset}. Retry this chunk?", 'Retry', 'Stop Dump', informative: mismatch)
       if answer == 'Stop Dump'
-        raise "Dump stopped by operator at OFFSET #{offset}. Run again to resume from the last checkpoint."
+        raise "Dump stopped by operator at OFFSET #{offset}"
       end
       # An operator retry doesn't use up an attempt
       attempt -= 1
@@ -157,23 +115,11 @@ while offset < end_offset
   raise "Unable to dump OFFSET #{offset} after #{MAX_ATTEMPTS} attempts" unless data
   dump_data << data.b
   offset += size
-
-  # Checkpoint the verified data so an interrupted dump can resume here
-  chunks += 1
-  if chunks % CHECKPOINT_CHUNKS == 0 and offset < end_offset
-    put_target_file(partial_path, dump_data)
-    stash_set(PROGRESS_KEY, { 'filename' => filename, 'partial_path' => partial_path, 'start_offset' => START_OFFSET,
-                              'total_size' => TOTAL_SIZE, 'next_offset' => offset, 'crc' => crc.calc(dump_data) })
-    checkpointed = true
-    puts "Checkpoint saved at OFFSET #{offset}"
-  end
 end
 puts "Dumped #{dump_data.length} bytes (CRC32 0x#{crc.calc(dump_data).to_s(16).upcase})"
 
-# Push the dump to the bucket and clean up the checkpoint
+# Push the dump to the bucket
 put_target_file(bucket_path, dump_data)
-stash_delete(PROGRESS_KEY)
-delete_target_file(partial_path) if checkpointed
 
 # Read it back to verify it made it to the bucket intact
 file = get_target_file(bucket_path)

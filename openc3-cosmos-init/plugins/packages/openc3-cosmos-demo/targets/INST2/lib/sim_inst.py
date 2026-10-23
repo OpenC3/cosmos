@@ -151,7 +151,7 @@ class SimInst(SimulatedTarget):
         self.time_offset = 0
         self.ip_address = 0
         self.variable_arrays_updated = False
-        self.memdump_pending = False
+        self.memdump_response = None
         self.crc = Crc32()
 
     def set_rates(self):
@@ -259,23 +259,20 @@ class SimInst(SimulatedTarget):
                 if packet.read("CRC") != self.crc.calc(struct.pack(">IIB", offset, size, bad_crc)):
                     return
                 # Reject sizes outside the command's range since cmd_raw skips range checks
-                if not 1 <= size <= 4096:
+                size_item = packet.get_item("SIZE")
+                if not size_item.minimum <= size <= size_item.maximum:
                     return
                 hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
                 # Simulated memory is a byte counter where each byte holds its address
-                data = bytes((offset + i) & 0xFF for i in range(size))
-                memdump_packet = self.tlm_packets["MEMDUMP"]
-                memdump_packet.write("OFFSET", offset)
-                # Writing DATA resizes the packet and updates SIZE due to VARIABLE_BIT_SIZE
-                memdump_packet.write("DATA", data)
-                memdump_packet.write("CRC", self.crc.calc(data))
+                data = bytearray((offset + i) & 0xFF for i in range(size))
+                crc = self.crc.calc(data)
                 if bad_crc == 1:
                     # Flip a random bit after calculating the CRC to simulate downlink corruption
                     bit = random.randrange(size * 8)
-                    corrupt = bytearray(data)
-                    corrupt[bit // 8] ^= 0x80 >> (bit % 8)
-                    memdump_packet.write("DATA", bytes(corrupt))
-                self.memdump_pending = True
+                    data[bit // 8] ^= 0x80 >> (bit % 8)
+                # Commands arrive on a different thread than read so only hand off the
+                # values here and let read write them into the MEMDUMP packet
+                self.memdump_response = (offset, bytes(data), crc)
 
     def solar_panel_thread_method(self):
         self.solar_panel_thread_cancel = False
@@ -499,9 +496,14 @@ class SimInst(SimulatedTarget):
             arrays_packet.write("ccsdsseqcnt", arrays_packet.read("ccsdsseqcnt") + 1)
             pending_packets.append(arrays_packet)
 
-        if self.memdump_pending:
-            self.memdump_pending = False
+        memdump_response, self.memdump_response = self.memdump_response, None
+        if memdump_response:
+            offset, data, crc = memdump_response
             memdump_packet = self.tlm_packets["MEMDUMP"]
+            memdump_packet.write("OFFSET", offset)
+            # Writing DATA resizes the packet and updates SIZE due to VARIABLE_BIT_SIZE
+            memdump_packet.write("DATA", data)
+            memdump_packet.write("CRC", crc)
             memdump_packet.write("ccsdslength", len(memdump_packet.buffer) - 7)
             memdump_packet.write("timesec", int(time - self.time_offset))
             memdump_packet.write("timeus", int((time % 1) * 1000000))

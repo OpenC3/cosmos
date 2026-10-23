@@ -19,7 +19,6 @@ HORIZONTAL
       "api.cmd('<%= target_name %> MEMDUMP with OFFSET '+offset+', SIZE '+size+', BAD_CRC '+badCrc)"
     # cmd_raw skips the CRC write conversion so the target rejects the command
     BUTTON 'Send Bad Command CRC' "api.cmd_raw('<%= target_name %> MEMDUMP with OFFSET 0, SIZE 16, CRC 0')"
-    # The script resumes from its last checkpoint if a previous run was interrupted
     BUTTON 'Run Dump Script' "runScript('<%= target_name %>/procedures/memdump.rb', true)"
     BUTTON 'Run Dump Script with Bad CRC' "runScript('<%= target_name %>/procedures/memdump.rb', true, {'BAD_CRC': '1'})"
   END
