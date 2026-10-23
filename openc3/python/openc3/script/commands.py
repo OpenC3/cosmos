@@ -228,6 +228,7 @@ def _cmd(
     log_message=None,
     validate=True,
     queue=None,
+    extra=None,
     scope=OPENC3_SCOPE,
 ):
     """Send the command and log the results
@@ -249,6 +250,7 @@ def _cmd(
                     log_message=log_message,
                     validate=validate,
                     queue=queue,
+                    extra=extra,
                     scope=scope,
                 )
                 if log_message is None or log_message:
@@ -270,6 +272,7 @@ def _cmd(
                     log_message=log_message,
                     validate=validate,
                     queue=queue,
+                    extra=extra,
                     scope=scope,
                 )
                 if log_message is None or log_message:

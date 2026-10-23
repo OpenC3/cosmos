@@ -19,6 +19,7 @@ from unittest.mock import *
 from openc3.interfaces.protocols.preidentified_protocol import PreidentifiedProtocol
 from openc3.interfaces.stream_interface import StreamInterface
 from openc3.streams.stream import Stream
+from openc3.utilities.json import JsonDecoder, JsonEncoder
 from test.test_helper import *
 
 
@@ -143,6 +144,25 @@ class TestPreidentifiedProtocol(unittest.TestCase):
         )
         offset += len(json_extra)
         self.verify_time_tgt_pkt_buffer(offset, time, pkt)
+
+    def test_write_encodes_binary_extra(self):
+        # Binary values reach a command's extra via cmd(extra=...), so the protocol has
+        # to use JsonEncoder like the rest of COSMOS. Plain json.dumps raises
+        # "Object of type bytes is not JSON serializable" and kills the write.
+        _time, pkt = self.setup_stream_pkt()
+        pkt.stored = False
+        pkt.extra = {"data": b"\xff"}
+        self.interface.write(pkt)
+
+        json_extra = json.dumps({"data": b"\xff"}, cls=JsonEncoder).encode("utf-8")
+        offset = 1
+        self.assertEqual(
+            struct.unpack(">I", TestPreidentifiedProtocol.buffer[offset : (offset + 4)])[0],
+            len(json_extra),
+        )
+        offset += 4
+        written = TestPreidentifiedProtocol.buffer[offset : (offset + len(json_extra))]
+        self.assertEqual(json.loads(written, cls=JsonDecoder), {"data": b"\xff"})
 
     def test_write_creates_a_packet_header_with_stored_and_extra(self):
         time, pkt = self.setup_stream_pkt()
