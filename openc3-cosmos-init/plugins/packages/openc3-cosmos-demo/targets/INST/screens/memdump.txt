@@ -10,20 +10,18 @@ HORIZONTAL
       LABEL "Size:"
       NAMED_WIDGET SIZE TEXTFIELD 10 "256"
     END
-    # The command CRC over OFFSET and SIZE is calculated automatically
+    # Flips a random bit in the dump after the target calculates its CRC
+    NAMED_WIDGET BAD_CRC CHECKBUTTON 'Bad CRC'
+    # The command CRC over OFFSET, SIZE and BAD_CRC is calculated automatically
     BUTTON 'Dump Memory' "var offset=screen.getNamedWidget('OFFSET').text();" +
       "var size=screen.getNamedWidget('SIZE').text();" +
-      "api.cmd('<%= target_name %> MEMDUMP with OFFSET '+offset+', SIZE '+size)"
-    # Flips a random bit in the next dump after the target calculates its CRC
-    BUTTON 'Flip Bit in Next Dump' "api.cmd('<%= target_name %> MEMDUMP_FAULT with TYPE BITFLIP')"
-    # Discards the next dump response so it never arrives
-    BUTTON 'Drop Next Reply' "api.cmd('<%= target_name %> MEMDUMP_FAULT with TYPE DROP')"
+      "var badCrc=screen.getNamedWidget('BAD_CRC').checked() ? 'TRUE' : 'FALSE';" +
+      "api.cmd('<%= target_name %> MEMDUMP with OFFSET '+offset+', SIZE '+size+', BAD_CRC '+badCrc)"
     # cmd_raw skips the CRC write conversion so the target rejects the command
     BUTTON 'Send Bad Command CRC' "api.cmd_raw('<%= target_name %> MEMDUMP with OFFSET 0, SIZE 16, CRC 0')"
     # The script resumes from its last checkpoint if a previous run was interrupted
     BUTTON 'Run Dump Script' "runScript('<%= target_name %>/procedures/memdump.rb', true)"
-    BUTTON 'Run Dump Script with Bit Flip' "runScript('<%= target_name %>/procedures/memdump.rb', true, {'FAULT': 'BITFLIP'})"
-    BUTTON 'Run Dump Script with Dropped Reply' "runScript('<%= target_name %>/procedures/memdump.rb', true, {'FAULT': 'DROP'})"
+    BUTTON 'Run Dump Script with Bad CRC' "runScript('<%= target_name %>/procedures/memdump.rb', true, {'BAD_CRC': '1'})"
   END
 
   VERTICALBOX "Last Dump"

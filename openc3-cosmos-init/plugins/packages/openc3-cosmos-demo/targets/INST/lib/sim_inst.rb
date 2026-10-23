@@ -156,7 +156,6 @@ module OpenC3
       @ip_address = 0
       @variable_arrays_updated = false
       @memdump_pending = false
-      @memdump_fault = nil
       @crc = Crc32.new
     end
 
@@ -280,8 +279,9 @@ module OpenC3
       when 'MEMDUMP'
         offset = packet.read('OFFSET')
         size = packet.read('SIZE')
-        # Reject the command if the CRC over OFFSET and SIZE doesn't match
-        return unless packet.read('CRC') == @crc.calc([offset, size].pack('NN'))
+        bad_crc = packet.read('BAD_CRC', :RAW)
+        # Reject the command if the CRC over OFFSET, SIZE and BAD_CRC doesn't match
+        return unless packet.read('CRC') == @crc.calc([offset, size, bad_crc].pack('NNC'))
         # Reject sizes outside the command's range since cmd_raw skips range checks
         return unless (1..4096).cover?(size)
         hs_packet.cmd_acpt_cnt += 1
@@ -292,22 +292,13 @@ module OpenC3
         # Writing DATA resizes the packet and updates SIZE due to VARIABLE_BIT_SIZE
         memdump_packet.write('DATA', data)
         memdump_packet.write('CRC', @crc.calc(data))
-        fault = @memdump_fault
-        @memdump_fault = nil
-        case fault
-        when 'BITFLIP'
+        if bad_crc == 1
           # Flip a random bit after calculating the CRC to simulate downlink corruption
           bit = rand(size * 8)
           data.setbyte(bit / 8, data.getbyte(bit / 8) ^ (0x80 >> (bit % 8)))
           memdump_packet.write('DATA', data)
-        when 'DROP'
-          # The command was accepted but the response is lost on the downlink
-          return
         end
         @memdump_pending = true
-      when 'MEMDUMP_FAULT'
-        hs_packet.cmd_acpt_cnt += 1
-        @memdump_fault = packet.read('TYPE')
       end
     end
 

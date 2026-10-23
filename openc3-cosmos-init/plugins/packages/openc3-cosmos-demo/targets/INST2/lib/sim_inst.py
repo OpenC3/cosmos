@@ -152,7 +152,6 @@ class SimInst(SimulatedTarget):
         self.ip_address = 0
         self.variable_arrays_updated = False
         self.memdump_pending = False
-        self.memdump_fault = None
         self.crc = Crc32()
 
     def set_rates(self):
@@ -255,8 +254,9 @@ class SimInst(SimulatedTarget):
             case "MEMDUMP":
                 offset = packet.read("OFFSET")
                 size = packet.read("SIZE")
-                # Reject the command if the CRC over OFFSET and SIZE doesn't match
-                if packet.read("CRC") != self.crc.calc(struct.pack(">II", offset, size)):
+                bad_crc = packet.read("BAD_CRC", "RAW")
+                # Reject the command if the CRC over OFFSET, SIZE and BAD_CRC doesn't match
+                if packet.read("CRC") != self.crc.calc(struct.pack(">IIB", offset, size, bad_crc)):
                     return
                 # Reject sizes outside the command's range since cmd_raw skips range checks
                 if not 1 <= size <= 4096:
@@ -269,22 +269,13 @@ class SimInst(SimulatedTarget):
                 # Writing DATA resizes the packet and updates SIZE due to VARIABLE_BIT_SIZE
                 memdump_packet.write("DATA", data)
                 memdump_packet.write("CRC", self.crc.calc(data))
-                fault = self.memdump_fault
-                self.memdump_fault = None
-                match fault:
-                    case "BITFLIP":
-                        # Flip a random bit after calculating the CRC to simulate downlink corruption
-                        bit = random.randrange(size * 8)
-                        corrupt = bytearray(data)
-                        corrupt[bit // 8] ^= 0x80 >> (bit % 8)
-                        memdump_packet.write("DATA", bytes(corrupt))
-                    case "DROP":
-                        # The command was accepted but the response is lost on the downlink
-                        return
+                if bad_crc == 1:
+                    # Flip a random bit after calculating the CRC to simulate downlink corruption
+                    bit = random.randrange(size * 8)
+                    corrupt = bytearray(data)
+                    corrupt[bit // 8] ^= 0x80 >> (bit % 8)
+                    memdump_packet.write("DATA", bytes(corrupt))
                 self.memdump_pending = True
-            case "MEMDUMP_FAULT":
-                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
-                self.memdump_fault = packet.read("TYPE")
 
     def solar_panel_thread_method(self):
         self.solar_panel_thread_cancel = False

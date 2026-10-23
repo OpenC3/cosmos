@@ -13,13 +13,14 @@
 # and then push the dump to the bucket with put_target_file.
 #
 # The dump recovers from a bad downlink:
-#   * Chunks with a bad CRC or no response are requested again
+#   * Chunks with no response are requested again
+#   * Chunks with a bad CRC prompt the operator to retry or stop the dump
 #   * If the link is down the script waits for it to come back
 #   * Progress is checkpointed to the bucket so an interrupted dump resumes
 #     where it left off the next time the script runs
 #
 # Environment variables:
-#   FAULT=BITFLIP or FAULT=DROP injects that fault part way through the dump
+#   BAD_CRC=1 flips a bit in one chunk part way through the dump to show recovery from a bad CRC
 #   RESTART=1 discards any saved progress and starts over
 import os
 import re
@@ -32,14 +33,14 @@ from openc3.utilities.crc import Crc32
 START_OFFSET = 0
 TOTAL_SIZE = 10000  # Bytes to dump
 CHUNK_SIZE = 1024  # Bytes per MEMDUMP command (max 4096)
-MAX_ATTEMPTS = 3  # Times to request a chunk before giving up (bad CRC or no response)
+MAX_ATTEMPTS = 3  # Times to request a chunk with no response before giving up
 RESPONSE_TIMEOUT = 5  # Seconds to wait for each MEMDUMP response
 LINK_TIMEOUT = 60  # Seconds to wait for a lost link to come back
 CHECKPOINT_CHUNKS = 2  # Save progress to the bucket every N chunks
 PROGRESS_KEY = "INST2_MEMDUMP_PROGRESS"  # Stash key holding the checkpoint
 
 crc = Crc32()
-fault = os.environ.get("FAULT")
+bad_crc = os.environ.get("BAD_CRC")
 restart = os.environ.get("RESTART")
 end_offset = START_OFFSET + TOTAL_SIZE
 dump_data = bytearray()  # The verified dump is small enough to keep in memory
@@ -78,15 +79,16 @@ if filename is None:
 bucket_path = f"INST2/memdumps/{filename}"
 partial_path = f"{bucket_path}.partial"
 
-fault_offset = START_OFFSET + (TOTAL_SIZE // CHUNK_SIZE // 2) * CHUNK_SIZE
+bad_crc_offset = START_OFFSET + (TOTAL_SIZE // CHUNK_SIZE // 2) * CHUNK_SIZE
 chunks = 0
 while offset < end_offset:
     size = min(CHUNK_SIZE, end_offset - offset)
-    # Inject the requested fault on the chunk in the middle of the dump
-    # (or the first chunk if resuming past the middle)
-    if fault and offset >= fault_offset:
-        cmd(f"INST2 MEMDUMP_FAULT with TYPE {fault}")
-        fault = None
+    # Request a bad CRC on the first request for the chunk in the middle of
+    # the dump (or the first chunk if resuming past the middle)
+    chunk_bad_crc = "FALSE"
+    if bad_crc and offset >= bad_crc_offset:
+        chunk_bad_crc = "TRUE"
+        bad_crc = None
 
     data = None
     attempt = 0
@@ -102,9 +104,11 @@ while offset < end_offset:
         sent = False
         while not sent:
             try:
-                # The command CRC over OFFSET and SIZE is calculated automatically
-                cmd(f"INST2 MEMDUMP with OFFSET {offset}, SIZE {size}")
+                # The command CRC over OFFSET, SIZE and BAD_CRC is calculated automatically
+                cmd(f"INST2 MEMDUMP with OFFSET {offset}, SIZE {size}, BAD_CRC {chunk_bad_crc}")
                 sent = True
+                # Only the first request has a bad CRC so the retry succeeds
+                chunk_bad_crc = "FALSE"
             except Exception as error:
                 if not re.search("not connected|waiting for cmd ack", str(error), re.IGNORECASE):
                     raise
@@ -140,12 +144,21 @@ while offset < end_offset:
         chunk = bytes(dump["DATA"])
         calculated = crc.calc(chunk)
         if calculated == dump["CRC"] and dump["CRC_OK"] == 1:
+            print(f"CRC passed at OFFSET {offset}")
             data = chunk
         else:
-            print(
-                f"WARN: CRC mismatch at OFFSET {offset}: target 0x{dump['CRC']:08X} vs "
-                f"calculated 0x{calculated:08X} (attempt {attempt} of {MAX_ATTEMPTS})"
+            mismatch = f"Target CRC 0x{dump['CRC']:08X} vs calculated 0x{calculated:08X}"
+            print(f"WARN: CRC mismatch at OFFSET {offset}: {mismatch}")
+            # Let the operator decide whether to request the chunk again
+            answer = message_box(
+                f"Bad CRC at OFFSET {offset}. Retry this chunk?", "Retry", "Stop Dump", informative=mismatch
             )
+            if answer == "Stop Dump":
+                raise RuntimeError(
+                    f"Dump stopped by operator at OFFSET {offset}. Run again to resume from the last checkpoint."
+                )
+            # An operator retry doesn't use up an attempt
+            attempt -= 1
     if data is None:
         raise RuntimeError(f"Unable to dump OFFSET {offset} after {MAX_ATTEMPTS} attempts")
     dump_data += data

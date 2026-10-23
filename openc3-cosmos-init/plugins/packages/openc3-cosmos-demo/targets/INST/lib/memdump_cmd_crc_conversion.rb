@@ -16,7 +16,7 @@ require 'openc3/utilities/crc'
 
 module OpenC3
   # Write conversion which calculates the MEMDUMP command CRC32 over the
-  # big endian OFFSET and SIZE parameters so the user never has to.
+  # big endian OFFSET, SIZE and BAD_CRC parameters so the user never has to.
   # Send the command with cmd_raw to bypass this conversion and set a bad CRC.
   # See https://docs.openc3.com/docs/configuration/conversions
   class MemdumpCmdCrcConversion < Conversion
@@ -35,7 +35,11 @@ module OpenC3
       given = packet.given_values || {}
       offset = Integer(given['OFFSET'] || packet.get_item('OFFSET').default)
       size = Integer(given['SIZE'] || packet.get_item('SIZE').default)
-      @crc.calc([offset, size].pack('NN'))
+      # BAD_CRC may be given as a state name so convert it to its value
+      bad_crc_item = packet.get_item('BAD_CRC')
+      bad_crc = given['BAD_CRC'] || bad_crc_item.default
+      bad_crc = bad_crc_item.states[bad_crc.to_s.upcase] || bad_crc
+      @crc.calc([offset, size, Integer(bad_crc)].pack('NNC'))
     end
   end
 end
