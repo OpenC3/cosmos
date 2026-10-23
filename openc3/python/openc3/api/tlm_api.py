@@ -445,7 +445,7 @@ def get_tlm_values(
     """
     if not isinstance(items, list) or len(items) == 0:
         raise TypeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
-    packets = []
+    packets = set()
     cvt_items = []
     for item in items:
         # get_tlm_available returns None for items which don't exist and its result is
@@ -467,9 +467,7 @@ def get_tlm_values(
         # Change packet_name in case of LATEST and ensure upcase
         # NOTE: limits is required by the historical (start_time) QuestDB lookup
         cvt_items.append(TlmItem(target_name, packet_name, item_name, value_type, limits))
-        packets.append([target_name, packet_name])
-    # Make the array of arrays unique
-    packets = [list(x) for x in {tuple(x) for x in packets}]
+        packets.add((target_name, packet_name))
     for name in packets:
         authorize(
             permission="tlm",
