@@ -1,6 +1,6 @@
 ARG OPENC3_UBI_REGISTRY=registry1.dso.mil
 ARG OPENC3_UBI_IMAGE=ironbank/redhat/ubi/ubi9-minimal
-ARG OPENC3_UBI_TAG=9.6
+ARG OPENC3_UBI_TAG=9.8
 
 FROM ${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
 
@@ -64,13 +64,13 @@ COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 RUN microdnf update -y && \
     microdnf install -y --setopt=tsflags=nodocs $PACKAGES && \
     mkdir -p /usr/src && \
-    tar -xzf /tmp/ruby-3.4.11.tar.gz -C /usr/src/ && \
-    rm -f /tmp/ruby-3.4.11.tar.gz
-WORKDIR /usr/src/ruby-3.4.11
+    tar -xzf /tmp/ruby-3.4.12.tar.gz -C /usr/src/ && \
+    rm -f /tmp/ruby-3.4.12.tar.gz
+WORKDIR /usr/src/ruby-3.4.12
 RUN ./configure --disable-install-doc --enable-shared && \
     make -j "$(nproc)" && \
     make install && \
-    rm -rf /usr/src/ruby-3.4.11
+    rm -rf /usr/src/ruby-3.4.12
 
 # tini - https://github.com/krallin/tini
 WORKDIR /usr/src

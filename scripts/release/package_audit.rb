@@ -80,6 +80,28 @@ check_build_files(
   get_docker_version('openc3-traefik/Dockerfile')
 )
 
+# The UBI images build on Ironbank's ubi9-minimal at OPENC3_UBI_TAG from .env.
+# The Dockerfile-ubi defaults are only used when building directly but keep them
+# in sync so they don't fall behind.
+ubi_tag = check_ironbank('ubi9-minimal', 'redhat/ubi/ubi9-minimal', 'OPENC3_UBI_TAG', [File.join(ROOT_DIR, '.env')])
+if ubi_tag
+  %w(openc3-buckets openc3-redis openc3-ruby).each do |dir|
+    dockerfile = File.join(ROOT_DIR, dir, 'Dockerfile-ubi')
+    current = ironbank_current_version('OPENC3_UBI_TAG', dockerfile)
+    next if current.nil? || current == ubi_tag
+    if prompt_yes_no("#{dir}/Dockerfile-ubi: OPENC3_UBI_TAG is #{current} but .env is #{ubi_tag}. Sync?")
+      update_ironbank_version(dockerfile, 'OPENC3_UBI_TAG', current, ubi_tag)
+    end
+  end
+  # openc3-traefik-ubi builds the Docker Hub OPENC3_TRAEFIK_RELEASE from Ironbank
+  traefik_release = get_docker_version('openc3-traefik/Dockerfile', arg: 'OPENC3_TRAEFIK_RELEASE')
+  unless ironbank_tag_exists?('opensource/traefik/traefik', traefik_release)
+    puts "WARN: traefik #{traefik_release} is not on Ironbank yet so openc3-traefik-ubi will fail to build"
+  end
+else
+  puts "WARN: Unable to access registry1.dso.mil, skipping Ironbank (UBI) version checks"
+end
+
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
 # Per-language outdated dependency prompts. Each helper enumerates outdated

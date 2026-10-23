@@ -1102,6 +1102,80 @@ def docker_hub_candidate_tags(client, repo, version)
   candidates.uniq.select { |c| docker_tag_exists?(client, repo, c) }
 end
 
+# The UBI images pull their bases from Ironbank, which lags Docker Hub and pins
+# its own tags in the UBI Dockerfiles, build scripts and .env.
+def ironbank_tag_exists?(repo, tag)
+  # Ironbank's tag list APIs require authentication but manifests can be pulled
+  # anonymously, so probe each candidate tag with docker
+  _out, _err, status = Open3.capture3('docker', 'manifest', 'inspect', "registry1.dso.mil/ironbank/#{repo}:#{tag}")
+  status.success?
+end
+
+# Walk each version component upward from most to least significant, e.g.
+# 13.2.1 tries 13.3.0 / 13.3.1 then 13.2.2, 13.2.3, ... and returns the newest
+# tag that exists. Major versions are skipped unless allow_major since a new
+# major is often a different image (ubi10) or needs a migration (postgres).
+def newest_ironbank_tag(repo, current, allow_major: false)
+  newest = version_parts(current)
+  return current if newest.empty?
+  (allow_major ? 0 : 1).upto(newest.length - 1) do |i|
+    loop do
+      trailing = newest.length - i - 1
+      tries =
+        if trailing.zero?
+          # Ironbank doesn't publish every patch (13.2.1 -> 13.2.3) so step over gaps
+          (1..3).map { |step| newest[0...i] + [newest[i] + step] }
+        else
+          # A new minor can skip .0 so also try .1
+          base = newest[0...i] + [newest[i] + 1]
+          [base + [0] * trailing, base + [0] * (trailing - 1) + [1]]
+        end
+      found = tries.find { |candidate| ironbank_tag_exists?(repo, candidate.join('.')) }
+      break unless found
+      newest = found
+    end
+  end
+  newest.join('.')
+end
+
+# Replace KEY=current with KEY=new_version. Only exact matches are replaced so
+# lines like GRAFANA_VERSION='' or OPENC3_TAG=${OPENC3_TAG} are left alone.
+def update_ironbank_version(path, key, current, new_version)
+  content = File.read(path)
+  new_content = content.gsub(/\b#{Regexp.escape(key)}=#{Regexp.escape(current)}(?![\w.])/, "#{key}=#{new_version}")
+  if content == new_content
+    puts "WARN: #{key}=#{current} not found in #{path.sub(Dir.pwd + '/', '')}"
+  else
+    File.write(path, new_content)
+    puts "  Updated #{key}=#{new_version} in #{path.sub(Dir.pwd + '/', '')}"
+  end
+end
+
+def ironbank_current_version(key, path)
+  File.read(path)[/\b#{Regexp.escape(key)}=(\d[\w.]*)/, 1]
+end
+
+# Check the Ironbank image `repo` for a newer tag than KEY in files[0] and
+# prompt to update KEY in every file. Returns the resulting version, or nil if
+# the check was skipped.
+def check_ironbank(name, repo, key, files, allow_major: false)
+  current = ironbank_current_version(key, files[0])
+  return puts("WARN: #{key} not found in #{files[0].sub(Dir.pwd + '/', '')}") unless current
+  puts "Checking #{name} against version: #{current}"
+  unless ironbank_tag_exists?(repo, current)
+    return puts("WARN: Could not find registry1.dso.mil/ironbank/#{repo}:#{current}, skipping #{name}")
+  end
+  newest = newest_ironbank_tag(repo, current, allow_major: allow_major)
+  if newest == current
+    puts "#{name} is up to date with #{current}"
+    return current
+  end
+  puts "NOTE: #{name} has a new version: #{newest}, Current Version: #{current}"
+  return current unless prompt_update?("Update #{name} from #{current} to #{newest}?", current, newest)
+  files.each { |path| update_ironbank_version(path, key, current, newest) }
+  newest
+end
+
 def check_container_version(client, containers, image_name)
   container = containers.select { |val| val[:name].include?(image_name) }[0]
   name, version = container[:base_image].split(':')
