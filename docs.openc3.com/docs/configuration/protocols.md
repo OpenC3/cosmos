@@ -732,6 +732,8 @@ Source code for [ccsds_uslp_protocol.rb](https://repos.openc3.com/OpenC3/openc3-
 
 The non-truncated Primary Header is supported along with TFDZ Construction Rules 000 (packets spanning frames, used with a fixed Frame Length) and 111 (no segmentation, used with variable length frames). Only Idle Data frames (VCID 63) are discarded on read but cannot be written. The truncated Primary Header, other TFDZ construction rules, and MAP multiplexing beyond a single MAP ID are not implemented.
 
+Protocol Control Command (Type-BC) frames carry COP-1 control commands. Select one per command by setting `PCC` to 1 in the command extra (with `BYPASS` 1), or programmatically with the keyword-only `pcc` parameter. Such a frame is written under Construction Rule 111 with UPID 1 (COP-1 Control Commands), so it requires variable length frames: `PCC` 1 with a Frame Length set raises an error. It is never secured by [SDLS](#ccsds-sdls-enterprise). On read, the USLP protocol discards every Protocol Control Command frame and logs a warning, because its contents are protocol control information for the FARM rather than user data (CCSDS 732.1-B-3 4.1.2.8.2.2). On a COP-1 receiver the [FARM-1](#ccsds-cop-1-protocols-enterprise) protocol handles these frames before they reach the deframer.
+
 On read, a frame whose VC Frame Count length disagrees with the configured VC Count Length is rejected, and a VC Frame Count discontinuity discards any partial packet held for that Virtual Channel. Without a sync pattern there is nothing to resynchronize on, so a frame that fails its CRC or header checks is discarded whole.
 
 ### CCSDS AOS Protocol (Enterprise)
@@ -823,24 +825,24 @@ FARM-1 validates each frame completely (FECF, Transfer Frame Version, SCID, VCID
 
 **FARM-1 Parameters**
 
-| Parameter               | Description                                                       | Required | Default    |
-| ----------------------- | ----------------------------------------------------------------- | -------- | ---------- |
-| SCID                    | Spacecraft Identifier                                             | Yes      |            |
-| Frame Length            | Fixed frame length in bytes (not including the sync pattern)      | Yes      |            |
-| Sync Pattern            | Hex string sync pattern                                           | No       | 0x1ACFFC1D |
-| Randomization           | Whether the transfer frame is randomized                          | No       | false      |
-| Error Control           | Whether the frame has a Frame Error Control Field                 | No       | false      |
-| VC Count Length         | Number of bytes in the USLP VC Frame Count                        | No       | 1          |
-| OCF                     | Must be true since FARM reports the CLCW in the OCF               | No       | true       |
-| VCID                    | Virtual Channel Identifier                                        | No       | 0          |
-| MAP ID                  | Multiplexer Access Point ID                                       | No       | 0          |
-| Source or Dest          | USLP Source or Destination Identifier flag                        | No       | 0          |
-| Positive Window         | FARM positive window width (W)                                    | No       | 64         |
-| Negative Window         | FARM negative window width                                        | No       | 64         |
-| Insert Zone Length      | Length of the USLP Insert Zone in bytes                           | No       | 0          |
-| Security Header Length  | Length of the SDLS Security Header in bytes                       | No       | 0          |
-| Security Trailer Length | Length of the SDLS Security Trailer in bytes                      | No       | 0          |
-| Allow Empty Data        | See [Packet Delineation Protocols](#packet-delineation-protocols) | No       | nil        |
+| Parameter               | Description                                                                                                                                                                           | Required | Default    |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------- |
+| SCID                    | Spacecraft Identifier                                                                                                                                                                 | Yes      |            |
+| Frame Length            | Fixed frame length in bytes (not including the sync pattern). Use nil for variable length frames sized by their Frame Length field, which is required to receive USLP Type-BC frames. | Yes      |            |
+| Sync Pattern            | Hex string sync pattern                                                                                                                                                               | No       | 0x1ACFFC1D |
+| Randomization           | Whether the transfer frame is randomized                                                                                                                                              | No       | false      |
+| Error Control           | Whether the frame has a Frame Error Control Field                                                                                                                                     | No       | false      |
+| VC Count Length         | Number of bytes in the USLP VC Frame Count                                                                                                                                            | No       | 1          |
+| OCF                     | Must be true since FARM reports the CLCW in the OCF                                                                                                                                   | No       | true       |
+| VCID                    | Virtual Channel Identifier                                                                                                                                                            | No       | 0          |
+| MAP ID                  | Multiplexer Access Point ID                                                                                                                                                           | No       | 0          |
+| Source or Dest          | USLP Source or Destination Identifier flag                                                                                                                                            | No       | 0          |
+| Positive Window         | FARM positive window width (W)                                                                                                                                                        | No       | 64         |
+| Negative Window         | FARM negative window width                                                                                                                                                            | No       | 64         |
+| Insert Zone Length      | Length of the USLP Insert Zone in bytes                                                                                                                                               | No       | 0          |
+| Security Header Length  | Length of the SDLS Security Header in bytes                                                                                                                                           | No       | 0          |
+| Security Trailer Length | Length of the SDLS Security Trailer in bytes                                                                                                                                          | No       | 0          |
+| Allow Empty Data        | See [Packet Delineation Protocols](#packet-delineation-protocols)                                                                                                                     | No       | nil        |
 
 :::warning[COP-1 Protocol Order]
 FOP must run after the framing protocol in both directions: it edits a built transfer frame on write, and needs the OCF from the deframer on read. Since read protocols run in declaration order and write protocols run in reverse order, declare the framing protocol as a separate READ line **before** the FOP protocol and a separate WRITE line **after** it. A physical layer protocol such as CLTU is declared on its own WRITE line ahead of the FOP line, which places it after FOP in the write chain.
@@ -913,7 +915,7 @@ cop1_terminate('CMD_INT')
 
 The available directives are `COP1_INITIATE_AD_WITHOUT_CLCW`, `COP1_INITIATE_AD_WITH_CLCW`, `COP1_INITIATE_AD_WITH_UNLOCK`, `COP1_INITIATE_AD_WITH_SET_VR`, `COP1_TERMINATE`, `COP1_RESUME`, `COP1_SET_VS`, `COP1_SET_SLIDING_WINDOW`, `COP1_SET_T1`, `COP1_SET_TRANSMISSION_LIMIT`, `COP1_SET_TIMEOUT_TYPE` and `COP1_STATUS`. Per-command AD vs BD (bypass) selection is done by setting `COP1_TYPE` to `AD` or `BD` in the command extra.
 
-The full FOP-1 state machine and FARM-1 (Open / Wait / Lockout, Unlock / Set V(R)) are implemented. COP-P (the Proximity-1 variant) is not implemented and the FARM protocol currently targets fixed length, sync delimited frames.
+The full FOP-1 state machine and FARM-1 (Open / Wait / Lockout, Unlock / Set V(R)) are implemented. COP-P (the Proximity-1 variant) is not implemented and the FARM protocol receives USLP frames only (there is no FARM for TC Transfer Frames).
 
 ### CCSDS SDLS (Enterprise)
 
@@ -1002,6 +1004,7 @@ Additional SDLS details:
 - **Authentication bit mask** - each framing protocol supplies a baseline mask of the header bits covered by the MAC, excluding the fields a sender fills in after the MAC is computed. TM excludes the Master and Virtual Channel Frame Counts, AOS excludes the Virtual Channel Frame Count, its cycle in the Signaling Field and the FHEC, while TC and USLP exclude only their spare bits (USLP's VC Frame Count stays authenticated). The SCID and VCID are always authenticated. Set the SA's `auth_mask` to replace the protocol baseline entirely.
 - **Encryption only** - AES-CTR provides confidentiality only. It has no MAC, so frame contents can be modified undetected, and it has no replay protection. Prefer AES-GCM unless an external authentication layer covers the frame.
 - **Type-C frames** - TC control command frames carry COP-1 directives and are never secured (CCSDS 232.0-B-4 6.3.4.1).
+- **USLP Protocol Control Command frames** - USLP frames with the Protocol Control Command flag set are never secured either (CCSDS 732.1-B-3 6.1). Since they carry no MAC, the USLP protocol discards them on read rather than delivering their contents, so a frame forged without the key cannot inject a packet.
 - **COP-1 + SDLS** - COP-1 stamps the frame sequence number after the MAC is computed, so those bytes must be excluded from the authenticated region. Build the SA's mask with `SecurityAssociation.uslp_auth_mask(vc_count_length: 1, length_iv: 12)` (USLP) or `SecurityAssociation.tc_auth_mask(length_sn: 4)` (TC), and pass the same engine to both the framing protocol and the COP-1 protocol.
 
 The SDLS Extended Procedures (CCSDS 355.1-B: key management / OTAR, SA management, monitoring & control) are not implemented. The Pad Length field is honored on receive but always sent as 0 since none of the supported algorithms require padding.
