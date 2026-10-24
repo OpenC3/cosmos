@@ -532,6 +532,30 @@ module OpenC3
       end
     end
 
+    describe "self.packet_names" do
+      before(:each) do
+        setup_system()
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        model.update_store(System.new(['INST'], File.join(SPEC_DIR, 'install', 'config', 'targets')))
+      end
+
+      it "raises for an unknown type" do
+        expect { TargetModel.packet_names("INST", type: :OTHER, scope: "DEFAULT") }.to raise_error(RuntimeError, "Unknown type OTHER for INST")
+      end
+
+      it "raises for a non-existent target" do
+        expect { TargetModel.packet_names("NOPE", type: :TLM, scope: "DEFAULT") }.to raise_error(RuntimeError, /Target 'NOPE' does not exist/)
+      end
+
+      it "returns the sorted packet names matching the packets" do
+        names = TargetModel.packet_names("INST", type: :TLM, scope: "DEFAULT")
+        expect(names).to eql(names.sort)
+        expect(names).to eql(TargetModel.packets("INST", type: :TLM, scope: "DEFAULT").map { |pkt| pkt['packet_name'] })
+        expect(TargetModel.packet_names("INST", type: :CMD, scope: "DEFAULT")).to include("COLLECT", "ABORT")
+      end
+    end
+
     describe "self.all_packet_name_descriptions" do
       before(:each) do
         setup_system()
