@@ -511,7 +511,10 @@ class LoggedStreamingThread < StreamingThread
 
     return end_time ? true : false if objects_by_table_and_mode.empty?
 
-    # Skip tables that were never created, e.g. packets that have never been received
+    # Skip tables that don't exist (yet). The TSDB microservice creates them at startup,
+    # which can take a while for targets with thousands of packets; dynamically added
+    # packets and tables dropped via Admin also have no table until the next write.
+    # Querying a missing table raises QuestDBError and kills this thread.
     objects_by_table_and_mode.select! { |(table_name, _stream_mode), group_info| tsdb_table_exists?(table_name, group_info[:db_shard]) }
     return past_end_time?(end_time) ? true : false if objects_by_table_and_mode.empty?
 
@@ -709,7 +712,10 @@ class LoggedStreamingThread < StreamingThread
       objects_by_table[table_name][:objects] << object
     end
 
-    # Skip tables that were never created, e.g. commands that have never been sent
+    # Skip tables that don't exist (yet). The TSDB microservice creates them at startup,
+    # which can take a while for targets with thousands of packets; dynamically added
+    # packets and tables dropped via Admin also have no table until the next write.
+    # Querying a missing table raises QuestDBError and kills this thread.
     objects_by_table.select! { |table_name, group_info| tsdb_table_exists?(table_name, group_info[:db_shard]) }
     return past_end_time?(end_time) ? true : false if objects_by_table.empty?
 
@@ -775,7 +781,10 @@ class LoggedStreamingThread < StreamingThread
       objects_by_table_and_mode[key][:objects] << object
     end
 
-    # Skip tables that were never created, e.g. packets that have never been received
+    # Skip tables that don't exist (yet). The TSDB microservice creates them at startup,
+    # which can take a while for targets with thousands of packets; dynamically added
+    # packets and tables dropped via Admin also have no table until the next write.
+    # Querying a missing table raises QuestDBError and kills this thread.
     objects_by_table_and_mode.select! { |(table_name, _stream_mode), group_info| tsdb_table_exists?(table_name, group_info[:db_shard]) }
     return past_end_time?(end_time) ? true : false if objects_by_table_and_mode.empty?
 
