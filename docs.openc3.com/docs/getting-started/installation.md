@@ -10,6 +10,10 @@ sidebar_custom_props:
 
 The following sections describe how to get OpenC3 COSMOS installed on various operating systems. This document should help you setup you host machine to allow you to have a running version of COSMOS in no time.
 
+:::info[Network and Cloud Deployments]
+To open COSMOS to other computers on your network, see [Network Configuration](/docs/guides/network-configuration). To serve COSMOS over HTTPS, see [SSL-TLS](/docs/configuration/ssl-tls). To deploy COSMOS Enterprise on Amazon Web Services, see the [AWS EC2](/docs/guides/aws-ec2) guide for a single server using Docker Compose and S3, or the [AWS EKS](/docs/guides/aws-eks) guide for Kubernetes with Helm.
+:::
+
 ## Installing OpenC3 COSMOS on Host Machines
 
 ### Installation Videos
@@ -114,7 +118,7 @@ Add the locally cloned project directory to your path so you can directly use th
 
 Run `openc3.bat run` (Windows), or `./openc3.sh run` (linux/Mac).
 
-Note, you can edit the .env file and change OPENC3_TAG to a specific release (e.g. 5.0.9) rather than 'latest'. For production deployments, you should also change the default passwords in the `.env` file. See [Security](security) for details.
+Note, you can set OPENC3_TAG to a specific release (e.g. 5.0.9) rather than 'latest'. For production deployments, you should also change the default passwords. Don't edit `.env` directly; put your changes in a `.env.local` file next to it so they survive COSMOS upgrades. See [Environment Variables](/docs/configuration/environment) and [Security](security#overriding-secrets-with-envlocal) for details.
 
 If you see an error indicating docker daemon is not running ensure Docker and Docker compose is installed and running. If it errors please try to run `docker --version` or `docker-compose --version` and try to run the start command again. If the error continues please include the version in your issue if you choose to create one.
 
@@ -137,6 +141,8 @@ Usage: ./openc3.sh [cli, cliroot, start, stop, cleanup, run, util]
 ### Connect
 
 Connect a web browser to http://localhost:2900. Set the password to whatever you want. This frontend password is separate from the backend service credentials in the `.env` file. See [Security](security) for details on how COSMOS credentials work.
+
+By default COSMOS only accepts connections from the host computer. To connect from other computers, see [Network Configuration](/docs/guides/network-configuration).
 
 ### Stop COSMOS
 
