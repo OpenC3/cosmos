@@ -5,7 +5,7 @@ sidebar_custom_props:
   myEmoji: ☸️
 ---
 
-Running OpenC3 COSMOS Enterprise on Amazon Web Services (AWS) uses EKS (Elastic Kubernetes Service), S3 storage, and other AWS services. OpenC3 provides a CloudFormation template that deploys the basic set of services COSMOS Enterprise requires. You can either integrate this template into your own deployment strategy or make sure you already have similar services configured before deploying the Helm charts. For a simpler single server deployment, see the [AWS EC2](/docs/guides/aws-ec2) guide.
+Running OpenC3 COSMOS Enterprise on Amazon Web Services (AWS) uses EKS (Elastic Kubernetes Service), S3 storage, and other AWS services. OpenC3 provides a CloudFormation template that deploys the basic set of services COSMOS Enterprise requires. You can either integrate this template into your own deployment strategy or make sure you already have similar services configured before deploying the Helm charts. For a simpler single server deployment, see the [AWS EC2](/docs/guides/aws-ec2) guide. For the equivalent Google Cloud deployment, see the [GCP GKE](/docs/guides/gcp-gke) guide.
 
 ## Installation
 

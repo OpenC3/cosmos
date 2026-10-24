@@ -11,7 +11,7 @@ sidebar_custom_props:
 The following sections describe how to get OpenC3 COSMOS installed on various operating systems. This document should help you setup you host machine to allow you to have a running version of COSMOS in no time.
 
 :::info[Network and Cloud Deployments]
-To open COSMOS to other computers on your network, see [Network Configuration](/docs/guides/network-configuration). To serve COSMOS over HTTPS, see [SSL-TLS](/docs/configuration/ssl-tls). To deploy COSMOS Enterprise on Amazon Web Services, see the [AWS EC2](/docs/guides/aws-ec2) guide for a single server using Docker Compose and S3, or the [AWS EKS](/docs/guides/aws-eks) guide for Kubernetes with Helm.
+To open COSMOS to other computers on your network, see [Network Configuration](/docs/guides/network-configuration). To serve COSMOS over HTTPS, see [SSL-TLS](/docs/configuration/ssl-tls). To deploy COSMOS Enterprise on Amazon Web Services, see the [AWS EC2](/docs/guides/aws-ec2) guide for a single server using Docker Compose and S3, or the [AWS EKS](/docs/guides/aws-eks) guide for Kubernetes with Helm. To deploy on Google Cloud, see the [GCP GKE](/docs/guides/gcp-gke) guide.
 :::
 
 ## Installing OpenC3 COSMOS on Host Machines

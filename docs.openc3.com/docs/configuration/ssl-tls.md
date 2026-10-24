@@ -149,7 +149,7 @@ In this pattern:
 - Set `traefik.tlsCerts: false`. The default in `openc3-helm/openc3/values.yaml` is `true`, so you must explicitly override it in your environment-specific values file.
 - Do **not** create the `openc3-traefik-cert` or `openc3-traefik-key` secrets — they are not used in this pattern, and `create_secrets.sh` does not create them.
 - For AWS: set `aws.enabled: true` and `aws.certArn` to your ACM certificate ARN. The `aws` subchart's ingress attaches the cert to the ALB. See the [AWS EKS](/docs/guides/aws-eks) guide for the full deployment.
-- For GCP: configure a `ManagedCertificate` following the GCP deployment guide.
+- For GCP: the `gcp` subchart creates a Google-managed certificate (`ManagedCertificate`) for `global.cosmosDomain`. See the [GCP GKE](/docs/guides/gcp-gke) guide for the full deployment.
 
 You still need to create the `openc3-cacert` secret (described below) so COSMOS containers can verify outbound TLS connections.
 

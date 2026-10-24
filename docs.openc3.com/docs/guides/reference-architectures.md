@@ -53,7 +53,7 @@ Most Suitible for:
 
 ### Enterprise Cloud Architecture (High Reliability / High Availability)
 
-COSMOS Enterprise deployed in the cloud (public or private) is most suitable for operations of satellite constellations or as a satellite operations center. In addition to the benefits listed under the Enterprise Single Server Architecture, Enterprise comes with cloud scripts to help create a reference deployment (EKS, GKE, etc). Enterprise also comes with helm charts to deploy COSMOS in Kubernetes. Running COSMOS in Kubernetes is what achieves high reliability and high availability. See the [AWS EKS](/docs/guides/aws-eks) guide for an example deployment.
+COSMOS Enterprise deployed in the cloud (public or private) is most suitable for operations of satellite constellations or as a satellite operations center. In addition to the benefits listed under the Enterprise Single Server Architecture, Enterprise comes with cloud scripts to help create a reference deployment (EKS, GKE, etc). Enterprise also comes with helm charts to deploy COSMOS in Kubernetes. Running COSMOS in Kubernetes is what achieves high reliability and high availability. See the [AWS EKS](/docs/guides/aws-eks) and [GCP GKE](/docs/guides/gcp-gke) guides for example deployments.
 
 Most Suitible for:
 
