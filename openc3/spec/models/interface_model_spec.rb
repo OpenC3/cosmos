@@ -749,6 +749,22 @@ module OpenC3
         expect(model.tlm_target_enabled["TARGET1"]).to be false
       end
 
+      %w(MAP_TARGET MAP_CMD_TARGET MAP_TLM_TARGET).each do |keyword|
+        it "raises a ConfigParser::Error for an invalid #{keyword} enabled state" do
+          model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+          parser = ConfigParser.new
+          tf = Tempfile.new
+          tf.puts "#{keyword} TARGET1 MAYBE"
+          tf.close
+
+          expect {
+            parser.parse_file(tf.path, false, true, true) do |kw, parameters|
+              model.handle_config(parser, kw, parameters)
+            end
+          }.to raise_error(ConfigParser::Error, /#{keyword} enabled state must be ENABLED or DISABLED/)
+        end
+      end
+
       it "handles MAP_TARGET UNKNOWN with states" do
         model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
         parser = ConfigParser.new

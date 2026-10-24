@@ -1,7 +1,7 @@
 ARG OPENC3_REGISTRY=docker.io
 ARG OPENC3_NAMESPACE=openc3inc
 ARG OPENC3_TAG=latest
-ARG NODE_VERSION=24.21.0
+ARG NODE_VERSION=24.22.1
 # npm is pinned ahead of whatever the node image happens to bundle. Node
 # 24.21.0 ships npm 11.19.0, whose own bundled dependencies still carry
 # fixed-upstream advisories (brace-expansion, ip-address, tar, undici) and are
@@ -13,8 +13,8 @@ ARG NODE_VERSION=24.21.0
 # raising either version, check the candidate's bundled deps, e.g.
 #   npm pack npm@<version> && tar xzf npm-<version>.tgz
 #   cat package/node_modules/{brace-expansion,ip-address,tar,undici}/package.json
-ARG NPM_VERSION=11.20.0
-ARG PNPM_VERSION=11.27.1
+ARG NPM_VERSION=12.2.1
+ARG PNPM_VERSION=11.28.6
 
 FROM node:${NODE_VERSION}-trixie-slim AS nodejs
 
