@@ -431,14 +431,14 @@ module OpenC3
       end
 
       it "builds the hidden list once for targets installed without it" do
-        Store.del(TargetModel.hidden_packets_key("INST", type: :CMD, scope: "DEFAULT"))
+        Store.del("DEFAULT__openc3cmd__INST__hidden")
         expect(TargetModel).to receive(:packets).once.and_call_original
         expect(@api.get_all_cmd_names("inst")).not_to include("DISABLED")
         expect(@api.get_all_cmd_names("inst")).not_to include("DISABLED")
       end
 
       it "stores an empty hidden list so it is not rebuilt" do
-        Store.del(TargetModel.hidden_packets_key("INST", type: :CMD, scope: "DEFAULT"))
+        Store.del("DEFAULT__openc3cmd__INST__hidden")
         expect(TargetModel).to receive(:packets).once.and_wrap_original do |method, *args, **kwargs|
           method.call(*args, **kwargs).each { |packet| packet.delete('hidden') }
         end

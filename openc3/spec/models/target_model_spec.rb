@@ -1231,6 +1231,8 @@ module OpenC3
         orig_keys << "DEFAULT__CONFIG"
         orig_keys << "DEFAULT__openc3cmd__UNKNOWN"
         orig_keys << "DEFAULT__openc3tlm__UNKNOWN"
+        orig_keys << "DEFAULT__openc3cmd__UNKNOWN__hidden"
+        orig_keys << "DEFAULT__openc3tlm__UNKNOWN__hidden"
         orig_keys << "DEFAULT__openc3tlm__INST__allitems"
         orig_keys << "DEFAULT__openc3tlm__SYSTEM__allitems"
         orig_keys << "DEFAULT__limits_sets"

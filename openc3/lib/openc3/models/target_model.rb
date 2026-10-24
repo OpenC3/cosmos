@@ -368,18 +368,15 @@ module OpenC3
       raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
 
       store = store_for_target(target_name, scope: scope)
-      key = hidden_packets_key(target_name, type: type, scope: scope)
+      # Stored as a JSON string rather than a set so an empty list is distinct from a missing one
+      # e.g. DEFAULT__openc3tlm__INST__hidden
+      key = "#{scope}__openc3#{type.to_s.downcase}__#{target_name}__hidden"
       names_json = store.get(key)
       return JSON.parse(names_json) if names_json
 
       names = packets(target_name, type: type, scope: scope).select { |packet| packet['hidden'] }.map { |packet| packet['packet_name'] }
       store.set(key, JSON.generate(names))
       names
-    end
-
-    # Stored as a JSON string rather than a set so an empty list is distinct from a missing one
-    def self.hidden_packets_key(target_name, type:, scope:)
-      "#{scope}__openc3#{type.to_s.downcase}__#{target_name}__hidden"
     end
 
     # @return [Array<Hash>] All packet hashes under the target_name
@@ -897,8 +894,8 @@ module OpenC3
       db_shard_store = Store.instance(db_shard: @db_shard)
       db_shard_store.del("#{@scope}__openc3tlm__#{@name}")
       db_shard_store.del("#{@scope}__openc3cmd__#{@name}")
-      db_shard_store.del(self.class.hidden_packets_key(@name, type: :TLM, scope: @scope))
-      db_shard_store.del(self.class.hidden_packets_key(@name, type: :CMD, scope: @scope))
+      db_shard_store.del("#{@scope}__openc3tlm__#{@name}__hidden")
+      db_shard_store.del("#{@scope}__openc3cmd__#{@name}__hidden")
       db_shard_store.del("#{@scope}__TELEMETRYCNTS__{#{@name}}")
       db_shard_store.del("#{@scope}__COMMANDCNTS__{#{@name}}")
 
@@ -1064,7 +1061,8 @@ module OpenC3
     # parsing every packet definition. When only some packets are updated
     # (clear_old false) merge them into the existing list.
     def update_store_hidden_packet_names(db_shard_store, target_name, packets, type:, clear_old:)
-      key = TargetModel.hidden_packets_key(target_name, type: type, scope: @scope)
+      # e.g. DEFAULT__openc3tlm__INST__hidden
+      key = "#{@scope}__openc3#{type.to_s.downcase}__#{target_name}__hidden"
       names = []
       unless clear_old
         names_json = db_shard_store.get(key)

@@ -140,7 +140,9 @@ class TargetModel(Model):
             raise RuntimeError(f"Unknown type {type} for {target_name}")
 
         store = cls._store_for_target(target_name, scope)
-        key = cls.hidden_packets_key(target_name, type=type, scope=scope)
+        # Stored as a JSON string rather than a set so an empty list is distinct from a missing one
+        # e.g. DEFAULT__openc3tlm__INST__hidden
+        key = f"{scope}__openc3{type.lower()}__{target_name}__hidden"
         names_json = store.get(key)
         if names_json:
             return json.loads(names_json)
@@ -149,11 +151,6 @@ class TargetModel(Model):
         names = sorted(packet["packet_name"] for packet in packets if packet.get("hidden"))
         store.set(key, json.dumps(names))
         return names
-
-    @staticmethod
-    def hidden_packets_key(target_name: str, type: str, scope: str) -> str:
-        """Stored as a JSON string rather than a set so an empty list is distinct from a missing one"""
-        return f"{scope}__openc3{type.lower()}__{target_name}__hidden"
 
     @classmethod
     def set_packet(
@@ -612,7 +609,8 @@ class TargetModel(Model):
         """Store the names of the hidden packets so listing packet names doesn't require
         parsing every packet definition. When only some packets are updated
         (clear_old False) merge them into the existing list."""
-        key = TargetModel.hidden_packets_key(target_name, type=type, scope=self.scope)
+        # e.g. DEFAULT__openc3tlm__INST__hidden
+        key = f"{self.scope}__openc3{type.lower()}__{target_name}__hidden"
         names = []
         if not clear_old:
             names_json = db_shard_store.get(key)
