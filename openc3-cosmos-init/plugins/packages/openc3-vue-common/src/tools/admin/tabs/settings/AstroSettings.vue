@@ -30,12 +30,37 @@
         color="primary"
         :disabled="settingsLoading"
       />
+      <v-switch
+        v-model="showItemClock"
+        label="Show Telemetry Item Clock"
+        color="primary"
+        :disabled="settingsLoading"
+        data-test="show-item-clock"
+      />
+      <div v-if="showItemClock">
+        <div class="text-body-2">
+          Displays a second clock driven by a telemetry item such as
+          PACKET_TIMEFORMATTED or PACKET_TIMESECONDS. Formatted times are
+          treated as UTC and numeric values as seconds since the Unix epoch.
+        </div>
+        <!-- Wait for the setting to load so the initial names are set
+        before the chooser defaults to the first target -->
+        <target-packet-item-chooser
+          v-if="!settingsLoading"
+          choose-item
+          :initial-target-name="itemClock.targetName"
+          :initial-packet-name="itemClock.packetName"
+          :initial-item-name="itemClock.itemName"
+          @on-set="itemSelected"
+        />
+      </div>
     </v-card-text>
     <v-card-actions>
       <v-btn
         color="success"
         variant="text"
         data-test="save-astro-settings"
+        :disabled="showItemClock && !itemClockValid"
         @click="save"
       >
         Save
@@ -45,32 +70,69 @@
 </template>
 
 <script>
+import { TargetPacketItemChooser } from '@/components'
 import Settings from './settings.js'
 
 const settingName = 'astro'
 export default {
+  components: {
+    TargetPacketItemChooser,
+  },
   mixins: [Settings],
   data() {
     return {
       hideClock: false,
+      showItemClock: false,
+      itemClock: {
+        targetName: null,
+        packetName: null,
+        itemName: null,
+      },
     }
+  },
+  computed: {
+    itemClockValid: function () {
+      return (
+        !!this.itemClock.targetName &&
+        !!this.itemClock.packetName &&
+        !!this.itemClock.itemName
+      )
+    },
   },
   created() {
     this.loadSetting(settingName)
   },
   methods: {
+    itemSelected(event) {
+      this.itemClock = {
+        targetName: event.targetName,
+        packetName: event.packetName,
+        itemName: event.itemName,
+      }
+    },
     save() {
+      if (this.showItemClock && !this.itemClockValid) {
+        return
+      }
       this.saveSetting(
         settingName,
         // Hashify the setting to allow for future settings
         // Update AppNav when adding new settings
-        JSON.stringify({ hideClock: this.hideClock }),
+        JSON.stringify({
+          hideClock: this.hideClock,
+          showItemClock: this.showItemClock,
+          itemClock: this.itemClock,
+        }),
       )
     },
     parseSetting: function (response) {
       if (response) {
         let parsed = JSON.parse(response)
         this.hideClock = parsed.hideClock
+        this.showItemClock = !!parsed.showItemClock
+        if (parsed.itemClock) {
+          this.itemClock = parsed.itemClock
+        }
       }
     },
   },
