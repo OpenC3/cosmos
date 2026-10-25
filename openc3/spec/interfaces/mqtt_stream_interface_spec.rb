@@ -70,6 +70,7 @@ module OpenC3
         i.set_option('ACK_TIMEOUT', ['10.0'])
         i.connect()
         expect(i.connected?).to be true
+        i.stop_read_queue_thread
       end
 
       it "sets ssl even without cert_file, key_file, or ca_file" do
@@ -81,6 +82,7 @@ module OpenC3
         i = MqttStreamInterface.new('localhost', '1883', true, 'write_topic', 'read_topic')
         i.connect()
         expect(i.connected?).to be true
+        i.stop_read_queue_thread
       end
     end
 
@@ -150,6 +152,7 @@ module OpenC3
         pkt.restore_defaults()
         expect(double).to receive(:publish).with('write_topic', pkt.buffer)
         i.write(pkt)
+        i.stop_read_queue_thread
       end
     end
 

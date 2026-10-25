@@ -63,12 +63,12 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_VERSITYGW_VERSION=v1.9.0
+  OPENC3_VERSITYGW_VERSION=v1.10.0
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_VERSITYGW_VERSION=v1.9.0
+  OPENC3_VERSITYGW_VERSION=v1.10.0
 fi
 
 # Setup cacert.pem
@@ -289,6 +289,7 @@ fi
 cd ../openc3-cosmos-cmd-tlm-api
 retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -301,6 +302,7 @@ if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -313,6 +315,7 @@ fi
 cd ../openc3-cosmos-script-runner-api
 retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -325,6 +328,7 @@ if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
 retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -361,9 +365,9 @@ fi
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
-  OPENC3_TRAEFIK_RELEASE=v3.7.14
+  OPENC3_TRAEFIK_RELEASE=v3.7.16
 else
-  OPENC3_TRAEFIK_RELEASE=v3.7.14
+  OPENC3_TRAEFIK_RELEASE=v3.7.16
 fi
 cd ../openc3-traefik
 retry_build \

@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import time
 import unittest
 from unittest.mock import ANY, Mock, patch
 
@@ -77,6 +78,19 @@ class TestMqttStreamInterface(unittest.TestCase):
         self.assertFalse(i.connected())
         i.disconnect()  # Safe to call twice
         mock_client_instance.disconnect.assert_called()
+
+    @patch("openc3.streams.mqtt_stream.mqtt.Client")
+    def test_disconnect_wakes_up_the_read_thread(self, _mock_client):
+        i = MqttStreamInterface("localhost", "1883", False, "write_topic", "read_topic")
+        i.connect()
+        thread = i.read_queue_thread
+        self.assertTrue(thread.is_alive())
+        start = time.time()
+        i.disconnect()
+        # The read thread exits right away rather than waiting out the join
+        # timeout and being left blocked on the message queue
+        self.assertFalse(thread.is_alive())
+        self.assertLess(time.time() - start, 1)
 
     @patch("openc3.streams.mqtt_stream.mqtt.Client")
     def test_reads_a_message_from_the_mqtt_client(self, mock_client):

@@ -32,7 +32,7 @@ class CommandTopic(Topic):
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
-            "stored": str(packet.stored),
+            "stored": str(packet.stored).lower(),  # Match ruby behavior of "true"/"false"
             "buffer": bytes(packet.buffer_no_copy()),
         }
         if packet.extra:

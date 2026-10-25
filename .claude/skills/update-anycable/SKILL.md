@@ -1,13 +1,13 @@
 ---
 name: update-anycable
-description: Rebuild the bundled anycable-go binaries (openc3-ruby/anycable-go-linux-amd64 and -arm64). Syncs a local anycable checkout with upstream, bumps the Go toolchain and module dependencies when a newer Go patch release is out, builds with openc3-ruby/build-anycable.sh, and opens a COSMOS PR with the new binaries. Optionally opens a dependency-bump PR against anycable/anycable from the user's fork. Use when asked to update or rebuild anycable or to pick up Go security releases.
+description: Rebuild the bundled anycable-go binaries (openc3-anycable/anycable-go-linux-amd64 and -arm64). Syncs a local anycable checkout with upstream, bumps the Go toolchain and module dependencies when a newer Go patch release is out, builds with openc3-anycable/build-anycable.sh, and opens a COSMOS PR with the new binaries. Optionally opens a dependency-bump PR against anycable/anycable from the user's fork. Use when asked to update or rebuild anycable or to pick up Go security releases.
 argument-hint: "[go-minor, e.g. 1.26] [--force-build]"
 ---
 
 # Update the anycable-go binaries
 
-COSMOS ships prebuilt `anycable-go` binaries in `openc3-ruby/` (installed by
-`openc3-ruby/anycable_install.sh` in the Dockerfiles). We build them ourselves
+COSMOS ships prebuilt `anycable-go` binaries in `openc3-anycable/` (copied into
+the API images by their Dockerfiles). We build them ourselves
 so they pick up Go security releases faster than upstream anycable does.
 
 ## Inputs
@@ -144,10 +144,10 @@ git -C "$ANYCABLE_DIR" commit -m "Bump dependencies including toolchain go$NEW" 
 From the cosmos repo root:
 
 ```bash
-openc3-ruby/build-anycable.sh "$ANYCABLE_DIR"
+openc3-anycable/build-anycable.sh "$ANYCABLE_DIR"
 ```
 
-This builds linux/amd64 and linux/arm64 straight into `openc3-ruby/` and prints
+This builds linux/amd64 and linux/arm64 straight into `openc3-anycable/` and prints
 `go version` for both, which must show `go$NEW`. Report the new sizes.
 
 ### 9. Open the upstream PR (only if `UPSTREAM_PR` = yes)
@@ -181,11 +181,11 @@ Work in the cosmos repo root:
 git status --short           # note any unrelated changes; commit only the two binaries
 git fetch origin
 git switch -c anycable-go$NEW origin/main
-git add openc3-ruby/anycable-go-linux-amd64 openc3-ruby/anycable-go-linux-arm64
-git commit -m "build(openc3-ruby): update anycable-go binaries to go$NEW"   # plus attribution footer
+git add openc3-anycable/anycable-go-linux-amd64 openc3-anycable/anycable-go-linux-arm64
+git commit -m "build(openc3-anycable): update anycable-go binaries to go$NEW"   # plus attribution footer
 git push -u origin anycable-go$NEW
 gh pr create --base main --head anycable-go$NEW \
-  --title "build(openc3-ruby): update anycable-go binaries to go$NEW" \
+  --title "build(openc3-anycable): update anycable-go binaries to go$NEW" \
   --body "Rebuilds the anycable-go linux/amd64 and linux/arm64 binaries with toolchain go$NEW and bumped Go dependencies, picking up the security fixes in https://go.dev/doc/devel/release#go1.26.minor.
 
 Upstream dependency PR: <URL from step 9, or 'none'>"   # plus attribution footer

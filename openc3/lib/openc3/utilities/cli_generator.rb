@@ -484,18 +484,33 @@ module OpenC3
         end
         gemspec_filename = Dir['*.gemspec'][0]
         gemspec = File.read(gemspec_filename)
-        gemspec.gsub!(/s\.files = Dir\.glob.*\n/) do |match|
-          <<RUBY
-# Prefer pyproject.toml over requirements.txt
-  python_dep_file = if File.exist?('pyproject.toml')
-    'pyproject.toml'
-  else
-    'requirements.txt'
-  end
-  s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt) + [python_dep_file]
-RUBY
+        # Older COSMOS versions wrote a singular python_dep_file block that never
+        # ships uv.lock, and a second python target nested another copy of it.
+        # Strip every copy plus its use on the s.files line so the rewrite below
+        # replaces it. A hand-edited block that no longer matches leaves some
+        # python_dep_file reference behind, so the gemspec is kept as it was.
+        legacy_block = /^ *# Prefer pyproject\.toml over requirements\.txt\n *python_dep_file = if File\.exist\?\('pyproject\.toml'\)\n *'pyproject\.toml'\n *else\n *'requirements\.txt'\n *end\n/
+        upgraded = gemspec.gsub(legacy_block, '').sub(' + [python_dep_file]', '')
+        gemspec = upgraded unless upgraded.include?('python_dep_file')
+        # Skip when a previous python target already rewrote s.files: the line it
+        # wrote matches the pattern below too, so rewriting again would nest a
+        # second dependency block. python_dep_file also covers a legacy block
+        # the upgrade above left alone. Also skip a gemspec from the
+        # python plugin template, which already ships pyproject.toml and uv.lock.
+        unless gemspec.include?('python_dep_file') || gemspec.include?('pyproject.toml')
+          gemspec.gsub!(/^ *s\.files = Dir\.glob.*\n/) do
+            <<~RUBY.gsub(/^/, '  ')
+              # Prefer pyproject.toml (plus uv.lock if committed) over requirements.txt
+              python_dep_files = if File.exist?('pyproject.toml')
+                ['pyproject.toml'] + Dir.glob('uv.lock')
+              else
+                ['requirements.txt']
+              end
+              s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt) + python_dep_files
+            RUBY
+          end
+          File.write(gemspec_filename, gemspec)
         end
-        File.write(gemspec_filename, gemspec)
 
         target_txt_filename = "targets/#{target_name}/target.txt"
         target_txt = File.read(target_txt_filename)
