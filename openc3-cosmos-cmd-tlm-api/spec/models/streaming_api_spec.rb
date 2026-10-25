@@ -55,6 +55,10 @@ RSpec.describe StreamingApi, type: :model do
       end
     end
 
+    # Treat every TSDB table as existing unless a test says otherwise. Returning nil
+    # also keeps the table listing from consuming the mocked PG exec results.
+    allow(OpenC3::QuestDBClient).to receive(:table_names).and_return(nil)
+
     # Ensure the BucketFileCache is clear so we don't leak the s3 mock
     BucketFileCache.class_variable_set(:@@instance, nil)
 
@@ -139,26 +143,79 @@ RSpec.describe StreamingApi, type: :model do
     expect(@api.instance_variable_get('@logged_threads')).to be_empty
   end
 
+  describe '#kill' do
+    class FakeStreamingThread < StreamingThread
+      def initialize(streaming_api, stop_delay)
+        super(streaming_api, nil)
+        @stop_delay = stop_delay
+      end
+
+      def thread_body
+        sleep 0.01
+        sleep @stop_delay if @cancel_thread
+      end
+    end
+
+    def start_fake_thread(stop_delay)
+      thread = FakeStreamingThread.new(@api, stop_delay)
+      thread.start
+      thread
+    end
+
+    it 'returns as soon as the threads have exited' do
+      threads = [start_fake_thread(0), start_fake_thread(0)]
+      @api.instance_variable_set('@realtime_thread', threads[0])
+      @api.instance_variable_set('@logged_threads', [threads[1]])
+      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @api.kill
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+      expect(elapsed).to be < 0.5
+      threads.each { |thread| expect(thread.instance_variable_get('@thread').alive?).to be false }
+      expect(@api.instance_variable_get('@realtime_thread')).to be_nil
+      expect(@api.instance_variable_get('@logged_threads')).to be_empty
+    end
+
+    it 'waits on the actual threads, not just the stop request' do
+      thread = start_fake_thread(0.3)
+      sleep 0.05 # Let the thread enter thread_body
+      @api.instance_variable_set('@logged_threads', [thread])
+      @api.kill
+      expect(thread.instance_variable_get('@thread').alive?).to be false
+    end
+
+    it 'shares a single deadline across all threads' do
+      threads = [start_fake_thread(5), start_fake_thread(5)]
+      sleep 0.05 # Let the threads enter thread_body
+      @api.instance_variable_set('@logged_threads', threads)
+      expect(OpenC3::Logger).to receive(:warn).twice
+      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      @api.kill
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+      expect(elapsed).to be_within(0.3).of(StreamingApi::KILL_TIMEOUT_SECONDS)
+      threads.each { |thread| thread.instance_variable_get('@thread').kill }
+    end
+  end
+
   describe '#expand_all_packets' do
     before(:each) do
       allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST', 'SYSTEM', 'EMPTY', 'UNKNOWN'])
-      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'COLLECT' },
-        { 'packet_name' => 'ABORT' },
-        { 'packet_name' => 'CLEAR' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
+        'COLLECT',
+        'ABORT',
+        'CLEAR',
       ])
-      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'HEALTH_STATUS' },
-        { 'packet_name' => 'PARAMS' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
+        'HEALTH_STATUS',
+        'PARAMS',
       ])
-      allow(OpenC3::TargetModel).to receive(:packets).with('SYSTEM', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'META' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('SYSTEM', type: :CMD, scope: 'DEFAULT').and_return([
+        'META',
       ])
-      allow(OpenC3::TargetModel).to receive(:packets).with('SYSTEM', type: :TLM, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'META' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('SYSTEM', type: :TLM, scope: 'DEFAULT').and_return([
+        'META',
       ])
-      allow(OpenC3::TargetModel).to receive(:packets).with('EMPTY', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
-      allow(OpenC3::TargetModel).to receive(:packets).with('EMPTY', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('EMPTY', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('EMPTY', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
     end
 
     it 'expands COSMOS_ALL for a specific target in DECOM mode' do
@@ -209,7 +266,7 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'handles COSMOS_ALL with nonexistent target gracefully' do
-      allow(OpenC3::TargetModel).to receive(:packets).with('BOGUS', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('BOGUS', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
       data = { 'packets' => ['DECOM__CMD__BOGUS__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([])
@@ -222,8 +279,8 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'skips targets without the requested packet type for COSMOS_ALL targets' do
-      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'UNKNOWN' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        'UNKNOWN',
       ])
       data = { 'packets' => ['RAW__CMD__COSMOS_ALL'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
@@ -235,8 +292,8 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'skips UNKNOWN target for DECOM' do
-      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'UNKNOWN' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        'UNKNOWN',
       ])
       # COSMOS_ALL targets: UNKNOWN target should be excluded entirely
       data = { 'packets' => ['DECOM__CMD__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
@@ -246,8 +303,8 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'keeps UNKNOWN target for RAW' do
-      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'UNKNOWN' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        'UNKNOWN',
       ])
       # COSMOS_ALL targets: UNKNOWN target should be included for RAW
       data = { 'packets' => ['RAW__CMD__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
@@ -259,10 +316,10 @@ RSpec.describe StreamingApi, type: :model do
 
   describe '#expand_item_globs' do
     before(:each) do
-      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'HEALTH_STATUS' },
-        { 'packet_name' => 'PARAMS' },
-        { 'packet_name' => 'IMAGE' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
+        'HEALTH_STATUS',
+        'PARAMS',
+        'IMAGE',
       ])
       allow(OpenC3::TargetModel).to receive(:packet).with('INST', 'HEALTH_STATUS', type: :TLM, scope: 'DEFAULT').and_return({
         'items' => [
@@ -390,7 +447,7 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'handles nonexistent target gracefully for packet glob' do
-      allow(OpenC3::TargetModel).to receive(:packets).with('BOGUS', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('BOGUS', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
       data = { 'items' => [['DECOM__TLM__BOGUS__*__TEMP1__CONVERTED', '0']], 'scope' => 'DEFAULT' }
       @api.send(:expand_item_globs, data, scope: 'DEFAULT')
       expect(data['items']).to eq([])
@@ -502,9 +559,9 @@ RSpec.describe StreamingApi, type: :model do
     it 'skips unauthorized packets when using COSMOS_ALL' do
       $openc3_authorize = true
       allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST'])
-      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'COLLECT' },
-        { 'packet_name' => 'ABORT' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
+        'COLLECT',
+        'ABORT',
       ])
       @send_count = 0
       data = { 'packets' => ['DECOM__CMD__INST__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT', 'token' => 'invalid' }
@@ -1044,6 +1101,62 @@ RSpec.describe StreamingApi, type: :model do
         # Count total packets received (excluding empty completion message)
         total_packets = @messages[0..-2].sum { |batch| batch.length }
         expect(total_packets).to eq(5)
+      end
+    end
+
+    context 'for packets in decom mode with missing TSDB tables' do
+      let(:data) { { 'packets' => ['DECOM__TLM__INST__HEALTH_STATUS__CONVERTED', 'DECOM__TLM__INST__PARAMS__CONVERTED'], 'scope' => 'DEFAULT' } }
+
+      before(:each) do
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+      end
+
+      it 'only queries tables that exist' do
+        mock_conn = instance_double(PG::Connection)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+        allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+        # Only PARAMS has ever been received so HEALTH_STATUS has no table
+        allow(OpenC3::QuestDBClient).to receive(:table_names).and_return(Set['DEFAULT__TLM__INST__PARAMS'])
+
+        base_time = @file_start_time / 1_000_000_000
+        pg_data = [
+          [["PACKET_TIMESECONDS", Time.at(base_time)], ["VALUE1", 100], ["VALUE1__C", 10.5], ["__pkt_time_ns", @file_start_time], ["__rx_time_ns", @file_start_time]]
+        ]
+        pg_data.define_singleton_method(:ntuples) { 1 }
+
+        queries = []
+        allow(mock_conn).to receive(:exec) do |query|
+          queries << query
+          queries.length == 1 ? pg_data : nil
+        end
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_start_time + 1_000_000_000
+        @api.add(data)
+        sleep 1.5 # Allow the threads to run
+
+        expect(queries).to_not be_empty
+        expect(queries.none? { |query| query.include?('HEALTH_STATUS') }).to be true
+        expect(@messages.length).to eq(2)
+        expect(@messages[0][0]['__packet']).to eq('DECOM__TLM__INST__PARAMS__CONVERTED')
+        expect(@messages[-1]).to eq([])
+      end
+
+      it 'completes without querying when no tables exist' do
+        mock_conn = instance_double(PG::Connection)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:table_names).and_return(Set.new)
+        expect(mock_conn).to_not receive(:exec)
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_start_time + 1_000_000_000
+        @api.add(data)
+        sleep 1.5 # Allow the threads to run
+
+        expect(@messages).to eq([[]])
       end
     end
 
