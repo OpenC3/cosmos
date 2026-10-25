@@ -25,8 +25,43 @@ mkdir -p ${GEMS}
 UV_CACHE_PLUGINS=/openc3/uv_cache_plugins
 mkdir -p ${UV_CACHE_PLUGINS}
 
+# Trust a plain-HTTP or self-signed PYPI_URL mirror for the relock and cache
+# warm below: uv gets the bare host:port, credentials and path stripped.
+if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then
+  PYPI_HOST="${PYPI_URL#*://}"
+  PYPI_HOST="${PYPI_HOST%%/*}"
+  export UV_INSECURE_HOST="${PYPI_HOST##*@}"
+fi
+
 echo "<<< packageBuild $1"
 cd ${FOLDER_NAME}
+
+# Point this plugin's uv.lock at the PYPI_URL mirror before anything else runs.
+# It has to happen before `rake build` so the lockfile packaged into the gem
+# references the mirror too - a gem pinned to pythonhosted.org URLs would miss
+# the cache warmed below and send the runtime plugin install to the public PyPI,
+# which is exactly what fails in an air-gapped cluster. No-op when PYPI_URL is
+# the default public pypi.org. The trade-off: the shipped gem's lockfile names
+# the build-time mirror. The frozen sync never reads the pypi_url setting, so it
+# still installs from the cache warmed below; only a package missing from that
+# cache, in a cluster that cannot reach the build-time mirror, sends uvinstall
+# to its `uv pip install` fallback against pypi_url. --no-build matches the sync below: no third-party
+# sdist gets built during the image build. A base image that predates the
+# helper fails the build when PYPI_URL is a mirror, since the gem would ship a
+# lockfile pinned to pythonhosted.org, and skips the relock otherwise. The
+# relock uses a throwaway cache, not UV_CACHE_PLUGINS, so whatever it downloads
+# while resolving the dev groups stays out of the image.
+if command -v uv-mirror-relock >/dev/null; then
+  RELOCK_CACHE="$(mktemp -d)"
+  UV_CACHE_DIR="${RELOCK_CACHE}" uv-mirror-relock --no-build
+  rm -rf "${RELOCK_CACHE}"
+else
+  case "${PYPI_URL%/}" in
+    ""|https://pypi.org) echo "--- relock skipped: base image has no uv-mirror-relock, PYPI_URL is the public index" ;;
+    *) echo "ERROR: base image has no uv-mirror-relock but PYPI_URL host ${PYPI_URL##*@} is a mirror; rebuild openc3-ruby" >&2; exit 1 ;;
+  esac
+fi
+
 echo "--- packageBuild $1 pnpm run build"
 pnpm run build
 echo "=== packageBuild $1 pnpm run build complete"

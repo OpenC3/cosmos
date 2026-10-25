@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1963
 
 import contextlib
+import errno
 import json
 import os
 import sys
@@ -23,7 +24,8 @@ import uuid
 from datetime import datetime, timezone
 
 from openc3.config.config_parser import ConfigParser
-from openc3.interfaces.interface import WriteRejectError
+from openc3.environment import OPENC3_SCOPE
+from openc3.interfaces.interface import Interface, WriteRejectError
 from openc3.microservices.interface_decom_common import handle_inject_tlm
 from openc3.microservices.microservice import Microservice
 from openc3.models.cvt_model import CvtModel
@@ -50,11 +52,19 @@ from openc3.utilities.time import from_nsec_from_epoch
 
 with contextlib.suppress(ModuleNotFoundError):
     # Should never actually be used in COSMOS Core
-    from openc3enterprise.models.critical_cmd_model import CriticalCmdModel
+    from openc3enterprise.models.critical_cmd_model import CriticalCmdModel  # ty: ignore[unresolved-import]
 
 
 class InterfaceCmdHandlerThread:
-    def __init__(self, interface, tlm, logger=None, metric=None, db_shard=0, scope=None):
+    def __init__(
+        self,
+        interface: Interface,
+        tlm,
+        logger: Logger | None = None,
+        metric=None,
+        db_shard=0,
+        scope: str = OPENC3_SCOPE,
+    ):
         self.interface = interface
         self.tlm = tlm
         self.scope = scope
@@ -64,9 +74,7 @@ class InterfaceCmdHandlerThread:
             self.critical_commanding = scope_model.critical_commanding
         else:
             self.critical_commanding = "OFF"
-        self.logger = logger
-        if not self.logger:
-            self.logger = Logger()
+        self.logger: Logger = logger or Logger()
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -108,9 +116,6 @@ class InterfaceCmdHandlerThread:
         # OpenC3.with_context(msg_hash) do
         release_critical = False
         critical_model = None
-
-        if msg_hash.get(b"shutdown"):
-            return "Shutdown"
 
         msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
         delta = time.time() - msgid_seconds_from_epoch
@@ -314,7 +319,11 @@ class InterfaceCmdHandlerThread:
                 else:
                     raise RuntimeError(f"Invalid command received:\n{msg_hash}")
 
-                if not self.interface.cmd_target_enabled.get(command.target_name, False):
+                # An unidentified buffer is sent as UNKNOWN on behalf of the target it was sent to
+                enabled_target_name = command.target_name
+                if enabled_target_name == "UNKNOWN" and target_name:
+                    enabled_target_name = target_name
+                if not self.interface.cmd_target_enabled.get(enabled_target_name, False):
                     return None  # Don't ack disabled targets
 
                 orig_command = System.commands.packet(command.target_name, command.packet_name)
@@ -438,14 +447,20 @@ class InterfaceCmdHandlerThread:
 
 
 class RouterTlmHandlerThread:
-    def __init__(self, router, tlm, logger=None, metric=None, db_shard=0, scope=None):
+    def __init__(
+        self,
+        router: Interface,
+        tlm,
+        logger: Logger | type[Logger] | None = None,
+        metric=None,
+        db_shard=0,
+        scope: str = OPENC3_SCOPE,
+    ):
         self.router = router
         self.tlm = tlm
         self.scope = scope
         self.db_shard = int(db_shard or 0)
-        self.logger = logger
-        if not self.logger:
-            self.logger = Logger
+        self.logger: Logger | type[Logger] = logger or Logger
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -641,10 +656,16 @@ class RouterTlmHandlerThread:
 class InterfaceMicroservice(Microservice):
     UNKNOWN_BYTES_TO_PRINT = 16
     DISCONNECT_WAIT_TIME = 1
+    DEFAULT_UPDATE_INTERVAL = 0.1  # seconds
+
+    # Interfaces never use descriptions so don't keep them in memory
+    def load_descriptions(self):
+        return False
 
     def __init__(self, name):
         self.mutex = threading.Lock()
-        self.interface = None
+        # Set to the built interface / router below before anything else uses it
+        self.interface: Interface = None  # ty: ignore[invalid-assignment]
         self.interface_or_router = None
         self.interface_thread_sleeper = Sleeper()
         self.cancel_thread = False
@@ -680,16 +701,20 @@ class InterfaceMicroservice(Microservice):
         else:
             RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
 
-        self.queued = False
+        # Queue Redis writes by default and flush them every update_interval seconds
+        update_interval = InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL
         for option_name, option_values in self.interface.options.items():
             # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
             if option_name.upper() == "UPDATE_INTERVAL" or option_name.upper() == "OPTIMIZE_THROUGHPUT":
-                self.queued = True
                 update_interval = float(option_values[0])
-                EphemeralStoreQueued.instance().set_update_interval(update_interval)
-                StoreQueued.instance().set_update_interval(update_interval)
             if option_name.upper() == "SYNC_PACKET_COUNT_DELAY_SECONDS":
                 TargetModel.sync_packet_count_delay_seconds = float(option_values[0])
+        # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
+        self.queued = update_interval > 0.0
+        if self.queued:
+            # Apply to every db_shard since writes are routed to the shard of each target
+            EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
+            StoreQueued.set_update_interval_all_shards(update_interval)
 
         if self.interface_or_router == "INTERFACE":
             self.handler_thread = InterfaceCmdHandlerThread(
@@ -723,7 +748,14 @@ class InterfaceMicroservice(Microservice):
             self.logger.info(f"{self.interface.name}: Connect ignored, already connected")
             return self.interface
 
+        # A user requested (re)connect starts fresh so backtraces are logged again
+        self.clear_connection_messages()
         return self.attempt_connection(*params)
+
+    # Forget which errors have already had their backtrace logged
+    def clear_connection_messages(self):
+        self.connection_failed_messages.clear()
+        self.connection_lost_messages.clear()
 
     # Sets the state to 'ATTEMPTING', first rebuilding the interface/router if
     # parameters are given, so the run method performs the actual connection.
@@ -754,7 +786,7 @@ class InterfaceMicroservice(Microservice):
                 else:
                     router_model = RouterModel.get(name=self.interface.name, scope=self.scope)
                     # config_params[0] is the filename so set the rest
-                    interface_model["config_params"][1:] = list(params)
+                    router_model["config_params"][1:] = list(params)
                     RouterModel.set(router_model, scope=self.scope)
 
             self.interface.state = "ATTEMPTING"
@@ -763,8 +795,8 @@ class InterfaceMicroservice(Microservice):
             else:
                 RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
             return self.interface  # Return the interface/router since we may have recreated it
-        # Need to rescue Exception so we cover LoadError
-        except RuntimeError:
+        # Catch Exception so any rebuild failure (bad parameters, import errors) keeps the original interface
+        except Exception:
             self.logger.error(
                 f"Attempting connection #{self.interface.connection_string} failed due to {traceback.format_exc()}"
             )
@@ -816,6 +848,7 @@ class InterfaceMicroservice(Microservice):
                                             value=self.count,
                                             type="counter",
                                         )
+                                    self.set_read_queue_bytes_metric()
                                 else:
                                     self.logger.info(
                                         f"{self.interface.name}: Internal disconnect requested (returned None)"
@@ -843,6 +876,27 @@ class InterfaceMicroservice(Microservice):
             else:
                 RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         self.logger.info(f"{self.interface.name}: Stopped packet reading")
+
+    # Report the bytes buffered on the read queue. Called after each packet and
+    # after a disconnect (which discards the queue) so the gauge doesn't stay
+    # stuck at its last value while no packets are flowing.
+    def set_read_queue_bytes_metric(self):
+        if self.interface_or_router == "INTERFACE":
+            self.metric.set(
+                name="interface_read_queue_bytes",
+                value=self.interface.read_queue_bytes(),
+                type="gauge",
+                unit="bytes",
+                help="Bytes buffered on the interface read queue waiting to be processed",
+            )
+        else:
+            self.metric.set(
+                name="router_read_queue_bytes",
+                value=self.interface.read_queue_bytes(),
+                type="gauge",
+                unit="bytes",
+                help="Bytes buffered on the router read queue waiting to be processed",
+            )
 
     def handle_packet(self, packet):
         # Skip status update if stop() has been called to avoid re-creating the status model
@@ -908,38 +962,47 @@ class InterfaceMicroservice(Microservice):
             TargetModel.sync_tlm_packet_counts(packet, self.interface.tlm_target_names, scope=self.scope)
             TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
 
+    # Equivalent of the Ruby Errno lists. Use the specific ConnectionError subclasses
+    # rather than ConnectionError itself, which also covers BrokenPipeError (EPIPE)
+    CONNECTION_FAILED_ERRORS = (ConnectionRefusedError, ConnectionResetError, TimeoutError)
+    CONNECTION_FAILED_ERRNOS = (errno.ENOTSOCK, errno.EHOSTUNREACH)
+    CONNECTION_LOST_ERRORS = (ConnectionAbortedError, ConnectionResetError, TimeoutError)
+    CONNECTION_LOST_ERRNOS = (errno.EBADF, errno.ENOTSOCK)
+
+    @staticmethod
+    def _expected_network_error(error, error_classes, errnos):
+        if isinstance(error, error_classes):
+            return True
+        return isinstance(error, OSError) and error.errno in errnos
+
     def handle_connection_failed(self, connection, connect_error):
         self.error = connect_error
         self.logger.error(f"{self.interface.name}: Connection {connection} failed due to {repr(connect_error)}")
-        # match connect_error:
-        #   case OSError:
-        #     self.logger.info(f"{self.interface.name}: Closing from signal")
-        #     self.cancel_thread = True
-        # case Errno='ECONNREFUSED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='ENOTSOCK', Errno='EHOSTUNREACH', IOError:
-        #   # Do not write an exception file for these extremely common cases
-        # else _:
-        if connect_error is Exception and ("canceled" in connect_error.message or "timeout" in repr(connect_error)):
+        expected = self._expected_network_error(
+            connect_error, self.CONNECTION_FAILED_ERRORS, self.CONNECTION_FAILED_ERRNOS
+        ) or (
+            isinstance(connect_error, RuntimeError)
+            and ("canceled" in str(connect_error) or "timeout" in str(connect_error))
+        )
+        if expected:
             pass  # Do not write an exception file for these extremely common cases
-        else:
+        # Only log the backtrace the first time we see each distinct error. Key on the
+        # type too since exceptions raised without arguments all have an empty str()
+        elif (type(connect_error), str(connect_error)) not in self.connection_failed_messages:
             self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(connect_error))}")
-            if str(connect_error) not in self.connection_failed_messages:
-                self.connection_failed_messages.append(str(connect_error))
+            self.connection_failed_messages.append((type(connect_error), str(connect_error)))
         self.disconnect()  # Ensure we do a clean disconnect
 
     def handle_connection_lost(self, error=None, reconnect=True):
         if error:
             self.error = error
             self.logger.info(f"{self.interface.name}: Connection Lost: {repr(error)}")
-            # match err:
-            #   case SignalException:
-            #     self.logger.info(f"{self.interface.name}: Closing from signal")
-            #     self.cancel_thread = True
-            #   # case Errno='ECONNABORTED', Errno='ECONNRESET', Errno='ETIMEDOUT', Errno='EBADF', Errno='ENOTSOCK', IOError:
-            #     # Do not write an exception file for these extremely common cases
-            #   else _:
-            self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
-            if str(error) not in self.connection_lost_messages:
-                self.connection_lost_messages.append(str(error))
+            if self._expected_network_error(error, self.CONNECTION_LOST_ERRORS, self.CONNECTION_LOST_ERRNOS):
+                pass  # Do not write an exception file for these extremely common cases
+            # Only log the backtrace the first time we see each distinct error
+            elif (type(error), str(error)) not in self.connection_lost_messages:
+                self.logger.error(f"{self.interface.name}: {''.join(traceback.format_exception(error))}")
+                self.connection_lost_messages.append((type(error), str(error)))
         else:
             self.logger.info(f"{self.interface.name}: Connection Lost")
         self.disconnect(reconnect)  # Ensure we do a clean disconnect
@@ -992,6 +1055,8 @@ class InterfaceMicroservice(Microservice):
                 self.interface.disconnect()
             except Exception:
                 self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
+            if self.metric:
+                self.set_read_queue_bytes_metric()
 
             # If the interface is set to auto_reconnect then delay so the thread
             # can come back around and allow the interface a chance to reconnect.
@@ -1032,7 +1097,11 @@ class InterfaceMicroservice(Microservice):
             if self.interface_thread_sleeper:
                 self.interface_thread_sleeper.cancel()
             if self.interface:
-                self.interface.disconnect()
+                try:
+                    self.interface.disconnect()
+                except Exception:
+                    # Still clean up the status and stream logs if disconnect fails
+                    self.logger.error(f"{self.interface.name}: Disconnect failed during stop: {traceback.format_exc()}")
                 if self.interface_or_router == "INTERFACE":
                     valid_interface = InterfaceStatusModel.get_model(name=self.interface.name, scope=self.scope)
                 else:
@@ -1040,7 +1109,7 @@ class InterfaceMicroservice(Microservice):
                 if valid_interface:
                     valid_interface.destroy()
 
-    def shutdown(self, sig=None):
+    def shutdown(self, state="STOPPED"):
         if self.shutdown_complete:
             return  # Nothing more to do
         name = self.name
@@ -1051,7 +1120,7 @@ class InterfaceMicroservice(Microservice):
         if self.interface is not None and self.interface.stream_log_pair is not None:
             # In python shutdown does the join and cleanup
             self.interface.stream_log_pair.shutdown()
-        super().shutdown()
+        super().shutdown(state)
 
     def graceful_kill(self):
         pass  # Just to avoid warning

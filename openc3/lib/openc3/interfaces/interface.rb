@@ -70,6 +70,9 @@ module OpenC3
     #   this interface
     attr_accessor :disable_disconnect
 
+    # @return [Boolean] Flag indicating if the interface is allowed to read
+    attr_writer :read_allowed
+
     # @return [StreamLogPair] StreamLogPair instance or nil
     attr_accessor :stream_log_pair
 
@@ -326,6 +329,12 @@ module OpenC3
         # Return packet
         @read_count += 1
         Logger.warn("#{@name}: Interface unexpectedly requested disconnect") unless packet
+        # Timestamp buffered reads with when the data arrived rather than when
+        # it was processed (otherwise received_time is set when it is handled)
+        if packet and !packet.received_time
+          data_time = read_queue_data_time
+          packet.received_time = data_time if data_time
+        end
         return packet
       end
     rescue Exception => e
@@ -349,7 +358,8 @@ module OpenC3
           if packet == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} write_packet requested disconnect")
             disconnect()
-            return
+            # Nothing was written so reject rather than report success
+            raise WriteRejectError.new("Protocol #{protocol.class} write_packet requested disconnect")
           end
           return if packet == :STOP
         end
@@ -369,7 +379,8 @@ module OpenC3
           if data == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} write_data requested disconnect")
             disconnect()
-            return
+            # Nothing was written so reject rather than report success
+            raise WriteRejectError.new("Protocol #{protocol.class} write_data requested disconnect")
           end
           return if data == :STOP
         end
@@ -441,6 +452,19 @@ module OpenC3
       config['txcnt'] = @write_count
       config['rxcnt'] = @read_count
       config
+    end
+
+    # @return [Integer] The number of bytes waiting on the read queue.
+    #   Interfaces which buffer raw reads override this (see ReadQueueInterface).
+    def read_queue_bytes
+      0
+    end
+
+    # @return [Time, nil] When the data most recently returned by
+    #   read_interface was read from the underlying source, or nil if unknown.
+    #   Interfaces which buffer raw reads override this (see ReadQueueInterface).
+    def read_queue_data_time
+      nil
     end
 
     # @return [Boolean] Whether reading is allowed
@@ -564,7 +588,7 @@ module OpenC3
     # @return [String] Raw packet data
     def read_interface_base(data, _extra = nil)
       if @save_raw_data
-        @read_raw_data_time = Time.now
+        @read_raw_data_time = read_queue_data_time || Time.now
         @read_raw_data = data.clone
       end
       @bytes_read += data.length

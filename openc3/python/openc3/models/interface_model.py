@@ -204,7 +204,8 @@ class InterfaceModel(Model):
                 filename_to_class_name(protocol[1]),
             )
             interface_or_router.add_protocol(klass, protocol[2:], protocol[0].upper())
-        if self.log_stream:
+        # LOG_STREAM with no parameters is an empty list, which still enables logging
+        if self.log_stream is not None:
             interface_or_router.stream_log_pair = StreamLogPair(interface_or_router.name, self.log_stream)
             interface_or_router.start_raw_logging()
         return interface_or_router

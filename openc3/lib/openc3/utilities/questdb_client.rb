@@ -632,6 +632,20 @@ module OpenC3
       false
     end
 
+    # Return the names of all tables in a single query. Used to avoid querying
+    # (and failing on) tables that were never created, e.g. commands that have
+    # never been sent, which is the common case for targets with thousands of packets.
+    # QuestDB table names are case insensitive so the names are upcased.
+    #
+    # @return [Set<String>, nil] Upcased table names, or nil if they cannot be queried
+    def self.table_names(db_shard: 0)
+      result = query_with_retry("SELECT table_name FROM tables()", max_retries: 1, label: "table names", db_shard: db_shard)
+      return nil unless result
+      result.values.each_with_object(Set.new) { |row, set| set << row[0].to_s.upcase }
+    rescue StandardError
+      nil
+    end
+
     # QuestDB column types that can be aggregated with min/max/avg/stddev.
     # Used by reduced queries to decide whether a converted (__C) column is
     # numeric or must fall back to the raw column (e.g. states stored as VARCHAR).
