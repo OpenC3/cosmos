@@ -125,10 +125,10 @@ Follow the instructions in the [Helm README](https://repos.openc3.com/OpenC3/cos
 Once everything has been deployed and the pods are running, check that the GCP certificate has been provisioned:
 
 ```bash
-kubectl describe managedcertificate openc3-cert | grep "Certificate Status"
+kubectl describe managedcertificate openc3-cert
 ```
 
-Wait for the Certificate Status to go from "Provisioning" to "Active". This can take a while after DNS starts resolving to the static IP. You can also check the ingress with `kubectl describe ingress openc3-ingress`.
+Wait for the `Certificate Status` to go from "Provisioning" to "Active". This can take a while after DNS starts resolving to the static IP. You can also check the ingress with `kubectl describe ingress openc3-ingress`.
 
 You can now load your domain (https://\<DOMAIN\>/auth/admin/master/console) and start [configuring Keycloak](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/KeycloakConfiguration.md).
 

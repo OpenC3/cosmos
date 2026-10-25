@@ -89,9 +89,9 @@ Only use HTTP on a network you trust, such as for temporary testing on a local n
    You can set `OPENC3_ALLOW_HTTP=1` in `.env.local` instead of the `environment:` entry.
 
 3. Browsers restrict some features on insecure origins. In Chrome go to `chrome://flags/#unsafely-treat-insecure-origin-as-secure`, or in Edge go to `edge://flags/#unsafely-treat-insecure-origin-as-secure`:
-   1. Add `http://<Your IP Address>:2900`
+   1. Add `http://<Your IP Address>:<Port>`, using the published port from the previous step (for example `http://192.168.1.10:2900`)
    2. Enable the setting
-   3. Completely restart the browser. On macOS make sure the dot below the Chrome icon is gone by long pressing the icon and choosing Quit.
+   3. Completely restart the browser. On macOS make sure the dot below the Chrome icon is gone by long-pressing the icon and choosing Quit.
 
 ## Start COSMOS
 

@@ -94,7 +94,7 @@ The following steps are written for the Enterprise folder names. Use `openc3-tra
          - "2943:2943"
    ```
 
-   The `traefik-ssl.yaml` mount replaces the default `traefik.yaml` mount because both target `/etc/traefik/traefik.yaml`. `!override` replaces the `ports` list from `compose.yaml` rather than adding to it. Change the first port numbers if desired, but leave the second `2900` and `2943`.
+   The `traefik-ssl.yaml` mount replaces the default `traefik.yaml` mount because both target `/etc/traefik/traefik.yaml`. `!override` replaces the `ports` list from `compose.yaml` rather than adding to it. Change the first port numbers if desired, but leave the second `2900` and `2943`. If you change the published HTTPS port (`2943`), also change the `to: ":2943"` HTTP redirect in `traefik-ssl.yaml` to match, or HTTP requests will redirect to the wrong port.
 
 4. Edit ./openc3-enterprise-traefik/traefik-ssl.yaml and update the `- main: "mydomain.com" # Update with your domain` line to your domain
 5. Start COSMOS
@@ -124,14 +124,20 @@ The following steps are written for the Enterprise folder names. Use `openc3-tra
        ports: !override
          - "80:2900"
          - "443:2943"
+       volumes:
+         - "openc3-traefik-acme:/tmp"
+   volumes:
+     openc3-traefik-acme: {}
    ```
+
+   Traefik stores the Let's Encrypt account and certificates in `/tmp/acme.json`. The `openc3-traefik-acme` volume keeps them across `docker compose down` so COSMOS doesn't request new certificates (and risk Let's Encrypt rate limits) every time it restarts.
 
 4. Start COSMOS
    1. On Linux/Mac: ./openc3.sh run
    2. On Windows: openc3.bat run
 5. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
    1. If you run "docker ps", you can watch until the openc3-cosmos-enterprise-init container completes, at which point the system should be fully configured and ready to use.
-6. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a blank blue page until you do this) - Please follow the [Keycloak Configuration](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/KeycloakConfiguration.md) documentation in our cosmos-enterprise-project.
+6. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a solid color page until you do this) - Please follow the [Keycloak Configuration](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/KeycloakConfiguration.md) documentation in our cosmos-enterprise-project.
 
 ### Configure COSMOS Enterprise for TLS when running in Kubernetes
 

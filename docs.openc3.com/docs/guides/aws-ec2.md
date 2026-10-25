@@ -72,7 +72,7 @@ Don't edit `.env` directly; it ships the upstream defaults and editing it causes
 In `.env.local`, set the S3 bucket URL, AWS region, and bucket names. Clear the bucket credentials so COSMOS authenticates with the IAM role attached to the instance:
 
 ```sh
-OPENC3_BUCKET_URL=http://s3.us-east-1.amazonaws.com  # Replace with your AWS region
+OPENC3_BUCKET_URL=https://s3.us-east-1.amazonaws.com  # Replace with your AWS region
 OPENC3_LOGS_BUCKET=<actual bucket name in S3>
 OPENC3_TOOLS_BUCKET=<actual bucket name in S3>
 OPENC3_CONFIG_BUCKET=<actual bucket name in S3>
@@ -143,16 +143,17 @@ While you can use an existing AWS managed policy like `AmazonS3FullAccess`, crea
      "Statement": [
        {
          "Effect": "Allow",
-         "Action": [
-           "s3:GetBucketLocation",
-           "s3:ListBucket",
-           "s3:PutBucketPolicy"
-         ],
+         "Action": ["s3:GetBucketLocation", "s3:ListBucket"],
          "Resource": [
            "arn:aws:s3:::<OPENC3_CONFIG_BUCKET>",
            "arn:aws:s3:::<OPENC3_LOGS_BUCKET>",
            "arn:aws:s3:::<OPENC3_TOOLS_BUCKET>"
          ]
+       },
+       {
+         "Effect": "Allow",
+         "Action": ["s3:PutBucketPolicy"],
+         "Resource": ["arn:aws:s3:::<OPENC3_TOOLS_BUCKET>"]
        },
        {
          "Effect": "Allow",
@@ -190,7 +191,7 @@ While you can use an existing AWS managed policy like `AmazonS3FullAccess`, crea
 The tools bucket requires public read access so the COSMOS frontend can load tool assets. When COSMOS starts, the init container applies this policy itself using the `s3:PutBucketPolicy` permission above (unless `OPENC3_NO_BUCKET_POLICY` is set). If it can't, it logs a `put_bucket_policy` warning and continues, so apply the policy manually.
 
 :::warning[S3 Block Public Access]
-AWS enables Block Public Access on new buckets by default, which rejects public bucket policies. Turn off the **Block public access to buckets and objects granted through new public bucket or access point policies** settings on the tools bucket (only the tools bucket) or the policy cannot be applied.
+AWS enables Block Public Access on new buckets by default, which rejects public bucket policies. Turn off the **Block public access to buckets and objects granted through new public bucket or access point policies** settings on the tools bucket (only the tools bucket) or the policy cannot be applied. S3 enforces the most restrictive Block Public Access setting across the bucket, the AWS account, and (if used) AWS Organizations, so check **Block Public Access settings for this account** in the S3 console and any organization policies first. If those block public bucket policies, changing the bucket setting has no effect.
 :::
 
 To apply it manually, edit the **Bucket policy** for your tools bucket and paste the following, replacing `cosmos-tools` with your actual tools bucket name:
