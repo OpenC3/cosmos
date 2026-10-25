@@ -14,8 +14,9 @@ import time
 import unittest
 from unittest.mock import patch
 
-from openc3.interfaces.interface import Interface
+from openc3.interfaces.interface import Interface, WriteRejectError
 from openc3.interfaces.protocols.protocol import Protocol
+from openc3.logs.stream_log_pair import StreamLogPair
 from openc3.packets.packet import Packet
 from test.test_helper import BucketMock
 
@@ -468,7 +469,8 @@ class WriteInterface(unittest.TestCase):
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, [None, 0, "DISCONNECT", 0], "WRITE")
-        interface.write(self.packet)
+        with self.assertRaisesRegex(WriteRejectError, "write_packet requested disconnect"):
+            interface.write(self.packet)
         self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 0)
 
@@ -519,7 +521,8 @@ class WriteInterface(unittest.TestCase):
 
         interface = MyInterface()
         interface.add_protocol(InterfaceTestProtocol, ["DISCONNECT", 0, None, 0], "WRITE")
-        interface.write(self.packet)
+        with self.assertRaisesRegex(WriteRejectError, "write_data requested disconnect"):
+            interface.write(self.packet)
         self.assertEqual(interface.write_count, 1)
         self.assertEqual(interface.bytes_written, 0)
 
@@ -597,6 +600,13 @@ class WriteRawInterface(unittest.TestCase):
 
 
 class CopyTo(unittest.TestCase):
+    def setUp(self):
+        self.patcher = patch("openc3.utilities.bucket_utilities.Bucket", BucketMock)
+        self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
+
     def test_copies_the_interface(self):
         i = Interface()
         i.name = "TEST"
@@ -605,7 +615,7 @@ class CopyTo(unittest.TestCase):
         i.auto_reconnect = False
         i.reconnect_delay = 1.0
         i.disable_disconnect = True
-        i.stream_log_pair = [1, 2]
+        i.stream_log_pair = StreamLogPair("TEST")
         i.routers = [3, 4]
         i.read_count = 1
         i.write_count = 2
@@ -626,7 +636,8 @@ class CopyTo(unittest.TestCase):
         self.assertFalse(i2.auto_reconnect)
         self.assertEqual(i2.reconnect_delay, 1.0)
         self.assertTrue(i2.disable_disconnect)
-        self.assertEqual(i2.stream_log_pair, [1, 2])
+        # The new interface takes over the running stream logs
+        self.assertIs(i2.stream_log_pair, i.stream_log_pair)
         self.assertEqual(i2.routers, [3, 4])
         self.assertEqual(i2.read_count, 1)
         self.assertEqual(i2.write_count, 2)
@@ -638,6 +649,70 @@ class CopyTo(unittest.TestCase):
         self.assertGreater(len(i2.read_protocols), 0)
         self.assertGreater(len(i2.write_protocols), 0)
         self.assertEqual(i2.protocol_info, [[Protocol, [], "READ_WRITE"]])
+        i.stream_log_pair.shutdown()
+
+
+class ConnectAndPeriodicCmds(unittest.TestCase):
+    class MyInterface(Interface):
+        def __init__(self):
+            super().__init__()
+            self.is_connected = False
+
+        def connect(self):
+            super().connect()
+            self.is_connected = True
+
+        def connected(self):
+            return self.is_connected
+
+        def disconnect(self):
+            self.is_connected = False
+            super().disconnect()
+
+    @patch("openc3.interfaces.interface.cmd")
+    def test_sends_connect_cmds_after_every_connect(self, mock_cmd):
+        i = ConnectAndPeriodicCmds.MyInterface()
+        i.set_option("CONNECT_CMD", ["LOG", "INST ABORT"])
+        i.set_option("CONNECT_CMD", ["DONT_LOG", "INST CLEAR"])
+        for _ in range(2):
+            i.connect()
+            i.post_connect()
+            i.disconnect()
+        self.assertEqual(mock_cmd.call_count, 4)
+        mock_cmd.assert_any_call("INST ABORT")
+        mock_cmd.assert_any_call("INST CLEAR", log_message=False)
+
+    @patch("openc3.interfaces.interface.cmd")
+    def test_sends_periodic_cmds_only_while_connected(self, mock_cmd):
+        i = ConnectAndPeriodicCmds.MyInterface()
+        i.set_option("PERIODIC_CMD", ["LOG", "0.1", "INST ABORT"])
+        i.set_option("PERIODIC_CMD", ["DONT_LOG", "0.1", "INST CLEAR"])
+        i.connect()
+        time.sleep(0.5)
+        i.disconnect()
+        mock_cmd.assert_any_call("INST ABORT")
+        mock_cmd.assert_any_call("INST CLEAR", log_message=False)
+        i.scheduler_thread.join(1)
+        self.assertFalse(i.scheduler_thread.is_alive())
+        mock_cmd.reset_mock()
+        time.sleep(0.3)
+        mock_cmd.assert_not_called()
+
+    @patch("openc3.interfaces.interface.cmd")
+    def test_reconnect_leaves_one_scheduler_thread(self, mock_cmd):
+        i = ConnectAndPeriodicCmds.MyInterface()
+        i.set_option("PERIODIC_CMD", ["LOG", "0.1", "INST ABORT"])
+        i.connect()
+        first_thread = i.scheduler_thread
+        # Reconnect before the first thread has a chance to see the cancel
+        i.disconnect()
+        i.connect()
+        first_thread.join(1)
+        self.assertFalse(first_thread.is_alive())
+        self.assertTrue(i.scheduler_thread.is_alive())
+        i.disconnect()
+        i.scheduler_thread.join(1)
+        self.assertFalse(i.scheduler_thread.is_alive())
 
 
 class InterfaceCmd(unittest.TestCase):

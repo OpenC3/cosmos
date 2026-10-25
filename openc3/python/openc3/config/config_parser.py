@@ -465,6 +465,7 @@ class ConfigParser:
         self.parameters = []
         self.line = ""
         errors = []
+        pattern = re.compile(rx, re.X)
 
         # Type checker hint: line_buffer is guaranteed to be str within this method
         line_buffer: str = self.line
@@ -515,7 +516,7 @@ class ConfigParser:
             # Update self.line for external access
             self.line = line_buffer
 
-            data = re.compile(rx, re.X).findall(line_buffer)
+            data = pattern.findall(line_buffer)
             first_item = ""
             if len(data) > 0:
                 first_item += data[0]
