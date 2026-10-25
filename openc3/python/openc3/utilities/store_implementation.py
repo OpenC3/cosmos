@@ -65,10 +65,14 @@ class StoreMeta(type):
             "instance",
             "instance_mutex",
             "my_instances",
+            "set_update_interval_all_shards",
+            "all_shards_update_interval",
+            "DEFAULT_UPDATE_INTERVAL",
             "db_shard_for_target",
             "_db_shard_cache",
             "_db_shard_cache_lock",
             "DB_SHARD_CACHE_TIMEOUT",
+            "READ_TOPICS_DEFAULT_COUNT",
         }
     )
 
@@ -97,6 +101,14 @@ class Store(metaclass=StoreMeta):
     _db_shard_cache = {}
     _db_shard_cache_lock = threading.Lock()
     DB_SHARD_CACHE_TIMEOUT = 60  # seconds
+
+    # Maximum number of entries read_topics returns PER STREAM when the caller
+    # does not pass a count. XREAD without COUNT returns everything from the
+    # offset to the tail of the stream, which for a consumer that has fallen
+    # behind on a high-rate stream can be an enormous reply materialized in
+    # memory all at once. Callers loop on their offsets so a capped read simply
+    # continues on the next call.
+    READ_TOPICS_DEFAULT_COUNT = 1000
 
     # Get the singleton instance for a given db_shard
     @classmethod
@@ -236,8 +248,11 @@ class Store(metaclass=StoreMeta):
         return offsets
 
     def read_topics(self, topics, offsets=None, timeout_ms=1000, count=None):
+        """count is the maximum entries to return per stream. None uses READ_TOPICS_DEFAULT_COUNT."""
         if len(topics) == 0:
             return {}
+        if count is None:
+            count = self.READ_TOPICS_DEFAULT_COUNT
         thread_id = threading.get_native_id()
         if thread_id not in self.topic_offsets:
             self.topic_offsets[thread_id] = {}

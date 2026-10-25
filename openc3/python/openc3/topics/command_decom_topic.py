@@ -32,7 +32,7 @@ class CommandDecomTopic(Topic):
             "received_time": to_nsec_from_epoch(packet.received_time),
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
-            "stored": str(packet.stored),
+            "stored": str(packet.stored).lower(),  # Match ruby behavior of "true"/"false"
             "received_count": packet.received_count,
         }
         # Read all RAW values at once - optimized by accessor

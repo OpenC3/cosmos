@@ -69,6 +69,13 @@ class TestCommandTopic(unittest.TestCase):
         # Safety cap is at least two default log cycles plus the cleanup delay
         self.assertLessEqual(int(self.captured["minid"]), int(time.time() * 1000) - 1320000)
 
+    def test_writes_stored_as_lowercase_like_ruby(self):
+        for stored, expected in [(True, "true"), (False, "false")]:
+            packet = self._make_packet()
+            packet.stored = stored
+            CommandTopic.write_packet(packet, scope="DEFAULT")
+            self.assertEqual(self.captured["msg_hash"]["stored"], expected)
+
     def test_includes_extra_when_set(self):
         extra = {"foo": "bar", "count": 42}
         CommandTopic.write_packet(self._make_packet(extra=extra), scope="DEFAULT")
