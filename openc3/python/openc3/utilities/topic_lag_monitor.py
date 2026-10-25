@@ -85,6 +85,8 @@ class TopicLagMonitor:
         publish the maximum lag rather than whichever topic was read last. The
         previous window's maximum is held through the current window so a spike
         just before a window boundary is still published."""
+        if self.metric is None:
+            return
         window = int(now / self.GAUGE_WINDOW_SECONDS)
         gauge = self.gauges.get(metric_name)
         if gauge is None:
