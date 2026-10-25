@@ -48,6 +48,17 @@ module OpenC3
       $read_cnt = 0
     end
 
+    # The stub streams below return data forever so cap the read queue rather
+    # than letting the read thread buffer the full default budget
+    before(:each) do
+      @interface.set_option('READ_QUEUE_MAX_SIZE', ['65536'])
+    end
+
+    after(:each) do
+      # Stop the StreamInterface read thread started by reading
+      @interface.stop_read_queue_thread if @interface
+    end
+
     describe "initialize" do
       it "initializes attributes" do
         @interface.add_protocol(TemplateProtocol, %w(0xABCD 0xABCD), :READ_WRITE)

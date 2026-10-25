@@ -24,6 +24,7 @@ import uuid
 from datetime import datetime, timezone
 
 from openc3.config.config_parser import ConfigParser
+from openc3.environment import OPENC3_SCOPE
 from openc3.interfaces.interface import Interface, WriteRejectError
 from openc3.microservices.interface_decom_common import handle_inject_tlm
 from openc3.microservices.microservice import Microservice
@@ -55,7 +56,15 @@ with contextlib.suppress(ModuleNotFoundError):
 
 
 class InterfaceCmdHandlerThread:
-    def __init__(self, interface, tlm, logger=None, metric=None, db_shard=0, *, scope):
+    def __init__(
+        self,
+        interface: Interface,
+        tlm,
+        logger: Logger | None = None,
+        metric=None,
+        db_shard=0,
+        scope: str = OPENC3_SCOPE,
+    ):
         self.interface = interface
         self.tlm = tlm
         self.scope = scope
@@ -65,7 +74,7 @@ class InterfaceCmdHandlerThread:
             self.critical_commanding = scope_model.critical_commanding
         else:
             self.critical_commanding = "OFF"
-        self.logger = logger or Logger()
+        self.logger: Logger = logger or Logger()
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -438,12 +447,20 @@ class InterfaceCmdHandlerThread:
 
 
 class RouterTlmHandlerThread:
-    def __init__(self, router, tlm, logger=None, metric=None, db_shard=0, *, scope):
+    def __init__(
+        self,
+        router: Interface,
+        tlm,
+        logger: Logger | type[Logger] | None = None,
+        metric=None,
+        db_shard=0,
+        scope: str = OPENC3_SCOPE,
+    ):
         self.router = router
         self.tlm = tlm
         self.scope = scope
         self.db_shard = int(db_shard or 0)
-        self.logger = logger or Logger()
+        self.logger: Logger | type[Logger] = logger or Logger
         self.metric = metric
         self.count = 0
         self.directive_count = 0
@@ -647,6 +664,8 @@ class InterfaceMicroservice(Microservice):
 
     def __init__(self, name):
         self.mutex = threading.Lock()
+        # Set to the built interface / router below before anything else uses it
+        self.interface: Interface = None  # ty: ignore[invalid-assignment]
         self.interface_or_router = None
         self.interface_thread_sleeper = Sleeper()
         self.cancel_thread = False
@@ -831,6 +850,7 @@ class InterfaceMicroservice(Microservice):
                                             value=self.count,
                                             type="counter",
                                         )
+                                    self.set_read_queue_bytes_metric()
                                 else:
                                     self.logger.info(
                                         f"{self.interface.name}: Internal disconnect requested (returned None)"
@@ -858,6 +878,27 @@ class InterfaceMicroservice(Microservice):
             else:
                 RouterStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
         self.logger.info(f"{self.interface.name}: Stopped packet reading")
+
+    # Report the bytes buffered on the read queue. Called after each packet and
+    # after a disconnect (which discards the queue) so the gauge doesn't stay
+    # stuck at its last value while no packets are flowing.
+    def set_read_queue_bytes_metric(self):
+        if self.interface_or_router == "INTERFACE":
+            self.metric.set(
+                name="interface_read_queue_bytes",
+                value=self.interface.read_queue_bytes(),
+                type="gauge",
+                unit="bytes",
+                help="Bytes buffered on the interface read queue waiting to be processed",
+            )
+        else:
+            self.metric.set(
+                name="router_read_queue_bytes",
+                value=self.interface.read_queue_bytes(),
+                type="gauge",
+                unit="bytes",
+                help="Bytes buffered on the router read queue waiting to be processed",
+            )
 
     def handle_packet(self, packet):
         # Skip status update if stop() has been called to avoid re-creating the status model
@@ -1035,6 +1076,8 @@ class InterfaceMicroservice(Microservice):
                 self.interface.disconnect()
             except Exception:
                 self.logger.error(f"Disconnect: {self.interface.name}: {traceback.format_exc()}")
+            if self.metric:
+                self.set_read_queue_bytes_metric()
 
             # If the interface is set to auto_reconnect then delay so the thread
             # can come back around and allow the interface a chance to reconnect.
