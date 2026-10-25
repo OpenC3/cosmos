@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import math
 import os
 import time
 
@@ -100,10 +101,23 @@ class Topic(metaclass=TopicMeta):
         value = os.environ.get("OPENC3_STREAM_MAX_AGE_SECONDS")
         if value is None:
             return cls.STREAM_MAX_AGE_DEFAULT_SECONDS
-        try:
-            return float(value)
-        except ValueError:
+        if not value.strip():
             return 0.0
+        # Strictly parse and reject nan / inf, which would raise when converted to
+        # milliseconds on every write. A typo keeps the safety cap at the default
+        # rather than disabling it.
+        try:
+            seconds = float(value)
+        except ValueError:
+            seconds = math.nan
+        if math.isfinite(seconds):
+            return seconds
+        from openc3.utilities.logger import Logger
+
+        Logger.warn(
+            f"OPENC3_STREAM_MAX_AGE_SECONDS of '{value}' is invalid, using {cls.STREAM_MAX_AGE_DEFAULT_SECONDS}"
+        )
+        return cls.STREAM_MAX_AGE_DEFAULT_SECONDS
 
     @classmethod
     def stream_max_age_ms(cls) -> int:

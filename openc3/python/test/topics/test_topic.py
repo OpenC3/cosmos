@@ -37,6 +37,17 @@ class TestTopicStreamSafetyTrim(unittest.TestCase):
         with patch.dict(os.environ, {"OPENC3_STREAM_MAX_AGE_SECONDS": "120"}):
             self.assertEqual(Topic.stream_max_age_seconds(), 120.0)
 
+    def test_max_age_invalid_or_non_finite_uses_default(self):
+        for value in ["abc", "10s", "nan", "inf", "1e400"]:
+            with (
+                patch.dict(os.environ, {"OPENC3_STREAM_MAX_AGE_SECONDS": value}),
+                patch.object(Logger.instance(), "warn") as warn,
+            ):
+                Topic.clear_stream_max_age_cache()
+                self.assertEqual(Topic.stream_max_age_seconds(), 600)
+                self.assertEqual(Topic.stream_max_age_ms(), 600000)
+                self.assertIn("is invalid", warn.call_args.args[0])
+
     def test_max_age_ms_is_cached(self):
         self.assertEqual(Topic.stream_max_age_ms(), 600000)
         with patch.dict(os.environ, {"OPENC3_STREAM_MAX_AGE_SECONDS": "120"}):

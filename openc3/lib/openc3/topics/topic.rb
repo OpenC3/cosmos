@@ -84,7 +84,14 @@ module OpenC3
     def self.stream_max_age_seconds
       value = ENV.fetch('OPENC3_STREAM_MAX_AGE_SECONDS', nil)
       return STREAM_MAX_AGE_DEFAULT_SECONDS if value.nil?
-      return value.to_f
+      return 0.0 if value.strip.empty?
+      # Strictly parse and reject nan / inf, which would raise when converted to
+      # milliseconds on every write. A typo keeps the safety cap at the default
+      # rather than disabling it.
+      seconds = Float(value, exception: false)
+      return seconds if seconds&.finite?
+      Logger.warn("OPENC3_STREAM_MAX_AGE_SECONDS of '#{value}' is invalid, using #{STREAM_MAX_AGE_DEFAULT_SECONDS}")
+      return STREAM_MAX_AGE_DEFAULT_SECONDS
     end
 
     # @return [Integer] Cached safety max age in milliseconds (0 means disabled)

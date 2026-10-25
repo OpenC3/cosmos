@@ -41,6 +41,17 @@ module OpenC3
         ENV['OPENC3_STREAM_MAX_AGE_SECONDS'] = '120'
         expect(Topic.stream_max_age_seconds).to eql 120.0
       end
+
+      it "uses the default for invalid or non-finite values" do
+        allow(Logger).to receive(:warn)
+        %w(abc 10s nan inf 1e400).each do |value|
+          ENV['OPENC3_STREAM_MAX_AGE_SECONDS'] = value
+          expect(Topic.stream_max_age_seconds).to eql 600
+          Topic.clear_stream_max_age_cache
+          expect(Topic.stream_max_age_ms).to eql 600_000
+        end
+        expect(Logger).to have_received(:warn).with(/'1e400' is invalid/).at_least(:once)
+      end
     end
 
     describe "self.stream_safety_minid" do
