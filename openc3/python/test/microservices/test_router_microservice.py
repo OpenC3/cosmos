@@ -180,6 +180,7 @@ class TestRouterMicroservice(unittest.TestCase):
             results.append((yield (topic, msg_id, {b"connect": b"true", b"params": b"{not json"}, None)))
             results.append((yield (topic, msg_id, {b"connect": b"true", b"params": b"\xff\xfe\xfa"}, None)))
             results.append((yield (topic, msg_id, {b"connect": b"true", b"params": b'["host", 1]'}, None)))
+            results.append((yield (topic, msg_id, {b"connect": b"true", b"params": b"null"}, None)))
             yield (topic, msg_id, {b"shutdown": b"true"}, None)
 
         with (
@@ -190,7 +191,9 @@ class TestRouterMicroservice(unittest.TestCase):
         self.assertIn("Expecting", results[0])
         self.assertIn("can't decode", results[1])
         self.assertEqual(results[2], "SUCCESS")
-        tlm.attempting.assert_called_once_with("host", 1)
+        # JSON null connects with no params, as in Ruby
+        self.assertEqual(results[3], "SUCCESS")
+        self.assertEqual(tlm.attempting.call_args_list, [call("host", 1), call()])
 
     def test_attempt_connection_updates_the_router_model(self):
         im = RouterMicroservice("DEFAULT__ROUTER__TEST_INT")

@@ -807,6 +807,9 @@ class TestInterfaceMicroservice(unittest.TestCase):
         result = handler.process_cmd(topic, msg_id, {b"connect": b"true", b"params": b'["host", 1]'}, None)
         self.assertEqual(result, "SUCCESS")
         handler.tlm.attempting.assert_called_once_with("host", 1)
+        result = handler.process_cmd(topic, msg_id, {b"connect": b"true", b"params": b"null"}, None)
+        self.assertEqual(result, "SUCCESS")
+        handler.tlm.attempting.assert_called_with()
 
     def test_process_cmd_acks_success_for_write_stop_but_rejects_disconnect(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")

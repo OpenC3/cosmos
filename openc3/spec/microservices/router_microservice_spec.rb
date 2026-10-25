@@ -154,12 +154,16 @@ module OpenC3
         msg_id = "#{(Time.now.to_f * 1000).to_i}-0"
         results << block.call("{DEFAULT__CMD}ROUTER__TEST_INT", msg_id, { 'connect' => 'true', 'params' => '{not json' }, nil)
         results << block.call("{DEFAULT__CMD}ROUTER__TEST_INT", msg_id, { 'connect' => 'true', 'params' => '["host", 1]' }, nil)
+        results << block.call("{DEFAULT__CMD}ROUTER__TEST_INT", msg_id, { 'connect' => 'true', 'params' => 'null' }, nil)
       end
       handler.run
       expect(results[0]).to be_a(String)
       expect(results[0]).not_to eql 'SUCCESS'
       expect(results[1]).to eql 'SUCCESS'
       expect(tlm).to have_received(:attempting).with("host", 1).once
+      # JSON null connects with no params
+      expect(results[2]).to eql 'SUCCESS'
+      expect(tlm).to have_received(:attempting).with(no_args).once
       rm.shutdown
       sleep 0.1 # Allow threads to exit
     end
