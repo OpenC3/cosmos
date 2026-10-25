@@ -30,7 +30,7 @@ class RealtimeStreamingThread < StreamingThread
 
   def initialize(streaming_api, collection, scope: nil)
     super(streaming_api, collection, scope: scope)
-    @max_lag_seconds = ENV.fetch('OPENC3_STREAMING_MAX_LAG_SECONDS', DEFAULT_MAX_LAG_SECONDS).to_f
+    @max_lag_seconds = max_lag_seconds()
     # Monotonic time when the current "behind" grace window started (nil when caught up)
     @behind_since = nil
     # Lag measured at the start of the current grace window, compared against
@@ -124,12 +124,25 @@ class RealtimeStreamingThread < StreamingThread
     @streaming_api.transmit_notice('SKIPPED', "Streaming fell behind realtime, skipped #{lag.round(1)}s of data", skipped_seconds: lag.round(3))
   end
 
+  # Only an explicit 0 disables lag handling. A malformed value (which to_f
+  # would silently turn into 0) falls back to the default instead.
+  def max_lag_seconds
+    raw = ENV.fetch('OPENC3_STREAMING_MAX_LAG_SECONDS', nil)
+    return DEFAULT_MAX_LAG_SECONDS if raw.nil? or raw.strip.empty?
+    value = Float(raw, exception: false)
+    return value if value
+    OpenC3::Logger.warn("Invalid OPENC3_STREAMING_MAX_LAG_SECONDS '#{raw}', using #{DEFAULT_MAX_LAG_SECONDS}")
+    DEFAULT_MAX_LAG_SECONDS
+  end
+
   # Returns the newest msg_id of each topic using one pipelined round trip per db_shard
   def stream_heads(topics, item_objects_by_topic, packet_objects_by_topic)
     heads = {}
     # Every object on a topic lives on the same db_shard so the first one is enough
     topics_by_shard = topics.group_by do |topic|
-      objects = item_objects_by_topic[topic] || packet_objects_by_topic[topic]
+      # Removing the last item subscription leaves an empty array behind, so
+      # fall through to the packet subscriptions rather than defaulting to shard 0
+      objects = item_objects_by_topic[topic].presence || packet_objects_by_topic[topic]
       objects&.first&.db_shard || 0
     end
     topics_by_shard.each do |db_shard, shard_topics|

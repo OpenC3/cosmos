@@ -106,6 +106,28 @@ RSpec.describe RealtimeStreamingThread, type: :model do
     expect(@streaming_api).to_not have_received(:transmit_notice)
   end
 
+  it "falls back to the default max lag when the setting is malformed" do
+    stub_const('ENV', ENV.to_h.merge('OPENC3_STREAMING_MAX_LAG_SECONDS' => 'ten'))
+    allow(OpenC3::Logger).to receive(:warn)
+    @thread = RealtimeStreamingThread.new(@streaming_api, StreamingObjectCollection.new, scope: 'DEFAULT')
+    expect(OpenC3::Logger).to have_received(:warn).with(/Invalid OPENC3_STREAMING_MAX_LAG_SECONDS 'ten'/)
+    check(61, 0)
+    expect(@streaming_api).to have_received(:transmit_notice).with('SKIPPED', anything, skipped_seconds: be_within(0.01).of(61.0))
+  end
+
+  it "reads the stream head from the packet subscription's shard when no item subscriptions remain" do
+    shard_object = double('ShardObject', db_shard: 2)
+    store = double('EphemeralStore')
+    pool = double('RedisPool')
+    allow(store).to receive(:redis_pool).and_return(pool)
+    allow(store).to receive(:xrevrange)
+    allow(pool).to receive(:pipelined) { |&block| block.call; [[['5000-0', {}]]] }
+    expect(OpenC3::EphemeralStore).to receive(:instance).with(db_shard: 2).and_return(store)
+    # An empty item array is what StreamingObjectCollection#remove leaves behind
+    heads = @thread.stream_heads([topic], { topic => [] }, { topic => [shard_object] })
+    expect(heads).to eql({ topic => '5000-0' })
+  end
+
   context "with redis" do
     before(:each) do
       mock_redis()
