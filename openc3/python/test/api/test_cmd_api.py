@@ -595,6 +595,20 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(type(result), list)
         self.assertEqual(type(result[0]), str)
 
+    def test_get_all_cmd_names_excludes_hidden_commands_unless_hidden_is_true(self):
+        names = get_all_cmd_names("inst")
+        self.assertEqual(names, sorted(names))
+        self.assertIn("ABORT", names)
+        self.assertNotIn("DISABLED", names)
+        self.assertIn("DISABLED", get_all_cmd_names("inst", hidden=True))
+
+    def test_get_all_cmd_names_builds_the_hidden_list_once(self):
+        # setup_system stores the packets without the hidden list like an older install
+        with patch.object(TargetModel, "packets", wraps=TargetModel.packets) as packets:
+            self.assertNotIn("DISABLED", get_all_cmd_names("inst"))
+            self.assertNotIn("DISABLED", get_all_cmd_names("inst"))
+        packets.assert_called_once()
+
     def test_get_parameter_returns_parameter_hash_for_state_parameter(self):
         result = get_param("inst", "Collect", "Type")
         self.assertEqual(result["name"], "TYPE")
@@ -763,6 +777,15 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(result[0], ("INST"))
         self.assertEqual(result[1], ("ABORT"))
         self.assertAlmostEqual(result[2], int(now), delta=1)
+
+    def test_get_cmd_time_returns_the_target_of_the_latest_command(self):
+        # A target sorted after INST with no commands sent must not be returned
+        TargetModel(folder_name="ZZZ", name="ZZZ", scope="DEFAULT").create()
+        cmd("INST ABORT")
+        time.sleep(0.001)
+        result = get_cmd_time()
+        self.assertEqual(result[0], "INST")
+        self.assertEqual(result[1], "ABORT")
 
     def test_get_cmd_time_returns_0_if_no_times_are_set(self):
         self.assertEqual(get_cmd_time("INST", "ABORT"), ("INST", "ABORT", 0, 0))
