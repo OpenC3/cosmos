@@ -95,6 +95,7 @@ if RUBY_ENGINE == 'ruby' or Gem.win_platform?
               i.connect
               expect(i.stream.instance_variable_get(:@flow_control)).to eq :RTSCTS
               expect(i.stream.instance_variable_get(:@data_bits)).to eq 7
+              i.disconnect
             end
           end
         end
