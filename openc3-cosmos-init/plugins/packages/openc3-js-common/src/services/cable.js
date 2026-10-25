@@ -115,6 +115,9 @@ class ResilientSubscription {
       {
         channel: this._channel,
         token: localStorage.openc3Token,
+        // Tells the server this subscription heartbeats, so it can be reaped
+        // even if it dies before the first heartbeat is sent
+        ...(this._cable._heartbeatInterval ? { heartbeat: true } : {}),
         ...this._additionalOptions,
       },
       {

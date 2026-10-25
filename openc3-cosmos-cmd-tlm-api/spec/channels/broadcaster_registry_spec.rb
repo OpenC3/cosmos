@@ -59,12 +59,54 @@ RSpec.describe ApplicationCable::BroadcasterRegistry do
     expect(registry.registered?('legacy')).to be true
   end
 
-  it "honors OPENC3_CABLE_SUBSCRIPTION_TTL" do
-    allow(ENV).to receive(:fetch).and_call_original
-    allow(ENV).to receive(:fetch).with('OPENC3_CABLE_SUBSCRIPTION_TTL', anything).and_return('10')
-    registry.register('key', broadcaster)
-    registry.touch('key', heartbeat: true)
-    expect(registry.sweep(now + 11)).to eql ['key']
+  it "reaps an entry registered as heartbeating before its first heartbeat" do
+    registry.register('key', broadcaster, heartbeat: true)
+    expect(broadcaster).to receive(:kill)
+    expect(registry.sweep(now + registry.ttl + 1)).to eql ['key']
+  end
+
+  it "only unregisters the registration matching the token" do
+    newer = double("newer", kill: nil)
+    registry.register('key', broadcaster, token: 'old')
+    registry.register('key', newer, token: 'new')
+    expect(registry.unregister('key', token: 'old')).to be false
+    expect(registry.get('key')).to equal(newer)
+    expect(newer).not_to have_received(:kill)
+    expect(registry.unregister('key', token: 'new')).to be true
+    expect(newer).to have_received(:kill)
+    expect(registry.registered?('key')).to be false
+  end
+
+  context "environment overrides" do
+    def stub_env(name, value)
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with(name, anything).and_return(value)
+    end
+
+    it "honors OPENC3_CABLE_SUBSCRIPTION_TTL" do
+      stub_env('OPENC3_CABLE_SUBSCRIPTION_TTL', '200')
+      registry.register('key', broadcaster)
+      registry.touch('key', heartbeat: true)
+      expect(registry.sweep(now + 201)).to eql ['key']
+    end
+
+    it "clamps a ttl below the minimum and warns once" do
+      stub_env('OPENC3_CABLE_SUBSCRIPTION_TTL', '10')
+      expect(OpenC3::Logger).to receive(:warn).with(/OPENC3_CABLE_SUBSCRIPTION_TTL=10/).once
+      expect(registry.ttl).to eql described_class::MIN_TTL.to_f
+      expect(registry.ttl).to eql described_class::MIN_TTL.to_f
+    end
+
+    it "uses the default ttl when the value is not a number" do
+      stub_env('OPENC3_CABLE_SUBSCRIPTION_TTL', 'abc')
+      expect(registry.ttl).to eql described_class::DEFAULT_TTL.to_f
+      expect(OpenC3::Logger).to have_received(:warn).with(/OPENC3_CABLE_SUBSCRIPTION_TTL=abc/)
+    end
+
+    it "clamps a zero sweep interval" do
+      stub_env('OPENC3_CABLE_SWEEP_INTERVAL', '0')
+      expect(registry.sweep_interval).to eql described_class::MIN_SWEEP_INTERVAL.to_f
+    end
   end
 
   it "survives a broadcaster whose kill raises" do

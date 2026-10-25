@@ -23,36 +23,47 @@ module ApplicationCable
   # perform and a background sweeper reaps any entry that has stopped
   # heartbeating for longer than TTL.
   #
-  # Only entries that have sent at least one heartbeat are reaped. Older clients
-  # (and the Ruby/Python scripting WebSocket APIs) never heartbeat, and a
-  # realtime stream legitimately goes a long time with no client-to-server
-  # traffic, so reaping them on idle time alone would kill healthy streams.
+  # Only entries registered as heartbeating (the client said it heartbeats when
+  # it subscribed) or that have sent a heartbeat are reaped. Older clients (and
+  # the Ruby/Python scripting WebSocket APIs) never heartbeat, and a realtime
+  # stream legitimately goes a long time with no client-to-server traffic, so
+  # reaping them on idle time alone would kill healthy streams.
   class BroadcasterRegistry
     # Clients heartbeat every 60s, so this tolerates several missed heartbeats
     # (e.g. background tab timer throttling) before reaping
     DEFAULT_TTL = 300
     DEFAULT_SWEEP_INTERVAL = 60
+    # A ttl shorter than the client heartbeat interval would reap healthy
+    # clients between heartbeats, so never go below two heartbeats
+    MIN_TTL = 120
+    # Keeps a zero or invalid interval from turning the sweeper into a busy loop
+    MIN_SWEEP_INTERVAL = 1
 
-    Entry = Struct.new(:broadcaster, :last_activity, :heartbeat)
+    Entry = Struct.new(:broadcaster, :last_activity, :heartbeat, :token)
 
     @entries = {}
     @mutex = Mutex.new
     @sweeper = nil
+    @clamp_warnings = {}
 
     class << self
       def ttl
-        ENV.fetch('OPENC3_CABLE_SUBSCRIPTION_TTL', DEFAULT_TTL).to_f
+        env_seconds('OPENC3_CABLE_SUBSCRIPTION_TTL', DEFAULT_TTL, MIN_TTL)
       end
 
       def sweep_interval
-        ENV.fetch('OPENC3_CABLE_SWEEP_INTERVAL', DEFAULT_SWEEP_INTERVAL).to_f
+        env_seconds('OPENC3_CABLE_SWEEP_INTERVAL', DEFAULT_SWEEP_INTERVAL, MIN_SWEEP_INTERVAL)
       end
 
-      def register(key, broadcaster)
+      # heartbeat: true makes the entry reapable immediately rather than only
+      # after its first heartbeat, so a client that dies right after
+      # subscribing is still reaped. token identifies this registration so a
+      # late unregister from an older subscription can't remove a newer one.
+      def register(key, broadcaster, heartbeat: false, token: nil)
         previous = nil
         @mutex.synchronize do
           previous = @entries[key]&.broadcaster
-          @entries[key] = Entry.new(broadcaster, now(), false)
+          @entries[key] = Entry.new(broadcaster, now(), heartbeat, token)
         end
         # A duplicate subscribe for the same key must not leak the old one
         kill(key, previous) if previous and !previous.equal?(broadcaster)
@@ -80,8 +91,15 @@ module ApplicationCable
         end
       end
 
-      def unregister(key)
-        entry = @mutex.synchronize { @entries.delete(key) }
+      # When token is given only the registration made with that token is
+      # removed. Returns whether an entry was removed.
+      def unregister(key, token: nil)
+        entry = @mutex.synchronize do
+          current = @entries[key]
+          next nil unless current
+          next nil if token and current.token != token
+          @entries.delete(key)
+        end
         kill(key, entry.broadcaster) if entry and entry.broadcaster
         !entry.nil?
       end
@@ -111,13 +129,30 @@ module ApplicationCable
 
       # For tests
       def clear
-        @mutex.synchronize { @entries.clear }
+        @mutex.synchronize do
+          @entries.clear
+          @clamp_warnings.clear
+        end
       end
 
       private
 
       def now
         Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      end
+
+      def env_seconds(name, default, minimum)
+        raw = ENV.fetch(name, nil)
+        return default.to_f if raw.nil? or raw.to_s.strip.empty?
+        value = Float(raw, exception: false)
+        return value if value and value >= minimum
+        fallback = value ? minimum.to_f : default.to_f
+        # Only warn once per value, ttl is read on every sweep
+        unless @clamp_warnings[name] == raw
+          @clamp_warnings[name] = raw
+          OpenC3::Logger.warn("#{name}=#{raw} is invalid or below the minimum of #{minimum}s, using #{fallback}s")
+        end
+        fallback
       end
 
       def kill(key, broadcaster)

@@ -131,6 +131,32 @@ RSpec.describe StreamingChannel, :type => :channel do
       expect(registry.registered?('streaming_12345')).to be true
     end
 
+    it "reaps a subscription that said it heartbeats before its first heartbeat" do
+      subscribe(heartbeat: true)
+      expect(registry.get('streaming_12345')).to receive(:kill)
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      expect(registry.sweep(now + registry.ttl + 1)).to eql ['streaming_12345']
+    end
+
+    it "does not let a late unsubscribe remove a newer subscription's broadcaster" do
+      subscribe()
+      first = subscription
+      allow(registry.get('streaming_12345')).to receive(:kill)
+      subscribe()
+      second = registry.get('streaming_12345')
+      expect(second).not_to receive(:kill)
+      first.unsubscribe_from_channel
+      expect(registry.get('streaming_12345')).to equal(second)
+    end
+
+    it "does nothing on unsubscribe when subscribe was rejected" do
+      subscribe()
+      subscription.broadcaster_token = nil
+      expect(registry.get('streaming_12345')).not_to receive(:kill)
+      unsubscribe()
+      expect(registry.registered?('streaming_12345')).to be true
+    end
+
     it "tells a heartbeating client to resubscribe once its broadcaster is gone" do
       subscribe()
       registry.unregister('streaming_12345')

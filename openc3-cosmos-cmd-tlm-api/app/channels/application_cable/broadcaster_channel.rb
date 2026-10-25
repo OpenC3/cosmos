@@ -25,6 +25,13 @@ module ApplicationCable
     # wrapper so it never reaches the channel's received callback.
     RESUBSCRIBE_MESSAGE = { '__openc3_cable__' => 'resubscribe' }.freeze
 
+    included do
+      # Identifies the broadcaster this subscription registered. Kept in
+      # AnyCable channel state because channel instances don't survive between
+      # the subscribe and unsubscribe RPCs.
+      state_attr_accessor :broadcaster_token
+    end
+
     class_methods do
       def broadcaster_prefix(prefix = nil)
         @broadcaster_prefix = prefix if prefix
@@ -36,14 +43,22 @@ module ApplicationCable
       # Defensive: if the auth before_subscribe callback rejected us, skip work.
       return if subscription_rejected?
       stream_from subscription_key
-      BroadcasterRegistry.register(subscription_key, create_broadcaster())
+      self.broadcaster_token = SecureRandom.uuid
+      # Clients that heartbeat say so when they subscribe so they can be reaped
+      # even if they die before sending their first heartbeat
+      BroadcasterRegistry.register(subscription_key, create_broadcaster(),
+        heartbeat: [true, 'true'].include?(params[:heartbeat]), token: broadcaster_token)
     end
 
     def unsubscribed
-      if BroadcasterRegistry.registered?(subscription_key)
-        stop_stream_from subscription_key
-        BroadcasterRegistry.unregister(subscription_key)
-      end
+      # No token means subscribed was rejected and nothing was registered
+      token = broadcaster_token
+      return unless token
+      stop_stream_from subscription_key
+      # Only remove our own registration. A resubscribe on the same connection
+      # shares the key, and if its subscribe is handled before this unsubscribe
+      # the newer broadcaster must survive.
+      BroadcasterRegistry.unregister(subscription_key, token: token)
     end
 
     def heartbeat(_data = nil)
