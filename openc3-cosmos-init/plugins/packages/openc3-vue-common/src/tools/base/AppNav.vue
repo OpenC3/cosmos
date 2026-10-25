@@ -430,7 +430,14 @@ export default {
       const api = new OpenC3Api()
       const key = `${item.targetName}__${item.packetName}__${item.itemName}__CONVERTED`
       this.itemClockRunning = true
+      // Skip ticks while a request is outstanding so a slow API doesn't
+      // pile up concurrent requests
+      let inFlight = false
       const poll = () => {
+        if (inFlight) {
+          return
+        }
+        inFlight = true
         api
           .get_tlm_values([key], 30, null, null, null, {
             // Don't pop an error notification every second if the item
@@ -448,6 +455,9 @@ export default {
             }
             // Keep the last good value but grey it out and show why
             this.itemClockError = error?.message || String(error)
+          })
+          .finally(() => {
+            inFlight = false
           })
       }
       poll()
