@@ -80,7 +80,7 @@ module OpenC3
     # Returns the Redis db_shard holding a target stream such as
     # SCOPE__TELEMETRY__{TARGET}__PACKET, or 0 if no target can be determined
     def self.db_shard_for_topic(redis_topic)
-      target_match = redis_topic.match(/\{([^}]+)\}/)
+      target_match = redis_topic.match(/\{([^{}]+)\}/)
       return 0 unless target_match
       Store.db_shard_for_target(target_match[1], scope: redis_topic.split('__')[0])
     end

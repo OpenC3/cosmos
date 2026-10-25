@@ -52,7 +52,7 @@ class LogWriter:
     def db_shard_for_topic(redis_topic):
         """Returns the Redis db_shard holding a target stream such as
         SCOPE__TELEMETRY__{TARGET}__PACKET, or 0 if no target can be determined"""
-        target_match = re.search(r"\{([^}]+)\}", redis_topic)
+        target_match = re.search(r"\{([^{}]+)\}", redis_topic)
         if not target_match:
             return 0
         return Store.db_shard_for_target(target_match.group(1), scope=redis_topic.split("__")[0])
@@ -89,10 +89,10 @@ class LogWriter:
         if self.cycle_size:
             self.cycle_size = int(self.cycle_size)
         self.cycle_hour = ConfigParser.handle_none(cycle_hour)
-        if self.cycle_hour:
+        if self.cycle_hour is not None:
             self.cycle_hour = int(self.cycle_hour)
         self.cycle_minute = ConfigParser.handle_none(cycle_minute)
-        if self.cycle_minute:
+        if self.cycle_minute is not None:
             self.cycle_minute = int(self.cycle_minute)
         self.enforce_time_order = ConfigParser.handle_true_false(enforce_time_order)
         self.out_of_order = False
@@ -180,6 +180,31 @@ class LogWriter:
             else:
                 return filename
 
+    # Returns why the file should be cycled now, or None if it shouldn't be.
+    # Hour 0 and minute 0 are valid times, so check against None rather than truthiness.
+    def cycle_reason(self, utc_now):
+        # Cycle based on total time logging
+        if self.cycle_time and (utc_now - self.start_time).total_seconds() > self.cycle_time:
+            return "due to cycle time"
+        # Cycle daily at a specific time
+        if (
+            self.cycle_hour is not None
+            and self.cycle_minute is not None
+            and utc_now.hour == self.cycle_hour
+            and utc_now.minute == self.cycle_minute
+            and self.start_time.date() != utc_now.date()
+        ):
+            return "daily"
+        # Cycle hourly at a specific time
+        if (
+            self.cycle_minute is not None
+            and self.cycle_hour is None
+            and utc_now.minute == self.cycle_minute
+            and self.start_time.hour != utc_now.hour
+        ):
+            return "hourly"
+        return None
+
     def cycle_thread_body(self):
         LogWriter.cycle_sleeper = Sleeper()
         while True:
@@ -191,31 +216,9 @@ class LogWriter:
                     with instance.mutex:
                         utc_now = datetime.now(timezone.utc)
                         if instance.logging_enabled and instance.filename:  # Logging and file opened
-                            # Cycle based on total time logging
-                            if (
-                                instance.cycle_time
-                                and (utc_now - instance.start_time).total_seconds() > instance.cycle_time
-                            ):
-                                Logger.debug("Log writer start new file due to cycle time")
-                                instance.close_file(False)
-                            # Cycle daily at a specific time
-                            elif (
-                                instance.cycle_hour
-                                and instance.cycle_minute
-                                and utc_now.hour == instance.cycle_hour
-                                and utc_now.minute == instance.cycle_minute
-                                and instance.start_time.day != utc_now.day
-                            ):
-                                Logger.debug("Log writer start new file daily")
-                                instance.close_file(False)
-                            # Cycle hourly at a specific time
-                            elif (
-                                instance.cycle_minute
-                                and not instance.cycle_hour
-                                and utc_now.minute == instance.cycle_minute
-                                and instance.start_time.hour != utc_now.hour
-                            ):
-                                Logger.debug("Log writer start new file hourly")
+                            reason = instance.cycle_reason(utc_now)
+                            if reason:
+                                Logger.debug(f"Log writer start new file {reason}")
                                 instance.close_file(False)
 
                         instance.trim_due_cleanups(utc_now)
