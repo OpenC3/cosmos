@@ -559,6 +559,8 @@ module OpenC3
   class InterfaceMicroservice < Microservice
     UNKNOWN_BYTES_TO_PRINT = 16
     DEFAULT_UPDATE_INTERVAL = 0.1 # seconds
+    # Most distinct unmapped target / packet names to remember warning about
+    UNMAPPED_TLM_WARNED_MAX = 1000
 
     # Interfaces never use descriptions so don't keep them in memory
     def load_descriptions?
@@ -600,7 +602,8 @@ module OpenC3
         RouterStatusModel.set(@interface.as_json(), scope: @scope)
       end
 
-      @unmapped_tlm_warned = Set.new
+      # Insertion ordered so the oldest key can be evicted (see handle_packet)
+      @unmapped_tlm_warned = {}
       # Queue Redis writes by default and flush them every update_interval seconds
       update_interval = DEFAULT_UPDATE_INTERVAL
       @interface.options.each do |option_name, option_values|
@@ -799,7 +802,11 @@ module OpenC3
         unless @interface.tlm_target_names.include?(packet.target_name)
           # Trust the identity but drop it because the target isn't mapped to this interface
           key = "#{packet.target_name} #{packet.packet_name}"
-          if @unmapped_tlm_warned.add?(key)
+          unless @unmapped_tlm_warned.key?(key)
+            # The names come from the wire so bound how many are remembered.
+            # Evict the oldest rather than stop adding so every new name still warns.
+            @unmapped_tlm_warned.delete(@unmapped_tlm_warned.first[0]) if @unmapped_tlm_warned.length >= UNMAPPED_TLM_WARNED_MAX
+            @unmapped_tlm_warned[key] = true
             @logger.warn "#{@interface.name}: Dropping telemetry for unmapped target: #{key}"
           end
           return

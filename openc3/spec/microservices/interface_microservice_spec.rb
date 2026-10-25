@@ -327,6 +327,14 @@ module OpenC3
           expect(@written).to be_empty
         end
 
+        it "bounds the unmapped warnings it remembers by evicting the oldest" do
+          stub_const("OpenC3::InterfaceMicroservice::UNMAPPED_TLM_WARNED_MAX", 2)
+          %w(A B C A).each { |name| handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: name) }
+          # C evicted A so A warns again, and every new name warned
+          expect(@warnings.grep(/unmapped target/).map { |w| w.split(' ').last }).to eql %w(A B C A)
+          expect(@im.instance_variable_get(:@unmapped_tlm_warned).length).to eql 2
+        end
+
         it "falls back to identifying a stored packet pre-identified with an unknown packet" do
           handle(@im, health_status_buffer, target_name: 'INST', packet_name: 'NOPE', stored: true)
           expect(@warnings).to include("INST_INT: Received unknown identified telemetry: INST NOPE")

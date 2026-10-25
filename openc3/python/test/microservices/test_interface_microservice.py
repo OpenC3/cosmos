@@ -1098,6 +1098,15 @@ class TestInterfaceMicroservice(unittest.TestCase):
         )
         self.assertEqual(written, [])
 
+    def test_handle_packet_bounds_unmapped_warnings_by_evicting_the_oldest(self):
+        im, warnings, _ = self.setup_handle_packet()
+        with patch.object(InterfaceMicroservice, "UNMAPPED_TLM_WARNED_MAX", 2):
+            for name in ["A", "B", "C", "A"]:
+                self.handle(im, self.health_status_buffer(), "SYSTEM", name)
+        # C evicted A so A warns again, and every new name warned
+        self.assertEqual([w.split(" ")[-1] for w in warnings if "unmapped target" in w], ["A", "B", "C", "A"])
+        self.assertEqual(len(im.unmapped_tlm_warned), 2)
+
     def test_handle_packet_falls_back_for_a_stored_packet_with_an_unknown_packet(self):
         im, warnings, written = self.setup_handle_packet()
         self.handle(im, self.health_status_buffer(), "INST", "NOPE", stored=True)

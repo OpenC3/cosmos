@@ -657,6 +657,8 @@ class InterfaceMicroservice(Microservice):
     UNKNOWN_BYTES_TO_PRINT = 16
     DISCONNECT_WAIT_TIME = 1
     DEFAULT_UPDATE_INTERVAL = 0.1  # seconds
+    # Most distinct unmapped target / packet names to remember warning about
+    UNMAPPED_TLM_WARNED_MAX = 1000
 
     # Interfaces never use descriptions so don't keep them in memory
     def load_descriptions(self):
@@ -702,7 +704,8 @@ class InterfaceMicroservice(Microservice):
         else:
             RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
 
-        self.unmapped_tlm_warned = set()
+        # Insertion ordered so the oldest key can be evicted (see handle_packet)
+        self.unmapped_tlm_warned: dict[str, bool] = {}
         # Queue Redis writes by default and flush them every update_interval seconds
         update_interval = InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL
         for option_name, option_values in self.interface.options.items():
@@ -912,7 +915,11 @@ class InterfaceMicroservice(Microservice):
                 # Trust the identity but drop it because the target isn't mapped to this interface
                 key = f"{packet.target_name} {packet.packet_name}"
                 if key not in self.unmapped_tlm_warned:
-                    self.unmapped_tlm_warned.add(key)
+                    # The names come from the wire so bound how many are remembered.
+                    # Evict the oldest rather than stop adding so every new name still warns.
+                    if len(self.unmapped_tlm_warned) >= self.UNMAPPED_TLM_WARNED_MAX:
+                        del self.unmapped_tlm_warned[next(iter(self.unmapped_tlm_warned))]
+                    self.unmapped_tlm_warned[key] = True
                     self.logger.warn(f"{self.interface.name}: Dropping telemetry for unmapped target: {key}")
                 return
             if not self._known_tlm_packet(packet):
