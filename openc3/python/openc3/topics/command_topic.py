@@ -38,7 +38,8 @@ class CommandTopic(Topic):
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
-        EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash)
+        minid = Topic.log_stream_safety_minid(packet.target_name, "CMD", scope)
+        EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash, minid=minid)
 
     @classmethod
     def send_command(cls, command, timeout, scope, obfuscated_items=None):
