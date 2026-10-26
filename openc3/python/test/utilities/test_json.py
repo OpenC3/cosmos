@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import math
 import unittest
 from datetime import datetime
 from unittest.mock import *
@@ -31,3 +32,19 @@ class TestJson(unittest.TestCase):
         self.assertEqual(string, '{"json_class": "String", "raw": [0, 1, 2, 3]}')
         new_ba = json.loads(string, cls=JsonDecoder)
         self.assertEqual(new_ba, ba)
+
+    def test_decodes_ruby_float_additions(self):
+        # Ruby encodes NaN and Infinity as json_class Float objects
+        string = (
+            '{"nan": {"json_class": "Float", "raw": "NaN"}, '
+            '"inf": {"json_class": "Float", "raw": "Infinity"}, '
+            '"ninf": {"json_class": "Float", "raw": "-Infinity"}}'
+        )
+        result = json.loads(string, cls=JsonDecoder)
+        self.assertTrue(math.isnan(result["nan"]))
+        self.assertEqual(result["inf"], float("inf"))
+        self.assertEqual(result["ninf"], float("-inf"))
+
+    def test_leaves_unknown_float_raw_as_dict(self):
+        string = '{"json_class": "Float", "raw": "bogus"}'
+        self.assertEqual(json.loads(string, cls=JsonDecoder), {"json_class": "Float", "raw": "bogus"})

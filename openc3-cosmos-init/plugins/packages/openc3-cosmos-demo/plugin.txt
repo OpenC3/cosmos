@@ -161,14 +161,14 @@ VARIABLE inst2_throughput_port 7780
     MAP_TARGET <%= inst_target_name %>
 <% end %>
 
-<% if include_example_microservice %>
+<% if include_example_microservice and include_example %>
   MICROSERVICE EXAMPLE <%= example_microservice_name %>
     CMD ruby example_target.rb
     TARGET_NAME <%= example_target_name %>
     PORT <%= example_port %>
 <% end %>
 
-<% if include_templated_microservice %>
+<% if include_templated_microservice and include_templated %>
   MICROSERVICE TEMPLATED <%= templated_microservice_name %>
     CMD ruby scpi_target.rb
     TARGET_NAME <%= templated_target_name %>

@@ -454,6 +454,8 @@ end
 
 The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog.
 
+The returned file object also provides `filename`, `bucket`, and `bucket_path` (methods in Python) for the selected file's name, the bucket it came from (e.g. `OPENC3_CONFIG_BUCKET`), and its full path within that bucket (e.g. `DEFAULT/targets/INST/procedures/test.rb`). These are only available when running in Script Runner.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
@@ -485,6 +487,8 @@ open_bucket_dialog("<Title>", "<Message>", default_path: <default_path>, filter:
 ```python
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
 print(file.filename()) # The name of the selected file, note filename is a method
+print(file.bucket()) # The bucket the file came from, e.g. OPENC3_CONFIG_BUCKET
+print(file.bucket_path()) # The full path within the bucket
 print(file.read())
 file.close()
 
@@ -507,6 +511,8 @@ file.close()
 ```ruby
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
 puts file.filename # The name of the selected file
+puts file.bucket # The bucket the file came from, e.g. OPENC3_CONFIG_BUCKET
+puts file.bucket_path # The full path within the bucket
 puts file.read
 file.delete
 
@@ -3183,7 +3189,6 @@ print(packets)
 #  "packet_name"=>"ADCS",
 #  "endianness"=>"BIG_ENDIAN",
 #  "description"=>"Position and attitude data",
-#  "stale"=>true,
 #  "items"=>
 #   [{"name"=>"CCSDSVER",
 #     "bit_offset"=>0,
@@ -3202,7 +3207,6 @@ puts packets
 #  "packet_name"=>"ADCS",
 #  "endianness"=>"BIG_ENDIAN",
 #  "description"=>"Position and attitude data",
-#  "stale"=>true,
 #  "items"=>
 #   [{"name"=>"CCSDSVER",
 #     "bit_offset"=>0,
@@ -3346,7 +3350,6 @@ print(packet)
 # "packet_name"=>"HEALTH_STATUS",
 # "endianness"=>"BIG_ENDIAN",
 # "description"=>"Health and status from the instrument",
-# "stale"=>true,
 # "processors"=>
 #  [{"name"=>"TEMP1STAT",
 #    "class"=>"OpenC3::StatisticsProcessor",
@@ -3372,7 +3375,6 @@ puts packet
 # "packet_name"=>"HEALTH_STATUS",
 # "endianness"=>"BIG_ENDIAN",
 # "description"=>"Health and status from the instrument",
-# "stale"=>true,
 # "processors"=>
 #  [{"name"=>"TEMP1STAT",
 #    "class"=>"OpenC3::StatisticsProcessor",

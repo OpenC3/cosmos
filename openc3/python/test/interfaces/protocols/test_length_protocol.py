@@ -46,6 +46,14 @@ class TestLengthProtocol(unittest.TestCase):
         TestLengthProtocol.buffer = b""
         self.interface = TestLengthProtocol.MyInterface()
 
+        # The stub streams below return data forever so cap the read queue
+        # rather than letting the read thread buffer the full default budget
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["65536"])
+
+    def tearDown(self):
+        # Stop the StreamInterface read thread started by reading
+        self.interface.stop_read_queue_thread()
+
     def test_initializes_attributes(self):
         self.interface.add_protocol(
             LengthProtocol,

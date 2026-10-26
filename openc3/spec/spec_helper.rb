@@ -247,6 +247,8 @@ def mock_redis
   OpenC3::EphemeralStore.instance_variable_set(:@instances, [])
   OpenC3::StoreQueued.instance_variable_set(:@instances, [])
   OpenC3::EphemeralStoreQueued.instance_variable_set(:@instances, [])
+  OpenC3::StoreQueued.instance_variable_set(:@update_interval, nil)
+  OpenC3::EphemeralStoreQueued.instance_variable_set(:@update_interval, nil)
   require 'openc3/models/auth_model'
   OpenC3::AuthModel.set($openc3_password, nil)
   $openc3_token = OpenC3::AuthModel.generate_session()

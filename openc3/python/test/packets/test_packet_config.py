@@ -60,6 +60,40 @@ class TestPacketConfig(unittest.TestCase):
 
         os.unlink(tf.name)
 
+    def test_drops_descriptions_when_descriptions_is_false(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY TGT PKT BIG_ENDIAN "Tlm packet"\n')
+            tf.write('  APPEND_ITEM ITEM 16 UINT "Tlm item"\n')
+            tf.write("  APPEND_ITEM ITEM2 16 UINT\n")
+            tf.write('    DESCRIPTION "Tlm item 2"\n')
+            tf.write('COMMAND TGT CMD BIG_ENDIAN "Cmd packet"\n')
+            tf.write('  APPEND_PARAMETER PARAM 16 UINT MIN MAX 0 "Cmd param"\n')
+            tf.write("SELECT_TELEMETRY TGT PKT\n")
+            tf.write("  SELECT_ITEM ITEM\n")
+            tf.write('    DESCRIPTION "Selected item"\n')
+            tf.seek(0)
+
+            pc = PacketConfig(descriptions=False)
+            pc.process_file(tf.name, "TGT")
+            tlm = pc.telemetry["TGT"]["PKT"]
+            cmd = pc.commands["TGT"]["CMD"]
+            self.assertIsNone(tlm.description)
+            self.assertIsNone(tlm.get_item("ITEM").description)
+            self.assertIsNone(tlm.get_item("ITEM2").description)
+            self.assertIsNone(tlm.get_item("PACKET_TIMESECONDS").description)
+            self.assertIsNone(tlm.get_item("RECEIVED_COUNT").description)
+            self.assertIsNone(cmd.description)
+            self.assertIsNone(cmd.get_item("PARAM").description)
+            self.assertIsNone(cmd.get_item("RECEIVED_TIMEFORMATTED").description)
+
+            self.pc.process_file(tf.name, "TGT")
+            tlm = self.pc.telemetry["TGT"]["PKT"]
+            self.assertEqual(tlm.description, "Tlm packet")
+            self.assertEqual(tlm.get_item("ITEM").description, "Selected item")
+            self.assertEqual(tlm.get_item("ITEM2").description, "Tlm item 2")
+            self.assertEqual(tlm.get_item("RECEIVED_COUNT").description, "OpenC3 packet received count")
+            self.assertEqual(self.pc.commands["TGT"]["CMD"].get_item("PARAM").description, "Cmd param")
+
     def test_creates_unknown_cmd_tlm_packets(self):
         # Only one target called "UNKNOWN"
         self.assertEqual(list(self.pc.commands.keys()), ["UNKNOWN"])
@@ -495,7 +529,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.seek(0)
             self.assertEqual(len(self.pc.limits_groups), 0)
             self.pc.process_file(tf.name, "TGT1")
-            self.assertEqual(["TVAC", "VIBE"], list(self.pc.limits_groups.keys()))
+            self.assertEqual(list(self.pc.limits_groups.keys()), ["TVAC", "VIBE"])
 
     def test_adds_a_new_limits_item_to_the_group(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
@@ -703,7 +737,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("RESPONSE TGT2 PKT2\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "SYSTEM")
-            self.assertEqual(["TGT2", "PKT2"], self.pc.commands["TGT1"]["PKT1"].response)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].response, ["TGT2", "PKT2"])
             self.assertIsNone(self.pc.commands["TGT1"]["PKT1"].error_response)
 
     def test_error_response_only_applies_to_commands(self):
@@ -721,7 +755,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("ERROR_RESPONSE TGT2 PKT2\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
-            self.assertEqual(["TGT2", "PKT2"], self.pc.commands["TGT1"]["PKT1"].error_response)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].error_response, ["TGT2", "PKT2"])
             self.assertIsNone(self.pc.commands["TGT1"]["PKT1"].response)
 
     def test_screen_only_applies_to_commands(self):
@@ -756,7 +790,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("SCREEN TGT2 SCREEN\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
-            self.assertEqual(["TGT2", "SCREEN"], self.pc.commands["TGT1"]["PKT1"].screen)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].screen, ["TGT2", "SCREEN"])
 
     def test_related_item_only_applies_to_commands(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
@@ -800,8 +834,8 @@ class TestPacketConfig(unittest.TestCase):
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
             self.assertEqual(
-                [["TGT1", "PKT1", "ITEM1"], ["TGT1", "PKT1", "ITEM2"]],
                 self.pc.commands["TGT1"]["PKT1"].related_items,
+                [["TGT1", "PKT1", "ITEM1"], ["TGT1", "PKT1", "ITEM2"]],
             )
 
     def test_sets_the_template(self):
@@ -1273,7 +1307,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
             overlap_warnings = [w for w in self.pc.warnings if "overlap" in w]
-            self.assertEqual(0, len(overlap_warnings))
+            self.assertEqual(len(overlap_warnings), 0)
 
         with tempfile.NamedTemporaryFile(mode="w") as tf:
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')

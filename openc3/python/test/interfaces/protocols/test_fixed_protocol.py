@@ -50,6 +50,14 @@ class TestFixedProtocol(unittest.TestCase):
         setup_system()
         self.interface = TestFixedProtocol.MyInterface()
 
+        # The stub streams below return data forever so cap the read queue
+        # rather than letting the read thread buffer the full default budget
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["65536"])
+
+    def tearDown(self):
+        # Stop the StreamInterface read thread started by reading
+        self.interface.stop_read_queue_thread()
+
     def test_initializes_attributes(self):
         self.interface.add_protocol(FixedProtocol, [2, 1, "0xDEADBEEF", False, True], "READ_WRITE")
         self.assertEqual(self.interface.read_protocols[0].data, b"")
@@ -74,8 +82,12 @@ class TestFixedProtocol(unittest.TestCase):
         self.assertEqual(packet.buffer[0], 1)
         # Return zeros which will not be identified
         TestFixedProtocol.index = 0
+        # The read thread buffers ahead so flush it to pick up the new data
+        self.interface.stop_read_queue_thread()
         packet = self.interface.read()
-        self.assertIsNone(packet.received_time)
+        # Unknown packets are timestamped with when their data was read
+        self.assertIsNotNone(packet.received_time)
+        self.assertEqual(packet.received_time, self.interface.read_queue_data_time)
         self.assertIsNone(packet.target_name)
         self.assertIsNone(packet.packet_name)
         self.assertEqual(packet.buffer, b"\x00")
@@ -100,7 +112,9 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface.tlm_target_names = ["EMPTY"]
         TestFixedProtocol.index = 1
         packet = self.interface.read()
-        self.assertIsNone(packet.received_time)
+        # Unknown packets are timestamped with when their data was read
+        self.assertIsNotNone(packet.received_time)
+        self.assertEqual(packet.received_time, self.interface.read_queue_data_time)
         self.assertIsNone(packet.target_name)
         self.assertIsNone(packet.packet_name)
         self.assertEqual(packet.buffer, b"\x01")
@@ -121,6 +135,8 @@ class TestFixedProtocol(unittest.TestCase):
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "META")
         TestFixedProtocol.index = 2
+        # The read thread buffers ahead so flush it to pick up the new data
+        self.interface.stop_read_queue_thread()
         packet = self.interface.read()
         self.assertLess(
             datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(),
@@ -130,6 +146,8 @@ class TestFixedProtocol(unittest.TestCase):
         self.assertEqual(packet.packet_name, "LIMITS_CHANGE")
         target.tlm_unique_id_mode = True
         TestFixedProtocol.index = 1
+        # The read thread buffers ahead so flush it to pick up the new data
+        self.interface.stop_read_queue_thread()
         packet = self.interface.read()
         self.assertLess(
             datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(),
@@ -138,6 +156,8 @@ class TestFixedProtocol(unittest.TestCase):
         self.assertEqual(packet.target_name, "SYSTEM")
         self.assertEqual(packet.packet_name, "META")
         TestFixedProtocol.index = 2
+        # The read thread buffers ahead so flush it to pick up the new data
+        self.interface.stop_read_queue_thread()
         packet = self.interface.read()
         self.assertLess(
             datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(),

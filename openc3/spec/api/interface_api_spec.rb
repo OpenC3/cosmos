@@ -69,6 +69,18 @@ module OpenC3
         expect(interface['state']).to eql "CONNECTED"
         expect(interface['clients']).to eql 0
       end
+
+      it "raises if the interface does not exist" do
+        expect { @api.get_interface("NONEXISTENT_INT") }.to raise_error("Interface 'NONEXISTENT_INT' does not exist (get_interface)")
+      end
+
+      it "defaults the state to UNKNOWN if the interface status does not exist" do
+        model = InterfaceModel.new(name: "NO_STATUS_INT", scope: "DEFAULT")
+        model.create
+        interface = @api.get_interface("NO_STATUS_INT")
+        expect(interface['name']).to eql "NO_STATUS_INT"
+        expect(interface['state']).to eql "UNKNOWN"
+      end
     end
 
     describe "get_interface_names" do

@@ -521,5 +521,25 @@ module OpenC3
         expect { put_target_file('LOCAL/tables/table.bin', data, scope: test_scope) }.to raise_error(/Failed to write/)
       end
     end
+
+    describe "_get_bucket_dialog_file" do
+      include OpenC3::Script
+
+      it "returns the file with its bucket and bucket path" do
+        file = Tempfile.new('bucket_dialog')
+        expect(self).to receive(:_get_storage_file).with('targets/INST/procedures/test.rb', bucket: 'OPENC3_CONFIG_BUCKET', scope: 'DEFAULT').and_return(file)
+        input = {
+          'bucket' => 'OPENC3_CONFIG_BUCKET',
+          'path' => 'DEFAULT/targets/INST/procedures/test.rb',
+          'filename' => 'test.rb',
+        }
+        result = _get_bucket_dialog_file(input, scope: 'DEFAULT')
+        expect(result).to be(file)
+        expect(result.filename).to eql 'test.rb'
+        expect(result.bucket).to eql 'OPENC3_CONFIG_BUCKET'
+        expect(result.bucket_path).to eql 'DEFAULT/targets/INST/procedures/test.rb'
+        file.close!
+      end
+    end
   end
 end
