@@ -41,14 +41,33 @@ module OpenC3
 
     attr_reader :state
 
+    # Lag in seconds that triggers the warning and critical notifications.
+    # A warning <= 0 disables notifications. Also used by Data Flows so its
+    # indicators match the notifications.
+    def self.thresholds
+      {
+        'warning' => env_float('OPENC3_LAG_WARN_SECONDS', 5.0),
+        'critical' => env_float('OPENC3_LAG_CRITICAL_SECONDS', 30.0),
+      }
+    end
+
+    def self.env_float(name, default)
+      value = ENV.fetch(name, '').strip
+      return default if value.empty?
+      Float(value)
+    rescue ArgumentError
+      default
+    end
+
     def initialize(name:, logger:, metric: nil)
       @name = name
       @logger = logger
       @metric = metric
-      @warn_seconds = env_float('OPENC3_LAG_WARN_SECONDS', 5.0)
-      @critical_seconds = env_float('OPENC3_LAG_CRITICAL_SECONDS', 30.0)
-      @clear_seconds = env_float('OPENC3_LAG_CLEAR_SECONDS', 10.0)
-      @renotify_seconds = env_float('OPENC3_LAG_RENOTIFY_SECONDS', 300.0)
+      thresholds = self.class.thresholds
+      @warn_seconds = thresholds['warning']
+      @critical_seconds = thresholds['critical']
+      @clear_seconds = self.class.env_float('OPENC3_LAG_CLEAR_SECONDS', 10.0)
+      @renotify_seconds = self.class.env_float('OPENC3_LAG_RENOTIFY_SECONDS', 300.0)
       @state = OK
       @max_lag = 0.0
       @max_lag_topic = nil
@@ -169,14 +188,6 @@ module OpenC3
 
     def id_ms(id)
       id.to_s.split('-')[0].to_i
-    end
-
-    def env_float(name, default)
-      value = ENV.fetch(name, '').strip
-      return default if value.empty?
-      Float(value)
-    rescue ArgumentError
-      default
     end
   end
 end

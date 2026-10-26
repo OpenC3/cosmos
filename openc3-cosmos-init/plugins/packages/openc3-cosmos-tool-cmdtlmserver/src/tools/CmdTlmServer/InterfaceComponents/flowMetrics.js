@@ -7,8 +7,14 @@
 // Metrics are published every five seconds. Allow several missed reports
 // before treating a service's last measurements as stale.
 export const STALE_SECONDS = 30
-export const DELAY_WARNING_SECONDS = 1
-export const DELAY_CRITICAL_SECONDS = 5
+// Queue delay thresholds come from the server (TopicLagMonitor) so the
+// indicators match its falling behind notifications. These are its defaults.
+export const DEFAULT_LAG_THRESHOLDS = Object.freeze({
+  warning: 5,
+  critical: 30,
+})
+export const DURATION_WARNING_SECONDS = 1
+export const DURATION_CRITICAL_SECONDS = 5
 export const BUFFER_WARNING_BYTES = 1024 * 1024
 export const BUFFER_CRITICAL_BYTES = 10 * 1024 * 1024
 
@@ -103,7 +109,28 @@ export function formatMetric(value, unit) {
     : number.toLocaleString()
 }
 
-function metricRow(service, metric, data, age) {
+// A warning <= 0 means the server has notifications disabled; keep showing
+// delays against the defaults rather than never flagging them.
+export function lagThresholds(thresholds) {
+  const warning = numeric(thresholds?.warning)
+  const critical = numeric(thresholds?.critical)
+  if (!warning || critical === null || critical < warning) {
+    return DEFAULT_LAG_THRESHOLDS
+  }
+  return { warning, critical }
+}
+
+function thresholdsFor(metric, lag) {
+  if (metric.endsWith('_read_queue_bytes')) {
+    return [BUFFER_WARNING_BYTES, BUFFER_CRITICAL_BYTES]
+  }
+  if (metric.endsWith('_topic_delta_seconds')) {
+    return [lag.warning, lag.critical]
+  }
+  return [DURATION_WARNING_SECONDS, DURATION_CRITICAL_SECONDS]
+}
+
+function metricRow(service, metric, data, age, lag) {
   const value = numeric(data?.value)
   const isDelay = metric.endsWith('_topic_delta_seconds')
   const isDuration = metric.endsWith('_duration_seconds')
@@ -115,8 +142,7 @@ function metricRow(service, metric, data, age) {
   if (value === null || age === null) state = 'unknown'
   else if (age > STALE_SECONDS) state = 'stale'
   else if (monitored) {
-    const warning = isBuffer ? BUFFER_WARNING_BYTES : DELAY_WARNING_SECONDS
-    const critical = isBuffer ? BUFFER_CRITICAL_BYTES : DELAY_CRITICAL_SECONDS
+    const [warning, critical] = thresholdsFor(metric, lag)
     if (value >= critical) state = 'critical'
     else if (value >= warning) state = 'warning'
   }
@@ -143,7 +169,11 @@ function metricRow(service, metric, data, age) {
   }
 }
 
-export function flowHealth(rows = [], unavailable = false) {
+export function flowHealth(
+  rows = [],
+  unavailable = false,
+  lag = DEFAULT_LAG_THRESHOLDS,
+) {
   let state = 'unknown'
   if (unavailable) state = 'unavailable'
   else if (rows.some((row) => row.state === 'critical')) state = 'critical'
@@ -154,35 +184,43 @@ export function flowHealth(rows = [], unavailable = false) {
     rows.some((row) => row.monitored && row.state === 'ok')
   )
     state = 'ok'
-  return { state, ...STATES[state], rows }
+  return { state, ...STATES[state], rows, lag }
 }
+
+// Services TargetModel deploys per target, optionally numbered (DECOM1, TSDB2).
+// Scope level services such as SCOPEMULTI or TRIGGER_GROUP use the same
+// SCOPE__TYPE__NAME form but their NAME is not a target.
+const TARGET_SERVICE = /^(MULTI|DECOM|COMMANDLOG|PACKETLOG|TSDB|CLEANUP)\d*$/
 
 // Match complete names, not substrings (INST must never include INST2).
 // A target can have multiple service instances such as DECOM, DECOM1, TSDB2.
 export function buildFlowMetrics(
-  metrics,
+  response,
   unavailable = false,
   now = Date.now(),
 ) {
-  const result = { interface: {}, router: {}, target: {} }
-  for (const [service, report] of Object.entries(metrics || {})) {
+  const lag = lagThresholds(response?.lag_thresholds)
+  const result = { interface: {}, router: {}, target: {}, lag }
+  for (const [service, report] of Object.entries(response?.services || {})) {
     const [, type, ...nameParts] = service.split('__')
     const name = nameParts.join('__')
     if (!name || !type) continue
-    let kind = 'target'
+    let kind
     if (type === 'INTERFACE') kind = 'interface'
     else if (type === 'ROUTER') kind = 'router'
+    else if (TARGET_SERVICE.test(type)) kind = 'target'
+    else continue
     const timestamp = numeric(report?.updated_at)
     const age =
       timestamp === null ? null : Math.max(0, (now - timestamp / 1e6) / 1000)
     const rows = Object.entries(report?.values || {})
-      .map(([metric, data]) => metricRow(service, metric, data, age))
+      .map(([metric, data]) => metricRow(service, metric, data, age, lag))
       .filter(Boolean)
     if (!rows.length) continue
     result[kind][name] ||= []
     result[kind][name].push(...rows)
   }
-  for (const group of Object.values(result)) {
+  for (const group of [result.interface, result.router, result.target]) {
     for (const [name, rows] of Object.entries(group)) {
       rows.sort(
         (a, b) =>
@@ -190,7 +228,7 @@ export function buildFlowMetrics(
           Number(b.monitored) - Number(a.monitored) ||
           a.metric.localeCompare(b.metric),
       )
-      group[name] = flowHealth(rows, unavailable)
+      group[name] = flowHealth(rows, unavailable, lag)
     }
   }
   return result
