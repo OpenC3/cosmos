@@ -95,6 +95,27 @@ class TestTemplateProtocol(unittest.TestCase):
         # Stop the StreamInterface read thread started by reading
         self.interface.stop_read_queue_thread()
 
+    def _start_response_reader(self):
+        """Read the response in a thread once the write is waiting for it.
+
+        A read only counts as the response after write_packet sets the response
+        template. A read that wins the race returns the data as an ordinary packet
+        and the write then waits for a response nobody reads, forever when the
+        response timeout is None, so hold off until the template is set.
+        """
+        protocol = self.interface.read_protocols[0]
+        self.read_result = None
+
+        def do_read():
+            deadline = time.time() + 5
+            while protocol.response_template is None and time.time() < deadline:
+                time.sleep(0.001)
+            self.read_result = self.interface.read()
+
+        thread = threading.Thread(target=do_read, daemon=True)
+        thread.start()
+        return thread
+
     def _command_packet(self, cmd_template, rsp_template=None, rsp_packet=None, **items):
         """Build a TGT CMD packet with the given 16 bit UINT items and templates.
 
@@ -315,16 +336,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.restore_defaults()
         TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"  # ASCII 31, 30 is '10'
         self.interface.connect()
-        self.read_result = None
-
-        def do_read(self):
-            time.sleep(0.001)
-            self.read_result = self.interface.read()
-
-        thread = threading.Thread(target=do_read, args=[self])
-        thread.start()
+        thread = self._start_response_reader()
         self.interface.write(packet)
-        time.sleep(0.003)
+        thread.join(5)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xab\xcd")
         self.assertEqual(self.read_result.read("VOLTAGE"), (10))
 
@@ -363,16 +377,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.restore_defaults()
         TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"  # ASCII 31, 30 is '10'
         self.interface.connect()
-        self.read_result = None
-
-        def do_read(self):
-            time.sleep(0.001)
-            self.read_result = self.interface.read()
-
-        thread = threading.Thread(target=do_read, args=[self])
-        thread.start()
+        thread = self._start_response_reader()
         self.interface.write(packet)
-        time.sleep(0.003)
+        thread.join(5)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xab\xcd")
         self.assertEqual(self.read_result.read("PKT_ID"), (1))  # Result ID set to the defined value)
         self.assertEqual(self.read_result.read("VOLTAGE"), (10))
@@ -418,17 +425,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.write("PKTID", 20)
         TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"  # ASCII 31, 30 is '10'
         self.interface.connect()
-        self.read_result = None
-
-        def do_read(self):
-            time.sleep(0.001)
-            self.read_result = self.interface.read()
-
-        thread = threading.Thread(target=do_read, args=[self])
-        thread.start()
-
+        thread = self._start_response_reader()
         self.interface.write(packet)
-        time.sleep(0.003)
+        thread.join(5)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.1)\xab\xcd")
         self.assertEqual(self.read_result.read("APID"), (10))  # ID item set to the defined value)
         self.assertEqual(self.read_result.read("PKTID"), (20))  # ID item set to the defined value)
@@ -466,15 +465,10 @@ class TestTemplateProtocol(unittest.TestCase):
         TestTemplateProtocol.read_buffer = b"\x31\x30\xab\xcd"  # ASCII 31, 30 is '10'
         self.interface.connect()
 
-        def do_read(self):
-            time.sleep(0.001)
-            self.read_result = self.interface.read()
-
-        thread = threading.Thread(target=do_read, args=[self])
-        thread.start()
+        thread = self._start_response_reader()
         for stdout in capture_io():
             self.interface.write(packet)
-            time.sleep(0.003)
+            thread.join(5)
             self.assertIn(
                 "Unexpected response:",
                 stdout.getvalue(),
@@ -515,16 +509,10 @@ class TestTemplateProtocol(unittest.TestCase):
         TestTemplateProtocol.read_buffer = b"\x31\x30\x3b\x31\x31\xab\xcd"  # ASCII is '10;11'
         self.interface.connect()
 
-        def do_read(self):
-            time.sleep(0.001)
-            self.read_result = self.interface.read()
-
-        thread = threading.Thread(target=do_read, args=[self])
-        thread.start()
-
+        thread = self._start_response_reader()
         for stdout in capture_io():
             self.interface.write(packet)
-            time.sleep(0.003)
+            thread.join(5)
             self.assertIn(
                 "Could not write value 10;11",
                 stdout.getvalue(),
@@ -560,15 +548,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.restore_defaults()
         TestTemplateProtocol.read_buffer = b"\x31\x30\x0a\x31\x32\x0a"  # ASCII: 30:'0', 31:'1', etc
         self.interface.connect()
-        self.read_result = None
-
-        def do_read(self):
-            time.sleep(0.001)
-            self.read_result = self.interface.read()
-
-        thread = threading.Thread(target=do_read, args=[self])
-        thread.start()
+        thread = self._start_response_reader()
         self.interface.write(packet)
+        thread.join(5)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 11, (self.20)\xad")
         self.assertEqual(self.read_result.read("VOLTAGE"), 12)
 
@@ -596,16 +578,9 @@ class TestTemplateProtocol(unittest.TestCase):
         packet.restore_defaults()
         TestTemplateProtocol.read_buffer = b"\x4f\x70\x65\x0a\x6e\x43\x33\x0a"  # ASCII
         self.interface.connect()
-        self.read_result = None
-
-        def do_read(self):
-            time.sleep(0.001)
-            self.read_result = self.interface.read()
-
-        thread = threading.Thread(target=do_read, args=[self])
-        thread.start()
-
+        thread = self._start_response_reader()
         self.interface.write(packet)
+        thread.join(5)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"GO\xad")
         self.assertEqual(self.read_result.read("STRING"), "OpenC3")
 
