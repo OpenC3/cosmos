@@ -23,7 +23,7 @@ class TelemetryTopic(Topic):
         msg_hash = {
             "time": to_nsec_from_epoch(packet.packet_time),
             "received_time": to_nsec_from_epoch(packet.received_time),
-            "stored": str(packet.stored),
+            "stored": str(packet.stored).lower(),
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,

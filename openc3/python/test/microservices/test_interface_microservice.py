@@ -27,6 +27,7 @@ from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.target_model import TargetModel
+from openc3.packets.packet import Packet
 from openc3.system.system import System
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
@@ -1073,6 +1074,83 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         im.shutdown()
         time.sleep(0.1)  # Allow threads to exit
+
+    def setup_handle_packet(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        warnings = []
+        im.logger = Mock()
+        im.logger.warn.side_effect = lambda msg, *args, **kwargs: warnings.append(msg)
+        written = []
+        patcher = patch(
+            "openc3.microservices.interface_microservice.TelemetryTopic.write_packet",
+            side_effect=lambda packet, *args, **kwargs: written.append(packet),
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return im, warnings, written
+
+    def health_status_buffer(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS").clone()
+        for item in packet.id_items:
+            packet.write_item(item, item.id_value, "RAW")
+        return packet.buffer
+
+    def handle(self, im, buffer, target_name=None, packet_name=None, stored=False):
+        packet = Packet(target_name, packet_name)
+        packet.buffer = buffer
+        packet.stored = stored
+        im.handle_packet(packet)
+
+    def test_handle_packet_drops_a_target_not_mapped_to_the_interface_and_warns_once(self):
+        im, warnings, written = self.setup_handle_packet()
+        with (
+            patch.object(System.telemetry, "identify_and_set_buffer") as mock_identify,
+            patch.object(System.telemetry, "identify_and_define_packet") as mock_define,
+        ):
+            for _ in range(2):
+                self.handle(im, self.health_status_buffer(), "SYSTEM", "LIMITS_CHANGE")
+            self.handle(im, self.health_status_buffer(), "SYSTEM", "LIMITS_CHANGE", stored=True)
+            mock_identify.assert_not_called()
+            mock_define.assert_not_called()
+        self.assertEqual(
+            [w for w in warnings if "unmapped target" in w],
+            ["INST_INT: Dropping telemetry for unmapped target: SYSTEM LIMITS_CHANGE"],
+        )
+        self.assertEqual(written, [])
+
+    def test_handle_packet_bounds_unmapped_warnings_by_evicting_the_oldest(self):
+        im, warnings, _ = self.setup_handle_packet()
+        with patch.object(InterfaceMicroservice, "UNMAPPED_TLM_WARNED_MAX", 2):
+            for name in ["A", "B", "C", "A"]:
+                self.handle(im, self.health_status_buffer(), "SYSTEM", name)
+        # C evicted A so A warns again, and every new name warned
+        self.assertEqual([w.split(" ")[-1] for w in warnings if "unmapped target" in w], ["A", "B", "C", "A"])
+        self.assertEqual(len(im.unmapped_tlm_warned), 2)
+
+    def test_handle_packet_falls_back_for_a_stored_packet_with_an_unknown_packet(self):
+        im, warnings, written = self.setup_handle_packet()
+        self.handle(im, self.health_status_buffer(), "INST", "NOPE", stored=True)
+        self.assertIn("INST_INT: Received unknown identified telemetry: INST NOPE", warnings)
+        self.assertEqual(len(written), 1)
+        self.assertEqual(written[0].target_name, "INST")
+        self.assertEqual(written[0].packet_name, "HEALTH_STATUS")
+        self.assertTrue(written[0].stored)
+
+    def test_handle_packet_publishes_an_unknown_stored_packet_without_updating_the_cvt(self):
+        im, warnings, written = self.setup_handle_packet()
+        with (
+            patch.object(CvtModel, "set") as mock_set,
+            patch.object(System.telemetry, "update", wraps=System.telemetry.update) as mock_update,
+        ):
+            self.handle(im, b"\xab\xcd", stored=True)
+            mock_set.assert_not_called()
+            mock_update.assert_not_called()
+        self.assertEqual(len(written), 1)
+        self.assertEqual(written[0].target_name, "UNKNOWN")
+        self.assertEqual(written[0].packet_name, "UNKNOWN")
+        self.assertTrue(written[0].stored)
+        self.assertIn("INST_INT UNKNOWN packet length: 2 starting with: ABCD", warnings)
 
     def test_supports_optimize_throughput_option_for_backward_compatibility(self):
         # Update the model to use OPTIMIZE_THROUGHPUT option (legacy name)
