@@ -26,7 +26,6 @@ module OpenC3
 
         microservice = BridgeModel.build_microservice(bridge_name: "DEFAULT", scope: scope, shard: scope_model.shard)
         microservice.create
-        microservice.deploy
         Logger.info("Added DEFAULT bridge_microservice to scope #{scope}")
       end
     end
