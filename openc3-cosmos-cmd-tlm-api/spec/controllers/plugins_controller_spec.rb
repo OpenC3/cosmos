@@ -375,6 +375,26 @@ RSpec.describe PluginsController, type: :controller do
       }
     end
 
+    it "passes enforce_dependencies through to the plugin install command when requested" do
+      plugin_hash = '{"variables": {}}'
+      process_result = double("ProcessInfo", name: "process_123")
+
+      expect(OpenC3::ProcessManager.instance).to receive(:spawn).with(
+        ["ruby", "/openc3/bin/openc3cli", "load", "TEST_PLUGIN", "DEFAULT", anything, "force", "enforce_dependencies"],
+        "plugin_install",
+        "TEST_PLUGIN__1.0.0__plugin",
+        anything,
+        hash_including(temp_dir: "/tmp/test", scope: "DEFAULT")
+      ).and_return(process_result)
+
+      post :install, params: {
+        id: "TEST_PLUGIN__1.0.0__plugin",
+        plugin_hash: plugin_hash,
+        scope: "DEFAULT",
+        enforce_dependencies: true
+      }
+    end
+
     it "handles errors during installation" do
       plugin_hash = '{"variables": {}}'
       allow(OpenC3::ProcessManager.instance).to receive(:spawn).and_raise(StandardError.new("Spawn failed"))

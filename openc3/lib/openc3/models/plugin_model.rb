@@ -191,7 +191,7 @@ module OpenC3
     # list of modified files ("TARGET/path") whose live content differs from
     # what this plugin would deploy — used to warn before an upgrade which user
     # modifications it would supersede. Implies validate_only (no side effects).
-    def self.install_phase2(plugin_hash, scope:, gem_file_path: nil, validate_only: false, diff_only: false)
+    def self.install_phase2(plugin_hash, scope:, gem_file_path: nil, validate_only: false, diff_only: false, enforce_dependencies: false)
       # diff_only implies a dry run; derive a local flag instead of mutating
       # the validate_only parameter.
       dry_run = validate_only || diff_only
@@ -310,19 +310,24 @@ module OpenC3
             unless uv_installed
               pip_args = pypi_args.dup
               if File.exist?(pyproject_path)
-                Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
+                dependency_file = 'pyproject.toml'
                 pip_args << gem_path
               else
-                Logger.info "Installing python packages from requirements.txt with pypi_url=#{pypi_url}"
+                dependency_file = 'requirements.txt'
                 pip_args += ["-r", requirements_path]
               end
-              # Capture output and check exit code so failures surface as a warning
-              # rather than silently succeeding. pipinstall is non-fatal: the plugin
-              # continues to install even if Python packages fail so that non-Python
-              # functionality still works.
+              Logger.info "Installing python packages from #{dependency_file} with pypi_url=#{pypi_url}"
+              # Capture output and check exit code so failures surface instead of
+              # silently succeeding. By default pipinstall is non-fatal so the plugin
+              # continues to install even if Python packages fail and non-Python
+              # functionality can still work. Callers can opt into enforcing
+              # dependency installation to fail and roll back the plugin install.
               output, status = Open3.capture2e("/openc3/bin/pipinstall", *pip_args)
               puts output
               unless status.success?
+                if enforce_dependencies
+                  raise "Failed to install python dependencies from #{dependency_file}"
+                end
                 Logger.warn "Python package installation failed. Plugin Python microservices may not function correctly."
               end
             end
