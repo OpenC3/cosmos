@@ -358,7 +358,8 @@ module OpenC3
           if packet == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} write_packet requested disconnect")
             disconnect()
-            return
+            # Nothing was written so reject rather than report success
+            raise WriteRejectError.new("Protocol #{protocol.class} write_packet requested disconnect")
           end
           return if packet == :STOP
         end
@@ -378,7 +379,8 @@ module OpenC3
           if data == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} write_data requested disconnect")
             disconnect()
-            return
+            # Nothing was written so reject rather than report success
+            raise WriteRejectError.new("Protocol #{protocol.class} write_data requested disconnect")
           end
           return if data == :STOP
         end

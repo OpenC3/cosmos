@@ -131,7 +131,7 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 
 #### UPDATE_INTERVAL
 
-Number of seconds to wait before writing packets to Redis. By default packets are written to Redis every second (both the Current Value Table (CVT) and the stream). If you have high rate data and you want faster updates you can lower this value. Note that this will increase processor utilization! This option was previously known as `OPTIMIZE_THROUGHPUT`.
+Number of seconds to wait before writing packets to Redis. Interfaces queue the raw packet stream writes they make to Redis and flush them in a single pipelined batch every 0.1 seconds by default. Decommutated telemetry and the Current Value Table (CVT) are written separately by the decom microservice and are not affected by this option. Raising this value reduces processor utilization for high rate data at the cost of slower updates. Lowering it gives faster updates but increases processor utilization. Setting it to 0 disables raw packet stream queuing and writes every packet to Redis immediately, which is the slowest option for high rate data. This option was previously known as `OPTIMIZE_THROUGHPUT`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
