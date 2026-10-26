@@ -182,6 +182,20 @@ class TestTargetModelPackets(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, r"Target 'NOPE' does not exist.*\(TargetModel\)"):
             TargetModel.packets("NOPE", type="TLM", scope="DEFAULT")
 
+    def test_packet_names_raises_for_an_unknown_type(self):
+        with self.assertRaisesRegex(RuntimeError, "Unknown type OTHER for INST"):
+            TargetModel.packet_names("INST", type="OTHER", scope="DEFAULT")
+
+    def test_packet_names_raises_for_a_non_existent_target(self):
+        with self.assertRaisesRegex(RuntimeError, r"Target 'NOPE' does not exist.*\(TargetModel\)"):
+            TargetModel.packet_names("NOPE", type="TLM", scope="DEFAULT")
+
+    def test_packet_names_returns_sorted_packet_names(self):
+        names = TargetModel.packet_names("INST", type="TLM", scope="DEFAULT")
+        self.assertEqual(names, sorted(names))
+        pkts = TargetModel.packets("INST", type="TLM", scope="DEFAULT")
+        self.assertEqual(names, sorted(pkt["packet_name"] for pkt in pkts))
+
     def test_returns_all_telemetry_packets(self):
         pkts = TargetModel.packets("INST", type="TLM", scope="DEFAULT")
         # Verify result is Array of packet Hashes
@@ -458,6 +472,20 @@ class TestTargetModelDynamic(unittest.TestCase):
         self.assertIn("DEFAULT__TELEMETRY__{INST}__NEW_TLM", model.topics)
         model = MicroserviceModel.get_model(name="DEFAULT__DECOM__INST", scope=self.scope)
         self.assertIn("DEFAULT__TELEMETRY__{INST}__NEW_TLM", model.topics)
+
+    def test_merges_new_hidden_commands_into_the_hidden_list(self):
+        cmd_log_model = MicroserviceModel(folder_name="INST", name="DEFAULT__COMMANDLOG__INST", scope=self.scope)
+        cmd_log_model.create()
+        self.assertEqual(TargetModel.hidden_packet_names("INST", type="CMD", scope=self.scope), ["DISABLED"])
+
+        packet = Packet("INST", "NEW_CMD")
+        packet.hidden = True
+        self.model.dynamic_update([packet], "COMMAND")
+        self.assertEqual(TargetModel.hidden_packet_names("INST", type="CMD", scope=self.scope), ["DISABLED", "NEW_CMD"])
+
+        packet.hidden = False
+        self.model.dynamic_update([packet], "COMMAND")
+        self.assertEqual(TargetModel.hidden_packet_names("INST", type="CMD", scope=self.scope), ["DISABLED"])
 
 
 # Tests for GitHub issue #2855:

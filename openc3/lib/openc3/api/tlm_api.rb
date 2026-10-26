@@ -380,18 +380,14 @@ module OpenC3
     # @param target_name [String] Name of the target
     # @return [Array<String>] Array of all telemetry packet names
     def get_all_tlm_names(target_name, hidden: false, manual: false, scope: $openc3_scope, token: $openc3_token)
+      target_name = target_name.upcase
+      authorize(permission: 'tlm', target_name: target_name, manual: manual, scope: scope, token: token)
+      # Only the names are needed so avoid parsing every packet definition
       begin
-        packets = get_all_tlm(target_name, manual: manual, scope: scope, token: token)
+        names = TargetModel.packet_names(target_name, type: :TLM, scope: scope)
+        names -= TargetModel.hidden_packet_names(target_name, type: :TLM, scope: scope) unless hidden
       rescue RuntimeError
-        packets = []
-      end
-      names = []
-      packets.each do |packet|
-        if hidden
-          names << packet['packet_name']
-        else
-          names << packet['packet_name'] unless packet['hidden']
-        end
+        names = []
       end
       return names
     end

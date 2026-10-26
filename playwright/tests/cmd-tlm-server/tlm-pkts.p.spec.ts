@@ -45,7 +45,7 @@ test('displays the packet count', async ({ page, utils }) => {
   expect(parseInt(adcsCountStr)).toBeGreaterThan(500)
 })
 
-test.fixme('displays raw packets', async ({ page, utils }) => {
+test('displays raw packets', async ({ page, utils }) => {
   await expect(page.locator('text=INSTHEALTH_STATUS')).toBeVisible()
   await page
     .getByRole('row', { name: 'INST MECH' })

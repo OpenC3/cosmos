@@ -459,17 +459,16 @@ def get_all_tlm_names(target_name: str, hidden: bool = False, scope: str = OPENC
     Return:
         List[str] Array of all telemetry packet names
     """
+    target_name = target_name.upper()
+    # Only the names are needed so avoid parsing every packet definition
     try:
-        packets = get_all_tlm(target_name, scope=scope)
+        authorize(permission="tlm", target_name=target_name, scope=scope)
+        names = TargetModel.packet_names(target_name, type="TLM", scope=scope)
+        if not hidden:
+            hidden_names = set(TargetModel.hidden_packet_names(target_name, type="TLM", scope=scope))
+            names = [name for name in names if name not in hidden_names]
     except Exception:
-        packets = []
-    names = []
-    for packet in packets:
-        if hidden:
-            names.append(packet["packet_name"])
-        else:
-            if "hidden" not in packet:
-                names.append(packet["packet_name"])
+        names = []
     return names
 
 

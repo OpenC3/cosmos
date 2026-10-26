@@ -75,4 +75,28 @@ module OpenC3
       expect(store_queued.instance_variable_get(:@shutdown)).to be true
     end
   end
+
+  describe StoreQueued, ".set_update_interval_all_shards" do
+    before(:each) do
+      mock_redis()
+    end
+
+    it "updates existing instances and is used by instances created later" do
+      existing = StoreQueued.instance(db_shard: 0)
+      expect(existing.update_interval).to eql 1
+      StoreQueued.set_update_interval_all_shards(0.25)
+      expect(existing.update_interval).to eql 0.25
+      expect(StoreQueued.instance(db_shard: 1).update_interval).to eql 0.25
+      # Separate setting per class
+      expect(EphemeralStoreQueued.instance(db_shard: 1).update_interval).to eql 1
+      # An explicit interval still wins for a new instance
+      expect(StoreQueued.instance(0.5, db_shard: 2).update_interval).to eql 0.5
+    end
+
+    it "ignores intervals of 0 or less" do
+      StoreQueued.set_update_interval_all_shards(0.25)
+      StoreQueued.set_update_interval_all_shards(0)
+      expect(StoreQueued.instance.update_interval).to eql 0.25
+    end
+  end
 end

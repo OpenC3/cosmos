@@ -176,6 +176,49 @@ module OpenC3
         sleep 0.1 # Allow threads to exit
       end
 
+      it "queues writes by default with the default update interval" do
+        InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: []).update
+        # Set a different interval to verify the default gets applied
+        StoreQueued.instance.set_update_interval(1)
+        EphemeralStoreQueued.instance.set_update_interval(1)
+
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        expect(im.instance_variable_get(:@queued)).to eql true
+        expect(InterfaceMicroservice::DEFAULT_UPDATE_INTERVAL).to eql 0.1
+        expect(StoreQueued.instance.update_interval).to eql 0.1
+        expect(EphemeralStoreQueued.instance.update_interval).to eql 0.1
+
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
+      it "applies UPDATE_INTERVAL to every db_shard" do
+        InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: [["UPDATE_INTERVAL", "0.25"]]).update
+        existing_store = StoreQueued.instance(db_shard: 2)
+        existing_ephemeral = EphemeralStoreQueued.instance(db_shard: 2)
+
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        # Instances that already existed
+        expect(existing_store.update_interval).to eql 0.25
+        expect(existing_ephemeral.update_interval).to eql 0.25
+        # Instances first used after startup, e.g. a target on another shard
+        expect(StoreQueued.instance(db_shard: 1).update_interval).to eql 0.25
+        expect(EphemeralStoreQueued.instance(db_shard: 1).update_interval).to eql 0.25
+
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
+      it "disables queued writes when UPDATE_INTERVAL is 0" do
+        InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: [["UPDATE_INTERVAL", "0"]]).update
+
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        expect(im.instance_variable_get(:@queued)).to eql false
+
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
       it "preserves existing packet counts" do
         # Initialize the telemetry topic with a non-zero RECEIVED_COUNT
         System.telemetry.packets("INST").each do |_packet_name, packet|
@@ -187,6 +230,29 @@ module OpenC3
         System.telemetry.packets("INST").each do |_packet_name, packet|
           expect(packet.read("RECEIVED_COUNT")).to eql 10
         end
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+    end
+
+    describe "connect directive" do
+      it "acks malformed params with an error and keeps the handler running" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        tlm = double("tlm").as_null_object
+        allow(tlm).to receive(:attempting).and_return(interface)
+        handler = InterfaceCmdHandlerThread.new(interface, tlm, scope: "DEFAULT")
+        results = []
+        allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
+          msg_id = "#{(Time.now.to_f * 1000).to_i}-0"
+          results << block.call("{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, { 'connect' => 'true', 'params' => '{not json' }, nil)
+          results << block.call("{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, { 'connect' => 'true', 'params' => '["host", 1]' }, nil)
+        end
+        handler.run
+        expect(results[0]).to be_a(String)
+        expect(results[0]).not_to eql 'SUCCESS'
+        expect(results[1]).to eql 'SUCCESS'
+        expect(tlm).to have_received(:attempting).with("host", 1).once
         im.shutdown
         sleep 0.1 # Allow threads to exit
       end
@@ -246,6 +312,71 @@ module OpenC3
 
         im.shutdown
         sleep 0.1 # Allow threads to exit
+      end
+
+      context "identification" do
+        def health_status_buffer
+          packet = System.telemetry.packet('INST', 'HEALTH_STATUS').clone
+          packet.id_items.each { |item| packet.write_item(item, item.id_value, :RAW) }
+          packet.buffer
+        end
+
+        def handle(im, buffer, target_name: nil, packet_name: nil, stored: false)
+          packet = Packet.new(target_name, packet_name)
+          packet.buffer = buffer
+          packet.stored = stored
+          im.send(:handle_packet, packet)
+        end
+
+        before(:each) do
+          @im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          @warnings = []
+          allow(@im.instance_variable_get(:@logger)).to receive(:warn) { |msg| @warnings << msg }
+          @written = []
+          allow(TelemetryTopic).to receive(:write_packet) { |packet, **_| @written << packet }
+        end
+
+        after(:each) do
+          @im.shutdown
+          sleep 0.1 # Allow threads to exit
+        end
+
+        it "drops a packet pre-identified with a target not mapped to the interface and warns once" do
+          expect(System.telemetry).to_not receive(:identify!)
+          expect(System.telemetry).to_not receive(:identify_and_define_packet)
+          2.times { handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE') }
+          handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE', stored: true)
+          expect(@warnings.grep(/unmapped target/)).to eql ["INST_INT: Dropping telemetry for unmapped target: SYSTEM LIMITS_CHANGE"]
+          expect(@written).to be_empty
+        end
+
+        it "bounds the unmapped warnings it remembers by evicting the oldest" do
+          stub_const("OpenC3::InterfaceMicroservice::UNMAPPED_TLM_WARNED_MAX", 2)
+          %w(A B C A).each { |name| handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: name) }
+          # C evicted A so A warns again, and every new name warned
+          expect(@warnings.grep(/unmapped target/).map { |w| w.split(' ').last }).to eql %w(A B C A)
+          expect(@im.instance_variable_get(:@unmapped_tlm_warned).length).to eql 2
+        end
+
+        it "falls back to identifying a stored packet pre-identified with an unknown packet" do
+          handle(@im, health_status_buffer, target_name: 'INST', packet_name: 'NOPE', stored: true)
+          expect(@warnings).to include("INST_INT: Received unknown identified telemetry: INST NOPE")
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'INST'
+          expect(@written[0].packet_name).to eql 'HEALTH_STATUS'
+          expect(@written[0].stored).to be true
+        end
+
+        it "publishes an unidentified stored packet as UNKNOWN without updating the CVT" do
+          expect(CvtModel).to_not receive(:set)
+          expect(System.telemetry).to_not receive(:update!)
+          handle(@im, "\xAB\xCD", stored: true)
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'UNKNOWN'
+          expect(@written[0].packet_name).to eql 'UNKNOWN'
+          expect(@written[0].stored).to be true
+          expect(@warnings).to include("INST_INT UNKNOWN packet length: 2 starting with: ABCD")
+        end
       end
     end
 

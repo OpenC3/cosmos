@@ -27,6 +27,7 @@ from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.target_model import TargetModel
+from openc3.packets.packet import Packet
 from openc3.system.system import System
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
@@ -790,6 +791,27 @@ class TestInterfaceMicroservice(unittest.TestCase):
         result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
         self.assertIsNone(result)
 
+    def test_process_cmd_rejects_malformed_connect_params(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        handler.tlm = Mock()
+        handler.tlm.attempting.return_value = handler.interface
+        topic = "{DEFAULT__CMD}INTERFACE__INST_INT"
+        msg_id = f"{int(time.time() * 1000)}-0"
+        result = handler.process_cmd(topic, msg_id, {b"connect": b"true", b"params": b"{not json"}, None)
+        self.assertIn("Expecting", result)
+        handler.tlm.attempting.assert_not_called()
+        result = handler.process_cmd(topic, msg_id, {b"connect": b"true", b"params": b"\xff\xfe\xfa"}, None)
+        self.assertIn("can't decode", result)
+        handler.tlm.attempting.assert_not_called()
+        result = handler.process_cmd(topic, msg_id, {b"connect": b"true", b"params": b'["host", 1]'}, None)
+        self.assertEqual(result, "SUCCESS")
+        handler.tlm.attempting.assert_called_once_with("host", 1)
+        result = handler.process_cmd(topic, msg_id, {b"connect": b"true", b"params": b"null"}, None)
+        self.assertEqual(result, "SUCCESS")
+        handler.tlm.attempting.assert_called_with()
+
     def test_process_cmd_acks_success_for_write_stop_but_rejects_disconnect(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         thread = threading.Thread(target=im.run)
@@ -1053,6 +1075,83 @@ class TestInterfaceMicroservice(unittest.TestCase):
         im.shutdown()
         time.sleep(0.1)  # Allow threads to exit
 
+    def setup_handle_packet(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        warnings = []
+        im.logger = Mock()
+        im.logger.warn.side_effect = lambda msg, *args, **kwargs: warnings.append(msg)
+        written = []
+        patcher = patch(
+            "openc3.microservices.interface_microservice.TelemetryTopic.write_packet",
+            side_effect=lambda packet, *args, **kwargs: written.append(packet),
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return im, warnings, written
+
+    def health_status_buffer(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS").clone()
+        for item in packet.id_items:
+            packet.write_item(item, item.id_value, "RAW")
+        return packet.buffer
+
+    def handle(self, im, buffer, target_name=None, packet_name=None, stored=False):
+        packet = Packet(target_name, packet_name)
+        packet.buffer = buffer
+        packet.stored = stored
+        im.handle_packet(packet)
+
+    def test_handle_packet_drops_a_target_not_mapped_to_the_interface_and_warns_once(self):
+        im, warnings, written = self.setup_handle_packet()
+        with (
+            patch.object(System.telemetry, "identify_and_set_buffer") as mock_identify,
+            patch.object(System.telemetry, "identify_and_define_packet") as mock_define,
+        ):
+            for _ in range(2):
+                self.handle(im, self.health_status_buffer(), "SYSTEM", "LIMITS_CHANGE")
+            self.handle(im, self.health_status_buffer(), "SYSTEM", "LIMITS_CHANGE", stored=True)
+            mock_identify.assert_not_called()
+            mock_define.assert_not_called()
+        self.assertEqual(
+            [w for w in warnings if "unmapped target" in w],
+            ["INST_INT: Dropping telemetry for unmapped target: SYSTEM LIMITS_CHANGE"],
+        )
+        self.assertEqual(written, [])
+
+    def test_handle_packet_bounds_unmapped_warnings_by_evicting_the_oldest(self):
+        im, warnings, _ = self.setup_handle_packet()
+        with patch.object(InterfaceMicroservice, "UNMAPPED_TLM_WARNED_MAX", 2):
+            for name in ["A", "B", "C", "A"]:
+                self.handle(im, self.health_status_buffer(), "SYSTEM", name)
+        # C evicted A so A warns again, and every new name warned
+        self.assertEqual([w.split(" ")[-1] for w in warnings if "unmapped target" in w], ["A", "B", "C", "A"])
+        self.assertEqual(len(im.unmapped_tlm_warned), 2)
+
+    def test_handle_packet_falls_back_for_a_stored_packet_with_an_unknown_packet(self):
+        im, warnings, written = self.setup_handle_packet()
+        self.handle(im, self.health_status_buffer(), "INST", "NOPE", stored=True)
+        self.assertIn("INST_INT: Received unknown identified telemetry: INST NOPE", warnings)
+        self.assertEqual(len(written), 1)
+        self.assertEqual(written[0].target_name, "INST")
+        self.assertEqual(written[0].packet_name, "HEALTH_STATUS")
+        self.assertTrue(written[0].stored)
+
+    def test_handle_packet_publishes_an_unknown_stored_packet_without_updating_the_cvt(self):
+        im, warnings, written = self.setup_handle_packet()
+        with (
+            patch.object(CvtModel, "set") as mock_set,
+            patch.object(System.telemetry, "update", wraps=System.telemetry.update) as mock_update,
+        ):
+            self.handle(im, b"\xab\xcd", stored=True)
+            mock_set.assert_not_called()
+            mock_update.assert_not_called()
+        self.assertEqual(len(written), 1)
+        self.assertEqual(written[0].target_name, "UNKNOWN")
+        self.assertEqual(written[0].packet_name, "UNKNOWN")
+        self.assertTrue(written[0].stored)
+        self.assertIn("INST_INT UNKNOWN packet length: 2 starting with: ABCD", warnings)
+
     def test_supports_optimize_throughput_option_for_backward_compatibility(self):
         # Update the model to use OPTIMIZE_THROUGHPUT option (legacy name)
         model = InterfaceModel(
@@ -1075,6 +1174,77 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(im.queued, True)
         self.assertEqual(StoreQueued.instance().update_interval, 0.3)
         self.assertEqual(EphemeralStoreQueued.instance().update_interval, 0.3)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    def test_queues_writes_by_default_with_default_update_interval(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[],
+        )
+        model.update()
+
+        # Set a different interval to verify the default gets applied
+        StoreQueued.instance().set_update_interval(1)
+        EphemeralStoreQueued.instance().set_update_interval(1)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        self.assertTrue(im.queued)
+        self.assertEqual(StoreQueued.instance().update_interval, InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL)
+        self.assertEqual(EphemeralStoreQueued.instance().update_interval, InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL)
+        self.assertEqual(InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL, 0.1)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    def test_update_interval_zero_disables_queued_writes(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["UPDATE_INTERVAL", "0"]],
+        )
+        model.update()
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        self.assertFalse(im.queued)
+
+        im.shutdown()
+        time.sleep(0.1)  # Allow threads to exit
+
+    def test_applies_update_interval_to_every_db_shard(self):
+        model = InterfaceModel(
+            name="INST_INT",
+            scope="DEFAULT",
+            target_names=["INST"],
+            cmd_target_names=["INST"],
+            tlm_target_names=["INST"],
+            config_params=["test_interface.py"],
+            options=[["UPDATE_INTERVAL", "0.25"]],
+        )
+        model.update()
+        existing_store = StoreQueued.instance(db_shard=2)
+        existing_ephemeral = EphemeralStoreQueued.instance(db_shard=2)
+
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        # Instances that already existed
+        self.assertEqual(existing_store.update_interval, 0.25)
+        self.assertEqual(existing_ephemeral.update_interval, 0.25)
+        # Instances first used after startup, e.g. a target on another shard
+        self.assertEqual(StoreQueued.instance(db_shard=1).update_interval, 0.25)
+        self.assertEqual(EphemeralStoreQueued.instance(db_shard=1).update_interval, 0.25)
 
         im.shutdown()
         time.sleep(0.1)  # Allow threads to exit
