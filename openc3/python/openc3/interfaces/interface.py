@@ -69,6 +69,10 @@ class Interface:
         self.read_raw_data = ""
         self.written_raw_data = ""
         self.read_raw_data_time = None
+        # When the data most recently returned by read_interface was read from the
+        # underlying source, or None if unknown. Set by interfaces which buffer
+        # raw reads (see ReadQueueInterface).
+        self.read_queue_data_time = None
         self.written_raw_data_time = None
         self.config_params = []
         self.interfaces = []
@@ -77,7 +81,7 @@ class Interface:
         self.name = self.__class__.__name__
         self.scheduler = None
         self.scheduler_thread = None
-        self.cancel_scheduler_thread = False
+        self.scheduler_cancel = None
 
     # @return [Integer] The number of connected clients
     def num_clients(self):
@@ -90,6 +94,11 @@ class Interface:
     # @return [Integer] The number of packets waiting on the write queue
     def write_queue_size(self):
         return self._write_queue_size
+
+    # @return [Integer] The number of bytes waiting on the read queue.
+    #   Interfaces which buffer raw reads override this (see ReadQueueInterface).
+    def read_queue_bytes(self):
+        return 0
 
     # Should be implemented by subclass to return human readable connection string
     # which will be placed in log messages when connecting and during connection failures
@@ -104,19 +113,27 @@ class Interface:
 
         periodic_cmds = self.options.get("PERIODIC_CMD")
         if periodic_cmds:
-            self.scheduler = schedule.Scheduler()
+            # Each scheduler thread gets its own cancel event so a reconnect can never
+            # revive a thread from a previous connection that has not exited yet
+            if self.scheduler_cancel:
+                self.scheduler_cancel.set()
+            scheduler = schedule.Scheduler()
+            self.scheduler = scheduler
 
             for log_dont_log, period, cmd_string in periodic_cmds:
                 upper_log_dont_log = log_dont_log.upper()
                 period = float(period)
-                self.scheduler.every(period).seconds.do(
+                # schedule annotates the interval as int but supports float periods
+                scheduler.every(period).seconds.do(  # ty: ignore[invalid-argument-type]
                     self.run_periodic_cmd,
                     log_dont_log=upper_log_dont_log,
                     cmd_string=cmd_string,
                 )
 
-            self.cancel_scheduler_thread = False
-            self.scheduler_thread = threading.Thread(target=self.scheduler_thread_body, daemon=True)
+            self.scheduler_cancel = threading.Event()
+            self.scheduler_thread = threading.Thread(
+                target=self.scheduler_thread_body, args=(self.scheduler, self.scheduler_cancel), daemon=True
+            )
             self.scheduler_thread.start()
 
     # Called immediately after the interface is connected.
@@ -139,8 +156,8 @@ class Interface:
     # subclass.
     def disconnect(self):
         periodic_cmds = self.options.get("PERIODIC_CMD")
-        if periodic_cmds and self.scheduler_thread:
-            self.cancel_scheduler_thread = True
+        if periodic_cmds and self.scheduler_cancel:
+            self.scheduler_cancel.set()
 
         for protocol in self.read_protocols + self.write_protocols:
             protocol.disconnect_reset()
@@ -214,6 +231,10 @@ class Interface:
                 self.read_count += 1
                 if not packet:
                     Logger.warn(f"{self.name}: Interface unexpectedly requested disconnect")
+                # Timestamp buffered reads with when the data arrived rather than
+                # when it was processed (otherwise received_time is set when handled)
+                if packet and packet.received_time is None and self.read_queue_data_time is not None:
+                    packet.received_time = self.read_queue_data_time
                 return packet
         except Exception as error:
             Logger.error(f"{self.name}: Error reading from interface")
@@ -239,7 +260,8 @@ class Interface:
                         f"{self.name}: Protocol {protocol.__class__.__name__} write_packet requested disconnect"
                     )
                     self.disconnect()
-                    return
+                    # Nothing was written so reject rather than report success
+                    raise WriteRejectError(f"Protocol {protocol.__class__.__name__} write_packet requested disconnect")
                 if packet == "STOP":
                     return
 
@@ -253,7 +275,8 @@ class Interface:
                 if data == "DISCONNECT":
                     Logger.info(f"{self.name}: Protocol {protocol.__class__.__name__} write_data requested disconnect")
                     self.disconnect()
-                    return
+                    # Nothing was written so reject rather than report success
+                    raise WriteRejectError(f"Protocol {protocol.__class__.__name__} write_data requested disconnect")
                 if data == "STOP":
                     return
 
@@ -358,7 +381,8 @@ class Interface:
         other_interface.bytes_read = self.bytes_read
         other_interface.bytes_written = self.bytes_written
         if self.stream_log_pair:
-            other_interface.stream_log_pair = self.stream_log_pair[:]
+            # The new interface takes over the running stream logs
+            other_interface.stream_log_pair = self.stream_log_pair
         # num_clients is per interface so don't copy
         # read_queue_size is the number of packets in the queue so don't copy
         # write_queue_size is the number of packets in the queue so don't copy
@@ -418,7 +442,7 @@ class Interface:
     # self.return [String] Raw packet data
     def read_interface_base(self, data, extra=None):
         if self.save_raw_data:
-            self.read_raw_data_time = datetime.now(timezone.utc)
+            self.read_raw_data_time = self.read_queue_data_time or datetime.now(timezone.utc)
             self.read_raw_data = data
         self.bytes_read += len(data)
         if self.stream_log_pair:
@@ -568,19 +592,14 @@ class Interface:
             except Exception:
                 Logger.error(f"Error sending periodic cmd({cmd_string}):\n{traceback.format_exc()}")
 
-    def scheduler_thread_body(self):
+    def scheduler_thread_body(self, scheduler, cancel):
         next_time = time.time()
-        while True:
-            if self.cancel_scheduler_thread:
-                break
+        while not cancel.is_set():
+            scheduler.run_pending()
 
-            self.scheduler.run_pending()
-
-            if self.cancel_scheduler_thread:
-                break
             next_time = next_time + 0.1  # Max 10 Hz
             sleep_time = next_time - time.time()
             if sleep_time > 0.1:
-                time.sleep(0.1)
+                cancel.wait(0.1)
             elif sleep_time > 0:
-                time.sleep(sleep_time)
+                cancel.wait(sleep_time)

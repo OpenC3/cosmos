@@ -11,7 +11,6 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { prependBasePath } from './routeUtils'
-import { formatBytesToString } from './formatter'
-
-export { prependBasePath, formatBytesToString }
+export { prependBasePath } from './routeUtils'
+export { formatBytesToString } from './formatter'
+export { tokenizedFilter, tokenizedSort } from './search'

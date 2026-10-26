@@ -150,7 +150,7 @@ class Limits:
         limits_for_set[1] = float(yellow_low)
         limits_for_set[2] = float(yellow_high)
         limits_for_set[3] = float(red_high)
-        if green_low and green_high:
+        if green_low is not None and green_high is not None:
             limits_for_set[4] = float(green_low)
             limits_for_set[5] = float(green_high)
         else:

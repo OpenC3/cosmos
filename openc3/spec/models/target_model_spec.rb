@@ -360,6 +360,24 @@ module OpenC3
         end
       end
 
+      describe "#version_store_available?" do
+        it "is true when the store is present and enabled" do
+          stub_const("VersionStore", double("VersionStore", enabled?: true))
+          expect(model.send(:version_store_available?)).to be true
+        end
+
+        it "is false when the store is present but disabled" do
+          stub_const("VersionStore", double("VersionStore", enabled?: false))
+          expect(model.send(:version_store_available?)).to be false
+        end
+
+        it "is false when the enterprise store gem is absent" do
+          hide_const("VersionStore") if defined?(VersionStore)
+          allow(model).to receive(:require).with("openc3-enterprise/utilities/version_store").and_raise(LoadError)
+          expect(model.send(:version_store_available?)).to be false
+        end
+      end
+
       describe "#apply_upgrade_version" do
         let(:store) { double("VersionStore") }
         before(:each) { stub_const("VersionStore", store) }
@@ -511,6 +529,30 @@ module OpenC3
         # Verify result is Array of packet Hashes
         expect(pkts).to be_a Array
         expect(pkts).to be_empty
+      end
+    end
+
+    describe "self.packet_names" do
+      before(:each) do
+        setup_system()
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT")
+        model.create
+        model.update_store(System.new(['INST'], File.join(SPEC_DIR, 'install', 'config', 'targets')))
+      end
+
+      it "raises for an unknown type" do
+        expect { TargetModel.packet_names("INST", type: :OTHER, scope: "DEFAULT") }.to raise_error(RuntimeError, "Unknown type OTHER for INST")
+      end
+
+      it "raises for a non-existent target" do
+        expect { TargetModel.packet_names("NOPE", type: :TLM, scope: "DEFAULT") }.to raise_error(RuntimeError, /Target 'NOPE' does not exist/)
+      end
+
+      it "returns the sorted packet names matching the packets" do
+        names = TargetModel.packet_names("INST", type: :TLM, scope: "DEFAULT")
+        expect(names).to eql(names.sort)
+        expect(names).to eql(TargetModel.packets("INST", type: :TLM, scope: "DEFAULT").map { |pkt| pkt['packet_name'] })
+        expect(TargetModel.packet_names("INST", type: :CMD, scope: "DEFAULT")).to include("COLLECT", "ABORT")
       end
     end
 
@@ -1189,6 +1231,8 @@ module OpenC3
         orig_keys << "DEFAULT__CONFIG"
         orig_keys << "DEFAULT__openc3cmd__UNKNOWN"
         orig_keys << "DEFAULT__openc3tlm__UNKNOWN"
+        orig_keys << "DEFAULT__openc3cmd__UNKNOWN__hidden"
+        orig_keys << "DEFAULT__openc3tlm__UNKNOWN__hidden"
         orig_keys << "DEFAULT__openc3tlm__INST__allitems"
         orig_keys << "DEFAULT__openc3tlm__SYSTEM__allitems"
         orig_keys << "DEFAULT__limits_sets"

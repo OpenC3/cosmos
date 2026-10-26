@@ -43,7 +43,9 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
   echo "  OPENC3_UBI_TAG           - UBI image tag"
   echo "  RUBYGEMS_URL             - RubyGems mirror URL (optional)"
   echo "  PYPI_URL                 - PyPI mirror URL (optional)"
+  echo "  OPENC3_PYPI_ALLOW_INSECURE - Set to 1 to trust a plain-HTTP or self-signed PYPI_URL (optional)"
   echo "  NPM_URL                  - NPM registry URL (optional)"
+  echo "  OPENC3_UBI_NO_PULL       - Set to 1 to skip re-pulling external base images (optional)"
   echo ""
   echo "Options:"
   echo "  -h, --help    Show this help message"
@@ -57,6 +59,13 @@ if [[ "$1" == "--help" ]] || [[ "$1" == "-h" ]]; then
 fi
 
 set -e
+
+# PIP_ENABLE_TRUSTED_HOST is the deprecated name, still honored at run time, so
+# honor it at build time too.
+OPENC3_PYPI_ALLOW_INSECURE="${OPENC3_PYPI_ALLOW_INSECURE:-${PIP_ENABLE_TRUSTED_HOST:-}}"
+# An empty --build-arg replaces the Dockerfile default rather than falling back
+# to it, and pip installs uv from "${PYPI_URL}/simple", so default it here.
+PYPI_URL="${PYPI_URL:-https://pypi.org}"
 
 # Match individual array entries exactly, including arguments containing spaces.
 contains_image() {
@@ -163,6 +172,20 @@ build_image() {
   return $status
 }
 
+# Iron Bank republishes fixes under the same (mutable) tag, and docker build
+# reuses a local copy of a tag without checking the registry, so a local build
+# would stay on whatever snapshot was pulled first. --pull re-checks the digest
+# and downloads only when it changed. Apply it only to builds FROM an external
+# base: on the openc3-*-ubi images built earlier in this script it would replace
+# the local build with the published image of the same tag. Set
+# OPENC3_UBI_NO_PULL=1 when the bases were loaded with 'docker load' and there
+# is no registry to check.
+if [[ "${OPENC3_UBI_NO_PULL}" == "1" ]]; then
+  PULL_FLAG=""
+else
+  PULL_FLAG="--pull"
+fi
+
 # Handle restrictive umasks - Built files need to be world readable
 umask 0022
 # Make directory and files readable for Docker build context
@@ -213,7 +236,9 @@ if should_build "openc3-ruby-ubi"; then
     --build-arg OPENC3_UBI_TAG=$OPENC3_UBI_TAG \
     --build-arg RUBYGEMS_URL=$RUBYGEMS_URL \
     --build-arg PYPI_URL=$PYPI_URL \
+    --build-arg OPENC3_PYPI_ALLOW_INSECURE=$OPENC3_PYPI_ALLOW_INSECURE \
     "${BUILD_FLAGS[@]}" \
+    $PULL_FLAG \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-ruby-ubi:${OPENC3_TAG}" \
     .
@@ -236,6 +261,8 @@ if should_build "openc3-base-ubi"; then
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
     --build-arg OPENC3_IMAGE=openc3-ruby-ubi \
+    --build-arg PYPI_URL_OVERRIDE=$PYPI_URL \
+    --build-arg OPENC3_PYPI_ALLOW_INSECURE=$OPENC3_PYPI_ALLOW_INSECURE \
     "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-base-ubi:${OPENC3_TAG}" \
@@ -279,6 +306,7 @@ if should_build "openc3-buckets-ubi"; then
     --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
     --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
     "${BUILD_FLAGS[@]}" \
+    $PULL_FLAG \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-buckets-ubi:${OPENC3_TAG}" \
     .
@@ -299,6 +327,7 @@ if should_build "openc3-redis-ubi"; then
     --build-arg OPENC3_UBI_IMAGE=${OPENC3_UBI_IMAGE} \
     --build-arg OPENC3_UBI_TAG=${OPENC3_UBI_TAG} \
     "${BUILD_FLAGS[@]}" \
+    $PULL_FLAG \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis-ubi:${OPENC3_TAG}" \
     .
@@ -317,6 +346,7 @@ if should_build "openc3-tsdb-ubi"; then
     --network host \
     --build-arg OPENC3_DEPENDENCY_REGISTRY="${OPENC3_DEPENDENCY_REGISTRY}" \
     "${BUILD_FLAGS[@]}" \
+    $PULL_FLAG \
     $TSDB_PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-tsdb-ubi:${OPENC3_TAG}" \
     .
@@ -335,6 +365,7 @@ if should_build "openc3-cosmos-cmd-tlm-api-ubi"; then
   rm -rf .bundle
   build_image \
     --network host \
+    --build-context anycable=../openc3-anycable \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
@@ -359,6 +390,7 @@ if should_build "openc3-cosmos-script-runner-api-ubi"; then
   rm -rf .bundle
   build_image \
     --network host \
+    --build-context anycable=../openc3-anycable \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
@@ -407,8 +439,9 @@ if should_build "openc3-traefik-ubi"; then
     --network host \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
     --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-    --build-arg OPENC3_TRAEFIK_RELEASE=v3.7.13 \
+    --build-arg OPENC3_TRAEFIK_RELEASE=v3.7.16 \
     "${BUILD_FLAGS[@]}" \
+    $PULL_FLAG \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-traefik-ubi:${OPENC3_TAG}" \
     .
@@ -432,6 +465,8 @@ if should_build "openc3-cosmos-init-ubi"; then
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
+    --build-arg PYPI_URL_OVERRIDE=$PYPI_URL \
+    --build-arg OPENC3_PYPI_ALLOW_INSECURE=$OPENC3_PYPI_ALLOW_INSECURE \
     "${BUILD_FLAGS[@]}" \
     $PLATFORM_FLAG \
     -t "${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-cosmos-init-ubi:${OPENC3_TAG}" \

@@ -80,6 +80,13 @@ class TestCommandDecomTopic(unittest.TestCase):
         self.assertEqual(msg_hash["packet_name"], "CMD")
         self.assertEqual(msg_hash["received_count"], 1)
 
+    def test_writes_stored_as_lowercase_like_ruby(self):
+        for stored, expected in [(True, "true"), (False, "false")]:
+            packet = self._make_packet()
+            packet.stored = stored
+            CommandDecomTopic.write_packet(packet, scope="DEFAULT")
+            self.assertEqual(self.captured["msg_hash"]["stored"], expected)
+
     def test_logs_given_value_for_write_conversion_items(self):
         packet = self._make_packet()
         packet.given_values = {"VALUE": 5, "STATE": "TRUE"}
@@ -104,6 +111,17 @@ class TestCommandDecomTopic(unittest.TestCase):
         self.assertIsNone(packet.given_values)
         hash = self._json_data(packet)
         self.assertEqual(hash["VALUE__C"], 10)
+
+    def test_does_not_log_given_value_of_obfuscated_item(self):
+        packet = self._make_packet()
+        item = packet.get_item("VALUE")
+        item.obfuscate = True
+        packet.update_obfuscated_items_cache(item)
+        packet.given_values = {"VALUE": 5}
+        packet.obfuscate()
+        hash = self._json_data(packet)
+        self.assertEqual(hash["VALUE"], 0)
+        self.assertEqual(hash["VALUE__C"], 0)
 
     def test_reads_converted_state_rather_than_given_value(self):
         # The user can give either the state name or the state value so always
