@@ -33,7 +33,7 @@ class Topic(metaclass=TopicMeta):
     #   * TELEMETRY__ / COMMAND__ are trimmed by the log microservice (LogWriter) once a
     #     log file has been moved to the bucket plus LogWriter::CLEANUP_DELAY.
     #   * DECOM__ / DECOMCMD__ are trimmed by the TSDB microservice which keeps
-    #     TsdbMicroservice.TRIM_KEEP_MS of data.
+    #     TsdbMicroservice.TRIM_KEEP_MS of data behind what it has read.
     #
     # If a trimmer is absent (logging disabled, no TSDB) or falls far behind, the streams
     # would grow without bound. As a safety net every write to these streams also passes

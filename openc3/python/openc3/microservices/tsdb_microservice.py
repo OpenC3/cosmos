@@ -13,6 +13,7 @@ import json
 import os
 import re
 import sys
+import threading
 import time
 import traceback
 
@@ -29,9 +30,9 @@ from openc3.utilities.thread_manager import ThreadManager
 
 
 class TsdbMicroservice(Microservice):
-    # This is the primary trimmer of the DECOM__ and DECOMCMD__ streams. Writers also
-    # apply a safety MINID cap (see Topic.stream_safety_minid, default 10 minutes) so the
-    # streams stay bounded if this microservice is not running or falls behind.
+    # This is the primary trimmer of the DECOM__ and DECOMCMD__ streams. It never trims past
+    # what it has read, so if it is not running or falls behind the streams are bounded only by
+    # the writers' safety MINID cap (see Topic.stream_safety_minid, default 10 minutes).
     TRIM_KEEP_MS = 60000  # 1 minute
     DEFAULT_FLUSH_PERIOD_S = 5.0  # 5 seconds
 
@@ -249,13 +250,25 @@ class TsdbMicroservice(Microservice):
         current_time_ms = int(time.time() * 1000)
         if current_time_ms > self.next_trim_time_ms:
             self.next_trim_time_ms = current_time_ms + self.TRIM_KEEP_MS
-            trim_time_ms = current_time_ms - self.TRIM_KEEP_MS
-            trim_offset = f"{trim_time_ms}-0"
             redis = EphemeralStore.instance(db_shard=self.db_shard)
+            # Never trim past what this microservice has read. Trimming from the clock alone
+            # deletes unread entries when ingest falls behind, or when decom is behind and
+            # writes entries with old ids (decom reuses the raw packet id).
+            topic_offsets = redis.topic_offsets.get(threading.get_native_id(), {})
             pipeline = redis.pipeline(transaction=False)
+            trimming = False
             for topic in self.topics:
-                pipeline.xtrim(name=topic, minid=trim_offset, approximate=True, limit=0)
-            pipeline.execute()
+                offset = topic_offsets.get(topic)
+                if not offset:
+                    continue  # Nothing read yet
+                read_ms = int(offset.split("-")[0])
+                trim_time_ms = min(current_time_ms, read_ms) - self.TRIM_KEEP_MS
+                if trim_time_ms <= 0:
+                    continue
+                pipeline.xtrim(name=topic, minid=f"{trim_time_ms}-0", approximate=True, limit=0)
+                trimming = True
+            if trimming:
+                pipeline.execute()
 
     def flush_if_needed(self):
         now = time.time()

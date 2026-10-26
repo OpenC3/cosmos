@@ -13,6 +13,7 @@ import base64
 import json
 import os
 import re
+import threading
 import time
 import unittest
 from datetime import datetime, timezone
@@ -29,6 +30,7 @@ from openc3.utilities.questdb_client import (
     FLOAT64_NAN_SENTINEL,
     FLOAT64_POS_INF_SENTINEL,
 )
+from openc3.utilities.store import EphemeralStore
 from test.test_helper import System, capture_io, mock_redis, setup_system
 
 
@@ -1406,6 +1408,93 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         # Should have set error
         self.assertIsNotNone(tsdb.error)
+
+    TRIM_TOPIC = "DEFAULT__DECOM__{INST}__ADCS"
+
+    def _trim_setup(self, mock_psycopg, mock_sender, ages_s):
+        """Create a TSDB microservice and a stream with entries at the given ages (seconds ago).
+        Returns the microservice, now in ms and the entry ids."""
+        mock_sender.return_value = Mock()
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=Mock())
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+        model = MicroserviceModel(
+            "DEFAULT__TSDB__TRIM", scope="DEFAULT", topics=[self.TRIM_TOPIC], target_names=["INST"]
+        )
+        model.create()
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__TRIM")
+
+        now_ms = int(time.time() * 1000)
+        ids = [f"{now_ms - age * 1000}-0" for age in ages_s]
+        for id in ids:
+            Topic.write_topic(self.TRIM_TOPIC, {"a": "b"}, id)
+        tsdb.next_trim_time_ms = 0  # Trim on the next call
+        return tsdb, now_ms, ids
+
+    def _set_read_offset(self, topic, offset):
+        offsets = EphemeralStore.instance().topic_offsets.setdefault(threading.get_native_id(), {})
+        if offset is None:
+            offsets.pop(topic, None)
+        else:
+            offsets[topic] = offset
+
+    def _stream_ids(self, topic):
+        return [msg_id.decode() for msg_id, _ in EphemeralStore.instance().xrange(topic)]
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_trim_topics_keeps_unread_entries_when_behind(self, mock_system, mock_psycopg, mock_sender):
+        """Ingest that is minutes behind must not lose the entries it hasn't read yet"""
+        tsdb, _, ids = self._trim_setup(mock_psycopg, mock_sender, [300, 290, 280, 270, 260, 250])
+        self._set_read_offset(self.TRIM_TOPIC, ids[2])  # Read the first three entries only
+
+        tsdb.trim_topics()
+
+        # Trimming from now would have removed everything. Every unread entry must remain.
+        remaining = self._stream_ids(self.TRIM_TOPIC)
+        for id in ids[3:]:
+            self.assertIn(id, remaining)
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_trim_topics_keeps_late_entries_with_old_ids(self, mock_system, mock_psycopg, mock_sender):
+        """Decom that is behind writes entries with old ids after the last read. They must survive the trim."""
+        tsdb, now_ms, ids = self._trim_setup(mock_psycopg, mock_sender, [300, 200])
+        self._set_read_offset(self.TRIM_TOPIC, ids[-1])
+        late_id = f"{now_ms - 150_000}-0"  # Written after the read, but older than now - TRIM_KEEP_MS
+        Topic.write_topic(self.TRIM_TOPIC, {"a": "b"}, late_id)
+
+        tsdb.trim_topics()
+
+        self.assertIn(late_id, self._stream_ids(self.TRIM_TOPIC))
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_trim_topics_trims_read_entries_when_caught_up(self, mock_system, mock_psycopg, mock_sender):
+        """A caught up reader still trims to TRIM_KEEP_MS so the stream stays bounded"""
+        tsdb, now_ms, ids = self._trim_setup(mock_psycopg, mock_sender, [300, 200, 100, 30, 0])
+        self._set_read_offset(self.TRIM_TOPIC, ids[-1])
+
+        tsdb.trim_topics()
+
+        remaining = self._stream_ids(self.TRIM_TOPIC)
+        self.assertEqual(remaining, ids[3:])  # Only the entries newer than TRIM_KEEP_MS
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_trim_topics_skips_topics_not_yet_read(self, mock_system, mock_psycopg, mock_sender):
+        """A topic with no read offset hasn't been consumed at all so nothing is trimmed"""
+        tsdb, _, ids = self._trim_setup(mock_psycopg, mock_sender, [300, 200, 100])
+        self._set_read_offset(self.TRIM_TOPIC, None)
+
+        tsdb.trim_topics()
+
+        self.assertEqual(self._stream_ids(self.TRIM_TOPIC), ids)
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
