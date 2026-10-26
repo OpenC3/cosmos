@@ -16,7 +16,7 @@ require 'find'
 
 module OpenC3
   describe OpenC3 do
-    DEPRECATED_APIS = %w(require_utility save_setting check_with_units tlm_with_units)
+    DEPRECATED_APIS = %w(require_utility save_setting check_with_units tlm_with_units get_all_telemetry get_all_telemetry_names get_telemetry)
     # These are only internal APIs
     IGNORED_APIS = %w(method_missing self.included write puts openc3_script_sleep)
     IGNORED_APIS.concat(%w(running_script_backtrace running_script_debug running_script_prompt update_news update_plugin_store))
@@ -82,7 +82,7 @@ module OpenC3
         next if filename.include?('web_socket_api')
         next if filename.include?('suite_results')
         next if filename.include?('suite_runner')
-        parse_file(filename, python_api)
+          parse_file(filename, python_api)
       end
       Dir[File.join(SPEC_DIR,'../python/openc3/api/*.py')].each do |filename|
         parse_file(filename, python_api)
