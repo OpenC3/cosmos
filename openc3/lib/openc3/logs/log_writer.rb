@@ -63,7 +63,10 @@ module OpenC3
     CYCLE_TIME_INTERVAL = 10
 
     # Delay in seconds before trimming Redis streams
-    CLEANUP_DELAY = 60
+    # This is the primary trimmer of the TELEMETRY__ and COMMAND__ streams. Writers
+    # also apply a safety MINID cap (see Topic.stream_safety_minid) which depends on this
+    # value, so it is defined in Topic.
+    CLEANUP_DELAY = Topic::LOG_CLEANUP_DELAY_SECONDS
 
     # Mutex protecting class variables
     @@mutex = Mutex.new

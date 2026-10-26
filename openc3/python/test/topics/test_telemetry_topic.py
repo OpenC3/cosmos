@@ -30,6 +30,17 @@ class TestTelemetryTopic(unittest.TestCase):
         self.packet.packet_time = datetime.datetime.now(datetime.timezone.utc)
         self.packet.received_count = 1
 
+    @patch("openc3.topics.telemetry_topic.Topic.write_topic")
+    def test_writes_stored_as_lowercase_like_ruby(self, write_topic):
+        self.packet.stored = True
+        TelemetryTopic.write_packet(self.packet, scope="DEFAULT")
+        topic, msg_hash = write_topic.call_args.args
+        self.assertEqual(topic, "DEFAULT__TELEMETRY__{TARGET}__PACKET")
+        self.assertEqual(msg_hash["stored"], "true")
+        self.packet.stored = False
+        TelemetryTopic.write_packet(self.packet, scope="DEFAULT")
+        self.assertEqual(write_topic.call_args.args[1]["stored"], "false")
+
     @patch("openc3.topics.telemetry_topic.EphemeralStoreQueued.instance")
     def test_writes_to_queued_store_for_target_shard(self, instance):
         instance.return_value = MagicMock()

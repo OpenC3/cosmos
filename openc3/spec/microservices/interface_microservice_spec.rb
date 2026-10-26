@@ -235,6 +235,29 @@ module OpenC3
       end
     end
 
+    describe "connect directive" do
+      it "acks malformed params with an error and keeps the handler running" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        tlm = double("tlm").as_null_object
+        allow(tlm).to receive(:attempting).and_return(interface)
+        handler = InterfaceCmdHandlerThread.new(interface, tlm, scope: "DEFAULT")
+        results = []
+        allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
+          msg_id = "#{(Time.now.to_f * 1000).to_i}-0"
+          results << block.call("{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, { 'connect' => 'true', 'params' => '{not json' }, nil)
+          results << block.call("{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, { 'connect' => 'true', 'params' => '["host", 1]' }, nil)
+        end
+        handler.run
+        expect(results[0]).to be_a(String)
+        expect(results[0]).not_to eql 'SUCCESS'
+        expect(results[1]).to eql 'SUCCESS'
+        expect(tlm).to have_received(:attempting).with("host", 1).once
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+    end
+
     describe "interface_details directive" do
       # Drive the command handler block directly. receive_commands is stubbed so
       # the block runs once with a crafted message and its return value (which
@@ -289,6 +312,71 @@ module OpenC3
 
         im.shutdown
         sleep 0.1 # Allow threads to exit
+      end
+
+      context "identification" do
+        def health_status_buffer
+          packet = System.telemetry.packet('INST', 'HEALTH_STATUS').clone
+          packet.id_items.each { |item| packet.write_item(item, item.id_value, :RAW) }
+          packet.buffer
+        end
+
+        def handle(im, buffer, target_name: nil, packet_name: nil, stored: false)
+          packet = Packet.new(target_name, packet_name)
+          packet.buffer = buffer
+          packet.stored = stored
+          im.send(:handle_packet, packet)
+        end
+
+        before(:each) do
+          @im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          @warnings = []
+          allow(@im.instance_variable_get(:@logger)).to receive(:warn) { |msg| @warnings << msg }
+          @written = []
+          allow(TelemetryTopic).to receive(:write_packet) { |packet, **_| @written << packet }
+        end
+
+        after(:each) do
+          @im.shutdown
+          sleep 0.1 # Allow threads to exit
+        end
+
+        it "drops a packet pre-identified with a target not mapped to the interface and warns once" do
+          expect(System.telemetry).to_not receive(:identify!)
+          expect(System.telemetry).to_not receive(:identify_and_define_packet)
+          2.times { handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE') }
+          handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE', stored: true)
+          expect(@warnings.grep(/unmapped target/)).to eql ["INST_INT: Dropping telemetry for unmapped target: SYSTEM LIMITS_CHANGE"]
+          expect(@written).to be_empty
+        end
+
+        it "bounds the unmapped warnings it remembers by evicting the oldest" do
+          stub_const("OpenC3::InterfaceMicroservice::UNMAPPED_TLM_WARNED_MAX", 2)
+          %w(A B C A).each { |name| handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: name) }
+          # C evicted A so A warns again, and every new name warned
+          expect(@warnings.grep(/unmapped target/).map { |w| w.split(' ').last }).to eql %w(A B C A)
+          expect(@im.instance_variable_get(:@unmapped_tlm_warned).length).to eql 2
+        end
+
+        it "falls back to identifying a stored packet pre-identified with an unknown packet" do
+          handle(@im, health_status_buffer, target_name: 'INST', packet_name: 'NOPE', stored: true)
+          expect(@warnings).to include("INST_INT: Received unknown identified telemetry: INST NOPE")
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'INST'
+          expect(@written[0].packet_name).to eql 'HEALTH_STATUS'
+          expect(@written[0].stored).to be true
+        end
+
+        it "publishes an unidentified stored packet as UNKNOWN without updating the CVT" do
+          expect(CvtModel).to_not receive(:set)
+          expect(System.telemetry).to_not receive(:update!)
+          handle(@im, "\xAB\xCD", stored: true)
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'UNKNOWN'
+          expect(@written[0].packet_name).to eql 'UNKNOWN'
+          expect(@written[0].stored).to be true
+          expect(@warnings).to include("INST_INT UNKNOWN packet length: 2 starting with: ABCD")
+        end
       end
     end
 
