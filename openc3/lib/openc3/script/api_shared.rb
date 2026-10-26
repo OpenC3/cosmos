@@ -37,7 +37,7 @@ module OpenC3
     # @param args [String|Array<String>] See the description for calling style
     # @param type [Symbol] Telemetry type, :RAW, :CONVERTED (default), :FORMATTED
     def check(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
-      _check(*args, scope: scope) { |tgt, pkt, item| tlm(tgt, pkt, item, type: type, scope: scope, token: token) }
+      _check(*args, type: type, scope: scope, token: token) { |tgt, pkt, item| tlm(tgt, pkt, item, type: type, scope: scope, token: token) }
     end
 
     def check_raw(*args, scope: $openc3_scope, token: $openc3_token)
@@ -525,12 +525,12 @@ module OpenC3
     # Implementation of the various check commands. It yields back to the
     # caller to allow the return of the value through various telemetry calls.
     # This method should not be called directly by application code.
-    def _check(*args, scope: $openc3_scope, token: $openc3_token)
+    def _check(*args, type: :CONVERTED, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name, comparison_to_eval = _check_process_args(args, 'check')
 
       value = yield(target_name, packet_name, item_name)
       if comparison_to_eval
-        _check_comparison(target_name, packet_name, item_name, comparison_to_eval, value)
+        _check_comparison(target_name, packet_name, item_name, type, comparison_to_eval, value, scope: scope, token: token)
       else
         puts "CHECK: #{_upcase(target_name, packet_name, item_name)} == #{value.nil? ? 'nil' : value.inspect}"
       end
@@ -768,12 +768,42 @@ module OpenC3
     # Builds a callable which compares a telemetry value against the given comparison string,
     # e.g. "> 1". Returns nil if there is no comparison, e.g. a block based wait_check().
     # Raises if the comparison is invalid, e.g. an unsupported operator or unparsable operand.
-    def _comparison_implementation(comparison_to_eval)
+    def _comparison_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, scope: $openc3_scope, token: $openc3_token)
       return nil unless comparison_to_eval
 
-      operator, operand = extract_operator_and_operand_from_comparison(comparison_to_eval)
+      operator, operand = _extract_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, scope: scope, token: token)
       return nil unless operator
       lambda { |value| compare_values(value, operator, operand) }
+    end
+
+    # Splits the comparison into an operator and operand like extract_operator_and_operand_from_comparison.
+    # State names are stored upper case so a string operand which matches a state name ignoring case
+    # is compared against that state name, e.g. "== 'Connected'" matches the CONNECTED state.
+    # An unquoted state name, e.g. "== Connected", is also accepted. The item is only looked up
+    # when the operand could be a state name so numeric comparisons don't make an additional API call.
+    def _extract_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, scope: $openc3_scope, token: $openc3_token)
+      begin
+        operator, operand = extract_operator_and_operand_from_comparison(comparison_to_eval)
+      rescue NameError
+        operator, operand = comparison_to_eval.split(nil, 2)
+        state = operand.strip.upcase
+        # 'in' requires a list operand so a single unquoted state is still an error
+        raise if operator == 'in'
+        raise unless _states(target_name, packet_name, item_name, value_type, scope: scope, token: token)&.key?(state)
+        return [operator, state]
+      end
+      return [operator, operand] unless operand_contains_string?(operand)
+
+      states = _states(target_name, packet_name, item_name, value_type, scope: scope, token: token)
+      return [operator, states ? upcase_state_names(operand, states) : operand]
+    end
+
+    # Returns the states of the item or nil if it has none.
+    # RAW values are never state names so the item is not looked up.
+    def _states(target_name, packet_name, item_name, value_type, scope: $openc3_scope, token: $openc3_token)
+      return nil if value_type.to_s.upcase == 'RAW'
+
+      get_item(target_name, packet_name, item_name, scope: scope, token: token)['states']
     end
 
     # Wait for a converted telemetry item to pass a comparison
@@ -783,7 +813,7 @@ module OpenC3
         raise "ERROR: Invalid comparison to non-ascii value"
       end
       # A user supplied block is the condition so the comparison text is never parsed
-      comparison = block ? nil : _comparison_implementation(comparison_to_eval)
+      comparison = block ? nil : _comparison_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, scope: scope, token: token)
       _openc3_script_wait_implementation(target_name, packet_name, item_name, value_type, timeout, polling_rate, comparison, scope: scope, token: token, &block)
     end
 
@@ -851,14 +881,14 @@ module OpenC3
       end
     end
 
-    def _check_comparison(target_name, packet_name, item_name, comparison_to_eval, value)
+    def _check_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, value, scope: $openc3_scope, token: $openc3_token)
       check_str = "CHECK: #{_upcase(target_name, packet_name, item_name)} #{comparison_to_eval}"
       # Show user the check against a quoted string
       value_str = value.is_a?(String) ? "'#{value}'" : value
       value_str = 'nil' if value.nil? # Show user nil value as 'nil'
       with_value = "with value == #{value_str}"
 
-      operator, operand = extract_operator_and_operand_from_comparison(comparison_to_eval)
+      operator, operand = _extract_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, scope: scope, token: token)
       unless _valid_comparison?(value, operator, operand)
         message = "Invalid comparison for types"
         if $disconnect

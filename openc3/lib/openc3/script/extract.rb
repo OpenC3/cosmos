@@ -369,6 +369,23 @@ module OpenC3
       return elements
     end
 
+    # Returns whether the operand is or contains a string, i.e. could be a state name
+    def operand_contains_string?(operand)
+      return true if operand.is_a?(String)
+      return operand.any? { |element| operand_contains_string?(element) } if operand.is_a?(Array)
+      return false
+    end
+
+    # State names are stored upper case so any string in the operand which matches
+    # a state name ignoring case is replaced with that state name
+    def upcase_state_names(operand, states)
+      if operand.is_a?(String)
+        return states.key?(operand.upcase) ? operand.upcase : operand
+      end
+      return operand.map { |element| upcase_state_names(element, states) } if operand.is_a?(Array)
+      return operand
+    end
+
     # Compares a telemetry value against an operand using the given operator.
     # Returns false rather than raising if the two values can not be compared.
     def compare_values(value, operator, operand)

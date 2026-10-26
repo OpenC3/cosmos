@@ -335,6 +335,25 @@ def extract_operand(operand):
     raise RuntimeError(f"ERROR: Unable to parse operand: {operand}")
 
 
+# Returns whether the operand is or contains a string, i.e. could be a state name
+def operand_contains_string(operand):
+    if isinstance(operand, str):
+        return True
+    if isinstance(operand, IN_OPERAND_TYPES):
+        return any(operand_contains_string(element) for element in operand)
+    return False
+
+
+# State names are stored upper case so any string in the operand which matches
+# a state name ignoring case is replaced with that state name
+def upcase_state_names(operand, states):
+    if isinstance(operand, str):
+        return operand.upper() if operand.upper() in states else operand
+    if isinstance(operand, IN_OPERAND_TYPES):
+        return type(operand)(upcase_state_names(element, states) for element in operand)
+    return operand
+
+
 # Compares a telemetry value against an operand using the given operator.
 # Returns False rather than raising if the two values can not be compared.
 def compare_values(value, operator, operand):

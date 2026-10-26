@@ -171,12 +171,49 @@ module OpenC3
         $disconnect = false
       end
 
-      it "warns when checking a state against a constant" do
+      it "accepts an unquoted state name" do
         capture_io do |stdout|
           check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'")
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'/)
+          check("INST HEALTH_STATUS CCSDSSHF == FALSE")
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF == FALSE success with value == 'FALSE'/)
         end
-        expect { check("INST HEALTH_STATUS CCSDSSHF == FALSE") }.to raise_error(NameError, "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?")
+        # A bare word which is not a state name is still almost always a missing quote
+        expect { check("INST HEALTH_STATUS CCSDSSHF == MAYBE") }.to raise_error(NameError, "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?")
+        expect { check("INST HEALTH_STATUS CCSDSSHF in FALSE") }.to raise_error(NameError, "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?")
+      end
+
+      it "compares state names case insensitively" do
+        # https://github.com/OpenC3/cosmos/issues/4046
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS CCSDSSHF == 'false'")
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF == 'false' success with value == 'FALSE'/)
+          check("INST HEALTH_STATUS CCSDSSHF != 'true'")
+          check("INST HEALTH_STATUS CCSDSSHF in ['True', 'False']")
+          check_formatted("INST HEALTH_STATUS CCSDSSHF == 'False'")
+        end
+        expect { check("INST HEALTH_STATUS CCSDSSHF == 'true'") }.to raise_error(CheckError, /CHECK: INST HEALTH_STATUS CCSDSSHF == 'true' failed/)
+        # RAW values are never state names so the comparison is exact
+        expect { check_raw("INST HEALTH_STATUS CCSDSSHF == 'false'") }.to raise_error(CheckError, /CHECK: INST HEALTH_STATUS CCSDSSHF == 'false' failed/)
+      end
+
+      it "compares strings without states case sensitively" do
+        expect { check_formatted("INST HEALTH_STATUS TEMP1 == '10.000 c'") }.to raise_error(CheckError, /CHECK: INST HEALTH_STATUS TEMP1 == '10.000 c' failed/)
+      end
+
+      it "only looks up states when comparing strings" do
+        allow(self).to receive(:get_item).and_call_original
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS TEMP1 == 10")
+          check("INST HEALTH_STATUS TEMP1 in [10, 11]")
+          wait_check("INST HEALTH_STATUS TEMP1 > 1", 0.01)
+          expect(self).not_to have_received(:get_item)
+          check("INST HEALTH_STATUS CCSDSSHF == 'false'")
+          expect(self).to have_received(:get_item).once
+          # RAW values are never state names
+          expect { check_raw("INST HEALTH_STATUS CCSDSSHF == 'false'") }.to raise_error(CheckError)
+          expect(self).to have_received(:get_item).once
+        end
       end
 
       it "raises with an invalid operator" do
@@ -654,13 +691,26 @@ module OpenC3
         expect { wait_check("INST HEALTH_STATUS BLOCKTEST == '#{data}'", 0.01) }.to raise_error(RuntimeError, "ERROR: Invalid comparison to non-ascii value")
       end
 
-      it "warns when checking a state against a constant" do
+      it "accepts an unquoted state name" do
         capture_io do |stdout|
           result = wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
           expect(result).to be_a Float
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'")
+          wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS CCSDSSHF == FALSE success with value == 'FALSE'")
         end
-        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01) }.to raise_error(NameError, "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?")
+        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01) }.to raise_error(NameError, "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?")
+      end
+
+      it "compares state names case insensitively with wait and wait_check" do
+        # https://github.com/OpenC3/cosmos/issues/4046
+        capture_io do |stdout|
+          wait_check("INST HEALTH_STATUS CCSDSSHF == 'false'", 0.01)
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS CCSDSSHF == 'false' success with value == 'FALSE'")
+          expect(wait("INST HEALTH_STATUS CCSDSSHF == 'False'", 0.01)).to be true
+          expect(wait("INST HEALTH_STATUS CCSDSSHF in ['true', 'false']", 0.01)).to be true
+          expect(wait("INST HEALTH_STATUS CCSDSSHF == 'false'", 0.01, type: :RAW)).to be false
+        end
       end
     end
 
@@ -691,10 +741,20 @@ module OpenC3
       end
 
       it "suggests a string when comparing against a bare word" do
-        error = "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?"
-        expect { check("INST HEALTH_STATUS CCSDSSHF == FALSE") }.to raise_error(NameError, error)
-        expect { wait("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01) }.to raise_error(NameError, error)
-        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01) }.to raise_error(NameError, error)
+        error = "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?"
+        expect { check("INST HEALTH_STATUS CCSDSSHF == MAYBE") }.to raise_error(NameError, error)
+        expect { wait("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01) }.to raise_error(NameError, error)
+        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01) }.to raise_error(NameError, error)
+      end
+
+      it "accepts state names ignoring case" do
+        capture_io do |stdout|
+          # Note "false" would be a boolean literal so mixed case is used
+          check("INST HEALTH_STATUS CCSDSSHF == fAlSe")
+          expect(wait("INST HEALTH_STATUS CCSDSSHF == fAlSe", 0.01)).to be true
+          wait_check("INST HEALTH_STATUS CCSDSSHF == fAlSe", 0.01)
+          expect(stdout.string).not_to include("failed")
+        end
       end
 
       it "accepts hex operands" do
