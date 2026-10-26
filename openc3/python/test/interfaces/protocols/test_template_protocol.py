@@ -156,14 +156,15 @@ class TestTemplateProtocol(unittest.TestCase):
         self.interface.stream = TestTemplateProtocol.TemplateStream()
         self.interface.add_protocol(TemplateProtocol, ["0xABCD", "0xABCD", 0, 0.02], "READ_WRITE")
         packet = self._command_packet("SOUR'VOLT' <VOLTAGE>, (self.<CHANNEL>)", VOLTAGE=1, CHANNEL=2)
+        # The delay is measured from connect so start the clock before connecting
+        start = time.time()
         self.interface.connect()
-        write = time.time()
         self.interface.write(packet)
         # The write really blocks until the initial delay has elapsed. Only the
         # lower bound can be checked here because a loaded machine can take
         # arbitrarily longer; test_waits_no_longer_than_the_initial_delay_before_writing
         # covers the protocol not waiting longer than it was configured to
-        self.assertGreaterEqual(time.time() - write, 0.02)
+        self.assertGreaterEqual(time.time() - start, 0.02)
         self.assertEqual(TestTemplateProtocol.write_buffer, b"SOUR'VOLT' 1, (self.2)\xab\xcd")
 
     def test_works_without_a_response(self):
