@@ -415,12 +415,17 @@ class PacketItem(StructureItem):
         if self.states:
             for state_name, state_value in self.states.items():
                 config += f"    STATE {quote_if_necessary(state_name)} {quote_if_necessary(str(state_value))}"
-                if self.hazardous and self.hazardous.get(state_name) is not None:
-                    config += f" HAZARDOUS {quote_if_necessary(self.hazardous[state_name])}"
-                if self.messages_disabled and self.messages_disabled.get(state_name):
-                    config += " DISABLE_MESSAGES"
-                if self.state_colors and self.state_colors.get(state_name):
-                    config += f" {self.state_colors[state_name]}"
+                # Only write the attributes STATE accepts for this packet type so the config parses back
+                if cmd_or_tlm == "TELEMETRY":
+                    if self.state_colors and self.state_colors.get(state_name):
+                        config += f" {self.state_colors[state_name]}"
+                else:
+                    if self.hazardous and self.hazardous.get(state_name) is not None:
+                        config += " HAZARDOUS"
+                        if self.hazardous[state_name]:
+                            config += f" {quote_if_necessary(self.hazardous[state_name])}"
+                    if self.messages_disabled and self.messages_disabled.get(state_name):
+                        config += " DISABLE_MESSAGES"
                 config += "\n"
 
         if self.read_conversion:

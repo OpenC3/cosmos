@@ -440,7 +440,19 @@ class TestPacketItem(unittest.TestCase):
         self.assertIn("STATE TRUE 1 GREEN", config)
         self.assertIn("STATE FALSE 0 RED", config)
 
-    def test_to_config_with_attributes_on_only_some_states(self):
+    def test_to_config_with_command_attributes_on_only_some_states(self):
+        self.pi.minimum = 0
+        self.pi.maximum = 2
+        self.pi.states = {"OFF": 0, "ON": 1, "FAULT": 2}
+        self.pi.hazardous = {"FAULT": ""}
+        self.pi.messages_disabled = {"ON": True}
+        self.pi.state_colors = {"ON": "GREEN"}
+        config = self.pi.to_config("COMMAND", "BIG_ENDIAN")
+        self.assertIn("    STATE OFF 0\n", config)
+        self.assertIn("    STATE ON 1 DISABLE_MESSAGES\n", config)
+        self.assertIn("    STATE FAULT 2 HAZARDOUS\n", config)
+
+    def test_to_config_with_telemetry_colors_on_only_some_states(self):
         self.pi.minimum = 0
         self.pi.maximum = 2
         self.pi.states = {"OFF": 0, "ON": 1, "FAULT": 2}
@@ -449,8 +461,8 @@ class TestPacketItem(unittest.TestCase):
         self.pi.messages_disabled = {"ON": True}
         config = self.pi.to_config("TELEMETRY", "BIG_ENDIAN")
         self.assertIn("    STATE OFF 0\n", config)
-        self.assertIn("    STATE ON 1 DISABLE_MESSAGES GREEN\n", config)
-        self.assertIn("    STATE FAULT 2 HAZARDOUS", config)
+        self.assertIn("    STATE ON 1 GREEN\n", config)
+        self.assertIn("    STATE FAULT 2\n", config)
 
     def test_to_config_writes_non_default_endianness(self):
         pi = PacketItem("test", 0, 32, "UINT", "LITTLE_ENDIAN", None)
