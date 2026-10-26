@@ -1008,7 +1008,7 @@ class Packet(Structure):
         if not self.processors:
             return
 
-        for _, processor in self.processors:
+        for processor in self.processors.values():
             processor.reset()
 
     # Make a light weight clone of this packet. This only creates a new buffer
@@ -1080,11 +1080,11 @@ class Packet(Structure):
             config += "  RESTRICTED\n"
 
         if self.processors:
-            for _, processor in self.processors:
-                config += processor.to_config
+            for processor in self.processors.values():
+                config += processor.to_config()
 
         if self.meta:
-            for key, values in self.meta:
+            for key, values in self.meta.items():
                 vals = " ".join([quote_if_necessary(a) for a in values])
                 config += f"  META {quote_if_necessary(key)} {vals}\n"
 
@@ -1151,7 +1151,7 @@ class Packet(Structure):
 
         if self.processors:
             processors = []
-            for _, processor in self.processors:
+            for processor in self.processors.values():
                 processors.append(processor.as_json())
             config["processors"] = processors
 

@@ -2340,3 +2340,29 @@ class TestPacketShortBufferAllowed(unittest.TestCase):
         self.assertFalse(packet.identify(b"\x00\x01"))
         self.assertTrue(packet.identify(b"\x00\x01\x00\x05"))
         self.assertFalse(packet.identify(b"\x00\x01\x00\x06"))
+
+
+class TestPacketProcessors(unittest.TestCase):
+    def test_reset_resets_each_processor(self):
+        p = Packet("TGT", "PKT")
+        processor = Processor()
+        processor.reset = Mock()
+        p.processors["PROC"] = processor
+        p.reset()
+        processor.reset.assert_called_once()
+
+    def test_as_json_includes_each_processor(self):
+        p = Packet("TGT", "PKT")
+        p.processors["PROC"] = Processor()
+        self.assertEqual(p.as_json()["processors"], [Processor().as_json()])
+
+
+class TestPacketToConfig(unittest.TestCase):
+    def test_writes_processors_and_meta(self):
+        p = Packet("TGT", "PKT")
+        p.append_item("ITEM", 8, "UINT")
+        p.processors["PROC"] = Processor()
+        p.meta["TYPE"] = ["SENSOR", "LIGHT"]
+        config = p.to_config("TELEMETRY")
+        self.assertIn("  PROCESSOR PROCESSOR Processor CONVERTED\n", config)
+        self.assertIn("  META TYPE SENSOR LIGHT\n", config)
