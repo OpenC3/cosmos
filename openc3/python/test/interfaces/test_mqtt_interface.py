@@ -73,6 +73,18 @@ class TestMqttInterface(unittest.TestCase):
         mock_client_instance.disconnect.assert_called()
 
     @patch("openc3.interfaces.mqtt_interface.mqtt.Client")
+    def test_only_queues_one_disconnect_marker_per_connection(self, _):
+        i = MqttInterface("localhost", "1883")
+        i.connect()
+        i.disconnect()
+        i.disconnect()
+        self.assertEqual(i.pkt_queue.qsize(), 1)
+        # The next connect discards it so it doesn't immediately disconnect
+        i.connect()
+        self.assertTrue(i.pkt_queue.empty())
+        i.disconnect()
+
+    @patch("openc3.interfaces.mqtt_interface.mqtt.Client")
     def test_reads_a_message_from_the_mqtt_client(self, mock_client):
         mock_client_instance = mock_client.return_value
         i = MqttInterface("localhost", "1883")

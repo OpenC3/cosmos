@@ -79,14 +79,30 @@ module OpenC3
         expect(@interface.instance_variable_get(:@http)).to_not be_nil
       end
 
-      it "discards disconnect markers left over from a previous connection" do
+      it "only queues one disconnect marker per connection" do
+        queue = @interface.instance_variable_get(:@response_queue)
         @interface.connect
         @interface.disconnect
         expect(@interface.read_interface).to be_nil
-        # A second disconnect queues a marker nothing consumes
+        # The microservice disconnects again once read_interface returns nil
         @interface.disconnect
+        expect(queue.empty?).to be true
+        # Nor does a repeat disconnect discard a marker the reader hasn't consumed yet
         @interface.connect
-        expect(@interface.instance_variable_get(:@response_queue).empty?).to be true
+        @interface.disconnect
+        @interface.disconnect
+        expect(queue.length).to eql 1
+      end
+
+      it "discards responses left over from a previous connection" do
+        queue = @interface.instance_variable_get(:@response_queue)
+        @interface.connect
+        @interface.disconnect
+        expect(@interface.read_interface).to be_nil
+        # A request that completed after the disconnect
+        queue.push(['late', {}])
+        @interface.connect
+        expect(queue.empty?).to be true
       end
     end
 

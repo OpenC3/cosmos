@@ -51,9 +51,8 @@ module OpenC3
 
     # Connects the interface to its target(s)
     def connect
-      # Discard any responses or disconnect markers left over from a previous connection.
-      # disconnect can be called more than once per connection loss and each call queues
-      # a marker, so an unconsumed one would immediately disconnect the new connection.
+      # Discard anything left over from a previous connection, such as a response to a
+      # request that completed after disconnect, so it isn't read as part of this one
       @response_queue.clear
       # Per https://github.com/lostisland/faraday/blob/main/lib/faraday/options/env.rb
       # :timeout       - time limit for the entire request (Integer in seconds)
@@ -83,15 +82,19 @@ module OpenC3
 
     # Disconnects the interface from its target(s)
     def disconnect
+      was_connected = !@http.nil?
       @http.close if @http
       @http = nil
-      # Clear the response queue
-      while @response_queue.length > 0
-        @response_queue.pop
-      end
       super()
-      # Push nil to cause read_interface to return nil
-      @response_queue.push(nil)
+      # disconnect is called more than once per connection loss (e.g. again after
+      # read_interface returns nil), so only the first call queues the marker. Another
+      # marker would be left unconsumed and immediately disconnect the next connection,
+      # and clearing again could discard a marker the reader hasn't consumed yet.
+      if was_connected
+        @response_queue.clear
+        # Push nil to cause read_interface to return nil
+        @response_queue.push(nil)
+      end
     end
 
     # Called to convert a packet into a data buffer. Write protocols then
