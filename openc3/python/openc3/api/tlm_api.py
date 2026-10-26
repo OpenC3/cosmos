@@ -421,8 +421,8 @@ def get_tlm_values(
     items: list[str],
     stale_time: int = 30,
     cache_timeout: float = 0.1,
-    start_time: str | None=None,
-    end_time: str | None=None,
+    start_time: str | None = None,
+    end_time: str | None = None,
     scope: str = OPENC3_SCOPE,
 ) -> list[list[object | str | None]]:
     """Returns all the item values (along with their limits state). The items

@@ -23,6 +23,7 @@ from openc3.environment import OPENC3_SCOPE
 # languages. Instead these call the PluginsController REST endpoints directly,
 # which also gives the same results in Ruby and Python scripts.
 
+
 def plugin_list(default: bool = False, scope: str = OPENC3_SCOPE):
     try:
         endpoint = f"/openc3-api/plugins?scope={scope}"
