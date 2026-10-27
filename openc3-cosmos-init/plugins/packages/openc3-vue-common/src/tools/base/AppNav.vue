@@ -144,19 +144,31 @@
                 'hydrated' class Stencil uses to make rux-clock visible -->
                 <div
                   v-bind="props"
-                  class="ml-4"
+                  class="item-clock ml-4"
                   :class="{ 'item-clock-error': itemClockError }"
                   data-test="item-clock"
                 >
-                  <!-- Static so the clock only moves when the item updates -->
+                  <!-- Static so the clock only moves when the item updates.
+                  rux-clock hardcodes the 'Time' label so hide it and render
+                  our own title styled like the Astro AOS / LOS labels -->
                   <rux-clock
                     static
+                    hide-date
+                    hide-timezone
+                    hide-labels
                     :date-in="itemClockDate"
                     :timezone="astroTimeZone"
                   />
+                  <div
+                    v-if="astro.showItemClockTitle"
+                    class="item-clock-title"
+                    data-test="item-clock-title"
+                  >
+                    {{ itemClockLabel }}
+                  </div>
                 </div>
               </template>
-              <div>{{ itemClockTitle }}</div>
+              <div>{{ itemClockFullName }}</div>
               <div v-if="itemClockError">{{ itemClockError }}</div>
             </v-tooltip>
           </v-row>
@@ -218,6 +230,8 @@ export default {
       astro: {
         hideClock: false,
         showItemClock: false,
+        showItemClockTitle: true,
+        itemClockTitle: '',
         itemClock: {
           targetName: null,
           packetName: null,
@@ -267,9 +281,15 @@ export default {
       }
       return this.timeZone
     },
-    itemClockTitle: function () {
+    itemClockFullName: function () {
       const item = this.astro.itemClock
       return `${item.targetName} ${item.packetName} ${item.itemName}`
+    },
+    itemClockLabel: function () {
+      const item = this.astro.itemClock
+      return (
+        this.astro.itemClockTitle || `${item.targetName} ${item.packetName}`
+      )
     },
   },
   created() {
@@ -521,6 +541,36 @@ export default {
 .clock {
   margin-top: 10px;
   justify-content: center;
+}
+.item-clock {
+  display: flex;
+  flex-direction: column;
+}
+/* Stretch the time box to the width of the title so a long title
+widens the clock rather than getting cut off */
+.item-clock rux-clock::part(container) {
+  display: grid;
+  width: 100%;
+}
+.item-clock rux-clock::part(time) {
+  align-self: stretch;
+  justify-content: center;
+}
+/* Match the rux-clock .rux-clock__segment__label styling */
+.item-clock-title {
+  font-family: var(--font-body-2-font-family);
+  font-size: var(--font-body-2-font-size, 0.875rem);
+  font-weight: var(--font-body-2-font-weight, 400);
+  letter-spacing: var(--font-body-2-letter-spacing, 0.005em);
+  line-height: var(--font-body-3-line-height, calc(16 / 12));
+  color: var(--color-palette-neutral-000, #ffffff);
+  background: var(--gsb-color-background, #172635);
+  padding: 0 var(--spacing-3, 0.75rem);
+  height: var(--spacing-6, 1.5rem);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  white-space: nowrap;
 }
 .item-clock-error {
   opacity: 0.4;

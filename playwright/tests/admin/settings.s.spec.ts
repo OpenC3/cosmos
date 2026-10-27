@@ -227,8 +227,8 @@ async function selectItemClockItem(page: Page, utils: Utilities, item: string) {
 
 test('shows a telemetry item astro clock', async ({ page, utils }) => {
   const itemClock = page.locator('[data-test=item-clock]')
-  // The second segment of the clock is the time, the first is the day of year
-  const itemClockTime = itemClock.locator('.rux-clock__segment__value').nth(1)
+  // The item clock hides the date so its only segment is the time
+  const itemClockTime = itemClock.locator('.rux-clock__segment__value')
   await expect(itemClock).not.toBeVisible()
 
   await page
@@ -240,6 +240,16 @@ test('shows a telemetry item astro clock', async ({ page, utils }) => {
     await expect(page.locator('rux-clock')).toHaveCount(2)
     await expect(itemClock).toBeVisible()
     await expect(itemClock).not.toHaveClass(/item-clock-error/)
+    // The title defaults to the target and packet name
+    await expect(itemClock.locator('[data-test=item-clock-title]')).toHaveText(
+      'INST HEALTH_STATUS',
+    )
+    // Long titles widen the time box rather than getting cut off
+    const titleBox = await itemClock
+      .locator('[data-test=item-clock-title]')
+      .boundingBox()
+    const timeBox = await itemClockTime.boundingBox()
+    expect(timeBox!.width).toBeCloseTo(titleBox!.width, 0)
     // The item clock is static so it only advances as the item updates
     const time = await itemClockTime.textContent()
     await expect
@@ -251,6 +261,33 @@ test('shows a telemetry item astro clock', async ({ page, utils }) => {
     )
     await page.mouse.move(0, 0)
   }
+
+  // A custom title replaces the target and packet name and can be hidden
+  const titleSwitch = page.getByRole('checkbox', {
+    name: 'Show Item Clock Title',
+  })
+  await expect(titleSwitch).toBeChecked()
+  await page
+    .locator('[data-test=item-clock-title-input] input')
+    .fill('Spacecraft Time')
+  await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(
+    page.locator('[data-test=item-clock-title-input] input'),
+  ).toHaveValue('Spacecraft Time')
+  await expect(itemClock.locator('[data-test=item-clock-title]')).toHaveText(
+    'Spacecraft Time',
+  )
+  await titleSwitch.uncheck()
+  await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Show Item Clock Title')).toBeVisible()
+  await expect(itemClock).toBeVisible()
+  await expect(itemClock.locator('[data-test=item-clock-title]')).toHaveCount(0)
+  await titleSwitch.check()
+  await page.locator('[data-test=item-clock-title-input] input').clear()
 
   // An item that isn't a time is greyed out with the error on mouseover
   await selectItemClockItem(page, utils, 'COLLECT_TYPE')
