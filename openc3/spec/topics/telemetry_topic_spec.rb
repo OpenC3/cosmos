@@ -34,13 +34,13 @@ module OpenC3
       it "writes to the queued store for the target shard" do
         queued_store = double("queued store")
         expect(EphemeralStoreQueued).to receive(:instance).with(db_shard: 3).and_return(queued_store)
-        expect(queued_store).to receive(:write_topic).with("DEFAULT__TELEMETRY__{TARGET}__PACKET", hash_including(target_name: 'TARGET'))
+        expect(queued_store).to receive(:write_topic).with("DEFAULT__TELEMETRY__{TARGET}__PACKET", hash_including(target_name: 'TARGET'), minid: anything)
         TelemetryTopic.write_packet(packet, queued: true, scope: 'DEFAULT')
       end
 
       it "writes directly to the target shard when not queued" do
         expect(EphemeralStoreQueued).not_to receive(:instance)
-        expect(Topic).to receive(:write_topic).with("DEFAULT__TELEMETRY__{TARGET}__PACKET", hash_including(target_name: 'TARGET'), db_shard: 3)
+        expect(Topic).to receive(:write_topic).with("DEFAULT__TELEMETRY__{TARGET}__PACKET", hash_including(target_name: 'TARGET'), minid: anything, db_shard: 3)
         TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
       end
     end
