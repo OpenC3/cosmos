@@ -457,7 +457,7 @@ module OpenC3
     # @return Hash The requested item based on the packet name
     def _get_item(target_name, packet_name, item_name, cache_timeout: nil, scope:)
       # Determine if this item exists, it will raise appropriate errors if not
-      packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: $openc3_scope) if packet_name == 'LATEST'
+      packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope) if packet_name == 'LATEST'
       return TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
     end
   end
