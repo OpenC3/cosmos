@@ -14,6 +14,7 @@
 
 import type { Browser, Page } from '@playwright/test'
 import { test, expect } from './../fixture'
+import type { Utilities } from '../../utilities'
 
 const ADMIN_STORAGE_STATE = 'adminStorageState.json'
 
@@ -32,6 +33,7 @@ type OriginalSettings = {
   rubygemsUrl: string
   pypiUrl: string
   hideAstroClock: boolean
+  showItemClock: boolean
   topBanner: boolean
   language: 'Python' | 'Ruby'
   vimMode: boolean
@@ -76,6 +78,9 @@ async function readSettings(page: Page): Promise<OriginalSettings> {
     hideAstroClock: await page
       .getByRole('checkbox', { name: 'Hide Astro Clock' })
       .isChecked(),
+    showItemClock: await page
+      .getByRole('checkbox', { name: 'Show Telemetry Item Clock' })
+      .isChecked(),
     topBanner: await page
       .getByRole('checkbox', { name: 'Display top banner' })
       .isChecked(),
@@ -107,8 +112,15 @@ async function restoreSettings(page: Page, want: OriginalSettings) {
   }
 
   const astro = page.getByRole('checkbox', { name: 'Hide Astro Clock' })
-  if ((await astro.isChecked()) !== want.hideAstroClock) {
+  const itemClock = page.getByRole('checkbox', {
+    name: 'Show Telemetry Item Clock',
+  })
+  if (
+    (await astro.isChecked()) !== want.hideAstroClock ||
+    (await itemClock.isChecked()) !== want.showItemClock
+  ) {
     await astro.setChecked(want.hideAstroClock)
+    await itemClock.setChecked(want.showItemClock)
     await save(page, 'save-astro-settings')
   }
 
@@ -194,6 +206,108 @@ test('hides the astro clock', async ({ page, utils }) => {
   await page.reload()
   await expect(page.getByText('Hide Astro Clock')).toBeVisible()
   await expect(page.locator('.rux-clock')).toBeVisible()
+})
+
+// Select the item clock's telemetry item in the Astro settings chooser.
+// utils.selectTargetPacketItem can't select the item itself because derived
+// items like PACKET_TIMESECONDS are labeled 'PACKET_TIMESECONDS *'.
+async function selectItemClockItem(page: Page, utils: Utilities, item: string) {
+  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await expect(page.locator('[data-test="select-item"] input')).toBeEnabled()
+  await page.locator('[data-test="select-item"] input').fill(item)
+  await page
+    .getByRole('option', { name: new RegExp(`^${item}( \\*)?$`) })
+    .click()
+  await expect(page.locator('[data-test="select-item"]')).toContainText(item)
+  await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Show Telemetry Item Clock')).toBeVisible()
+}
+
+test('shows a telemetry item astro clock', async ({ page, utils }) => {
+  const itemClock = page.locator('[data-test=item-clock]')
+  // The item clock hides the date so its only segment is the time
+  const itemClockTime = itemClock.locator('.rux-clock__segment__value')
+  await expect(itemClock).not.toBeVisible()
+
+  await page
+    .getByRole('checkbox', { name: 'Show Telemetry Item Clock' })
+    .check()
+  for (const item of ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED']) {
+    await selectItemClockItem(page, utils, item)
+    // The original clock is still displayed alongside the item clock
+    await expect(page.locator('rux-clock')).toHaveCount(2)
+    await expect(itemClock).toBeVisible()
+    await expect(itemClock).not.toHaveClass(/item-clock-error/)
+    // The title defaults to the target and packet name
+    await expect(itemClock.locator('[data-test=item-clock-title]')).toHaveText(
+      'INST HEALTH_STATUS',
+    )
+    // Long titles widen the time box rather than getting cut off
+    const titleBox = await itemClock
+      .locator('[data-test=item-clock-title]')
+      .boundingBox()
+    const timeBox = await itemClockTime.boundingBox()
+    expect(timeBox!.width).toBeCloseTo(titleBox!.width, 0)
+    // The item clock is static so it only advances as the item updates
+    const time = await itemClockTime.textContent()
+    await expect
+      .poll(() => itemClockTime.textContent(), { timeout: 10000 })
+      .not.toEqual(time)
+    await itemClock.hover()
+    await expect(page.getByRole('tooltip')).toContainText(
+      `INST HEALTH_STATUS ${item}`,
+    )
+    await page.mouse.move(0, 0)
+  }
+
+  // A custom title replaces the target and packet name and can be hidden
+  const titleSwitch = page.getByRole('checkbox', {
+    name: 'Show Item Clock Title',
+  })
+  await expect(titleSwitch).toBeChecked()
+  await page
+    .locator('[data-test=item-clock-title-input] input')
+    .fill('Spacecraft Time')
+  await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(
+    page.locator('[data-test=item-clock-title-input] input'),
+  ).toHaveValue('Spacecraft Time')
+  await expect(itemClock.locator('[data-test=item-clock-title]')).toHaveText(
+    'Spacecraft Time',
+  )
+  await titleSwitch.uncheck()
+  await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Show Item Clock Title')).toBeVisible()
+  await expect(itemClock).toBeVisible()
+  await expect(itemClock.locator('[data-test=item-clock-title]')).toHaveCount(0)
+  await titleSwitch.check()
+  await page.locator('[data-test=item-clock-title-input] input').clear()
+
+  // An item that isn't a time is greyed out with the error on mouseover
+  await selectItemClockItem(page, utils, 'COLLECT_TYPE')
+  await expect(itemClock).toBeVisible()
+  await expect(itemClock).toHaveClass(/item-clock-error/)
+  await itemClock.hover()
+  await expect(page.getByRole('tooltip')).toContainText(
+    'INST HEALTH_STATUS COLLECT_TYPE',
+  )
+  await expect(page.getByRole('tooltip')).toContainText('Unable to convert')
+
+  await page
+    .getByRole('checkbox', { name: 'Show Telemetry Item Clock' })
+    .uncheck()
+  await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Show Telemetry Item Clock')).toBeVisible()
+  await expect(itemClock).not.toBeVisible()
+  await expect(page.locator('rux-clock')).toHaveCount(1)
 })
 
 // Change time zone is tested in the individual apps
