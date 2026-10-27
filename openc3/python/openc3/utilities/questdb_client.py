@@ -588,6 +588,27 @@ class QuestDBClient:
                 cls.disconnect(db_shard=db_shard)
                 time.sleep(0.1)
 
+    @classmethod
+    def table_names(cls, db_shard: int = 0) -> set[str] | None:
+        """Return the names of all tables in a single query. Used to avoid querying
+        (and failing on) tables that were never created, e.g. commands that have
+        never been sent, which is the common case for targets with thousands of packets.
+        QuestDB table names are case insensitive so the names are upcased.
+
+        Args:
+            db_shard: DB_Shard number to query (default 0)
+
+        Returns:
+            Set of upcased table names, or None if they cannot be queried
+        """
+        try:
+            rows = cls.query_with_retry(
+                "SELECT table_name FROM tables()", max_retries=1, label="table names", db_shard=db_shard
+            )
+        except Exception:
+            return None
+        return {str(row["table_name"]).upper() for row in rows}
+
     @staticmethod
     def nsec_to_utc_time(nsec):
         """Convert a nanosecond integer timestamp to a UTC datetime.

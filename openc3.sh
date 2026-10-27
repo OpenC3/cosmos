@@ -452,6 +452,14 @@ build_core_images() {
   core_dir="$(dirname -- "$0")/../cosmos"
   if [[ -f "$core_dir/compose-build.yaml" ]]; then
     echo "Building core images from $core_dir ..."
+    # compose depends_on does not order builds, so build the base images
+    # first or the remaining images may build FROM a stale openc3-base
+    local image
+    for image in openc3-ruby openc3-base openc3-node; do
+      ${DOCKER_COMPOSE_COMMAND} --project-directory "$core_dir" \
+        -f "$core_dir/compose.yaml" -f "$core_dir/compose-build.yaml" \
+        build "$@" "$image" || return 1
+    done
     ${DOCKER_COMPOSE_COMMAND} --project-directory "$core_dir" \
       -f "$core_dir/compose.yaml" -f "$core_dir/compose-build.yaml" \
       build "$@"
