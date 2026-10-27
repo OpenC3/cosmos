@@ -21,11 +21,13 @@ class CommandValidator:
         self.args = []
 
     def pre_check(self, command):
-        # Return True to indicate Success, False to indicate Failure,
-        # and None to indicate Unknown. The second value is the optional message.
-        return [True, None]
+        # Return a tuple of (result, message). result is True to indicate Success,
+        # False to indicate Failure, and None to indicate Unknown. message is optional.
+        # Returning a list [result, message] is still supported.
+        return (True, None)
 
     def post_check(self, command):
-        # Return True to indicate Success, False to indicate Failure,
-        # and None to indicate Unknown. The second value is the optional message.
-        return [True, None]
+        # Return a tuple of (result, message). result is True to indicate Success,
+        # False to indicate Failure, and None to indicate Unknown. message is optional.
+        # Returning a list [result, message] is still supported.
+        return (True, None)

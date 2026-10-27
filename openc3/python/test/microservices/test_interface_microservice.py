@@ -1054,6 +1054,11 @@ class TestInterfaceMicroservice(unittest.TestCase):
         result = handler.process_cmd(topic, msg_id, msg_hash, None)
         self.assertEqual(result, "pre_check returned false for cmd('INST ABORT') due to not ready")
 
+        # Validators written before tuples became the default return a list
+        validator.pre_check.return_value = [False, "list return"]
+        result = handler.process_cmd(topic, msg_id, msg_hash, None)
+        self.assertEqual(result, "pre_check returned false for cmd('INST ABORT') due to list return")
+
         validator.pre_check.return_value = (True, None)
         validator.post_check.side_effect = RuntimeError("post boom")
         result = handler.process_cmd(topic, msg_id, msg_hash, None)
