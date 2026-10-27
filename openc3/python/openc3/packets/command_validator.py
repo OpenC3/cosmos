@@ -11,6 +11,14 @@
 
 # This file implements a class to handle command validation
 
+from collections import namedtuple
+
+
+# Returned by pre_check and post_check. result is True to indicate Success,
+# False to indicate Failure, and None to indicate Unknown. message is optional.
+# Returning a plain tuple or list (result, message) is still supported.
+CommandValidatorResult = namedtuple("CommandValidatorResult", ["result", "message"])
+
 
 # This class defines methods which are called when a command is sent.
 # This class must be subclassed and the pre_check or
@@ -21,13 +29,13 @@ class CommandValidator:
         self.args = []
 
     def pre_check(self, command):
-        # Return a tuple of (result, message). result is True to indicate Success,
-        # False to indicate Failure, and None to indicate Unknown. message is optional.
-        # Returning a list [result, message] is still supported.
-        return (True, None)
+        # Return a CommandValidatorResult(result, message). result is True to indicate
+        # Success, False to indicate Failure, and None to indicate Unknown.
+        # message is optional.
+        return CommandValidatorResult(True, None)
 
     def post_check(self, command):
-        # Return a tuple of (result, message). result is True to indicate Success,
-        # False to indicate Failure, and None to indicate Unknown. message is optional.
-        # Returning a list [result, message] is still supported.
-        return (True, None)
+        # Return a CommandValidatorResult(result, message). result is True to indicate
+        # Success, False to indicate Failure, and None to indicate Unknown.
+        # message is optional.
+        return CommandValidatorResult(True, None)

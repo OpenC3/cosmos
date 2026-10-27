@@ -11,16 +11,26 @@
 
 import unittest
 
-from openc3.packets.command_validator import CommandValidator
+from openc3.packets.command_validator import CommandValidator, CommandValidatorResult
 
 
 class TestCommandValidator(unittest.TestCase):
-    def test_pre_check_returns_success_tuple(self):
+    def test_pre_check_returns_success_result(self):
         result = CommandValidator().pre_check(None)
+        self.assertIsInstance(result, CommandValidatorResult)
         self.assertIsInstance(result, tuple)
         self.assertEqual(result, (True, None))
+        self.assertTrue(result.result)
+        self.assertIsNone(result.message)
 
-    def test_post_check_returns_success_tuple(self):
+    def test_post_check_returns_success_result(self):
         result = CommandValidator().post_check(None)
-        self.assertIsInstance(result, tuple)
+        self.assertIsInstance(result, CommandValidatorResult)
         self.assertEqual(result, (True, None))
+        self.assertTrue(result.result)
+        self.assertIsNone(result.message)
+
+    def test_result_unpacks_like_a_tuple(self):
+        result, message = CommandValidatorResult(False, "not ready")
+        self.assertFalse(result)
+        self.assertEqual(message, "not ready")
