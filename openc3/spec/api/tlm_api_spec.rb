@@ -1016,4 +1016,73 @@ module OpenC3
       end
     end
   end
+
+  describe Api, "multiple db_shards" do
+    # INST lives on db_shard 1 while SYSTEM stays on db_shard 0. Stale copies
+    # planted on the wrong db_shard prove the reads come from the right one.
+    before(:each) do
+      mock_redis()
+      setup_system()
+      local_s3()
+      setup_target_db_shards({ 'INST' => 1, 'SYSTEM' => 0 })
+      @api = ApiTest.new
+    end
+
+    after(:each) do
+      local_s3_unset()
+    end
+
+    def write_decom(target_name, packet_name, values = {})
+      packet = System.telemetry.packet(target_name, packet_name)
+      values.each { |item_name, value| packet.write(item_name, value) }
+      packet.received_time = Time.now.sys
+      TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
+      packet
+    end
+
+    it "reads telemetry values from the target's db_shard" do
+      write_decom('INST', 'HEALTH_STATUS', { 'TEMP1' => 10.0 })
+      Store.instance(db_shard: 0).hset("DEFAULT__tlm__INST", "HEALTH_STATUS", JSON.generate({ 'TEMP1__C' => 99.0 }))
+      expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to be_within(0.1).of(10.0)
+      expect(@api.tlm("INST LATEST TEMP1")).to be_within(0.1).of(10.0)
+      expect(@api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED"])[0][0]).to be_within(0.1).of(10.0)
+    end
+
+    it "returns the telemetry buffer from the target's db_shard" do
+      packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+      packet.received_time = Time.now.sys
+      packet.buffer = "\x01\x02\x03\x04"
+      TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
+      # A newer stale message on the wrong db_shard must not be returned
+      EphemeralStore.instance(db_shard: 0).write_topic("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", { 'buffer' => "\xFF\xFF\xFF\xFF" })
+      expect(@api.get_tlm_buffer("INST", "HEALTH_STATUS")["buffer"][0..3]).to eq "\x01\x02\x03\x04"
+    end
+
+    it "streams packets from each target's db_shard" do
+      id = @api.subscribe_packets([["INST", "HEALTH_STATUS"], ["SYSTEM", "META"]])
+      # Stale messages on the wrong db_shard must not be returned
+      json_data = JSON.generate({ 'STALE' => true })
+      EphemeralStore.instance(db_shard: 0).write_topic("DEFAULT__DECOM__{INST}__HEALTH_STATUS", { 'target_name' => 'INST', 'packet_name' => 'STALE', 'json_data' => json_data })
+      EphemeralStore.instance(db_shard: 1).write_topic("DEFAULT__DECOM__{SYSTEM}__META", { 'target_name' => 'SYSTEM', 'packet_name' => 'STALE', 'json_data' => json_data })
+      write_decom('INST', 'HEALTH_STATUS')
+      write_decom('SYSTEM', 'META')
+      _, packets = @api.get_packets(id)
+      expect(packets.map { |packet| [packet['target_name'], packet['packet_name']] }).to contain_exactly(%w(INST HEALTH_STATUS), %w(SYSTEM META))
+    end
+
+    it "returns packet counts from each target's db_shard" do
+      Store.instance(db_shard: 0).hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 100)
+      Store.instance(db_shard: 1).hset("DEFAULT__TELEMETRYCNTS__{SYSTEM}", "META", 100)
+      TargetModel.increment_telemetry_count("INST", "HEALTH_STATUS", 5, scope: "DEFAULT")
+      TargetModel.increment_telemetry_count("SYSTEM", "META", 3, scope: "DEFAULT")
+      expect(@api.get_tlm_cnt("INST HEALTH_STATUS")).to eql 5
+      expect(@api.get_tlm_cnts([%w(INST HEALTH_STATUS), %w(SYSTEM META)])).to eql [5, 3]
+    end
+
+    it "returns packet names from the target's db_shard" do
+      Store.instance(db_shard: 0).hset("DEFAULT__openc3tlm__INST", "STALE", JSON.generate({ 'packet_name' => 'STALE' }))
+      expect(@api.get_all_tlm_names("INST")).to eql %w(ADCS HEALTH_STATUS IMAGE MECH PARAMS)
+      expect(@api.get_all_tlm_names("INST", hidden: true)).to eql %w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS)
+    end
+  end
 end

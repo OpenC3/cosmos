@@ -475,7 +475,7 @@ module OpenC3
       # Group topics by db_shard for multi-shard support
       db_shard_groups = {}
       lookup.each do |topic, offset|
-        target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
+        target_name = Topic.target_name_from_topic(topic)
         db_shard = Store.db_shard_for_target(target_name, scope: scope)
         db_shard_groups[db_shard] ||= { topics: [], offsets: [] }
         db_shard_groups[db_shard][:topics] << topic

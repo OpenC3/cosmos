@@ -245,8 +245,9 @@ module OpenC3
                   # Now that the file is in S3, trim the Redis stream up until the previous file.
                   # This keeps one minute of data in Redis
                   instance.cleanup_offsets[index].each do |redis_topic, cleanup_offset|
-                    target_match = redis_topic.match(/__\{?([^}_]+)\}?__/)
-                    db_shard = target_match ? Store.db_shard_for_target(target_match[1]) : 0
+                    # Topics are SCOPE__TYPE__{TARGET}__PACKET
+                    target_name = Topic.target_name_from_topic(redis_topic)
+                    db_shard = target_name ? Store.db_shard_for_target(target_name, scope: redis_topic.split('__')[0]) : 0
                     Topic.trim_topic(redis_topic, cleanup_offset, db_shard: db_shard)
                   end
                   indexes_to_clear << index

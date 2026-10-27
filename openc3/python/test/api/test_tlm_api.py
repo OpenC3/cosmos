@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1957
 
 import contextlib
+import json
 import re
 import threading
 import time
@@ -28,7 +29,7 @@ from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.utilities.questdb_client import TlmItem
 from openc3.utilities.time import formatted
-from test.test_helper import System, mock_redis, setup_system
+from test.test_helper import System, mock_redis, setup_system, shard_redis
 
 
 class TestTlmApi(unittest.TestCase):
@@ -1220,3 +1221,42 @@ class TestTlmApi(unittest.TestCase):
         self.assertIn("RECEIVED_TIMESECONDS", items)
         self.assertIn("RECEIVED_TIMEFORMATTED", items)
         self.assertIn("RECEIVED_COUNT", items)
+
+
+# INST is installed on db_shard 1 while SYSTEM stays on db_shard 0. Data is
+# written straight to each db_shard so only the API reads are under test.
+class TestTlmApiMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+        CvtModel.packet_cache = {}
+        CvtModel.override_cache = {}
+
+    def test_tlm_reads_the_target_db_shard(self):
+        shard_redis(1).hset(
+            "DEFAULT__tlm__INST",
+            "HEALTH_STATUS",
+            json.dumps({"TEMP1": 1, "TEMP1__C": 2.0, "TEMP1__F": "2.00 C"}),
+        )
+        self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), 2.0)
+        self.assertEqual(tlm_raw("INST HEALTH_STATUS TEMP1"), 1)
+
+    def test_get_tlm_buffer_reads_the_target_db_shard(self):
+        Topic.write_topic("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", {"buffer": b"\x01\x02"}, db_shard=1)
+        self.assertEqual(get_tlm_buffer("INST", "HEALTH_STATUS")["buffer"], b"\x01\x02")
+
+    def test_get_packets_reads_each_target_from_its_db_shard(self):
+        id = subscribe_packets([["INST", "HEALTH_STATUS"], ["SYSTEM", "LIMITS_CHANGE"]])
+        msg_hash = {"time": 0, "received_time": 0, "stored": "false", "received_count": 1}
+        Topic.write_topic(
+            "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            msg_hash | {"target_name": "INST", "packet_name": "HEALTH_STATUS", "json_data": '{"TEMP1": 1}'},
+            db_shard=1,
+        )
+        Topic.write_topic(
+            "DEFAULT__DECOM__{SYSTEM}__LIMITS_CHANGE",
+            msg_hash | {"target_name": "SYSTEM", "packet_name": "LIMITS_CHANGE", "json_data": '{"COUNT": 2}'},
+            db_shard=0,
+        )
+        _, packets = get_packets(id)
+        self.assertEqual(sorted(packet["target_name"] for packet in packets), ["INST", "SYSTEM"])

@@ -12,6 +12,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
+require 'openc3/models/target_model'
 require 'openc3/topics/telemetry_topic'
 require 'openc3/packets/packet'
 
@@ -43,6 +44,24 @@ module OpenC3
         expect(Topic).to receive(:write_topic).with("DEFAULT__TELEMETRY__{TARGET}__PACKET", hash_including(target_name: 'TARGET'), db_shard: 3)
         TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
       end
+    end
+  end
+
+  describe TelemetryTopic, "multiple db_shards" do
+    before(:each) do
+      mock_redis()
+      TargetModel.new(name: "TARGET", scope: "DEFAULT", db_shard: 1).create
+      @packet = Packet.new('TARGET', 'PACKET')
+      @packet.received_time = Time.now
+      @packet.packet_time = Time.now
+      @packet.received_count = 1
+    end
+
+    it "writes to the target's db_shard" do
+      TelemetryTopic.write_packet(@packet, scope: 'DEFAULT')
+      TelemetryTopic.write_packet(@packet, queued: true, scope: 'DEFAULT')
+      expect(EphemeralStore.instance(db_shard: 1).xlen("DEFAULT__TELEMETRY__{TARGET}__PACKET")).to eql 2
+      expect(EphemeralStore.instance(db_shard: 0).exists?("DEFAULT__TELEMETRY__{TARGET}__PACKET")).to be false
     end
   end
 end

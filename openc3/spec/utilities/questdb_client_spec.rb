@@ -202,5 +202,33 @@ module OpenC3
         expect(selects).to eq([QuestDBClient::TIMESTAMP_SELECT])
       end
     end
+
+    describe "multiple db_shards" do
+      before(:each) do
+        mock_redis()
+        # INST lives on db_shard 1 while SYSTEM stays on db_shard 0
+        TargetModel.new(name: "INST", scope: "DEFAULT", db_shard: 1).create
+        TargetModel.new(name: "SYSTEM", scope: "DEFAULT", db_shard: 0).create
+      end
+
+      it "looks up the target's db_shard" do
+        expect(QuestDBClient.db_shard_for_target("INST", scope: "DEFAULT")).to eql 1
+        expect(QuestDBClient.db_shard_for_target("SYSTEM", scope: "DEFAULT")).to eql 0
+        expect(QuestDBClient.db_shard_for_target(nil, scope: "DEFAULT")).to eql 0
+      end
+
+      it "queries each item on its target's db_shard" do
+        items = [
+          ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil],
+          ["SYSTEM", "META", "OPERATOR_NAME", "CONVERTED", nil],
+        ]
+        allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard) do |_items, db_shard:, **|
+          db_shard == 1 ? [[[1.0, nil]]] : [[["JASON", nil]]]
+        end
+        expect(QuestDBClient.tsdb_lookup(items, start_time: "2026-09-13T00:00:00Z")).to eq([[1.0, nil], ["JASON", nil]])
+        expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[0]], hash_including(db_shard: 1))
+        expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[1]], hash_including(db_shard: 0))
+      end
+    end
   end
 end

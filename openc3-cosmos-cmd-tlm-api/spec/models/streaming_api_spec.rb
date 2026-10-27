@@ -1305,4 +1305,52 @@ RSpec.describe StreamingApi, type: :model do
       end
     end
   end
+
+  context 'multiple db_shards' do
+    # INST lives on db_shard 1. The db_shard 0 EphemeralStore stubbed above
+    # returns no messages so anything streamed must come from db_shard 1.
+    before(:each) do
+      @send_count = 0
+      OpenC3::TargetModel.new(name: 'INST', scope: 'DEFAULT', db_shard: 1).create
+    end
+
+    it 'streams realtime items from the target db_shard' do
+      @api.add({ 'items' => ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED'], 'scope' => 'DEFAULT' })
+      sleep 0.2 # Allow the thread to start
+      time = Time.now.to_nsec_from_epoch
+      OpenC3::EphemeralStore.instance(db_shard: 1).write_topic('DEFAULT__DECOM__{INST}__PARAMS',
+        { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => time, 'json_data' => JSON.generate({ 'VALUE1' => 5 }) })
+      start = Time.now
+      sleep 0.05 while @messages.empty? and (Time.now - start) < 3
+      expect(@messages[0][0]['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED']).to eq(5)
+    end
+
+    it 'streams decom packets from the target db_shard TSDB' do
+      # Only the db_shard 1 connection has data
+      db_shard0_conn = instance_double(PG::Connection)
+      allow(db_shard0_conn).to receive(:type_map_for_results).and_return(Object.new)
+      allow(db_shard0_conn).to receive(:exec).and_return(nil)
+      db_shard1_conn = instance_double(PG::Connection)
+      allow(db_shard1_conn).to receive(:type_map_for_results).and_return(Object.new)
+      pg_data = [
+        [["PACKET_TIMESECONDS", Time.at(@file_start_time / 1_000_000_000)], ["VALUE1", 100], ["VALUE1__C", 10.5], ["__pkt_time_ns", @file_start_time], ["__rx_time_ns", @file_start_time]]
+      ]
+      pg_data.define_singleton_method(:ntuples) { 1 }
+      exec_cnt = 0
+      allow(db_shard1_conn).to receive(:exec) do
+        exec_cnt += 1
+        exec_cnt == 1 ? pg_data : nil
+      end
+      allow(OpenC3::QuestDBClient).to receive(:connection) { |db_shard: 0| db_shard == 1 ? db_shard1_conn : db_shard0_conn }
+
+      @api.add({ 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'], 'scope' => 'DEFAULT',
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1_000_000_000 })
+      sleep 1.5 # Allow the threads to run
+
+      expect(@messages.length).to eq(2)
+      expect(@messages[0][0]['__packet']).to eq('DECOM__TLM__INST__PARAMS__CONVERTED')
+      expect(@messages[0][0]['VALUE1']).to eq(10.5)
+      expect(@messages[-1]).to eq([])
+    end
+  end
 end

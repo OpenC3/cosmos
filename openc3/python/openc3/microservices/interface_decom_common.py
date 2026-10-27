@@ -49,6 +49,7 @@ def handle_inject_tlm(inject_tlm_json, scope):
 def handle_inject_tlm_with_ack(inject_tlm_json, msg_id, scope, logger=None):
     inject_tlm_hash = json.loads(inject_tlm_json, cls=JsonDecoder)
     target_name = inject_tlm_hash["target_name"]
+    db_shard = Store.db_shard_for_target(target_name, scope=scope)
     ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
     try:
         handle_inject_tlm(inject_tlm_json, scope)
@@ -57,7 +58,7 @@ def handle_inject_tlm_with_ack(inject_tlm_json, msg_id, scope, logger=None):
         if logger:
             logger.error(f"inject_tlm error due to {error}")
         msg_hash = {"id": msg_id, "result": str(error)}
-    Topic.write_topic(ack_topic, msg_hash)
+    Topic.write_topic(ack_topic, msg_hash, db_shard=db_shard)
 
 
 def handle_build_cmd(build_cmd_json, msg_id, scope):

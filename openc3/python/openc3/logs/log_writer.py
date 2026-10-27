@@ -21,6 +21,7 @@ from openc3.topics.topic import Topic
 from openc3.utilities.bucket_utilities import BucketUtilities
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
+from openc3.utilities.store import Store
 from openc3.utilities.string import build_timestamped_filename
 from openc3.utilities.time import from_nsec_from_epoch, to_timestamp
 
@@ -216,8 +217,15 @@ class LogWriter:
                                 for (
                                     redis_topic,
                                     cleanup_offset,
-                                ) in instance.cleanup_offsets[index]:
-                                    Topic.trim_topic(redis_topic, cleanup_offset)
+                                ) in instance.cleanup_offsets[index].items():
+                                    # Topics are SCOPE__TYPE__{TARGET}__PACKET
+                                    target_name = Topic.target_name_from_topic(redis_topic)
+                                    db_shard = 0
+                                    if target_name:
+                                        db_shard = Store.db_shard_for_target(
+                                            target_name, scope=redis_topic.split("__")[0]
+                                        )
+                                    Topic.trim_topic(redis_topic, cleanup_offset, db_shard=db_shard)
                                 indexes_to_clear.append(index)
                         if len(indexes_to_clear) > 0:
                             for index in indexes_to_clear:
@@ -313,7 +321,7 @@ class LogWriter:
                 threads.append(BucketUtilities.move_log_file_to_bucket(self.filename, bucket_key))
                 # Now that the file is in storage, trim the Redis stream after a delay
                 self.cleanup_offsets.append({})
-                for redis_topic, last_offset in self.last_offsets:
+                for redis_topic, last_offset in self.last_offsets.items():
                     self.cleanup_offsets[-1][redis_topic] = last_offset
                 self.cleanup_times.append(datetime.now(timezone.utc) + timedelta(seconds=LogWriter.CLEANUP_DELAY))
                 self.last_offsets.clear()

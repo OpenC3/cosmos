@@ -67,6 +67,7 @@ module OpenC3
 
     attr_reader :redis_url
     attr_reader :redis_pool
+    attr_reader :db_shard
 
     # Look up the db_shard number for a target with a 1-minute cache.
     # Reads directly from Redis db_shard 0 to avoid circular deps with TargetModel.
@@ -124,6 +125,7 @@ module OpenC3
     end
 
     def initialize(pool_size = 10, db_shard: 0)
+      @db_shard = db_shard
       @redis_username = ENV.fetch('OPENC3_REDIS_USERNAME', nil)
       @redis_key = ENV.fetch('OPENC3_REDIS_PASSWORD', nil)
       hostname = ENV['OPENC3_REDIS_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
@@ -307,7 +309,7 @@ module OpenC3
 
   class EphemeralStore < Store
     def initialize(pool_size = 10, db_shard: 0)
-      super(pool_size)
+      super(pool_size, db_shard: db_shard)
       hostname = ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
       @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_EPHEMERAL_PORT', 6380)}"
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }

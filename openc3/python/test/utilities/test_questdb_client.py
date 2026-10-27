@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 import psycopg
 
 from openc3.utilities.questdb_client import QuestDBClient
+from test.test_helper import mock_redis, set_target_db_shard
 
 
 class TestTsdbLookup(unittest.TestCase):
@@ -105,6 +106,26 @@ class TestTsdbLookupDbShards(unittest.TestCase):
     def test_returns_empty_when_no_db_shard_has_results(self):
         result, _ = self.lookup({0: {}, 1: {}}, end_time="2026-09-13T01:00:00Z")
         self.assertEqual(result, {})
+
+
+# The db_shard for each item comes from where its target is installed
+class TestTsdbLookupTargetDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        set_target_db_shard("INST", 0)
+        set_target_db_shard("INST2", 1)
+
+    def test_queries_each_item_on_its_target_db_shard(self):
+        items = [
+            ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
+            ["INST2", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
+        ]
+        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard") as single:
+            single.side_effect = lambda items, db_shard, **_kw: {0: [[[1.0, None]]], 1: [[[2.0, None]]]}[db_shard]
+            result = QuestDBClient.tsdb_lookup(items, start_time="2026-09-13T00:00:00Z", scope="DEFAULT")
+        self.assertEqual(result, [[1.0, None], [2.0, None]])
+        shards = {call.kwargs["db_shard"]: call[0][0] for call in single.call_args_list}
+        self.assertEqual([item.target_name for item in shards[1]], ["INST2"])
 
 
 class TestQueryWithRetry(unittest.TestCase):

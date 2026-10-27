@@ -14,8 +14,9 @@ import json
 import unittest
 from unittest.mock import MagicMock, patch
 
+from openc3.system.system import System
 from openc3.topics.command_topic import CommandTopic
-from test.test_helper import mock_redis
+from test.test_helper import ack_next_message, mock_redis, setup_system, shard_redis
 
 
 class TestCommandTopic(unittest.TestCase):
@@ -86,3 +87,34 @@ class TestCommandTopic(unittest.TestCase):
         # Falsy extra (empty dict) should not produce an extra field
         CommandTopic.write_packet(self._make_packet(extra={}), scope="DEFAULT")
         self.assertNotIn("extra", self.captured["msg_hash"])
+
+
+# INST is installed on db_shard 1 while SYSTEM stays on db_shard 0
+class TestCommandTopicMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+        self.shard0 = shard_redis(0)
+        self.shard1 = shard_redis(1)
+
+    def command(self, target_name="INST"):
+        return {"target_name": target_name, "cmd_name": "ABORT", "cmd_params": {}}
+
+    def test_write_packet_writes_to_the_target_db_shard(self):
+        packet = System.commands.packet("INST", "ABORT")
+        packet.received_time = datetime.datetime.now(datetime.timezone.utc)
+        CommandTopic.write_packet(packet, scope="DEFAULT")
+        self.assertEqual(self.shard1.xlen("DEFAULT__COMMAND__{INST}__ABORT"), 1)
+        self.assertFalse(self.shard0.exists("DEFAULT__COMMAND__{INST}__ABORT"))
+
+    def test_send_command_without_ack_writes_to_the_target_db_shard(self):
+        CommandTopic.send_command(self.command(), timeout=0, scope="DEFAULT")
+        self.assertEqual(self.shard1.xlen("{DEFAULT__CMD}TARGET__INST"), 1)
+        self.assertFalse(self.shard0.exists("{DEFAULT__CMD}TARGET__INST"))
+
+    def test_send_command_reads_the_ack_from_the_target_db_shard(self):
+        responder = ack_next_message(self.shard1, "{DEFAULT__CMD}TARGET__INST", "{DEFAULT__ACKCMD}TARGET__INST")
+        command = CommandTopic.send_command(self.command(), timeout=2, scope="DEFAULT")
+        responder.join()
+        self.assertEqual(command["cmd_name"], "ABORT")
+        self.assertFalse(self.shard0.exists("{DEFAULT__CMD}TARGET__INST"))

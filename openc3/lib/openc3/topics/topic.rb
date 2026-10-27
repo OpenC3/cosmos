@@ -69,6 +69,13 @@ module OpenC3
       EphemeralStore.instance(db_shard: db_shard).del(topic)
     end
 
+    # Extract the target name from the {TARGET} hash tag in a topic like
+    # DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS. Returns nil if there is none.
+    def self.target_name_from_topic(topic)
+      match = topic.match(/__\{([^}]+)\}__/)
+      match ? match[1] : nil
+    end
+
     # Group topics by db_shard. Each topic's target name is extracted and looked up.
     # Topics matching target_pattern are db_sharded; others go to db_shard 0.
     # @param topics [Array<String>] List of topic strings
@@ -79,7 +86,7 @@ module OpenC3
       groups = {}
       topics.each do |topic|
         if topic.include?(target_pattern)
-          target_name = topic.match(/__\{?([^}_]+)\}?__/)[1] rescue nil
+          target_name = target_name_from_topic(topic)
           # Handle CMD}TARGET__ pattern where target is after TARGET__
           target_name = topic.split('TARGET__')[1] if target_pattern.include?('TARGET__') && target_name.nil?
           db_shard = (Store.db_shard_for_target(target_name, scope: scope) || 0).to_i

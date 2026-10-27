@@ -9,6 +9,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import re
+
 from openc3.utilities.store import EphemeralStore
 
 
@@ -76,10 +78,15 @@ class Topic(metaclass=TopicMeta):
         return EphemeralStore.instance(db_shard=db_shard).trim_topic(topic, minid, approximate, limit=limit)
 
     @classmethod
+    def target_name_from_topic(cls, topic):
+        """Extract the target name from the {TARGET} hash tag in a topic like
+        DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS. Returns None if there is none."""
+        match = re.search(r"__\{([^}]+)\}__", topic)
+        return match.group(1) if match else None
+
+    @classmethod
     def group_topics_by_db_shard(cls, topics, target_pattern, scope):
         """Group topics by db_shard. Topics matching target_pattern are db_sharded; others go to db_shard 0."""
-        import re
-
         from openc3.utilities.store import Store
 
         groups = {}
@@ -88,8 +95,7 @@ class Topic(metaclass=TopicMeta):
                 if "TARGET__" in target_pattern:
                     target_name = topic.split("TARGET__")[1] if "TARGET__" in topic else None
                 else:
-                    match = re.search(r"__\{?([^}_]+)\}?__", topic)
-                    target_name = match.group(1) if match else None
+                    target_name = cls.target_name_from_topic(topic)
                 db_shard = int(Store.db_shard_for_target(target_name, scope=scope) or 0)
             else:
                 db_shard = 0
