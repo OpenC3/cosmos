@@ -17,14 +17,17 @@ Command Sender provides the ability to send any command defined by COSMOS. Comma
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/command_sender/mode_menu.png').default}
-alt="Mode Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 120 + 'px'}} />
+<img
+  src={require("@site/static/img/command_sender/mode_menu.png").default}
+  alt="Mode Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 150 + "px" }}
+/>
 
 - Ignores parameter range checking
 - Displays parameter state values in hex
 - Shows ignored parameters
 - Disables all parameter conversions
+- Disables command [validators](../configuration/command#validator)
 
 ## Sending Commands
 
