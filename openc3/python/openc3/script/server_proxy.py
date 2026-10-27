@@ -48,7 +48,7 @@ class ApiServerProxy:
         if (
             OPENC3_API_TOKEN is None
             and OPENC3_API_USER is None
-            and OPENC3_API_CLIENT_SECRET is None
+            and not OPENC3_API_CLIENT_SECRET
         ):
             if OPENC3_API_PASSWORD:
                 return OpenC3Authentication()

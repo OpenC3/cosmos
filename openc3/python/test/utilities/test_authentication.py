@@ -16,6 +16,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from openc3.io.json_api_object import JsonApiObject
+from openc3.script.server_proxy import ApiServerProxy
 from openc3.utilities.authentication import (
     OpenC3Authentication,
     OpenC3AuthenticationError,
@@ -635,6 +636,52 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
         """Routes client-secret configuration to Keycloak authentication."""
         auth = JsonApiObject.generate_auth()
         self.assertIsInstance(auth, OpenC3KeycloakAuthentication)
+
+    @patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", "m2m_secret")
+    @patch("openc3.utilities.authentication.OPENC3_API_READ_TIMEOUT", 9.0)
+    @patch("openc3.utilities.authentication.OPENC3_API_TIMEOUT", 1.5)
+    def test_client_credentials_post_uses_bounded_timeouts(self):
+        """Uses explicit connect and read timeouts for the Keycloak token POST."""
+        auth = OpenC3KeycloakAuthentication(self.test_url)
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+        mock_response.text = json.dumps(
+            {
+                "access_token": "m2m_access_token",
+                "expires_in": 300,
+                "token_type": "bearer",
+            }
+        )
+        auth.http.post = Mock(return_value=mock_response)
+
+        auth.token()
+
+        self.assertEqual(auth.http.post.call_args.kwargs["timeout"], (1.5, 9.0))
+
+    @patch("openc3.io.json_api_object.OPENC3_API_PASSWORD", "test_password")
+    @patch("openc3.io.json_api_object.OPENC3_API_CLIENT_SECRET", "")
+    @patch("openc3.io.json_api_object.OPENC3_API_USER", None)
+    @patch("openc3.io.json_api_object.OPENC3_API_TOKEN", None)
+    @patch("openc3.io.json_api_object.OpenC3KeycloakAuthentication")
+    @patch("openc3.io.json_api_object.OpenC3Authentication")
+    def test_json_api_object_generate_auth_treats_empty_client_secret_as_unset(
+        self, mock_core_auth, mock_keycloak_auth
+    ):
+        """Falls back to password auth when the client secret is an empty string."""
+        auth = JsonApiObject.generate_auth()
+
+        self.assertIs(auth, mock_core_auth.return_value)
+        mock_keycloak_auth.assert_not_called()
+
+    @patch("openc3.script.server_proxy.OPENC3_API_PASSWORD", None)
+    @patch("openc3.script.server_proxy.OPENC3_API_CLIENT_SECRET", "")
+    @patch("openc3.script.server_proxy.OPENC3_API_USER", None)
+    @patch("openc3.script.server_proxy.OPENC3_API_TOKEN", None)
+    def test_api_server_proxy_generate_auth_treats_empty_client_secret_as_unset(self):
+        """Returns no auth when the client secret is empty and no other auth is configured."""
+        proxy = object.__new__(ApiServerProxy)
+        self.assertIsNone(proxy.generate_auth())
 
 
 if __name__ == "__main__":

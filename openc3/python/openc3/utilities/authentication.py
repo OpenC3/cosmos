@@ -84,6 +84,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
     #     "scope": "openid email profile"
     # }
 
+    FORM_URLENCODED_CONTENT_TYPE = "application/x-www-form-urlencoded"
     REFRESH_OFFSET_SECONDS = 60
 
     # @param url [String] The url of the openc3 or keycloak in the cluster
@@ -126,6 +127,13 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         except OpenC3AuthenticationError:
             return None
 
+    @staticmethod
+    def _request_timeout():
+        read_timeout = OPENC3_API_READ_TIMEOUT
+        if read_timeout is None:
+            read_timeout = OPENC3_API_TIMEOUT
+        return (OPENC3_API_TIMEOUT, read_timeout)
+
     # Make the token and save token to instance
     def _make_token(self, current_time, openid_scope="openid"):
         client_id = OPENC3_API_CLIENT or "api"
@@ -139,7 +147,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
                 "scope": openid_scope,
             }
             headers = {
-                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Type": self.FORM_URLENCODED_CONTENT_TYPE,
                 "User-Agent": OPENC3_USER_AGENT,
             }
             oath = self._make_request(headers, data)
@@ -158,7 +166,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
                 "scope": openid_scope,
             }
             headers = {
-                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Type": self.FORM_URLENCODED_CONTENT_TYPE,
                 "User-Agent": OPENC3_USER_AGENT,
             }
             oath = self._make_request(headers, data)
@@ -182,7 +190,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
             "grant_type": "refresh_token",
         }
         headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": self.FORM_URLENCODED_CONTENT_TYPE,
             "User-Agent": OPENC3_USER_AGENT,
         }
         oath = self._make_request(headers, data)
@@ -215,7 +223,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         # print(self.log[0])
 
         # URL encode the data
-        resp = self.http.post(url, data=urlencode(data), headers=headers)
+        resp = self.http.post(url, data=urlencode(data), headers=headers, timeout=self._request_timeout())
 
         self.log[1] = f"response status: {resp.status_code} header: {resp.headers} body: {resp.text}"
         # print(self.log[1])

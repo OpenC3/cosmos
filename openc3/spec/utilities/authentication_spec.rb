@@ -79,8 +79,11 @@ module OpenC3
       ENV.delete('OPENC3_API_USER')
       ENV.delete('OPENC3_API_PASSWORD')
       ENV.delete('OPENC3_API_TOKEN')
-      ENV.delete('OPENC3_KEYCLOAK_REALM')
       ENV.delete('OPENC3_API_CLIENT')
+      ENV.delete('OPENC3_API_CLIENT_SECRET')
+      ENV.delete('OPENC3_API_TIMEOUT')
+      ENV.delete('OPENC3_API_READ_TIMEOUT')
+      ENV.delete('OPENC3_KEYCLOAK_REALM')
     end
 
     describe "initialize" do
@@ -252,6 +255,100 @@ module OpenC3
       it "returns token without Bearer prefix when requested" do
         token = auth.token(include_bearer: false)
         expect(token).to eq("access_token_123")
+      end
+    end
+
+    describe "client_credentials authentication" do
+      let(:auth) { OpenC3KeycloakAuthentication.new(test_url) }
+      let(:mock_success_response) do
+        instance_double(Faraday::Response,
+          status: 200,
+          headers: {},
+          body: JSON.generate({
+            "access_token" => "m2m_access_token",
+            "expires_in" => 300,
+            "token_type" => "bearer"
+          })
+        )
+      end
+
+      before(:each) do
+        ENV['OPENC3_API_CLIENT_SECRET'] = 'm2m_secret'
+        ENV['OPENC3_API_CLIENT'] = 'cosmos-m2m'
+        allow(JsonDRb).to receive(:debug?).and_return(false)
+      end
+
+      it "uses the client_credentials grant with bounded timeouts" do
+        request_options = nil
+        request_body = nil
+        allow(mock_http).to receive(:post) do |uri, body, headers, &block|
+          request = Struct.new(:options).new(Faraday::RequestOptions.new)
+          block.call(request) if block
+          request_options = request.options
+          request_body = body
+          expect(headers['Content-Type']).to eq('application/x-www-form-urlencoded')
+          expect(uri.to_s).to eq('http://test-keycloak.local/realms/openc3/protocol/openid-connect/token')
+          mock_success_response
+        end
+
+        expect(auth.token).to eq('Bearer m2m_access_token')
+        expect(request_body).to include('grant_type=client_credentials')
+        expect(request_body).to include('client_id=cosmos-m2m')
+        expect(request_body).to include('client_secret=m2m_secret')
+        expect(request_options.open_timeout).to eq(1.0)
+        expect(request_options.timeout).to eq(1.0)
+        expect(auth.refresh_token).to be_nil
+      end
+
+      it "prefers client_credentials over password" do
+        request_body = nil
+        allow(mock_http).to receive(:post) do |_uri, body, _headers, &_block|
+          request_body = body
+          mock_success_response
+        end
+
+        auth.token
+        expect(request_body).to include('grant_type=client_credentials')
+        expect(request_body).not_to include('password=')
+      end
+
+      it "obfuscates the client secret in error messages" do
+        mock_response = instance_double(Faraday::Response,
+          status: 401,
+          headers: {},
+          body: '{"error":"invalid_client"}'
+        )
+        allow(mock_http).to receive(:post).and_return(mock_response)
+
+        expect {
+          auth.token
+        }.to raise_error(OpenC3AuthenticationError) do |error|
+          expect(error.message).to include('***')
+          expect(error.message).not_to include('m2m_secret')
+        end
+      end
+
+      it "treats an empty client secret as unset" do
+        ENV['OPENC3_API_CLIENT_SECRET'] = ''
+        request_body = nil
+        allow(mock_http).to receive(:post) do |_uri, body, _headers, &_block|
+          request_body = body
+          instance_double(Faraday::Response,
+            status: 200,
+            headers: {},
+            body: JSON.generate({
+              "access_token" => "access_token_123",
+              "expires_in" => 600,
+              "refresh_expires_in" => 1800,
+              "refresh_token" => "refresh_token_123",
+              "token_type" => "bearer"
+            })
+          )
+        end
+
+        expect(auth.token).to eq('Bearer access_token_123')
+        expect(request_body).to include('grant_type=password')
+        expect(request_body).not_to include('client_secret=')
       end
     end
 

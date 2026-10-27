@@ -117,6 +117,7 @@ module OpenC3
     #     "scope": "openid email profile"
     # }
 
+    FORM_URLENCODED_CONTENT_TYPE = 'application/x-www-form-urlencoded'
     REFRESH_OFFSET_SECONDS = 60
 
     attr_reader :refresh_token
@@ -138,7 +139,11 @@ module OpenC3
       @auth_mutex.synchronize do
         @log = [nil, nil]
         current_time = Time.now.to_i
-        if @token.nil?
+        if client_secret
+          if @token.nil? || @expires_at.nil? || @expires_at < current_time
+            _make_token(current_time, openid_scope: openid_scope)
+          end
+        elsif @token.nil?
           _make_token(current_time, openid_scope: openid_scope)
         elsif @refresh_expires_at < current_time
           _make_token(current_time, openid_scope: openid_scope)
@@ -166,10 +171,39 @@ module OpenC3
 
     private
 
+    def client_secret
+      secret = ENV.fetch('OPENC3_API_CLIENT_SECRET', nil)
+      return nil if secret.nil? || secret.empty?
+      secret
+    end
+
+    def request_timeouts
+      connect_timeout = (ENV['OPENC3_API_TIMEOUT'] || '1.0').to_f
+      read_timeout = ENV.fetch('OPENC3_API_READ_TIMEOUT', nil)
+      read_timeout = read_timeout.nil? || read_timeout.empty? ? connect_timeout : read_timeout.to_f
+      [connect_timeout, read_timeout]
+    end
+
     # Make the token and save token to instance
     def _make_token(current_time, openid_scope: 'openid')
       client_id = ENV['OPENC3_API_CLIENT'] || 'api'
-      if ENV['OPENC3_API_USER'] and ENV['OPENC3_API_PASSWORD']
+      if client_secret
+        data = {
+          'client_id' => client_id,
+          'client_secret' => client_secret,
+          'grant_type' => 'client_credentials',
+          'scope' => openid_scope
+        }
+        headers = {
+          'Content-Type' => FORM_URLENCODED_CONTENT_TYPE,
+          'User-Agent' => "OpenC3KeycloakAuthorization / #{OPENC3_VERSION} (ruby/openc3/lib/utilities/authentication)",
+        }
+        oath = _make_request(headers, data)
+        @token = oath['access_token']
+        @refresh_token = nil
+        @expires_at = current_time + oath['expires_in'] - REFRESH_OFFSET_SECONDS
+        @refresh_expires_at = nil
+      elsif ENV['OPENC3_API_USER'] and ENV['OPENC3_API_PASSWORD']
         # Username and password
         data = {
           'username' => ENV.fetch('OPENC3_API_USER', nil),
@@ -179,7 +213,7 @@ module OpenC3
           'scope' => openid_scope
         }
         headers = {
-          'Content-Type' => 'application/x-www-form-urlencoded',
+          'Content-Type' => FORM_URLENCODED_CONTENT_TYPE,
           'User-Agent' => "OpenC3KeycloakAuthorization / #{OPENC3_VERSION} (ruby/openc3/lib/utilities/authentication)",
         }
         oath = _make_request(headers, data)
@@ -203,7 +237,7 @@ module OpenC3
         'grant_type' => 'refresh_token'
       }
       headers = {
-        'Content-Type' => 'application/x-www-form-urlencoded',
+        'Content-Type' => FORM_URLENCODED_CONTENT_TYPE,
         'User-Agent' => "OpenC3KeycloakAuthorization / #{OPENC3_VERSION} (ruby/openc3/lib/utilities/authentication)",
       }
       oath = _make_request(headers, data)
@@ -217,13 +251,14 @@ module OpenC3
     def _make_request(headers, data)
       realm = ENV['OPENC3_KEYCLOAK_REALM'] || 'openc3'
       uri = URI("#{@url}/realms/#{realm}/protocol/openid-connect/token")
-      # Obfuscate password and refresh token in logs unless debug mode is enabled
+      # Obfuscate password, client secret, and refresh token in logs unless debug mode is enabled
       if JsonDRb.debug?
         log_data = data.inspect
       else
         # Create a copy of the hash with sensitive values obfuscated
         log_data = data.dup
         log_data['password'] = '***' if log_data.key?('password')
+        log_data['client_secret'] = '***' if log_data.key?('client_secret')
         log_data['refresh_token'] = '***' if log_data.key?('refresh_token')
         log_data = log_data.inspect
       end
@@ -231,7 +266,11 @@ module OpenC3
       STDOUT.puts @log[0] if JsonDRb.debug?
       saved_verbose = $VERBOSE; $VERBOSE = nil
       begin
-        resp = @http.post(uri, URI.encode_www_form(data), headers)
+        connect_timeout, read_timeout = request_timeouts
+        resp = @http.post(uri, URI.encode_www_form(data), headers) do |request|
+          request.options.open_timeout = connect_timeout
+          request.options.timeout = read_timeout
+        end
       ensure
         $VERBOSE = saved_verbose
       end
