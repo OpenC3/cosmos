@@ -13,9 +13,9 @@
 
 <template>
   <v-menu :close-on-content-click="false" location="bottom start">
-    <template #activator="{ props }">
+    <template #activator="{ props: activatorProps }">
       <button
-        v-bind="props"
+        v-bind="activatorProps"
         type="button"
         class="picker-btn rounded-lg pa-0 border-0 bg-transparent cursor-pointer"
         aria-label="Dashboard icon and color"
@@ -52,7 +52,8 @@
   </v-menu>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue'
 import ColorSwatches from './ColorSwatches.vue'
 import DashboardAvatar from './DashboardAvatar.vue'
 import {
@@ -63,28 +64,21 @@ import {
 } from '../dashboardStyle'
 
 // Pick a dashboard's icon and color; emits the dashboard's new settings
-export default {
-  components: { ColorSwatches, DashboardAvatar },
-  props: {
-    settings: { type: Object, required: true },
-  },
-  emits: ['update'],
-  data() {
-    return { icons: DASHBOARD_ICONS, colors: DASHBOARD_COLORS }
-  },
-  computed: {
-    style() {
-      return dashboardStyle(this.settings)
-    },
-  },
-  methods: {
-    update(change) {
-      this.$emit(
-        'update',
-        withDashboardStyle(this.settings, { ...this.style, ...change }),
-      )
-    },
-  },
+const props = defineProps({
+  settings: { type: Object, required: true },
+})
+const emit = defineEmits(['update'])
+
+const icons = DASHBOARD_ICONS
+const colors = DASHBOARD_COLORS
+
+const style = computed(() => dashboardStyle(props.settings))
+
+function update(change) {
+  emit(
+    'update',
+    withDashboardStyle(props.settings, { ...style.value, ...change }),
+  )
 }
 </script>
 

@@ -70,7 +70,6 @@
             :is="types[panel.type].component"
             v-if="rendered(panel)"
             :panel="panel"
-            @level="(level) => (levels[panel.uid] = level)"
           />
           <!-- Virtualized: far off screen, so nothing is rendered or
                streamed until it scrolls near -->
@@ -96,15 +95,25 @@
   </div>
 </template>
 
-<script>
-import { computed } from 'vue'
+<script setup>
+import {
+  computed,
+  inject,
+  onMounted,
+  onUnmounted,
+  provide,
+  reactive,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue'
 import PanelFrame from './components/PanelFrame.vue'
-import { PANEL_TYPES, panelTitle } from './panels/registry'
+import { PANEL_TYPES as types, panelTitle } from './panels/registry'
 import { LEVEL_LABELS, stateToLevel, worstLevel } from './status'
 import { itemKey } from './composables/tlmPoller'
 import { pollType } from './panels/tlmPanel'
 import {
-  BREAKPOINT_NOTES,
+  BREAKPOINT_NOTES as notes,
   GRID_GAP,
   ROW_HEIGHT,
   bottomRow,
@@ -118,330 +127,306 @@ import {
 // Renders panels on the dashboard's 12 or 24 column grid. Measures its own width to pick the
 // desktop, tablet or phone layout. In edit mode on the desktop layout panels
 // can be dragged, resized and nudged; changes are reported with `layout` as
-// { uid: rect }.
-export default {
-  components: { PanelFrame },
-  // Where each panel is drawn right now, while dragging too, so panels can
-  // re-render for their new size before the drop (panelBase `rect`)
-  provide() {
-    return { gridRects: computed(() => this.preview || this.layout) }
-  },
-  inject: { poller: { default: null } },
-  props: {
-    panels: { type: Array, required: true },
-    editing: { type: Boolean, default: false },
-    // The dashboard's COLUMNS
-    columns: { type: Number, default: 12 },
-  },
-  // health: { level, critical, caution, worstUid } over every panel, for the
-  // dashboard's health chip
-  emits: ['configure', 'duplicate', 'delete', 'layout', 'health'],
-  data() {
-    return {
-      types: PANEL_TYPES,
-      notes: BREAKPOINT_NOTES,
-      levels: {},
-      width: 1200,
-      // Active pointer drag: { uid, mode, startX, startY, origin, cell }
-      drag: null,
-      // Positions shown while dragging, reported on drop
-      preview: null,
-      // uid => 'above' or 'below' for panels scrolled out of view
-      offscreen: {},
-      // uid => whether the panel is within a screen or so of the view; until
-      // the observer reports, a guess from its row (see mounted())
-      near: {},
-    }
-  },
-  computed: {
-    breakpoint() {
-      return breakpointFor(this.width)
-    },
-    // Grid geometry for the stylesheet, from the same values the layout math
-    // uses
-    gridVars() {
-      return {
-        '--grid-columns': this.columns,
-        '--grid-row': `${ROW_HEIGHT}px`,
-        '--grid-gap': `${GRID_GAP}px`,
-      }
-    },
-    canArrange() {
-      return this.editing && this.breakpoint === 'desktop'
-    },
-    layout() {
-      return deriveLayout(this.panels, this.breakpoint, this.columns)
-    },
-    nextRow() {
-      return bottomRow(Object.values(this.layout))
-    },
-    // uid => poll keys for each virtualized (unmounted) panel with items
-    probes() {
-      const probes = {}
-      for (const panel of this.panels) {
-        if (this.rendered(panel) || !panel.items?.length) continue
-        probes[panel.uid] = panel.items.map((item) =>
-          itemKey(item, pollType(item)),
-        )
-      }
-      return probes
-    },
-    probeKeys() {
-      return Object.values(this.probes).flat()
-    },
-    // Current panels' levels, top to bottom (levels can hold deleted panels)
-    ranked() {
-      return this.panels
-        .map((panel) => ({
-          uid: panel.uid,
-          title: panelTitle(panel),
-          level: this.levelOf(panel.uid) ?? null,
-          rect: this.layout[panel.uid],
-        }))
-        .sort((a, b) => a.rect.y - b.rect.y || a.rect.x - b.rect.x)
-    },
-    health() {
-      const count = (level) =>
-        this.ranked.filter((panel) => panel.level === level).length
-      const level = worstLevel(this.ranked.map((panel) => panel.level))
-      return {
-        level,
-        critical: count('critical'),
-        caution: count('caution'),
-        worstUid: this.ranked.find((panel) => panel.level === level)?.uid,
-      }
-    },
-    // The worst caution / critical panel out of view above and below: the
-    // nearest one at that level, so a click goes to the closest
-    attention() {
-      const pick = (side, panels) => {
-        const bad = panels.filter(
-          (panel) =>
-            this.offscreen[panel.uid] === side &&
-            ['critical', 'caution'].includes(panel.level),
-        )
-        const level = worstLevel(bad.map((panel) => panel.level))
-        return bad.find((panel) => panel.level === level) ?? null
-      }
-      return {
-        above: pick('above', [...this.ranked].reverse()),
-        below: pick('below', this.ranked),
-      }
-    },
-  },
-  watch: {
-    // Unmounted panels' items keep being polled for their limits state, so
-    // the frame ring, health chip and attention bars stay right
-    probeKeys: {
-      immediate: true,
-      handler(keys, previous = []) {
-        this.poller?.unregister(previous)
-        this.poller?.register(keys)
-      },
-    },
-    health: {
-      immediate: true,
-      handler(health) {
-        this.$emit('health', health)
-      },
-    },
-  },
-  created() {
-    // uid => grid cell element, for the visibility observer and scrolling
-    this.cells = new Map()
-  },
-  mounted() {
-    this.resizeObserver = new ResizeObserver(([entry]) => {
-      this.width = entry.contentRect.width
-    })
-    this.resizeObserver.observe(this.$refs.wrap)
-    // Near means within 1.5 screens: those panels render, the rest wait
-    this.nearby = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          this.near[Number(entry.target.dataset.uid)] = entry.isIntersecting
-        }
-      },
-      { rootMargin: '150% 0px' },
-    )
-    for (const el of this.cells.values()) this.nearby.observe(el)
-    // Visible means inside the window minus the app bar and footer (Vuetify
-    // publishes their heights to the page as layout variables)
-    const style = getComputedStyle(this.$el)
-    const top = parseFloat(style.getPropertyValue('--v-layout-top')) || 0
-    const bottom = parseFloat(style.getPropertyValue('--v-layout-bottom')) || 0
-    this.visibility = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          const uid = Number(entry.target.dataset.uid)
-          if (entry.isIntersecting) {
-            delete this.offscreen[uid]
-          } else {
-            const edge = entry.rootBounds?.top ?? 0
-            this.offscreen[uid] =
-              entry.boundingClientRect.top < edge ? 'above' : 'below'
-          }
-        }
-      },
-      { rootMargin: `-${top}px 0px -${bottom}px 0px` },
-    )
-    for (const el of this.cells.values()) this.visibility.observe(el)
-  },
-  unmounted() {
-    this.poller?.unregister(this.probeKeys)
-    this.nearby?.disconnect()
-    this.visibility?.disconnect()
-    this.resizeObserver?.disconnect()
-    this.dragCancel()
-  },
-  methods: {
-    // Function ref for each grid cell: watch it for scrolling out of view
-    observeCell(uid, el) {
-      const old = this.cells.get(uid)
-      if (old === el) return
-      if (old) {
-        this.visibility?.unobserve(old)
-        this.nearby?.unobserve(old)
-      }
-      if (el) {
-        this.cells.set(uid, el)
-        this.visibility?.observe(el)
-        this.nearby?.observe(el)
-      } else {
-        this.cells.delete(uid)
-        delete this.offscreen[uid]
-        delete this.near[uid]
-      }
-    },
-    // Whether to render a panel's content. Types opt in to virtualizing with
-    // `virtual`; editing renders everything so panels can be arranged.
-    rendered(panel) {
-      if (this.editing || !this.types[panel.type]?.virtual) return true
-      const near = this.near[panel.uid]
-      if (near !== undefined) return near
-      // Not reported yet: render what's within about two screens of the top
-      const rect = this.layout[panel.uid]
-      return rect.y * (ROW_HEIGHT + GRID_GAP) < window.innerHeight * 2
-    },
-    // The panel's status: its own report while mounted, else from polling its
-    // items (a virtualized SCREEN keeps its last report)
-    levelOf(uid) {
-      const keys = this.probes[uid]
-      if (!keys || !this.poller) return this.levels[uid]
-      return worstLevel(
-        keys.map((key) => stateToLevel(this.poller.values[key]?.state)),
-      )
-    },
-    scrollToPanel(uid) {
-      this.cells
-        .get(uid)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-    },
-    levelLabel(level) {
-      return LEVEL_LABELS[level]
-    },
-    rectOf(panel) {
-      return this.preview?.[panel.uid] || this.layout[panel.uid]
-    },
-    cellStyle(rect) {
-      return {
-        gridColumn: `${rect.x + 1} / span ${rect.w}`,
-        gridRow: `${rect.y + 1} / span ${rect.h}`,
-        minWidth: 0,
-        minHeight: 0,
-      }
-    },
-    gridElement() {
-      return this.$refs.grid?.$el
-    },
+// { uid: rect }. The parent reads `health` ({ level, critical, caution,
+// worstUid } over every panel, for the dashboard's health chip) through the
+// template ref.
+const props = defineProps({
+  panels: { type: Array, required: true },
+  editing: { type: Boolean, default: false },
+  // The dashboard's COLUMNS
+  columns: { type: Number, default: 12 },
+})
+const emit = defineEmits(['configure', 'duplicate', 'delete', 'layout'])
 
-    // Pointer drag to move or resize (desktop layout only)
-    startDrag(panel, mode, event) {
-      if (!this.canArrange || this.drag) return
-      const grid = this.gridElement()
-      if (!grid) return
-      this.drag = {
-        uid: panel.uid,
-        mode,
-        startX: event.clientX,
-        startY: event.clientY,
-        origin: { x: panel.x, y: panel.y, w: panel.w, h: panel.h },
-        cell: cellSize(grid, this.columns),
-      }
-      window.addEventListener('pointermove', this.dragMove)
-      window.addEventListener('pointerup', this.dragEnd)
-      window.addEventListener('pointercancel', this.dragCancel)
-      window.addEventListener('keydown', this.dragKey)
-    },
-    dragMove(event) {
-      const { uid, mode, startX, startY, origin, cell } = this.drag
-      const dx = Math.round((event.clientX - startX) / cell.x)
-      const dy = Math.round((event.clientY - startY) / cell.y)
-      // Only re-flow when the pointer crosses into another cell
-      if (dx === this.drag.dx && dy === this.drag.dy) return
-      this.drag.dx = dx
-      this.drag.dy = dy
-      const rect =
-        mode === 'move'
-          ? { ...origin, x: origin.x + dx, y: origin.y + dy }
-          : { ...origin, w: origin.w + dx, h: origin.h + dy }
-      const panels = this.panels.map((panel) =>
-        panel.uid === uid
-          ? {
-              ...panel,
-              ...clampRect({ ...rect, type: panel.type }, this.columns),
-            }
-          : panel,
-      )
-      this.preview = resolveLayout(
-        panels,
-        uid,
-        mode === 'move' ? origin : null,
-        this.columns,
-      )
-    },
-    dragEnd() {
-      if (this.preview) this.$emit('layout', this.preview)
-      this.dragCancel()
-    },
-    dragCancel() {
-      window.removeEventListener('pointermove', this.dragMove)
-      window.removeEventListener('pointerup', this.dragEnd)
-      window.removeEventListener('pointercancel', this.dragCancel)
-      window.removeEventListener('keydown', this.dragKey)
-      this.drag = null
-      this.preview = null
-    },
-    dragKey(event) {
-      if (event.key === 'Escape') this.dragCancel()
-    },
-    nudge(panel, { dx, dy, dw, dh }) {
-      const origin = { x: panel.x, y: panel.y, w: panel.w, h: panel.h }
-      const rect = clampRect(
-        {
-          type: panel.type,
-          x: panel.x + dx,
-          y: panel.y + dy,
-          w: panel.w + dw,
-          h: panel.h + dh,
-        },
-        this.columns,
-      )
-      const panels = this.panels.map((p) =>
-        p.uid === panel.uid ? { ...p, ...rect } : p,
-      )
-      this.$emit(
-        'layout',
-        resolveLayout(
-          panels,
-          panel.uid,
-          dw || dh ? null : origin,
-          this.columns,
-        ),
-      )
-    },
+const poller = inject('poller', null)
+const wrapEl = useTemplateRef('wrap')
+const gridRef = useTemplateRef('grid')
+
+// uid => each panel's status. Mounted panels put their level computed here
+// (usePanel), and leave its last value when they unmount.
+const levels = reactive({})
+provide('panelLevels', levels)
+const width = ref(1200)
+// Active pointer drag: { uid, mode, startX, startY, origin, cell }
+const drag = ref(null)
+// Positions shown while dragging, reported on drop
+const preview = ref(null)
+// uid => 'above' or 'below' for panels scrolled out of view
+const offscreen = reactive({})
+// uid => whether the panel is within a screen or so of the view; until
+// the observer reports, a guess from its row (see rendered())
+const near = reactive({})
+// uid => grid cell element, for the visibility observer and scrolling
+const cells = new Map()
+let resizeObserver = null
+let nearby = null
+let visibility = null
+
+const breakpoint = computed(() => breakpointFor(width.value))
+// Grid geometry for the stylesheet, from the same values the layout math
+// uses
+const gridVars = computed(() => ({
+  '--grid-columns': props.columns,
+  '--grid-row': `${ROW_HEIGHT}px`,
+  '--grid-gap': `${GRID_GAP}px`,
+}))
+const canArrange = computed(
+  () => props.editing && breakpoint.value === 'desktop',
+)
+const layout = computed(() =>
+  deriveLayout(props.panels, breakpoint.value, props.columns),
+)
+const nextRow = computed(() => bottomRow(Object.values(layout.value)))
+// uid => poll keys for each virtualized (unmounted) panel with items
+const probes = computed(() => {
+  const result = {}
+  for (const panel of props.panels) {
+    if (rendered(panel) || !panel.items?.length) continue
+    result[panel.uid] = panel.items.map((item) => itemKey(item, pollType(item)))
+  }
+  return result
+})
+const probeKeys = computed(() => Object.values(probes.value).flat())
+// Current panels' levels, top to bottom (levels can hold deleted panels)
+const ranked = computed(() =>
+  props.panels
+    .map((panel) => ({
+      uid: panel.uid,
+      title: panelTitle(panel),
+      level: levelOf(panel.uid) ?? null,
+      rect: layout.value[panel.uid],
+    }))
+    .sort((a, b) => a.rect.y - b.rect.y || a.rect.x - b.rect.x),
+)
+const health = computed(() => {
+  const count = (level) =>
+    ranked.value.filter((panel) => panel.level === level).length
+  const level = worstLevel(ranked.value.map((panel) => panel.level))
+  return {
+    level,
+    critical: count('critical'),
+    caution: count('caution'),
+    worstUid: ranked.value.find((panel) => panel.level === level)?.uid,
+  }
+})
+// The worst caution / critical panel out of view above and below: the
+// nearest one at that level, so a click goes to the closest
+const attention = computed(() => {
+  const pick = (side, panels) => {
+    const bad = panels.filter(
+      (panel) =>
+        offscreen[panel.uid] === side &&
+        ['critical', 'caution'].includes(panel.level),
+    )
+    const level = worstLevel(bad.map((panel) => panel.level))
+    return bad.find((panel) => panel.level === level) ?? null
+  }
+  return {
+    above: pick('above', [...ranked.value].reverse()),
+    below: pick('below', ranked.value),
+  }
+})
+
+// Where each panel is drawn right now, while dragging too, so panels can
+// re-render for their new size before the drop (usePanel `rect`)
+provide(
+  'gridRects',
+  computed(() => preview.value || layout.value),
+)
+
+// Unmounted panels' items keep being polled for their limits state, so
+// the frame ring, health chip and attention bars stay right. A watcher
+// because the keys change with scrolling, editing and the panels, and the
+// poller registrations are outside Vue.
+watch(
+  probeKeys,
+  (keys, previous = []) => {
+    poller?.unregister(previous)
+    poller?.register(keys)
   },
+  { immediate: true },
+)
+
+onMounted(() => {
+  resizeObserver = new ResizeObserver(([entry]) => {
+    width.value = entry.contentRect.width
+  })
+  resizeObserver.observe(wrapEl.value)
+  // Near means within 1.5 screens: those panels render, the rest wait
+  nearby = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        near[Number(entry.target.dataset.uid)] = entry.isIntersecting
+      }
+    },
+    { rootMargin: '150% 0px' },
+  )
+  for (const el of cells.values()) nearby.observe(el)
+  // Visible means inside the window minus the app bar and footer (Vuetify
+  // publishes their heights to the page as layout variables)
+  const style = getComputedStyle(wrapEl.value)
+  const top = parseFloat(style.getPropertyValue('--v-layout-top')) || 0
+  const bottom = parseFloat(style.getPropertyValue('--v-layout-bottom')) || 0
+  visibility = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        const uid = Number(entry.target.dataset.uid)
+        if (entry.isIntersecting) {
+          delete offscreen[uid]
+        } else {
+          const edge = entry.rootBounds?.top ?? 0
+          offscreen[uid] =
+            entry.boundingClientRect.top < edge ? 'above' : 'below'
+        }
+      }
+    },
+    { rootMargin: `-${top}px 0px -${bottom}px 0px` },
+  )
+  for (const el of cells.values()) visibility.observe(el)
+})
+onUnmounted(() => {
+  poller?.unregister(probeKeys.value)
+  nearby?.disconnect()
+  visibility?.disconnect()
+  resizeObserver?.disconnect()
+  dragCancel()
+})
+
+// Function ref for each grid cell: watch it for scrolling out of view
+function observeCell(uid, el) {
+  const old = cells.get(uid)
+  if (old === el) return
+  if (old) {
+    visibility?.unobserve(old)
+    nearby?.unobserve(old)
+  }
+  if (el) {
+    cells.set(uid, el)
+    visibility?.observe(el)
+    nearby?.observe(el)
+  } else {
+    cells.delete(uid)
+    delete offscreen[uid]
+    delete near[uid]
+  }
 }
+// Whether to render a panel's content. Types opt in to virtualizing with
+// `virtual`; editing renders everything so panels can be arranged.
+function rendered(panel) {
+  if (props.editing || !types[panel.type]?.virtual) return true
+  const isNear = near[panel.uid]
+  if (isNear !== undefined) return isNear
+  // Not reported yet: render what's within about two screens of the top
+  const rect = layout.value[panel.uid]
+  return rect.y * (ROW_HEIGHT + GRID_GAP) < window.innerHeight * 2
+}
+// The panel's status: its own report while mounted, else from polling its
+// items (a virtualized SCREEN keeps its last report)
+function levelOf(uid) {
+  const keys = probes.value[uid]
+  if (!keys || !poller) return levels[uid]
+  return worstLevel(keys.map((key) => stateToLevel(poller.values[key]?.state)))
+}
+function scrollToPanel(uid) {
+  cells.get(uid)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+}
+function levelLabel(level) {
+  return LEVEL_LABELS[level]
+}
+function rectOf(panel) {
+  return preview.value?.[panel.uid] || layout.value[panel.uid]
+}
+function cellStyle(rect) {
+  return {
+    gridColumn: `${rect.x + 1} / span ${rect.w}`,
+    gridRow: `${rect.y + 1} / span ${rect.h}`,
+    minWidth: 0,
+    minHeight: 0,
+  }
+}
+
+// Pointer drag to move or resize (desktop layout only)
+function startDrag(panel, mode, event) {
+  if (!canArrange.value || drag.value) return
+  const grid = gridRef.value?.$el
+  if (!grid) return
+  drag.value = {
+    uid: panel.uid,
+    mode,
+    startX: event.clientX,
+    startY: event.clientY,
+    origin: { x: panel.x, y: panel.y, w: panel.w, h: panel.h },
+    cell: cellSize(grid, props.columns),
+  }
+  window.addEventListener('pointermove', dragMove)
+  window.addEventListener('pointerup', dragEnd)
+  window.addEventListener('pointercancel', dragCancel)
+  window.addEventListener('keydown', dragKey)
+}
+function dragMove(event) {
+  const { uid, mode, startX, startY, origin, cell } = drag.value
+  const dx = Math.round((event.clientX - startX) / cell.x)
+  const dy = Math.round((event.clientY - startY) / cell.y)
+  // Only re-flow when the pointer crosses into another cell
+  if (dx === drag.value.dx && dy === drag.value.dy) return
+  drag.value.dx = dx
+  drag.value.dy = dy
+  const rect =
+    mode === 'move'
+      ? { ...origin, x: origin.x + dx, y: origin.y + dy }
+      : { ...origin, w: origin.w + dx, h: origin.h + dy }
+  const panels = props.panels.map((panel) =>
+    panel.uid === uid
+      ? {
+          ...panel,
+          ...clampRect({ ...rect, type: panel.type }, props.columns),
+        }
+      : panel,
+  )
+  preview.value = resolveLayout(
+    panels,
+    uid,
+    mode === 'move' ? origin : null,
+    props.columns,
+  )
+}
+function dragEnd() {
+  if (preview.value) emit('layout', preview.value)
+  dragCancel()
+}
+function dragCancel() {
+  window.removeEventListener('pointermove', dragMove)
+  window.removeEventListener('pointerup', dragEnd)
+  window.removeEventListener('pointercancel', dragCancel)
+  window.removeEventListener('keydown', dragKey)
+  drag.value = null
+  preview.value = null
+}
+function dragKey(event) {
+  if (event.key === 'Escape') dragCancel()
+}
+function nudge(panel, { dx, dy, dw, dh }) {
+  const origin = { x: panel.x, y: panel.y, w: panel.w, h: panel.h }
+  const rect = clampRect(
+    {
+      type: panel.type,
+      x: panel.x + dx,
+      y: panel.y + dy,
+      w: panel.w + dw,
+      h: panel.h + dh,
+    },
+    props.columns,
+  )
+  const panels = props.panels.map((p) =>
+    p.uid === panel.uid ? { ...p, ...rect } : p,
+  )
+  emit(
+    'layout',
+    resolveLayout(panels, panel.uid, dw || dh ? null : origin, props.columns),
+  )
+}
+
+defineExpose({ health, scrollToPanel })
 </script>
 
 <style scoped>

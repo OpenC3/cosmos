@@ -63,7 +63,10 @@ module OpenC3
     CYCLE_TIME_INTERVAL = 10
 
     # Delay in seconds before trimming Redis streams
-    CLEANUP_DELAY = 60
+    # This is the primary trimmer of the TELEMETRY__ and COMMAND__ streams. Writers
+    # also apply a safety MINID cap (see Topic.stream_safety_minid) which depends on this
+    # value, so it is defined in Topic.
+    CLEANUP_DELAY = Topic::LOG_CLEANUP_DELAY_SECONDS
 
     # Mutex protecting class variables
     @@mutex = Mutex.new
@@ -76,6 +79,14 @@ module OpenC3
 
     # Sleeper used to delay cycle thread
     @@cycle_sleeper = nil
+
+    # Returns the Redis db_shard holding a target stream such as
+    # SCOPE__TELEMETRY__{TARGET}__PACKET, or 0 if no target can be determined
+    def self.db_shard_for_topic(redis_topic)
+      target_match = redis_topic.match(/\{([^{}]+)\}/)
+      return 0 unless target_match
+      Store.db_shard_for_target(target_match[1], scope: redis_topic.split('__')[0])
+    end
 
     # @param remote_log_directory [String] The path to store the log files
     # @param logging_enabled [Boolean] Whether to start with logging enabled
@@ -245,9 +256,7 @@ module OpenC3
                   # Now that the file is in S3, trim the Redis stream up until the previous file.
                   # This keeps one minute of data in Redis
                   instance.cleanup_offsets[index].each do |redis_topic, cleanup_offset|
-                    target_match = redis_topic.match(/__\{?([^}_]+)\}?__/)
-                    db_shard = target_match ? Store.db_shard_for_target(target_match[1]) : 0
-                    Topic.trim_topic(redis_topic, cleanup_offset, db_shard: db_shard)
+                    Topic.trim_topic(redis_topic, cleanup_offset, db_shard: LogWriter.db_shard_for_topic(redis_topic))
                   end
                   indexes_to_clear << index
                 end

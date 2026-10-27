@@ -169,8 +169,9 @@
         </v-btn>
         <time-range-picker
           v-if="current"
-          v-model="timeRange.seconds"
+          :model-value="timeRange.seconds"
           :compact="isPhone"
+          @update:model-value="setTimeRange"
         />
       </template>
       <template v-else>
@@ -235,11 +236,12 @@
       <div class="px-4 py-3 border-b" data-test="playback-bar">
         <!-- Centered, wrapped lines too (class lands on the controls' row) -->
         <playback-controls
-          v-model="playback.time"
+          :model-value="playback.time"
           class="justify-center"
           :time-zone="timeZone"
           :loading="poller.clock.loading > 0"
           storage-key="dashboards"
+          @update:model-value="setPlaybackTime"
         />
       </div>
     </template>
@@ -298,12 +300,7 @@
     </div>
 
     <main v-else-if="!editing" :class="isPhone ? 'pa-3' : 'pa-4'">
-      <dashboard-grid
-        ref="grid"
-        :panels="model.panels"
-        :columns="columns"
-        @health="(value) => (health = value)"
-      />
+      <dashboard-grid ref="grid" :panels="model.panels" :columns="columns" />
       <div
         v-if="!model.panels.length"
         class="d-flex flex-column align-center ga-3 py-12 text-medium-emphasis"
@@ -392,15 +389,35 @@
   />
   <item-details
     v-if="detailsItem"
-    v-model="detailsOpen"
+    :model-value="detailsOpen"
     :item="detailsItem"
     :sheet="isPhone"
     :show-grapher="isDesktop"
+    @update:model-value="setDetailsOpen"
   />
 </template>
 
-<script>
-import { computed, defineAsyncComponent, markRaw, reactive } from 'vue'
+<script setup>
+import {
+  computed,
+  defineAsyncComponent,
+  inject,
+  markRaw,
+  onMounted,
+  onUnmounted,
+  provide,
+  reactive,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue'
+import {
+  onBeforeRouteLeave,
+  onBeforeRouteUpdate,
+  useRoute,
+  useRouter,
+} from 'vue-router'
+import { useDisplay } from 'vuetify'
 import { Api, Cable } from '@openc3/js-common/services'
 import {
   PlaybackBanner,
@@ -452,6 +469,13 @@ import {
 import { describeDashboardChange } from './dashboardChanges'
 import { GRID_COLUMNS, breakpointFor, firstFit, resolveLayout } from './layout'
 
+// Monaco-based, so only loaded when opened
+const VersionHistoryDialog = defineAsyncComponent(() =>
+  import('@openc3/vue-common/tools/versionhistory').then(
+    (module) => module.VersionHistoryDialog,
+  ),
+)
+
 const LAST_KEY = 'dashboards__last'
 
 // 'TARGET/NAME' from the page URL, or null when it doesn't name one
@@ -461,606 +485,570 @@ function routeKey({ target, dashboard }) {
     : null
 }
 
-export default {
-  components: {
-    CodeDialog,
-    DashboardDialog,
-    DashboardAvatar,
-    DashboardGrid,
-    PlaybackBanner,
-    PlaybackControls,
-    DashboardStylePicker,
-    DashboardNavigator,
-    ItemDetails,
-    PanelDialog,
-    StatusSymbol,
-    TimeRangePicker,
-    TopBar,
-    // Monaco-based, so only loaded when opened
-    VersionHistoryDialog: defineAsyncComponent(() =>
-      import('@openc3/vue-common/tools/versionhistory').then(
-        (module) => module.VersionHistoryDialog,
-      ),
-    ),
-  },
-  provide() {
-    return {
-      poller: this.poller,
-      itemInfo: this.itemInfo,
-      cable: this.cable,
-      openDetails: this.openDetails,
-      editing: this.editMode,
-      // { on, time }: panels show telemetry as of `time` while playback is on
-      timeline: this.playback,
-      // { seconds }: how much history graphs and sparklines show
-      timeRange: this.timeRange,
-      // { time, source }: the time under the mouse on any graph or sparkline
-      // (seconds) and the panel uid it came from, so they all show it
-      hover: this.hover,
-      timeZone: computed(() => this.timeZone),
-      // The grid's COLUMNS, 12 or 24, for the panel dialog
-      columns: computed(() => this.columns),
-    }
-  },
-  // Leaving with unsaved edits asks first; resolving false cancels
-  beforeRouteLeave() {
-    return this.confirmDiscard()
-  },
-  beforeRouteUpdate() {
-    return this.confirmDiscard()
-  },
-  data() {
-    return {
-      title: 'Dashboards (Beta)',
-      // Services: markRaw keeps Vue from proxying their internals; the parts
-      // panels watch (poller.values, itemInfo.state) are reactive already
-      poller: markRaw(new TlmPoller()),
-      itemInfo: markRaw(new ItemInfo()),
-      history: markRaw(new History()),
-      // One streaming connection shared by every panel
-      cable: markRaw(new Cable()),
-      // On while editing: panels keep showing telemetry but don't send
-      // commands
-      editMode: reactive({ on: false }),
-      // Playback: replay every panel from a past time
-      playback: reactive({ on: false, time: null }),
-      // Picked in the header, shared by every dashboard
-      timeRange: reactive({ seconds: loadTimeRange() }),
-      hover: reactive({ time: null, source: null }),
-      // Enterprise version history (VersionStore) is on for this install
-      versionsEnabled: false,
-      historyOpen: false,
-      // Worst panel status and counts, from DashboardGrid
-      health: { level: null, critical: 0, caution: 0, worstUid: null },
-      timeZone: 'local',
-      dashboards: [],
-      current: null, // { target, name }
-      model: emptyDashboard(''),
-      savedText: '',
-      // The file as it was opened, until the dashboard changes
-      fileText: null,
-      errors: [],
-      loading: true,
-      saving: false,
-      dashboardDialog: false,
-      dashboardDialogMode: 'new',
-      // 'TARGET/NAME' being duplicated
-      duplicateKey: null,
-      navigatorOpen: false,
-      // Editor
-      editing: false,
-      panelDialog: false,
-      editPanel: null,
-      editPanelIsNew: false,
-      codeDialog: false,
-      // Item details sheet
-      detailsItem: null,
-      detailsOpen: false,
-    }
-  },
-  computed: {
-    // The grid's width in columns: COLUMNS 24 for big monitors
-    columns() {
-      return this.model.columns || GRID_COLUMNS
+const route = useRoute()
+const router = useRouter()
+const display = useDisplay()
+const notify = inject('notify')
+const dialog = inject('dialog')
+const gridRef = useTemplateRef('grid')
+
+const title = 'Dashboards (Beta)'
+// Services: markRaw keeps Vue from proxying their internals; the parts
+// panels watch (poller.values, itemInfo.state) are reactive already
+const poller = markRaw(new TlmPoller())
+const itemInfo = markRaw(new ItemInfo())
+const history = markRaw(new History())
+// One streaming connection shared by every panel
+const cable = markRaw(new Cable())
+// Playback: replay every panel from a past time
+const playback = reactive({ on: false, time: null })
+// Picked in the header, shared by every dashboard
+const timeRange = reactive({ seconds: loadTimeRange() })
+const hover = reactive({ time: null, source: null })
+// Enterprise version history (VersionStore) is on for this install
+const versionsEnabled = ref(false)
+const historyOpen = ref(false)
+const timeZone = ref('local')
+const dashboards = ref([])
+const current = ref(null) // { target, name }
+const model = ref(emptyDashboard(''))
+const savedText = ref('')
+// The file as it was opened, until the dashboard changes
+const fileText = ref(null)
+const errors = ref([])
+const loading = ref(true)
+const saving = ref(false)
+const dashboardDialog = ref(false)
+const dashboardDialogMode = ref('new')
+// 'TARGET/NAME' being duplicated
+const duplicateKey = ref(null)
+const navigatorOpen = ref(false)
+// Editor
+const editing = ref(false)
+const panelDialog = ref(false)
+const editPanel = ref(null)
+const editPanelIsNew = ref(false)
+const codeDialog = ref(false)
+// Item details sheet
+const detailsItem = ref(null)
+const detailsOpen = ref(false)
+
+// On while editing: panels keep showing telemetry but don't send
+// commands (reactive unwraps the computed, so panels read editing.on)
+const editMode = reactive({ on: computed(() => editing.value) })
+
+// Worst panel status and counts, from the viewing DashboardGrid
+const health = computed(
+  () =>
+    gridRef.value?.health ?? {
+      level: null,
+      critical: 0,
+      caution: 0,
+      worstUid: null,
     },
-    breakpoint() {
-      return breakpointFor(this.$vuetify.display.width)
-    },
-    isPhone() {
-      return this.breakpoint === 'phone'
-    },
-    isDesktop() {
-      return this.breakpoint === 'desktop'
-    },
-    currentKey() {
-      return this.current ? `${this.current.target}/${this.current.name}` : null
-    },
-    // A copy starts in the same target as its source, named NAME_COPY
-    dashboardDialogTarget() {
-      const key = this.duplicateKey || this.currentKey
-      return key ? key.split('/')[0] : null
-    },
-    dashboardDialogName() {
-      return this.duplicateKey ? `${this.duplicateKey.split('/')[1]}_COPY` : ''
-    },
-    filePath() {
-      return this.current
-        ? `${this.current.target}/dashboards/${this.current.name.toLowerCase()}.txt`
-        : ''
-    },
-    text() {
-      return serializeDashboard(this.model)
-    },
-    dirty() {
-      return !!this.current && this.text !== this.savedText
-    },
-    // The code dialog shows the file as written, comments and lines with
-    // problems included (the problems' line numbers point into it), until the
-    // dashboard changes; then the text made from the dashboard
-    codeText() {
-      return this.fileText !== null && !this.dirty ? this.fileText : this.text
-    },
-    style() {
-      return dashboardStyle(this.model.settings)
-    },
-    // A number, so replacing the model with the same period (undo, code
-    // edits, reopening) doesn't restart the poller
-    pollingPeriod() {
-      const seconds = Number(this.model.settings.POLLING_PERIOD?.[0])
-      return Number.isFinite(seconds) && seconds > 0 ? seconds : 1
-    },
-    // "2 critical · 1 caution", or one word when nothing is out of limits
-    healthText() {
-      const { level, critical, caution } = this.health
-      const parts = []
-      if (critical) parts.push(`${critical} critical`)
-      if (caution) parts.push(`${caution} caution`)
-      if (parts.length) return parts.join(' · ')
-      if (level === 'off') return 'Stale'
-      if (level === 'normal') return 'Nominal'
-      return null
-    },
-    starred() {
-      return isStarred(this.currentKey)
-    },
-    starHelp() {
-      return this.starred
-        ? 'Starred: listed under Starred in the dashboard navigator (Ctrl+K). Stars are saved in this browser only.'
-        : 'Star to list this dashboard under Starred in the dashboard navigator (Ctrl+K). Stars are saved in this browser only.'
-    },
-    // Everything else has a button on the page
-    menus() {
-      // Phones only view dashboards
-      if (this.isPhone) return []
-      return [
+)
+// The grid's width in columns: COLUMNS 24 for big monitors
+const columns = computed(() => model.value.columns || GRID_COLUMNS)
+const breakpoint = computed(() => breakpointFor(display.width.value))
+const isPhone = computed(() => breakpoint.value === 'phone')
+const isDesktop = computed(() => breakpoint.value === 'desktop')
+const currentKey = computed(() =>
+  current.value ? `${current.value.target}/${current.value.name}` : null,
+)
+// A copy starts in the same target as its source, named NAME_COPY
+const dashboardDialogTarget = computed(() => {
+  const key = duplicateKey.value || currentKey.value
+  return key ? key.split('/')[0] : null
+})
+const dashboardDialogName = computed(() =>
+  duplicateKey.value ? `${duplicateKey.value.split('/')[1]}_COPY` : '',
+)
+const filePath = computed(() =>
+  current.value
+    ? `${current.value.target}/dashboards/${current.value.name.toLowerCase()}.txt`
+    : '',
+)
+const text = computed(() => serializeDashboard(model.value))
+const dirty = computed(() => !!current.value && text.value !== savedText.value)
+// The code dialog shows the file as written, comments and lines with
+// problems included (the problems' line numbers point into it), until the
+// dashboard changes; then the text made from the dashboard
+const codeText = computed(() =>
+  fileText.value !== null && !dirty.value ? fileText.value : text.value,
+)
+const style = computed(() => dashboardStyle(model.value.settings))
+// A number, so replacing the model with the same period (undo, code
+// edits, reopening) doesn't restart the poller
+const pollingPeriod = computed(() => {
+  const seconds = Number(model.value.settings.POLLING_PERIOD?.[0])
+  return Number.isFinite(seconds) && seconds > 0 ? seconds : 1
+})
+// "2 critical · 1 caution", or one word when nothing is out of limits
+const healthText = computed(() => {
+  const { level, critical, caution } = health.value
+  const parts = []
+  if (critical) parts.push(`${critical} critical`)
+  if (caution) parts.push(`${caution} caution`)
+  if (parts.length) return parts.join(' · ')
+  if (level === 'off') return 'Stale'
+  if (level === 'normal') return 'Nominal'
+  return null
+})
+const starred = computed(() => isStarred(currentKey.value))
+const starHelp = computed(() =>
+  starred.value
+    ? 'Starred: listed under Starred in the dashboard navigator (Ctrl+K). Stars are saved in this browser only.'
+    : 'Star to list this dashboard under Starred in the dashboard navigator (Ctrl+K). Stars are saved in this browser only.',
+)
+// Everything else has a button on the page
+const menus = computed(() => {
+  // Phones only view dashboards
+  if (isPhone.value) return []
+  return [
+    {
+      label: 'File',
+      items: [
         {
-          label: 'File',
-          items: [
-            {
-              label: 'New Dashboard',
-              icon: 'mdi-plus',
-              command: () => this.openDashboardDialog('new'),
-            },
-            // Enterprise: who changed what, when, with diffs and restore
-            ...(this.versionsEnabled
-              ? [
-                  {
-                    label: 'Version History',
-                    icon: 'mdi-history',
-                    disabled: !this.current || this.editing,
-                    command: () => (this.historyOpen = true),
-                  },
-                ]
-              : []),
-            {
-              label: 'Delete Dashboard',
-              icon: 'mdi-delete',
-              disabled: !this.current,
-              command: () => this.deleteDashboard(),
-            },
-          ],
+          label: 'New Dashboard',
+          icon: 'mdi-plus',
+          command: () => openDashboardDialog('new'),
         },
-      ]
+        // Enterprise: who changed what, when, with diffs and restore
+        ...(versionsEnabled.value
+          ? [
+              {
+                label: 'Version History',
+                icon: 'mdi-history',
+                disabled: !current.value || editing.value,
+                command: () => (historyOpen.value = true),
+              },
+            ]
+          : []),
+        {
+          label: 'Delete Dashboard',
+          icon: 'mdi-delete',
+          disabled: !current.value,
+          command: () => deleteDashboard(),
+        },
+      ],
     },
-  },
-  watch: {
-    // Browser back / forward between dashboards
-    '$route.params'(params) {
-      const key = routeKey(params)
-      if (!this.loading && key && key !== this.currentKey) this.open(key)
-    },
-    // The poller looks values up at the playback time instead of polling
-    'playback.time'(time) {
-      this.poller.setPlaybackTime(time)
-    },
-    'timeRange.seconds'(seconds) {
-      saveTimeRange(seconds)
-    },
-    editing(editing) {
-      this.editMode.on = editing
-    },
-    pollingPeriod(seconds) {
-      this.poller.start(seconds)
-    },
-    // Every edit, from any part of the editor, lands in the undo history
-    text(text) {
-      if (this.editing) this.history.record(text)
-    },
-    detailsOpen(open) {
-      if (!open) {
-        // Let the sheet animate closed before tearing it down
-        setTimeout(() => {
-          if (!this.detailsOpen) this.detailsItem = null
-        }, 300)
-      }
-    },
-  },
-  async created() {
-    this.itemInfo.start()
-    this.poller.start()
-    // Enterprise reports whether version history is on; Core has none
-    Api.get('/openc3-api/info')
-      .then(({ data }) => {
-        this.versionsEnabled = !!(data?.enterprise && data?.script_versions)
-      })
-      .catch(() => {})
-    // Playback times are entered and shown in the COSMOS time zone setting
-    this.itemInfo.api
-      .get_setting('time_zone')
-      .then((zone) => {
-        if (zone) this.timeZone = zone
-      })
-      .catch(() => {})
-    // Plugin panel types must be registered before any dashboard is parsed
-    const [problems] = await Promise.all([loadPanelPlugins(), this.loadList()])
-    if (problems.length) {
-      this.$notify.caution({
-        title: 'Some plugin panels did not load',
-        body: problems.join('; '),
-      })
-    }
-    const last = readString(LAST_KEY)
-    const key =
-      routeKey(this.$route.params) ||
-      (this.dashboards.includes(last) ? last : this.dashboards[0])
-    if (key) await this.open(key)
-    this.loading = false
-  },
-  mounted() {
-    window.addEventListener('beforeunload', this.beforeUnload)
-    window.addEventListener('keydown', this.onKeydown)
-  },
-  unmounted() {
-    window.removeEventListener('beforeunload', this.beforeUnload)
-    window.removeEventListener('keydown', this.onKeydown)
-    this.poller.stop()
-    this.itemInfo.stop()
-    this.cable.disconnect()
-  },
-  methods: {
-    toggleStar,
-    dashboardUrl,
-    describeDashboardChange,
-    goToWorst() {
-      if (this.health.worstUid != null) {
-        this.$refs.grid?.scrollToPanel(this.health.worstUid)
-      }
-    },
-    beforeUnload(event) {
-      if (this.dirty) event.preventDefault()
-    },
-    // Ctrl/Cmd+K opens the navigator. While editing, Ctrl/Cmd+Z undoes and
-    // Ctrl/Cmd+Shift+Z or Ctrl+Y redoes, outside text fields.
-    onKeydown(event) {
-      if (!(event.ctrlKey || event.metaKey)) return
-      if (event.key.toLowerCase() === 'k' && !this.editing) {
-        event.preventDefault()
-        this.navigatorOpen = true
-        return
-      }
-      if (!this.editing) return
-      if (event.target.closest('input, textarea, [contenteditable]')) return
-      const key = event.key.toLowerCase()
-      if (key === 'z' && !event.shiftKey) {
-        event.preventDefault()
-        this.undo()
-      } else if ((key === 'z' && event.shiftKey) || key === 'y') {
-        event.preventDefault()
-        this.redo()
-      }
-    },
-    // Confirm dialog as true / false ($dialog.confirm rejects on cancel)
-    async ask(message, options) {
-      try {
-        await this.$dialog.confirm(message, options)
-        return true
-      } catch {
-        return false
-      }
-    },
-    confirmDiscard() {
-      if (!this.dirty) return Promise.resolve(true)
-      return this.ask(`Discard unsaved changes to ${this.model.title}?`, {
-        okText: 'Discard',
-        cancelText: 'Keep editing',
-        okClass: 'error',
-      })
-    },
-    async loadList() {
-      try {
-        const response = await Api.get('/openc3-api/dashboards')
-        this.dashboards = response.data.map((path) => {
-          const [target, , file] = path.split('/')
-          return `${target}/${file.replace(/\.txt$/, '').toUpperCase()}`
-        })
-      } catch (error) {
-        console.error('Error loading dashboards:', error)
-      }
-    },
-    async selectDashboard(key) {
-      if (!key || key === this.currentKey) return
-      if (!(await this.confirmDiscard())) return
-      this.open(key)
-    },
-    async open(key) {
-      // Panels share command definitions; opening a dashboard refetches them
-      // so changed definitions show without a page reload
-      clearCommandCache()
-      const [target, name] = key.split('/')
-      let text
-      try {
-        text = await fetchDashboardText(key)
-      } catch {
-        this.$notify.caution({ title: 'Unknown dashboard', body: key })
-        return
-      }
-      const { model, errors } = parseDashboard(text)
-      this.load({ target, name }, model, errors, text)
-      this.rememberCurrent()
-    },
-    load(current, model, errors = [], fileText = null) {
-      this.current = current
-      this.model = model
-      this.errors = errors
-      this.fileText = fileText
-      this.editing = false
-      this.savedText = this.text
-    },
-    // Navigator summary, reopen-on-launch and the URL all follow
-    // the dashboard that's showing
-    rememberCurrent() {
-      const { target, name } = this.current
-      remember(this.currentKey, this.model)
-      visited(this.currentKey)
-      writeString(LAST_KEY, this.currentKey)
-      if (
-        this.$route.params.target !== target ||
-        this.$route.params.dashboard !== name
-      ) {
-        this.$router.replace({
-          name: 'Dashboards',
-          params: { target, dashboard: name },
-        })
-      }
-    },
-    post(target, dashboard, text) {
-      return Api.post('/openc3-api/dashboard', {
-        data: { scope: window.openc3Scope, target, dashboard, text },
-      })
-    },
-    async save() {
-      if (!this.current) return
-      this.saving = true
-      const text = this.text
-      try {
-        await this.post(this.current.target, this.current.name, text)
-        this.savedText = text
-        this.fileText = null
-        remember(this.currentKey, this.model)
-        this.$notify.normal({ title: 'Saved dashboard', body: this.currentKey })
-      } catch (error) {
-        this.$notify.serious({
-          title: 'Error saving dashboard',
-          body: error.message,
-        })
-      } finally {
-        this.saving = false
-      }
-    },
-    openDashboardDialog(mode, key = null) {
-      this.dashboardDialogMode = mode
-      this.duplicateKey = key
-      this.dashboardDialog = true
-    },
-    onDashboardDialog(location) {
-      if (this.dashboardDialogMode === 'duplicate') {
-        this.duplicate(this.duplicateKey, location)
-      } else {
-        this.createDashboard(location)
-      }
-    },
-    // Copy a saved dashboard to a new target / name and open the copy
-    async duplicate(key, { target, name }) {
-      try {
-        await this.post(target, name, await fetchDashboardText(key))
-      } catch (error) {
-        this.$notify.serious({
-          title: 'Error duplicating dashboard',
-          body: error.message,
-        })
-        return
-      }
-      await this.loadList()
-      await this.selectDashboard(`${target}/${name}`)
-    },
-    async createDashboard({ target, name, columns }) {
-      if (!(await this.confirmDiscard())) return
-      const title = name
-        .toLowerCase()
-        .split(/[_-]/)
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
-      this.load({ target, name }, emptyDashboard(title, columns))
-      this.savedText = ''
-      await this.save()
-      await this.loadList()
-      this.rememberCurrent()
-      this.startEditing()
-    },
-    async deleteDashboard() {
-      if (!this.current) return
-      const ok = await this.ask(
-        `Delete ${this.currentKey}? Dashboards installed by a plugin go back to the plugin's version.`,
-        { okText: 'Delete', cancelText: 'Cancel', okClass: 'error' },
-      )
-      if (!ok) return
-      try {
-        await Api.delete(dashboardUrl(this.currentKey))
-        this.$notify.normal({
-          title: 'Deleted dashboard',
-          body: this.currentKey,
-        })
-      } catch (error) {
-        this.$notify.serious({
-          title: 'Error deleting dashboard',
-          body: error.message,
-        })
-        return
-      }
-      const deleted = this.currentKey
-      this.savedText = this.text // nothing left to discard
-      await this.loadList()
-      if (this.dashboards.includes(deleted)) {
-        await this.open(deleted) // plugin version restored
-      } else {
-        forget(deleted)
-        this.current = null
-        this.model = emptyDashboard('')
-        this.savedText = ''
-        this.fileText = null
-        this.editing = false
-        writeString(LAST_KEY, null)
-        this.$router.replace({ name: 'Dashboards', params: {} })
-      }
-    },
+  ]
+})
 
-    // Tapping a value opens its details sheet (not while editing, when taps
-    // arrange panels)
-    openDetails(item) {
-      if (this.editing) return
-      this.detailsItem = {
-        targetName: item.targetName,
-        packetName: item.packetName,
-        itemName: item.itemName,
-      }
-      this.detailsOpen = true
-    },
+provide('poller', poller)
+provide('itemInfo', itemInfo)
+provide('cable', cable)
+provide('openDetails', openDetails)
+provide('editing', editMode)
+// { on, time }: panels show telemetry as of `time` while playback is on
+provide('timeline', playback)
+// { seconds }: how much history graphs and sparklines show
+provide('timeRange', timeRange)
+// { time, source }: the time under the mouse on any graph or sparkline
+// (seconds) and the panel uid it came from, so they all show it
+provide('hover', hover)
+provide(
+  'timeZone',
+  computed(() => timeZone.value),
+)
+// The grid's COLUMNS, 12 or 24, for the panel dialog
+provide('columns', columns)
 
-    // Editor
-    goLive() {
-      this.playback.on = false
-      this.playback.time = null
-    },
-    startEditing() {
-      this.goLive()
-      this.history.reset(this.text)
-      this.editing = true
-    },
-    // Whole dashboard as text; editing it goes through the editor
-    openCode() {
-      if (!this.editing) this.startEditing()
-      this.codeDialog = true
-    },
-    async done() {
-      if (this.dirty) await this.save()
-      if (!this.dirty) this.editing = false
-    },
-    // Drop every unsaved change and go back to the last saved dashboard
-    async cancelEditing() {
-      if (!(await this.confirmDiscard())) return
-      if (this.dirty) this.applyText(this.savedText)
-      this.panelDialog = false
-      this.codeDialog = false
-      this.editing = false
-    },
-    undo() {
-      const text = this.history.undo()
-      if (text !== null) this.applyText(text)
-    },
-    redo() {
-      const text = this.history.redo()
-      if (text !== null) this.applyText(text)
-    },
-    applyText(text) {
-      const { model } = parseDashboard(text)
-      this.applyModel(model)
-    },
-    // A whole new model from the code dialog or undo; keep panel identities
-    applyModel(model) {
-      reuseUids(this.model.panels, model.panels)
-      this.model = model
-      this.errors = []
-      this.fileText = null
-    },
-    applyPositions(layout) {
-      for (const panel of this.model.panels) {
-        const rect = layout[panel.uid]
-        if (rect) Object.assign(panel, rect)
-      }
-    },
-    // Re-flow around `fixed` after a change
-    reflow(fixed = null) {
-      this.applyPositions(
-        resolveLayout(this.model.panels, fixed, null, this.columns),
-      )
-    },
-    addPanel() {
-      const type = defaultPanelType()
-      const { w, h } = PANEL_TYPES[type].defaults
-      this.editPanel = newPanel(type, 0, 0, w, h)
-      this.editPanelIsNew = true
-      this.panelDialog = true
-      if (!this.editing) this.startEditing()
-    },
-    configurePanel(panel) {
-      this.editPanel = panel
-      this.editPanelIsNew = false
-      this.panelDialog = true
-    },
-    savePanel(draft) {
-      const index = this.model.panels.findIndex((p) => p.uid === draft.uid)
-      if (index === -1) {
-        // New panels go in the first open spot that fits
-        Object.assign(
-          draft,
-          firstFit(
-            this.model.panels,
-            draft.type,
-            draft.w,
-            draft.h,
-            this.columns,
-          ),
-        )
-        this.model.panels.push(draft)
-      } else {
-        this.model.panels.splice(index, 1, draft)
-      }
-      this.reflow(draft.uid)
-    },
-    duplicatePanel(panel) {
-      const copy = JSON.parse(JSON.stringify(panel))
-      copy.uid = panelUid()
-      Object.assign(
-        copy,
-        firstFit(this.model.panels, copy.type, copy.w, copy.h, this.columns),
-      )
-      this.model.panels.push(copy)
-    },
-    deletePanel(panel) {
-      this.model.panels = this.model.panels.filter((p) => p.uid !== panel.uid)
-      this.reflow()
-    },
-  },
+// Leaving with unsaved edits asks first; resolving false cancels
+onBeforeRouteLeave(() => confirmDiscard())
+// Browser back / forward between dashboards too. The URL already names the
+// dashboard being opened, so open() leaves it alone.
+onBeforeRouteUpdate(async (to) => {
+  if (!(await confirmDiscard())) return false
+  const key = routeKey(to.params)
+  if (!loading.value && key && key !== currentKey.value) {
+    open(key, { syncUrl: false })
+  }
+})
+
+// The period is part of the model, which the style picker, the code
+// dialog, undo and opening all replace, so the poller follows it here
+watch(pollingPeriod, (seconds) => poller.start(seconds))
+// Every edit, from any part of the editor, lands in the undo history
+watch(text, (value) => {
+  if (editing.value) history.record(value)
+})
+
+init()
+
+async function init() {
+  itemInfo.start()
+  poller.start()
+  // Enterprise reports whether version history is on; Core has none
+  Api.get('/openc3-api/info')
+    .then(({ data }) => {
+      versionsEnabled.value = !!(data?.enterprise && data?.script_versions)
+    })
+    .catch(() => {})
+  // Playback times are entered and shown in the COSMOS time zone setting
+  itemInfo.api
+    .get_setting('time_zone')
+    .then((zone) => {
+      if (zone) timeZone.value = zone
+    })
+    .catch(() => {})
+  // Plugin panel types must be registered before any dashboard is parsed
+  const [problems] = await Promise.all([loadPanelPlugins(), loadList()])
+  if (problems.length) {
+    notify.caution({
+      title: 'Some plugin panels did not load',
+      body: problems.join('; '),
+    })
+  }
+  const last = readString(LAST_KEY)
+  const key =
+    routeKey(route.params) ||
+    (dashboards.value.includes(last) ? last : dashboards.value[0])
+  if (key) await open(key)
+  loading.value = false
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', beforeUnload)
+  window.addEventListener('keydown', onKeydown)
+})
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', beforeUnload)
+  window.removeEventListener('keydown', onKeydown)
+  poller.stop()
+  itemInfo.stop()
+  cable.disconnect()
+})
+
+function goToWorst() {
+  if (health.value.worstUid != null) {
+    gridRef.value?.scrollToPanel(health.value.worstUid)
+  }
+}
+// The time range picked in the header, remembered in this browser
+function setTimeRange(seconds) {
+  timeRange.seconds = seconds
+  saveTimeRange(seconds)
+}
+// The poller looks values up at the playback time instead of polling
+function setPlaybackTime(time) {
+  playback.time = time
+  poller.setPlaybackTime(time)
+}
+function setDetailsOpen(open) {
+  detailsOpen.value = open
+  if (!open) {
+    // Let the sheet animate closed before tearing it down
+    setTimeout(() => {
+      if (!detailsOpen.value) detailsItem.value = null
+    }, 300)
+  }
+}
+function beforeUnload(event) {
+  if (dirty.value) event.preventDefault()
+}
+// Ctrl/Cmd+K opens the navigator. While editing, Ctrl/Cmd+Z undoes and
+// Ctrl/Cmd+Shift+Z or Ctrl+Y redoes, outside text fields.
+function onKeydown(event) {
+  if (!(event.ctrlKey || event.metaKey)) return
+  if (event.key.toLowerCase() === 'k' && !editing.value) {
+    event.preventDefault()
+    navigatorOpen.value = true
+    return
+  }
+  if (!editing.value) return
+  if (event.target.closest('input, textarea, [contenteditable]')) return
+  const key = event.key.toLowerCase()
+  if (key === 'z' && !event.shiftKey) {
+    event.preventDefault()
+    undo()
+  } else if ((key === 'z' && event.shiftKey) || key === 'y') {
+    event.preventDefault()
+    redo()
+  }
+}
+// Confirm dialog as true / false (dialog.confirm rejects on cancel)
+async function ask(message, options) {
+  try {
+    await dialog.confirm(message, options)
+    return true
+  } catch {
+    return false
+  }
+}
+function confirmDiscard() {
+  if (!dirty.value) return Promise.resolve(true)
+  return ask(`Discard unsaved changes to ${model.value.title}?`, {
+    okText: 'Discard',
+    cancelText: 'Keep editing',
+    okClass: 'error',
+  })
+}
+async function loadList() {
+  try {
+    const response = await Api.get('/openc3-api/dashboards')
+    dashboards.value = response.data.map((path) => {
+      const [target, , file] = path.split('/')
+      return `${target}/${file.replace(/\.txt$/, '').toUpperCase()}`
+    })
+  } catch (error) {
+    console.error('Error loading dashboards:', error)
+  }
+}
+async function selectDashboard(key) {
+  if (!key || key === currentKey.value) return
+  if (!(await confirmDiscard())) return
+  open(key)
+}
+async function open(key, { syncUrl = true } = {}) {
+  // Panels share command definitions; opening a dashboard refetches them
+  // so changed definitions show without a page reload
+  clearCommandCache()
+  const [target, name] = key.split('/')
+  let fetched
+  try {
+    fetched = await fetchDashboardText(key)
+  } catch {
+    notify.caution({ title: 'Unknown dashboard', body: key })
+    return
+  }
+  const parsed = parseDashboard(fetched)
+  load({ target, name }, parsed.model, parsed.errors, fetched)
+  rememberCurrent({ syncUrl })
+}
+function load(dashboard, newModel, newErrors = [], newFileText = null) {
+  current.value = dashboard
+  model.value = newModel
+  errors.value = newErrors
+  fileText.value = newFileText
+  editing.value = false
+  savedText.value = text.value
+}
+// Navigator summary, reopen-on-launch and the URL all follow
+// the dashboard that's showing
+function rememberCurrent({ syncUrl = true } = {}) {
+  const { target, name } = current.value
+  remember(currentKey.value, model.value)
+  visited(currentKey.value)
+  writeString(LAST_KEY, currentKey.value)
+  if (
+    syncUrl &&
+    (route.params.target !== target || route.params.dashboard !== name)
+  ) {
+    router.replace({
+      name: 'Dashboards',
+      params: { target, dashboard: name },
+    })
+  }
+}
+function post(target, dashboard, body) {
+  return Api.post('/openc3-api/dashboard', {
+    data: { scope: window.openc3Scope, target, dashboard, text: body },
+  })
+}
+async function save() {
+  if (!current.value) return
+  saving.value = true
+  const body = text.value
+  try {
+    await post(current.value.target, current.value.name, body)
+    savedText.value = body
+    fileText.value = null
+    remember(currentKey.value, model.value)
+    notify.normal({ title: 'Saved dashboard', body: currentKey.value })
+  } catch (error) {
+    notify.serious({
+      title: 'Error saving dashboard',
+      body: error.message,
+    })
+  } finally {
+    saving.value = false
+  }
+}
+function openDashboardDialog(mode, key = null) {
+  dashboardDialogMode.value = mode
+  duplicateKey.value = key
+  dashboardDialog.value = true
+}
+function onDashboardDialog(location) {
+  if (dashboardDialogMode.value === 'duplicate') {
+    duplicate(duplicateKey.value, location)
+  } else {
+    createDashboard(location)
+  }
+}
+// Copy a saved dashboard to a new target / name and open the copy
+async function duplicate(key, { target, name }) {
+  try {
+    await post(target, name, await fetchDashboardText(key))
+  } catch (error) {
+    notify.serious({
+      title: 'Error duplicating dashboard',
+      body: error.message,
+    })
+    return
+  }
+  await loadList()
+  await selectDashboard(`${target}/${name}`)
+}
+async function createDashboard({ target, name, columns }) {
+  if (!(await confirmDiscard())) return
+  const dashboardTitle = name
+    .toLowerCase()
+    .split(/[_-]/)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
+  load({ target, name }, emptyDashboard(dashboardTitle, columns))
+  savedText.value = ''
+  await save()
+  await loadList()
+  rememberCurrent()
+  startEditing()
+}
+async function deleteDashboard() {
+  if (!current.value) return
+  const ok = await ask(
+    `Delete ${currentKey.value}? Dashboards installed by a plugin go back to the plugin's version.`,
+    { okText: 'Delete', cancelText: 'Cancel', okClass: 'error' },
+  )
+  if (!ok) return
+  try {
+    await Api.delete(dashboardUrl(currentKey.value))
+    notify.normal({
+      title: 'Deleted dashboard',
+      body: currentKey.value,
+    })
+  } catch (error) {
+    notify.serious({
+      title: 'Error deleting dashboard',
+      body: error.message,
+    })
+    return
+  }
+  const deleted = currentKey.value
+  savedText.value = text.value // nothing left to discard
+  await loadList()
+  if (dashboards.value.includes(deleted)) {
+    await open(deleted) // plugin version restored
+  } else {
+    forget(deleted)
+    current.value = null
+    model.value = emptyDashboard('')
+    savedText.value = ''
+    fileText.value = null
+    editing.value = false
+    writeString(LAST_KEY, null)
+    router.replace({ name: 'Dashboards', params: {} })
+  }
+}
+
+// Tapping a value opens its details sheet (not while editing, when taps
+// arrange panels)
+function openDetails(item) {
+  if (editing.value) return
+  detailsItem.value = {
+    targetName: item.targetName,
+    packetName: item.packetName,
+    itemName: item.itemName,
+  }
+  detailsOpen.value = true
+}
+
+// Editor
+function goLive() {
+  playback.on = false
+  setPlaybackTime(null)
+}
+function startEditing() {
+  goLive()
+  history.reset(text.value)
+  editing.value = true
+}
+// Whole dashboard as text; editing it goes through the editor
+function openCode() {
+  if (!editing.value) startEditing()
+  codeDialog.value = true
+}
+async function done() {
+  if (dirty.value) await save()
+  if (!dirty.value) editing.value = false
+}
+// Drop every unsaved change and go back to the last saved dashboard
+async function cancelEditing() {
+  if (!(await confirmDiscard())) return
+  if (dirty.value) applyText(savedText.value)
+  panelDialog.value = false
+  codeDialog.value = false
+  editing.value = false
+}
+function undo() {
+  const value = history.undo()
+  if (value !== null) applyText(value)
+}
+function redo() {
+  const value = history.redo()
+  if (value !== null) applyText(value)
+}
+function applyText(value) {
+  applyModel(parseDashboard(value).model)
+}
+// A whole new model from the code dialog or undo; keep panel identities
+function applyModel(newModel) {
+  reuseUids(model.value.panels, newModel.panels)
+  model.value = newModel
+  errors.value = []
+  fileText.value = null
+}
+function applyPositions(layout) {
+  for (const panel of model.value.panels) {
+    const rect = layout[panel.uid]
+    if (rect) Object.assign(panel, rect)
+  }
+}
+// Re-flow around `fixed` after a change
+function reflow(fixed = null) {
+  applyPositions(resolveLayout(model.value.panels, fixed, null, columns.value))
+}
+function addPanel() {
+  const type = defaultPanelType()
+  const { w, h } = PANEL_TYPES[type].defaults
+  editPanel.value = newPanel(type, 0, 0, w, h)
+  editPanelIsNew.value = true
+  panelDialog.value = true
+  if (!editing.value) startEditing()
+}
+function configurePanel(panel) {
+  editPanel.value = panel
+  editPanelIsNew.value = false
+  panelDialog.value = true
+}
+function savePanel(draft) {
+  const panels = model.value.panels
+  const index = panels.findIndex((p) => p.uid === draft.uid)
+  if (index === -1) {
+    // New panels go in the first open spot that fits
+    Object.assign(
+      draft,
+      firstFit(panels, draft.type, draft.w, draft.h, columns.value),
+    )
+    panels.push(draft)
+  } else {
+    panels.splice(index, 1, draft)
+  }
+  reflow(draft.uid)
+}
+function duplicatePanel(panel) {
+  const copy = JSON.parse(JSON.stringify(panel))
+  copy.uid = panelUid()
+  Object.assign(
+    copy,
+    firstFit(model.value.panels, copy.type, copy.w, copy.h, columns.value),
+  )
+  model.value.panels.push(copy)
+}
+function deletePanel(panel) {
+  model.value.panels = model.value.panels.filter((p) => p.uid !== panel.uid)
+  reflow()
 }
 </script>
 

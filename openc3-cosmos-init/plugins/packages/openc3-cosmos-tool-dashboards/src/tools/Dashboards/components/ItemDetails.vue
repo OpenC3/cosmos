@@ -129,11 +129,11 @@
   </v-dialog>
 </template>
 
-<script>
+<script setup>
+import { computed, inject, onUnmounted, unref, watch } from 'vue'
 import GraphPanel from '../panels/GraphPanel.vue'
 import LimitsBar from './LimitsBar.vue'
 import StatusSymbol from './StatusSymbol.vue'
-import modelShow from '../mixins/modelShow'
 import { itemKey, packetTimeKey } from '../composables/tlmPoller'
 import {
   formatItem,
@@ -146,117 +146,95 @@ import { stateToLevel } from '../status'
 
 // Everything about one item: big value, status, limits, a short graph, raw
 // value and packet time. Slides up from the bottom on phones.
-export default {
-  components: { GraphPanel, LimitsBar, StatusSymbol },
-  mixins: [modelShow],
-  inject: {
-    poller: 'poller',
-    itemInfo: 'itemInfo',
-    timeZone: { default: 'local' },
-    // { seconds } from the header's time range picker, which the graph follows
-    timeRange: { default: () => ({ seconds: 120 }) },
+const props = defineProps({
+  item: { type: Object, default: null },
+  sheet: Boolean,
+  // Telemetry Grapher is a desktop tool, so phones and tablets don't link to it
+  showGrapher: { type: Boolean, default: true },
+})
+const show = defineModel({ type: Boolean })
+
+const poller = inject('poller')
+const itemInfo = inject('itemInfo')
+const injectedTimeZone = inject('timeZone', 'local')
+// { seconds } from the header's time range picker, which the graph follows
+const timeRange = inject('timeRange', () => ({ seconds: 120 }), true)
+
+const timeZone = computed(() => unref(injectedTimeZone))
+const keys = computed(() => ({
+  converted: itemKey(props.item, 'CONVERTED'),
+  raw: itemKey(props.item, 'RAW'),
+  packetTime: packetTimeKey(props.item),
+}))
+const info = computed(() => itemInfo.get(props.item))
+const converted = computed(() => poller.values[keys.value.converted])
+const number = computed(() =>
+  typeof converted.value?.value === 'number' ? converted.value.value : null,
+)
+const display = computed(() =>
+  formatItem(
+    props.item.itemName,
+    converted.value?.value,
+    info.value.formatString,
+    timeZone.value,
+  ),
+)
+const raw = computed(() =>
+  formatTelemetry(poller.values[keys.value.raw]?.value),
+)
+const packetTime = computed(() => {
+  const time = poller.values[keys.value.packetTime]?.value ?? '--'
+  return toSeconds(formatTime(time, timeZone.value))
+})
+const level = computed(() => stateToLevel(converted.value?.state))
+const stale = computed(() => converted.value?.state === 'STALE')
+const limits = computed(() => itemInfo.limits(props.item))
+// Low beside high, outermost first, in the bar's colors (operational
+// limits, when the item has them, are the bar's blue zone)
+const limitRows = computed(() => {
+  const l = limits.value
+  const rows = [
+    ['critical', 'Red low', l.red_low],
+    ['critical', 'Red high', l.red_high],
+    ['caution', 'Yellow low', l.yellow_low],
+    ['caution', 'Yellow high', l.yellow_high],
+  ]
+  if (l.green_low !== undefined && l.green_high !== undefined) {
+    rows.push(
+      ['normal', 'Green low', l.green_low],
+      ['normal', 'Green high', l.green_high],
+    )
+  }
+  return rows.map(([level, label, value]) => ({ level, label, value }))
+})
+const graphLabel = computed(() => timeRangeLabel(timeRange.seconds))
+const graphable = computed(() => number.value !== null || !converted.value)
+const graphPanel = computed(() => ({
+  uid: 0,
+  type: 'GRAPH',
+  items: [{ ...props.item, valueType: 'CONVERTED' }],
+  settings: {},
+}))
+const grapherUrl = computed(() => {
+  const { targetName, packetName, itemName } = props.item
+  return `/tools/tlmgrapher/${[targetName, packetName, itemName]
+    .map(encodeURIComponent)
+    .join('/')}`
+})
+
+// Keeps the poller's registrations (external) in step with the item prop
+watch(
+  keys,
+  (newKeys, oldKeys) => {
+    if (oldKeys) poller.unregister(Object.values(oldKeys))
+    poller.register(Object.values(newKeys))
   },
-  props: {
-    item: { type: Object, default: null },
-    sheet: Boolean,
-    // Telemetry Grapher is a desktop tool, so phones and tablets don't link to it
-    showGrapher: { type: Boolean, default: true },
-  },
-  computed: {
-    keys() {
-      return {
-        converted: itemKey(this.item, 'CONVERTED'),
-        raw: itemKey(this.item, 'RAW'),
-        packetTime: packetTimeKey(this.item),
-      }
-    },
-    info() {
-      return this.itemInfo.get(this.item)
-    },
-    converted() {
-      return this.poller.values[this.keys.converted]
-    },
-    number() {
-      return typeof this.converted?.value === 'number'
-        ? this.converted.value
-        : null
-    },
-    display() {
-      return formatItem(
-        this.item.itemName,
-        this.converted?.value,
-        this.info.formatString,
-        this.timeZone,
-      )
-    },
-    raw() {
-      return formatTelemetry(this.poller.values[this.keys.raw]?.value)
-    },
-    packetTime() {
-      const time = this.poller.values[this.keys.packetTime]?.value ?? '--'
-      return toSeconds(formatTime(time, this.timeZone))
-    },
-    level() {
-      return stateToLevel(this.converted?.state)
-    },
-    stale() {
-      return this.converted?.state === 'STALE'
-    },
-    limits() {
-      return this.itemInfo.limits(this.item)
-    },
-    // Low beside high, outermost first, in the bar's colors (operational
-    // limits, when the item has them, are the bar's blue zone)
-    limitRows() {
-      const l = this.limits
-      const rows = [
-        ['critical', 'Red low', l.red_low],
-        ['critical', 'Red high', l.red_high],
-        ['caution', 'Yellow low', l.yellow_low],
-        ['caution', 'Yellow high', l.yellow_high],
-      ]
-      if (l.green_low !== undefined && l.green_high !== undefined) {
-        rows.push(
-          ['normal', 'Green low', l.green_low],
-          ['normal', 'Green high', l.green_high],
-        )
-      }
-      return rows.map(([level, label, value]) => ({ level, label, value }))
-    },
-    graphLabel() {
-      return timeRangeLabel(this.timeRange.seconds)
-    },
-    graphable() {
-      return this.number !== null || !this.converted
-    },
-    graphPanel() {
-      return {
-        uid: 0,
-        type: 'GRAPH',
-        items: [{ ...this.item, valueType: 'CONVERTED' }],
-        settings: {},
-      }
-    },
-    grapherUrl() {
-      const { targetName, packetName, itemName } = this.item
-      return `/tools/tlmgrapher/${[targetName, packetName, itemName]
-        .map(encodeURIComponent)
-        .join('/')}`
-    },
-  },
-  watch: {
-    keys: {
-      immediate: true,
-      handler(keys, oldKeys) {
-        if (oldKeys) this.poller.unregister(Object.values(oldKeys))
-        this.poller.register(Object.values(keys))
-      },
-    },
-  },
-  unmounted() {
-    this.poller.unregister(Object.values(this.keys))
-  },
-}
+  { immediate: true },
+)
+
+onUnmounted(() => {
+  poller.unregister(Object.values(keys.value))
+})
 </script>
 
 <style>

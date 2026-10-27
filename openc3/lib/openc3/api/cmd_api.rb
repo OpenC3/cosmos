@@ -211,18 +211,14 @@ module OpenC3
     # @param target_name [String] Name of the target
     # @return [Array<String>] Array of all command packet names
     def get_all_cmd_names(target_name, hidden: false, manual: false, scope: $openc3_scope, token: $openc3_token)
+      target_name = target_name.upcase
+      authorize(permission: 'cmd_info', target_name: target_name, scope: scope, token: token)
+      # Only the names are needed so avoid parsing every packet definition
       begin
-        packets = get_all_cmds(target_name, scope: scope, token: token)
+        names = TargetModel.packet_names(target_name, type: :CMD, scope: scope)
+        names -= TargetModel.hidden_packet_names(target_name, type: :CMD, scope: scope) unless hidden
       rescue RuntimeError
-        packets = []
-      end
-      names = []
-      packets.each do |packet|
-        if hidden
-          names << packet['packet_name']
-        else
-          names << packet['packet_name'] unless packet['hidden']
-        end
+        names = []
       end
       return names
     end
@@ -364,13 +360,14 @@ module OpenC3
         time = 0
         command_name = nil
         targets.each do |cur_target|
-          TargetModel.packets(cur_target, type: :CMD, scope: scope).each do |packet|
-            cur_time = CommandDecomTopic.get_cmd_item(cur_target, packet["packet_name"], 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope: scope)
+          # Only the names are needed so avoid parsing every packet definition
+          TargetModel.packet_names(cur_target, type: :CMD, scope: scope).each do |packet_name|
+            cur_time = CommandDecomTopic.get_cmd_item(cur_target, packet_name, 'RECEIVED_TIMESECONDS', type: :CONVERTED, scope: scope)
             next unless cur_time
 
             if cur_time > time
               time = cur_time
-              command_name = packet["packet_name"]
+              command_name = packet_name
               target_name = cur_target
             end
           end

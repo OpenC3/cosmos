@@ -41,24 +41,24 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue'
+
 // A row of color swatches; the picked one is outlined
-export default {
-  props: {
-    colors: { type: Array, required: true },
-    modelValue: { type: String, default: null },
-    // Swatch width and height in px
-    size: { type: Number, default: 24 },
-    // Lead with a swatch for no color (null)
-    allowDefault: { type: Boolean, default: false },
-  },
-  emits: ['update:modelValue'],
-  computed: {
-    sizeStyle() {
-      return { width: `${this.size}px`, height: `${this.size}px` }
-    },
-  },
-}
+const props = defineProps({
+  colors: { type: Array, required: true },
+  modelValue: { type: String, default: null },
+  // Swatch width and height in px
+  size: { type: Number, default: 24 },
+  // Lead with a swatch for no color (null)
+  allowDefault: { type: Boolean, default: false },
+})
+defineEmits(['update:modelValue'])
+
+const sizeStyle = computed(() => ({
+  width: `${props.size}px`,
+  height: `${props.size}px`,
+}))
 </script>
 
 <style scoped>

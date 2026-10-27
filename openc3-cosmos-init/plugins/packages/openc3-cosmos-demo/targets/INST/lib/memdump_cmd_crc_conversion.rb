@@ -1,0 +1,46 @@
+# encoding: ascii-8bit
+
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+require 'openc3/conversions/conversion'
+require 'openc3/utilities/crc'
+
+module OpenC3
+  # Write conversion which calculates the MEMDUMP command CRC32 over the
+  # big endian OFFSET, SIZE and BAD_CRC parameters so the user never has to.
+  # Send the command with cmd_raw to bypass this conversion and set a bad CRC.
+  # See https://docs.openc3.com/docs/configuration/conversions
+  class MemdumpCmdCrcConversion < Conversion
+    def initialize
+      super()
+      @crc = Crc32.new
+    end
+
+    # @param value [Object] Value based on the item definition. This could be
+    #   a string, integer, float, or array of values.
+    # @param packet [Packet] The packet object where the conversion is defined
+    # @param buffer [String] The raw packet buffer
+    def call(_value, packet, _buffer)
+      # Write conversions run before the given parameters are written to the
+      # buffer so use the given values and fall back to the defaults.
+      # Given names keep the caller's case so upcase them to match the items.
+      given = (packet.given_values || {}).transform_keys { |key| key.to_s.upcase }
+      offset = Integer(given['OFFSET'] || packet.get_item('OFFSET').default)
+      size = Integer(given['SIZE'] || packet.get_item('SIZE').default)
+      # BAD_CRC may be given as a state name so convert it to its value
+      bad_crc_item = packet.get_item('BAD_CRC')
+      bad_crc = given['BAD_CRC'] || bad_crc_item.default
+      bad_crc = bad_crc_item.states[bad_crc.to_s.upcase] || bad_crc
+      @crc.calc([offset, size, Integer(bad_crc)].pack('NNC'))
+    end
+  end
+end

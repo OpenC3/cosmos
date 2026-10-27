@@ -63,9 +63,9 @@
         data-test="panel-status"
       />
       <v-menu v-if="editing" location="bottom end">
-        <template #activator="{ props }">
+        <template #activator="{ props: activatorProps }">
           <v-btn
-            v-bind="props"
+            v-bind="activatorProps"
             icon="mdi-dots-vertical"
             size="small"
             variant="text"
@@ -113,84 +113,75 @@
   </v-card>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue'
 import StatusSymbol from './StatusSymbol.vue'
 import { ringClass } from '../status'
 import { PANEL_TYPES, panelTitle } from '../panels/registry'
 
-export default {
-  components: { StatusSymbol },
-  props: {
-    panel: { type: Object, required: true },
-    level: { type: String, default: null },
-    editing: { type: Boolean, default: false },
-    dragging: { type: Boolean, default: false },
-  },
-  // move-start / resize-start carry the pointer event that began the drag,
-  // nudge is { dx, dy, dw, dh } in grid units from the keyboard
-  emits: [
-    'configure',
-    'duplicate',
-    'delete',
-    'move-start',
-    'resize-start',
+const props = defineProps({
+  panel: { type: Object, required: true },
+  level: { type: String, default: null },
+  editing: { type: Boolean, default: false },
+  dragging: { type: Boolean, default: false },
+})
+// move-start / resize-start carry the pointer event that began the drag,
+// nudge is { dx, dy, dw, dh } in grid units from the keyboard
+const emit = defineEmits([
+  'configure',
+  'duplicate',
+  'delete',
+  'move-start',
+  'resize-start',
+  'nudge',
+])
+
+const type = computed(() => PANEL_TYPES[props.panel.type])
+// The panel's own title, else its type's, else its single item's name
+const title = computed(() => panelTitle(props.panel))
+// Its type's subtitle, else TARGET PACKET for every packet shown, so
+// multi-target panels say so
+const subtitle = computed(() => {
+  if (type.value.subtitle) return type.value.subtitle(props.panel)
+  const packets = new Set(
+    props.panel.items.map((i) => `${i.targetName} ${i.packetName}`),
+  )
+  return [...packets].join(' · ')
+})
+const ring = computed(() => ringClass(props.level))
+// The status symbol in the header: single item panels always name their
+// status, and any panel with a caution or critical ring shows it
+const pill = computed(() => {
+  if (!props.level) return false
+  return props.panel.items.length === 1 || !!ring.value
+})
+
+// Drag the header to move, except when pressing its buttons
+function pointerdown(event) {
+  if (!props.editing || event.button !== 0) return
+  if (event.target.closest('button, a, input')) return
+  event.preventDefault()
+  emit('move-start', event)
+}
+
+// Arrow keys move the focused panel, Shift+arrows resize it
+function keydown(event) {
+  if (!props.editing || event.target !== event.currentTarget) return
+  const step = {
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+    ArrowUp: [0, -1],
+    ArrowDown: [0, 1],
+  }[event.key]
+  if (!step) return
+  event.preventDefault()
+  const [a, b] = step
+  emit(
     'nudge',
-  ],
-  computed: {
-    type() {
-      return PANEL_TYPES[this.panel.type]
-    },
-    // The panel's own title, else its type's, else its single item's name
-    title() {
-      return panelTitle(this.panel)
-    },
-    // Its type's subtitle, else TARGET PACKET for every packet shown, so
-    // multi-target panels say so
-    subtitle() {
-      if (this.type.subtitle) return this.type.subtitle(this.panel)
-      const packets = new Set(
-        this.panel.items.map((i) => `${i.targetName} ${i.packetName}`),
-      )
-      return [...packets].join(' · ')
-    },
-    ring() {
-      return ringClass(this.level)
-    },
-    // The status symbol in the header: single item panels always name their
-    // status, and any panel with a caution or critical ring shows it
-    pill() {
-      if (!this.level) return false
-      return this.panel.items.length === 1 || !!this.ring
-    },
-  },
-  methods: {
-    // Drag the header to move, except when pressing its buttons
-    pointerdown(event) {
-      if (!this.editing || event.button !== 0) return
-      if (event.target.closest('button, a, input')) return
-      event.preventDefault()
-      this.$emit('move-start', event)
-    },
-    // Arrow keys move the focused panel, Shift+arrows resize it
-    keydown(event) {
-      if (!this.editing || event.target !== event.currentTarget) return
-      const step = {
-        ArrowLeft: [-1, 0],
-        ArrowRight: [1, 0],
-        ArrowUp: [0, -1],
-        ArrowDown: [0, 1],
-      }[event.key]
-      if (!step) return
-      event.preventDefault()
-      const [a, b] = step
-      this.$emit(
-        'nudge',
-        event.shiftKey
-          ? { dx: 0, dy: 0, dw: a, dh: b }
-          : { dx: a, dy: b, dw: 0, dh: 0 },
-      )
-    },
-  },
+    event.shiftKey
+      ? { dx: 0, dy: 0, dw: a, dh: b }
+      : { dx: a, dy: b, dw: 0, dh: 0 },
+  )
 }
 </script>
 

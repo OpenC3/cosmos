@@ -22,11 +22,9 @@
   </div>
 </template>
 
-<script>
+<script setup>
 // Packet time footer for single value panels (PACKET_TIME option)
-export default {
-  props: {
-    time: { type: String, default: '' },
-  },
-}
+defineProps({
+  time: { type: String, default: '' },
+})
 </script>

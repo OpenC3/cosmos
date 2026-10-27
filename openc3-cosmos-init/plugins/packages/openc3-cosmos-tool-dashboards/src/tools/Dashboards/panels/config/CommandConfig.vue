@@ -117,7 +117,8 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, ref, watch } from 'vue'
 import { OpenC3Api } from '@openc3/js-common/services'
 import { loadCommandParams, unsetRequired } from '../commandParams'
 import { option, withOption } from '../options'
@@ -128,90 +129,84 @@ import {
 
 // What a COMMAND panel sends: a command with preset parameters, or a script.
 // How it confirms is a panel option (see registry.js).
-export default {
-  components: { ScriptChooser, TargetPacketItemChooser },
-  props: {
-    panel: { type: Object, required: true },
-  },
-  emits: ['update'],
-  data() {
-    return { params: [], scriptMode: !!this.panel.script }
-  },
-  computed: {
-    mode() {
-      return this.panel.script || this.scriptMode ? 'script' : 'command'
-    },
-    hidden() {
-      return option(this.panel, 'HIDE')
-    },
-    // Hidden required parameters with nothing preset
-    hiddenUnset() {
-      return unsetRequired(this.params, this.panel.parameters, this.hidden)
-    },
-  },
-  watch: {
-    'panel.command': {
-      immediate: true,
-      handler() {
-        this.loadParams()
-      },
-    },
-  },
-  methods: {
-    setMode(mode) {
-      this.scriptMode = mode === 'script'
-      if (mode === 'command' && this.panel.script) {
-        this.$emit('update', { script: null })
-      }
-    },
-    selectCommand({ targetName, packetName }) {
-      this.$emit('update', {
-        command: { targetName, commandName: packetName },
-        script: null,
-        parameters: {},
-        settings: withOption(this.panel, 'HIDE', []),
-      })
-    },
-    isHidden(param) {
-      return this.hidden.includes(param.name)
-    },
-    toggleHidden(param) {
-      const hidden = this.isHidden(param)
-        ? this.hidden.filter((name) => name !== param.name)
-        : [...this.hidden, param.name]
-      this.$emit('update', { settings: withOption(this.panel, 'HIDE', hidden) })
-    },
-    async loadParams() {
-      this.params = []
-      if (!this.panel.command) return
-      const { targetName, commandName } = this.panel.command
-      try {
-        const { params } = await loadCommandParams(
-          new OpenC3Api(),
-          targetName,
-          commandName,
-        )
-        // Ignore an answer for a command that has since been replaced
-        const current = this.panel.command
-        if (
-          current?.targetName === targetName &&
-          current?.commandName === commandName
-        ) {
-          this.params = params
-        }
-      } catch (error) {
-        console.error('Dashboards command parameters failed to load:', error)
-      }
-    },
-    setParameter(name, value) {
-      const parameters = { ...this.panel.parameters }
-      if (value === null || value === '') {
-        delete parameters[name]
-      } else {
-        parameters[name] = value
-      }
-      this.$emit('update', { parameters })
-    },
-  },
+const props = defineProps({
+  panel: { type: Object, required: true },
+})
+const emit = defineEmits(['update'])
+
+const params = ref([])
+const scriptMode = ref(!!props.panel.script)
+
+const mode = computed(() =>
+  props.panel.script || scriptMode.value ? 'script' : 'command',
+)
+const hidden = computed(() => option(props.panel, 'HIDE'))
+// Hidden required parameters with nothing preset
+const hiddenUnset = computed(() =>
+  unsetRequired(params.value, props.panel.parameters, hidden.value),
+)
+
+function setMode(newMode) {
+  scriptMode.value = newMode === 'script'
+  if (newMode === 'command' && props.panel.script) {
+    emit('update', { script: null })
+  }
 }
+
+function selectCommand({ targetName, packetName }) {
+  emit('update', {
+    command: { targetName, commandName: packetName },
+    script: null,
+    parameters: {},
+    settings: withOption(props.panel, 'HIDE', []),
+  })
+}
+
+function isHidden(param) {
+  return hidden.value.includes(param.name)
+}
+
+function toggleHidden(param) {
+  const names = isHidden(param)
+    ? hidden.value.filter((name) => name !== param.name)
+    : [...hidden.value, param.name]
+  emit('update', { settings: withOption(props.panel, 'HIDE', names) })
+}
+
+async function loadParams() {
+  params.value = []
+  if (!props.panel.command) return
+  const { targetName, commandName } = props.panel.command
+  try {
+    const loaded = await loadCommandParams(
+      new OpenC3Api(),
+      targetName,
+      commandName,
+    )
+    // Ignore an answer for a command that has since been replaced
+    const current = props.panel.command
+    if (
+      current?.targetName === targetName &&
+      current?.commandName === commandName
+    ) {
+      params.value = loaded.params
+    }
+  } catch (error) {
+    console.error('Dashboards command parameters failed to load:', error)
+  }
+}
+
+function setParameter(name, value) {
+  const parameters = { ...props.panel.parameters }
+  if (value === null || value === '') {
+    delete parameters[name]
+  } else {
+    parameters[name] = value
+  }
+  emit('update', { parameters })
+}
+
+// Fetches the parameters of whichever command the panel has, however it
+// got it (picked here, or edited in the Code tab)
+watch(() => props.panel.command, loadParams, { immediate: true })
 </script>

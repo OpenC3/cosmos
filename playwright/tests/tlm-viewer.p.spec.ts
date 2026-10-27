@@ -269,6 +269,23 @@ test('displays INST LIMITS', async ({ page, utils }) => {
   await showScreen(page, utils, 'INST', 'LIMITS')
 })
 
+test('displays INST MEMDUMP', async ({ page, utils }) => {
+  await showScreen(page, utils, 'INST', 'MEMDUMP', true, async function () {
+    const value = (item: string) =>
+      page
+        .locator(`[data-test="label"]:text-is("${item}:")`)
+        .locator('..')
+        .locator('[data-test="value"] input')
+    // Dump with the screen defaults of OFFSET 0 and SIZE 256
+    await page.getByRole('button', { name: 'Dump Memory' }).click()
+    await expect(value('SIZE')).toHaveValue(/^256/)
+    // The ground calculated CRC should match the CRC sent by the target
+    await expect(value('CRC')).toHaveValue(/^0x[0-9A-F]{8}$/)
+    const crc = await value('CRC').inputValue()
+    await expect(value('CALC_CRC')).toHaveValue(crc)
+  })
+})
+
 test('displays INST OTHER', async ({ page, utils }) => {
   await showScreen(page, utils, 'INST', 'OTHER')
 })

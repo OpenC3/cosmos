@@ -79,7 +79,8 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue'
 import { TargetPacketItemChooser } from '@openc3/vue-common/components'
 import ItemOptionsEditor from '../../editor/ItemOptionsEditor.vue'
 import { VALUE_TYPES } from '../../dashboardParser'
@@ -87,55 +88,50 @@ import { PANEL_TYPES } from '../registry'
 import { seriesColor } from '../colors'
 
 // The items a panel shows, from any targets, with each item's options
-export default {
-  components: { ItemOptionsEditor, TargetPacketItemChooser },
-  props: {
-    panel: { type: Object, required: true },
-  },
-  emits: ['update'],
-  data() {
-    return { valueTypes: VALUE_TYPES }
-  },
-  computed: {
-    type() {
-      return PANEL_TYPES[this.panel.type]
-    },
-    full() {
-      return this.type.maxItems && this.panel.items.length >= this.type.maxItems
-    },
-  },
-  methods: {
-    addItem(item) {
-      if (this.full) return
-      this.$emit('update', {
-        items: [
-          ...this.panel.items,
-          {
-            targetName: item.targetName,
-            packetName: item.packetName,
-            itemName: item.itemName,
-            valueType: item.valueType || 'CONVERTED',
-            settings: {},
-          },
-        ],
-      })
-    },
-    removeItem(index) {
-      this.$emit('update', {
-        items: this.panel.items.filter((_, i) => i !== index),
-      })
-    },
-    setItem(index, change) {
-      this.$emit('update', {
-        items: this.panel.items.map((item, i) =>
-          i === index ? { ...item, ...change } : item,
-        ),
-      })
-    },
-    colorOf(item, index) {
-      return seriesColor(this.panel, item, index)
-    },
-  },
+const props = defineProps({
+  panel: { type: Object, required: true },
+})
+const emit = defineEmits(['update'])
+
+const valueTypes = VALUE_TYPES
+
+const type = computed(() => PANEL_TYPES[props.panel.type])
+const full = computed(
+  () => type.value.maxItems && props.panel.items.length >= type.value.maxItems,
+)
+
+function addItem(item) {
+  if (full.value) return
+  emit('update', {
+    items: [
+      ...props.panel.items,
+      {
+        targetName: item.targetName,
+        packetName: item.packetName,
+        itemName: item.itemName,
+        valueType: item.valueType || 'CONVERTED',
+        settings: {},
+      },
+    ],
+  })
+}
+
+function removeItem(index) {
+  emit('update', {
+    items: props.panel.items.filter((_, i) => i !== index),
+  })
+}
+
+function setItem(index, change) {
+  emit('update', {
+    items: props.panel.items.map((item, i) =>
+      i === index ? { ...item, ...change } : item,
+    ),
+  })
+}
+
+function colorOf(item, index) {
+  return seriesColor(props.panel, item, index)
 }
 </script>
 

@@ -23,15 +23,22 @@
 //   export default (sdk) => ({
 //     label: 'Map',
 //     icon: 'mdi-map-outline',
-//     component: { mixins: [sdk.tlmPanel], ... },
+//     component: {
+//       props: sdk.panelProps,
+//       setup(props) {
+//         return sdk.useTlmPanel(props)
+//       },
+//       ...
+//     },
 //     content: 'items',
 //     options: [...],
 //   })
 
 import { Api } from '@openc3/js-common/services'
 import { registerPanelType } from '../panels/registry'
-import panelBase from '../panels/panelBase'
-import tlmPanel, { itemLabel, pollType } from '../panels/tlmPanel'
+import { panelProps, usePanel } from '../panels/panelBase'
+import { itemLabel, pollType, useTlmPanel } from '../panels/tlmPanel'
+import { useTlmSeries } from '../panels/tlmSeries'
 import { itemOption, option, withOption } from '../panels/options'
 import { SERIES_COLORS, seriesColor } from '../panels/colors'
 import { baseKey, itemKey, packetTimeKey } from './tlmPoller'
@@ -51,10 +58,13 @@ import StatusSymbol from '../components/StatusSymbol.vue'
 // can check it.
 export const PANEL_SDK = Object.freeze({
   version: 1,
-  // Mixins: panelBase (polling and status plumbing), tlmPanel (adds
-  // itemStates for the panel's ITEMs)
-  panelBase,
-  tlmPanel,
+  // Composables: usePanel (polling and status plumbing), useTlmPanel (adds
+  // itemStates for the panel's ITEMs), useTlmSeries (history over the
+  // dashboard's time range). Panels take panelProps.
+  panelProps,
+  usePanel,
+  useTlmPanel,
+  useTlmSeries,
   // Options and items
   option,
   withOption,
@@ -65,7 +75,7 @@ export const PANEL_SDK = Object.freeze({
   pollType,
   itemLabel,
   // Formatting and status
-  // Times: panels get the user's time zone as this.timeZone (panelBase)
+  // Times: panels get the user's time zone as timeZone (usePanel)
   formatTelemetry,
   formatItem,
   formatTime,

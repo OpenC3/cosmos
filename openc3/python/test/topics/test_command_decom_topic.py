@@ -25,9 +25,10 @@ class TestCommandDecomTopic(unittest.TestCase):
         mock_redis(self)
         self.captured = {}
 
-        def fake_write_topic(topic, msg_hash):
+        def fake_write_topic(topic, msg_hash, minid=None):
             self.captured["topic"] = topic
             self.captured["msg_hash"] = msg_hash
+            self.captured["minid"] = minid
 
         self.store_instance = MagicMock()
         self.store_instance.write_topic.side_effect = fake_write_topic
@@ -75,10 +76,18 @@ class TestCommandDecomTopic(unittest.TestCase):
     def test_writes_to_correct_topic(self):
         CommandDecomTopic.write_packet(self._make_packet(), scope="DEFAULT")
         self.assertEqual(self.captured["topic"], "DEFAULT__DECOMCMD__{TARGET}__CMD")
+        self.assertIsNotNone(self.captured["minid"])
         msg_hash = self.captured["msg_hash"]
         self.assertEqual(msg_hash["target_name"], "TARGET")
         self.assertEqual(msg_hash["packet_name"], "CMD")
         self.assertEqual(msg_hash["received_count"], 1)
+
+    def test_writes_stored_as_lowercase_like_ruby(self):
+        for stored, expected in [(True, "true"), (False, "false")]:
+            packet = self._make_packet()
+            packet.stored = stored
+            CommandDecomTopic.write_packet(packet, scope="DEFAULT")
+            self.assertEqual(self.captured["msg_hash"]["stored"], expected)
 
     def test_logs_given_value_for_write_conversion_items(self):
         packet = self._make_packet()
@@ -104,6 +113,17 @@ class TestCommandDecomTopic(unittest.TestCase):
         self.assertIsNone(packet.given_values)
         hash = self._json_data(packet)
         self.assertEqual(hash["VALUE__C"], 10)
+
+    def test_does_not_log_given_value_of_obfuscated_item(self):
+        packet = self._make_packet()
+        item = packet.get_item("VALUE")
+        item.obfuscate = True
+        packet.update_obfuscated_items_cache(item)
+        packet.given_values = {"VALUE": 5}
+        packet.obfuscate()
+        hash = self._json_data(packet)
+        self.assertEqual(hash["VALUE"], 0)
+        self.assertEqual(hash["VALUE__C"], 0)
 
     def test_reads_converted_state_rather_than_given_value(self):
         # The user can give either the state name or the state value so always

@@ -19,9 +19,9 @@
         :close-on-content-click="false"
         location="bottom start"
       >
-        <template #activator="{ props }">
+        <template #activator="{ props: activatorProps }">
           <button
-            v-bind="props"
+            v-bind="activatorProps"
             type="button"
             class="swatch-btn rounded cursor-pointer flex-0-0"
             :style="{ background: colorOf(def) }"
@@ -63,7 +63,8 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue'
 import ColorSwatches from '../components/ColorSwatches.vue'
 import { itemOption, itemOptionDefs, withItemOption } from '../panels/options'
 import { SERIES_COLORS } from '../panels/colors'
@@ -71,37 +72,28 @@ import { SERIES_COLORS } from '../panels/colors'
 // Controls for the item options a panel type declares (itemOptions in
 // panels/registry.js), shown on each item row. Only colors exist today; add a
 // control here alongside a new option type.
-export default {
-  components: { ColorSwatches },
-  props: {
-    panel: { type: Object, required: true },
-    item: { type: Object, required: true },
-    // Color the item gets when its COLOR isn't set
-    fallback: { type: String, default: SERIES_COLORS[0] },
-  },
-  emits: ['update'],
-  data() {
-    return { palette: SERIES_COLORS }
-  },
-  computed: {
-    defs() {
-      return itemOptionDefs(this.panel.type)
-    },
-  },
-  methods: {
-    value(def) {
-      return itemOption(this.panel, this.item, def.name)
-    },
-    colorOf(def) {
-      return this.value(def) || this.fallback
-    },
-    set(def, value) {
-      this.$emit(
-        'update',
-        withItemOption(this.panel, this.item, def.name, value),
-      )
-    },
-  },
+const props = defineProps({
+  panel: { type: Object, required: true },
+  item: { type: Object, required: true },
+  // Color the item gets when its COLOR isn't set
+  fallback: { type: String, default: SERIES_COLORS[0] },
+})
+const emit = defineEmits(['update'])
+
+const palette = SERIES_COLORS
+
+const defs = computed(() => itemOptionDefs(props.panel.type))
+
+function value(def) {
+  return itemOption(props.panel, props.item, def.name)
+}
+
+function colorOf(def) {
+  return value(def) || props.fallback
+}
+
+function set(def, newValue) {
+  emit('update', withItemOption(props.panel, props.item, def.name, newValue))
 }
 </script>
 

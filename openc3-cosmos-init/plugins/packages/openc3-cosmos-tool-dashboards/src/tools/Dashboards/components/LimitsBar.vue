@@ -33,7 +33,8 @@
   </span>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue'
 import { limitZones, paddedScale } from '../limits'
 
 // Thin limits bar from the style system: red, yellow, green (and blue for
@@ -41,36 +42,28 @@ import { limitZones, paddedScale } from '../limits'
 // marker at the current value. The scale extends 10% of the yellow range past
 // the red limits on each side, like the COSMOS LimitsBar widget. Parents set
 // --limits-bar-track to change the track thickness.
-export default {
-  props: {
-    limits: { type: Object, default: null },
-    value: { type: Number, default: null },
-  },
-  computed: {
-    scale() {
-      return paddedScale(this.limits)
-    },
-    zones() {
-      if (!this.scale) return []
-      const { min, max } = this.scale
-      return limitZones(this.limits, min, max).map(({ level, from, to }) => ({
-        level,
-        left: this.percent(from),
-        width: this.percent(to) - this.percent(from),
-      }))
-    },
-    marker() {
-      if (!this.scale || typeof this.value !== 'number') return null
-      return Math.min(100, Math.max(0, this.percent(this.value)))
-    },
-  },
-  methods: {
-    percent(value) {
-      return (
-        ((value - this.scale.min) / (this.scale.max - this.scale.min)) * 100
-      )
-    },
-  },
+const props = defineProps({
+  limits: { type: Object, default: null },
+  value: { type: Number, default: null },
+})
+
+const scale = computed(() => paddedScale(props.limits))
+const zones = computed(() => {
+  if (!scale.value) return []
+  const { min, max } = scale.value
+  return limitZones(props.limits, min, max).map(({ level, from, to }) => ({
+    level,
+    left: percent(from),
+    width: percent(to) - percent(from),
+  }))
+})
+const marker = computed(() => {
+  if (!scale.value || typeof props.value !== 'number') return null
+  return Math.min(100, Math.max(0, percent(props.value)))
+})
+
+function percent(value) {
+  return ((value - scale.value.min) / (scale.value.max - scale.value.min)) * 100
 }
 </script>
 

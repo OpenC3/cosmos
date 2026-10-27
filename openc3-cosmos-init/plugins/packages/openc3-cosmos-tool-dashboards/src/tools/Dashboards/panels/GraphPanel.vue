@@ -74,15 +74,24 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import {
+  computed,
+  onMounted,
+  onUnmounted,
+  ref,
+  useTemplateRef,
+  watch,
+} from 'vue'
+import { useTheme } from 'vuetify'
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
-import panelBase from './panelBase'
-import tlmSeries from './tlmSeries'
-import { itemLabels, prefetchItemInfo } from './tlmPanel'
+import { panelProps, usePanel } from './panelBase'
+import { useTlmSeries } from './tlmSeries'
+import { itemLabels, pollType } from './tlmPanel'
 import { option } from './options'
 import { seriesColor } from './colors'
-import { baseKey, itemKey } from '../composables/tlmPoller'
+import { itemKey } from '../composables/tlmPoller'
 import { clock, formatTelemetry } from '../composables/format'
 import { limitLines } from '../limits'
 
@@ -95,359 +104,359 @@ function withAlpha(color, alpha) {
   return color
 }
 
-// Live time series of up to 6 items (tlmSeries backfills and streams them).
-// THRESHOLDS <TGT> <PKT> <ITEM> picks the item whose limits
+// Live time series of up to 6 items (useTlmSeries backfills and streams
+// them). THRESHOLDS <TGT> <PKT> <ITEM> picks the item whose limits
 // are drawn as bands (defaults to the first graphed item with limits).
 // Hovering shares the time with the dashboard's other graphs and
-// sparklines (tlmSeries setHover), and follows theirs.
-export default {
-  mixins: [panelBase, prefetchItemInfo, tlmSeries],
-  data() {
-    return {
-      lastValues: [],
-      tip: null,
-    }
-  },
-  computed: {
-    colors() {
-      return this.panel.items.map((item, index) =>
-        seriesColor(this.panel, item, index),
-      )
+// sparklines (useTlmSeries setHover), and follows theirs.
+const props = defineProps(panelProps)
+const panel = usePanel(props, {
+  pollKeys: () => pollKeys.value,
+  panelLevel: () => panel.worstOf(pollKeys.value),
+})
+const { itemInfo, timeZone } = panel
+const { hover, now, duration, series, latest, setHover } = useTlmSeries(
+  props,
+  panel,
+  {
+    // A new plot when the series start over, new data about once a second
+    seriesReset: () => {
+      lastValues.value = [...latest]
+      createPlot()
     },
-    labels() {
-      return itemLabels(this.panel.items)
-    },
-    infos() {
-      return this.panel.items.map((item) => this.itemInfo.get(item))
-    },
-    // The poller supplies each item's limits state, so the panel's status
-    // matches what other panels show for the same item
-    pollKeys() {
-      return this.panel.items.map((item) => itemKey(item, 'CONVERTED'))
-    },
-    panelLevel() {
-      return this.worstOf(this.pollKeys)
-    },
-    thresholdItem() {
-      const chosen = option(this.panel, 'THRESHOLDS')
-      if (chosen) return chosen
-      return this.panel.items.find((item) => this.itemInfo.limits(item))
-    },
-    thresholdLimits() {
-      const item = this.thresholdItem
-      return item ? this.itemInfo.limits(item) : null
-    },
-    thresholdLabel() {
-      return this.thresholdItem?.itemName
-    },
-    legend() {
-      return this.panel.items.map((item, index) => ({
-        key: this.streamKeys[index],
-        label: this.labels[index],
-        last: this.format(index, this.lastValues[index]),
-        units: this.infos[index].units,
-      }))
-    },
-  },
-  watch: {
-    // Series colors are fixed when the plot is built, so rebuild it, unless
-    // restart() already did for the same change
-    colors(colors) {
-      if (JSON.stringify(colors) !== JSON.stringify(this.plotColors)) {
-        this.createPlot()
+    seriesUpdated: () => {
+      // Only touch the legend when a newest value changed
+      if (latest.some((value, i) => value !== lastValues.value[i])) {
+        lastValues.value = [...latest]
       }
+      plot?.setData(series)
+      // The plot scrolled, so put a followed cursor back on its time
+      if (hover.time !== null) followHover()
     },
-    // Another panel's hover: move this plot's cursor and tooltip to the same
-    // time, or hide them
-    'hover.time'() {
-      this.followHover()
-    },
-    // Axis, grid and threshold colors are baked into the canvas, so a light
-    // or dark theme switch needs them read again once the page restyles
-    '$vuetify.theme.global.name': {
-      flush: 'post',
-      handler() {
-        this.palette = null
-        this.createPlot()
+  },
+)
+const theme = useTheme()
+const plotEl = useTemplateRef('plot')
+
+const lastValues = ref([])
+const tip = ref(null)
+
+// uPlot and its drawing state; none of it is rendered by Vue
+let plot = null
+let plotColors = null
+let palette = null
+let hovering = false
+let following = false
+let hoverFrame = null
+let pendingHover = null
+let resizeObserver = null
+
+const colors = computed(() =>
+  props.panel.items.map((item, index) => seriesColor(props.panel, item, index)),
+)
+const labels = computed(() => itemLabels(props.panel.items))
+const infos = computed(() =>
+  props.panel.items.map((item) => itemInfo.get(item)),
+)
+// The poller supplies each item's limits state, so the panel's status
+// matches what other panels show for the same item
+const pollKeys = computed(() =>
+  props.panel.items.map((item) => itemKey(item, 'CONVERTED')),
+)
+const thresholdItem = computed(() => {
+  const chosen = option(props.panel, 'THRESHOLDS')
+  if (chosen) return chosen
+  return props.panel.items.find((item) => itemInfo.limits(item))
+})
+const thresholdLimits = computed(() => {
+  const item = thresholdItem.value
+  return item ? itemInfo.limits(item) : null
+})
+const thresholdLabel = computed(() => thresholdItem.value?.itemName)
+const legend = computed(() =>
+  props.panel.items.map((item, index) => ({
+    key: `DECOM__TLM__${itemKey(item, pollType(item))}`,
+    label: labels.value[index],
+    last: format(index, lastValues.value[index]),
+    units: infos.value[index].units,
+  })),
+)
+
+// Watched because uPlot fixes series colors when the plot is built, so it
+// is rebuilt, unless restart() already did for the same change
+watch(colors, (value) => {
+  if (JSON.stringify(value) !== JSON.stringify(plotColors)) createPlot()
+})
+// Watched to move uPlot's cursor and tooltip to another panel's hover
+// time, or hide them; the hover is shared state with no event to hook
+watch(
+  () => hover.time,
+  () => followHover(),
+)
+// Watched because axis, grid and threshold colors are baked into the
+// canvas, so a light or dark theme switch needs them read again once the
+// page restyles
+watch(
+  () => theme.global.name.value,
+  () => {
+    palette = null
+    createPlot()
+  },
+  { flush: 'post' },
+)
+
+onMounted(() => {
+  resizeObserver = new ResizeObserver(() => resize())
+  resizeObserver.observe(plotEl.value)
+})
+onUnmounted(() => {
+  cancelAnimationFrame(hoverFrame)
+  resizeObserver?.disconnect()
+  plot?.destroy()
+})
+
+// Canvas drawing needs concrete colors, so read them from the theme
+function resolveColors() {
+  const style = getComputedStyle(plotEl.value)
+  // Vuetify theme variables are bare "r,g,b" triples
+  const onSurface =
+    style.getPropertyValue('--v-theme-on-surface').trim() || '255,255,255'
+  const themed = (alpha) => `rgba(${onSurface}, ${alpha})`
+  palette = {
+    axis: themed(0.55),
+    grid: themed(0.08),
+    critical:
+      style.getPropertyValue('--color-status-critical').trim() || '#ff3838',
+    caution:
+      style.getPropertyValue('--color-status-caution').trim() || '#fce83a',
+    label: themed(0.7),
+  }
+}
+function followHover() {
+  const u = plot
+  if (!u || hovering) return
+  const time = hover.time
+  const left = time === null ? -10 : u.valToPos(time, 'x')
+  const inside = left >= 0 && left <= u.over.clientWidth
+  following = true
+  u.setCursor({
+    left: inside ? left : -10,
+    top: inside ? u.over.clientHeight / 2 : -10,
+  })
+  following = false
+}
+function resize() {
+  const el = plotEl.value
+  if (!el || !plot) return
+  plot.setSize({
+    width: el.clientWidth,
+    height: Math.max(60, el.clientHeight),
+  })
+}
+function createPlot() {
+  const el = plotEl.value
+  // The theme is read once the panel is in the page
+  if (!palette && el) resolveColors()
+  plotColors = [...colors.value]
+  plot?.destroy()
+  plot = null
+  tip.value = null
+  if (!el) return
+  const font = "11px 'IBM Plex Sans', system-ui, sans-serif"
+  const axis = {
+    stroke: palette.axis,
+    font,
+    grid: { stroke: palette.grid, width: 1 },
+    ticks: { show: false },
+  }
+  plot = new uPlot(
+    {
+      width: el.clientWidth,
+      height: Math.max(60, el.clientHeight),
+      legend: { show: false },
+      cursor: {
+        drag: { x: false, y: false },
+        points: { size: 8 },
+        // Each series' own nearest point, since items from different
+        // packets rarely share a timestamp
+        dataIdx: (u, seriesIdx, closestIdx) =>
+          nearestIdx(u, seriesIdx, closestIdx),
+      },
+      scales: {
+        x: {
+          time: false,
+          range: () => [now.value - duration.value, now.value],
+        },
+      },
+      axes: [
+        {
+          ...axis,
+          space: 70,
+          values: (u, splits) => splits.map((s) => axisLabel(s)),
+        },
+        { ...axis, size: 48 },
+      ],
+      series: [
+        {},
+        ...props.panel.items.map((item, index) => ({
+          label: labels.value[index],
+          stroke: colors.value[index],
+          width: 2,
+          spanGaps: true,
+          points: { show: false },
+        })),
+      ],
+      hooks: {
+        drawAxes: [(u) => drawBands(u)],
+        draw: [(u) => drawThresholds(u)],
+        setCursor: [(u) => updateTip(u)],
       },
     },
-  },
-  mounted() {
-    this.resizeObserver = new ResizeObserver(() => this.resize())
-    this.resizeObserver.observe(this.$refs.plot)
-  },
-  unmounted() {
-    cancelAnimationFrame(this.hoverFrame)
-    this.resizeObserver?.disconnect()
-    this.plot?.destroy()
-  },
-  methods: {
-    // Canvas drawing needs concrete colors, so read them from the theme
-    resolveColors() {
-      const style = getComputedStyle(this.$el)
-      // Vuetify theme variables are bare "r,g,b" triples
-      const onSurface =
-        style.getPropertyValue('--v-theme-on-surface').trim() || '255,255,255'
-      const theme = (alpha) => `rgba(${onSurface}, ${alpha})`
-      this.palette = {
-        axis: theme(0.55),
-        grid: theme(0.08),
-        critical:
-          style.getPropertyValue('--color-status-critical').trim() || '#ff3838',
-        caution:
-          style.getPropertyValue('--color-status-caution').trim() || '#fce83a',
-        label: theme(0.7),
+    series,
+    el,
+  )
+  // Only the plot under the mouse shares its hover. uPlot also moves the
+  // cursor when data arrives, which mustn't count as hovering.
+  hovering = false
+  plot.over.addEventListener('mouseenter', () => {
+    hovering = true
+  })
+  plot.over.addEventListener('mouseleave', () => {
+    hovering = false
+    cancelAnimationFrame(hoverFrame)
+    hoverFrame = null
+    setHover(null)
+  })
+}
+// Nearest index with a value for a series, within a few seconds of the
+// cursor (further off, the series shows nothing there)
+function nearestIdx(u, seriesIdx, closestIdx) {
+  const ys = u.data[seriesIdx]
+  if (seriesIdx === 0 || ys[closestIdx] != null) return closestIdx
+  const xs = u.data[0]
+  const x = xs[closestIdx]
+  const reach = Math.max(5, duration.value / 40)
+  let best = closestIdx
+  let bestGap = Infinity
+  for (let i = closestIdx - 1; i >= 0 && x - xs[i] <= reach; i--) {
+    if (ys[i] != null) {
+      best = i
+      bestGap = x - xs[i]
+      break
+    }
+  }
+  for (let i = closestIdx + 1; i < xs.length; i++) {
+    const gap = xs[i] - x
+    if (gap > reach || gap >= bestGap) break
+    if (ys[i] != null) return i
+  }
+  return best
+}
+// Once per frame at most, so a fast mouse doesn't redraw every graph on
+// the dashboard for each move event
+function publishHover(time) {
+  pendingHover = time
+  hoverFrame ??= requestAnimationFrame(() => {
+    hoverFrame = null
+    if (hovering) setHover(pendingHover)
+  })
+}
+// Shaded limits bands behind the series
+function drawBands(u) {
+  const l = thresholdLimits.value
+  if (!l) return
+  const { ctx, bbox } = u
+  const y = (value) => u.valToPos(value, 'y', true)
+  const band = (from, to, color, alpha) => {
+    const top = Math.max(bbox.top, Math.min(y(from), y(to)))
+    const bottom = Math.min(bbox.top + bbox.height, Math.max(y(from), y(to)))
+    if (bottom <= top) return
+    ctx.fillStyle = withAlpha(color, alpha)
+    ctx.fillRect(bbox.left, top, bbox.width, bottom - top)
+  }
+  const max = u.scales.y.max
+  const min = u.scales.y.min
+  ctx.save()
+  if (max > l.red_high) band(l.red_high, max, palette.critical, 0.09)
+  if (max > l.yellow_high)
+    band(l.yellow_high, Math.min(max, l.red_high), palette.caution, 0.06)
+  if (min < l.yellow_low)
+    band(Math.max(min, l.red_low), l.yellow_low, palette.caution, 0.06)
+  if (min < l.red_low) band(min, l.red_low, palette.critical, 0.09)
+  ctx.restore()
+}
+// Dashed threshold lines with labels on top of the series
+function drawThresholds(u) {
+  const { ctx, bbox } = u
+  const ratio = window.devicePixelRatio || 1
+  ctx.save()
+  ctx.setLineDash([4 * ratio, 4 * ratio])
+  ctx.lineWidth = ratio
+  ctx.font = `600 ${10 * ratio}px 'IBM Plex Sans', system-ui, sans-serif`
+  ctx.textAlign = 'right'
+  for (const { level, name, value } of limitLines(thresholdLimits.value)) {
+    if (value < u.scales.y.min || value > u.scales.y.max) continue
+    const pos = Math.round(u.valToPos(value, 'y', true)) + 0.5
+    ctx.strokeStyle = palette[level]
+    ctx.beginPath()
+    ctx.moveTo(bbox.left, pos)
+    ctx.lineTo(bbox.left + bbox.width, pos)
+    ctx.stroke()
+    ctx.fillStyle = palette.label
+    ctx.fillText(
+      `${name} ${value}`,
+      bbox.left + bbox.width - 4 * ratio,
+      pos - 4 * ratio,
+    )
+  }
+  ctx.restore()
+}
+// Clock time at the tick, hh:mm:ss, or hh:mm for ranges over an hour.
+// The axis leaves off " UTC"; the tooltip still says it.
+function axisLabel(seconds) {
+  const time = clock(seconds * 1000, timeZone.value).replace(' UTC', '')
+  return duration.value > 3600 ? time.slice(0, 5) : time
+}
+function updateTip(u) {
+  const { left, idx, idxs } = u.cursor
+  const off =
+    idx === null || idx === undefined || left === undefined || left < 0
+  const time = off ? null : u.posToVal(left, 'x')
+  // The mouse is on this plot: tell the others
+  if (hovering && !following) publishHover(time)
+  if (off) {
+    tip.value = null
+    return
+  }
+  // Flips sides past 62% across and back under 38%, so it doesn't
+  // flicker from side to side around one spot
+  const width = u.over.clientWidth
+  const flip = tip.value?.flip ? left > width * 0.38 : left > width * 0.62
+  tip.value = {
+    left: left + u.over.offsetLeft,
+    flip,
+    // The cursor's time, not the nearest sample's, so it moves smoothly
+    time: clock(time * 1000, timeZone.value),
+    rows: props.panel.items.map((item, index) => {
+      const rowIdx = idxs?.[index + 1] ?? idx
+      const value = series[index + 1][rowIdx]
+      return {
+        label: labels.value[index],
+        color: colors.value[index],
+        value: format(index, value),
+        units: infos.value[index].units,
       }
-    },
-    // tlmSeries hooks: a new plot when the series start over, new data
-    // about once a second
-    seriesReset() {
-      this.lastValues = [...this.latest]
-      this.createPlot()
-    },
-    seriesUpdated() {
-      // Only touch the legend when a newest value changed
-      if (this.latest.some((value, i) => value !== this.lastValues[i])) {
-        this.lastValues = [...this.latest]
-      }
-      this.plot?.setData(this.series)
-      // The plot scrolled, so put a followed cursor back on its time
-      if (this.hover.time !== null) this.followHover()
-    },
-    followHover() {
-      const u = this.plot
-      if (!u || this.hovering) return
-      const time = this.hover.time
-      const left = time === null ? -10 : u.valToPos(time, 'x')
-      const inside = left >= 0 && left <= u.over.clientWidth
-      this.following = true
-      u.setCursor({
-        left: inside ? left : -10,
-        top: inside ? u.over.clientHeight / 2 : -10,
-      })
-      this.following = false
-    },
-    resize() {
-      const el = this.$refs.plot
-      if (!el || !this.plot) return
-      this.plot.setSize({
-        width: el.clientWidth,
-        height: Math.max(60, el.clientHeight),
-      })
-    },
-    createPlot() {
-      // The theme is read once the panel is in the page
-      if (!this.palette) this.resolveColors()
-      this.plotColors = [...this.colors]
-      this.plot?.destroy()
-      this.tip = null
-      const el = this.$refs.plot
-      if (!el) return
-      const font = "11px 'IBM Plex Sans', system-ui, sans-serif"
-      const axis = {
-        stroke: this.palette.axis,
-        font,
-        grid: { stroke: this.palette.grid, width: 1 },
-        ticks: { show: false },
-      }
-      this.plot = new uPlot(
-        {
-          width: el.clientWidth,
-          height: Math.max(60, el.clientHeight),
-          legend: { show: false },
-          cursor: {
-            drag: { x: false, y: false },
-            points: { size: 8 },
-            // Each series' own nearest point, since items from different
-            // packets rarely share a timestamp
-            dataIdx: (u, seriesIdx, closestIdx) =>
-              this.nearestIdx(u, seriesIdx, closestIdx),
-          },
-          scales: {
-            x: {
-              time: false,
-              range: () => [this.now - this.duration, this.now],
-            },
-          },
-          axes: [
-            {
-              ...axis,
-              space: 70,
-              values: (u, splits) => splits.map((s) => this.axisLabel(s)),
-            },
-            { ...axis, size: 48 },
-          ],
-          series: [
-            {},
-            ...this.panel.items.map((item, index) => ({
-              label: this.labels[index],
-              stroke: this.colors[index],
-              width: 2,
-              spanGaps: true,
-              points: { show: false },
-            })),
-          ],
-          hooks: {
-            drawAxes: [(u) => this.drawBands(u)],
-            draw: [(u) => this.drawThresholds(u)],
-            setCursor: [(u) => this.updateTip(u)],
-          },
-        },
-        this.series,
-        el,
-      )
-      // Only the plot under the mouse shares its hover. uPlot also moves the
-      // cursor when data arrives, which mustn't count as hovering.
-      this.hovering = false
-      this.plot.over.addEventListener('mouseenter', () => {
-        this.hovering = true
-      })
-      this.plot.over.addEventListener('mouseleave', () => {
-        this.hovering = false
-        cancelAnimationFrame(this.hoverFrame)
-        this.hoverFrame = null
-        this.setHover(null)
-      })
-    },
-    // Nearest index with a value for a series, within a few seconds of the
-    // cursor (further off, the series shows nothing there)
-    nearestIdx(u, seriesIdx, closestIdx) {
-      const ys = u.data[seriesIdx]
-      if (seriesIdx === 0 || ys[closestIdx] != null) return closestIdx
-      const xs = u.data[0]
-      const x = xs[closestIdx]
-      const reach = Math.max(5, this.duration / 40)
-      let best = closestIdx
-      let bestGap = Infinity
-      for (let i = closestIdx - 1; i >= 0 && x - xs[i] <= reach; i--) {
-        if (ys[i] != null) {
-          best = i
-          bestGap = x - xs[i]
-          break
-        }
-      }
-      for (let i = closestIdx + 1; i < xs.length; i++) {
-        const gap = xs[i] - x
-        if (gap > reach || gap >= bestGap) break
-        if (ys[i] != null) return i
-      }
-      return best
-    },
-    // Once per frame at most, so a fast mouse doesn't redraw every graph on
-    // the dashboard for each move event
-    publishHover(time) {
-      this.pendingHover = time
-      this.hoverFrame ??= requestAnimationFrame(() => {
-        this.hoverFrame = null
-        if (this.hovering) this.setHover(this.pendingHover)
-      })
-    },
-    // Shaded limits bands behind the series
-    drawBands(u) {
-      const l = this.thresholdLimits
-      if (!l) return
-      const { ctx, bbox } = u
-      const y = (value) => u.valToPos(value, 'y', true)
-      const band = (from, to, color, alpha) => {
-        const top = Math.max(bbox.top, Math.min(y(from), y(to)))
-        const bottom = Math.min(
-          bbox.top + bbox.height,
-          Math.max(y(from), y(to)),
-        )
-        if (bottom <= top) return
-        ctx.fillStyle = withAlpha(color, alpha)
-        ctx.fillRect(bbox.left, top, bbox.width, bottom - top)
-      }
-      const max = u.scales.y.max
-      const min = u.scales.y.min
-      ctx.save()
-      if (max > l.red_high) band(l.red_high, max, this.palette.critical, 0.09)
-      if (max > l.yellow_high)
-        band(
-          l.yellow_high,
-          Math.min(max, l.red_high),
-          this.palette.caution,
-          0.06,
-        )
-      if (min < l.yellow_low)
-        band(Math.max(min, l.red_low), l.yellow_low, this.palette.caution, 0.06)
-      if (min < l.red_low) band(min, l.red_low, this.palette.critical, 0.09)
-      ctx.restore()
-    },
-    // Dashed threshold lines with labels on top of the series
-    drawThresholds(u) {
-      const { ctx, bbox } = u
-      const ratio = window.devicePixelRatio || 1
-      ctx.save()
-      ctx.setLineDash([4 * ratio, 4 * ratio])
-      ctx.lineWidth = ratio
-      ctx.font = `600 ${10 * ratio}px 'IBM Plex Sans', system-ui, sans-serif`
-      ctx.textAlign = 'right'
-      for (const { level, name, value } of limitLines(this.thresholdLimits)) {
-        if (value < u.scales.y.min || value > u.scales.y.max) continue
-        const pos = Math.round(u.valToPos(value, 'y', true)) + 0.5
-        ctx.strokeStyle = this.palette[level]
-        ctx.beginPath()
-        ctx.moveTo(bbox.left, pos)
-        ctx.lineTo(bbox.left + bbox.width, pos)
-        ctx.stroke()
-        ctx.fillStyle = this.palette.label
-        ctx.fillText(
-          `${name} ${value}`,
-          bbox.left + bbox.width - 4 * ratio,
-          pos - 4 * ratio,
-        )
-      }
-      ctx.restore()
-    },
-    // Clock time at the tick, hh:mm:ss, or hh:mm for ranges over an hour.
-    // The axis leaves off " UTC"; the tooltip still says it.
-    axisLabel(seconds) {
-      const time = clock(seconds * 1000, this.timeZone).replace(' UTC', '')
-      return this.duration > 3600 ? time.slice(0, 5) : time
-    },
-    updateTip(u) {
-      const { left, idx, idxs } = u.cursor
-      const off =
-        idx === null || idx === undefined || left === undefined || left < 0
-      const time = off ? null : u.posToVal(left, 'x')
-      // The mouse is on this plot: tell the others
-      if (this.hovering && !this.following) this.publishHover(time)
-      if (off) {
-        this.tip = null
-        return
-      }
-      // Flips sides past 62% across and back under 38%, so it doesn't
-      // flicker from side to side around one spot
-      const width = u.over.clientWidth
-      const flip = this.tip?.flip ? left > width * 0.38 : left > width * 0.62
-      this.tip = {
-        left: left + u.over.offsetLeft,
-        flip,
-        // The cursor's time, not the nearest sample's, so it moves smoothly
-        time: clock(time * 1000, this.timeZone),
-        rows: this.panel.items.map((item, index) => {
-          const rowIdx = idxs?.[index + 1] ?? idx
-          const value = this.series[index + 1][rowIdx]
-          return {
-            label: this.labels[index],
-            color: this.colors[index],
-            value: this.format(index, value),
-            units: this.infos[index].units,
-          }
-        }),
-      }
-    },
-    // With the item's format string, else a compact number
-    format(index, value) {
-      if (typeof value !== 'number') return '--'
-      const formatString = this.infos[index]?.formatString
-      if (formatString) return formatTelemetry(value, formatString)
-      return Math.abs(value) >= 1000
-        ? value.toFixed(0)
-        : value.toPrecision(4).replace(/\.?0+$/, '')
-    },
-  },
+    }),
+  }
+}
+// With the item's format string, else a compact number
+function format(index, value) {
+  if (typeof value !== 'number') return '--'
+  const formatString = infos.value[index]?.formatString
+  if (formatString) return formatTelemetry(value, formatString)
+  return Math.abs(value) >= 1000
+    ? value.toFixed(0)
+    : value.toPrecision(4).replace(/\.?0+$/, '')
 }
 </script>
 

@@ -36,7 +36,7 @@
   </v-app-bar>
 </template>
 
-<script>
+<script setup>
 import ContextTag from './ContextTag.vue'
 import Notifications from './Notifications.vue'
 import UserMenu from './UserMenu.vue'
@@ -44,8 +44,5 @@ import UserMenu from './UserMenu.vue'
 // The app bar on mobile devices: the nav drawer button, the tool's title
 // and menus, and icon-only notifications and user menu. No clock; the scope
 // selector is in the nav drawer instead (AppNav.vue).
-export default {
-  components: { ContextTag, Notifications, UserMenu },
-  emits: ['toggle-drawer'],
-}
+defineEmits(['toggle-drawer'])
 </script>

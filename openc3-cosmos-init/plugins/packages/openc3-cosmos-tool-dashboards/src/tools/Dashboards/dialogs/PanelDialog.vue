@@ -80,105 +80,99 @@
   </v-dialog>
 </template>
 
-<script>
-import modelShow from '../mixins/modelShow'
+<script setup>
+import { computed, inject, ref, unref, watch } from 'vue'
 import DialogToolbar from '../components/DialogToolbar.vue'
 import PanelSettings from '../editor/PanelSettings.vue'
 import CodePane from '../editor/CodePane.vue'
 import { PANEL_TYPES, panelProblem } from '../panels/registry'
 import { clampRect } from '../layout'
-import { parsePanel, serializePanel } from '../dashboardParser'
+import {
+  parsePanel as parsePanelText,
+  serializePanel,
+} from '../dashboardParser'
 
 // Edits a copy of a panel, as settings or as its PANEL ... END code; the
 // dashboard only changes on Add / Apply
-export default {
-  components: { CodePane, DialogToolbar, PanelSettings },
-  mixins: [modelShow],
-  // The dashboard's grid width (COLUMNS)
-  inject: { columns: { default: 12 } },
-  props: {
-    panel: { type: Object, default: null },
-    isNew: Boolean,
+const props = defineProps({
+  panel: { type: Object, default: null },
+  isNew: Boolean,
+})
+const emit = defineEmits(['save'])
+const show = defineModel({ type: Boolean })
+// The dashboard's grid width (COLUMNS)
+const injectedColumns = inject('columns', 12)
+const columns = computed(() => unref(injectedColumns))
+
+const draft = ref(null)
+const tab = ref('settings')
+const saving = ref(false)
+const saveError = ref(null)
+
+const code = computed(() => serializePanel(draft.value))
+const problem = computed(() => (draft.value ? panelProblem(draft.value) : null))
+// Types like SCREEN give their content editor the rest of a tall dialog
+const fill = computed(() => !!PANEL_TYPES[draft.value?.type]?.fillDialog)
+
+// Kept: the parent opens the dialog through v-model, with no open event to
+// hook, and the form starts over from the props as they are at that moment
+watch(
+  show,
+  (open) => {
+    if (open && props.panel) {
+      draft.value = JSON.parse(JSON.stringify(props.panel))
+      tab.value = 'settings'
+      saveError.value = null
+    }
   },
-  emits: ['save'],
-  data() {
-    return { draft: null, tab: 'settings', saving: false, saveError: null }
-  },
-  computed: {
-    code() {
-      return serializePanel(this.draft)
-    },
-    problem() {
-      return this.draft ? panelProblem(this.draft) : null
-    },
-    // Types like SCREEN give their content editor the rest of a tall dialog
-    fill() {
-      return !!PANEL_TYPES[this.draft?.type]?.fillDialog
-    },
-  },
-  watch: {
-    modelValue: {
-      immediate: true,
-      handler(open) {
-        if (open && this.panel) {
-          this.draft = JSON.parse(JSON.stringify(this.panel))
-          this.tab = 'settings'
-          this.saveError = null
-        }
-      },
-    },
-  },
-  methods: {
-    update(change) {
-      // A new panel takes the new type's default size
-      if (this.isNew && change.type && change.type !== this.draft.type) {
-        Object.assign(this.draft, PANEL_TYPES[change.type].defaults)
-      }
-      Object.assign(this.draft, change)
-      // Grown to the new type's minimum size
-      if (change.type) {
-        Object.assign(this.draft, clampRect(this.draft, this.columns))
-      }
-    },
-    parsePanel(text) {
-      return parsePanel(text, this.columns)
-    },
-    // Code edits replace the draft but keep it the same panel
-    applyCode(panel) {
-      if (!panel) return
-      // Unsaved screen edits stay while it's the same screen
-      const sameScreen =
-        JSON.stringify(panel.screen) === JSON.stringify(this.draft.screen)
-      this.draft = {
-        ...panel,
-        uid: this.draft.uid,
-        screenText: sameScreen ? this.draft.screenText : null,
-        screenNew: sameScreen ? this.draft.screenNew : false,
-      }
-    },
-    resize({ w, h }) {
-      Object.assign(
-        this.draft,
-        clampRect({ ...this.draft, w, h }, this.columns),
-      )
-    },
-    // Type hooks run first (a SCREEN panel writes its screen file); edits
-    // that aren't part of the dashboard are dropped from the panel
-    async save() {
-      this.saving = true
-      this.saveError = null
-      try {
-        await PANEL_TYPES[this.draft.type].beforeSave?.(this.draft)
-      } catch (error) {
-        this.saveError = `Unable to save: ${error.message || error}`
-        return
-      } finally {
-        this.saving = false
-      }
-      const { screenText, screenNew, ...panel } = this.draft
-      this.$emit('save', panel)
-      this.show = false
-    },
-  },
+  { immediate: true },
+)
+
+function update(change) {
+  // A new panel takes the new type's default size
+  if (props.isNew && change.type && change.type !== draft.value.type) {
+    Object.assign(draft.value, PANEL_TYPES[change.type].defaults)
+  }
+  Object.assign(draft.value, change)
+  // Grown to the new type's minimum size
+  if (change.type) {
+    Object.assign(draft.value, clampRect(draft.value, columns.value))
+  }
+}
+function parsePanel(text) {
+  return parsePanelText(text, columns.value)
+}
+// Code edits replace the draft but keep it the same panel
+function applyCode(panel) {
+  if (!panel) return
+  // Unsaved screen edits stay while it's the same screen
+  const sameScreen =
+    JSON.stringify(panel.screen) === JSON.stringify(draft.value.screen)
+  draft.value = {
+    ...panel,
+    uid: draft.value.uid,
+    screenText: sameScreen ? draft.value.screenText : null,
+    screenNew: sameScreen ? draft.value.screenNew : false,
+  }
+}
+function resize({ w, h }) {
+  Object.assign(draft.value, clampRect({ ...draft.value, w, h }, columns.value))
+}
+// Type hooks run first (a SCREEN panel writes its screen file); edits
+// that aren't part of the dashboard are dropped from the panel
+async function save() {
+  saving.value = true
+  saveError.value = null
+  try {
+    await PANEL_TYPES[draft.value.type].beforeSave?.(draft.value)
+  } catch (error) {
+    saveError.value = `Unable to save: ${error.message || error}`
+    return
+  } finally {
+    saving.value = false
+  }
+  const { screenText, screenNew, ...panel } = draft.value
+  emit('save', panel)
+  show.value = false
 }
 </script>

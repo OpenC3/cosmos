@@ -38,96 +38,77 @@
       :playback-date-time="playbackTime"
       :show-close="false"
       inline
-      @vue:mounted="trackLevel"
     />
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, ref, useTemplateRef, watch } from 'vue'
 import { Openc3Screen } from '@openc3/vue-common/components'
-import panelBase from './panelBase'
+import { panelProps, usePanel } from './panelBase'
 import { stateToLevel, worstLevel } from '../status'
-import { loadScreen, screenKey, screenRevisions } from './screens'
+import { loadScreen, screenKey as keyOf, screenRevisions } from './screens'
 
 // A Telemetry Viewer screen inside a panel. The screen polls its own items
 // (Openc3Screen does) and follows playback. Its definition is edited from
 // the panel dialog (ScreenConfig); saving there reloads it here.
-export default {
-  components: { Openc3Screen },
-  mixins: [panelBase],
-  data() {
-    return { definition: null, error: null, screenLevel: null }
-  },
-  computed: {
-    screenKey() {
-      return screenKey(this.panel.screen)
-    },
-    revision() {
-      return screenRevisions[this.screenKey] || 0
-    },
-    message() {
-      if (!this.screenKey) return 'Pick a screen'
-      if (this.error) return this.error
-      return this.definition === null ? 'Loading screen…' : null
-    },
-    // Worst limits state of the items on the screen
-    panelLevel() {
-      return this.screenLevel
-    },
-  },
-  watch: {
-    screenKey: {
-      immediate: true,
-      handler() {
-        this.load()
-      },
-    },
-    revision() {
-      this.load()
-    },
-  },
-  methods: {
-    async load() {
-      this.definition = null
-      this.error = null
-      this.screenLevel = null
-      const key = this.screenKey
-      if (!key) return
-      try {
-        const text = await loadScreen(this.panel.screen)
-        if (key === this.screenKey) this.definition = text
-      } catch {
-        if (key === this.screenKey) this.error = `Screen ${key} not found`
-      }
-    },
-    trackLevel() {
-      this.stopLevel?.()
-      const screen = this.$refs.screen
-      if (!screen) return
-      this.stopLevel = this.$watch(
-        () =>
-          worstLevel(
-            Object.values(screen.screenValues).map((value) =>
-              stateToLevel(value?.[1]),
-            ),
-          ),
-        (level) => {
-          this.screenLevel = level
-        },
-        { immediate: true },
-      )
-    },
-    // Screen buttons that open other screens open them in Telemetry Viewer
-    showScreen(target, screen) {
-      window.open(
-        `/tools/tlmviewer/${encodeURIComponent(target)}/${encodeURIComponent(screen)}`,
-        '_blank',
-      )
-    },
-    closeScreenByName() {},
-    closeAll() {},
-  },
+const props = defineProps(panelProps)
+
+const { timeZone, isEditing, isPlayback, playbackTime } = usePanel(
+  props,
+  // Worst limits state of the items on the screen
+  { panelLevel: () => screenLevel.value },
+)
+
+const screen = useTemplateRef('screen')
+const definition = ref(null)
+const error = ref(null)
+
+const screenKey = computed(() => keyOf(props.panel.screen))
+const revision = computed(() => screenRevisions[screenKey.value] || 0)
+const message = computed(() => {
+  if (!screenKey.value) return 'Pick a screen'
+  if (error.value) return error.value
+  return definition.value === null ? 'Loading screen…' : null
+})
+// Null while no screen is shown (load() clears the definition first)
+const screenLevel = computed(() => {
+  const values = screen.value?.screenValues
+  if (!values) return null
+  return worstLevel(
+    Object.values(values).map((value) => stateToLevel(value?.[1])),
+  )
+})
+
+// Fetches the definition: the screen picked comes from the panel prop and a
+// save bumps the revision from ScreenConfig, with no event here to hook
+watch([screenKey, revision], load, { immediate: true })
+
+async function load() {
+  definition.value = null
+  error.value = null
+  const key = screenKey.value
+  if (!key) return
+  try {
+    const text = await loadScreen(props.panel.screen)
+    if (key === screenKey.value) definition.value = text
+  } catch {
+    if (key === screenKey.value) error.value = `Screen ${key} not found`
+  }
 }
+
+// Openc3Screen calls these on its $parent. Screen buttons that open other
+// screens open them in Telemetry Viewer.
+function showScreen(target, screenName) {
+  window.open(
+    `/tools/tlmviewer/${encodeURIComponent(target)}/${encodeURIComponent(screenName)}`,
+    '_blank',
+  )
+}
+function closeScreenByName() {}
+function closeAll() {}
+
+defineExpose({ showScreen, closeScreenByName, closeAll })
 </script>
 
 <style scoped>

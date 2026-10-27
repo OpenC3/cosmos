@@ -27,11 +27,9 @@
   </v-toolbar>
 </template>
 
-<script>
-export default {
-  props: {
-    title: { type: String, required: true },
-  },
-  emits: ['close'],
-}
+<script setup>
+defineProps({
+  title: { type: String, required: true },
+})
+defineEmits(['close'])
 </script>

@@ -65,8 +65,9 @@
             </label>
             <command-param-field
               :id="`${uid}-${param.name}`"
-              v-model="values[param.name]"
+              :model-value="values[param.name]"
               :param="param"
+              @update:model-value="setValue(param.name, $event)"
             />
           </div>
         </div>
@@ -153,13 +154,14 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, inject, onUnmounted, ref, watch } from 'vue'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { CriticalCmdDialog } from '@openc3/vue-common/components'
 import { CmdUtilities } from '@openc3/vue-common/util'
 import StatusSymbol from '../components/StatusSymbol.vue'
 import CommandParamField from './CommandParamField.vue'
-import panelBase from './panelBase'
+import { panelProps, usePanel } from './panelBase'
 import { option } from './options'
 import { loadCommandParams, unsetRequired as findUnset } from './commandParams'
 import { clock } from '../composables/format'
@@ -167,6 +169,7 @@ import { clock } from '../composables/format'
 const HOLD_MS = 800
 const HOLD_HAZARDOUS_MS = 2000
 
+// Module scope, so each panel's field ids stay unique
 let nextUid = 1
 
 // The script's run endpoint. The path comes from the dashboard file, so each
@@ -184,353 +187,329 @@ function scriptRunUrl(script) {
 // script (SCRIPT). CONFIRM HOLD requires holding the button (longer when
 // hazardous), CLICK sends on click and asks for confirmation when hazardous.
 // Critical commands go through the standard critical command approval dialog.
-export default {
-  components: { CommandParamField, CriticalCmdDialog, StatusSymbol },
-  // panelBase: nothing is sent while editing (isEditing) or during playback
-  mixins: [panelBase, CmdUtilities],
-  data() {
-    return {
-      uid: `cmd${nextUid++}`,
-      cmdRaw: false, // used by CmdUtilities.convertToValue
-      command: null,
-      params: [],
-      values: {},
-      loaded: false,
-      sending: false,
-      holding: false,
-      holdTimer: null,
-      status: '',
-      scriptId: null,
-      // The server's answer for the current parameters: null while checking
-      serverHazard: null,
-      hazardRequest: 0,
-      critical: { show: false, uuid: null, cmdString: null, user: null },
+// Nothing is sent while editing (isEditing) or during playback.
+const props = defineProps(panelProps)
+
+const { timeZone, isEditing, isPlayback, rect } = usePanel(props)
+const dialog = inject('dialog')
+
+// convertToValue and removeQuotes read cmdRaw and each other through this
+const cmdUtils = { cmdRaw: false, ...CmdUtilities.methods }
+const api = new OpenC3Api()
+
+const uid = `cmd${nextUid++}`
+const command = ref(null)
+const params = ref([])
+const values = ref({})
+const loaded = ref(false)
+const sending = ref(false)
+const holding = ref(false)
+const status = ref('')
+const scriptId = ref(null)
+// The server's answer for the current parameters: null while checking
+const serverHazard = ref(null)
+const critical = ref({ show: false, uuid: null, cmdString: null, user: null })
+let holdTimer = null
+let hazardTimer = null
+let hazardRequest = 0
+
+const isScript = computed(() => !!props.panel.script)
+// 2 or 3 rows tall: only the button and its status, which is too
+// small for a usable form. Commands send their PARAMETER values; DETAILS
+// shows as the button's tooltip. rect follows a resize while it's
+// dragged, so the layout switches live.
+const compact = computed(() => rect.value.h <= 3)
+// Scripts, and 2-row panels that only fit a slim button
+const slim = computed(() => isScript.value || rect.value.h <= 2)
+const buttonTitle = computed(() => (compact.value ? details.value : undefined))
+const hidden = computed(() => option(props.panel, 'HIDE'))
+// Parameters with a field in the panel; hidden ones still send their
+// preset or default
+const shownParams = computed(() =>
+  params.value.filter((param) => !hidden.value.includes(param.name)),
+)
+// Parameters per line from the panel's grid width: 1 up to 3 columns,
+// 2 up to 6, 3 up to 9, 4 up to 12. The CSS still drops to fewer when
+// fields would get too narrow, e.g. on phones.
+const columns = computed(() =>
+  Math.max(1, Math.min(4, Math.ceil(rect.value.w / 3))),
+)
+// Every label gets the longest name's width so the fields line up
+const labelChars = computed(() =>
+  Math.max(4, ...shownParams.value.map((p) => p.name.length)),
+)
+// Required parameters without a value that the panel has no field for:
+// all of them in a compact panel, otherwise the hidden ones
+const unsetRequired = computed(() =>
+  findUnset(params.value, values.value, compact.value ? null : hidden.value),
+)
+const statusText = computed(() => {
+  if (isPlayback.value) return 'Off during playback'
+  if (unsetRequired.value.length) {
+    const fix = compact.value
+      ? 'make the panel taller to set it, or preset it'
+      : 'preset or unhide it in the panel settings'
+    return `Needs ${unsetRequired.value.join(', ')}: ${fix}`
+  }
+  return status.value
+})
+const icon = computed(() => (isScript.value ? 'mdi-play' : 'mdi-send-outline'))
+const confirm = computed(() => option(props.panel, 'CONFIRM'))
+const details = computed(() => option(props.panel, 'DETAILS'))
+// The server decides (get_cmd_hazardous covers the command, hazardous
+// states and anything else it knows); until it answers, the definition
+const hazardous = computed(() => {
+  if (isScript.value) return false
+  return serverHazard.value ?? hazardousFromDefinition()
+})
+const checking = computed(
+  () => !isScript.value && !!command.value && serverHazard.value === null,
+)
+// Loaded, its hazard known, not editing and not in playback
+const ready = computed(
+  () =>
+    loaded.value &&
+    !checking.value &&
+    !isEditing.value &&
+    !isPlayback.value &&
+    !unsetRequired.value.length,
+)
+const holdMs = computed(() => (hazardous.value ? HOLD_HAZARDOUS_MS : HOLD_MS))
+const holdLabel = computed(() => {
+  const verb = isScript.value ? 'run' : 'send'
+  if (checking.value) return 'Checking…'
+  if (sending.value) return isScript.value ? 'Starting…' : 'Sending…'
+  if (holding.value) return 'Keep holding…'
+  return hazardous.value ? `Hold 2 s to ${verb}` : `Hold to ${verb}`
+})
+
+// The command and presets come from the panel prop (the panel dialog
+// replaces them), with no event here to hook: reload the definition, and
+// reset the values to the presets. The command is replaced whole when it
+// changes, never edited in place.
+watch(() => [props.panel.command, props.panel.script], load)
+watch(() => props.panel.parameters, applyDefaults, { deep: true })
+
+load()
+
+onUnmounted(() => {
+  clearTimeout(holdTimer)
+  clearTimeout(hazardTimer)
+})
+
+async function load() {
+  loaded.value = false
+  params.value = []
+  command.value = null
+  status.value = ''
+  scriptId.value = null
+  if (isScript.value) {
+    loaded.value = true
+    return
+  }
+  if (!props.panel.command) return
+  const { targetName, commandName } = props.panel.command
+  try {
+    const loadedParams = await loadCommandParams(api, targetName, commandName)
+    command.value = loadedParams.command
+    params.value = loadedParams.params
+    applyDefaults()
+    loaded.value = true
+  } catch (error) {
+    status.value = `Unable to load ${targetName} ${commandName}: ${error.message || error}`
+  }
+}
+
+function applyDefaults() {
+  const defaults = {}
+  for (const param of params.value) {
+    const preset = props.panel.parameters[param.name]
+    if (preset !== undefined) {
+      defaults[param.name] = preset
+    } else if (param.required) {
+      defaults[param.name] = ''
+    } else if (param.states) {
+      defaults[param.name] =
+        Object.keys(param.states).find(
+          (s) => param.states[s].value === param.default,
+        ) || ''
+    } else {
+      defaults[param.name] =
+        param.default === undefined || param.default === null
+          ? ''
+          : String(param.default)
     }
-  },
-  computed: {
-    isScript() {
-      return !!this.panel.script
-    },
-    // 2 or 3 rows tall: only the button and its status, which is too
-    // small for a usable form. Commands send their PARAMETER values; DETAILS
-    // shows as the button's tooltip. rect follows a resize while it's
-    // dragged, so the layout switches live.
-    compact() {
-      return this.rect.h <= 3
-    },
-    // Scripts, and 2-row panels that only fit a slim button
-    slim() {
-      return this.isScript || this.rect.h <= 2
-    },
-    buttonTitle() {
-      return this.compact ? this.details : undefined
-    },
-    hidden() {
-      return option(this.panel, 'HIDE')
-    },
-    // Parameters with a field in the panel; hidden ones still send their
-    // preset or default
-    shownParams() {
-      return this.params.filter((param) => !this.hidden.includes(param.name))
-    },
-    // Parameters per line from the panel's grid width: 1 up to 3 columns,
-    // 2 up to 6, 3 up to 9, 4 up to 12. The CSS still drops to fewer when
-    // fields would get too narrow, e.g. on phones.
-    columns() {
-      return Math.max(1, Math.min(4, Math.ceil(this.rect.w / 3)))
-    },
-    // Every label gets the longest name's width so the fields line up
-    labelChars() {
-      return Math.max(4, ...this.shownParams.map((p) => p.name.length))
-    },
-    // Required parameters without a value that the panel has no field for:
-    // all of them in a compact panel, otherwise the hidden ones
-    unsetRequired() {
-      return findUnset(
-        this.params,
-        this.values,
-        this.compact ? null : this.hidden,
+  }
+  values.value = defaults
+  valuesChanged()
+}
+
+function setValue(name, value) {
+  values.value[name] = value
+  valuesChanged()
+}
+
+// Ask the server whether these values make the command hazardous, shortly
+// after they stop changing
+function valuesChanged() {
+  serverHazard.value = null
+  clearTimeout(hazardTimer)
+  hazardTimer = setTimeout(checkHazard, 300)
+}
+
+function paramList() {
+  const list = {}
+  for (const param of params.value) {
+    const value = values.value[param.name]
+    if (value === '' || value === undefined) {
+      if (param.required) throw new Error(`${param.name} is required`)
+      continue
+    }
+    if (param.states || param.type === 'STRING' || param.type === 'BLOCK') {
+      // States send their name, strings are sent as typed
+      list[param.name] = param.states
+        ? value
+        : cmdUtils.removeQuotes(String(value))
+    } else {
+      list[param.name] = cmdUtils.convertToValue({
+        val: String(value),
+        type: param.type,
+      })
+    }
+  }
+  return list
+}
+
+async function checkHazard() {
+  if (isScript.value || !command.value) return
+  const { targetName, commandName } = props.panel.command
+  const request = ++hazardRequest
+  let result
+  try {
+    result = !!(await api.get_cmd_hazardous(
+      targetName,
+      commandName,
+      paramList(),
+      { 'Ignore-Errors': '500' },
+    ))
+  } catch {
+    // A required value is missing or the check failed: go by the
+    // definition rather than blocking sends
+    result = hazardousFromDefinition()
+  }
+  // Ignore an answer for values that have since changed
+  if (request === hazardRequest) serverHazard.value = result
+}
+
+function hazardousFromDefinition() {
+  if (command.value?.hazardous) return true
+  return params.value.some(
+    (param) =>
+      param.states && param.states[values.value[param.name]]?.hazardous,
+  )
+}
+
+function startHold(event) {
+  if (event.repeat || holding.value || sending.value || !ready.value) return
+  holding.value = true
+  holdTimer = setTimeout(() => {
+    holding.value = false
+    send(hazardous.value)
+  }, holdMs.value)
+}
+
+function cancelHold() {
+  if (!holding.value) return
+  clearTimeout(holdTimer)
+  holding.value = false
+  status.value = `Released early, ${isScript.value ? 'script not started' : 'command not sent'}`
+}
+
+async function clickSend() {
+  if (hazardous.value) {
+    const description = command.value?.hazardous_description
+    try {
+      await dialog.confirm(
+        `${props.panel.command.targetName} ${props.panel.command.commandName} is hazardous.` +
+          (description ? ` ${description}.` : '') +
+          ' Send it?',
+        { okText: 'Send', cancelText: 'Cancel', okClass: 'error' },
       )
-    },
-    statusText() {
-      if (this.isPlayback) return 'Off during playback'
-      if (this.unsetRequired.length) {
-        const fix = this.compact
-          ? 'make the panel taller to set it, or preset it'
-          : 'preset or unhide it in the panel settings'
-        return `Needs ${this.unsetRequired.join(', ')}: ${fix}`
-      }
-      return this.status
-    },
-    icon() {
-      return this.isScript ? 'mdi-play' : 'mdi-send-outline'
-    },
-    confirm() {
-      return option(this.panel, 'CONFIRM')
-    },
-    details() {
-      return option(this.panel, 'DETAILS')
-    },
-    // The server decides (get_cmd_hazardous covers the command, hazardous
-    // states and anything else it knows); until it answers, the definition
-    hazardous() {
-      if (this.isScript) return false
-      return this.serverHazard ?? this.hazardousFromDefinition()
-    },
-    checking() {
-      return !this.isScript && !!this.command && this.serverHazard === null
-    },
-    // Loaded, its hazard known, not editing and not in playback
-    ready() {
-      return (
-        this.loaded &&
-        !this.checking &&
-        !this.isEditing &&
-        !this.isPlayback &&
-        !this.unsetRequired.length
-      )
-    },
-    holdMs() {
-      return this.hazardous ? HOLD_HAZARDOUS_MS : HOLD_MS
-    },
-    holdLabel() {
-      const verb = this.isScript ? 'run' : 'send'
-      if (this.checking) return 'Checking…'
-      if (this.sending) return this.isScript ? 'Starting…' : 'Sending…'
-      if (this.holding) return 'Keep holding…'
-      return this.hazardous ? `Hold 2 s to ${verb}` : `Hold to ${verb}`
-    },
-  },
-  watch: {
-    // Replaced whole when the command changes, never edited in place
-    'panel.command'() {
-      this.load()
-    },
-    'panel.script'() {
-      this.load()
-    },
-    'panel.parameters': {
-      deep: true,
-      handler() {
-        this.applyDefaults()
-      },
-    },
-    // Ask the server whether these values make the command hazardous, shortly
-    // after they stop changing
-    values: {
-      deep: true,
-      handler() {
-        this.serverHazard = null
-        clearTimeout(this.hazardTimer)
-        this.hazardTimer = setTimeout(() => this.checkHazard(), 300)
-      },
-    },
-  },
-  created() {
-    this.api = new OpenC3Api()
-    this.load()
-  },
-  unmounted() {
-    clearTimeout(this.holdTimer)
-    clearTimeout(this.hazardTimer)
-  },
-  methods: {
-    async load() {
-      this.loaded = false
-      this.params = []
-      this.command = null
-      this.status = ''
-      this.scriptId = null
-      if (this.isScript) {
-        this.loaded = true
-        return
-      }
-      if (!this.panel.command) return
-      const { targetName, commandName } = this.panel.command
-      try {
-        const { command, params } = await loadCommandParams(
-          this.api,
-          targetName,
-          commandName,
-        )
-        this.command = command
-        this.params = params
-        this.applyDefaults()
-        this.loaded = true
-      } catch (error) {
-        this.status = `Unable to load ${targetName} ${commandName}: ${error.message || error}`
-      }
-    },
-    applyDefaults() {
-      const values = {}
-      for (const param of this.params) {
-        const preset = this.panel.parameters[param.name]
-        if (preset !== undefined) {
-          values[param.name] = preset
-        } else if (param.required) {
-          values[param.name] = ''
-        } else if (param.states) {
-          values[param.name] =
-            Object.keys(param.states).find(
-              (s) => param.states[s].value === param.default,
-            ) || ''
-        } else {
-          values[param.name] =
-            param.default === undefined || param.default === null
-              ? ''
-              : String(param.default)
-        }
-      }
-      this.values = values
-    },
-    paramList() {
-      const list = {}
-      for (const param of this.params) {
-        const value = this.values[param.name]
-        if (value === '' || value === undefined) {
-          if (param.required) throw new Error(`${param.name} is required`)
-          continue
-        }
-        if (param.states || param.type === 'STRING' || param.type === 'BLOCK') {
-          // States send their name, strings are sent as typed
-          list[param.name] = param.states
-            ? value
-            : this.removeQuotes(String(value))
-        } else {
-          list[param.name] = this.convertToValue({
-            val: String(value),
-            type: param.type,
-          })
-        }
-      }
-      return list
-    },
-    async checkHazard() {
-      if (this.isScript || !this.command) return
-      const { targetName, commandName } = this.panel.command
-      const request = ++this.hazardRequest
-      let hazardous
-      try {
-        hazardous = !!(await this.api.get_cmd_hazardous(
-          targetName,
-          commandName,
-          this.paramList(),
-          { 'Ignore-Errors': '500' },
-        ))
-      } catch {
-        // A required value is missing or the check failed: go by the
-        // definition rather than blocking sends
-        hazardous = this.hazardousFromDefinition()
-      }
-      // Ignore an answer for values that have since changed
-      if (request === this.hazardRequest) this.serverHazard = hazardous
-    },
-    hazardousFromDefinition() {
-      if (this.command?.hazardous) return true
-      return this.params.some(
-        (param) =>
-          param.states && param.states[this.values[param.name]]?.hazardous,
-      )
-    },
-    startHold(event) {
-      if (event.repeat || this.holding || this.sending || !this.ready) return
-      this.holding = true
-      this.holdTimer = setTimeout(() => {
-        this.holding = false
-        this.send(this.hazardous)
-      }, this.holdMs)
-    },
-    cancelHold() {
-      if (!this.holding) return
-      clearTimeout(this.holdTimer)
-      this.holding = false
-      this.status = `Released early, ${this.isScript ? 'script not started' : 'command not sent'}`
-    },
-    async clickSend() {
-      if (this.hazardous) {
-        const description = this.command?.hazardous_description
-        try {
-          await this.$dialog.confirm(
-            `${this.panel.command.targetName} ${this.panel.command.commandName} is hazardous.` +
-              (description ? ` ${description}.` : '') +
-              ' Send it?',
-            { okText: 'Send', cancelText: 'Cancel', okClass: 'error' },
-          )
-        } catch {
-          this.status = 'Hazardous command not sent'
-          return
-        }
-      }
-      this.send(this.hazardous)
-    },
-    send(confirmedHazardous) {
-      return this.isScript
-        ? this.runScript()
-        : this.sendCommand(confirmedHazardous)
-    },
-    async runScript() {
-      this.sending = true
-      this.scriptId = null
-      try {
-        const response = await Api.post(scriptRunUrl(this.panel.script), {
-          data: { environment: [] },
-        })
-        this.scriptId = response.data
-        this.status = `Started ${clock(Date.now(), this.timeZone)}`
-        if (option(this.panel, 'OPEN_SCRIPT')) {
-          window.open(`/tools/scriptrunner/${this.scriptId}`, '_blank')
-        }
-      } catch (error) {
-        this.status = `Error: ${error.response?.data?.message || error.message || error}`
-      } finally {
-        this.sending = false
-      }
-    },
-    async sendCommand(confirmedHazardous) {
-      const { targetName, commandName } = this.panel.command
-      let params
-      try {
-        params = this.paramList()
-      } catch (error) {
-        this.status = error.message
-        return
-      }
-      this.sending = true
-      const method = confirmedHazardous ? 'cmd_no_hazardous_check' : 'cmd'
-      try {
-        await this.api[method](targetName, commandName, params, {
-          'Ignore-Errors': '428 500',
-        })
-        this.status = `Sent ${targetName} ${commandName} at ${clock(Date.now(), this.timeZone)}`
-      } catch (error) {
-        this.handleError(error)
-      } finally {
-        this.sending = false
-      }
-    },
-    handleError(error) {
-      const message = error.message || String(error)
-      if (message.includes('CriticalCmdError')) {
-        const vars = error.object?.data?.instance_variables || {}
-        this.critical = {
-          show: true,
-          uuid: vars['@uuid'],
-          cmdString: vars['@command']?.cmd_string,
-          user: vars['@command']?.username,
-        }
-        this.status = 'Critical command queued for approval'
-      } else if (message.includes('is Hazardous')) {
-        // The server knows about hazards we didn't (e.g. a hazardous range)
-        // serverHazard too, as it wins over the definition until the
-        // values change
-        this.status = `Hazardous: ${message}. Confirm and send again.`
-        if (this.command) this.command.hazardous = true
-        this.serverHazard = true
-      } else {
-        this.status = `Error: ${message}`
-      }
-    },
-  },
+    } catch {
+      status.value = 'Hazardous command not sent'
+      return
+    }
+  }
+  send(hazardous.value)
+}
+
+function send(confirmedHazardous) {
+  return isScript.value ? runScript() : sendCommand(confirmedHazardous)
+}
+
+async function runScript() {
+  sending.value = true
+  scriptId.value = null
+  try {
+    const response = await Api.post(scriptRunUrl(props.panel.script), {
+      data: { environment: [] },
+    })
+    scriptId.value = response.data
+    status.value = `Started ${clock(Date.now(), timeZone.value)}`
+    if (option(props.panel, 'OPEN_SCRIPT')) {
+      window.open(`/tools/scriptrunner/${scriptId.value}`, '_blank')
+    }
+  } catch (error) {
+    status.value = `Error: ${error.response?.data?.message || error.message || error}`
+  } finally {
+    sending.value = false
+  }
+}
+
+async function sendCommand(confirmedHazardous) {
+  const { targetName, commandName } = props.panel.command
+  let list
+  try {
+    list = paramList()
+  } catch (error) {
+    status.value = error.message
+    return
+  }
+  sending.value = true
+  const method = confirmedHazardous ? 'cmd_no_hazardous_check' : 'cmd'
+  try {
+    await api[method](targetName, commandName, list, {
+      'Ignore-Errors': '428 500',
+    })
+    status.value = `Sent ${targetName} ${commandName} at ${clock(Date.now(), timeZone.value)}`
+  } catch (error) {
+    handleError(error)
+  } finally {
+    sending.value = false
+  }
+}
+
+function handleError(error) {
+  const message = error.message || String(error)
+  if (message.includes('CriticalCmdError')) {
+    const vars = error.object?.data?.instance_variables || {}
+    critical.value = {
+      show: true,
+      uuid: vars['@uuid'],
+      cmdString: vars['@command']?.cmd_string,
+      user: vars['@command']?.username,
+    }
+    status.value = 'Critical command queued for approval'
+  } else if (message.includes('is Hazardous')) {
+    // The server knows about hazards we didn't (e.g. a hazardous range)
+    // serverHazard too, as it wins over the definition until the
+    // values change
+    status.value = `Hazardous: ${message}. Confirm and send again.`
+    if (command.value) command.value.hazardous = true
+    serverHazard.value = true
+  } else {
+    status.value = `Error: ${message}`
+  }
 }
 </script>
 

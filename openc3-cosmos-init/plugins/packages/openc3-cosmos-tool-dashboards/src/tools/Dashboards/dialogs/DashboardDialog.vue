@@ -79,8 +79,8 @@
   </v-dialog>
 </template>
 
-<script>
-import modelShow from '../mixins/modelShow'
+<script setup>
+import { computed, ref, watch } from 'vue'
 import DialogToolbar from '../components/DialogToolbar.vue'
 import { targetNames } from '../composables/targets'
 import { GRID_COLUMNS } from '../layout'
@@ -88,63 +88,61 @@ import { GRID_COLUMNS } from '../layout'
 // Where a dashboard is saved: its target and file name, and for a new one its
 // grid (COLUMNS). Used to create a new dashboard ('new') or copy an existing
 // one ('duplicate').
-export default {
-  components: { DialogToolbar },
-  mixins: [modelShow],
-  props: {
-    mode: { type: String, default: 'new' },
-    // Target and name filled in when the dialog opens
-    initialTarget: { type: String, default: null },
-    initialName: { type: String, default: '' },
-    // 'TARGET/NAME' of every existing dashboard, to prevent overwrites
-    existing: { type: Array, default: () => [] },
-  },
-  emits: ['submit'],
-  data() {
-    return { targets: [], target: null, name: '', columns: GRID_COLUMNS }
-  },
-  computed: {
-    heading() {
-      return this.mode === 'duplicate' ? 'Duplicate Dashboard' : 'New Dashboard'
-    },
-    error() {
-      if (!this.name) return ''
-      if (!/^[A-Za-z0-9_-]+$/.test(this.name))
-        return 'Use letters, numbers, - and _ only'
-      if (this.existing.includes(`${this.target}/${this.name.toUpperCase()}`)) {
-        return 'A dashboard with this name already exists'
-      }
-      return ''
-    },
-  },
-  watch: {
-    async modelValue(open) {
-      if (!open) return
-      if (this.initialTarget) this.target = this.initialTarget
-      this.name = this.initialName
-      this.columns = GRID_COLUMNS
-      // Fetched the first time it opens (cached after that)
-      if (!this.targets.length) {
-        try {
-          this.targets = await targetNames()
-        } catch {
-          return
-        }
-      }
-      this.target ||= this.targets[0] || null
-    },
-  },
-  methods: {
-    submit() {
-      if (this.error || !this.name || !this.target) return
-      this.$emit('submit', {
-        target: this.target,
-        name: this.name.toUpperCase(),
-        columns: this.columns,
-      })
-      this.name = ''
-      this.show = false
-    },
-  },
+const props = defineProps({
+  mode: { type: String, default: 'new' },
+  // Target and name filled in when the dialog opens
+  initialTarget: { type: String, default: null },
+  initialName: { type: String, default: '' },
+  // 'TARGET/NAME' of every existing dashboard, to prevent overwrites
+  existing: { type: Array, default: () => [] },
+})
+const emit = defineEmits(['submit'])
+const show = defineModel({ type: Boolean })
+
+const targets = ref([])
+const target = ref(null)
+const name = ref('')
+const columns = ref(GRID_COLUMNS)
+
+const heading = computed(() =>
+  props.mode === 'duplicate' ? 'Duplicate Dashboard' : 'New Dashboard',
+)
+const error = computed(() => {
+  if (!name.value) return ''
+  if (!/^[A-Za-z0-9_-]+$/.test(name.value))
+    return 'Use letters, numbers, - and _ only'
+  if (props.existing.includes(`${target.value}/${name.value.toUpperCase()}`)) {
+    return 'A dashboard with this name already exists'
+  }
+  return ''
+})
+
+// Kept: the parent opens the dialog through v-model, with no open event to
+// hook, and the form starts over from the props as they are at that moment
+watch(show, async (open) => {
+  if (!open) return
+  if (props.initialTarget) target.value = props.initialTarget
+  name.value = props.initialName
+  columns.value = GRID_COLUMNS
+  // Fetched the first time it opens (cached after that)
+  if (!targets.value.length) {
+    try {
+      targets.value = await targetNames()
+    } catch {
+      return
+    }
+  }
+  target.value ||= targets.value[0] || null
+})
+
+function submit() {
+  if (error.value || !name.value || !target.value) return
+  emit('submit', {
+    target: target.value,
+    name: name.value.toUpperCase(),
+    columns: columns.value,
+  })
+  name.value = ''
+  show.value = false
 }
 </script>

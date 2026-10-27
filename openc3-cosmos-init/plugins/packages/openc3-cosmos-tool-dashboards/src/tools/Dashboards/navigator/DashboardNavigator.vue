@@ -17,6 +17,7 @@
     :fullscreen="fullscreen"
     :max-width="fullscreen ? undefined : 1040"
     scrollable
+    @after-leave="reset"
   >
     <v-card
       class="dashboards-root d-flex flex-column"
@@ -25,7 +26,7 @@
     >
       <div class="d-flex align-center ga-3 pa-3 border-b">
         <v-text-field
-          v-model="search"
+          :model-value="search"
           placeholder="Search all dashboards"
           prepend-inner-icon="mdi-magnify"
           density="comfortable"
@@ -37,6 +38,7 @@
           class="search"
           data-test="navigator-search"
           @keydown="onKey"
+          @update:model-value="setSearch"
         />
         <v-btn
           v-if="!lean"
@@ -201,8 +203,8 @@
   </v-dialog>
 </template>
 
-<script>
-import modelShow from '../mixins/modelShow'
+<script setup>
+import { computed, ref, shallowRef, useTemplateRef } from 'vue'
 import NavigatorRow from './NavigatorRow.vue'
 import { navigator, toggleStar } from './navigatorStore'
 
@@ -214,217 +216,196 @@ const ROW_HEIGHT = 56
 // in a target (TARGET/dashboards/name.txt). Search covers every folder, and
 // the folders then count the matches. Rows scroll virtually and fetch their
 // titles as they're shown, so hundreds of dashboards stay quick.
-export default {
-  components: { NavigatorRow },
-  mixins: [modelShow],
-  props: {
-    dashboards: { type: Array, default: () => [] },
-    currentKey: { type: String, default: null },
-    fullscreen: Boolean,
-    // Phones: just find and open dashboards, no creating or duplicating.
-    // The folders and the list take turns on the screen.
-    lean: Boolean,
+const props = defineProps({
+  dashboards: { type: Array, default: () => [] },
+  currentKey: { type: String, default: null },
+  fullscreen: Boolean,
+  // Phones: just find and open dashboards, no creating or duplicating.
+  // The folders and the list take turns on the screen.
+  lean: Boolean,
+})
+const emit = defineEmits(['open', 'new', 'duplicate'])
+const show = defineModel({ type: Boolean })
+
+const scroller = useTemplateRef('scroller')
+const search = ref('')
+// 'starred', 'recent', 'all' or 'folder:TARGET'; null until chosen
+const view = ref(null)
+// Row the arrow keys are on, for the rows it was moved on: any new rows
+// start back at the top
+const cursor = shallowRef({ rows: null, index: 0 })
+const highlight = computed(() =>
+  cursor.value.rows === rows.value ? cursor.value.index : 0,
+)
+
+const query = computed(() => (search.value || '').trim().toLowerCase())
+// Dashboards matching the search, in name order
+const matches = computed(() => {
+  const words = query.value.split(/\s+/).filter(Boolean)
+  const keys = words.length
+    ? props.dashboards.filter((key) => {
+        const haystack =
+          `${key} ${navigator.info[key]?.title || ''}`.toLowerCase()
+        return words.every((word) => haystack.includes(word))
+      })
+    : props.dashboards
+  return [...keys].sort()
+})
+// Keeps starred and recent in their own orders
+const starred = computed(() => {
+  const keys = new Set(matches.value)
+  return navigator.starred.filter((key) => keys.has(key))
+})
+const recent = computed(() => {
+  const keys = new Set(matches.value)
+  return navigator.recent.filter((key) => keys.has(key))
+})
+const places = computed(() => [
+  {
+    value: 'starred',
+    label: 'Starred',
+    icon: 'mdi-star-outline',
+    count: starred.value.length,
   },
-  emits: ['open', 'new', 'duplicate'],
-  setup() {
-    return { ROW_HEIGHT }
+  {
+    value: 'recent',
+    label: 'Recent',
+    icon: 'mdi-history',
+    count: recent.value.length,
   },
-  data() {
+  {
+    value: 'all',
+    label: 'All dashboards',
+    icon: 'mdi-view-dashboard-outline',
+    count: matches.value.length,
+  },
+])
+// Every target with dashboards, counting the matches
+const folders = computed(() => {
+  const counts = {}
+  for (const key of props.dashboards) counts[key.split('/')[0]] = 0
+  for (const key of matches.value) counts[key.split('/')[0]]++
+  return Object.keys(counts)
+    .sort()
+    .map((target) => ({ target, count: counts[target] }))
+})
+const defaultView = computed(() => {
+  if (navigator.starred.length) return 'starred'
+  if (props.currentKey) return `folder:${props.currentKey.split('/')[0]}`
+  return 'all'
+})
+// Searching shows every match unless a folder is picked
+const activeView = computed(() => {
+  if (view.value) return view.value
+  if (query.value) return 'all'
+  if (props.lean) return null
+  return defaultView.value
+})
+const rows = computed(() => {
+  const active = activeView.value
+  if (active === 'starred') return starred.value
+  if (active === 'recent') return recent.value
+  if (active?.startsWith('folder:')) {
+    const prefix = `${active.slice(7)}/`
+    return matches.value.filter((key) => key.startsWith(prefix))
+  }
+  return matches.value
+})
+const heading = computed(() => {
+  const active = activeView.value
+  if (active?.startsWith('folder:')) {
+    const target = active.slice(7)
     return {
-      search: '',
-      // 'starred', 'recent', 'all' or 'folder:TARGET'; null until chosen
-      view: null,
-      // Row the arrow keys are on
-      highlight: 0,
+      icon: 'mdi-folder-open-outline',
+      label: target,
+      path: `${target}/dashboards/`,
+      class: 'mono',
     }
-  },
-  computed: {
-    starredKeys() {
-      return new Set(navigator.starred)
-    },
-    query() {
-      return (this.search || '').trim().toLowerCase()
-    },
-    // Dashboards matching the search, in name order
-    matches() {
-      const words = this.query.split(/\s+/).filter(Boolean)
-      const keys = words.length
-        ? this.dashboards.filter((key) => {
-            const haystack =
-              `${key} ${navigator.info[key]?.title || ''}`.toLowerCase()
-            return words.every((word) => haystack.includes(word))
-          })
-        : this.dashboards
-      return [...keys].sort()
-    },
-    // Keeps starred and recent in their own orders
-    starred() {
-      const keys = new Set(this.matches)
-      return navigator.starred.filter((key) => keys.has(key))
-    },
-    recent() {
-      const keys = new Set(this.matches)
-      return navigator.recent.filter((key) => keys.has(key))
-    },
-    places() {
-      return [
-        {
-          value: 'starred',
-          label: 'Starred',
-          icon: 'mdi-star-outline',
-          count: this.starred.length,
-        },
-        {
-          value: 'recent',
-          label: 'Recent',
-          icon: 'mdi-history',
-          count: this.recent.length,
-        },
-        {
-          value: 'all',
-          label: 'All dashboards',
-          icon: 'mdi-view-dashboard-outline',
-          count: this.matches.length,
-        },
-      ]
-    },
-    // Every target with dashboards, counting the matches
-    folders() {
-      const counts = {}
-      for (const key of this.dashboards) counts[key.split('/')[0]] = 0
-      for (const key of this.matches) counts[key.split('/')[0]]++
-      return Object.keys(counts)
-        .sort()
-        .map((target) => ({ target, count: counts[target] }))
-    },
-    // Searching shows every match unless a folder is picked
-    activeView() {
-      if (this.view) return this.view
-      if (this.query) return 'all'
-      if (this.lean) return null
-      return this.defaultView
-    },
-    defaultView() {
-      if (navigator.starred.length) return 'starred'
-      if (this.currentKey) return `folder:${this.currentKey.split('/')[0]}`
-      return 'all'
-    },
-    rows() {
-      const view = this.activeView
-      if (view === 'starred') return this.starred
-      if (view === 'recent') return this.recent
-      if (view?.startsWith('folder:')) {
-        const prefix = `${view.slice(7)}/`
-        return this.matches.filter((key) => key.startsWith(prefix))
-      }
-      return this.matches
-    },
-    heading() {
-      const view = this.activeView
-      if (view?.startsWith('folder:')) {
-        const target = view.slice(7)
-        return {
-          icon: 'mdi-folder-open-outline',
-          label: target,
-          path: `${target}/dashboards/`,
-          class: 'mono',
-        }
-      }
-      const place = this.places.find((p) => p.value === view)
-      if (view === 'all' && this.query) {
-        return { icon: 'mdi-magnify', label: 'Search results' }
-      }
-      return { icon: place?.icon, label: place?.label }
-    },
-    empty() {
-      if (!this.dashboards.length) {
-        return {
-          icon: 'mdi-view-dashboard-outline',
-          text: 'No dashboards yet.',
-        }
-      }
-      if (this.query) {
-        return {
-          icon: 'mdi-magnify',
-          text: `No dashboards match "${this.search}"`,
-        }
-      }
-      if (this.activeView === 'starred') {
-        return {
-          icon: 'mdi-star-outline',
-          text: 'Star a dashboard to keep it here.',
-        }
-      }
-      return { icon: 'mdi-history', text: 'Dashboards you open show here.' }
-    },
-    // Phones show the folders, or the list once one's picked or searching
-    showPlaces() {
-      return !this.lean || this.activeView === null
-    },
-    showRows() {
-      return !this.lean || this.activeView !== null
-    },
-  },
-  watch: {
-    modelValue(open) {
-      if (open) {
-        this.search = ''
-        if (this.lean) this.view = null
-      }
-    },
-    // A new search starts from every match; the folders narrow it
-    query(query, before) {
-      if (!before && query) this.view = null
-    },
-    rows() {
-      this.highlight = 0
-    },
-  },
-  methods: {
-    toggleStar,
-    open(key) {
-      this.$emit('open', key)
-      this.show = false
-    },
-    openFolder(key) {
-      this.view = `folder:${key.split('/')[0]}`
-    },
-    back() {
-      this.view = null
-      this.search = ''
-    },
-    onKey(event) {
-      const last = this.rows.length - 1
-      if (event.key === 'Enter') {
-        const key = this.rows[this.highlight]
-        if (key) this.open(key)
-        return
-      }
-      const step = { ArrowDown: 1, ArrowUp: -1 }[event.key]
-      if (!step || last < 0) return
-      event.preventDefault()
-      this.highlight = Math.min(last, Math.max(0, this.highlight + step))
-      this.reveal(this.highlight)
-    },
-    // Scroll just enough to show the row, rather than to the top
-    reveal(index) {
-      const box = this.$refs.scroller?.$el
-      if (!box) return
-      const top = index * ROW_HEIGHT
-      if (top < box.scrollTop) box.scrollTop = top
-      else if (top + ROW_HEIGHT > box.scrollTop + box.clientHeight) {
-        box.scrollTop = top + ROW_HEIGHT - box.clientHeight
-      }
-    },
-    create() {
-      this.$emit('new')
-      this.show = false
-    },
-    duplicate(key) {
-      this.$emit('duplicate', key)
-      this.show = false
-    },
-  },
+  }
+  const place = places.value.find((p) => p.value === active)
+  if (active === 'all' && query.value) {
+    return { icon: 'mdi-magnify', label: 'Search results' }
+  }
+  return { icon: place?.icon, label: place?.label }
+})
+const empty = computed(() => {
+  if (!props.dashboards.length) {
+    return {
+      icon: 'mdi-view-dashboard-outline',
+      text: 'No dashboards yet.',
+    }
+  }
+  if (query.value) {
+    return {
+      icon: 'mdi-magnify',
+      text: `No dashboards match "${search.value}"`,
+    }
+  }
+  if (activeView.value === 'starred') {
+    return {
+      icon: 'mdi-star-outline',
+      text: 'Star a dashboard to keep it here.',
+    }
+  }
+  return { icon: 'mdi-history', text: 'Dashboards you open show here.' }
+})
+// Phones show the folders, or the list once one's picked or searching
+const showPlaces = computed(() => !props.lean || activeView.value === null)
+const showRows = computed(() => !props.lean || activeView.value !== null)
+
+// A new search starts from every match; the folders narrow it
+function setSearch(value) {
+  const before = query.value
+  search.value = value
+  if (!before && query.value) view.value = null
+}
+// Closed: the next open starts with a fresh search
+function reset() {
+  search.value = ''
+  if (props.lean) view.value = null
+}
+function open(key) {
+  emit('open', key)
+  show.value = false
+}
+function openFolder(key) {
+  view.value = `folder:${key.split('/')[0]}`
+}
+function back() {
+  view.value = null
+  search.value = ''
+}
+function onKey(event) {
+  const last = rows.value.length - 1
+  if (event.key === 'Enter') {
+    const key = rows.value[highlight.value]
+    if (key) open(key)
+    return
+  }
+  const step = { ArrowDown: 1, ArrowUp: -1 }[event.key]
+  if (!step || last < 0) return
+  event.preventDefault()
+  const index = Math.min(last, Math.max(0, highlight.value + step))
+  cursor.value = { rows: rows.value, index }
+  reveal(index)
+}
+// Scroll just enough to show the row, rather than to the top
+function reveal(index) {
+  const box = scroller.value?.$el
+  if (!box) return
+  const top = index * ROW_HEIGHT
+  if (top < box.scrollTop) box.scrollTop = top
+  else if (top + ROW_HEIGHT > box.scrollTop + box.clientHeight) {
+    box.scrollTop = top + ROW_HEIGHT - box.clientHeight
+  }
+}
+function create() {
+  emit('new')
+  show.value = false
+}
+function duplicate(key) {
+  emit('duplicate', key)
+  show.value = false
 }
 </script>
 

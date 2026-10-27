@@ -25,23 +25,17 @@
   </svg>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue'
 import { LEVEL_LABELS, SYMBOL_PATHS } from '../status'
 
-export default {
-  props: {
-    level: { type: String, default: null },
-    size: { type: Number, default: null },
-    // Decorative when a text label sits next to the symbol
-    decorative: { type: Boolean, default: false },
-  },
-  computed: {
-    path() {
-      return SYMBOL_PATHS[this.level]
-    },
-    label() {
-      return LEVEL_LABELS[this.level]
-    },
-  },
-}
+const props = defineProps({
+  level: { type: String, default: null },
+  size: { type: Number, default: null },
+  // Decorative when a text label sits next to the symbol
+  decorative: { type: Boolean, default: false },
+})
+
+const path = computed(() => SYMBOL_PATHS[props.level])
+const label = computed(() => LEVEL_LABELS[props.level])
 </script>

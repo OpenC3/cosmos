@@ -27,20 +27,16 @@
   </v-dialog>
 </template>
 
-<script>
-import modelShow from '../mixins/modelShow'
+<script setup>
 import DialogToolbar from '../components/DialogToolbar.vue'
 import CodePane from '../editor/CodePane.vue'
 
 // The dashboard as text. Edits apply live (when they parse) and the dashboard
 // behind the dialog updates as you type; Undo reverts them.
-export default {
-  components: { CodePane, DialogToolbar },
-  mixins: [modelShow],
-  props: {
-    text: { type: String, required: true },
-    path: { type: String, default: '' },
-  },
-  emits: ['apply'],
-}
+defineProps({
+  text: { type: String, required: true },
+  path: { type: String, default: '' },
+})
+defineEmits(['apply'])
+const show = defineModel({ type: Boolean })
 </script>

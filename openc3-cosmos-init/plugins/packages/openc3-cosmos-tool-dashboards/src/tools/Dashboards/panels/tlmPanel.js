@@ -11,8 +11,9 @@
 # if purchased from OpenC3, Inc.
 */
 
-import panelBase from './panelBase'
-import { itemKey, packetTimeKey } from '../composables/tlmPoller'
+import { computed } from 'vue'
+import { usePanel } from './panelBase'
+import { itemKey, packetTimeKey as timeKeyOf } from '../composables/tlmPoller'
 import { formatItem, formatTime, toSeconds } from '../composables/format'
 import { option } from './options'
 import { stateToLevel, worstLevel } from '../status'
@@ -42,87 +43,78 @@ export function itemLabels(items) {
   return items.map((item) => label(item, multiTarget))
 }
 
-// Fetches units, format and limits for the panel's items before the
-// computeds read them. Part of tlmPanel; panels that only need panelBase
-// (e.g. GRAPH) mix it in themselves.
-export const prefetchItemInfo = {
-  watch: {
-    'panel.items': {
-      immediate: true,
-      handler(items) {
-        for (const item of items) this.itemInfo.get(item)
-      },
-    },
-  },
-}
-
 // Panels that show polled telemetry for their ITEMs. `itemStates` has what
 // each item needs to render: formatted text, number, units, limits, status.
-export default {
-  mixins: [panelBase, prefetchItemInfo],
-  computed: {
-    pollKeys() {
-      const keys = new Set(
-        this.panel.items.map((item) => itemKey(item, pollType(item))),
-      )
-      if (this.packetTimeKey) keys.add(this.packetTimeKey)
-      for (const key of this.extraPollKeys()) keys.add(key)
-      return [...keys]
-    },
-    itemStates() {
-      const labels = itemLabels(this.panel.items)
-      return this.panel.items.map((item, index) => {
-        const polled = this.poller.values[itemKey(item, pollType(item))]
-        const info = this.itemInfo.get(item)
-        const raw = item.valueType === 'RAW'
-        return {
-          item,
-          key: itemKey(item),
-          label: labels[index],
-          path: `${item.targetName} ${item.packetName} ${item.itemName}`,
-          number: typeof polled?.value === 'number' ? polled.value : null,
-          text: formatItem(
-            item.itemName,
-            polled?.value,
-            raw ? null : info.formatString,
-            this.timeZone,
-          ),
-          units: raw ? '' : info.units,
-          level: stateToLevel(polled?.state),
-          stale: polled?.state === 'STALE',
-          changedAt: polled?.changedAt,
-          limits: this.itemInfo.limits(item),
-        }
-      })
-    },
-    // Single value panels show the first item
-    first() {
-      return this.itemStates[0] || { text: '--', units: '' }
-    },
-    // Received time of the first item's packet, to the second, for panel
-    // types that declare a PACKET_TIME option and have it on
-    packetTimeKey() {
-      const item = this.panel.items[0]
-      return item && option(this.panel, 'PACKET_TIME')
-        ? packetTimeKey(item)
-        : null
-    },
-    packetTime() {
-      const time = this.poller.values[this.packetTimeKey]?.value ?? ''
-      return toSeconds(formatTime(time, this.timeZone))
-    },
-    panelLevel() {
-      return worstLevel(this.itemStates.map((state) => state.level))
-    },
-  },
-  methods: {
-    // Panels override this to poll more keys than their items
-    extraPollKeys() {
-      return []
-    },
-    // Opens the details sheet, where offered, for an item (default: the first)
-    showDetails(item = this.first.item) {
-      if (this.openDetails && item) this.openDetails(item)
-    },
-  },
+// Takes usePanel's options plus `extraPollKeys` (a getter for keys to poll
+// besides the items); `panelLevel` defaults to the worst item level.
+export function useTlmPanel(props, options = {}) {
+  const base = usePanel(props, {
+    pollKeys: () => pollKeys.value,
+    panelLevel: () =>
+      options.panelLevel
+        ? options.panelLevel()
+        : worstLevel(itemStates.value.map((state) => state.level)),
+  })
+  const { poller, itemInfo, timeZone, openDetails } = base
+
+  // Received time of the first item's packet, to the second, for panel
+  // types that declare a PACKET_TIME option and have it on
+  const packetTimeKey = computed(() => {
+    const item = props.panel.items[0]
+    return item && option(props.panel, 'PACKET_TIME') ? timeKeyOf(item) : null
+  })
+  const pollKeys = computed(() => {
+    const keys = new Set(
+      props.panel.items.map((item) => itemKey(item, pollType(item))),
+    )
+    if (packetTimeKey.value) keys.add(packetTimeKey.value)
+    for (const key of options.extraPollKeys?.() ?? []) keys.add(key)
+    return [...keys]
+  })
+  const itemStates = computed(() => {
+    const labels = itemLabels(props.panel.items)
+    return props.panel.items.map((item, index) => {
+      const polled = poller.values[itemKey(item, pollType(item))]
+      const info = itemInfo.get(item)
+      const raw = item.valueType === 'RAW'
+      return {
+        item,
+        key: itemKey(item),
+        label: labels[index],
+        path: `${item.targetName} ${item.packetName} ${item.itemName}`,
+        number: typeof polled?.value === 'number' ? polled.value : null,
+        text: formatItem(
+          item.itemName,
+          polled?.value,
+          raw ? null : info.formatString,
+          timeZone.value,
+        ),
+        units: raw ? '' : info.units,
+        level: stateToLevel(polled?.state),
+        stale: polled?.state === 'STALE',
+        changedAt: polled?.changedAt,
+        limits: itemInfo.limits(item),
+      }
+    })
+  })
+  // Single value panels show the first item
+  const first = computed(() => itemStates.value[0] || { text: '--', units: '' })
+  const packetTime = computed(() => {
+    const time = poller.values[packetTimeKey.value]?.value ?? ''
+    return toSeconds(formatTime(time, timeZone.value))
+  })
+
+  // Opens the details sheet, where offered, for an item (default: the first)
+  function showDetails(item = first.value.item) {
+    if (openDetails && item) openDetails(item)
+  }
+
+  return {
+    ...base,
+    itemStates,
+    first,
+    packetTimeKey,
+    packetTime,
+    showDetails,
+  }
 }

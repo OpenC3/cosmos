@@ -94,57 +94,52 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed } from 'vue'
 import { option, visibleOptionDefs, withOption } from '../panels/options'
 
 // Controls for every option a panel type declares in panels/registry.js. New
 // options show up here without any UI work.
-export default {
-  props: {
-    panel: { type: Object, required: true },
-  },
-  emits: ['update'],
-  computed: {
-    defs() {
-      return visibleOptionDefs(this.panel)
-    },
-    // Item options pick from the panel's own items
-    itemChoices() {
-      return [
-        { title: 'Automatic', value: null },
-        ...this.panel.items.map((item) => ({
-          title: `${item.targetName} ${item.packetName} ${item.itemName}`,
-          value: this.itemKey(item),
-        })),
-      ]
-    },
-  },
-  methods: {
-    value(def) {
-      return option(this.panel, def.name)
-    },
-    set(def, value) {
-      this.$emit('update', {
-        settings: withOption(this.panel, def.name, value),
-      })
-    },
-    setNumber(def, value) {
-      // Clearing the field goes back to the default
-      if (value === '' || value === null) return this.set(def, null)
-      const number = Number(value)
-      if (Number.isNaN(number)) return
-      this.set(def, number)
-    },
-    itemKey(item) {
-      return item
-        ? `${item.targetName} ${item.packetName} ${item.itemName}`
-        : null
-    },
-    setItem(def, key) {
-      const item = this.panel.items.find((i) => this.itemKey(i) === key)
-      this.set(def, item ? { ...item, valueType: undefined } : null)
-    },
-  },
+const props = defineProps({
+  panel: { type: Object, required: true },
+})
+const emit = defineEmits(['update'])
+
+const defs = computed(() => visibleOptionDefs(props.panel))
+// Item options pick from the panel's own items
+const itemChoices = computed(() => [
+  { title: 'Automatic', value: null },
+  ...props.panel.items.map((item) => ({
+    title: `${item.targetName} ${item.packetName} ${item.itemName}`,
+    value: itemKey(item),
+  })),
+])
+
+function value(def) {
+  return option(props.panel, def.name)
+}
+
+function set(def, newValue) {
+  emit('update', {
+    settings: withOption(props.panel, def.name, newValue),
+  })
+}
+
+function setNumber(def, newValue) {
+  // Clearing the field goes back to the default
+  if (newValue === '' || newValue === null) return set(def, null)
+  const number = Number(newValue)
+  if (Number.isNaN(number)) return
+  set(def, number)
+}
+
+function itemKey(item) {
+  return item ? `${item.targetName} ${item.packetName} ${item.itemName}` : null
+}
+
+function setItem(def, key) {
+  const item = props.panel.items.find((i) => itemKey(i) === key)
+  set(def, item ? { ...item, valueType: undefined } : null)
 }
 </script>
 

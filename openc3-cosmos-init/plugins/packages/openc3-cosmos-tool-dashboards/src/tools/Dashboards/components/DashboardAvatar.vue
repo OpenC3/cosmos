@@ -23,15 +23,13 @@
   </v-avatar>
 </template>
 
-<script>
+<script setup>
 import { DEFAULT_ICON } from '../dashboardStyle'
 
 // A dashboard's icon on a tile of its color
-export default {
-  props: {
-    icon: { type: String, default: DEFAULT_ICON },
-    color: { type: String, default: null },
-    size: { type: Number, default: 44 },
-  },
-}
+defineProps({
+  icon: { type: String, default: DEFAULT_ICON },
+  color: { type: String, default: null },
+  size: { type: Number, default: 44 },
+})
 </script>

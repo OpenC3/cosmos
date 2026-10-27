@@ -26,12 +26,9 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { panelProps } from './panelBase'
+
 // Stands in for a panel whose type no installed plugin provides
-export default {
-  props: {
-    panel: { type: Object, required: true },
-  },
-  emits: ['level'],
-}
+defineProps(panelProps)
 </script>

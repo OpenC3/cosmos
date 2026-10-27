@@ -101,6 +101,10 @@ class DecomMicroservice(Microservice):
         "GREEN_HIGH": 5,
     }
 
+    # Decom never uses descriptions so don't keep them in memory
+    def load_descriptions(self):
+        return False
+
     def __init__(self, *args):
         super().__init__(*args)
         # Should only be one target, but there might be multiple decom microservices for a given target
@@ -171,13 +175,10 @@ class DecomMicroservice(Microservice):
 
     def decom_packet(self, topic, msg_id, msg_hash, _redis):
         # OpenC3.in_span("decom_packet") do
-        msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
-        delta = time.time() - msgid_seconds_from_epoch
-        self.metric.set(
-            name="decom_topic_delta_seconds",
-            value=delta,
-            type="gauge",
-            unit="seconds",
+        self.update_topic_lag(
+            topic,
+            msg_id,
+            metric_name="decom_topic_delta_seconds",
             help="Delta time between data written to stream and decom start",
         )
 

@@ -70,8 +70,8 @@ const coverageOptions = {
   // coverage` raises the heap ceiling; this collects at MCR's stage boundaries
   // once the heap passes the threshold, so the merge keeps well under that
   // ceiling -- the whole COSMOS stack is still up alongside it.
-  // NOTE: MCR calls the bare global gc(), so `pnpm coverage` must keep
-  // --expose-gc or this throws ReferenceError mid-merge instead of collecting.
+  // NOTE: MCR 3.x uses global gc() when --expose-gc is set (as `pnpm coverage`
+  // does) and otherwise obtains one on demand via v8.setFlagsFromString.
   gc: 4096,
   reports: [
     'v8', // raw per-bundle view; shows exactly which script URLs were captured

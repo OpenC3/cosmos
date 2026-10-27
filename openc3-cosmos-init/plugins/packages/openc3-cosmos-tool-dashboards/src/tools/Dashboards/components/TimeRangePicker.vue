@@ -12,10 +12,15 @@
 -->
 
 <template>
-  <v-menu v-model="open" :close-on-content-click="false" location="bottom end">
-    <template #activator="{ props }">
+  <v-menu
+    :model-value="open"
+    :close-on-content-click="false"
+    location="bottom end"
+    @update:model-value="setOpen"
+  >
+    <template #activator="{ props: activatorProps }">
       <v-btn
-        v-bind="props"
+        v-bind="activatorProps"
         variant="outlined"
         :prepend-icon="compact ? undefined : 'mdi-clock-outline'"
         append-icon="mdi-chevron-down"
@@ -88,7 +93,8 @@
   </v-menu>
 </template>
 
-<script>
+<script setup>
+import { computed, ref } from 'vue'
 import {
   TIME_RANGE_PRESETS,
   TIME_RANGE_UNITS,
@@ -99,53 +105,42 @@ import {
 
 // Header button that picks the dashboard's time range in seconds: a quick
 // range, or a custom number of seconds, minutes or hours
-export default {
-  props: {
-    modelValue: { type: Number, required: true },
-    // Phones show "5m" instead of "Last 5 minutes"
-    compact: { type: Boolean, default: false },
-  },
-  emits: ['update:modelValue'],
-  data() {
-    return {
-      open: false,
-      amount: null,
-      unit: 60,
-      presets: TIME_RANGE_PRESETS,
-      units: TIME_RANGE_UNITS,
-    }
-  },
-  computed: {
-    label() {
-      return timeRangeLabel(this.modelValue)
-    },
-    shortLabel() {
-      return timeRangeLabel(this.modelValue, true)
-    },
-    customSeconds() {
-      return Math.round(Number(this.amount) * this.unit)
-    },
-    problem() {
-      return timeRangeProblem(this.customSeconds)
-    },
-  },
-  watch: {
-    // The custom fields start from the current range
-    open(open) {
-      if (open) [this.amount, this.unit] = splitTimeRange(this.modelValue)
-    },
-  },
-  methods: {
-    labelFor(seconds) {
-      return timeRangeLabel(seconds)
-    },
-    choose(seconds) {
-      this.$emit('update:modelValue', seconds)
-      this.open = false
-    },
-    applyCustom() {
-      if (!this.problem) this.choose(this.customSeconds)
-    },
-  },
+const props = defineProps({
+  modelValue: { type: Number, required: true },
+  // Phones show "5m" instead of "Last 5 minutes"
+  compact: { type: Boolean, default: false },
+})
+const emit = defineEmits(['update:modelValue'])
+
+const open = ref(false)
+const amount = ref(null)
+const unit = ref(60)
+const presets = TIME_RANGE_PRESETS
+const units = TIME_RANGE_UNITS
+
+const label = computed(() => timeRangeLabel(props.modelValue))
+const shortLabel = computed(() => timeRangeLabel(props.modelValue, true))
+const customSeconds = computed(() =>
+  Math.round(Number(amount.value) * unit.value),
+)
+const problem = computed(() => timeRangeProblem(customSeconds.value))
+
+// The custom fields start from the current range
+function setOpen(isOpen) {
+  if (isOpen) [amount.value, unit.value] = splitTimeRange(props.modelValue)
+  open.value = isOpen
+}
+
+function labelFor(seconds) {
+  return timeRangeLabel(seconds)
+}
+
+function choose(seconds) {
+  emit('update:modelValue', seconds)
+  open.value = false
+}
+
+function applyCustom() {
+  if (!problem.value) choose(customSeconds.value)
 }
 </script>

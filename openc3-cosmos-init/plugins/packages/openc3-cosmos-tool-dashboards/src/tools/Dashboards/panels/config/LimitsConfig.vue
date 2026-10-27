@@ -34,19 +34,17 @@
   </div>
 </template>
 
-<script>
-import { targetNames } from '../../composables/targets'
+<script setup>
+import { ref } from 'vue'
+import { targetNames as loadTargetNames } from '../../composables/targets'
 
-export default {
-  props: {
-    panel: { type: Object, required: true },
-  },
-  emits: ['update'],
-  data() {
-    return { targetNames: [] }
-  },
-  async created() {
-    this.targetNames = await targetNames()
-  },
-}
+defineProps({
+  panel: { type: Object, required: true },
+})
+defineEmits(['update'])
+
+const targetNames = ref([])
+loadTargetNames().then((names) => {
+  targetNames.value = names
+})
 </script>

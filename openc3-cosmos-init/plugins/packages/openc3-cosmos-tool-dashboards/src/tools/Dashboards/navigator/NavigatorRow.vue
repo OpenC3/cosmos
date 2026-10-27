@@ -91,46 +91,32 @@
   </v-list-item>
 </template>
 
-<script>
+<script setup>
+import { computed, watch } from 'vue'
 import DashboardAvatar from '../components/DashboardAvatar.vue'
 import { loadInfo, navigator } from './navigatorStore'
 
 // One dashboard in the navigator: its title, and where it's saved
 // (TARGET/name.txt). Fetches its title and icon the first time it's shown.
-export default {
-  components: { DashboardAvatar },
-  props: {
-    dashboardKey: { type: String, required: true },
-    starred: Boolean,
-    current: Boolean,
-    highlighted: Boolean,
-    // Outside a folder, show which folder it's in
-    showFolder: Boolean,
-    lean: Boolean,
-  },
-  emits: ['open', 'star', 'duplicate', 'folder'],
-  computed: {
-    target() {
-      return this.dashboardKey.split('/')[0]
-    },
-    name() {
-      return this.dashboardKey.split('/')[1]
-    },
-    file() {
-      return `${this.name.toLowerCase()}.txt`
-    },
-    info() {
-      return navigator.info[this.dashboardKey]
-    },
-  },
-  watch: {
-    // Virtual scrolling reuses rows, so watch the key rather than mounted
-    dashboardKey: {
-      immediate: true,
-      handler: loadInfo,
-    },
-  },
-}
+const props = defineProps({
+  dashboardKey: { type: String, required: true },
+  starred: Boolean,
+  current: Boolean,
+  highlighted: Boolean,
+  // Outside a folder, show which folder it's in
+  showFolder: Boolean,
+  lean: Boolean,
+})
+defineEmits(['open', 'star', 'duplicate', 'folder'])
+
+const target = computed(() => props.dashboardKey.split('/')[0])
+const name = computed(() => props.dashboardKey.split('/')[1])
+const file = computed(() => `${name.value.toLowerCase()}.txt`)
+const info = computed(() => navigator.info[props.dashboardKey])
+
+// Kept: fetching the row's info is a side effect, and virtual scrolling
+// reuses rows for new keys without remounting, so there's no event to hook
+watch(() => props.dashboardKey, loadInfo, { immediate: true })
 </script>
 
 <style scoped>

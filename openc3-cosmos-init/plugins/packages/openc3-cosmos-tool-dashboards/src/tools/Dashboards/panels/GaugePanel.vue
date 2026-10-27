@@ -56,8 +56,8 @@
       </text>
       <template v-if="scale">
         <text
-          :x="$options.ENDS.min.x"
-          :y="$options.ENDS.min.y"
+          :x="ENDS.min.x"
+          :y="ENDS.min.y"
           text-anchor="middle"
           class="end num"
           data-test="gauge-min"
@@ -65,8 +65,8 @@
           {{ compact(scale.min) }}
         </text>
         <text
-          :x="$options.ENDS.max.x"
-          :y="$options.ENDS.max.y"
+          :x="ENDS.max.x"
+          :y="ENDS.max.y"
           text-anchor="middle"
           class="end num"
           data-test="gauge-max"
@@ -84,8 +84,10 @@
   </div>
 </template>
 
-<script>
-import tlmPanel from './tlmPanel'
+<script setup>
+import { computed } from 'vue'
+import { panelProps } from './panelBase'
+import { useTlmPanel } from './tlmPanel'
 import { option } from './options'
 import PacketTime from '../components/PacketTime.vue'
 import { levelOf, limitZones, paddedScale } from '../limits'
@@ -118,77 +120,69 @@ const ENDS = {
 // item's limits, or from the panel's own RED_LOW..RED_HIGH with LIMITS
 // CUSTOM. The scale is MIN..MAX when set, otherwise the limits plus 10% of
 // their range on each side.
-export default {
-  components: { PacketTime },
-  mixins: [tlmPanel],
-  ENDS,
-  computed: {
-    custom() {
-      return option(this.panel, 'LIMITS') === 'CUSTOM'
-    },
-    // Custom limits in the shape get_item returns, null until all four are set
-    limits() {
-      if (!this.custom) return this.first.limits || null
-      const limits = {
-        red_low: option(this.panel, 'RED_LOW'),
-        yellow_low: option(this.panel, 'YELLOW_LOW'),
-        yellow_high: option(this.panel, 'YELLOW_HIGH'),
-        red_high: option(this.panel, 'RED_HIGH'),
-      }
-      return Object.values(limits).includes(null) ? null : limits
-    },
-    scale() {
-      const padded = paddedScale(this.limits)
-      const min = option(this.panel, 'MIN') ?? padded?.min ?? null
-      const max = option(this.panel, 'MAX') ?? padded?.max ?? null
-      if (min === null || max === null || !(max > min)) return null
-      return { min, max }
-    },
-    zones() {
-      if (!this.scale) return []
-      const { min, max } = this.scale
-      return limitZones(this.limits, min, max)
-        .map(({ level, from, to }) => ({
-          level,
-          from: this.fraction(from),
-          to: this.fraction(to),
-        }))
-        .filter((zone) => zone.to > zone.from)
-    },
-    marker() {
-      if (!this.scale || typeof this.first.number !== 'number') return null
-      const at = angle(this.fraction(this.first.number))
-      const inner = point(at, RADIUS - 14)
-      const outer = point(at, RADIUS + 9)
-      return { x1: inner.x, y1: inner.y, x2: outer.x, y2: outer.y }
-    },
-    // Item limits use the limits state COSMOS reports; custom limits are
-    // checked here
-    level() {
-      if (!this.custom) return this.first.level
-      if (this.first.stale) return 'off'
-      return levelOf(this.first.number, this.limits)
-    },
-    panelLevel() {
-      return this.level
-    },
-  },
-  methods: {
-    // Position of a value along the arc, 0 to 1
-    fraction(value) {
-      const { min, max } = this.scale
-      return Math.min(1, Math.max(0, (value - min) / (max - min)))
-    },
-    arc(from, to) {
-      const start = point(angle(from), RADIUS)
-      const end = point(angle(to), RADIUS)
-      const large = (to - from) * SWEEP > 180 ? 1 : 0
-      return `M${start.x} ${start.y}A${RADIUS} ${RADIUS} 0 ${large} 1 ${end.x} ${end.y}`
-    },
-    compact(value) {
-      return Number(value.toPrecision(4)).toString()
-    },
-  },
+const props = defineProps(panelProps)
+const { first, packetTime, showDetails } = useTlmPanel(props, {
+  panelLevel: () => level.value,
+})
+
+const custom = computed(() => option(props.panel, 'LIMITS') === 'CUSTOM')
+// Custom limits in the shape get_item returns, null until all four are set
+const limits = computed(() => {
+  if (!custom.value) return first.value.limits || null
+  const limits = {
+    red_low: option(props.panel, 'RED_LOW'),
+    yellow_low: option(props.panel, 'YELLOW_LOW'),
+    yellow_high: option(props.panel, 'YELLOW_HIGH'),
+    red_high: option(props.panel, 'RED_HIGH'),
+  }
+  return Object.values(limits).includes(null) ? null : limits
+})
+const scale = computed(() => {
+  const padded = paddedScale(limits.value)
+  const min = option(props.panel, 'MIN') ?? padded?.min ?? null
+  const max = option(props.panel, 'MAX') ?? padded?.max ?? null
+  if (min === null || max === null || !(max > min)) return null
+  return { min, max }
+})
+const zones = computed(() => {
+  if (!scale.value) return []
+  const { min, max } = scale.value
+  return limitZones(limits.value, min, max)
+    .map(({ level, from, to }) => ({
+      level,
+      from: fraction(from),
+      to: fraction(to),
+    }))
+    .filter((zone) => zone.to > zone.from)
+})
+const marker = computed(() => {
+  if (!scale.value || typeof first.value.number !== 'number') return null
+  const at = angle(fraction(first.value.number))
+  const inner = point(at, RADIUS - 14)
+  const outer = point(at, RADIUS + 9)
+  return { x1: inner.x, y1: inner.y, x2: outer.x, y2: outer.y }
+})
+// Item limits use the limits state COSMOS reports; custom limits are
+// checked here
+const level = computed(() => {
+  if (!custom.value) return first.value.level
+  if (first.value.stale) return 'off'
+  return levelOf(first.value.number, limits.value)
+})
+
+// Position of a value along the arc, 0 to 1
+function fraction(value) {
+  const { min, max } = scale.value
+  return Math.min(1, Math.max(0, (value - min) / (max - min)))
+}
+function arc(from, to) {
+  const start = point(angle(from), RADIUS)
+  const end = point(angle(to), RADIUS)
+  const large = (to - from) * SWEEP > 180 ? 1 : 0
+  return `M${start.x} ${start.y}A${RADIUS} ${RADIUS} 0 ${large} 1 ${end.x} ${end.y}`
+}
+function compact(value) {
+  return Number(value.toPrecision(4)).toString()
 }
 </script>
 

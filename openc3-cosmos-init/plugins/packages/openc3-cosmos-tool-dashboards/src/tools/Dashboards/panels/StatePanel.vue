@@ -37,15 +37,14 @@
   </div>
 </template>
 
-<script>
-import tlmPanel from './tlmPanel'
+<script setup>
+import { panelProps } from './panelBase'
+import { useTlmPanel } from './tlmPanel'
 import PacketTime from '../components/PacketTime.vue'
 import StatusSymbol from '../components/StatusSymbol.vue'
 
-export default {
-  components: { PacketTime, StatusSymbol },
-  mixins: [tlmPanel],
-}
+const props = defineProps(panelProps)
+const { first, packetTime, showDetails } = useTlmPanel(props)
 </script>
 
 <style scoped>

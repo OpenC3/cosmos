@@ -36,14 +36,12 @@
   />
 </template>
 
-<script>
+<script setup>
 // One COMMAND panel parameter: a select for states, a text field otherwise.
 // The panel shows the name beside it.
-export default {
-  props: {
-    param: { type: Object, required: true },
-    modelValue: { type: [String, Number], default: '' },
-  },
-  emits: ['update:modelValue'],
-}
+defineProps({
+  param: { type: Object, required: true },
+  modelValue: { type: [String, Number], default: '' },
+})
+defineEmits(['update:modelValue'])
 </script>

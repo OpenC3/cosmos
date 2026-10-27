@@ -74,21 +74,18 @@
   </div>
 </template>
 
-<script>
-import tlmPanel from './tlmPanel'
+<script setup>
+import { computed } from 'vue'
+import { panelProps } from './panelBase'
+import { useTlmPanel } from './tlmPanel'
 import { option } from './options'
 import LimitsBar from '../components/LimitsBar.vue'
 import StatusSymbol from '../components/StatusSymbol.vue'
 
-export default {
-  components: { LimitsBar, StatusSymbol },
-  mixins: [tlmPanel],
-  computed: {
-    showBars() {
-      return option(this.panel, 'LIMITS_BARS')
-    },
-  },
-}
+const props = defineProps(panelProps)
+const { itemStates, showDetails } = useTlmPanel(props)
+
+const showBars = computed(() => option(props.panel, 'LIMITS_BARS'))
 </script>
 
 <style scoped>

@@ -40,7 +40,7 @@
             {{ item.raw.title }}
           </span>
         </template>
-        <template #item="{ props, item }">
+        <template #item="{ props: listItemProps, item }">
           <v-list-subheader
             v-if="item.raw.header"
             class="text-uppercase font-weight-bold"
@@ -49,7 +49,7 @@
           </v-list-subheader>
           <v-list-item
             v-else
-            v-bind="props"
+            v-bind="listItemProps"
             :prepend-icon="item.raw.icon"
             :subtitle="item.raw.description"
             :data-test="`panel-type-${item.raw.value}`"
@@ -180,7 +180,8 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, inject, unref } from 'vue'
 import OptionsEditor from './OptionsEditor.vue'
 import { PANEL_TYPES } from '../panels/registry'
 import { optionDefs, settingsForType } from '../panels/options'
@@ -190,97 +191,87 @@ import { clearedFieldsFor } from '../dashboardParser'
 // Everything about one panel: type, title, what it shows, its options and
 // size. Changes are emitted as `update` with the changed fields; size changes
 // as `resize`.
-export default {
-  components: { OptionsEditor },
-  // The dashboard's grid width (COLUMNS)
-  inject: { columns: { default: 12 } },
-  props: {
-    panel: { type: Object, required: true },
-    // The content editor fills the height left (fillDialog types)
-    fill: { type: Boolean, default: false },
-  },
-  emits: ['update', 'resize'],
-  data() {
-    return {
-      types: PANEL_TYPES,
-      maxH: MAX_H,
-    }
-  },
-  computed: {
-    // Fractions of the grid, so they work on 12 and 24 columns
-    widthPresets() {
-      const fractions = [
-        ['¼', 1 / 4],
-        ['⅓', 1 / 3],
-        ['½', 1 / 2],
-        ['⅔', 2 / 3],
-        ['¾', 3 / 4],
-        ['Full', 1],
-      ]
-      return fractions
-        .map(([label, fraction]) => ({
-          label,
-          w: Math.round(this.columns * fraction),
-        }))
-        .filter(({ w }) => w >= this.minW)
-    },
-    minW() {
-      return minSize(this.panel.type).w
-    },
-    minH() {
-      return minSize(this.panel.type).h
-    },
-    // Tall enough to show most types at once. Pixels: the menu reads a CSS
-    // length like '60vh' as 60px.
-    typeMenuProps() {
-      return { maxHeight: Math.round(window.innerHeight * 0.6) }
-    },
-    // Types grouped by category, so a long list of panel types stays easy to
-    // scan; the dropdown is searchable by name
-    typeItems() {
-      const groups = {}
-      for (const [value, type] of Object.entries(PANEL_TYPES)) {
-        if (type.hidden) continue
-        const category = type.category || 'Other'
-        ;(groups[category] ||= []).push({
-          title: type.label,
-          value,
-          icon: type.icon,
-          description: type.description,
-        })
-      }
-      return Object.entries(groups).flatMap(([category, items]) => [
-        { title: category, value: `__${category}`, header: true },
-        ...items,
-      ])
-    },
-    hasOptions() {
-      return optionDefs(this.panel.type).length > 0
-    },
-  },
-  methods: {
-    itemProps(item) {
-      return item.header ? { disabled: true } : {}
-    },
-    setWidth(w) {
-      if (!w) return
-      this.$emit('resize', { w, h: this.panel.h })
-    },
-    // Keep what still applies to the new type
-    changeType(type) {
-      if (!type || type === this.panel.type || !PANEL_TYPES[type]) return
-      // Clear fields the new type doesn't use, then keep what still applies
-      const cleared = clearedFieldsFor(type)
-      const max = PANEL_TYPES[type].maxItems
-      const items = cleared.items ?? this.panel.items.slice(0, max || undefined)
-      this.$emit('update', {
-        ...cleared,
-        type,
-        items,
-        settings: settingsForType(this.panel.settings, type),
-      })
-    },
-  },
+const props = defineProps({
+  panel: { type: Object, required: true },
+  // The content editor fills the height left (fillDialog types)
+  fill: { type: Boolean, default: false },
+})
+const emit = defineEmits(['update', 'resize'])
+
+// The dashboard's grid width (COLUMNS), provided as a computed
+const injectedColumns = inject('columns', 12)
+const columns = computed(() => unref(injectedColumns))
+
+const types = PANEL_TYPES
+const maxH = MAX_H
+
+const minW = computed(() => minSize(props.panel.type).w)
+const minH = computed(() => minSize(props.panel.type).h)
+// Fractions of the grid, so they work on 12 and 24 columns
+const widthPresets = computed(() => {
+  const fractions = [
+    ['¼', 1 / 4],
+    ['⅓', 1 / 3],
+    ['½', 1 / 2],
+    ['⅔', 2 / 3],
+    ['¾', 3 / 4],
+    ['Full', 1],
+  ]
+  return fractions
+    .map(([label, fraction]) => ({
+      label,
+      w: Math.round(columns.value * fraction),
+    }))
+    .filter(({ w }) => w >= minW.value)
+})
+// Tall enough to show most types at once. Pixels: the menu reads a CSS
+// length like '60vh' as 60px.
+const typeMenuProps = computed(() => ({
+  maxHeight: Math.round(window.innerHeight * 0.6),
+}))
+// Types grouped by category, so a long list of panel types stays easy to
+// scan; the dropdown is searchable by name
+const typeItems = computed(() => {
+  const groups = {}
+  for (const [value, type] of Object.entries(PANEL_TYPES)) {
+    if (type.hidden) continue
+    const category = type.category || 'Other'
+    ;(groups[category] ||= []).push({
+      title: type.label,
+      value,
+      icon: type.icon,
+      description: type.description,
+    })
+  }
+  return Object.entries(groups).flatMap(([category, items]) => [
+    { title: category, value: `__${category}`, header: true },
+    ...items,
+  ])
+})
+const hasOptions = computed(() => optionDefs(props.panel.type).length > 0)
+
+function itemProps(item) {
+  return item.header ? { disabled: true } : {}
+}
+
+function setWidth(w) {
+  if (!w) return
+  emit('resize', { w, h: props.panel.h })
+}
+
+// Keep what still applies to the new type
+function changeType(type) {
+  if (!type || type === props.panel.type || !PANEL_TYPES[type]) return
+  // Clear fields the new type doesn't use, then keep what still applies
+  const cleared = clearedFieldsFor(type)
+  const max = PANEL_TYPES[type].maxItems
+  const items = cleared.items ?? props.panel.items.slice(0, max || undefined)
+  emit('update', {
+    ...cleared,
+    type,
+    items,
+    settings: settingsForType(props.panel.settings, type),
+  })
 }
 </script>
 

@@ -70,9 +70,11 @@
   </div>
 </template>
 
-<script>
-import tlmPanel from './tlmPanel'
-import tlmSeries from './tlmSeries'
+<script setup>
+import { computed, ref } from 'vue'
+import { panelProps } from './panelBase'
+import { useTlmPanel } from './tlmPanel'
+import { useTlmSeries } from './tlmSeries'
 import { itemOption, option } from './options'
 import LimitsBar from '../components/LimitsBar.vue'
 import PacketTime from '../components/PacketTime.vue'
@@ -82,87 +84,78 @@ import { clock, formatTelemetry } from '../composables/format'
 // One value, big. Container queries hide the extras as the panel shrinks:
 // number only at the smallest size, then sparkline, then limits bar. The
 // sparkline shows the dashboard's time range, backfilled when the dashboard
-// opens (tlmSeries). Hovering it shares the time with the dashboard's graphs,
-// and it marks theirs, with the value at that time.
-export default {
-  components: { LimitsBar, PacketTime, Sparkline },
-  mixins: [tlmPanel, tlmSeries],
-  data() {
-    return { points: [], times: [] }
+// opens (useTlmSeries). Hovering it shares the time with the dashboard's
+// graphs, and it marks theirs, with the value at that time.
+const props = defineProps(panelProps)
+const panel = useTlmPanel(props)
+const { first, packetTime, showDetails, openDetails, itemInfo, timeZone } =
+  panel
+const { hover, now, duration, series, setHover } = useTlmSeries(props, panel, {
+  // Only streamed while the graph is shown
+  seriesItems: () => (showGraph.value ? props.panel.items.slice(0, 1) : []),
+  // Copies, so the sparkline sees the change
+  seriesUpdated: () => {
+    times.value = [...series[0]]
+    points.value = [...(series[1] || [])]
   },
-  computed: {
-    // Custom COLOR, else blue for items with limits and grey without
-    lineColor() {
-      const item = this.panel.items[0]
-      const custom = item && itemOption(this.panel, item, 'COLOR')
-      if (custom) return custom
-      return this.first.limits
-        ? 'rgb(var(--v-theme-secondary))'
-        : 'rgba(var(--v-theme-on-surface), 0.38)'
-    },
-    // The value takes its limits color when the panel is compact
-    levelColor() {
-      const level = this.first.level
-      return ['critical', 'caution', 'normal'].includes(level)
-        ? `var(--color-status-${level})`
-        : null
-    },
-    showGraph() {
-      return option(this.panel, 'GRAPH')
-    },
-    // Only streamed while the graph is shown
-    seriesItems() {
-      return this.showGraph ? this.panel.items.slice(0, 1) : []
-    },
-    showLimitsLines() {
-      return option(this.panel, 'LIMITS_LINES')
-    },
-    showBar() {
-      return option(this.panel, 'LIMITS_BAR')
-    },
-    // The value nearest the hovered time, from any graph on the dashboard.
-    // Past the newest sample it's still the newest value (slow items), but
-    // before the history starts there's nothing to show.
-    hovered() {
-      const time = this.hover.time
-      const times = this.times
-      if (time === null || !times.length || time < times[0]) return null
-      if (time > this.now) return null
-      let low = 0
-      let high = times.length - 1
-      while (high - low > 1) {
-        const mid = (low + high) >> 1
-        if (times[mid] < time) low = mid
-        else high = mid
-      }
-      const index =
-        time >= times.at(-1)
-          ? times.length - 1
-          : time - times[low] <= times[high] - time
-            ? low
-            : high
-      const value = this.points[index]
-      if (typeof value !== 'number') return null
-      const item = this.panel.items[0]
-      const formatString = item && this.itemInfo.get(item).formatString
-      return {
-        value: formatString
-          ? formatTelemetry(value, formatString)
-          : Number(value.toPrecision(6)).toString(),
-        // The hovered time, not the sample's, so it moves smoothly like the
-        // graphs' tooltips
-        time: clock(time * 1000, this.timeZone),
-      }
-    },
-  },
-  methods: {
-    // tlmSeries hook: copies, so the sparkline sees the change
-    seriesUpdated() {
-      this.times = [...this.series[0]]
-      this.points = [...(this.series[1] || [])]
-    },
-  },
-}
+})
+
+const points = ref([])
+const times = ref([])
+
+// Custom COLOR, else blue for items with limits and grey without
+const lineColor = computed(() => {
+  const item = props.panel.items[0]
+  const custom = item && itemOption(props.panel, item, 'COLOR')
+  if (custom) return custom
+  return first.value.limits
+    ? 'rgb(var(--v-theme-secondary))'
+    : 'rgba(var(--v-theme-on-surface), 0.38)'
+})
+// The value takes its limits color when the panel is compact
+const levelColor = computed(() => {
+  const level = first.value.level
+  return ['critical', 'caution', 'normal'].includes(level)
+    ? `var(--color-status-${level})`
+    : null
+})
+const showGraph = computed(() => option(props.panel, 'GRAPH'))
+const showLimitsLines = computed(() => option(props.panel, 'LIMITS_LINES'))
+const showBar = computed(() => option(props.panel, 'LIMITS_BAR'))
+// The value nearest the hovered time, from any graph on the dashboard.
+// Past the newest sample it's still the newest value (slow items), but
+// before the history starts there's nothing to show.
+const hovered = computed(() => {
+  const time = hover.time
+  const list = times.value
+  if (time === null || !list.length || time < list[0]) return null
+  if (time > now.value) return null
+  let low = 0
+  let high = list.length - 1
+  while (high - low > 1) {
+    const mid = (low + high) >> 1
+    if (list[mid] < time) low = mid
+    else high = mid
+  }
+  const index =
+    time >= list.at(-1)
+      ? list.length - 1
+      : time - list[low] <= list[high] - time
+        ? low
+        : high
+  const value = points.value[index]
+  if (typeof value !== 'number') return null
+  const item = props.panel.items[0]
+  const formatString = item && itemInfo.get(item).formatString
+  return {
+    value: formatString
+      ? formatTelemetry(value, formatString)
+      : Number(value.toPrecision(6)).toString(),
+    // The hovered time, not the sample's, so it moves smoothly like the
+    // graphs' tooltips
+    time: clock(time * 1000, timeZone.value),
+  }
+})
 </script>
 
 <style scoped>

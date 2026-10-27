@@ -58,7 +58,7 @@
       @submit.prevent="create"
     >
       <v-autocomplete
-        v-model="draftNew.target"
+        :model-value="draftNew.target"
         :items="allTargets"
         label="Target"
         density="compact"
@@ -66,9 +66,10 @@
         hide-details
         style="max-width: 200px"
         data-test="config-new-screen-target"
+        @update:model-value="setNewTarget"
       />
       <v-autocomplete
-        v-model="draftNew.packet"
+        :model-value="draftNew.packet"
         :items="packets"
         label="Start from packet (optional)"
         placeholder="Blank screen"
@@ -80,6 +81,7 @@
         :disabled="!draftNew.target"
         style="max-width: 260px"
         data-test="config-new-screen-packet"
+        @update:model-value="setNewPacket"
       />
       <v-text-field
         v-model="draftNew.name"
@@ -173,7 +175,8 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
 import { OpenC3Api } from '@openc3/js-common/services'
 import { ScreenEditor } from '@openc3/vue-common/components'
 import { targetNames } from '../../composables/targets'
@@ -185,197 +188,199 @@ import { listScreens, loadScreen, newScreenText, screenKey } from '../screens'
 // that doesn't exist yet), so they survive switching to the Code tab and
 // Cancel drops them; the panel dialog writes the screen file on Add / Apply
 // (SCREEN's beforeSave in registry.js). Fills the dialog (fillDialog).
-export default {
-  components: { ScreenEditor },
-  props: {
-    panel: { type: Object, required: true },
-  },
-  emits: ['update'],
-  data() {
-    return {
-      // TARGET => [SCREEN, ...]
-      screens: {},
-      target: this.panel.screen?.targetName || null,
-      // The saved definition, null while loading
-      original: null,
-      loadError: null,
-      // New screen form
-      creating: false,
-      allTargets: [],
-      packets: [],
-      draftNew: { target: null, packet: null, name: '' },
-      generating: false,
-      // Shown in the new screen form, which hides the editor's overlay
-      createError: null,
-    }
-  },
-  computed: {
-    filename() {
-      const name = this.panel.screen?.screenName
-      return name ? `${name.toLowerCase()}.txt` : 'screen.txt'
-    },
-    loading() {
-      return !!this.panel.screen && this.original === null && !this.loadError
-    },
-    // Covers the editor when there's no screen text to edit
-    overlay() {
-      if (!this.panel.screen) return 'Pick or create a screen to edit it here'
-      return this.loadError
-    },
-    editorKey() {
-      return screenKey(this.panel.screen)
-    },
-    text() {
-      return this.panel.screenText ?? this.original ?? ''
-    },
-    edited() {
-      return (
-        typeof this.panel.screenText === 'string' &&
-        this.panel.screenText !== this.original
-      )
-    },
-    newProblem() {
-      const { target, name } = this.draftNew
-      if (!target) return 'Pick a target'
-      if (!name) return 'Name the screen'
-      if (!/^[A-Za-z0-9_-]+$/.test(name)) {
-        return 'Letters, numbers, - and _ only'
-      }
-      if ((this.screens[target] || []).includes(name.toUpperCase())) {
-        return `${target} already has a ${name.toUpperCase()} screen`
-      }
-      return null
-    },
-    nameErrors() {
-      if (this.createError) return [this.createError]
-      return this.newProblem && this.draftNew.name ? [this.newProblem] : []
-    },
-  },
-  watch: {
-    editorKey: {
-      immediate: true,
-      handler() {
-        this.load()
-      },
-    },
-    'draftNew.target'(target) {
-      this.packets = []
-      this.draftNew.packet = null
-      if (!target) return
-      this.api
-        .get_all_tlm_names(target)
-        .then((names) => {
-          if (target === this.draftNew.target) this.packets = names
-        })
-        .catch(() => {})
-    },
-    // Name a generated screen after its packet until the user types one
-    'draftNew.packet'(packet, previous) {
-      const named = this.draftNew.name.toUpperCase()
-      if (packet && (!named || named === previous)) this.draftNew.name = packet
-    },
-  },
-  async created() {
-    this.api = new OpenC3Api()
-    // A copy: create() lists a new screen here before it's saved
-    try {
-      this.screens = { ...(await listScreens()) }
-    } catch (error) {
-      console.error('Dashboards screen list failed to load:', error)
-    }
-  },
-  methods: {
-    selectTarget(target) {
-      this.target = target
-      // A target with one screen needs no second pick
-      const names = this.screens[target] || []
-      this.selectScreen(names.length === 1 ? names[0] : null)
-    },
-    selectScreen(screenName) {
-      this.$emit('update', {
-        screen: screenName ? { targetName: this.target, screenName } : null,
-        screenText: null,
-        screenNew: false,
-      })
-    },
-    startCreate() {
-      this.draftNew = { target: this.target, packet: null, name: '' }
-      this.createError = null
-      this.creating = true
-      if (!this.allTargets.length) {
-        targetNames()
-          .then((names) => {
-            this.allTargets = names
-          })
-          .catch(() => {})
-      }
-    },
-    async create() {
-      if (this.newProblem) return
-      const { target, packet } = this.draftNew
-      const screenName = this.draftNew.name.toUpperCase()
-      this.createError = null
-      this.generating = true
-      try {
-        const text = await newScreenText(this.api, target, packet)
-        // Listed now so it can be picked again before it's saved
-        this.screens[target] = [
-          ...(this.screens[target] || []),
-          screenName,
-        ].sort()
-        this.target = target
-        this.$emit('update', {
-          screen: { targetName: target, screenName },
-          screenText: text,
-          screenNew: true,
-        })
-        this.creating = false
-      } catch (error) {
-        this.createError = `Unable to read ${target} ${packet}: ${error.message || error}`
-      } finally {
-        this.generating = false
-      }
-    },
-    async load() {
-      this.original = null
-      this.loadError = null
-      const screen = this.panel.screen
-      if (!screen) return
-      // Not written yet: the draft's text is all there is
-      if (this.panel.screenNew) {
-        this.original = ''
-        return
-      }
-      const key = screenKey(screen)
-      try {
-        const text = await loadScreen(screen)
-        if (key !== this.editorKey) return
-        this.original = text
-        // Once the editor has the new text, Undo can't go back into the
-        // previous screen
-        await this.$nextTick()
-        this.$refs.editor?.editor?.session.getUndoManager().reset()
-      } catch {
-        if (key === this.editorKey) {
-          this.loadError = `Screen ${key.replace('/', ' ')} not found`
-        }
-      }
-    },
-    // Edits matching the file are dropped from the draft; a new screen
-    // keeps its text whatever it is
-    edit(text) {
-      // The editor echoes the text it's given while a screen loads
-      if (!this.panel.screen || this.original === null) return
-      this.$emit('update', {
-        screenText:
-          text === this.original && !this.panel.screenNew ? null : text,
-      })
-    },
-    revert() {
-      this.$emit('update', { screenText: null })
-    },
-  },
+const props = defineProps({
+  panel: { type: Object, required: true },
+})
+const emit = defineEmits(['update'])
+
+const api = new OpenC3Api()
+const editorRef = useTemplateRef('editor')
+
+// TARGET => [SCREEN, ...]
+const screens = ref({})
+const target = ref(props.panel.screen?.targetName || null)
+// The saved definition, null while loading
+const original = ref(null)
+const loadError = ref(null)
+// New screen form
+const creating = ref(false)
+const allTargets = ref([])
+const packets = ref([])
+const draftNew = ref({ target: null, packet: null, name: '' })
+const generating = ref(false)
+// Shown in the new screen form, which hides the editor's overlay
+const createError = ref(null)
+
+const filename = computed(() => {
+  const name = props.panel.screen?.screenName
+  return name ? `${name.toLowerCase()}.txt` : 'screen.txt'
+})
+const loading = computed(
+  () => !!props.panel.screen && original.value === null && !loadError.value,
+)
+// Covers the editor when there's no screen text to edit
+const overlay = computed(() => {
+  if (!props.panel.screen) return 'Pick or create a screen to edit it here'
+  return loadError.value
+})
+const editorKey = computed(() => screenKey(props.panel.screen))
+const text = computed(() => props.panel.screenText ?? original.value ?? '')
+const edited = computed(
+  () =>
+    typeof props.panel.screenText === 'string' &&
+    props.panel.screenText !== original.value,
+)
+const newProblem = computed(() => {
+  const { target: newTarget, name } = draftNew.value
+  if (!newTarget) return 'Pick a target'
+  if (!name) return 'Name the screen'
+  if (!/^[A-Za-z0-9_-]+$/.test(name)) {
+    return 'Letters, numbers, - and _ only'
+  }
+  if ((screens.value[newTarget] || []).includes(name.toUpperCase())) {
+    return `${newTarget} already has a ${name.toUpperCase()} screen`
+  }
+  return null
+})
+const nameErrors = computed(() => {
+  if (createError.value) return [createError.value]
+  return newProblem.value && draftNew.value.name ? [newProblem.value] : []
+})
+
+// A copy: create() lists a new screen here before it's saved
+listScreens()
+  .then((list) => {
+    screens.value = { ...list }
+  })
+  .catch((error) => {
+    console.error('Dashboards screen list failed to load:', error)
+  })
+
+function selectTarget(newTarget) {
+  target.value = newTarget
+  // A target with one screen needs no second pick
+  const names = screens.value[newTarget] || []
+  selectScreen(names.length === 1 ? names[0] : null)
 }
+
+function selectScreen(screenName) {
+  emit('update', {
+    screen: screenName ? { targetName: target.value, screenName } : null,
+    screenText: null,
+    screenNew: false,
+  })
+}
+
+function startCreate() {
+  draftNew.value = { target: target.value, packet: null, name: '' }
+  packets.value = []
+  if (target.value) loadPackets(target.value)
+  createError.value = null
+  creating.value = true
+  if (!allTargets.value.length) {
+    targetNames()
+      .then((names) => {
+        allTargets.value = names
+      })
+      .catch(() => {})
+  }
+}
+
+function setNewTarget(newTarget) {
+  draftNew.value.target = newTarget
+  draftNew.value.packet = null
+  packets.value = []
+  if (newTarget) loadPackets(newTarget)
+}
+
+function loadPackets(newTarget) {
+  api
+    .get_all_tlm_names(newTarget)
+    .then((names) => {
+      if (newTarget === draftNew.value.target) packets.value = names
+    })
+    .catch(() => {})
+}
+
+// Name a generated screen after its packet until the user types one
+function setNewPacket(packet) {
+  const previous = draftNew.value.packet
+  draftNew.value.packet = packet
+  const named = draftNew.value.name.toUpperCase()
+  if (packet && (!named || named === previous)) draftNew.value.name = packet
+}
+
+async function create() {
+  if (newProblem.value) return
+  const { target: newTarget, packet } = draftNew.value
+  const screenName = draftNew.value.name.toUpperCase()
+  createError.value = null
+  generating.value = true
+  try {
+    const screenText = await newScreenText(api, newTarget, packet)
+    // Listed now so it can be picked again before it's saved
+    screens.value[newTarget] = [
+      ...(screens.value[newTarget] || []),
+      screenName,
+    ].sort()
+    target.value = newTarget
+    emit('update', {
+      screen: { targetName: newTarget, screenName },
+      screenText,
+      screenNew: true,
+    })
+    creating.value = false
+  } catch (error) {
+    createError.value = `Unable to read ${newTarget} ${packet}: ${error.message || error}`
+  } finally {
+    generating.value = false
+  }
+}
+
+async function load() {
+  original.value = null
+  loadError.value = null
+  const screen = props.panel.screen
+  if (!screen) return
+  // Not written yet: the draft's text is all there is
+  if (props.panel.screenNew) {
+    original.value = ''
+    return
+  }
+  const key = screenKey(screen)
+  try {
+    const loaded = await loadScreen(screen)
+    if (key !== editorKey.value) return
+    original.value = loaded
+    // Once the editor has the new text, Undo can't go back into the
+    // previous screen
+    await nextTick()
+    editorRef.value?.editor?.session.getUndoManager().reset()
+  } catch {
+    if (key === editorKey.value) {
+      loadError.value = `Screen ${key.replace('/', ' ')} not found`
+    }
+  }
+}
+
+// Edits matching the file are dropped from the draft; a new screen
+// keeps its text whatever it is
+function edit(newText) {
+  // The editor echoes the text it's given while a screen loads
+  if (!props.panel.screen || original.value === null) return
+  emit('update', {
+    screenText:
+      newText === original.value && !props.panel.screenNew ? null : newText,
+  })
+}
+
+function revert() {
+  emit('update', { screenText: null })
+}
+
+// Loads the saved file for whichever screen the panel has, however it got
+// it (picked or created here, or edited in the Code tab)
+watch(editorKey, load, { immediate: true })
 </script>
 
 <style scoped>

@@ -43,9 +43,9 @@
       :open-delay="2000"
       location="top"
     >
-      <template #activator="{ props }">
+      <template #activator="{ props: activator }">
         <v-btn
-          v-bind="props"
+          v-bind="activator"
           :icon="control.icon"
           variant="text"
           :aria-label="control.aria"
@@ -70,9 +70,9 @@
       :open-delay="2000"
       location="top"
     >
-      <template #activator="{ props }">
+      <template #activator="{ props: activator }">
         <v-btn
-          v-bind="props"
+          v-bind="activator"
           :icon="control.icon"
           variant="text"
           :aria-label="control.aria"
@@ -111,159 +111,150 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, onBeforeUnmount, ref } from 'vue'
 import OpenC3TimePicker from './OpenC3TimePicker.vue'
-import { TimeFilters } from '@/util'
+import { useTimeFilters } from '@/composables'
 
 // Telemetry playback controls: a start date and time, play / pause that
 // advances `step` seconds every second, and step / skip buttons. The time
 // being shown is the v-model (a Date, null until playback starts). The
 // date, time, step and skip are remembered under `storageKey`.
-export default {
-  components: { OpenC3TimePicker },
-  mixins: [TimeFilters],
-  props: {
-    modelValue: { type: Date, default: null },
-    // 'UTC' or 'local'
-    timeZone: { type: String, default: 'local' },
-    // Requests for the current time are still loading: don't step or play on
-    loading: { type: Boolean, default: false },
-    storageKey: { type: String, required: true },
-  },
-  emits: ['update:modelValue', 'update:step', 'update:playing'],
-  data() {
-    return {
-      date: '',
-      time: '',
-      step: 1,
-      skip: 10,
-      playing: false,
-      timer: null,
-    }
-  },
-  computed: {
-    backward() {
-      return [
-        {
-          label: `Skip Backward ${this.skip} secs`,
-          aria: 'Skip Backward',
-          icon: 'mdi-skip-backward',
-          test: 'playback-skip-backward',
-          action: () => this.move(-this.skip),
-        },
-        {
-          label: `Step Backward ${this.step} secs`,
-          aria: 'Step Backward',
-          icon: 'mdi-step-backward',
-          test: 'playback-step-backward',
-          action: () => this.move(-this.step),
-        },
-      ]
-    },
-    forward() {
-      return [
-        {
-          label: `Step Forward ${this.step} secs`,
-          aria: 'Step Forward',
-          icon: 'mdi-step-forward',
-          test: 'playback-step-forward',
-          action: () => this.move(this.step),
-        },
-        {
-          label: `Skip Forward ${this.skip} secs`,
-          aria: 'Skip Forward',
-          icon: 'mdi-skip-forward',
-          test: 'playback-skip-forward',
-          action: () => this.move(this.skip),
-        },
-      ]
-    },
-  },
-  watch: {
-    modelValue(dateTime) {
-      if (!dateTime) return
-      // Playback can't run past now
-      if (dateTime > new Date()) {
-        this.pause()
-      } else {
-        this.date = this.formatDate(dateTime, this.timeZone)
-        this.time = this.formatTime(dateTime, this.timeZone)
-      }
-    },
-    step: {
-      immediate: true,
-      handler(step) {
-        this.$emit('update:step', step)
-        this.remember('step', step)
-      },
-    },
-    skip(skip) {
-      this.remember('skip', skip)
-    },
-    date(date) {
-      this.remember('date', date)
-    },
-    time(time) {
-      this.remember('time', time)
-    },
-    playing(playing) {
-      this.$emit('update:playing', playing)
-    },
-  },
-  created() {
-    const saved = (name) => localStorage[`${this.storageKey}__${name}`]
-    if (saved('step')) this.step = Number(saved('step'))
-    if (saved('skip')) this.skip = Number(saved('skip'))
-    // Start an hour back each time playback opens
-    const start = new Date(Date.now() - 3600000)
-    this.date = this.formatDate(start, this.timeZone)
-    this.time = this.formatTime(start, this.timeZone)
-  },
-  beforeUnmount() {
-    this.pause()
-  },
-  methods: {
-    remember(name, value) {
-      localStorage[`${this.storageKey}__${name}`] = value
-    },
-    toggle() {
-      if (this.playing) {
-        this.pause()
-      } else {
-        this.play()
-      }
-    },
-    // Step or skip by seconds; forward stops at now
-    move(seconds) {
-      if (!this.modelValue) return
-      const next = new Date(this.modelValue.getTime() + 1000 * seconds)
-      if (seconds < 0 || next <= new Date()) {
-        this.$emit('update:modelValue', next)
-      }
-    },
-    play() {
-      const text = `${this.date}T${this.time}`
-      this.$emit(
-        'update:modelValue',
-        new Date(this.timeZone === 'UTC' ? `${text}Z` : text),
-      )
-      clearInterval(this.timer)
-      this.timer = setInterval(() => {
-        // Don't advance time while previous playback requests are still loading
-        if (this.modelValue && !this.loading) {
-          this.$emit(
-            'update:modelValue',
-            new Date(this.modelValue.getTime() + 1000 * this.step),
-          )
-        }
-      }, 1000)
-      this.playing = true
-    },
-    pause() {
-      clearInterval(this.timer)
-      this.timer = null
-      this.playing = false
-    },
-  },
+const props = defineProps({
+  modelValue: { type: Date, default: null },
+  // 'UTC' or 'local'
+  timeZone: { type: String, default: 'local' },
+  // Requests for the current time are still loading: don't step or play on
+  loading: { type: Boolean, default: false },
+  storageKey: { type: String, required: true },
+})
+const emit = defineEmits(['update:modelValue', 'update:step', 'update:playing'])
+const timeFilters = useTimeFilters()
+
+function remember(name, value) {
+  localStorage[`${props.storageKey}__${name}`] = value
 }
+function saved(name) {
+  return localStorage[`${props.storageKey}__${name}`]
+}
+
+// Each field is remembered (and step and playing reported) as it's set
+function stored(name, initial, onSet) {
+  const value = ref(initial)
+  return computed({
+    get: () => value.value,
+    set: (next) => {
+      if (next === value.value) return
+      value.value = next
+      remember(name, next)
+      onSet?.(next)
+    },
+  })
+}
+const date = stored('date', '')
+const time = stored('time', '')
+const step = stored('step', saved('step') ? Number(saved('step')) : 1, (next) =>
+  emit('update:step', next),
+)
+const skip = stored('skip', saved('skip') ? Number(saved('skip')) : 10)
+const playingValue = ref(false)
+const playing = computed({
+  get: () => playingValue.value,
+  set: (next) => {
+    if (next === playingValue.value) return
+    playingValue.value = next
+    emit('update:playing', next)
+  },
+})
+let timer = null
+
+// Start an hour back each time playback opens
+showDateTime(new Date(Date.now() - 3600000))
+emit('update:step', step.value)
+remember('step', step.value)
+
+const backward = computed(() => [
+  {
+    label: `Skip Backward ${skip.value} secs`,
+    aria: 'Skip Backward',
+    icon: 'mdi-skip-backward',
+    test: 'playback-skip-backward',
+    action: () => move(-skip.value),
+  },
+  {
+    label: `Step Backward ${step.value} secs`,
+    aria: 'Step Backward',
+    icon: 'mdi-step-backward',
+    test: 'playback-step-backward',
+    action: () => move(-step.value),
+  },
+])
+const forward = computed(() => [
+  {
+    label: `Step Forward ${step.value} secs`,
+    aria: 'Step Forward',
+    icon: 'mdi-step-forward',
+    test: 'playback-step-forward',
+    action: () => move(step.value),
+  },
+  {
+    label: `Skip Forward ${skip.value} secs`,
+    aria: 'Skip Forward',
+    icon: 'mdi-skip-forward',
+    test: 'playback-skip-forward',
+    action: () => move(skip.value),
+  },
+])
+
+function showDateTime(dateTime) {
+  date.value = timeFilters.formatDate(dateTime, props.timeZone)
+  time.value = timeFilters.formatTime(dateTime, props.timeZone)
+}
+// Moves playback to dateTime and shows it in the date and time fields.
+// Playback can't run past now; returns whether it can go on.
+function setDateTime(dateTime) {
+  emit('update:modelValue', dateTime)
+  if (dateTime > new Date()) {
+    pause()
+    return false
+  }
+  showDateTime(dateTime)
+  return true
+}
+function toggle() {
+  if (playing.value) {
+    pause()
+  } else {
+    play()
+  }
+}
+// Step or skip by seconds; forward stops at now
+function move(seconds) {
+  if (!props.modelValue) return
+  const next = new Date(props.modelValue.getTime() + 1000 * seconds)
+  if (seconds < 0 || next <= new Date()) {
+    setDateTime(next)
+  }
+}
+function play() {
+  const text = `${date.value}T${time.value}`
+  if (!setDateTime(new Date(props.timeZone === 'UTC' ? `${text}Z` : text))) {
+    return
+  }
+  clearInterval(timer)
+  timer = setInterval(() => {
+    // Don't advance time while previous playback requests are still loading
+    if (props.modelValue && !props.loading) {
+      setDateTime(new Date(props.modelValue.getTime() + 1000 * step.value))
+    }
+  }, 1000)
+  playing.value = true
+}
+function pause() {
+  clearInterval(timer)
+  timer = null
+  playing.value = false
+}
+
+onBeforeUnmount(pause)
 </script>

@@ -26,7 +26,7 @@
       </span>
     </div>
     <v-textarea
-      v-model="value"
+      :model-value="value"
       class="mono code"
       variant="plain"
       :rows="rows"
@@ -56,7 +56,8 @@
   </v-card>
 </template>
 
-<script>
+<script setup>
+import { computed, nextTick, onUnmounted, ref } from 'vue'
 import { parseDashboard } from '../dashboardParser'
 
 const APPLY_DELAY_MS = 500
@@ -64,56 +65,75 @@ const APPLY_DELAY_MS = 500
 // Live DASHBOARD text. Typing re-parses after a short pause and applies the
 // result when it has no errors, so a half typed line never wipes out the
 // layout. While the text has focus the grid doesn't overwrite it.
-export default {
-  props: {
-    text: { type: String, required: true },
-    path: { type: String, default: '' },
-    hint: {
-      type: String,
-      default: 'Edits here and on the grid change the same lines',
-    },
-    // parseDashboard for a whole dashboard, parsePanel for one panel
-    parse: { type: Function, default: parseDashboard },
-    rows: { type: Number, default: 18 },
+const props = defineProps({
+  text: { type: String, required: true },
+  path: { type: String, default: '' },
+  hint: {
+    type: String,
+    default: 'Edits here and on the grid change the same lines',
   },
-  emits: ['apply'],
-  data() {
-    return { value: '', errors: [], focused: false, timer: null }
-  },
-  watch: {
-    // The text can come in with problems (a file as it was written)
-    text: {
-      immediate: true,
-      handler(text) {
-        if (this.focused) return
-        this.value = text
-        this.errors = this.parse(text).errors
-      },
-    },
-  },
-  unmounted() {
-    clearTimeout(this.timer)
-  },
-  methods: {
-    changed() {
-      clearTimeout(this.timer)
-      this.timer = setTimeout(() => this.apply(), APPLY_DELAY_MS)
-    },
-    apply() {
-      const { model, errors } = this.parse(this.value)
-      this.errors = errors
-      if (!errors.length) this.$emit('apply', model)
-    },
-    blur() {
-      this.focused = false
-      clearTimeout(this.timer)
-      this.apply()
-      // Show the canonical text once the applied edit comes back as `text`
-      this.$nextTick(() => {
-        if (!this.errors.length) this.value = this.text
-      })
-    },
-  },
+  // parseDashboard for a whole dashboard, parsePanel for one panel
+  parse: { type: Function, default: parseDashboard },
+  rows: { type: Number, default: 18 },
+})
+const emit = defineEmits(['apply'])
+
+const focused = ref(false)
+// What's typed: { base, value, errors }, with `base` the text it was typed
+// over and `errors` from the last parse (null until then)
+const draft = ref(null)
+let timer = null
+
+// Typed text shows while focused, and after blur until the text changes
+// (e.g. an edit on the grid replaces text left with errors)
+const showingDraft = computed(
+  () => !!draft.value && (focused.value || draft.value.base === props.text),
+)
+const value = computed(() =>
+  showingDraft.value ? draft.value.value : props.text,
+)
+// The text can come in with problems (a file as it was written)
+const errors = computed(() =>
+  showingDraft.value && draft.value.errors
+    ? draft.value.errors
+    : props.parse(props.text).errors,
+)
+
+onUnmounted(() => {
+  clearTimeout(timer)
+})
+
+function changed(typed) {
+  draft.value = {
+    base: props.text,
+    value: typed,
+    errors: draft.value?.errors ?? null,
+  }
+  clearTimeout(timer)
+  timer = setTimeout(apply, APPLY_DELAY_MS)
+}
+
+function apply() {
+  if (!draft.value) return
+  const { model, errors: found } = props.parse(draft.value.value)
+  draft.value.errors = found
+  if (!found.length) emit('apply', model)
+}
+
+function blur() {
+  focused.value = false
+  clearTimeout(timer)
+  apply()
+  if (!draft.value) return
+  if (draft.value.errors.length) {
+    // Kept over the text it can't replace, until that text changes
+    draft.value.base = props.text
+    return
+  }
+  // Show the canonical text once the applied edit comes back as `text`
+  nextTick(() => {
+    draft.value = null
+  })
 }
 </script>
 

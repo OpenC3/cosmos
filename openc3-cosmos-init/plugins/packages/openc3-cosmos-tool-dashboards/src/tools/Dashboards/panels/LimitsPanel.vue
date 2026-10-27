@@ -79,10 +79,11 @@
   </div>
 </template>
 
-<script>
+<script setup>
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Cable, OpenC3Api } from '@openc3/js-common/services'
 import StatusSymbol from '../components/StatusSymbol.vue'
-import panelBase from './panelBase'
+import { panelProps, usePanel } from './panelBase'
 import { baseKey, itemKey } from '../composables/tlmPoller'
 import { formatTelemetry } from '../composables/format'
 import { LEVEL_LABELS, limitsReason, stateToLevel } from '../status'
@@ -92,199 +93,180 @@ const HISTORY_COUNT = 1000
 // Live list of items out of limits for the panel's targets (all targets when
 // none are listed). Seeded from get_out_of_limits and kept current from the
 // limits event stream, whose history also tells us how long items have been out.
-export default {
-  components: { StatusSymbol },
-  mixins: [panelBase],
-  data() {
-    return {
-      // TGT__PKT__ITEM => { targetName, packetName, itemName, state, since }
-      entries: {},
-      // Only the duration text reads this, so the 1 s tick doesn't re-sort
-      now: Date.now(),
-    }
+const props = defineProps(panelProps)
+
+const { poller, itemInfo, cable, isPlayback } = usePanel(props, {
+  pollKeys: () => {
+    if (!streaming.value) return []
+    return visible.value.map((entry) => itemKey(entry, 'CONVERTED'))
   },
-  computed: {
-    visible() {
-      const targets = this.panel.targets
-      return Object.values(this.entries).filter(
-        (entry) => !targets.length || targets.includes(entry.targetName),
-      )
-    },
-    rows() {
-      return this.visible
-        .map((entry) => {
-          const polled = this.poller.values[itemKey(entry, 'CONVERTED')]
-          const info = this.itemInfo.get(entry)
-          const text = formatTelemetry(polled?.value, info.formatString)
-          return {
-            key: baseKey(entry),
-            level: stateToLevel(entry.state),
-            path: `${entry.targetName} ${entry.packetName} ${entry.itemName}`,
-            reason: limitsReason(entry.state, this.itemInfo.limits(entry)),
-            value: polled ? `${text} ${info.units}`.trim() : '',
-            since: entry.since || 0,
-          }
-        })
-        .sort((a, b) =>
-          a.level === b.level
-            ? b.since - a.since
-            : a.level === 'critical'
-              ? -1
-              : 1,
-        )
-    },
-    counts() {
-      return ['critical', 'caution'].map((level) => ({
-        level,
-        label: LEVEL_LABELS[level],
-        n: this.rows.filter((row) => row.level === level).length,
-      }))
-    },
-    streaming() {
-      return !this.isPlayback
-    },
-    // The duration text only changes while something is out of limits
-    ticking() {
-      return this.streaming && this.visible.length > 0
-    },
-    pollKeys() {
-      if (!this.streaming) return []
-      return this.visible.map((entry) => itemKey(entry, 'CONVERTED'))
-    },
-    // Rows are sorted critical first
-    panelLevel() {
-      return this.rows[0]?.level ?? null
-    },
-  },
-  watch: {
-    // Live only: not in playback (past limits states aren't available)
-    streaming(live) {
-      if (live) {
-        this.entries = {}
-        this.start()
-      } else {
-        this.stop()
+  // Rows are sorted critical first
+  panelLevel: () => rows.value[0]?.level ?? null,
+})
+
+// TGT__PKT__ITEM => { targetName, packetName, itemName, state, since }
+const entries = ref({})
+// Only the duration text reads this, so the 1 s tick doesn't re-sort and
+// nothing re-renders while no item is out of limits
+const now = ref(Date.now())
+
+const api = new OpenC3Api()
+const socket = cable || new Cable()
+let subscription = null
+let clock = null
+// Bumped by start and stop, so a seed or subscription still loading
+// from an earlier start is dropped
+let generation = 0
+
+const visible = computed(() => {
+  const targets = props.panel.targets
+  return Object.values(entries.value).filter(
+    (entry) => !targets.length || targets.includes(entry.targetName),
+  )
+})
+const rows = computed(() =>
+  visible.value
+    .map((entry) => {
+      const polled = poller.values[itemKey(entry, 'CONVERTED')]
+      const info = itemInfo.get(entry)
+      const text = formatTelemetry(polled?.value, info.formatString)
+      return {
+        key: baseKey(entry),
+        level: stateToLevel(entry.state),
+        path: `${entry.targetName} ${entry.packetName} ${entry.itemName}`,
+        reason: limitsReason(entry.state, itemInfo.limits(entry)),
+        value: polled ? `${text} ${info.units}`.trim() : '',
+        since: entry.since || 0,
       }
-    },
-    visible(entries) {
-      for (const entry of entries) this.itemInfo.get(entry)
-    },
-    ticking: {
-      immediate: true,
-      handler(on) {
-        clearInterval(this.clock)
-        this.clock = null
-        if (!on) return
-        this.now = Date.now()
-        this.clock = setInterval(() => {
-          this.now = Date.now()
-        }, 1000)
+    })
+    .sort((a, b) =>
+      a.level === b.level ? b.since - a.since : a.level === 'critical' ? -1 : 1,
+    ),
+)
+const counts = computed(() =>
+  ['critical', 'caution'].map((level) => ({
+    level,
+    label: LEVEL_LABELS[level],
+    n: rows.value.filter((row) => row.level === level).length,
+  })),
+)
+const streaming = computed(() => !isPlayback.value)
+
+// Live only: not in playback (past limits states aren't available). Watched
+// because playback is toggled outside the panel and owns the socket.
+watch(streaming, (live) => {
+  if (live) {
+    entries.value = {}
+    start()
+  } else {
+    stop()
+  }
+})
+
+if (streaming.value) start()
+
+onMounted(() => {
+  // Re-renders only while a duration text reads it
+  clock = setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
+})
+onUnmounted(() => {
+  clearInterval(clock)
+  stop()
+  if (!cable) socket.disconnect()
+})
+
+// Load what's out of limits now and follow the event stream. The seed
+// and the stream are independent; setEntry keeps the earliest known time.
+function start() {
+  const current = ++generation
+  api
+    .get_out_of_limits()
+    .then((items) => {
+      if (current !== generation) return
+      for (const [targetName, packetName, itemName, state] of items) {
+        setEntry(targetName, packetName, itemName, state, null)
+      }
+    })
+    .catch((error) => {
+      console.error('Dashboards limits panel failed to load:', error)
+    })
+  socket
+    .createSubscription(
+      'LimitsEventsChannel',
+      window.openc3Scope,
+      {
+        received: (messages) => {
+          if (current !== generation) return
+          socket.recordPing()
+          handleMessages(messages)
+        },
       },
-    },
-  },
-  created() {
-    this.api = new OpenC3Api()
-    this.socket = this.cable || new Cable()
-    // Bumped by start and stop, so a seed or subscription still loading
-    // from an earlier start is dropped
-    this.generation = 0
-    if (this.streaming) this.start()
-  },
-  unmounted() {
-    clearInterval(this.clock)
-    this.stop()
-    if (!this.cable) this.socket.disconnect()
-  },
-  methods: {
-    // Load what's out of limits now and follow the event stream. The seed
-    // and the stream are independent; setEntry keeps the earliest known time.
-    start() {
-      const generation = ++this.generation
-      this.api
-        .get_out_of_limits()
-        .then((items) => {
-          if (generation !== this.generation) return
-          for (const [targetName, packetName, itemName, state] of items) {
-            this.setEntry(targetName, packetName, itemName, state, null)
-          }
-        })
-        .catch((error) => {
-          console.error('Dashboards limits panel failed to load:', error)
-        })
-      this.socket
-        .createSubscription(
-          'LimitsEventsChannel',
-          window.openc3Scope,
-          {
-            received: (messages) => {
-              if (generation !== this.generation) return
-              this.socket.recordPing()
-              this.handleMessages(messages)
-            },
-          },
-          { history_count: HISTORY_COUNT },
-        )
-        .then((subscription) => {
-          if (generation !== this.generation) {
-            subscription.unsubscribe()
-            return
-          }
-          this.subscription = subscription
-        })
-    },
-    stop() {
-      this.generation++
-      this.subscription?.unsubscribe()
-      this.subscription = null
-    },
-    durationOf(row) {
-      return row.since ? this.formatDuration(this.now - row.since) : ''
-    },
-    setEntry(targetName, packetName, itemName, state, since) {
-      const key = baseKey({ targetName, packetName, itemName })
-      const out =
-        state && (state.startsWith('RED') || state.startsWith('YELLOW'))
-      if (!out) {
-        delete this.entries[key]
+      { history_count: HISTORY_COUNT },
+    )
+    .then((created) => {
+      if (current !== generation) {
+        created.unsubscribe()
         return
       }
-      const existing = this.entries[key]
-      this.entries[key] = {
-        targetName,
-        packetName,
-        itemName,
-        state,
-        // Keep the original time while the item stays out of limits
-        since:
-          existing && existing.state === state && existing.since
-            ? existing.since
-            : since,
-      }
-    },
-    handleMessages(messages) {
-      for (const json of messages) {
-        const message = JSON.parse(json.event)
-        // The channel also sends LIMITS_SETTINGS and LIMITS_SET messages
-        if (message.type !== 'LIMITS_CHANGE' || message.suppress_stored)
-          continue
-        this.setEntry(
-          message.target_name,
-          message.packet_name,
-          message.item_name,
-          message.new_limits_state,
-          Math.floor(message.time_nsec / 1_000_000),
-        )
-      }
-    },
-    formatDuration(ms) {
-      const seconds = Math.max(0, Math.floor(ms / 1000))
-      if (seconds < 60) return `${seconds}s`
-      const minutes = Math.floor(seconds / 60)
-      if (minutes < 60) return `${minutes}m`
-      const hours = Math.floor(minutes / 60)
-      if (hours < 24) return `${hours}h ${minutes % 60}m`
-      return `${Math.floor(hours / 24)}d ${hours % 24}h`
-    },
-  },
+      subscription = created
+    })
+}
+
+function stop() {
+  generation++
+  subscription?.unsubscribe()
+  subscription = null
+}
+
+function durationOf(row) {
+  return row.since ? formatDuration(now.value - row.since) : ''
+}
+
+function setEntry(targetName, packetName, itemName, state, since) {
+  const key = baseKey({ targetName, packetName, itemName })
+  const out = state && (state.startsWith('RED') || state.startsWith('YELLOW'))
+  if (!out) {
+    delete entries.value[key]
+    return
+  }
+  const existing = entries.value[key]
+  entries.value[key] = {
+    targetName,
+    packetName,
+    itemName,
+    state,
+    // Keep the original time while the item stays out of limits
+    since:
+      existing && existing.state === state && existing.since
+        ? existing.since
+        : since,
+  }
+}
+
+function handleMessages(messages) {
+  for (const json of messages) {
+    const message = JSON.parse(json.event)
+    // The channel also sends LIMITS_SETTINGS and LIMITS_SET messages
+    if (message.type !== 'LIMITS_CHANGE' || message.suppress_stored) continue
+    setEntry(
+      message.target_name,
+      message.packet_name,
+      message.item_name,
+      message.new_limits_state,
+      Math.floor(message.time_nsec / 1_000_000),
+    )
+  }
+}
+
+function formatDuration(ms) {
+  const seconds = Math.max(0, Math.floor(ms / 1000))
+  if (seconds < 60) return `${seconds}s`
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `${minutes}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ${minutes % 60}m`
+  return `${Math.floor(hours / 24)}d ${hours % 24}h`
 }
 </script>

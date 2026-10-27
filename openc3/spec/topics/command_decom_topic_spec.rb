@@ -63,7 +63,8 @@ module OpenC3
             packet_name: 'CMD',
             received_count: 1,
             stored: 'false'
-          )
+          ),
+          minid: kind_of(String)
         )
         CommandDecomTopic.write_packet(packet, scope: 'DEFAULT')
       end
@@ -109,6 +110,17 @@ module OpenC3
         hash = json_data(packet)
         expect(hash['BOTH']).to eq(1)
         expect(hash['BOTH__C']).to eq('ON')
+      end
+
+      it "does not log the given value of an obfuscated item" do
+        item = packet.get_item('VALUE')
+        item.obfuscate = true
+        packet.update_obfuscated_items_cache(item)
+        packet.given_values = { 'VALUE' => 5 }
+        packet.obfuscate
+        hash = json_data(packet)
+        expect(hash['VALUE']).to eq(0)
+        expect(hash['VALUE__C']).to eq(0)
       end
 
       it "ignores given values for raw commands" do
