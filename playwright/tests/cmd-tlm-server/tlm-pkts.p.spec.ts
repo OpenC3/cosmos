@@ -68,6 +68,8 @@ test('displays raw packets', async ({ page, utils }) => {
   })
 
   // Open another raw packet to show we can display more than one
+  // Filter the table since INST PARAMS isn't necessarily on the first page
+  await page.getByRole('textbox', { name: 'Search' }).first().fill('PARAMS')
   await page
     .getByRole('row', { name: 'INST PARAMS' })
     .getByRole('button', { name: 'View Raw' })

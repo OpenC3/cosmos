@@ -215,6 +215,30 @@ TELEMETRY <%= target_name %> VARIABLE_ARRAYS BIG_ENDIAN "Variable length arrays"
     READ_CONVERSION openc3/conversions/unix_time_conversion.py TIMESEC TIMEUS
     CONVERTED_DATA 280 STRING
 
+TELEMETRY <%= target_name %> MEMDUMP BIG_ENDIAN "Memory dump sent in response to the MEMDUMP command"
+  <%= render "_ccsds_tlm.txt", locals: {apid: 8} %>
+  APPEND_ITEM OFFSET 32 UINT "Memory offset in bytes of the dump"
+  APPEND_ITEM SIZE 32 UINT "Number of bytes in the dump"
+    UNITS Bytes B
+  APPEND_ITEM DATA 0 BLOCK "Dumped memory"
+    VARIABLE_BIT_SIZE SIZE
+  APPEND_ITEM CRC 32 UINT "CRC32 of DATA calculated by the target"
+    FORMAT_STRING "0x%08X"
+  ITEM CALC_CRC 0 0 DERIVED "CRC32 of DATA calculated on the ground"
+    READ_CONVERSION crc32_conversion.rb DATA
+    CONVERTED_DATA 32 UINT
+    FORMAT_STRING "0x%08X"
+  ITEM CRC_OK 0 0 DERIVED "Whether the target CRC matches the ground CRC"
+    GENERIC_READ_CONVERSION_START
+      packet.read('CRC') == packet.read('CALC_CRC') ? 1 : 0
+    GENERIC_READ_CONVERSION_END
+    CONVERTED_DATA 8 UINT
+    STATE TRUE 1 GREEN
+    STATE FALSE 0 RED
+  ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
+    READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
+    CONVERTED_DATA 280 STRING
+
 TELEMETRY <%= target_name %> JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
   ACCESSOR JsonAccessor
   # Template is not required for telemetry, but is useful for simulation

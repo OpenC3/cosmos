@@ -21,6 +21,7 @@ require 'openc3'
 require 'stringio'
 require 'base64'
 require 'openc3/accessors/binary_accessor'
+require 'openc3/utilities/crc'
 
 module OpenC3
   # Simulated instrument for the demo. Populates several packets and cycles
@@ -128,6 +129,10 @@ module OpenC3
       packet.CcsdsSeqFlags = 'NOGROUP'
       packet.CcsdsLength = packet.buffer.length - 7
 
+      packet = @tlm_packets['MEMDUMP']
+      packet.enable_method_missing
+      packet.CcsdsSeqFlags = 'NOGROUP'
+
       @solar_panel_positions = SOLAR_PANEL_DFLTS.dup
       @solar_panel_thread = nil
       @solar_panel_thread_cancel = false
@@ -150,6 +155,8 @@ module OpenC3
       @time_offset = 0
       @ip_address = 0
       @variable_arrays_updated = false
+      @memdump_response = nil
+      @crc = Crc32.new
     end
 
     def set_rates
@@ -269,6 +276,26 @@ module OpenC3
         # Write only arrays - variable_bit_size will auto-update length fields
         arrays_packet.write('ARRAY1', packet.read('ARRAY1'))
         arrays_packet.write('ARRAY2', packet.read('ARRAY2'))
+      when 'MEMDUMP'
+        offset = packet.read('OFFSET')
+        size = packet.read('SIZE')
+        bad_crc = packet.read('BAD_CRC', :RAW)
+        # Reject the command if the CRC over OFFSET, SIZE and BAD_CRC doesn't match
+        return unless packet.read('CRC') == @crc.calc([offset, size, bad_crc].pack('NNC'))
+        # Reject sizes outside the command's range since cmd_raw skips range checks
+        return unless packet.get_item('SIZE').range.cover?(size)
+        hs_packet.cmd_acpt_cnt += 1
+        # Simulated memory is a byte counter where each byte holds its address
+        data = Array.new(size) { |i| (offset + i) & 0xFF }.pack('C*')
+        crc = @crc.calc(data)
+        if bad_crc == 1
+          # Flip a random bit after calculating the CRC to simulate downlink corruption
+          bit = rand(size * 8)
+          data.setbyte(bit / 8, data.getbyte(bit / 8) ^ (0x80 >> (bit % 8)))
+        end
+        # Commands arrive on a different thread than read so only hand off the
+        # values here and let read write them into the MEMDUMP packet
+        @memdump_response = [offset, data, crc]
       end
     end
 
@@ -467,6 +494,21 @@ module OpenC3
         arrays_packet.write('TIMEUS', time.tv_usec)
         arrays_packet.write('CCSDSSEQCNT', arrays_packet.read('CCSDSSEQCNT') + 1)
         pending_packets << arrays_packet
+      end
+
+      memdump_response, @memdump_response = @memdump_response, nil
+      if memdump_response
+        offset, data, crc = memdump_response
+        memdump_packet = @tlm_packets['MEMDUMP']
+        memdump_packet.write('OFFSET', offset)
+        # Writing DATA resizes the packet and updates SIZE due to VARIABLE_BIT_SIZE
+        memdump_packet.write('DATA', data)
+        memdump_packet.write('CRC', crc)
+        memdump_packet.write('CCSDSLENGTH', memdump_packet.buffer(false).length - 7)
+        memdump_packet.write('TIMESEC', time.tv_sec - @time_offset)
+        memdump_packet.write('TIMEUS', time.tv_usec)
+        memdump_packet.write('CCSDSSEQCNT', memdump_packet.read('CCSDSSEQCNT') + 1)
+        pending_packets << memdump_packet
       end
 
       pending_packets
