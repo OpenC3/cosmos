@@ -107,16 +107,49 @@ cmd_no_checks("INST COLLECT with DURATION 11, TYPE 'NORMAL'")`)
   )
 })
 
-test('ask accepts default, password, and required', async ({ page, utils }) => {
+// Language specific script snippets and expected output so the same
+// interaction tests can run against both Ruby and Python
+const languages = [
+  {
+    name: 'ruby',
+    t: 'true',
+    f: 'false',
+    print: (expr: string) => `puts ${expr}`,
+    wait: 'wait',
+    blank: (v: string) => `puts "blank:#{${v}.empty?}"`,
+    blankOut: 'blank:true',
+    typed: (label: string, v: string) =>
+      `puts "${label}:#{${v}} #{${v}.class}"`,
+    types: { int: 'Integer', float: 'Float', string: 'String' },
+    multiOut: 'Multiple input: ["abc123", "ghi789"]',
+  },
+  {
+    name: 'python',
+    t: 'True',
+    f: 'False',
+    print: (expr: string) => `print(${expr})`,
+    wait: 'wait()',
+    blank: (v: string) => `print(f"blank:{${v} == ''}")`,
+    blankOut: 'blank:True',
+    typed: (label: string, v: string) =>
+      `print(f"${label}:{${v}} {type(${v}).__name__}")`,
+    types: { int: 'int', float: 'float', string: 'str' },
+    multiOut: "Multiple input: ['abc123', 'ghi789']",
+  },
+]
+
+for (const L of languages) {
+  test.describe(`${L.name} user input`, () => {
+    test('ask accepts default, password, and required', async ({ page, utils }) => {
   await page.locator('textarea').fill(`value = ask("Enter password:")
-puts value
-value = ask("Optionally enter password:", true)
-puts "blank:#{value.empty?}"
+${L.print('value')}
+value = ask("Optionally enter password:", ${L.t})
+${L.blank('value')}
 value = ask("Enter default password:", 67890)
-puts value
-value = ask("Enter SECRET password:", false, true)
-wait
-puts value`)
+${L.print('value')}
+value = ask("Enter SECRET password:", ${L.f}, ${L.t})
+${L.wait}
+${L.print('value')}`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
@@ -143,7 +176,7 @@ puts value`)
   await expect(page.locator('.v-dialog >> button:has-text("Ok")')).toBeEnabled()
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'blank:true',
+        L.blankOut,
   )
   // Verify the default value
   expect(await page.inputValue('[data-test=ask-value-input] input')).toMatch(
@@ -174,11 +207,11 @@ puts value`)
 
 test('converts value for ask but not ask_string', async ({ page, utils }) => {
   await page.locator('textarea').fill(`value = ask("Enter integer:")
-puts "int:#{value} #{value.class}"
+${L.typed('int', 'value')}
 value = ask("Enter float:")
-puts "float:#{value} #{value.class}"
+${L.typed('float', 'value')}
 value = ask_string("Enter float:")
-puts "string:#{value} #{value.class}"`)
+${L.typed('string', 'value')}`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
@@ -186,19 +219,19 @@ puts "string:#{value} #{value.class}"`)
   await page.locator('.v-dialog >> input').fill('123')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'int:123 Integer',
+        `int:123 ${L.types.int}`,
   )
   await page.locator('.v-dialog >> input').fill('5.5')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'float:5.5 Float',
+        `float:5.5 ${L.types.float}`,
   )
   await page.locator('.v-dialog >> input').fill('5.5')
   await page.locator('.v-dialog >> button:has-text("Ok")').click()
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'string:5.5 String',
-  )
-  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
+        `string:5.5 ${L.types.string}`,
+      )
+      await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
 })
 
 test('opens a dialog with buttons for message_box, vertical_message_box', async ({
@@ -207,9 +240,9 @@ test('opens a dialog with buttons for message_box, vertical_message_box', async 
 }) => {
   await page.locator('textarea')
     .fill(`value = message_box("Select", "ONE", "TWO", "THREE")
-puts value
+${L.print('value')}
 value = vertical_message_box("Select", "FOUR", "FIVE", "SIX")
-puts value`)
+${L.print('value')}`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
@@ -237,7 +270,8 @@ test('opens a dialog with dropdowns for combo_box', async ({ page, utils }) => {
   await page
     .locator('textarea')
     .fill(
-      `value = combo_box("Select value from combo", "abc123", "def456")\nputs value`,
+      `value = combo_box("Select value from combo", "abc123", "def456")
+${L.print('value')}`,
     )
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
@@ -272,7 +306,8 @@ test('opens a dialog with checkboxes for check_box', async ({
   await page
     .locator('textarea')
     .fill(
-      `value = check_box("Select values to enable", "abc123", "def456", "ghi789")\nputs value`,
+      `value = check_box("Select values to enable", "abc123", "def456", "ghi789")
+${L.print('value')}`,
     )
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
@@ -296,13 +331,14 @@ test('opens a dialog with checkboxes for check_box', async ({
   await page.locator('[data-test="prompt-ok"]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
   await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'Multiple input: ["abc123", "ghi789"]',
+        L.multiOut,
   )
 })
 
 test('opens a dialog for prompt', async ({ page, utils }) => {
   // Default choices for prompt is Ok and Cancel
-  await page.locator('textarea').fill(`value = prompt("Continue?")\nputs value`)
+  await page.locator('textarea').fill(`value = prompt("Continue?")
+${L.print('value')}`)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
     timeout: 20000,
@@ -323,6 +359,8 @@ test('opens a dialog for prompt', async ({ page, utils }) => {
   await expect(page.locator('[data-test=output-messages]')).toContainText('Ok')
   await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
 })
+  })
+}
 
 async function openFile(page, utils, filename) {
   await page.locator('[data-test=script-runner-file]').click()
