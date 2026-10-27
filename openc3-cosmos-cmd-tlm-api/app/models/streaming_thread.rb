@@ -295,11 +295,12 @@ class StreamingThread
   def handoff(collection)
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = collection.topics_offsets_and_objects
     my_topics, my_offsets, _item_objects_by_topic, _packet_objects_by_topic = @collection.topics_offsets_and_objects
+    # Hash lookup rather than Array#index since collections can have thousands of topics
+    my_offset_by_topic = my_topics.zip(my_offsets).to_h
     topics.each_with_index do |topic, index|
       offset = offsets[index]
-      my_index = my_topics.index(topic)
-      if my_index
-        my_offset = my_offsets[my_index]
+      my_offset = my_offset_by_topic[topic]
+      if my_offset
         if offset >= my_offset
           # Caught up
           handoff_objects(collection, topic, item_objects_by_topic, packet_objects_by_topic)
