@@ -160,7 +160,7 @@ module OpenC3
           allow(JsonDRb).to receive(:debug?).and_return(true)
         end
 
-        it "shows actual password in error messages when debug is enabled" do
+        it "redacts the password in debug logs" do
           stdout = StringIO.new('', 'r+')
           saved_stdout = $stdout
           $stdout = stdout
@@ -176,8 +176,8 @@ module OpenC3
             OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout_const) }
           end
 
-          # In debug mode, STDOUT should contain the actual password (works with both Ruby 3.2 and 3.3+ inspect formats)
-          expect(stdout.string).to match(/"password"\s*=>\s*"testpassword"/)
+          expect(stdout.string).to match(/"password"\s*=>\s*"\*\*\*"/)
+          expect(stdout.string).not_to include('testpassword')
         end
       end
 
@@ -202,7 +202,7 @@ module OpenC3
           end
         end
 
-        it "shows actual refresh_token when debug is enabled" do
+        it "redacts refresh_token when debug is enabled" do
           allow(JsonDRb).to receive(:debug?).and_return(true)
 
           stdout = StringIO.new('', 'r+')
@@ -220,8 +220,8 @@ module OpenC3
             OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout_const) }
           end
 
-          # In debug mode, STDOUT should contain the actual refresh token (works with both Ruby 3.2 and 3.3+ inspect formats)
-          expect(stdout.string).to match(/"refresh_token"\s*=>\s*"test_refresh_token"/)
+          expect(stdout.string).to match(/"refresh_token"\s*=>\s*"\*\*\*"/)
+          expect(stdout.string).not_to include('test_refresh_token')
         end
       end
     end
@@ -326,6 +326,34 @@ module OpenC3
           expect(error.message).to include('***')
           expect(error.message).not_to include('m2m_secret')
         end
+      end
+
+      it "redacts the client secret in debug logs" do
+        mock_response = instance_double(Faraday::Response,
+          status: 401,
+          headers: {},
+          body: '{"error":"invalid_client"}'
+        )
+        allow(mock_http).to receive(:post).and_return(mock_response)
+        allow(JsonDRb).to receive(:debug?).and_return(true)
+
+        stdout = StringIO.new('', 'r+')
+        saved_stdout = $stdout
+        $stdout = stdout
+        saved_stdout_const = Object.const_get(:STDOUT)
+        OpenC3.disable_warnings { Object.const_set(:STDOUT, stdout) }
+
+        begin
+          expect {
+            auth.token
+          }.to raise_error(OpenC3AuthenticationError)
+        ensure
+          $stdout = saved_stdout
+          OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout_const) }
+        end
+
+        expect(stdout.string).to match(/"client_secret"\s*=>\s*"\*\*\*"/)
+        expect(stdout.string).not_to include('m2m_secret')
       end
 
       it "treats an empty client secret as unset" do

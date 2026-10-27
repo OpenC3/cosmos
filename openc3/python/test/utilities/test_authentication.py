@@ -199,8 +199,8 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
     @patch("openc3.utilities.authentication.OPENC3_API_USER", "testuser")
     @patch("openc3.utilities.authentication.OPENC3_API_PASSWORD", "testpassword")
     @patch("openc3.utilities.authentication.OPENC3_DEVEL", "true")
-    def test_password_shown_in_logs_when_debug_enabled(self):
-        """Shows actual password in error messages when debug is enabled"""
+    def test_password_redacted_in_logs_when_debug_enabled(self):
+        """Redacts password in error messages even when debug is enabled"""
         auth = OpenC3KeycloakAuthentication(self.test_url)
         mock_response = Mock()
         mock_response.status_code = 401
@@ -212,8 +212,8 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
             auth.token()
 
         error_msg = str(context.exception)
-        # In debug mode, password should be visible
-        self.assertIn("testpassword", error_msg)
+        self.assertIn("***", error_msg)
+        self.assertNotIn("testpassword", error_msg)
 
     @patch("openc3.utilities.authentication.OPENC3_API_USER", None)
     @patch("openc3.utilities.authentication.OPENC3_API_PASSWORD", None)
@@ -240,8 +240,8 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
     @patch("openc3.utilities.authentication.OPENC3_API_PASSWORD", None)
     @patch("openc3.utilities.authentication.OPENC3_API_TOKEN", "test_refresh_token")
     @patch("openc3.utilities.authentication.OPENC3_DEVEL", "true")
-    def test_shows_refresh_token_when_debug_enabled(self):
-        """Shows actual refresh_token when debug is enabled"""
+    def test_redacts_refresh_token_when_debug_enabled(self):
+        """Redacts refresh_token in error messages even when debug is enabled"""
         auth = OpenC3KeycloakAuthentication(self.test_url)
         mock_response = Mock()
         mock_response.status_code = 401
@@ -253,8 +253,8 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
             auth.token()
 
         error_msg = str(context.exception)
-        # In debug mode, refresh token should be visible
-        self.assertIn("test_refresh_token", error_msg)
+        self.assertIn("***", error_msg)
+        self.assertNotIn("test_refresh_token", error_msg)
 
     @patch("openc3.utilities.authentication.OPENC3_API_USER", "testuser")
     @patch("openc3.utilities.authentication.OPENC3_API_PASSWORD", "testpassword")
@@ -571,6 +571,24 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
     @patch("openc3.utilities.authentication.OPENC3_DEVEL", None)
     def test_client_secret_obfuscated_in_logs(self):
         """Obfuscates the client secret in error messages when debug is off."""
+        auth = OpenC3KeycloakAuthentication(self.test_url)
+        mock_response = Mock()
+        mock_response.status_code = 401
+        mock_response.headers = {}
+        mock_response.text = '{"error":"invalid_client"}'
+        auth.http.post = Mock(return_value=mock_response)
+
+        with self.assertRaises(OpenC3AuthenticationError) as context:
+            auth.token()
+
+        error_msg = str(context.exception)
+        self.assertIn("***", error_msg)
+        self.assertNotIn("m2m_secret", error_msg)
+
+    @patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", "m2m_secret")
+    @patch("openc3.utilities.authentication.OPENC3_DEVEL", "true")
+    def test_client_secret_redacted_in_logs_when_debug_enabled(self):
+        """Redacts the client secret in error messages even when debug is enabled."""
         auth = OpenC3KeycloakAuthentication(self.test_url)
         mock_response = Mock()
         mock_response.status_code = 401

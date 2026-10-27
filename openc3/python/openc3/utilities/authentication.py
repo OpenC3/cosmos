@@ -134,6 +134,14 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
             read_timeout = OPENC3_API_TIMEOUT
         return (OPENC3_API_TIMEOUT, read_timeout)
 
+    @staticmethod
+    def _redact_log_data(data):
+        log_data = data.copy()
+        for secret_key in ("password", "client_secret", "refresh_token"):
+            if secret_key in log_data:
+                log_data[secret_key] = "***"
+        return str(log_data)
+
     # Make the token and save token to instance
     def _make_token(self, current_time, openid_scope="openid"):
         client_id = OPENC3_API_CLIENT or "api"
@@ -204,20 +212,8 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         realm = OPENC3_KEYCLOAK_REALM or "openc3"
         url = f"{self.url}/realms/{realm}/protocol/openid-connect/token"
 
-        # Obfuscate password, client secret, and refresh token in logs unless
-        # debug mode is enabled
-        if OPENC3_DEVEL:
-            log_data = str(data)
-        else:
-            # Create a copy of the dict with sensitive values obfuscated
-            log_data = data.copy()
-            if "password" in log_data:
-                log_data["password"] = "***"
-            if "client_secret" in log_data:
-                log_data["client_secret"] = "***"
-            if "refresh_token" in log_data:
-                log_data["refresh_token"] = "***"
-            log_data = str(log_data)
+        # Obfuscate password, client secret, and refresh token before logging.
+        log_data = self._redact_log_data(data)
 
         self.log[0] = f"request uri: {url} header: {headers} body: {log_data}"
         # print(self.log[0])

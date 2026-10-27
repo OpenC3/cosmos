@@ -184,6 +184,14 @@ module OpenC3
       [connect_timeout, read_timeout]
     end
 
+    def redacted_log_data(data)
+      log_data = data.dup
+      %w[password client_secret refresh_token].each do |secret_key|
+        log_data[secret_key] = '***' if log_data.key?(secret_key)
+      end
+      log_data.inspect
+    end
+
     # Make the token and save token to instance
     def _make_token(current_time, openid_scope: 'openid')
       client_id = ENV['OPENC3_API_CLIENT'] || 'api'
@@ -251,17 +259,8 @@ module OpenC3
     def _make_request(headers, data)
       realm = ENV['OPENC3_KEYCLOAK_REALM'] || 'openc3'
       uri = URI("#{@url}/realms/#{realm}/protocol/openid-connect/token")
-      # Obfuscate password, client secret, and refresh token in logs unless debug mode is enabled
-      if JsonDRb.debug?
-        log_data = data.inspect
-      else
-        # Create a copy of the hash with sensitive values obfuscated
-        log_data = data.dup
-        log_data['password'] = '***' if log_data.key?('password')
-        log_data['client_secret'] = '***' if log_data.key?('client_secret')
-        log_data['refresh_token'] = '***' if log_data.key?('refresh_token')
-        log_data = log_data.inspect
-      end
+      # Obfuscate password, client secret, and refresh token before logging.
+      log_data = redacted_log_data(data)
       @log[0] = "request uri: #{uri} header: #{headers} body: #{log_data}"
       STDOUT.puts @log[0] if JsonDRb.debug?
       saved_verbose = $VERBOSE; $VERBOSE = nil
