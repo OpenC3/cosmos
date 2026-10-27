@@ -70,7 +70,8 @@ class TestMqttInterface(unittest.TestCase):
         i.disconnect()
         self.assertFalse(i.connected())
         i.disconnect()  # Safe to call twice
-        mock_client_instance.disconnect.assert_called()
+        mock_client_instance.disconnect.assert_called_once()
+        mock_client_instance.loop_stop.assert_called_once()
 
     @patch("openc3.interfaces.mqtt_interface.mqtt.Client")
     def test_only_queues_one_disconnect_marker_per_connection(self, _):

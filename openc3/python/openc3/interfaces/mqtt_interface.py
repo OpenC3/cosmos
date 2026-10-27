@@ -130,6 +130,9 @@ class MqttInterface(Interface):
             # the unconsumed marker would immediately disconnect the next connection
             self.pkt_queue.put(None)
             self.client.disconnect()
+            # Wait for the network thread so a late on_message can't race the next connect
+            # resetting read_topics and pkt_queue, which would misalign topics and payloads
+            self.client.loop_stop()
             self.client = None
         super().disconnect()
 

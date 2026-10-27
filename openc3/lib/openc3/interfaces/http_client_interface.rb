@@ -51,8 +51,9 @@ module OpenC3
 
     # Connects the interface to its target(s)
     def connect
-      # Discard anything left over from a previous connection, such as a response to a
-      # request that completed after disconnect, so it isn't read as part of this one
+      # Discard anything still queued from a previous connection, such as a response to a
+      # request that completed after disconnect. A request still in flight across the
+      # reconnect can queue its response after this; that is a real response and is read normally.
       @response_queue.clear
       # Per https://github.com/lostisland/faraday/blob/main/lib/faraday/options/env.rb
       # :timeout       - time limit for the entire request (Integer in seconds)

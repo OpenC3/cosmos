@@ -73,8 +73,9 @@ class HttpClientInterface(Interface):
         """
         Initializes an HTTP session and then calls the parent class's connect method.
         """
-        # Discard anything left over from a previous connection, such as a response to a
-        # request that completed after disconnect, so it isn't read as part of this one
+        # Discard anything still queued from a previous connection, such as a response to a
+        # request that completed after disconnect. A request still in flight across the
+        # reconnect can queue its response after this; that is a real response and is read normally.
         while not self.response_queue.empty():
             self.response_queue.get_nowait()
         self.http = requests.Session()
