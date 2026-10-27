@@ -94,18 +94,21 @@ module OpenC3
     describe "tlm_packets_with_tables" do
       it "returns the packets with a table queried by db_shard" do
         allow(QuestDBClient).to receive(:db_shard_for_target) { |target_name, **| target_name == "INST2" ? 1 : 0 }
-        allow(QuestDBClient).to receive(:query_with_retry) do |query, params:, db_shard:, **|
-          expect(query).to include("FROM tables()")
-          tables = { 0 => ["DEFAULT__TLM__INST__HEALTH_STATUS"], 1 => ["DEFAULT__TLM__INST2__ADCS"] }[db_shard]
-          expect(params.length).to eql(db_shard == 0 ? 2 : 1)
-          tables.select { |table| params.include?(table) }.map { |table| { "table_name" => table } }
-        end
+        tables = { 0 => Set["DEFAULT__TLM__INST__HEALTH_STATUS"], 1 => Set["DEFAULT__TLM__INST2__ADCS"] }
+        expect(QuestDBClient).to receive(:table_names).twice { |db_shard:| tables[db_shard] }
         packets = [["INST", "HEALTH_STATUS"], ["INST", "PARAMS"], ["INST2", "ADCS"]]
         expect(QuestDBClient.tlm_packets_with_tables(packets)).to eql(Set[["INST", "HEALTH_STATUS"], ["INST2", "ADCS"]])
       end
 
+      it "assumes all the packets have a table if the table names can't be fetched" do
+        allow(QuestDBClient).to receive(:db_shard_for_target).and_return(0)
+        allow(QuestDBClient).to receive(:table_names).and_return(nil)
+        packets = [["INST", "HEALTH_STATUS"], ["INST", "PARAMS"]]
+        expect(QuestDBClient.tlm_packets_with_tables(packets)).to eql(Set.new(packets))
+      end
+
       it "doesn't query without packets" do
-        expect(QuestDBClient).not_to receive(:query_with_retry)
+        expect(QuestDBClient).not_to receive(:table_names)
         expect(QuestDBClient.tlm_packets_with_tables([])).to eql(Set.new)
       end
     end

@@ -145,25 +145,28 @@ class TestQueryWithRetry(unittest.TestCase):
 
 class TestTlmPacketsWithTables(unittest.TestCase):
     def test_returns_the_packets_with_a_table_queried_by_db_shard(self):
-        tables = {0: ["DEFAULT__TLM__INST__HEALTH_STATUS"], 1: ["DEFAULT__TLM__INST2__ADCS"]}
-
-        def query_with_retry(query, params, label, db_shard):
-            self.assertIn("FROM tables()", query)
-            self.assertEqual(query.count("%s"), len(params))
-            return [{"table_name": table} for table in tables[db_shard] if table in params]
-
+        tables = {0: {"DEFAULT__TLM__INST__HEALTH_STATUS"}, 1: {"DEFAULT__TLM__INST2__ADCS"}}
         packets = [("INST", "HEALTH_STATUS"), ("INST", "PARAMS"), ("INST2", "ADCS")]
         with (
             patch.object(QuestDBClient, "db_shard_for_target", side_effect=lambda t, scope: 1 if t == "INST2" else 0),
-            patch.object(QuestDBClient, "query_with_retry", side_effect=query_with_retry),
+            patch.object(QuestDBClient, "table_names", side_effect=lambda db_shard: tables[db_shard]) as table_names,
         ):
             result = QuestDBClient.tlm_packets_with_tables(packets)
         self.assertEqual(result, {("INST", "HEALTH_STATUS"), ("INST2", "ADCS")})
+        self.assertEqual(table_names.call_count, 2)
+
+    def test_assumes_all_the_packets_have_a_table_if_the_table_names_cannot_be_fetched(self):
+        packets = [("INST", "HEALTH_STATUS"), ("INST", "PARAMS")]
+        with (
+            patch.object(QuestDBClient, "db_shard_for_target", return_value=0),
+            patch.object(QuestDBClient, "table_names", return_value=None),
+        ):
+            self.assertEqual(QuestDBClient.tlm_packets_with_tables(packets), set(packets))
 
     def test_does_not_query_without_packets(self):
-        with patch.object(QuestDBClient, "query_with_retry") as query_with_retry:
+        with patch.object(QuestDBClient, "table_names") as table_names:
             self.assertEqual(QuestDBClient.tlm_packets_with_tables([]), set())
-        query_with_retry.assert_not_called()
+        table_names.assert_not_called()
 
 
 class TestTableNames(unittest.TestCase):

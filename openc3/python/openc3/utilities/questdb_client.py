@@ -808,7 +808,7 @@ class QuestDBClient:
     def tlm_packets_with_tables(cls, packets, scope="DEFAULT"):
         """Return the telemetry packets which have a table. The TSDB microservice only
         creates tables for its initial packets so a packet added later has no table
-        until it's received.
+        until it's received. If the table names can't be fetched assume they all exist.
 
         Args:
             packets: Iterable of (target_name, packet_name) pairs
@@ -819,19 +819,15 @@ class QuestDBClient:
         """
         by_db_shard = {}
         for target_name, packet_name in packets:
-            table_name, _ = cls.sanitize_table_name(target_name, packet_name, scope=scope)
             db_shard = cls.db_shard_for_target(target_name, scope=scope)
-            by_db_shard.setdefault(db_shard, {})[table_name] = (target_name, packet_name)
+            by_db_shard.setdefault(db_shard, []).append((target_name, packet_name))
         existing = set()
-        for db_shard, table_names in by_db_shard.items():
-            placeholders = ", ".join(["%s"] * len(table_names))
-            rows = cls.query_with_retry(
-                f"SELECT table_name FROM tables() WHERE table_name IN ({placeholders})",
-                params=list(table_names),
-                label="tables",
-                db_shard=db_shard,
-            )
-            existing.update(table_names[row["table_name"]] for row in rows)
+        for db_shard, shard_packets in by_db_shard.items():
+            names = cls.table_names(db_shard=db_shard)
+            for target_name, packet_name in shard_packets:
+                table_name, _ = cls.sanitize_table_name(target_name, packet_name, scope=scope)
+                if names is None or table_name.upper() in names:
+                    existing.add((target_name, packet_name))
         return existing
 
     @classmethod
