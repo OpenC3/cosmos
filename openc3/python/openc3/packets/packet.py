@@ -33,6 +33,7 @@ from openc3.conversions.received_time_seconds_conversion import (
 )
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
+    class_to_filename,
     quote_if_necessary,
     simple_formatted,
 )
@@ -1051,13 +1052,13 @@ class Packet(Structure):
             config += f'COMMAND {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
         if self.subpacketizer:
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.subpacketizer.args])
-            config += f"  SUBPACKETIZER {self.subpacketizer.__class__.__name__} {args_str}\n"
+            config += f"  SUBPACKETIZER {class_to_filename(self.subpacketizer.__class__)} {args_str}\n"
         if self.accessor.__class__.__name__ != "BinaryAccessor":
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.accessor.args])
-            config += f"  ACCESSOR {self.accessor.__class__.__name__} {args_str}\n"
+            config += f"  ACCESSOR {class_to_filename(self.accessor.__class__)} {args_str}\n"
         if self.validator:
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.validator.args])
-            config += f"  VALIDATOR {self.validator.__class__.__name__} {args_str}\n"
+            config += f"  VALIDATOR {class_to_filename(self.validator.__class__)} {args_str}\n"
         if self.template:
             config += f"  TEMPLATE_BASE64 {base64.b64encode(self.template).decode('ascii')}\n"
         if self.short_buffer_allowed:

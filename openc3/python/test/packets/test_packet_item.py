@@ -51,7 +51,7 @@ class TestPacketItem(unittest.TestCase):
         c = Conversion()
         self.pi.read_conversion = c
         config = self.pi.to_config("TELEMETRY", "BIG_ENDIAN")
-        self.assertIn("READ_CONVERSION Conversion", config)
+        self.assertIn("READ_CONVERSION openc3/conversions/conversion.py\n", config)
 
     def test_sets_the_read_conversion_to_None(self):
         self.pi.read_conversion = None
@@ -68,7 +68,7 @@ class TestPacketItem(unittest.TestCase):
         c = Conversion()
         self.pi.write_conversion = c
         config = self.pi.to_config("TELEMETRY", "BIG_ENDIAN")
-        self.assertIn("WRITE_CONVERSION Conversion", config)
+        self.assertIn("WRITE_CONVERSION openc3/conversions/conversion.py\n", config)
 
     def test_sets_the_write_conversion_to_None(self):
         self.pi.write_conversion = None

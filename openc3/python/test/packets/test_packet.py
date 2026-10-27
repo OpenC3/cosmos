@@ -2364,5 +2364,5 @@ class TestPacketToConfig(unittest.TestCase):
         p.processors["PROC"] = Processor()
         p.meta["TYPE"] = ["SENSOR", "LIGHT"]
         config = p.to_config("TELEMETRY")
-        self.assertIn("  PROCESSOR PROCESSOR Processor CONVERTED\n", config)
+        self.assertIn("  PROCESSOR PROCESSOR openc3/processors/processor.py CONVERTED\n", config)
         self.assertIn("  META TYPE SENSOR LIGHT\n", config)
