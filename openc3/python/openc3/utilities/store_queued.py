@@ -40,17 +40,35 @@ class StoreQueued(metaclass=StoreMeta):
     # Mutex used to ensure that only one instance is created
     instance_mutex = threading.Lock()
 
+    DEFAULT_UPDATE_INTERVAL = 1  # seconds
+
+    # Interval from set_update_interval_all_shards, used for instances created later
+    all_shards_update_interval = None
+
     # Get the singleton instance for a given db_shard
+    # Uses the interval from set_update_interval_all_shards if not given
     @classmethod
-    def instance(cls, update_interval=1, db_shard=0):
+    def instance(cls, update_interval=None, db_shard=0):
         inst = cls.my_instances.get(db_shard)
         if inst:
             return inst
 
         with cls.instance_mutex:
             if db_shard not in cls.my_instances:
+                if update_interval is None:
+                    update_interval = cls.all_shards_update_interval or cls.DEFAULT_UPDATE_INTERVAL
                 cls.my_instances[db_shard] = cls(update_interval, db_shard=db_shard)
             return cls.my_instances[db_shard]
+
+    # Set the update interval on every db_shard instance, including ones created later
+    @classmethod
+    def set_update_interval_all_shards(cls, interval):
+        if interval <= 0.0:
+            return
+        with cls.instance_mutex:
+            cls.all_shards_update_interval = interval
+            for inst in cls.my_instances.values():
+                inst.set_update_interval(interval)
 
     def __init__(self, update_interval, db_shard=0):
         self.is_shutdown = False
@@ -142,6 +160,9 @@ class StoreQueued(metaclass=StoreMeta):
 class EphemeralStoreQueued(StoreQueued):
     # Variable that holds the singleton instances per db_shard
     my_instances = {}
+
+    # Interval from set_update_interval_all_shards, used for instances created later
+    all_shards_update_interval = None
 
     def store_instance(self):
         return EphemeralStore.instance(db_shard=self.db_shard)

@@ -12,12 +12,152 @@
 # All Rights Reserved
 */
 
+import type { Browser, Page } from '@playwright/test'
 import { test, expect } from './../fixture'
+import type { Utilities } from '../../utilities'
+
+const ADMIN_STORAGE_STATE = 'adminStorageState.json'
 
 test.use({
   toolPath: '/tools/admin/settings',
   toolName: 'Administrator',
-  storageState: 'adminStorageState.json',
+  storageState: ADMIN_STORAGE_STATE,
+})
+
+// These settings are global and are consumed by plugin installs, Script Runner,
+// and every page's layout, so a test that fails midway would otherwise leave
+// them changed for later specs. Record them before the first test and put back
+// anything that differs afterwards.
+type OriginalSettings = {
+  sourceUrl: string
+  rubygemsUrl: string
+  pypiUrl: string
+  hideAstroClock: boolean
+  showItemClock: boolean
+  topBanner: boolean
+  language: 'Python' | 'Ruby'
+  vimMode: boolean
+}
+let original: OriginalSettings | undefined
+
+const urlInput = (page: Page, name: string) =>
+  page.locator(`[data-test=${name}]`).locator('input')
+
+// The URL inputs are disabled until the saved settings have loaded
+async function waitForSettingsLoaded(page: Page) {
+  await expect(page.getByText('Pypi URL').first()).toBeVisible()
+  await expect(urlInput(page, 'source-url')).toBeEnabled()
+  await expect(urlInput(page, 'rubygems-url')).toBeEnabled()
+  await expect(urlInput(page, 'pypi-url')).toBeEnabled()
+}
+
+async function openSettings(browser: Browser, baseURL: string | undefined) {
+  const context = await browser.newContext({
+    storageState: ADMIN_STORAGE_STATE,
+  })
+  const page = await context.newPage()
+  await page.goto(`${baseURL}/tools/admin/settings`, {
+    waitUntil: 'domcontentloaded',
+  })
+  await expect(page.locator('.v-app-bar')).toContainText('Administrator', {
+    timeout: 20000,
+  })
+  // Wait for the settings forms to populate before reading or writing them
+  await waitForSettingsLoaded(page)
+  return { context, page }
+}
+
+async function readSettings(page: Page): Promise<OriginalSettings> {
+  const language = await page
+    .locator('[data-test=default-language]')
+    .textContent()
+  return {
+    sourceUrl: await urlInput(page, 'source-url').inputValue(),
+    rubygemsUrl: await urlInput(page, 'rubygems-url').inputValue(),
+    pypiUrl: await urlInput(page, 'pypi-url').inputValue(),
+    hideAstroClock: await page
+      .getByRole('checkbox', { name: 'Hide Astro Clock' })
+      .isChecked(),
+    showItemClock: await page
+      .getByRole('checkbox', { name: 'Show Telemetry Item Clock' })
+      .isChecked(),
+    topBanner: await page
+      .getByRole('checkbox', { name: 'Display top banner' })
+      .isChecked(),
+    language: language?.includes('Ruby') ? 'Ruby' : 'Python',
+    vimMode: await page.getByRole('checkbox', { name: 'Vim mode' }).isChecked(),
+  }
+}
+
+// Click a save button, wait for the save to persist, then reload so the next
+// restore starts from what the server actually has.
+async function save(page: Page, saveButton: string) {
+  await page.locator(`[data-test=${saveButton}]`).click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await waitForSettingsLoaded(page)
+}
+
+async function restoreSettings(page: Page, want: OriginalSettings) {
+  const urls: [string, string, string][] = [
+    ['source-url', 'save-source-url', want.sourceUrl],
+    ['rubygems-url', 'save-rubygems-url', want.rubygemsUrl],
+    ['pypi-url', 'save-pypi-url', want.pypiUrl],
+  ]
+  for (const [name, saveButton, value] of urls) {
+    if ((await urlInput(page, name).inputValue()) !== value) {
+      await urlInput(page, name).fill(value)
+      await save(page, saveButton)
+    }
+  }
+
+  const astro = page.getByRole('checkbox', { name: 'Hide Astro Clock' })
+  const itemClock = page.getByRole('checkbox', {
+    name: 'Show Telemetry Item Clock',
+  })
+  if (
+    (await astro.isChecked()) !== want.hideAstroClock ||
+    (await itemClock.isChecked()) !== want.showItemClock
+  ) {
+    await astro.setChecked(want.hideAstroClock)
+    await itemClock.setChecked(want.showItemClock)
+    await save(page, 'save-astro-settings')
+  }
+
+  const banner = page.getByRole('checkbox', { name: 'Display top banner' })
+  if ((await banner.isChecked()) !== want.topBanner) {
+    await banner.setChecked(want.topBanner)
+    await save(page, 'save-classification-banner')
+  }
+
+  const language = await page
+    .locator('[data-test=default-language]')
+    .textContent()
+  const vim = page.getByRole('checkbox', { name: 'Vim mode' })
+  if (
+    !language?.includes(want.language) ||
+    (await vim.isChecked()) !== want.vimMode
+  ) {
+    await page.locator('[data-test=default-language]').click()
+    await page
+      .locator(`.v-list-item-title:has-text("${want.language}")`)
+      .click()
+    await vim.setChecked(want.vimMode)
+    await save(page, 'save-editor-settings')
+  }
+}
+
+test.beforeAll(async ({ browser, baseURL }) => {
+  const { context, page } = await openSettings(browser, baseURL)
+  original = await readSettings(page)
+  await context.close()
+})
+
+test.afterAll(async ({ browser, baseURL }) => {
+  if (!original) return
+  const { context, page } = await openSettings(browser, baseURL)
+  await restoreSettings(page, original)
+  await context.close()
 })
 
 test('resets clock sync warning suppression', async ({ page, utils }) => {
@@ -68,6 +208,108 @@ test('hides the astro clock', async ({ page, utils }) => {
   await expect(page.locator('.rux-clock')).toBeVisible()
 })
 
+// Select the item clock's telemetry item in the Astro settings chooser.
+// utils.selectTargetPacketItem can't select the item itself because derived
+// items like PACKET_TIMESECONDS are labeled 'PACKET_TIMESECONDS *'.
+async function selectItemClockItem(page: Page, utils: Utilities, item: string) {
+  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await expect(page.locator('[data-test="select-item"] input')).toBeEnabled()
+  await page.locator('[data-test="select-item"] input').fill(item)
+  await page
+    .getByRole('option', { name: new RegExp(`^${item}( \\*)?$`) })
+    .click()
+  await expect(page.locator('[data-test="select-item"]')).toContainText(item)
+  await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Show Telemetry Item Clock')).toBeVisible()
+}
+
+test('shows a telemetry item astro clock', async ({ page, utils }) => {
+  const itemClock = page.locator('[data-test=item-clock]')
+  // The item clock hides the date so its only segment is the time
+  const itemClockTime = itemClock.locator('.rux-clock__segment__value')
+  await expect(itemClock).not.toBeVisible()
+
+  await page
+    .getByRole('checkbox', { name: 'Show Telemetry Item Clock' })
+    .check()
+  for (const item of ['PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED']) {
+    await selectItemClockItem(page, utils, item)
+    // The original clock is still displayed alongside the item clock
+    await expect(page.locator('rux-clock')).toHaveCount(2)
+    await expect(itemClock).toBeVisible()
+    await expect(itemClock).not.toHaveClass(/item-clock-error/)
+    // The title defaults to the target and packet name
+    await expect(itemClock.locator('[data-test=item-clock-title]')).toHaveText(
+      'INST HEALTH_STATUS',
+    )
+    // Long titles widen the time box rather than getting cut off
+    const titleBox = await itemClock
+      .locator('[data-test=item-clock-title]')
+      .boundingBox()
+    const timeBox = await itemClockTime.boundingBox()
+    expect(timeBox!.width).toBeCloseTo(titleBox!.width, 0)
+    // The item clock is static so it only advances as the item updates
+    const time = await itemClockTime.textContent()
+    await expect
+      .poll(() => itemClockTime.textContent(), { timeout: 10000 })
+      .not.toEqual(time)
+    await itemClock.hover()
+    await expect(page.getByRole('tooltip')).toContainText(
+      `INST HEALTH_STATUS ${item}`,
+    )
+    await page.mouse.move(0, 0)
+  }
+
+  // A custom title replaces the target and packet name and can be hidden
+  const titleSwitch = page.getByRole('checkbox', {
+    name: 'Show Item Clock Title',
+  })
+  await expect(titleSwitch).toBeChecked()
+  await page
+    .locator('[data-test=item-clock-title-input] input')
+    .fill('Spacecraft Time')
+  await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(
+    page.locator('[data-test=item-clock-title-input] input'),
+  ).toHaveValue('Spacecraft Time')
+  await expect(itemClock.locator('[data-test=item-clock-title]')).toHaveText(
+    'Spacecraft Time',
+  )
+  await titleSwitch.uncheck()
+  await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Show Item Clock Title')).toBeVisible()
+  await expect(itemClock).toBeVisible()
+  await expect(itemClock.locator('[data-test=item-clock-title]')).toHaveCount(0)
+  await titleSwitch.check()
+  await page.locator('[data-test=item-clock-title-input] input').clear()
+
+  // An item that isn't a time is greyed out with the error on mouseover
+  await selectItemClockItem(page, utils, 'COLLECT_TYPE')
+  await expect(itemClock).toBeVisible()
+  await expect(itemClock).toHaveClass(/item-clock-error/)
+  await itemClock.hover()
+  await expect(page.getByRole('tooltip')).toContainText(
+    'INST HEALTH_STATUS COLLECT_TYPE',
+  )
+  await expect(page.getByRole('tooltip')).toContainText('Unable to convert')
+
+  await page
+    .getByRole('checkbox', { name: 'Show Telemetry Item Clock' })
+    .uncheck()
+  await page.locator('[data-test=save-astro-settings]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await page.reload()
+  await expect(page.getByText('Show Telemetry Item Clock')).toBeVisible()
+  await expect(itemClock).not.toBeVisible()
+  await expect(page.locator('rux-clock')).toHaveCount(1)
+})
+
 // Change time zone is tested in the individual apps
 
 test('sets a classification banner', async ({ page, utils }) => {
@@ -103,6 +345,7 @@ test('sets a classification banner', async ({ page, utils }) => {
     .locator(`.v-list-item-title:has-text("${bannerTextColor}")`)
     .click()
   await page.locator('[data-test=save-classification-banner]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
   await page.reload()
   await expect(page.locator('#app')).toHaveAttribute(
     'style',
@@ -121,6 +364,7 @@ test('sets a classification banner', async ({ page, utils }) => {
   await page.locator('[data-test="classification-banner-font-color"]').click()
   await page.locator('.v-list-item-title:has-text("Green")').click()
   await page.locator('[data-test=save-classification-banner]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
   await page.reload()
   await expect(page.locator('#app')).toHaveAttribute(
     'style',
@@ -129,6 +373,7 @@ test('sets a classification banner', async ({ page, utils }) => {
   // Disable the classification banner
   await page.uncheck('text=Display top banner')
   await page.locator('[data-test=save-classification-banner]').click()
+  await expect(page.getByText('Saved!').first()).toBeVisible()
   await page.reload()
   await expect(page.locator('#app')).not.toHaveAttribute(
     'style',

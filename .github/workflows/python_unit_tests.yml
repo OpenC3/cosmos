@@ -35,6 +35,9 @@ jobs:
   unit-test:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    # A full run takes about 3 minutes, so fail a hung test quickly rather than
+    # holding the runner for the 6 hour default
+    timeout-minutes: 20
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13", "3.14"]
@@ -80,3 +83,16 @@ jobs:
       #       -Dsonar.tests=test/
       #   env:
       #     SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  python-unit-tests:
+    needs: unit-test
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Ensure all Python unit tests passed as expected on all matrix versions
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          if echo "$RESULTS" | grep -Eq 'failure|cancelled'; then exit 1; fi
