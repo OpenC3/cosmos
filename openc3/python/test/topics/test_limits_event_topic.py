@@ -209,11 +209,14 @@ class TestLimitsEventTopic(unittest.TestCase):
             "TGT1__PKT1__ITEM1",
             json.dumps({"persistence_setting": 3, "enabled": True}),
         )
-        items = {"TGT1": {"PKT1": ["ITEM1", "ITEM2"]}, "TGT2": {"PKT1": ["ITEM1"]}}
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "GROUP",
+            json.dumps([["TGT1", "PKT1", "ITEM1"], ["TGT1", "PKT1", "ITEM2"], ["TGT2", "PKT1", "ITEM1"]]),
+        )
         event = {
             "type": "LIMITS_GROUP_ENABLE_STATE",
             "group_name": "GROUP",
-            "items": items,
             "enabled": False,
             "message": "TEST1",
         }
@@ -223,7 +226,7 @@ class TestLimitsEventTopic(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0][1]["type"], "LIMITS_GROUP_ENABLE_STATE")
         self.assertEqual(events[0][1]["group_name"], "GROUP")
-        self.assertEqual(events[0][1]["items"], items)
+        self.assertNotIn("items", events[0][1])
         self.assertFalse(events[0][1]["enabled"])
         self.assertEqual(events[0][1]["message"], "TEST1")
 
@@ -406,11 +409,11 @@ class TestLimitsEventTopic(unittest.TestCase):
 
     def test_sync_system_thread_body_applies_control_events_after_a_limits_change_flood(self):
         LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")  # Set the stream offset
+        Store.hset("DEFAULT__limits_groups", "FIRST", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))
         event = {
             "type": "LIMITS_GROUP_ENABLE_STATE",
             "group_name": "FIRST",
             "enabled": False,
-            "items": {"INST": {"HEALTH_STATUS": ["TEMP1"]}},
             "message": "TEST1",
         }
         LimitsEventTopic.write(event, scope="DEFAULT")
@@ -428,14 +431,18 @@ class TestLimitsEventTopic(unittest.TestCase):
                 raise RuntimeError("boom")
             original_disable(target_name, packet_name, item_name)
 
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "FIRST",
+            json.dumps([["INST", "HEALTH_STATUS", "TEMP1"], ["INST", "HEALTH_STATUS", "TEMP3"]]),
+        )
         event = {
             "type": "LIMITS_GROUP_ENABLE_STATE",
             "group_name": "FIRST",
             "enabled": False,
-            "items": {"INST": {"HEALTH_STATUS": ["TEMP1", "TEMP3"]}},
         }
         with patch.object(System.limits, "disable", side_effect=disable):
-            LimitsEventTopic.process_event(event)
+            LimitsEventTopic.process_event(event, "DEFAULT")
         self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
 
     def test_sync(self):
@@ -547,14 +554,20 @@ class TestLimitsEventTopic(unittest.TestCase):
             # Make initial call to set the stream offset so we don't miss anything
             getattr(LimitsEventTopic, method)(scope="DEFAULT")
 
-            items = {
-                "INST": {"HEALTH_STATUS": ["TEMP1", "TEMP3"]},
-                "NOTGT": {"NOPKT": ["NOITEM"]},  # Targets not in this System are ignored
-            }
+            Store.hset(
+                "DEFAULT__limits_groups",
+                "FIRST",
+                json.dumps(
+                    [
+                        ["INST", "HEALTH_STATUS", "TEMP1"],
+                        ["INST", "HEALTH_STATUS", "TEMP3"],
+                        ["NOTGT", "NOPKT", "NOITEM"],  # Targets not in this System are ignored
+                    ]
+                ),
+            )
             event = {
                 "type": "LIMITS_GROUP_ENABLE_STATE",
                 "group_name": "FIRST",
-                "items": items,
                 "enabled": False,
                 "message": "TEST1",
             }

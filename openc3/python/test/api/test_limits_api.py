@@ -347,7 +347,7 @@ class TestLimitsApi(unittest.TestCase):
         self.assertEqual(events[0][1]["type"], "LIMITS_GROUP_ENABLE_STATE")
         self.assertEqual(events[0][1]["group_name"], "FIRST")
         self.assertFalse(events[0][1]["enabled"])
-        self.assertEqual(events[0][1]["items"], {"INST": {"HEALTH_STATUS": ["TEMP1", "TEMP3"]}})
+        self.assertNotIn("items", events[0][1])
 
         for item in ["TEMP1", "TEMP3"]:
             settings = json.loads(Store.hget("DEFAULT__current_limits_settings", f"INST__HEALTH_STATUS__{item}"))

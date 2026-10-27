@@ -130,7 +130,7 @@ module OpenC3
                 microservice_cmd(topic, msg_id, msg_hash, redis)
               elsif topic == @limits_control_topic
                 event = JSON.parse(msg_hash['event'], allow_nan: true, create_additions: true)
-                LimitsEventTopic.process_event(event)
+                LimitsEventTopic.process_event(event, scope: @scope)
               elsif topic =~ /__DECOMINTERFACE/
                 if msg_hash.key?('inject_tlm')
                   handle_inject_tlm_with_ack(msg_hash['inject_tlm'], msg_id)

@@ -26,6 +26,18 @@ from openc3.utilities.store import EphemeralStore, Store
 # While this isn't a clean separation of topics (streams) and models (key-value)
 # it helps maintain consistency as the topic and model are linked.
 class LimitsEventTopic(Topic):
+    # Returns the items in a limits group grouped by target and packet, or None if the
+    # group is undefined. Reads the store directly to avoid a circular reference to TargetModel.
+    @classmethod
+    def limits_group_items(cls, group_name, scope):
+        group = Store.hget(f"{scope}__limits_groups", group_name)
+        if group is None:
+            return None
+        items = {}
+        for target_name, packet_name, item_name in json.loads(group):
+            items.setdefault(target_name, {}).setdefault(packet_name, []).append(item_name)
+        return items
+
     @classmethod
     def _active_db_shards(cls, scope):
         """Collect all unique target db_shards from TargetModel"""
@@ -96,7 +108,7 @@ class LimitsEventTopic(Topic):
             case "LIMITS_GROUP_ENABLE_STATE":
                 # Groups can contain many thousands of items so read and write the settings in bulk
                 fields = []
-                for target_name, packets in event["items"].items():
+                for target_name, packets in (cls.limits_group_items(event["group_name"], scope) or {}).items():
                     for packet_name, item_names in packets.items():
                         for item_name in item_names:
                             fields.append(f"{target_name}__{packet_name}__{item_name}")
@@ -308,7 +320,7 @@ class LimitsEventTopic(Topic):
     # Process a single limits event dict and update the local System accordingly.
     # Called inline by DecomMicroservice when reading from the limits events topic.
     @classmethod
-    def process_event(cls, event, telemetry=None):
+    def process_event(cls, event, scope, telemetry=None):
         if telemetry is None:
             telemetry = System.telemetry.all()
         match event["type"]:
@@ -355,7 +367,7 @@ class LimitsEventTopic(Topic):
 
             case "LIMITS_GROUP_ENABLE_STATE":
                 enabled = event.get("enabled", False)
-                for target_name, packets in event["items"].items():
+                for target_name, packets in (cls.limits_group_items(event["group_name"], scope) or {}).items():
                     target = telemetry.get(target_name)
                     if not target:
                         continue
@@ -402,4 +414,4 @@ class LimitsEventTopic(Topic):
         topics = [f"{scope}__openc3_limits_control"]
         for _, _, event, _ in Topic.read_topics(topics, timeout_ms=None):
             event = json.loads(event[b"event"], cls=JsonDecoder)
-            cls.process_event(event, telemetry=telemetry)
+            cls.process_event(event, scope, telemetry=telemetry)

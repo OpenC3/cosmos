@@ -25,6 +25,20 @@ module OpenC3
   # While this isn't a clean separation of topics (streams) and models (key-value)
   # it helps maintain consistency as the topic and model are linked.
   class LimitsEventTopic < Topic
+    # Returns the items in a limits group grouped by target and packet, or nil if the
+    # group is undefined. Reads the store directly to avoid a circular reference to TargetModel.
+    # @return [Hash{String => Hash{String => Array<String>}}, nil]
+    def self.limits_group_items(group_name, scope:)
+      json = Store.hget("#{scope}__limits_groups", group_name)
+      return nil unless json
+
+      items = {}
+      JSON.parse(json, allow_nan: true, create_additions: true).each do |target_name, packet_name, item_name|
+        ((items[target_name] ||= {})[packet_name] ||= []) << item_name
+      end
+      items
+    end
+
     # Collect all unique target db_shards from TargetModel
     def self._active_db_shards(scope:)
       db_shards = Set.new([0])
@@ -88,7 +102,7 @@ module OpenC3
       when :LIMITS_GROUP_ENABLE_STATE
         # Groups can contain many thousands of items so read and write the settings in bulk
         fields = []
-        event[:items].each do |target_name, packets|
+        (limits_group_items(event[:group_name], scope: scope) || {}).each do |target_name, packets|
           packets.each do |packet_name, item_names|
             item_names.each { |item_name| fields << "#{target_name}__#{packet_name}__#{item_name}" }
           end
@@ -289,7 +303,7 @@ module OpenC3
 
     # Process a single limits event hash and update the local System accordingly.
     # Called inline by DecomMicroservice when reading from the limits events topic.
-    def self.process_event(event, telemetry: nil)
+    def self.process_event(event, scope:, telemetry: nil)
       telemetry ||= System.telemetry.all
       case event['type']
       when 'LIMITS_CHANGE'
@@ -329,7 +343,7 @@ module OpenC3
 
       when 'LIMITS_GROUP_ENABLE_STATE'
         enabled = ConfigParser.handle_true_false_nil(event['enabled'])
-        event['items'].each do |target_name, packets|
+        (limits_group_items(event['group_name'], scope: scope) || {}).each do |target_name, packets|
           target = telemetry[target_name]
           next unless target
 
@@ -379,7 +393,7 @@ module OpenC3
       topics = ["#{scope}__openc3_limits_control"]
       Topic.read_topics(topics, nil, block_ms) do |_topic, _msg_id, event, _redis|
         event = JSON.parse(event['event'], allow_nan: true, create_additions: true)
-        process_event(event, telemetry: telemetry)
+        process_event(event, scope: scope, telemetry: telemetry)
       end
     end
   end

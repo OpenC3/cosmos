@@ -277,7 +277,7 @@ module OpenC3
         expect(events[0][1]["type"]).to eql "LIMITS_GROUP_ENABLE_STATE"
         expect(events[0][1]["group_name"]).to eql "FIRST"
         expect(events[0][1]["enabled"]).to eql false
-        expect(events[0][1]["items"]).to eql({ "INST" => { "HEALTH_STATUS" => ["TEMP1", "TEMP3"] } })
+        expect(events[0][1]).not_to have_key("items")
 
         settings = Store.hgetall("DEFAULT__current_limits_settings")
         expect(JSON.parse(settings["INST__HEALTH_STATUS__TEMP1"])["enabled"]).to be false

@@ -407,18 +407,14 @@ module OpenC3
     def _limits_group(group_name, action:, manual:, scope:, token:)
       authorize(permission: 'tlm_set', manual: manual, scope: scope, token: token)
       group_name.upcase!
-      group = get_limits_groups(scope: scope, token: token)[group_name]
-      raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}" unless group
+      # Items grouped by target and packet so each packet is read and written once
+      items = LimitsEventTopic.limits_group_items(group_name, scope: scope)
+      raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}" unless items
 
       enabled = (action == :enable)
       message = "#{enabled ? 'Enabling' : 'Disabling'} Limits Group: #{group_name}"
       Logger.info(message, scope: scope)
 
-      # Group the items by target and packet so each packet is read and written once
-      items = {}
-      group.each do |target_name, packet_name, item_name|
-        ((items[target_name] ||= {})[packet_name] ||= []) << item_name
-      end
       items.each do |target_name, packets|
         packets.each do |packet_name, item_names|
           packet = TargetModel.packet(target_name, packet_name, scope: scope)
@@ -433,7 +429,9 @@ module OpenC3
       # Write a single event for the entire group. Writing one event per item
       # floods the limits event stream, which is trimmed to ~1000 entries, so
       # decom microservices could miss events and leave limits enabled.
-      event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: group_name, items: items,
+      # The event only names the group (readers look up the items) so it stays
+      # small no matter how many items the group contains.
+      event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: group_name,
                 enabled: enabled, time_nsec: Time.now.to_nsec_from_epoch, message: message }
       LimitsEventTopic.write(event, scope: scope)
     end

@@ -151,7 +151,7 @@ class DecomMicroservice(Microservice):
                         self.microservice_cmd(topic, msg_id, msg_hash, redis)
                     elif topic == self.limits_control_topic:
                         event = json.loads(msg_hash[b"event"])
-                        LimitsEventTopic.process_event(event)
+                        LimitsEventTopic.process_event(event, self.scope)
                     elif "__DECOMINTERFACE__" in topic:
                         if msg_hash.get(b"inject_tlm"):
                             handle_inject_tlm_with_ack(msg_hash[b"inject_tlm"], msg_id, self.scope, self.logger)
