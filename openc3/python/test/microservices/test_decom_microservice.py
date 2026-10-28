@@ -20,16 +20,25 @@ from unittest.mock import Mock, patch
 
 from openc3.api.tlm_api import tlm
 from openc3.microservices.decom_microservice import DecomMicroservice
+from openc3.microservices.interface_decom_common import handle_inject_tlm_with_ack
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.target_model import TargetModel
 from openc3.packets.limits_response import LimitsResponse
 from openc3.processors.processor import Processor
 from openc3.system.system import System
+from openc3.topics.decom_interface_topic import DecomInterfaceTopic
 from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.store import Store
-from test.test_helper import capture_io, mock_redis, setup_system, wait_for, wait_for_first_topic_read
+from test.test_helper import (
+    capture_io,
+    mock_redis,
+    setup_system,
+    shard_redis,
+    wait_for,
+    wait_for_first_topic_read,
+)
 
 
 class TestDecomMicroservice(unittest.TestCase):
@@ -546,3 +555,92 @@ class TestDecomMicroserviceStoredLimitsMode(unittest.TestCase):
         # current_limits not updated
         out = LimitsEventTopic.out_of_limits(scope="DEFAULT")
         self.assertEqual(len(out), 0)
+
+
+# INST is installed on db_shard 1 and so is its decom microservice. Raw
+# telemetry, decom requests and their results all stay on db_shard 1.
+class TestDecomMicroserviceMultipleDbShards(unittest.TestCase):
+    @patch("openc3.system.system.System.limits_set")
+    @patch("openc3.microservices.microservice.System")
+    def setUp(self, _system, limits_set):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+        limits_set.return_value = "DEFAULT"
+        self.shard0 = shard_redis(0)
+        self.shard1 = shard_redis(1)
+
+        # Don't block on reads so shutdown doesn't wait out the read timeout
+        orig_xread = self.shard1.xread
+
+        def xread_side_effect(*args, **kwargs):
+            kwargs.pop("block", None)
+            result = orig_xread(*args, **kwargs)
+            if not result:
+                time.sleep(0.01)
+            return result
+
+        self.shard1.xread = Mock(side_effect=xread_side_effect)
+
+        MicroserviceModel(
+            "DEFAULT__DECOM__INST",
+            scope="DEFAULT",
+            topics=["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"],
+            target_names=["INST"],
+            db_shard=1,
+        ).create()
+        self.dm = DecomMicroservice("DEFAULT__DECOM__INST")
+        self.dm_thread = threading.Thread(target=self.dm.run)
+        self.dm_thread.start()
+        wait_for_first_topic_read(self.shard1, self.dm_thread)
+
+    def tearDown(self):
+        self.dm.shutdown()
+        self.dm_thread.join()
+
+    def test_decommutates_telemetry_on_the_target_db_shard(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.now(timezone.utc)
+        TelemetryTopic.write_packet(packet, scope="DEFAULT")
+        wait_for(lambda: self.shard1.exists("DEFAULT__DECOM__{INST}__HEALTH_STATUS"))
+        self.assertEqual(self.shard1.xlen("DEFAULT__DECOM__{INST}__HEALTH_STATUS"), 1)
+        self.assertFalse(self.shard0.exists("DEFAULT__DECOM__{INST}__HEALTH_STATUS"))
+        self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), -100.0)
+
+    def test_reads_microservice_commands_from_its_db_shard(self):
+        # TargetModel.dynamic_update adds topics through the microservice topic on its db_shard
+        Topic.write_topic(
+            "MICROSERVICE__DEFAULT__DECOM__INST",
+            {"command": "ADD_TOPICS", "topics": json.dumps(["DEFAULT__TELEMETRY__{INST}__ADCS"])},
+            db_shard=1,
+        )
+        wait_for(lambda: "DEFAULT__TELEMETRY__{INST}__ADCS" in self.dm.topics)
+        self.assertIn("DEFAULT__TELEMETRY__{INST}__ADCS", self.dm.topics)
+
+        # Handled commands are trimmed from the microservice topic on its db_shard
+        msg_id = Topic.write_topic("MICROSERVICE__DEFAULT__DECOM__INST", {"command": "OTHER"}, db_shard=1)
+        self.dm.microservice_cmd("MICROSERVICE__DEFAULT__DECOM__INST", msg_id.decode(), {}, None)
+        self.assertEqual(self.shard1.xlen("MICROSERVICE__DEFAULT__DECOM__INST"), 1)
+
+    def test_builds_commands_on_the_target_db_shard(self):
+        command = DecomInterfaceTopic.build_cmd("INST", "ABORT", {}, True, False, timeout=2, scope="DEFAULT")
+        self.assertEqual(command["packet_name"], "ABORT")
+        self.assertEqual(self.shard1.xlen("{DEFAULT__ACKCMD}TARGET__INST"), 1)
+        self.assertFalse(self.shard0.exists("{DEFAULT__ACKCMD}TARGET__INST"))
+
+    def test_gets_the_tlm_buffer_on_the_target_db_shard(self):
+        msg_hash = DecomInterfaceTopic.get_tlm_buffer("INST", "HEALTH_STATUS", timeout=2, scope="DEFAULT")
+        self.assertEqual(msg_hash["packet_name"], "HEALTH_STATUS")
+        self.assertEqual(self.shard1.xlen("{DEFAULT__ACKCMD}TARGET__INST"), 1)
+        self.assertFalse(self.shard0.exists("{DEFAULT__ACKCMD}TARGET__INST"))
+
+    def test_acks_injected_telemetry_on_the_target_db_shard(self):
+        # DecomInterfaceTopic.inject_tlm waits for the ack on the target db_shard
+        handle_inject_tlm_with_ack(
+            json.dumps({"target_name": "INST", "packet_name": "HEALTH_STATUS", "item_hash": None, "type": "RAW"}),
+            "1-0",
+            "DEFAULT",
+        )
+        self.assertEqual(self.shard1.xlen("{DEFAULT__ACKCMD}TARGET__INST"), 1)
+        self.assertFalse(self.shard0.exists("{DEFAULT__ACKCMD}TARGET__INST"))
+        # The injected packet itself goes to the target db_shard
+        self.assertEqual(self.shard1.xlen("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"), 1)

@@ -234,5 +234,26 @@ module OpenC3
         expect(topics).to eql([])
       end
     end
+
+    describe "multiple db_shards" do
+      it "deletes the UNKNOWN target topics from its db_shard" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        objs = double("Object", :contents => [], is_truncated: false)
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+
+        model = ScopeModel.new(name: "TEST", updated_at: 12345)
+        model.create
+        model.deploy(File.join(SPEC_DIR, "install"), {})
+        # Move the UNKNOWN target to db_shard 1
+        TargetModel.new(name: "UNKNOWN", scope: "TEST", db_shard: 1).update
+        ephemeral1 = EphemeralStore.instance(db_shard: 1)
+        ephemeral1.write_topic("TEST__COMMAND__{UNKNOWN}__UNKNOWN", { 'data' => 1 })
+        ephemeral1.write_topic("TEST__TELEMETRY__{UNKNOWN}__UNKNOWN", { 'data' => 1 })
+        model.destroy
+        expect(ephemeral1.exists?("TEST__COMMAND__{UNKNOWN}__UNKNOWN")).to be false
+        expect(ephemeral1.exists?("TEST__TELEMETRY__{UNKNOWN}__UNKNOWN")).to be false
+      end
+    end
   end
 end

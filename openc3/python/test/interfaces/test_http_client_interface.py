@@ -39,6 +39,31 @@ class TestHttpClientInterface(unittest.TestCase):
         i.disconnect()
         self.assertFalse(i.connected())
 
+    def test_only_queues_one_disconnect_marker_per_connection(self):
+        i = HttpClientInterface("example.com")
+        i.connect()
+        i.disconnect()
+        self.assertEqual(i.read_interface(), (None, None))
+        # The microservice disconnects again once read_interface returns None
+        i.disconnect()
+        self.assertTrue(i.response_queue.empty())
+        # Nor does a repeat disconnect discard a marker the reader hasn't consumed yet
+        i.connect()
+        i.disconnect()
+        i.disconnect()
+        self.assertEqual(i.response_queue.qsize(), 1)
+
+    def test_connect_discards_responses_from_a_previous_connection(self):
+        i = HttpClientInterface("example.com")
+        i.connect()
+        i.disconnect()
+        self.assertEqual(i.read_interface(), (None, None))
+        # A request that completed after the disconnect
+        i.response_queue.put((b"late", {}))
+        i.connect()
+        self.assertTrue(i.response_queue.empty())
+        i.disconnect()
+
     def test_default_parameters(self):
         i = HttpClientInterface("example.com")
         self.assertEqual(i.hostname, "example.com")

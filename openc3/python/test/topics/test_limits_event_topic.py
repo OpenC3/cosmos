@@ -587,3 +587,27 @@ class TestLimitsEventTopic(unittest.TestCase):
             getattr(LimitsEventTopic, method)(scope="DEFAULT")
             self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
             self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
+
+
+class TestLimitsEventTopicMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        # INST is installed on db_shard 1 while SYSTEM stays on db_shard 0
+        setup_system(db_shards={"INST": 1})
+
+    def test_writes_events_to_every_target_db_shard(self):
+        # Each decom microservice reads limits events inline from its own db_shard
+        event = {
+            "type": "LIMITS_CHANGE",
+            "target_name": "INST",
+            "packet_name": "HEALTH_STATUS",
+            "item_name": "TEMP1",
+            "old_limits_state": "GREEN",
+            "new_limits_state": "YELLOW_LOW",
+            "time_nsec": 123456789,
+            "message": "test change",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        self.assertEqual(shard_redis(0).xlen("DEFAULT__openc3_limits_events"), 1)
+        self.assertEqual(shard_redis(1).xlen("DEFAULT__openc3_limits_events"), 1)
+        self.assertFalse(shard_redis(2).exists("DEFAULT__openc3_limits_events"))

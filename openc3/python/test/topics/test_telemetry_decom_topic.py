@@ -14,8 +14,9 @@ import json
 import unittest
 from unittest.mock import MagicMock, patch
 
+from openc3.system.system import System
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
-from test.test_helper import mock_redis
+from test.test_helper import mock_redis, setup_system, shard_redis
 
 
 class TestTelemetryDecomTopic(unittest.TestCase):
@@ -119,3 +120,22 @@ class TestTelemetryDecomTopic(unittest.TestCase):
             packet = self._make_packet()
             TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
             mock_build.assert_called_once_with(packet, include_limits_states=True)
+
+
+# INST is installed on db_shard 1 while SYSTEM stays on db_shard 0
+class TestTelemetryDecomTopicMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+
+    def test_writes_the_topic_and_current_values_to_the_target_db_shard(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.datetime.now(datetime.timezone.utc)
+        TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")
+        shard0 = shard_redis(0)
+        shard1 = shard_redis(1)
+        self.assertEqual(shard1.xlen("DEFAULT__DECOM__{INST}__HEALTH_STATUS"), 1)
+        self.assertFalse(shard0.exists("DEFAULT__DECOM__{INST}__HEALTH_STATUS"))
+        cvt = json.loads(shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))
+        self.assertEqual(cvt["TEMP1__C"], packet.read("TEMP1"))
+        self.assertFalse(shard0.exists("DEFAULT__tlm__INST"))

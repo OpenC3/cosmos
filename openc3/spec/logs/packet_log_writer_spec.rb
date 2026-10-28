@@ -18,6 +18,7 @@
 require 'spec_helper'
 require 'openc3/logs/packet_log_writer'
 require 'openc3/logs/packet_log_reader'
+require 'openc3/models/target_model'
 require 'openc3/utilities/aws_bucket'
 require 'fileutils'
 require 'zlib'
@@ -582,6 +583,46 @@ module OpenC3
           expect(stdout.string).to_not include("Error closing")
         end
         expect(@files.keys.length).to eq 0
+      end
+    end
+
+    describe "multiple db_shards" do
+      before(:each) do
+        mock_redis()
+        # INST lives on db_shard 1 while SYSTEM stays on db_shard 0
+        TargetModel.new(name: "INST", scope: "DEFAULT", db_shard: 1).create
+        TargetModel.new(name: "SYSTEM", scope: "DEFAULT", db_shard: 0).create
+      end
+
+      it "trims each topic on its target's db_shard" do
+        # Check the cleanup times quickly rather than every 10s
+        stub_const("OpenC3::LogWriter::CYCLE_TIME_INTERVAL", 0.01)
+        trimmed = Queue.new
+        allow(EphemeralStore.instance(db_shard: 0)).to receive(:trim_topic) { |topic, minid, *| trimmed << [0, topic, minid] }
+        allow(EphemeralStore.instance(db_shard: 1)).to receive(:trim_topic) { |topic, minid, *| trimmed << [1, topic, minid] }
+        plw = PacketLogWriter.new(@log_dir, 'test')
+        plw.cleanup_offsets << { "DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS" => "1-0", "DEFAULT__DECOM__{SYSTEM}__META" => "2-0" }
+        plw.cleanup_times << (Time.now - 1)
+        results = []
+        2.times { results << trimmed.pop(timeout: 3) }
+        plw.shutdown.each { |thread| thread.join }
+        expect(results).to contain_exactly([1, "DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", "1-0"], [0, "DEFAULT__DECOM__{SYSTEM}__META", "2-0"])
+      end
+
+      it "looks up the target's db_shard in the topic's scope" do
+        # The same target name is on db_shard 1 in DEFAULT but db_shard 2 in OTHER
+        TargetModel.new(name: "INST", scope: "OTHER", db_shard: 2).create
+        stub_const("OpenC3::LogWriter::CYCLE_TIME_INTERVAL", 0.01)
+        trimmed = Queue.new
+        [0, 1, 2].each do |db_shard|
+          allow(EphemeralStore.instance(db_shard: db_shard)).to receive(:trim_topic) { |topic, minid, *| trimmed << [db_shard, topic, minid] }
+        end
+        plw = PacketLogWriter.new(@log_dir, 'test')
+        plw.cleanup_offsets << { "OTHER__TELEMETRY__{INST}__HEALTH_STATUS" => "1-0" }
+        plw.cleanup_times << (Time.now - 1)
+        result = trimmed.pop(timeout: 3)
+        plw.shutdown.each { |thread| thread.join }
+        expect(result).to eql [2, "OTHER__TELEMETRY__{INST}__HEALTH_STATUS", "1-0"]
       end
     end
   end
