@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import *
 
 from openc3.conversions.received_time_formatted_conversion import (
@@ -29,7 +29,7 @@ class TestReceivedTimeFormattedConversion(unittest.TestCase):
     def test_returns_the_formatted_packet_time(self):
         gc = ReceivedTimeFormattedConversion()
         packet = Packet("TGT", "PKT")
-        packet.received_time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=timezone.utc)
+        packet.received_time = datetime(2020, 1, 31, 12, 15, 30, tzinfo=UTC)
         self.assertEqual(gc.call(None, packet, None), "2020/01/31 12:15:30.000")
 
     def test_returns_a_string_if_packet_time_isnt_set(self):

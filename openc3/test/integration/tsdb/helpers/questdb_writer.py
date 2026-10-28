@@ -43,7 +43,7 @@ import json
 import os
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 # Add openc3 python path for imports
 # Path: openc3/test/integration/tsdb/helpers -> openc3/python
@@ -78,7 +78,7 @@ def ts_to_iso(ts_ns: int) -> str:
     """Convert nanosecond timestamp to ISO string for QuestDB queries."""
     ts_us = ts_ns // 1000
     ts_s = ts_us / 1_000_000
-    return datetime.fromtimestamp(ts_s, tz=timezone.utc).strftime(
+    return datetime.fromtimestamp(ts_s, tz=UTC).strftime(
         "%Y-%m-%dT%H:%M:%S.%fZ"
     )
 

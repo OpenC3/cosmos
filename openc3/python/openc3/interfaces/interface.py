@@ -14,7 +14,7 @@ import threading
 import time
 import traceback
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import schedule
 
@@ -442,7 +442,7 @@ class Interface:
     # self.return [String] Raw packet data
     def read_interface_base(self, data, extra=None):
         if self.save_raw_data:
-            self.read_raw_data_time = self.read_queue_data_time or datetime.now(timezone.utc)
+            self.read_raw_data_time = self.read_queue_data_time or datetime.now(UTC)
             self.read_raw_data = data
         self.bytes_read += len(data)
         if self.stream_log_pair:
@@ -456,7 +456,7 @@ class Interface:
     # self.return [String] The exact data written
     def write_interface_base(self, data, extra=None):
         if self.save_raw_data:
-            self.written_raw_data_time = datetime.now(timezone.utc)
+            self.written_raw_data_time = datetime.now(UTC)
             self.written_raw_data = data
         self.bytes_written += len(data)
         if self.stream_log_pair:

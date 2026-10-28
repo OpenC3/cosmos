@@ -11,7 +11,7 @@
 
 import json
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock, patch
 
 from openc3.script.web_socket_api import MessagesWebSocketApi
@@ -295,7 +295,7 @@ class TestMessagesBatchSize(unittest.TestCase):
         responses.append(json.dumps({"message": []}))
         mock_stream_instance.read.side_effect = responses
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with MessagesWebSocketApi(
             start_time=to_nsec_from_epoch(now - timedelta(hours=1)),
             end_time=to_nsec_from_epoch(now),

@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import re
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.activity_model import ActivityModel
@@ -171,7 +171,7 @@ def get_timeline_activities(name, start=None, stop=None, limit=None, scope=OPENC
     When limit is None, defaults to one event per minute over the window.
     Returns a list of matching activities.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     start_score = int((now - timedelta(days=7)).timestamp()) if start is None else _cal_to_epoch(start)
     stop_score = int((now + timedelta(days=7)).timestamp()) if stop is None else _cal_to_epoch(stop)
     if limit is None:
@@ -222,15 +222,15 @@ def _cal_to_epoch(value):
         return int(value)
     if isinstance(value, datetime):
         if value.tzinfo is None:
-            value = value.replace(tzinfo=timezone.utc)
+            value = value.replace(tzinfo=UTC)
         return int(value.timestamp())
     # datetime is a subclass of date, so check date last
     if isinstance(value, date):
-        return int(datetime(value.year, value.month, value.day, tzinfo=timezone.utc).timestamp())
+        return int(datetime(value.year, value.month, value.day, tzinfo=UTC).timestamp())
     s = str(value)
     if _EPOCH_INT_RE.match(s):
         return int(s)
     parsed = datetime.fromisoformat(s.replace("Z", "+00:00"))
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
     return int(parsed.timestamp())

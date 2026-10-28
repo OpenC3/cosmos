@@ -13,7 +13,7 @@ import queue
 import threading
 import time
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
@@ -290,7 +290,7 @@ class TestStreamInterface(unittest.TestCase):
         self.interface.stream = QueueStream(b"\x01\x02")
         self.interface.connect()
         self.wait_for_queue_size(1)
-        queued = datetime.now(timezone.utc)
+        queued = datetime.now(UTC)
         time.sleep(0.05)
 
         packet = self.interface.read()
@@ -305,7 +305,7 @@ class TestStreamInterface(unittest.TestCase):
         reserve = self.interface._reserve_read_queue_bytes
 
         def reserve_bytes(*args):
-            reserving.put(datetime.now(timezone.utc))
+            reserving.put(datetime.now(UTC))
             return reserve(*args)
 
         with patch.object(self.interface, "_reserve_read_queue_bytes", side_effect=reserve_bytes):

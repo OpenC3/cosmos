@@ -12,7 +12,7 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953 and https://github.com/OpenC3/cosmos/pull/1963
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.utilities.cmd_log import _build_cmd_output_string
 
@@ -202,7 +202,7 @@ class Commands:
         command.buffer = bytearray(b"\x00" * command.defined_length)
 
         # Set time, parameters, and restore defaults
-        command.received_time = datetime.now(timezone.utc)
+        command.received_time = datetime.now(UTC)
         command.stored = False
         command.extra = None
         command.given_values = params

@@ -11,7 +11,7 @@
 
 import socket
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.system.system import System
 from openc3.top_level import kill_thread
@@ -118,7 +118,7 @@ class InterfaceThread:
 
                         # Set received time if not already set
                         if not packet.received_time:
-                            packet.received_time = datetime.now(timezone.utc)
+                            packet.received_time = datetime.now(UTC)
 
                     except Exception as e:
                         self._handle_connection_lost(e)

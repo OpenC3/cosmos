@@ -113,7 +113,7 @@ PWDEBUG=1 pnpm test:parallel --headed        # Debug mode
 ## Code Style
 
 - **Ruby**: RuboCop, configured in `.rubocop.yml`.
-- **Python**: Ruff for lint and format, configured in `openc3/python/pyproject.toml`. Minimum supported Python is 3.10 (ruff `target-version = "py310"`), so don't use syntax newer than that. Commit `uv.lock` with any dependency change.
+- **Python**: Ruff for lint and format, configured in `openc3/python/pyproject.toml`. Minimum supported Python is 3.11 (ruff `target-version = "py311"`), so don't use syntax newer than that. Commit `uv.lock` with any dependency change.
 - **JavaScript/Vue**: ESLint 9 + Prettier, configured in `openc3-cosmos-init/plugins/eslint.config.mjs`. After editing Vue/JS files, always run `pnpm lint` in the package. CI runs `pnpm lint --max-warnings 0`, so any warning fails the build.
 
 ## Sharding

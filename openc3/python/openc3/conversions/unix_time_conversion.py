@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.conversions.conversion import Conversion
 
@@ -45,7 +45,7 @@ class UnixTimeConversion(Conversion):
         time = packet.read(self.seconds_item_name, self.seconds_type, buffer)
         if self.microseconds_item_name:
             time += packet.read(self.microseconds_item_name, self.microseconds_type, buffer) / 1000000.0
-        return datetime.fromtimestamp(time, tz=timezone.utc)
+        return datetime.fromtimestamp(time, tz=UTC)
 
     # @return [String] The name of the class followed by the time conversion
     def __str__(self):

@@ -131,8 +131,8 @@ import threading
 import time
 import traceback
 import uuid
+from datetime import UTC
 from datetime import datetime as cdatetime
-from datetime import timezone
 from io import StringIO
 from threading import Lock
 
@@ -341,7 +341,7 @@ class RunningScript:
         self.debug_history = []
         self.debug_code_completion = None
         self.top_level_instrumented_cache = None
-        self.output_time = cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
+        self.output_time = cdatetime.now(UTC).strftime(RunningScript.STRFTIME_FORMAT)
         self.output_time_value = _time.time()
         self.script_globals = globals()
         self.suite_report = None
@@ -479,9 +479,7 @@ class RunningScript:
     def do_stop(self):
         if RunningScript.run_thread:
             self.stop = True
-            self.script_status.end_time = (
-                cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-            )
+            self.script_status.end_time = cdatetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
             self.update_running_script_store("stopped")
             kill_thread(self, RunningScript.run_thread)
             RunningScript.run_thread = None
@@ -731,9 +729,7 @@ class RunningScript:
             )
 
     def scriptrunner_puts(self, string, color="BLACK"):
-        line_to_write = (
-            cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT) + " (SCRIPTRUNNER): " + string
-        )
+        line_to_write = cdatetime.now(UTC).strftime(RunningScript.STRFTIME_FORMAT) + " (SCRIPTRUNNER): " + string
         print(line_to_write)
         running_script_anycable_publish(
             f"running-script-channel:{self.script_status.id}",
@@ -754,7 +750,7 @@ class RunningScript:
             filename = self.script_status.current_filename
         if not line_number:
             line_number = self.script_status.line_no
-        self.output_time = cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
+        self.output_time = cdatetime.now(UTC).strftime(RunningScript.STRFTIME_FORMAT)
         self.output_time_value = _time.time()
         string = self.output_io.getvalue()
         self.output_io.truncate(0)
@@ -965,7 +961,7 @@ class RunningScript:
         )
 
     def mark_crashed(self):
-        self.script_status.end_time = cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        self.script_status.end_time = cdatetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
         self.update_running_script_store("crashed")
         running_script_anycable_publish(
             f"running-script-channel:{self.script_status.id}",
@@ -978,7 +974,7 @@ class RunningScript:
         )
 
     def mark_completed(self):
-        self.script_status.end_time = cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        self.script_status.end_time = cdatetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
         self.update_running_script_store("completed")
         running_script_anycable_publish(
             f"running-script-channel:{self.script_status.id}",
@@ -1479,7 +1475,7 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
     if complete:
         RunningScript.instance.script_status.state = "completed"
         RunningScript.instance.script_status.end_time = (
-            cdatetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+            cdatetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
         )
         RunningScript.instance.script_status.update(queued=True)
         raise StopScriptError

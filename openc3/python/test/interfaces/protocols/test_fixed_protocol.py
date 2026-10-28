@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import *
 
 from openc3.interfaces.protocols.fixed_protocol import FixedProtocol
@@ -129,7 +129,7 @@ class TestFixedProtocol(unittest.TestCase):
         TestFixedProtocol.index = 1
         packet = self.interface.read()
         self.assertLess(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(),
+            datetime.now(UTC).timestamp() - packet.received_time.timestamp(),
             0.1,
         )
         self.assertEqual(packet.target_name, "SYSTEM")
@@ -139,7 +139,7 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface.stop_read_queue_thread()
         packet = self.interface.read()
         self.assertLess(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(),
+            datetime.now(UTC).timestamp() - packet.received_time.timestamp(),
             0.1,
         )
         self.assertEqual(packet.target_name, "SYSTEM")
@@ -150,7 +150,7 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface.stop_read_queue_thread()
         packet = self.interface.read()
         self.assertLess(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(),
+            datetime.now(UTC).timestamp() - packet.received_time.timestamp(),
             0.1,
         )
         self.assertEqual(packet.target_name, "SYSTEM")
@@ -160,7 +160,7 @@ class TestFixedProtocol(unittest.TestCase):
         self.interface.stop_read_queue_thread()
         packet = self.interface.read()
         self.assertLess(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(),
+            datetime.now(UTC).timestamp() - packet.received_time.timestamp(),
             0.1,
         )
         self.assertEqual(packet.target_name, "SYSTEM")
@@ -193,7 +193,7 @@ class TestFixedProtocol(unittest.TestCase):
         target.cmd_unique_id_mode = False
         packet = self.interface.read()
         self.assertLess(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(),
+            datetime.now(UTC).timestamp() - packet.received_time.timestamp(),
             0.1,
         )
         self.assertEqual(packet.target_name, "SYSTEM")
@@ -202,7 +202,7 @@ class TestFixedProtocol(unittest.TestCase):
         target.cmd_unique_id_mode = True
         packet = self.interface.read()
         self.assertLess(
-            datetime.now(timezone.utc).timestamp() - packet.received_time.timestamp(),
+            datetime.now(UTC).timestamp() - packet.received_time.timestamp(),
             0.1,
         )
         self.assertEqual(packet.target_name, "SYSTEM")

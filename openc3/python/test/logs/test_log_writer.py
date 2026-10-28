@@ -11,7 +11,7 @@
 
 import time
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from openc3.logs.log_writer import LogWriter
@@ -57,12 +57,12 @@ class TestLogWriterCleanupOffsets(unittest.TestCase):
             self.assertEqual(writer.cleanup_offsets, [{"DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS": "100-0"}])
 
             # Make the cleanup due and run one cycle pass
-            writer.cleanup_times = [datetime.now(timezone.utc) - timedelta(seconds=1)]
+            writer.cleanup_times = [datetime.now(UTC) - timedelta(seconds=1)]
             with (
                 patch("openc3.logs.log_writer.Store.db_shard_for_target", return_value=3),
                 patch("openc3.logs.log_writer.Topic.trim_topic") as trim,
             ):
-                writer.trim_due_cleanups(datetime.now(timezone.utc))
+                writer.trim_due_cleanups(datetime.now(UTC))
             trim.assert_called_once_with("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", "100-0", db_shard=3)
             self.assertEqual(writer.cleanup_offsets, [])
         finally:
@@ -88,23 +88,23 @@ class TestLogWriterCycleReason(unittest.TestCase):
         return writer
 
     def test_cycles_daily_at_midnight(self):
-        writer = self.writer(datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc), cycle_hour="0", cycle_minute="0")
+        writer = self.writer(datetime(2026, 1, 1, 12, 0, tzinfo=UTC), cycle_hour="0", cycle_minute="0")
         self.assertEqual(writer.cycle_hour, 0)
         self.assertEqual(writer.cycle_minute, 0)
-        self.assertEqual(writer.cycle_reason(datetime(2026, 1, 2, 0, 0, 30, tzinfo=timezone.utc)), "daily")
-        self.assertIsNone(writer.cycle_reason(datetime(2026, 1, 2, 0, 1, tzinfo=timezone.utc)))
+        self.assertEqual(writer.cycle_reason(datetime(2026, 1, 2, 0, 0, 30, tzinfo=UTC)), "daily")
+        self.assertIsNone(writer.cycle_reason(datetime(2026, 1, 2, 0, 1, tzinfo=UTC)))
 
     def test_does_not_cycle_daily_twice_in_one_day(self):
-        writer = self.writer(datetime(2026, 1, 2, 0, 0, 5, tzinfo=timezone.utc), cycle_hour=0, cycle_minute=0)
-        self.assertIsNone(writer.cycle_reason(datetime(2026, 1, 2, 0, 0, 30, tzinfo=timezone.utc)))
+        writer = self.writer(datetime(2026, 1, 2, 0, 0, 5, tzinfo=UTC), cycle_hour=0, cycle_minute=0)
+        self.assertIsNone(writer.cycle_reason(datetime(2026, 1, 2, 0, 0, 30, tzinfo=UTC)))
 
     def test_cycles_hourly_at_minute_zero(self):
-        writer = self.writer(datetime(2026, 1, 1, 12, 30, tzinfo=timezone.utc), cycle_minute=0)
+        writer = self.writer(datetime(2026, 1, 1, 12, 30, tzinfo=UTC), cycle_minute=0)
         self.assertIsNone(writer.cycle_hour)
-        self.assertEqual(writer.cycle_reason(datetime(2026, 1, 1, 13, 0, 10, tzinfo=timezone.utc)), "hourly")
-        self.assertIsNone(writer.cycle_reason(datetime(2026, 1, 1, 13, 1, tzinfo=timezone.utc)))
+        self.assertEqual(writer.cycle_reason(datetime(2026, 1, 1, 13, 0, 10, tzinfo=UTC)), "hourly")
+        self.assertIsNone(writer.cycle_reason(datetime(2026, 1, 1, 13, 1, tzinfo=UTC)))
 
     def test_cycles_on_cycle_time(self):
-        writer = self.writer(datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc), cycle_time=60)
-        self.assertIsNone(writer.cycle_reason(datetime(2026, 1, 1, 12, 0, 59, tzinfo=timezone.utc)))
-        self.assertEqual(writer.cycle_reason(datetime(2026, 1, 1, 12, 1, 1, tzinfo=timezone.utc)), "due to cycle time")
+        writer = self.writer(datetime(2026, 1, 1, 12, 0, tzinfo=UTC), cycle_time=60)
+        self.assertIsNone(writer.cycle_reason(datetime(2026, 1, 1, 12, 0, 59, tzinfo=UTC)))
+        self.assertEqual(writer.cycle_reason(datetime(2026, 1, 1, 12, 1, 1, tzinfo=UTC)), "due to cycle time")

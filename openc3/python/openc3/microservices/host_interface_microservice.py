@@ -425,7 +425,7 @@ class HostInterfaceMicroservice:
             self._status_ping.clear()
             line = (json.dumps({"type": "status", "status": self._status_snapshot()}) + "\n").encode()
             await send.write_all(line)
-            with contextlib.suppress(asyncio.TimeoutError):
+            with contextlib.suppress(TimeoutError):
                 await asyncio.wait_for(self._status_ping.wait(), timeout=STATUS_INTERVAL)
 
     def _status_snapshot(self):
@@ -528,7 +528,7 @@ class HostInterfaceMicroservice:
                 loop.run_in_executor(None, operation),
                 timeout=DEVICE_OPERATION_TIMEOUT,
             )
-        except asyncio.TimeoutError as error:
+        except TimeoutError as error:
             raise TimeoutError(
                 f"{self.name}: device {name} timed out after {DEVICE_OPERATION_TIMEOUT:g} seconds"
             ) from error

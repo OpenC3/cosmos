@@ -90,7 +90,7 @@ def setup_system(targets=None):
                     json.dumps(packet.as_json()),
                 )
                 packet = System.telemetry.packet(target_name, packet_name)
-                # packet.received_time = datetime.now(timezone.utc)
+                # packet.received_time = datetime.now(UTC)
                 json_hash = {}
                 for item in packet.sorted_items:
                     # Initialize all items to None like TargetModel::update_store does in Ruby

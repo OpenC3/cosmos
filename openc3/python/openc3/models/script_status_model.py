@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.models.model import Model
 from openc3.utilities.time import to_nsec_from_epoch
@@ -176,7 +176,7 @@ class ScriptStatusModel(Model):
     # Update the Redis hash at primary_key and set the field "name"
     # to the JSON generated via calling as_json
     def create(self, update=False, force=False, queued=False):
-        self.updated_at: int = to_nsec_from_epoch(datetime.now(timezone.utc))
+        self.updated_at: int = to_nsec_from_epoch(datetime.now(UTC))
 
         if queued:
             write_store = self.store_queued()

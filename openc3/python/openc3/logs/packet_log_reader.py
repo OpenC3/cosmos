@@ -19,7 +19,7 @@ This is a port of the Ruby PacketLogReader class.
 import json
 import struct
 from collections.abc import Iterator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import cbor2
 
@@ -519,4 +519,4 @@ class PacketLogReader:
     def _nsec_to_datetime(nsec: int) -> datetime:
         """Convert nanoseconds since epoch to datetime."""
         seconds = nsec / 1_000_000_000
-        return datetime.fromtimestamp(seconds, tz=timezone.utc)
+        return datetime.fromtimestamp(seconds, tz=UTC)

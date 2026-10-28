@@ -11,7 +11,7 @@
 
 import os
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 def quote_if_necessary(string: str):
@@ -113,7 +113,7 @@ def formatted(
 #   extension
 def build_timestamped_filename(tags=None, extension=".txt", time=None):
     if time is None:
-        time = datetime.now(timezone.utc)
+        time = datetime.now(UTC)
     timestamp = time.strftime("%Y_%m_%d_%H_%M_%S")
     if not tags:
         tags = []

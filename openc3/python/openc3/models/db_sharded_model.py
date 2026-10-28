@@ -15,7 +15,7 @@
 #   _collect_db_shards(scope) -> set[int]
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.utilities.time import to_nsec_from_epoch
 
@@ -93,7 +93,7 @@ class DbShardedModel:
                 raise RuntimeError(f"{self.primary_key}:{self.name} already exists at create")
             if not existing and update:
                 raise RuntimeError(f"{self.primary_key}:{self.name} doesn't exist at update")
-        self.updated_at: int = to_nsec_from_epoch(datetime.now(timezone.utc))
+        self.updated_at: int = to_nsec_from_epoch(datetime.now(UTC))
 
         if queued:
             store = self.__class__.store_queued().instance(db_shard=db_shard)

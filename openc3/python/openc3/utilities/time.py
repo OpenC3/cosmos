@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 NSEC_PER_SECOND = 1_000_000_000
@@ -18,8 +18,8 @@ NSEC_PER_SECOND = 1_000_000_000
 
 def from_nsec_from_epoch(nsec_from_epoch):
     if nsec_from_epoch is None:
-        nsec_from_epoch = datetime().now(timezone.utc)
-    return datetime.fromtimestamp(nsec_from_epoch / NSEC_PER_SECOND, timezone.utc)
+        nsec_from_epoch = datetime().now(UTC)
+    return datetime.fromtimestamp(nsec_from_epoch / NSEC_PER_SECOND, UTC)
 
 
 def to_nsec_from_epoch(time):

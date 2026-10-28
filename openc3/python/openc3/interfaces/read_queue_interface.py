@@ -12,7 +12,7 @@
 import queue
 import threading
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.interfaces.interface import Interface
 from openc3.utilities.logger import Logger
@@ -271,7 +271,7 @@ class ReadQueueInterface(Interface):
             while not cancel_event.is_set():
                 try:
                     data = raw_read(*read_args)
-                    data_time = datetime.now(timezone.utc)
+                    data_time = datetime.now(UTC)
                 except TimeoutError as error:
                     # A read timeout doesn't end the reader so pass it along and keep reading
                     if self._reserve_read_queue_timeout(cancel_event):

@@ -16,7 +16,7 @@ import shutil
 import sys
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 working_dir = os.getcwd()
@@ -38,7 +38,7 @@ from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued  # n
 def run_script_log(script_id, message, color="BLACK", message_log=True):
     line_to_write = (
         # Can't use isoformat because it appends "+00:00" instead of "Z"
-        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + " (SCRIPTRUNNER): " + message
+        datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + " (SCRIPTRUNNER): " + message
     )
     if message_log:
         RunningScript.message_log().write(line_to_write + "\n", True)
@@ -263,7 +263,7 @@ finally:
         # Ensure script is marked as complete with an end time
         if not script_status.is_complete():
             script_status.state = "completed"
-        script_status.end_time = datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+        script_status.end_time = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
         script_status.update()
 
         running = ScriptStatusModel.all(scope=scope, type="running")

@@ -9,7 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from openc3.api import WHITELIST
 from openc3.api.tlm_api import _tlm_process_args
@@ -158,7 +158,7 @@ def enable_limits(*args, scope=OPENC3_SCOPE):
         "packet_name": packet_name,
         "item_name": item_name,
         "enabled": True,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -202,7 +202,7 @@ def disable_limits(*args, scope=OPENC3_SCOPE):
         "packet_name": packet_name,
         "item_name": item_name,
         "enabled": False,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -316,7 +316,7 @@ def set_limits(
         "limits_set": limits_set,
         "persistence": persistence,
         "enabled": enabled,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -381,7 +381,7 @@ def set_state_color(target_name, packet_name, item_name, state_name, color, scop
         "item_name": item_name,
         "state_name": state_name,
         "color": color,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
         "message": message,
     }
     LimitsEventTopic.write(event, scope=scope)
@@ -430,7 +430,7 @@ def set_limits_set(limits_set, scope=OPENC3_SCOPE):
         {
             "type": "LIMITS_SET",
             "set": str(limits_set),
-            "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+            "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
             "message": message,
         },
         scope=scope,
@@ -520,7 +520,7 @@ def _limits_group(group_name, action, scope):
                     "packet_name": packet_name,
                     "item_name": item_name,
                     "enabled": enabled,
-                    "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+                    "time_nsec": to_nsec_from_epoch(datetime.now(UTC)),
                     "message": message,
                 }
                 LimitsEventTopic.write(event, scope=scope)

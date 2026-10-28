@@ -11,7 +11,7 @@
 
 import re
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 
 from openc3.script.suite_results import SuiteResults
@@ -21,7 +21,7 @@ class TestSuiteResults(unittest.TestCase):
     def setUp(self):
         self.suite_results = SuiteResults()
         # Freeze time for consistent testing
-        self.frozen_time_utc = datetime(2025, 11, 22, 15, 30, 45, 123456, tzinfo=timezone.utc)
+        self.frozen_time_utc = datetime(2025, 11, 22, 15, 30, 45, 123456, tzinfo=UTC)
 
     def test_format_timestamp_always_uses_utc(self):
         """Test that timestamp is always formatted as UTC with Z suffix"""

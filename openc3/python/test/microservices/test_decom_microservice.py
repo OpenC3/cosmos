@@ -15,7 +15,7 @@ import re
 import threading
 import time
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 from openc3.api.tlm_api import tlm
@@ -85,7 +85,7 @@ class TestDecomMicroservice(unittest.TestCase):
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
         packet.extra = {}
         packet.extra["STATUS"] = "OK"
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
             # Wait for async processing to complete with retries for CI reliability
@@ -198,7 +198,7 @@ class TestDecomMicroservice(unittest.TestCase):
     def test_limits_change_with_zero_value_is_not_disabled(self):
         """A telemetry value of 0 must report a limits change, not 'is disabled'."""
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         item = packet.get_item("TEMP1")
         item.limits.state = "BLUE"
 
@@ -218,7 +218,7 @@ class TestDecomMicroservice(unittest.TestCase):
         mock_limits_set.return_value = "TVAC"
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
 
         # TEMP4 only has DEFAULT limits (no TVAC), TEMP1 has both DEFAULT and TVAC
         temp4 = packet.get_item("TEMP4")
@@ -250,7 +250,7 @@ class TestDecomMicroservice(unittest.TestCase):
         mock_limits_set.return_value = "TVAC"
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
 
         # TEMP4 only has DEFAULT limits: -80.0 -70.0 60.0 80.0 (no green/blue range)
         temp4 = packet.get_item("TEMP4")
@@ -284,7 +284,7 @@ class TestDecomMicroservice(unittest.TestCase):
         processor = Processor()
         processor.call = lambda packet, buffer: exec("raise RuntimeError('Bad processor')")
         packet.processors["TEMP1"] = processor
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
             # Wait for async processing to complete with retries for CI reliability
@@ -307,7 +307,7 @@ class TestDecomMicroservice(unittest.TestCase):
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
         temp1 = packet.get_item("TEMP1")
         temp1.limits.response = DelayedLimitsResponse()
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
         time.sleep(0.02)
 
@@ -364,7 +364,7 @@ class TestDecomMicroservice(unittest.TestCase):
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
         temp1 = packet.get_item("TEMP1")
         temp1.limits.response = BadLimitsResponse()
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
             # Wait for async processing to complete with retries for CI reliability
@@ -455,7 +455,7 @@ class TestDecomMicroserviceStoredLimitsMode(unittest.TestCase):
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
         temp1 = packet.get_item("TEMP1")
         temp1.limits.response = TrackingLimitsResponse()
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         packet.stored = True
 
         for stdout in capture_io():
@@ -481,7 +481,7 @@ class TestDecomMicroserviceStoredLimitsMode(unittest.TestCase):
         self._start_decom_with_mode("DISABLE")
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         packet.stored = True
 
         for stdout in capture_io():

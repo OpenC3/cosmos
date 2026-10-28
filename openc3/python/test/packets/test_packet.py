@@ -14,7 +14,7 @@
 
 import math
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import *
 
 from cbor2 import dumps
@@ -123,13 +123,13 @@ class Buffer(unittest.TestCase):
 
     def test_sets_the_received_time_fast_to_a_time(self):
         p = Packet("tgt", "pkt")
-        t = datetime.now(timezone.utc)
+        t = datetime.now(UTC)
         p.set_received_time_fast(t)
         self.assertEqual(p.received_time, t)
 
     def test_sets_the_received_time_to_a_time(self):
         p = Packet("tgt", "pkt")
-        t = datetime.now(timezone.utc)
+        t = datetime.now(UTC)
         p.received_time = t
         self.assertEqual(p.received_time, t)
 
@@ -601,14 +601,14 @@ class PacketReadDerived(unittest.TestCase):
         self.assertEqual(0, seconds)
         seconds = self.p.read("RECEIVED_TIMESECONDS")
         self.assertEqual(0, seconds)
-        time = datetime.now(timezone.utc)
+        time = datetime.now(UTC)
         self.p.received_time = time
         seconds = self.p.read("PACKET_TIMESECONDS")
         self.assertEqual(time.timestamp(), seconds)
         seconds = self.p.read("RECEIVED_TIMESECONDS")
         self.assertEqual(time.timestamp(), seconds)
 
-        time2 = datetime.now(timezone.utc)
+        time2 = datetime.now(UTC)
         self.p.packet_time = time2
         seconds = self.p.read("PACKET_TIMESECONDS")
         self.assertAlmostEqual(time2.timestamp(), seconds, 3)
@@ -1734,7 +1734,7 @@ class Clone(unittest.TestCase):
 class Reset(unittest.TestCase):
     def test_does_nothing_to_the_system_meta_packet(self):
         p = Packet("SYSTEM", "META")
-        time = datetime.now(timezone.utc)
+        time = datetime.now(UTC)
         p.received_time = time
         p.received_count = 50
         p.reset()
@@ -1744,7 +1744,7 @@ class Reset(unittest.TestCase):
     def test_resets_the_received_time_and_received_count(self):
         p = Packet("tgt", "pkt")
         # p.processors['processor'] = double("reset", :reset : True)
-        p.received_time = datetime.now(timezone.utc)
+        p.received_time = datetime.now(UTC)
         p.received_count = 50
         p.reset()
         self.assertEqual(p.received_time, None)

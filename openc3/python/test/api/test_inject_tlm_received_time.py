@@ -8,7 +8,7 @@
 
 import json
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 from openc3.api.tlm_api import inject_tlm
@@ -93,7 +93,7 @@ class TestInjectTlmReceivedTime(unittest.TestCase):
 
         self.assertEqual(
             packet.received_time,
-            datetime(2021, 1, 1, 0, 0, 0, 123456, tzinfo=timezone.utc),
+            datetime(2021, 1, 1, 0, 0, 0, 123456, tzinfo=UTC),
         )
         write_packet.assert_called_once_with(packet, "DEFAULT")
 
@@ -123,7 +123,7 @@ class TestInjectTlmReceivedTime(unittest.TestCase):
             "DEFAULT",
         )
 
-        self.assertEqual(packet.received_time, datetime(1970, 1, 1, tzinfo=timezone.utc))
+        self.assertEqual(packet.received_time, datetime(1970, 1, 1, tzinfo=UTC))
 
     @patch("openc3.script.telemetry.openc3.script.API_SERVER")
     def test_script_wrapper_forwards_received_time(self, api_server):

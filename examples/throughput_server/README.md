@@ -30,7 +30,7 @@ COSMOS Container                      Throughput Server (Python)
 
 ## Requirements
 
-- Python 3.10 or higher
+- Python 3.11 or higher
 - No external dependencies (uses only standard library)
 
 ## Usage
@@ -50,44 +50,44 @@ python throughput_server.py --debug
 
 ### Command Line Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `--inst-port` | 7778 | Port for INST (Ruby) target |
-| `--inst2-port` | 7780 | Port for INST2 (Python) target |
-| `--debug` | False | Enable debug logging |
+| Option         | Default | Description                    |
+| -------------- | ------- | ------------------------------ |
+| `--inst-port`  | 7778    | Port for INST (Ruby) target    |
+| `--inst2-port` | 7780    | Port for INST2 (Python) target |
+| `--debug`      | False   | Enable debug logging           |
 
 ## Supported Commands
 
 The server responds to the following CCSDS commands:
 
-| Command | PKTID | Description |
-|---------|-------|-------------|
-| START_STREAM | 200 | Start telemetry streaming at specified rate |
-| STOP_STREAM | 201 | Stop telemetry streaming |
-| GET_STATS | 202 | Request THROUGHPUT_STATUS telemetry packet |
-| RESET_STATS | 203 | Reset all throughput statistics |
+| Command      | PKTID | Description                                 |
+| ------------ | ----- | ------------------------------------------- |
+| START_STREAM | 200   | Start telemetry streaming at specified rate |
+| STOP_STREAM  | 201   | Stop telemetry streaming                    |
+| GET_STATS    | 202   | Request THROUGHPUT_STATUS telemetry packet  |
+| RESET_STATS  | 203   | Reset all throughput statistics             |
 
 ### START_STREAM Payload
 
-| Field | Type | Description |
-|-------|------|-------------|
-| RATE | 32-bit UINT | Packets per second (1-100000) |
+| Field        | Type        | Description                             |
+| ------------ | ----------- | --------------------------------------- |
+| RATE         | 32-bit UINT | Packets per second (1-100000)           |
 | PACKET_TYPES | 32-bit UINT | Bitmask of packet types (default: 0x01) |
 
 ## Telemetry Packets
 
 ### THROUGHPUT_STATUS (APID 100)
 
-| Field | Type | Description |
-|-------|------|-------------|
-| CMD_RECV_COUNT | 32-bit UINT | Total commands received |
-| CMD_RECV_RATE | 32-bit FLOAT | Commands per second |
-| TLM_SENT_COUNT | 32-bit UINT | Total telemetry packets sent |
-| TLM_SENT_RATE | 32-bit FLOAT | Telemetry packets per second |
-| TLM_TARGET_RATE | 32-bit UINT | Configured streaming rate |
-| BYTES_RECV | 64-bit UINT | Total bytes received |
-| BYTES_SENT | 64-bit UINT | Total bytes sent |
-| UPTIME_SEC | 32-bit UINT | Server uptime in seconds |
+| Field           | Type         | Description                  |
+| --------------- | ------------ | ---------------------------- |
+| CMD_RECV_COUNT  | 32-bit UINT  | Total commands received      |
+| CMD_RECV_RATE   | 32-bit FLOAT | Commands per second          |
+| TLM_SENT_COUNT  | 32-bit UINT  | Total telemetry packets sent |
+| TLM_SENT_RATE   | 32-bit FLOAT | Telemetry packets per second |
+| TLM_TARGET_RATE | 32-bit UINT  | Configured streaming rate    |
+| BYTES_RECV      | 64-bit UINT  | Total bytes received         |
+| BYTES_SENT      | 64-bit UINT  | Total bytes sent             |
+| UPTIME_SEC      | 32-bit UINT  | Server uptime in seconds     |
 
 ## CCSDS Packet Format
 
@@ -133,16 +133,17 @@ To use the throughput server with COSMOS, install the modified DEMO plugin with 
 
 ### Plugin Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `use_throughput_server` | false | Enable throughput server mode |
+| Variable                 | Default              | Description                   |
+| ------------------------ | -------------------- | ----------------------------- |
+| `use_throughput_server`  | false                | Enable throughput server mode |
 | `throughput_server_host` | host.docker.internal | Hostname of throughput server |
-| `inst_throughput_port` | 7778 | Port for INST connection |
-| `inst2_throughput_port` | 7780 | Port for INST2 connection |
+| `inst_throughput_port`   | 7778                 | Port for INST connection      |
+| `inst2_throughput_port`  | 7780                 | Port for INST2 connection     |
 
 ### Running Throughput Tests
 
 1. Start the throughput server:
+
    ```bash
    python throughput_server.py
    ```

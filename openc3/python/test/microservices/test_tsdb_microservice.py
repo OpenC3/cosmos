@@ -15,7 +15,7 @@ import os
 import re
 import time
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 from questdb.ingress import IngressError
@@ -57,7 +57,7 @@ class TestTsdbMicroservice(unittest.TestCase):
         model.create()
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.received_time = datetime.now(timezone.utc)
+        packet.received_time = datetime.now(UTC)
         packet.stored = False
         packet.check_limits()
         TelemetryDecomTopic.write_packet(packet, scope="DEFAULT")

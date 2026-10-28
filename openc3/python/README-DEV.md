@@ -13,11 +13,13 @@ This project uses modern Python tooling:
 ### Installing Tools
 
 **macOS:**
+
 ```bash
 brew install uv ruff just
 ```
 
 **Linux/WSL:**
+
 ```bash
 # Install UV
 curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -51,6 +53,7 @@ just verify
 ```
 
 **Note:** UV will automatically:
+
 - Install Python 3.12 (specified in `.python-version`) if not already installed
 - Create a `.venv` virtual environment if it doesn't exist
 - Install all project dependencies and the openc3 package
@@ -76,6 +79,7 @@ just test
 ```
 
 **What's different:**
+
 - `poetry.lock` is replaced by `uv.lock`
 - `poetry install` → `uv sync`
 - `poetry add` → `just add` or `uv add`
@@ -89,6 +93,7 @@ You can now uninstall Poetry if you no longer need it: `brew uninstall poetry` o
 Run `just` to see all available commands. Here are the most common:
 
 ### Code Quality
+
 ```bash
 just format              # Format all code with Ruff
 just format-changed      # Format only changed files (fast!)
@@ -100,6 +105,7 @@ just lint-stats          # Show linting statistics
 ```
 
 ### Testing
+
 ```bash
 just test                # Run all tests
 just test-cov            # Run with coverage report
@@ -109,6 +115,7 @@ just test-file FILE      # Run specific test file
 ```
 
 ### Pre-commit
+
 ```bash
 just verify              # Format, lint, and test everything
 just verify-changed      # Format and lint only changed files (fast!)
@@ -116,6 +123,7 @@ just check               # CI-friendly check (no modifications)
 ```
 
 ### Dependencies
+
 ```bash
 just add PACKAGE         # Add new dependency
 just add-dev PACKAGE     # Add dev dependency
@@ -124,6 +132,7 @@ just deps                # Show dependency tree
 ```
 
 ### Building
+
 ```bash
 just build               # Build wheel and source distribution
 just build-wheel         # Build wheel only
@@ -133,6 +142,7 @@ just install-editable    # Install package in editable mode
 ```
 
 ### Cleanup
+
 ```bash
 just clean               # Remove build artifacts
 ```
@@ -151,7 +161,7 @@ openc3/python/
 
 ## Python Version Support
 
-This library supports Python 3.10 through 3.14. The library uses environment markers to install version-specific dependencies (e.g., different numpy versions for different Python versions).
+This library supports Python 3.11 through 3.14. The library uses environment markers to install version-specific dependencies (e.g., different numpy versions for different Python versions).
 
 ## Code Style
 
@@ -191,6 +201,7 @@ just verify-changed
 ```
 
 This will:
+
 1. Format only changed Python files
 2. Auto-fix linting issues in changed files
 3. Show any remaining issues
@@ -204,6 +215,7 @@ just verify
 ```
 
 This will:
+
 1. Format all code
 2. Auto-fix all linting issues
 3. Run all tests
