@@ -575,7 +575,7 @@ module OpenC3
           json_drb = JsonDRb.new(method_whitelist: Api::WHITELIST)
           json_drb.object = @api
           request = { 'jsonrpc' => '2.0', 'method' => method_name, 'params' => ["INST HEALTH_STATUS TEMP1"], 'keyword_params' => { 'scope' => 'DEFAULT' }, 'id' => 1 }
-          response_data, _ = json_drb.process_request(request_data: JSON.generate(request), request_headers: {}, start_time: Time.now)
+          response_data = json_drb.process_request(request_data: JSON.generate(request), request_headers: {}, start_time: Time.now).first
           response = JSON.parse(response_data)
           expect(response['error']).to be_nil
           expect(response['result']).to be true

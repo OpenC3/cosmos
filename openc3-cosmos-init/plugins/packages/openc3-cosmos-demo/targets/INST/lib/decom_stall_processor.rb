@@ -39,7 +39,7 @@ class DecomStallProcessor < OpenC3::Processor
     "  PROCESSOR #{@name} #{self.class.name.to_s.class_name_to_filename} #{@item_name} #{@value_type}\n"
   end
 
-  def as_json(*a)
+  def as_json(*_a)
     { 'name' => @name, 'class' => self.class.name, 'params' => [@item_name, @value_type.to_s] }
   end
 end

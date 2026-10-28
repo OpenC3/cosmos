@@ -262,7 +262,7 @@ module OpenC3
     def self.events_trimmed?(previous_id, scope:, db_shard: 0)
       # 0-0 means the stream was empty when the reader started
       return false if previous_id.nil? or previous_id == '0-0'
-      oldest_id, _ = Topic.get_oldest_message("#{scope}__openc3_limits_events", db_shard: db_shard)
+      oldest_id = Topic.get_oldest_message("#{scope}__openc3_limits_events", db_shard: db_shard)&.first
       return false unless oldest_id
       (oldest_id.split('-').map(&:to_i) <=> previous_id.split('-').map(&:to_i)) > 0
     end
