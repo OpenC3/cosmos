@@ -42,3 +42,9 @@ class TestWatermarkProcessor(unittest.TestCase):
         p.reset()
         self.assertEqual(p.results["HIGH_WATER"], None)
         self.assertEqual(p.results["LOW_WATER"], None)
+
+    def test_as_json(self):
+        wp = WatermarkProcessor("TEST", "RAW")
+        self.assertEqual(
+            wp.as_json(), {"name": "WATERMARKPROCESSOR", "class": "WatermarkProcessor", "params": ["TEST", "RAW"]}
+        )

@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -13,6 +13,7 @@
 from openc3.accessors.binary_accessor import BinaryAccessor
 from openc3.config.config_parser import ConfigParser
 from openc3.conversions.conversion import Conversion
+from openc3.utilities.string import class_to_filename
 
 
 class ProcessorConversion(Conversion):
@@ -61,7 +62,7 @@ class ProcessorConversion(Conversion):
     # @param (see Conversion#to_config)
     # @return [String] Config fragment for this conversion
     def to_config(self, read_or_write):
-        config = f"    {read_or_write}_CONVERSION {self.__class__.__name__} {self.processor_name} {self.result_name}"
+        config = f"    {read_or_write}_CONVERSION {class_to_filename(self.__class__)} {self.processor_name} {self.result_name}"
         if self.converted_type is not None:
             config += f" {self.converted_type}"
         if self.converted_bit_size is not None:

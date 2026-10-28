@@ -443,7 +443,7 @@ class PacketItem(StructureItem):
                     else:
                         config += "\n"
             if limits.response:
-                config += limits.response.to_config
+                config += limits.response.to_config()
 
         if self.__meta:
             for key, values in self.__meta.items():
