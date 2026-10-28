@@ -18,11 +18,9 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.script.exceptions import CheckError
 from openc3.utilities.extract import (
     compare_values,
+    extract_comparison,
     extract_fields_from_check_text,
     extract_fields_from_tlm_text,
-    extract_operator_and_operand_from_comparison,
-    operand_contains_string,
-    upcase_state_names,
 )
 
 
@@ -837,43 +835,12 @@ def _comparison_implementation(target_name, packet_name, item_name, value_type, 
     if not comparison_to_eval.isascii():
         raise RuntimeError("ERROR: Invalid comparison to non-ascii value")
 
-    operator, operand = _extract_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, scope)
+    operator, operand = extract_comparison(
+        comparison_to_eval, value_type, lambda: get_item(target_name, packet_name, item_name, scope=scope)
+    )
     if operator is None:
         return None
     return lambda value: compare_values(value, operator, operand)
-
-
-def _extract_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, scope=OPENC3_SCOPE):
-    """Splits the comparison into an operator and operand like extract_operator_and_operand_from_comparison.
-    State names are stored upper case so a string operand which matches a state name ignoring case
-    is compared against that state name, e.g. "== 'Connected'" matches the CONNECTED state.
-    An unquoted state name, e.g. "== Connected", is also accepted. The item is only looked up
-    when the operand could be a state name so numeric comparisons don't make an additional API call.
-    """
-    try:
-        operator, operand = extract_operator_and_operand_from_comparison(comparison_to_eval)
-    except NameError:
-        operator, operand = comparison_to_eval.split(None, 1)
-        state = operand.strip().upper()
-        # 'in' requires a list operand so a single unquoted state is still an error
-        if operator == "in":
-            raise
-        if state not in (_states(target_name, packet_name, item_name, value_type, scope) or {}):
-            raise
-        return operator, state
-    if not operand_contains_string(operand):
-        return operator, operand
-
-    states = _states(target_name, packet_name, item_name, value_type, scope)
-    return operator, upcase_state_names(operand, states) if states else operand
-
-
-def _states(target_name, packet_name, item_name, value_type, scope=OPENC3_SCOPE):
-    """Returns the states of the item or None if it has none.
-    RAW values are never state names so the item is not looked up."""
-    if str(value_type).upper() == "RAW":
-        return None
-    return get_item(target_name, packet_name, item_name, scope=scope).get("states")
 
 
 def _tolerance_implementation(expected_value, tolerance):
@@ -1020,7 +987,9 @@ def _check_comparison(target_name, packet_name, item_name, value_type, compariso
         value_str = value
     with_value = f"with value == {value_str}"
 
-    operator, operand = _extract_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, scope)
+    operator, operand = extract_comparison(
+        comparison_to_eval, value_type, lambda: get_item(target_name, packet_name, item_name, scope=scope)
+    )
     if not _valid_comparison(value, operator, operand):
         message = "Invalid comparison for types"
         raise CheckError(message)

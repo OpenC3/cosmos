@@ -335,6 +335,34 @@ def extract_operand(operand):
     raise RuntimeError(f"ERROR: Unable to parse operand: {operand}")
 
 
+# Splits a comparison like extract_operator_and_operand_from_comparison but matches state names.
+# State names are stored upper case so a string operand which matches a state name ignoring case
+# is compared against that state name, e.g. "== 'Connected'" matches the CONNECTED state.
+# An unquoted state name, e.g. "== Connected", is also accepted. get_item is a callable returning
+# the item hash. It is only called when the operand could be a state name so numeric comparisons
+# don't make an additional API call. RAW values are never state names so it is never called.
+def extract_comparison(comparison, value_type, get_item):
+    def states():
+        if str(value_type).upper() == "RAW":
+            return None
+        return get_item().get("states")
+
+    try:
+        operator, operand = extract_operator_and_operand_from_comparison(comparison)
+    except NameError:
+        operator, operand = comparison.split(None, 1)
+        state = operand.strip().upper()
+        # 'in' requires a list operand so a single unquoted state is still an error
+        if operator == "in" or state not in (states() or {}):
+            raise
+        return operator, state
+    if not operand_contains_string(operand):
+        return operator, operand
+
+    item_states = states()
+    return operator, upcase_state_names(operand, item_states) if item_states else operand
+
+
 # Returns whether the operand is or contains a string, i.e. could be a state name
 def operand_contains_string(operand):
     if isinstance(operand, str):

@@ -369,6 +369,29 @@ module OpenC3
       return elements
     end
 
+    # Splits a comparison like extract_operator_and_operand_from_comparison but matches state names.
+    # State names are stored upper case so a string operand which matches a state name ignoring case
+    # is compared against that state name, e.g. "== 'Connected'" matches the CONNECTED state.
+    # An unquoted state name, e.g. "== Connected", is also accepted. The block returns the item hash.
+    # It is only called when the operand could be a state name so numeric comparisons don't make an
+    # additional API call. RAW values are never state names so it is never called.
+    def extract_comparison(comparison, value_type, &get_item)
+      states = lambda { value_type.to_s.upcase == 'RAW' ? nil : get_item.call['states'] }
+      begin
+        operator, operand = extract_operator_and_operand_from_comparison(comparison)
+      rescue NameError
+        operator, operand = comparison.split(nil, 2)
+        state = operand.strip.upcase
+        # 'in' requires a list operand so a single unquoted state is still an error
+        raise if operator == 'in' or !states.call&.key?(state)
+        return [operator, state]
+      end
+      return [operator, operand] unless operand_contains_string?(operand)
+
+      item_states = states.call
+      return [operator, item_states ? upcase_state_names(operand, item_states) : operand]
+    end
+
     # Returns whether the operand is or contains a string, i.e. could be a state name
     def operand_contains_string?(operand)
       return true if operand.is_a?(String)

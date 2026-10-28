@@ -203,7 +203,7 @@ module OpenC3
 
       it "only looks up states when comparing strings" do
         allow(self).to receive(:get_item).and_call_original
-        capture_io do |stdout|
+        capture_io do |_stdout|
           check("INST HEALTH_STATUS TEMP1 == 10")
           check("INST HEALTH_STATUS TEMP1 in [10, 11]")
           wait_check("INST HEALTH_STATUS TEMP1 > 1", 0.01)

@@ -471,5 +471,34 @@ module OpenC3
         expect { compare_values(1, "&", 1) }.to raise_error(/ERROR: Invalid operator: '&'/)
       end
     end
+
+    describe "extract_comparison" do
+      let(:item) { { 'states' => { 'ON' => { 'value' => 1 }, 'OFF' => { 'value' => 0 } } } }
+
+      it "matches state names ignoring case" do
+        expect(extract_comparison("== 'On'", :CONVERTED) { item }).to eql ["==", "ON"]
+        expect(extract_comparison("in ['on', 'Off', 'other', 1]", :FORMATTED) { item }).to eql ["in", ["ON", "OFF", "other", 1]]
+        expect(extract_comparison("== 'other'", :CONVERTED) { item }).to eql ["==", "other"]
+      end
+
+      it "accepts an unquoted state name" do
+        expect(extract_comparison("== on", :CONVERTED) { item }).to eql ["==", "ON"]
+        expect { extract_comparison("== other", :CONVERTED) { item } }.to raise_error(NameError, /Uninitialized constant other/)
+        expect { extract_comparison("in on", :CONVERTED) { item } }.to raise_error(NameError, /Uninitialized constant on/)
+        expect { extract_comparison("== on", :CONVERTED) { {} } }.to raise_error(NameError, /Uninitialized constant on/)
+      end
+
+      it "leaves strings alone for items without states" do
+        expect(extract_comparison("== 'On'", :CONVERTED) { {} }).to eql ["==", "On"]
+      end
+
+      it "only looks up the item when the operand could be a state name" do
+        no_lookup = lambda { raise "item should not be looked up" }
+        expect(extract_comparison("== 1", :CONVERTED, &no_lookup)).to eql ["==", 1]
+        expect(extract_comparison("in [1, 2]", :CONVERTED, &no_lookup)).to eql ["in", [1, 2]]
+        expect(extract_comparison("== 'On'", :RAW, &no_lookup)).to eql ["==", "On"]
+        expect { extract_comparison("== on", :RAW, &no_lookup) }.to raise_error(NameError)
+      end
+    end
   end
 end

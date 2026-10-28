@@ -771,39 +771,9 @@ module OpenC3
     def _comparison_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, scope: $openc3_scope, token: $openc3_token)
       return nil unless comparison_to_eval
 
-      operator, operand = _extract_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, scope: scope, token: token)
+      operator, operand = extract_comparison(comparison_to_eval, value_type) { get_item(target_name, packet_name, item_name, scope: scope, token: token) }
       return nil unless operator
       lambda { |value| compare_values(value, operator, operand) }
-    end
-
-    # Splits the comparison into an operator and operand like extract_operator_and_operand_from_comparison.
-    # State names are stored upper case so a string operand which matches a state name ignoring case
-    # is compared against that state name, e.g. "== 'Connected'" matches the CONNECTED state.
-    # An unquoted state name, e.g. "== Connected", is also accepted. The item is only looked up
-    # when the operand could be a state name so numeric comparisons don't make an additional API call.
-    def _extract_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, scope: $openc3_scope, token: $openc3_token)
-      begin
-        operator, operand = extract_operator_and_operand_from_comparison(comparison_to_eval)
-      rescue NameError
-        operator, operand = comparison_to_eval.split(nil, 2)
-        state = operand.strip.upcase
-        # 'in' requires a list operand so a single unquoted state is still an error
-        raise if operator == 'in'
-        raise unless _states(target_name, packet_name, item_name, value_type, scope: scope, token: token)&.key?(state)
-        return [operator, state]
-      end
-      return [operator, operand] unless operand_contains_string?(operand)
-
-      states = _states(target_name, packet_name, item_name, value_type, scope: scope, token: token)
-      return [operator, states ? upcase_state_names(operand, states) : operand]
-    end
-
-    # Returns the states of the item or nil if it has none.
-    # RAW values are never state names so the item is not looked up.
-    def _states(target_name, packet_name, item_name, value_type, scope: $openc3_scope, token: $openc3_token)
-      return nil if value_type.to_s.upcase == 'RAW'
-
-      get_item(target_name, packet_name, item_name, scope: scope, token: token)['states']
     end
 
     # Wait for a converted telemetry item to pass a comparison
@@ -888,7 +858,7 @@ module OpenC3
       value_str = 'nil' if value.nil? # Show user nil value as 'nil'
       with_value = "with value == #{value_str}"
 
-      operator, operand = _extract_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, scope: scope, token: token)
+      operator, operand = extract_comparison(comparison_to_eval, value_type) { get_item(target_name, packet_name, item_name, scope: scope, token: token) }
       unless _valid_comparison?(value, operator, operand)
         message = "Invalid comparison for types"
         if $disconnect
