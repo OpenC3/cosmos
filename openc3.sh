@@ -394,10 +394,18 @@ run_hostsetup() {
     return 0
   fi
 
-  local repo="${OPENC3_ENTERPRISE_REGISTRY:-repos.openc3.com}"
-  local namespace="${OPENC3_ENTERPRISE_NAMESPACE:-openc3}"
-  local tag="${OPENC3_ENTERPRISE_TAG:-latest}"
-  local image="$repo/$namespace/openc3-enterprise-operator:$tag"
+  local repo namespace tag image
+  if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
+    repo="${OPENC3_ENTERPRISE_REGISTRY:-repos.openc3.com}"
+    namespace="${OPENC3_ENTERPRISE_NAMESPACE:-openc3}"
+    tag="${OPENC3_ENTERPRISE_TAG:-latest}"
+    image="$repo/$namespace/openc3-enterprise-operator:$tag"
+  else
+    repo="${OPENC3_REGISTRY:-docker.io}"
+    namespace="${OPENC3_NAMESPACE:-openc3inc}"
+    tag="${OPENC3_TAG:-latest}"
+    image="$repo/$namespace/openc3-operator:$tag"
+  fi
 
   # Unprivileged probe. vm.max_map_count (mmc) and transparent huge pages (thp)
   # are not namespaced, so any container reads the host's (or the Docker VM's) values.
