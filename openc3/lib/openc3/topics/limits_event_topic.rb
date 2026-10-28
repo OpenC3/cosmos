@@ -151,20 +151,7 @@ module OpenC3
       # Write to all active db_shards so each decom microservice can read limits events inline
       msg_hash = { event: JSON.generate(event, allow_nan: true) }
       _active_db_shards(scope: scope).each do |db_shard|
-        if event[:type] == :LIMITS_CHANGE
-          Topic.write_topic("#{scope}__openc3_limits_events", msg_hash, '*', 1000, db_shard: db_shard)
-        else
-          # Decom microservices read control events (everything except LIMITS_CHANGE) from
-          # a separate low volume stream. A flood of LIMITS_CHANGE events from many items
-          # changing state would otherwise trim control events before they are read.
-          # Write both streams in a transaction so event readers and decom can't diverge.
-          EphemeralStore.instance(db_shard: db_shard).redis_pool.with do |redis|
-            redis.multi do |transaction|
-              transaction.xadd("#{scope}__openc3_limits_events", msg_hash, maxlen: 1000, approximate: true)
-              transaction.xadd("#{scope}__openc3_limits_control", msg_hash, maxlen: 1000, approximate: true)
-            end
-          end
-        end
+        Topic.write_topic("#{scope}__openc3_limits_events", msg_hash, '*', 1000, db_shard: db_shard)
       end
     end
 
@@ -390,7 +377,7 @@ module OpenC3
     # Still available for non-decom consumers that need to sync limits.
     def self.sync_system_thread_body(scope:, block_ms: nil)
       telemetry = System.telemetry.all
-      topics = ["#{scope}__openc3_limits_control"]
+      topics = ["#{scope}__openc3_limits_events"]
       Topic.read_topics(topics, nil, block_ms) do |_topic, _msg_id, event, _redis|
         event = JSON.parse(event['event'], allow_nan: true, create_additions: true)
         process_event(event, scope: scope, telemetry: telemetry)

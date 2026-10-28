@@ -16,7 +16,7 @@ from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonDecoder, JsonEncoder
 from openc3.utilities.logger import Logger
-from openc3.utilities.store import EphemeralStore, Store
+from openc3.utilities.store import Store
 
 
 # LimitsEventTopic keeps track of not only the <SCOPE>__openc3_limits_events topic
@@ -153,18 +153,7 @@ class LimitsEventTopic(Topic):
         # Write to all active db_shards so each decom microservice can read limits events inline
         msg_hash = {"event": json.dumps(event, cls=JsonEncoder)}
         for db_shard in cls._active_db_shards(scope):
-            if event["type"] == "LIMITS_CHANGE":
-                Topic.write_topic(f"{scope}__openc3_limits_events", msg_hash, "*", 1000, db_shard=db_shard)
-            else:
-                # Decom microservices read control events (everything except LIMITS_CHANGE) from
-                # a separate low volume stream. A flood of LIMITS_CHANGE events from many items
-                # changing state would otherwise trim control events before they are read.
-                # Write both streams in a transaction so event readers and decom can't diverge.
-                with EphemeralStore.instance(db_shard=db_shard).redis_pool.get() as redis:
-                    transaction = redis.pipeline(transaction=True)
-                    transaction.xadd(f"{scope}__openc3_limits_events", msg_hash, maxlen=1000, approximate=True)
-                    transaction.xadd(f"{scope}__openc3_limits_control", msg_hash, maxlen=1000, approximate=True)
-                    transaction.execute()
+            Topic.write_topic(f"{scope}__openc3_limits_events", msg_hash, "*", 1000, db_shard=db_shard)
 
     # Remove the JSON encoding to return hashes directly
     @classmethod
@@ -411,7 +400,7 @@ class LimitsEventTopic(Topic):
     @classmethod
     def sync_system_thread_body(cls, scope):
         telemetry = System.telemetry.all()
-        topics = [f"{scope}__openc3_limits_control"]
+        topics = [f"{scope}__openc3_limits_events"]
         for _, _, event, _ in Topic.read_topics(topics, timeout_ms=None):
             event = json.loads(event[b"event"], cls=JsonDecoder)
             cls.process_event(event, scope, telemetry=telemetry)

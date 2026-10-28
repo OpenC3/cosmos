@@ -111,10 +111,8 @@ class DecomMicroservice(Microservice):
         # First Decom microservice has no number in the name
         if "__DECOM__" in self.name:
             self.topics.append(f"{self.scope}__DECOMINTERFACE__{{{self.target_names[0]}}}")
-        # Limits control events (settings, enable state, limits set, etc) are read from a
-        # dedicated stream so they can't be trimmed by a flood of LIMITS_CHANGE events
-        self.limits_control_topic = f"{self.scope}__openc3_limits_control"
-        self.topics.append(self.limits_control_topic)
+        self.limits_event_topic = f"{self.scope}__openc3_limits_events"
+        self.topics.append(self.limits_event_topic)
         Topic.update_topic_offsets(self.topics, db_shard=self.db_shard)
         # Initialize before set_limits_change_callback - sync_system below can
         # fire the callback synchronously for any persisted-disabled items.
@@ -149,7 +147,7 @@ class DecomMicroservice(Microservice):
 
                     if topic == self.microservice_topic:
                         self.microservice_cmd(topic, msg_id, msg_hash, redis)
-                    elif topic == self.limits_control_topic:
+                    elif topic == self.limits_event_topic:
                         event = json.loads(msg_hash[b"event"])
                         LimitsEventTopic.process_event(event, self.scope)
                     elif "__DECOMINTERFACE__" in topic:

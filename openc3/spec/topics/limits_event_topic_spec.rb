@@ -268,32 +268,13 @@ module OpenC3
       end
     end
 
-    describe "limits control stream" do
-      def limits_change_event(i)
-        { type: :LIMITS_CHANGE, target_name: "TGT1", packet_name: "PKT1", item_name: "ITEM#{i}",
-          old_limits_state: "GREEN", new_limits_state: "RED_HIGH", time_nsec: Time.now.to_nsec_from_epoch, message: "TEST" }
-      end
-
-      it "writes all events except LIMITS_CHANGE to the control stream" do
-        LimitsEventTopic.write(limits_change_event(1), scope: "DEFAULT")
-        event = { type: :LIMITS_ENABLE_STATE, target_name: "TGT1", packet_name: "PKT1",
-            item_name: "ITEM1", enabled: false, time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
-        LimitsEventTopic.write(event, scope: "DEFAULT")
-
-        expect(EphemeralStore.xlen("DEFAULT__openc3_limits_events")).to eql 2
-        control = Topic.read_topics(["DEFAULT__openc3_limits_control"], ["0-0"])["DEFAULT__openc3_limits_control"]
-        expect(control.length).to eql 1
-        expect(JSON.parse(control[0][1]['event'])['type']).to eql "LIMITS_ENABLE_STATE"
-      end
-
-      it "sync_system_thread_body applies control events after a flood of LIMITS_CHANGE events" do
+    describe "limits group events" do
+      it "sync_system_thread_body applies a LIMITS_GROUP_ENABLE_STATE event" do
         LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT") # Set the stream offset
         Store.hset("DEFAULT__limits_groups", "FIRST", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
         event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: "FIRST", enabled: false,
             time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
         LimitsEventTopic.write(event, scope: "DEFAULT")
-        # More LIMITS_CHANGE events than the ~1000 entries the limits event stream keeps
-        1500.times { |i| LimitsEventTopic.write(limits_change_event(i), scope: "DEFAULT") }
         LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT")
         expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
       end
