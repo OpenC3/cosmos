@@ -85,11 +85,12 @@ class Topic(metaclass=TopicMeta):
         groups = {}
         for topic in topics:
             if target_pattern in topic:
-                if "TARGET__" in target_pattern:
-                    target_name = topic.split("TARGET__")[1] if "TARGET__" in topic else None
-                else:
-                    match = re.search(r"__\{?([^}_]+)\}?__", topic)
-                    target_name = match.group(1) if match else None
+                # The target name follows the pattern, e.g. {DEFAULT__CMD}TARGET__INST
+                # or DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS
+                target_name = topic.split(target_pattern, 1)[1]
+                match = re.match(r"\{([^}]+)\}", target_name)
+                if match:
+                    target_name = match.group(1)
                 db_shard = int(Store.db_shard_for_target(target_name, scope=scope) or 0)
             else:
                 db_shard = 0

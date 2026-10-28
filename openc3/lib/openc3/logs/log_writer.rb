@@ -211,6 +211,15 @@ module OpenC3
       end
     end
 
+    # The db_shard of a target topic like DEFAULT__DECOM__{INST}__HEALTH_STATUS
+    # or db_shard 0 for a topic without a target
+    def self.db_shard_for_topic(redis_topic)
+      scope, _, rest = redis_topic.delete_prefix('{').partition('__')
+      # The target is a {TARGET} part between two others, e.g. DECOM__{INST}__HEALTH_STATUS
+      target = rest.split('__', -1)[1...-1]&.find { |part| part.length > 2 and part.start_with?('{') and part.end_with?('}') }
+      (!scope.empty? and target) ? Store.db_shard_for_target(target[1...-1], scope: scope) : 0
+    end
+
     def cycle_thread_body
       @@cycle_sleeper = Sleeper.new
       while true
@@ -245,9 +254,7 @@ module OpenC3
                   # Now that the file is in S3, trim the Redis stream up until the previous file.
                   # This keeps one minute of data in Redis
                   instance.cleanup_offsets[index].each do |redis_topic, cleanup_offset|
-                    target_match = redis_topic.match(/__\{?([^}_]+)\}?__/)
-                    db_shard = target_match ? Store.db_shard_for_target(target_match[1]) : 0
-                    Topic.trim_topic(redis_topic, cleanup_offset, db_shard: db_shard)
+                    Topic.trim_topic(redis_topic, cleanup_offset, db_shard: LogWriter.db_shard_for_topic(redis_topic))
                   end
                   indexes_to_clear << index
                 end

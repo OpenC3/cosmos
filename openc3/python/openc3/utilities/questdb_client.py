@@ -788,7 +788,7 @@ class QuestDBClient:
         """Query historical telemetry data from QuestDB for a list of items.
         Builds the SQL query, executes it, and decodes all results.
         Supports cross-db_shard queries by grouping items by db_shard, executing
-        separate queries per db_shard, and aligning range results by packet time.
+        separate queries per db_shard, and aligning the results by packet time.
 
         Args:
             items: List of TlmItem (or [target_name, packet_name, item_name, value_type, limits]).
@@ -823,101 +823,113 @@ class QuestDBClient:
                 group["items"], start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard
             )
 
-        # Cross-db_shard: execute per-db_shard queries (as lists of rows) and merge results
-        if end_time:
-            return cls._tsdb_lookup_range_db_shards(
-                items, db_shard_groups, start_time=start_time, end_time=end_time, scope=scope
-            )
-
-        db_shard_rows = {}
-        for db_shard, group in db_shard_groups.items():
-            result = cls._tsdb_lookup_single_db_shard(
-                group["items"], start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard, flatten=False
-            )
-            db_shard_rows[db_shard] = result if isinstance(result, list) else []
-
-        # A point in time returns at most one row per db_shard: the last row before start_time.
-        # Merge results positionally back into the original item order. Each db_shard
-        # may have different row counts so use the maximum row count and fill missing
-        # positions with [None, None]. If all db_shards returned empty, return empty.
-        max_rows = max(len(rows) for rows in db_shard_rows.values())
-        if max_rows == 0:
-            return {}
-
-        merged = [[[None, None] for _ in items] for _ in range(max_rows)]
-        for db_shard, group in db_shard_groups.items():
-            for row_num, row in enumerate(db_shard_rows[db_shard]):
-                for db_shard_idx, orig_pos in enumerate(group["positions"]):
-                    if db_shard_idx < len(row) and row[db_shard_idx]:
-                        merged[row_num][orig_pos] = row[db_shard_idx]
-        # Match the single db_shard behavior of returning a flat array for a single row
-        if max_rows == 1:
-            return merged[0]
-        return merged
+        # Cross-db_shard: a single query can't ASOF JOIN tables on different QuestDBs
+        return cls._tsdb_lookup_db_shards(items, db_shard_groups, start_time=start_time, end_time=end_time, scope=scope)
 
     @classmethod
-    def _tsdb_lookup_range_db_shards(cls, items, db_shard_groups, start_time, end_time, scope):
-        """Cross-db_shard range lookup. Each db_shard returns its own rows so they can't be
-        merged by row number. Instead the db_shard of the first item drives the rows (like
-        the first table does in a single db_shard query) and every other db_shard is aligned
-        to it by packet time, using its last row at or before each driving row (like ASOF JOIN).
+    def _tsdb_lookup_db_shards(cls, items, db_shard_groups, start_time, end_time, scope):
+        """Cross-db_shard lookup which matches the rows of a single db_shard ASOF JOIN.
+        The packet of the first item drives the rows (like T0 in a single db_shard query) so
+        its db_shard is queried as usual. Every packet on another db_shard is queried on its
+        own and aligned to each driving row's packet time, using its last row at or before
+        that time (like ASOF JOIN). Each packet is aligned independently and includes its
+        last row before start_time, so its value carries forward like it would in ASOF JOIN.
         """
         first = next(item for item in items if item.item_name is not None)
         driver = cls.db_shard_for_target(first.target_name, scope=scope)
-        db_shard_rows = {}  # db_shard => rows with their packet time as the last value
-        for db_shard, group in db_shard_groups.items():
-            # Every item in this db_shard is a placeholder so leave its positions as Nones
-            first = next((item for item in group["items"] if item.item_name is not None), None)
-            if first is None:
-                continue
-            query = [*group["items"], TlmItem(first.target_name, first.packet_name, "PACKET_TIMESECONDS", "RAW", None)]
-            result = cls._tsdb_lookup_single_db_shard(
-                query, start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard, flatten=False
-            )
-            rows = result if isinstance(result, list) else []
-            if db_shard != driver:
-                # Like ASOF JOIN, the last row before start_time can align to the first driving rows
-                seed = cls._tsdb_lookup_single_db_shard(
-                    query, start_time=start_time, end_time=None, scope=scope, db_shard=db_shard, flatten=False
-                )
-                if isinstance(seed, list):
-                    rows = seed + rows
-            db_shard_rows[db_shard] = rows
-
-        if not db_shard_rows[driver]:
+        driver_rows = cls._tsdb_lookup_single_db_shard(
+            db_shard_groups[driver]["items"],
+            start_time=start_time,
+            end_time=end_time,
+            scope=scope,
+            db_shard=driver,
+            flatten=False,
+            with_time=True,
+        )
+        if not driver_rows:
             return {}
+        # The packet time in nanoseconds is the last value of each row
+        times = [row[-1][0] for row in driver_rows]
 
-        indexes = dict.fromkeys(db_shard_rows, -1)  # db_shard => index of the row aligned to the driving row
-        merged = []
-        for driver_row in db_shard_rows[driver]:
-            time = driver_row[-1][0]
-            row = [[None, None] for _ in items]
-            for db_shard, group in db_shard_groups.items():
-                rows = db_shard_rows.get(db_shard)
-                if rows is None:
+        merged = [[[None, None] for _ in items] for _ in driver_rows]
+        for row_num, driver_row in enumerate(driver_rows):
+            for db_shard_idx, orig_pos in enumerate(db_shard_groups[driver]["positions"]):
+                if driver_row[db_shard_idx]:
+                    merged[row_num][orig_pos] = driver_row[db_shard_idx]
+
+        for db_shard, group in db_shard_groups.items():
+            if db_shard == driver:
+                continue
+            # Group the items by packet, leaving placeholders as Nones
+            packets = {}  # (target_name, packet_name) => {"positions": [], "items": []}
+            for orig_pos, item in zip(group["positions"], group["items"], strict=True):
+                if item.item_name is None:
                     continue
-                if db_shard == driver:
-                    shard_row = driver_row
-                else:
-                    while indexes[db_shard] + 1 < len(rows) and rows[indexes[db_shard] + 1][-1][0] <= time:
-                        indexes[db_shard] += 1
-                    if indexes[db_shard] < 0:
+                packet = packets.setdefault((item.target_name, item.packet_name), {"positions": [], "items": []})
+                packet["positions"].append(orig_pos)
+                packet["items"].append(item)
+
+            for packet in packets.values():
+                rows = cls._tsdb_lookup_packet_rows(
+                    packet["items"], times, start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard
+                )
+                index = -1  # Index of the last packet row at or before the driving row
+                for row_num, driver_time in enumerate(times):
+                    while index + 1 < len(rows) and rows[index + 1][-1][0] <= driver_time:
+                        index += 1
+                    if index < 0:
                         continue
-                    shard_row = rows[indexes[db_shard]]
-                for db_shard_idx, orig_pos in enumerate(group["positions"]):
-                    if db_shard_idx < len(shard_row) and shard_row[db_shard_idx]:
-                        row[orig_pos] = shard_row[db_shard_idx]
-            merged.append(row)
+                    for packet_idx, orig_pos in enumerate(packet["positions"]):
+                        if rows[index][packet_idx]:
+                            merged[row_num][orig_pos] = rows[index][packet_idx]
+
         # Match the single db_shard behavior of returning a flat array for a single row
         if len(merged) == 1:
             return merged[0]
         return merged
 
     @classmethod
-    def _tsdb_lookup_single_db_shard(cls, items, start_time, end_time=None, scope="DEFAULT", db_shard=0, flatten=True):
+    def _tsdb_lookup_packet_rows(cls, items, times, start_time, end_time, scope, db_shard):
+        """Query the rows of a single packet needed to align it to the driving row times.
+        Each row ends with its packet time in nanoseconds.
+        """
+        if end_time:
+            # The last row before start_time followed by the rows in the range
+            queries = [{"start_time": start_time}, {"start_time": start_time, "end_time": end_time}]
+        else:
+            # The single driving row is before start_time so get the last row at or before it
+            queries = [{"start_time": cls.nsec_to_iso(times[0]), "inclusive": True}]
+        rows = []
+        for query in queries:
+            result = cls._tsdb_lookup_single_db_shard(
+                items, scope=scope, db_shard=db_shard, flatten=False, with_time=True, **query
+            )
+            if result:
+                rows.extend(result)
+        return rows
+
+    @staticmethod
+    def nsec_to_iso(nsec):
+        """Convert a nanosecond integer timestamp to an ISO 8601 string with nanosecond precision"""
+        return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(nsec // 1_000_000_000)) + f".{nsec % 1_000_000_000:09d}Z"
+
+    @classmethod
+    def _tsdb_lookup_single_db_shard(
+        cls,
+        items,
+        start_time,
+        end_time=None,
+        scope="DEFAULT",
+        db_shard=0,
+        flatten=True,
+        inclusive=False,
+        with_time=False,
+    ):
         """Execute a tsdb_lookup query against a single db_shard.
         This contains the ASOF JOIN logic for items all on the same QuestDB instance.
         When flatten is True a single row result is returned as a flat array rather than a list of rows.
+        When inclusive is True a query without an end_time returns the last row at or before start_time.
+        When with_time is True each row ends with its packet time in nanoseconds.
         """
         tables = {}
         names = []
@@ -986,6 +998,8 @@ class QuestDBClient:
         for table_index, ts_columns in needed_timestamps.items():
             for ts_col in ts_columns:
                 names.append(f"T{table_index}.{ts_col} as T{table_index}___ts_{ts_col}")
+        if with_time:
+            names.append("cast(T0.PACKET_TIMESECONDS as long) as __time")
 
         # Build the SQL query
         query = f"SELECT {', '.join(names)} FROM "
@@ -997,7 +1011,7 @@ class QuestDBClient:
 
         query_params = []
         if start_time and not end_time:
-            query += "WHERE T0.PACKET_TIMESECONDS < %s LIMIT -1"
+            query += f"WHERE T0.PACKET_TIMESECONDS {'<=' if inclusive else '<'} %s LIMIT -1"
             query_params.append(start_time)
         elif start_time and end_time:
             query += "WHERE T0.PACKET_TIMESECONDS >= %s AND T0.PACKET_TIMESECONDS < %s"
@@ -1023,6 +1037,9 @@ class QuestDBClient:
                         ]
                 elif col_name.startswith("__nil"):
                     data[row_index].append([None, None])
+                    col_index += 1
+                elif col_name == "__time":
+                    data[row_index].append([int(col_value), None])
                     col_index += 1
                 elif re.match(r"^T(\d+)___ts_(.+)$", col_name):
                     match = re.match(r"^T(\d+)___ts_(.+)$", col_name)

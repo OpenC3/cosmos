@@ -12,9 +12,9 @@
 # Integration tests for CvtModel.tsdb_lookup across db_shards.
 #
 # Each db_shard is a separate QuestDB so a lookup with targets on different
-# db_shards runs one query per db_shard. A range lookup must align those rows by
-# packet time (the way ASOF JOIN aligns tables within a db_shard) rather than by
-# row number.
+# db_shards runs separate queries. The results must match what ASOF JOIN returns
+# when every table is on a single db_shard, so each lookup is also compared against
+# the same tables written to a single db_shard.
 #
 # Run with:
 #     1. Start QuestDB: docker compose -f docker-compose.test.yml up -d
@@ -25,21 +25,52 @@
 require_relative 'spec_helper'
 
 RSpec.describe OpenC3::CvtModel, :questdb do
-  # Target name => db_shard
-  let(:db_shards) { { 'SHARD_A' => 0, 'SHARD_B' => 1 } }
+  # Target name => db_shard. The SINGLE targets hold the same tables as the SHARD
+  # targets but all on db_shard 0 so they are queried with a single ASOF JOIN.
+  let(:db_shards) do
+    { 'SHARD_A' => 0, 'SHARD_B' => 1, 'SINGLE_A' => 0, 'SINGLE_B' => 0 }
+  end
+  let(:single_targets) do
+    { 'SHARD_A' => 'SINGLE_A', 'SHARD_B' => 'SINGLE_B' }
+  end
+  # [target_name, packet_name] => [[seconds after the base time, VALUE]]
+  let(:tables) do
+    {
+      ['SHARD_A', 'PKT'] => [[0, 0], [2, 2], [4, 4]],
+      # The row at 6 seconds is after the end of the lookup range
+      ['SHARD_B', 'PKT'] => [[1, 1], [3, 3], [6, 6]],
+      # Only a row before the start of the lookup range
+      ['SHARD_B', 'EARLY'] => [[-1, 10]],
+      # A row after the last SHARD_B PKT row in the lookup range
+      ['SHARD_B', 'LATER'] => [[3.5, 35]],
+    }
+  end
+  # Lists of items as [target_name, packet_name]
+  let(:lookups) do
+    [
+      [['SHARD_A', 'PKT'], ['SHARD_B', 'PKT']],
+      [['SHARD_B', 'PKT'], ['SHARD_A', 'PKT']],
+      [['SHARD_A', 'PKT'], ['SHARD_B', 'EARLY']],
+      [['SHARD_A', 'PKT'], ['SHARD_B', 'PKT'], ['SHARD_B', 'LATER']],
+      [['SHARD_A', 'PKT'], ['SHARD_B', 'LATER'], ['SHARD_B', 'EARLY'], ['SHARD_A', 'PKT']],
+      [['SHARD_B', 'LATER'], ['SHARD_A', 'PKT'], ['SHARD_B', 'PKT']],
+    ]
+  end
+  # [start_time, end_time] as seconds after the base time
+  let(:windows) do
+    [[0, 5], [-2, 10], [3, 4], [5, nil], [7, nil], [3.5, nil]]
+  end
 
   before(:each) do
     skip 'QuestDB db_shard 1 not available' unless questdb_shard1_available?
 
-    rows = lambda do |seconds_list|
-      seconds_list.map { |seconds| { 'offset_ms' => seconds * 1000, 'values' => { 'VALUE' => seconds } } }
+    specs = tables.flat_map do |(target_name, packet_name), rows|
+      rows = rows.map { |seconds, value| { 'offset_ms' => (seconds * 1000).to_i, 'values' => { 'VALUE' => value } } }
+      [target_name, single_targets[target_name]].map do |target|
+        { 'target' => target, 'packet' => packet_name, 'data_type' => 'INT', 'bit_size' => 32, 'db_shard' => db_shards[target], 'rows' => rows }
+      end
     end
-    tables = [
-      { 'target' => 'SHARD_A', 'packet' => 'PKT', 'data_type' => 'INT', 'bit_size' => 32, 'db_shard' => 0, 'rows' => rows.call([0, 2, 4]) },
-      # The row at 6 seconds is after the end of the lookup range
-      { 'target' => 'SHARD_B', 'packet' => 'PKT', 'data_type' => 'INT', 'bit_size' => 32, 'db_shard' => 1, 'rows' => rows.call([1, 3, 6]) },
-    ]
-    @test_params = write_multi_table_data({ 'tables' => tables })
+    @test_params = write_multi_table_data({ 'tables' => specs })
     expect(@test_params['success']).to be true
 
     allow(OpenC3::QuestDBClient).to receive(:db_shard_for_target) { |target_name, **| db_shards.fetch(target_name) }
@@ -58,37 +89,61 @@ RSpec.describe OpenC3::CvtModel, :questdb do
   end
 
   def iso(seconds)
-    Time.at((@test_params['base_time_ns'] / 1_000_000_000) + seconds).utc.strftime('%Y-%m-%dT%H:%M:%S.%6NZ')
+    Time.at(Rational(@test_params['base_time_ns'], 1_000_000_000) + Rational(seconds.to_s)).utc.strftime('%Y-%m-%dT%H:%M:%S.%6NZ')
   end
 
-  def items(*target_names)
-    target_names.map { |target_name| [target_name, 'PKT', 'VALUE', 'RAW', false] }
+  def lookup(packets, start, finish = nil)
+    items = packets.map { |target_name, packet_name| [target_name, packet_name, 'VALUE', 'RAW', false] }
+    OpenC3::CvtModel.tsdb_lookup(items, start_time: iso(start), end_time: finish && iso(finish))
   end
 
   it 'aligns the other db_shard to the first by packet time' do
-    result = OpenC3::CvtModel.tsdb_lookup(items('SHARD_A', 'SHARD_B'), start_time: iso(0), end_time: iso(5))
     expected = [
       # SHARD_B has no row at or before 0 seconds
       [[0, nil], [nil, nil]],
       [[2, nil], [1, nil]],
       [[4, nil], [3, nil]],
     ]
-    expect(result).to eq(expected)
+    expect(lookup([['SHARD_A', 'PKT'], ['SHARD_B', 'PKT']], 0, 5)).to eq(expected)
   end
 
   it 'aligns the other db_shard row before start_time' do
     # Like ASOF JOIN the SHARD_B row at 1 second aligns to the first SHARD_A row at 2 seconds
-    result = OpenC3::CvtModel.tsdb_lookup(items('SHARD_A', 'SHARD_B'), start_time: iso(2), end_time: iso(5))
-    expect(result).to eq([[[2, nil], [1, nil]], [[4, nil], [3, nil]]])
+    expect(lookup([['SHARD_A', 'PKT'], ['SHARD_B', 'PKT']], 2, 5)).to eq([[[2, nil], [1, nil]], [[4, nil], [3, nil]]])
   end
 
   it 'drives the rows from the db_shard of the first item' do
-    result = OpenC3::CvtModel.tsdb_lookup(items('SHARD_B', 'SHARD_A'), start_time: iso(0), end_time: iso(5))
-    expect(result).to eq([[[1, nil], [0, nil]], [[3, nil], [2, nil]]])
+    expect(lookup([['SHARD_B', 'PKT'], ['SHARD_A', 'PKT']], 0, 5)).to eq([[[1, nil], [0, nil]], [[3, nil], [2, nil]]])
   end
 
-  it 'returns the last row before start_time from each db_shard' do
-    result = OpenC3::CvtModel.tsdb_lookup(items('SHARD_A', 'SHARD_B'), start_time: iso(5))
-    expect(result).to eq([[4, nil], [3, nil]])
+  it 'carries forward a row before start_time' do
+    expected = [[[0, nil], [10, nil]], [[2, nil], [10, nil]], [[4, nil], [10, nil]]]
+    expect(lookup([['SHARD_A', 'PKT'], ['SHARD_B', 'EARLY']], 0, 5)).to eq(expected)
+  end
+
+  it 'aligns each packet on a db_shard independently' do
+    # SHARD_B LATER is aligned to SHARD_A at 4 seconds, not SHARD_B PKT at 3 seconds
+    packets = [['SHARD_A', 'PKT'], ['SHARD_B', 'PKT'], ['SHARD_B', 'LATER']]
+    expected = [
+      [[0, nil], [nil, nil], [nil, nil]],
+      [[2, nil], [1, nil], [nil, nil]],
+      [[4, nil], [3, nil], [35, nil]],
+    ]
+    expect(lookup(packets, 0, 5)).to eq(expected)
+    expect(lookup(packets, 5)).to eq([[4, nil], [3, nil], [35, nil]])
+  end
+
+  it 'returns the last row at or before the driving row' do
+    # SHARD_A drives at 4 seconds so SHARD_B returns its row at 3 seconds, not 6 seconds
+    expect(lookup([['SHARD_A', 'PKT'], ['SHARD_B', 'PKT']], 7)).to eq([[4, nil], [3, nil]])
+  end
+
+  it 'matches a single db_shard lookup' do
+    lookups.each do |packets|
+      single = packets.map { |target_name, packet_name| [single_targets[target_name], packet_name] }
+      windows.each do |window|
+        expect(lookup(packets, *window)).to eq(lookup(single, *window)), "#{packets} #{window}"
+      end
+    end
   end
 end
