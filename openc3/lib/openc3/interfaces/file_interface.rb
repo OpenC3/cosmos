@@ -76,6 +76,9 @@ module OpenC3
 
     def connect
       super() # Reset the protocols
+      # Discard a disconnect marker left over from a previous connection. Entries only
+      # wake read_interface, which finds files by listing the folder, so none are lost.
+      @queue.clear
 
       if @telemetry_read_folder
         @listener = Listen.to(@telemetry_read_folder, force_polling: @polling) do |modified, added, removed|
@@ -96,7 +99,9 @@ module OpenC3
       @sleeper.cancel if @sleeper
       @listener.stop if @listener
       @listener = nil
-      @queue << nil
+      # Only wake read_interface for the first disconnect of a connection, otherwise the
+      # unconsumed marker would immediately disconnect the next connection
+      @queue << nil if @connected
       super()
       @connected = false
     end

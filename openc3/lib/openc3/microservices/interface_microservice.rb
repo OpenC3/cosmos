@@ -161,8 +161,8 @@ module OpenC3
               next 'SUCCESS'
             end
             if msg_hash.key?('interface_cmd')
-              params = JSON.parse(msg_hash['interface_cmd'], allow_nan: true, create_additions: true)
               begin
+                params = JSON.parse(msg_hash['interface_cmd'], allow_nan: true, create_additions: true)
                 @logger.info "#{@interface.name}: interface_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
                 @interface.interface_cmd(params['cmd_name'], *params['cmd_params'])
                 InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
@@ -173,8 +173,8 @@ module OpenC3
               next 'SUCCESS'
             end
             if msg_hash.key?('protocol_cmd')
-              params = JSON.parse(msg_hash['protocol_cmd'], allow_nan: true, create_additions: true)
               begin
+                params = JSON.parse(msg_hash['protocol_cmd'], allow_nan: true, create_additions: true)
                 @logger.info "#{@interface.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
                 @interface.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
                 InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
@@ -237,21 +237,28 @@ module OpenC3
 
           target_name = msg_hash['target_name']
           if target_name and not @interface.cmd_target_enabled[target_name]
+            # A released critical command was already acked as pending so it must get a result
+            next "Target #{target_name} is disabled" if release_critical
             next nil # Return and don't ack given target_name if disabled
           end
 
           cmd_name = msg_hash['cmd_name']
-          manual = ConfigParser.handle_true_false(msg_hash['manual'])
+          manual = ConfigParser.handle_true_false(msg_hash['manual'], default: false)
           cmd_params = nil
           range_check = true
           raw = false
           cmd_buffer = nil
           hazardous_check = nil
           if msg_hash['cmd_params']
-            cmd_params = JSON.parse(msg_hash['cmd_params'], allow_nan: true, create_additions: true)
-            range_check = ConfigParser.handle_true_false(msg_hash['range_check'])
-            raw = ConfigParser.handle_true_false(msg_hash['raw'])
-            hazardous_check = ConfigParser.handle_true_false(msg_hash['hazardous_check'])
+            begin
+              cmd_params = JSON.parse(msg_hash['cmd_params'], allow_nan: true, create_additions: true)
+            rescue => e
+              @logger.error "#{@interface.name}: Invalid cmd_params: #{e.message}"
+              next "Invalid cmd_params: #{e.message}"
+            end
+            range_check = ConfigParser.handle_true_false(msg_hash['range_check'], default: true)
+            raw = ConfigParser.handle_true_false(msg_hash['raw'], default: false)
+            hazardous_check = ConfigParser.handle_true_false(msg_hash['hazardous_check'], default: true)
           elsif msg_hash['cmd_buffer']
             cmd_buffer = msg_hash['cmd_buffer']
           end
@@ -283,6 +290,7 @@ module OpenC3
                 command.received_count = orig_command.received_count
                 command.received_time = Time.now
               else
+                next "Target #{command.target_name} is disabled" if release_critical
                 next nil # Don't ack disabled targets
               end
             rescue RangeError => e
@@ -330,7 +338,7 @@ module OpenC3
               end
             end
 
-            validate = ConfigParser.handle_true_false(msg_hash['validate'])
+            validate = ConfigParser.handle_true_false(msg_hash['validate'], default: true)
             begin
               if @interface.connected?
                 result = true
@@ -352,7 +360,7 @@ module OpenC3
                 @count += 1
                 @metric.set(name: 'interface_cmd_total', value: @count, type: 'counter') if @metric
 
-                log_message = ConfigParser.handle_true_false(msg_hash['log_message'])
+                log_message = ConfigParser.handle_true_false(msg_hash['log_message'], default: true)
                 if log_message
                   @logger.info(msg_hash['cmd_string'], user: msg_hash['username'], scope: @scope)
                 end

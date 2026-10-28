@@ -143,6 +143,23 @@ RSpec.describe StreamingApi, type: :model do
     expect(@api.instance_variable_get('@logged_threads')).to be_empty
   end
 
+  describe '#transmit_notice' do
+    it 'only sends notices to clients that opted in' do
+      @api.transmit_notice('SKIPPED', 'skipped', skipped_seconds: 1.5)
+      expect(@messages).to be_empty
+
+      @api.instance_variable_set('@notices', true)
+      @api.transmit_notice('SKIPPED', 'skipped', skipped_seconds: 1.5)
+      expect(@messages).to eq([{ "__type" => "NOTICE", "notice" => "SKIPPED", "message" => "skipped", "skipped_seconds" => 1.5 }])
+    end
+
+    it 'opts in via the add request' do
+      allow(StreamingObject).to receive(:new).and_raise(OpenC3::ForbiddenError)
+      @api.add({ 'scope' => 'DEFAULT', 'notices' => true, 'end_time' => 0, 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'] })
+      expect(@api.instance_variable_get('@notices')).to be true
+      end
+    end
+
   describe '#kill' do
     class FakeStreamingThread < StreamingThread
       def initialize(streaming_api, stop_delay)
@@ -770,6 +787,23 @@ RSpec.describe StreamingApi, type: :model do
 
             @api.kill
             expect(@api.instance_variable_get('@realtime_thread')).to be_nil
+          end
+
+          it 'skips ahead and notifies when far behind realtime' do
+            # Messages read are 2 minutes older than the stream head so we're well past the max lag
+            @time = @start_time - 120
+            head = "#{Time.now.to_i * 1000}-0"
+            allow_any_instance_of(RealtimeStreamingThread).to receive(:stream_heads) do |_thread, topics|
+              topics.to_h { |topic| [topic, head] }
+            end
+            @send_count = 1
+            data['notices'] = true
+            @api.add(data)
+            sleep 0.35 # Allow the thread to run
+            notice = @messages.find { |message| message.is_a?(Hash) }
+            expect(notice['notice']).to eq('SKIPPED')
+            expect(notice['skipped_seconds']).to be > 60
+            @api.kill
           end
         end
 

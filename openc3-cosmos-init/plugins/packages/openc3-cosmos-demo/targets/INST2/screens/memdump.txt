@@ -1,0 +1,40 @@
+SCREEN AUTO AUTO 1.0
+
+TITLE "<%= target_name %> Memory Dump"
+
+HORIZONTAL
+  VERTICALBOX "Commands"
+    MATRIXBYCOLUMNS 2
+      LABEL "Offset:"
+      NAMED_WIDGET OFFSET TEXTFIELD 10 "0"
+      LABEL "Size:"
+      NAMED_WIDGET SIZE TEXTFIELD 10 "256"
+    END
+    # Flips a random bit in the dump after the target calculates its CRC
+    NAMED_WIDGET BAD_CRC CHECKBUTTON 'Bad CRC'
+    # The command CRC over OFFSET, SIZE and BAD_CRC is calculated automatically
+    BUTTON 'Dump Memory' "var offset=screen.getNamedWidget('OFFSET').text();" +
+      "var size=screen.getNamedWidget('SIZE').text();" +
+      "var badCrc=screen.getNamedWidget('BAD_CRC').checked() ? 'TRUE' : 'FALSE';" +
+      "api.cmd('<%= target_name %> MEMDUMP with OFFSET '+offset+', SIZE '+size+', BAD_CRC '+badCrc)"
+    # cmd_raw skips the CRC write conversion so the target rejects the command
+    BUTTON 'Run Dump Script' "runScript('<%= target_name %>/procedures/memdump.py', true)"
+    BUTTON 'Run Dump Script with Bad CRC' "runScript('<%= target_name %>/procedures/memdump.py', true, {'BAD_CRC': '1'})"
+  END
+
+  VERTICALBOX "Last Dump"
+    LABELVALUE <%= target_name %> MEMDUMP OFFSET
+    LABELVALUE <%= target_name %> MEMDUMP SIZE
+    LABELVALUE <%= target_name %> MEMDUMP CRC
+    LABELVALUE <%= target_name %> MEMDUMP CALC_CRC
+    LABELLED <%= target_name %> MEMDUMP CRC_OK
+      SETTING LED_COLOR TRUE GREEN
+      SETTING LED_COLOR FALSE RED
+    LABELVALUE <%= target_name %> MEMDUMP RECEIVED_COUNT
+    LABELVALUE <%= target_name %> MEMDUMP PACKET_TIME
+  END
+END
+
+VERTICALBOX "Data"
+  BLOCK <%= target_name %> MEMDUMP DATA 680 200 "%02X" 4 8 "0x%08X: "
+END

@@ -64,7 +64,7 @@ In all versions of COSMOS the base cacert.pem file can be found at the root of y
 
 ### Configure COSMOS for TLS when running in Docker Compose
 
-Note: These instructions are only for Docker Compose (Both Core and Enterprise). If you are using Kubernetes with COSMOS Enterprise please see the Kubernetes instructions.
+Note: These instructions are only for Docker Compose (Both Core and Enterprise), including the [AWS EC2](/docs/guides/aws-ec2) deployment. See [Network Configuration](/docs/guides/network-configuration) for an overview of the network options, including HTTP. If you are using Kubernetes with COSMOS Enterprise please see the [Kubernetes instructions](#configure-cosmos-enterprise-for-tls-when-running-in-kubernetes).
 
 Follow earlier instructions to obtain your private key, public key, and to modify cacert.pem as necessary.
 
@@ -72,32 +72,31 @@ Follow earlier instructions to obtain your private key, public key, and to modif
 
 If running COSMOS Core skip to the next section.
 
-1. Edit compose.yaml
-   1. Change this openc3-keycloak line: KC_HOSTNAME: "http://localhost:2900/auth"
-   1. It should be changed to the final url with correct http/https, domain, port and end with /auth
-1. Edit .env
-   1. Change the OPENC3_KEYCLOAK_EXTERNAL_URL line to the exact same url as set above in compose.yaml
-   1. Leave OPENC3_KEYCLOAK_URL set to the internal service url `http://openc3-keycloak:8080/auth`. COSMOS containers use it to talk to Keycloak directly.
-1. Edit openc3-enterprise-grafana/cosmos.yaml
-   1. Change the cosmosUrl and keycloakUrl settings to the correct schema, domain, and port. Keep /auth if present.
-1. Edit openc3-enterprise-grafana/grafana.ini
-   1. Change the root_url, auth_url, token_url, and api_url settings to the correct schema, domain, and port, leave any additional path information.
+COSMOS Enterprise needs its external URLs set (in `.env.local`, `compose.override.yaml`, and the Grafana configuration) before it is opened to the network. Follow [Changes Required for All Network Configurations](/docs/guides/network-configuration#changes-required-for-all-network-configurations) in the Network Configuration guide using your `https://` URL.
 
 #### Using TLS and your own certificates
 
-The following steps are written for the enterprise folder names. Remove "-enterprise" for COSMOS Core.
+The following steps are written for the Enterprise folder names. Use `openc3-traefik` instead of `openc3-enterprise-traefik` for COSMOS Core. Make these changes in `compose.override.yaml` rather than `compose.yaml` so COSMOS upgrades merge cleanly. See [Docker Compose](/docs/configuration/compose).
 
 1. Copy your public SSL certificate to ./openc3-enterprise-traefik/cert.crt
 2. Copy your private SSL certificate to ./openc3-enterprise-traefik/cert.key
-3. Edit compose.yaml
-   1. Comment out this openc3-traefik line: `- "./openc3-enterprise-traefik/traefik.yaml:/etc/traefik/traefik.yaml:z"`
-   2. Uncomment this openc3-traefik line: `- "./openc3-enterprise-traefik/traefik-ssl.yaml:/etc/traefik/traefik.yaml"`
-   3. Uncomment this openc3-traefik line: `- "./openc3-enterprise-traefik/cert.key:/etc/traefik/cert.key"`
-   4. Uncomment this openc3-traefik line: `- "./openc3-enterprise-traefik/cert.crt:/etc/traefik/cert.crt"`
-   5. Modify this openc3-traefik line to remove the ip address and modify the first port number if desired **(Note: leave the last :2900)**: `- "127.0.0.1:2900:2900"`
-   6. Modify this openc3-traefik line to remove the ip address and modify the first port number if desired **(Note: leave the last :2943)**: `- "127.0.0.1:2943:2943"`
-4. Edit ./openc3-enterprise-traefik/traefik-ssl.yaml
-   1. Update line 22 to your domain: - main: "mydomain.com" # Update with your domain
+3. In `compose.override.yaml`, mount the SSL Traefik configuration and certificates and listen on all interfaces instead of only localhost:
+
+   ```yaml
+   services:
+     openc3-traefik:
+       volumes:
+         - "./openc3-enterprise-traefik/traefik-ssl.yaml:/etc/traefik/traefik.yaml:z"
+         - "./openc3-enterprise-traefik/cert.key:/etc/traefik/cert.key:z"
+         - "./openc3-enterprise-traefik/cert.crt:/etc/traefik/cert.crt:z"
+       ports: !override
+         - "2900:2900"
+         - "2943:2943"
+   ```
+
+   The `traefik-ssl.yaml` mount replaces the default `traefik.yaml` mount because both target `/etc/traefik/traefik.yaml`. `!override` replaces the `ports` list from `compose.yaml` rather than adding to it. Change the first port numbers if desired, but leave the second `2900` and `2943`. If you change the published HTTPS port (`2943`), also change the `to: ":2943"` HTTP redirect in `traefik-ssl.yaml` to match, or HTTP requests will redirect to the wrong port.
+
+4. Edit ./openc3-enterprise-traefik/traefik-ssl.yaml and update the `- main: "mydomain.com" # Update with your domain` line to your domain
 5. Start COSMOS
    1. On Linux/Mac: ./openc3.sh run
    2. On Windows: openc3.bat run
@@ -109,22 +108,35 @@ The following steps are written for the enterprise folder names. Remove "-enterp
 
 Warning: These directions only work when exposing OpenC3 COSMOS to the internet. Make sure you understand the risks and have properly configured your server settings and firewall.
 
-The following steps are written for the enterprise folder names. Remove "-enterprise" for COSMOS Core.
+The following steps are written for the Enterprise folder names. Use `openc3-traefik` instead of `openc3-enterprise-traefik` for COSMOS Core.
 
 1. Make sure that your public DNS settings are mapping your domain name to your server
-2. Edit compose.yaml
-   1. Comment out this openc3-traefik line: `- "./openc3-enterprise-traefik/traefik.yaml:/etc/traefik/traefik.yaml:z"`
-   2. Uncomment this openc3-traefik line: `- "./openc3-enterprise-traefik/traefik-letsencrypt.yaml:/etc/traefik/traefik.yaml"`
-   3. Comment out this openc3-traefik line: `- "127.0.0.1:2900:2900"`
-   4. Comment out this openc3-traefik line: `- "127.0.0.1:2943:2943"`
-   5. Uncomment out this openc3-traefik line: `- "80:2900"`
-   6. Uncomment out this openc3-traefik line: `- "443:2943"`
-3. Start COSMOS
+2. Edit ./openc3-enterprise-traefik/traefik-letsencrypt.yaml
+   1. Change the `acme` `email` from `me@mydomain.com` to your email address
+   2. Replace every `mydomain.com` with your domain
+3. In `compose.override.yaml`, mount the Let's Encrypt Traefik configuration and listen on the standard HTTP and HTTPS ports:
+
+   ```yaml
+   services:
+     openc3-traefik:
+       volumes:
+         - "./openc3-enterprise-traefik/traefik-letsencrypt.yaml:/etc/traefik/traefik.yaml:z"
+         - "openc3-traefik-acme:/tmp"
+       ports: !override
+         - "80:2900"
+         - "443:2943"
+   volumes:
+     openc3-traefik-acme: {}
+   ```
+
+   Traefik stores the Let's Encrypt account and certificates in `/tmp/acme.json`. The `openc3-traefik-acme` volume keeps them across `docker compose down` so COSMOS doesn't request new certificates (and risk Let's Encrypt rate limits) every time it restarts.
+
+4. Start COSMOS
    1. On Linux/Mac: ./openc3.sh run
    2. On Windows: openc3.bat run
-4. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
+5. Enterprise Only: After approximately 2 minutes, open a web browser to https://mydomain.com/auth/
    1. If you run "docker ps", you can watch until the openc3-cosmos-enterprise-init container completes, at which point the system should be fully configured and ready to use.
-5. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a blank blue page until you do this) - Please follow the [Keycloak Configuration](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/KeycloakConfiguration.md) documentation in our cosmos-enterprise-project.
+6. Enterprise Only: **IMPORTANT**: You must configure Keycloak before accessing https://mydomain.com to get to the main COSMOS app and Grafana to work (you'll just see a solid color page until you do this) - Please follow the [Keycloak Configuration](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/KeycloakConfiguration.md) documentation in our cosmos-enterprise-project.
 
 ### Configure COSMOS Enterprise for TLS when running in Kubernetes
 
@@ -141,8 +153,8 @@ In this pattern:
 - Set `ssl: true` so Traefik injects `X-Forwarded-Proto: https` for Keycloak.
 - Set `traefik.tlsCerts: false`. The default in `openc3-helm/openc3/values.yaml` is `true`, so you must explicitly override it in your environment-specific values file.
 - Do **not** create the `openc3-traefik-cert` or `openc3-traefik-key` secrets — they are not used in this pattern, and `create_secrets.sh` does not create them.
-- For AWS: set `aws.enabled: true` and `aws.certArn` to your ACM certificate ARN. The `aws` subchart's ingress attaches the cert to the ALB.
-- For GCP: configure a `ManagedCertificate` following the GCP deployment guide.
+- For AWS: set `aws.enabled: true` and `aws.certArn` to your ACM certificate ARN. The `aws` subchart's ingress attaches the cert to the ALB. See the [AWS EKS](/docs/guides/aws-eks) guide for the full deployment.
+- For GCP: the `gcp` subchart creates a Google-managed certificate (`ManagedCertificate`) for `global.cosmosDomain`. See the [GCP GKE](/docs/guides/gcp-gke) guide for the full deployment.
 
 You still need to create the `openc3-cacert` secret (described below) so COSMOS containers can verify outbound TLS connections.
 
