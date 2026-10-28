@@ -484,8 +484,22 @@ module OpenC3
       it "accepts an unquoted state name" do
         expect(extract_comparison("== on", :CONVERTED) { item }).to eql ["==", "ON"]
         expect { extract_comparison("== other", :CONVERTED) { item } }.to raise_error(NameError, /Uninitialized constant other/)
-        expect { extract_comparison("in on", :CONVERTED) { item } }.to raise_error(NameError, /Uninitialized constant on/)
+        expect { extract_comparison("in on", :CONVERTED) { item } }.to raise_error(/The 'in' operator requires a list operand: "ON"/)
         expect { extract_comparison("== on", :CONVERTED) { {} } }.to raise_error(NameError, /Uninitialized constant on/)
+      end
+
+      it "accepts unquoted state names in a list" do
+        expect(extract_comparison("in [on, Off, 'other', 1]", :CONVERTED) { item }).to eql ["in", ["ON", "OFF", "other", 1]]
+        expect(extract_comparison("in [on, [off]]", :CONVERTED) { item }).to eql ["in", ["ON", ["OFF"]]]
+        expect { extract_comparison("in [on, other]", :CONVERTED) { item } }.to raise_error(NameError, /Uninitialized constant other/)
+        expect { extract_comparison("in [on.upcase]", :CONVERTED) { item } }.to raise_error(/Unable to parse operand: on.upcase/)
+      end
+
+      it "looks up the item once" do
+        calls = 0
+        result = extract_comparison("in [on, off, 'On']", :CONVERTED) { calls += 1; item }
+        expect(result).to eql ["in", ["ON", "OFF", "ON"]]
+        expect(calls).to eql 1
       end
 
       it "leaves strings alone for items without states" do

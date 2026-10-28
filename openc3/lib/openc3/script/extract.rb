@@ -195,7 +195,8 @@ module OpenC3
     end
 
     # Splits `check()` comparison expressions, e.g. "== 'foo bar'" becomes ["==", "foo bar"]
-    def extract_operator_and_operand_from_comparison(comparison)
+    # The optional block resolves an unquoted word, see extract_operand
+    def extract_operator_and_operand_from_comparison(comparison, &resolve_name)
       operator, operand = comparison.split(nil, 2) # Ruby: second split arg is max number of resultant elements
 
       if operand.nil?
@@ -207,7 +208,7 @@ module OpenC3
       raise "ERROR: Invalid operator: '#{operator}'" unless COMPARISON_OPERATORS.include?(operator)
 
       # split leaves any trailing whitespace on the operand which the anchored matches reject
-      operand = extract_operand(operand.strip)
+      operand = extract_operand(operand.strip, &resolve_name)
       # 'in' is containment against a list of values in both Ruby and Python.
       # Enforced here so check(), wait() and wait_check() all reject the same thing.
       if operator == "in" and !operand.is_a?(Array)
@@ -219,7 +220,9 @@ module OpenC3
 
     # Converts the operand of a `check()` comparison expression into a Ruby value.
     # Note this deliberately does not eval the operand so only literal values are supported.
-    def extract_operand(operand)
+    # The optional block is called with an unquoted word, including one inside a list, and
+    # returns the value to use or nil if the word is not recognized, e.g. a state name.
+    def extract_operand(operand, &resolve_name)
       # A quoted operand must be a single complete string literal. Anything trailing the
       # closing quote, e.g. "== 'a' garbage 'b'", is a syntax error rather than a string.
       if (match = operand.match(/\A'((?:[^'\\]|\\.)*)'\z/m))
@@ -248,7 +251,7 @@ module OpenC3
       # Arrays are parsed recursively so their elements follow exactly the same rules as a
       # bare operand. JSON alone would reject ['ON', 'OFF'], [0xA, 0xB] and [true, nil].
       if operand.start_with?('[') and operand.end_with?(']')
-        return split_operand_list(operand[1..-2]).map { |element| extract_operand(element) }
+        return split_operand_list(operand[1..-2]).map { |element| extract_operand(element, &resolve_name) }
       end
       # JSON handles decimal numbers and hashes
       begin
@@ -272,6 +275,9 @@ module OpenC3
 
       # A bare word is almost always a string the user forgot to quote
       if operand.match?(/\A[A-Za-z_][A-Za-z0-9_]*\z/)
+        value = resolve_name&.call(operand)
+        return value unless value.nil?
+
         raise NameError, "Uninitialized constant #{operand}. Did you mean '#{operand}' as a string?"
       end
       raise "ERROR: Unable to parse operand: #{operand}"
@@ -372,24 +378,25 @@ module OpenC3
     # Splits a comparison like extract_operator_and_operand_from_comparison but matches state names.
     # State names are stored upper case so a string operand which matches a state name ignoring case
     # is compared against that state name, e.g. "== 'Connected'" matches the CONNECTED state.
-    # An unquoted state name, e.g. "== Connected", is also accepted. The block returns the item hash.
-    # It is only called when the operand could be a state name so numeric comparisons don't make an
-    # additional API call. RAW values are never state names so it is never called.
+    # An unquoted state name, e.g. "== Connected" or "in [On, Off]", is also accepted. The block returns
+    # the item hash. It is only called once, when the operand could be a state name, so numeric
+    # comparisons don't make an additional API call. RAW values are never state names so it is never called.
     def extract_comparison(comparison, value_type, &get_item)
-      states = lambda { value_type.to_s.upcase == 'RAW' ? nil : get_item.call['states'] }
-      begin
-        operator, operand = extract_operator_and_operand_from_comparison(comparison)
-      rescue NameError
-        operator, operand = comparison.split(nil, 2)
-        state = operand.strip.upcase
-        # 'in' requires a list operand so a single unquoted state is still an error
-        raise if operator == 'in' or !states.call&.key?(state)
-        return [operator, state]
+      item_states = nil
+      looked_up = false
+      states = lambda do
+        unless looked_up
+          looked_up = true
+          item_states = get_item.call['states'] unless value_type.to_s.upcase == 'RAW'
+        end
+        item_states
+      end
+      operator, operand = extract_operator_and_operand_from_comparison(comparison) do |name|
+        name.upcase if states.call&.key?(name.upcase)
       end
       return [operator, operand] unless operand_contains_string?(operand)
 
-      item_states = states.call
-      return [operator, item_states ? upcase_state_names(operand, item_states) : operand]
+      return [operator, states.call ? upcase_state_names(operand, states.call) : operand]
     end
 
     # Returns whether the operand is or contains a string, i.e. could be a state name

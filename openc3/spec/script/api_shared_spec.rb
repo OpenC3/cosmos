@@ -180,7 +180,11 @@ module OpenC3
         end
         # A bare word which is not a state name is still almost always a missing quote
         expect { check("INST HEALTH_STATUS CCSDSSHF == MAYBE") }.to raise_error(NameError, "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?")
-        expect { check("INST HEALTH_STATUS CCSDSSHF in FALSE") }.to raise_error(NameError, "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?")
+        expect { check("INST HEALTH_STATUS CCSDSSHF in FALSE") }.to raise_error(/The 'in' operator requires a list operand: "FALSE"/)
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS CCSDSSHF in [FALSE, TRUE]")
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF in \[FALSE, TRUE\] success with value == 'FALSE'/)
+        end
       end
 
       it "compares state names case insensitively" do

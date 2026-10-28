@@ -437,10 +437,32 @@ class TestExtractComparison:
         assert extract_comparison("== on", "CONVERTED", self.item) == ("==", "ON")
         with pytest.raises(NameError, match="Uninitialized constant other"):
             extract_comparison("== other", "CONVERTED", self.item)
-        with pytest.raises(NameError, match="Uninitialized constant on"):
+        with pytest.raises(RuntimeError, match="The 'in' operator requires a list operand: 'ON'"):
             extract_comparison("in on", "CONVERTED", self.item)
         with pytest.raises(NameError, match="Uninitialized constant on"):
             extract_comparison("== on", "CONVERTED", dict)
+
+    def test_accepts_unquoted_state_names_in_a_collection(self):
+        assert extract_comparison("in [on, Off, 'other', 1]", "CONVERTED", self.item) == (
+            "in",
+            ["ON", "OFF", "other", 1],
+        )
+        assert extract_comparison("in (on, [off])", "CONVERTED", self.item) == ("in", ("ON", ["OFF"]))
+        assert extract_comparison("in {on}", "CONVERTED", self.item) == ("in", {"ON"})
+        with pytest.raises(NameError, match="Uninitialized constant other"):
+            extract_comparison("in [on, other]", "CONVERTED", self.item)
+        with pytest.raises(RuntimeError, match="Unable to parse operand: on.upper"):
+            extract_comparison("in [on.upper()]", "CONVERTED", self.item)
+
+    def test_looks_up_the_item_once(self):
+        calls = []
+
+        def item():
+            calls.append(1)
+            return self.ITEM
+
+        assert extract_comparison("in [on, off, 'On']", "CONVERTED", item) == ("in", ["ON", "OFF", "ON"])
+        assert len(calls) == 1
 
     def test_leaves_strings_alone_for_items_without_states(self):
         assert extract_comparison("== 'On'", "CONVERTED", dict) == ("==", "On")
