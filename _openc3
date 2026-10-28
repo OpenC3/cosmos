@@ -245,8 +245,8 @@ _openc3_cli() {
             fi
             ;;
         load)
-            # Usage: load PLUGIN.gem [SCOPE] [PLUGIN_HASH.json] [force]
-            #    or: load PLUGIN.gem --variables VARS.json [SCOPE] [PLUGIN_HASH.json] [force]
+            # Usage: load PLUGIN.gem [SCOPE] [PLUGIN_HASH.json] [force] [enforce_dependencies]
+            #    or: load PLUGIN.gem --variables VARS.json [SCOPE] [PLUGIN_HASH.json] [force] [enforce_dependencies]
             if (( CURRENT == 2 )); then
                 # First argument: must be a .gem file
                 _alternative \
@@ -276,11 +276,11 @@ _openc3_cli() {
             elif (( CURRENT == 5 )); then
                 if [[ "${words[3]}" == "--variables" ]]; then
                     # load gem --variables vars.json [SCOPE]
-                    _message 'SCOPE (default: DEFAULT) or force'
+                    _message 'SCOPE (default: DEFAULT) or force or enforce_dependencies'
                     return 0
                 else
                     # load gem scope hash.json [force or --variables]
-                    _message 'force (optional) or --variables <file>'
+                    _message 'force (optional) or enforce_dependencies (optional) or --variables <file>'
                     return 0
                 fi
             elif (( CURRENT == 6 )); then
@@ -295,19 +295,19 @@ _openc3_cli() {
                     _alternative \
                         'json-files:variables file:_files -g "*.json"' \
                         'json-description: :_message "variables JSON file"'
-                elif [[ "${words[5]}" == "force" ]]; then
-                    # load gem scope hash.json force (nothing more needed)
+                elif [[ "${words[5]}" == "force" || "${words[5]}" == "enforce_dependencies" ]]; then
+                    # load gem scope hash.json force|enforce_dependencies (nothing more needed)
                     return 1
                 else
-                    # load gem scope hash.json [force]
-                    _message 'force (optional)'
+                    # load gem scope hash.json [force or enforce_dependencies]
+                    _message 'force (optional) or enforce_dependencies (optional)'
                     return 0
                 fi
             elif (( CURRENT == 7 )); then
                 # Position 7 - final optional parameters
                 if [[ "${words[*]}" == *"--variables"* ]]; then
-                    if [[ "${words[*]}" != *"force"* ]]; then
-                        _message 'force (optional)'
+                    if [[ "${words[*]}" != *"force"* && "${words[*]}" != *"enforce_dependencies"* ]]; then
+                        _message 'force (optional) or enforce_dependencies (optional)'
                         return 0
                     fi
                 fi

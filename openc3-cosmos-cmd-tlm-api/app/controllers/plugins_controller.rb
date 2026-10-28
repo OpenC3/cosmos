@@ -264,8 +264,12 @@ class PluginsController < ModelController
       gem_name = sanitize_params([:id])
       return unless gem_name
       gem_name = gem_name[0].split("__")[0]
+      command = ["ruby", "/openc3/bin/openc3cli", "load", gem_name, scope, plugin_hash_file_path, "force"] # force install
+      if ['true', '1'].include?(params[:enforce_dependencies].to_s.downcase)
+        command << 'enforce_dependencies'
+      end
       result = OpenC3::ProcessManager.instance.spawn(
-        ["ruby", "/openc3/bin/openc3cli", "load", gem_name, scope, plugin_hash_file_path, "force"], # force install
+        command,
         "plugin_install", params[:id], Time.now + 1.hour, temp_dir: temp_dir, scope: scope
       )
       render json: result.name
