@@ -39,7 +39,6 @@ Examples:
 
 import argparse
 import base64
-import contextlib
 import json
 import os
 import sys
@@ -78,39 +77,27 @@ class QuietQuestDBClient(QuestDBClient):
         print(f"ERROR: {msg}", file=sys.stderr)
 
 
-@contextlib.contextmanager
 def db_shard_ports(db_shard):
-    """Point the QuestDB port env vars at the given db_shard while in this context.
+    """QuestDBClient port arguments for the given db_shard.
 
     Production resolves each db_shard by hostname (SHARDNUM) but locally every
     db_shard is on 127.0.0.1, so db_shard N > 0 is selected by the
     OPENC3_TSDB_SHARD<N>_INGEST_PORT and OPENC3_TSDB_SHARD<N>_QUERY_PORT ports.
+    db_shard 0 uses the default OPENC3_TSDB_INGEST_PORT and OPENC3_TSDB_QUERY_PORT.
     """
     if not db_shard:
-        yield
-        return
-    saved = {
-        name: os.environ[name]
-        for name in ("OPENC3_TSDB_INGEST_PORT", "OPENC3_TSDB_QUERY_PORT")
+        return {}
+    return {
+        "ingest_port": int(os.environ[f"OPENC3_TSDB_SHARD{db_shard}_INGEST_PORT"]),
+        "query_port": int(os.environ[f"OPENC3_TSDB_SHARD{db_shard}_QUERY_PORT"]),
     }
-    os.environ["OPENC3_TSDB_INGEST_PORT"] = os.environ[
-        f"OPENC3_TSDB_SHARD{db_shard}_INGEST_PORT"
-    ]
-    os.environ["OPENC3_TSDB_QUERY_PORT"] = os.environ[
-        f"OPENC3_TSDB_SHARD{db_shard}_QUERY_PORT"
-    ]
-    try:
-        yield
-    finally:
-        os.environ.update(saved)
 
 
 def connect_client(db_shard=0):
     """Return a QuietQuestDBClient connected to the given db_shard."""
-    with db_shard_ports(db_shard):
-        client = QuietQuestDBClient(db_shard=db_shard)
-        client.connect_ingest()
-        client.connect_query()
+    client = QuietQuestDBClient(db_shard=db_shard, **db_shard_ports(db_shard))
+    client.connect_ingest()
+    client.connect_query()
     return client
 
 
@@ -423,9 +410,8 @@ def cmd_write_multi(args):
 
 def cmd_cleanup(args):
     """Drop a test table."""
-    with db_shard_ports(args.db_shard):
-        client = QuestDBClient(db_shard=args.db_shard)
-        client.connect_query()
+    client = QuestDBClient(db_shard=args.db_shard, **db_shard_ports(args.db_shard))
+    client.connect_query()
 
     try:
         with client.query.cursor() as cur:

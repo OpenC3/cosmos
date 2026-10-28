@@ -77,8 +77,9 @@ module OpenC3
     end
 
     # Get or create a thread-local PG connection for the given db_shard with type mapping configured.
+    # The port defaults to OPENC3_TSDB_QUERY_PORT.
     # Returns the thread-local connection - callers should not close it.
-    def self.connection(db_shard: 0)
+    def self.connection(db_shard: 0, port: nil)
       conns = @thread_conns.value
       conn = conns[db_shard]
       if conn and not conn.finished?
@@ -91,7 +92,7 @@ module OpenC3
       end
       conn = PG::Connection.new(
         host: hostname_for_db_shard(db_shard),
-        port: ENV['OPENC3_TSDB_QUERY_PORT'],
+        port: port || ENV['OPENC3_TSDB_QUERY_PORT'],
         user: ENV['OPENC3_TSDB_USERNAME'],
         password: ENV['OPENC3_TSDB_PASSWORD'],
         dbname: 'qdb'
@@ -122,11 +123,12 @@ module OpenC3
     end
 
     # Health check - attempt to connect and immediately close.
+    # The port defaults to OPENC3_TSDB_QUERY_PORT.
     # Returns true if successful, raises on failure.
-    def self.check_connection(db_shard: 0)
+    def self.check_connection(db_shard: 0, port: nil)
       conn = PG::Connection.new(
         host: hostname_for_db_shard(db_shard),
-        port: ENV['OPENC3_TSDB_QUERY_PORT'],
+        port: port || ENV['OPENC3_TSDB_QUERY_PORT'],
         user: ENV['OPENC3_TSDB_USERNAME'],
         password: ENV['OPENC3_TSDB_PASSWORD'],
         dbname: 'qdb'

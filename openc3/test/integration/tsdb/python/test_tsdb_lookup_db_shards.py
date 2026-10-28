@@ -77,8 +77,8 @@ def ts_to_iso(ts_ns):
 
 def create_query_connection(original):
     def create(db_shard=0, **kwargs):
-        with db_shard_ports(db_shard):
-            return original(db_shard=db_shard, **kwargs)
+        kwargs.setdefault("port", db_shard_ports(db_shard).get("query_port"))
+        return original(db_shard=db_shard, **kwargs)
 
     return staticmethod(create)
 
@@ -113,34 +113,32 @@ class TestTsdbLookupDbShards:
         base_ts = int(time.time()) * 1_000_000_000
         for target_name, packet_name, rows in self.tables():
             db_shard = DB_SHARDS[target_name]
-            with db_shard_ports(db_shard):
-                client = QuestDBClient(db_shard=db_shard)
-                client.connect_ingest()
-                client.connect_query()
-                table_name, _ = client.sanitize_table_name(target_name, packet_name)
-                with client.query.cursor() as cur:
-                    cur.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-                client.create_table(target_name, packet_name, PACKET_DEF)
-                for i, (seconds, value) in enumerate(rows):
-                    columns = client.process_json_data({"VALUE": value}, table_name)
-                    columns["RECEIVED_COUNT"] = i
-                    row_ts = base_ts + int(seconds * 1_000_000_000)
-                    client.write_row(table_name, columns, row_ts, rx_timestamp_ns=row_ts)
-                client.flush()
-                assert wait_for_data(client, table_name, len(rows)) == len(rows)
-                client.close()
+            client = QuestDBClient(db_shard=db_shard, **db_shard_ports(db_shard))
+            client.connect_ingest()
+            client.connect_query()
+            table_name, _ = client.sanitize_table_name(target_name, packet_name)
+            with client.query.cursor() as cur:
+                cur.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+            client.create_table(target_name, packet_name, PACKET_DEF)
+            for i, (seconds, value) in enumerate(rows):
+                columns = client.process_json_data({"VALUE": value}, table_name)
+                columns["RECEIVED_COUNT"] = i
+                row_ts = base_ts + int(seconds * 1_000_000_000)
+                client.write_row(table_name, columns, row_ts, rx_timestamp_ns=row_ts)
+            client.flush()
+            assert wait_for_data(client, table_name, len(rows)) == len(rows)
+            client.close()
         return base_ts
 
     def drop_tables(self):
         for target_name, packet_name, _ in self.tables():
             db_shard = DB_SHARDS[target_name]
-            with db_shard_ports(db_shard):
-                client = QuestDBClient(db_shard=db_shard)
-                client.connect_query()
-                table_name, _ = client.sanitize_table_name(target_name, packet_name)
-                with client.query.cursor() as cur:
-                    cur.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-                client.close()
+            client = QuestDBClient(db_shard=db_shard, **db_shard_ports(db_shard))
+            client.connect_query()
+            table_name, _ = client.sanitize_table_name(target_name, packet_name)
+            with client.query.cursor() as cur:
+                cur.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+            client.close()
 
     def iso(self, seconds):
         return ts_to_iso(self.base_ts + int(seconds * 1_000_000_000))

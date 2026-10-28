@@ -18,7 +18,6 @@ Usage:
     3. Stop QuestDB: docker compose -f docker-compose.test.yml down
 """
 
-import contextlib
 import os
 import sys
 import time
@@ -55,31 +54,26 @@ requires_questdb = pytest.mark.skipif(
 )
 
 
-@contextlib.contextmanager
 def db_shard_ports(db_shard):
-    """Point the QuestDB port env vars at the given db_shard while in this context.
+    """QuestDBClient port arguments for the given db_shard.
 
     Production resolves each db_shard by hostname (SHARDNUM) but locally every
     db_shard is on 127.0.0.1, so db_shard N > 0 is selected by the
     OPENC3_TSDB_SHARD<N>_INGEST_PORT and OPENC3_TSDB_SHARD<N>_QUERY_PORT ports.
+    db_shard 0 uses the default OPENC3_TSDB_INGEST_PORT and OPENC3_TSDB_QUERY_PORT.
     """
-    if db_shard == 0:
-        yield
-        return
-    saved = {name: os.environ[name] for name in ("OPENC3_TSDB_INGEST_PORT", "OPENC3_TSDB_QUERY_PORT")}
-    os.environ["OPENC3_TSDB_INGEST_PORT"] = os.environ[f"OPENC3_TSDB_SHARD{db_shard}_INGEST_PORT"]
-    os.environ["OPENC3_TSDB_QUERY_PORT"] = os.environ[f"OPENC3_TSDB_SHARD{db_shard}_QUERY_PORT"]
-    try:
-        yield
-    finally:
-        os.environ.update(saved)
+    if not db_shard:
+        return {}
+    return {
+        "ingest_port": int(os.environ[f"OPENC3_TSDB_SHARD{db_shard}_INGEST_PORT"]),
+        "query_port": int(os.environ[f"OPENC3_TSDB_SHARD{db_shard}_QUERY_PORT"]),
+    }
 
 
 def is_questdb_shard1_available():
     """Check if the db_shard 1 QuestDB is available for testing."""
     try:
-        with db_shard_ports(1):
-            return QuestDBClient.check_connection(db_shard=1)
+        return QuestDBClient.check_connection(db_shard=1, port=db_shard_ports(1)["query_port"])
     except Exception:
         return False
 

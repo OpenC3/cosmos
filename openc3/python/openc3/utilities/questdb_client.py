@@ -173,11 +173,12 @@ class QuestDBClient:
         return hostname.replace("SHARDNUM", str(db_shard))
 
     @staticmethod
-    def _create_query_connection(db_shard=0, **extra_kwargs):
+    def _create_query_connection(db_shard=0, port=None, **extra_kwargs):
         """Create a new psycopg connection to QuestDB using standard env vars.
 
         Args:
             db_shard: DB_Shard number (default 0). Used to resolve hostname.
+            port: Query port (default OPENC3_TSDB_QUERY_PORT)
             **extra_kwargs: Additional keyword arguments passed to psycopg.connect
                 (e.g., autocommit=True, connect_timeout=2).
 
@@ -186,7 +187,7 @@ class QuestDBClient:
         """
         return psycopg.connect(
             host=QuestDBClient.hostname_for_db_shard(db_shard),
-            port=os.environ.get("OPENC3_TSDB_QUERY_PORT"),
+            port=port or os.environ.get("OPENC3_TSDB_QUERY_PORT"),
             user=os.environ.get("OPENC3_TSDB_USERNAME"),
             password=os.environ.get("OPENC3_TSDB_PASSWORD"),
             dbname="qdb",
@@ -225,12 +226,12 @@ class QuestDBClient:
                         conn.close()
 
     @classmethod
-    def check_connection(cls, db_shard=0):
+    def check_connection(cls, db_shard=0, port=None):
         """Health check — attempt to connect and immediately close.
 
         Returns True if successful, raises on failure.
         """
-        conn = cls._create_query_connection(db_shard=db_shard, autocommit=True, connect_timeout=2)
+        conn = cls._create_query_connection(db_shard=db_shard, port=port, autocommit=True, connect_timeout=2)
         conn.close()
         return True
 
@@ -331,7 +332,7 @@ class QuestDBClient:
 
     DEFAULT_BATCH_SIZE = 500
 
-    def __init__(self, logger=None, name=None, batch_size=None, db_shard=0):
+    def __init__(self, logger=None, name=None, batch_size=None, db_shard=0, ingest_port=None, query_port=None):
         """
         Initialize QuestDB client.
 
@@ -340,11 +341,15 @@ class QuestDBClient:
             name: Optional name for error messages (e.g., microservice name)
             batch_size: Number of rows to buffer before auto-flushing (default: DEFAULT_BATCH_SIZE)
             db_shard: DB_Shard number (default 0). Used to resolve hostname via SHARDNUM replacement.
+            ingest_port: ILP ingest port (default OPENC3_TSDB_INGEST_PORT)
+            query_port: PostgreSQL query port (default OPENC3_TSDB_QUERY_PORT)
         """
         self.batch_size = batch_size or self.DEFAULT_BATCH_SIZE
         self.logger = logger
         self.name = name or "QuestDBClient"
         self.db_shard = db_shard
+        self.ingest_port = ingest_port
+        self.query_port = query_port
         self.ingest = None
         self.query = None
         # Track columns that need JSON serialization due to type conflicts or DERIVED type
@@ -379,11 +384,12 @@ class QuestDBClient:
         else:
             print(f"ERROR: {msg}")
 
-    def _get_connection_env(self, port_env_var):
+    def _get_connection_env(self, port_env_var, port=None):
         """Read and validate QuestDB connection environment variables.
 
         Args:
             port_env_var: Name of the port environment variable
+            port: Port which overrides the port environment variable
 
         Returns:
             Tuple of (host, port, username, password)
@@ -392,7 +398,7 @@ class QuestDBClient:
             RuntimeError: If any required environment variable is missing
         """
         host = self.hostname_for_db_shard(self.db_shard)
-        port = os.environ.get(port_env_var)
+        port = port or os.environ.get(port_env_var)
         username = os.environ.get("OPENC3_TSDB_USERNAME")
         password = os.environ.get("OPENC3_TSDB_PASSWORD")
 
@@ -415,7 +421,7 @@ class QuestDBClient:
             RuntimeError: If required environment variables are missing
             ConnectionError: If connection fails
         """
-        host, port, username, password = self._get_connection_env("OPENC3_TSDB_INGEST_PORT")
+        host, port, username, password = self._get_connection_env("OPENC3_TSDB_INGEST_PORT", self.ingest_port)
 
         try:
             if self.ingest:
@@ -438,7 +444,7 @@ class QuestDBClient:
             if self.query:
                 self.query.close()
 
-            self.query = self._create_query_connection(db_shard=self.db_shard, autocommit=True)
+            self.query = self._create_query_connection(db_shard=self.db_shard, port=self.query_port, autocommit=True)
         except Exception as e:
             raise ConnectionError(f"Failed to connect to QuestDB: {e}") from e
 

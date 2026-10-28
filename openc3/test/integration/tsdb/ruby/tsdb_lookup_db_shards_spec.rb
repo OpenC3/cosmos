@@ -74,8 +74,8 @@ RSpec.describe OpenC3::CvtModel, :questdb do
     expect(@test_params['success']).to be true
 
     allow(OpenC3::QuestDBClient).to receive(:db_shard_for_target) { |target_name, **| db_shards.fetch(target_name) }
-    allow(OpenC3::QuestDBClient).to receive(:connection).and_wrap_original do |original, db_shard: 0|
-      with_db_shard_port(db_shard) { original.call(db_shard: db_shard) }
+    allow(OpenC3::QuestDBClient).to receive(:connection).and_wrap_original do |original, db_shard: 0, **|
+      original.call(db_shard: db_shard, port: db_shard_query_port(db_shard))
     end
     allow(OpenC3::TargetModel).to receive(:packet).and_return(@test_params['tables'][0]['packet_def'])
     OpenC3::QuestDBClient.disconnect

@@ -57,20 +57,15 @@ module QuestDBTestHelpers
     false
   end
 
-  # Point the QuestDB query port at the given db_shard while in the block.
+  # The QuestDB query port of the given db_shard.
   # Production resolves each db_shard by hostname (SHARDNUM) but locally every
   # db_shard is on 127.0.0.1, so db_shard N > 0 is selected by the
-  # OPENC3_TSDB_SHARD<N>_QUERY_PORT port.
-  def with_db_shard_port(db_shard)
-    return yield if db_shard == 0
+  # OPENC3_TSDB_SHARD<N>_QUERY_PORT port. Returns nil for db_shard 0 so
+  # it uses the default OPENC3_TSDB_QUERY_PORT.
+  def db_shard_query_port(db_shard)
+    return nil if db_shard == 0
 
-    saved = ENV.fetch('OPENC3_TSDB_QUERY_PORT', nil)
-    ENV['OPENC3_TSDB_QUERY_PORT'] = ENV.fetch("OPENC3_TSDB_SHARD#{db_shard}_QUERY_PORT")
-    begin
-      yield
-    ensure
-      ENV['OPENC3_TSDB_QUERY_PORT'] = saved
-    end
+    ENV.fetch("OPENC3_TSDB_SHARD#{db_shard}_QUERY_PORT")
   end
 
   # Run the Python helper script with given arguments
