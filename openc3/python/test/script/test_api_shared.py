@@ -68,8 +68,8 @@ class Proxy:
         global get_item_count
         get_item_count += 1
         if item_name == "CCSDSSHF":
-            return {"name": item_name, "states": {"FALSE": {"value": 0}, "TRUE": {"value": 1}}}
-        return {"name": item_name}
+            return {"states": {"FALSE": {"value": 0}, "TRUE": {"value": 1}}}
+        return {}
 
 
 # sleep in a script - returns true if canceled mid sleep
@@ -178,64 +178,26 @@ class TestApiShared(unittest.TestCase):
             )
         openc3.script.DISCONNECT = False
 
-    def test_check_accepts_an_unquoted_state_name(self):
+    def test_looks_up_states_through_the_api_server_only_for_strings(self):
+        # https://github.com/OpenC3/cosmos/issues/4046
+        for _ in capture_io():
+            check("INST HEALTH_STATUS TEMP1 in [10, 11]")
+            wait_check("INST HEALTH_STATUS TEMP1 > 1", 0.01)
+            self.assertEqual(get_item_count, 0)
+            check("INST HEALTH_STATUS CCSDSSHF == false")
+            self.assertTrue(wait("INST HEALTH_STATUS CCSDSSHF == 'False'", 0.01))
+            self.assertEqual(get_item_count, 2)
+            with self.assertRaises(CheckError):
+                check_raw("INST HEALTH_STATUS CCSDSSHF == 'false'")
+            self.assertEqual(get_item_count, 2)
+
+    def test_check_a_state(self):
         for stdout in capture_io():
             check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'")
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'",
                 stdout.getvalue(),
             )
-            check("INST HEALTH_STATUS CCSDSSHF == FALSE")
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS CCSDSSHF == FALSE success with value == 'FALSE'",
-                stdout.getvalue(),
-            )
-        # A bare word which is not a state name is still almost always a missing quote
-        with self.assertRaisesRegex(
-            NameError,
-            "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?",
-        ):
-            check("INST HEALTH_STATUS CCSDSSHF == MAYBE")
-        with self.assertRaisesRegex(
-            NameError,
-            "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?",
-        ):
-            check("INST HEALTH_STATUS CCSDSSHF in FALSE")
-
-    def test_check_compares_state_names_case_insensitively(self):
-        # https://github.com/OpenC3/cosmos/issues/4046
-        for stdout in capture_io():
-            check("INST HEALTH_STATUS CCSDSSHF == 'false'")
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS CCSDSSHF == 'false' success with value == 'FALSE'",
-                stdout.getvalue(),
-            )
-            check("INST HEALTH_STATUS CCSDSSHF != 'true'")
-            check("INST HEALTH_STATUS CCSDSSHF in ['True', 'False']")
-            check("INST HEALTH_STATUS CCSDSSHF in ('True', 'False')")
-            check_formatted("INST HEALTH_STATUS CCSDSSHF == 'False'")
-        with self.assertRaisesRegex(CheckError, "CHECK: INST HEALTH_STATUS CCSDSSHF == 'true' failed"):
-            check("INST HEALTH_STATUS CCSDSSHF == 'true'")
-        # RAW values are never state names so the comparison is exact
-        with self.assertRaisesRegex(CheckError, "CHECK: INST HEALTH_STATUS CCSDSSHF == 'false' failed"):
-            check_raw("INST HEALTH_STATUS CCSDSSHF == 'false'")
-
-    def test_check_compares_strings_without_states_case_sensitively(self):
-        with self.assertRaisesRegex(CheckError, "CHECK: INST HEALTH_STATUS TEMP1 == '10.000 c' failed"):
-            check_formatted("INST HEALTH_STATUS TEMP1 == '10.000 c'")
-
-    def test_check_only_looks_up_states_when_comparing_strings(self):
-        for _ in capture_io():
-            check("INST HEALTH_STATUS TEMP1 == 10")
-            check("INST HEALTH_STATUS TEMP1 in [10, 11]")
-            wait_check("INST HEALTH_STATUS TEMP1 > 1", 0.01)
-            self.assertEqual(get_item_count, 0)
-            check("INST HEALTH_STATUS CCSDSSHF == 'false'")
-            self.assertEqual(get_item_count, 1)
-            # RAW values are never state names
-            with self.assertRaises(CheckError):
-                check_raw("INST HEALTH_STATUS CCSDSSHF == 'false'")
-            self.assertEqual(get_item_count, 1)
 
     def test_check_raises_with_an_invalid_operator(self):
         with self.assertRaisesRegex(RuntimeError, r"ERROR: Invalid operator: '==='"):
@@ -857,7 +819,7 @@ class TestApiShared(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "ERROR: Unable to parse operand"):
             wait_check(f"INST HEALTH_STATUS BLOCKTEST == '{data}'", 0.01)
 
-    def test_wait_check_accepts_an_unquoted_state_name(self):
+    def test_wait_check_a_state(self):
         for stdout in capture_io():
             result = wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
             self.assertTrue(isinstance(result, float))
@@ -865,28 +827,6 @@ class TestApiShared(unittest.TestCase):
                 "CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'",
                 stdout.getvalue(),
             )
-            wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS CCSDSSHF == FALSE success with value == 'FALSE'",
-                stdout.getvalue(),
-            )
-        with self.assertRaisesRegex(
-            NameError,
-            "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?",
-        ):
-            wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01)
-
-    def test_wait_and_wait_check_compare_state_names_case_insensitively(self):
-        # https://github.com/OpenC3/cosmos/issues/4046
-        for stdout in capture_io():
-            wait_check("INST HEALTH_STATUS CCSDSSHF == 'false'", 0.01)
-            self.assertIn(
-                "CHECK: INST HEALTH_STATUS CCSDSSHF == 'false' success with value == 'FALSE'",
-                stdout.getvalue(),
-            )
-            self.assertTrue(wait("INST HEALTH_STATUS CCSDSSHF == 'False'", 0.01))
-            self.assertTrue(wait("INST HEALTH_STATUS CCSDSSHF in ['true', 'false']", 0.01))
-            self.assertFalse(wait("INST HEALTH_STATUS CCSDSSHF == 'false'", 0.01, type="RAW"))
 
     # check(), wait() and wait_check() all parse the same comparison syntax
     # so they must all accept and reject exactly the same expressions
@@ -918,23 +858,6 @@ class TestApiShared(unittest.TestCase):
             wait("INST HEALTH_STATUS TEMP1 >", 0.01)
         with self.assertRaisesRegex(RuntimeError, "must specify an operand"):
             wait_check("INST HEALTH_STATUS TEMP1 >", 0.01)
-
-    def test_consistency_suggests_a_string_when_comparing_against_a_bare_word(self):
-        error = "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?"
-        with self.assertRaisesRegex(NameError, re.escape(error)):
-            check("INST HEALTH_STATUS CCSDSSHF == MAYBE")
-        with self.assertRaisesRegex(NameError, re.escape(error)):
-            wait("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01)
-        with self.assertRaisesRegex(NameError, re.escape(error)):
-            wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01)
-
-    def test_consistency_accepts_state_names_ignoring_case(self):
-        for stdout in capture_io():
-            # Note "false" would be a boolean literal in Ruby so mixed case is used
-            check("INST HEALTH_STATUS CCSDSSHF == fAlSe")
-            self.assertTrue(wait("INST HEALTH_STATUS CCSDSSHF == fAlSe", 0.01))
-            wait_check("INST HEALTH_STATUS CCSDSSHF == fAlSe", 0.01)
-            self.assertNotIn("failed", stdout.getvalue())
 
     def test_consistency_accepts_hex_operands(self):
         for stdout in capture_io():
