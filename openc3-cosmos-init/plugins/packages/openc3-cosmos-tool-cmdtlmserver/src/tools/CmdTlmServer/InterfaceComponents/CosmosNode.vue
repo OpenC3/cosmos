@@ -12,7 +12,7 @@
 -->
 
 <template>
-  <div class="cosmos-node">
+  <div class="cosmos-node" :class="`flow-node--${health.state}`">
     <!-- Input handles on the left -->
     <Handle
       id="cosmos__cmd"
@@ -35,35 +35,47 @@
     <v-icon color="#10b981">mdi-rocket-launch</v-icon>
     <div class="node-label">{{ data.label }}</div>
     <div class="node-label">Processing</div>
+    <FlowHealthIndicator
+      :health="health"
+      :name="data.label"
+      @details="$emit('details')"
+    />
   </div>
 </template>
 
 <script>
 import { Handle } from '@vue-flow/core'
+import FlowHealthIndicator from './FlowHealthIndicator.vue'
+import { flowHealth } from './flowMetrics'
 
 export default {
-  name: 'TargetNode',
+  name: 'CosmosNode',
   components: {
     Handle,
+    FlowHealthIndicator,
   },
   props: {
+    health: { type: Object, default: () => flowHealth() },
     data: {
       type: Object,
       required: true,
     },
   },
+  emits: ['details'],
 }
 </script>
 
 <style scoped>
 .cosmos-node {
+  position: relative;
+  cursor: pointer;
   background: #ffffff;
   border: 2px solid #10b981;
   border-radius: 8px;
   padding: 10px;
   text-align: center;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  height: 200px;
+  height: 212px;
   width: 200px;
 }
 

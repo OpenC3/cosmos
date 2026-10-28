@@ -8,10 +8,13 @@ sidebar_custom_props:
 COSMOS Enterprise include an MCP Server that gives AI systems the ability to discover and interact with the COSMOS API.
 
 :::warning[AI can be unpredictable and will send data to external servers. Use at your own risk.]
+:::
 
 ## Overview
 
 The COSMOS MCP Server is available at `<Your COSMOS URL>/mcp`. It performs Automatic Oauth authentication with the client and will generally authenticate as the currently logged in COSMOS user in your web browser, or prompt you for a login if no one is currently logged in.
+
+The examples below use `http://localhost:2900`. COSMOS can be run over HTTP, but we recommend HTTPS, and a remote (non-localhost) MCP Server requires it. See [SSL-TLS](/docs/configuration/ssl-tls) to configure HTTPS, then use your `https://` COSMOS URL in place of `http://localhost:2900`.
 
 ## Using with the Built-In AI Interface
 
@@ -37,7 +40,7 @@ Goto Settings -> Developer and press the "Edit Config" button to discover the lo
 
 ```
 
-Update localhost:2900 as needed.
+Update localhost:2900 as needed. The `--allow-http` flag is only needed for an `http://` URL; omit it when using HTTPS.
 
 ## Integrating with Claude Code
 
