@@ -10,11 +10,14 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import threading
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from openc3.topics.interface_topic import InterfaceTopic
-from test.test_helper import mock_redis
+from openc3.topics.topic import Topic
+from test.test_helper import mock_redis, read_topics_from_start, set_target_db_shard, shard_redis
 
 
 class TestInterfaceTopicDetails(unittest.TestCase):
@@ -51,3 +54,43 @@ class TestInterfaceTopicDetails(unittest.TestCase):
         self.stub_ack(b"'int' object is not callable")
         with self.assertRaisesRegex(RuntimeError, r"interface_details failed: 'int' object is not callable"):
             InterfaceTopic.interface_details("INST_INT", scope="DEFAULT")
+
+
+class TestInterfaceTopicMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        # INST is installed on db_shard 1 while INST2 stays on db_shard 0
+        set_target_db_shard("INST", 1)
+        set_target_db_shard("INST2", 0)
+
+    def tearDown(self):
+        InterfaceTopic.while_receive_commands = False
+
+    def test_receive_commands_reads_and_acks_each_target_on_its_db_shard(self):
+        inst_topic = "{DEFAULT__CMD}TARGET__INST"
+        inst2_topic = "{DEFAULT__CMD}TARGET__INST2"
+        Topic.write_topic(inst_topic, {"cmd_name": "ABORT"}, db_shard=1)
+        Topic.write_topic(inst2_topic, {"cmd_name": "ABORT"}, db_shard=0)
+        interface = SimpleNamespace(name="INST_INT", cmd_target_names=["INST", "INST2"])
+        received = []
+
+        def process_cmd(topic, _msg_id, _msg_hash, _redis):
+            received.append(topic)
+            if len(received) == 2:
+                InterfaceTopic.while_receive_commands = False
+            return "SUCCESS"
+
+        def receive():
+            read_topics_from_start(1, [inst_topic])
+            read_topics_from_start(0, [inst2_topic])
+            InterfaceTopic.receive_commands(process_cmd, interface, scope="DEFAULT")
+
+        # Reading the wrong db_shard blocks forever so don't wait on it forever
+        thread = threading.Thread(target=receive, daemon=True)
+        thread.start()
+        thread.join(5)
+        self.assertEqual(sorted(received), [inst_topic, inst2_topic])
+        # Acks go back on the db_shard the command was read from
+        self.assertEqual(shard_redis(1).xlen("{DEFAULT__ACKCMD}TARGET__INST"), 1)
+        self.assertFalse(shard_redis(0).exists("{DEFAULT__ACKCMD}TARGET__INST"))
+        self.assertEqual(shard_redis(0).xlen("{DEFAULT__ACKCMD}TARGET__INST2"), 1)

@@ -357,7 +357,7 @@ module OpenC3
         names = TargetModel.names(scope:"DEFAULT")
         expect(names.include?("INST"))
         # Clear the item_map cache to avoid interference from previous tests
-        TargetModel.class_variable_get(:@@item_map_cache)["INST"] = nil
+        TargetModel.class_variable_get(:@@item_map_cache)["DEFAULT__INST__item_to_packet_map"] = nil
         Store.set("DEFAULT__INST__item_to_packet_map", JSON.generate({"PACKET_ID" => ["PACKET1"]}))
         Store.hset("DEFAULT__tlm__INST", "PACKET1", JSON.generate({"PACKET_TIMESECONDS" => nil}))
         packet_name = CvtModel.determine_latest_packet_for_item("INST", "PACKET_ID", scope:"DEFAULT")
@@ -395,6 +395,68 @@ module OpenC3
         CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP2", type: :ALL, scope: "DEFAULT")
         CvtModel.normalize("INST", "ADCS", "POSX", type: :ALL, scope: "DEFAULT")
         CvtModel.normalize("SYSTEM", "META", "OPERATOR_NAME", type: :ALL, scope: "DEFAULT")
+      end
+    end
+
+    describe "multiple db_shards" do
+      # INST lives on db_shard 1 while SYSTEM stays on db_shard 0. Stale copies
+      # planted on the wrong db_shard prove the reads come from the right one.
+      before(:each) do
+        setup_target_db_shards({ 'INST' => 1, 'SYSTEM' => 0 })
+        @db_shard0 = Store.instance(db_shard: 0)
+        @db_shard1 = Store.instance(db_shard: 1)
+      end
+
+      it "sets and gets the CVT on the target's db_shard" do
+        @db_shard0.hset("DEFAULT__tlm__INST", "HEALTH_STATUS", JSON.generate({ "TEMP1" => 99 }))
+        update_temp1()
+        expect(JSON.parse(@db_shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))["TEMP1"]).to eql 1
+        expect(JSON.parse(@db_shard0.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))["TEMP1"]).to eql 99
+        check_temp1()
+        expect(CvtModel.get(target_name: "INST", packet_name: "HEALTH_STATUS", scope: "DEFAULT")["TEMP1"]).to eql 1
+      end
+
+      it "sets queued and pre-serialized values on the target's db_shard" do
+        CvtModel.set({ "TEMP1" => 1 }, target_name: "INST", packet_name: "HEALTH_STATUS", queued: true, scope: "DEFAULT")
+        expect(JSON.parse(@db_shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))["TEMP1"]).to eql 1
+        CvtModel.set_json(JSON.generate({ "TEMP1" => 2 }), { "TEMP1" => 2 }, target_name: "INST", packet_name: "HEALTH_STATUS", scope: "DEFAULT")
+        expect(JSON.parse(@db_shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))["TEMP1"]).to eql 2
+        CvtModel.set_json(JSON.generate({ "TEMP1" => 3 }), { "TEMP1" => 3 }, target_name: "INST", packet_name: "HEALTH_STATUS", queued: true, scope: "DEFAULT")
+        expect(JSON.parse(@db_shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))["TEMP1"]).to eql 3
+        expect(@db_shard0.exists?("DEFAULT__tlm__INST")).to be false
+      end
+
+      it "deletes from the target's db_shard" do
+        update_temp1()
+        expect(@db_shard1.hexists("DEFAULT__tlm__INST", "HEALTH_STATUS")).to be true
+        CvtModel.del(target_name: "INST", packet_name: "HEALTH_STATUS", scope: "DEFAULT")
+        expect(@db_shard1.hexists("DEFAULT__tlm__INST", "HEALTH_STATUS")).to be false
+      end
+
+      it "gets values across db_shards" do
+        update_temp1()
+        CvtModel.set({ "OPERATOR_NAME" => "JASON", "RECEIVED_TIMESECONDS" => Time.now.to_f }, target_name: "SYSTEM", packet_name: "META", scope: "DEFAULT")
+        @db_shard0.hset("DEFAULT__tlm__INST", "HEALTH_STATUS", JSON.generate({ "TEMP1" => 99, "RECEIVED_TIMESECONDS" => Time.now.to_f }))
+        @db_shard1.hset("DEFAULT__tlm__SYSTEM", "META", JSON.generate({ "OPERATOR_NAME" => "STALE", "RECEIVED_TIMESECONDS" => Time.now.to_f }))
+        values = CvtModel.get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1", "RAW"], ["SYSTEM", "META", "OPERATOR_NAME", "RAW"]], scope: "DEFAULT")
+        expect(values).to eql [[1, :GREEN], ["JASON", nil]]
+      end
+
+      it "overrides and normalizes on the target's db_shard" do
+        update_temp1()
+        @db_shard0.hset("DEFAULT__override__INST", "HEALTH_STATUS", JSON.generate({ "TEMP1" => 99 }))
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 5, type: :RAW, scope: "DEFAULT")
+        CvtModel.override("SYSTEM", "META", "OPERATOR_NAME", "JASON", type: :RAW, scope: "DEFAULT")
+        expect(JSON.parse(@db_shard1.hget("DEFAULT__override__INST", "HEALTH_STATUS"))).to eql({ "TEMP1" => 5 })
+        expect(JSON.parse(@db_shard0.hget("DEFAULT__override__SYSTEM", "META"))).to eql({ "OPERATOR_NAME" => "JASON" })
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 5
+        expect(CvtModel.get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1", "RAW"]], scope: "DEFAULT")).to eql [[5]]
+        overrides = CvtModel.overrides(scope: "DEFAULT")
+        expect(overrides.map { |o| [o['target_name'], o['item_name'], o['value']] }).to contain_exactly(["INST", "TEMP1", 5], ["SYSTEM", "OPERATOR_NAME", "JASON"])
+
+        CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")
+        expect(@db_shard1.hexists("DEFAULT__override__INST", "HEALTH_STATUS")).to be false
+        expect(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type: :RAW, scope: "DEFAULT")).to eql 1
       end
     end
   end

@@ -9,6 +9,7 @@
 # See LICENSE.md for more details.
 
 require 'spec_helper'
+require 'openc3/models/target_model'
 require 'openc3/topics/command_decom_topic'
 require 'openc3/packets/packet'
 require 'openc3/conversions/polynomial_conversion'
@@ -140,6 +141,28 @@ module OpenC3
         expect(hash).not_to have_key('STATE')
         expect(hash).not_to have_key('STATE__C')
       end
+    end
+  end
+
+  describe CommandDecomTopic, "multiple db_shards" do
+    before(:each) do
+      mock_redis()
+      TargetModel.new(name: "TARGET", scope: "DEFAULT", db_shard: 1).create
+    end
+
+    it "writes and reads command items on the target's db_shard" do
+      packet = Packet.new('TARGET', 'CMD')
+      packet.append_item('VALUE', 16, :UINT)
+      packet.received_time = Time.now
+      packet.packet_time = Time.now
+      packet.received_count = 1
+      packet.write('VALUE', 5)
+      # A stale message on the wrong db_shard must not be read
+      EphemeralStore.instance(db_shard: 0).write_topic("DEFAULT__DECOMCMD__{TARGET}__CMD", { 'json_data' => JSON.generate({ 'VALUE' => 99 }) })
+      CommandDecomTopic.write_packet(packet, scope: 'DEFAULT')
+      expect(EphemeralStore.instance(db_shard: 1).xlen("DEFAULT__DECOMCMD__{TARGET}__CMD")).to eql 1
+      expect(CommandDecomTopic.get_cmd_item('TARGET', 'CMD', 'VALUE', type: :RAW, scope: 'DEFAULT')).to eql 5
+      expect(CommandDecomTopic.get_cmd_item('TARGET', 'CMD', 'RECEIVED_COUNT', scope: 'DEFAULT')).to eql 1
     end
   end
 end

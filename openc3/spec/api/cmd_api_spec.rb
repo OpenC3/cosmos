@@ -678,4 +678,46 @@ module OpenC3
       end
     end
   end
+
+  describe Api, "multiple db_shards" do
+    # INST lives on db_shard 1 while SYSTEM stays on db_shard 0. Stale copies
+    # planted on the wrong db_shard prove the reads come from the right one.
+    before(:each) do
+      mock_redis()
+      setup_system()
+      local_s3()
+      setup_target_db_shards({ 'INST' => 1, 'SYSTEM' => 0 })
+      @api = ApiTest.new
+    end
+
+    after(:each) do
+      local_s3_unset()
+    end
+
+    it "returns the command buffer from the target's db_shard" do
+      packet = System.commands.packet('INST', 'ABORT')
+      packet.received_time = Time.now.sys
+      packet.buffer = "\x01\x02" + packet.buffer[2..-1]
+      CommandTopic.write_packet(packet, scope: 'DEFAULT')
+      # A newer stale message on the wrong db_shard must not be returned
+      EphemeralStore.instance(db_shard: 0).write_topic("DEFAULT__COMMAND__{INST}__ABORT", { 'buffer' => "\xFF\xFF" })
+      expect(@api.get_cmd_buffer("INST", "ABORT")["buffer"][0..1]).to eq "\x01\x02"
+    end
+
+    it "returns command counts from each target's db_shard" do
+      Store.instance(db_shard: 0).hset("DEFAULT__COMMANDCNTS__{INST}", "ABORT", 100)
+      Store.instance(db_shard: 1).hset("DEFAULT__COMMANDCNTS__{SYSTEM}", "STARTLOGGING", 100)
+      TargetModel.increment_command_count("INST", "ABORT", 5, scope: "DEFAULT")
+      TargetModel.increment_command_count("SYSTEM", "STARTLOGGING", 3, scope: "DEFAULT")
+      expect(@api.get_cmd_cnt("INST ABORT")).to eql 5
+      expect(@api.get_cmd_cnts([%w(INST ABORT), %w(SYSTEM STARTLOGGING)])).to eql [5, 3]
+    end
+
+    it "returns command names from the target's db_shard" do
+      Store.instance(db_shard: 0).hset("DEFAULT__openc3cmd__INST", "STALE", JSON.generate({ 'packet_name' => 'STALE' }))
+      names = @api.get_all_cmd_names("INST")
+      expect(names).to include("ABORT")
+      expect(names).to_not include("STALE")
+    end
+  end
 end

@@ -462,7 +462,21 @@ module OpenC3
         expect(itpm["CCSDSVER"]).to eql(%w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS))
         # Verify cached time was NOT updated
         cache = TargetModel.class_variable_get(:@@item_map_cache)
-        expect(cache["INST"][0]).to eq(orig_cache["INST"][0])
+        expect(cache["DEFAULT__INST__item_to_packet_map"][0]).to eq(orig_cache["DEFAULT__INST__item_to_packet_map"][0])
+      end
+
+      it "shares the item-to-packet map cache entry for a lowercase target" do
+        TargetModel.get_item_to_packet_map("inst", scope: "DEFAULT")
+        cache = TargetModel.class_variable_get(:@@item_map_cache)
+        expect(cache.keys).to include("DEFAULT__INST__item_to_packet_map")
+        expect(cache.keys).not_to include("DEFAULT__inst__item_to_packet_map")
+      end
+
+      it "caches the item-to-packet map per scope" do
+        TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
+        Store.set("OTHER__INST__item_to_packet_map", JSON.generate({ "OTHER_ITEM" => ["OTHER_PKT"] }))
+        expect(TargetModel.get_item_to_packet_map("INST", scope: "OTHER")).to eql({ "OTHER_ITEM" => ["OTHER_PKT"] })
+        expect(TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")["CCSDSVER"]).to be_a(Array)
       end
 
       it "gets item-to-packet map on an invalid cache" do
@@ -477,7 +491,7 @@ module OpenC3
         expect(itpm["CCSDSVER"]).to eql(%w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS))
         # Verify cached time was updated
         cache = TargetModel.class_variable_get(:@@item_map_cache)
-        expect(cache["INST"][0]).to be > orig_cache["INST"][0]
+        expect(cache["DEFAULT__INST__item_to_packet_map"][0]).to be > orig_cache["DEFAULT__INST__item_to_packet_map"][0]
         OpenC3.disable_warnings do
           TargetModel::ITEM_MAP_CACHE_TIMEOUT = timeout
         end
@@ -1489,6 +1503,165 @@ module OpenC3
 
           expect(packet.received_count).to be > 0
         end
+      end
+    end
+
+    describe "multiple db_shards" do
+      # INST lives on db_shard 1 while SYSTEM stays on db_shard 0. Stale copies
+      # planted on the wrong db_shard prove the reads come from the right one.
+      before(:each) do
+        setup_system()
+        @inst_model, @system_model = setup_target_db_shards({ 'INST' => 1, 'SYSTEM' => 0 })
+        @db_shard0 = Store.instance(db_shard: 0)
+        @db_shard1 = Store.instance(db_shard: 1)
+      end
+
+      it "update_store writes target data to the target's db_shard" do
+        inst_keys = %w(DEFAULT__openc3tlm__INST DEFAULT__openc3cmd__INST DEFAULT__openc3tlm__INST__hidden
+          DEFAULT__openc3cmd__INST__hidden DEFAULT__openc3tlm__INST__allitems DEFAULT__INST__item_to_packet_map
+          DEFAULT__tlm__INST)
+        inst_keys.each do |key|
+          expect(@db_shard1.exists?(key)).to be(true), "expected #{key} on db_shard 1"
+          expect(@db_shard0.exists?(key)).to be(false), "expected no #{key} on db_shard 0"
+        end
+        expect(@db_shard1.hkeys("DEFAULT__openc3tlm__INST")).to include("HEALTH_STATUS", "HIDDEN")
+        expect(JSON.parse(@db_shard1.get("DEFAULT__openc3tlm__INST__hidden"))).to eql ["HIDDEN"]
+
+        system_keys = %w(DEFAULT__openc3tlm__SYSTEM DEFAULT__openc3cmd__SYSTEM DEFAULT__SYSTEM__item_to_packet_map DEFAULT__tlm__SYSTEM)
+        system_keys.each do |key|
+          expect(@db_shard0.exists?(key)).to be(true), "expected #{key} on db_shard 0"
+          expect(@db_shard1.exists?(key)).to be(false), "expected no #{key} on db_shard 1"
+        end
+      end
+
+      it "deploys target microservices on the target's db_shard" do
+        @inst_model.deploy(File.join(SPEC_DIR, "install", "config"), {})
+        expect(@db_shard1.hkeys("DEFAULT__openc3tlm__INST")).to include("HEALTH_STATUS")
+        %w(COMMANDLOG PACKETLOG DECOM).each do |type|
+          expect(MicroserviceModel.get(name: "DEFAULT__#{type}__INST", scope: "DEFAULT")['db_shard']).to eql 1
+        end
+      end
+
+      it "reads packets from the target's db_shard" do
+        stale = JSON.generate({ 'target_name' => 'INST', 'packet_name' => 'HEALTH_STATUS', 'description' => 'STALE', 'items' => [] })
+        @db_shard0.hset("DEFAULT__openc3tlm__INST", "HEALTH_STATUS", stale)
+        @db_shard0.hset("DEFAULT__openc3tlm__INST", "STALE", stale)
+        @db_shard0.hset("DEFAULT__openc3cmd__INST", "STALE", stale)
+        TargetModel.clear_packet_cache
+
+        expect(TargetModel.packet("INST", "HEALTH_STATUS", scope: "DEFAULT")['description']).to eql "Health and status from the instrument"
+        expect(TargetModel.packet_item("INST", "HEALTH_STATUS", "TEMP1", scope: "DEFAULT")['name']).to eql "TEMP1"
+        expect(TargetModel.packet_names("INST", scope: "DEFAULT")).to eql %w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS)
+        expect(TargetModel.packets("INST", scope: "DEFAULT").map { |packet| packet['packet_name'] }).to eql %w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS)
+        expect(TargetModel.packet_names("INST", type: :CMD, scope: "DEFAULT")).to include("ABORT")
+        expect(TargetModel.packet_names("INST", type: :CMD, scope: "DEFAULT")).to_not include("STALE")
+        # SYSTEM is still read from db_shard 0
+        expect(TargetModel.packet_names("SYSTEM", scope: "DEFAULT")).to eql %w(LIMITS_CHANGE META)
+      end
+
+      it "set_packet writes to the target's db_shard" do
+        packet = TargetModel.packet("INST", "HEALTH_STATUS", scope: "DEFAULT")
+        TargetModel.set_packet("INST", "NEW_PKT", packet, scope: "DEFAULT")
+        expect(@db_shard1.hexists("DEFAULT__openc3tlm__INST", "NEW_PKT")).to be true
+        expect(@db_shard0.exists?("DEFAULT__openc3tlm__INST")).to be false
+      end
+
+      it "reads and rebuilds the hidden packet names on the target's db_shard" do
+        @db_shard0.set("DEFAULT__openc3tlm__INST__hidden", JSON.generate(["STALE"]))
+        expect(TargetModel.hidden_packet_names("INST", scope: "DEFAULT")).to eql ["HIDDEN"]
+
+        # Without a stored list it is built from the packets and stored on the target's db_shard
+        @db_shard1.del("DEFAULT__openc3tlm__INST__hidden")
+        expect(TargetModel.hidden_packet_names("INST", scope: "DEFAULT")).to eql ["HIDDEN"]
+        expect(JSON.parse(@db_shard1.get("DEFAULT__openc3tlm__INST__hidden"))).to eql ["HIDDEN"]
+        expect(JSON.parse(@db_shard0.get("DEFAULT__openc3tlm__INST__hidden"))).to eql ["STALE"]
+      end
+
+      it "reads and rebuilds the all items list on the target's db_shard" do
+        @db_shard0.zadd("DEFAULT__openc3tlm__INST__allitems", 0, "STALE_ITEM")
+        items = TargetModel.all_item_names("INST", scope: "DEFAULT")
+        expect(items).to include("TEMP1")
+        expect(items).to_not include("STALE_ITEM")
+
+        # Without a stored list it is rebuilt from the packets on the target's db_shard
+        @db_shard1.del("DEFAULT__openc3tlm__INST__allitems")
+        items = TargetModel.all_item_names("INST", scope: "DEFAULT")
+        expect(items).to include("TEMP1")
+        expect(items).to_not include("STALE_ITEM")
+        expect(@db_shard1.zrange("DEFAULT__openc3tlm__INST__allitems", 0, -1)).to include("TEMP1")
+      end
+
+      it "reads and rebuilds the item to packet map on the target's db_shard" do
+        @db_shard0.set("DEFAULT__INST__item_to_packet_map", JSON.generate({ 'STALE_ITEM' => ['STALE'] }))
+        TargetModel.class_variable_set(:@@item_map_cache, {})
+        item_map = TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
+        expect(item_map['TEMP1']).to eql ["HEALTH_STATUS"]
+        expect(item_map).to_not have_key("STALE_ITEM")
+
+        # Without a stored map it is built and stored on the target's db_shard
+        @db_shard1.del("DEFAULT__INST__item_to_packet_map")
+        TargetModel.class_variable_set(:@@item_map_cache, {})
+        item_map = TargetModel.get_item_to_packet_map("INST", scope: "DEFAULT")
+        expect(item_map['TEMP1']).to eql ["HEALTH_STATUS"]
+        expect(JSON.parse(@db_shard1.get("DEFAULT__INST__item_to_packet_map"))['TEMP1']).to eql ["HEALTH_STATUS"]
+      end
+
+      it "counts telemetry on each target's db_shard" do
+        @db_shard0.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 100)
+        @db_shard1.hset("DEFAULT__TELEMETRYCNTS__{SYSTEM}", "META", 100)
+        expect(TargetModel.increment_telemetry_count("INST", "HEALTH_STATUS", 5, scope: "DEFAULT")).to eql 5
+        expect(TargetModel.increment_telemetry_count("SYSTEM", "META", 3, scope: "DEFAULT")).to eql 3
+        expect(@db_shard1.hget("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS")).to eql "5"
+        expect(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope: "DEFAULT")).to eql 5
+        expect(TargetModel.get_all_telemetry_counts("INST", scope: "DEFAULT").transform_values(&:to_i)).to eql({ "HEALTH_STATUS" => 5 })
+        expect(TargetModel.get_telemetry_counts([["INST", "HEALTH_STATUS"], ["SYSTEM", "META"]], scope: "DEFAULT")).to eql [5, 3]
+      end
+
+      it "counts commands on each target's db_shard" do
+        @db_shard0.hset("DEFAULT__COMMANDCNTS__{INST}", "ABORT", 100)
+        @db_shard1.hset("DEFAULT__COMMANDCNTS__{SYSTEM}", "STARTLOGGING", 100)
+        expect(TargetModel.increment_command_count("INST", "ABORT", 5, scope: "DEFAULT")).to eql 5
+        expect(TargetModel.increment_command_count("SYSTEM", "STARTLOGGING", 3, scope: "DEFAULT")).to eql 3
+        expect(@db_shard1.hget("DEFAULT__COMMANDCNTS__{INST}", "ABORT")).to eql "5"
+        expect(TargetModel.get_command_count("INST", "ABORT", scope: "DEFAULT")).to eql 5
+        expect(TargetModel.get_all_command_counts("INST", scope: "DEFAULT").transform_values(&:to_i)).to eql({ "ABORT" => 5 })
+        expect(TargetModel.get_command_counts([["INST", "ABORT"], ["SYSTEM", "STARTLOGGING"]], scope: "DEFAULT")).to eql [5, 3]
+      end
+
+      it "dynamic_update writes packets and microservice topics to the target's db_shard" do
+        %w(PACKETLOG DECOM TSDB).each do |type|
+          MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__#{type}__INST", scope: "DEFAULT", db_shard: 1).create
+        end
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        allow(s3).to receive(:put_object)
+        allow(s3).to receive(:head_bucket)
+        allow(s3).to receive(:delete_bucket)
+
+        @inst_model.dynamic_update([Packet.new("INST", "NEW_TLM")], :TELEMETRY)
+        expect(@db_shard1.hexists("DEFAULT__openc3tlm__INST", "NEW_TLM")).to be true
+        expect(@db_shard0.exists?("DEFAULT__openc3tlm__INST")).to be false
+        ephemeral1 = EphemeralStore.instance(db_shard: 1)
+        %w(PACKETLOG DECOM TSDB).each do |type|
+          _, msg_hash = ephemeral1.get_newest_message("MICROSERVICE__DEFAULT__#{type}__INST")
+          expect(msg_hash['command']).to eql 'ADD_TOPICS'
+        end
+      end
+
+      it "destroy removes target data from the target's db_shard" do
+        Topic.write_topic("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", { 'data' => 1 }, db_shard: 1)
+        Topic.write_topic("DEFAULT__COMMAND__{INST}__ABORT", { 'data' => 1 }, db_shard: 1)
+        @db_shard1.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 1)
+        @db_shard1.hset("DEFAULT__COMMANDCNTS__{INST}", "ABORT", 1)
+        @inst_model.destroy
+        %w(DEFAULT__openc3tlm__INST DEFAULT__openc3cmd__INST DEFAULT__openc3tlm__INST__hidden
+          DEFAULT__openc3cmd__INST__hidden DEFAULT__TELEMETRYCNTS__{INST} DEFAULT__COMMANDCNTS__{INST}
+          DEFAULT__INST__item_to_packet_map DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS DEFAULT__COMMAND__{INST}__ABORT).each do |key|
+          expect(@db_shard1.exists?(key)).to be(false), "expected #{key} removed from db_shard 1"
+        end
+        expect(@db_shard1.hexists("DEFAULT__tlm__INST", "HEALTH_STATUS")).to be false
+        # SYSTEM on db_shard 0 is untouched
+        expect(@db_shard0.exists?("DEFAULT__openc3tlm__SYSTEM")).to be true
       end
     end
   end

@@ -70,7 +70,13 @@ openc3.utilities.store_queued.StoreQueued.__init__ = my_init
 openc3.utilities.store_queued.StoreQueued.__getattr__ = my_getattr
 
 
-def setup_system(targets=None):
+def setup_system(targets=None, db_shards=None):
+    """db_shards maps target names to the db_shard they are installed on.
+    When given, every target gets its target JSON (carrying its db_shard,
+    default 0) on db_shard 0 like the Ruby TargetModel install writes, and its
+    packet definitions and current values on its own db_shard. They're written
+    there directly rather than routed by the code under test so a routing bug
+    can't also move the setup data."""
     if targets is None:
         targets = ["SYSTEM", "INST", "EMPTY"]
     Logger.stdout = False
@@ -80,11 +86,18 @@ def setup_system(targets=None):
     TargetModel.clear_packet_cache()
     System.instance(targets, target_config_dir)
 
+    if db_shards is None:
+        db_shards = {}
+    else:
+        for target_name in targets:
+            set_target_db_shard(target_name, db_shards.get(target_name, 0))
+
     # Initialize the packets in Redis
     for target_name in targets:
+        db_shard = db_shards.get(target_name, 0)
         try:
             for packet_name, packet in System.telemetry.packets(target_name).items():
-                Store.hset(
+                Store.instance(db_shard=db_shard).hset(
                     f"DEFAULT__openc3tlm__{target_name}",
                     packet_name,
                     json.dumps(packet.as_json()),
@@ -95,17 +108,22 @@ def setup_system(targets=None):
                 for item in packet.sorted_items:
                     # Initialize all items to None like TargetModel::update_store does in Ruby
                     json_hash[item.name] = None
-                CvtModel.set(
-                    json_hash,  # CvtModel.build_json_from_packet(packet),
-                    packet.target_name,
-                    packet.packet_name,
-                    scope="DEFAULT",
-                )
+                if db_shard == 0:
+                    CvtModel.set(
+                        json_hash,  # CvtModel.build_json_from_packet(packet),
+                        packet.target_name,
+                        packet.packet_name,
+                        scope="DEFAULT",
+                    )
+                else:
+                    Store.instance(db_shard=db_shard).hset(
+                        f"DEFAULT__tlm__{target_name}", packet_name, json.dumps(json_hash)
+                    )
         except Exception:
             pass
         try:
             for packet_name, packet in System.commands.packets(target_name).items():
-                Store.hset(
+                Store.instance(db_shard=db_shard).hset(
                     f"DEFAULT__openc3cmd__{target_name}",
                     packet_name,
                     json.dumps(packet.as_json()),
@@ -120,6 +138,51 @@ def setup_system(targets=None):
             Store.hset("DEFAULT__limits_sets", mapping=sets)
         except Exception:
             pass
+
+
+def set_target_db_shard(target_name, db_shard, scope="DEFAULT"):
+    """Install a target on a db_shard by writing its target JSON to db_shard 0,
+    which is where Store.db_shard_for_target looks it up"""
+    Store.instance(db_shard=0).hset(
+        f"{scope}__openc3_targets",
+        target_name,
+        json.dumps({"name": target_name, "folder_name": target_name, "db_shard": db_shard, "scope": scope}),
+    )
+    Store._db_shard_cache = {}
+
+
+def shard_redis(db_shard):
+    """Return the FakeValkey mock_redis built for db_shard"""
+    return Store.instance(db_shard=db_shard).build_redis()
+
+
+def read_topics_from_start(db_shard, topics):
+    """Make the calling thread's reads of topics on db_shard start at the
+    beginning of each stream rather than only seeing messages written after
+    its first read"""
+    offsets = EphemeralStore.instance(db_shard=db_shard).topic_offsets.setdefault(threading.get_native_id(), {})
+    for topic in topics:
+        offsets[topic] = "0-0"
+
+
+def ack_next_message(redis, topic, ack_topic, result=b"SUCCESS", fields=None, timeout=5):
+    """Start a thread which waits for the next message written to topic in the
+    given db_shard fake and acks it on ack_topic in the same fake, like the
+    microservice listening on that topic would. Join the returned thread."""
+    start_len = redis.xlen(topic)
+
+    def respond():
+        start = time.time()
+        while (time.time() - start) < timeout:
+            if redis.xlen(topic) > start_len:
+                msg_id, _ = redis.xrevrange(topic, count=1)[0]
+                redis.xadd(ack_topic, {"id": msg_id, "result": result, **(fields or {})})
+                return
+            time.sleep(0.001)
+
+    thread = threading.Thread(target=respond)
+    thread.start()
+    return thread
 
 
 class XreadTracker:
@@ -152,17 +215,35 @@ def mock_redis(self):
     previous test sees my_instance=None, calls instance(), and recreates
     the singleton using the real valkey.Valkey (causing DNS resolution
     failures in CI).
+
+    Each db_shard gets its own FakeValkey (with its own FakeServer) so a read
+    or write against the wrong shard misses instead of silently hitting the
+    same data. Store and EphemeralStore share the fake for a given shard.
+    Returns the shard 0 fake.
     """
-    redis = fakeredis.FakeValkey()
-    redis.flushall()
-    # Track reads by thread so tests can wait for a microservice run thread to
-    # start reading. Tests that replace redis.xread themselves wrap this
-    # tracker, so it still sees every read.
-    redis.openc3_xread_tracker = XreadTracker(redis.xread)
-    redis.xread = redis.openc3_xread_tracker
+    redis_shards = {}
+    redis_shards_lock = threading.Lock()
+
+    def shard_redis(db_shard):
+        with redis_shards_lock:
+            if db_shard in redis_shards:
+                return redis_shards[db_shard]
+            shard = fakeredis.FakeValkey(server=fakeredis.FakeServer())
+            # Track reads by thread so tests can wait for a microservice run thread to
+            # start reading. Tests that replace redis.xread themselves wrap this
+            # tracker, so it still sees every read.
+            shard.openc3_xread_tracker = XreadTracker(shard.xread)
+            shard.xread = shard.openc3_xread_tracker
+            redis_shards[db_shard] = shard
+            return shard
+
+    redis = shard_redis(0)
     patcher = patch("valkey.Valkey", return_value=redis)
     patcher.start()
     self.addCleanup(patcher.stop)
+    build_patcher = patch.object(Store, "build_redis", lambda store: shard_redis(store.db_shard))
+    build_patcher.start()
+    self.addCleanup(build_patcher.stop)
     EphemeralStore.my_instances = {}
     Store.my_instances = {}
     Store._db_shard_cache = {}

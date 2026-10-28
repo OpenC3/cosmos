@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 import psycopg
 
 from openc3.utilities.questdb_client import QuestDBClient
+from test.test_helper import mock_redis, set_target_db_shard
 
 
 class TestTsdbLookup(unittest.TestCase):
@@ -34,6 +35,21 @@ class TestTsdbLookup(unittest.TestCase):
             QuestDBClient.tsdb_lookup([[None] * 5], start_time="2026-09-13T00:00:00Z"),
             [[None, None]],
         )
+
+    def test_returns_a_list_of_rows_for_placeholders_when_not_flattening(self):
+        self.assertEqual(
+            QuestDBClient.tsdb_lookup([[None] * 5], start_time="2026-09-13T00:00:00Z", flatten=False),
+            [[[None, None]]],
+        )
+
+    def test_passes_flatten_to_a_single_db_shard_lookup(self):
+        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard", return_value=[[[1.0, None]]]) as single:
+            QuestDBClient.tsdb_lookup(
+                [["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None]],
+                start_time="2026-09-13T00:00:00Z",
+                flatten=False,
+            )
+        self.assertFalse(single.call_args.kwargs["flatten"])
 
 
 # Base time for the db_shard tests. Table times are in seconds after it.
@@ -116,7 +132,7 @@ class TestTsdbLookupDbShards(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def lookup(self, items, start, end=None):
+    def lookup(self, items, start, end=None, flatten=True):
         """Items are "TARGET PACKET ITEM", or "TARGET PACKET" for a placeholder"""
         items = [
             [*item.split(), "CONVERTED", None] if len(item.split()) == 3 else [*item.split(), None, None, None]
@@ -124,7 +140,7 @@ class TestTsdbLookupDbShards(unittest.TestCase):
         ]
         with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard", side_effect=fake_single_db_shard) as single:
             result = QuestDBClient.tsdb_lookup(
-                items, start_time=iso(start), end_time=iso(end) if end is not None else None
+                items, start_time=iso(start), end_time=iso(end) if end is not None else None, flatten=flatten
             )
         self.queries = [
             (call.kwargs["db_shard"], [item.packet_name for item in call[0][0]]) for call in single.call_args_list
@@ -200,6 +216,12 @@ class TestTsdbLookupDbShards(unittest.TestCase):
             self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 25, 35), [[3, None], [30, None]]
         )
 
+    def test_keeps_a_single_row_as_a_list_of_rows_when_not_flattening(self):
+        self.assertEqual(
+            self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 25, 35, flatten=False),
+            [[[3, None], [30, None]]],
+        )
+
     def test_fills_an_other_db_shard_with_no_rows_with_nones(self):
         self.assertEqual(
             self.lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 5, 15), [[1, None], [None, None]]
@@ -224,6 +246,30 @@ class TestTsdbLookupDbShards(unittest.TestCase):
         self.assertNotIn((1, ["LATER"]), self.queries)
 
 
+# The db_shard for each item comes from where its target is installed
+class TestTsdbLookupTargetDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        set_target_db_shard("INST", 0)
+        set_target_db_shard("INST2", 1)
+
+    def test_queries_each_item_on_its_target_db_shard(self):
+        items = [
+            ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
+            ["INST2", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
+        ]
+        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard") as single:
+            # Each row ends with its packet time, with INST2 just before INST
+            single.side_effect = lambda items, db_shard, **_kw: {
+                0: [[[1.0, None], [BASE_NS, None]]],
+                1: [[[2.0, None], [BASE_NS - 1, None]]],
+            }[db_shard]
+            result = QuestDBClient.tsdb_lookup(items, start_time="2026-09-13T00:00:00Z", scope="DEFAULT")
+        self.assertEqual(result, [[1.0, None], [2.0, None]])
+        shards = {call.kwargs["db_shard"]: call[0][0] for call in single.call_args_list}
+        self.assertEqual([item.target_name for item in shards[1]], ["INST2"])
+
+
 class TestQueryWithRetry(unittest.TestCase):
     def test_queries_and_reconnects_the_given_db_shard(self):
         cursor = MagicMock()
@@ -239,6 +285,32 @@ class TestQueryWithRetry(unittest.TestCase):
             self.assertEqual(QuestDBClient.query_with_retry("SELECT 1", db_shard=2), [{"A": 1}])
         connection.assert_called_with(db_shard=2)
         disconnect.assert_called_once_with(db_shard=2)
+
+
+class TestTlmPacketsWithTables(unittest.TestCase):
+    def test_returns_the_packets_with_a_table_queried_by_db_shard(self):
+        tables = {0: {"DEFAULT__TLM__INST__HEALTH_STATUS"}, 1: {"DEFAULT__TLM__INST2__ADCS"}}
+        packets = [("INST", "HEALTH_STATUS"), ("INST", "PARAMS"), ("INST2", "ADCS")]
+        with (
+            patch.object(QuestDBClient, "db_shard_for_target", side_effect=lambda t, scope: 1 if t == "INST2" else 0),
+            patch.object(QuestDBClient, "table_names", side_effect=lambda db_shard: tables[db_shard]) as table_names,
+        ):
+            result = QuestDBClient.tlm_packets_with_tables(packets)
+        self.assertEqual(result, {("INST", "HEALTH_STATUS"), ("INST2", "ADCS")})
+        self.assertEqual(table_names.call_count, 2)
+
+    def test_assumes_all_the_packets_have_a_table_if_the_table_names_cannot_be_fetched(self):
+        packets = [("INST", "HEALTH_STATUS"), ("INST", "PARAMS")]
+        with (
+            patch.object(QuestDBClient, "db_shard_for_target", return_value=0),
+            patch.object(QuestDBClient, "table_names", return_value=None),
+        ):
+            self.assertEqual(QuestDBClient.tlm_packets_with_tables(packets), set(packets))
+
+    def test_does_not_query_without_packets(self):
+        with patch.object(QuestDBClient, "table_names") as table_names:
+            self.assertEqual(QuestDBClient.tlm_packets_with_tables([]), set())
+        table_names.assert_not_called()
 
 
 class TestTableNames(unittest.TestCase):

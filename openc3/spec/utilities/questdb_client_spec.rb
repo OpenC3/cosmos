@@ -29,6 +29,16 @@ module OpenC3
         expect(QuestDBClient.tsdb_lookup([Array.new(5)], start_time: "2026-09-13T00:00:00Z")).to eq([[nil, nil]])
       end
 
+      it "returns a list of rows for placeholders when not flattening" do
+        expect(QuestDBClient.tsdb_lookup([Array.new(5)], start_time: "2026-09-13T00:00:00Z", flatten: false)).to eq([[[nil, nil]]])
+      end
+
+      it "passes flatten to a single db_shard lookup" do
+        allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard).and_return([[[1.0, nil]]])
+        QuestDBClient.tsdb_lookup([["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil]], start_time: "2026-09-13T00:00:00Z", flatten: false)
+        expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with(anything, hash_including(flatten: false))
+      end
+
       context "with items across db_shards" do
         # Base time for the db_shard tests. Table times are in seconds after it.
         let(:base_ns) { 1_789_257_600_000_000_000 } # 2026-09-13T00:00:00Z
@@ -95,12 +105,12 @@ module OpenC3
         end
 
         # Items are "TARGET PACKET ITEM", or "TARGET PACKET" for a placeholder
-        def lookup(items, start, finish = nil)
+        def lookup(items, start, finish = nil, flatten: true)
           items = items.map do |item|
             parts = item.split
             parts.length == 3 ? parts + ["CONVERTED", nil] : parts + [nil, nil, nil]
           end
-          QuestDBClient.tsdb_lookup(items, start_time: iso(start), end_time: finish && iso(finish))
+          QuestDBClient.tsdb_lookup(items, start_time: iso(start), end_time: finish && iso(finish), flatten: flatten)
         end
 
         it "uses the single db_shard fast path" do
@@ -157,6 +167,10 @@ module OpenC3
           expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 25, 35)).to eq([[3, nil], [30, nil]])
         end
 
+        it "keeps a single row as a list of rows when not flattening" do
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 25, 35, flatten: false)).to eq([[[3, nil], [30, nil]]])
+        end
+
         it "fills another db_shard with no rows with nils" do
           expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 5, 15)).to eq([[1, nil], [nil, nil]])
         end
@@ -175,6 +189,28 @@ module OpenC3
           expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1", "INST2 LATER"], 25, 35)).to eq([[3, nil], [30, nil], [nil, nil]])
           expect(@queries).not_to include([1, ["LATER"]])
         end
+      end
+    end
+
+    describe "tlm_packets_with_tables" do
+      it "returns the packets with a table queried by db_shard" do
+        allow(QuestDBClient).to receive(:db_shard_for_target) { |target_name, **| target_name == "INST2" ? 1 : 0 }
+        tables = { 0 => Set["DEFAULT__TLM__INST__HEALTH_STATUS"], 1 => Set["DEFAULT__TLM__INST2__ADCS"] }
+        expect(QuestDBClient).to receive(:table_names).twice { |db_shard:| tables[db_shard] }
+        packets = [["INST", "HEALTH_STATUS"], ["INST", "PARAMS"], ["INST2", "ADCS"]]
+        expect(QuestDBClient.tlm_packets_with_tables(packets)).to eql(Set[["INST", "HEALTH_STATUS"], ["INST2", "ADCS"]])
+      end
+
+      it "assumes all the packets have a table if the table names can't be fetched" do
+        allow(QuestDBClient).to receive(:db_shard_for_target).and_return(0)
+        allow(QuestDBClient).to receive(:table_names).and_return(nil)
+        packets = [["INST", "HEALTH_STATUS"], ["INST", "PARAMS"]]
+        expect(QuestDBClient.tlm_packets_with_tables(packets)).to eql(Set.new(packets))
+      end
+
+      it "doesn't query without packets" do
+        expect(QuestDBClient).not_to receive(:table_names)
+        expect(QuestDBClient.tlm_packets_with_tables([])).to eql(Set.new)
       end
     end
 
@@ -302,6 +338,35 @@ module OpenC3
         selects, has_items = QuestDBClient.build_packet_reduced_selects(nil, :RAW)
         expect(has_items).to be false
         expect(selects).to eq([QuestDBClient::TIMESTAMP_SELECT])
+      end
+    end
+
+    describe "multiple db_shards" do
+      before(:each) do
+        mock_redis()
+        # INST lives on db_shard 1 while SYSTEM stays on db_shard 0
+        TargetModel.new(name: "INST", scope: "DEFAULT", db_shard: 1).create
+        TargetModel.new(name: "SYSTEM", scope: "DEFAULT", db_shard: 0).create
+      end
+
+      it "looks up the target's db_shard" do
+        expect(QuestDBClient.db_shard_for_target("INST", scope: "DEFAULT")).to eql 1
+        expect(QuestDBClient.db_shard_for_target("SYSTEM", scope: "DEFAULT")).to eql 0
+        expect(QuestDBClient.db_shard_for_target(nil, scope: "DEFAULT")).to eql 0
+      end
+
+      it "queries each item on its target's db_shard" do
+        items = [
+          ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil],
+          ["SYSTEM", "META", "OPERATOR_NAME", "CONVERTED", nil],
+        ]
+        # Each row ends with its packet time, with SYSTEM just before INST
+        allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard) do |_items, db_shard:, **|
+          db_shard == 1 ? [[[1.0, nil], [1_000, nil]]] : [[["JASON", nil], [999, nil]]]
+        end
+        expect(QuestDBClient.tsdb_lookup(items, start_time: "2026-09-13T00:00:00Z")).to eq([[1.0, nil], ["JASON", nil]])
+        expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[0]], hash_including(db_shard: 1))
+        expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[1]], hash_including(db_shard: 0))
       end
     end
   end

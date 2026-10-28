@@ -80,6 +80,7 @@ module OpenC3
 
     # Write to the target's db_shard where its interface reads commands
     def self.route_command(packet, target_names, scope:)
+      # Write to the target's db_shard where its interface reads commands
       if packet.identified?
         topic = "{#{scope}__CMD}TARGET__#{packet.target_name}"
         db_shard = Store.db_shard_for_target(packet.target_name, scope: scope)

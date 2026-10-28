@@ -805,7 +805,33 @@ class QuestDBClient:
         return Store.db_shard_for_target(target_name, scope=scope)
 
     @classmethod
-    def tsdb_lookup(cls, items, start_time, end_time=None, scope="DEFAULT"):
+    def tlm_packets_with_tables(cls, packets, scope="DEFAULT"):
+        """Return the telemetry packets which have a table. The TSDB microservice only
+        creates tables for its initial packets so a packet added later has no table
+        until it's received. If the table names can't be fetched assume they all exist.
+
+        Args:
+            packets: Iterable of (target_name, packet_name) pairs
+            scope: Scope name
+
+        Returns:
+            Set of the (target_name, packet_name) pairs which have a table
+        """
+        by_db_shard = {}
+        for target_name, packet_name in packets:
+            db_shard = cls.db_shard_for_target(target_name, scope=scope)
+            by_db_shard.setdefault(db_shard, []).append((target_name, packet_name))
+        existing = set()
+        for db_shard, shard_packets in by_db_shard.items():
+            names = cls.table_names(db_shard=db_shard)
+            for target_name, packet_name in shard_packets:
+                table_name, _ = cls.sanitize_table_name(target_name, packet_name, scope=scope)
+                if names is None or table_name.upper() in names:
+                    existing.add((target_name, packet_name))
+        return existing
+
+    @classmethod
+    def tsdb_lookup(cls, items, start_time, end_time=None, scope="DEFAULT", flatten=True):
         """Query historical telemetry data from QuestDB for a list of items.
         Builds the SQL query, executes it, and decodes all results.
         Supports cross-db_shard queries by grouping items by db_shard, executing
@@ -817,17 +843,20 @@ class QuestDBClient:
             start_time: Start timestamp for the query
             end_time: End timestamp, or None for "latest single row"
             scope: Scope name
+            flatten: Whether a single row result is returned as a flat array
 
         Returns:
             Array of [value, limits_state] pairs per row, or {} if no results.
-            Single-row results return a flat array; multi-row results return array of arrays.
+            Single-row results return a flat array (unless flatten is False); multi-row results
+            return array of arrays.
         """
         items = [TlmItem(*item) for item in items]
 
         # Every item is a placeholder for an item which doesn't exist, so there's
         # nothing to query. Return a single row of None values, one per item.
         if all(item.item_name is None for item in items):
-            return [[None, None] for _ in items]
+            row = [[None, None] for _ in items]
+            return row if flatten else [row]
 
         # Group items by db_shard number while preserving their original positions
         db_shard_groups = {}  # db_shard => {"positions": [], "items": []}
@@ -841,14 +870,21 @@ class QuestDBClient:
         if len(db_shard_groups) == 1:
             db_shard, group = next(iter(db_shard_groups.items()))
             return cls._tsdb_lookup_single_db_shard(
-                group["items"], start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard
+                group["items"],
+                start_time=start_time,
+                end_time=end_time,
+                scope=scope,
+                db_shard=db_shard,
+                flatten=flatten,
             )
 
         # Cross-db_shard: a single query can't ASOF JOIN tables on different QuestDBs
-        return cls._tsdb_lookup_db_shards(items, db_shard_groups, start_time=start_time, end_time=end_time, scope=scope)
+        return cls._tsdb_lookup_db_shards(
+            items, db_shard_groups, start_time=start_time, end_time=end_time, scope=scope, flatten=flatten
+        )
 
     @classmethod
-    def _tsdb_lookup_db_shards(cls, items, db_shard_groups, start_time, end_time, scope):
+    def _tsdb_lookup_db_shards(cls, items, db_shard_groups, start_time, end_time, scope, flatten=True):
         """Cross-db_shard lookup which matches the rows of a single db_shard ASOF JOIN.
         The packet of the first item drives the rows (like T0 in a single db_shard query) so
         its db_shard is queried as usual. Every packet on another db_shard is queried on its
@@ -905,7 +941,7 @@ class QuestDBClient:
                             merged[row_num][orig_pos] = rows[index][packet_idx]
 
         # Match the single db_shard behavior of returning a flat array for a single row
-        if len(merged) == 1:
+        if flatten and len(merged) == 1:
             return merged[0]
         return merged
 
@@ -960,6 +996,14 @@ class QuestDBClient:
         calculated_items = {}
         needed_timestamps = {}
         current_position = 0
+        # Columns with the same name in different tables come back renamed by QuestDB
+        # (e.g. VALUE and VALUE_2) so alias every column and map it back when decoding
+        aliases = {}
+
+        def add_column(col_name):
+            alias_name = f"__col{len(aliases)}"
+            aliases[alias_name] = col_name
+            names.append(f'"{col_name}" as {alias_name}')
 
         for item in items:
             target_name, packet_name, item_name, value_type, limits = item
@@ -974,7 +1018,7 @@ class QuestDBClient:
             index = list(tables.keys()).index(table_name)
 
             if item_name in cls.STORED_TIMESTAMP_ITEMS:
-                names.append(f'"T{index}.{item_name}"')
+                add_column(f"T{index}.{item_name}")
                 current_position += 1
                 continue
 
@@ -1002,12 +1046,12 @@ class QuestDBClient:
 
             suffix = cls.column_suffix_for_value_type(value_type)
             col_name = f"T{index}.{safe_item_name}{suffix}"
-            names.append(f'"{col_name}"')
+            add_column(col_name)
             item_types[col_name] = cls.resolve_item_type(item_def, value_type)
 
             current_position += 1
             if limits:
-                names.append(f'"T{index}.{safe_item_name}__L"')
+                add_column(f"T{index}.{safe_item_name}__L")
 
         # Every item in this db_shard is a placeholder so there's no table to query.
         # Return no results and let tsdb_lookup fill these positions with [None, None]
@@ -1049,7 +1093,8 @@ class QuestDBClient:
             data.append([])
             col_index = 0
             row_timestamps = {}
-            for col_name, col_value in row.items():
+            for result_name, col_value in row.items():
+                col_name = aliases.get(result_name, result_name)
                 if "__L" in col_name:
                     if col_index > 0:
                         data[row_index][col_index - 1] = [

@@ -280,9 +280,13 @@ class Microservice:
 
     # Returns if the command was handled
     def microservice_cmd(self, topic, msg_id, msg_hash, _):
-        command = msg_hash.get("command")
-        if command == "ADD_TOPICS" and msg_hash.get("topics"):
-            topics = json.loads(msg_hash["topics"])
+        # Messages from Topic.read_topics have bytes keys and values
+        command = msg_hash.get(b"command", msg_hash.get("command"))
+        if isinstance(command, bytes):
+            command = command.decode()
+        topics = msg_hash.get(b"topics", msg_hash.get("topics"))
+        if command == "ADD_TOPICS" and topics:
+            topics = json.loads(topics)
             if topics and isinstance(topics, list):
                 for new_topic in topics:
                     if new_topic not in self.topics:
