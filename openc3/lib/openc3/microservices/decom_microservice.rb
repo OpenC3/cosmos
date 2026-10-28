@@ -99,6 +99,10 @@ module OpenC3
       @limits_event_topic = "#{@scope}__openc3_limits_events"
       @topics << @limits_event_topic
       Topic.update_topic_offsets(@topics, db_shard: @db_shard)
+      # Last limits event read, used to detect events trimmed before they were read.
+      # Read from the stream rather than the thread's cached offsets. The run thread
+      # starts reading at or after this point, so it can only cause an extra resync.
+      @limits_event_offset = Topic.get_last_offset(@limits_event_topic, db_shard: @db_shard)
       # Initialize before assigning limits_change_callback - sync_system below
       # can fire the callback synchronously for any persisted-disabled items.
       @limits_response_queue = Queue.new
@@ -121,12 +125,19 @@ module OpenC3
         break if @cancel_thread
 
         begin
+          limits_events_checked = false
           OpenC3.in_span("read_topics") do
             Topic.read_topics(@topics, db_shard: @db_shard) do |topic, msg_id, msg_hash, redis|
               break if @cancel_thread
               if topic == @microservice_topic
                 microservice_cmd(topic, msg_id, msg_hash, redis)
               elsif topic == @limits_event_topic
+                # Any gap is before the first event in a read so only check once per read
+                unless limits_events_checked
+                  resync_if_limits_events_trimmed()
+                  limits_events_checked = true
+                end
+                @limits_event_offset = msg_id
                 event = JSON.parse(msg_hash['event'], allow_nan: true, create_additions: true)
                 LimitsEventTopic.process_event(event, scope: @scope)
               elsif topic =~ /__DECOMINTERFACE/
@@ -159,6 +170,17 @@ module OpenC3
 
       @limits_response_thread.stop()
       @limits_response_thread = nil
+    end
+
+    # Limits events are only read between batches of packets, so a decom microservice
+    # working through a backlog can fall far enough behind that a flood of LIMITS_CHANGE
+    # events trims control events (enable, settings, etc) before it reads them.
+    # Recover by reloading all limits state from the store, which is always current.
+    def resync_if_limits_events_trimmed
+      if LimitsEventTopic.events_trimmed?(@limits_event_offset, scope: @scope, db_shard: @db_shard)
+        @logger.warn("#{@name}: Limits events were trimmed before they could be read, resyncing limits")
+        LimitsEventTopic.resync_system(scope: @scope)
+      end
     end
 
     def decom_packet(topic, msg_id, msg_hash, _redis)

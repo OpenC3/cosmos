@@ -14,6 +14,7 @@ import unittest
 from unittest.mock import *
 
 from openc3.topics.limits_event_topic import LimitsEventTopic
+from openc3.topics.topic import Topic
 from test.test_helper import *
 
 
@@ -376,6 +377,42 @@ class TestLimitsEventTopic(unittest.TestCase):
         LimitsEventTopic.delete("TGT2", scope="DEFAULT")
         out = LimitsEventTopic.out_of_limits(scope="DEFAULT")
         self.assertEqual(len(out), 0)
+
+    def limits_change_event(self, i):
+        return {
+            "type": "LIMITS_CHANGE",
+            "target_name": "TGT1",
+            "packet_name": "PKT1",
+            "item_name": f"ITEM{i}",
+            "old_limits_state": "GREEN",
+            "new_limits_state": "RED_HIGH",
+            "message": "TEST",
+        }
+
+    def test_events_trimmed_returns_false_when_no_events_after_the_offset_were_trimmed(self):
+        LimitsEventTopic.write(self.limits_change_event(0), scope="DEFAULT")
+        offset = Topic.get_last_offset("DEFAULT__openc3_limits_events")
+        LimitsEventTopic.write(self.limits_change_event(1), scope="DEFAULT")
+        self.assertFalse(LimitsEventTopic.events_trimmed(offset, "DEFAULT"))
+
+    def test_events_trimmed_returns_true_when_events_after_the_offset_were_trimmed(self):
+        LimitsEventTopic.write(self.limits_change_event(0), scope="DEFAULT")
+        offset = Topic.get_last_offset("DEFAULT__openc3_limits_events")
+        # More LIMITS_CHANGE events than the ~1000 entries the limits event stream keeps
+        for i in range(1500):
+            LimitsEventTopic.write(self.limits_change_event(i), scope="DEFAULT")
+        self.assertTrue(LimitsEventTopic.events_trimmed(offset, "DEFAULT"))
+
+    def test_events_trimmed_returns_false_when_the_stream_was_empty_or_there_is_no_offset(self):
+        for i in range(1500):
+            LimitsEventTopic.write(self.limits_change_event(i), scope="DEFAULT")
+        self.assertFalse(LimitsEventTopic.events_trimmed("0-0", "DEFAULT"))
+        self.assertFalse(LimitsEventTopic.events_trimmed(None, "DEFAULT"))
+
+    def test_resync_system_reloads_item_settings_from_the_store(self):
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", json.dumps({"enabled": False}))
+        LimitsEventTopic.resync_system("DEFAULT")
+        self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
     def test_sync_system_thread_body_applies_a_limits_group_enable_state_event(self):
         LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")  # Set the stream offset

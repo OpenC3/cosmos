@@ -253,6 +253,26 @@ module OpenC3
       Store.hdel("#{scope}__limits_sets", set_name)
     end
 
+    # Returns true if limits events written after previous_id were trimmed from the
+    # stream before they were read. The stream keeps ~1000 entries so a flood of
+    # LIMITS_CHANGE events can trim events a slow reader hasn't processed yet.
+    # Stream IDs always increase, so if the oldest remaining entry is newer than the
+    # last entry read, the entries in between are gone. This can also report a gap
+    # when only previous_id itself was trimmed, which just causes an extra resync.
+    def self.events_trimmed?(previous_id, scope:, db_shard: 0)
+      # 0-0 means the stream was empty when the reader started
+      return false if previous_id.nil? or previous_id == '0-0'
+      oldest_id, _ = Topic.get_oldest_message("#{scope}__openc3_limits_events", db_shard: db_shard)
+      return false unless oldest_id
+      (oldest_id.split('-').map(&:to_i) <=> previous_id.split('-').map(&:to_i)) > 0
+    end
+
+    # Reload all limits state from the store, used to recover from missed limits events
+    def self.resync_system(scope:)
+      System.limits_set = current_set(scope: scope)
+      sync_system(scope: scope)
+    end
+
     # Update the local System based on overall state
     def self.sync_system(scope:)
       all_limits_settings = Store.hgetall("#{scope}__current_limits_settings")

@@ -263,6 +263,29 @@ class LimitsEventTopic(Topic):
             Store.hset(f"{scope}__current_limits_settings", mapping=updates)
         Store.hdel(f"{scope}__limits_sets", set_name)
 
+    # Returns True if limits events written after previous_id were trimmed from the
+    # stream before they were read. The stream keeps ~1000 entries so a flood of
+    # LIMITS_CHANGE events can trim events a slow reader hasn't processed yet.
+    # Stream IDs always increase, so if the oldest remaining entry is newer than the
+    # last entry read, the entries in between are gone. This can also report a gap
+    # when only previous_id itself was trimmed, which just causes an extra resync.
+    @classmethod
+    def events_trimmed(cls, previous_id, scope, db_shard=0):
+        # 0-0 means the stream was empty when the reader started
+        if previous_id is None or previous_id == "0-0":
+            return False
+        oldest = Topic.get_oldest_message(f"{scope}__openc3_limits_events", db_shard=db_shard)
+        if not oldest:
+            return False
+        oldest_id = oldest[0].decode() if isinstance(oldest[0], bytes) else oldest[0]
+        return [int(x) for x in oldest_id.split("-")] > [int(x) for x in previous_id.split("-")]
+
+    # Reload all limits state from the store, used to recover from missed limits events.
+    # System.limits_set() always queries Redis so only the item settings need syncing.
+    @classmethod
+    def resync_system(cls, scope):
+        cls.sync_system(scope)
+
     # Update the local System based on overall state
     @classmethod
     def sync_system(cls, scope):

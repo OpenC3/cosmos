@@ -268,6 +268,45 @@ module OpenC3
       end
     end
 
+    describe "events_trimmed?" do
+      def limits_change_event(i)
+        { type: :LIMITS_CHANGE, target_name: "TGT1", packet_name: "PKT1", item_name: "ITEM#{i}",
+          old_limits_state: "GREEN", new_limits_state: "RED_HIGH", time_nsec: Time.now.to_nsec_from_epoch, message: "TEST" }
+      end
+
+      it "returns false when no events after the offset were trimmed" do
+        LimitsEventTopic.write(limits_change_event(0), scope: "DEFAULT")
+        offset = Topic.get_last_offset("DEFAULT__openc3_limits_events")
+        LimitsEventTopic.write(limits_change_event(1), scope: "DEFAULT")
+        expect(LimitsEventTopic.events_trimmed?(offset, scope: "DEFAULT")).to be false
+      end
+
+      it "returns true when events after the offset were trimmed" do
+        LimitsEventTopic.write(limits_change_event(0), scope: "DEFAULT")
+        offset = Topic.get_last_offset("DEFAULT__openc3_limits_events")
+        # More LIMITS_CHANGE events than the ~1000 entries the limits event stream keeps
+        1500.times { |i| LimitsEventTopic.write(limits_change_event(i), scope: "DEFAULT") }
+        expect(LimitsEventTopic.events_trimmed?(offset, scope: "DEFAULT")).to be true
+      end
+
+      it "returns false when the stream was empty or there is no offset" do
+        1500.times { |i| LimitsEventTopic.write(limits_change_event(i), scope: "DEFAULT") }
+        expect(LimitsEventTopic.events_trimmed?("0-0", scope: "DEFAULT")).to be false
+        expect(LimitsEventTopic.events_trimmed?(nil, scope: "DEFAULT")).to be false
+      end
+    end
+
+    describe "resync_system" do
+      it "reloads the limits set and item settings from the store" do
+        Store.hset("DEFAULT__limits_sets", "DEFAULT", "true")
+        System.limits_set = :TVAC
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", JSON.generate({ 'enabled' => false }))
+        LimitsEventTopic.resync_system(scope: "DEFAULT")
+        expect(System.limits_set).to eql :DEFAULT
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+      end
+    end
+
     describe "limits group events" do
       it "sync_system_thread_body applies a LIMITS_GROUP_ENABLE_STATE event" do
         LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT") # Set the stream offset
