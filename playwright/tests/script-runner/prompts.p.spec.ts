@@ -456,6 +456,21 @@ async function openFile(page: Page, utils: Utilities, filename: string) {
   }
 }
 
+// Open the file chooser, select files and click Ok.
+// Note that Promise.all prevents a race condition
+// between clicking and waiting for the file chooser.
+async function chooseFiles(page: Page, utils: Utilities, files: string | string[]) {
+  const [fileChooser] = await Promise.all([
+    // It is important to call waitForEvent before click to set up waiting.
+    page.waitForEvent('filechooser'),
+    // Open the file chooser
+    page.getByLabel('Choose File').first().click(),
+  ])
+  await fileChooser.setFiles(files)
+  await page.locator('.v-dialog >> button:has-text("Ok")').click()
+  await utils.sleep(500)
+}
+
 async function runScript(page: Page, utils: Utilities, filename: string) {
   await openFile(page, utils, filename)
   await page.locator('[data-test=start-button]').click()
@@ -468,31 +483,14 @@ async function runScript(page: Page, utils: Utilities, filename: string) {
   )
   await utils.sleep(500)
 
-  // Note that Promise.all prevents a race condition
-  // between clicking and waiting for the file chooser.
-  const [fileChooser] = await Promise.all([
-    // It is important to call waitForEvent before click to set up waiting.
-    page.waitForEvent('filechooser'),
-    // Open the file chooser
-    page.getByLabel('Choose File').first().click(),
-  ])
-  await fileChooser.setFiles('.prettierrc.js')
-  await page.locator('.v-dialog >> button:has-text("Ok")').click()
-  await utils.sleep(500)
+  await chooseFiles(page, utils, '.prettierrc.js')
 
   await expect(page.locator('.v-dialog')).toBeVisible()
   await expect(page.locator('.v-dialog')).toContainText('Open multiple files')
-  // Note that Promise.all prevents a race condition
-  // between clicking and waiting for the file chooser.
-  const [fileChooser2] = await Promise.all([
-    // It is important to call waitForEvent before click to set up waiting.
-    page.waitForEvent('filechooser'),
-    // Open the file chooser
-    page.getByLabel('Choose File').first().click(),
+  await chooseFiles(page, utils, [
+    'pnpm-workspace.yaml',
+    'reset_storage_state.sh',
   ])
-  await fileChooser2.setFiles(['pnpm-workspace.yaml', 'reset_storage_state.sh'])
-  await page.locator('.v-dialog >> button:has-text("Ok")').click()
-  await utils.sleep(500)
 
   await expect(page.locator('.v-dialog')).toBeVisible()
   await expect(page.locator('.v-dialog')).toContainText(
