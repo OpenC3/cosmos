@@ -179,10 +179,7 @@ try:
                                             f"Multiple input: {running_script.user_input}",
                                         )
                                     elif parsed_cmd["method"] == "open_bucket_dialog":
-                                        answer = parsed_cmd["answer"]
-                                        if isinstance(answer, str):
-                                            answer = json.loads(answer)
-                                        running_script.user_input = answer
+                                        running_script.user_input = parsed_cmd["answer"]
                                         run_script_log(
                                             script_id,
                                             f"Bucket file: {running_script.user_input}",
