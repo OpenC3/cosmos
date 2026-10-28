@@ -436,7 +436,7 @@ case $1 in
     ;;
   hostsetup )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
-      echo "Usage: $0 hostsetup REPO NAMESPACE TAG"
+      echo "Usage: $0 hostsetup REPO NAMESPACE TAG [SUFFIX]"
       echo ""
       echo "Configure Docker host for Redis optimal performance."
       echo ""
@@ -448,6 +448,7 @@ case $1 in
       echo "  REPO        Docker repository (e.g., docker.io)"
       echo "  NAMESPACE   Image namespace (e.g., openc3inc)"
       echo "  TAG         Image tag (e.g., latest)"
+      echo "  SUFFIX      Optional operator image suffix (e.g., -ubi)"
       echo ""
       echo "Example:"
       echo "  $0 hostsetup docker.io openc3inc latest"
@@ -456,16 +457,17 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    if [[ "$#" -ne 4 ]]; then
-      echo "Usage: hostsetup <REPO> <NAMESPACE> <TAG>" >&2
+    if [[ "$#" -lt 4 ]] || [[ "$#" -gt 5 ]]; then
+      echo "Usage: hostsetup <REPO> <NAMESPACE> <TAG> [SUFFIX]" >&2
       echo "e.g. hostsetup docker.io openc3inc latest" >&2
       exit 1
     fi
     repo=$2
     namespace=$3
     tag=$4
-    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
-    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag"
+    suffix=$5
+    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator$suffix:$tag nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
+    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator$suffix:$tag nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag"
     # QuestDB (openc3-tsdb) exhausts the default 65530 map count on large
     # databases. OPENC3_MAX_MAP_COUNT is defined once in .env (openc3.sh sources
     # it before dispatching here); no default is repeated in this script so the
@@ -474,7 +476,7 @@ case $1 in
       echo "OPENC3_MAX_MAP_COUNT is not set. Define it in .env (or export it) and retry." >&2
       exit 1
     fi
-    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=$OPENC3_MAX_MAP_COUNT"
+    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator$suffix:$tag nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=$OPENC3_MAX_MAP_COUNT"
     ;;
   hostenter )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then

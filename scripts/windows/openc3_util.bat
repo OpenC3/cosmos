@@ -218,8 +218,8 @@ GOTO :EOF
     set tag=%~4
 
     echo on
-    docker run --rm --privileged --pid=host --entrypoint='' --user root !repo!/!namespace!/openc3-operator:!tag! nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled" || exit /b
-    docker run --rm --privileged --pid=host --entrypoint='' --user root !repo!/!namespace!/openc3-operator:!tag! nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag" || exit /b
+    docker run --rm --privileged --pid=host --entrypoint="" --user root !repo!/!namespace!/openc3-operator:!tag! nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled" || exit /b
+    docker run --rm --privileged --pid=host --entrypoint="" --user root !repo!/!namespace!/openc3-operator:!tag! nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag" || exit /b
     REM OPENC3_MAX_MAP_COUNT is defined once in .env and resolved by openc3.bat
     REM before this script is called. No default is repeated here so the two can
     REM never disagree.
@@ -227,7 +227,7 @@ GOTO :EOF
       @echo "OPENC3_MAX_MAP_COUNT is not set. Define it in .env and retry." 1>&2
       exit /b 1
     )
-    docker run --rm --privileged --pid=host --entrypoint='' --user root !repo!/!namespace!/openc3-operator:!tag! nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=!OPENC3_MAX_MAP_COUNT!" || exit /b
+    docker run --rm --privileged --pid=host --entrypoint="" --user root !repo!/!namespace!/openc3-operator:!tag! nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=!OPENC3_MAX_MAP_COUNT!" || exit /b
     echo off
   ) else (
     @echo "Usage: hostsetup <REPO> <NAMESPACE> <TAG>" 1>&2
