@@ -12,7 +12,9 @@
 # All Rights Reserved
 */
 
-import { test, expect } from '../fixture'
+import type { Page } from '@playwright/test'
+import type { Utilities } from '../../utilities'
+import { expect, test } from '../fixture'
 
 test.use({
   toolPath: '/tools/scriptrunner',
@@ -433,7 +435,7 @@ ${L.print('value')}`)
   })
 }
 
-async function openFile(page, utils, filename) {
+async function openFile(page: Page, utils: Utilities, filename: string) {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
   await utils.sleep(500) // Allow background data to fetch
@@ -454,7 +456,7 @@ async function openFile(page, utils, filename) {
   }
 }
 
-async function runScript(page, utils, filename) {
+async function runScript(page: Page, utils: Utilities, filename: string) {
   await openFile(page, utils, filename)
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('.v-dialog')).toBeVisible({
