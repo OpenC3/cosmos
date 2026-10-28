@@ -100,6 +100,7 @@ def wait_for_rows(db_shard, table_name, count, timeout=5.0):
             if query(db_shard, f'SELECT count() FROM "{table_name}"')[0][0] >= count:
                 return
         except psycopg.Error:
+            # The table may not exist yet because the ingest hasn't committed so keep polling
             pass
         time.sleep(0.1)
     raise TimeoutError(f"{table_name} on db_shard {db_shard} didn't get {count} rows")
