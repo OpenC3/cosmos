@@ -1,52 +1,48 @@
 /* Copyright 2026 OpenC3, Inc. All Rights Reserved. See LICENSE.md. */
 
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+import { onMounted, onBeforeUnmount, shallowRef } from 'vue'
 import { buildFlowMetrics, flowHealth } from './flowMetrics'
 
+// Services publish metrics about every five seconds
+const REFRESH_MS = 5000
+
 export function useFlowMetrics(api) {
-  const metrics = ref(null)
-  const unavailable = ref(false)
-  const now = ref(Date.now())
+  // Rebuilt only when a request finishes, so nodes re-render at most once per
+  // refresh. Ages and staleness are as of that request.
+  const flows = shallowRef(buildFlowMetrics(null))
+  // Shared by every node without metrics so its prop only changes per refresh
+  const noMetrics = shallowRef(flowHealth())
+  let metrics = null
   let active = false
   let timer
   let pending = false
-  let lastRequest = -Infinity
-  const flows = computed(() =>
-    buildFlowMetrics(metrics.value, unavailable.value, now.value),
-  )
 
   async function update() {
-    now.value = Date.now()
-    if (pending || now.value - lastRequest < 5000) return
+    if (pending) return
     pending = true
-    lastRequest = now.value
+    let failed = false
     try {
-      const result = await api.get_metrics(true)
-      if (active) {
-        metrics.value = result
-        unavailable.value = false
-      }
+      metrics = await api.get_metrics(true)
     } catch (error) {
-      if (active) {
-        unavailable.value = true
-        console.error(error)
-      }
+      failed = true
+      console.error(error)
     } finally {
       pending = false
     }
+    if (!active) return
+    flows.value = buildFlowMetrics(metrics, failed)
+    noMetrics.value = flowHealth([], failed, flows.value.lag)
   }
 
   onMounted(() => {
     active = true
     void update()
-    // Refresh ages between metric reports without adding API requests.
-    timer = setInterval(update, 1000)
+    timer = setInterval(update, REFRESH_MS)
   })
   onBeforeUnmount(() => {
     active = false
     clearInterval(timer)
   })
 
-  return (kind, name) =>
-    flows.value[kind][name] || flowHealth([], unavailable.value)
+  return (kind, name) => flows.value[kind][name] || noMetrics.value
 }

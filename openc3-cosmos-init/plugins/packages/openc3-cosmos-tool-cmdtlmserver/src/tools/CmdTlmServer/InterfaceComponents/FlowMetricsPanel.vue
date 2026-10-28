@@ -20,9 +20,11 @@
     </v-alert>
     <p class="text-body-2 mb-3">
       Latest reported measurements; services publish about every 5 seconds.
-      Delay and duration warnings start at {{ delayWarning }} s (red at
-      {{ delayCritical }} s). Buffered input warnings start at 1 MiB (red at 10
-      MiB). Reports older than {{ staleSeconds }} seconds are stale. Idle
+      Queue delay warnings start at {{ health.lag.warning }} s (red at
+      {{ health.lag.critical }} s), matching the server's falling behind
+      notifications. Duration warnings start at {{ durationWarning }} s (red at
+      {{ durationCritical }} s). Buffered input warnings start at 1 MiB (red at
+      10 MiB). Reports older than {{ staleSeconds }} seconds are stale. Idle
       services retain their last measurement. Totals reset on restart.
     </p>
     <v-data-table
@@ -61,14 +63,14 @@
 
 <script setup>
 import {
-  DELAY_WARNING_SECONDS,
-  DELAY_CRITICAL_SECONDS,
+  DURATION_WARNING_SECONDS,
+  DURATION_CRITICAL_SECONDS,
   STALE_SECONDS,
 } from './flowMetrics'
 
 defineProps({ health: { type: Object, required: true } })
-const delayWarning = DELAY_WARNING_SECONDS
-const delayCritical = DELAY_CRITICAL_SECONDS
+const durationWarning = DURATION_WARNING_SECONDS
+const durationCritical = DURATION_CRITICAL_SECONDS
 const staleSeconds = STALE_SECONDS
 const headers = [
   { title: 'Service', key: 'service' },

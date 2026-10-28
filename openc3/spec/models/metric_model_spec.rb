@@ -90,6 +90,24 @@ module OpenC3
         expect(MetricModel.get(name: 'foo', scope: 'scope')['values']['num_threads']['value']).to eql(9)
       end
 
+      it "all_self_reported keeps the microservice's own updated_at" do
+        MetricModel.set({ 'name' => 'foo', 'values' => { 'decom_total' => { 'value' => 42 } } },
+                        scope: 'scope', queued: false)
+        self_updated_at = MetricModel.all(scope: 'scope')['foo']['updated_at']
+        sleep(0.01)
+        # The operator keeps reporting while the microservice has gone quiet
+        MetricModel.set_process({ 'name' => 'foo', 'values' => { 'average_cpu_utilization' => { 'value' => 0.25 } } },
+                                scope: 'scope', queued: false)
+        MetricModel.set_process({ 'name' => 'DEFAULT__USER__CFDP', 'values' => { 'average_cpu_utilization' => { 'value' => 0.1 } } },
+                                scope: 'scope', queued: false)
+
+        expect(MetricModel.all(scope: 'scope')['foo']['updated_at']).to be > self_updated_at
+        reported = MetricModel.all_self_reported(scope: 'scope')
+        expect(reported['foo']['updated_at']).to eql(self_updated_at)
+        expect(reported['foo']['values']).not_to have_key('average_cpu_utilization')
+        expect(reported).not_to have_key('DEFAULT__USER__CFDP')
+      end
+
       it "destroys both rows" do
         MetricModel.set({ 'name' => 'foo', 'values' => { 'decom_total' => { 'value' => 42 } } },
                         scope: 'scope', queued: false)

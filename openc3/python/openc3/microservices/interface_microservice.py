@@ -48,6 +48,7 @@ from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
 from openc3.utilities.thread_manager import ThreadManager
 from openc3.utilities.time import from_nsec_from_epoch
+from openc3.utilities.topic_lag_monitor import TopicLagMonitor
 
 
 with contextlib.suppress(ModuleNotFoundError):
@@ -64,6 +65,7 @@ class InterfaceCmdHandlerThread:
         metric=None,
         db_shard=0,
         scope: str = OPENC3_SCOPE,
+        lag_monitor: TopicLagMonitor | None = None,
     ):
         self.interface = interface
         self.tlm = tlm
@@ -76,6 +78,11 @@ class InterfaceCmdHandlerThread:
             self.critical_commanding = "OFF"
         self.logger: Logger = logger or Logger()
         self.metric = metric
+        self.lag_monitor = lag_monitor or TopicLagMonitor(
+            name=f"{scope}__INTERFACE__{interface.name}",
+            logger=self.logger,
+            metric=self.metric,
+        )
         self.count = 0
         self.directive_count = 0
         if self.metric is not None:
@@ -117,16 +124,12 @@ class InterfaceCmdHandlerThread:
         release_critical = False
         critical_model = None
 
-        msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
-        delta = time.time() - msgid_seconds_from_epoch
-        if self.metric is not None:
-            self.metric.set(
-                name="interface_topic_delta_seconds",
-                value=delta,
-                type="gauge",
-                unit="seconds",
-                help="Delta time between data written to stream and interface cmd start",
-            )
+        self.lag_monitor.record(
+            topic,
+            msg_id,
+            metric_name="interface_topic_delta_seconds",
+            help="Delta time between data written to stream and interface cmd start",
+        )
 
         if topic == "OPENC3__SYSTEM__EVENTS":
             msg = json.loads(msg_hash.get(b"event", b"{}").decode())
@@ -153,8 +156,14 @@ class InterfaceCmdHandlerThread:
                 self.logger.info(f"{self.interface.name}: Connect requested")
                 params = []
                 if msg_hash.get(b"params"):
-                    params = json.loads(msg_hash[b"params"])
-                self.interface = self.tlm.attempting(*params)
+                    try:
+                        params = json.loads(msg_hash[b"params"])
+                    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                        # Reject malformed params rather than killing the handler thread
+                        self.logger.error(f"{self.interface.name}: Invalid connect params: {e}")
+                        return str(e)
+                # JSON null means no params, matching Ruby where *nil splats to nothing
+                self.interface = self.tlm.attempting(*(params or []))
                 return "SUCCESS"
             if msg_hash.get(b"disconnect"):
                 self.logger.info(f"{self.interface.name}: Disconnect requested")
@@ -455,6 +464,7 @@ class RouterTlmHandlerThread:
         metric=None,
         db_shard=0,
         scope: str = OPENC3_SCOPE,
+        lag_monitor: TopicLagMonitor | None = None,
     ):
         self.router = router
         self.tlm = tlm
@@ -462,6 +472,11 @@ class RouterTlmHandlerThread:
         self.db_shard = int(db_shard or 0)
         self.logger: Logger | type[Logger] = logger or Logger
         self.metric = metric
+        self.lag_monitor = lag_monitor or TopicLagMonitor(
+            name=f"{scope}__ROUTER__{router.name}",
+            logger=self.logger,
+            metric=self.metric,
+        )
         self.count = 0
         self.directive_count = 0
         if self.metric is not None:
@@ -501,16 +516,12 @@ class RouterTlmHandlerThread:
         result = None
 
         while True:
-            msgid_seconds_from_epoch = int(msg_id.split("-")[0]) / 1000.0
-            delta = time.time() - msgid_seconds_from_epoch
-            if self.metric is not None:
-                self.metric.set(
-                    name="router_topic_delta_seconds",
-                    value=delta,
-                    type="gauge",
-                    unit="seconds",
-                    help="Delta time between data written to stream and router tlm start",
-                )
+            self.lag_monitor.record(
+                topic,
+                msg_id,
+                metric_name="router_topic_delta_seconds",
+                help="Delta time between data written to stream and router tlm start",
+            )
 
             result = None  # Reset result for this iteration
 
@@ -530,11 +541,16 @@ class RouterTlmHandlerThread:
                     result = "SHUTDOWN"
                 elif msg_hash.get(b"connect"):
                     self.logger.info(f"{self.router.name}: Connect requested")
-                    params = []
-                    if msg_hash.get(b"params"):
-                        params = json.loads(msg_hash[b"params"])
-                    self.router = self.tlm.attempting(*params)
-                    result = "SUCCESS"
+                    try:
+                        params = json.loads(msg_hash[b"params"]) if msg_hash.get(b"params") else []
+                    except (json.JSONDecodeError, UnicodeDecodeError) as e:
+                        # Reject malformed params rather than killing the handler thread
+                        self.logger.error(f"{self.router.name}: Invalid connect params: {e}")
+                        result = str(e)
+                    else:
+                        # JSON null means no params, matching Ruby where *nil splats to nothing
+                        self.router = self.tlm.attempting(*(params or []))
+                        result = "SUCCESS"
                 elif msg_hash.get(b"disconnect"):
                     self.logger.info(f"{self.router.name}: Disconnect requested")
                     try:
@@ -724,6 +740,7 @@ class InterfaceMicroservice(Microservice):
                 metric=self.metric,
                 db_shard=self.db_shard,
                 scope=self.scope,
+                lag_monitor=self.topic_lag_monitor,
             )
         else:
             self.handler_thread = RouterTlmHandlerThread(
@@ -733,6 +750,7 @@ class InterfaceMicroservice(Microservice):
                 metric=self.metric,
                 db_shard=self.db_shard,
                 scope=self.scope,
+                lag_monitor=self.topic_lag_monitor,
             )
         self.handler_thread.start()
 

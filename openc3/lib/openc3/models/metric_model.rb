@@ -74,6 +74,14 @@ module OpenC3
       result
     end
 
+    # Only the metrics each microservice reported about itself, without the
+    # operator's process metrics. Their updated_at is when the microservice
+    # last published, which the merged rows from all can't tell you because
+    # the operator keeps refreshing them while the process is alive.
+    def self.all_self_reported(scope:)
+      _db_sharded_all("#{scope}#{PRIMARY_KEY}", scope: scope)
+    end
+
     # Combine a microservice's self reported metrics with the process metrics
     # the operator reported for it. The microservice's own values win on a key
     # collision - a process that can measure itself knows better than the
