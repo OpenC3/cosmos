@@ -596,6 +596,8 @@ module OpenC3
                      quiet: false,
                      scope: $openc3_scope, token: $openc3_token)
       type = (check ? 'CHECK' : 'WAIT')
+      # LATEST would compare the RECEIVED_COUNT of whichever packet was received most recently
+      raise "LATEST is not supported by wait_packet, specify a packet name" if packet_name.to_s.upcase == 'LATEST'
       initial_count = tlm(target_name, packet_name, 'RECEIVED_COUNT', scope: scope, token: token)
       # If the packet has not been received the initial_count could be nil
       initial_count = 0 unless initial_count

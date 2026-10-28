@@ -860,6 +860,10 @@ module OpenC3
             @sleep_cancel = cancel
           end
 
+          it "complains about LATEST" do
+            expect { wait_packet("INST", "latest", 1, 0.1) }.to raise_error(/LATEST is not supported by wait_packet/)
+          end
+
           it "prints warning if packet not received" do
             @count = false
             capture_io do |stdout|

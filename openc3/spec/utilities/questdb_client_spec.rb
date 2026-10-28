@@ -29,6 +29,16 @@ module OpenC3
         expect(QuestDBClient.tsdb_lookup([Array.new(5)], start_time: "2026-09-13T00:00:00Z")).to eq([[nil, nil]])
       end
 
+      it "returns a list of rows for placeholders when not flattening" do
+        expect(QuestDBClient.tsdb_lookup([Array.new(5)], start_time: "2026-09-13T00:00:00Z", flatten: false)).to eq([[[nil, nil]]])
+      end
+
+      it "passes flatten to a single db_shard lookup" do
+        allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard).and_return([[[1.0, nil]]])
+        QuestDBClient.tsdb_lookup([["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil]], start_time: "2026-09-13T00:00:00Z", flatten: false)
+        expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with(anything, hash_including(flatten: false))
+      end
+
       context "with items across db_shards" do
         let(:items) do
           [
@@ -38,14 +48,14 @@ module OpenC3
           ]
         end
 
-        def lookup(results, end_time: nil)
+        def lookup(results, end_time: nil, flatten: true)
           # INST is on db_shard 0 and INST2 is on db_shard 1
           allow(QuestDBClient).to receive(:db_shard_for_target) { |target_name, **| target_name == "INST2" ? 1 : 0 }
           allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard) do |_items, db_shard:, flatten:, **|
             expect(flatten).to be false
             results[db_shard]
           end
-          QuestDBClient.tsdb_lookup(items, start_time: "2026-09-13T00:00:00Z", end_time: end_time)
+          QuestDBClient.tsdb_lookup(items, start_time: "2026-09-13T00:00:00Z", end_time: end_time, flatten: flatten)
         end
 
         it "queries each db_shard and merges a single row" do
@@ -53,6 +63,11 @@ module OpenC3
           expect(result).to eq([[1.0, nil], [2.0, nil], [3.0, "RED"]])
           expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[0], items[2]], hash_including(db_shard: 0))
           expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[1]], hash_including(db_shard: 1))
+        end
+
+        it "keeps a single merged row as a list of rows when not flattening" do
+          result = lookup({ 0 => [[[1.0, nil], [3.0, nil]]], 1 => [[[2.0, nil]]] }, flatten: false)
+          expect(result).to eq([[[1.0, nil], [2.0, nil], [3.0, nil]]])
         end
 
         it "merges a single row of a multi-row query" do
@@ -73,6 +88,28 @@ module OpenC3
         it "returns empty when no db_shard has results" do
           expect(lookup({ 0 => {}, 1 => {} }, end_time: "2026-09-13T01:00:00Z")).to eq({})
         end
+      end
+    end
+
+    describe "tlm_packets_with_tables" do
+      it "returns the packets with a table queried by db_shard" do
+        allow(QuestDBClient).to receive(:db_shard_for_target) { |target_name, **| target_name == "INST2" ? 1 : 0 }
+        tables = { 0 => Set["DEFAULT__TLM__INST__HEALTH_STATUS"], 1 => Set["DEFAULT__TLM__INST2__ADCS"] }
+        expect(QuestDBClient).to receive(:table_names).twice { |db_shard:| tables[db_shard] }
+        packets = [["INST", "HEALTH_STATUS"], ["INST", "PARAMS"], ["INST2", "ADCS"]]
+        expect(QuestDBClient.tlm_packets_with_tables(packets)).to eql(Set[["INST", "HEALTH_STATUS"], ["INST2", "ADCS"]])
+      end
+
+      it "assumes all the packets have a table if the table names can't be fetched" do
+        allow(QuestDBClient).to receive(:db_shard_for_target).and_return(0)
+        allow(QuestDBClient).to receive(:table_names).and_return(nil)
+        packets = [["INST", "HEALTH_STATUS"], ["INST", "PARAMS"]]
+        expect(QuestDBClient.tlm_packets_with_tables(packets)).to eql(Set.new(packets))
+      end
+
+      it "doesn't query without packets" do
+        expect(QuestDBClient).not_to receive(:table_names)
+        expect(QuestDBClient.tlm_packets_with_tables([])).to eql(Set.new)
       end
     end
 
