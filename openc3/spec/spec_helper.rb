@@ -247,6 +247,8 @@ def mock_redis
   OpenC3::EphemeralStore.instance_variable_set(:@instances, [])
   OpenC3::StoreQueued.instance_variable_set(:@instances, [])
   OpenC3::EphemeralStoreQueued.instance_variable_set(:@instances, [])
+  OpenC3::StoreQueued.instance_variable_set(:@update_interval, nil)
+  OpenC3::EphemeralStoreQueued.instance_variable_set(:@update_interval, nil)
   # Forget target db_shards cached by a previous test (cached for a minute) so
   # targets it put on a db_shard aren't looked for there
   OpenC3::Store.class_variable_set(:@@db_shard_cache, {})

@@ -178,6 +178,19 @@ module OpenC3
       end
     end
 
+    describe "table_names" do
+      it "returns the upcased table names" do
+        result = double("PG::Result", values: [["DEFAULT__TLM__INST__PARAMS"], ["default__cmd__inst__collect"]])
+        allow(QuestDBClient).to receive(:query_with_retry).and_return(result)
+        expect(QuestDBClient.table_names).to eql(Set['DEFAULT__TLM__INST__PARAMS', 'DEFAULT__CMD__INST__COLLECT'])
+      end
+
+      it "returns nil if the tables cannot be queried" do
+        allow(QuestDBClient).to receive(:query_with_retry).and_raise(QuestDBClient::QuestDBError.new("down"))
+        expect(QuestDBClient.table_names).to be_nil
+      end
+    end
+
     describe "numeric_column_type?" do
       it "returns true for aggregatable numeric types (case-insensitive)" do
         ['BYTE', 'SHORT', 'INT', 'LONG', 'FLOAT', 'DOUBLE', 'double', 'float'].each do |type|

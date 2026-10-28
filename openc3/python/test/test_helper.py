@@ -168,6 +168,8 @@ def mock_redis(self):
     Store._db_shard_cache = {}
     EphemeralStoreQueued.my_instances = {}
     StoreQueued.my_instances = {}
+    EphemeralStoreQueued.all_shards_update_interval = None
+    StoreQueued.all_shards_update_interval = None
     return redis
 
 

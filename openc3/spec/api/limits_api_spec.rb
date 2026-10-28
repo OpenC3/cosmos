@@ -90,6 +90,25 @@ module OpenC3
             eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
         end
       end
+
+      it "gets limits for a LATEST item using the scope argument" do
+        # The API server doesn't set $openc3_scope so the scope argument must be used
+        with_decom_microservice do
+          packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+          packet.received_time = Time.now.sys
+          TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
+          sleep 0.01 # Allow the write to happen
+
+          saved_scope = $openc3_scope
+          $openc3_scope = nil
+          begin
+            expect(@api.get_limits("INST", "LATEST", "TEMP1", scope: "DEFAULT")).to \
+              eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
+          ensure
+            $openc3_scope = saved_scope
+          end
+        end
+      end
     end
 
     describe "set_limits" do

@@ -16,6 +16,7 @@ from unittest.mock import patch
 
 from openc3.interfaces.interface import Interface, WriteRejectError
 from openc3.interfaces.protocols.protocol import Protocol
+from openc3.logs.stream_log_pair import StreamLogPair
 from openc3.packets.packet import Packet
 from test.test_helper import BucketMock
 
@@ -599,6 +600,13 @@ class WriteRawInterface(unittest.TestCase):
 
 
 class CopyTo(unittest.TestCase):
+    def setUp(self):
+        self.patcher = patch("openc3.utilities.bucket_utilities.Bucket", BucketMock)
+        self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
+
     def test_copies_the_interface(self):
         i = Interface()
         i.name = "TEST"
@@ -607,7 +615,7 @@ class CopyTo(unittest.TestCase):
         i.auto_reconnect = False
         i.reconnect_delay = 1.0
         i.disable_disconnect = True
-        i.stream_log_pair = [1, 2]
+        i.stream_log_pair = StreamLogPair("TEST")
         i.routers = [3, 4]
         i.read_count = 1
         i.write_count = 2
@@ -628,7 +636,8 @@ class CopyTo(unittest.TestCase):
         self.assertFalse(i2.auto_reconnect)
         self.assertEqual(i2.reconnect_delay, 1.0)
         self.assertTrue(i2.disable_disconnect)
-        self.assertEqual(i2.stream_log_pair, [1, 2])
+        # The new interface takes over the running stream logs
+        self.assertIs(i2.stream_log_pair, i.stream_log_pair)
         self.assertEqual(i2.routers, [3, 4])
         self.assertEqual(i2.read_count, 1)
         self.assertEqual(i2.write_count, 2)
@@ -640,6 +649,7 @@ class CopyTo(unittest.TestCase):
         self.assertGreater(len(i2.read_protocols), 0)
         self.assertGreater(len(i2.write_protocols), 0)
         self.assertEqual(i2.protocol_info, [[Protocol, [], "READ_WRITE"]])
+        i.stream_log_pair.shutdown()
 
 
 class ConnectAndPeriodicCmds(unittest.TestCase):

@@ -241,6 +241,21 @@ class TestQueryWithRetry(unittest.TestCase):
         disconnect.assert_called_once_with(db_shard=2)
 
 
+class TestTableNames(unittest.TestCase):
+    def test_returns_the_upcased_table_names(self):
+        rows = [{"table_name": "DEFAULT__TLM__INST__PARAMS"}, {"table_name": "default__cmd__inst__collect"}]
+        with patch.object(QuestDBClient, "query_with_retry", return_value=rows) as query:
+            self.assertEqual(
+                QuestDBClient.table_names(db_shard=1),
+                {"DEFAULT__TLM__INST__PARAMS", "DEFAULT__CMD__INST__COLLECT"},
+            )
+        self.assertEqual(query.call_args.kwargs["db_shard"], 1)
+
+    def test_returns_none_if_the_tables_cannot_be_queried(self):
+        with patch.object(QuestDBClient, "query_with_retry", side_effect=RuntimeError("down")):
+            self.assertIsNone(QuestDBClient.table_names())
+
+
 class TestBuildAggregationSelects(unittest.TestCase):
     def test_aggregates_raw_column_for_raw_value_type(self):
         selects, mapping = QuestDBClient.build_aggregation_selects("TEMP1", "RAW")
