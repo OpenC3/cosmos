@@ -12,10 +12,19 @@
 -->
 
 <template>
-  <div class="router-node" :style="routerStyle">
+  <div
+    class="router-node"
+    :class="`flow-node--${health.state}`"
+    :style="routerStyle"
+  >
     <v-icon color="#ba1de1">mdi-call-split</v-icon>
     <div class="node-label">{{ data.label }}</div>
     <div class="node-label">Router</div>
+    <FlowHealthIndicator
+      :health="health"
+      :name="data.label"
+      @details="$emit('details')"
+    />
     <!-- Output handles on the right -->
     <!-- Input handles on the left -->
     <Handle
@@ -67,18 +76,23 @@
 
 <script>
 import { Handle } from '@vue-flow/core'
+import FlowHealthIndicator from './FlowHealthIndicator.vue'
+import { flowHealth } from './flowMetrics'
 
 export default {
   name: 'RouterNode',
   components: {
     Handle,
+    FlowHealthIndicator,
   },
   props: {
+    health: { type: Object, default: () => flowHealth() },
     data: {
       type: Object,
       required: true,
     },
   },
+  emits: ['details'],
   data() {
     return {}
   },
