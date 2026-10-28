@@ -258,6 +258,24 @@ RSpec.describe RunningScriptController, type: :controller do
         expect(response.status).to eq(200)
       end
 
+      it "re-fetches the model to see a completion written while stopping" do
+        allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
+        allow_any_instance_of(RunningScriptController).to receive(:running_script_publish)
+        # The initial fetch sees the script running, then the process
+        # moves itself to completed before it exits
+        running_model = OpenC3::ScriptStatusModel.get_model(name: "1", scope: "DEFAULT")
+        completed_model = double("CompletedScriptModel")
+        allow(completed_model).to receive(:filename).and_return("INST/procedures/test.rb")
+        allow(completed_model).to receive(:is_complete?).and_return(true)
+        allow(OpenC3::ScriptStatusModel).to receive(:get_model).and_return(running_model, completed_model)
+        expect(running_model).not_to receive(:update)
+        expect(completed_model).not_to receive(:update)
+
+        delete :delete, params: {id: "1", scope: "DEFAULT"}
+
+        expect(response.status).to eq(200)
+      end
+
       it "uses SIGINT if stop command doesn't work" do
         # First call to Process.getpgid returns true (process still running)
         # Second call raises ESRCH (process stopped after SIGINT)

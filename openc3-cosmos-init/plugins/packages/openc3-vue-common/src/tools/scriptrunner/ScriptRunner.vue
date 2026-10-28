@@ -2395,6 +2395,9 @@ export default {
     async scriptComplete() {
       // Completion can also be reached through status refreshes or failed run
       // requests rather than a queued 'complete' event.
+      // Stop the waiting timer on every path: the 'complete' message sets a
+      // terminal state without going through processLine()
+      this.clearWaiting()
       this.queueReceivedOutputLines()
       this.flushOutputLines(true)
       // Supersede any scriptStart still awaiting its subscription. Must
