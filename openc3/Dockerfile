@@ -3,35 +3,13 @@ ARG OPENC3_NAMESPACE=openc3inc
 ARG OPENC3_TAG=latest
 ARG OPENC3_IMAGE=openc3-ruby
 
-FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG}
+FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG} AS python-build
 
+# Python and Ruby are built in separate stages and merged at the end, so a
+# python/ edit never reruns the Ruby build and a Ruby edit never reruns uv.
 WORKDIR /openc3/
 
-USER ${USER_ID}:${GROUP_ID}
-
-# --chmod=777 sets the mode as the files are copied so we don't need a later
-# recursive chmod (which would duplicate the whole tree into its own layer).
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 . .
-
 USER root
-
-RUN mkdir -p lib/openc3/ext \
-    && git config --global http.sslCAinfo /devel/cacert.pem \
-    && bundle config set --local without 'development test' \
-    && bundle install --quiet \
-    && rm -f ./*.gem \
-    && rake gems \
-    && gem install --local ./openc3-*.gem \
-    && openc3_gem=$(dirname `gem which openc3`) \
-    && ln -s "${openc3_gem}/openc3" "${openc3_gem}/cosmos" \
-    && mkdir -p gems \
-    && mv ./*.gem gems/. \
-    && gem cleanup \
-    && rm -rf /usr/local/lib/ruby/gems/*/cache/* /var/lib/apt/lists/* /var/cache/apt/* /tmp/* /var/tmp/* \
-    # Make root-created build output (compiled C extensions, moved gems)
-    # writable like the rest of the tree. Scoped so it doesn't copy the whole
-    # source tree into this layer.
-    && chmod -R 777 /openc3/lib /openc3/gems
 
 # PYPI_URL normally arrives as an ENV baked into the openc3-ruby base image,
 # which is the only place the build sets it. That breaks down when this image
@@ -134,11 +112,81 @@ RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
     cp /tmp/uv.lock.relocked uv.lock && rm /tmp/uv.lock.relocked && \
     UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev # NOSONAR
 
+FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG}
+
+WORKDIR /openc3/
+
+USER root
+
+# C extensions first: they change rarely, and compiling them is the slowest
+# step of the Ruby build. Only ext/ feeds this layer.
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 ext/ ext/
+
+# Compile the C extensions here, keyed only on ext/, and clean up like
+# `rake build` does. They are shipped from lib/openc3/ext, and
+# OPENC3_PREBUILT_EXT stops the gemspec from compiling them a second time in
+# `gem install`. Set per-RUN, not ENV, so it never reaches the running image.
+RUN mkdir -p lib/openc3/ext \
+    && for dir in ext/openc3/ext/*/; do \
+         [ -f "$dir/extconf.rb" ] || continue; \
+         name=$(basename "$dir") \
+         && (cd "$dir" && ruby extconf.rb && make \
+             && cp "$name.so" /openc3/lib/openc3/ext/ \
+             && rm -f *.o *.so *.def Makefile mkmf.log) \
+         || exit 1; \
+       done
+
+# Ruby dependencies. Only the files that decide which gems get installed are
+# copied here, so editing application code does not reinstall every gem.
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 Gemfile openc3.gemspec ./
+
+RUN git config --global http.sslCAinfo /devel/cacert.pem \
+    && bundle config set --local without 'development test' \
+    && OPENC3_PREBUILT_EXT=1 bundle install --quiet
+
+# Application source, listed by directory rather than `COPY . .` so that edits
+# to python/ (built in its own stage above) never invalidate the Ruby build.
+# Ordered least to most frequently edited (by git history), so a lib/ edit
+# leaves the other copies cached.
+# --chmod=777 sets the mode as the files are copied so we don't need a later
+# recursive chmod (which would duplicate the whole tree into its own layer).
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 Guardfile LICENSE.md Rakefile README.md ./
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 tasks/ tasks/
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 bin/ bin/
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 templates/ templates/
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 data/ data/
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 lib/ lib/
+
+RUN rm -f ./*.gem \
+    && OPENC3_PREBUILT_EXT=1 rake gems \
+    && gem install --local ./openc3-*.gem \
+    && openc3_gem=$(dirname `gem which openc3`) \
+    && ln -s "${openc3_gem}/openc3" "${openc3_gem}/cosmos" \
+    && mkdir -p gems \
+    && mv ./*.gem gems/. \
+    && gem cleanup \
+    && rm -rf /usr/local/lib/ruby/gems/*/cache/* /var/lib/apt/lists/* /var/cache/apt/* /tmp/* /var/tmp/* \
+    # Make root-created build output (compiled C extensions, moved gems)
+    # writable like the rest of the tree. Scoped so it doesn't copy the whole
+    # source tree into this layer.
+    && chmod -R 777 /openc3/lib /openc3/gems
+
+# Merge in the Python environment and seeded wheel cache from python-build.
+# Ownership is preserved from that stage (root), as when this was one stage.
+COPY --from=python-build /openc3/python/ /openc3/python/
+COPY --from=python-build /openc3/uv_cache/ /openc3/uv_cache/
+
+# Same override the python-build stage uses, re-declared because ENV does not
+# carry across stages. PYPI_URL and UV_DEFAULT_INDEX are baked into the image.
+ARG PYPI_URL_OVERRIDE=
+ENV PYPI_URL=${PYPI_URL_OVERRIDE:-$PYPI_URL}
+ENV UV_DEFAULT_INDEX=${PYPI_URL%/}/simple
+
 WORKDIR /openc3/
 
 RUN mkdir /gems && chown openc3:openc3 /gems \
     && mkdir /plugins && chown openc3:openc3 /plugins \
-    && chmod 777 /gems /plugins /openc3
+    && chmod 777 /gems /plugins /openc3 /openc3/python
 
 ENV HOME=/openc3
 ENV XDG_CACHE_HOME=/tmp/.cache
