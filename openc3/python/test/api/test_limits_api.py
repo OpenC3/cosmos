@@ -383,7 +383,11 @@ class TestLimitsApi(unittest.TestCase):
         # with one event per item or decom microservices can miss events
         Store.delete("DEFAULT__openc3_limits_events")
         disable_limits_group("FIRST")
-        events = LimitsEventTopic.read("0-0", scope="DEFAULT")
+        # The decom microservice thread may process the group event and write a
+        # LIMITS_CHANGE event per item before this read so only check API events
+        events = [
+            event for event in LimitsEventTopic.read("0-0", scope="DEFAULT") if event[1]["type"] != "LIMITS_CHANGE"
+        ]
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0][1]["type"], "LIMITS_GROUP_ENABLE_STATE")
         self.assertEqual(events[0][1]["group_name"], "FIRST")
