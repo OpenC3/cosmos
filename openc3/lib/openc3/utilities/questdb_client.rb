@@ -92,7 +92,7 @@ module OpenC3
       end
       conn = PG::Connection.new(
         host: hostname_for_db_shard(db_shard),
-        port: port || ENV['OPENC3_TSDB_QUERY_PORT'],
+        port: port || ENV.fetch('OPENC3_TSDB_QUERY_PORT', nil),
         user: ENV['OPENC3_TSDB_USERNAME'],
         password: ENV['OPENC3_TSDB_PASSWORD'],
         dbname: 'qdb'
@@ -128,7 +128,7 @@ module OpenC3
     def self.check_connection(db_shard: 0, port: nil)
       conn = PG::Connection.new(
         host: hostname_for_db_shard(db_shard),
-        port: port || ENV['OPENC3_TSDB_QUERY_PORT'],
+        port: port || ENV.fetch('OPENC3_TSDB_QUERY_PORT', nil),
         user: ENV['OPENC3_TSDB_USERNAME'],
         password: ENV['OPENC3_TSDB_PASSWORD'],
         dbname: 'qdb'
