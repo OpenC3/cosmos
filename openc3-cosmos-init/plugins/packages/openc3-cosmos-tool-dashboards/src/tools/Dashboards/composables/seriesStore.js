@@ -334,7 +334,8 @@ export class SeriesStore {
         if (key === '__time') continue
         const entry = this.entries.get(key)
         if (!entry) continue
-        const value = typeof row[key] === 'number' ? row[key] : null
+        // NaN and ±Infinity can't be drawn: gaps, like missing values
+        const value = Number.isFinite(row[key]) ? row[key] : null
         insert(entry, t, value)
       }
     }

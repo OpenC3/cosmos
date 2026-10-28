@@ -93,6 +93,19 @@ describe('SeriesStore', () => {
     expect(store.get(B).latest).toBe(100)
   })
 
+  it('stores NaN and infinities as gaps, since they cannot be drawn', () => {
+    const { store } = makeStore()
+    stores.push(store)
+    store.acquire([A])
+    store.append([
+      { __time: 1e9, [A]: 1 },
+      { __time: 2e9, [A]: Number.NaN },
+      { __time: 3e9, [A]: Number.POSITIVE_INFINITY },
+    ])
+    expect(store.get(A).values).toEqual([1, null, null])
+    expect(store.get(A).latest).toBe(1)
+  })
+
   it('ignores rows for keys nobody acquired', () => {
     const { store } = makeStore()
     stores.push(store)

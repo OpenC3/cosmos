@@ -82,7 +82,11 @@ export function useTlmPanel(props, options = {}) {
         key: itemKey(item),
         label: labels[index],
         path: `${item.targetName} ${item.packetName} ${item.itemName}`,
-        number: typeof polled?.value === 'number' ? polled.value : null,
+        // NaN has no place on a scale; ±Infinity pins to its ends
+        number:
+          typeof polled?.value === 'number' && !Number.isNaN(polled.value)
+            ? polled.value
+            : null,
         text: formatItem(
           item.itemName,
           polled?.value,

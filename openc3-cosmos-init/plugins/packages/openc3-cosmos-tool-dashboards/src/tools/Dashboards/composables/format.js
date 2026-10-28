@@ -37,6 +37,7 @@ const COMPACT_UNITS = [
   [1e9, 'B'],
 ]
 export function compactNumber(value) {
+  if (!Number.isFinite(value)) return String(value)
   const size = Math.abs(value)
   let index = Math.max(
     0,

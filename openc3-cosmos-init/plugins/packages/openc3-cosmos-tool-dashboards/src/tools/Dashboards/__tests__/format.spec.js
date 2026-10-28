@@ -15,6 +15,12 @@ import { describe, expect, it } from 'vitest'
 import { compactNumber } from '../composables/format'
 
 describe('compactNumber', () => {
+  it('passes NaN and infinities through as text', () => {
+    expect(compactNumber(Number.NaN)).toBe('NaN')
+    expect(compactNumber(Number.POSITIVE_INFINITY)).toBe('Infinity')
+    expect(compactNumber(Number.NEGATIVE_INFINITY)).toBe('-Infinity')
+  })
+
   it.each([
     [-0.0000047, '0.00'],
     [0.4868, '0.49'],
