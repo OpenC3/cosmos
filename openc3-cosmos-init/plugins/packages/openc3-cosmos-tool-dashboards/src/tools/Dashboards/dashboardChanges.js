@@ -13,6 +13,7 @@
 
 import { parseDashboard, serializePanel } from './dashboardParser'
 import { PANEL_TYPES, panelTitle } from './panels/registry'
+import { equal } from './composables/equal'
 
 // One-line summary of what changed between two versions of a dashboard file,
 // for Version History's audit trail: "Added Graph Temps · Edited Stat TEMP1
@@ -46,7 +47,7 @@ export function describeDashboardChange(previous, text) {
   if (before.title !== after.title) {
     parts.push(`Renamed "${before.title}" to "${after.title}"`)
   }
-  if (JSON.stringify(before.settings) !== JSON.stringify(after.settings)) {
+  if (!equal(before.settings, after.settings)) {
     parts.push('Changed dashboard settings')
   }
   // Pair panels up: identical text first, then the same type and title

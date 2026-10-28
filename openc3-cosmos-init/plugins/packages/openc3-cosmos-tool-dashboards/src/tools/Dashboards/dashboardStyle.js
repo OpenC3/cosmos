@@ -49,6 +49,7 @@ export const DASHBOARD_ICONS = [
   'mdi-home-outline',
 ]
 
+// The same eight as graph lines; the color wheel picks any other
 export const DASHBOARD_COLORS = SERIES_COLORS
 
 function first(settings, name) {

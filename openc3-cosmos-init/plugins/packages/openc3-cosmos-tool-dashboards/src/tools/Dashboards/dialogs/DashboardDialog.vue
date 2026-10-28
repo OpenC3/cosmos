@@ -48,7 +48,7 @@
             divided
             variant="outlined"
             density="compact"
-            color="secondary"
+            class="db-toggle"
             data-test="dashboard-dialog-columns"
           >
             <v-btn :value="12" prepend-icon="mdi-monitor">12 columns</v-btn>
@@ -80,14 +80,15 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import DialogToolbar from '../components/DialogToolbar.vue'
 import { targetNames } from '../composables/targets'
 import { GRID_COLUMNS } from '../layout'
 
 // Where a dashboard is saved: its target and file name, and for a new one its
 // grid (COLUMNS). Used to create a new dashboard ('new') or copy an existing
-// one ('duplicate').
+// one ('duplicate'). The parent mounts a fresh dialog each time it opens (a
+// new :key), so the form starts from the props here.
 const props = defineProps({
   mode: { type: String, default: 'new' },
   // Target and name filled in when the dialog opens
@@ -100,9 +101,17 @@ const emit = defineEmits(['submit'])
 const show = defineModel({ type: Boolean })
 
 const targets = ref([])
-const target = ref(null)
-const name = ref('')
+const target = ref(props.initialTarget)
+const name = ref(props.initialName)
 const columns = ref(GRID_COLUMNS)
+
+// Fetched once per page (targets.js caches them)
+targetNames()
+  .then((names) => {
+    targets.value = names
+    target.value ||= names[0] || null
+  })
+  .catch(() => {})
 
 const heading = computed(() =>
   props.mode === 'duplicate' ? 'Duplicate Dashboard' : 'New Dashboard',
@@ -115,24 +124,6 @@ const error = computed(() => {
     return 'A dashboard with this name already exists'
   }
   return ''
-})
-
-// Kept: the parent opens the dialog through v-model, with no open event to
-// hook, and the form starts over from the props as they are at that moment
-watch(show, async (open) => {
-  if (!open) return
-  if (props.initialTarget) target.value = props.initialTarget
-  name.value = props.initialName
-  columns.value = GRID_COLUMNS
-  // Fetched the first time it opens (cached after that)
-  if (!targets.value.length) {
-    try {
-      targets.value = await targetNames()
-    } catch {
-      return
-    }
-  }
-  target.value ||= targets.value[0] || null
 })
 
 function submit() {

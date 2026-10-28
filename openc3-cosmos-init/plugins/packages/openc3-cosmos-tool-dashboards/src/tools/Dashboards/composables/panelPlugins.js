@@ -23,16 +23,13 @@
 //   export default (sdk) => ({
 //     label: 'Map',
 //     icon: 'mdi-map-outline',
-//     component: {
-//       props: sdk.panelProps,
-//       setup(props) {
-//         return sdk.useTlmPanel(props)
-//       },
-//       ...
-//     },
+//     component: MapPanel, // <script setup> calling sdk.useTlmPanel(props)
 //     content: 'items',
 //     options: [...],
 //   })
+//
+// `cli generate panel MapPanel` scaffolds one; see
+// https://docs.openc3.com/docs/guides/custom-panels
 
 import { Api } from '@openc3/js-common/services'
 import { registerPanelType } from '../panels/registry'
@@ -44,6 +41,7 @@ import { SERIES_COLORS, seriesColor } from '../panels/colors'
 import { baseKey, itemKey, packetTimeKey } from './tlmPoller'
 import {
   clock,
+  compactNumber,
   formatItem,
   formatTelemetry,
   formatTime,
@@ -81,6 +79,7 @@ export const PANEL_SDK = Object.freeze({
   formatTime,
   toSeconds,
   clock,
+  compactNumber,
   stateToLevel,
   worstLevel,
   SERIES_COLORS,

@@ -16,12 +16,14 @@
     v-model="show"
     :fullscreen="fullscreen"
     :max-width="fullscreen ? undefined : 1040"
+    :content-class="fullscreen ? undefined : 'db-top-dialog'"
     scrollable
+    @after-enter="reveal(highlight)"
     @after-leave="reset"
   >
     <v-card
       class="dashboards-root d-flex flex-column"
-      :style="fullscreen ? null : { height: '80vh' }"
+      :style="fullscreen ? null : { maxHeight: '84vh' }"
       data-test="dashboard-navigator"
     >
       <div class="d-flex align-center ga-3 pa-3 border-b">
@@ -58,7 +60,7 @@
         />
       </div>
       <div class="d-flex flex-grow-1 min-h-0">
-        <!-- Places, then one folder per target -->
+        <!-- Starred, then one folder per target -->
         <nav
           v-if="showPlaces"
           :class="[
@@ -74,17 +76,18 @@
             class="bg-transparent"
           >
             <v-list-item
-              v-for="place in places"
-              :key="place.value"
-              :active="place.value === activeView"
-              :prepend-icon="place.icon"
-              :title="place.label"
-              :data-test="`navigator-place-${place.value}`"
-              @click="view = place.value"
+              :active="activeView === 'starred'"
+              :class="{
+                'key-focus': placesFocused && activeView === 'starred',
+              }"
+              prepend-icon="mdi-star-outline"
+              title="Starred"
+              data-test="navigator-place-starred"
+              @click="view = 'starred'"
             >
               <template #append>
                 <span class="text-caption text-medium-emphasis num">
-                  {{ place.count }}
+                  {{ starred.length }}
                 </span>
               </template>
             </v-list-item>
@@ -93,6 +96,10 @@
               v-for="folder in folders"
               :key="folder.target"
               :active="`folder:${folder.target}` === activeView"
+              :class="{
+                'key-focus':
+                  placesFocused && `folder:${folder.target}` === activeView,
+              }"
               :prepend-icon="
                 `folder:${folder.target}` === activeView
                   ? 'mdi-folder-open-outline'
@@ -163,10 +170,7 @@
               Create one
             </v-btn>
           </div>
-          <v-list
-            v-else
-            class="db-current-list flex-grow-1 min-h-0 pa-0 bg-transparent"
-          >
+          <v-list v-else class="flex-grow-1 min-h-0 pa-0 bg-transparent">
             <v-virtual-scroll
               ref="scroller"
               :items="rows"
@@ -178,7 +182,7 @@
                   :dashboard-key="item"
                   :starred="starredKeys.has(item)"
                   :current="item === currentKey"
-                  :highlighted="index === highlight"
+                  :highlighted="!placesFocused && index === highlight"
                   :show-folder="!activeView.startsWith('folder:')"
                   :lean="lean"
                   @open="open(item)"
@@ -195,9 +199,13 @@
         v-if="!lean"
         class="d-flex align-center ga-4 px-4 py-2 border-t text-body-2 text-medium-emphasis"
       >
-        <span> <kbd>↑</kbd> <kbd>↓</kbd> move · <kbd>Enter</kbd> opens </span>
+        <span>
+          <kbd class="db-kbd">↑</kbd> <kbd class="db-kbd">↓</kbd> move ·
+          <kbd class="db-kbd">←</kbd> <kbd class="db-kbd">→</kbd> folders /
+          dashboards · <kbd class="db-kbd">Enter</kbd> opens
+        </span>
         <v-spacer />
-        <span>Stars and recents are saved in this browser only</span>
+        <span>Stars are saved in this browser only</span>
       </div>
     </v-card>
   </v-dialog>
@@ -206,13 +214,13 @@
 <script setup>
 import { computed, ref, shallowRef, useTemplateRef } from 'vue'
 import NavigatorRow from './NavigatorRow.vue'
-import { navigator, toggleStar } from './navigatorStore'
+import { loadSummaries, navigator, toggleStar } from './navigatorStore'
 
 // Matches NavigatorRow's min-height
 const ROW_HEIGHT = 56
 
-// Find and open dashboards like a file explorer: Starred, Recent and All on
-// the left, then a folder per target, since each dashboard is a file saved
+// Find and open dashboards like a file explorer: Starred on the left, then
+// a folder per target, since each dashboard is a file saved
 // in a target (TARGET/dashboards/name.txt). Search covers every folder, and
 // the folders then count the matches. Rows scroll virtually and fetch their
 // titles as they're shown, so hundreds of dashboards stay quick.
@@ -226,17 +234,25 @@ const props = defineProps({
 })
 const emit = defineEmits(['open', 'new', 'duplicate'])
 const show = defineModel({ type: Boolean })
+// Every dashboard's title, icon and panel count, in one request
+loadSummaries()
 
 const scroller = useTemplateRef('scroller')
+// Which side the arrow keys move in: 'places' (Starred and the folders) or
+// 'rows' (the dashboards). Searching always moves in the results.
+// Starts in the dashboards, on the one that's open (see highlight)
+const pane = ref('rows')
 const search = ref('')
-// 'starred', 'recent', 'all' or 'folder:TARGET'; null until chosen
+// 'starred' or 'folder:TARGET'; null until chosen
 const view = ref(null)
 // Row the arrow keys are on, for the rows it was moved on: any new rows
 // start back at the top
 const cursor = shallowRef({ rows: null, index: 0 })
-const highlight = computed(() =>
-  cursor.value.rows === rows.value ? cursor.value.index : 0,
-)
+const highlight = computed(() => {
+  if (cursor.value.rows === rows.value) return cursor.value.index
+  // Until the keys move it: the open dashboard, when it's listed
+  return Math.max(0, rows.value.indexOf(props.currentKey))
+})
 
 const query = computed(() => (search.value || '').trim().toLowerCase())
 // Dashboards matching the search, in name order
@@ -251,35 +267,13 @@ const matches = computed(() => {
     : props.dashboards
   return [...keys].sort()
 })
-// Keeps starred and recent in their own orders
+// Keeps starred in the order they were starred
 const starred = computed(() => {
   const keys = new Set(matches.value)
   return navigator.starred.filter((key) => keys.has(key))
 })
-const recent = computed(() => {
-  const keys = new Set(matches.value)
-  return navigator.recent.filter((key) => keys.has(key))
-})
-const places = computed(() => [
-  {
-    value: 'starred',
-    label: 'Starred',
-    icon: 'mdi-star-outline',
-    count: starred.value.length,
-  },
-  {
-    value: 'recent',
-    label: 'Recent',
-    icon: 'mdi-history',
-    count: recent.value.length,
-  },
-  {
-    value: 'all',
-    label: 'All dashboards',
-    icon: 'mdi-view-dashboard-outline',
-    count: matches.value.length,
-  },
-])
+// For each row's star
+const starredKeys = computed(() => new Set(navigator.starred))
 // Every target with dashboards, counting the matches
 const folders = computed(() => {
   const counts = {}
@@ -289,22 +283,24 @@ const folders = computed(() => {
     .sort()
     .map((target) => ({ target, count: counts[target] }))
 })
+// Starred, else the current dashboard's folder, else the first folder
 const defaultView = computed(() => {
   if (navigator.starred.length) return 'starred'
-  if (props.currentKey) return `folder:${props.currentKey.split('/')[0]}`
-  return 'all'
+  const target =
+    props.currentKey?.split('/')[0] ??
+    folders.value.find((folder) => folder.count)?.target
+  return target ? `folder:${target}` : 'starred'
 })
-// Searching shows every match unless a folder is picked
+// Searching shows every match ('search') unless a folder is picked
 const activeView = computed(() => {
   if (view.value) return view.value
-  if (query.value) return 'all'
+  if (query.value) return 'search'
   if (props.lean) return null
   return defaultView.value
 })
 const rows = computed(() => {
   const active = activeView.value
   if (active === 'starred') return starred.value
-  if (active === 'recent') return recent.value
   if (active?.startsWith('folder:')) {
     const prefix = `${active.slice(7)}/`
     return matches.value.filter((key) => key.startsWith(prefix))
@@ -322,11 +318,10 @@ const heading = computed(() => {
       class: 'mono',
     }
   }
-  const place = places.value.find((p) => p.value === active)
-  if (active === 'all' && query.value) {
+  if (active === 'search') {
     return { icon: 'mdi-magnify', label: 'Search results' }
   }
-  return { icon: place?.icon, label: place?.label }
+  return { icon: 'mdi-star-outline', label: 'Starred' }
 })
 const empty = computed(() => {
   if (!props.dashboards.length) {
@@ -347,8 +342,21 @@ const empty = computed(() => {
       text: 'Star a dashboard to keep it here.',
     }
   }
-  return { icon: 'mdi-history', text: 'Dashboards you open show here.' }
+  return { icon: 'mdi-folder-outline', text: 'No dashboards in this folder.' }
 })
+const placesFocused = computed(
+  () =>
+    (pane.value === 'places' || !rows.value.length) &&
+    !query.value &&
+    !props.lean,
+)
+// Starred, then the folders with dashboards, as listed
+const placeViews = computed(() => [
+  'starred',
+  ...folders.value
+    .filter((folder) => folder.count)
+    .map((folder) => `folder:${folder.target}`),
+])
 // Phones show the folders, or the list once one's picked or searching
 const showPlaces = computed(() => !props.lean || activeView.value === null)
 const showRows = computed(() => !props.lean || activeView.value !== null)
@@ -362,6 +370,8 @@ function setSearch(value) {
 // Closed: the next open starts with a fresh search
 function reset() {
   search.value = ''
+  pane.value = 'rows'
+  cursor.value = { rows: null, index: 0 }
   if (props.lean) view.value = null
 }
 function open(key) {
@@ -375,14 +385,39 @@ function back() {
   view.value = null
   search.value = ''
 }
+// Like a file explorer: up / down move in the focused pane (Starred and
+// the folders, or the dashboards), right / left switch panes, and Enter
+// goes into a folder or opens a dashboard. While searching the dashboards
+// pane has the keys, so left / right still move the text cursor.
 function onKey(event) {
-  const last = rows.value.length - 1
+  const step = { ArrowDown: 1, ArrowUp: -1 }[event.key]
+  if (placesFocused.value) {
+    if (step) {
+      event.preventDefault()
+      const views = placeViews.value
+      const at = views.indexOf(activeView.value)
+      view.value =
+        views[at < 0 ? 0 : Math.min(views.length - 1, Math.max(0, at + step))]
+    } else if (
+      (event.key === 'ArrowRight' || event.key === 'Enter') &&
+      rows.value.length
+    ) {
+      event.preventDefault()
+      pane.value = 'rows'
+    }
+    return
+  }
   if (event.key === 'Enter') {
     const key = rows.value[highlight.value]
     if (key) open(key)
     return
   }
-  const step = { ArrowDown: 1, ArrowUp: -1 }[event.key]
+  if (event.key === 'ArrowLeft' && !search.value) {
+    event.preventDefault()
+    pane.value = 'places'
+    return
+  }
+  const last = rows.value.length - 1
   if (!step || last < 0) return
   event.preventDefault()
   const index = Math.min(last, Math.max(0, highlight.value + step))
@@ -421,11 +456,8 @@ function duplicate(key) {
 .search :deep(.v-field--focused .v-field__outline) {
   --v-field-border-width: 1px;
 }
-kbd {
-  padding: 0 4px;
-  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: 0.85em;
+.key-focus {
+  outline: 1px solid rgba(var(--v-theme-secondary), 0.6);
+  outline-offset: -1px;
 }
 </style>

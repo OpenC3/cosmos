@@ -124,6 +124,17 @@ WIDGET:
           required: false
           description: Regex to match against filenames. If match, then no ERB processing
           values: .+
+PANEL:
+  summary: Define a custom Dashboards panel type
+  example: PANEL BATTERY
+  description: Defines a custom panel type that can be used in Dashboards, alongside the built-in panel types.
+  since: 7.5.0
+  parameters:
+    - name: Panel Type
+      description: The panel type, used in dashboard files as `PANEL <Panel Type> ...`. It is also used to build a path to the panel implementation. For example, `PANEL BATTERY` will find the as-built file tools/panels/BATTERY/BATTERY.js. Only letters, numbers, '_' and '-' are allowed. See the [Custom Panels](../guides/custom-panels.md)
+        guide for more details.
+      required: true
+      values: .+
 SCRIPT_ENGINE:
   summary: Define a script engine to add language support to Script Runner
   example: SCRIPT_ENGINE .print print_script_engine.py

@@ -14,6 +14,11 @@ export default defineConfig((options) => {
   const coverageBuild =
     process.env.COVERAGE_BUILD === '1' || options.mode !== 'production'
   return {
+    // Where the built tool is served, so bundled assets (the IBM Plex fonts)
+    // are requested from /tools/dashboards/assets rather than /assets. Builds
+    // only: the dev server (pnpm serve, for import map overrides) serves the
+    // package folder, where the build lands in tools/dashboards already.
+    base: options.command === 'build' ? '/tools/dashboards/' : '/',
     build: {
       sourcemap: coverageBuild,
       outDir: 'tools/dashboards',

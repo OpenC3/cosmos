@@ -11,11 +11,32 @@
 # if purchased from OpenC3, Inc.
 */
 
-import TimeFilters from '@/util/timeFilters'
+import {
+  formatDate,
+  formatDateTime,
+  formatDateTimeHMS,
+  formatNanoseconds,
+  formatSeconds,
+  formatTime,
+  formatTimeHMS,
+  formatTimestamp,
+  formatUtcToLocal,
+  parseDateTime,
+} from '@/util/timeFilters'
 
-// Composition API access to the TimeFilters mixin methods.
-// Call methods on the returned object (don't destructure) since
-// they reference each other through `this`.
+// Composition API access to the time formatting functions (the same ones the
+// TimeFilters mixin uses). They're plain functions, so destructuring is fine.
 export function useTimeFilters() {
-  return TimeFilters.methods
+  return {
+    parseDateTime,
+    formatUtcToLocal,
+    formatDateTime,
+    formatDateTimeHMS,
+    formatDate,
+    formatTime,
+    formatTimeHMS,
+    formatTimestamp,
+    formatSeconds,
+    formatNanoseconds,
+  }
 }

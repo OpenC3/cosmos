@@ -13,7 +13,7 @@
 
 <template>
   <v-list-item
-    :class="['row px-4', { current, highlighted }]"
+    :class="['row px-4', { highlighted }]"
     :active="false"
     data-test="navigator-item"
     @click="$emit('open')"
@@ -92,12 +92,13 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import DashboardAvatar from '../components/DashboardAvatar.vue'
-import { loadInfo, navigator } from './navigatorStore'
+import { navigator } from './navigatorStore'
 
 // One dashboard in the navigator: its title, and where it's saved
-// (TARGET/name.txt). Fetches its title and icon the first time it's shown.
+// (TARGET/name.txt). Its title and icon come from the navigator's summaries
+// (loadSummaries), until then just the name shows.
 const props = defineProps({
   dashboardKey: { type: String, required: true },
   starred: Boolean,
@@ -113,10 +114,6 @@ const target = computed(() => props.dashboardKey.split('/')[0])
 const name = computed(() => props.dashboardKey.split('/')[1])
 const file = computed(() => `${name.value.toLowerCase()}.txt`)
 const info = computed(() => navigator.info[props.dashboardKey])
-
-// Kept: fetching the row's info is a side effect, and virtual scrolling
-// reuses rows for new keys without remounting, so there's no event to hook
-watch(() => props.dashboardKey, loadInfo, { immediate: true })
 </script>
 
 <style scoped>

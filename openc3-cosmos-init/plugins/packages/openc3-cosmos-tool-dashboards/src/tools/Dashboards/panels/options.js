@@ -35,12 +35,16 @@
 //   multiline   text options edited in a text area
 //   span        width in the panel dialog, of 12 columns (default 4)
 //   newRow      starts a new line in the panel dialog
+//   automatic   color options: (panel, item, index) => the CSS color used
+//               while it's unset, shown as the picker's Automatic choice
+//               (default: the item's series color)
 //
 // To add an option type, add an entry to OPTION_TYPES (decode the SETTING
 // values, encode a value back, validate) and a control in OptionsEditor.vue
 // (or ItemOptionsEditor.vue for item options).
 
 import { PANEL_TYPES } from './registry'
+import { equal } from '../composables/equal'
 
 const TRUE_WORDS = ['TRUE', 'ON', 'YES']
 const FALSE_WORDS = ['FALSE', 'OFF', 'NO']
@@ -150,7 +154,7 @@ function write(defs, settings, name, value) {
     value === null ||
     value === undefined ||
     value === '' ||
-    JSON.stringify(value) === JSON.stringify(def.default ?? null)
+    equal(value, def.default ?? null)
   if (isDefault) {
     delete result[name]
   } else {

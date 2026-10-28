@@ -111,6 +111,7 @@
           density="compact"
           variant="outlined"
           divided
+          class="db-toggle"
           data-test="panel-width-presets"
           @update:model-value="setWidth"
         >

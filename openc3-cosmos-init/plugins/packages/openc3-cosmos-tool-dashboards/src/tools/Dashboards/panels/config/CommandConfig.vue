@@ -19,7 +19,7 @@
       density="compact"
       variant="outlined"
       divided
-      class="mb-2"
+      class="db-toggle mb-2"
       data-test="config-mode"
       @update:model-value="setMode"
     >

@@ -20,76 +20,105 @@ const timeFormatHMS = 'HH:mm:ss'
 const dateTimeFormat = `${dateFormat} ${timeFormat}`
 const dateTimeFormatHMS = `${dateFormat} ${timeFormatHMS}`
 
+// Plain functions, callable without the mixin (e.g. useTimeFilters). A
+// timeZone of 'local' (or none) means the browser's time zone.
+
+export function parseDateTime(dateString, timeZone) {
+  if (dateString.includes(' ')) {
+    dateString = dateString.replace(' ', 'T')
+  }
+  if (timeZone && timeZone === 'UTC') {
+    dateString += 'Z'
+  }
+  return Date.parse(dateString)
+}
+
+// Convert a UTC stamp into a local time
+export function formatUtcToLocal(date, timeZone) {
+  // Default to local time if the timezone isn't set
+  if (!timeZone || timeZone === 'local') {
+    // subtrack off the timezone offset to get it back to local time
+    return format(subMinutes(date, date.getTimezoneOffset()), dateTimeFormat)
+  } else {
+    return format(date, dateTimeFormat)
+  }
+}
+
+export function formatDateTime(date, timeZone) {
+  // Default to local time if the timezone isn't set
+  if (!timeZone || timeZone === 'local') {
+    return format(date, dateTimeFormat)
+  } else {
+    return formatInTimeZone(date, timeZone, dateTimeFormat)
+  }
+}
+
+export function formatDateTimeHMS(date, timeZone) {
+  // Default to local time if the timezone isn't set
+  if (!timeZone || timeZone === 'local') {
+    return format(date, dateTimeFormatHMS)
+  } else {
+    return formatInTimeZone(date, timeZone, dateTimeFormatHMS)
+  }
+}
+
+export function formatDate(date, timeZone) {
+  // Default to local time if the timezone isn't set
+  if (!timeZone || timeZone === 'local') {
+    return format(date, dateFormat)
+  } else {
+    return formatInTimeZone(date, timeZone, dateFormat)
+  }
+}
+
+export function formatTime(date, timeZone, formatString = timeFormat) {
+  // Default to local time if the timezone isn't set
+  if (!timeZone || timeZone === 'local') {
+    return format(date, formatString)
+  } else {
+    return formatInTimeZone(date, timeZone, formatString)
+  }
+}
+
+export function formatTimeHMS(date, timeZone) {
+  return formatTime(date, timeZone, timeFormatHMS)
+}
+
+export function formatTimestamp(timestamp, timeZone) {
+  return formatDateTime(parseISO(timestamp), timeZone)
+}
+
+export function formatSeconds(secs, timeZone) {
+  return formatDateTime(new Date(secs * 1000), timeZone)
+}
+
+export function formatNanoseconds(nanoSecs, timeZone) {
+  return formatDateTime(new Date(parseInt(nanoSecs) / 1000000), timeZone)
+}
+
+// The Options API mixin. formatDate and formatTime have always used the
+// component's own timeZone outside local time, so the mixin keeps that.
 export default {
   methods: {
-    parseDateTime(dateString, timeZone) {
-      if (dateString.includes(' ')) {
-        dateString = dateString.replace(' ', 'T')
-      }
-      if (timeZone && timeZone === 'UTC') {
-        dateString += 'Z'
-      }
-      return Date.parse(dateString)
-    },
-    // Convert a UTC stamp into a local time
-    formatUtcToLocal(date, timeZone) {
-      // Default to local time if the timezone isn't set
-      if (!timeZone || timeZone === 'local') {
-        // subtrack off the timezone offset to get it back to local time
-        return format(
-          subMinutes(date, date.getTimezoneOffset()),
-          dateTimeFormat,
-        )
-      } else {
-        return format(date, dateTimeFormat)
-      }
-    },
-    formatDateTime(date, timeZone) {
-      // Default to local time if the timezone isn't set
-      if (!timeZone || timeZone === 'local') {
-        return format(date, dateTimeFormat)
-      } else {
-        return formatInTimeZone(date, timeZone, dateTimeFormat)
-      }
-    },
-    formatDateTimeHMS(date, timeZone) {
-      // Default to local time if the timezone isn't set
-      if (!timeZone || timeZone === 'local') {
-        return format(date, dateTimeFormatHMS)
-      } else {
-        return formatInTimeZone(date, timeZone, dateTimeFormatHMS)
-      }
-    },
+    parseDateTime,
+    formatUtcToLocal,
+    formatDateTime,
+    formatDateTimeHMS,
     formatDate: function (date, timeZone) {
-      // Default to local time if the timezone isn't set
-      if (!timeZone || timeZone === 'local') {
-        return format(date, dateFormat)
-      } else {
-        return formatInTimeZone(date, this.timeZone, dateFormat)
-      }
+      if (!timeZone || timeZone === 'local') return formatDate(date, timeZone)
+      return formatDate(date, this.timeZone)
     },
     formatTime: function (date, timeZone, formatString = timeFormat) {
-      // Default to local time if the timezone isn't set
       if (!timeZone || timeZone === 'local') {
-        return format(date, formatString)
-      } else {
-        return formatInTimeZone(date, this.timeZone, formatString)
+        return formatTime(date, timeZone, formatString)
       }
+      return formatTime(date, this.timeZone, formatString)
     },
     formatTimeHMS: function (date, timeZone) {
       return this.formatTime(date, timeZone, timeFormatHMS)
     },
-    formatTimestamp(timestamp, timeZone) {
-      return this.formatDateTime(parseISO(timestamp), timeZone)
-    },
-    formatSeconds(secs, timeZone) {
-      return this.formatDateTime(new Date(secs * 1000), timeZone)
-    },
-    formatNanoseconds(nanoSecs, timeZone) {
-      return this.formatDateTime(
-        new Date(parseInt(nanoSecs) / 1000000),
-        timeZone,
-      )
-    },
+    formatTimestamp,
+    formatSeconds,
+    formatNanoseconds,
   },
 }

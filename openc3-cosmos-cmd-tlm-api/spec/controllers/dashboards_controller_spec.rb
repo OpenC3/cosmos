@@ -127,6 +127,14 @@ RSpec.describe DashboardsController, :type => :controller do
       expect(ret).to eql(['INST/dashboards/dash1.txt', 'INST/dashboards/dash2.txt'])
     end
 
+    it "returns summaries with summary=true" do
+      summaries = [{ 'path' => 'INST/dashboards/dash1.txt', 'title' => 'One', 'icon' => nil, 'color' => nil, 'panels' => 1 }]
+      expect(Dashboard).to receive(:summaries).with('DEFAULT').and_return(summaries)
+      get :index, params: { scope: 'DEFAULT', summary: 'true' }
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eql(summaries)
+    end
+
     it "ignores partial dashboard files starting with underscore" do
       allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST'])
       allow(OpenC3::TargetFile).to receive(:all).and_return(

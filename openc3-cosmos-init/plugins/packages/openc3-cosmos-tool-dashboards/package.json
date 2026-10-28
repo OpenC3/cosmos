@@ -7,7 +7,8 @@
     "serve": "vite build --watch --mode dev-server",
     "build": "vite build",
     "lint": "eslint src",
-    "serve:standalone": "vite preview --mode standalone"
+    "serve:standalone": "vite preview --mode standalone",
+    "test": "vitest run"
   },
   "dependencies": {
     "@astrouxds/astro-web-components": "8.0.0",
@@ -25,6 +26,7 @@
     "rollup-plugin-sourcemaps2": "^0.5.10",
     "sass": "1.106.1",
     "vite": "7.3.7",
+    "vitest": "5.0.4",
     "vue": "3.5.44"
   }
 }

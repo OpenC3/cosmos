@@ -22,10 +22,7 @@
         :key="entry.key"
         class="d-inline-flex align-center ga-2"
       >
-        <span
-          class="swatch d-inline-block"
-          :style="{ background: colors[index] }"
-        />
+        <span class="db-swatch" :style="{ background: colors[index] }" />
         {{ entry.label }}
         <b class="num text-high-emphasis" data-test="graph-legend-value">{{
           entry.last
@@ -38,13 +35,13 @@
       </span>
     </div>
     <div
-      ref="plot"
+      ref="plotBox"
       class="flex-grow-1 min-h-0 position-relative mx-2 mb-2 mt-2"
       data-test="graph-plot"
     >
       <div
         v-if="tip"
-        class="tip position-absolute pointer-events-none text-caption bg-surface-light rounded-lg border pa-2 elevation-4"
+        class="db-tip position-absolute pointer-events-none text-caption bg-surface-light rounded-lg border pa-2 elevation-4"
         :style="{
           left: `${tip.left}px`,
           transform: tip.flip
@@ -59,10 +56,7 @@
           class="d-flex align-center justify-space-between ga-3"
         >
           <span class="d-inline-flex align-center ga-2 text-medium-emphasis">
-            <span
-              class="swatch d-inline-block"
-              :style="{ background: row.color }"
-            />
+            <span class="db-swatch" :style="{ background: row.color }" />
             {{ row.label }}
           </span>
           <span>
@@ -94,6 +88,7 @@ import { seriesColor } from './colors'
 import { itemKey } from '../composables/tlmPoller'
 import { clock, formatTelemetry } from '../composables/format'
 import { limitLines } from '../limits'
+import { equal } from '../composables/equal'
 
 function withAlpha(color, alpha) {
   const hex = color.trim().replace('#', '')
@@ -136,7 +131,7 @@ const { hover, now, duration, series, latest, setHover } = useTlmSeries(
   },
 )
 const theme = useTheme()
-const plotEl = useTemplateRef('plot')
+const plotEl = useTemplateRef('plotBox')
 
 const lastValues = ref([])
 const tip = ref(null)
@@ -185,7 +180,7 @@ const legend = computed(() =>
 // Watched because uPlot fixes series colors when the plot is built, so it
 // is rebuilt, unless restart() already did for the same change
 watch(colors, (value) => {
-  if (JSON.stringify(value) !== JSON.stringify(plotColors)) createPlot()
+  if (!equal(value, plotColors)) createPlot()
 })
 // Watched to move uPlot's cursor and tooltip to another panel's hover
 // time, or hide them; the hover is shared state with no event to hook
@@ -461,18 +456,8 @@ function format(index, value) {
 </script>
 
 <style scoped>
-.swatch {
-  width: 14px;
-  height: 2px;
-  border-radius: 1px;
-}
 .swatch-dashed {
   width: 14px;
   border-top: 1px dashed var(--color-status-caution);
-}
-.tip {
-  top: 4px;
-  min-width: 160px;
-  z-index: 2;
 }
 </style>

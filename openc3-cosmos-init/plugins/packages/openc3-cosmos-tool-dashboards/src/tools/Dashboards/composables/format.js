@@ -11,13 +11,10 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { FormatValueBase } from '@openc3/vue-common/widgets'
-import { TimeFilters } from '@openc3/vue-common/util'
-
 // The same formatting TlmViewer widgets use (format strings, BigInt, binary
-// strings, arrays), callable without mixing it into a component
-const formatter = FormatValueBase.methods
-const timeFilters = TimeFilters.methods
+// strings, arrays) and the same time zone conversion
+import { formatValueBase } from '@openc3/vue-common/widgets'
+import { formatUtcToLocal } from '@openc3/vue-common/util'
 
 // Display text for a polled value. Panels poll CONVERTED values and apply the
 // item's format string here, so units stay in their own column.
@@ -27,7 +24,36 @@ export function formatTelemetry(value, formatString = null) {
   if (value.raw !== undefined && value.json_class !== 'String') {
     return String(value.raw)
   }
-  return formatter.formatValueBase.call(formatter, value, formatString)
+  return formatValueBase(value, formatString)
+}
+
+// Short text for a number in a small panel: 2 decimal places, and k / M / B
+// for thousands, millions and billions (1234567 -> "1.23M"). Whole numbers
+// under 1000 stay whole.
+const COMPACT_UNITS = [
+  [1, ''],
+  [1e3, 'k'],
+  [1e6, 'M'],
+  [1e9, 'B'],
+]
+export function compactNumber(value) {
+  const size = Math.abs(value)
+  let index = Math.max(
+    0,
+    COMPACT_UNITS.findLastIndex(([unit]) => size >= unit),
+  )
+  // Move up a unit when rounding reaches 1000: 999.999 is "1.00k"
+  while (
+    index < COMPACT_UNITS.length - 1 &&
+    Math.round((size / COMPACT_UNITS[index][0]) * 100) >= 100000
+  ) {
+    index++
+  }
+  const [unit, suffix] = COMPACT_UNITS[index]
+  if (!suffix && Number.isInteger(value)) return String(value)
+  // A tiny negative rounds to "-0.00"; it's just 0
+  const text = (value / unit).toFixed(2).replace(/^-(0\.00)$/, '$1')
+  return `${text}${suffix}`
 }
 
 // Times to the second: "2026-10-06 15:07:15.123" -> "2026-10-06 15:07:15"
@@ -54,10 +80,7 @@ export function clock(ms = Date.now(), timeZone = 'local') {
 // returned as is.
 export function formatTime(time, timeZone = 'local') {
   if (!/^\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}/.test(time)) return time
-  return timeFilters.formatUtcToLocal(
-    new Date(time.replaceAll('/', '-')),
-    timeZone,
-  )
+  return formatUtcToLocal(new Date(time.replaceAll('/', '-')), timeZone)
 }
 
 // Display text for an item's value: formatTelemetry, with the packet time

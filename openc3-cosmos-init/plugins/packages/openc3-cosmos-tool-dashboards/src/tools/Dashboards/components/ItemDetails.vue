@@ -48,7 +48,7 @@
           <div class="d-flex align-baseline ga-2 min-w-0">
             <span
               :class="[
-                'big-value num text-truncate',
+                'big-value num font-weight-medium text-truncate',
                 { 'text-disabled': stale },
               ]"
               data-test="item-details-value"
@@ -250,7 +250,6 @@ onUnmounted(() => {
 <style scoped>
 .big-value {
   font-size: 44px;
-  font-weight: 500;
   letter-spacing: -0.02em;
   line-height: 1;
 }

@@ -50,6 +50,7 @@
         {{ title }}
       </h3>
       <span
+        v-if="!titleOnly"
         class="panel-subtitle mono text-medium-emphasis text-truncate min-w-0"
       >
         {{ subtitle }}
@@ -114,7 +115,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, inject, unref } from 'vue'
 import StatusSymbol from './StatusSymbol.vue'
 import { ringClass } from '../status'
 import { PANEL_TYPES, panelTitle } from '../panels/registry'
@@ -147,6 +148,15 @@ const subtitle = computed(() => {
     props.panel.items.map((i) => `${i.targetName} ${i.packetName}`),
   )
   return [...packets].join(' · ')
+})
+// Where the panel is drawn (following a resize mid-drag) and the grid's
+// COLUMNS, so "2 columns" means the same width on 12 and 24 column grids
+const gridRects = inject('gridRects', null)
+const columns = inject('columns', 12)
+const titleOnly = computed(() => {
+  if (!type.value.titleOnlyWhenNarrow) return false
+  const width = unref(gridRects)?.[props.panel.uid]?.w ?? props.panel.w
+  return (width * 12) / unref(columns) <= 2
 })
 const ring = computed(() => ringClass(props.level))
 // The status symbol in the header: single item panels always name their

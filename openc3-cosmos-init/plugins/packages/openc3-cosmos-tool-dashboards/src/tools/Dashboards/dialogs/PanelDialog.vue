@@ -81,19 +81,22 @@
 </template>
 
 <script setup>
-import { computed, inject, ref, unref, watch } from 'vue'
+import { computed, inject, ref, unref } from 'vue'
 import DialogToolbar from '../components/DialogToolbar.vue'
 import PanelSettings from '../editor/PanelSettings.vue'
 import CodePane from '../editor/CodePane.vue'
 import { PANEL_TYPES, panelProblem } from '../panels/registry'
 import { clampRect } from '../layout'
+import { cloneData } from '../composables/clone'
+import { equal } from '../composables/equal'
 import {
   parsePanel as parsePanelText,
   serializePanel,
 } from '../dashboardParser'
 
 // Edits a copy of a panel, as settings or as its PANEL ... END code; the
-// dashboard only changes on Add / Apply
+// dashboard only changes on Add / Apply. The parent mounts a fresh dialog
+// each time it opens (a new :key), so the copy is made once, here.
 const props = defineProps({
   panel: { type: Object, default: null },
   isNew: Boolean,
@@ -104,7 +107,7 @@ const show = defineModel({ type: Boolean })
 const injectedColumns = inject('columns', 12)
 const columns = computed(() => unref(injectedColumns))
 
-const draft = ref(null)
+const draft = ref(props.panel ? cloneData(props.panel) : null)
 const tab = ref('settings')
 const saving = ref(false)
 const saveError = ref(null)
@@ -113,20 +116,6 @@ const code = computed(() => serializePanel(draft.value))
 const problem = computed(() => (draft.value ? panelProblem(draft.value) : null))
 // Types like SCREEN give their content editor the rest of a tall dialog
 const fill = computed(() => !!PANEL_TYPES[draft.value?.type]?.fillDialog)
-
-// Kept: the parent opens the dialog through v-model, with no open event to
-// hook, and the form starts over from the props as they are at that moment
-watch(
-  show,
-  (open) => {
-    if (open && props.panel) {
-      draft.value = JSON.parse(JSON.stringify(props.panel))
-      tab.value = 'settings'
-      saveError.value = null
-    }
-  },
-  { immediate: true },
-)
 
 function update(change) {
   // A new panel takes the new type's default size
@@ -146,8 +135,7 @@ function parsePanel(text) {
 function applyCode(panel) {
   if (!panel) return
   // Unsaved screen edits stay while it's the same screen
-  const sameScreen =
-    JSON.stringify(panel.screen) === JSON.stringify(draft.value.screen)
+  const sameScreen = equal(panel.screen, draft.value.screen)
   draft.value = {
     ...panel,
     uid: draft.value.uid,

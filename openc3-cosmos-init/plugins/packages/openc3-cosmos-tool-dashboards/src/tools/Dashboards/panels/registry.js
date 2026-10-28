@@ -41,6 +41,9 @@
 //   validate                    optional (panel) => message when the panel is
 //                               incomplete; panels with ITEM need one item
 //   hidden                      left out of the panel type picker
+//   titleOnlyWhenNarrow         the header leaves out the target / packet
+//                               line when the panel is 2 columns wide or
+//                               less (of 12), so the title gets the room
 //   fillDialog                  the panel dialog takes most of the window and
 //                               its content editor fills the space left
 //                               (e.g. the screen editor)
@@ -120,6 +123,7 @@ export const PANEL_TYPES = {
     label: 'Stat',
     description: 'One value, big, with limits and a sparkline',
     icon: 'mdi-numeric',
+    titleOnlyWhenNarrow: true,
     component: StatPanel,
     content: ItemsConfig,
     virtual: true,
@@ -127,7 +131,14 @@ export const PANEL_TYPES = {
     minSize: { w: 1, h: 2 },
     keywords: ['ITEM', 'ITEM_SETTING', 'SETTING'],
     maxItems: 1,
-    itemOptions: [{ ...COLOR_OPTION, help: 'Color of the graph line' }],
+    itemOptions: [
+      {
+        ...COLOR_OPTION,
+        help: 'Automatic follows the theme, or pick a desired color',
+        // StatPanel's lineColor
+        automatic: () => 'rgb(var(--v-theme-secondary))',
+      },
+    ],
     options: [
       PACKET_TIME_OPTION,
       {
@@ -156,10 +167,13 @@ export const PANEL_TYPES = {
     label: 'Gauge',
     description: 'One value on a dial with limits zones',
     icon: 'mdi-gauge',
+    titleOnlyWhenNarrow: true,
     component: GaugePanel,
     content: ItemsConfig,
     validate: gaugeProblem,
     defaults: { w: 3, h: 4 },
+    // One column shows a vertical meter instead of the dial
+    minSize: { w: 1, h: 2 },
     keywords: ['ITEM', 'SETTING'],
     maxItems: 1,
     options: [
@@ -206,6 +220,7 @@ export const PANEL_TYPES = {
     label: 'State',
     description: 'Current state of an item, with its packet time',
     icon: 'mdi-toggle-switch-outline',
+    titleOnlyWhenNarrow: true,
     component: StatePanel,
     content: ItemsConfig,
     virtual: true,

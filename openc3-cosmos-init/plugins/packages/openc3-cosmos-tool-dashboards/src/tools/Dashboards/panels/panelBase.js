@@ -49,7 +49,7 @@ export function usePanel(props, options = {}) {
   const injectedTimeZone = inject('timeZone', 'local')
   // { uid: rect } as drawn, including mid-drag (DashboardGrid)
   const gridRects = inject('gridRects', null)
-  // { uid: level } read by the grid's frames and health chip; absent where
+  // { uid: level } read by the grid's frames and health banner; absent where
   // panels are shown outside a grid
   const panelLevels = inject('panelLevels', null)
 
@@ -62,6 +62,11 @@ export function usePanel(props, options = {}) {
   const rect = computed(
     () => unref(gridRects)?.[props.panel.uid] ?? props.panel,
   )
+  // The grid's COLUMNS, so widths compare the same on 12 and 24 columns
+  const columns = inject('columns', 12)
+  // 2 columns wide or less (of 12) as drawn: small panels shorten what they
+  // show, e.g. STAT and GAUGE numbers with compactNumber (format.js)
+  const isNarrow = computed(() => (rect.value.w * 12) / unref(columns) <= 2)
   const isPlayback = computed(() => timeline.on)
   // The Date being played back, null until playback starts
   const playbackTime = computed(() => (timeline.on ? timeline.time : null))
@@ -75,18 +80,11 @@ export function usePanel(props, options = {}) {
     )
   }
 
-  // Fetch units, format and limits before the computeds read them
-  function prefetch(items) {
-    for (const item of items ?? []) itemInfo.get(item)
-  }
-  prefetch(props.panel.items)
-
   onMounted(() => {
     poller.register(pollKeys.value)
     // The poller is outside Vue, so keep its registrations in step by hand.
     // A new panel config (items) comes in as a new prop, with no event.
     watch(pollKeys, (newKeys, oldKeys) => {
-      prefetch(props.panel.items)
       poller.unregister(oldKeys)
       poller.register(newKeys)
     })
@@ -115,6 +113,7 @@ export function usePanel(props, options = {}) {
     isEditing,
     isLive,
     rect,
+    isNarrow,
     isPlayback,
     playbackTime,
     pollKeys,

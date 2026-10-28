@@ -34,6 +34,55 @@ class Dashboard < OpenC3::TargetFile
     dashboards
   end
 
+  # What the Dashboards navigator shows for every dashboard, read here so the
+  # browser makes one request rather than fetching and parsing each file:
+  # [{ 'path', 'title', 'icon', 'color', 'panels' }]. Files that can't be
+  # read are left out; the list still names them.
+  def self.summaries(scope)
+    all(scope).filter_map do |path|
+      text = body(scope, path)
+      next unless text
+      { 'path' => path }.merge(summary(text))
+    rescue => e
+      OpenC3::Logger.error("Dashboard summary of #{path} failed: #{e.message}", scope: scope)
+      nil
+    end
+  end
+
+  # A light parse of a dashboard's text: the DASHBOARD title, the dashboard's
+  # own SETTING ICON / COLOR (before the first PANEL) and the PANEL count.
+  # The browser validates the icon and color before using them.
+  def self.summary(text)
+    result = { 'title' => nil, 'icon' => nil, 'color' => nil, 'panels' => 0 }
+    text.to_s.dup.force_encoding('UTF-8').scrub.each_line do |line|
+      keyword, rest = line.strip.split(/\s+/, 2)
+      next if keyword.nil? || keyword.start_with?('#')
+      case keyword.upcase
+      when 'DASHBOARD'
+        result['title'] ||= unquote(rest)
+      when 'PANEL'
+        result['panels'] += 1
+      when 'SETTING'
+        next if result['panels'] > 0
+        name, value = rest.to_s.split(/\s+/, 2)
+        case name.to_s.upcase
+        when 'ICON' then result['icon'] = unquote(value)
+        when 'COLOR' then result['color'] = unquote(value)
+        end
+      end
+    end
+    result
+  end
+
+  # The first parameter, without its quotes
+  def self.unquote(text)
+    text = text.to_s.strip
+    match = text.match(/\A"([^"]*)"|\A'([^']*)'/)
+    return match[1] || match[2] if match
+    text.split(/\s+/)[0]
+  end
+  private_class_method :unquote
+
   # The file a dashboard lives in. Filenames are lowercase. Also the name
   # Enterprise version history tracks it by, so it's validated here (raising
   # ArgumentError) before it reaches the bucket or git.

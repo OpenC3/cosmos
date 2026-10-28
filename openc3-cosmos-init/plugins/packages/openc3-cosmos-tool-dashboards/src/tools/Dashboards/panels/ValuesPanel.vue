@@ -83,7 +83,7 @@ import LimitsBar from '../components/LimitsBar.vue'
 import StatusSymbol from '../components/StatusSymbol.vue'
 
 const props = defineProps(panelProps)
-const { itemStates, showDetails } = useTlmPanel(props)
+const { itemStates, showDetails, openDetails } = useTlmPanel(props)
 
 const showBars = computed(() => option(props.panel, 'LIMITS_BARS'))
 </script>

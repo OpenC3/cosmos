@@ -26,7 +26,7 @@
     <div v-if="attention.above" class="attention-anchor top">
       <button
         type="button"
-        :class="['attention', `a-${attention.above.level}`]"
+        :class="['attention cursor-pointer', `st-${attention.above.level}`]"
         :aria-label="`${levelLabel(attention.above.level)} panel above, scroll to it`"
         :title="`${attention.above.title}: ${levelLabel(attention.above.level)}`"
         data-test="attention-above"
@@ -85,7 +85,7 @@
     <div v-if="attention.below" class="attention-anchor bottom">
       <button
         type="button"
-        :class="['attention', `a-${attention.below.level}`]"
+        :class="['attention cursor-pointer', `st-${attention.below.level}`]"
         :aria-label="`${levelLabel(attention.below.level)} panel below, scroll to it`"
         :title="`${attention.below.title}: ${levelLabel(attention.below.level)}`"
         data-test="attention-below"
@@ -99,6 +99,7 @@
 import {
   computed,
   inject,
+  onBeforeUnmount,
   onMounted,
   onUnmounted,
   provide,
@@ -112,6 +113,7 @@ import { PANEL_TYPES as types, panelTitle } from './panels/registry'
 import { LEVEL_LABELS, stateToLevel, worstLevel } from './status'
 import { itemKey } from './composables/tlmPoller'
 import { pollType } from './panels/tlmPanel'
+import { SeriesStore } from './composables/seriesStore'
 import {
   BREAKPOINT_NOTES as notes,
   GRID_GAP,
@@ -128,8 +130,8 @@ import {
 // desktop, tablet or phone layout. In edit mode on the desktop layout panels
 // can be dragged, resized and nudged; changes are reported with `layout` as
 // { uid: rect }. The parent reads `health` ({ level, critical, caution,
-// worstUid } over every panel, for the dashboard's health chip) through the
-// template ref.
+// worstUid, worstTitle } over every panel, for the dashboard's health
+// banner) through the template ref.
 const props = defineProps({
   panels: { type: Array, required: true },
   editing: { type: Boolean, default: false },
@@ -146,6 +148,21 @@ const gridRef = useTemplateRef('grid')
 // (usePanel), and leave its last value when they unmount.
 const levels = reactive({})
 provide('panelLevels', levels)
+// One store for every graph and sparkline: a single stream, backfill per
+// item and 1 s clock (useTlmSeries; LimitsPanel reads its clock)
+const seriesStore = poller
+  ? new SeriesStore({
+      poller,
+      cable: inject('cable', null),
+      timeRange: inject('timeRange', () => reactive({ seconds: 120 }), true),
+      timeline: inject(
+        'timeline',
+        () => reactive({ on: false, time: null }),
+        true,
+      ),
+    })
+  : null
+provide('seriesStore', seriesStore)
 const width = ref(1200)
 // Active pointer drag: { uid, mode, startX, startY, origin, cell }
 const drag = ref(null)
@@ -202,11 +219,13 @@ const health = computed(() => {
   const count = (level) =>
     ranked.value.filter((panel) => panel.level === level).length
   const level = worstLevel(ranked.value.map((panel) => panel.level))
+  const worst = ranked.value.find((panel) => panel.level === level)
   return {
     level,
     critical: count('critical'),
     caution: count('caution'),
-    worstUid: ranked.value.find((panel) => panel.level === level)?.uid,
+    worstUid: worst?.uid,
+    worstTitle: worst?.title,
   }
 })
 // The worst caution / critical panel out of view above and below: the
@@ -235,7 +254,7 @@ provide(
 )
 
 // Unmounted panels' items keep being polled for their limits state, so
-// the frame ring, health chip and attention bars stay right. A watcher
+// the frame ring, health banner and attention bars stay right. A watcher
 // because the keys change with scrolling, editing and the panels, and the
 // poller registrations are outside Vue.
 watch(
@@ -284,6 +303,9 @@ onMounted(() => {
   )
   for (const el of cells.values()) visibility.observe(el)
 })
+// Before the panels unmount and release their keys, so they don't send
+// removes to a subscription that's closing
+onBeforeUnmount(() => seriesStore?.dispose())
 onUnmounted(() => {
   poller?.unregister(probeKeys.value)
   nearby?.disconnect()
@@ -485,16 +507,12 @@ defineExpose({ health, scrollToPanel })
   bottom: var(--v-layout-bottom, 0px);
 }
 /* A 12px hit area with a 4px glowing bar on the outer edge */
+/* Its color is --status, from st-critical / st-caution (dashboards.scss) */
 .attention {
   position: absolute;
   left: 0;
   right: 0;
   height: 12px;
-  cursor: pointer;
-  --attention: var(--color-status-critical);
-}
-.attention.a-caution {
-  --attention: var(--color-status-caution);
 }
 .top .attention {
   top: 0;
@@ -509,8 +527,8 @@ defineExpose({ health, scrollToPanel })
   right: 0;
   height: 4px;
   border-radius: 2px;
-  background: var(--attention);
-  box-shadow: 0 0 12px 2px color-mix(in srgb, var(--attention) 60%, transparent);
+  background: var(--status);
+  box-shadow: 0 0 12px 2px color-mix(in srgb, var(--status) 60%, transparent);
   animation: attention-pulse 1.6s ease-in-out infinite;
 }
 .top .attention::after {

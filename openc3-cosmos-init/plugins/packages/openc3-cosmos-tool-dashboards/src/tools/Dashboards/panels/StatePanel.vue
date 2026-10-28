@@ -22,7 +22,10 @@
     <div class="d-flex align-center ga-2">
       <status-symbol :level="first.level" :size="16" />
       <span
-        :class="['state-value text-truncate', { 'text-disabled': first.stale }]"
+        :class="[
+          'state-value font-weight-medium text-truncate',
+          { 'text-disabled': first.stale },
+        ]"
         data-test="state-value"
       >
         {{ first.text }}
@@ -44,7 +47,7 @@ import PacketTime from '../components/PacketTime.vue'
 import StatusSymbol from '../components/StatusSymbol.vue'
 
 const props = defineProps(panelProps)
-const { first, packetTime, showDetails } = useTlmPanel(props)
+const { first, packetTime, showDetails, openDetails } = useTlmPanel(props)
 </script>
 
 <style scoped>
@@ -56,7 +59,6 @@ const { first, packetTime, showDetails } = useTlmPanel(props)
 .state-value {
   /* Scales with the panel so narrow tiles show the whole state */
   font-size: clamp(14px, 9cqw, 24px);
-  font-weight: 500;
   letter-spacing: 0.01em;
   line-height: 1.15;
 }

@@ -13,6 +13,7 @@
 
 import { reactive } from 'vue'
 import { OpenC3Api } from '@openc3/js-common/services'
+import { equal } from './equal'
 
 const MAX_PERIOD = 3600 // seconds
 
@@ -31,15 +32,8 @@ export function packetTimeKey(item) {
   return itemKey({ ...item, itemName: 'PACKET_TIMEFORMATTED' }, 'CONVERTED')
 }
 
-function sameValue(a, b) {
-  if (a === b) return true
-  // Arrays, binary strings and NaN/Infinity arrive as objects
-  return (
-    typeof a === 'object' &&
-    typeof b === 'object' &&
-    JSON.stringify(a) === JSON.stringify(b)
-  )
-}
+// Arrays, binary strings and NaN/Infinity arrive as objects
+const sameValue = equal
 
 // One poller per dashboard. Panels register the item keys they display and
 // read results from `values`, so the whole dashboard makes a single
@@ -62,6 +56,16 @@ export class TlmPoller {
     this.timer = null
     this.busy = false
     this.pending = false
+    // Resolved once a poll and any queued behind it finish (nextPoll)
+    this.waiters = []
+  }
+
+  // Resolves after the next poll completes, e.g. so a dashboard that just
+  // opened shows with values rather than '--'. Right away when nothing is
+  // registered (no poll will run).
+  nextPoll() {
+    if (this.counts.size === 0) return Promise.resolve()
+    return new Promise((resolve) => this.waiters.push(resolve))
   }
 
   register(keys) {
@@ -186,6 +190,10 @@ export class TlmPoller {
       if (this.pending) {
         this.pending = false
         this.poll()
+      }
+      // Done, with nothing queued behind it
+      if (!this.pending && !this.busy) {
+        this.waiters.splice(0).forEach((resolve) => resolve())
       }
     }
   }

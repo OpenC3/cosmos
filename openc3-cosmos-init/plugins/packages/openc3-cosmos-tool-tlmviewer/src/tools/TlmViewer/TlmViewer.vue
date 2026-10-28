@@ -128,6 +128,12 @@
     :config-key="configKey"
     @success="saveConfiguration"
   />
+  <convert-dashboard-dialog
+    v-if="convertDialog"
+    v-model="convertDialog"
+    :definitions="definitions"
+    :initial-name="$route.query.config || 'TLMVIEWER'"
+  />
   <new-screen-dialog
     v-if="newScreenDialog"
     v-model="newScreenDialog"
@@ -151,6 +157,7 @@ import {
 } from '@openc3/vue-common/components'
 import { useStore } from '@openc3/vue-common/plugins'
 import NewScreenDialog from './NewScreenDialog'
+import ConvertDashboardDialog from './ConvertDashboardDialog.vue'
 
 export default {
   components: {
@@ -159,6 +166,7 @@ export default {
     PlaybackBanner,
     PlaybackControls,
     NewScreenDialog,
+    ConvertDashboardDialog,
     OpenConfigDialog,
     SaveConfigDialog,
   },
@@ -184,6 +192,7 @@ export default {
       configKey: 'telemetry_viewer',
       openConfig: false,
       saveConfig: false,
+      convertDialog: false,
       playbackStep: 1,
       playbackDateTime: null,
       playbackMode: 'realtime',
@@ -231,6 +240,14 @@ export default {
                 this.panel = 0 // Expand the expansion panel
                 this.closeAll()
                 this.resetConfigBase()
+              },
+            },
+            {
+              label: 'Convert to Dashboard',
+              icon: 'mdi-view-dashboard-outline',
+              disabled: this.definitions.length === 0,
+              command: () => {
+                this.convertDialog = true
               },
             },
           ],

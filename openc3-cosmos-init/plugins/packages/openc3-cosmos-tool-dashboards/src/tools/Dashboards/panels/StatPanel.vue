@@ -26,7 +26,7 @@
         :class="['hero num', { 'text-disabled': first.stale }]"
         data-test="stat-value"
       >
-        {{ first.text }}
+        {{ valueText }}
       </span>
       <!-- Compact panels have no room for the hover label, so the hovered
            value takes the live value's place (container query) -->
@@ -41,23 +41,40 @@
     <!-- Only gets the space left over, so it never covers the rows around
          it; behind the value when the panel is too short (container query) -->
     <div v-if="showGraph" class="stat-spark flex-1-1-0 min-h-0">
+      <!-- The graphs' tooltip, beside the crosshair -->
       <div
-        v-if="hovered"
-        class="hover-label position-absolute pointer-events-none rounded text-caption num"
+        v-if="tip"
+        class="db-tip position-absolute pointer-events-none text-no-wrap text-caption bg-surface-light rounded-lg border pa-2 elevation-4"
+        :style="{
+          left: `${tip.left}%`,
+          transform: tip.flip
+            ? 'translateX(calc(-100% - 12px))'
+            : 'translateX(12px)',
+        }"
         data-test="stat-hover"
       >
-        <b>{{ hovered.value }}</b> {{ first.units }} · {{ hovered.time }}
+        <div class="num font-weight-bold mb-1">{{ hovered.time }}</div>
+        <div class="d-flex align-center justify-space-between ga-3">
+          <span class="d-inline-flex align-center ga-2 text-medium-emphasis">
+            <span class="db-swatch" :style="{ background: lineColor }" />
+            {{ first.label }}
+          </span>
+          <span>
+            <b class="num">{{ hovered.value }}</b> {{ first.units }}
+          </span>
+        </div>
       </div>
       <sparkline
         class="h-100"
         area
         :hover-time="hover.time"
-        :points="points"
-        :times="times"
-        :window="[now - duration, now]"
+        :points="series[1] || []"
+        :times="series[0]"
+        :version="version"
+        :window="sparkWindow"
         :limits="showLimitsLines ? first.limits : null"
         :color="lineColor"
-        @hover="setHover"
+        @hover="pointAt"
       />
     </div>
     <div v-else class="flex-grow-1" />
@@ -74,12 +91,12 @@
 import { computed, ref } from 'vue'
 import { panelProps } from './panelBase'
 import { useTlmPanel } from './tlmPanel'
-import { useTlmSeries } from './tlmSeries'
+import { hoverReach, nearestValue, useTlmSeries } from './tlmSeries'
 import { itemOption, option } from './options'
 import LimitsBar from '../components/LimitsBar.vue'
 import PacketTime from '../components/PacketTime.vue'
 import Sparkline from '../components/Sparkline.vue'
-import { clock, formatTelemetry } from '../composables/format'
+import { clock, compactNumber, formatTelemetry } from '../composables/format'
 
 // One value, big. Container queries hide the extras as the panel shrinks:
 // number only at the smallest size, then sparkline, then limits bar. The
@@ -88,22 +105,54 @@ import { clock, formatTelemetry } from '../composables/format'
 // graphs, and it marks theirs, with the value at that time.
 const props = defineProps(panelProps)
 const panel = useTlmPanel(props)
-const { first, packetTime, showDetails, openDetails, itemInfo, timeZone } =
-  panel
+const {
+  first,
+  packetTime,
+  showDetails,
+  openDetails,
+  itemInfo,
+  timeZone,
+  isNarrow,
+} = panel
+// Small panels (2 columns or less) shorten numbers so they fit
+const valueText = computed(() =>
+  isNarrow.value && typeof first.value.number === 'number'
+    ? compactNumber(first.value.number)
+    : first.value.text,
+)
 const { hover, now, duration, series, setHover } = useTlmSeries(props, panel, {
   // Only streamed while the graph is shown
   seriesItems: () => (showGraph.value ? props.panel.items.slice(0, 1) : []),
-  // Copies, so the sparkline sees the change
+  // The series are the store's arrays, changed in place: bump the version
+  // so the sparkline redraws, rather than copying them
   seriesUpdated: () => {
-    times.value = [...series[0]]
-    points.value = [...(series[1] || [])]
+    version.value++
+    // Like the graphs: the sparkline scrolled under a still mouse, so the
+    // hover is the time under it now
+    if (pointer !== null) setHover(windowStart() + pointer * duration.value)
   },
 })
 
-const points = ref([])
-const times = ref([])
+const version = ref(0)
+// Where the mouse is across the sparkline (0 to 1), null when it's not over
+// it. Not reactive: only read when the series update.
+let pointer = null
 
-// Custom COLOR, else blue for items with limits and grey without
+// The sparkline's [start, end]: a new array only when the window moves
+// (about once a second), so hovering doesn't redraw its line
+const sparkWindow = computed(() => [now.value - duration.value, now.value])
+
+function windowStart() {
+  return now.value - duration.value
+}
+// The sparkline's hover: share the time and remember where the mouse is
+function pointAt(time) {
+  pointer = time === null ? null : (time - windowStart()) / duration.value
+  setHover(time)
+}
+
+// Custom COLOR, else the theme's secondary color for items with limits and
+// a muted one without
 const lineColor = computed(() => {
   const item = props.panel.items[0]
   const custom = item && itemOption(props.panel, item, 'COLOR')
@@ -127,34 +176,36 @@ const showBar = computed(() => option(props.panel, 'LIMITS_BAR'))
 // before the history starts there's nothing to show.
 const hovered = computed(() => {
   const time = hover.time
-  const list = times.value
-  if (time === null || !list.length || time < list[0]) return null
-  if (time > now.value) return null
-  let low = 0
-  let high = list.length - 1
-  while (high - low > 1) {
-    const mid = (low + high) >> 1
-    if (list[mid] < time) low = mid
-    else high = mid
-  }
-  const index =
-    time >= list.at(-1)
-      ? list.length - 1
-      : time - list[low] <= list[high] - time
-        ? low
-        : high
-  const value = points.value[index]
-  if (typeof value !== 'number') return null
+  if (time === null || time > now.value) return null
+  // The arrays change in place; the version says when
+  void version.value
+  const value = nearestValue(
+    series[0],
+    series[1],
+    time,
+    hoverReach(duration.value),
+  )
+  if (value === null) return null
   const item = props.panel.items[0]
   const formatString = item && itemInfo.get(item).formatString
+  let text = Number(value.toPrecision(6)).toString()
+  if (isNarrow.value) text = compactNumber(value)
+  else if (formatString) text = formatTelemetry(value, formatString)
   return {
-    value: formatString
-      ? formatTelemetry(value, formatString)
-      : Number(value.toPrecision(6)).toString(),
+    value: text,
     // The hovered time, not the sample's, so it moves smoothly like the
     // graphs' tooltips
     time: clock(time * 1000, timeZone.value),
   }
+})
+// Where the tooltip goes: percent across the sparkline. Like the graphs',
+// it flips sides past 62% across and back under 38%, so it doesn't flicker
+// from side to side around one spot.
+const tip = computed((previous) => {
+  if (!hovered.value) return null
+  const left = ((hover.time - windowStart()) / duration.value) * 100
+  if (left < 0 || left > 100) return null
+  return { left, flip: previous?.flip ? left > 38 : left > 62 }
 })
 </script>
 
@@ -186,13 +237,6 @@ const hovered = computed(() => {
 .hero-hover {
   display: none;
 }
-.hover-label {
-  top: 6px;
-  right: 12px;
-  z-index: 1;
-  padding: 0 6px;
-  background: rgba(var(--v-theme-surface), 0.85);
-}
 /* Too short for the graph under the value (3 rows or less): like Grafana's
    stat panel, the value big in its limits color over an area graph along
    the bottom, edge to edge */
@@ -207,7 +251,7 @@ const hovered = computed(() => {
   .stat-spark :deep(.spark-area) {
     display: inline;
   }
-  .hover-label,
+  .db-tip,
   .stat[data-hovered] .hero:not(.hero-hover) {
     display: none;
   }

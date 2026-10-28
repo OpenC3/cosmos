@@ -72,6 +72,29 @@
     border-top: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
   }
 
+  // A status color as --status, for a component to paint with (fill,
+  // stroke, background, a tint...): the Gauge marker, the grid's attention
+  // bars, the health banner
+  @each $level in critical, serious, caution, normal, standby, off {
+    .st-#{$level} {
+      --status: var(--color-status-#{$level});
+    }
+  }
+
+  // Hover tooltip on graphs and sparklines (GraphPanel, StatPanel)
+  .db-tip {
+    top: 4px;
+    min-width: 220px;
+    z-index: 2;
+  }
+  // A series' line color, in legends and tooltips
+  .db-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 2px;
+    border-radius: 1px;
+  }
+
   // Limits zones (LimitsBar, GaugePanel): each sets --zone, and the
   // component paints it as a background or an SVG stroke
   .z-critical {
@@ -89,7 +112,7 @@
   // Empty part of a limits track
   --track-color: rgba(var(--v-border-color), var(--v-border-opacity));
 
-  // The current choice in a list (navigator, time range picker): a
+  // The current choice in a list (time range picker): a
   // secondary bar on the left that doesn't shift the text
   .db-current-list .v-list-item {
     border-left: 3px solid transparent;
@@ -105,5 +128,38 @@
   }
   .min-w-0 {
     min-width: 0;
+  }
+}
+
+// A dialog pinned near the top of the window instead of centered, so it
+// grows and shrinks downward without its top moving (the dashboard
+// navigator as folders change). Outside .dashboards-root: dialogs are
+// teleported.
+.db-top-dialog {
+  align-self: flex-start !important;
+  margin-top: 8vh !important;
+}
+
+// A key on the keyboard, in hints and tooltips. Outside .dashboards-root
+// because tooltips are teleported.
+.db-kbd {
+  padding: 0 4px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.85em;
+}
+
+// Segmented choices (grid columns, panel width, command mode): the current
+// one filled like COSMOS's primary buttons so it reads at a glance; the
+// others stay outlined. Vuetify's default only adds a faint tint. Outside
+// .dashboards-root because the dialogs holding them are teleported, and
+// !important to beat the tool base's outlined button overrides.
+.db-toggle .v-btn.v-btn--active {
+  background-color: var(--button-color-background-primary-default) !important;
+  color: var(--color-text-inverse) !important;
+  font-weight: 600;
+  .v-btn__overlay {
+    opacity: 0;
   }
 }

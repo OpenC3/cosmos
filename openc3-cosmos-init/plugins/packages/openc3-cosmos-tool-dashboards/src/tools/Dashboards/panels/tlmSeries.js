@@ -11,36 +11,68 @@
 # if purchased from OpenC3, Inc.
 */
 
-import {
-  computed,
-  inject,
-  onMounted,
-  onUnmounted,
-  reactive,
-  ref,
-  watch,
-} from 'vue'
-import { Cable } from '@openc3/js-common/services'
+import { computed, inject, onMounted, onUnmounted, reactive, watch } from 'vue'
 import { itemKey } from '../composables/tlmPoller'
+import { SeriesStore, alignSeries } from '../composables/seriesStore'
 import { pollType } from './tlmPanel'
 
-const RENDER_MS = 1000
+// The value nearest `time` in a series that has gaps (rows from other
+// packets are null), searching up to `reach` seconds either side like the
+// graph's cursor. Past the newest point it's the newest value, however old,
+// so slow items still show one. Returns null when there's nothing near.
+export function nearestValue(times, values, time, reach) {
+  if (!times?.length || time === null || time < times[0]) return null
+  let low = 0
+  let high = times.length - 1
+  if (time >= times[high]) {
+    for (let i = high; i >= 0; i--) {
+      if (typeof values[i] === 'number') return values[i]
+    }
+    return null
+  }
+  while (high - low > 1) {
+    const mid = (low + high) >> 1
+    if (times[mid] < time) low = mid
+    else high = mid
+  }
+  let best = null
+  let bestGap = Infinity
+  for (let i = low; i >= 0 && time - times[i] <= reach; i--) {
+    if (typeof values[i] === 'number') {
+      best = values[i]
+      bestGap = time - times[i]
+      break
+    }
+  }
+  for (let i = high; i < times.length; i++) {
+    const gap = times[i] - time
+    if (gap > reach || gap >= bestGap) break
+    if (typeof values[i] === 'number') return values[i]
+  }
+  return best
+}
 
-// Panels that draw their items over time. When the dashboard opens, the
-// streaming API backfills the dashboard's time range (picked in the header)
-// and then streams live (the way Telemetry Grapher does); during playback the
-// range before the playback time is loaded instead. `base` is what usePanel
-// or useTlmPanel returned.
+// How far either side of the cursor a value still counts as under it
+export function hoverReach(seconds) {
+  return Math.max(5, seconds / 40)
+}
+
+// Panels that draw their items over time. The dashboard's SeriesStore
+// (composables/seriesStore.js) backfills the time range picked in the header
+// and then streams live (the way Telemetry Grapher does), or during playback
+// loads the range before the playback time, sharing one stream and one
+// clock across every panel. `base` is what usePanel or useTlmPanel returned.
 //
 // Options are getters / callbacks read once the panel mounts:
 // `seriesItems` (default: the panel's items), `seriesUpdated()` called about
 // once a second with points older than the range dropped, and
-// `seriesReset()` called whenever the series start over (default:
+// `seriesReset()` called when the panel's items change (default:
 // seriesUpdated). Returns `series` ([times in seconds, then one array of
 // values per item], oldest first) and `latest` (each item's newest value);
-// both are plain arrays updated in place, not reactive.
+// both are plain arrays updated in place, not reactive, and with one item
+// they're the store's own arrays, so treat them as read only.
 export function useTlmSeries(props, base, options = {}) {
-  const { poller, cable, isPlayback, playbackTime } = base
+  const { poller, cable, timeline } = base
   // { seconds } from the header's time range picker
   const timeRange = inject('timeRange', () => ({ seconds: 120 }), true)
   // { time, source }: hover shared across the dashboard's graphs
@@ -49,8 +81,13 @@ export function useTlmSeries(props, base, options = {}) {
     () => reactive({ time: null, source: null }),
     true,
   )
+  // The dashboard's (DashboardGrid); a panel shown outside a grid gets one
+  // of its own
+  const shared = inject('seriesStore', null)
+  const store =
+    shared ?? new SeriesStore({ poller, cable, timeRange, timeline })
 
-  const now = ref(Date.now() / 1000)
+  const now = computed(() => store.state.now)
   // Seconds of history shown
   const duration = computed(() => timeRange.seconds)
   const seriesItems = computed(
@@ -62,16 +99,10 @@ export function useTlmSeries(props, base, options = {}) {
     ),
   )
 
-  const socket = cable || new Cable()
-  let subscription = null
-  // Bumped by every restart, so a subscription still connecting from an
-  // earlier one is dropped instead of streaming alongside the new one
-  let generation = 0
   const series = [[]]
   const latest = []
-  let renderTimer = null
-  let startTime = 0
-  let needsAdd = false
+  let keys = []
+  let stopTicks = null
 
   const seriesUpdated = () => options.seriesUpdated?.()
   const seriesReset = () =>
@@ -89,192 +120,41 @@ export function useTlmSeries(props, base, options = {}) {
     hover.time = time
   }
 
-  function restart() {
-    const current = ++generation
-    subscription?.unsubscribe()
-    subscription = null
-    series.splice(0, series.length, [], ...seriesItems.value.map(() => []))
-    latest.splice(0, latest.length, ...seriesItems.value.map(() => null))
-    seriesReset()
-    // Nothing to draw, so no need to tick
-    if (!seriesItems.value.length) {
-      stopRender()
-      return
-    }
-    renderTimer ??= setInterval(render, RENDER_MS)
-    // Playback loads the window leading up to the playback time instead
-    if (isPlayback.value) {
-      if (playbackTime.value) {
-        loadRange(
-          new Date(playbackTime.value.getTime() - duration.value * 1000),
-          playbackTime.value,
-        )
-      }
-      return
-    }
-    startTime = (Date.now() - duration.value * 1000) * 1_000_000
-    needsAdd = false
-    socket
-      .createSubscription('StreamingChannel', window.openc3Scope, {
-        received: (rows) => {
-          if (current !== generation) return
-          socket.recordPing()
-          append(rows)
-        },
-        // connected can fire before or after the promise below resolves, and
-        // again after every reconnect, so both paths go through addItems
-        connected: () => {
-          if (current !== generation) return
-          needsAdd = true
-          addItems()
-        },
-      })
-      .then((created) => {
-        if (current !== generation) {
-          created.unsubscribe()
-          return
-        }
-        subscription = created
-        addItems()
-      })
-  }
-
-  function stopRender() {
-    clearInterval(renderTimer)
-    renderTimer = null
-  }
-
-  function addItems() {
-    if (!subscription || !needsAdd) return
-    needsAdd = false
-    // Resume from the newest point we have so reconnects don't duplicate
-    const last = series[0].at(-1)
-    subscription.perform('add', {
-      scope: window.openc3Scope,
-      token: localStorage.openc3Token,
-      items: streamKeys.value,
-      start_time: last ? Math.floor(last * 1e9) + 1 : startTime,
-    })
-  }
-
-  // Historical rows for playback, in the same shape the stream delivers
-  async function loadRange(start, end) {
-    const items = seriesItems.value
-    if (!items.length) return
-    const timeKey = itemKey(
-      { ...items[0], itemName: 'PACKET_TIMESECONDS' },
-      'RAW',
+  // Point series and latest at the store's arrays for the current keys
+  function refresh() {
+    const entries = keys.map((key) => store.get(key))
+    series.splice(0, series.length, ...alignSeries(entries))
+    latest.splice(
+      0,
+      latest.length,
+      ...entries.map((entry) => entry?.latest ?? null),
     )
-    const keys = [
-      timeKey,
-      ...items.map((item) => itemKey(item, pollType(item))),
-    ]
-    poller.clock.loading++
-    try {
-      await poller.resolve(keys)
-      const data = await poller.api.get_tlm_values(
-        keys.map((key) => poller.available[key]),
-        30,
-        null,
-        start,
-        end,
-        { 'Ignore-Errors': '403' },
-      )
-      // The playback time moved on while this loaded
-      if (end !== playbackTime.value) return
-      // One row comes back unwrapped
-      const rows =
-        Array.isArray(data?.[0]) && Array.isArray(data[0][0]) ? data : [data]
-      append(
-        rows
-          .filter((row) => typeof row?.[0]?.[0] === 'number')
-          .map((row) =>
-            Object.fromEntries([
-              ['__time', row[0][0] * 1e9],
-              ...streamKeys.value.map((key, i) => [key, row[i + 1]?.[0]]),
-            ]),
-          ),
-      )
-      render()
-    } catch (error) {
-      console.error('Dashboards playback history failed:', error)
-    } finally {
-      poller.clock.loading--
-    }
   }
 
-  function append(rows) {
-    const [xs, ...ys] = series
-    const keys = streamKeys.value
-    for (const row of rows) {
-      if (!row.__time) continue
-      const t = row.__time / 1e9
-      let index = xs.length
-      while (index > 0 && xs[index - 1] > t) index--
-      if (index > 0 && xs[index - 1] === t) {
-        index--
-      } else {
-        xs.splice(index, 0, t)
-        ys.forEach((y) => y.splice(index, 0, null))
-      }
-      keys.forEach((key, i) => {
-        if (key in row) {
-          const value = typeof row[key] === 'number' ? row[key] : null
-          ys[i][index] = value
-          if (value !== null && index === xs.length - 1) latest[i] = value
-        }
-      })
-    }
-  }
-
-  function render() {
-    now.value = (playbackTime.value?.getTime() ?? Date.now()) / 1000
-    // Drop points that scrolled off the left edge
-    const cutoff = now.value - duration.value
-    const xs = series[0]
-    let drop = 0
-    while (drop < xs.length && xs[drop] < cutoff) drop++
-    if (drop > 0) series.forEach((values) => values.splice(0, drop))
-    seriesUpdated()
+  function setKeys(next) {
+    store.release(keys)
+    keys = next
+    store.acquire(keys)
+    refresh()
+    seriesReset()
   }
 
   onMounted(() => {
-    restart()
-    // The stream lives outside Vue: restart it when what's shown changes.
-    // One watcher, so a change to several of these restarts once.
-    watch(
-      () => ({
-        keys: streamKeys.value.join(),
-        seconds: duration.value,
-        playback: isPlayback.value,
-        time: playbackTime.value,
-      }),
-      (next, previous) => {
-        const sameView =
-          next.keys === previous.keys &&
-          next.seconds === previous.seconds &&
-          next.playback === previous.playback
-        if (sameView) {
-          // Only the playback time moved (or nothing did)
-          if (!next.playback || !next.time || +next.time === +previous.time) {
-            return
-          }
-          // Stepping forward adds just the new range; anything else reloads
-          const step = next.time - previous.time
-          if (previous.time && step > 0 && step <= next.seconds * 1000) {
-            loadRange(previous.time, next.time)
-            return
-          }
-        }
-        restart()
-      },
-    )
+    setKeys(streamKeys.value)
+    stopTicks = store.onTick(() => {
+      refresh()
+      seriesUpdated()
+    })
+    // The store is outside Vue: keep the keys it streams in step with the
+    // panel's items, which change with a new panel config (no event)
+    watch(streamKeys, (next, previous) => {
+      if (next.join() !== previous.join()) setKeys(next)
+    })
   })
   onUnmounted(() => {
-    generation++
-    stopRender()
-    subscription?.unsubscribe()
-    if (!cable) socket.disconnect()
+    stopTicks?.()
+    store.release(keys)
+    if (!shared) store.dispose()
   })
 
   return {
@@ -286,6 +166,7 @@ export function useTlmSeries(props, base, options = {}) {
     series,
     latest,
     setHover,
-    restart,
+    // Start the history over, e.g. after a gap
+    restart: () => store.restart(),
   }
 }

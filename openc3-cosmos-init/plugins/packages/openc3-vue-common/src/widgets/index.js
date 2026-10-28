@@ -29,7 +29,7 @@ import ComboboxWidget from './ComboboxWidget.vue'
 import DateWidget from './DateWidget.vue'
 import DynamicWidget from './DynamicWidget.vue'
 import FiledisplayWidget from './FiledisplayWidget.vue'
-import FormatValueBase from './FormatValueBase'
+import FormatValueBase, { formatValueBase } from './FormatValueBase'
 import FormatvalueWidget from './FormatvalueWidget.vue'
 import GraphWidget from './GraphWidget'
 import HorizontalWidget from './HorizontalWidget.vue'
@@ -99,6 +99,7 @@ export {
   DynamicWidget,
   FiledisplayWidget,
   FormatValueBase,
+  formatValueBase,
   FormatvalueWidget,
   GraphWidget,
   HorizontalWidget,

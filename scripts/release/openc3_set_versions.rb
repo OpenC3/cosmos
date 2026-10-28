@@ -114,6 +114,7 @@ package_dot_json_files = [
   'openc3-cosmos-init/plugins/packages/openc3-js-common/package.json',
   'openc3-cosmos-init/plugins/packages/openc3-vue-common/package.json',
   'openc3/templates/widget/package.json',
+  'openc3/templates/panel/package.json',
   'openc3/templates/tool_vue/package.json',
   'openc3/templates/tool_react/package.json',
   'openc3/templates/tool_angular/package.json',

@@ -52,7 +52,7 @@
         <item-options-editor
           :panel="panel"
           :item="item"
-          :fallback="colorOf(item, index)"
+          :fallback="automaticColor(item, index)"
           @update="(settings) => setItem(index, { settings })"
         />
         <v-select
@@ -85,7 +85,8 @@ import { TargetPacketItemChooser } from '@openc3/vue-common/components'
 import ItemOptionsEditor from '../../editor/ItemOptionsEditor.vue'
 import { VALUE_TYPES } from '../../dashboardParser'
 import { PANEL_TYPES } from '../registry'
-import { seriesColor } from '../colors'
+import { SERIES_COLORS } from '../colors'
+import { itemOptionDefs } from '../options'
 
 // The items a panel shows, from any targets, with each item's options
 const props = defineProps({
@@ -130,8 +131,14 @@ function setItem(index, change) {
   })
 }
 
-function colorOf(item, index) {
-  return seriesColor(props.panel, item, index)
+// The color an item gets while its COLOR is unset: the type's own
+// (e.g. STAT's theme color), else its series color
+function automaticColor(item, index) {
+  const def = itemOptionDefs(props.panel.type).find((d) => d.name === 'COLOR')
+  return (
+    def?.automatic?.(props.panel, item, index) ??
+    SERIES_COLORS[index % SERIES_COLORS.length]
+  )
 }
 </script>
 

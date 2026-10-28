@@ -25,20 +25,31 @@
           class="d-flex align-center ga-2 text-body-1 flex-grow-1 min-w-0"
         >
           <!-- On phones the dashboard's name is the switcher instead -->
-          <v-btn
+          <v-tooltip
             v-if="!isPhone || !current"
-            variant="text"
-            :prepend-icon="isPhone ? undefined : 'mdi-view-dashboard-outline'"
-            :icon="isPhone ? 'mdi-view-dashboard-outline' : undefined"
-            :append-icon="isPhone ? undefined : 'mdi-chevron-down'"
-            class="text-medium-emphasis flex-shrink-0"
-            :aria-label="isPhone ? 'All dashboards' : undefined"
-            title="All dashboards (Ctrl+K)"
-            data-test="dashboard-navigator-btn"
-            @click="navigatorOpen = true"
+            location="bottom"
+            :disabled="isPhone"
           >
-            <template v-if="!isPhone">Dashboards</template>
-          </v-btn>
+            <template #activator="{ props: tooltipProps }">
+              <v-btn
+                v-bind="tooltipProps"
+                variant="text"
+                :prepend-icon="
+                  isPhone ? undefined : 'mdi-view-dashboard-outline'
+                "
+                :icon="isPhone ? 'mdi-view-dashboard-outline' : undefined"
+                :append-icon="isPhone ? undefined : 'mdi-chevron-down'"
+                class="text-medium-emphasis flex-shrink-0"
+                :aria-label="isPhone ? 'All dashboards' : undefined"
+                :aria-keyshortcuts="SHORTCUT.aria"
+                data-test="dashboard-navigator-btn"
+                @click="navigatorOpen = true"
+              >
+                <template v-if="!isPhone">Dashboards</template>
+              </v-btn>
+            </template>
+            All dashboards <kbd class="db-kbd ml-1">{{ SHORTCUT.label }}</kbd>
+          </v-tooltip>
           <template v-if="current">
             <span v-if="!isPhone" class="text-disabled">/</span>
             <component
@@ -83,20 +94,6 @@
                 />
               </template>
             </v-tooltip>
-            <!-- Overall health: the worst status of any panel. Click to go
-                 to the worst panel. -->
-            <v-chip
-              v-if="healthText"
-              size="small"
-              variant="tonal"
-              :class="['health flex-shrink-0', `h-${health.level}`]"
-              :title="`Dashboard health: ${healthText}`"
-              data-test="dashboard-health"
-              @click="goToWorst"
-            >
-              <status-symbol :level="health.level" decorative class="mr-2" />
-              {{ healthText }}
-            </v-chip>
           </template>
         </nav>
         <v-btn
@@ -115,7 +112,7 @@
       <template v-else>
         <dashboard-style-picker
           :settings="model.settings"
-          @update="(settings) => (model.settings = settings)"
+          @update="setSettings"
         />
         <v-text-field
           :model-value="model.title"
@@ -125,7 +122,7 @@
           hide-details
           style="max-width: 280px; min-width: 180px"
           data-test="dashboard-title-input"
-          @update:model-value="(title) => (model.title = title)"
+          @update:model-value="setTitle"
         />
         <v-chip
           size="small"
@@ -182,7 +179,7 @@
             size="small"
             aria-label="Undo"
             title="Undo (Ctrl+Z)"
-            :disabled="!history.canUndo"
+            :disabled="!canUndo"
             data-test="editor-undo"
             @click="undo"
           />
@@ -192,7 +189,7 @@
             size="small"
             aria-label="Redo"
             title="Redo (Ctrl+Shift+Z)"
-            :disabled="!history.canRedo"
+            :disabled="!canRedo"
             data-test="editor-redo"
             @click="redo"
           />
@@ -229,23 +226,6 @@
       </template>
     </header>
 
-    <!-- The same playback banner and controls as Telemetry Viewer. The
-         Playback button in the header goes back to live. -->
-    <template v-if="playback.on && !editing">
-      <playback-banner class="rounded-0" />
-      <div class="px-4 py-3 border-b" data-test="playback-bar">
-        <!-- Centered, wrapped lines too (class lands on the controls' row) -->
-        <playback-controls
-          :model-value="playback.time"
-          class="justify-center"
-          :time-zone="timeZone"
-          :loading="poller.clock.loading > 0"
-          storage-key="dashboards"
-          @update:model-value="setPlaybackTime"
-        />
-      </div>
-    </template>
-
     <v-alert
       type="warning"
       variant="tonal"
@@ -258,6 +238,61 @@
       Panels, the editor and the dashboard file format can change in any release
       without notice, and dashboards made now may need updating.
     </v-alert>
+
+    <!-- Overall health across the top: the worst status of any panel, in
+         its status color. Out of limits, it names the worst panel and goes
+         to it. -->
+    <div
+      v-if="current && !editing && healthBanner"
+      :class="['health-banner', `st-${health.level}`]"
+      role="status"
+      aria-live="polite"
+      data-test="dashboard-health"
+    >
+      <!-- Centered on the banner; the button keeps the right column -->
+      <div class="health-center">
+        <status-symbol :level="health.level" decorative class="health-symbol" />
+        <span class="health-label font-weight-bold text-uppercase">{{
+          healthBanner.label
+        }}</span>
+        <span v-if="healthBanner.detail" class="health-detail text-truncate">
+          {{ healthBanner.detail }}
+        </span>
+      </div>
+      <v-btn
+        v-if="healthBanner.worst"
+        size="small"
+        variant="text"
+        append-icon="mdi-arrow-right"
+        class="health-go flex-shrink-0"
+        :title="`Scroll to ${healthBanner.worst}`"
+        data-test="dashboard-health-go"
+        @click="goToWorst"
+      >
+        <template v-if="!isPhone">{{ healthBanner.worst }}</template>
+        <template v-else>Show</template>
+      </v-btn>
+    </div>
+
+    <!-- The same playback banner and controls as Telemetry Viewer. The
+         Playback button in the header goes back to live. -->
+    <template v-if="playback.on && !editing">
+      <!-- A gap from the health banner, when there is one above -->
+      <playback-banner
+        :class="['rounded-0', { 'mt-2': current && healthBanner }]"
+      />
+      <div class="px-4 py-3 border-b" data-test="playback-bar">
+        <!-- Centered, wrapped lines too (class lands on the controls' row) -->
+        <playback-controls
+          :model-value="playback.time"
+          class="justify-center"
+          :time-zone="timeZone"
+          :loading="poller.clock.loading > 0"
+          storage-key="dashboards"
+          @update:model-value="setPlaybackTime"
+        />
+      </div>
+    </template>
 
     <v-alert
       v-if="errors.length"
@@ -299,7 +334,25 @@
       </v-btn>
     </div>
 
-    <main v-else-if="!editing" :class="isPhone ? 'pa-3' : 'pa-4'">
+    <main
+      v-else-if="!editing"
+      :class="[
+        isPhone ? 'pa-3' : 'pa-4',
+        'position-relative',
+        { 'is-opening': opening },
+      ]"
+    >
+      <!-- Switching dashboards: the new one lays out underneath, hidden,
+           until it's ready -->
+      <div
+        v-if="opening"
+        class="opening-screen d-flex flex-column align-center ga-3 pt-16 text-medium-emphasis"
+        role="status"
+        data-test="dashboard-opening"
+      >
+        <v-progress-circular indeterminate color="secondary" />
+        Loading {{ opening }}…
+      </div>
       <dashboard-grid ref="grid" :panels="model.panels" :columns="columns" />
       <div
         v-if="!model.panels.length"
@@ -323,7 +376,7 @@
         :columns="columns"
         editing
         @configure="configurePanel"
-        @layout="applyPositions"
+        @layout="moveOrResize"
         @duplicate="duplicatePanel"
         @delete="deletePanel"
       >
@@ -357,7 +410,10 @@
     @new="openDashboardDialog('new')"
     @duplicate="openDashboardDialog('duplicate', $event)"
   />
+  <!-- Dialogs start fresh each time they open (a new :key), so their forms
+       are set up from the props in setup rather than by watching open -->
   <dashboard-dialog
+    :key="`dashboard-${dashboardDialogOpens}`"
     v-model="dashboardDialog"
     :mode="dashboardDialogMode"
     :initial-target="dashboardDialogTarget"
@@ -366,6 +422,7 @@
     @submit="onDashboardDialog"
   />
   <panel-dialog
+    :key="`panel-${panelDialogOpens}`"
     v-model="panelDialog"
     :panel="editPanel"
     :is-new="editPanelIsNew"
@@ -375,7 +432,7 @@
     v-model="codeDialog"
     :text="codeText"
     :path="filePath"
-    @apply="applyModel"
+    @apply="applyCode"
   />
   <version-history-dialog
     v-if="historyOpen"
@@ -411,12 +468,7 @@ import {
   useTemplateRef,
   watch,
 } from 'vue'
-import {
-  onBeforeRouteLeave,
-  onBeforeRouteUpdate,
-  useRoute,
-  useRouter,
-} from 'vue-router'
+import { onBeforeRouteLeave, onBeforeRouteUpdate } from 'vue-router'
 import { useDisplay } from 'vuetify'
 import { Api, Cable } from '@openc3/js-common/services'
 import {
@@ -438,31 +490,23 @@ import ItemDetails from './components/ItemDetails.vue'
 import TimeRangePicker from './components/TimeRangePicker.vue'
 import StatusSymbol from './components/StatusSymbol.vue'
 import { loadTimeRange, saveTimeRange } from './composables/timeRange'
-import { readString, writeString } from './composables/storage'
 import DashboardDialog from './dialogs/DashboardDialog.vue'
 import DashboardNavigator from './navigator/DashboardNavigator.vue'
-import {
-  dashboardUrl,
-  fetchDashboardText,
-  forget,
-  isStarred,
-  remember,
-  toggleStar,
-  visited,
-} from './navigator/navigatorStore'
+import { dashboardUrl, isStarred, toggleStar } from './navigator/navigatorStore'
 import PanelDialog from './dialogs/PanelDialog.vue'
 import CodeDialog from './dialogs/CodeDialog.vue'
-import { History } from './editor/history'
+import { useDashboardHistory } from './composables/useDashboardHistory'
+import { routeKey, useDashboardFile } from './composables/useDashboardFile'
+import { usePlayback } from './composables/usePlayback'
+import { cloneData } from './composables/clone'
 import { loadPanelPlugins } from './composables/panelPlugins'
 import { PANEL_TYPES, defaultPanelType } from './panels/registry'
-import { clearCommandCache } from './panels/commandParams'
 import { TlmPoller } from './composables/tlmPoller'
 import { ItemInfo } from './composables/itemInfo'
 import {
   emptyDashboard,
   newPanel,
   panelUid,
-  parseDashboard,
   reuseUids,
   serializeDashboard,
 } from './dashboardParser'
@@ -476,17 +520,6 @@ const VersionHistoryDialog = defineAsyncComponent(() =>
   ),
 )
 
-const LAST_KEY = 'dashboards__last'
-
-// 'TARGET/NAME' from the page URL, or null when it doesn't name one
-function routeKey({ target, dashboard }) {
-  return target && dashboard
-    ? `${target.toUpperCase()}/${dashboard.toUpperCase()}`
-    : null
-}
-
-const route = useRoute()
-const router = useRouter()
 const display = useDisplay()
 const notify = inject('notify')
 const dialog = inject('dialog')
@@ -497,11 +530,10 @@ const title = 'Dashboards (Beta)'
 // panels watch (poller.values, itemInfo.state) are reactive already
 const poller = markRaw(new TlmPoller())
 const itemInfo = markRaw(new ItemInfo())
-const history = markRaw(new History())
 // One streaming connection shared by every panel
 const cable = markRaw(new Cable())
 // Playback: replay every panel from a past time
-const playback = reactive({ on: false, time: null })
+const { playback, setPlaybackTime, goLive } = usePlayback(poller)
 // Picked in the header, shared by every dashboard
 const timeRange = reactive({ seconds: loadTimeRange() })
 const hover = reactive({ time: null, source: null })
@@ -509,16 +541,12 @@ const hover = reactive({ time: null, source: null })
 const versionsEnabled = ref(false)
 const historyOpen = ref(false)
 const timeZone = ref('local')
-const dashboards = ref([])
-const current = ref(null) // { target, name }
 const model = ref(emptyDashboard(''))
-const savedText = ref('')
-// The file as it was opened, until the dashboard changes
-const fileText = ref(null)
-const errors = ref([])
 const loading = ref(true)
-const saving = ref(false)
 const dashboardDialog = ref(false)
+// Bumped on every open, so the dialogs remount with fresh forms
+const dashboardDialogOpens = ref(0)
+const panelDialogOpens = ref(0)
 const dashboardDialogMode = ref('new')
 // 'TARGET/NAME' being duplicated
 const duplicateKey = ref(null)
@@ -532,6 +560,38 @@ const codeDialog = ref(false)
 // Item details sheet
 const detailsItem = ref(null)
 const detailsOpen = ref(false)
+
+// Undo / redo and unsaved changes, over snapshots taken after each edit
+const history = useDashboardHistory(model, { apply: replaceModel })
+const { canUndo, canRedo, undo, redo } = history
+const {
+  dashboards,
+  current,
+  opening,
+  currentKey,
+  filePath,
+  savedText,
+  fileText,
+  errors,
+  saving,
+  loadList,
+  initialKey,
+  selectDashboard,
+  open,
+  save,
+  duplicate,
+  createDashboard,
+  deleteDashboard,
+} = useDashboardFile({
+  model,
+  editing,
+  history,
+  notify,
+  ask,
+  confirmDiscard,
+  startEditing,
+  firstValues: () => poller.nextPoll(),
+})
 
 // On while editing: panels keep showing telemetry but don't send
 // commands (reactive unwraps the computed, so panels read editing.on)
@@ -551,10 +611,12 @@ const health = computed(
 const columns = computed(() => model.value.columns || GRID_COLUMNS)
 const breakpoint = computed(() => breakpointFor(display.width.value))
 const isPhone = computed(() => breakpoint.value === 'phone')
+// The navigator's shortcut (onKeydown takes either modifier), as Macs and
+// everything else write it
+const SHORTCUT = /Mac|iPhone|iPad/.test(window.navigator.platform)
+  ? { label: '⌘K', aria: 'Meta+K' }
+  : { label: 'Ctrl+K', aria: 'Control+K' }
 const isDesktop = computed(() => breakpoint.value === 'desktop')
-const currentKey = computed(() =>
-  current.value ? `${current.value.target}/${current.value.name}` : null,
-)
 // A copy starts in the same target as its source, named NAME_COPY
 const dashboardDialogTarget = computed(() => {
   const key = duplicateKey.value || currentKey.value
@@ -563,19 +625,17 @@ const dashboardDialogTarget = computed(() => {
 const dashboardDialogName = computed(() =>
   duplicateKey.value ? `${duplicateKey.value.split('/')[1]}_COPY` : '',
 )
-const filePath = computed(() =>
-  current.value
-    ? `${current.value.target}/dashboards/${current.value.name.toLowerCase()}.txt`
-    : '',
-)
-const text = computed(() => serializeDashboard(model.value))
-const dirty = computed(() => !!current.value && text.value !== savedText.value)
+const dirty = computed(() => !!current.value && history.changed.value)
 // The code dialog shows the file as written, comments and lines with
 // problems included (the problems' line numbers point into it), until the
-// dashboard changes; then the text made from the dashboard
-const codeText = computed(() =>
-  fileText.value !== null && !dirty.value ? fileText.value : text.value,
-)
+// dashboard changes; then the text made from the dashboard. Only made
+// while the dialog is open.
+const codeText = computed(() => {
+  if (!codeDialog.value) return ''
+  return fileText.value !== null && !dirty.value
+    ? fileText.value
+    : serializeDashboard(model.value)
+})
 const style = computed(() => dashboardStyle(model.value.settings))
 // A number, so replacing the model with the same period (undo, code
 // edits, reopening) doesn't restart the poller
@@ -583,23 +643,49 @@ const pollingPeriod = computed(() => {
   const seconds = Number(model.value.settings.POLLING_PERIOD?.[0])
   return Number.isFinite(seconds) && seconds > 0 ? seconds : 1
 })
-// "2 critical · 1 caution", or one word when nothing is out of limits
-const healthText = computed(() => {
-  const { level, critical, caution } = health.value
-  const parts = []
-  if (critical) parts.push(`${critical} critical`)
-  if (caution) parts.push(`${caution} caution`)
-  if (parts.length) return parts.join(' · ')
-  if (level === 'off') return 'Stale'
-  if (level === 'normal') return 'Nominal'
+// The health banner: { label, detail, worst } where worst is the title of
+// the panel to go to when something is out of limits. Null when no panel
+// shows a status.
+const healthBanner = computed(() => {
+  const { level, critical, caution, worstTitle } = health.value
+  const panels = (count) => `${count} panel${count === 1 ? '' : 's'}`
+  if (critical || caution) {
+    const parts = []
+    if (critical) parts.push(`${panels(critical)} critical`)
+    if (caution) parts.push(`${panels(caution)} caution`)
+    return {
+      label: critical ? 'Critical' : 'Caution',
+      detail: parts.join(' · '),
+      worst: worstTitle || 'Worst panel',
+    }
+  }
+  if (level === 'off') {
+    return { label: 'Stale', detail: 'No current telemetry', worst: null }
+  }
+  if (level === 'normal') {
+    return { label: 'Nominal', detail: null, worst: null }
+  }
+  // Just opened: the panels haven't reported yet. Hold the banner's place
+  // (neutral, not the last dashboard's status) so the grid doesn't jump
+  // when they do.
+  if (showsStatus.value) {
+    return { label: 'Waiting for telemetry', detail: null, worst: null }
+  }
   return null
 })
-const starred = computed(() => isStarred(currentKey.value))
-const starHelp = computed(() =>
-  starred.value
-    ? 'Starred: listed under Starred in the dashboard navigator (Ctrl+K). Stars are saved in this browser only.'
-    : 'Star to list this dashboard under Starred in the dashboard navigator (Ctrl+K). Stars are saved in this browser only.',
+// Panels that report a status: ones with items, limits or a screen
+const showsStatus = computed(() =>
+  model.value.panels.some(
+    (panel) => panel.items?.length || panel.targets?.length || panel.screen,
+  ),
 )
+const starred = computed(() => isStarred(currentKey.value))
+const starHelp = computed(() => {
+  const where = `the dashboard navigator (${SHORTCUT.label})`
+  return starred.value
+    ? `Starred: listed under Starred in ${where}. Stars are saved in this browser only.`
+    : `Star to list this dashboard under Starred in ${where}. Stars are saved in this browser only.`
+})
 // Everything else has a button on the page
 const menus = computed(() => {
   // Phones only view dashboards
@@ -669,10 +755,6 @@ onBeforeRouteUpdate(async (to) => {
 // The period is part of the model, which the style picker, the code
 // dialog, undo and opening all replace, so the poller follows it here
 watch(pollingPeriod, (seconds) => poller.start(seconds))
-// Every edit, from any part of the editor, lands in the undo history
-watch(text, (value) => {
-  if (editing.value) history.record(value)
-})
 
 init()
 
@@ -700,10 +782,7 @@ async function init() {
       body: problems.join('; '),
     })
   }
-  const last = readString(LAST_KEY)
-  const key =
-    routeKey(route.params) ||
-    (dashboards.value.includes(last) ? last : dashboards.value[0])
+  const key = initialKey()
   if (key) await open(key)
   loading.value = false
 }
@@ -729,11 +808,6 @@ function goToWorst() {
 function setTimeRange(seconds) {
   timeRange.seconds = seconds
   saveTimeRange(seconds)
-}
-// The poller looks values up at the playback time instead of polling
-function setPlaybackTime(time) {
-  playback.time = time
-  poller.setPlaybackTime(time)
 }
 function setDetailsOpen(open) {
   detailsOpen.value = open
@@ -784,90 +858,10 @@ function confirmDiscard() {
     okClass: 'error',
   })
 }
-async function loadList() {
-  try {
-    const response = await Api.get('/openc3-api/dashboards')
-    dashboards.value = response.data.map((path) => {
-      const [target, , file] = path.split('/')
-      return `${target}/${file.replace(/\.txt$/, '').toUpperCase()}`
-    })
-  } catch (error) {
-    console.error('Error loading dashboards:', error)
-  }
-}
-async function selectDashboard(key) {
-  if (!key || key === currentKey.value) return
-  if (!(await confirmDiscard())) return
-  open(key)
-}
-async function open(key, { syncUrl = true } = {}) {
-  // Panels share command definitions; opening a dashboard refetches them
-  // so changed definitions show without a page reload
-  clearCommandCache()
-  const [target, name] = key.split('/')
-  let fetched
-  try {
-    fetched = await fetchDashboardText(key)
-  } catch {
-    notify.caution({ title: 'Unknown dashboard', body: key })
-    return
-  }
-  const parsed = parseDashboard(fetched)
-  load({ target, name }, parsed.model, parsed.errors, fetched)
-  rememberCurrent({ syncUrl })
-}
-function load(dashboard, newModel, newErrors = [], newFileText = null) {
-  current.value = dashboard
-  model.value = newModel
-  errors.value = newErrors
-  fileText.value = newFileText
-  editing.value = false
-  savedText.value = text.value
-}
-// Navigator summary, reopen-on-launch and the URL all follow
-// the dashboard that's showing
-function rememberCurrent({ syncUrl = true } = {}) {
-  const { target, name } = current.value
-  remember(currentKey.value, model.value)
-  visited(currentKey.value)
-  writeString(LAST_KEY, currentKey.value)
-  if (
-    syncUrl &&
-    (route.params.target !== target || route.params.dashboard !== name)
-  ) {
-    router.replace({
-      name: 'Dashboards',
-      params: { target, dashboard: name },
-    })
-  }
-}
-function post(target, dashboard, body) {
-  return Api.post('/openc3-api/dashboard', {
-    data: { scope: window.openc3Scope, target, dashboard, text: body },
-  })
-}
-async function save() {
-  if (!current.value) return
-  saving.value = true
-  const body = text.value
-  try {
-    await post(current.value.target, current.value.name, body)
-    savedText.value = body
-    fileText.value = null
-    remember(currentKey.value, model.value)
-    notify.normal({ title: 'Saved dashboard', body: currentKey.value })
-  } catch (error) {
-    notify.serious({
-      title: 'Error saving dashboard',
-      body: error.message,
-    })
-  } finally {
-    saving.value = false
-  }
-}
 function openDashboardDialog(mode, key = null) {
   dashboardDialogMode.value = mode
   duplicateKey.value = key
+  dashboardDialogOpens.value++
   dashboardDialog.value = true
 }
 function onDashboardDialog(location) {
@@ -875,70 +869,6 @@ function onDashboardDialog(location) {
     duplicate(duplicateKey.value, location)
   } else {
     createDashboard(location)
-  }
-}
-// Copy a saved dashboard to a new target / name and open the copy
-async function duplicate(key, { target, name }) {
-  try {
-    await post(target, name, await fetchDashboardText(key))
-  } catch (error) {
-    notify.serious({
-      title: 'Error duplicating dashboard',
-      body: error.message,
-    })
-    return
-  }
-  await loadList()
-  await selectDashboard(`${target}/${name}`)
-}
-async function createDashboard({ target, name, columns }) {
-  if (!(await confirmDiscard())) return
-  const dashboardTitle = name
-    .toLowerCase()
-    .split(/[_-]/)
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
-  load({ target, name }, emptyDashboard(dashboardTitle, columns))
-  savedText.value = ''
-  await save()
-  await loadList()
-  rememberCurrent()
-  startEditing()
-}
-async function deleteDashboard() {
-  if (!current.value) return
-  const ok = await ask(
-    `Delete ${currentKey.value}? Dashboards installed by a plugin go back to the plugin's version.`,
-    { okText: 'Delete', cancelText: 'Cancel', okClass: 'error' },
-  )
-  if (!ok) return
-  try {
-    await Api.delete(dashboardUrl(currentKey.value))
-    notify.normal({
-      title: 'Deleted dashboard',
-      body: currentKey.value,
-    })
-  } catch (error) {
-    notify.serious({
-      title: 'Error deleting dashboard',
-      body: error.message,
-    })
-    return
-  }
-  const deleted = currentKey.value
-  savedText.value = text.value // nothing left to discard
-  await loadList()
-  if (dashboards.value.includes(deleted)) {
-    await open(deleted) // plugin version restored
-  } else {
-    forget(deleted)
-    current.value = null
-    model.value = emptyDashboard('')
-    savedText.value = ''
-    fileText.value = null
-    editing.value = false
-    writeString(LAST_KEY, null)
-    router.replace({ name: 'Dashboards', params: {} })
   }
 }
 
@@ -955,13 +885,9 @@ function openDetails(item) {
 }
 
 // Editor
-function goLive() {
-  playback.on = false
-  setPlaybackTime(null)
-}
 function startEditing() {
   goLive()
-  history.reset(text.value)
+  history.reset()
   editing.value = true
 }
 // Whole dashboard as text; editing it goes through the editor
@@ -976,34 +902,41 @@ async function done() {
 // Drop every unsaved change and go back to the last saved dashboard
 async function cancelEditing() {
   if (!(await confirmDiscard())) return
-  if (dirty.value) applyText(savedText.value)
+  if (dirty.value) history.revert()
   panelDialog.value = false
   codeDialog.value = false
   editing.value = false
 }
-function undo() {
-  const value = history.undo()
-  if (value !== null) applyText(value)
-}
-function redo() {
-  const value = history.redo()
-  if (value !== null) applyText(value)
-}
-function applyText(value) {
-  applyModel(parseDashboard(value).model)
-}
 // A whole new model from the code dialog or undo; keep panel identities
-function applyModel(newModel) {
+function replaceModel(newModel) {
   reuseUids(model.value.panels, newModel.panels)
   model.value = newModel
   errors.value = []
   fileText.value = null
+}
+// Each edit below ends with history.commit(), once the model has changed
+function applyCode(newModel) {
+  replaceModel(newModel)
+  history.commit()
+}
+function setSettings(settings) {
+  model.value.settings = settings
+  history.commit()
+}
+function setTitle(title) {
+  model.value.title = title
+  history.commit()
 }
 function applyPositions(layout) {
   for (const panel of model.value.panels) {
     const rect = layout[panel.uid]
     if (rect) Object.assign(panel, rect)
   }
+}
+// The grid's drags, resizes and keyboard nudges
+function moveOrResize(layout) {
+  applyPositions(layout)
+  history.commit()
 }
 // Re-flow around `fixed` after a change
 function reflow(fixed = null) {
@@ -1014,12 +947,14 @@ function addPanel() {
   const { w, h } = PANEL_TYPES[type].defaults
   editPanel.value = newPanel(type, 0, 0, w, h)
   editPanelIsNew.value = true
+  panelDialogOpens.value++
   panelDialog.value = true
   if (!editing.value) startEditing()
 }
 function configurePanel(panel) {
   editPanel.value = panel
   editPanelIsNew.value = false
+  panelDialogOpens.value++
   panelDialog.value = true
 }
 function savePanel(draft) {
@@ -1036,32 +971,99 @@ function savePanel(draft) {
     panels.splice(index, 1, draft)
   }
   reflow(draft.uid)
+  history.commit()
 }
 function duplicatePanel(panel) {
-  const copy = JSON.parse(JSON.stringify(panel))
+  const copy = cloneData(panel)
   copy.uid = panelUid()
   Object.assign(
     copy,
     firstFit(model.value.panels, copy.type, copy.w, copy.h, columns.value),
   )
   model.value.panels.push(copy)
+  history.commit()
 }
 function deletePanel(panel) {
   model.value.panels = model.value.panels.filter((p) => p.uid !== panel.uid)
   reflow()
+  history.commit()
 }
 </script>
 
 <style scoped>
-/* The health chip in its status color */
-.health.h-critical {
-  color: var(--color-status-critical);
+/* The health banner: a strip across the top tinted in its status color,
+   with a solid bar down the left edge. Out of limits it's stronger so it
+   reads from across the room. */
+.health-banner {
+  /* --status comes from st-<level> (dashboards.scss) */
+  --health: var(--status, rgb(var(--v-theme-on-surface)));
+  display: grid;
+  /* Equal side columns keep the text centered on the whole banner */
+  grid-template-columns: 1fr minmax(0, auto) 1fr;
+  align-items: center;
+  gap: 12px;
+  min-height: 40px;
+  padding: 4px 16px;
+  background: color-mix(in srgb, var(--health) 10%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--health) 35%, transparent);
+  box-shadow: inset 4px 0 0 var(--health);
 }
-.health.h-caution {
-  color: var(--color-status-caution);
+.health-banner.st-caution {
+  background: color-mix(in srgb, var(--health) 18%, transparent);
 }
-.health.h-normal {
-  color: var(--color-status-normal);
+.health-banner.st-critical {
+  background: color-mix(in srgb, var(--health) 26%, transparent);
+  box-shadow: inset 6px 0 0 var(--health);
+}
+.health-center {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 0;
+}
+.health-symbol {
+  flex-shrink: 0;
+  transform: scale(1.25);
+}
+.health-label {
+  flex-shrink: 0;
+  color: var(--health);
+  letter-spacing: 0.12em;
+}
+.health-detail {
+  min-width: 0;
+  color: rgba(var(--v-theme-on-surface), 0.85);
+}
+.health-go {
+  grid-column: 3;
+  justify-self: end;
+  color: var(--health);
+}
+/* Switching dashboards: the grid fades out and back in rather than
+   popping, and the spinner only shows when it takes a moment, so quick
+   switches don't flash it */
+main > :not(.opening-screen) {
+  transition: opacity 0.15s;
+}
+.is-opening > :not(.opening-screen) {
+  opacity: 0;
+  pointer-events: none;
+}
+.opening-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  animation: opening-appear 0.15s 0.25s both;
+}
+@keyframes opening-appear {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 .phone-switcher {
   color: inherit;

@@ -17,6 +17,15 @@ import { baseKey } from './tlmPoller'
 
 const LIMITS_SET_REFRESH_MS = 10000
 
+// What get() returns until an item's info is fetched
+const NOT_LOADED = Object.freeze({
+  loaded: false,
+  units: '',
+  formatString: null,
+  description: '',
+  limits: null,
+})
+
 // Caches get_item results (units, format, limits) for every item a dashboard
 // shows and tracks the current limits set so limits bars follow set changes.
 export class ItemInfo {
@@ -24,6 +33,8 @@ export class ItemInfo {
     this.api = new OpenC3Api()
     this.state = reactive({ items: {}, limitsSet: 'DEFAULT' })
     this.timer = null
+    // Keys whose fetch is queued or in flight
+    this.requested = new Set()
   }
 
   start() {
@@ -52,35 +63,40 @@ export class ItemInfo {
       })
   }
 
-  // Reactive info for an item ({ targetName, packetName, itemName }),
-  // fetched the first time it's asked for. Panels call this from a watcher
-  // before rendering so computeds only read.
+  // Info for an item ({ targetName, packetName, itemName }). Only reads, so
+  // computeds and templates can call it: the first time an item is asked
+  // for it returns NOT_LOADED and fetches the info outside the render, and
+  // whatever read it updates when it arrives (reading the missing key is
+  // tracked).
   get(item) {
     const key = baseKey(item)
-    if (!this.state.items[key]) {
-      this.state.items[key] = {
-        loaded: false,
-        units: '',
-        formatString: null,
-        description: '',
-        limits: null,
-      }
-      this.api
-        .get_item(item.targetName, item.packetName, item.itemName)
-        .then((info) => {
-          Object.assign(this.state.items[key], {
-            loaded: true,
-            units: info.units || '',
-            formatString: info.format_string || null,
-            description: info.description || '',
-            limits: info.limits || null,
-          })
-        })
-        .catch(() => {
-          this.state.items[key].loaded = true
-        })
+    const info = this.state.items[key]
+    if (info) return info
+    if (!this.requested.has(key)) {
+      this.requested.add(key)
+      queueMicrotask(() => this.fetch(key, item))
     }
-    return this.state.items[key]
+    return NOT_LOADED
+  }
+
+  async fetch(key, item) {
+    let info = null
+    try {
+      info = await this.api.get_item(
+        item.targetName,
+        item.packetName,
+        item.itemName,
+      )
+    } catch {
+      // Unknown items show without units, format or limits
+    }
+    this.state.items[key] = {
+      loaded: true,
+      units: info?.units || '',
+      formatString: info?.format_string || null,
+      description: info?.description || '',
+      limits: info?.limits || null,
+    }
   }
 
   // Limits values for the current set: { red_low, yellow_low, yellow_high,

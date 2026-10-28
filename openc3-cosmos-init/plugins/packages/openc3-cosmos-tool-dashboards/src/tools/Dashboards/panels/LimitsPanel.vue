@@ -80,7 +80,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Cable, OpenC3Api } from '@openc3/js-common/services'
 import StatusSymbol from '../components/StatusSymbol.vue'
 import { panelProps, usePanel } from './panelBase'
@@ -106,9 +106,17 @@ const { poller, itemInfo, cable, isPlayback } = usePanel(props, {
 
 // TGT__PKT__ITEM => { targetName, packetName, itemName, state, since }
 const entries = ref({})
-// Only the duration text reads this, so the 1 s tick doesn't re-sort and
-// nothing re-renders while no item is out of limits
-const now = ref(Date.now())
+// The dashboard's 1 s clock (SeriesStore), in ms; a panel outside a grid
+// keeps its own. Only the duration text reads it, so the tick doesn't
+// re-sort and nothing re-renders while no item is out of limits.
+const seriesStore = inject('seriesStore', null)
+const ownNow = ref(Date.now())
+const now = computed(() => {
+  if (!seriesStore) return ownNow.value
+  // Recomputes on each tick; wall time, since durations are live
+  void seriesStore.state.version
+  return Date.now()
+})
 
 const api = new OpenC3Api()
 const socket = cable || new Cable()
@@ -166,10 +174,11 @@ watch(streaming, (live) => {
 if (streaming.value) start()
 
 onMounted(() => {
-  // Re-renders only while a duration text reads it
-  clock = setInterval(() => {
-    now.value = Date.now()
-  }, 1000)
+  if (!seriesStore) {
+    clock = setInterval(() => {
+      ownNow.value = Date.now()
+    }, 1000)
+  }
 })
 onUnmounted(() => {
   clearInterval(clock)

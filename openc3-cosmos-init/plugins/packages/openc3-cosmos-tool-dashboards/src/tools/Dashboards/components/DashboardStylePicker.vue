@@ -25,7 +25,7 @@
         <dashboard-avatar :icon="style.icon" :color="style.color" :size="40" />
       </button>
     </template>
-    <v-card class="pa-3" width="316">
+    <v-card class="pa-3" width="372">
       <div class="text-subtitle-2 mb-2">Icon</div>
       <div class="icon-grid mb-3">
         <v-btn
@@ -46,7 +46,19 @@
         :model-value="style.color"
         :size="26"
         allow-default
+        default-above
+        class="mb-3"
         @update:model-value="(color) => update({ color })"
+      />
+      <!-- Any other color -->
+      <v-color-picker
+        :model-value="style.color || pickerStart"
+        mode="hex"
+        :modes="['hex']"
+        hide-inputs
+        elevation="0"
+        width="348"
+        @update:model-value="(color) => update({ color: color.slice(0, 7) })"
       />
     </v-card>
   </v-menu>
@@ -54,6 +66,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useTheme } from 'vuetify'
 import ColorSwatches from './ColorSwatches.vue'
 import DashboardAvatar from './DashboardAvatar.vue'
 import {
@@ -73,6 +86,11 @@ const icons = DASHBOARD_ICONS
 const colors = DASHBOARD_COLORS
 
 const style = computed(() => dashboardStyle(props.settings))
+const theme = useTheme()
+// The wheel starts at the default color, the theme's secondary
+const pickerStart = computed(
+  () => theme.current.value.colors.secondary || colors[0],
+)
 
 function update(change) {
   emit(

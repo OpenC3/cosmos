@@ -158,7 +158,7 @@
 import { computed, inject, onUnmounted, ref, watch } from 'vue'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { CriticalCmdDialog } from '@openc3/vue-common/components'
-import { CmdUtilities } from '@openc3/vue-common/util'
+import { convertToValue, removeQuotes } from '@openc3/vue-common/util'
 import StatusSymbol from '../components/StatusSymbol.vue'
 import CommandParamField from './CommandParamField.vue'
 import { panelProps, usePanel } from './panelBase'
@@ -193,8 +193,6 @@ const props = defineProps(panelProps)
 const { timeZone, isEditing, isPlayback, rect } = usePanel(props)
 const dialog = inject('dialog')
 
-// convertToValue and removeQuotes read cmdRaw and each other through this
-const cmdUtils = { cmdRaw: false, ...CmdUtilities.methods }
 const api = new OpenC3Api()
 
 const uid = `cmd${nextUid++}`
@@ -367,11 +365,9 @@ function paramList() {
     }
     if (param.states || param.type === 'STRING' || param.type === 'BLOCK') {
       // States send their name, strings are sent as typed
-      list[param.name] = param.states
-        ? value
-        : cmdUtils.removeQuotes(String(value))
+      list[param.name] = param.states ? value : removeQuotes(String(value))
     } else {
-      list[param.name] = cmdUtils.convertToValue({
+      list[param.name] = convertToValue({
         val: String(value),
         type: param.type,
       })

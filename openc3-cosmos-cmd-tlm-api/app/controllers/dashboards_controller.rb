@@ -17,7 +17,13 @@ class DashboardsController < ApplicationController
     scope = sanitize_params([:scope])
     return unless scope
     scope = scope[0]
-    render json: Dashboard.all(scope)
+    # ?summary=true: each dashboard's title, icon, color and panel count too,
+    # for the Dashboards navigator
+    if params[:summary].to_s == 'true'
+      render json: Dashboard.summaries(scope)
+    else
+      render json: Dashboard.all(scope)
+    end
   end
 
   def show
