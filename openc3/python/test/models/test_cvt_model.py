@@ -22,12 +22,19 @@ from openc3.utilities.store import Store
 from test.test_helper import *
 
 
+def patch_caches(test_case):
+    """Give the test empty CvtModel caches and restore the originals afterwards"""
+    for name in ("packet_cache", "override_cache"):
+        patcher = patch.object(CvtModel, name, {})
+        patcher.start()
+        test_case.addCleanup(patcher.stop)
+
+
 class TestCvtModel(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
         setup_system()
-        CvtModel.packet_cache = {}
-        CvtModel.override_cache = {}
+        patch_caches(self)
 
     def update_temp1(self, rxtime=None):
         json_hash = {}
@@ -622,8 +629,7 @@ class TestCvtModelMultipleDbShards(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
         setup_system(db_shards={"INST": 1})
-        CvtModel.packet_cache = {}
-        CvtModel.override_cache = {}
+        patch_caches(self)
         self.shard0 = shard_redis(0)
         self.shard1 = shard_redis(1)
 
@@ -639,7 +645,7 @@ class TestCvtModelMultipleDbShards(unittest.TestCase):
         self.assertFalse(self.shard0.exists("DEFAULT__tlm__INST"))
 
         # Bypass the packet cache to read back from the store
-        CvtModel.packet_cache = {}
+        CvtModel.packet_cache.clear()
         self.assertEqual(CvtModel.get("INST", "HEALTH_STATUS", scope="DEFAULT"), {"TEMP1": 1})
         self.assertEqual(CvtModel.get("SYSTEM", "LIMITS_CHANGE", scope="DEFAULT"), {"COUNT": 4})
 
@@ -649,7 +655,7 @@ class TestCvtModelMultipleDbShards(unittest.TestCase):
     def test_set_item_and_get_item_use_the_target_db_shard(self):
         CvtModel.set_item("INST", "HEALTH_STATUS", "TEMP1", 5, type="ALL", scope="DEFAULT")
         self.assertEqual(json.loads(self.shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))["TEMP1__C"], 5)
-        CvtModel.packet_cache = {}
+        CvtModel.packet_cache.clear()
         self.assertEqual(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED", scope="DEFAULT"), 5)
 
     def test_overrides_use_the_target_db_shard(self):
@@ -661,9 +667,9 @@ class TestCvtModelMultipleDbShards(unittest.TestCase):
         )
         self.assertFalse(self.shard0.exists("DEFAULT__override__INST"))
 
-        CvtModel.override_cache = {}
+        CvtModel.override_cache.clear()
         self.assertEqual(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED", scope="DEFAULT"), 10)
-        CvtModel.override_cache = {}
+        CvtModel.override_cache.clear()
         values = CvtModel.get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED"]], scope="DEFAULT")
         self.assertEqual(values[0][0], 10)
         overrides = CvtModel.overrides(scope="DEFAULT")
