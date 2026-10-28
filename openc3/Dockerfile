@@ -3,6 +3,23 @@ ARG OPENC3_NAMESPACE=openc3inc
 ARG OPENC3_TAG=latest
 ARG OPENC3_IMAGE=openc3-ruby
 
+# Layers, ordered so the most frequently edited inputs invalidate the least.
+# A change to the input rebuilds that layer and every layer after it in its
+# stage. [P1], [F3] etc. tag the instructions below that build each layer.
+#
+# python-build stage (output merged into the final image)
+#   [P1] Python dependencies     <- python/pyproject.toml, uv.lock, .python-version
+#   [P2] Python project install  <- python/
+#
+# Final stage
+#   [F1] C extension sources     <- ext/
+#   [F2] C extension compile     <- [F1]
+#   [F3] Gem dependencies        <- Gemfile, openc3.gemspec
+#   [F4] Application source      <- Guardfile ... lib/, least to most edited
+#   [F5] Gem build and install   <- [F4]
+#   [F6] Python merge            <- python-build output
+#   [F7] Runtime dirs, env, user
+#
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG} AS python-build
 
 # Python and Ruby build in separate stages and are merged at the end, so a
@@ -25,10 +42,10 @@ ARG OPENC3_PYPI_ALLOW_INSECURE=
 
 WORKDIR /openc3/python
 
-# Copy dependency files first so the dependency layer caches.
+# [P1] Copy dependency files first so the dependency layer caches.
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/pyproject.toml python/uv.lock python/.python-version ./
 
-# Install dependencies only. The wheels are seeded into /openc3/uv_cache so
+# [P1] Install dependencies only. The wheels are seeded into /openc3/uv_cache so
 # plugins can reuse them; the operator copies it into the /gems/uv volume at
 # runtime.
 #
@@ -66,10 +83,10 @@ RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
     UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-install-project --no-build && \
     cp uv.lock /tmp/uv.lock.relocked
 
-# Copy application code (.venv is excluded by .dockerignore)
+# [P2] Copy application code (.venv is excluded by .dockerignore)
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 
-# Install the project itself. The COPY above restored the committed uv.lock, so
+# [P2] Install the project itself. The COPY above restored the committed uv.lock, so
 # put the saved relocked one back; relocking again could resolve different
 # versions if the mirror changed.
 #
@@ -88,10 +105,10 @@ WORKDIR /openc3/
 
 USER root
 
-# C extensions first: they change rarely and are the slowest Ruby build step.
+# [F1] C extensions first: they change rarely and are the slowest Ruby build step.
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 ext/ ext/
 
-# Compile the extensions into lib/openc3/ext, as `rake build` does. They ship
+# [F2] Compile the extensions into lib/openc3/ext, as `rake build` does. They ship
 # from there; OPENC3_PREBUILT_EXT stops the gemspec compiling them again in
 # `gem install`. It is set per RUN, not ENV, so it stays out of the image.
 RUN mkdir -p lib/openc3/ext \
@@ -104,15 +121,15 @@ RUN mkdir -p lib/openc3/ext \
          || exit 1; \
        done
 
-# Ruby dependencies: only the files that pick the gems, so code edits don't
-# reinstall them.
+# [F3] Ruby dependencies: only the files that pick the gems, so code edits
+# don't reinstall them. The RUN below installs them.
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 Gemfile openc3.gemspec ./
 
 RUN git config --global http.sslCAinfo /devel/cacert.pem \
     && bundle config set --local without 'development test' \
     && OPENC3_PREBUILT_EXT=1 bundle install --quiet
 
-# Application source, listed by directory (not `COPY . .`) so python/ edits
+# [F4] Application source, listed by directory (not `COPY . .`) so python/ edits
 # don't invalidate the Ruby build. Ordered least to most frequently edited, so
 # a lib/ edit leaves the other copies cached. --chmod=777 avoids a later
 # recursive chmod that would duplicate the tree in its own layer.
@@ -123,6 +140,8 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 templates/ templates/
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 data/ data/
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 lib/ lib/
 
+# [F5] Build the openc3 gem from the source above and install it system-wide, with
+# a cosmos alias for the old gem name. The built gem is kept in /openc3/gems.
 RUN rm -f ./*.gem \
     && OPENC3_PREBUILT_EXT=1 rake gems \
     && gem install --local ./openc3-*.gem \
@@ -136,23 +155,27 @@ RUN rm -f ./*.gem \
     # source tree into this layer.
     && chmod -R 777 /openc3/lib /openc3/gems
 
-# Merge in the Python environment and seeded wheel cache. Ownership (root) is
+# [F6] Merge in the Python environment and seeded wheel cache. Ownership (root) is
 # preserved from python-build.
 COPY --from=python-build /openc3/python/ /openc3/python/
 COPY --from=python-build /openc3/uv_cache/ /openc3/uv_cache/
 
-# Same override as python-build, re-declared because ENV doesn't carry across
+# [F6] Same override as python-build, re-declared because ENV doesn't carry across
 # stages. Baked into the image.
 ARG PYPI_URL_OVERRIDE=
 ENV PYPI_URL=${PYPI_URL_OVERRIDE:-$PYPI_URL}
 ENV UV_DEFAULT_INDEX=${PYPI_URL%/}/simple
 
+# [F7] Runtime directories: /gems and /plugins are volume mount points, writable by
+# the openc3 user. /openc3 and /openc3/python are world-writable like the rest
+# of the tree.
 WORKDIR /openc3/
 
 RUN mkdir /gems && chown openc3:openc3 /gems \
     && mkdir /plugins && chown openc3:openc3 /plugins \
     && chmod 777 /gems /plugins /openc3 /openc3/python
 
+# [F7] Runtime environment and the unprivileged user the image runs as.
 ENV HOME=/openc3
 ENV XDG_CACHE_HOME=/tmp/.cache
 # Runtime cache is the /gems volume, seeded from /openc3/uv_cache at startup.
