@@ -62,6 +62,7 @@ module OpenC3
         # Test that we can override the return value in disconnect mode
         expect(tlm("INST HEALTH_STATUS TEMP1", disconnect: 10)).to eql 10
         tlm("INST HEALTH_STATUS TEMP1")
+        limits_enabled?("INST HEALTH_STATUS TEMP1")
         get_cmd("INST ABORT")
         stash_set("SOMETHING")
         stash_get("SOMETHING")
@@ -70,7 +71,7 @@ module OpenC3
         inject_tlm("INST", "HEALTH_STATUS", { TEMP1: 0, TEMP2: 0, TEMP3: 0, TEMP4: 0 })
 
         # In disconnect we don't pass through set commands or inject_tlm
-        expect(@methods).to eql %i(tlm get_cmd stash_get list_configs)
+        expect(@methods).to eql %i(tlm limits_enabled? get_cmd stash_get list_configs)
       end
     end
   end

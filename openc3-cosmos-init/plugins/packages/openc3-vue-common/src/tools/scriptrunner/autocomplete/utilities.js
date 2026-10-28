@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license 
@@ -38,4 +38,9 @@ const groupBy = (array, lambda) => {
   }, {})
 }
 
-export { getKeywords, getAutocompleteData, groupBy }
+// Escape characters like the ? in limits_enabled? so keywords match literally
+const escapeRegExp = (string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+export { getKeywords, getAutocompleteData, groupBy, escapeRegExp }

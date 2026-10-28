@@ -26,6 +26,7 @@ module OpenC3
                        'get_out_of_limits',
                        'get_overall_limits_state',
                        'limits_enabled?',
+                       'limits_enabled', # Python scripts call this alias since Python method names can't end in ?
                        'enable_limits',
                        'disable_limits',
                        'get_limits',

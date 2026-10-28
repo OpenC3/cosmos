@@ -18,6 +18,7 @@
 require 'spec_helper'
 require 'openc3/api/limits_api'
 require 'openc3/api/target_api'
+require 'openc3/io/json_drb'
 require 'openc3/script/extract'
 require 'openc3/utilities/authorization'
 require 'openc3/microservices/interface_microservice'
@@ -495,6 +496,19 @@ module OpenC3
 
       it "returns whether limits are enable for an item" do
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+      end
+
+      # Python scripts call limits_enabled because Python method names can't end in ?
+      %w(limits_enabled? limits_enabled).each do |method_name|
+        it "can be called as #{method_name} over JSON-RPC" do
+          json_drb = JsonDRb.new(method_whitelist: Api::WHITELIST)
+          json_drb.object = @api
+          request = { 'jsonrpc' => '2.0', 'method' => method_name, 'params' => ["INST HEALTH_STATUS TEMP1"], 'keyword_params' => { 'scope' => 'DEFAULT' }, 'id' => 1 }
+          response_data, _ = json_drb.process_request(request_data: JSON.generate(request), request_headers: {}, start_time: Time.now)
+          response = JSON.parse(response_data)
+          expect(response['error']).to be_nil
+          expect(response['result']).to be true
+        end
       end
     end
 
