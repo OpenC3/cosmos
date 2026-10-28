@@ -127,7 +127,9 @@ const languages = [
     name: 'python',
     t: 'True',
     f: 'False',
-    print: (expr: string) => `print(${expr})`,
+    // Use an f-string so Script Runner detects Python rather than falling
+    // back to the default scripting language for otherwise ambiguous scripts
+    print: (expr: string) => `print(f"{${expr}}")`,
     wait: 'wait()',
     blank: (v: string) => `print(f"blank:{${v} == ''}")`,
     blankOut: 'blank:True',

@@ -10321,7 +10321,7 @@ metadata_update({ 'key' => 'value' })
 
 <span class="badge badge--secondary since-heading">Since 5.2.0</span>
 
-Prompts the user to set existing metadata values or create new a new one. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
+Prompts the user to set existing metadata values or create a new one. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
