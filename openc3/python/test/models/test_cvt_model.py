@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import time
 import unittest
 from unittest.mock import *
@@ -21,12 +22,19 @@ from openc3.utilities.store import Store
 from test.test_helper import *
 
 
+def patch_caches(test_case):
+    """Give the test empty CvtModel caches and restore the originals afterwards"""
+    for name in ("packet_cache", "override_cache"):
+        patcher = patch.object(CvtModel, name, {})
+        patcher.start()
+        test_case.addCleanup(patcher.stop)
+
+
 class TestCvtModel(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
         setup_system()
-        CvtModel.packet_cache = {}
-        CvtModel.override_cache = {}
+        patch_caches(self)
 
     def update_temp1(self, rxtime=None):
         json_hash = {}
@@ -615,3 +623,73 @@ class TestCvtModel(unittest.TestCase):
         Store.hset("DEFAULT__tlm__INST", "PACKET1", json.dumps({"PACKET_TIMESECONDS": None}))
         packet_name = CvtModel.determine_latest_packet_for_item("INST", "PACKET_ID", scope="DEFAULT")
         self.assertNotEqual(packet_name, None)
+
+
+# INST is installed on db_shard 1 while SYSTEM stays on db_shard 0. The current
+# values and overrides of a target must live on its db_shard.
+class TestCvtModelMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+        patch_caches(self)
+        self.shard0 = shard_redis(0)
+        self.shard1 = shard_redis(1)
+
+    def test_set_and_get_use_the_target_db_shard(self):
+        CvtModel.set({"TEMP1": 1}, target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT")
+        CvtModel.set({"TEMP2": 2}, target_name="INST", packet_name="ADCS", queued=True, scope="DEFAULT")
+        CvtModel.set_json('{"TEMP3": 3}', {"TEMP3": 3}, target_name="INST", packet_name="PARAMS", scope="DEFAULT")
+        CvtModel.set({"COUNT": 4}, target_name="SYSTEM", packet_name="LIMITS_CHANGE", scope="DEFAULT")
+        self.assertEqual(json.loads(self.shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS")), {"TEMP1": 1})
+        self.assertEqual(json.loads(self.shard1.hget("DEFAULT__tlm__INST", "ADCS")), {"TEMP2": 2})
+        self.assertEqual(json.loads(self.shard1.hget("DEFAULT__tlm__INST", "PARAMS")), {"TEMP3": 3})
+        self.assertEqual(json.loads(self.shard0.hget("DEFAULT__tlm__SYSTEM", "LIMITS_CHANGE")), {"COUNT": 4})
+        self.assertFalse(self.shard0.exists("DEFAULT__tlm__INST"))
+
+        # Bypass the packet cache to read back from the store
+        CvtModel.packet_cache.clear()
+        self.assertEqual(CvtModel.get("INST", "HEALTH_STATUS", scope="DEFAULT"), {"TEMP1": 1})
+        self.assertEqual(CvtModel.get("SYSTEM", "LIMITS_CHANGE", scope="DEFAULT"), {"COUNT": 4})
+
+        CvtModel.delete("INST", "HEALTH_STATUS", scope="DEFAULT")
+        self.assertIsNone(self.shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))
+
+    def test_set_item_and_get_item_use_the_target_db_shard(self):
+        CvtModel.set_item("INST", "HEALTH_STATUS", "TEMP1", 5, type="ALL", scope="DEFAULT")
+        self.assertEqual(json.loads(self.shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))["TEMP1__C"], 5)
+        CvtModel.packet_cache.clear()
+        self.assertEqual(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED", scope="DEFAULT"), 5)
+
+    def test_overrides_use_the_target_db_shard(self):
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", 10, type="CONVERTED", scope="DEFAULT")
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP2", 20, type="CONVERTED", scope="DEFAULT")
+        self.assertEqual(
+            json.loads(self.shard1.hget("DEFAULT__override__INST", "HEALTH_STATUS")),
+            {"TEMP1__C": 10, "TEMP2__C": 20},
+        )
+        self.assertFalse(self.shard0.exists("DEFAULT__override__INST"))
+
+        CvtModel.override_cache.clear()
+        self.assertEqual(CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED", scope="DEFAULT"), 10)
+        CvtModel.override_cache.clear()
+        values = CvtModel.get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED"]], scope="DEFAULT")
+        self.assertEqual(values[0][0], 10)
+        overrides = CvtModel.overrides(scope="DEFAULT")
+        self.assertEqual(sorted(override["item_name"] for override in overrides), ["TEMP1", "TEMP2"])
+
+        CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type="CONVERTED", scope="DEFAULT")
+        self.assertEqual(json.loads(self.shard1.hget("DEFAULT__override__INST", "HEALTH_STATUS")), {"TEMP2__C": 20})
+        CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP2", type="CONVERTED", scope="DEFAULT")
+        self.assertFalse(self.shard1.exists("DEFAULT__override__INST"))
+
+    def test_get_tlm_values_reads_each_target_from_its_db_shard(self):
+        now = time.time()
+        self.shard1.hset("DEFAULT__tlm__INST", "HEALTH_STATUS", json.dumps({"TEMP1": 1, "RECEIVED_TIMESECONDS": now}))
+        self.shard0.hset(
+            "DEFAULT__tlm__SYSTEM", "LIMITS_CHANGE", json.dumps({"TARGET_NAME": "INST", "RECEIVED_TIMESECONDS": now})
+        )
+        values = CvtModel.get_tlm_values(
+            [["INST", "HEALTH_STATUS", "TEMP1", "RAW"], ["SYSTEM", "LIMITS_CHANGE", "TARGET_NAME", "RAW"]],
+            scope="DEFAULT",
+        )
+        self.assertEqual(values, [[1, None], ["INST", None]])

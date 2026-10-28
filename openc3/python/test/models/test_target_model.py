@@ -22,7 +22,7 @@ from openc3.models.target_model import TargetModel
 from openc3.packets.packet import Packet
 from openc3.system.system import System
 from openc3.utilities.store import Store
-from test.test_helper import BucketMock, capture_io, mock_redis, setup_system
+from test.test_helper import BucketMock, capture_io, mock_redis, setup_system, shard_redis
 
 
 class TestTargetModel(unittest.TestCase):
@@ -486,6 +486,109 @@ class TestTargetModelDynamic(unittest.TestCase):
         packet.hidden = False
         self.model.dynamic_update([packet], "COMMAND")
         self.assertEqual(TargetModel.hidden_packet_names("INST", type="CMD", scope=self.scope), ["DISABLED"])
+
+
+# INST is installed on db_shard 1 while SYSTEM and EMPTY stay on db_shard 0.
+# Everything specific to a target must be read from and written to its db_shard.
+class TestTargetModelMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+        TargetModel.item_map_cache = {}
+        self.shard0 = shard_redis(0)
+        self.shard1 = shard_redis(1)
+
+    def test_reads_packets_from_the_target_db_shard(self):
+        # setup_system only put the INST packets on db_shard 1
+        self.assertFalse(self.shard0.exists("DEFAULT__openc3tlm__INST"))
+        self.assertEqual(TargetModel.packet("INST", "HEALTH_STATUS", scope="DEFAULT")["packet_name"], "HEALTH_STATUS")
+        self.assertEqual(TargetModel.packet("INST", "ABORT", type="CMD", scope="DEFAULT")["packet_name"], "ABORT")
+        self.assertIn(
+            "HEALTH_STATUS", [packet["packet_name"] for packet in TargetModel.packets("INST", scope="DEFAULT")]
+        )
+        self.assertIn("HEALTH_STATUS", TargetModel.packet_names("INST", scope="DEFAULT"))
+        self.assertIn("ABORT", TargetModel.packet_names("INST", type="CMD", scope="DEFAULT"))
+        # SYSTEM is still read from db_shard 0
+        self.assertIn("LIMITS_CHANGE", TargetModel.packet_names("SYSTEM", scope="DEFAULT"))
+
+    def test_hidden_packet_names_stores_the_list_on_the_target_db_shard(self):
+        self.assertEqual(TargetModel.hidden_packet_names("INST", type="CMD", scope="DEFAULT"), ["DISABLED"])
+        self.assertEqual(json.loads(self.shard1.get("DEFAULT__openc3cmd__INST__hidden")), ["DISABLED"])
+        self.assertIsNone(self.shard0.get("DEFAULT__openc3cmd__INST__hidden"))
+
+    def test_set_packet_writes_to_the_target_db_shard(self):
+        TargetModel.set_packet("INST", "NEW", {"packet_name": "NEW"}, scope="DEFAULT")
+        self.assertIsNotNone(self.shard1.hget("DEFAULT__openc3tlm__INST", "NEW"))
+        self.assertFalse(self.shard0.exists("DEFAULT__openc3tlm__INST"))
+
+    def test_all_item_names_builds_the_list_on_the_target_db_shard(self):
+        items = TargetModel.all_item_names("INST", scope="DEFAULT")
+        self.assertIn(b"TEMP1", items)
+        self.assertIn(b"TEMP1", self.shard1.zrange("DEFAULT__openc3tlm__INST__allitems", 0, -1))
+        self.assertFalse(self.shard0.exists("DEFAULT__openc3tlm__INST__allitems"))
+
+    def test_item_to_packet_map_is_stored_on_the_target_db_shard(self):
+        item_map = TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")
+        self.assertEqual(item_map["TEMP1"], ["HEALTH_STATUS"])
+        self.assertIsNotNone(self.shard1.get("DEFAULT__INST__item_to_packet_map"))
+        self.assertIsNone(self.shard0.get("DEFAULT__INST__item_to_packet_map"))
+
+    def test_counts_are_kept_on_the_target_db_shard(self):
+        TargetModel.increment_telemetry_count("INST", "HEALTH_STATUS", 3, scope="DEFAULT")
+        TargetModel.increment_telemetry_count("SYSTEM", "LIMITS_CHANGE", 4, scope="DEFAULT")
+        TargetModel.increment_command_count("INST", "ABORT", 5, scope="DEFAULT")
+        TargetModel.increment_command_count("SYSTEM", "STARTLOGGING", 6, scope="DEFAULT")
+        self.assertEqual(self.shard1.hget("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS"), b"3")
+        self.assertEqual(self.shard0.hget("DEFAULT__TELEMETRYCNTS__{SYSTEM}", "LIMITS_CHANGE"), b"4")
+        self.assertEqual(self.shard1.hget("DEFAULT__COMMANDCNTS__{INST}", "ABORT"), b"5")
+        self.assertEqual(self.shard0.hget("DEFAULT__COMMANDCNTS__{SYSTEM}", "STARTLOGGING"), b"6")
+        self.assertFalse(self.shard0.exists("DEFAULT__TELEMETRYCNTS__{INST}"))
+        self.assertFalse(self.shard0.exists("DEFAULT__COMMANDCNTS__{INST}"))
+
+        self.assertEqual(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope="DEFAULT"), 3)
+        self.assertEqual(TargetModel.get_all_telemetry_counts("INST", scope="DEFAULT"), {b"HEALTH_STATUS": b"3"})
+        self.assertEqual(TargetModel.get_command_count("INST", "ABORT", scope="DEFAULT"), 5)
+        self.assertEqual(TargetModel.get_all_command_counts("INST", scope="DEFAULT"), {b"ABORT": b"5"})
+        # The bulk lookups query each db_shard and keep the requested order
+        self.assertEqual(
+            TargetModel.get_telemetry_counts(
+                [["SYSTEM", "LIMITS_CHANGE"], ["INST", "HEALTH_STATUS"], ["INST", "ADCS"]], scope="DEFAULT"
+            ),
+            [4, 3, 0],
+        )
+        self.assertEqual(
+            TargetModel.get_command_counts([["INST", "ABORT"], ["SYSTEM", "STARTLOGGING"]], scope="DEFAULT"),
+            [5, 6],
+        )
+
+    def test_update_store_writes_to_the_model_db_shard(self):
+        self.shard1.flushall()
+        model = TargetModel(name="INST", db_shard=1, scope="DEFAULT")
+        model.update_store_telemetry({"INST": System.telemetry.packets("INST")})
+        model.update_store_commands({"INST": System.commands.packets("INST")})
+        model.update_store_item_map()
+        for key in [
+            "DEFAULT__openc3tlm__INST",
+            "DEFAULT__openc3tlm__INST__hidden",
+            "DEFAULT__openc3tlm__INST__allitems",
+            "DEFAULT__tlm__INST",
+            "DEFAULT__openc3cmd__INST",
+            "DEFAULT__openc3cmd__INST__hidden",
+            "DEFAULT__INST__item_to_packet_map",
+        ]:
+            self.assertTrue(self.shard1.exists(key), key)
+            self.assertFalse(self.shard0.exists(key), key)
+
+    @patch("openc3.models.target_model.Bucket", BucketMock)
+    def test_dynamic_update_notifies_microservices_on_the_model_db_shard(self):
+        for name in ["DEFAULT__PACKETLOG__INST", "DEFAULT__DECOM__INST"]:
+            MicroserviceModel(folder_name="INST", name=name, db_shard=1, scope="DEFAULT").create()
+        model = TargetModel(name="INST", db_shard=1, scope="DEFAULT")
+        model.dynamic_update([Packet("INST", "NEW_TLM")], "TELEMETRY")
+        self.assertIsNotNone(self.shard1.hget("DEFAULT__openc3tlm__INST", "NEW_TLM"))
+        for topic in ["MICROSERVICE__DEFAULT__PACKETLOG__INST", "MICROSERVICE__DEFAULT__DECOM__INST"]:
+            self.assertEqual(self.shard1.xlen(topic), 1)
+            self.assertFalse(self.shard0.exists(topic))
 
 
 # Tests for GitHub issue #2855:

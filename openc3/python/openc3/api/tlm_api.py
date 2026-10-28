@@ -593,12 +593,9 @@ def get_packets(id, count=1000, scope=OPENC3_SCOPE):
     lookup = dict(zip(items[::2], items[1::2], strict=False))
     packets = []
     # Group topics by db_shard for multi-db_shard support
-    import re
-
     db_shard_groups = {}
     for topic, offset in lookup.items():
-        match = re.search(r"__\{?([^}_]+)\}?__", topic)
-        target_name = match.group(1) if match else None
+        target_name = Topic.target_name_from_topic(topic)
         db_shard = Store.db_shard_for_target(target_name, scope=scope)
         if db_shard not in db_shard_groups:
             db_shard_groups[db_shard] = {"topics": [], "offsets": []}
