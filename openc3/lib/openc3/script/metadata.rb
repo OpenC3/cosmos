@@ -24,6 +24,10 @@ module OpenC3
 
     private
 
+    # The metadata methods are deprecated. Define a telemetry packet for metadata
+    # and set it with inject_tlm instead. See https://docs.openc3.com/docs/guides/metadata
+
+    # @deprecated
     # Gets all the metadata
     #
     # @return The result of the method call.
@@ -35,6 +39,7 @@ module OpenC3
     end
     alias all_metadata metadata_all
 
+    # @deprecated
     # Gets metadata, default is latest if start is nil
     #
     # @return The result of the method call.
@@ -50,6 +55,7 @@ module OpenC3
     end
     alias get_metadata metadata_get
 
+    # @deprecated
     # Create a new metadata entry at the given start time or now if no start given
     #
     # @param metadata [Hash<Symbol, Variable>] A hash of metadata
@@ -75,6 +81,7 @@ module OpenC3
     end
     alias set_metadata metadata_set
 
+    # @deprecated
     # Updates existing metadata. If no start is given, updates latest metadata.
     #
     # @param metadata [Hash<Symbol, Variable>] A hash of metadata
@@ -103,6 +110,7 @@ module OpenC3
     end
     alias update_metadata metadata_update
 
+    # @deprecated
     # Requests the metadata from the user for a target
     def metadata_input(*args, **kwargs)
       raise StandardError "can only be used in Script Runner"

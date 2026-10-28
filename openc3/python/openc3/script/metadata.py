@@ -17,6 +17,11 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.extract import *
 
 
+# The metadata methods are deprecated. Define a telemetry packet for metadata
+# and set it with inject_tlm instead. See https://docs.openc3.com/docs/guides/metadata
+
+
+# DEPRECATED
 def metadata_all(limit: int = 100, scope: str = OPENC3_SCOPE):
     """Gets all the metadata
 
@@ -34,6 +39,7 @@ def metadata_all(limit: int = 100, scope: str = OPENC3_SCOPE):
     return json.loads(response.text)
 
 
+# DEPRECATED
 def metadata_get(start: int | None = None, scope: str = OPENC3_SCOPE):
     """Gets metadata, default is latest if start is None
 
@@ -53,6 +59,7 @@ def metadata_get(start: int | None = None, scope: str = OPENC3_SCOPE):
     return json.loads(response.text)
 
 
+# DEPRECATED
 def metadata_set(
     metadata: dict,
     start: int | None = None,
@@ -86,6 +93,7 @@ def metadata_set(
     return json.loads(response.text)
 
 
+# DEPRECATED
 def metadata_update(
     metadata: dict,
     start: int | None = None,
@@ -130,6 +138,7 @@ def metadata_update(
     return json.loads(response.text)
 
 
+# DEPRECATED
 # Requests the metadata from the user for a target
 def metadata_input(*args, **kwargs):
     raise RuntimeError("can only be used in Script Runner")
