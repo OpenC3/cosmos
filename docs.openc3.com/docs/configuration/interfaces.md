@@ -179,6 +179,53 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 </TabItem>
 </Tabs>
 
+#### READ_QUEUE_MAX_SIZE
+
+Maximum number of bytes buffered on the interface read queue. The stream and UDP interfaces read their socket in a dedicated thread and push the data onto a queue so the operating system receive buffers keep getting drained (and data isn't dropped) while the packet reading thread is busy processing protocols and writing to Redis. By default up to 20MB is buffered before the read thread blocks and lets the operating system do the buffering instead. Raise this for bursty high rate data, lower it to limit how much memory the interface can hold. Each queued read is charged its own length plus a small fixed overhead for the memory the buffer itself costs, so the budget tracks memory actually held rather than just payload bytes. A single read larger than the entire budget is still queued on its own, otherwise it would never fit. Set it to 0 to disable the read thread entirely so the socket is read inline by the packet reading thread, which is how interfaces read before the read queue was added. The bytes on the queue are reported as the `interface_read_queue_bytes` metric and the number of reads holding them is reported as the interface RX Size. For the TCP/IP server interface each client connection has its own queue (each limited to READ_QUEUE_MAX_SIZE), the metric reports their total, and RX Size remains the number of packets waiting to be processed.
+
+:::note Buffering changes flow control
+Because the read thread keeps draining the socket, a sender is no longer slowed by TCP flow control until the queue is full. If the interface can't keep up, telemetry can fall behind by up to READ_QUEUE_MAX_SIZE bytes before the sender is throttled. Lower READ_QUEUE_MAX_SIZE if you'd rather the sender block sooner.
+:::
+
+Packets read through the queue are timestamped with the time their data was read from the socket, not the time they were processed, so the received time stays accurate while the queue is backed up.
+
+:::note Sizing memory
+READ_QUEUE_MAX_SIZE applies to each queue, so the memory an interface can hold is READ_QUEUE_MAX_SIZE times the number of queues. The TCP/IP server interface has one queue per connected client, so 10 clients at the default 20MB can buffer up to 200MB. All the interfaces in a microservice container share its memory, so lower READ_QUEUE_MAX_SIZE when running many interfaces or TCP/IP server interfaces that accept many clients.
+:::
+
+:::note Disconnecting
+When the interface disconnects it closes the stream, which unblocks the read thread, and then waits up to 2 seconds for the thread to exit. The built in interfaces wake up their pending read when they disconnect. A custom stream whose `disconnect` doesn't unblock a pending `read` delays each disconnect by those 2 seconds. In Ruby the thread is then killed and a warning is logged. In Python the thread can't be killed, so it is left blocked until its read returns and then exits without using the data. Make sure `disconnect` wakes up any blocked `read` (for example by closing the socket or writing to a wake up pipe).
+:::
+
+:::note Custom interfaces which read the stream directly
+While the read thread is running the stream's (or UDP read socket's) `read` method is redirected to the read queue. Custom interfaces and protocols which read the stream themselves, for example reading a handshake response in `connect` or an acknowledgement in `write_interface`, keep working unchanged and receive the data in the order it arrived. The read thread is the only thing reading the underlying socket. Code which bypasses `read` and accesses the underlying socket directly (for example with `select` or `recvfrom`) still competes with the read thread, so set `OPTION READ_QUEUE_MAX_SIZE 0` for those interfaces to restore the previous inline reads.
+:::
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```cosmos
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
+  # Buffer up to 256MB
+  OPTION READ_QUEUE_MAX_SIZE 268435456
+  # Or disable the read thread and read inline
+  # OPTION READ_QUEUE_MAX_SIZE 0
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```cosmos
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
+  # Buffer up to 256MB
+  OPTION READ_QUEUE_MAX_SIZE 268435456
+  # Or disable the read thread and read inline
+  # OPTION READ_QUEUE_MAX_SIZE 0
+```
+
+</TabItem>
+</Tabs>
+
 ### TCP/IP Client Interface
 
 The TCP/IP client interface connects to a TCP/IP socket to send commands and receive telemetry. This interface is used for targets which open a socket and wait for a connection. This is the most common type of interface.

@@ -11,9 +11,11 @@
 
 import socket
 import threading
+import time
 import unittest
 from unittest.mock import patch
 
+from openc3.interfaces.read_queue_interface import READ_QUEUE_ENTRY_OVERHEAD
 from openc3.interfaces.udp_interface import UdpInterface
 from openc3.io.udp_sockets import UdpReadSocket, UdpWriteSocket
 from openc3.packets.packet import Packet
@@ -152,6 +154,7 @@ class TestUdpInterface(unittest.TestCase):
         self.addCleanup(close_socket, sender)
 
         sender.write(b"telemetry")
+        # Reading the socket directly still works as it is redirected to the read queue
         self.assertEqual(i.read_socket.read(1.0), b"telemetry")
         i.write_socket.write(b"command")
         self.assertEqual(destination.read(1.0), b"command")
@@ -227,6 +230,41 @@ class TestUdpInterface(unittest.TestCase):
         self.assertEqual(i.read_count, 2)
         self.assertEqual(i.bytes_read, 8)
         self.assertEqual(self.packet.buffer, b"\x04\x05\x06\x07")
+        i.disconnect()
+        close_socket(write)
+
+    def test_queues_datagrams_as_fast_as_they_arrive(self):
+        write = UdpWriteSocket("127.0.0.1", 8889)
+        i = UdpInterface("127.0.0.1", "None", "8889")
+        i.connect()
+        # The read thread drains the socket without read being called so the
+        # operating system receive buffer doesn't overflow and drop datagrams
+        for index in range(5):
+            write.write(b"\x00\x01\x02" + bytes([index]))
+        start = time.time()
+        while i.read_queue_size() < 5 and (time.time() - start) < 2:
+            time.sleep(0.001)
+        self.assertEqual(i.read_queue_size(), 5)
+        self.assertEqual(i.read_queue_bytes(), 20)
+        for index in range(5):
+            self.assertEqual(i.read().buffer, b"\x00\x01\x02" + bytes([index]))
+        self.assertEqual(i.read_queue_size(), 0)
+        self.assertEqual(i.read_queue_bytes(), 0)
+        i.disconnect()
+        close_socket(write)
+
+    def test_limits_how_many_bytes_are_queued(self):
+        write = UdpWriteSocket("127.0.0.1", 8889)
+        i = UdpInterface("127.0.0.1", "None", "8889")
+        # Each datagram below is 4 bytes and is also charged the per entry
+        # overhead so budget for exactly 2 of them
+        i.set_option("READ_QUEUE_MAX_SIZE", [str(2 * (4 + READ_QUEUE_ENTRY_OVERHEAD))])
+        i.connect()
+        for index in range(5):
+            write.write(b"\x00\x01\x02" + bytes([index]))
+        time.sleep(0.1)
+        self.assertEqual(i.read_queue_bytes(), 8)
+        self.assertEqual(i.read_queue_size(), 2)
         i.disconnect()
         close_socket(write)
 

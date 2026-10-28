@@ -61,7 +61,7 @@ class CommandDecomTopic(Topic):
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
-        EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash)
+        EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash, minid=Topic.stream_safety_minid())
 
     @classmethod
     def get_cmd_item(cls, target_name, packet_name, param_name, type="FORMATTED", scope=OPENC3_SCOPE):

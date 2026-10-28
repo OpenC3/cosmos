@@ -35,6 +35,9 @@ jobs:
   unit-test:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
+    # A full run takes about 3 minutes, so fail a hung test quickly rather than
+    # holding the runner for the 6 hour default
+    timeout-minutes: 20
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13", "3.14"]
