@@ -114,9 +114,13 @@ class RunningScriptController < ApplicationController
         end
       end
 
-      if pid.nil? or not stopped
-        # Also need to cleanup the status model in this case because the process will not die and cleanup
-        running_script.end_time = Time.now.utc.iso8601
+      # Re-fetch because the process may have updated the model while stopping.
+      # If the process was killed by a signal (or never died) it never moved
+      # itself from running to completed so do that here. Setting state is a
+      # no-op if the process already reached a complete state.
+      running_script = OpenC3::ScriptStatusModel.get_model(name: params[:id], scope: params[:scope]) || running_script
+      if not running_script.is_complete?
+        running_script.end_time ||= Time.now.utc.iso8601
         running_script.state = "killed"
         running_script.update
       end
