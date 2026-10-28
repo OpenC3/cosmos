@@ -27,6 +27,17 @@ class RunningScriptChannel < ApplicationCable::Channel
   # costs latency for third-party consumers that just subscribe and read.
   ARM_TIMEOUT = 1.0
 
+  # Upper bound on the backlog delivered by #subscribed. AnyCable returns every
+  # transmit() made during the subscribe RPC to the gateway in ONE gRPC
+  # response, and gRPC rejects messages over 4MB. The replay stream is capped by
+  # entry count (MAXLEN) but not by size, and single entries can be large ('file'
+  # carries a whole script, 'output' up to max_output_characters), so a busy
+  # long-running script could exceed the limit -- after which every (re)subscribe
+  # failed and nobody could attach to the script again. Only the newest events
+  # that fit are replayed. Half the limit leaves room for the per-transmission
+  # JSON envelope.
+  MAX_REPLAY_BYTES = 2 * 1024 * 1024
+
   def subscribed
     # Defensive: if the auth before_subscribe callback rejected us, skip work.
     return if subscription_rejected?
@@ -54,33 +65,58 @@ class RunningScriptChannel < ApplicationCable::Channel
     topic = "running-script-channel:#{params[:id]}:replay"
     last_offset = '0-0'
     complete = false
-    events = []
     begin
-      OpenC3::Topic.xrange(topic, '-', '+').each do |msg_id, msg_hash|
-        last_offset = msg_id
+      newest = true
+      replay_bytes = 0
+      omitted = 0
+      backlog = [] # Newest first
+      # Walk newest to oldest so the size cap keeps the most recent events
+      OpenC3::Topic.xrevrange(topic, '+', '-').each do |msg_id, msg_hash|
+        last_offset = msg_id if newest
         data = msg_hash['data']
+        # Only parse here if it could be 'complete'; everything is parsed below
+        if newest && data&.include?('"complete"')
+          event = parse_replay_event(data)
+          if event && event['type'] == 'complete'
+            complete = true
+            # 'complete' must always reach the client or it never finishes the
+            # session. Drop the report rather than the event if it is too big.
+            if data.bytesize > MAX_REPLAY_BYTES
+              event.delete('report')
+              data = event.to_json
+            end
+          end
+        end
+        newest = false
         next unless data
 
-        event = JSON.parse(data)
-        events << event
+        # Keep a contiguous tail: once one event does not fit, omit all older
+        if omitted > 0 || replay_bytes + data.bytesize > MAX_REPLAY_BYTES
+          omitted += 1
+          next
+        end
+        replay_bytes += data.bytesize
+        backlog << data
+      end
+
+      events = []
+      if omitted > 0
+        events << { 'type' => 'output', 'color' => 'BLUE',
+                    'line' => "#{Time.now.sys.formatted} (SCRIPTRUNNER): Script history too large to replay, #{omitted} earlier events omitted\n" }
+      end
+      backlog.reverse_each do |data|
+        # Parse individually so one corrupt entry cannot take the rest with it
+        event = parse_replay_event(data)
+        events << event if event
         if events.length >= RunningScriptReplayThread::MAX_BATCH_SIZE
           transmit(events)
           events = []
         end
-        complete = true if event['type'] == 'complete'
       end
+      transmit(events) unless events.empty?
     rescue StandardError => e
       # Best-effort: a replay failure must not break the subscription.
       OpenC3::Logger.warn("running_script replay backlog failed: #{e.message}") rescue nil
-    ensure
-      # Flush in ensure: because events are batched, a single corrupt entry
-      # partway through would otherwise discard every event parsed before it,
-      # leaving the client with no state for a script that already ran.
-      begin
-        transmit(events) unless events.empty?
-      rescue StandardError
-        # Nothing better to do than the warn above
-      end
     end
     # Script already finished -- the backlog held the terminal 'complete', so
     # there is nothing left to stream.
@@ -126,6 +162,13 @@ class RunningScriptChannel < ApplicationCable::Channel
   end
 
   private
+
+  def parse_replay_event(data)
+    JSON.parse(data)
+  rescue StandardError => e
+    OpenC3::Logger.warn("running_script replay skipped bad event: #{e.message}") rescue nil
+    nil
+  end
 
   # The stream (and @@broadcasters) key must identify this subscription, not
   # just its connection. `uuid` is an identified_by on the connection, so it is
