@@ -983,6 +983,7 @@ module OpenC3
     # the first table does in a single db_shard query) and every other db_shard is aligned
     # to it by packet time, using its last row at or before each driving row (like ASOF JOIN).
     def self.tsdb_lookup_range_db_shards(items, db_shard_groups, start_time:, end_time:, scope:)
+      driver = db_shard_for_target(items.find { |item| item[2] }[0], scope: scope)
       db_shard_rows = {} # db_shard => rows with their packet time as the last value
       db_shard_groups.each do |db_shard, group|
         # Every item in this db_shard is a placeholder so leave its positions as nils
@@ -991,10 +992,15 @@ module OpenC3
 
         query = group[:items] + [[first[0], first[1], 'PACKET_TIMESECONDS', 'RAW', nil]]
         result = tsdb_lookup_single_db_shard(query, start_time: start_time, end_time: end_time, scope: scope, db_shard: db_shard, flatten: false)
-        db_shard_rows[db_shard] = result.is_a?(Array) ? result : []
+        rows = result.is_a?(Array) ? result : []
+        if db_shard != driver
+          # Like ASOF JOIN, the last row before start_time can align to the first driving rows
+          seed = tsdb_lookup_single_db_shard(query, start_time: start_time, end_time: nil, scope: scope, db_shard: db_shard, flatten: false)
+          rows = seed + rows if seed.is_a?(Array)
+        end
+        db_shard_rows[db_shard] = rows
       end
 
-      driver = db_shard_for_target(items.find { |item| item[2] }[0], scope: scope)
       return {} if db_shard_rows[driver].empty?
 
       indexes = Hash.new(-1) # db_shard => index of the row aligned to the current driving row

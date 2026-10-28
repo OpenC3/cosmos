@@ -52,9 +52,15 @@ class DbShardTestCase(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
 
-    def lookup(self, results, **kwargs):
+    def lookup(self, results, seeds=None, **kwargs):
+        # A range lookup seeds the other db_shards with a point in time (no end_time) query
+        def single_db_shard(items, db_shard, end_time=None, **_kw):
+            if seeds is not None and end_time is None:
+                return seeds.get(db_shard, {})
+            return results[db_shard]
+
         with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard") as single:
-            single.side_effect = lambda items, db_shard, **_kw: results[db_shard]
+            single.side_effect = single_db_shard
             return QuestDBClient.tsdb_lookup(self.ITEMS, start_time="2026-09-13T00:00:00Z", **kwargs), single
 
 
@@ -92,10 +98,10 @@ class TestTsdbLookupDbShards(DbShardTestCase):
 class TestTsdbLookupDbShardsRange(DbShardTestCase):
     """Range rows end with the packet time added to each db_shard query"""
 
-    def range_lookup(self, results, items=None):
+    def range_lookup(self, results, items=None, seeds=None):
         if items is not None:
             self.ITEMS = items
-        return self.lookup(results, end_time="2026-09-13T01:00:00Z")
+        return self.lookup(results, seeds=seeds or {}, end_time="2026-09-13T01:00:00Z")
 
     def test_adds_the_packet_time_of_the_first_packet_to_each_db_shard_query(self):
         _, single = self.range_lookup({0: [[[1.0, None], [3.0, None], [10.0, None]]], 1: [[[2.0, None], [10.0, None]]]})
@@ -155,6 +161,23 @@ class TestTsdbLookupDbShardsRange(DbShardTestCase):
                 [[7.0, None], [8.0, None], [9.0, None]],
             ],
         )
+
+    def test_seeds_the_other_db_shards_with_their_last_row_before_start_time(self):
+        result, single = self.range_lookup(
+            {
+                0: [[[1.0, None], [3.0, None], [10.0, None]], [[4.0, None], [6.0, None], [30.0, None]]],
+                1: [[[5.0, None], [20.0, None]]],
+            },
+            seeds={0: [[[0.0, None], [0.0, None], [-10.0, None]]], 1: [[[2.0, None], [-5.0, None]]]},
+        )
+        # Like ASOF JOIN the db_shard 1 row before start_time aligns to the driving row at time 10
+        self.assertEqual(
+            result,
+            [[[1.0, None], [2.0, None], [3.0, None]], [[4.0, None], [5.0, None], [6.0, None]]],
+        )
+        # Only the other db_shards are seeded, never the driving db_shard
+        seeded = [call.kwargs["db_shard"] for call in single.call_args_list if call.kwargs["end_time"] is None]
+        self.assertEqual(seeded, [1])
 
     def test_drives_the_rows_from_the_db_shard_of_the_first_item(self):
         items = self.ITEMS[1:] + self.ITEMS[:1]

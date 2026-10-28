@@ -76,6 +76,12 @@ RSpec.describe OpenC3::CvtModel, :questdb do
     expect(result).to eq(expected)
   end
 
+  it 'aligns the other db_shard row before start_time' do
+    # Like ASOF JOIN the SHARD_B row at 1 second aligns to the first SHARD_A row at 2 seconds
+    result = OpenC3::CvtModel.tsdb_lookup(items('SHARD_A', 'SHARD_B'), start_time: iso(2), end_time: iso(5))
+    expect(result).to eq([[[2, nil], [1, nil]], [[4, nil], [3, nil]]])
+  end
+
   it 'drives the rows from the db_shard of the first item' do
     result = OpenC3::CvtModel.tsdb_lookup(items('SHARD_B', 'SHARD_A'), start_time: iso(0), end_time: iso(5))
     expect(result).to eq([[[1, nil], [0, nil]], [[3, nil], [2, nil]]])

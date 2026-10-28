@@ -118,11 +118,11 @@ class TestTsdbLookupDbShards:
                     cur.execute(f'DROP TABLE IF EXISTS "{table_name}"')
                 client.close()
 
-    def lookup(self, target_names):
+    def lookup(self, target_names, start_seconds=0):
         items = [(target_name, "PKT", "VALUE", "RAW", False) for target_name in target_names]
         return CvtModel.tsdb_lookup(
             items,
-            start_time=ts_to_iso(self.base_ts),
+            start_time=ts_to_iso(self.base_ts + start_seconds * 1_000_000_000),
             end_time=ts_to_iso(self.base_ts + 5_000_000_000),
         )
 
@@ -130,6 +130,13 @@ class TestTsdbLookupDbShards:
         assert self.lookup(["SHARD_A", "SHARD_B"]) == [
             # SHARD_B has no row at or before 0 seconds
             [[0, None], [None, None]],
+            [[2, None], [1, None]],
+            [[4, None], [3, None]],
+        ]
+
+    def test_aligns_the_other_db_shard_row_before_start_time(self):
+        # Like ASOF JOIN the SHARD_B row at 1 second aligns to the first SHARD_A row at 2 seconds
+        assert self.lookup(["SHARD_A", "SHARD_B"], start_seconds=2) == [
             [[2, None], [1, None]],
             [[4, None], [3, None]],
         ]

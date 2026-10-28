@@ -38,11 +38,14 @@ module OpenC3
           ]
         end
 
-        def lookup(results, end_time: nil)
+        def lookup(results, end_time: nil, seeds: nil)
           # INST is on db_shard 0 and INST2 is on db_shard 1
           allow(QuestDBClient).to receive(:db_shard_for_target) { |target_name, **| target_name == "INST2" ? 1 : 0 }
-          allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard) do |_items, db_shard:, flatten:, **|
+          allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard) do |_items, db_shard:, flatten:, end_time: nil, **|
             expect(flatten).to be false
+            # A range lookup seeds the other db_shards with a point in time (no end_time) query
+            next seeds.fetch(db_shard, {}) if seeds and end_time.nil?
+
             results[db_shard]
           end
           QuestDBClient.tsdb_lookup(items, start_time: "2026-09-13T00:00:00Z", end_time: end_time)
@@ -61,16 +64,16 @@ module OpenC3
 
         context "with an end_time" do
           # Range rows end with the packet time added to each db_shard query
-          def range_lookup(results)
-            lookup(results, end_time: "2026-09-13T01:00:00Z")
+          def range_lookup(results, seeds: {})
+            lookup(results, end_time: "2026-09-13T01:00:00Z", seeds: seeds)
           end
 
           it "adds the packet time of the first packet to each db_shard query" do
             range_lookup({ 0 => [[[1.0, nil], [3.0, nil], [10.0, nil]]], 1 => [[[2.0, nil], [10.0, nil]]] })
             time = ["INST", "HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW", nil]
             time2 = ["INST2", "HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW", nil]
-            expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[0], items[2], time], hash_including(db_shard: 0))
-            expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[1], time2], hash_including(db_shard: 1))
+            expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[0], items[2], time], hash_including(db_shard: 0, end_time: "2026-09-13T01:00:00Z"))
+            expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[1], time2], hash_including(db_shard: 1, end_time: "2026-09-13T01:00:00Z"))
           end
 
           it "merges a single row of a multi-row query" do
@@ -100,6 +103,17 @@ module OpenC3
               [[7.0, nil], [8.0, nil], [9.0, nil]],
             ]
             expect(range_lookup({ 0 => shard0, 1 => shard1 })).to eq(expected)
+          end
+
+          it "seeds the other db_shards with their last row before start_time" do
+            shard0 = [[[1.0, nil], [3.0, nil], [10.0, nil]], [[4.0, nil], [6.0, nil], [30.0, nil]]]
+            seeds = { 0 => [[[0.0, nil], [0.0, nil], [-10.0, nil]]], 1 => [[[2.0, nil], [-5.0, nil]]] }
+            result = range_lookup({ 0 => shard0, 1 => [[[5.0, nil], [20.0, nil]]] }, seeds: seeds)
+            # Like ASOF JOIN the db_shard 1 row before start_time aligns to the driving row at time 10
+            expect(result).to eq([[[1.0, nil], [2.0, nil], [3.0, nil]], [[4.0, nil], [5.0, nil], [6.0, nil]]])
+            # Only the other db_shards are seeded, never the driving db_shard
+            expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with(anything, hash_including(db_shard: 1, end_time: nil))
+            expect(QuestDBClient).not_to have_received(:tsdb_lookup_single_db_shard).with(anything, hash_including(db_shard: 0, end_time: nil))
           end
 
           it "drives the rows from the db_shard of the first item" do

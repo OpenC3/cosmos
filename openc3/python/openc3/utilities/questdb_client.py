@@ -862,6 +862,8 @@ class QuestDBClient:
         the first table does in a single db_shard query) and every other db_shard is aligned
         to it by packet time, using its last row at or before each driving row (like ASOF JOIN).
         """
+        first = next(item for item in items if item.item_name is not None)
+        driver = cls.db_shard_for_target(first.target_name, scope=scope)
         db_shard_rows = {}  # db_shard => rows with their packet time as the last value
         for db_shard, group in db_shard_groups.items():
             # Every item in this db_shard is a placeholder so leave its positions as Nones
@@ -872,10 +874,16 @@ class QuestDBClient:
             result = cls._tsdb_lookup_single_db_shard(
                 query, start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard, flatten=False
             )
-            db_shard_rows[db_shard] = result if isinstance(result, list) else []
+            rows = result if isinstance(result, list) else []
+            if db_shard != driver:
+                # Like ASOF JOIN, the last row before start_time can align to the first driving rows
+                seed = cls._tsdb_lookup_single_db_shard(
+                    query, start_time=start_time, end_time=None, scope=scope, db_shard=db_shard, flatten=False
+                )
+                if isinstance(seed, list):
+                    rows = seed + rows
+            db_shard_rows[db_shard] = rows
 
-        first = next(item for item in items if item.item_name is not None)
-        driver = cls.db_shard_for_target(first.target_name, scope=scope)
         if not db_shard_rows[driver]:
             return {}
 
