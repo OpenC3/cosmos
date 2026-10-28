@@ -159,6 +159,13 @@ class TestTsdbLookupDbShards:
             [[4, None], [3, None]],
         ]
 
+    def test_aligns_the_other_db_shard_row_before_start_time(self):
+        # Like ASOF JOIN the SHARD_B row at 1 second aligns to the first SHARD_A row at 2 seconds
+        assert self.lookup([("SHARD_A", "PKT"), ("SHARD_B", "PKT")], 2, 5) == [
+            [[2, None], [1, None]],
+            [[4, None], [3, None]],
+        ]
+
     def test_drives_the_rows_from_the_db_shard_of_the_first_item(self):
         assert self.lookup([("SHARD_B", "PKT"), ("SHARD_A", "PKT")], 0, 5) == [
             [[1, None], [0, None]],

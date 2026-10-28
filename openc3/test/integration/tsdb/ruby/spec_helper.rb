@@ -64,7 +64,7 @@ module QuestDBTestHelpers
   def with_db_shard_port(db_shard)
     return yield if db_shard == 0
 
-    saved = ENV['OPENC3_TSDB_QUERY_PORT']
+    saved = ENV.fetch('OPENC3_TSDB_QUERY_PORT', nil)
     ENV['OPENC3_TSDB_QUERY_PORT'] = ENV.fetch("OPENC3_TSDB_SHARD#{db_shard}_QUERY_PORT")
     begin
       yield
