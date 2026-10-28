@@ -43,12 +43,8 @@ test('prompts for hazardous commands', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).toContainText('Hazardous Command')
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'User input: Send',
-  )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'cmd("INST CLEAR")',
-  )
+  await expectOutput(page, 'User input: Send')
+  await expectOutput(page, 'cmd("INST CLEAR")')
 })
 
 test('does not hazardous prompt for cmd_no_hazardous_check, cmd_no_checks', async ({
@@ -82,9 +78,7 @@ test('errors for out of range command parameters', async ({ page, utils }) => {
   })
   await page.locator('[data-test=go-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    '11 not in valid range',
-  )
+  await expectOutput(page, '11 not in valid range')
 })
 
 test('does not out of range error for cmd_no_range_check, cmd_no_checks', async ({
@@ -202,6 +196,19 @@ const cancelCases = [
   },
 ]
 
+async function expectOutput(page: Page, expectedOutput: string | RegExp) {
+  await expect(page.locator('[data-test=output-messages]')).toContainText(expectedOutput)
+}
+
+async function scriptWithDialogCompletes(page: Page, scriptText: string, actions: () => Promise<void>, expectedOutput: string) {
+  await page.locator('textarea').fill(scriptText)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('.v-dialog')).toBeVisible({ timeout: 20000 })
+  await actions()
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
+  await expectOutput(page, expectedOutput)
+}
+
 for (const L of languages) {
   test.describe(`${L.name} user input`, () => {
     test.describe('happy path', () => {
@@ -209,7 +216,8 @@ for (const L of languages) {
         page,
         utils,
       }) => {
-        await page.locator('textarea').fill(`value = ask("Enter password:")
+        await scriptWithDialogCompletes(page,
+          `value = ask("Enter password:")
 ${L.print('value')}
 value = ask("Optionally enter password:", ${L.t})
 ${L.blank('value')}
@@ -217,54 +225,37 @@ value = ask("Enter default password:", 67890)
 ${L.print('value')}
 value = ask("Enter SECRET password:", ${L.f}, ${L.t})
 ${L.wait}
-${L.print('value')}`)
-        await page.locator('[data-test=start-button]').click()
-        await expect(page.locator('.v-dialog')).toBeVisible({
-          timeout: 20000,
-        })
-        // Required so Ok is disabled until something is entered
-        await expect(
-          page.locator('.v-dialog >> button:has-text("Ok")'),
-        ).toBeDisabled()
-        await page.locator('.v-dialog >> input').fill('12345')
-        await page.locator('.v-dialog >> button:has-text("Ok")').click()
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
-          '12345',
-        )
-        // Now nothing is required so OK is enabled
-        await expect(
-          page.locator('.v-dialog >> button:has-text("Ok")'),
-        ).toBeEnabled()
-        await page.locator('.v-dialog >> button:has-text("Ok")').click()
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
-          L.blankOut,
-        )
-        // Verify the default value
-        expect(
-          await page.inputValue('[data-test=ask-value-input] input'),
-        ).toMatch('67890')
-        await page.locator('.v-dialog >> button:has-text("Ok")').click()
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
-          '67890',
-        )
-        // Now type the secret password
-        await page.locator('.v-dialog >> input').fill('abc123!')
-        await page.locator('.v-dialog >> button:has-text("Ok")').click()
+${L.print('value')}`,
+          async () => {
+            // Required so Ok is disabled until something is entered
+            const okButton = page.locator('.v-dialog >> button:has-text("Ok")')
+            await expect(okButton).toBeDisabled()
+            await page.locator('.v-dialog >> input').fill('12345')
+            await okButton.click()
+            await expectOutput(page, '12345')
+            // Now nothing is required so OK is enabled
+            await expect(okButton).toBeEnabled()
+            await okButton.click()
+            await expectOutput(page, L.blankOut)
+            // Verify the default value
+            expect(
+              await page.inputValue('[data-test=ask-value-input] input'),
+            ).toMatch('67890')
+            await okButton.click()
+            await expectOutput(page, '67890')
+            // Now type the secret password
+            await page.locator('.v-dialog >> input').fill('abc123!')
+            await okButton.click()
 
-        await expect(page.locator('[data-test=state] input')).toHaveValue(
-          /waiting \d+s/,
-        )
-        // Verify we're not outputting the secret password on input
-        await expect(
-          page.locator('[data-test=output-messages]'),
-        ).not.toContainText('abc123!')
-        // Once we continue we should see it since we print it
-        await page.locator('[data-test=go-button]').click()
-        await expect(page.locator('[data-test=state] input')).toHaveValue(
-          'completed',
-        )
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
-          'abc123!',
+            await expect(page.locator('[data-test=state] input')).toHaveValue(/waiting \d+s/)
+            // Verify we're not outputting the secret password on input
+            await expect(
+              page.locator('[data-test=output-messages]'),
+            ).not.toContainText('abc123!')
+            // Once we continue we should see it since we print it
+            await page.locator('[data-test=go-button]').click()
+          },
+          'abc123!'
         )
       })
 
@@ -272,49 +263,32 @@ ${L.print('value')}`)
         page,
         utils,
       }) => {
-        await page.locator('textarea').fill(`value = ask("Enter integer:")
+        await scriptWithDialogCompletes(page,
+          `value = ask("Enter integer:")
 ${L.typed('int', 'value')}
 value = ask("Enter float:")
 ${L.typed('float', 'value')}
 value = ask_string("Enter float:")
-${L.typed('string', 'value')}`)
-        await page.locator('[data-test=start-button]').click()
-        await expect(page.locator('.v-dialog')).toBeVisible({
-          timeout: 20000,
-        })
-        await page.locator('.v-dialog >> input').fill('123')
-        await page.locator('.v-dialog >> button:has-text("Ok")').click()
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
-          `int:123 ${L.types.int}`,
-        )
-        await page.locator('.v-dialog >> input').fill('5.5')
-        await page.locator('.v-dialog >> button:has-text("Ok")').click()
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
-          `float:5.5 ${L.types.float}`,
-        )
-        await page.locator('.v-dialog >> input').fill('5.5')
-        await page.locator('.v-dialog >> button:has-text("Ok")').click()
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
-          `string:5.5 ${L.types.string}`,
-        )
-        await expect(page.locator('[data-test=state] input')).toHaveValue(
-          'completed',
+${L.typed('string', 'value')}`,
+          async () => {
+            await page.locator('.v-dialog >> input').fill('123')
+            await page.locator('.v-dialog >> button:has-text("Ok")').click()
+            await expectOutput(page, `int:123 ${L.types.int}`)
+            await page.locator('.v-dialog >> input').fill('5.5')
+            await page.locator('.v-dialog >> button:has-text("Ok")').click()
+            await expectOutput(page, `float:5.5 ${L.types.float}`)
+            await page.locator('.v-dialog >> input').fill('5.5')
+            await page.locator('.v-dialog >> button:has-text("Ok")').click()
+          },
+          `string:5.5 ${L.types.string}`
         )
       })
 
       test('message_box returns the clicked button', async ({ page, utils }) => {
-        await page.locator('textarea')
-          .fill(`value = message_box("Select", "ONE", "TWO", "THREE")
-${L.print('value')}`)
-        await page.locator('[data-test=start-button]').click()
-        await expect(page.locator('.v-dialog')).toBeVisible({
-          timeout: 20000,
-        })
-        await page.locator('.v-dialog >> button:has-text("TWO")').click()
-        await expect(page.locator('[data-test=state] input')).toHaveValue(
-          'completed',
-        )
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
+        await scriptWithDialogCompletes(
+          page,
+          `value = message_box("Select", "ONE", "TWO", "THREE")\n${L.print('value')}`,
+          () => page.locator('.v-dialog >> button:has-text("TWO")').click(),
           'User input: TWO',
         )
       })
@@ -323,75 +297,51 @@ ${L.print('value')}`)
         page,
         utils,
       }) => {
-        await page.locator('textarea')
-          .fill(`value = vertical_message_box("Select", "FOUR", "FIVE", "SIX")
-${L.print('value')}`)
-        await page.locator('[data-test=start-button]').click()
-        await expect(page.locator('.v-dialog')).toBeVisible({
-          timeout: 20000,
-        })
-        await page.locator('.v-dialog >> button:has-text("FIVE")').click()
-        await expect(page.locator('[data-test=state] input')).toHaveValue(
-          'completed',
-        )
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
+        await scriptWithDialogCompletes(
+          page,
+          `value = vertical_message_box("Select", "FOUR", "FIVE", "SIX")\n${L.print('value')}`,
+          () => page.locator('.v-dialog >> button:has-text("FIVE")').click(),
           'User input: FIVE',
         )
       })
 
       test('combo_box returns the selected value', async ({ page, utils }) => {
-        await page.locator('textarea').fill(
-          `value = combo_box("Select value from combo", "abc123", "def456")
-${L.print('value')}`,
-        )
-        await page.locator('[data-test=start-button]').click()
-        await expect(page.locator('.v-dialog')).toBeVisible({
-          timeout: 20000,
-        })
-        await page.getByRole('combobox').filter({ hasText: 'Select' }).click()
-        await page.locator('div[role="listbox"] >> text=def456').click()
-        await page.locator('.v-dialog >> button:has-text("Ok")').click()
-        await expect(page.locator('[data-test=state] input')).toHaveValue(
-          'completed',
-        )
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
+        await scriptWithDialogCompletes(
+          page,
+          `value = combo_box("Select value from combo", "abc123", "def456")\n${L.print('value')}`,
+          async () => {
+            await page.getByRole('combobox').filter({ hasText: 'Select' }).click()
+            await page.locator('div[role="listbox"] >> text=def456').click()
+            await page.locator('.v-dialog >> button:has-text("Ok")').click()
+          },
           'User input: def456',
         )
       })
 
       test('check_box returns the checked values', async ({ page, utils }) => {
-        await page.locator('textarea').fill(
-          `value = check_box("Select values to enable", "abc123", "def456", "ghi789")
-${L.print('value')}`,
-        )
-        await page.locator('[data-test=start-button]').click()
-        await expect(page.locator('.v-dialog')).toBeVisible({
-          timeout: 20000,
-        })
-        await page.getByRole('checkbox', { name: 'abc123' }).check()
-        await page.getByRole('checkbox', { name: 'ghi789' }).check()
-        await page.locator('[data-test="prompt-ok"]').click()
-        await expect(page.locator('[data-test=state] input')).toHaveValue(
-          'completed',
-        )
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
+        await scriptWithDialogCompletes(
+          page,
+          `value = check_box("Select values to enable", "abc123", "def456", "ghi789")\n${L.print('value')}`,
+          async () => {
+            await page.getByRole('checkbox', { name: 'abc123' }).check()
+            await page.getByRole('checkbox', { name: 'ghi789' }).check()
+            await page.locator('[data-test="prompt-ok"]').click()
+          },
           L.multiOut,
         )
       })
 
       test('prompt returns the clicked button', async ({ page, utils }) => {
         // Default choices for prompt is Ok and Cancel
-        await page.locator('textarea').fill(`value = prompt("Continue?")
-${L.print('value')}`)
-        await page.locator('[data-test=start-button]').click()
-        await expect(page.locator('.v-dialog')).toContainText('Continue?', {
-          timeout: 20000,
-        })
-        await page.locator('.v-dialog >> button:has-text("Ok")').click()
-        await expect(page.locator('[data-test=state] input')).toHaveValue(
-          'completed',
-        )
-        await expect(page.locator('[data-test=output-messages]')).toContainText(
+        await scriptWithDialogCompletes(
+          page,
+          `value = prompt("Continue?")\n${L.print('value')}`,
+          async () => {
+            await expect(page.locator('.v-dialog')).toContainText('Continue?', {
+              timeout: 20000,
+            })
+            await page.locator('.v-dialog >> button:has-text("Ok")').click()
+          },
           'Ok',
         )
       })
@@ -411,9 +361,7 @@ ${L.print('value')}`)
           await utils.sleep(500)
           await page.locator('.v-dialog >> button:has-text("Cancel")').click()
           await expect(page.locator('.v-dialog')).not.toBeVisible()
-          await expect(
-            page.locator('[data-test=output-messages]'),
-          ).toContainText(c.output)
+          await expectOutput(page, c.output)
           await expect(page.locator('[data-test=state] input')).toHaveValue(
             /paused \d+s/,
           )
@@ -522,27 +470,15 @@ async function runScript(page: Page, utils: Utilities, filename: string) {
   await page.locator('[data-test="bucket-ok"]').click()
 
   await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    /File\(s\): \[['"].prettierrc.js['"]\]/,
-  )
+  await expectOutput(page, /File\(s\): \[['"].prettierrc.js['"]\]/,)
   // Verify something from .prettierrc.js
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'bracketSpacing: true',
-  )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    /File\(s\): \[['"]pnpm-workspace.yaml['"], ['"]reset_storage_state.sh['"]\]/,
-  )
+  await expectOutput(page, 'bracketSpacing: true')
+  await expectOutput(page, /File\(s\): \[['"]pnpm-workspace.yaml['"], ['"]reset_storage_state.sh['"]\]/)
   // Verify something from reset_storage_state.sh
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'Initialize an empty storageState',
-  )
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'Reading DEFAULT/targets/INST2/target.txt',
-  )
+  await expectOutput(page, 'Initialize an empty storageState')
+  await expectOutput(page, 'Reading DEFAULT/targets/INST2/target.txt')
   // Verify something from INST2/target.txt
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'TELEMETRY inst_tlm_override.txt',
-  )
+  await expectOutput(page, 'TELEMETRY inst_tlm_override.txt')
 }
 
 test('test ruby prompts', async ({ page, utils }) => {
@@ -557,9 +493,7 @@ test('handles ruby crashes', async ({ page, utils }) => {
   // puts will resolve to Ruby
   await page.locator('textarea').fill(`puts "HI"\ndef def`)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'SyntaxError',
-  )
+  await expectOutput(page, 'SyntaxError')
   await expect(page.locator('[data-test=state] input')).toHaveValue('crashed')
   await expect(page.locator('[data-test=start-button]')).toBeEnabled()
 })
@@ -568,9 +502,7 @@ test('handles python crashes', async ({ page, utils }) => {
   // print will resolve to Python
   await page.locator('textarea').fill(`print "HI"`)
   await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=output-messages]')).toContainText(
-    'SyntaxError',
-  )
+  await expectOutput(page, 'SyntaxError')
   await expect(page.locator('[data-test=state] input')).toHaveValue('crashed')
   await expect(page.locator('[data-test=start-button]')).toBeEnabled()
 })
