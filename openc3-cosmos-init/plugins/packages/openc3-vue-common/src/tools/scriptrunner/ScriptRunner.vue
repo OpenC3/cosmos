@@ -2755,6 +2755,12 @@ export default {
                 this.results.text = data.report
                 this.results.show = true
               }
+              // A crash in the script process itself (not the script thread)
+              // never publishes a terminal state with a line event, so take
+              // the final state from the 'complete' message
+              if (data.state) {
+                this.state = data.state
+              }
               // Set before the teardown below: 'complete' is terminal even if
               // scriptComplete() throws, and the catch would otherwise let the
               // loop run on against a half-torn-down session.
