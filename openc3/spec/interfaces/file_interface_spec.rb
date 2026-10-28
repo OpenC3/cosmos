@@ -87,6 +87,18 @@ module OpenC3
     end
 
     describe "disconnect" do
+      it "only queues one disconnect marker per connection" do
+        @interface = FileInterface.new(@command_dir, nil, nil)
+        queue = @interface.instance_variable_get(:@queue)
+        @interface.connect
+        @interface.disconnect
+        @interface.disconnect
+        expect(queue.length).to eql 1
+        # The next connect discards it so it doesn't immediately disconnect
+        @interface.connect
+        expect(queue.empty?).to be true
+      end
+
       it "closes the file if open" do
         @interface = FileInterface.new(@command_dir, @telemetry_dir, @archive_dir)
         mock_file = double("file")
