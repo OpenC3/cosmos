@@ -121,11 +121,10 @@ The following steps are written for the Enterprise folder names. Use `openc3-tra
      openc3-traefik:
        volumes:
          - "./openc3-enterprise-traefik/traefik-letsencrypt.yaml:/etc/traefik/traefik.yaml:z"
+         - "openc3-traefik-acme:/tmp"
        ports: !override
          - "80:2900"
          - "443:2943"
-       volumes:
-         - "openc3-traefik-acme:/tmp"
    volumes:
      openc3-traefik-acme: {}
    ```
