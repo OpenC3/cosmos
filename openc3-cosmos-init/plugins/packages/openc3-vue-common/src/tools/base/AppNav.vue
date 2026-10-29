@@ -32,6 +32,8 @@
       <div class="cosmos">
         {{ subtitle }}
       </div>
+      <!-- Mobile devices have no room for the scope in the app bar -->
+      <scope-selector v-if="isMobile" class="ma-3" />
       <div v-for="(tool, name) in adminTools" :key="name" class="ma-3">
         <v-btn
           block
@@ -117,7 +119,14 @@
         </template>
       </v-treeview>
     </v-navigation-drawer>
-    <v-app-bar v-if="!chromeless" id="openc3-app-toolbar">
+    <!-- Mobile devices get their own simpler bar. Chosen once at load:
+         tools teleport their title and menus into #openc3-menu, which
+         swapping bars on a resize would remove -->
+    <mobile-app-bar
+      v-if="!chromeless && isMobile"
+      @toggle-drawer="drawer = !drawer"
+    />
+    <v-app-bar v-else-if="!chromeless" id="openc3-app-toolbar">
       <v-row class="flex-nowrap" justify="space-between" no-gutters>
         <v-col align-self="start">
           <v-row class="flex-nowrap">
@@ -207,6 +216,7 @@ import Notifications from './Notifications.vue'
 import ScopeSelector from './ScopeSelector.vue'
 import UserMenu from './UserMenu.vue'
 import ContextTag from './ContextTag.vue'
+import MobileAppBar from './MobileAppBar.vue'
 
 export default {
   components: {
@@ -215,6 +225,7 @@ export default {
     UserMenu,
     UpgradeToEnterpriseDialog,
     ContextTag,
+    MobileAppBar,
   },
   props: {
     edition: {
@@ -253,6 +264,7 @@ export default {
       activeItems: [],
       showUpgradeToEnterpriseDialog: false,
       chromeless: null,
+      isMobile: false,
     }
   },
   computed: {
@@ -295,6 +307,11 @@ export default {
   created() {
     const urlParams = new URLSearchParams(window.location.search)
     this.chromeless = urlParams.get('chromeless')
+    // Under 600px wide at load: the mobile app bar, and a closed drawer since
+    // on mobile it covers the whole page. Set here, not in data(): $vuetify
+    // is a computed property, which data() can't see yet.
+    this.isMobile = this.$vuetify.display.xs
+    this.drawer = !this.isMobile
 
     // These three go out as a single batched get_settings request
     getCachedSetting('astro')
@@ -514,6 +531,8 @@ export default {
         (tool) => tool.url && path.startsWith(tool.url),
       )
       this.activeItems = match ? [match.name] : []
+      // On mobile, picking a tool closes the drawer to show it
+      if (this.isMobile) this.drawer = false
     },
     newTabUrl(tool) {
       let url = null

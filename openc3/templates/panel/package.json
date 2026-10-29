@@ -1,0 +1,17 @@
+{
+  "name": "<%= panel_name %>",
+  "version": "7.5.0-beta0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build -c vite-<%= panel_name %>.config.js"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.1",
+    "prettier": "^3.3.3",
+    "sass": "^1.80.4",
+    "vite": "^7.2.1",
+    "vite-plugin-style-inject": "^0.0.1",
+    "vue": "^3.5.13"
+  }
+}

@@ -1,0 +1,293 @@
+<!--
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+-->
+
+<template>
+  <div
+    :class="{ 'd-flex flex-column': fill }"
+    style="min-height: 0"
+    data-test="panel-settings"
+  >
+    <section class="settings-grid pb-2">
+      <v-autocomplete
+        :model-value="panel.type"
+        :items="typeItems"
+        item-title="title"
+        item-value="value"
+        :item-props="itemProps"
+        label="Type"
+        density="compact"
+        variant="outlined"
+        hide-details
+        auto-select-first
+        no-auto-scroll
+        :menu-props="typeMenuProps"
+        data-test="panel-type"
+        @update:model-value="changeType"
+      >
+        <template #selection="{ item }">
+          <span class="d-flex align-center ga-2">
+            <v-icon :icon="item.raw.icon" size="18" />
+            {{ item.raw.title }}
+          </span>
+        </template>
+        <template #item="{ props: listItemProps, item }">
+          <v-list-subheader
+            v-if="item.raw.header"
+            class="text-uppercase font-weight-bold"
+          >
+            {{ item.raw.title }}
+          </v-list-subheader>
+          <v-list-item
+            v-else
+            v-bind="listItemProps"
+            :prepend-icon="item.raw.icon"
+            :subtitle="item.raw.description"
+            :data-test="`panel-type-${item.raw.value}`"
+          />
+        </template>
+      </v-autocomplete>
+      <v-text-field
+        :model-value="panel.title"
+        label="Title"
+        placeholder="Defaults to the item or command name"
+        density="compact"
+        variant="outlined"
+        hide-details
+        class="span-2"
+        data-test="panel-title-input"
+        @update:model-value="(title) => $emit('update', { title })"
+      />
+    </section>
+    <div class="text-caption text-medium-emphasis pb-3">
+      {{ types[panel.type].description }}
+    </div>
+    <v-divider />
+
+    <section
+      v-if="types[panel.type].content"
+      :class="['py-3', { 'fill-content': fill }]"
+    >
+      <component
+        :is="types[panel.type].content"
+        :class="{ 'h-100': fill }"
+        :panel="panel"
+        @update="(change) => $emit('update', change)"
+      />
+    </section>
+    <v-divider />
+
+    <template v-if="hasOptions">
+      <section class="py-3">
+        <div class="text-subtitle-2 mb-2">Options</div>
+        <options-editor
+          :panel="panel"
+          @update="(change) => $emit('update', change)"
+        />
+      </section>
+      <v-divider />
+    </template>
+
+    <section class="py-3">
+      <div class="text-subtitle-2 mb-2">
+        Size
+        <span class="text-caption text-medium-emphasis ml-2">
+          {{ columns }} column grid. Drag the panel to move it, or its corner to
+          resize.
+        </span>
+      </div>
+      <div class="d-flex flex-wrap align-center ga-4">
+        <v-btn-toggle
+          :model-value="panel.w"
+          density="compact"
+          variant="outlined"
+          divided
+          class="db-toggle"
+          data-test="panel-width-presets"
+          @update:model-value="setWidth"
+        >
+          <v-btn
+            v-for="preset in widthPresets"
+            :key="preset.w"
+            :value="preset.w"
+            size="small"
+            :title="`${preset.w} of ${columns} columns`"
+          >
+            {{ preset.label }}
+          </v-btn>
+        </v-btn-toggle>
+        <div
+          class="d-flex align-center ga-2 flex-grow-1"
+          style="min-width: 220px"
+        >
+          <span class="text-body-2">Width</span>
+          <v-slider
+            :model-value="panel.w"
+            :min="minW"
+            :max="columns"
+            :step="1"
+            hide-details
+            color="primary"
+            aria-label="Width in columns"
+            data-test="panel-width"
+            @update:model-value="setWidth"
+          />
+          <span class="text-body-2 num text-no-wrap">
+            {{ panel.w }} / {{ columns }}
+          </span>
+        </div>
+        <div
+          class="d-flex align-center ga-2 flex-grow-1"
+          style="min-width: 220px"
+        >
+          <span class="text-body-2">Height</span>
+          <v-slider
+            :model-value="panel.h"
+            :min="minH"
+            :max="maxH"
+            :step="1"
+            hide-details
+            color="primary"
+            aria-label="Height in rows"
+            data-test="panel-height"
+            @update:model-value="(h) => $emit('resize', { w: panel.w, h })"
+          />
+          <span class="text-body-2 num text-no-wrap">{{ panel.h }} rows</span>
+        </div>
+      </div>
+      <div class="d-flex ga-1 mt-3" aria-hidden="true">
+        <span
+          v-for="column in columns"
+          :key="column"
+          :class="[
+            'flex-grow-1 rounded-sm opacity-80',
+            column > panel.x && column <= panel.x + panel.w
+              ? 'bg-primary'
+              : 'bg-surface-variant',
+          ]"
+          style="height: 6px"
+        />
+      </div>
+    </section>
+  </div>
+</template>
+
+<script setup>
+import { computed, inject, unref } from 'vue'
+import OptionsEditor from './OptionsEditor.vue'
+import { PANEL_TYPES } from '../panels/registry'
+import { optionDefs, settingsForType } from '../panels/options'
+import { MAX_H, minSize } from '../layout'
+import { clearedFieldsFor } from '../dashboardParser'
+
+// Everything about one panel: type, title, what it shows, its options and
+// size. Changes are emitted as `update` with the changed fields; size changes
+// as `resize`.
+const props = defineProps({
+  panel: { type: Object, required: true },
+  // The content editor fills the height left (fillDialog types)
+  fill: { type: Boolean, default: false },
+})
+const emit = defineEmits(['update', 'resize'])
+
+// The dashboard's grid width (COLUMNS), provided as a computed
+const injectedColumns = inject('columns', 12)
+const columns = computed(() => unref(injectedColumns))
+
+const types = PANEL_TYPES
+const maxH = MAX_H
+
+const minW = computed(() => minSize(props.panel.type).w)
+const minH = computed(() => minSize(props.panel.type).h)
+// Fractions of the grid, so they work on 12 and 24 columns
+const widthPresets = computed(() => {
+  const fractions = [
+    ['¼', 1 / 4],
+    ['⅓', 1 / 3],
+    ['½', 1 / 2],
+    ['⅔', 2 / 3],
+    ['¾', 3 / 4],
+    ['Full', 1],
+  ]
+  return fractions
+    .map(([label, fraction]) => ({
+      label,
+      w: Math.round(columns.value * fraction),
+    }))
+    .filter(({ w }) => w >= minW.value)
+})
+// Tall enough to show most types at once. Pixels: the menu reads a CSS
+// length like '60vh' as 60px.
+const typeMenuProps = computed(() => ({
+  maxHeight: Math.round(window.innerHeight * 0.6),
+}))
+// Types grouped by category, so a long list of panel types stays easy to
+// scan; the dropdown is searchable by name
+const typeItems = computed(() => {
+  const groups = {}
+  for (const [value, type] of Object.entries(PANEL_TYPES)) {
+    if (type.hidden) continue
+    const category = type.category || 'Other'
+    ;(groups[category] ||= []).push({
+      title: type.label,
+      value,
+      icon: type.icon,
+      description: type.description,
+    })
+  }
+  return Object.entries(groups).flatMap(([category, items]) => [
+    { title: category, value: `__${category}`, header: true },
+    ...items,
+  ])
+})
+const hasOptions = computed(() => optionDefs(props.panel.type).length > 0)
+
+function itemProps(item) {
+  return item.header ? { disabled: true } : {}
+}
+
+function setWidth(w) {
+  if (!w) return
+  emit('resize', { w, h: props.panel.h })
+}
+
+// Keep what still applies to the new type
+function changeType(type) {
+  if (!type || type === props.panel.type || !PANEL_TYPES[type]) return
+  // Clear fields the new type doesn't use, then keep what still applies
+  const cleared = clearedFieldsFor(type)
+  const max = PANEL_TYPES[type].maxItems
+  const items = cleared.items ?? props.panel.items.slice(0, max || undefined)
+  emit('update', {
+    ...cleared,
+    type,
+    items,
+    settings: settingsForType(props.panel.settings, type),
+  })
+}
+</script>
+
+<style scoped>
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.span-2 {
+  grid-column: span 2;
+}
+/* A fillDialog type's content editor takes the height left over; it sets
+   its own minimum, and the dialog scrolls below that */
+.fill-content {
+  flex: 1 0 auto;
+}
+</style>

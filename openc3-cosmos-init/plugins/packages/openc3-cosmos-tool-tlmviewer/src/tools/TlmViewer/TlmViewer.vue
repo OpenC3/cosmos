@@ -17,20 +17,7 @@
 
 <template>
   <top-bar :title="title" :menus="menus" />
-  <v-alert
-    v-if="playbackMode === 'playback'"
-    class="playback text-overline mb-1 py-0 align-center justify-center flex-0-0"
-    type="warning"
-    variant="tonal"
-    density="compact"
-    border="start"
-    :icon="false"
-  >
-    <span class="d-inline-flex align-center">
-      <v-icon icon="mdi-play-circle-outline" size="16" class="mr-2" />
-      Playback Mode
-    </span>
-  </v-alert>
+  <playback-banner v-if="playbackMode === 'playback'" class="mb-1" />
   <v-expansion-panels v-model="panel" class="mb-1">
     <v-expansion-panel>
       <v-expansion-panel-title class="pulse-i"></v-expansion-panel-title>
@@ -80,134 +67,12 @@
             </v-btn>
           </v-row>
           <v-row v-if="playbackMode === 'playback'" class="pa-3">
-            <v-text-field
-              v-model="playbackDate"
-              class="mr-4"
-              density="compact"
-              hide-details
-              variant="outlined"
-              label="Date"
-              type="date"
-              style="max-width: 200px"
-              data-test="playback-date"
-              :disabled="playbackPlaying"
-            />
-            <OpenC3TimePicker
-              v-model="playbackTime"
-              text-field-class="mr-4"
-              density="compact"
-              hide-details
-              variant="outlined"
-              label="Time"
-              style="max-width: 200px"
-              data-test="playback-time"
-              :disabled="playbackPlaying"
-            />
-            <v-tooltip
-              :text="`Skip Backward ${playbackSkip} secs`"
-              :open-delay="2000"
-              location="top"
-            >
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  icon="mdi-skip-backward"
-                  variant="text"
-                  aria-label="Skip Backward"
-                  data-test="playback-skip-backward"
-                  style="margin-top: -5px"
-                  :disabled="playbackLoading"
-                  @click="playbackSkipBackward"
-                ></v-btn>
-              </template>
-            </v-tooltip>
-            <v-tooltip
-              :text="`Step Backward ${playbackStep} secs`"
-              :open-delay="2000"
-              location="top"
-            >
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  icon="mdi-step-backward"
-                  variant="text"
-                  aria-label="Step Backward"
-                  data-test="playback-step-backward"
-                  style="margin-top: -5px"
-                  :disabled="playbackLoading"
-                  @click="playbackStepBackward"
-                ></v-btn>
-              </template>
-            </v-tooltip>
-            <v-btn
-              :icon="playbackPlaying ? 'mdi-pause' : 'mdi-play'"
-              variant="text"
-              class="bg-primary"
-              aria-label="Play / Pause"
-              style="margin-top: -5px"
-              @click="playbackToggle"
-            ></v-btn>
-            <v-tooltip
-              :text="`Step Forward ${playbackStep} secs`"
-              :open-delay="2000"
-              location="top"
-            >
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  icon="mdi-step-forward"
-                  variant="text"
-                  aria-label="Step Forward"
-                  data-test="playback-step-forward"
-                  style="margin-top: -5px"
-                  :disabled="playbackLoading"
-                  @click="playbackStepForward"
-                ></v-btn>
-              </template>
-            </v-tooltip>
-            <v-tooltip
-              :text="`Skip Forward ${playbackSkip} secs`"
-              :open-delay="2000"
-              location="top"
-            >
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  icon="mdi-skip-forward"
-                  variant="text"
-                  aria-label="Skip Forward"
-                  data-test="playback-skip-forward"
-                  style="margin-top: -5px"
-                  :disabled="playbackLoading"
-                  @click="playbackSkipForward"
-                ></v-btn>
-              </template>
-            </v-tooltip>
-            <v-number-input
-              v-model="playbackStep"
-              control-variant="stacked"
-              class="mr-4 ml-4"
-              density="compact"
-              hide-details
-              variant="outlined"
-              label="Step (Speed)"
-              suffix="secs"
-              :step="1"
-              data-test="playback-speed"
-              style="max-width: 180px"
-            />
-            <v-number-input
-              v-model="playbackSkip"
-              control-variant="stacked"
-              class="mr-4"
-              density="compact"
-              hide-details
-              variant="outlined"
-              label="Skip"
-              suffix="secs"
-              :step="1"
-              data-test="skip"
-              style="max-width: 180px"
+            <playback-controls
+              v-model="playbackDateTime"
+              v-model:step="playbackStep"
+              :time-zone="timeZone"
+              :loading="playbackLoading"
+              :storage-key="configKey"
             />
           </v-row>
         </div>
@@ -263,6 +128,12 @@
     :config-key="configKey"
     @success="saveConfiguration"
   />
+  <convert-dashboard-dialog
+    v-if="convertDialog"
+    v-model="convertDialog"
+    :definitions="definitions"
+    :initial-name="$route.query.config || 'TLMVIEWER'"
+  />
   <new-screen-dialog
     v-if="newScreenDialog"
     v-model="newScreenDialog"
@@ -277,26 +148,29 @@ import Muuri from 'muuri'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import {
   Config,
-  OpenC3TimePicker,
   Openc3Screen,
   OpenConfigDialog,
+  PlaybackBanner,
+  PlaybackControls,
   SaveConfigDialog,
   TopBar,
 } from '@openc3/vue-common/components'
 import { useStore } from '@openc3/vue-common/plugins'
 import NewScreenDialog from './NewScreenDialog'
-import { TimeFilters } from '@openc3/vue-common/util'
+import ConvertDashboardDialog from './ConvertDashboardDialog.vue'
 
 export default {
   components: {
     TopBar,
-    OpenC3TimePicker,
     Openc3Screen,
+    PlaybackBanner,
+    PlaybackControls,
     NewScreenDialog,
+    ConvertDashboardDialog,
     OpenConfigDialog,
     SaveConfigDialog,
   },
-  mixins: [Config, TimeFilters],
+  mixins: [Config],
   setup() {
     const store = useStore()
     return { store }
@@ -318,14 +192,10 @@ export default {
       configKey: 'telemetry_viewer',
       openConfig: false,
       saveConfig: false,
+      convertDialog: false,
       playbackStep: 1,
-      playbackSkip: 10,
-      playbackDate: '',
-      playbackTime: '',
       playbackDateTime: null,
       playbackMode: 'realtime',
-      playbackTimer: null,
-      playbackPlaying: false,
     }
   },
   computed: {
@@ -372,6 +242,14 @@ export default {
                 this.resetConfigBase()
               },
             },
+            {
+              label: 'Convert to Dashboard',
+              icon: 'mdi-view-dashboard-outline',
+              disabled: this.definitions.length === 0,
+              command: () => {
+                this.convertDialog = true
+              },
+            },
           ],
         },
       ]
@@ -403,61 +281,9 @@ export default {
       },
       deep: true,
     },
-    playbackMode: function (mode) {
-      this.store.updatePlayback({
-        playbackMode: this.playbackMode,
-        playbackDateTime: this.playbackDateTime,
-        playbackStep: this.playbackStep,
-      })
-      if (mode === 'playback') {
-        // Initialize playback date and time with current values
-        // Create a new date 1 hr in the past as a default
-        let date = new Date() - 3600000
-        this.playbackDate = this.formatDate(date, this.timeZone)
-        this.playbackTime = this.formatTime(date, this.timeZone)
-      } else {
-        this.playbackPause()
-      }
-    },
-    playbackDateTime: function () {
-      this.store.updatePlayback({
-        playbackMode: this.playbackMode,
-        playbackDateTime: this.playbackDateTime,
-        playbackStep: this.playbackStep,
-      })
-      if (this.playbackDateTime) {
-        // If we've exceeded the current time, pause playback
-        if (this.playbackDateTime > new Date()) {
-          this.playbackPause()
-        } else {
-          this.playbackDate = this.formatDate(
-            this.playbackDateTime,
-            this.timeZone,
-          )
-          this.playbackTime = this.formatTime(
-            this.playbackDateTime,
-            this.timeZone,
-          )
-        }
-      }
-    },
-    playbackStep: function () {
-      this.store.updatePlayback({
-        playbackMode: this.playbackMode,
-        playbackDateTime: this.playbackDateTime,
-        playbackStep: this.playbackStep,
-      })
-      localStorage[`${this.configKey}__step`] = this.playbackStep
-    },
-    playbackSkip: function () {
-      localStorage[`${this.configKey}__skip`] = this.playbackSkip
-    },
-    playbackDate: function () {
-      localStorage[`${this.configKey}__date`] = this.playbackDate
-    },
-    playbackTime: function () {
-      localStorage[`${this.configKey}__time`] = this.playbackTime
-    },
+    playbackMode: 'updatePlayback',
+    playbackDateTime: 'updatePlayback',
+    playbackStep: 'updatePlayback',
   },
   async created() {
     // Ensure Offline Access Is Setup For the Current User
@@ -511,19 +337,6 @@ export default {
       .catch((error) => {
         console.error('Error loading screen keywords:', error)
       })
-
-    if (localStorage[`${this.configKey}__step`]) {
-      this.playbackStep = Number(localStorage[`${this.configKey}__step`])
-    }
-    if (localStorage[`${this.configKey}__skip`]) {
-      this.playbackSkip = Number(localStorage[`${this.configKey}__skip`])
-    }
-    if (localStorage[`${this.configKey}__date`]) {
-      this.playbackDate = localStorage[`${this.configKey}__date`]
-    }
-    if (localStorage[`${this.configKey}__time`]) {
-      this.playbackTime = localStorage[`${this.configKey}__time`]
-    }
   },
   mounted() {
     this.grid = new Muuri('.grid', {
@@ -533,12 +346,14 @@ export default {
     })
     this.grid.on('dragEnd', this.refreshLayout)
   },
-  beforeUnmount() {
-    if (this.playbackTimer) {
-      clearInterval(this.playbackTimer)
-    }
-  },
   methods: {
+    updatePlayback() {
+      this.store.updatePlayback({
+        playbackMode: this.playbackMode,
+        playbackDateTime: this.playbackDateTime,
+        playbackStep: this.playbackStep,
+      })
+    },
     targetSelect(target) {
       this.selectedTarget = target
       this.selectedScreen = this.screens[target][0]
@@ -770,88 +585,11 @@ export default {
     saveConfiguration: function (name) {
       this.saveConfigBase(name, this.currentConfig)
     },
-    playbackToggle() {
-      if (this.playbackPlaying) {
-        this.playbackPause()
-      } else {
-        this.playbackPlay()
-      }
-    },
-    playbackStepBackward() {
-      if (this.playbackDateTime) {
-        this.playbackDateTime = new Date(
-          this.playbackDateTime.getTime() - 1000 * this.playbackStep,
-        )
-      }
-    },
-    playbackStepForward() {
-      if (this.playbackDateTime) {
-        const newTime = new Date(
-          this.playbackDateTime.getTime() + 1000 * this.playbackStep,
-        )
-        if (newTime <= new Date()) {
-          this.playbackDateTime = newTime
-        }
-      }
-    },
-    playbackSkipBackward() {
-      if (this.playbackDateTime) {
-        this.playbackDateTime = new Date(
-          this.playbackDateTime.getTime() - 1000 * this.playbackSkip,
-        )
-      }
-    },
-    playbackSkipForward() {
-      if (this.playbackDateTime) {
-        const newTime = new Date(
-          this.playbackDateTime.getTime() + 1000 * this.playbackSkip,
-        )
-        if (newTime <= new Date()) {
-          this.playbackDateTime = newTime
-        }
-      }
-    },
-    playbackPlay() {
-      if (this.timeZone === 'UTC') {
-        this.playbackDateTime = new Date(
-          `${this.playbackDate}T${this.playbackTime}Z`,
-        )
-      } else {
-        this.playbackDateTime = new Date(
-          `${this.playbackDate}T${this.playbackTime}`,
-        )
-      }
-
-      if (this.playbackTimer) {
-        clearInterval(this.playbackTimer)
-      }
-
-      this.playbackTimer = setInterval(() => {
-        // Don't advance time while previous playback requests are still loading
-        if (this.playbackDateTime && !this.playbackLoading) {
-          this.playbackDateTime = new Date(
-            this.playbackDateTime.getTime() + 1000 * this.playbackStep,
-          )
-        }
-      }, 1000)
-      this.playbackPlaying = true
-    },
-    playbackPause() {
-      if (this.playbackTimer) {
-        clearInterval(this.playbackTimer)
-        this.playbackTimer = null
-      }
-      this.playbackPlaying = false
-    },
   },
 }
 </script>
 
 <style scoped>
-.playback :deep(.v-alert__content) {
-  /* v-alert pads content to fit its default 28px icon; ours is 18px */
-  padding-block: 0;
-}
 .v-application {
   /* fix for playwright scrolling I guess? */
   margin-bottom: 120px;

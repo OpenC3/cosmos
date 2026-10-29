@@ -39,6 +39,9 @@ test('displays tool names', async ({ page, utils }) => {
     'Telemetry Viewer',
   )
   await expect(page.locator('[data-test="toolList"]')).toContainText(
+    'Dashboards',
+  )
+  await expect(page.locator('[data-test="toolList"]')).toContainText(
     'Telemetry Grapher',
   )
   await expect(page.locator('[data-test="toolList"]')).toContainText(

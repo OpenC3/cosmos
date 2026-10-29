@@ -25,6 +25,7 @@ Different generators handle the `--ruby` / `--python` language flag differently:
 | `target` | Optional. Language is resolved from: (1) the `--ruby`/`--python` flag, (2) the `OPENC3_LANGUAGE` environment variable, (3) the `# LANGUAGE` comment in `plugin.txt`. If none of these are present, the generator aborts. |
 | `microservice` | Same resolution chain as `target`. |
 | `widget` | Ignored. Widgets are JavaScript-only — passing a language flag prints a notice and is otherwise ignored. |
+| `panel` | Ignored. Panels are JavaScript-only — passing a language flag prints a notice and is otherwise ignored. |
 | `tool`, `tool_vue`, `tool_angular`, `tool_react`, `tool_svelte` | Ignored. Tools are JavaScript-only — the flag is accepted but ignored with a notice. |
 | `conversion`, `processor`, `limits_response`, `command_validator` | Ignored. Language is inherited from the target's `target.txt` (`LANGUAGE` keyword). Passing the flag prints a notice and is otherwise ignored. |
 
@@ -238,6 +239,37 @@ It also updates the plugin.txt file to add the new widget:
 
 ```cosmos
 WIDGET Helloworld
+```
+
+## Panel Generator
+
+The panel generator creates the scaffolding for a new panel type for Dashboards. For more information see the [Custom Panels](/docs/guides/custom-panels) guide. It must operate inside an existing COSMOS plugin and requires a CapitalCase panel name ending in `Panel`. The panel type is the name without `Panel`, uppercased. Panels are JavaScript-only, so a `--ruby`/`--python` flag is not required and will be ignored if supplied. For example:
+
+```bash
+openc3-cosmos-gse % openc3.sh cli generate panel
+Usage: cli generate panel NAME
+...
+
+openc3-cosmos-gse % openc3.sh cli generate panel BatteryPanel
+Panel BatteryPanel successfully generated!
+Use it in a dashboard as PANEL BATTERY. Be sure BATTERY does not overlap a built-in panel type: https://docs.openc3.com/docs/guides/custom-panels
+```
+
+This creates the following files and directories:
+
+| Name                        | Description                                                                                                                                         |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| src/BatteryPanel.js         | The panel type definition: label, icon, size, what the panel dialog edits and the panel's settings. Dashboards calls it with the panel SDK.         |
+| src/BatteryPanel.vue        | Fully functional panel which displays one telemetry value with its limits status, using the Composition API and the panel SDK's `useTlmPanel`.      |
+| src/panelSdk.js             | Holds the panel SDK for the plugin's panel components. Shared by every panel in the plugin and only created by the first one.                       |
+| vite-BatteryPanel.config.js | Builds the panel into tools/panels/BATTERY/BATTERY.js.                                                                                              |
+| package.json                | Build script and dependencies. When the plugin already has one, the panel's build is added to its `build` script instead.                           |
+| Rakefile                    | Runs the pnpm build before building the gem. Not changed when the plugin already has a package.json.                                                |
+
+It also updates the plugin.txt file to add the new panel:
+
+```cosmos
+PANEL BATTERY
 ```
 
 ## Tool Generator

@@ -1,0 +1,165 @@
+// Copyright 2026 OpenC3, Inc.
+// All Rights Reserved.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See LICENSE.md for more details.
+//
+// This file may also be used under the terms of a commercial license
+// if purchased from OpenC3, Inc.
+
+// Only what Vuetify utility classes can't express lives here. Colors come
+// from the Astro status tokens (--color-status-*) and the Vuetify theme, which
+// already match the Dashboards style system.
+.dashboards-root {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  // Phones: one step smaller everywhere so values fit instead of truncating
+  @media (max-width: 600px) {
+    font-size: 12px;
+  }
+  .mono {
+    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+
+  // Status symbols, one shape per level (see status.js)
+  .sym {
+    width: 12px;
+    height: 12px;
+    flex: none;
+    path {
+      fill-rule: evenodd;
+    }
+  }
+  @each $level in critical, serious, caution, normal, standby, off {
+    .s-#{$level} path {
+      fill: var(--color-status-#{$level});
+    }
+  }
+
+  // Panel border for the worst status in the panel
+  .ring-caution {
+    border-color: color-mix(in srgb, var(--color-status-caution) 60%, transparent) !important;
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-status-caution) 25%, transparent),
+      0 10px 30px -14px color-mix(in srgb, var(--color-status-caution) 60%, transparent);
+  }
+  .ring-critical {
+    border-color: color-mix(in srgb, var(--color-status-critical) 70%, transparent) !important;
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--color-status-critical) 30%, transparent),
+      0 10px 30px -14px color-mix(in srgb, var(--color-status-critical) 70%, transparent);
+  }
+
+  // Row tints for out of limits values
+  .t-critical {
+    background: color-mix(in srgb, var(--color-status-critical) 12%, transparent);
+  }
+  .t-caution {
+    background: color-mix(in srgb, var(--color-status-caution) 6%, transparent);
+  }
+
+  // Thin dividers between rows, matching the Vuetify border color
+  .db-row + .db-row,
+  .v-virtual-scroll__item + .v-virtual-scroll__item > .db-row {
+    border-top: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+
+  // A status color as --status, for a component to paint with (fill,
+  // stroke, background, a tint...): the Gauge marker, the grid's attention
+  // bars, the health banner
+  @each $level in critical, serious, caution, normal, standby, off {
+    .st-#{$level} {
+      --status: var(--color-status-#{$level});
+    }
+  }
+
+  // Hover tooltip on graphs and sparklines (GraphPanel, StatPanel)
+  .db-tip {
+    top: 4px;
+    min-width: 220px;
+    z-index: 2;
+  }
+  // A series' line color, in legends and tooltips
+  .db-swatch {
+    display: inline-block;
+    width: 14px;
+    height: 2px;
+    border-radius: 1px;
+  }
+
+  // Limits zones (LimitsBar, GaugePanel): each sets --zone, and the
+  // component paints it as a background or an SVG stroke
+  .z-critical {
+    --zone: color-mix(in srgb, var(--color-status-critical) 55%, transparent);
+  }
+  .z-caution {
+    --zone: color-mix(in srgb, var(--color-status-caution) 45%, transparent);
+  }
+  .z-standby {
+    --zone: color-mix(in srgb, var(--color-status-standby) 35%, transparent);
+  }
+  .z-normal {
+    --zone: color-mix(in srgb, var(--color-status-normal) 22%, transparent);
+  }
+  // Empty part of a limits track
+  --track-color: rgba(var(--v-border-color), var(--v-border-opacity));
+
+  // The current choice in a list (time range picker): a
+  // secondary bar on the left that doesn't shift the text
+  .db-current-list .v-list-item {
+    border-left: 3px solid transparent;
+  }
+  .db-current-list .v-list-item.current {
+    border-left-color: rgb(var(--v-theme-secondary));
+    background: rgba(var(--v-theme-on-surface), 0.05);
+  }
+
+  // Vuetify has no min-size utilities; flex children need them to shrink
+  .min-h-0 {
+    min-height: 0;
+  }
+  .min-w-0 {
+    min-width: 0;
+  }
+}
+
+// A dialog pinned near the top of the window instead of centered, so it
+// grows and shrinks downward without its top moving (the dashboard
+// navigator as folders change). Outside .dashboards-root: dialogs are
+// teleported.
+.db-top-dialog {
+  align-self: flex-start !important;
+  margin-top: 8vh !important;
+}
+
+// A key on the keyboard, in hints and tooltips. Outside .dashboards-root
+// because tooltips are teleported.
+.db-kbd {
+  padding: 0 4px;
+  border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 0.85em;
+}
+
+// Segmented choices (grid columns, panel width, command mode): the current
+// one filled like COSMOS's primary buttons so it reads at a glance; the
+// others stay outlined. Vuetify's default only adds a faint tint. Outside
+// .dashboards-root because the dialogs holding them are teleported, and
+// !important to beat the tool base's outlined button overrides.
+.db-toggle .v-btn.v-btn--active {
+  background-color: var(--button-color-background-primary-default) !important;
+  color: var(--color-text-inverse) !important;
+  font-weight: 600;
+  .v-btn__overlay {
+    opacity: 0;
+  }
+}

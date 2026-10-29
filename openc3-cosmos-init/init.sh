@@ -252,6 +252,9 @@ fi
 if [ -z $OPENC3_NO_TLMVIEWER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-tlmviewer-*.gem || exit 1
 fi
+if [ -z $OPENC3_NO_DASHBOARDS ]; then
+    ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-dashboards-*.gem || exit 1
+fi
 if [ -z $OPENC3_NO_TLMGRAPHER ]; then
     ruby /openc3/bin/openc3cli load /openc3/plugins/gems/openc3-cosmos-tool-tlmgrapher-*.gem || exit 1
 fi
