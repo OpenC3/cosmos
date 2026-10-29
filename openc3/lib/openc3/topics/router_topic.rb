@@ -78,6 +78,7 @@ module OpenC3
       end
     end
 
+    # Write to the target's db_shard where its interface reads commands
     def self.route_command(packet, target_names, scope:)
       # Write to the target's db_shard where its interface reads commands
       if packet.identified?

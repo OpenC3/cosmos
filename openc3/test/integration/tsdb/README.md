@@ -16,6 +16,10 @@ End-to-end integration tests for QuestDB (TSDB) functionality. These tests verif
    docker compose -f docker-compose.test.yml up -d
    ```
 
+   This starts two QuestDB containers. `questdb-shard1` (ports 9010 and 8822)
+   acts as db_shard 1 for the cross-db_shard tests, which are skipped if it isn't
+   running.
+
 2. Wait for QuestDB to be ready (check http://localhost:9000)
 
 3. Run Python tests:
@@ -47,11 +51,13 @@ tsdb/
 ├── helpers/
 │   └── questdb_writer.py     # Python helper for cross-language tests
 ├── python/
-│   └── test_tsdb_roundtrip.py # Python roundtrip tests
+│   ├── test_tsdb_roundtrip.py # Python roundtrip tests
+│   └── test_tsdb_lookup_db_shards.py # Cross-db_shard lookup tests
 └── ruby/
     ├── spec_helper.rb        # RSpec configuration
     ├── cvt_model_tsdb_spec.rb # CvtModel tests
-    └── logged_streaming_thread_tsdb_spec.rb # Streaming API tests
+    ├── logged_streaming_thread_tsdb_spec.rb # Streaming API tests
+    └── tsdb_lookup_db_shards_spec.rb # Cross-db_shard lookup tests
 ```
 
 ## What's Tested
@@ -74,6 +80,17 @@ Cross-language tests where Python writes data and Ruby reads it back:
 - Same data types as Python tests
 - Tests RAW, CONVERTED, and FORMATTED value types
 - Verifies `CvtModel.tsdb_lookup` functionality
+
+### Cross-db_shard Tests (`python/test_tsdb_lookup_db_shards.py`, `ruby/tsdb_lookup_db_shards_spec.rb`)
+
+`tsdb_lookup` with targets on different db_shards (separate QuestDB instances):
+
+- Range rows from each db_shard are aligned by packet time to the db_shard of the first item
+- A point in time returns the last row before start_time from each db_shard
+
+Production resolves each db_shard by hostname (`SHARDNUM` in `OPENC3_TSDB_HOSTNAME`).
+Locally both run on 127.0.0.1 so the tests select db_shard 1 by the
+`OPENC3_TSDB_SHARD1_INGEST_PORT` and `OPENC3_TSDB_SHARD1_QUERY_PORT` ports.
 
 ### Ruby Streaming Tests (`ruby/logged_streaming_thread_tsdb_spec.rb`)
 

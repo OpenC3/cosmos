@@ -40,53 +40,154 @@ module OpenC3
       end
 
       context "with items across db_shards" do
-        let(:items) do
-          [
-            ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil],
-            ["INST2", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil],
-            ["INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", nil],
-          ]
+        # Base time for the db_shard tests. Table times are in seconds after it.
+        let(:base_ns) { 1_789_257_600_000_000_000 } # 2026-09-13T00:00:00Z
+        # Target name => db_shard
+        let(:db_shards) { { "INST" => 0, "INST2" => 1 } }
+        # [target_name, packet_name] => [[seconds, { item_name => value }]]
+        let(:tables) do
+          {
+            ["INST", "HEALTH_STATUS"] => [[10, { "TEMP1" => 1, "TEMP2" => 2 }], [30, { "TEMP1" => 3, "TEMP2" => 4 }], [50, { "TEMP1" => 5, "TEMP2" => 6 }]],
+            ["INST2", "HEALTH_STATUS"] => [[20, { "TEMP1" => 20 }], [30, { "TEMP1" => 30 }], [40, { "TEMP1" => 40 }], [60, { "TEMP1" => 60 }]],
+            # Only a row before the start of the range lookups
+            ["INST2", "EARLY"] => [[0, { "TEMP1" => 0 }]],
+            # A row between the last two INST2 HEALTH_STATUS rows in the range lookups
+            ["INST2", "LATER"] => [[45, { "TEMP1" => 45 }]],
+          }
         end
 
-        def lookup(results, end_time: nil, flatten: true)
-          # INST is on db_shard 0 and INST2 is on db_shard 1
-          allow(QuestDBClient).to receive(:db_shard_for_target) { |target_name, **| target_name == "INST2" ? 1 : 0 }
-          allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard) do |_items, db_shard:, flatten:, **|
-            expect(flatten).to be false
-            results[db_shard]
+        before(:each) do
+          allow(QuestDBClient).to receive(:db_shard_for_target) { |target_name, **| db_shards.fetch(target_name, 0) }
+          @queries = []
+          allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard) { |items, **kwargs| fake_single_db_shard(items, **kwargs) }
+        end
+
+        def iso(seconds)
+          QuestDBClient.nsec_to_iso(base_ns + (seconds * 1_000_000_000))
+        end
+
+        def iso_to_nsec(value)
+          seconds, fraction = value.delete_suffix("Z").split(".")
+          (Time.strptime("#{seconds}Z", "%Y-%m-%dT%H:%M:%S%z").to_i * 1_000_000_000) + fraction.ljust(9, "0").to_i
+        end
+
+        def table_rows(target_name, packet_name)
+          tables.fetch([target_name, packet_name]).map { |seconds, values| [base_ns + (seconds * 1_000_000_000), values] }
+        end
+
+        # Stands in for one QuestDB query: the first packet (T0) is filtered by time and
+        # every other packet is ASOF JOINed to it, using its last row at or before each T0 row
+        def fake_single_db_shard(items, start_time:, end_time: nil, db_shard: 0, flatten: true, inclusive: false, with_time: false, **)
+          expect(flatten).to be false
+          @queries << [db_shard, items.map { |item| item[1] }]
+          real_items = items.select { |item| item[2] }
+          real_items.each { |item| expect(db_shards[item[0]]).to eq(db_shard), "#{item[0]} queried on db_shard #{db_shard}" }
+          start = iso_to_nsec(start_time)
+          rows = table_rows(real_items[0][0], real_items[0][1])
+          if end_time
+            rows = rows.select { |time, _| time >= start and time < iso_to_nsec(end_time) }
+          else
+            rows = rows.select { |time, _| time < start or (inclusive and time == start) }.last(1)
           end
-          QuestDBClient.tsdb_lookup(items, start_time: "2026-09-13T00:00:00Z", end_time: end_time, flatten: flatten)
+
+          result = rows.map do |time, _|
+            row = items.map do |item|
+              next [nil, nil] unless item[2]
+              next [time / 1_000_000_000.0, nil] if item[2] == "PACKET_TIMESECONDS"
+
+              joined = table_rows(item[0], item[1]).select { |joined_time, _| joined_time <= time }
+              [joined.empty? ? nil : joined[-1][1][item[2]], nil]
+            end
+            row << [time, nil] if with_time
+            row
+          end
+          result.empty? ? {} : result
         end
 
-        it "queries each db_shard and merges a single row" do
-          result = lookup({ 0 => [[[1.0, nil], [3.0, "RED"]]], 1 => [[[2.0, nil]]] })
-          expect(result).to eq([[1.0, nil], [2.0, nil], [3.0, "RED"]])
-          expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[0], items[2]], hash_including(db_shard: 0))
-          expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[1]], hash_including(db_shard: 1))
+        # Items are "TARGET PACKET ITEM", or "TARGET PACKET" for a placeholder
+        def lookup(items, start, finish = nil, flatten: true)
+          items = items.map do |item|
+            parts = item.split
+            parts.length == 3 ? parts + ["CONVERTED", nil] : parts + [nil, nil, nil]
+          end
+          QuestDBClient.tsdb_lookup(items, start_time: iso(start), end_time: finish && iso(finish), flatten: flatten)
         end
 
-        it "keeps a single merged row as a list of rows when not flattening" do
-          result = lookup({ 0 => [[[1.0, nil], [3.0, nil]]], 1 => [[[2.0, nil]]] }, flatten: false)
-          expect(result).to eq([[[1.0, nil], [2.0, nil], [3.0, nil]]])
+        it "uses the single db_shard fast path" do
+          items = [["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil], ["INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", nil]]
+          allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard).and_return("result")
+          expect(QuestDBClient.tsdb_lookup(items, start_time: iso(0), scope: "OTHER")).to eq("result")
+          expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).once.with(items, hash_including(db_shard: 0, scope: "OTHER"))
         end
 
-        it "merges a single row of a multi-row query" do
-          # A db_shard with a single row must not be mistaken for multiple rows
-          result = lookup({ 0 => [[[1.0, nil], [3.0, nil]]], 1 => [[[2.0, nil]]] }, end_time: "2026-09-13T01:00:00Z")
-          expect(result).to eq([[1.0, nil], [2.0, nil], [3.0, nil]])
+        it "aligns the other db_shards to the first item's db_shard by packet time" do
+          expected = [
+            # No INST2 row at or before 10 seconds
+            [[1, nil], [nil, nil], [2, nil]],
+            # The INST2 row at the same time
+            [[3, nil], [30, nil], [4, nil]],
+            # The last INST2 row before 50 seconds and never the later 60 second row
+            [[5, nil], [40, nil], [6, nil]],
+          ]
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1", "INST HEALTH_STATUS TEMP2"], 5, 55)).to eq(expected)
         end
 
-        it "merges multiple rows filling missing rows with nils" do
-          result = lookup({ 0 => [[[1.0, nil], [3.0, nil]], [[4.0, nil], [6.0, nil]]], 1 => [[[2.0, nil]]] }, end_time: "2026-09-13T01:00:00Z")
-          expect(result).to eq([[[1.0, nil], [2.0, nil], [3.0, nil]], [[4.0, nil], [nil, nil], [6.0, nil]]])
+        it "drives the rows from the db_shard of the first item" do
+          expected = [[[20, nil], [1, nil]], [[30, nil], [3, nil]], [[40, nil], [3, nil]]]
+          expect(lookup(["INST2 HEALTH_STATUS TEMP1", "INST HEALTH_STATUS TEMP1"], 5, 55)).to eq(expected)
         end
 
-        it "fills a db_shard with no results with nils" do
-          expect(lookup({ 0 => [[[1.0, nil], [3.0, nil]]], 1 => {} })).to eq([[1.0, nil], [nil, nil], [3.0, nil]])
+        it "carries forward a row before start_time" do
+          expected = [[[1, nil], [0, nil]], [[3, nil], [0, nil]], [[5, nil], [0, nil]]]
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 EARLY TEMP1"], 5, 55)).to eq(expected)
         end
 
-        it "returns empty when no db_shard has results" do
-          expect(lookup({ 0 => {}, 1 => {} }, end_time: "2026-09-13T01:00:00Z")).to eq({})
+        it "aligns each packet on a db_shard independently" do
+          items = ["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1", "INST2 LATER TEMP1"]
+          # INST2 LATER is aligned to INST at 50 seconds, not INST2 HEALTH_STATUS at 40 seconds
+          expected = [
+            [[1, nil], [nil, nil], [nil, nil]],
+            [[3, nil], [30, nil], [nil, nil]],
+            [[5, nil], [40, nil], [45, nil]],
+          ]
+          expect(lookup(items, 5, 55)).to eq(expected)
+          expect(lookup(items, 55)).to eq([[5, nil], [40, nil], [45, nil]])
+          # Each packet on another db_shard is queried on its own
+          expect(@queries.select { |db_shard, _| db_shard == 1 }.map(&:last).uniq).to contain_exactly(["HEALTH_STATUS"], ["LATER"])
+        end
+
+        it "returns the last row at or before the driving row" do
+          # INST drives at 50 seconds so INST2 returns its 40 second row, not its 60 second row
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 70)).to eq([[5, nil], [40, nil]])
+          # Including a row at the same time as the driving row
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 31)).to eq([[3, nil], [30, nil]])
+        end
+
+        it "returns a single row as a flat array" do
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 25, 35)).to eq([[3, nil], [30, nil]])
+        end
+
+        it "keeps a single row as a list of rows when not flattening" do
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 25, 35, flatten: false)).to eq([[[3, nil], [30, nil]]])
+        end
+
+        it "fills another db_shard with no rows with nils" do
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 5, 15)).to eq([[1, nil], [nil, nil]])
+        end
+
+        it "returns empty when the db_shard of the first item has no rows" do
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 55, 58)).to eq({})
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1"], 5)).to eq({})
+        end
+
+        it "doesn't query a db_shard with only placeholders" do
+          expect(lookup(["INST2 HEALTH_STATUS", "INST HEALTH_STATUS TEMP1", "INST2 LATER"], 25, 35)).to eq([[nil, nil], [3, nil], [nil, nil]])
+          expect(@queries).to eq([[0, ["HEALTH_STATUS"]]])
+        end
+
+        it "doesn't query the placeholders on another db_shard" do
+          expect(lookup(["INST HEALTH_STATUS TEMP1", "INST2 HEALTH_STATUS TEMP1", "INST2 LATER"], 25, 35)).to eq([[3, nil], [30, nil], [nil, nil]])
+          expect(@queries).not_to include([1, ["LATER"]])
         end
       end
     end
@@ -259,8 +360,9 @@ module OpenC3
           ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil],
           ["SYSTEM", "META", "OPERATOR_NAME", "CONVERTED", nil],
         ]
+        # Each row ends with its packet time, with SYSTEM just before INST
         allow(QuestDBClient).to receive(:tsdb_lookup_single_db_shard) do |_items, db_shard:, **|
-          db_shard == 1 ? [[[1.0, nil]]] : [[["JASON", nil]]]
+          db_shard == 1 ? [[[1.0, nil], [1_000, nil]]] : [[["JASON", nil], [999, nil]]]
         end
         expect(QuestDBClient.tsdb_lookup(items, start_time: "2026-09-13T00:00:00Z")).to eq([[1.0, nil], ["JASON", nil]])
         expect(QuestDBClient).to have_received(:tsdb_lookup_single_db_shard).with([items[0]], hash_including(db_shard: 1))

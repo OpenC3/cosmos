@@ -56,6 +56,9 @@ os.environ.setdefault("OPENC3_TSDB_INGEST_PORT", "9000")
 os.environ.setdefault("OPENC3_TSDB_QUERY_PORT", "8812")
 os.environ.setdefault("OPENC3_TSDB_USERNAME", "admin")
 os.environ.setdefault("OPENC3_TSDB_PASSWORD", "admin")
+# db_shard 1 (questdb-shard1 in docker-compose.test.yml) for the cross-db_shard tests
+os.environ.setdefault("OPENC3_TSDB_SHARD1_INGEST_PORT", "9010")
+os.environ.setdefault("OPENC3_TSDB_SHARD1_QUERY_PORT", "8822")
 
 from openc3.utilities.questdb_client import QuestDBClient
 
@@ -72,6 +75,30 @@ class QuietQuestDBClient(QuestDBClient):
 
     def _log_error(self, msg):
         print(f"ERROR: {msg}", file=sys.stderr)
+
+
+def db_shard_ports(db_shard):
+    """QuestDBClient port arguments for the given db_shard.
+
+    Production resolves each db_shard by hostname (SHARDNUM) but locally every
+    db_shard is on 127.0.0.1, so db_shard N > 0 is selected by the
+    OPENC3_TSDB_SHARD<N>_INGEST_PORT and OPENC3_TSDB_SHARD<N>_QUERY_PORT ports.
+    db_shard 0 uses the default OPENC3_TSDB_INGEST_PORT and OPENC3_TSDB_QUERY_PORT.
+    """
+    if not db_shard:
+        return {}
+    return {
+        "ingest_port": int(os.environ[f"OPENC3_TSDB_SHARD{db_shard}_INGEST_PORT"]),
+        "query_port": int(os.environ[f"OPENC3_TSDB_SHARD{db_shard}_QUERY_PORT"]),
+    }
+
+
+def connect_client(db_shard=0):
+    """Return a QuietQuestDBClient connected to the given db_shard."""
+    client = QuietQuestDBClient(db_shard=db_shard, **db_shard_ports(db_shard))
+    client.connect_ingest()
+    client.connect_query()
+    return client
 
 
 def ts_to_iso(ts_ns: int) -> str:
@@ -252,14 +279,13 @@ def cmd_write_multi(args):
 
     Accepts a JSON spec describing multiple tables, each with rows at specific
     millisecond offsets from a common base timestamp. Used for testing multi-table
-    k-way merge streaming.
+    k-way merge streaming. A table may set "db_shard" to write it to that db_shard.
     """
     spec = json.loads(args.spec)
-    client = QuietQuestDBClient()
-    client.connect_ingest()
-    client.connect_query()
+    clients = {}  # db_shard => client
 
-    base_ts = int(time.time() * 1e9)
+    # A whole second so start_time converts to ISO exactly and includes the first row
+    base_ts = int(time.time()) * 1_000_000_000
     tables_result = []
 
     for table_spec in spec["tables"]:
@@ -268,6 +294,10 @@ def cmd_write_multi(args):
         data_type = table_spec["data_type"]
         bit_size = table_spec.get("bit_size")
         cmd_or_tlm = table_spec.get("cmd_or_tlm", "TLM")
+        db_shard = table_spec.get("db_shard", 0)
+        if db_shard not in clients:
+            clients[db_shard] = connect_client(db_shard)
+        client = clients[db_shard]
 
         # Build item definition
         item_kwargs = {"name": "VALUE", "data_type": data_type}
@@ -334,6 +364,7 @@ def cmd_write_multi(args):
                 "packet_name": packet_name,
                 "cmd_or_tlm": cmd_or_tlm,
                 "table_name": table_name,
+                "db_shard": db_shard,
                 "packet_def": packet_def,
                 "expected_values": expected_values,
                 "timestamps_ns": timestamps_ns,
@@ -341,19 +372,23 @@ def cmd_write_multi(args):
             }
         )
 
-    client.flush()
+    for client in clients.values():
+        client.flush()
 
     # Wait for data visibility in all tables
     all_success = True
     for table_info in tables_result:
         actual_count = wait_for_data(
-            client, table_info["table_name"], table_info["row_count"]
+            clients[table_info["db_shard"]],
+            table_info["table_name"],
+            table_info["row_count"],
         )
         table_info["actual_count"] = actual_count
         if actual_count < table_info["row_count"]:
             all_success = False
 
-    client.close()
+    for client in clients.values():
+        client.close()
 
     # Compute global time range
     all_timestamps = []
@@ -375,7 +410,7 @@ def cmd_write_multi(args):
 
 def cmd_cleanup(args):
     """Drop a test table."""
-    client = QuestDBClient()
+    client = QuestDBClient(db_shard=args.db_shard, **db_shard_ports(args.db_shard))
     client.connect_query()
 
     try:
@@ -389,14 +424,17 @@ def cmd_cleanup(args):
     print(json.dumps(result))
 
 
-def cmd_check():
+def cmd_check(args):
     """Check if QuestDB is available."""
     try:
         import psycopg
 
+        port_env = "OPENC3_TSDB_QUERY_PORT"
+        if args.db_shard:
+            port_env = f"OPENC3_TSDB_SHARD{args.db_shard}_QUERY_PORT"
         conn = psycopg.connect(
             host=os.environ.get("OPENC3_TSDB_HOSTNAME", "127.0.0.1"),
-            port=int(os.environ.get("OPENC3_TSDB_QUERY_PORT", "8812")),
+            port=int(os.environ[port_env]),
             user=os.environ.get("OPENC3_TSDB_USERNAME", "admin"),
             password=os.environ.get("OPENC3_TSDB_PASSWORD", "admin"),
             dbname="qdb",
@@ -449,6 +487,9 @@ def main():
     # Cleanup command
     cleanup_parser = subparsers.add_parser("cleanup", help="Drop a test table")
     cleanup_parser.add_argument("--table", required=True, help="Table name to drop")
+    cleanup_parser.add_argument(
+        "--db_shard", type=int, default=0, help="db_shard of the table"
+    )
 
     # Write multi command
     write_multi_parser = subparsers.add_parser(
@@ -459,7 +500,10 @@ def main():
     )
 
     # Check command
-    subparsers.add_parser("check", help="Check if QuestDB is available")
+    check_parser = subparsers.add_parser("check", help="Check if QuestDB is available")
+    check_parser.add_argument(
+        "--db_shard", type=int, default=0, help="db_shard to check"
+    )
 
     args = parser.parse_args()
 
@@ -470,7 +514,7 @@ def main():
     elif args.command == "cleanup":
         cmd_cleanup(args)
     elif args.command == "check":
-        cmd_check()
+        cmd_check(args)
     else:
         parser.print_help()
         sys.exit(1)

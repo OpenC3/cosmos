@@ -15,6 +15,7 @@ import re
 from openc3.system.system import System
 from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonDecoder, JsonEncoder
+from openc3.utilities.logger import Logger
 from openc3.utilities.store import Store
 
 
@@ -25,6 +26,18 @@ from openc3.utilities.store import Store
 # While this isn't a clean separation of topics (streams) and models (key-value)
 # it helps maintain consistency as the topic and model are linked.
 class LimitsEventTopic(Topic):
+    # Returns the items in a limits group grouped by target and packet, or None if the
+    # group is undefined. Reads the store directly to avoid a circular reference to TargetModel.
+    @classmethod
+    def limits_group_items(cls, group_name, scope):
+        group = Store.hget(f"{scope}__limits_groups", group_name)
+        if group is None:
+            return None
+        items = {}
+        for target_name, packet_name, item_name in json.loads(group):
+            items.setdefault(target_name, {}).setdefault(packet_name, []).append(item_name)
+        return items
+
     @classmethod
     def _active_db_shards(cls, scope):
         """Collect all unique target db_shards from TargetModel"""
@@ -92,6 +105,22 @@ class LimitsEventTopic(Topic):
                     json.dumps(limits_settings),
                 )
 
+            case "LIMITS_GROUP_ENABLE_STATE":
+                # Groups can contain many thousands of items so read and write the settings in bulk
+                fields = []
+                for target_name, packets in (cls.limits_group_items(event["group_name"], scope) or {}).items():
+                    for packet_name, item_names in packets.items():
+                        for item_name in item_names:
+                            fields.append(f"{target_name}__{packet_name}__{item_name}")
+                if fields:
+                    all_settings = Store.hmget(f"{scope}__current_limits_settings", fields)
+                    updates = {}
+                    for field, limits_settings in zip(fields, all_settings, strict=True):
+                        limits_settings = json.loads(limits_settings) if limits_settings else {}
+                        limits_settings["enabled"] = event["enabled"]
+                        updates[field] = json.dumps(limits_settings)
+                    Store.hset(f"{scope}__current_limits_settings", mapping=updates)
+
             case "LIMITS_STATE_COLOR":
                 # Persist the state color so it survives a decom microservice restart (applied by sync_system)
                 field = f"{event['target_name']}__{event['packet_name']}__{event['item_name']}"
@@ -122,14 +151,9 @@ class LimitsEventTopic(Topic):
                 raise RuntimeError(f"Invalid limits event type '{event['type']}'")
 
         # Write to all active db_shards so each decom microservice can read limits events inline
+        msg_hash = {"event": json.dumps(event, cls=JsonEncoder)}
         for db_shard in cls._active_db_shards(scope):
-            Topic.write_topic(
-                f"{scope}__openc3_limits_events",
-                {"event": json.dumps(event, cls=JsonEncoder)},
-                "*",
-                1000,
-                db_shard=db_shard,
-            )
+            Topic.write_topic(f"{scope}__openc3_limits_events", msg_hash, "*", 1000, db_shard=db_shard)
 
     # Remove the JSON encoding to return hashes directly
     @classmethod
@@ -239,6 +263,29 @@ class LimitsEventTopic(Topic):
             Store.hset(f"{scope}__current_limits_settings", mapping=updates)
         Store.hdel(f"{scope}__limits_sets", set_name)
 
+    # Returns True if limits events written after previous_id were trimmed from the
+    # stream before they were read. The stream keeps ~1000 entries so a flood of
+    # LIMITS_CHANGE events can trim events a slow reader hasn't processed yet.
+    # Stream IDs always increase, so if the oldest remaining entry is newer than the
+    # last entry read, the entries in between are gone. This can also report a gap
+    # when only previous_id itself was trimmed, which just causes an extra resync.
+    @classmethod
+    def events_trimmed(cls, previous_id, scope, db_shard=0):
+        # 0-0 means the stream was empty when the reader started
+        if previous_id is None or previous_id == "0-0":
+            return False
+        oldest = Topic.get_oldest_message(f"{scope}__openc3_limits_events", db_shard=db_shard)
+        if not oldest:
+            return False
+        oldest_id = oldest[0].decode() if isinstance(oldest[0], bytes) else oldest[0]
+        return [int(x) for x in oldest_id.split("-")] > [int(x) for x in previous_id.split("-")]
+
+    # Reload all limits state from the store, used to recover from missed limits events.
+    # System.limits_set() always queries Redis so only the item settings need syncing.
+    @classmethod
+    def resync_system(cls, scope):
+        cls.sync_system(scope)
+
     # Update the local System based on overall state
     @classmethod
     def sync_system(cls, scope):
@@ -285,7 +332,7 @@ class LimitsEventTopic(Topic):
     # Process a single limits event dict and update the local System accordingly.
     # Called inline by DecomMicroservice when reading from the limits events topic.
     @classmethod
-    def process_event(cls, event, telemetry=None):
+    def process_event(cls, event, scope, telemetry=None):
         if telemetry is None:
             telemetry = System.telemetry.all()
         match event["type"]:
@@ -330,6 +377,32 @@ class LimitsEventTopic(Topic):
                         else:
                             System.limits.disable(target_name, packet_name, item_name)
 
+            case "LIMITS_GROUP_ENABLE_STATE":
+                enabled = event.get("enabled", False)
+                for target_name, packets in (cls.limits_group_items(event["group_name"], scope) or {}).items():
+                    target = telemetry.get(target_name)
+                    if not target:
+                        continue
+                    for packet_name, item_names in packets.items():
+                        packet = target.get(packet_name)
+                        if not packet:
+                            continue
+                        for item_name in item_names:
+                            if item_name not in packet.items:
+                                continue
+                            # The stream offset has already advanced past this event so isolate
+                            # failures to a single item rather than skipping the rest of the group
+                            try:
+                                if enabled:
+                                    System.limits.enable(target_name, packet_name, item_name)
+                                else:
+                                    System.limits.disable(target_name, packet_name, item_name)
+                            except Exception as error:
+                                action = "enabling" if enabled else "disabling"
+                                Logger.error(
+                                    f"Error {action} limits for {target_name} {packet_name} {item_name}: {repr(error)}"
+                                )
+
             case "LIMITS_STATE_COLOR":
                 target_name = event["target_name"]
                 packet_name = event["packet_name"]
@@ -353,4 +426,4 @@ class LimitsEventTopic(Topic):
         topics = [f"{scope}__openc3_limits_events"]
         for _, _, event, _ in Topic.read_topics(topics, timeout_ms=None):
             event = json.loads(event[b"event"], cls=JsonDecoder)
-            cls.process_event(event, telemetry=telemetry)
+            cls.process_event(event, scope, telemetry=telemetry)

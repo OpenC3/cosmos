@@ -42,6 +42,7 @@ module OpenC3
     def handle_inject_tlm_with_ack(inject_tlm_json, msg_id)
       inject_tlm_hash = JSON.parse(inject_tlm_json, allow_nan: true, create_additions: true)
       target_name = inject_tlm_hash['target_name']
+      # Ack on the db_shard of the target where DecomInterfaceTopic.inject_tlm waits for it
       db_shard = Store.db_shard_for_target(target_name, scope: @scope)
       ack_topic = "{#{@scope}__ACKCMD}TARGET__#{target_name}"
       begin
