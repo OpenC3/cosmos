@@ -1322,6 +1322,11 @@ module OpenC3
         allow(@s3).to receive(:delete_bucket)
       end
 
+      after(:each) do
+        # Examples below set this to 'aws'; leaving it set makes later specs skip local_s3()
+        ENV['OPENC3_CLOUD'] = 'local'
+      end
+
       it "adds new commands" do
         packet = Packet.new("INST", "NEW_CMD")
         cmd_log_model = MicroserviceModel.new(folder_name: "INST", name: "DEFAULT__COMMANDLOG__INST", scope: @scope)
