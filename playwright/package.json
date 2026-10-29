@@ -19,7 +19,7 @@
     "@playwright/test": "1.64.1",
     "date-fns": "4.4.0",
     "jszip": "^3.10.2",
-    "monocart-coverage-reports": "^3.0.0",
+    "monocart-coverage-reports": "^3.1.0",
     "prettier": "^3.9.10"
   },
   "devDependencies": {
@@ -29,6 +29,6 @@
     "globals": "^17.13.0",
     "lodash": "^4.18.1",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.0"
+    "typescript-eslint": "^8.72.1"
   }
 }
