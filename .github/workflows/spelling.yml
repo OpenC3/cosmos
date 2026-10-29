@@ -46,5 +46,5 @@ jobs:
           # positives on ADN and Adn. *.xsd covers vendored third party schemas
           # (e.g. the OMG XTCE schemas) which must stay byte for byte identical
           # to the published versions, typos included.
-          skip: ./docs,*.map,*.min.js,*.pem,*.bin,*.xsd,pnpm-lock.yaml,cstol_converter,vue.global*,vuetify-labs*
+          skip: "*.map,*.min.js,*.pem,*.bin,*.xsd,pnpm-lock.yaml,cstol_converter,vue.global*,vuetify-labs*"
           ignore_words_file: .whitelist

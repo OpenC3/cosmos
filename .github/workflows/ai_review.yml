@@ -102,11 +102,6 @@ jobs:
       scan_project_description: >-
         OpenC3 COSMOS, an open-source command and control system for spacecraft and embedded systems
         (Ruby, Python, Vue/JS, shell, Docker)
-      # The built docs site (Docusaurus output published to GitHub Pages; the source is docs.openc3.com/)
-      scan_generated_paths: |
-        docs/**/*.html
-        docs/assets/**
-        docs/search-*.json
     secrets:
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

@@ -191,10 +191,10 @@ jobs:
         continue-on-error: true
         run: pnpm -F "@openc3/*-common" publish --no-git-checks --tag pre --access public --provenance
         working-directory: openc3-cosmos-init/plugins
-      # The build steps above take ~30 minutes, during which other workflows
-      # (Auto Build Docs) or people can push to the release branch. Rebase so
-      # the next version commit is a fast forward. main is protected and
-      # rejects force pushes, so a diverged branch fails the release.
+      # The build steps above take ~30 minutes, during which people can push
+      # to the release branch. Rebase so the next version commit is a fast
+      # forward. main is protected and rejects force pushes, so a diverged
+      # branch fails the release.
       - name: Rebase onto the current release branch
         env:
           RELEASE_BRANCH: ${{ github.ref_name }}
