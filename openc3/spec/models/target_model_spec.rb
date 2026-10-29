@@ -1320,6 +1320,15 @@ module OpenC3
         allow(Aws::S3::Client).to receive(:new).and_return(@s3)
         allow(@s3).to receive(:head_bucket)
         allow(@s3).to receive(:delete_bucket)
+        @saved_cloud = ENV['OPENC3_CLOUD']
+        @saved_no_checksum = ENV['OPENC3_NO_S3_CHECKSUM']
+      end
+
+      # The tests change these to exercise checksums; leaking them makes later
+      # specs skip local_s3 and hit a real S3 endpoint
+      after(:each) do
+        ENV['OPENC3_CLOUD'] = @saved_cloud
+        ENV['OPENC3_NO_S3_CHECKSUM'] = @saved_no_checksum
       end
 
       after(:each) do

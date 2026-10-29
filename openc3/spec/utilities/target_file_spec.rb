@@ -56,8 +56,7 @@ module OpenC3
 
     describe "marker handling on bucket keys" do
       before(:each) do
-        @fsys_s3 = ENV['OPENC3_CLOUD'].nil? || ENV['OPENC3_CLOUD'] == 'local'
-        local_s3() if @fsys_s3
+        local_s3()
         ENV['OPENC3_CONFIG_BUCKET'] = "config"
         @bucket = Bucket.getClient.create("config")
       end
@@ -93,8 +92,7 @@ module OpenC3
 
     describe "local only targets" do
       before(:each) do
-        @fsys_s3 = ENV['OPENC3_CLOUD'].nil? || ENV['OPENC3_CLOUD'] == 'local'
-        local_s3() if @fsys_s3
+        local_s3()
         ENV['OPENC3_CONFIG_BUCKET'] = "config"
         ENV['OPENC3_LOCAL_ONLY_TARGETS'] = "LOCAL"
         @bucket = Bucket.getClient.create("config")
