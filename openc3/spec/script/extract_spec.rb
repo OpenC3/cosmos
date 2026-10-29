@@ -270,7 +270,7 @@ module OpenC3
 
       it "should suggest a string for bare word operands" do
         expect { extract_operator_and_operand_from_comparison("== foo") }.to \
-          raise_error(NameError, "Uninitialized constant foo. Did you mean 'foo' as a string?")
+          raise_error(NameError, "Unknown state name foo. Did you mean 'foo' as a string?")
       end
 
       it "should process escape sequences using Ruby string literal rules" do
@@ -483,15 +483,15 @@ module OpenC3
 
       it "accepts an unquoted state name" do
         expect(extract_comparison("== on", :CONVERTED) { item }).to eql ["==", "ON"]
-        expect { extract_comparison("== other", :CONVERTED) { item } }.to raise_error(NameError, /Uninitialized constant other/)
+        expect { extract_comparison("== other", :CONVERTED) { item } }.to raise_error(NameError, /Unknown state name other/)
         expect { extract_comparison("in on", :CONVERTED) { item } }.to raise_error(/The 'in' operator requires a list operand: "ON"/)
-        expect { extract_comparison("== on", :CONVERTED) { {} } }.to raise_error(NameError, /Uninitialized constant on/)
+        expect { extract_comparison("== on", :CONVERTED) { {} } }.to raise_error(NameError, /Unknown state name on/)
       end
 
       it "accepts unquoted state names in a list" do
         expect(extract_comparison("in [on, Off, 'other', 1]", :CONVERTED) { item }).to eql ["in", ["ON", "OFF", "other", 1]]
         expect(extract_comparison("in [on, [off]]", :CONVERTED) { item }).to eql ["in", ["ON", ["OFF"]]]
-        expect { extract_comparison("in [on, other]", :CONVERTED) { item } }.to raise_error(NameError, /Uninitialized constant other/)
+        expect { extract_comparison("in [on, other]", :CONVERTED) { item } }.to raise_error(NameError, /Unknown state name other/)
         expect { extract_comparison("in [on.upcase]", :CONVERTED) { item } }.to raise_error(/Unable to parse operand: on.upcase/)
       end
 

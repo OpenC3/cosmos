@@ -179,7 +179,7 @@ module OpenC3
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF == FALSE success with value == 'FALSE'/)
         end
         # A bare word which is not a state name is still almost always a missing quote
-        expect { check("INST HEALTH_STATUS CCSDSSHF == MAYBE") }.to raise_error(NameError, "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?")
+        expect { check("INST HEALTH_STATUS CCSDSSHF == MAYBE") }.to raise_error(NameError, "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?")
         expect { check("INST HEALTH_STATUS CCSDSSHF in FALSE") }.to raise_error(/The 'in' operator requires a list operand: "FALSE"/)
         capture_io do |stdout|
           check("INST HEALTH_STATUS CCSDSSHF in [FALSE, TRUE]")
@@ -703,7 +703,7 @@ module OpenC3
           wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS CCSDSSHF == FALSE success with value == 'FALSE'")
         end
-        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01) }.to raise_error(NameError, "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?")
+        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01) }.to raise_error(NameError, "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?")
       end
 
       it "compares state names case insensitively with wait and wait_check" do
@@ -745,7 +745,7 @@ module OpenC3
       end
 
       it "suggests a string when comparing against a bare word" do
-        error = "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?"
+        error = "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?"
         expect { check("INST HEALTH_STATUS CCSDSSHF == MAYBE") }.to raise_error(NameError, error)
         expect { wait("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01) }.to raise_error(NameError, error)
         expect { wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01) }.to raise_error(NameError, error)

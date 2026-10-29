@@ -151,7 +151,7 @@ class TestApiShared(unittest.TestCase):
             )
         with self.assertRaisesRegex(
             NameError,
-            "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?",
+            "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?",
         ):
             check("INST HEALTH_STATUS CCSDSSHF == MAYBE")
 
@@ -584,7 +584,7 @@ class TestApiShared(unittest.TestCase):
             )
         with self.assertRaisesRegex(
             NameError,
-            "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?",
+            "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?",
         ):
             wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01)
 
@@ -620,7 +620,7 @@ class TestApiShared(unittest.TestCase):
             wait_check("INST HEALTH_STATUS TEMP1 >", 0.01)
 
     def test_consistency_suggests_a_string_when_comparing_against_a_bare_word(self):
-        error = "Uninitialized constant MAYBE. Did you mean 'MAYBE' as a string?"
+        error = "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?"
         with self.assertRaisesRegex(NameError, re.escape(error)):
             check("INST HEALTH_STATUS CCSDSSHF == MAYBE")
         with self.assertRaisesRegex(NameError, re.escape(error)):
