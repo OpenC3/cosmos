@@ -30,7 +30,9 @@ class DbShardedModel:
 
     @classmethod
     def _get_db_shard_cache(cls):
-        if not hasattr(cls, "_db_shard_cache") or cls._db_shard_cache is None:
+        # Check the class itself so a subclass (RouterStatusModel) doesn't share its
+        # parent's (InterfaceStatusModel) cache for names which may be on another db_shard
+        if vars(cls).get("_db_shard_cache") is None:
             cls._db_shard_cache = {}
         return cls._db_shard_cache
 

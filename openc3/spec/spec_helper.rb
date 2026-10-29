@@ -274,10 +274,44 @@ def mock_redis
   OpenC3::EphemeralStoreQueued.instance_variable_set(:@instances, [])
   OpenC3::StoreQueued.instance_variable_set(:@update_interval, nil)
   OpenC3::EphemeralStoreQueued.instance_variable_set(:@update_interval, nil)
+  # Forget target db_shards cached by a previous test (cached for a minute) so
+  # targets it put on a db_shard aren't looked for there
+  OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
+  OpenC3::QuestDBClient.instance_variable_set(:@db_shard_cache, {}) if defined?(OpenC3::QuestDBClient)
   require 'openc3/models/auth_model'
   OpenC3::AuthModel.set($openc3_password, nil)
   $openc3_token = OpenC3::AuthModel.generate_session()
   redis
+end
+
+# Like mock_redis but every db_shard gets its own MockRedis (mock_redis shares one
+# between all db_shards) so a test can verify which db_shard data is written to and
+# read from. The Store and EphemeralStore hostnames get SHARDNUM like a db_sharded
+# deployment so each db_shard connects to its own url. Use Store.instance(db_shard: N)
+# and EphemeralStore.instance(db_shard: N) to inspect a db_shard.
+def mock_redis_db_shards
+  redises = {} # url => MockRedis
+  allow(Redis).to receive(:new) { |url:, **| redises[url] ||= MockRedis.new }
+  allow(ENV).to receive(:[]).and_call_original
+  allow(ENV).to receive(:[]).with('OPENC3_REDIS_HOSTNAME').and_return('redis-SHARDNUM')
+  allow(ENV).to receive(:[]).with('OPENC3_REDIS_EPHEMERAL_HOSTNAME').and_return('redis-ephemeral-SHARDNUM')
+
+  OpenC3::Store.instance_variable_set(:@instances, [])
+  OpenC3::EphemeralStore.instance_variable_set(:@instances, [])
+  OpenC3::StoreQueued.instance_variable_set(:@instances, [])
+  OpenC3::EphemeralStoreQueued.instance_variable_set(:@instances, [])
+  OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
+  require 'openc3/models/auth_model'
+  OpenC3::AuthModel.set($openc3_password, nil)
+  $openc3_token = OpenC3::AuthModel.generate_session()
+  redises
+end
+
+# Put a target on a db_shard the way TargetModel stores it (Store.db_shard_for_target
+# reads the target json from db_shard 0)
+def set_target_db_shard(target_name, db_shard, scope: 'DEFAULT')
+  OpenC3::Store.instance(db_shard: 0).hset("#{scope}__openc3_targets", target_name, JSON.generate({ 'name' => target_name, 'db_shard' => db_shard }))
+  OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
 end
 
 OpenC3.disable_warnings do
