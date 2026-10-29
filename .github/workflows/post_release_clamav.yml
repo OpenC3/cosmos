@@ -83,7 +83,7 @@ jobs:
         continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
         env:
           DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
-          DOCKERHUB_OIDC_EXPIREIN: 3600 # token defaults to 5 min; long builds pull from Docker Hub later
+          DOCKERHUB_OIDC_EXPIREIN: 7200 # token defaults to 5 min; scanning every image takes over an hour (max 21600)
         with:
           username: openc3inc
       - name: ClamAV setup and update definitions
@@ -99,16 +99,6 @@ jobs:
       - name: ClamAV scan image base
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-base:"$VERSION" pull clamav_results/openc3-base.txt
         working-directory: scripts/release
-      # The Docker Hub OIDC token from the login above expires after an hour,
-      # but scanning every image takes longer than that. Log in again so the
-      # later pulls don't fail authentication.
-      - name: Docker login (refresh before init)
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        env:
-          DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
-          DOCKERHUB_OIDC_EXPIREIN: 3600
-        with:
-          username: openc3inc
       - name: ClamAV scan image init
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-init:"$VERSION" pull clamav_results/openc3-cosmos-init.txt
         working-directory: scripts/release
@@ -124,13 +114,6 @@ jobs:
       - name: ClamAV scan image operator
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-operator:"$VERSION" pull clamav_results/openc3-operator.txt
         working-directory: scripts/release
-      - name: Docker login (refresh before cmd-tlm-api)
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-        env:
-          DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
-          DOCKERHUB_OIDC_EXPIREIN: 3600
-        with:
-          username: openc3inc
       - name: ClamAV scan image cmd-tlm-api
         run: ruby clamav_scan_image.rb docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:"$VERSION" pull clamav_results/openc3-cosmos-cmd-tlm-api.txt
         working-directory: scripts/release
