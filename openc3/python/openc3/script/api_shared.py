@@ -699,6 +699,9 @@ def _wait_packet(
         type = "CHECK"
     else:
         type = "WAIT"
+    # LATEST would compare the RECEIVED_COUNT of whichever packet was received most recently
+    if str(packet_name).upper() == "LATEST":
+        raise RuntimeError("LATEST is not supported by wait_packet, specify a packet name")
     initial_count = openc3.script.API_SERVER.tlm(target_name, packet_name, "RECEIVED_COUNT", scope=scope)
     # If the packet has not been received the initial_count could be None
     if initial_count is None:

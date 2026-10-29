@@ -62,7 +62,7 @@ The following API methods have been removed from COSMOS v7. Since WITH_UNITS wer
 | wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type             |
 | wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerance](#wait_check_tolerance) and pass type |
 
-The following API methods now return `COSMOS__CANCEL` instead of `Cancel` when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. Unless you are _explicitly_ checking the return value for the word 'Cancel' there are no changes required.
+The following API methods now use `COSMOS__CANCEL` instead of `Cancel` as the answer recorded when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. The script is paused at the prompt line and nothing is returned to it, so no changes are required. `COSMOS__CANCEL` only appears in the script output and the Script Runner internals.
 
 ### Migration from COSMOS v5 to v6
 
@@ -177,7 +177,7 @@ These methods allow the user to enter values that are needed by the script.
 
 <span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-Prompts the user for input with a question. User input is automatically converted from a string to the appropriate data type. For example if the user enters "1", the number 1 as an integer will be returned.
+Prompts the user for input with a question. User input is automatically converted from a string to the appropriate data type. For example if the user enters "1", the number 1 as an integer will be returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -230,7 +230,7 @@ password = ask("Enter your password", false, true)
 
 <span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned.
+Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -294,7 +294,7 @@ password = ask_string("Enter your password", false, true)
 
 <span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 7.0.0</span></span>
 
-The message_box, vertical_message_box, combo_box and check_box methods create a message box with buttons / selections / checkboxes that the user can click. The text of the button / selection / checkbox is returned.
+The message_box, vertical_message_box, combo_box and check_box methods create a message box with buttons / selections / checkboxes that the user can click. The text of the button / selection / checkbox is returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -381,7 +381,7 @@ end
 
 <span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned.
+The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog methods. save_file_dialog can be replaced by put_target_file if you want to write a file back to the target. open_directory_dialog doesn't make sense in new architecture so you must request individual files.
 
@@ -454,7 +454,7 @@ end
 
 <span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 7.0.0</span></span>
 
-The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog.
+The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 The returned file object also provides `filename`, `bucket`, and `bucket_path` (methods in Python) for the selected file's name, the bucket it came from (e.g. `OPENC3_CONFIG_BUCKET`), and its full path within that bucket (e.g. `DEFAULT/targets/INST/procedures/test.rb`). These are only available when running in Script Runner.
 
@@ -10485,7 +10485,7 @@ metadata_update({ 'key' => 'value' })
 
 <span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.2.0</span></span>
 
-Prompts the user to set existing metadata values or create new a new one.
+Prompts the user to set existing metadata values or create a new one. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">

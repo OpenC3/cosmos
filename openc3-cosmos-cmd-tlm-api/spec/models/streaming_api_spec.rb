@@ -55,6 +55,10 @@ RSpec.describe StreamingApi, type: :model do
       end
     end
 
+    # Treat every TSDB table as existing unless a test says otherwise. Returning nil
+    # also keeps the table listing from consuming the mocked PG exec results.
+    allow(OpenC3::QuestDBClient).to receive(:table_names).and_return(nil)
+
     # Ensure the BucketFileCache is clear so we don't leak the s3 mock
     BucketFileCache.class_variable_set(:@@instance, nil)
 
@@ -139,6 +143,23 @@ RSpec.describe StreamingApi, type: :model do
     expect(@api.instance_variable_get('@logged_threads')).to be_empty
   end
 
+  describe '#transmit_notice' do
+    it 'only sends notices to clients that opted in' do
+      @api.transmit_notice('SKIPPED', 'skipped', skipped_seconds: 1.5)
+      expect(@messages).to be_empty
+
+      @api.instance_variable_set('@notices', true)
+      @api.transmit_notice('SKIPPED', 'skipped', skipped_seconds: 1.5)
+      expect(@messages).to eq([{ "__type" => "NOTICE", "notice" => "SKIPPED", "message" => "skipped", "skipped_seconds" => 1.5 }])
+    end
+
+    it 'opts in via the add request' do
+      allow(StreamingObject).to receive(:new).and_raise(OpenC3::ForbiddenError)
+      @api.add({ 'scope' => 'DEFAULT', 'notices' => true, 'end_time' => 0, 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'] })
+      expect(@api.instance_variable_get('@notices')).to be true
+      end
+    end
+
   describe '#kill' do
     class FakeStreamingThread < StreamingThread
       def initialize(streaming_api, stop_delay)
@@ -195,23 +216,23 @@ RSpec.describe StreamingApi, type: :model do
   describe '#expand_all_packets' do
     before(:each) do
       allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST', 'SYSTEM', 'EMPTY', 'UNKNOWN'])
-      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'COLLECT' },
-        { 'packet_name' => 'ABORT' },
-        { 'packet_name' => 'CLEAR' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
+        'COLLECT',
+        'ABORT',
+        'CLEAR',
       ])
-      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'HEALTH_STATUS' },
-        { 'packet_name' => 'PARAMS' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
+        'HEALTH_STATUS',
+        'PARAMS',
       ])
-      allow(OpenC3::TargetModel).to receive(:packets).with('SYSTEM', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'META' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('SYSTEM', type: :CMD, scope: 'DEFAULT').and_return([
+        'META',
       ])
-      allow(OpenC3::TargetModel).to receive(:packets).with('SYSTEM', type: :TLM, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'META' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('SYSTEM', type: :TLM, scope: 'DEFAULT').and_return([
+        'META',
       ])
-      allow(OpenC3::TargetModel).to receive(:packets).with('EMPTY', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
-      allow(OpenC3::TargetModel).to receive(:packets).with('EMPTY', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('EMPTY', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('EMPTY', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "no packets")
     end
 
     it 'expands COSMOS_ALL for a specific target in DECOM mode' do
@@ -262,7 +283,7 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'handles COSMOS_ALL with nonexistent target gracefully' do
-      allow(OpenC3::TargetModel).to receive(:packets).with('BOGUS', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('BOGUS', type: :CMD, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
       data = { 'packets' => ['DECOM__CMD__BOGUS__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
       expect(data['packets']).to eq([])
@@ -275,8 +296,8 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'skips targets without the requested packet type for COSMOS_ALL targets' do
-      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'UNKNOWN' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        'UNKNOWN',
       ])
       data = { 'packets' => ['RAW__CMD__COSMOS_ALL'], 'scope' => 'DEFAULT' }
       @api.send(:expand_all_packets, data, scope: 'DEFAULT')
@@ -288,8 +309,8 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'skips UNKNOWN target for DECOM' do
-      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'UNKNOWN' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        'UNKNOWN',
       ])
       # COSMOS_ALL targets: UNKNOWN target should be excluded entirely
       data = { 'packets' => ['DECOM__CMD__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
@@ -299,8 +320,8 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'keeps UNKNOWN target for RAW' do
-      allow(OpenC3::TargetModel).to receive(:packets).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'UNKNOWN' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('UNKNOWN', type: :CMD, scope: 'DEFAULT').and_return([
+        'UNKNOWN',
       ])
       # COSMOS_ALL targets: UNKNOWN target should be included for RAW
       data = { 'packets' => ['RAW__CMD__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT' }
@@ -312,10 +333,10 @@ RSpec.describe StreamingApi, type: :model do
 
   describe '#expand_item_globs' do
     before(:each) do
-      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'HEALTH_STATUS' },
-        { 'packet_name' => 'PARAMS' },
-        { 'packet_name' => 'IMAGE' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('INST', type: :TLM, scope: 'DEFAULT').and_return([
+        'HEALTH_STATUS',
+        'PARAMS',
+        'IMAGE',
       ])
       allow(OpenC3::TargetModel).to receive(:packet).with('INST', 'HEALTH_STATUS', type: :TLM, scope: 'DEFAULT').and_return({
         'items' => [
@@ -443,7 +464,7 @@ RSpec.describe StreamingApi, type: :model do
     end
 
     it 'handles nonexistent target gracefully for packet glob' do
-      allow(OpenC3::TargetModel).to receive(:packets).with('BOGUS', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('BOGUS', type: :TLM, scope: 'DEFAULT').and_raise(RuntimeError, "Target 'BOGUS' does not exist")
       data = { 'items' => [['DECOM__TLM__BOGUS__*__TEMP1__CONVERTED', '0']], 'scope' => 'DEFAULT' }
       @api.send(:expand_item_globs, data, scope: 'DEFAULT')
       expect(data['items']).to eq([])
@@ -551,13 +572,131 @@ RSpec.describe StreamingApi, type: :model do
     end
   end
 
+  describe '#build_item_collection' do
+    before(:each) do
+      allow(OpenC3::TargetModel).to receive(:get_item_to_packet_map).with('INST', scope: 'DEFAULT').and_return({
+        'TEMP1' => ['HEALTH_STATUS', 'PARAMS'],
+      })
+    end
+
+    let(:latest_key) { 'DECOM__TLM__INST__LATEST__TEMP1__CONVERTED' }
+    let(:explicit_key) { 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED' }
+
+    def build(items)
+      collection = StreamingObjectCollection.new
+      @api.build_item_collection(collection, { 'items' => items }, scope: 'DEFAULT')
+      collection
+    end
+
+    it 'expands LATEST into one object per packet keyed by the LATEST key' do
+      collection = build([latest_key])
+      expect(collection.objects.map { |o| [o.key, o.item_key] }).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', latest_key],
+        ['DECOM__TLM__INST__PARAMS__TEMP1__CONVERTED', latest_key],
+      ])
+    end
+
+    it 'keeps a LATEST item and an explicit item for the same packet' do
+      collection = build([latest_key, explicit_key])
+      expect(collection.length).to eq(3)
+      expect(collection.objects.select { |o| o.key == explicit_key }.map(&:item_key)).to contain_exactly(latest_key, explicit_key)
+    end
+
+    it 'removing the LATEST item leaves the explicit item' do
+      collection = build([latest_key, explicit_key])
+      build([latest_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map { |o| [o.key, o.item_key] }).to eq([[explicit_key, explicit_key]])
+    end
+
+    it 'removing the explicit item leaves the LATEST item' do
+      collection = build([latest_key, explicit_key])
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key).uniq).to eq([latest_key])
+      expect(collection.length).to eq(2)
+    end
+
+    it 'rejects LATEST for commands' do
+      expect { build(['DECOM__CMD__INST__LATEST__TEMP1__CONVERTED']) }.to raise_error(/LATEST is only supported for telemetry/)
+    end
+
+    it 'skips LATEST packets the user cannot access' do
+      allow_any_instance_of(StreamingObject).to receive(:authorize) do |_object, packet_name:, **|
+        raise OpenC3::ForbiddenError, 'forbidden' if packet_name == 'PARAMS'
+      end
+      expect(build([latest_key]).objects.map(&:packet_name)).to eq(['HEALTH_STATUS'])
+    end
+
+    it 'raises when the user cannot access any LATEST packet' do
+      allow_any_instance_of(StreamingObject).to receive(:authorize).and_raise(OpenC3::ForbiddenError, 'forbidden')
+      expect { build([latest_key]) }.to raise_error(OpenC3::ForbiddenError)
+    end
+
+    it 'removes an item added with an item_key when removed by key alone' do
+      collection = build([[explicit_key, '0']])
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection).to be_empty
+    end
+
+    it 'removing an explicit item by key alone leaves the LATEST item' do
+      collection = build([latest_key, [explicit_key, '0']])
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key).uniq).to eq([latest_key])
+      expect(collection.length).to eq(2)
+    end
+
+    it 'removing a LATEST item by key alone leaves the explicit item' do
+      collection = build([[latest_key, '0'], explicit_key])
+      build([latest_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map { |o| [o.key, o.item_key] }).to eq([[explicit_key, explicit_key]])
+    end
+
+    it 'removes every item_key for a key when removed by key alone' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      expect(collection.length).to eq(2)
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection).to be_empty
+    end
+
+    it 'removing a key with an item_key only removes that item_key' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      build([[explicit_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key)).to eq([explicit_key])
+    end
+
+    it 'removing an unknown item_key does not remove other item_keys' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      build([[explicit_key, '1']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key)).to contain_exactly(explicit_key, '0')
+    end
+
+    it 'falls back to matching source_key and item_key when the exact object is not found' do
+      allow(OpenC3::TargetModel).to receive(:get_item_to_packet_map).with('INST', scope: 'DEFAULT').and_return({
+        'TEMP1' => ['PARAMS'],
+      })
+      collection = build([[latest_key, '0'], [latest_key, '1']])
+      allow(OpenC3::TargetModel).to receive(:get_item_to_packet_map).with('INST', scope: 'DEFAULT').and_return({
+        'TEMP1' => ['HEALTH_STATUS'],
+      })
+      # The HEALTH_STATUS object was never added so the removal falls back to the sweep
+      build([[latest_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key)).to eq(['1'])
+    end
+
+    it 'keeps a LATEST item and an explicit item with the same item_key' do
+      collection = build([[latest_key, '0'], [explicit_key, '0']])
+      expect(collection.length).to eq(3)
+      build([[latest_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map { |o| [o.key, o.source_key] }).to eq([[explicit_key, explicit_key]])
+    end
+  end
+
   describe 'add with COSMOS_ALL packets and authorization' do
     it 'skips unauthorized packets when using COSMOS_ALL' do
       $openc3_authorize = true
       allow(OpenC3::TargetModel).to receive(:names).with(scope: 'DEFAULT').and_return(['INST'])
-      allow(OpenC3::TargetModel).to receive(:packets).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
-        { 'packet_name' => 'COLLECT' },
-        { 'packet_name' => 'ABORT' },
+      allow(OpenC3::TargetModel).to receive(:packet_names).with('INST', type: :CMD, scope: 'DEFAULT').and_return([
+        'COLLECT',
+        'ABORT',
       ])
       @send_count = 0
       data = { 'packets' => ['DECOM__CMD__INST__COSMOS_ALL__CONVERTED'], 'scope' => 'DEFAULT', 'token' => 'invalid' }
@@ -648,6 +787,23 @@ RSpec.describe StreamingApi, type: :model do
 
             @api.kill
             expect(@api.instance_variable_get('@realtime_thread')).to be_nil
+          end
+
+          it 'skips ahead and notifies when far behind realtime' do
+            # Messages read are 2 minutes older than the stream head so we're well past the max lag
+            @time = @start_time - 120
+            head = "#{Time.now.to_i * 1000}-0"
+            allow_any_instance_of(RealtimeStreamingThread).to receive(:stream_heads) do |_thread, topics|
+              topics.to_h { |topic| [topic, head] }
+            end
+            @send_count = 1
+            data['notices'] = true
+            @api.add(data)
+            sleep 0.35 # Allow the thread to run
+            notice = @messages.find { |message| message.is_a?(Hash) }
+            expect(notice['notice']).to eq('SKIPPED')
+            expect(notice['skipped_seconds']).to be > 60
+            @api.kill
           end
         end
 
@@ -1100,6 +1256,62 @@ RSpec.describe StreamingApi, type: :model do
       end
     end
 
+    context 'for packets in decom mode with missing TSDB tables' do
+      let(:data) { { 'packets' => ['DECOM__TLM__INST__HEALTH_STATUS__CONVERTED', 'DECOM__TLM__INST__PARAMS__CONVERTED'], 'scope' => 'DEFAULT' } }
+
+      before(:each) do
+        msg1 = { 'time' => @start_time.to_i * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_newest_message).and_return([nil, msg1])
+        msg2 = { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }
+        allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", msg2])
+      end
+
+      it 'only queries tables that exist' do
+        mock_conn = instance_double(PG::Connection)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+        allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+        # Only PARAMS has ever been received so HEALTH_STATUS has no table
+        allow(OpenC3::QuestDBClient).to receive(:table_names).and_return(Set['DEFAULT__TLM__INST__PARAMS'])
+
+        base_time = @file_start_time / 1_000_000_000
+        pg_data = [
+          [["PACKET_TIMESECONDS", Time.at(base_time)], ["VALUE1", 100], ["VALUE1__C", 10.5], ["__pkt_time_ns", @file_start_time], ["__rx_time_ns", @file_start_time]]
+        ]
+        pg_data.define_singleton_method(:ntuples) { 1 }
+
+        queries = []
+        allow(mock_conn).to receive(:exec) do |query|
+          queries << query
+          queries.length == 1 ? pg_data : nil
+        end
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_start_time + 1_000_000_000
+        @api.add(data)
+        sleep 1.5 # Allow the threads to run
+
+        expect(queries).to_not be_empty
+        expect(queries.none? { |query| query.include?('HEALTH_STATUS') }).to be true
+        expect(@messages.length).to eq(2)
+        expect(@messages[0][0]['__packet']).to eq('DECOM__TLM__INST__PARAMS__CONVERTED')
+        expect(@messages[-1]).to eq([])
+      end
+
+      it 'completes without querying when no tables exist' do
+        mock_conn = instance_double(PG::Connection)
+        allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+        allow(OpenC3::QuestDBClient).to receive(:table_names).and_return(Set.new)
+        expect(mock_conn).to_not receive(:exec)
+
+        data['start_time'] = @file_start_time
+        data['end_time'] = @file_start_time + 1_000_000_000
+        @api.add(data)
+        sleep 1.5 # Allow the threads to run
+
+        expect(@messages).to eq([[]])
+      end
+    end
+
     context 'for reduced items (aggregated from TSDB)' do
       let(:data) { { 'items' => ['REDUCED_MINUTE__TLM__INST__PARAMS__VALUE1__CONVERTED__AVG'], 'scope' => 'DEFAULT' } }
 
@@ -1243,6 +1455,54 @@ RSpec.describe StreamingApi, type: :model do
         expect(@messages.length).to eq(2)
         expect(@messages[-1]).to eq([])
       end
+    end
+  end
+
+  context 'multiple db_shards' do
+    # INST lives on db_shard 1. The db_shard 0 EphemeralStore stubbed above
+    # returns no messages so anything streamed must come from db_shard 1.
+    before(:each) do
+      @send_count = 0
+      OpenC3::TargetModel.new(name: 'INST', scope: 'DEFAULT', db_shard: 1).create
+    end
+
+    it 'streams realtime items from the target db_shard' do
+      @api.add({ 'items' => ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED'], 'scope' => 'DEFAULT' })
+      sleep 0.2 # Allow the thread to start
+      time = Time.now.to_nsec_from_epoch
+      OpenC3::EphemeralStore.instance(db_shard: 1).write_topic('DEFAULT__DECOM__{INST}__PARAMS',
+        { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => time, 'json_data' => JSON.generate({ 'VALUE1' => 5 }) })
+      start = Time.now
+      sleep 0.05 while @messages.empty? and (Time.now - start) < 3
+      expect(@messages[0][0]['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED']).to eq(5)
+    end
+
+    it 'streams decom packets from the target db_shard TSDB' do
+      # Only the db_shard 1 connection has data
+      db_shard0_conn = instance_double(PG::Connection)
+      allow(db_shard0_conn).to receive(:type_map_for_results).and_return(Object.new)
+      allow(db_shard0_conn).to receive(:exec).and_return(nil)
+      db_shard1_conn = instance_double(PG::Connection)
+      allow(db_shard1_conn).to receive(:type_map_for_results).and_return(Object.new)
+      pg_data = [
+        [["PACKET_TIMESECONDS", Time.at(@file_start_time / 1_000_000_000)], ["VALUE1", 100], ["VALUE1__C", 10.5], ["__pkt_time_ns", @file_start_time], ["__rx_time_ns", @file_start_time]]
+      ]
+      pg_data.define_singleton_method(:ntuples) { 1 }
+      exec_cnt = 0
+      allow(db_shard1_conn).to receive(:exec) do
+        exec_cnt += 1
+        exec_cnt == 1 ? pg_data : nil
+      end
+      allow(OpenC3::QuestDBClient).to receive(:connection) { |db_shard: 0| db_shard == 1 ? db_shard1_conn : db_shard0_conn }
+
+      @api.add({ 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'], 'scope' => 'DEFAULT',
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1_000_000_000 })
+      sleep 1.5 # Allow the threads to run
+
+      expect(@messages.length).to eq(2)
+      expect(@messages[0][0]['__packet']).to eq('DECOM__TLM__INST__PARAMS__CONVERTED')
+      expect(@messages[0][0]['VALUE1']).to eq(10.5)
+      expect(@messages[-1]).to eq([])
     end
   end
 end

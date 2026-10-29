@@ -58,36 +58,54 @@ class StreamingObjectCollection
   def remove(object)
     @mutex.synchronize do
       found_object = @objects_by_id[object.id]
-      if found_object
-        @objects.delete(found_object)
-        @objects_by_id.delete(found_object.id)
-        item_objects = @item_objects_by_topic[object.topic]
-        item_objects.delete(found_object) if item_objects
-        packet_objects = @packet_objects_by_topic[object.topic]
-        packet_objects.delete(found_object) if packet_objects
-        if item_objects
-          if item_objects.length == 0
-            if packet_objects
-              if packet_objects.length == 0
-                # Nothing left in either for this topic
-                @topics_and_offsets.delete(object.topic)
-              end
-            else
-              # Just item_objects and nothing left
-              @topics_and_offsets.delete(object.topic)
-            end
-          end
-        else
-          if packet_objects
-            if packet_objects.length == 0
-              # Just packet_objects and nothing left
-              @topics_and_offsets.delete(object.topic)
-            end
-          else
-            # Neither objects - Shouldn't happen
+      # Items can be added as [key, item_key] pairs but removed by key alone
+      # (the item_key defaults to the key) so remove every item object subscribed with the same key.
+      # Match on source_key so removing an explicit item doesn't also remove a
+      # LATEST subscription which expanded to the same concrete key (and vice versa)
+      key_only = (object.item_key and object.item_key.upcase == object.source_key)
+      if object.item_key and (key_only or not found_object)
+        # An explicit item_key that wasn't found exactly must also match on item_key
+        # so an unknown [key, item_key] pair can't remove other subscriptions
+        @objects.select do |obj|
+          obj.item_key and obj.source_key == object.source_key and (key_only or obj.item_key == object.item_key)
+        end.each do |obj|
+          _remove_found(obj)
+        end
+      elsif found_object
+        _remove_found(found_object)
+      end
+    end
+  end
+
+  # Must be called with @mutex held
+  def _remove_found(object)
+    @objects.delete(object)
+    @objects_by_id.delete(object.id)
+    item_objects = @item_objects_by_topic[object.topic]
+    item_objects.delete(object) if item_objects
+    packet_objects = @packet_objects_by_topic[object.topic]
+    packet_objects.delete(object) if packet_objects
+    if item_objects
+      if item_objects.length == 0
+        if packet_objects
+          if packet_objects.length == 0
+            # Nothing left in either for this topic
             @topics_and_offsets.delete(object.topic)
           end
+        else
+          # Just item_objects and nothing left
+          @topics_and_offsets.delete(object.topic)
         end
+      end
+    else
+      if packet_objects
+        if packet_objects.length == 0
+          # Just packet_objects and nothing left
+          @topics_and_offsets.delete(object.topic)
+        end
+      else
+        # Neither objects - Shouldn't happen
+        @topics_and_offsets.delete(object.topic)
       end
     end
   end

@@ -32,7 +32,7 @@ inputs:
       standardizes on; override only to test a candidate.
     required: false
     # Matches OPENC3_UV_VERSION in openc3-ruby/Dockerfile and Dockerfile-ubi.
-    default: "0.12.24"
+    default: "0.13.5"
   working-directory:
     description: |
       Directory holding pyproject.toml and uv.lock. Also given to setup-uv so

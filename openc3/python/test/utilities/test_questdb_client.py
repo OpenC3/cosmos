@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 import psycopg
 
 from openc3.utilities.questdb_client import QuestDBClient
+from test.test_helper import mock_redis, set_target_db_shard
 
 
 class TestTsdbLookup(unittest.TestCase):
@@ -33,6 +34,21 @@ class TestTsdbLookup(unittest.TestCase):
             QuestDBClient.tsdb_lookup([[None] * 5], start_time="2026-09-13T00:00:00Z"),
             [[None, None]],
         )
+
+    def test_returns_a_list_of_rows_for_placeholders_when_not_flattening(self):
+        self.assertEqual(
+            QuestDBClient.tsdb_lookup([[None] * 5], start_time="2026-09-13T00:00:00Z", flatten=False),
+            [[[None, None]]],
+        )
+
+    def test_passes_flatten_to_a_single_db_shard_lookup(self):
+        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard", return_value=[[[1.0, None]]]) as single:
+            QuestDBClient.tsdb_lookup(
+                [["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None]],
+                start_time="2026-09-13T00:00:00Z",
+                flatten=False,
+            )
+        self.assertFalse(single.call_args.kwargs["flatten"])
 
 
 class TestTsdbLookupDbShards(unittest.TestCase):
@@ -78,6 +94,10 @@ class TestTsdbLookupDbShards(unittest.TestCase):
         for call in single.call_args_list:
             self.assertFalse(call.kwargs["flatten"])
 
+    def test_keeps_a_single_merged_row_as_a_list_of_rows_when_not_flattening(self):
+        result, _ = self.lookup({0: [[[1.0, None], [3.0, None]]], 1: [[[2.0, None]]]}, flatten=False)
+        self.assertEqual(result, [[[1.0, None], [2.0, None], [3.0, None]]])
+
     def test_merges_multiple_rows_filling_missing_rows_with_nones(self):
         result, _ = self.lookup(
             {0: [[[1.0, None], [3.0, None]], [[4.0, None], [6.0, None]]], 1: [[[2.0, None]]]},
@@ -107,6 +127,26 @@ class TestTsdbLookupDbShards(unittest.TestCase):
         self.assertEqual(result, {})
 
 
+# The db_shard for each item comes from where its target is installed
+class TestTsdbLookupTargetDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        set_target_db_shard("INST", 0)
+        set_target_db_shard("INST2", 1)
+
+    def test_queries_each_item_on_its_target_db_shard(self):
+        items = [
+            ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
+            ["INST2", "HEALTH_STATUS", "TEMP1", "CONVERTED", None],
+        ]
+        with patch.object(QuestDBClient, "_tsdb_lookup_single_db_shard") as single:
+            single.side_effect = lambda items, db_shard, **_kw: {0: [[[1.0, None]]], 1: [[[2.0, None]]]}[db_shard]
+            result = QuestDBClient.tsdb_lookup(items, start_time="2026-09-13T00:00:00Z", scope="DEFAULT")
+        self.assertEqual(result, [[1.0, None], [2.0, None]])
+        shards = {call.kwargs["db_shard"]: call[0][0] for call in single.call_args_list}
+        self.assertEqual([item.target_name for item in shards[1]], ["INST2"])
+
+
 class TestQueryWithRetry(unittest.TestCase):
     def test_queries_and_reconnects_the_given_db_shard(self):
         cursor = MagicMock()
@@ -122,6 +162,47 @@ class TestQueryWithRetry(unittest.TestCase):
             self.assertEqual(QuestDBClient.query_with_retry("SELECT 1", db_shard=2), [{"A": 1}])
         connection.assert_called_with(db_shard=2)
         disconnect.assert_called_once_with(db_shard=2)
+
+
+class TestTlmPacketsWithTables(unittest.TestCase):
+    def test_returns_the_packets_with_a_table_queried_by_db_shard(self):
+        tables = {0: {"DEFAULT__TLM__INST__HEALTH_STATUS"}, 1: {"DEFAULT__TLM__INST2__ADCS"}}
+        packets = [("INST", "HEALTH_STATUS"), ("INST", "PARAMS"), ("INST2", "ADCS")]
+        with (
+            patch.object(QuestDBClient, "db_shard_for_target", side_effect=lambda t, scope: 1 if t == "INST2" else 0),
+            patch.object(QuestDBClient, "table_names", side_effect=lambda db_shard: tables[db_shard]) as table_names,
+        ):
+            result = QuestDBClient.tlm_packets_with_tables(packets)
+        self.assertEqual(result, {("INST", "HEALTH_STATUS"), ("INST2", "ADCS")})
+        self.assertEqual(table_names.call_count, 2)
+
+    def test_assumes_all_the_packets_have_a_table_if_the_table_names_cannot_be_fetched(self):
+        packets = [("INST", "HEALTH_STATUS"), ("INST", "PARAMS")]
+        with (
+            patch.object(QuestDBClient, "db_shard_for_target", return_value=0),
+            patch.object(QuestDBClient, "table_names", return_value=None),
+        ):
+            self.assertEqual(QuestDBClient.tlm_packets_with_tables(packets), set(packets))
+
+    def test_does_not_query_without_packets(self):
+        with patch.object(QuestDBClient, "table_names") as table_names:
+            self.assertEqual(QuestDBClient.tlm_packets_with_tables([]), set())
+        table_names.assert_not_called()
+
+
+class TestTableNames(unittest.TestCase):
+    def test_returns_the_upcased_table_names(self):
+        rows = [{"table_name": "DEFAULT__TLM__INST__PARAMS"}, {"table_name": "default__cmd__inst__collect"}]
+        with patch.object(QuestDBClient, "query_with_retry", return_value=rows) as query:
+            self.assertEqual(
+                QuestDBClient.table_names(db_shard=1),
+                {"DEFAULT__TLM__INST__PARAMS", "DEFAULT__CMD__INST__COLLECT"},
+            )
+        self.assertEqual(query.call_args.kwargs["db_shard"], 1)
+
+    def test_returns_none_if_the_tables_cannot_be_queried(self):
+        with patch.object(QuestDBClient, "query_with_retry", side_effect=RuntimeError("down")):
+            self.assertIsNone(QuestDBClient.table_names())
 
 
 class TestBuildAggregationSelects(unittest.TestCase):

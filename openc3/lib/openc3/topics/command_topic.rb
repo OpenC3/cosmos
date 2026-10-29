@@ -35,7 +35,8 @@ module OpenC3
                    buffer: packet.buffer(false) }
       msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
       db_shard = Store.db_shard_for_target(packet.target_name, scope: scope)
-      EphemeralStoreQueued.instance(db_shard: db_shard).write_topic(topic, msg_hash)
+      minid = Topic.log_stream_safety_minid(packet.target_name, :CMD, scope: scope)
+      EphemeralStoreQueued.instance(db_shard: db_shard).write_topic(topic, msg_hash, minid: minid)
     end
 
     # @param command [Hash] Command hash structure read to be written to a topic

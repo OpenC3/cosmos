@@ -14,8 +14,9 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from openc3.packets.packet import Packet
+from openc3.system.system import System
 from openc3.topics.telemetry_topic import TelemetryTopic
-from test.test_helper import mock_redis
+from test.test_helper import mock_redis, setup_system, shard_redis
 
 
 class TestTelemetryTopic(unittest.TestCase):
@@ -29,6 +30,17 @@ class TestTelemetryTopic(unittest.TestCase):
         self.packet.received_time = datetime.datetime.now(datetime.timezone.utc)
         self.packet.packet_time = datetime.datetime.now(datetime.timezone.utc)
         self.packet.received_count = 1
+
+    @patch("openc3.topics.telemetry_topic.Topic.write_topic")
+    def test_writes_stored_as_lowercase_like_ruby(self, write_topic):
+        self.packet.stored = True
+        TelemetryTopic.write_packet(self.packet, scope="DEFAULT")
+        topic, msg_hash = write_topic.call_args.args
+        self.assertEqual(topic, "DEFAULT__TELEMETRY__{TARGET}__PACKET")
+        self.assertEqual(msg_hash["stored"], "true")
+        self.packet.stored = False
+        TelemetryTopic.write_packet(self.packet, scope="DEFAULT")
+        self.assertEqual(write_topic.call_args.args[1]["stored"], "false")
 
     @patch("openc3.topics.telemetry_topic.EphemeralStoreQueued.instance")
     def test_writes_to_queued_store_for_target_shard(self, instance):
@@ -46,3 +58,24 @@ class TestTelemetryTopic(unittest.TestCase):
         instance.assert_not_called()
         self.assertEqual(write_topic.call_args.args[0], "DEFAULT__TELEMETRY__{TARGET}__PACKET")
         self.assertEqual(write_topic.call_args.kwargs["db_shard"], 3)
+
+
+# INST is installed on db_shard 1 while SYSTEM stays on db_shard 0
+class TestTelemetryTopicMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+
+    def test_writes_to_the_target_db_shard(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.datetime.now(datetime.timezone.utc)
+        TelemetryTopic.write_packet(packet, scope="DEFAULT")
+        TelemetryTopic.write_packet(packet, queued=True, scope="DEFAULT")
+        system_packet = System.telemetry.packet("SYSTEM", "LIMITS_CHANGE")
+        system_packet.received_time = datetime.datetime.now(datetime.timezone.utc)
+        TelemetryTopic.write_packet(system_packet, scope="DEFAULT")
+
+        self.assertEqual(shard_redis(1).xlen("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"), 2)
+        self.assertFalse(shard_redis(0).exists("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"))
+        self.assertEqual(shard_redis(0).xlen("DEFAULT__TELEMETRY__{SYSTEM}__LIMITS_CHANGE"), 1)
+        self.assertFalse(shard_redis(1).exists("DEFAULT__TELEMETRY__{SYSTEM}__LIMITS_CHANGE"))

@@ -13,6 +13,7 @@
 from datetime import datetime, timezone
 
 from openc3.conversions.conversion import Conversion
+from openc3.utilities.string import class_to_filename
 
 
 # Converts a unix format time: Epoch Jan 1 1970, seconds and microseconds
@@ -54,4 +55,7 @@ class UnixTimeConversion(Conversion):
     # @param (see Conversion#to_config)
     # @return [String] Config fragment for this conversion
     def to_config(self, read_or_write):
-        return f"    {read_or_write}_CONVERSION {self.__class__.__name__} {self.seconds_item_name} {self.microseconds_item_name}\n"
+        config = f"    {read_or_write}_CONVERSION {class_to_filename(self.__class__)} {self.seconds_item_name}"
+        if self.microseconds_item_name:
+            config += f" {self.microseconds_item_name}"
+        return config + "\n"

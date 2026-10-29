@@ -1776,6 +1776,55 @@ class TestPacketConfig(unittest.TestCase):
 
         os.unlink(tf.name)
 
+    def test_to_config_output_parses_back_to_the_same_classes(self):
+        """Test that keywords naming a class are written as a filename the parser can load"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            tf.write('TELEMETRY TGT1 PKT1 BIG_ENDIAN "Packet"\n')
+            tf.write("  SUBPACKETIZER openc3/subpacketizers/subpacketizer.py\n")
+            tf.write("  PROCESSOR WATER openc3/processors/watermark_processor.py ITEM1\n")
+            tf.write("  PROCESSOR STATS openc3/processors/statistics_processor.py ITEM1 10\n")
+            tf.write("  ITEM ITEM1 0 16 UINT\n")
+            tf.write("    READ_CONVERSION openc3/conversions/received_count_conversion.py\n")
+            tf.write("  ITEM ITEM2 16 16 UINT\n")
+            tf.write("    READ_CONVERSION openc3/conversions/unix_time_conversion.py ITEM1\n")
+            tf.write("  ITEM ITEM3 32 16 UINT\n")
+            tf.write("    READ_CONVERSION openc3/conversions/processor_conversion.py WATER HIGH_WATER UINT 16\n")
+            tf.write("    LIMITS DEFAULT 1 ENABLED 1 2 6 7\n")
+            tf.write("    LIMITS_RESPONSE openc3/packets/limits_response.py\n")
+            tf.write('TELEMETRY TGT1 PKT2 BIG_ENDIAN "Packet"\n')
+            tf.write("  ACCESSOR openc3/accessors/json_accessor.py\n")
+            tf.write("  ITEM ITEM1 0 0 UINT\n")
+            tf.write("    KEY $.item1\n")
+            tf.write('COMMAND TGT1 CMD1 BIG_ENDIAN "Command"\n')
+            tf.write("  VALIDATOR openc3/packets/command_validator.py\n")
+            tf.write('  PARAMETER PARAM1 0 32 STRING "1.2.3.4"\n')
+            tf.write("    WRITE_CONVERSION openc3/conversions/ip_write_conversion.py\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+            pc = PacketConfig()
+            pc.process_file(os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1_tlm.txt"), "TGT1")
+            pc.process_file(os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1_cmd.txt"), "TGT1")
+
+        def classes(packets):
+            pkt1 = packets.telemetry["TGT1"]["PKT1"]
+            cmd1 = packets.commands["TGT1"]["CMD1"]
+            return {
+                "subpacketizer": pkt1.subpacketizer.as_json(),
+                "processors": [processor.as_json() for processor in pkt1.processors.values()],
+                "conversions": [pkt1.get_item(name).read_conversion.as_json() for name in ["ITEM1", "ITEM2", "ITEM3"]],
+                "limits_response": pkt1.get_item("ITEM3").limits.response.as_json(),
+                "accessor": packets.telemetry["TGT1"]["PKT2"].accessor.__class__.__name__,
+                "validator": cmd1.validator.__class__.__name__,
+                "write_conversion": cmd1.get_item("PARAM1").write_conversion.as_json(),
+            }
+
+        self.assertEqual(classes(pc), classes(self.pc))
+
+        os.unlink(tf.name)
+
     def test_to_config_skips_unknown_target(self):
         """Test that to_config skips UNKNOWN target"""
         # PacketConfig always creates UNKNOWN target/packets by default
