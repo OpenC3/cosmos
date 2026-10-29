@@ -114,6 +114,10 @@ class DecomMicroservice(Microservice):
         self.limits_event_topic = f"{self.scope}__openc3_limits_events"
         self.topics.append(self.limits_event_topic)
         Topic.update_topic_offsets(self.topics, db_shard=self.db_shard)
+        # Last limits event read, used to detect events trimmed before they were read.
+        # Read from the stream rather than the thread's cached offsets. The run thread
+        # starts reading at or after this point, so it can only cause an extra resync.
+        self.limits_event_offset = Topic.get_last_offset(self.limits_event_topic, db_shard=self.db_shard)
         # Initialize before set_limits_change_callback - sync_system below can
         # fire the callback synchronously for any persisted-disabled items.
         self.limits_response_queue = queue.Queue()
@@ -141,6 +145,7 @@ class DecomMicroservice(Microservice):
             if self.cancel_thread:
                 break
             try:
+                limits_events_checked = False
                 for topic, msg_id, msg_hash, redis in Topic.read_topics(self.topics, db_shard=self.db_shard):
                     if self.cancel_thread:
                         break
@@ -148,8 +153,13 @@ class DecomMicroservice(Microservice):
                     if topic == self.microservice_topic:
                         self.microservice_cmd(topic, msg_id, msg_hash, redis)
                     elif topic == self.limits_event_topic:
+                        # Any gap is before the first event in a read so only check once per read
+                        if not limits_events_checked:
+                            self.resync_if_limits_events_trimmed()
+                            limits_events_checked = True
+                        self.limits_event_offset = msg_id
                         event = json.loads(msg_hash[b"event"])
-                        LimitsEventTopic.process_event(event)
+                        LimitsEventTopic.process_event(event, self.scope)
                     elif "__DECOMINTERFACE__" in topic:
                         if msg_hash.get(b"inject_tlm"):
                             handle_inject_tlm_with_ack(msg_hash[b"inject_tlm"], msg_id, self.scope, self.logger)
@@ -172,6 +182,15 @@ class DecomMicroservice(Microservice):
 
         self.limits_response_thread.stop()
         self.limits_response_thread = None
+
+    # Limits events are only read between batches of packets, so a decom microservice
+    # working through a backlog can fall far enough behind that a flood of LIMITS_CHANGE
+    # events trims control events (enable, settings, etc) before it reads them.
+    # Recover by reloading all limits state from the store, which is always current.
+    def resync_if_limits_events_trimmed(self):
+        if LimitsEventTopic.events_trimmed(self.limits_event_offset, self.scope, db_shard=self.db_shard):
+            self.logger.warn(f"{self.name}: Limits events were trimmed before they could be read, resyncing limits")
+            LimitsEventTopic.resync_system(self.scope)
 
     def decom_packet(self, topic, msg_id, msg_hash, _redis):
         # OpenC3.in_span("decom_packet") do

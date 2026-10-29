@@ -166,6 +166,55 @@ module OpenC3
         System.limits_set = :DEFAULT
       end
 
+      it "resyncs limits when limits events are trimmed before they are read" do
+        limits_change = lambda do |i|
+          { type: :LIMITS_CHANGE, target_name: "TGT1", packet_name: "PKT1", item_name: "ITEM#{i}",
+            old_limits_state: "GREEN", new_limits_state: "RED_HIGH", time_nsec: Time.now.to_nsec_from_epoch, message: "TEST" }
+        end
+        # Decom only detects gaps after it has read a limits event so give it one first
+        LimitsEventTopic.write(limits_change.call(0), scope: "DEFAULT")
+        50.times do
+          break if @dm.instance_variable_get(:@limits_event_offset) != '0-0'
+          sleep 0.01
+        end
+        expect(@dm.instance_variable_get(:@limits_event_offset)).not_to eql '0-0'
+
+        entered = Queue.new
+        released = false
+        allow(@dm).to receive(:decom_packet) do
+          entered << true
+          sleep 0.001 until released
+        end
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        packet.received_time = Time.now.sys
+        # Retry until the run thread has started reading and picks up the packet
+        busy = nil
+        50.times do
+          TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
+          busy = entered.pop(timeout: 0.1)
+          break if busy
+        end
+        expect(busy).to be true
+
+        # While decom is busy, disable the group and then flood the stream with
+        # enough LIMITS_CHANGE events to trim the group event before it is read
+        Store.hset("DEFAULT__limits_groups", "FIRST", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+        LimitsEventTopic.write({ type: :LIMITS_GROUP_ENABLE_STATE, group_name: "FIRST", enabled: false,
+            time_nsec: Time.now.to_nsec_from_epoch, message: "TEST" }, scope: "DEFAULT")
+        1500.times { |i| LimitsEventTopic.write(limits_change.call(i), scope: "DEFAULT") }
+        expect(LimitsEventTopic.read(0, scope: "DEFAULT").map { |_, event| event['type'] }).not_to include("LIMITS_GROUP_ENABLE_STATE")
+
+        capture_io do |stdout|
+          released = true
+          50.times do
+            break unless System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")
+            sleep 0.01
+          end
+          expect(stdout.string).to include("Limits events were trimmed before they could be read, resyncing limits")
+        end
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+      end
+
       it "handles exceptions in the thread" do
         expect(@dm).to receive(:microservice_cmd).and_raise("Bad command")
         capture_io do |stdout|

@@ -448,49 +448,43 @@ def get_limits_events(offset=None, count=100, scope=OPENC3_SCOPE):
 # Enables or disables a limits group
 def _limits_group(group_name, action, scope):
     authorize(permission="tlm_set", scope=scope)
-    group_name.upper()
-    group = get_limits_groups(scope=scope).get(group_name)
-    if group is None:
+    group_name = group_name.upper()
+    # Items grouped by target and packet so each packet is read and written once
+    items = LimitsEventTopic.limits_group_items(group_name, scope)
+    if items is None:
         raise RuntimeError(
             f"LIMITS_GROUP {group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP {group_name}"
         )
 
-    Logger.info(f"{action.capitalize()} Limits Group: {group_name}", scope=scope)
-    last_target_name = None
-    last_packet_name = None
-    packet = None
-    for target_name, packet_name, item_name in group:
-        if last_target_name != target_name or last_packet_name != packet_name:
-            if last_target_name and last_packet_name:
-                TargetModel.set_packet(last_target_name, last_packet_name, packet, scope=scope)
-            packet = TargetModel.packet(target_name, packet_name, scope=scope)
-        for item in packet["items"]:
-            if item["name"] == item_name:
-                if action == "enable":
-                    enabled = True
-                    item["limits"]["enabled"] = True
-                    message = f"Enabling Limits for '{target_name} {packet_name} {item_name}'"
-                elif action == "disable":
-                    enabled = False
-                    item["limits"].pop("enabled", None)
-                    message = f"Disabling Limits for '{target_name} {packet_name} {item_name}'"
-                Logger.info(message, scope=scope)
+    enabled = action == "enable"
+    message = f"{'Enabling' if enabled else 'Disabling'} Limits Group: {group_name}"
+    Logger.info(message, scope=scope)
 
-                event = {
-                    "type": "LIMITS_ENABLE_STATE",
-                    "target_name": target_name,
-                    "packet_name": packet_name,
-                    "item_name": item_name,
-                    "enabled": enabled,
-                    "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
-                    "message": message,
-                }
-                LimitsEventTopic.write(event, scope=scope)
-                break
-        last_target_name = target_name
-        last_packet_name = packet_name
-    if last_target_name and last_packet_name:
-        TargetModel.set_packet(last_target_name, last_packet_name, packet, scope=scope)
+    for target_name, packets in items.items():
+        for packet_name, item_names in packets.items():
+            packet = TargetModel.packet(target_name, packet_name, scope=scope)
+            item_names_set = set(item_names)
+            for item in packet["items"]:
+                if item["name"] in item_names_set:
+                    if enabled:
+                        item["limits"]["enabled"] = True
+                    else:
+                        item["limits"].pop("enabled", None)
+            TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
+
+    # Write a single event for the entire group. Writing one event per item
+    # floods the limits event stream, which is trimmed to ~1000 entries, so
+    # decom microservices could miss events and leave limits enabled.
+    # The event only names the group (readers look up the items) so it stays
+    # small no matter how many items the group contains.
+    event = {
+        "type": "LIMITS_GROUP_ENABLE_STATE",
+        "group_name": group_name,
+        "enabled": enabled,
+        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "message": message,
+    }
+    LimitsEventTopic.write(event, scope=scope)
 
 
 def _set_limits_enabled(target_name, packet_name, item_name, enabled, scope):

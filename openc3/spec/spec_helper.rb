@@ -149,6 +149,7 @@ def setup_system(targets = %w[SYSTEM INST EMPTY])
     require 'openc3/models/target_model'
     dir = File.join(__dir__, 'install', 'config', 'targets')
     OpenC3::System.class_variable_set(:@@instance, nil)
+    OpenC3::System.class_variable_set(:@@limits_set, nil)
     OpenC3::TargetModel.clear_packet_cache
     OpenC3::System.instance(targets, dir)
     result = stdout
