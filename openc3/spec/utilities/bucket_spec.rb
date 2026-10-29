@@ -30,5 +30,13 @@ module OpenC3
         expect(client).to be_a LocalBucket
       end
     end
+
+    describe "get_client" do
+      it "is an alias for getClient" do
+        ENV['OPENC3_CLOUD'] = 'AWS'
+        client = Bucket.get_client
+        expect(client).to be_a AwsBucket
+      end
+    end
   end
 end

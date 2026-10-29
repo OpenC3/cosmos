@@ -138,3 +138,13 @@ class TestSecrets(unittest.TestCase):
         for path in ["/etc/passwd", "/tmp/../etc/passwd"]:
             with self.assertRaisesRegex(ValueError, "must be under"):
                 secrets.setup([["FILE", "KEY", path]])
+
+    def test_get_client_returns_the_configured_backend(self):
+        with patch.dict(os.environ, {"OPENC3_SECRET_BACKEND": "redis"}):
+            self.assertEqual(Secrets.get_client().__class__.__name__, "RedisSecrets")
+
+    def test_get_client_camel_case_is_a_deprecated_alias(self):
+        with patch.object(Secrets, "get_client", return_value="client") as get_client:
+            with self.assertWarnsRegex(DeprecationWarning, r"use Secrets\.get_client\(\)"):
+                self.assertEqual(Secrets.getClient(), "client")
+            get_client.assert_called_once()
