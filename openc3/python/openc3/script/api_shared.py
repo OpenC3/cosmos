@@ -12,6 +12,7 @@
 import sys
 import time
 import traceback
+import warnings
 from contextlib import contextmanager
 
 import openc3.script
@@ -69,7 +70,6 @@ def check_formatted(*args, scope="DEFAULT"):
     return _check(*args, type="FORMATTED", scope=scope)
 
 
-# DEPRECATED
 def check_with_units(*args, scope="DEFAULT"):
     """Check the formatted with units value of a telmetry item against a condition
     Always print the value of the telemetry item to STDOUT
@@ -78,7 +78,11 @@ def check_with_units(*args, scope="DEFAULT"):
     check(target_name, packet_name, item_name, comparison_to_eval)
     or
     check('target_name packet_name item_name > 1')
+
+    .. deprecated:: 7.0.0
+       WITH_UNITS was removed, use check_formatted instead.
     """
+    warnings.warn("check_with_units is deprecated, use check_formatted", FutureWarning, stacklevel=2)
     return _check(*args, type="FORMATTED", scope=scope)
 
 
