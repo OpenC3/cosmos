@@ -343,7 +343,7 @@ def extract_operand(operand, resolve_name=None):
         value = resolve_name(operand) if resolve_name else None
         if value is not None:
             return value
-        raise NameError(f"Uninitialized constant {operand}. Did you mean '{operand}' as a string?")
+        raise NameError(f"Unknown state name {operand}. Did you mean '{operand}' as a string?")
     raise RuntimeError(f"ERROR: Unable to parse operand: {operand}")
 
 

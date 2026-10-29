@@ -288,7 +288,7 @@ class TestExtractOperatorAndOperandFromComparison:
             extract_operator_and_operand_from_comparison("== 1.2.3")
 
     def test_suggests_a_string_for_bare_word_operands(self):
-        with pytest.raises(NameError, match="Uninitialized constant foo. Did you mean 'foo' as a string"):
+        with pytest.raises(NameError, match="Unknown state name foo. Did you mean 'foo' as a string"):
             extract_operator_and_operand_from_comparison("== foo")
 
     def test_processes_escape_sequences_using_python_string_literal_rules(self):
@@ -435,11 +435,11 @@ class TestExtractComparison:
 
     def test_accepts_an_unquoted_state_name(self):
         assert extract_comparison("== on", "CONVERTED", self.item) == ("==", "ON")
-        with pytest.raises(NameError, match="Uninitialized constant other"):
+        with pytest.raises(NameError, match="Unknown state name other"):
             extract_comparison("== other", "CONVERTED", self.item)
         with pytest.raises(RuntimeError, match="The 'in' operator requires a list operand: 'ON'"):
             extract_comparison("in on", "CONVERTED", self.item)
-        with pytest.raises(NameError, match="Uninitialized constant on"):
+        with pytest.raises(NameError, match="Unknown state name on"):
             extract_comparison("== on", "CONVERTED", dict)
 
     def test_accepts_unquoted_state_names_in_a_collection(self):
@@ -449,7 +449,7 @@ class TestExtractComparison:
         )
         assert extract_comparison("in (on, [off])", "CONVERTED", self.item) == ("in", ("ON", ["OFF"]))
         assert extract_comparison("in {on}", "CONVERTED", self.item) == ("in", {"ON"})
-        with pytest.raises(NameError, match="Uninitialized constant other"):
+        with pytest.raises(NameError, match="Unknown state name other"):
             extract_comparison("in [on, other]", "CONVERTED", self.item)
         with pytest.raises(RuntimeError, match="Unable to parse operand: on.upper"):
             extract_comparison("in [on.upper()]", "CONVERTED", self.item)

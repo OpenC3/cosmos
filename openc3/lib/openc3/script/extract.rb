@@ -278,7 +278,7 @@ module OpenC3
         value = resolve_name&.call(operand)
         return value unless value.nil?
 
-        raise NameError, "Uninitialized constant #{operand}. Did you mean '#{operand}' as a string?"
+        raise NameError, "Unknown state name #{operand}. Did you mean '#{operand}' as a string?"
       end
       raise "ERROR: Unable to parse operand: #{operand}"
     end
