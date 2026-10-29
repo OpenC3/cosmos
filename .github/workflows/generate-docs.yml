@@ -59,6 +59,10 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
         working-directory: docs.openc3.com
 
+      - name: Generate docs from YAML
+        run: pnpm generate
+        working-directory: docs.openc3.com
+
       - name: Build docs
         run: pnpm build
         working-directory: docs.openc3.com
