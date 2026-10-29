@@ -79,8 +79,11 @@ module OpenC3
       ENV.delete('OPENC3_API_USER')
       ENV.delete('OPENC3_API_PASSWORD')
       ENV.delete('OPENC3_API_TOKEN')
-      ENV.delete('OPENC3_KEYCLOAK_REALM')
       ENV.delete('OPENC3_API_CLIENT')
+      ENV.delete('OPENC3_API_CLIENT_SECRET')
+      ENV.delete('OPENC3_API_TIMEOUT')
+      ENV.delete('OPENC3_API_READ_TIMEOUT')
+      ENV.delete('OPENC3_KEYCLOAK_REALM')
     end
 
     describe "initialize" do
@@ -157,7 +160,7 @@ module OpenC3
           allow(JsonDRb).to receive(:debug?).and_return(true)
         end
 
-        it "shows actual password in error messages when debug is enabled" do
+        it "redacts the password in debug logs" do
           stdout = StringIO.new('', 'r+')
           saved_stdout = $stdout
           $stdout = stdout
@@ -173,8 +176,8 @@ module OpenC3
             OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout_const) }
           end
 
-          # In debug mode, STDOUT should contain the actual password (works with both Ruby 3.2 and 3.3+ inspect formats)
-          expect(stdout.string).to match(/"password"\s*=>\s*"testpassword"/)
+          expect(stdout.string).to match(/"password"\s*=>\s*"\*\*\*"/)
+          expect(stdout.string).not_to include('testpassword')
         end
       end
 
@@ -199,7 +202,7 @@ module OpenC3
           end
         end
 
-        it "shows actual refresh_token when debug is enabled" do
+        it "redacts refresh_token when debug is enabled" do
           allow(JsonDRb).to receive(:debug?).and_return(true)
 
           stdout = StringIO.new('', 'r+')
@@ -217,8 +220,8 @@ module OpenC3
             OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout_const) }
           end
 
-          # In debug mode, STDOUT should contain the actual refresh token (works with both Ruby 3.2 and 3.3+ inspect formats)
-          expect(stdout.string).to match(/"refresh_token"\s*=>\s*"test_refresh_token"/)
+          expect(stdout.string).to match(/"refresh_token"\s*=>\s*"\*\*\*"/)
+          expect(stdout.string).not_to include('test_refresh_token')
         end
       end
     end
@@ -252,6 +255,128 @@ module OpenC3
       it "returns token without Bearer prefix when requested" do
         token = auth.token(include_bearer: false)
         expect(token).to eq("access_token_123")
+      end
+    end
+
+    describe "client_credentials authentication" do
+      let(:auth) { OpenC3KeycloakAuthentication.new(test_url) }
+      let(:mock_success_response) do
+        instance_double(Faraday::Response,
+          status: 200,
+          headers: {},
+          body: JSON.generate({
+            "access_token" => "m2m_access_token",
+            "expires_in" => 300,
+            "token_type" => "bearer"
+          })
+        )
+      end
+
+      before(:each) do
+        ENV['OPENC3_API_CLIENT_SECRET'] = 'm2m_secret'
+        ENV['OPENC3_API_CLIENT'] = 'cosmos-m2m'
+        allow(JsonDRb).to receive(:debug?).and_return(false)
+      end
+
+      it "uses the client_credentials grant with bounded timeouts" do
+        request_options = nil
+        request_body = nil
+        allow(mock_http).to receive(:post) do |uri, body, headers, &block|
+          request = Struct.new(:options).new(Faraday::RequestOptions.new)
+          block.call(request) if block
+          request_options = request.options
+          request_body = body
+          expect(headers['Content-Type']).to eq('application/x-www-form-urlencoded')
+          expect(uri.to_s).to eq('http://test-keycloak.local/realms/openc3/protocol/openid-connect/token')
+          mock_success_response
+        end
+
+        expect(auth.token).to eq('Bearer m2m_access_token')
+        expect(request_body).to include('grant_type=client_credentials')
+        expect(request_body).to include('client_id=cosmos-m2m')
+        expect(request_body).to include('client_secret=m2m_secret')
+        expect(request_options.open_timeout).to eq(1.0)
+        expect(request_options.timeout).to eq(1.0)
+        expect(auth.refresh_token).to be_nil
+      end
+
+      it "prefers client_credentials over password" do
+        request_body = nil
+        allow(mock_http).to receive(:post) do |_uri, body, _headers, &_block|
+          request_body = body
+          mock_success_response
+        end
+
+        auth.token
+        expect(request_body).to include('grant_type=client_credentials')
+        expect(request_body).not_to include('password=')
+      end
+
+      it "obfuscates the client secret in error messages" do
+        mock_response = instance_double(Faraday::Response,
+          status: 401,
+          headers: {},
+          body: '{"error":"invalid_client"}'
+        )
+        allow(mock_http).to receive(:post).and_return(mock_response)
+
+        expect {
+          auth.token
+        }.to raise_error(OpenC3AuthenticationError) do |error|
+          expect(error.message).to include('***')
+          expect(error.message).not_to include('m2m_secret')
+        end
+      end
+
+      it "redacts the client secret in debug logs" do
+        mock_response = instance_double(Faraday::Response,
+          status: 401,
+          headers: {},
+          body: '{"error":"invalid_client"}'
+        )
+        allow(mock_http).to receive(:post).and_return(mock_response)
+        allow(JsonDRb).to receive(:debug?).and_return(true)
+
+        stdout = StringIO.new('', 'r+')
+        saved_stdout = $stdout
+        $stdout = stdout
+        saved_stdout_const = Object.const_get(:STDOUT)
+        OpenC3.disable_warnings { Object.const_set(:STDOUT, stdout) }
+
+        begin
+          expect {
+            auth.token
+          }.to raise_error(OpenC3AuthenticationError)
+        ensure
+          $stdout = saved_stdout
+          OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout_const) }
+        end
+
+        expect(stdout.string).to match(/"client_secret"\s*=>\s*"\*\*\*"/)
+        expect(stdout.string).not_to include('m2m_secret')
+      end
+
+      it "treats an empty client secret as unset" do
+        ENV['OPENC3_API_CLIENT_SECRET'] = ''
+        request_body = nil
+        allow(mock_http).to receive(:post) do |_uri, body, _headers, &_block|
+          request_body = body
+          instance_double(Faraday::Response,
+            status: 200,
+            headers: {},
+            body: JSON.generate({
+              "access_token" => "access_token_123",
+              "expires_in" => 600,
+              "refresh_expires_in" => 1800,
+              "refresh_token" => "refresh_token_123",
+              "token_type" => "bearer"
+            })
+          )
+        end
+
+        expect(auth.token).to eq('Bearer access_token_123')
+        expect(request_body).to include('grant_type=password')
+        expect(request_body).not_to include('client_secret=')
       end
     end
 

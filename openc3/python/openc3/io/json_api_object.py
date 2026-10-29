@@ -18,6 +18,7 @@ from requests import Session
 from requests.exceptions import ReadTimeout
 
 from openc3.environment import (
+    OPENC3_API_CLIENT_SECRET,
     OPENC3_API_PASSWORD,
     OPENC3_API_READ_TIMEOUT,
     OPENC3_API_TOKEN,
@@ -95,7 +96,11 @@ class JsonApiObject:
     @staticmethod
     def generate_auth():
         """generate the auth object"""
-        if OPENC3_API_TOKEN is None and OPENC3_API_USER is None:
+        if (
+            OPENC3_API_TOKEN is None
+            and OPENC3_API_USER is None
+            and not OPENC3_API_CLIENT_SECRET
+        ):
             return OpenC3Authentication() if OPENC3_API_PASSWORD else None
         else:
             return OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
