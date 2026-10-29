@@ -14,6 +14,7 @@ import pytest
 from openc3.utilities.extract import (
     add_cmd_parameter,
     compare_values,
+    extract_comparison,
     extract_fields_from_check_text,
     extract_fields_from_cmd_text,
     extract_fields_from_set_tlm_text,
@@ -287,7 +288,7 @@ class TestExtractOperatorAndOperandFromComparison:
             extract_operator_and_operand_from_comparison("== 1.2.3")
 
     def test_suggests_a_string_for_bare_word_operands(self):
-        with pytest.raises(NameError, match="Uninitialized constant foo. Did you mean 'foo' as a string"):
+        with pytest.raises(NameError, match="Unknown state name foo. Did you mean 'foo' as a string"):
             extract_operator_and_operand_from_comparison("== foo")
 
     def test_processes_escape_sequences_using_python_string_literal_rules(self):
@@ -412,3 +413,63 @@ class TestCompareValues:
     def test_complains_about_invalid_operators(self):
         with pytest.raises(RuntimeError, match="ERROR: Invalid operator: '&'"):
             compare_values(1, "&", 1)
+
+
+class TestExtractComparison:
+    ITEM = {"states": {"ON": {"value": 1}, "OFF": {"value": 0}}}
+
+    def item(self):
+        return self.ITEM
+
+    def no_lookup(self):
+        raise AssertionError("item should not be looked up")
+
+    def test_matches_state_names_ignoring_case(self):
+        assert extract_comparison("== 'On'", "CONVERTED", self.item) == ("==", "ON")
+        assert extract_comparison("in ['on', 'Off', 'other', 1]", "FORMATTED", self.item) == (
+            "in",
+            ["ON", "OFF", "other", 1],
+        )
+        assert extract_comparison("in ('on', 1)", "CONVERTED", self.item) == ("in", ("ON", 1))
+        assert extract_comparison("== 'other'", "CONVERTED", self.item) == ("==", "other")
+
+    def test_accepts_an_unquoted_state_name(self):
+        assert extract_comparison("== on", "CONVERTED", self.item) == ("==", "ON")
+        with pytest.raises(NameError, match="Unknown state name other"):
+            extract_comparison("== other", "CONVERTED", self.item)
+        with pytest.raises(RuntimeError, match="The 'in' operator requires a list operand: 'ON'"):
+            extract_comparison("in on", "CONVERTED", self.item)
+        with pytest.raises(NameError, match="Unknown state name on"):
+            extract_comparison("== on", "CONVERTED", dict)
+
+    def test_accepts_unquoted_state_names_in_a_collection(self):
+        assert extract_comparison("in [on, Off, 'other', 1]", "CONVERTED", self.item) == (
+            "in",
+            ["ON", "OFF", "other", 1],
+        )
+        assert extract_comparison("in (on, [off])", "CONVERTED", self.item) == ("in", ("ON", ["OFF"]))
+        assert extract_comparison("in {on}", "CONVERTED", self.item) == ("in", {"ON"})
+        with pytest.raises(NameError, match="Unknown state name other"):
+            extract_comparison("in [on, other]", "CONVERTED", self.item)
+        with pytest.raises(RuntimeError, match="Unable to parse operand: on.upper"):
+            extract_comparison("in [on.upper()]", "CONVERTED", self.item)
+
+    def test_looks_up_the_item_once(self):
+        calls = []
+
+        def item():
+            calls.append(1)
+            return self.ITEM
+
+        assert extract_comparison("in [on, off, 'On']", "CONVERTED", item) == ("in", ["ON", "OFF", "ON"])
+        assert len(calls) == 1
+
+    def test_leaves_strings_alone_for_items_without_states(self):
+        assert extract_comparison("== 'On'", "CONVERTED", dict) == ("==", "On")
+
+    def test_only_looks_up_the_item_when_the_operand_could_be_a_state_name(self):
+        assert extract_comparison("== 1", "CONVERTED", self.no_lookup) == ("==", 1)
+        assert extract_comparison("in [1, 2]", "CONVERTED", self.no_lookup) == ("in", [1, 2])
+        assert extract_comparison("== 'On'", "RAW", self.no_lookup) == ("==", "On")
+        with pytest.raises(NameError):
+            extract_comparison("== on", "RAW", self.no_lookup)
