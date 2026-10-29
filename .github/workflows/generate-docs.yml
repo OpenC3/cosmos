@@ -55,8 +55,12 @@ jobs:
         with:
           version: 11
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+        working-directory: docs.openc3.com
+
       - name: Build docs
-        run: ./build.sh
+        run: pnpm build
         working-directory: docs.openc3.com
 
       # pnpm build writes the site to ../docs (repo root docs/, not tracked in git)

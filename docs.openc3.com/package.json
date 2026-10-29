@@ -6,7 +6,7 @@
     "docusaurus": "docusaurus",
     "generate": "cd scripts && ruby generate_docs_from_yaml.rb",
     "start": "pnpm generate && docusaurus start",
-    "build": "docusaurus build --out-dir=../docs",
+    "build": "pnpm generate && docusaurus build --out-dir=../docs",
     "build-plugin": "docusaurus build --config=./docusaurus-plugin.config.js --out-dir=./tools/staticdocs",
     "swizzle": "docusaurus swizzle",
     "deploy": "docusaurus deploy",
