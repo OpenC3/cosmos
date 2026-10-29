@@ -16,7 +16,6 @@ on:
   push:
     paths-ignore:
       - "docs.openc3.com/**"
-      - "docs/**"
     branches:
       - main
   pull_request:

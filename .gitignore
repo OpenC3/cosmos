@@ -62,3 +62,6 @@ playwright/tests/enterprise
 
 # RuboCop JSON report generated for SonarQube import
 rubocop-report.json
+
+# Docusaurus build output (docs.openc3.com builds here; deployed by generate-docs.yml)
+/docs/
