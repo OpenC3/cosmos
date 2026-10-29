@@ -457,7 +457,7 @@ def get_tlm_values(
                 # Each packet must be queried for the value type and limits it has or the query fails
                 candidates = []
                 for candidate in _tlm_packet_names(target_name, packet_name, item_name, scope):
-                    packets.append([target_name, candidate])
+                    packets.add((target_name, candidate))
                     candidate_item = TargetModel.packet_item(target_name, candidate, item_name, scope=scope)
                     candidate_limits = limits if limits and candidate_item.get("limits", {}).get("DEFAULT") else None
                     candidate_type = _tlm_available_value_type(candidate_item, item_name, value_type)
