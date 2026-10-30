@@ -1910,14 +1910,6 @@ export default {
     AceEditorUtils.applyVimModeIfEnabled(this.editor, { saveFn: this.saveFile })
     this.editor.focus()
 
-    // Ace binds Ctrl-P (jump to matching) and swallows the event on Windows
-    this.editor.commands.addCommand({
-      name: 'quickOpen',
-      bindKey: { win: 'Ctrl-P', mac: 'Command-P' },
-      exec: () => {
-        if (!this.inline) this.showQuickOpen = true
-      },
-    })
     this.editor.on('guttermousedown', this.toggleBreakpoint)
     // We listen to tokenizerUpdate rather than change because this
     // is the background process that updates as changes are processed
@@ -2432,9 +2424,9 @@ export default {
       if (
         !this.inline &&
         (event.metaKey || event.ctrlKey) &&
-        event.key?.toLowerCase() === 'p'
+        event.key?.toLowerCase() === 'o'
       ) {
-        event.preventDefault() // Don't print
+        event.preventDefault() // Don't open the browser's file picker
         this.showQuickOpen = true
         return
       }

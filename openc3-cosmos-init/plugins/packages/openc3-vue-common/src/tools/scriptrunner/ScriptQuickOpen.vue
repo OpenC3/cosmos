@@ -12,7 +12,7 @@
 -->
 
 <!--
-# Ctrl/Cmd-P quick open palette. Procedures are listed by name and target
+# Ctrl/Cmd-O quick open palette. Procedures are listed by name and target
 # rather than by file path so users don't need to know the folder layout.
 -->
 <template>

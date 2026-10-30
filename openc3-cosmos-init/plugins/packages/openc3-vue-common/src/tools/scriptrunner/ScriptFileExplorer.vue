@@ -128,13 +128,17 @@
         placeholder="Search files"
         prepend-inner-icon="mdi-magnify"
         data-test="explorer-search"
+        @keydown.down.prevent="focusRow(rows[0]?.path)"
       />
     </div>
+    <!-- v-list moves focus with Up/Down/Home/End, we add Left/Right -->
     <v-list
       v-if="mode === 'files'"
+      ref="tree"
       density="compact"
       class="flex-grow-1 py-0"
       color="primary"
+      @keydown="treeKeydown"
     >
       <v-virtual-scroll ref="scroller" :items="rows" :item-height="ROW_HEIGHT">
         <template #default="{ item }">
@@ -150,6 +154,7 @@
             rounded="0"
             class="py-0"
             :data-test="`explorer-row-${item.node.path}`"
+            :data-path="item.node.path"
             @click="rowClick(item.node)"
           >
             <template #prepend>
@@ -232,6 +237,7 @@ const emit = defineEmits(['select', 'hide', 'error'])
 
 const scroller = ref(null)
 const library = ref(null)
+const tree = ref(null)
 // 'files' shows the folder tree, 'library' lists procedures by name
 const mode = ref(localStorage[MODE_KEY] === 'library' ? 'library' : 'files')
 const {
@@ -339,6 +345,43 @@ function rowClick(node) {
     return
   }
   emit('select', node.path)
+}
+
+// Scroll a row into view (the virtual scroller may not have rendered it)
+// and give it keyboard focus
+async function focusRow(path) {
+  const index = rows.value.findIndex((row) => row.path === path)
+  if (index === -1) return
+  scroller.value?.scrollToIndex(index)
+  await nextTick()
+  await new Promise((resolve) => requestAnimationFrame(resolve))
+  tree.value?.$el
+    .querySelector(`[data-path="${CSS.escape(path)}"]`)
+    ?.focus({ preventScroll: true })
+}
+
+// VS Code style: Right opens a folder or moves into it, Left closes a
+// folder or moves to the parent folder
+function treeKeydown(event) {
+  if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return
+  const path = event.target.closest?.('[data-path]')?.dataset.path
+  const index = rows.value.findIndex((row) => row.path === path)
+  if (index === -1) return
+  event.preventDefault()
+  const { node, open } = rows.value[index]
+  if (event.key === 'ArrowRight') {
+    if (!node.children) return
+    if (!open) {
+      if (!matching.value) toggle(node)
+    } else if (rows.value[index + 1]?.depth > rows.value[index].depth) {
+      void focusRow(rows.value[index + 1].path)
+    }
+  } else if (node.children && open && !matching.value) {
+    toggle(node)
+  } else {
+    const parent = path.split('/').slice(0, -1).join('/')
+    if (parent) void focusRow(parent)
+  }
 }
 
 function collapseAll() {
