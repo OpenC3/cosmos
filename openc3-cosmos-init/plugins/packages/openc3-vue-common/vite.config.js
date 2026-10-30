@@ -45,6 +45,11 @@ export default defineConfig(({ mode }) => {
   return {
     build: {
       sourcemap: coverageBuild,
+      // Vite empties outDir on every watch rebuild. Tools watching dist/
+      // (pnpm serve in openc3-tool-base) can rebuild while vue-common.css is
+      // missing and keep serving a bundle without any vue-common styles, so
+      // overwrite in place when serving.
+      emptyOutDir: mode !== 'dev-server',
       cssCodeSplit: false,
       lib: {
         entry: {

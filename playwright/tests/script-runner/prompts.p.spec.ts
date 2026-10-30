@@ -393,7 +393,7 @@ async function openFile(page: Page, utils: Utilities, filename: string) {
     page.locator('.v-dialog').getByText('INST2', { exact: true }),
   ).toBeVisible()
   await page.locator('[data-test=file-open-save-search] input').fill(filename)
-  await page.locator(`text=${filename}`).click()
+  await page.locator(`.v-dialog >> text=${filename}`).click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
 
