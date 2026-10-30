@@ -123,7 +123,7 @@ jobs:
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
           cache: true
-          version: v0.76.0
+          version: v0.76.1
       - name: Fetch VEX Hub
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: ./.github/actions/fetch-vexhub
