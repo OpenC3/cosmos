@@ -1232,6 +1232,78 @@ RSpec.describe StorageController, type: :controller do
       end
     end
 
+    describe "volume parameters" do
+      around(:each) do |example|
+        ENV["OPENC3_SECRET_PASSWORD"] = "s3cr3t"
+        ENV["OPENC3_SECRET_VOLUME_PASSWORD"] = "s3cr3t"
+        ENV["OPENC3_DIR"] = "/src"
+        example.run
+      ensure
+        ["OPENC3_SECRET_PASSWORD", "OPENC3_SECRET_VOLUME_PASSWORD", "OPENC3_DIR"].each { |name| ENV.delete(name) }
+      end
+
+      ["OPENC3_SECRET_PASSWORD", "OPENC3_SECRET_VOLUME_PASSWORD"].each do |name|
+        it "does not disclose #{name} through a volume delete" do
+          expect(FileUtils).not_to receive(:rm)
+
+          delete :delete, params: {volume: name, object_id: "nonexistent", scope: "DEFAULT"}
+          expect(response).to have_http_status(:internal_server_error)
+          expect(response.body).not_to include("s3cr3t")
+          expect(JSON.parse(response.body)["message"]).to eq("Unknown volume #{name}")
+        end
+
+        it "does not disclose #{name} through a volume directory delete" do
+          expect(FileUtils).not_to receive(:rm_rf)
+
+          delete :delete_directory, params: {volume: name, object_id: "nonexistent", scope: "DEFAULT"}
+          expect(response).to have_http_status(:internal_server_error)
+          expect(response.body).not_to include("s3cr3t")
+          expect(JSON.parse(response.body)["message"]).to eq("Unknown volume #{name}")
+        end
+
+        it "does not list #{name} as a root" do
+          expect(Dir).not_to receive(:[])
+
+          get :files, params: {root: name, path: "", scope: "DEFAULT"}
+          expect(response).to have_http_status(:internal_server_error)
+          expect(response.body).not_to include("s3cr3t")
+          expect(JSON.parse(response.body)["message"]).to eq("Unknown bucket / volume #{name}")
+        end
+      end
+
+      # Bucket Explorer displays this message for bad direct URLs (playwright bucket-explorer.p.spec.ts)
+      ["OPENC3_BLAH_BUCKET", "OPENC3_BAD_VOLUME"].each do |name|
+        it "reports an unset #{name} root as an unknown bucket / volume" do
+          get :files, params: {root: name, path: "", scope: "DEFAULT"}
+          expect(response).to have_http_status(:internal_server_error)
+          expect(JSON.parse(response.body)["message"]).to eq("Unknown bucket / volume #{name}")
+        end
+      end
+
+      it "does not read files under a variable that is not an OPENC3_*_VOLUME variable" do
+        expect(File).not_to receive(:read)
+
+        get :download_file, params: {volume: "OPENC3_DIR", object_id: "config/database.yml", scope: "DEFAULT"}
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)["message"]).to eq("Unknown volume OPENC3_DIR")
+      end
+
+      it "does not issue a download token under a variable that is not an OPENC3_*_VOLUME variable" do
+        get :get_volume_download_token, params: {volume: "OPENC3_DIR", object_id: "config/database.yml", scope: "DEFAULT"}
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)).not_to have_key("url")
+        expect(JSON.parse(response.body)["message"]).to eq("Unknown volume OPENC3_DIR")
+      end
+
+      it "does not zip files under a variable that is not an OPENC3_*_VOLUME variable" do
+        expect(File).not_to receive(:exist?).with(%r{\A/src})
+
+        post :download_multiple_files, params: {volume: "OPENC3_DIR", path: "config/", files: ["database.yml"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:internal_server_error)
+        expect(JSON.parse(response.body)["message"]).to eq("Unknown volume OPENC3_DIR")
+      end
+    end
+
     describe "extract_scope_from_path" do
       it "returns nil for empty path" do
         expect(controller.send(:extract_scope_from_path, '')).to be_nil

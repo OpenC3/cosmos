@@ -50,6 +50,7 @@ class StorageController < ApplicationController
   # rejected before ENV is read so the parameter can't read back other variables
   # such as passwords (the bucket name is echoed in presigned URLs and errors).
   BUCKET_PARAM_REGEX = /\AOPENC3_.+_BUCKET\z/
+  VOLUME_PARAM_REGEX = /\AOPENC3_.+_VOLUME\z/
 
   # Check if a bucket requires RBAC (config and logs do, tools and user-defined buckets do not)
   def bucket_requires_rbac?(bucket_param)
@@ -193,6 +194,9 @@ class StorageController < ApplicationController
 
   def files
     return unless authorization('system')
+    unless bucket_param?(params[:root]) || volume_param?(params[:root])
+      raise StorageError, "Unknown bucket / volume #{params[:root]}"
+    end
     root = ENV.fetch(params[:root]) { |name| raise StorageError, "Unknown bucket / volume #{name}" }
     results = []
     if bucket_param?(params[:root])
@@ -245,7 +249,7 @@ class StorageController < ApplicationController
           end
         end
       end
-    elsif params[:root].include?('_VOLUME')
+    else
       dirs = []
       files = []
       path = sanitize_path(params[:path])
@@ -260,8 +264,6 @@ class StorageController < ApplicationController
       end
       results << dirs
       results << files
-    else
-      raise StorageError, "Unknown root #{params[:root]}"
     end
     render json: results
   rescue OpenC3::Bucket::NotFound => e
@@ -378,7 +380,7 @@ class StorageController < ApplicationController
   def get_volume_download_token
     return unless authorization('system')
     params.require(:volume)
-    volume_name = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
+    volume_name = resolve_volume(params[:volume])
     object_id = sanitize_path(params[:object_id])
     if object_id.empty? || object_id == 'null'
       render json: { status: 'error', message: "Invalid object_id: #{params[:object_id]}" }, status: :not_found
@@ -738,6 +740,18 @@ class StorageController < ApplicationController
     ENV.fetch(bucket_param) { |name| raise StorageError, "Unknown bucket #{name}" }
   end
 
+  def volume_param?(volume_param)
+    volume_param.is_a?(String) && VOLUME_PARAM_REGEX.match?(volume_param)
+  end
+
+  # Resolve a volume parameter (the name of an OPENC3_*_VOLUME variable) to the volume path.
+  # Without the allow-list any environment variable could be named, disclosing its value
+  # in error messages or exposing files under any directory it points at.
+  def resolve_volume(volume_param)
+    raise StorageError, "Unknown volume #{volume_param}" unless volume_param?(volume_param)
+    ENV.fetch(volume_param) { |name| raise StorageError, "Unknown volume #{name}" }
+  end
+
   # Buckets are classified by the bucket they resolve to rather than the parameter
   # name, so another OPENC3_*_BUCKET variable pointing at a standard bucket gets
   # that bucket's access controls.
@@ -850,7 +864,7 @@ class StorageController < ApplicationController
   def delete_volume_item(params)
     # Deleting requires admin
     if authorization('admin')
-      volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
+      volume = resolve_volume(params[:volume])
       filename = "/#{volume}/#{params[:object_id]}"
       filename = sanitize_path(filename)
       FileUtils.rm filename
@@ -928,7 +942,7 @@ class StorageController < ApplicationController
   def delete_volume_directory(params)
     return false unless authorization('admin')
 
-    volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
+    volume = resolve_volume(params[:volume])
 
     path = sanitize_path(params[:object_id])
     full_path = "/#{volume}/#{path}"
@@ -966,7 +980,7 @@ class StorageController < ApplicationController
 
   def validate_storage_source
     if params[:volume]
-      volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
+      volume = resolve_volume(params[:volume])
       [:volume, volume]
     elsif params[:bucket]
       bucket = resolve_bucket(params[:bucket])
