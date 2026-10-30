@@ -196,7 +196,9 @@ module OpenC3
         reader.each(local_file, false) do |packet|
           next unless packet.target_name && packet.packet_name
           cmd_or_tlm = packet.cmd_or_tlm == :CMD ? 'CMD' : 'TLM'
-          table_names.add("#{@scope}__#{cmd_or_tlm}__#{packet.target_name}__#{packet.packet_name}")
+          # Use the same sanitization as the TSDB writer so names match the
+          # real tables and can't break out of the quoted ALTER TABLE literal
+          table_names.add(QuestDBClient.sanitize_table_name(packet.target_name, packet.packet_name, cmd_or_tlm, scope: @scope))
         end
         ids = reader.instance_variable_get(:@target_ids) || []
         file_versions[local_file] = ids.first ? ids.first.unpack1('H*') : nil
@@ -320,7 +322,7 @@ module OpenC3
           if already
             preexisting << table_name
           else
-            conn.exec("ALTER TABLE '#{table_name}' DEDUP ENABLE UPSERT KEYS(PACKET_TIMESECONDS)")
+            conn.exec("ALTER TABLE #{quote_table_name(table_name)} DEDUP ENABLE UPSERT KEYS(PACKET_TIMESECONDS)")
             enabled_by_us << table_name
           end
         rescue => e
@@ -329,6 +331,13 @@ module OpenC3
         mark(job, progress_current: i + 1)
       end
       [enabled_by_us, preexisting]
+    end
+
+    # DDL can't take bind parameters so the table name is interpolated.
+    # sanitize_table_name already strips quotes; refuse anything that slipped through.
+    def quote_table_name(table_name)
+      raise ArgumentError, "Invalid table name: #{table_name}" if table_name.match?(/['"\\]/)
+      "'#{table_name}'"
     end
 
     # QuestDB exposes per-table dedup status via tables() function.
@@ -364,7 +373,7 @@ module OpenC3
       conn = QuestDBClient.connection(db_shard: db_shard)
       tables.each_with_index do |table_name, i|
         begin
-          conn.exec("ALTER TABLE '#{table_name}' DEDUP DISABLE")
+          conn.exec("ALTER TABLE #{quote_table_name(table_name)} DEDUP DISABLE")
           disabled << table_name
         rescue => e
           @logger.warn("Failed to disable DEDUP on #{table_name}: #{e.message}")
