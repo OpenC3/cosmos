@@ -63,6 +63,36 @@ module OpenC3
       end
     end
 
+    describe "script_edit_overlay_key?" do
+      it "flags targets_modified target files Script Runner can execute" do
+        # procedures and lib are run / required directly
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/procedures/x.rb")).to be true
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/lib/helper.rb")).to be true
+        # Script.body / bucket_load will load any overlay path, so other dirs count too
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/screens/x.rb")).to be true
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/tables/bin/t.bin")).to be true
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/__TEMP__/x_temp.rb")).to be true
+      end
+
+      it "does not flag code areas (admin) or tmp scratch (system_set)" do
+        # cmd_tlm / tables/config require admin, handled separately
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt")).to be false
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/tables/config/t.txt")).to be false
+        # tmp is not a loadable target path
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/tmp/foo.txt")).to be false
+        # non-overlay areas
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets/INST/procedures/x.rb")).to be false
+      end
+
+      it "fails closed (false) on non-canonical keys" do
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST//procedures/x.rb")).to be false
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/../procedures/x.rb")).to be false
+        expect(ConfigOverlay.script_edit_overlay_key?("/DEFAULT/targets_modified/INST/procedures/x.rb")).to be false
+        expect(ConfigOverlay.script_edit_overlay_key?("")).to be false
+        expect(ConfigOverlay.script_edit_overlay_key?(nil)).to be false
+      end
+    end
+
     describe "non_admin_writable_key?" do
       it "allows non-cmd_tlm targets_modified and tmp keys" do
         expect(ConfigOverlay.non_admin_writable_key?("DEFAULT/targets_modified/INST/screens/poc.txt")).to be true
