@@ -768,18 +768,29 @@ class StorageController < ApplicationController
     non_admin_config_overlay_write?(bucket_param, path)
   end
 
-  # True if the given config-bucket key is an overlay path a non-admin is allowed
-  # to write. Non-admins may write config/SCOPE/targets_modified/... and
-  # config/SCOPE/tmp/..., but NOT the code areas
-  # (config/SCOPE/targets_modified/TARGET/cmd_tlm/... and .../tables/config/...),
-  # whose GENERIC_*_CONVERSION blocks are evaluated as code.
+  # True if the caller holds the permission tier required to write the given
+  # config-bucket key, short of admin (admin is checked by the caller as a
+  # fallback). The tiers are:
+  #   - config/SCOPE/targets_modified/TARGET/cmd_tlm/... and .../tables/config/...
+  #     are evaluated as code by the decom / table microservices -> admin
+  #     (returns false here so the caller's admin fallback applies).
+  #   - config/SCOPE/targets_modified/TARGET/... (procedures, lib, screens,
+  #     __TEMP__, ...) are executed by Script Runner (run directly, required, or
+  #     loaded via Script.body / bucket_load) -> script_edit. system_set alone is
+  #     not enough, otherwise a runner (system_set + script_run, no script_edit)
+  #     could upload code and then run it (GHSA-jjq7-m736-w977 follow-up).
+  #   - config/SCOPE/tmp/... scratch is not a loadable target path -> system_set.
   #
   # The canonical-key and code-area rules live in OpenC3::ConfigOverlay so every
   # writer that can reach the overlay (this presigned upload, tables_controller,
   # scripts_controller) enforces exactly the same thing.
   def non_admin_config_overlay_write?(bucket_param, path)
     return false unless config_bucket?(bucket_param)
-    OpenC3::ConfigOverlay.non_admin_writable_key?(path)
+    return false unless OpenC3::ConfigOverlay.non_admin_writable_key?(path)
+    if OpenC3::ConfigOverlay.script_edit_overlay_key?(path)
+      return !!authorization('script_edit', perform_render: false)
+    end
+    true
   end
 
   # True if the config-bucket key belongs to a target in OPENC3_LOCAL_ONLY_TARGETS.

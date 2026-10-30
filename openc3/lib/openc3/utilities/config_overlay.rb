@@ -70,6 +70,28 @@ module OpenC3
       parts.length > 3 and parts[1, 2] == ['tables', 'config']
     end
 
+    # True if the given config bucket key is a targets_modified/<TARGET> overlay
+    # file whose write requires script_edit rather than only system_set. Script
+    # Runner executes these files: procedures and lib are run / required
+    # directly, and Script.body / bucket_load will load any overlay path, so
+    # every targets_modified target file outside the admin-only code areas
+    # (cmd_tlm, tables/config) counts. tmp/ scratch and non-overlay keys return
+    # false. Fails closed (false) on non-canonical keys.
+    #
+    # Callers must still require admin for code areas (code_overlay? /
+    # non_admin_writable_key? already fail those), so the tiers are:
+    #   code area        -> admin
+    #   script_edit area -> script_edit  (this predicate)
+    #   tmp / user bucket -> system_set
+    def self.script_edit_overlay_key?(key)
+      parts = canonical_parts(key)
+      return false if parts.nil?
+      # parts: <SCOPE> / <area> / <TARGET> / <subdir> / ...
+      return false unless parts[1] == 'targets_modified'
+      return false if code_area?(parts[2..])
+      true
+    end
+
     # True if the given config bucket key is an overlay path a non-admin may
     # write. Key is the full bucket key, e.g.
     # "<SCOPE>/targets_modified/<TARGET>/screens/x.txt". Fails closed (false) on

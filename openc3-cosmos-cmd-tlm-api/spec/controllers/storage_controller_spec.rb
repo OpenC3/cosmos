@@ -58,6 +58,19 @@ RSpec.describe StorageController, type: :controller do
     end
   end
 
+  # Simulate an Enterprise 'runner' role: system_set and script_run, but no
+  # script_edit and no admin. This is the role that exposed the overlay write
+  # escalation: it can reach the system_set upload endpoint but must not be able
+  # to write files that Script Runner executes.
+  def stub_authorize_runner
+    allow(controller).to receive(:authorize) do |args|
+      if ["admin", "script_edit"].include?(args[:permission])
+        raise OpenC3::AuthError.new("#{args[:permission]} required")
+      end
+      "authorized_user"
+    end
+  end
+
   # Grant scope level system access plus tlm access to the INST target only
   def stub_authorize_inst_target_only
     allow(controller).to receive(:authorize) do |args|
@@ -498,6 +511,60 @@ RSpec.describe StorageController, type: :controller do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    # A runner has system_set (so it reaches this endpoint) and script_run (so it
+    # can execute scripts), but not script_edit. Any targets_modified/<TARGET>
+    # file is executed by Script Runner (procedures/lib directly, and
+    # Script.body/bucket_load will load any overlay path), so writing one must
+    # require script_edit, not merely system_set. Otherwise a runner can upload
+    # code and then run it, defeating the script-edit restriction and script
+    # approval (GHSA-jjq7-m736-w977 follow-up).
+    context "with a runner (system_set + script_run, no script_edit, no admin)" do
+      before(:each) do
+        stub_authorize_runner
+        bucket_client = stub_bucket_client
+        allow(bucket_client).to receive(:presigned_request).and_return({url: "https://bucket/x"})
+      end
+
+      def presign_upload(bucket, key)
+        get :get_upload_presigned_request, params: {bucket: bucket, object_id: key, scope: "DEFAULT"}
+      end
+
+      it "rejects a procedures overlay upload (executed by Script Runner)" do
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/procedures/evil.rb")
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "rejects a lib overlay upload (loaded by require/bucket_load)" do
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/lib/evil.rb")
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "rejects a screens overlay upload (runnable via Script.body)" do
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/screens/evil.rb")
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "rejects a __TEMP__ overlay upload (runnable unsaved buffer)" do
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/__TEMP__/x_temp.rb")
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "rejects a cmd_tlm overlay upload (requires admin)" do
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt")
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "still allows a tmp scratch upload (not a loadable target path)" do
+        presign_upload("OPENC3_CONFIG_BUCKET", "DEFAULT/tmp/foo.txt")
+        expect(response).to have_http_status(:created)
+      end
+
+      it "still allows an upload to a user-defined bucket" do
+        presign_upload("OPENC3_CUSTOM_BUCKET", "DEFAULT/data/file.txt")
+        expect(response).to have_http_status(:created)
+      end
+    end
   end
 
   describe "PUT upload_file" do
@@ -605,6 +672,31 @@ RSpec.describe StorageController, type: :controller do
         stub_authorize(admin: false, default_scope_only: true)
         expect(@bucket_client).to receive(:put_object).with(bucket: "custom-bucket", key: "OTHER/data/file.bin", body: "")
         upload("OTHER/data/file.bin", "", bucket: "OPENC3_CUSTOM_BUCKET")
+        expect(response).to have_http_status(:ok)
+      end
+    end
+
+    context "with a runner (system_set + script_run, no script_edit, no admin)" do
+      before(:each) do
+        stub_authorize_runner
+        allow(@bucket_client).to receive(:put_object)
+      end
+
+      it "rejects a procedures overlay upload (executed by Script Runner)" do
+        expect(@bucket_client).to_not receive(:put_object)
+        upload("DEFAULT/targets_modified/INST/procedures/evil.rb")
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "rejects a lib overlay upload (loaded by require/bucket_load)" do
+        expect(@bucket_client).to_not receive(:put_object)
+        upload("DEFAULT/targets_modified/INST/lib/evil.rb")
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "still allows a tmp scratch upload" do
+        expect(@bucket_client).to receive(:put_object)
+        upload("DEFAULT/tmp/foo.txt")
         expect(response).to have_http_status(:ok)
       end
     end
@@ -856,6 +948,16 @@ RSpec.describe StorageController, type: :controller do
 
       delete :delete, params: {bucket: "OPENC3_CUSTOM_BUCKET", object_id: "DEFAULT/targets_modified/INST/file.txt", scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
+    end
+
+    it "rejects a runner deleting a procedures overlay item (requires script_edit)" do
+      ENV["OPENC3_LOCAL_MODE"] = nil
+      stub_authorize_runner
+      bucket_client = stub_bucket_client
+      expect(bucket_client).to_not receive(:delete_object)
+
+      delete :delete, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/procedures/evil.rb", scope: "DEFAULT"}
+      expect(response).to have_http_status(:unauthorized)
     end
 
     it "rejects a tools bucket delete without admin authorization" do
@@ -1180,6 +1282,7 @@ RSpec.describe StorageController, type: :controller do
       end
 
       it "classifies buckets by the bucket they resolve to" do
+        stub_authorize(admin: false) # grants script_edit so the overlay script area is writable
         expect(controller.send(:bucket_requires_rbac?, "OPENC3_ALIAS_CONFIG_BUCKET")).to be true
         expect(controller.send(:bucket_requires_rbac?, "OPENC3_ALIAS_LOGS_BUCKET")).to be true
         expect(controller.send(:bucket_requires_rbac?, "OPENC3_ALIAS_TOOLS_BUCKET")).to be false
@@ -1285,17 +1388,32 @@ RSpec.describe StorageController, type: :controller do
         expect(controller.send(m, "OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt")).to be false
       end
     
-      it "allows the config overlay" do
+      it "allows the config overlay script area with script_edit" do
+        stub_authorize(admin: false) # grants script_edit, not admin
         expect(controller.send(m, "OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/screens/poc.txt")).to be true
       end
+
+      it "requires script_edit for the config overlay script area" do
+        stub_authorize_runner # system_set + script_run, no script_edit
+        expect(controller.send(m, "OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/screens/poc.txt")).to be false
+        expect(controller.send(m, "OPENC3_CONFIG_BUCKET", "DEFAULT/targets_modified/INST/procedures/x.rb")).to be false
+      end
     end
-    
+
     describe "non_admin_config_overlay_write?" do
       let(:m) { :non_admin_config_overlay_write? }
 
-      it "allows non-cmd_tlm targets_modified and tmp overlay writes" do
+      it "allows non-cmd_tlm targets_modified writes with script_edit, and tmp with system_set" do
+        stub_authorize(admin: false) # grants script_edit, not admin
         expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/screens/poc.txt')).to be true
         expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/procedures/x.rb')).to be true
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/tmp/foo.txt')).to be true
+      end
+
+      it "requires script_edit for targets_modified script files but not tmp scratch" do
+        stub_authorize_runner # system_set + script_run, no script_edit
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/screens/poc.txt')).to be false
+        expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/targets_modified/INST/procedures/x.rb')).to be false
         expect(controller.send(m, 'OPENC3_CONFIG_BUCKET', 'DEFAULT/tmp/foo.txt')).to be true
       end
 
