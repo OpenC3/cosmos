@@ -365,6 +365,13 @@ class InterfaceCmdHandlerThread:
                 return str(e)
 
             command.extra = command.extra or {}
+            if msg_hash.get(b"extra"):
+                # Caller metadata lives under its own key so it can't collide with keys
+                # COSMOS sets (cmd_string, username, approver, ...) or that the packet's
+                # accessor sets during build_cmd (e.g. HttpAccessor's HTTP_PATH,
+                # HTTP_METHOD, HTTP_HEADERS, HTTP_QUERIES which HttpClientInterface
+                # uses to build the outgoing request)
+                command.extra["metadata"] = json.loads(msg_hash[b"extra"], cls=JsonDecoder)
             command.extra["cmd_string"] = msg_hash.get(b"cmd_string", b"").decode()
             command.extra["username"] = msg_hash.get(b"username", b"").decode()
             command.extra["interface_name"] = self.interface.name

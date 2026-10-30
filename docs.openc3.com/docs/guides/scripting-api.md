@@ -846,6 +846,14 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | validate       | Optional named parameter to enable/disable validation (default is True)                              |
+| extra          | Optional metadata Hash/dict carried with the command packet to the interface                         |
+
+The interface receives `extra` as `packet.extra['metadata']`. It is kept under its own key so it
+can't change the values COSMOS adds to `packet.extra`, such as `cmd_string`, `username` and
+`approver`, or the `HTTP_*` values an accessor sets from the command definition.
+
+`extra` is written to the command log, the command topics and the queue exactly as given.
+It is not obfuscated, so don't put secrets in it.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -854,6 +862,7 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", { "DURATION": 10, "TYPE": "NORMAL" })
 cmd("INST ABORT", timeout=10, log_message=False, validate=False)
+cmd("INST ABORT", extra={ "request_id": "1234-5678" })
 ```
 
 </TabItem>
@@ -866,6 +875,7 @@ cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", "DURATION" => 10, "TYPE" => "NORMAL")
 cmd("INST", "COLLECT", { "DURATION" => 10, "TYPE" => "NORMAL" })
 cmd("INST ABORT", timeout: 10, log_message: false, validate: false)
+cmd("INST ABORT", extra: { "request_id" => "1234-5678" })
 ```
 
 </TabItem>

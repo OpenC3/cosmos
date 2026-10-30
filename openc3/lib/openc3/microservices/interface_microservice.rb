@@ -305,6 +305,14 @@ module OpenC3
             end
 
             command.extra ||= {}
+            if msg_hash['extra']
+              # Caller metadata lives under its own key so it can't collide with keys
+              # COSMOS sets (cmd_string, username, approver, ...) or that the packet's
+              # accessor sets during build_cmd (e.g. HttpAccessor's HTTP_PATH,
+              # HTTP_METHOD, HTTP_HEADERS, HTTP_QUERIES which HttpClientInterface
+              # uses to build the outgoing request)
+              command.extra['metadata'] = JSON.parse(msg_hash['extra'], allow_nan: true, create_additions: true)
+            end
             command.extra['cmd_string'] = msg_hash['cmd_string']
             command.extra['username'] = msg_hash['username']
             command.extra['interface_name'] = @interface.name

@@ -247,6 +247,25 @@ class TestCmdApi(unittest.TestCase):
             # username is the executing user/process, not the author
             self.assertNotEqual(command["username"], "original_author")
 
+    def test_cmd_carries_extra_metadata(self):
+        extra = {"flow_uuid": "1234-5678", "hv_id": 42}
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            command = globals()[name]("INST", "ABORT", extra=extra)
+            self.assertEqual(command["extra"], extra)
+
+    def test_cmd_rejects_invalid_extra_metadata(self):
+        with self.assertRaisesRegex(RuntimeError, "Invalid extra parameter: invalid. Must be a dict"):
+            cmd("INST", "ABORT", extra="invalid")
+
     def test_cmd_warns_about_required_parameters(self):
         for name in [
             "cmd",
