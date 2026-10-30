@@ -1267,6 +1267,16 @@ RSpec.describe StorageController, type: :controller do
           get :files, params: {root: name, path: "", scope: "DEFAULT"}
           expect(response).to have_http_status(:internal_server_error)
           expect(response.body).not_to include("s3cr3t")
+          expect(JSON.parse(response.body)["message"]).to eq("Unknown bucket / volume #{name}")
+        end
+      end
+
+      # Bucket Explorer displays this message for bad direct URLs (playwright bucket-explorer.p.spec.ts)
+      ["OPENC3_BLAH_BUCKET", "OPENC3_BAD_VOLUME"].each do |name|
+        it "reports an unset #{name} root as an unknown bucket / volume" do
+          get :files, params: {root: name, path: "", scope: "DEFAULT"}
+          expect(response).to have_http_status(:internal_server_error)
+          expect(JSON.parse(response.body)["message"]).to eq("Unknown bucket / volume #{name}")
         end
       end
 

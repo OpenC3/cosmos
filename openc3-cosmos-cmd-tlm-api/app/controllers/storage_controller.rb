@@ -194,9 +194,12 @@ class StorageController < ApplicationController
 
   def files
     return unless authorization('system')
+    unless bucket_param?(params[:root]) || volume_param?(params[:root])
+      raise StorageError, "Unknown bucket / volume #{params[:root]}"
+    end
+    root = ENV.fetch(params[:root]) { |name| raise StorageError, "Unknown bucket / volume #{name}" }
     results = []
     if bucket_param?(params[:root])
-      root = resolve_bucket(params[:root])
       bucket = OpenC3::Bucket.getClient()
       path = sanitize_path(params[:path])
       path = '/' if path.empty?
@@ -246,8 +249,7 @@ class StorageController < ApplicationController
           end
         end
       end
-    elsif volume_param?(params[:root])
-      root = resolve_volume(params[:root])
+    else
       dirs = []
       files = []
       path = sanitize_path(params[:path])
@@ -262,8 +264,6 @@ class StorageController < ApplicationController
       end
       results << dirs
       results << files
-    else
-      raise StorageError, "Unknown root #{params[:root]}"
     end
     render json: results
   rescue OpenC3::Bucket::NotFound => e
