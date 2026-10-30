@@ -779,13 +779,19 @@ class TestInterfaceMicroservice(unittest.TestCase):
         # queue_username must be copied into the command extra so Command History
         # can show "Queued By" for queued commands
         command = mock_write.call_args[0][0]
-        self.assertEqual(command.extra["flow_uuid"], "1234-5678")
         self.assertEqual(command.extra["username"], "test_user")
         self.assertEqual(command.extra.get("queue_username"), "DEFAULT__MULTI__INST")
+        # Caller metadata is kept under its own key, so caller values can't
+        # replace the COSMOS audit fields
+        self.assertNotIn("flow_uuid", command.extra)
         self.assertNotIn("approver", command.extra)
         self.assertNotIn("cmd_success", command.extra)
         self.assertNotIn("cmd_reason", command.extra)
-        self.assertEqual(command.extra["data"], b"\xff")
+        metadata = command.extra["metadata"]
+        self.assertEqual(metadata["flow_uuid"], "1234-5678")
+        self.assertEqual(metadata["username"], "untrusted")
+        self.assertEqual(metadata["approver"], "untrusted")
+        self.assertEqual(metadata["data"], b"\xff")
 
         # Minimal msg_hash — only required fields; optional fields use .get() defaults
         minimal_msg_hash = {
@@ -843,16 +849,16 @@ class TestInterfaceMicroservice(unittest.TestCase):
         self.assertEqual(result, "SUCCESS")
 
         command = mock_write.call_args[0][0]
-        self.assertTrue(math.isnan(command.extra["nan"]))
-        self.assertEqual(command.extra["inf"], float("inf"))
-        self.assertEqual(command.extra["ninf"], float("-inf"))
-        self.assertEqual(command.extra["normal"], 1.5)
+        self.assertTrue(math.isnan(command.extra["metadata"]["nan"]))
+        self.assertEqual(command.extra["metadata"]["inf"], float("inf"))
+        self.assertEqual(command.extra["metadata"]["ninf"], float("-inf"))
+        self.assertEqual(command.extra["metadata"]["normal"], 1.5)
 
-    def test_process_cmd_does_not_let_caller_metadata_override_accessor_extra(self):
+    def test_process_cmd_keeps_caller_metadata_separate_from_accessor_extra(self):
         """Accessors write into packet.extra while build_cmd sets the command
         parameters. HttpAccessor puts HTTP_PATH / HTTP_METHOD / HTTP_HEADERS /
         HTTP_QUERIES there and HttpClientInterface builds the outgoing request from
-        them, so caller metadata must never win over these."""
+        them, so caller metadata must not be able to set or change these."""
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
         thread = threading.Thread(target=im.run)
         thread.start()
@@ -862,6 +868,12 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         handler = im.handler_thread
         original_build_cmd = System.commands.build_cmd
+        caller_extra = {
+            "HTTP_PATH": "/supplied",
+            "HTTP_METHOD": "delete",
+            "HTTP_HEADERS": {"authorization": "supplied"},
+            "flow_uuid": "1234-5678",
+        }
 
         def build_cmd_with_accessor_extra(*args, **kwargs):
             command = original_build_cmd(*args, **kwargs)
@@ -874,14 +886,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
             b"cmd_params": json.dumps({}).encode(),
             b"cmd_string": b"cmd('INST ABORT')",
             b"username": b"test_user",
-            b"extra": json.dumps(
-                {
-                    "HTTP_PATH": "/attacker",
-                    "HTTP_METHOD": "delete",
-                    "HTTP_HEADERS": {"authorization": "stolen"},
-                    "flow_uuid": "1234-5678",
-                }
-            ).encode(),
+            b"extra": json.dumps(caller_extra).encode(),
         }
         with (
             patch.object(System.commands, "build_cmd", side_effect=build_cmd_with_accessor_extra),
@@ -893,9 +898,9 @@ class TestInterfaceMicroservice(unittest.TestCase):
         command = mock_write.call_args[0][0]
         self.assertEqual(command.extra["HTTP_PATH"], "/defined")
         self.assertEqual(command.extra["HTTP_METHOD"], "get")
-        # Keys the accessor didn't set still come through so the feature works
-        self.assertEqual(command.extra["HTTP_HEADERS"], {"authorization": "stolen"})
-        self.assertEqual(command.extra["flow_uuid"], "1234-5678")
+        self.assertNotIn("HTTP_HEADERS", command.extra)
+        self.assertNotIn("flow_uuid", command.extra)
+        self.assertEqual(command.extra["metadata"], caller_extra)
 
     def test_process_cmd_rejects_malformed_connect_params(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")

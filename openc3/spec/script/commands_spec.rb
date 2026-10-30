@@ -147,6 +147,12 @@ module OpenC3
               capture_io { cmd("INST ABORT", extra: extra) }
               expect(@api.last_kw_params[:extra]).to eql(extra)
             end
+
+            it "does not send extra when not given" do
+              # Older servers reject an unknown extra keyword, even when nil
+              capture_io { cmd("INST ABORT") }
+              expect(@api.last_kw_params).not_to have_key(:extra)
+            end
           end
 
           it "raises without any parameters" do

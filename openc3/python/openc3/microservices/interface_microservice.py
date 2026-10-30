@@ -366,20 +366,12 @@ class InterfaceCmdHandlerThread:
 
             command.extra = command.extra or {}
             if msg_hash.get(b"extra"):
-                # Caller metadata is the base layer. Values already in command.extra were
-                # written by the packet's accessor during build_cmd (e.g. HttpAccessor sets
-                # HTTP_PATH, HTTP_METHOD, HTTP_HEADERS, HTTP_QUERIES from the command
-                # definition) and are authoritative, so they overwrite caller values rather
-                # than the other way around. Otherwise a caller could redirect the request
-                # an interface makes on their behalf.
-                caller_extra = json.loads(msg_hash[b"extra"], cls=JsonDecoder)
-                caller_extra.update(command.extra)
-                command.extra = caller_extra
-            # These fields are populated from COSMOS workflow state below.
-            command.extra.pop("queue_username", None)
-            command.extra.pop("approver", None)
-            command.extra.pop("cmd_success", None)
-            command.extra.pop("cmd_reason", None)
+                # Caller metadata lives under its own key so it can't collide with keys
+                # COSMOS sets (cmd_string, username, approver, ...) or that the packet's
+                # accessor sets during build_cmd (e.g. HttpAccessor's HTTP_PATH,
+                # HTTP_METHOD, HTTP_HEADERS, HTTP_QUERIES which HttpClientInterface
+                # uses to build the outgoing request)
+                command.extra["metadata"] = json.loads(msg_hash[b"extra"], cls=JsonDecoder)
             command.extra["cmd_string"] = msg_hash.get(b"cmd_string", b"").decode()
             command.extra["username"] = msg_hash.get(b"username", b"").decode()
             command.extra["interface_name"] = self.interface.name

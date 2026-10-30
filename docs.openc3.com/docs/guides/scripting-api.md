@@ -848,14 +848,9 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 | validate       | Optional named parameter to enable/disable validation (default is True)                              |
 | extra          | Optional metadata Hash/dict carried with the command packet to the interface                         |
 
-The `extra` keys `cmd_string`, `username`, `interface_name`, `queue_username`, `approver`,
-`cmd_success`, and `cmd_reason` are reserved for COSMOS audit data. Caller-supplied values for
-these keys are discarded or replaced by authoritative values as the command is processed.
-
-Keys that a packet's accessor writes into `extra` are also reserved. HTTP targets are the
-common case: `HTTP_PATH`, `HTTP_METHOD`, `HTTP_STATUS`, `HTTP_PACKET`, `HTTP_ERROR_PACKET`,
-`HTTP_HEADERS` and `HTTP_QUERIES` come from the command definition and always win over
-caller-supplied values, so `extra` cannot redirect the request an interface makes.
+The interface receives `extra` as `packet.extra['metadata']`. It is kept under its own key so it
+can't change the values COSMOS adds to `packet.extra`, such as `cmd_string`, `username` and
+`approver`, or the `HTTP_*` values an accessor sets from the command definition.
 
 `extra` is written to the command log, the command topics and the queue exactly as given.
 It is not obfuscated, so don't put secrets in it.

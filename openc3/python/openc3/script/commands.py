@@ -238,6 +238,8 @@ def _cmd(
     raw = "raw" in cmd
     no_range = "no_range" in cmd or "no_checks" in cmd
     no_hazardous = "no_hazardous" in cmd or "no_checks" in cmd
+    # Only send extra when given so commands still work against servers that predate it
+    extra_kwargs = {} if extra is None else {"extra": extra}
 
     if openc3.script.DISCONNECT:
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope=scope)
@@ -250,7 +252,7 @@ def _cmd(
                     log_message=log_message,
                     validate=validate,
                     queue=queue,
-                    extra=extra,
+                    **extra_kwargs,
                     scope=scope,
                 )
                 if log_message is None or log_message:
@@ -272,7 +274,7 @@ def _cmd(
                     log_message=log_message,
                     validate=validate,
                     queue=queue,
-                    extra=extra,
+                    **extra_kwargs,
                     scope=scope,
                 )
                 if log_message is None or log_message:

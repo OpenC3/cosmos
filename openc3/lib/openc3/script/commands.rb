@@ -122,12 +122,14 @@ module OpenC3
       raw = cmd.include?('raw')
       no_range = cmd.include?('no_range') || cmd.include?('no_checks')
       no_hazardous = cmd.include?('no_hazardous') || cmd.include?('no_checks')
+      # Only send extra when given so commands still work against servers that predate it
+      extra_kwargs = extra.nil? ? {} : { extra: extra }
       if $disconnect
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope)
       else
         begin
           begin
-            command = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, queue: queue, extra: extra, scope: scope, token: token)
+            command = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, queue: queue, **extra_kwargs, scope: scope, token: token)
             if log_message.nil? or log_message
               _log_cmd(command, raw, no_range, no_hazardous)
             end
@@ -135,7 +137,7 @@ module OpenC3
             # This opens a prompt at which point they can cancel and stop the script
             # or say Yes and send the command. Thus we don't care about the return value.
             prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
-            command = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, queue: queue, extra: extra, scope: scope, token: token)
+            command = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, queue: queue, **extra_kwargs, scope: scope, token: token)
             if log_message.nil? or log_message
               _log_cmd(command, raw, no_range, no_hazardous)
             end

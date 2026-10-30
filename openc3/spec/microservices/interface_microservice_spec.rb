@@ -641,21 +641,28 @@ module OpenC3
         expect(captured).to_not be_nil
         expect(captured.target_name).to eql("INST")
         expect(captured.packet_name).to eql("ABORT")
-        expect(captured.extra['flow_uuid']).to eql('1234-5678')
+        # Caller metadata is kept under its own key, so caller values can't
+        # replace the COSMOS audit fields
+        expect(captured.extra['metadata']).to eql({
+          'flow_uuid' => '1234-5678', 'username' => 'untrusted',
+          'queue_username' => 'untrusted', 'approver' => 'untrusted',
+          'cmd_success' => false, 'cmd_reason' => 'untrusted'
+        })
         expect(captured.extra['username']).to_not eql('untrusted')
         expect(captured.extra['queue_username']).to eql("DEFAULT__MULTI__INST")
+        expect(captured.extra).not_to have_key('flow_uuid')
         expect(captured.extra).not_to have_key('approver')
         expect(captured.extra).not_to have_key('cmd_success')
         expect(captured.extra).not_to have_key('cmd_reason')
       end
 
-      it "does not let caller metadata override accessor populated extra" do
+      it "keeps caller metadata separate from accessor populated extra" do
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
 
         # Accessors write into packet.extra while build_cmd sets the command
         # parameters. HttpAccessor puts HTTP_PATH / HTTP_METHOD / HTTP_HEADERS /
         # HTTP_QUERIES there and HttpClientInterface builds the outgoing request
-        # from them, so caller metadata must never win over these.
+        # from them, so caller metadata must not be able to set or change these.
         allow(System.commands).to receive(:build_cmd).and_wrap_original do |original, *args|
           command = original.call(*args)
           command.extra = { 'HTTP_PATH' => '/defined', 'HTTP_METHOD' => 'get' }
@@ -669,19 +676,20 @@ module OpenC3
         Thread.new { im.run }
         sleep 0.01
 
-        @api.cmd("INST", "ABORT", extra: {
-          'HTTP_PATH' => '/attacker', 'HTTP_METHOD' => 'delete',
-          'HTTP_HEADERS' => { 'authorization' => 'stolen' }, 'flow_uuid' => '1234-5678'
-        })
+        caller_extra = {
+          'HTTP_PATH' => '/supplied', 'HTTP_METHOD' => 'delete',
+          'HTTP_HEADERS' => { 'authorization' => 'supplied' }, 'flow_uuid' => '1234-5678'
+        }
+        @api.cmd("INST", "ABORT", extra: caller_extra)
         sleep 0.01
         im.shutdown
 
         expect(captured).to_not be_nil
         expect(captured.extra['HTTP_PATH']).to eql('/defined')
         expect(captured.extra['HTTP_METHOD']).to eql('get')
-        # Keys the accessor didn't set still come through so the feature works
-        expect(captured.extra['HTTP_HEADERS']).to eql({ 'authorization' => 'stolen' })
-        expect(captured.extra['flow_uuid']).to eql('1234-5678')
+        expect(captured.extra).not_to have_key('HTTP_HEADERS')
+        expect(captured.extra).not_to have_key('flow_uuid')
+        expect(captured.extra['metadata']).to eql(caller_extra)
       end
 
       it "acks SUCCESS for a write protocol STOP but rejects a DISCONNECT" do
