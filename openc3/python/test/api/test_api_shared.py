@@ -142,7 +142,7 @@ class TestApiShared(unittest.TestCase):
         ):
             check("INST HEALTH_STATUS TEMP1 > 100")
 
-    def test_check_warns_when_checking_a_state_against_a_constant(self):
+    def test_check_warns_when_checking_against_a_constant(self):
         for stdout in capture_io():
             check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'")
             self.assertIn(
@@ -151,9 +151,20 @@ class TestApiShared(unittest.TestCase):
             )
         with self.assertRaisesRegex(
             NameError,
-            "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?",
+            "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?",
         ):
-            check("INST HEALTH_STATUS CCSDSSHF == FALSE")
+            check("INST HEALTH_STATUS CCSDSSHF == MAYBE")
+
+    def test_matches_state_names_ignoring_case(self):
+        # https://github.com/OpenC3/cosmos/issues/4046
+        for stdout in capture_io():
+            check("INST HEALTH_STATUS CCSDSSHF == 'false'")
+            check("INST HEALTH_STATUS CCSDSSHF == fAlSe")
+            self.assertTrue(wait("INST HEALTH_STATUS CCSDSSHF in ['true', 'false']", 0.01))
+            wait_check("INST HEALTH_STATUS CCSDSSHF != 'True'", 0.01)
+            self.assertNotIn("failed", stdout.getvalue())
+        # RAW values are never state names so the comparison is exact
+        self.assertFalse(wait("INST HEALTH_STATUS CCSDSSHF == 'false'", 0.01, type="RAW", quiet=True))
 
     def test_checks_against_the_specified_type(self):
         for stdout in capture_io():
@@ -563,7 +574,7 @@ class TestApiShared(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "ERROR: Unable to parse operand"):
             wait_check(f"INST HEALTH_STATUS BLOCKTEST == '{data}'", 0.01)
 
-    def test_warns_when_checking_a_state_against_a_constant(self):
+    def test_warns_when_checking_against_a_constant(self):
         for stdout in capture_io():
             result = wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
             self.assertIsInstance(result, float)
@@ -573,9 +584,9 @@ class TestApiShared(unittest.TestCase):
             )
         with self.assertRaisesRegex(
             NameError,
-            "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?",
+            "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?",
         ):
-            wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
+            wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01)
 
     # check(), wait() and wait_check() all parse the same comparison syntax
     # so they must all accept and reject exactly the same expressions
@@ -609,13 +620,13 @@ class TestApiShared(unittest.TestCase):
             wait_check("INST HEALTH_STATUS TEMP1 >", 0.01)
 
     def test_consistency_suggests_a_string_when_comparing_against_a_bare_word(self):
-        error = "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?"
+        error = "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?"
         with self.assertRaisesRegex(NameError, re.escape(error)):
-            check("INST HEALTH_STATUS CCSDSSHF == FALSE")
+            check("INST HEALTH_STATUS CCSDSSHF == MAYBE")
         with self.assertRaisesRegex(NameError, re.escape(error)):
-            wait("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
+            wait("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01)
         with self.assertRaisesRegex(NameError, re.escape(error)):
-            wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
+            wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01)
 
     def test_consistency_accepts_hex_operands(self):
         for stdout in capture_io():

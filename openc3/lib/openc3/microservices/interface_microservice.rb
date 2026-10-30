@@ -42,7 +42,7 @@ module OpenC3
   class InterfaceCmdHandlerThread
     include InterfaceDecomCommon
 
-    def initialize(interface, tlm, logger: nil, metric: nil, db_shard: 0, scope:)
+    def initialize(interface, tlm, logger: nil, metric: nil, lag_monitor: nil, db_shard: 0, scope:)
       @interface = interface
       @tlm = tlm
       @scope = scope
@@ -56,6 +56,7 @@ module OpenC3
       @logger = logger
       @logger = Logger unless @logger
       @metric = metric
+      @lag_monitor = lag_monitor || TopicLagMonitor.new(name: "#{@scope}__INTERFACE__#{@interface.name}", logger: @logger, metric: @metric)
       @count = 0
       @directive_count = 0
       @metric.set(name: 'interface_directive_total', value: @directive_count, type: 'counter') if @metric
@@ -86,9 +87,7 @@ module OpenC3
         OpenC3.with_context(msg_hash) do
           release_critical = false
           critical_model = nil
-          msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
-          delta = Time.now.to_f - msgid_seconds_from_epoch
-          @metric.set(name: 'interface_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and interface cmd start') if @metric
+          @lag_monitor.record(topic, msg_id, metric_name: 'interface_topic_delta_seconds', help: 'Delta time between data written to stream and interface cmd start')
 
           if topic == "OPENC3__SYSTEM__EVENTS"
             msg = JSON.parse(msg_hash['event'])
@@ -113,7 +112,13 @@ module OpenC3
               @logger.info "#{@interface.name}: Connect requested"
               params = []
               if msg_hash['params']
-                params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
+                begin
+                  params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
+                rescue => e
+                  # Reject malformed params rather than killing the handler thread
+                  @logger.error "#{@interface.name}: Invalid connect params: #{e.message}"
+                  next e.message
+                end
               end
               @interface = @tlm.attempting(*params)
               next 'SUCCESS'
@@ -156,8 +161,8 @@ module OpenC3
               next 'SUCCESS'
             end
             if msg_hash.key?('interface_cmd')
-              params = JSON.parse(msg_hash['interface_cmd'], allow_nan: true, create_additions: true)
               begin
+                params = JSON.parse(msg_hash['interface_cmd'], allow_nan: true, create_additions: true)
                 @logger.info "#{@interface.name}: interface_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')}"
                 @interface.interface_cmd(params['cmd_name'], *params['cmd_params'])
                 InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
@@ -168,8 +173,8 @@ module OpenC3
               next 'SUCCESS'
             end
             if msg_hash.key?('protocol_cmd')
-              params = JSON.parse(msg_hash['protocol_cmd'], allow_nan: true, create_additions: true)
               begin
+                params = JSON.parse(msg_hash['protocol_cmd'], allow_nan: true, create_additions: true)
                 @logger.info "#{@interface.name}: protocol_cmd: #{params['cmd_name']} #{params['cmd_params'].join(' ')} read_write: #{params['read_write']} index: #{params['index']}"
                 @interface.protocol_cmd(params['cmd_name'], *params['cmd_params'], read_write: params['read_write'], index: params['index'])
                 InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope)
@@ -232,21 +237,28 @@ module OpenC3
 
           target_name = msg_hash['target_name']
           if target_name and not @interface.cmd_target_enabled[target_name]
+            # A released critical command was already acked as pending so it must get a result
+            next "Target #{target_name} is disabled" if release_critical
             next nil # Return and don't ack given target_name if disabled
           end
 
           cmd_name = msg_hash['cmd_name']
-          manual = ConfigParser.handle_true_false(msg_hash['manual'])
+          manual = ConfigParser.handle_true_false(msg_hash['manual'], default: false)
           cmd_params = nil
           range_check = true
           raw = false
           cmd_buffer = nil
           hazardous_check = nil
           if msg_hash['cmd_params']
-            cmd_params = JSON.parse(msg_hash['cmd_params'], allow_nan: true, create_additions: true)
-            range_check = ConfigParser.handle_true_false(msg_hash['range_check'])
-            raw = ConfigParser.handle_true_false(msg_hash['raw'])
-            hazardous_check = ConfigParser.handle_true_false(msg_hash['hazardous_check'])
+            begin
+              cmd_params = JSON.parse(msg_hash['cmd_params'], allow_nan: true, create_additions: true)
+            rescue => e
+              @logger.error "#{@interface.name}: Invalid cmd_params: #{e.message}"
+              next "Invalid cmd_params: #{e.message}"
+            end
+            range_check = ConfigParser.handle_true_false(msg_hash['range_check'], default: true)
+            raw = ConfigParser.handle_true_false(msg_hash['raw'], default: false)
+            hazardous_check = ConfigParser.handle_true_false(msg_hash['hazardous_check'], default: true)
           elsif msg_hash['cmd_buffer']
             cmd_buffer = msg_hash['cmd_buffer']
           end
@@ -278,6 +290,7 @@ module OpenC3
                 command.received_count = orig_command.received_count
                 command.received_time = Time.now
               else
+                next "Target #{command.target_name} is disabled" if release_critical
                 next nil # Don't ack disabled targets
               end
             rescue RangeError => e
@@ -340,7 +353,7 @@ module OpenC3
               end
             end
 
-            validate = ConfigParser.handle_true_false(msg_hash['validate'])
+            validate = ConfigParser.handle_true_false(msg_hash['validate'], default: true)
             begin
               if @interface.connected?
                 result = true
@@ -362,7 +375,7 @@ module OpenC3
                 @count += 1
                 @metric.set(name: 'interface_cmd_total', value: @count, type: 'counter') if @metric
 
-                log_message = ConfigParser.handle_true_false(msg_hash['log_message'])
+                log_message = ConfigParser.handle_true_false(msg_hash['log_message'], default: true)
                 if log_message
                   @logger.info(msg_hash['cmd_string'], user: msg_hash['username'], scope: @scope)
                 end
@@ -411,7 +424,7 @@ module OpenC3
   end
 
   class RouterTlmHandlerThread
-    def initialize(router, tlm, logger: nil, metric: nil, db_shard: 0, scope:)
+    def initialize(router, tlm, logger: nil, metric: nil, lag_monitor: nil, db_shard: 0, scope:)
       @router = router
       @tlm = tlm
       @scope = scope
@@ -419,6 +432,7 @@ module OpenC3
       @logger = logger
       @logger = Logger unless @logger
       @metric = metric
+      @lag_monitor = lag_monitor || TopicLagMonitor.new(name: "#{@scope}__ROUTER__#{@router.name}", logger: @logger, metric: @metric)
       @count = 0
       @directive_count = 0
       @metric.set(name: 'router_directive_total', value: @directive_count, type: 'counter') if @metric
@@ -446,9 +460,7 @@ module OpenC3
 
     def run
       RouterTopic.receive_telemetry(@router, scope: @scope, db_shard: @db_shard) do |topic, msg_id, msg_hash, _redis|
-        msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
-        delta = Time.now.to_f - msgid_seconds_from_epoch
-        @metric.set(name: 'router_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and router tlm start') if @metric
+        @lag_monitor.record(topic, msg_id, metric_name: 'router_topic_delta_seconds', help: 'Delta time between data written to stream and router tlm start')
 
         # Check for commands to the router itself
         if /CMD}ROUTER/.match?(topic)
@@ -464,7 +476,13 @@ module OpenC3
             @logger.info "#{@router.name}: Connect requested"
             params = []
             if msg_hash['params']
-              params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
+              begin
+                params = JSON.parse(msg_hash['params'], allow_nan: true, create_additions: true)
+              rescue => e
+                # Reject malformed params rather than killing the handler thread
+                @logger.error "#{@router.name}: Invalid connect params: #{e.message}"
+                next e.message
+              end
             end
             @router = @tlm.attempting(*params)
             next 'SUCCESS'
@@ -573,6 +591,9 @@ module OpenC3
 
   class InterfaceMicroservice < Microservice
     UNKNOWN_BYTES_TO_PRINT = 16
+    DEFAULT_UPDATE_INTERVAL = 0.1 # seconds
+    # Most distinct unmapped target / packet names to remember warning about
+    UNMAPPED_TLM_WARNED_MAX = 1000
 
     # Interfaces never use descriptions so don't keep them in memory
     def load_descriptions?
@@ -614,18 +635,25 @@ module OpenC3
         RouterStatusModel.set(@interface.as_json(), scope: @scope)
       end
 
-      @queued = false
+      # Insertion ordered so the oldest key can be evicted (see handle_packet)
+      @unmapped_tlm_warned = {}
+      # Queue Redis writes by default and flush them every update_interval seconds
+      update_interval = DEFAULT_UPDATE_INTERVAL
       @interface.options.each do |option_name, option_values|
         # OPTIMIZE_THROUGHPUT was changed to UPDATE_INTERVAL to better represent the setting
         if option_name.upcase == 'UPDATE_INTERVAL' or option_name.upcase == 'OPTIMIZE_THROUGHPUT'
-          @queued = true
           update_interval = option_values[0].to_f
-          EphemeralStoreQueued.instance.set_update_interval(update_interval)
-          StoreQueued.instance.set_update_interval(update_interval)
         end
         if option_name.upcase == 'SYNC_PACKET_COUNT_DELAY_SECONDS'
           TargetModel.sync_packet_count_delay_seconds = option_values[0].to_f
         end
+      end
+      # An UPDATE_INTERVAL of 0 (or less) disables queuing and writes directly to Redis
+      @queued = update_interval > 0.0
+      if @queued
+        # Apply to every db_shard since writes are routed to the shard of each target
+        EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
+        StoreQueued.set_update_interval_all_shards(update_interval)
       end
 
       @interface_thread_sleeper = Sleeper.new
@@ -633,9 +661,9 @@ module OpenC3
       @connection_failed_messages = []
       @connection_lost_messages = []
       if @interface_or_router == 'INTERFACE'
-        @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, metric: @metric, db_shard: @db_shard, scope: @scope)
+        @handler_thread = InterfaceCmdHandlerThread.new(@interface, self, logger: @logger, metric: @metric, lag_monitor: topic_lag_monitor, db_shard: @db_shard, scope: @scope)
       else
-        @handler_thread = RouterTlmHandlerThread.new(@interface, self, logger: @logger, metric: @metric, db_shard: @db_shard, scope: @scope)
+        @handler_thread = RouterTlmHandlerThread.new(@interface, self, logger: @logger, metric: @metric, lag_monitor: topic_lag_monitor, db_shard: @db_shard, scope: @scope)
       end
       @handler_thread.start
     end
@@ -751,6 +779,7 @@ module OpenC3
                   else
                     @metric.set(name: 'router_cmd_total', value: @count, type: 'counter')
                   end
+                  set_read_queue_bytes_metric()
                 else
                   @logger.info "#{@interface.name}: Internal disconnect requested (returned nil)"
                   handle_connection_lost()
@@ -784,10 +813,45 @@ module OpenC3
       @logger.info "#{@interface.name}: Stopped packet reading"
     end
 
+    # Report the bytes buffered on the read queue. Called after each packet and
+    # after a disconnect (which discards the queue) so the gauge doesn't stay
+    # stuck at its last value while no packets are flowing.
+    def set_read_queue_bytes_metric
+      if @interface_or_router == 'INTERFACE'
+        @metric.set(name: 'interface_read_queue_bytes', value: @interface.read_queue_bytes, type: 'gauge',
+                    unit: 'bytes', help: 'Bytes buffered on the interface read queue waiting to be processed')
+      else
+        @metric.set(name: 'router_read_queue_bytes', value: @interface.read_queue_bytes, type: 'gauge',
+                    unit: 'bytes', help: 'Bytes buffered on the router read queue waiting to be processed')
+      end
+    end
+
     def handle_packet(packet)
       # Skip status update if stop() has been called to avoid re-creating the status model
       InterfaceStatusModel.set(@interface.as_json(), queued: true, scope: @scope) unless @cancel_thread
       packet.received_time = Time.now.sys unless packet.received_time
+
+      if packet.identified?
+        unless @interface.tlm_target_names.include?(packet.target_name)
+          # Trust the identity but drop it because the target isn't mapped to this interface
+          key = "#{packet.target_name} #{packet.packet_name}"
+          unless @unmapped_tlm_warned.key?(key)
+            # The names come from the wire so bound how many are remembered.
+            # Evict the oldest rather than stop adding so every new name still warns.
+            @unmapped_tlm_warned.delete(@unmapped_tlm_warned.first[0]) if @unmapped_tlm_warned.length >= UNMAPPED_TLM_WARNED_MAX
+            @unmapped_tlm_warned[key] = true
+            @logger.warn "#{@interface.name}: Dropping telemetry for unmapped target: #{key}"
+          end
+          return
+        end
+        unless known_tlm_packet?(packet)
+          # Packet identified but we don't know about it
+          # Clear packet_name and target_name and try to identify
+          @logger.warn "#{@interface.name}: Received unknown identified telemetry: #{packet.target_name} #{packet.packet_name}"
+          packet.target_name = nil
+          packet.packet_name = nil
+        end
+      end
 
       if packet.stored
         # Stored telemetry does not update the current value table
@@ -795,20 +859,10 @@ module OpenC3
       else
         # Identify and update packet
         if packet.identified?
-          begin
-            # Preidentifed packet - place it into the current value table
-            identified_packet = System.telemetry.update!(packet.target_name,
-                                                         packet.packet_name,
-                                                         packet.buffer)
-          rescue RuntimeError
-            # Packet identified but we don't know about it
-            # Clear packet_name and target_name and try to identify
-            @logger.warn "#{@interface.name}: Received unknown identified telemetry: #{packet.target_name} #{packet.packet_name}"
-            packet.target_name = nil
-            packet.packet_name = nil
-            identified_packet = System.telemetry.identify!(packet.buffer,
-                                                           @interface.tlm_target_names)
-          end
+          # Preidentifed packet - place it into the current value table
+          identified_packet = System.telemetry.update!(packet.target_name,
+                                                       packet.packet_name,
+                                                       packet.buffer)
         else
           # Packet needs to be identified
           identified_packet = System.telemetry.identify!(packet.buffer,
@@ -822,13 +876,21 @@ module OpenC3
         identified_packet.extra = packet.extra
         packet = identified_packet
       else
-        unknown_packet = System.telemetry.update!('UNKNOWN', 'UNKNOWN', packet.buffer)
+        if packet.stored
+          # Stored telemetry does not update the current value table
+          unknown_packet = System.telemetry.packet('UNKNOWN', 'UNKNOWN').clone
+          unknown_packet.buffer = packet.buffer
+        else
+          unknown_packet = System.telemetry.update!('UNKNOWN', 'UNKNOWN', packet.buffer)
+        end
         unknown_packet.received_time = packet.received_time
         unknown_packet.stored = packet.stored
         unknown_packet.extra = packet.extra
         packet = unknown_packet
-        json_hash = CvtModel.build_json_from_packet(packet)
-        CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, queued: @queued, scope: @scope)
+        unless packet.stored
+          json_hash = CvtModel.build_json_from_packet(packet)
+          CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, queued: @queued, scope: @scope)
+        end
         num_bytes_to_print = [UNKNOWN_BYTES_TO_PRINT, packet.length].min
         data = packet.buffer(false)[0..(num_bytes_to_print - 1)]
         prefix = data.each_byte.map { | byte | sprintf("%02X", byte) }.join()
@@ -840,6 +902,14 @@ module OpenC3
         TargetModel.sync_tlm_packet_counts(packet, @interface.tlm_target_names, scope: @scope)
         TelemetryTopic.write_packet(packet, queued: @queued, scope: @scope)
       end
+    end
+
+    # @return [Boolean] Whether a pre-identified packet names a defined packet
+    def known_tlm_packet?(packet)
+      System.telemetry.packet(packet.target_name, packet.packet_name)
+      true
+    rescue RuntimeError
+      false
     end
 
     def handle_connection_failed(connection, connect_error)
@@ -940,6 +1010,7 @@ module OpenC3
         rescue => e
           @logger.error "Disconnect: #{@interface.name}: #{e.formatted}"
         end
+        set_read_queue_bytes_metric() if @metric
 
         # If the interface is set to auto_reconnect then delay so the thread
         # can come back around and allow the interface a chance to reconnect.

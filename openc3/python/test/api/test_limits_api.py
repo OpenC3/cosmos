@@ -30,6 +30,8 @@ class TestLimitsApi(unittest.TestCase):
     def setUp(self, system):
         redis = mock_redis(self)
         setup_system()
+        # Other tests can leave a fake item map in the class level cache
+        TargetModel.item_map_cache = {}
 
         orig_xread = redis.xread
 
@@ -115,6 +117,14 @@ class TestLimitsApi(unittest.TestCase):
                 "DEFAULT": [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0],
                 "TVAC": [-80.0, -30.0, 30.0, 80.0],
             },
+        )
+
+    @patch("openc3.api.limits_api.authorize")
+    def test_get_limits_authorizes_the_resolved_packet_rather_than_latest(self, mock_authorize):
+        with patch.object(CvtModel, "determine_latest_packet_for_item", return_value="HEALTH_STATUS"):
+            get_limits("inst", "latest", "temp1")
+        mock_authorize.assert_called_once_with(
+            permission="tlm", target_name="INST", packet_name="HEALTH_STATUS", scope="DEFAULT"
         )
 
     def test_set_limits_complains_about_non_existant_targets(self):
@@ -286,6 +296,37 @@ class TestLimitsApi(unittest.TestCase):
         self.assertEqual(event["state_name"], "UNAVAILABLE")
         self.assertIsNone(event["color"])
 
+    def test_enables_and_disables_latest_limits_in_every_packet_which_contains_the_item(self):
+        packet_names = TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")["CCSDSSEQCNT"]
+        self.assertGreater(len(packet_names), 1)
+        disable_limits("INST LATEST CCSDSSEQCNT")
+        for packet_name in packet_names:
+            self.assertFalse(limits_enabled("INST", packet_name, "CCSDSSEQCNT"))
+        enable_limits("INST", "LATEST", "CCSDSSEQCNT")
+        for packet_name in packet_names:
+            self.assertTrue(limits_enabled("INST", packet_name, "CCSDSSEQCNT"))
+
+    def test_set_limits_through_latest(self):
+        set_limits("INST", "LATEST", "TEMP1", 0.0, 10.0, 20.0, 30.0)
+        self.assertEqual(get_limits("INST", "HEALTH_STATUS", "TEMP1")["CUSTOM"], [0.0, 10.0, 20.0, 30.0])
+
+    def test_set_limits_through_latest_sets_no_packet_if_any_packet_fails(self):
+        item_map = {"TEMP1": ["HEALTH_STATUS", "MECH"]}
+        with (
+            patch.object(TargetModel, "get_item_to_packet_map", return_value=item_map),
+            self.assertRaisesRegex(RuntimeError, "Item 'INST MECH TEMP1' does not exist while setting limits"),
+        ):
+            set_limits("INST", "LATEST", "TEMP1", 0.0, 10.0, 20.0, 30.0)
+        self.assertNotIn("CUSTOM", get_limits("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_set_state_color_through_latest_in_every_packet_which_contains_the_item(self):
+        packet_names = TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")["CCSDSTYPE"]
+        self.assertGreater(len(packet_names), 1)
+        set_state_color("INST", "LATEST", "CCSDSTYPE", "TLM", "GREEN")
+        for packet_name in packet_names:
+            item = TargetModel.packet_item("INST", packet_name, "CCSDSTYPE", scope="DEFAULT")
+            self.assertEqual(item["states"]["TLM"]["color"], "GREEN")
+
     def test_get_limits_groups_returns_all_the_limits_groups(self):
         self.assertEqual(
             get_limits_groups(),
@@ -332,6 +373,30 @@ class TestLimitsApi(unittest.TestCase):
         disable_limits_group("FIRST")
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP3"))
+
+    def test_disable_limits_groups_accepts_a_lowercase_group_name(self):
+        disable_limits_group("first")
+        self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_disable_limits_groups_writes_a_single_limits_event_for_the_whole_group(self):
+        # A large group must not flood the limits event stream (capped at ~1000 entries)
+        # with one event per item or decom microservices can miss events
+        Store.delete("DEFAULT__openc3_limits_events")
+        disable_limits_group("FIRST")
+        # The decom microservice thread may process the group event and write a
+        # LIMITS_CHANGE event per item before this read so only check API events
+        events = [
+            event for event in LimitsEventTopic.read("0-0", scope="DEFAULT") if event[1]["type"] != "LIMITS_CHANGE"
+        ]
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0][1]["type"], "LIMITS_GROUP_ENABLE_STATE")
+        self.assertEqual(events[0][1]["group_name"], "FIRST")
+        self.assertFalse(events[0][1]["enabled"])
+        self.assertNotIn("items", events[0][1])
+
+        for item in ["TEMP1", "TEMP3"]:
+            settings = json.loads(Store.hget("DEFAULT__current_limits_settings", f"INST__HEALTH_STATUS__{item}"))
+            self.assertFalse(settings["enabled"])
 
     def test_gets_and_set_the_active_limits_set(self):
         self.assertEqual(get_limits_sets(), ["DEFAULT", "TVAC"])

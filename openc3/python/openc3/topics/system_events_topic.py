@@ -20,14 +20,16 @@ class SystemEventsTopic(Topic):
 
     @classmethod
     def _active_db_shards(cls):
-        """Collect all unique target db_shards from TargetModel"""
+        """Collect all unique target and interface db_shards. Interfaces read system
+        events on their own db_shard which may not have any targets on it."""
         db_shards = {0}
-        # Iterate all scopes to find all target db_shards
-        for key in Store.scan_iter(match="*__openc3_targets", type="hash", count=100):
-            decoded_key = key.decode() if isinstance(key, bytes) else key
-            for _name, json_data in Store.hgetall(decoded_key).items():
-                parsed = json.loads(json_data)
-                db_shards.add(int(parsed.get("db_shard", 0) or 0))
+        # Iterate all scopes to find all target and interface db_shards
+        for match in ("*__openc3_targets", "*__openc3_interfaces"):
+            for key in Store.scan_iter(match=match, type="hash", count=100):
+                decoded_key = key.decode() if isinstance(key, bytes) else key
+                for _name, json_data in Store.hgetall(decoded_key).items():
+                    parsed = json.loads(json_data)
+                    db_shards.add(int(parsed.get("db_shard", 0) or 0))
         return db_shards
 
     @classmethod

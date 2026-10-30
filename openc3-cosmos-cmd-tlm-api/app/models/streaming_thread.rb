@@ -102,11 +102,18 @@ class StreamingThread
       # Read from each db_shard with proportionally shorter timeouts
       timeout_per_db_shard = [500 / [db_shard_groups.length, 1].max, 100].max
       any_result = false
+      newest_msg_ids = {} # topic => newest msg_id read this pass, used to measure lag
       db_shard_groups.each do |db_shard, group|
         break if @cancel_thread
-        xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_db_shard, db_shard: db_shard) do |topic, msg_id, msg_hash, _|
-          stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
-          next if stored # Ignore stored packets while realtime streaming
+        xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_db_shard, @max_batch_size, db_shard: db_shard) do |topic, msg_id, msg_hash, _|
+          # Recorded before the skip check so skipped messages still count as read
+          newest_msg_ids[topic] = msg_id
+          if skip_message?(topic, msg_hash)
+            # Still advance offsets past skipped messages, otherwise a run of them
+            # longer than the read count would be re-read forever
+            advance_offsets(topic, msg_id, item_objects_by_topic, packet_objects_by_topic)
+            next
+          end
 
           break if @cancel_thread
 
@@ -161,9 +168,32 @@ class StreamingThread
 
       # Check for completed objects by wall clock time if we got nothing
       check_for_completed_objects() unless any_result
+
+      # Done after processing so a skip only affects where the next pass reads from
+      check_lag(newest_msg_ids, item_objects_by_topic, packet_objects_by_topic) unless @cancel_thread
     else
       @cancel_thread = true
     end
+  end
+
+  # Called after each pass through Redis with the newest msg_id read per topic.
+  # Subclasses that stream realtime data override this to react to falling behind.
+  def check_lag(newest_msg_ids, item_objects_by_topic, packet_objects_by_topic)
+    # Intentionally empty: historical (logged) streams replay old data on
+    # purpose so being behind realtime is expected and not acted upon
+  end
+
+  # Returns true if a streamed message should not be delivered
+  def skip_message?(_topic, msg_hash)
+    # Ignore stored packets while realtime streaming
+    OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
+  end
+
+  def advance_offsets(topic, msg_id, item_objects_by_topic, packet_objects_by_topic)
+    objects = item_objects_by_topic[topic]
+    objects.each { |object| object.offset = msg_id } if objects
+    objects = packet_objects_by_topic[topic]
+    objects.each { |object| object.offset = msg_id } if objects
   end
 
   def handle_message(msg_hash, objects)
@@ -278,11 +308,12 @@ class StreamingThread
   def handoff(collection)
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = collection.topics_offsets_and_objects
     my_topics, my_offsets, _item_objects_by_topic, _packet_objects_by_topic = @collection.topics_offsets_and_objects
+    # Hash lookup rather than Array#index since collections can have thousands of topics
+    my_offset_by_topic = my_topics.zip(my_offsets).to_h
     topics.each_with_index do |topic, index|
       offset = offsets[index]
-      my_index = my_topics.index(topic)
-      if my_index
-        my_offset = my_offsets[my_index]
+      my_offset = my_offset_by_topic[topic]
+      if my_offset
         if offset >= my_offset
           # Caught up
           handoff_objects(collection, topic, item_objects_by_topic, packet_objects_by_topic)

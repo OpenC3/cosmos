@@ -1,6 +1,6 @@
 ARG OPENC3_UBI_REGISTRY=registry1.dso.mil
 ARG OPENC3_UBI_IMAGE=ironbank/redhat/ubi/ubi9-minimal
-ARG OPENC3_UBI_TAG=9.6
+ARG OPENC3_UBI_TAG=9.8
 
 FROM ${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
 
@@ -16,7 +16,7 @@ ARG PYPI_URL=https://pypi.org
 # --allow-insecure-host. Build-time only: compose.yaml sets the runtime value.
 ARG OPENC3_PYPI_ALLOW_INSECURE=
 # Update Dockerfile and the python .github/workflow actions to match this version
-ARG OPENC3_UV_VERSION=0.12.24
+ARG OPENC3_UV_VERSION=0.13.5
 ENV PYPI_URL=${PYPI_URL}
 ENV OPENC3_UV_VERSION=${OPENC3_UV_VERSION}
 
@@ -50,9 +50,6 @@ ENV GEMRC=/etc/gemrc
 
 COPY *.tar.gz /tmp/
 
-COPY anycable* /usr/bin/
-RUN /usr/bin/anycable_install.sh
-
 COPY shoreman.sh /usr/bin/shoreman
 
 ARG PACKAGES="gcc-c++ patch readline zlib zlib-devel libffi-devel libedit \
@@ -67,13 +64,13 @@ COPY ./ubi.repo /etc/yum.repos.d/ubi.repo
 RUN microdnf update -y && \
     microdnf install -y --setopt=tsflags=nodocs $PACKAGES && \
     mkdir -p /usr/src && \
-    tar -xzf /tmp/ruby-3.4.11.tar.gz -C /usr/src/ && \
-    rm -f /tmp/ruby-3.4.11.tar.gz
-WORKDIR /usr/src/ruby-3.4.11
+    tar -xzf /tmp/ruby-3.4.12.tar.gz -C /usr/src/ && \
+    rm -f /tmp/ruby-3.4.12.tar.gz
+WORKDIR /usr/src/ruby-3.4.12
 RUN ./configure --disable-install-doc --enable-shared && \
     make -j "$(nproc)" && \
     make install && \
-    rm -rf /usr/src/ruby-3.4.11
+    rm -rf /usr/src/ruby-3.4.12
 
 # tini - https://github.com/krallin/tini
 WORKDIR /usr/src

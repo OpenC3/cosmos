@@ -173,11 +173,12 @@ class QuestDBClient:
         return hostname.replace("SHARDNUM", str(db_shard))
 
     @staticmethod
-    def _create_query_connection(db_shard=0, **extra_kwargs):
+    def _create_query_connection(db_shard=0, port=None, **extra_kwargs):
         """Create a new psycopg connection to QuestDB using standard env vars.
 
         Args:
             db_shard: DB_Shard number (default 0). Used to resolve hostname.
+            port: Query port (default OPENC3_TSDB_QUERY_PORT)
             **extra_kwargs: Additional keyword arguments passed to psycopg.connect
                 (e.g., autocommit=True, connect_timeout=2).
 
@@ -186,7 +187,7 @@ class QuestDBClient:
         """
         return psycopg.connect(
             host=QuestDBClient.hostname_for_db_shard(db_shard),
-            port=os.environ.get("OPENC3_TSDB_QUERY_PORT"),
+            port=port or os.environ.get("OPENC3_TSDB_QUERY_PORT"),
             user=os.environ.get("OPENC3_TSDB_USERNAME"),
             password=os.environ.get("OPENC3_TSDB_PASSWORD"),
             dbname="qdb",
@@ -225,12 +226,12 @@ class QuestDBClient:
                         conn.close()
 
     @classmethod
-    def check_connection(cls, db_shard=0):
+    def check_connection(cls, db_shard=0, port=None):
         """Health check — attempt to connect and immediately close.
 
         Returns True if successful, raises on failure.
         """
-        conn = cls._create_query_connection(db_shard=db_shard, autocommit=True, connect_timeout=2)
+        conn = cls._create_query_connection(db_shard=db_shard, port=port, autocommit=True, connect_timeout=2)
         conn.close()
         return True
 
@@ -331,7 +332,7 @@ class QuestDBClient:
 
     DEFAULT_BATCH_SIZE = 500
 
-    def __init__(self, logger=None, name=None, batch_size=None, db_shard=0):
+    def __init__(self, logger=None, name=None, batch_size=None, db_shard=0, ingest_port=None, query_port=None):
         """
         Initialize QuestDB client.
 
@@ -340,11 +341,15 @@ class QuestDBClient:
             name: Optional name for error messages (e.g., microservice name)
             batch_size: Number of rows to buffer before auto-flushing (default: DEFAULT_BATCH_SIZE)
             db_shard: DB_Shard number (default 0). Used to resolve hostname via SHARDNUM replacement.
+            ingest_port: ILP ingest port (default OPENC3_TSDB_INGEST_PORT)
+            query_port: PostgreSQL query port (default OPENC3_TSDB_QUERY_PORT)
         """
         self.batch_size = batch_size or self.DEFAULT_BATCH_SIZE
         self.logger = logger
         self.name = name or "QuestDBClient"
         self.db_shard = db_shard
+        self.ingest_port = ingest_port
+        self.query_port = query_port
         self.ingest = None
         self.query = None
         # Track columns that need JSON serialization due to type conflicts or DERIVED type
@@ -379,11 +384,12 @@ class QuestDBClient:
         else:
             print(f"ERROR: {msg}")
 
-    def _get_connection_env(self, port_env_var):
+    def _get_connection_env(self, port_env_var, port=None):
         """Read and validate QuestDB connection environment variables.
 
         Args:
             port_env_var: Name of the port environment variable
+            port: Port which overrides the port environment variable
 
         Returns:
             Tuple of (host, port, username, password)
@@ -392,7 +398,7 @@ class QuestDBClient:
             RuntimeError: If any required environment variable is missing
         """
         host = self.hostname_for_db_shard(self.db_shard)
-        port = os.environ.get(port_env_var)
+        port = port or os.environ.get(port_env_var)
         username = os.environ.get("OPENC3_TSDB_USERNAME")
         password = os.environ.get("OPENC3_TSDB_PASSWORD")
 
@@ -415,7 +421,7 @@ class QuestDBClient:
             RuntimeError: If required environment variables are missing
             ConnectionError: If connection fails
         """
-        host, port, username, password = self._get_connection_env("OPENC3_TSDB_INGEST_PORT")
+        host, port, username, password = self._get_connection_env("OPENC3_TSDB_INGEST_PORT", self.ingest_port)
 
         try:
             if self.ingest:
@@ -438,7 +444,7 @@ class QuestDBClient:
             if self.query:
                 self.query.close()
 
-            self.query = self._create_query_connection(db_shard=self.db_shard, autocommit=True)
+            self.query = self._create_query_connection(db_shard=self.db_shard, port=self.query_port, autocommit=True)
         except Exception as e:
             raise ConnectionError(f"Failed to connect to QuestDB: {e}") from e
 
@@ -587,6 +593,27 @@ class QuestDBClient:
                 Logger.warn(f"TSDB{label_str}: Last query: {query}")
                 cls.disconnect(db_shard=db_shard)
                 time.sleep(0.1)
+
+    @classmethod
+    def table_names(cls, db_shard: int = 0) -> set[str] | None:
+        """Return the names of all tables in a single query. Used to avoid querying
+        (and failing on) tables that were never created, e.g. commands that have
+        never been sent, which is the common case for targets with thousands of packets.
+        QuestDB table names are case insensitive so the names are upcased.
+
+        Args:
+            db_shard: DB_Shard number to query (default 0)
+
+        Returns:
+            Set of upcased table names, or None if they cannot be queried
+        """
+        try:
+            rows = cls.query_with_retry(
+                "SELECT table_name FROM tables()", max_retries=1, label="table names", db_shard=db_shard
+            )
+        except Exception:
+            return None
+        return {str(row["table_name"]).upper() for row in rows}
 
     @staticmethod
     def nsec_to_utc_time(nsec):
@@ -784,11 +811,37 @@ class QuestDBClient:
         return Store.db_shard_for_target(target_name, scope=scope)
 
     @classmethod
-    def tsdb_lookup(cls, items, start_time, end_time=None, scope="DEFAULT"):
+    def tlm_packets_with_tables(cls, packets, scope="DEFAULT"):
+        """Return the telemetry packets which have a table. The TSDB microservice only
+        creates tables for its initial packets so a packet added later has no table
+        until it's received. If the table names can't be fetched assume they all exist.
+
+        Args:
+            packets: Iterable of (target_name, packet_name) pairs
+            scope: Scope name
+
+        Returns:
+            Set of the (target_name, packet_name) pairs which have a table
+        """
+        by_db_shard = {}
+        for target_name, packet_name in packets:
+            db_shard = cls.db_shard_for_target(target_name, scope=scope)
+            by_db_shard.setdefault(db_shard, []).append((target_name, packet_name))
+        existing = set()
+        for db_shard, shard_packets in by_db_shard.items():
+            names = cls.table_names(db_shard=db_shard)
+            for target_name, packet_name in shard_packets:
+                table_name, _ = cls.sanitize_table_name(target_name, packet_name, scope=scope)
+                if names is None or table_name.upper() in names:
+                    existing.add((target_name, packet_name))
+        return existing
+
+    @classmethod
+    def tsdb_lookup(cls, items, start_time, end_time=None, scope="DEFAULT", flatten=True):
         """Query historical telemetry data from QuestDB for a list of items.
         Builds the SQL query, executes it, and decodes all results.
         Supports cross-db_shard queries by grouping items by db_shard, executing
-        separate queries per db_shard, and merging results positionally.
+        separate queries per db_shard, and aligning the results by packet time.
 
         Args:
             items: List of TlmItem (or [target_name, packet_name, item_name, value_type, limits]).
@@ -796,17 +849,20 @@ class QuestDBClient:
             start_time: Start timestamp for the query
             end_time: End timestamp, or None for "latest single row"
             scope: Scope name
+            flatten: Whether a single row result is returned as a flat array
 
         Returns:
             Array of [value, limits_state] pairs per row, or {} if no results.
-            Single-row results return a flat array; multi-row results return array of arrays.
+            Single-row results return a flat array (unless flatten is False); multi-row results
+            return array of arrays.
         """
         items = [TlmItem(*item) for item in items]
 
         # Every item is a placeholder for an item which doesn't exist, so there's
         # nothing to query. Return a single row of None values, one per item.
         if all(item.item_name is None for item in items):
-            return [[None, None] for _ in items]
+            row = [[None, None] for _ in items]
+            return row if flatten else [row]
 
         # Group items by db_shard number while preserving their original positions
         db_shard_groups = {}  # db_shard => {"positions": [], "items": []}
@@ -820,40 +876,123 @@ class QuestDBClient:
         if len(db_shard_groups) == 1:
             db_shard, group = next(iter(db_shard_groups.items()))
             return cls._tsdb_lookup_single_db_shard(
-                group["items"], start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard
+                group["items"],
+                start_time=start_time,
+                end_time=end_time,
+                scope=scope,
+                db_shard=db_shard,
+                flatten=flatten,
             )
 
-        # Cross-db_shard: execute per-db_shard queries (as lists of rows) and merge results
-        db_shard_rows = {}
-        for db_shard, group in db_shard_groups.items():
-            result = cls._tsdb_lookup_single_db_shard(
-                group["items"], start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard, flatten=False
-            )
-            db_shard_rows[db_shard] = result if isinstance(result, list) else []
+        # Cross-db_shard: a single query can't ASOF JOIN tables on different QuestDBs
+        return cls._tsdb_lookup_db_shards(
+            items, db_shard_groups, start_time=start_time, end_time=end_time, scope=scope, flatten=flatten
+        )
 
-        # Merge results positionally back into the original item order. Each db_shard
-        # may have different row counts so use the maximum row count and fill missing
-        # positions with [None, None]. If all db_shards returned empty, return empty.
-        max_rows = max(len(rows) for rows in db_shard_rows.values())
-        if max_rows == 0:
+    @classmethod
+    def _tsdb_lookup_db_shards(cls, items, db_shard_groups, start_time, end_time, scope, flatten=True):
+        """Cross-db_shard lookup which matches the rows of a single db_shard ASOF JOIN.
+        The packet of the first item drives the rows (like T0 in a single db_shard query) so
+        its db_shard is queried as usual. Every packet on another db_shard is queried on its
+        own and aligned to each driving row's packet time, using its last row at or before
+        that time (like ASOF JOIN). Each packet is aligned independently and includes its
+        last row before start_time, so its value carries forward like it would in ASOF JOIN.
+        """
+        first = next(item for item in items if item.item_name is not None)
+        driver = cls.db_shard_for_target(first.target_name, scope=scope)
+        driver_rows = cls._tsdb_lookup_single_db_shard(
+            db_shard_groups[driver]["items"],
+            start_time=start_time,
+            end_time=end_time,
+            scope=scope,
+            db_shard=driver,
+            flatten=False,
+            with_time=True,
+        )
+        if not driver_rows:
             return {}
+        # The packet time in nanoseconds is the last value of each row
+        times = [row[-1][0] for row in driver_rows]
 
-        merged = [[[None, None] for _ in items] for _ in range(max_rows)]
+        merged = [[[None, None] for _ in items] for _ in driver_rows]
+        for row_num, driver_row in enumerate(driver_rows):
+            for db_shard_idx, orig_pos in enumerate(db_shard_groups[driver]["positions"]):
+                if driver_row[db_shard_idx]:
+                    merged[row_num][orig_pos] = driver_row[db_shard_idx]
+
         for db_shard, group in db_shard_groups.items():
-            for row_num, row in enumerate(db_shard_rows[db_shard]):
-                for db_shard_idx, orig_pos in enumerate(group["positions"]):
-                    if db_shard_idx < len(row) and row[db_shard_idx]:
-                        merged[row_num][orig_pos] = row[db_shard_idx]
+            if db_shard == driver:
+                continue
+            # Group the items by packet, leaving placeholders as Nones
+            packets = {}  # (target_name, packet_name) => {"positions": [], "items": []}
+            for orig_pos, item in zip(group["positions"], group["items"], strict=True):
+                if item.item_name is None:
+                    continue
+                packet = packets.setdefault((item.target_name, item.packet_name), {"positions": [], "items": []})
+                packet["positions"].append(orig_pos)
+                packet["items"].append(item)
+
+            for packet in packets.values():
+                rows = cls._tsdb_lookup_packet_rows(
+                    packet["items"], times, start_time=start_time, end_time=end_time, scope=scope, db_shard=db_shard
+                )
+                index = -1  # Index of the last packet row at or before the driving row
+                for row_num, driver_time in enumerate(times):
+                    while index + 1 < len(rows) and rows[index + 1][-1][0] <= driver_time:
+                        index += 1
+                    if index < 0:
+                        continue
+                    for packet_idx, orig_pos in enumerate(packet["positions"]):
+                        if rows[index][packet_idx]:
+                            merged[row_num][orig_pos] = rows[index][packet_idx]
+
         # Match the single db_shard behavior of returning a flat array for a single row
-        if max_rows == 1:
+        if flatten and len(merged) == 1:
             return merged[0]
         return merged
 
     @classmethod
-    def _tsdb_lookup_single_db_shard(cls, items, start_time, end_time=None, scope="DEFAULT", db_shard=0, flatten=True):
+    def _tsdb_lookup_packet_rows(cls, items, times, start_time, end_time, scope, db_shard):
+        """Query the rows of a single packet needed to align it to the driving row times.
+        Each row ends with its packet time in nanoseconds.
+        """
+        if end_time:
+            # The last row before start_time followed by the rows in the range
+            queries = [{"start_time": start_time}, {"start_time": start_time, "end_time": end_time}]
+        else:
+            # The single driving row is before start_time so get the last row at or before it
+            queries = [{"start_time": cls.nsec_to_iso(times[0]), "inclusive": True}]
+        rows = []
+        for query in queries:
+            result = cls._tsdb_lookup_single_db_shard(
+                items, scope=scope, db_shard=db_shard, flatten=False, with_time=True, **query
+            )
+            if result:
+                rows.extend(result)
+        return rows
+
+    @staticmethod
+    def nsec_to_iso(nsec):
+        """Convert a nanosecond integer timestamp to an ISO 8601 string with nanosecond precision"""
+        return time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(nsec // 1_000_000_000)) + f".{nsec % 1_000_000_000:09d}Z"
+
+    @classmethod
+    def _tsdb_lookup_single_db_shard(
+        cls,
+        items,
+        start_time,
+        end_time=None,
+        scope="DEFAULT",
+        db_shard=0,
+        flatten=True,
+        inclusive=False,
+        with_time=False,
+    ):
         """Execute a tsdb_lookup query against a single db_shard.
         This contains the ASOF JOIN logic for items all on the same QuestDB instance.
         When flatten is True a single row result is returned as a flat array rather than a list of rows.
+        When inclusive is True a query without an end_time returns the last row at or before start_time.
+        When with_time is True each row ends with its packet time in nanoseconds.
         """
         tables = {}
         names = []
@@ -863,6 +1002,14 @@ class QuestDBClient:
         calculated_items = {}
         needed_timestamps = {}
         current_position = 0
+        # Columns with the same name in different tables come back renamed by QuestDB
+        # (e.g. VALUE and VALUE_2) so alias every column and map it back when decoding
+        aliases = {}
+
+        def add_column(col_name):
+            alias_name = f"__col{len(aliases)}"
+            aliases[alias_name] = col_name
+            names.append(f'"{col_name}" as {alias_name}')
 
         for item in items:
             target_name, packet_name, item_name, value_type, limits = item
@@ -877,7 +1024,7 @@ class QuestDBClient:
             index = list(tables.keys()).index(table_name)
 
             if item_name in cls.STORED_TIMESTAMP_ITEMS:
-                names.append(f'"T{index}.{item_name}"')
+                add_column(f"T{index}.{item_name}")
                 current_position += 1
                 continue
 
@@ -905,12 +1052,12 @@ class QuestDBClient:
 
             suffix = cls.column_suffix_for_value_type(value_type)
             col_name = f"T{index}.{safe_item_name}{suffix}"
-            names.append(f'"{col_name}"')
+            add_column(col_name)
             item_types[col_name] = cls.resolve_item_type(item_def, value_type)
 
             current_position += 1
             if limits:
-                names.append(f'"T{index}.{safe_item_name}__L"')
+                add_column(f"T{index}.{safe_item_name}__L")
 
         # Every item in this db_shard is a placeholder so there's no table to query.
         # Return no results and let tsdb_lookup fill these positions with [None, None]
@@ -922,6 +1069,8 @@ class QuestDBClient:
         for table_index, ts_columns in needed_timestamps.items():
             for ts_col in ts_columns:
                 names.append(f"T{table_index}.{ts_col} as T{table_index}___ts_{ts_col}")
+        if with_time:
+            names.append("cast(T0.PACKET_TIMESECONDS as long) as __time")
 
         # Build the SQL query
         query = f"SELECT {', '.join(names)} FROM "
@@ -933,7 +1082,7 @@ class QuestDBClient:
 
         query_params = []
         if start_time and not end_time:
-            query += "WHERE T0.PACKET_TIMESECONDS < %s LIMIT -1"
+            query += f"WHERE T0.PACKET_TIMESECONDS {'<=' if inclusive else '<'} %s LIMIT -1"
             query_params.append(start_time)
         elif start_time and end_time:
             query += "WHERE T0.PACKET_TIMESECONDS >= %s AND T0.PACKET_TIMESECONDS < %s"
@@ -950,7 +1099,8 @@ class QuestDBClient:
             data.append([])
             col_index = 0
             row_timestamps = {}
-            for col_name, col_value in row.items():
+            for result_name, col_value in row.items():
+                col_name = aliases.get(result_name, result_name)
                 if "__L" in col_name:
                     if col_index > 0:
                         data[row_index][col_index - 1] = [
@@ -959,6 +1109,9 @@ class QuestDBClient:
                         ]
                 elif col_name.startswith("__nil"):
                     data[row_index].append([None, None])
+                    col_index += 1
+                elif col_name == "__time":
+                    data[row_index].append([int(col_value), None])
                     col_index += 1
                 elif re.match(r"^T(\d+)___ts_(.+)$", col_name):
                     match = re.match(r"^T(\d+)___ts_(.+)$", col_name)

@@ -279,6 +279,19 @@ COMMAND <%= target_name %> BLOCK BIG_ENDIAN "Send variable block of data"
     HIDDEN
   RELATED_ITEM <%= target_name %> HEALTH_STATUS BLOCKTEST
 
+COMMAND <%= target_name %> MEMDUMP BIG_ENDIAN "Dump a block of simulated memory"
+  <%= render "_ccsds_cmd.txt", locals: {id: 17} %>
+  APPEND_PARAMETER OFFSET 32 UINT MIN MAX 0 "Memory offset in bytes to start the dump"
+  APPEND_PARAMETER SIZE 32 UINT 1 4096 1024 "Number of bytes to dump"
+    UNITS Bytes B
+  APPEND_PARAMETER BAD_CRC 8 UINT 0 1 0 "Flip a random bit in the response DATA after the CRC is calculated to simulate a bad CRC"
+    STATE FALSE 0
+    STATE TRUE 1
+  APPEND_PARAMETER CRC 32 UINT MIN MAX 0 "CRC32 over OFFSET, SIZE and BAD_CRC (calculated automatically, use cmd_raw to override)"
+    FORMAT_STRING "0x%08X"
+    WRITE_CONVERSION memdump_cmd_crc_conversion.rb
+  RELATED_ITEM <%= target_name %> MEMDUMP DATA
+
 # Throughput Testing Commands (for use with external throughput server)
 COMMAND <%= target_name %> START_STREAM BIG_ENDIAN "Start telemetry streaming from throughput server"
   <%= render "_ccsds_cmd.txt", locals: {id: 200} %>

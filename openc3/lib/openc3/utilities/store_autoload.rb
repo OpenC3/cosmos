@@ -54,11 +54,20 @@ module OpenC3
     @@db_shard_cache_mutex = Mutex.new
     DB_SHARD_CACHE_TIMEOUT = 60 # seconds
 
+    # Maximum number of entries read_topics returns PER STREAM when the caller
+    # does not pass a count. XREAD without COUNT returns everything from the
+    # offset to the tail of the stream, which for a consumer that has fallen
+    # behind on a high-rate stream can be an enormous reply materialized in
+    # memory all at once. Callers loop on their offsets so a capped read simply
+    # continues on the next call.
+    READ_TOPICS_DEFAULT_COUNT = 1000
+
     # Mutex used to ensure that only one instance is created
     @@instance_mutex = Mutex.new
 
     attr_reader :redis_url
     attr_reader :redis_pool
+    attr_reader :db_shard
 
     # Look up the db_shard number for a target with a 1-minute cache.
     # Reads directly from Redis db_shard 0 to avoid circular deps with TargetModel.
@@ -116,6 +125,7 @@ module OpenC3
     end
 
     def initialize(pool_size = 10, db_shard: 0)
+      @db_shard = db_shard
       @redis_username = ENV.fetch('OPENC3_REDIS_USERNAME', nil)
       @redis_key = ENV.fetch('OPENC3_REDIS_PASSWORD', nil)
       hostname = ENV['OPENC3_REDIS_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
@@ -225,8 +235,10 @@ module OpenC3
       return offsets
     end
 
+    # @param count [Integer] Maximum entries to return per stream. nil uses READ_TOPICS_DEFAULT_COUNT.
     def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
       return {} if topics.empty?
+      count ||= READ_TOPICS_DEFAULT_COUNT
       Thread.current[:topic_offsets] ||= {}
       topic_offsets = Thread.current[:topic_offsets]
       begin
@@ -264,13 +276,20 @@ module OpenC3
     # @option opts [String]  :id          the entry id, default value is `*`, it means auto generation,
     #   if `nil` id is passed it will be changed to `*`
     # @option opts [Integer] :maxlen      max length of entries, default value is `nil`, it means will grow forever
-    # @option opts [String] :approximate whether to add `~` modifier of maxlen or not, default value is 'true'
+    # @option opts [String] :approximate whether to add `~` modifier of maxlen or minid or not, default value is 'true'
+    # @option opts [String] :minid       trim entries with ids lower than this as part of the add (XADD MINID).
+    #   Cannot be combined with maxlen. See Topic.stream_safety_minid for the safety cap applied to target streams.
     #
     # @return [String] the entry id
-    def write_topic(topic, msg_hash, id = '*', maxlen = nil, approximate = 'true')
+    def write_topic(topic, msg_hash, id = '*', maxlen = nil, approximate = 'true', minid: nil)
       id = '*' if id.nil?
+      raise ArgumentError, "write_topic can't supply both maxlen and minid" if maxlen and minid
       @redis_pool.with do |redis|
-        return redis.xadd(topic, msg_hash, id: id, maxlen: maxlen, approximate: approximate)
+        if minid
+          return redis.xadd(topic, msg_hash, id: id, minid: minid, approximate: approximate)
+        else
+          return redis.xadd(topic, msg_hash, id: id, maxlen: maxlen, approximate: approximate)
+        end
       end
     end
 
@@ -297,7 +316,7 @@ module OpenC3
 
   class EphemeralStore < Store
     def initialize(pool_size = 10, db_shard: 0)
-      super(pool_size)
+      super(pool_size, db_shard: db_shard)
       hostname = ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
       @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_EPHEMERAL_PORT', 6380)}"
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }

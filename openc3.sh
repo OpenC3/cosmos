@@ -385,7 +385,9 @@ check_root() {
 # fine without it until a database grows past the default map count.
 #
 # Set OPENC3_HOSTSETUP_ON_RUN=0 in .env to opt out and manage the host yourself.
+# Pass an image suffix (e.g. -ubi) to use that operator image variant.
 run_hostsetup() {
+  local suffix="${1:-}"
   if [[ "${OPENC3_HOSTSETUP_ON_RUN:-1}" != "1" ]]; then
     return 0
   fi
@@ -394,10 +396,18 @@ run_hostsetup() {
     return 0
   fi
 
-  local repo="${OPENC3_ENTERPRISE_REGISTRY:-repos.openc3.com}"
-  local namespace="${OPENC3_ENTERPRISE_NAMESPACE:-openc3}"
-  local tag="${OPENC3_ENTERPRISE_TAG:-latest}"
-  local image="$repo/$namespace/openc3-enterprise-operator:$tag"
+  local repo namespace tag image
+  if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
+    repo="${OPENC3_ENTERPRISE_REGISTRY:-repos.openc3.com}"
+    namespace="${OPENC3_ENTERPRISE_NAMESPACE:-openc3}"
+    tag="${OPENC3_ENTERPRISE_TAG:-latest}"
+    image="$repo/$namespace/openc3-enterprise-operator$suffix:$tag"
+  else
+    repo="${OPENC3_REGISTRY:-docker.io}"
+    namespace="${OPENC3_NAMESPACE:-openc3inc}"
+    tag="${OPENC3_TAG:-latest}"
+    image="$repo/$namespace/openc3-operator$suffix:$tag"
+  fi
 
   # Unprivileged probe. vm.max_map_count (mmc) and transparent huge pages (thp)
   # are not namespaced, so any container reads the host's (or the Docker VM's) values.
@@ -409,10 +419,10 @@ run_hostsetup() {
   fi
 
   echo "Configuring host kernel settings (vm.max_map_count=$OPENC3_MAX_MAP_COUNT, transparent huge pages off)..."
-  if ! "$(find_script openc3_util.sh)" hostsetup "$repo" "$namespace" "$tag"; then
+  if ! "$(find_script openc3_util.sh)" hostsetup "$repo" "$namespace" "$tag" $suffix; then
     echo "WARNING: host setup failed, continuing without it. $COSMOS_NAME will still start," >&2
     echo "but the tsdb (QuestDB) may fail to open tables once its database grows past" >&2
-    echo "vm.max_map_count=$mmc. Run '$0 util hostsetup $repo $namespace $tag' as a user" >&2
+    echo "vm.max_map_count=$mmc. Run '$0 util hostsetup $repo $namespace $tag $suffix' as a user" >&2
     echo "who can start privileged containers, or set OPENC3_HOSTSETUP_ON_RUN=0 in .env to" >&2
     echo "silence this and manage the host yourself." >&2
   fi
@@ -452,6 +462,14 @@ build_core_images() {
   core_dir="$(dirname -- "$0")/../cosmos"
   if [[ -f "$core_dir/compose-build.yaml" ]]; then
     echo "Building core images from $core_dir ..."
+    # compose depends_on does not order builds, so build the base images
+    # first or the remaining images may build FROM a stale openc3-base
+    local image
+    for image in openc3-ruby openc3-base openc3-node; do
+      ${DOCKER_COMPOSE_COMMAND} --project-directory "$core_dir" \
+        -f "$core_dir/compose.yaml" -f "$core_dir/compose-build.yaml" \
+        build "$@" "$image" || return 1
+    done
     ${DOCKER_COMPOSE_COMMAND} --project-directory "$core_dir" \
       -f "$core_dir/compose.yaml" -f "$core_dir/compose-build.yaml" \
       build "$@"
@@ -1027,7 +1045,7 @@ case $1 in
     fi
     check_root
     source_env_files
-    run_hostsetup
+    run_hostsetup -ubi
     # QuestDB RHEL images have a native arm64 variant; run tsdb natively on ARM
     # to avoid the x86-64-v3 QEMU emulation failure. All other services run as amd64.
     if [[ "$(uname -m)" == "arm64" ]]; then

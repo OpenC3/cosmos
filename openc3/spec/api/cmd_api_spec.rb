@@ -428,6 +428,51 @@ module OpenC3
         expect(result).to be_a Array
         expect(result[0]).to be_a String
       end
+
+      it "excludes hidden commands unless hidden is true" do
+        names = @api.get_all_cmd_names("inst")
+        expect(names).to eql names.sort
+        expect(names).to include("ABORT", "COLLECT")
+        expect(names).not_to include("DISABLED")
+        expect(@api.get_all_cmd_names("inst", hidden: true)).to include("ABORT", "COLLECT", "DISABLED")
+      end
+
+      it "does not parse the packet definitions" do
+        expect(TargetModel).not_to receive(:packets)
+        expect(@api.get_all_cmd_names("inst")).not_to include("DISABLED")
+      end
+
+      it "builds the hidden list once for targets installed without it" do
+        Store.del("DEFAULT__openc3cmd__INST__hidden")
+        expect(TargetModel).to receive(:packets).once.and_call_original
+        expect(@api.get_all_cmd_names("inst")).not_to include("DISABLED")
+        expect(@api.get_all_cmd_names("inst")).not_to include("DISABLED")
+      end
+
+      it "stores an empty hidden list so it is not rebuilt" do
+        Store.del("DEFAULT__openc3cmd__INST__hidden")
+        expect(TargetModel).to receive(:packets).once.and_wrap_original do |method, *args, **kwargs|
+          method.call(*args, **kwargs).each { |packet| packet.delete('hidden') }
+        end
+        expect(@api.get_all_cmd_names("inst")).to include("DISABLED")
+        expect(@api.get_all_cmd_names("inst")).to include("DISABLED")
+      end
+
+      it "merges updates of individual commands into the hidden list" do
+        model = TargetModel.get_model(name: "INST", scope: "DEFAULT")
+        abort_cmd = System.commands.packet("INST", "ABORT").clone
+        abort_cmd.hidden = true
+        model.update_store_commands({ "INST" => { "ABORT" => abort_cmd } }, clear_old: false)
+        names = @api.get_all_cmd_names("inst")
+        expect(names).not_to include("ABORT", "DISABLED")
+        expect(names).to include("COLLECT")
+
+        abort_cmd.hidden = false
+        model.update_store_commands({ "INST" => { "ABORT" => abort_cmd } }, clear_old: false)
+        names = @api.get_all_cmd_names("inst")
+        expect(names).to include("ABORT")
+        expect(names).not_to include("DISABLED")
+      end
     end
 
     describe "get_param" do
@@ -643,6 +688,48 @@ module OpenC3
         sleep 0.001
         expect(message).to eql "cmd(\"INST SET_PASSWORD with USERNAME 'username', PASSWORD *****, KEY *****\")"
       end
+    end
+  end
+
+  describe Api, "multiple db_shards" do
+    # INST lives on db_shard 1 while SYSTEM stays on db_shard 0. Stale copies
+    # planted on the wrong db_shard prove the reads come from the right one.
+    before(:each) do
+      mock_redis()
+      setup_system()
+      local_s3()
+      setup_target_db_shards({ 'INST' => 1, 'SYSTEM' => 0 })
+      @api = ApiTest.new
+    end
+
+    after(:each) do
+      local_s3_unset()
+    end
+
+    it "returns the command buffer from the target's db_shard" do
+      packet = System.commands.packet('INST', 'ABORT')
+      packet.received_time = Time.now.sys
+      packet.buffer = "\x01\x02" + packet.buffer[2..-1]
+      CommandTopic.write_packet(packet, scope: 'DEFAULT')
+      # A newer stale message on the wrong db_shard must not be returned
+      EphemeralStore.instance(db_shard: 0).write_topic("DEFAULT__COMMAND__{INST}__ABORT", { 'buffer' => "\xFF\xFF" })
+      expect(@api.get_cmd_buffer("INST", "ABORT")["buffer"][0..1]).to eq "\x01\x02"
+    end
+
+    it "returns command counts from each target's db_shard" do
+      Store.instance(db_shard: 0).hset("DEFAULT__COMMANDCNTS__{INST}", "ABORT", 100)
+      Store.instance(db_shard: 1).hset("DEFAULT__COMMANDCNTS__{SYSTEM}", "STARTLOGGING", 100)
+      TargetModel.increment_command_count("INST", "ABORT", 5, scope: "DEFAULT")
+      TargetModel.increment_command_count("SYSTEM", "STARTLOGGING", 3, scope: "DEFAULT")
+      expect(@api.get_cmd_cnt("INST ABORT")).to eql 5
+      expect(@api.get_cmd_cnts([%w(INST ABORT), %w(SYSTEM STARTLOGGING)])).to eql [5, 3]
+    end
+
+    it "returns command names from the target's db_shard" do
+      Store.instance(db_shard: 0).hset("DEFAULT__openc3cmd__INST", "STALE", JSON.generate({ 'packet_name' => 'STALE' }))
+      names = @api.get_all_cmd_names("INST")
+      expect(names).to include("ABORT")
+      expect(names).to_not include("STALE")
     end
   end
 end

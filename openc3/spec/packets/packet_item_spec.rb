@@ -417,6 +417,22 @@ module OpenC3
         expect(config).to match(/STATE FALSE 0 RED/)
       end
 
+      it "only writes the state attributes valid for the packet type" do
+        @pi.range = (0..2)
+        @pi.states = { "OFF" => 0, "ON" => 1, "FAULT" => 2 }
+        @pi.hazardous = { "FAULT" => "" }
+        @pi.messages_disabled = { "ON" => true }
+        @pi.state_colors = { "ON" => :GREEN }
+        config = @pi.to_config(:COMMAND, :BIG_ENDIAN)
+        expect(config).to include("    STATE OFF 0\n")
+        expect(config).to include("    STATE ON 1 DISABLE_MESSAGES\n")
+        expect(config).to include("    STATE FAULT 2 HAZARDOUS\n")
+        config = @pi.to_config(:TELEMETRY, :BIG_ENDIAN)
+        expect(config).to include("    STATE OFF 0\n")
+        expect(config).to include("    STATE ON 1 GREEN\n")
+        expect(config).to include("    STATE FAULT 2\n")
+      end
+
       it "sets the state_colors to nil" do
         @pi.state_colors = nil
         expect(@pi.state_colors).to be_nil

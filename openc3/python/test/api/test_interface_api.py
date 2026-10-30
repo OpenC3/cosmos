@@ -104,8 +104,19 @@ class TestInterfaceApi(unittest.TestCase):
         self.assertEqual(type(interface), dict)
         self.assertEqual(interface["name"], "INST_INT")
         # Verify it also includes the status
-        self.assertIn(get_interface("INST_INT")["state"], ["ATTEMPTING", "CONNECTED"])
+        self.assertIn(interface["state"], ["ATTEMPTING", "CONNECTED"])
         self.assertEqual(interface["clients"], 0)
+
+    def test_get_interface_raises_if_interface_does_not_exist(self):
+        with self.assertRaisesRegex(RuntimeError, r"Interface 'NONEXISTENT_INT' does not exist \(get_interface\)"):
+            get_interface("NONEXISTENT_INT")
+
+    def test_get_interface_defaults_state_if_interface_status_does_not_exist(self):
+        model = InterfaceModel(name="NO_STATUS_INT", scope="DEFAULT")
+        model.create()
+        interface = get_interface("NO_STATUS_INT")
+        self.assertEqual(interface["name"], "NO_STATUS_INT")
+        self.assertEqual(interface["state"], "UNKNOWN")
 
     def test_returns_all_interface_names(self):
         model = InterfaceModel(name="INT1", scope="DEFAULT")

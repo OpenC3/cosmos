@@ -417,5 +417,16 @@ module OpenC3
       reloaded = ReingestJobModel.get_model(name: @job_id, scope: 'DEFAULT')
       expect(reloaded.packets_written).to eql(550)
     end
+
+    describe 'multiple db_shards' do
+      it 'alters the tables on the target db_shard' do
+        TargetModel.new(name: 'INST', scope: 'DEFAULT', db_shard: 1).create
+        run_job
+        expect(@alter_sql.grep(/DEDUP ENABLE/).length).to eql(1)
+        expect(@alter_sql.grep(/DEDUP DISABLE/).length).to eql(1)
+        expect(QuestDBClient).to have_received(:connection).with(db_shard: 1).at_least(:once)
+        expect(QuestDBClient).not_to have_received(:connection).with(db_shard: 0)
+      end
+    end
   end
 end

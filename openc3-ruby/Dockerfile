@@ -27,7 +27,7 @@ ARG PYPI_URL=https://pypi.org
 # --allow-insecure-host. Build-time only: compose.yaml sets the runtime value.
 ARG OPENC3_PYPI_ALLOW_INSECURE=
 # Update Dockerfile-ubi and the python .github/workflow actions to match this version
-ARG OPENC3_UV_VERSION=0.12.24
+ARG OPENC3_UV_VERSION=0.13.5
 
 ENV APT_URL=${APT_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
@@ -81,9 +81,6 @@ ENV GEMRC=/etc/gemrc
 # downstream images that change HOME. The mirror entry itself is configured in
 # the apt step below (once bundler is installed).
 ENV BUNDLE_USER_CONFIG=/etc/bundle/config
-
-COPY anycable* /usr/bin/
-RUN /usr/bin/anycable_install.sh
 
 COPY shoreman.sh /usr/bin/shoreman
 

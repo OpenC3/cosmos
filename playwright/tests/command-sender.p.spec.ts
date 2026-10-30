@@ -212,6 +212,15 @@ test('warns for hazardous parameters', async ({ page, utils }) => {
       .locator('tr:has(td:text-is("TYPE"))')
       .locator('.v-select__selection-text'),
   ).toHaveCSS('color', 'rgb(255, 220, 0)')
+  // The hazardous indicator is shown even without a hazardous description
+  await expect(page.locator('[data-test="hazardous-description"]')).toHaveText(
+    'Hazardous',
+  )
+  await selectValue(page, 'TYPE', 'NORMAL')
+  await expect(
+    page.locator('[data-test="hazardous-description"]'),
+  ).not.toBeVisible()
+  await selectValue(page, 'TYPE', 'SPECIAL')
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('button', { name: 'Cancel' }).click()
   await expect(page.locator('main')).toContainText('Hazardous command not sent')

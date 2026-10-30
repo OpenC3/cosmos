@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test tests/*.test.js",
     "serve": "vite build --watch --mode dev-server",
     "build": "vite build",
     "lint": "eslint src",
@@ -28,9 +29,9 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "6.0.10",
     "prettier": "3.9.10",
-    "rollup-plugin-sourcemaps2": "^0.5.9",
-    "sass": "1.105.1",
-    "vite": "7.3.6",
-    "vue": "3.5.43"
+    "rollup-plugin-sourcemaps2": "^0.5.10",
+    "sass": "1.106.1",
+    "vite": "7.3.7",
+    "vue": "3.5.44"
   }
 }

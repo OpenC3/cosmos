@@ -537,6 +537,13 @@ module OpenC3
         expect(ConfigParser.handle_true_false("HI")).to eql "HI"
         expect(ConfigParser.handle_true_false(5.0)).to eql 5.0
       end
+
+      it "returns the default for nil" do
+        expect(ConfigParser.handle_true_false(nil)).to be_nil
+        expect(ConfigParser.handle_true_false(nil, default: true)).to be true
+        expect(ConfigParser.handle_true_false(nil, default: false)).to be false
+        expect(ConfigParser.handle_true_false('FALSE', default: true)).to be false
+      end
     end
 
     describe "self.handle_true_false_strict" do

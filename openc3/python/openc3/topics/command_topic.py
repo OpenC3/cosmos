@@ -32,13 +32,14 @@ class CommandTopic(Topic):
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
-            "stored": str(packet.stored),
+            "stored": str(packet.stored).lower(),  # Match ruby behavior of "true"/"false"
             "buffer": bytes(packet.buffer_no_copy()),
         }
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
-        EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash)
+        minid = Topic.log_stream_safety_minid(packet.target_name, "CMD", scope)
+        EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash, minid=minid)
 
     @classmethod
     def send_command(cls, command, timeout, scope, obfuscated_items=None):

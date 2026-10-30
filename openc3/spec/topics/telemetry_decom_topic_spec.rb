@@ -9,6 +9,7 @@
 # See LICENSE.md for more details.
 
 require 'spec_helper'
+require 'openc3/models/target_model'
 require 'openc3/topics/telemetry_decom_topic'
 require 'openc3/packets/packet'
 require 'openc3/models/cvt_model'
@@ -42,6 +43,7 @@ module OpenC3
             stored: 'false'
           ),
           nil,
+          minid: kind_of(String),
           db_shard: 0
         )
         TelemetryDecomTopic.write_packet(packet, scope: 'DEFAULT')
@@ -91,6 +93,28 @@ module OpenC3
           .and_return({ 'TEMP1' => 1.0 })
         TelemetryDecomTopic.write_packet(packet, scope: 'DEFAULT')
       end
+    end
+  end
+
+  describe TelemetryDecomTopic, "multiple db_shards" do
+    before(:each) do
+      mock_redis()
+      TargetModel.new(name: "TARGET", scope: "DEFAULT", db_shard: 1).create
+    end
+
+    it "writes the decom topic and the CVT to the target's db_shard" do
+      packet = Packet.new('TARGET', 'PKT')
+      packet.append_item('VALUE', 16, :UINT)
+      packet.received_time = Time.now
+      packet.packet_time = Time.now
+      packet.received_count = 1
+      packet.write('VALUE', 5)
+      TelemetryDecomTopic.write_packet(packet, scope: 'DEFAULT')
+      _, msg_hash = EphemeralStore.instance(db_shard: 1).get_newest_message("DEFAULT__DECOM__{TARGET}__PKT")
+      expect(JSON.parse(msg_hash['json_data'])['VALUE']).to eql 5
+      expect(JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__tlm__TARGET", "PKT"))['VALUE']).to eql 5
+      expect(EphemeralStore.instance(db_shard: 0).exists?("DEFAULT__DECOM__{TARGET}__PKT")).to be false
+      expect(Store.instance(db_shard: 0).exists?("DEFAULT__tlm__TARGET")).to be false
     end
   end
 end

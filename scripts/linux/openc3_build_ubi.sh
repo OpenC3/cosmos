@@ -365,6 +365,7 @@ if should_build "openc3-cosmos-cmd-tlm-api-ubi"; then
   rm -rf .bundle
   build_image \
     --network host \
+    --build-context anycable=../openc3-anycable \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
@@ -389,6 +390,7 @@ if should_build "openc3-cosmos-script-runner-api-ubi"; then
   rm -rf .bundle
   build_image \
     --network host \
+    --build-context anycable=../openc3-anycable \
     --build-arg OPENC3_REGISTRY=$OPENC3_REGISTRY \
     --build-arg OPENC3_NAMESPACE=$OPENC3_NAMESPACE \
     --build-arg OPENC3_TAG=$OPENC3_TAG \
@@ -437,7 +439,7 @@ if should_build "openc3-traefik-ubi"; then
     --network host \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
     --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-    --build-arg OPENC3_TRAEFIK_RELEASE=v3.7.14 \
+    --build-arg OPENC3_TRAEFIK_RELEASE=v3.7.16 \
     "${BUILD_FLAGS[@]}" \
     $PULL_FLAG \
     $PLATFORM_FLAG \

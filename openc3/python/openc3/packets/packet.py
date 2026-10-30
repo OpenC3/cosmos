@@ -33,6 +33,7 @@ from openc3.conversions.received_time_seconds_conversion import (
 )
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
+    class_to_filename,
     quote_if_necessary,
     simple_formatted,
 )
@@ -1008,7 +1009,7 @@ class Packet(Structure):
         if not self.processors:
             return
 
-        for _, processor in self.processors:
+        for processor in self.processors.values():
             processor.reset()
 
     # Make a light weight clone of this packet. This only creates a new buffer
@@ -1051,13 +1052,13 @@ class Packet(Structure):
             config += f'COMMAND {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
         if self.subpacketizer:
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.subpacketizer.args])
-            config += f"  SUBPACKETIZER {self.subpacketizer.__class__.__name__} {args_str}\n"
+            config += f"  SUBPACKETIZER {class_to_filename(self.subpacketizer.__class__)} {args_str}\n"
         if self.accessor.__class__.__name__ != "BinaryAccessor":
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.accessor.args])
-            config += f"  ACCESSOR {self.accessor.__class__.__name__} {args_str}\n"
+            config += f"  ACCESSOR {class_to_filename(self.accessor.__class__)} {args_str}\n"
         if self.validator:
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.validator.args])
-            config += f"  VALIDATOR {self.validator.__class__.__name__} {args_str}\n"
+            config += f"  VALIDATOR {class_to_filename(self.validator.__class__)} {args_str}\n"
         if self.template:
             config += f"  TEMPLATE_BASE64 {base64.b64encode(self.template).decode('ascii')}\n"
         if self.short_buffer_allowed:
@@ -1080,11 +1081,11 @@ class Packet(Structure):
             config += "  RESTRICTED\n"
 
         if self.processors:
-            for _, processor in self.processors:
-                config += processor.to_config
+            for processor in self.processors.values():
+                config += processor.to_config()
 
         if self.meta:
-            for key, values in self.meta:
+            for key, values in self.meta.items():
                 vals = " ".join([quote_if_necessary(a) for a in values])
                 config += f"  META {quote_if_necessary(key)} {vals}\n"
 
@@ -1151,7 +1152,7 @@ class Packet(Structure):
 
         if self.processors:
             processors = []
-            for _, processor in self.processors:
+            for processor in self.processors.values():
                 processors.append(processor.as_json())
             config["processors"] = processors
 

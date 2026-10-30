@@ -22,7 +22,7 @@ class ScriptAutocompleteController < ApplicationController
                     cmd_raw cmd_raw_no_range_check cmd_raw_no_hazardous_check cmd_raw_no_checks)
 
   TLM_KEYWORDS = %w(set_tlm override_tlm normalize_tlm tlm
-                    limits_enabled? enable_limits disable_limits
+                    limits_enabled? limits_enabled enable_limits disable_limits
                     check check_tolerance wait wait_tolerance wait_check wait_check_tolerance)
 
   def reserved_item_names

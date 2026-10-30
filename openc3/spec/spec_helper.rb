@@ -149,11 +149,29 @@ def setup_system(targets = %w[SYSTEM INST EMPTY])
     require 'openc3/models/target_model'
     dir = File.join(__dir__, 'install', 'config', 'targets')
     OpenC3::System.class_variable_set(:@@instance, nil)
+    OpenC3::System.class_variable_set(:@@limits_set, nil)
     OpenC3::TargetModel.clear_packet_cache
     OpenC3::System.instance(targets, dir)
     result = stdout
   end
   result
+end
+
+# Create and store the given spec targets each on its own db_shard,
+# e.g. setup_target_db_shards({ 'INST' => 1, 'SYSTEM' => 0 }). The target
+# models are saved on db_shard 0 which is how Store.db_shard_for_target finds
+# the db_shard. Call after mock_redis and setup_system. Returns the models.
+def setup_target_db_shards(target_db_shards, scope: 'DEFAULT')
+  require 'openc3/models/target_model'
+  OpenC3::TargetModel.clear_packet_cache
+  OpenC3::TargetModel.class_variable_set(:@@item_map_cache, {})
+  dir = File.join(__dir__, 'install', 'config', 'targets')
+  target_db_shards.map do |target_name, db_shard|
+    model = OpenC3::TargetModel.new(folder_name: target_name, name: target_name, scope: scope, db_shard: db_shard)
+    model.create
+    model.update_store(OpenC3::System.new([target_name], dir))
+    model
+  end
 end
 
 def get_all_redis_keys
@@ -236,30 +254,78 @@ OpenC3.disable_warnings do
   end
 end
 
+# Each db_shard gets its own MockRedis so a read or write against the wrong
+# shard misses instead of silently hitting the same data. Store and
+# EphemeralStore share the mock for a given shard. Returns the shard 0 mock.
 def mock_redis
-  redis = MockRedis.new
+  redis_shards = Hash.new { |hash, db_shard| hash[db_shard] = MockRedis.new }
+  redis = redis_shards[0]
   allow(Redis).to receive(:new).and_return(redis)
+  allow_any_instance_of(OpenC3::Store).to receive(:build_redis) { |store| redis_shards[store.db_shard] }
 
   # pool = double(ConnectionPool)
   # allow(pool).to receive(:with) { redis }
   # allow(ConnectionPool).to receive(:new).and_return(pool)
   OpenC3::Store.instance_variable_set(:@instances, [])
   OpenC3::EphemeralStore.instance_variable_set(:@instances, [])
+  OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
+  # QuestDBClient keeps its own db_shard cache
+  OpenC3::QuestDBClient.instance_variable_set(:@db_shard_cache, {}) if defined?(OpenC3::QuestDBClient)
   OpenC3::StoreQueued.instance_variable_set(:@instances, [])
   OpenC3::EphemeralStoreQueued.instance_variable_set(:@instances, [])
+  OpenC3::StoreQueued.instance_variable_set(:@update_interval, nil)
+  OpenC3::EphemeralStoreQueued.instance_variable_set(:@update_interval, nil)
+  # Forget target db_shards cached by a previous test (cached for a minute) so
+  # targets it put on a db_shard aren't looked for there
+  OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
+  OpenC3::QuestDBClient.instance_variable_set(:@db_shard_cache, {}) if defined?(OpenC3::QuestDBClient)
   require 'openc3/models/auth_model'
   OpenC3::AuthModel.set($openc3_password, nil)
   $openc3_token = OpenC3::AuthModel.generate_session()
   redis
 end
 
+# Like mock_redis but every db_shard gets its own MockRedis (mock_redis shares one
+# between all db_shards) so a test can verify which db_shard data is written to and
+# read from. The Store and EphemeralStore hostnames get SHARDNUM like a db_sharded
+# deployment so each db_shard connects to its own url. Use Store.instance(db_shard: N)
+# and EphemeralStore.instance(db_shard: N) to inspect a db_shard.
+def mock_redis_db_shards
+  redises = {} # url => MockRedis
+  allow(Redis).to receive(:new) { |url:, **| redises[url] ||= MockRedis.new }
+  allow(ENV).to receive(:[]).and_call_original
+  allow(ENV).to receive(:[]).with('OPENC3_REDIS_HOSTNAME').and_return('redis-SHARDNUM')
+  allow(ENV).to receive(:[]).with('OPENC3_REDIS_EPHEMERAL_HOSTNAME').and_return('redis-ephemeral-SHARDNUM')
+
+  OpenC3::Store.instance_variable_set(:@instances, [])
+  OpenC3::EphemeralStore.instance_variable_set(:@instances, [])
+  OpenC3::StoreQueued.instance_variable_set(:@instances, [])
+  OpenC3::EphemeralStoreQueued.instance_variable_set(:@instances, [])
+  OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
+  require 'openc3/models/auth_model'
+  OpenC3::AuthModel.set($openc3_password, nil)
+  $openc3_token = OpenC3::AuthModel.generate_session()
+  redises
+end
+
+# Put a target on a db_shard the way TargetModel stores it (Store.db_shard_for_target
+# reads the target json from db_shard 0)
+def set_target_db_shard(target_name, db_shard, scope: 'DEFAULT')
+  OpenC3::Store.instance(db_shard: 0).hset("#{scope}__openc3_targets", target_name, JSON.generate({ 'name' => target_name, 'db_shard' => db_shard }))
+  OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
+end
+
 OpenC3.disable_warnings do
   require 'aws-sdk-s3'
+  # Standalone mocks let local_s3 be called from before(:all). Require it here
+  # rather than inside local_s3: on first load it calls RSpec::Mocks.setup, and
+  # doing that mid-example pushes a new mock space so stubs made earlier in the
+  # example (like mock_redis) are never reset and leak into later specs.
+  require 'rspec/mocks/standalone'
 
   def local_s3
     require 'openc3/utilities/s3_autoload.rb'
     require 'local_s3'
-    require 'rspec/mocks/standalone'
     local_filesystem_client = LocalS3::ClientLocal.new
     allow(Aws::S3::Client).to receive(:new).and_return(local_filesystem_client)
   end

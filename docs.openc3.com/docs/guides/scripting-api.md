@@ -60,7 +60,7 @@ The following API methods have been removed from COSMOS v7. Since WITH_UNITS wer
 | wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type             |
 | wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerance](#wait_check_tolerance) and pass type |
 
-The following API methods now return `COSMOS__CANCEL` instead of `Cancel` when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. Unless you are _explicitly_ checking the return value for the word 'Cancel' there are no changes required.
+The following API methods now use `COSMOS__CANCEL` instead of `Cancel` as the answer recorded when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. The script is paused at the prompt line and nothing is returned to it, so no changes are required. `COSMOS__CANCEL` only appears in the script output and the Script Runner internals.
 
 ### Migration from COSMOS v5 to v6
 
@@ -175,7 +175,7 @@ These methods allow the user to enter values that are needed by the script.
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Prompts the user for input with a question. User input is automatically converted from a string to the appropriate data type. For example if the user enters "1", the number 1 as an integer will be returned.
+Prompts the user for input with a question. User input is automatically converted from a string to the appropriate data type. For example if the user enters "1", the number 1 as an integer will be returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -228,7 +228,7 @@ password = ask("Enter your password", false, true)
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned.
+Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -292,7 +292,7 @@ password = ask_string("Enter your password", false, true)
 
 <span class="badge badge--secondary since-heading">Since 7.0.0</span>
 
-The message_box, vertical_message_box, combo_box and check_box methods create a message box with buttons / selections / checkboxes that the user can click. The text of the button / selection / checkbox is returned.
+The message_box, vertical_message_box, combo_box and check_box methods create a message box with buttons / selections / checkboxes that the user can click. The text of the button / selection / checkbox is returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -379,7 +379,7 @@ end
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned.
+The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog methods. save_file_dialog can be replaced by put_target_file if you want to write a file back to the target. open_directory_dialog doesn't make sense in new architecture so you must request individual files.
 
@@ -452,7 +452,9 @@ end
 
 <span class="badge badge--secondary since-heading">Since 7.0.0</span>
 
-The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog.
+The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
+
+The returned file object also provides `filename`, `bucket`, and `bucket_path` (methods in Python) for the selected file's name, the bucket it came from (e.g. `OPENC3_CONFIG_BUCKET`), and its full path within that bucket (e.g. `DEFAULT/targets/INST/procedures/test.rb`). These are only available when running in Script Runner.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -485,6 +487,8 @@ open_bucket_dialog("<Title>", "<Message>", default_path: <default_path>, filter:
 ```python
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
 print(file.filename()) # The name of the selected file, note filename is a method
+print(file.bucket()) # The bucket the file came from, e.g. OPENC3_CONFIG_BUCKET
+print(file.bucket_path()) # The full path within the bucket
 print(file.read())
 file.close()
 
@@ -507,6 +511,8 @@ file.close()
 ```ruby
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
 puts file.filename # The name of the selected file
+puts file.bucket # The bucket the file came from, e.g. OPENC3_CONFIG_BUCKET
+puts file.bucket_path # The full path within the bucket
 puts file.read
 file.delete
 
@@ -2709,7 +2715,7 @@ Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
 :::
 
 :::note[String Comparisons]
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `check("INST HEALTH_STATUS TYPE == '#{expected}'")` or Python `check(f"INST HEALTH_STATUS TYPE == '{expected}'")`.
+String values which are not state names must be quoted (e.g., `== 'NORMAL'`). State names are matched ignoring case for CONVERTED and FORMATTED values, so `== 'On'` and `in ['on', 'off']` match the ON and OFF states. A state name which is a single word of letters, digits and underscores that does not start with a digit may be unquoted, including inside a list (e.g., `== ON` or `in [On, Off]`). Any other state name must be quoted (e.g., `== 'NOT CONNECTED'`). An unquoted word which is not a state name of the item is rejected, e.g. `== OFFLINE` fails with `Unknown state name OFFLINE. Did you mean 'OFFLINE' as a string?`. Note that `true`, `false` and `nil` (Ruby), `True`, `False` and `None` (Python), and `INF`, `INFINITY` and `NAN` in any case (both languages) are literals rather than state names, so quote a state with one of these names. Strings which are not state names are compared exactly. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double-quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `check("INST HEALTH_STATUS TYPE == '#{expected}'")` or Python `check(f"INST HEALTH_STATUS TYPE == '{expected}'")`.
 :::
 
 <Tabs groupId="script-language">
@@ -2808,6 +2814,10 @@ This evaluates to `yes == 'yes'` which is not valid syntax because the variable 
 `check_expression("'#{answer}' == 'yes'") # where answer contains 'yes'`
 
 Now this evaluates to `'yes' == 'yes'` which is true so the check passes.
+
+:::note[String Comparisons]
+The expression is evaluated as Ruby or Python code, so string and state values must be quoted (e.g., `== 'CONNECTED'`) and are compared exactly. Unlike [check](#check-check_raw-check_formatted), state names are not matched ignoring case and can not be unquoted. An unquoted value is evaluated as a constant and fails with `Uninitialized constant CONNECTED. Did you mean 'CONNECTED' as a string?`.
+:::
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -4173,7 +4183,7 @@ Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
 :::
 
 :::note[String Comparisons]
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `wait("INST HEALTH_STATUS TYPE == '#{expected}'", 10)` or Python `wait(f"INST HEALTH_STATUS TYPE == '{expected}'", 10)`.
+String values which are not state names must be quoted (e.g., `== 'NORMAL'`). State names are matched ignoring case for CONVERTED and FORMATTED values, so `== 'On'` and `in ['on', 'off']` match the ON and OFF states. A state name which is a single word of letters, digits and underscores that does not start with a digit may be unquoted, including inside a list (e.g., `== ON` or `in [On, Off]`). Any other state name must be quoted (e.g., `== 'NOT CONNECTED'`). An unquoted word which is not a state name of the item is rejected, e.g. `== OFFLINE` fails with `Unknown state name OFFLINE. Did you mean 'OFFLINE' as a string?`. Note that `true`, `false` and `nil` (Ruby), `True`, `False` and `None` (Python), and `INF`, `INFINITY` and `NAN` in any case (both languages) are literals rather than state names, so quote a state with one of these names. Strings which are not state names are compared exactly. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double-quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `wait("INST HEALTH_STATUS TYPE == '#{expected}'", 10)` or Python `wait(f"INST HEALTH_STATUS TYPE == '{expected}'", 10)`.
 :::
 
 <Tabs groupId="script-language">
@@ -4275,6 +4285,10 @@ success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
+
+:::note[String Comparisons]
+The expression is evaluated as Ruby or Python code, so string and state values must be quoted (e.g., `== 'CONNECTED'`) and are compared exactly. Unlike [wait](#wait), state names are not matched ignoring case and can not be unquoted. An unquoted value is evaluated as a constant and fails with `Uninitialized constant CONNECTED. Did you mean 'CONNECTED' as a string?`.
+:::
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -4463,7 +4477,7 @@ Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
 :::
 
 :::note[String Comparisons]
-When comparing against string or state values, the value must be quoted (e.g., `== 'ON'`). An unquoted value is rejected with `Uninitialized constant ON. Did you mean 'ON' as a string?`. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `wait_check("INST HEALTH_STATUS TYPE == '#{expected}'", 10)` or Python `wait_check(f"INST HEALTH_STATUS TYPE == '{expected}'", 10)`.
+String values which are not state names must be quoted (e.g., `== 'NORMAL'`). State names are matched ignoring case for CONVERTED and FORMATTED values, so `== 'On'` and `in ['on', 'off']` match the ON and OFF states. A state name which is a single word of letters, digits and underscores that does not start with a digit may be unquoted, including inside a list (e.g., `== ON` or `in [On, Off]`). Any other state name must be quoted (e.g., `== 'NOT CONNECTED'`). An unquoted word which is not a state name of the item is rejected, e.g. `== OFFLINE` fails with `Unknown state name OFFLINE. Did you mean 'OFFLINE' as a string?`. Note that `true`, `false` and `nil` (Ruby), `True`, `False` and `None` (Python), and `INF`, `INFINITY` and `NAN` in any case (both languages) are literals rather than state names, so quote a state with one of these names. Strings which are not state names are compared exactly. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double-quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `wait_check("INST HEALTH_STATUS TYPE == '#{expected}'", 10)` or Python `wait_check(f"INST HEALTH_STATUS TYPE == '{expected}'", 10)`.
 :::
 
 <Tabs groupId="script-language">
@@ -4564,6 +4578,10 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
+
+:::note[String Comparisons]
+The expression is evaluated as Ruby or Python code, so string and state values must be quoted (e.g., `== 'CONNECTED'`) and are compared exactly. Unlike [wait_check](#wait_check), state names are not matched ignoring case and can not be unquoted. An unquoted value is evaluated as a constant and fails with `Uninitialized constant CONNECTED. Did you mean 'CONNECTED' as a string?`.
+:::
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -10330,7 +10348,7 @@ metadata_update({ 'key' => 'value' })
 
 <span class="badge badge--secondary since-heading">Since 5.2.0</span>
 
-Prompts the user to set existing metadata values or create new a new one.
+Prompts the user to set existing metadata values or create a new one. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
