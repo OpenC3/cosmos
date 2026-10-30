@@ -184,6 +184,23 @@ RSpec.describe RunningScript, type: :model do
       expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
     end
 
+    it "does not pass unused credentials to the script process" do
+      process_env = {}
+      process_double = double("process", cwd: nil, start: nil)
+      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
+      allow(process_double).to receive(:cwd=)
+      allow(process_double).to receive(:detach=)
+      allow(process_double).to receive(:environment).and_return(process_env)
+      allow(ChildProcess).to receive(:build).and_return(process_double)
+
+      RunningScript.spawn("DEFAULT", "script.rb")
+
+      OpenC3::ScriptEnv::UNUSED_VARS.each do |key|
+        expect(process_env).to have_key(key)
+        expect(process_env[key]).to be_nil
+      end
+    end
+
     context "per-plugin Python venv detection" do
       before do
         process_env = {}

@@ -18,6 +18,7 @@ import openc3.utilities.target_file_importer
 from openc3.script import *  # noqa: F403
 from openc3.script.suite_runner import SuiteRunner
 from openc3.top_level import add_to_search_path
+from openc3.utilities.script_env import clear_credentials
 from openc3.utilities.target_file import TargetFile
 
 
@@ -52,6 +53,8 @@ with open(path) as file:
 
 for path in glob.glob("/gems/gems/**/lib"):
     add_to_search_path(path, True)
+
+clear_credentials()
 
 exec(data, globals())
 

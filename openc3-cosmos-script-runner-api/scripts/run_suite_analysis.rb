@@ -21,6 +21,10 @@ require 'json'
 require 'openc3'
 require 'openc3/script/suite_runner'
 require 'openc3/utilities/running_script'
+require 'openc3/utilities/script_env'
+
+OpenC3::ScriptEnv.clear_credentials
+
 require ARGV[1]
 
 puts OpenC3::SuiteRunner.build_suites.as_json().to_json(allow_nan: true)
