@@ -21,12 +21,25 @@ on:
   release:
     types: [published]
 
-# Workaround for https://github.com/aquasecurity/trivy-action/issues/389
-# Trivy tries each comma-separated repository in order, so a rate limit on one
-# (e.g. public.ecr.aws "TOOMANYREQUESTS: Data limit exceeded") falls through.
 env:
+  # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
+  # Trivy tries each comma-separated repository in order, so a rate limit on one
+  # (e.g. public.ecr.aws "TOOMANYREQUESTS: Data limit exceeded") falls through.
   TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
   TRIVY_JAVA_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db:1,ghcr.io/aquasecurity/trivy-java-db:1
+  # The release report lists every vulnerability and never fails the job, so
+  # these settings must not depend on whether a trivy.yaml is in the working
+  # directory. The root trivy.yaml (for CI) sets exit-code 1, fixed
+  # CRITICAL/HIGH only, and the vuln scanner, which also adds vulnerabilities
+  # to the CycloneDX SBOMs. TRIVY_CONFIG=/dev/null keeps any trivy.yaml from
+  # loading, and the rest are set here rather than as trivy-action inputs
+  # because the action drops inputs equal to its defaults (e.g.
+  # ignore-unfixed: false). Environment variables take precedence over a config.
+  TRIVY_CONFIG: /dev/null
+  TRIVY_EXIT_CODE: "0"
+  TRIVY_SEVERITY: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+  TRIVY_IGNORE_UNFIXED: "false"
+  TRIVY_PKG_TYPES: os,library
 
 permissions:
   contents: read
@@ -85,7 +98,7 @@ jobs:
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
           cache: true
-          version: v0.76.0
+          version: v0.76.1
       - name: Create trivy output folder
         run: mkdir trivy_results
       - name: Create sbom folder
