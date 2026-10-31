@@ -22,30 +22,11 @@ require 'openc3/utilities/store'
 require 'openc3/utilities/bucket'
 require 'json'
 require 'openc3/utilities/running_script'
+require 'openc3/utilities/script_env'
 
 working_dir = Dir.pwd
 
-# Load the bucket client code to ensure we authenticate outside ENV vars
-OpenC3::Bucket.getClient()
-# Preload Store and remove Redis secrets from ENV
-OpenC3::Store.instance
-OpenC3::EphemeralStore.instance
-
-# Clear ENV vars for security purposes
-ENV['OPENC3_BUCKET_USERNAME'] = nil
-ENV['OPENC3_BUCKET_PASSWORD'] = nil
-ENV['OPENC3_REDIS_USERNAME'] = nil
-ENV['OPENC3_REDIS_PASSWORD'] = nil
-ENV['OPENC3_TSDB_USERNAME'] = nil
-ENV['OPENC3_TSDB_PASSWORD'] = nil
-ENV['OPENC3_API_PASSWORD'] = nil
-ENV['OPENC3_SERVICE_PASSWORD'] = nil
-# This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
-ENV['ANYCABLE_REDIS_URL'] = nil
-ENV['KC_DB_USERNAME'] = nil
-ENV['KC_DB_PASSWORD'] = nil
-ENV['KEYCLOAK_ADMIN'] = nil
-ENV['KEYCLOAK_ADMIN_PASSWORD'] = nil
+OpenC3::ScriptEnv.clear_credentials
 
 id = ARGV[0]
 scope = ARGV[1]
