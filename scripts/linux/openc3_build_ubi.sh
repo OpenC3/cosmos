@@ -439,7 +439,7 @@ if should_build "openc3-traefik-ubi"; then
     --network host \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik \
     --build-arg TRAEFIK_CONFIG=$TRAEFIK_CONFIG \
-    --build-arg OPENC3_TRAEFIK_RELEASE=v3.7.16 \
+    --build-arg OPENC3_TRAEFIK_RELEASE=v3.7.17 \
     "${BUILD_FLAGS[@]}" \
     $PULL_FLAG \
     $PLATFORM_FLAG \
