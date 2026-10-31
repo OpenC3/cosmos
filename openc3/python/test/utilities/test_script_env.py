@@ -10,58 +10,47 @@
 # if purchased from OpenC3, Inc.
 
 import os
-import unittest
-from unittest.mock import MagicMock, patch
 
 from openc3.utilities import script_env
 
 
-class TestScriptEnv(unittest.TestCase):
-    def setUp(self):
-        # patch.dict snapshots os.environ and restores it on stop
-        patcher = patch.dict(os.environ)
-        patcher.start()
-        self.addCleanup(patcher.stop)
+def test_cleared_vars_include_unused_vars():
+    for key in script_env.UNUSED_VARS:
+        assert key in script_env.CLEARED_VARS
 
-    def test_cleared_vars_include_unused_vars(self):
-        for key in script_env.UNUSED_VARS:
-            self.assertIn(key, script_env.CLEARED_VARS)
 
-    def test_clear_credentials_connects_before_clearing(self):
-        for key in script_env.CLEARED_VARS:
-            os.environ[key] = "value"
-        os.environ["OPENC3_SCOPE"] = "DEFAULT"
-        calls = MagicMock()
+def test_clear_credentials_connects_before_clearing(monkeypatch):
+    for key in script_env.CLEARED_VARS:
+        monkeypatch.setenv(key, "value")
+    monkeypatch.setenv("OPENC3_SCOPE", "DEFAULT")
+    calls = []
 
-        def record(name):
-            def side_effect():
-                calls(name, all(key in os.environ for key in script_env.CLEARED_VARS))
+    def record(name):
+        def side_effect():
+            calls.append((name, all(key in os.environ for key in script_env.CLEARED_VARS)))
 
-            return side_effect
+        return side_effect
 
-        with (
-            patch.object(script_env.Bucket, "get_client", side_effect=record("bucket")),
-            patch.object(script_env.Store, "instance", side_effect=record("store")),
-            patch.object(script_env.EphemeralStore, "instance", side_effect=record("ephemeral")),
-        ):
-            script_env.clear_credentials()
+    monkeypatch.setattr(script_env.Bucket, "get_client", record("bucket"))
+    monkeypatch.setattr(script_env.Store, "instance", record("store"))
+    monkeypatch.setattr(script_env.EphemeralStore, "instance", record("ephemeral"))
 
-        self.assertEqual(
-            [c.args for c in calls.call_args_list],
-            [("bucket", True), ("store", True), ("ephemeral", True)],
-        )
-        for key in script_env.CLEARED_VARS:
-            self.assertNotIn(key, os.environ)
-        self.assertEqual(os.environ["OPENC3_SCOPE"], "DEFAULT")
+    script_env.clear_credentials()
 
-    def test_clear_credentials_ignores_missing_vars(self):
-        for key in script_env.CLEARED_VARS:
-            os.environ.pop(key, None)
-        with (
-            patch.object(script_env.Bucket, "get_client"),
-            patch.object(script_env.Store, "instance"),
-            patch.object(script_env.EphemeralStore, "instance"),
-        ):
-            script_env.clear_credentials()
-        for key in script_env.CLEARED_VARS:
-            self.assertNotIn(key, os.environ)
+    assert calls == [("bucket", True), ("store", True), ("ephemeral", True)]
+    for key in script_env.CLEARED_VARS:
+        assert key not in os.environ
+    assert os.environ["OPENC3_SCOPE"] == "DEFAULT"
+
+
+def test_clear_credentials_ignores_missing_vars(monkeypatch):
+    for key in script_env.CLEARED_VARS:
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(script_env.Bucket, "get_client", lambda: None)
+    monkeypatch.setattr(script_env.Store, "instance", lambda: None)
+    monkeypatch.setattr(script_env.EphemeralStore, "instance", lambda: None)
+
+    script_env.clear_credentials()
+
+    for key in script_env.CLEARED_VARS:
+        assert key not in os.environ
