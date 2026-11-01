@@ -544,6 +544,19 @@ RSpec.describe RunningScriptController, type: :controller do
       expect(OpenC3::ScriptMessageSigning.verify(signing_key, env)).to be true
     end
 
+    it "stringifies a numeric answer so signing does not reject the Float" do
+      # The signer rejects Floats (non-deterministic text form across languages). A
+      # numeric ask reply like 1.5 must be stringified so the prompt is not blocked
+      # by a 500; the runners convert the string back to a value.
+      OpenC3::Store.set("script-signing-key:1", signing_key)
+      messages = published
+      post :prompt, params: {id: "1", scope: "DEFAULT", method: "ask", answer: 1.5, prompt_id: "abc123"}, as: :json
+      expect(response.status).to eq(200)
+      env = JSON.parse(messages[0][1])
+      expect(env["payload"]).to eq({"method" => "ask", "answer" => "1.5", "prompt_id" => "abc123"})
+      expect(OpenC3::ScriptMessageSigning.verify(signing_key, env)).to be true
+    end
+
     it "signs the method payload" do
       OpenC3::Store.set("script-signing-key:1", signing_key)
       messages = published

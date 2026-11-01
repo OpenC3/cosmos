@@ -26,8 +26,15 @@ except Exception:
 if str(auth.get("token") or "").strip():
     os.environ["OPENC3_API_TOKEN"] = auth["token"]
 else:
-    os.environ["OPENC3_API_USER"] = auth.get("user") or ""
-    os.environ["OPENC3_API_PASSWORD"] = auth.get("password") or ""
+    # Leave OPENC3_API_USER unset for a null username: an empty string is not None,
+    # so ApiServerProxy.generate_auth would pick Keycloak over Core auth.
+    if auth.get("user"):
+        os.environ["OPENC3_API_USER"] = auth["user"]
+    if auth.get("password"):
+        os.environ["OPENC3_API_PASSWORD"] = auth["password"]
+        # Core authenticates as the service; OpenC3Authentication sets its service
+        # flag by comparing OPENC3_API_PASSWORD to OPENC3_SERVICE_PASSWORD.
+        os.environ["OPENC3_SERVICE_PASSWORD"] = auth["password"]
 
 import openc3.utilities.target_file_importer
 from openc3.script import *  # noqa: F403

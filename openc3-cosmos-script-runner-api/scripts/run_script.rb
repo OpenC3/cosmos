@@ -39,8 +39,16 @@ if auth.is_a?(Hash)
   if auth['token']
     ENV['OPENC3_API_TOKEN'] = auth['token']
   elsif auth['user'] || auth['password']
-    ENV['OPENC3_API_USER'] = auth['user']
-    ENV['OPENC3_API_PASSWORD'] = auth['password']
+    # Leave OPENC3_API_USER unset for a null username: an empty string is not nil,
+    # so ServerProxy would select Keycloak auth instead of Core auth.
+    ENV['OPENC3_API_USER'] = auth['user'] if auth['user']
+    if auth['password']
+      ENV['OPENC3_API_PASSWORD'] = auth['password']
+      # Core authenticates as the service; OpenC3Authentication sets @service by
+      # comparing OPENC3_API_PASSWORD to OPENC3_SERVICE_PASSWORD, so restore it
+      # (runtime-only, so not exposed via /proc/<pid>/environ).
+      ENV['OPENC3_SERVICE_PASSWORD'] = auth['password']
+    end
   end
 end
 
@@ -60,15 +68,15 @@ OpenC3::Store.instance
 OpenC3::EphemeralStore.instance
 
 # Clear ENV vars for security purposes. OPENC3_API_TOKEN / OPENC3_API_USER /
-# OPENC3_API_PASSWORD are intentionally NOT cleared here: they were just applied
-# from the stdin credentials above and the API client needs them to authenticate.
+# OPENC3_API_PASSWORD / OPENC3_SERVICE_PASSWORD are intentionally NOT cleared here:
+# they were just applied from the stdin credentials above and the API client needs
+# them to authenticate.
 ENV['OPENC3_BUCKET_USERNAME'] = nil
 ENV['OPENC3_BUCKET_PASSWORD'] = nil
 ENV['OPENC3_REDIS_USERNAME'] = nil
 ENV['OPENC3_REDIS_PASSWORD'] = nil
 ENV['OPENC3_TSDB_USERNAME'] = nil
 ENV['OPENC3_TSDB_PASSWORD'] = nil
-ENV['OPENC3_SERVICE_PASSWORD'] = nil
 # This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
 ENV['ANYCABLE_REDIS_URL'] = nil
 ENV['KC_DB_USERNAME'] = nil

@@ -31,8 +31,15 @@ end
 if auth['token'].to_s.strip != ''
   ENV['OPENC3_API_TOKEN'] = auth['token']
 else
-  ENV['OPENC3_API_USER'] = auth['user'].to_s
-  ENV['OPENC3_API_PASSWORD'] = auth['password'].to_s
+  # Leave OPENC3_API_USER unset for a null username: an empty string is not nil,
+  # so ServerProxy would select Keycloak auth instead of Core auth.
+  ENV['OPENC3_API_USER'] = auth['user'] if auth['user']
+  if auth['password']
+    ENV['OPENC3_API_PASSWORD'] = auth['password']
+    # Core authenticates as the service; OpenC3Authentication sets @service by
+    # comparing OPENC3_API_PASSWORD to OPENC3_SERVICE_PASSWORD, so restore it.
+    ENV['OPENC3_SERVICE_PASSWORD'] = auth['password']
+  end
 end
 
 require 'openc3'

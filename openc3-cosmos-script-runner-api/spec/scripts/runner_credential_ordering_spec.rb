@@ -54,4 +54,33 @@ RSpec.describe 'runner script credential/import ordering' do
         "first on line #{load_line + 1}; the API client will capture a nil token"
     end
   end
+
+  # C1 regression: a null username must stay unset. Coercing it to "" makes it
+  # non-nil, so ServerProxy / ApiServerProxy.generate_auth selects Keycloak auth
+  # and breaks Core (which authenticates by password).
+  it "never coerces a null OPENC3_API_USER to an empty string" do
+    %w[run_script.rb run_suite_analysis.rb].each do |f|
+      expect(File.read(File.join(SCRIPTS_DIR, f))).not_to include("auth['user'].to_s"),
+        "#{f}: coerces a null username to \"\" which selects Keycloak over Core auth"
+    end
+    %w[run_script.py run_suite_analysis.py].each do |f|
+      expect(File.read(File.join(SCRIPTS_DIR, f))).not_to include('auth.get("user") or ""'),
+        "#{f}: coerces a null username to \"\" which selects Keycloak over Core auth"
+    end
+  end
+
+  # C2 regression: Core's OpenC3Authentication sets its service flag by comparing
+  # OPENC3_API_PASSWORD to OPENC3_SERVICE_PASSWORD; the latter is scrubbed from the
+  # child env, so each runner must restore it from the delivered password or Core
+  # scripts post to auth/verify instead of auth/verify_service and fail.
+  {
+    'run_script.rb'         => "ENV['OPENC3_SERVICE_PASSWORD'] = auth['password']",
+    'run_suite_analysis.rb' => "ENV['OPENC3_SERVICE_PASSWORD'] = auth['password']",
+    'run_script.py'         => 'os.environ["OPENC3_SERVICE_PASSWORD"] = auth["password"]',
+    'run_suite_analysis.py' => 'os.environ["OPENC3_SERVICE_PASSWORD"] = auth["password"]',
+  }.each do |filename, snippet|
+    it "#{filename} restores OPENC3_SERVICE_PASSWORD for Core service authentication" do
+      expect(File.read(File.join(SCRIPTS_DIR, filename))).to include(snippet)
+    end
+  end
 end

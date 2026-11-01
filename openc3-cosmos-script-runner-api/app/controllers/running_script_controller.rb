@@ -201,6 +201,10 @@ class RunningScriptController < ApplicationController
       else
         # Convert ActionController::Parameters to a plain hash for nested objects (e.g. open_bucket_dialog)
         answer = params[:answer].respond_to?(:to_unsafe_h) ? params[:answer].to_unsafe_h : params[:answer]
+        # The message signer rejects Floats (their text form differs across languages).
+        # A numeric ask reply like 1.5 would otherwise raise; send it as a string, which
+        # the runners convert back to a value like every other ask reply.
+        answer = answer.to_s if answer.is_a?(Float)
         publish_signed_command(params[:id], params[:scope], { method: params[:method], answer: answer, prompt_id: params[:prompt_id] })
       end
       OpenC3::Logger.info("Script prompt action #{params[:method]}: #{running_script['filename']}", scope: params[:scope], user: username())

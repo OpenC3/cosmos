@@ -41,8 +41,16 @@ if isinstance(auth, dict):
     if auth.get("token"):
         os.environ["OPENC3_API_TOKEN"] = auth["token"]
     elif auth.get("user") or auth.get("password"):
-        os.environ["OPENC3_API_USER"] = auth.get("user") or ""
-        os.environ["OPENC3_API_PASSWORD"] = auth.get("password") or ""
+        # Leave OPENC3_API_USER unset for a null username: an empty string is not
+        # None, so ApiServerProxy.generate_auth would pick Keycloak over Core auth.
+        if auth.get("user"):
+            os.environ["OPENC3_API_USER"] = auth["user"]
+        if auth.get("password"):
+            os.environ["OPENC3_API_PASSWORD"] = auth["password"]
+            # Core authenticates as the service; OpenC3Authentication sets its service
+            # flag by comparing OPENC3_API_PASSWORD to OPENC3_SERVICE_PASSWORD, so
+            # restore it (runtime-only, so not exposed via /proc/<pid>/environ).
+            os.environ["OPENC3_SERVICE_PASSWORD"] = auth["password"]
 
 from openc3.environment import OPENC3_CONFIG_BUCKET  # noqa: E402
 from openc3.models.script_status_model import ScriptStatusModel  # noqa: E402
@@ -81,9 +89,9 @@ EphemeralStore.instance()
 
 # Clear ENV vars for security purposes.
 # Use pop with default to avoid KeyError if vars don't exist (e.g. Enterprise/Keycloak).
-# OPENC3_API_TOKEN / OPENC3_API_USER / OPENC3_API_PASSWORD are intentionally NOT
-# cleared here: they were just applied from the stdin credentials above and the API
-# client needs them to authenticate.
+# OPENC3_API_TOKEN / OPENC3_API_USER / OPENC3_API_PASSWORD / OPENC3_SERVICE_PASSWORD
+# are intentionally NOT cleared here: they were just applied from the stdin
+# credentials above and the API client needs them to authenticate.
 for key in [
     "OPENC3_BUCKET_USERNAME",
     "OPENC3_BUCKET_PASSWORD",
@@ -91,7 +99,6 @@ for key in [
     "OPENC3_REDIS_PASSWORD",
     "OPENC3_TSDB_USERNAME",
     "OPENC3_TSDB_PASSWORD",
-    "OPENC3_SERVICE_PASSWORD",
     # This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
     "ANYCABLE_REDIS_URL",
     "KC_DB_USERNAME",
