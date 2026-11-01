@@ -16,12 +16,40 @@
 # if purchased from OpenC3, Inc.
 
 start_time = Time.now
+require 'json'
+
+# Read the one-line credentials JSON the parent wrote to stdin right after spawn,
+# and apply the API credentials to ENV BEFORE requiring openc3. The openc3 script
+# support builds the API client (via "include OpenC3::Script") when it is required
+# and reads ENV at that point to choose its authentication strategy; applying the
+# credentials afterward leaves the client with no token and every API call fails
+# server-side with "AuthError: Token is nil". Applying them in-process after exec
+# still keeps the secrets out of /proc/<pid>/environ. run_suite_analysis.rb does
+# the same. signing_key is stashed and applied after the requires below.
+stdin_line = $stdin.gets
+begin
+  stdin_creds = JSON.parse(stdin_line.to_s)
+  signing_key = stdin_creds['signing_key']
+  raise 'no signing_key' unless stdin_creds.is_a?(Hash) && signing_key.is_a?(String) && !signing_key.empty?
+rescue StandardError
+  raise "run_script: missing or malformed stdin credentials"
+end
+auth = stdin_creds['auth']
+if auth.is_a?(Hash)
+  if auth['token']
+    ENV['OPENC3_API_TOKEN'] = auth['token']
+  elsif auth['user'] || auth['password']
+    ENV['OPENC3_API_USER'] = auth['user']
+    ENV['OPENC3_API_PASSWORD'] = auth['password']
+  end
+end
+
 require 'openc3'
 require 'openc3/config/config_parser'
 require 'openc3/utilities/store'
 require 'openc3/utilities/bucket'
-require 'json'
 require 'openc3/utilities/running_script'
+require 'openc3/utilities/script_message_signing'
 
 working_dir = Dir.pwd
 
@@ -31,14 +59,15 @@ OpenC3::Bucket.getClient()
 OpenC3::Store.instance
 OpenC3::EphemeralStore.instance
 
-# Clear ENV vars for security purposes
+# Clear ENV vars for security purposes. OPENC3_API_TOKEN / OPENC3_API_USER /
+# OPENC3_API_PASSWORD are intentionally NOT cleared here: they were just applied
+# from the stdin credentials above and the API client needs them to authenticate.
 ENV['OPENC3_BUCKET_USERNAME'] = nil
 ENV['OPENC3_BUCKET_PASSWORD'] = nil
 ENV['OPENC3_REDIS_USERNAME'] = nil
 ENV['OPENC3_REDIS_PASSWORD'] = nil
 ENV['OPENC3_TSDB_USERNAME'] = nil
 ENV['OPENC3_TSDB_PASSWORD'] = nil
-ENV['OPENC3_API_PASSWORD'] = nil
 ENV['OPENC3_SERVICE_PASSWORD'] = nil
 # This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
 ENV['ANYCABLE_REDIS_URL'] = nil
@@ -46,6 +75,9 @@ ENV['KC_DB_USERNAME'] = nil
 ENV['KC_DB_PASSWORD'] = nil
 ENV['KEYCLOAK_ADMIN'] = nil
 ENV['KEYCLOAK_ADMIN_PASSWORD'] = nil
+
+RunningScript.signing_key = signing_key
+seen_nonces = OpenC3::ScriptMessageSigning::NonceCache.new
 
 id = ARGV[0]
 scope = ARGV[1]
@@ -94,8 +126,12 @@ begin
     end
 
     on.message do |_channel, msg|
-      parsed_cmd = JSON.parse(msg, allow_nan: true, create_additions: true)
-      run_script_log(id, "Script #{path} received command: #{msg}") unless parsed_cmd == "shutdown" or parsed_cmd["method"]
+      accepted, parsed_cmd = OpenC3::ScriptMessageSigning.accept?(signing_key, msg, seen_nonces)
+      unless accepted
+        run_script_log(id, "WARNING: dropped unverified control message", 'YELLOW')
+        next
+      end
+      run_script_log(id, "Script #{path} received command: #{JSON.generate(parsed_cmd)}") unless parsed_cmd == "shutdown" or parsed_cmd["method"]
       case parsed_cmd
       when "go"
         running_script.go

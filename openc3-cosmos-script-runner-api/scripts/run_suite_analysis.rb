@@ -18,6 +18,23 @@
 $openc3_scope = ARGV[0]
 
 require 'json'
+
+# Read the one-line auth JSON the parent wrote to stdin right after spawn.
+# Applied at runtime so the secret is never in the process environment.
+begin
+  stdin_creds = JSON.parse($stdin.gets.to_s)
+  auth = stdin_creds['auth']
+  raise 'no auth' unless auth.is_a?(Hash)
+rescue StandardError
+  raise "run_suite_analysis: missing or malformed stdin credentials"
+end
+if auth['token'].to_s.strip != ''
+  ENV['OPENC3_API_TOKEN'] = auth['token']
+else
+  ENV['OPENC3_API_USER'] = auth['user'].to_s
+  ENV['OPENC3_API_PASSWORD'] = auth['password'].to_s
+end
+
 require 'openc3'
 require 'openc3/script/suite_runner'
 require 'openc3/utilities/running_script'

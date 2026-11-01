@@ -107,7 +107,7 @@ RSpec.describe RunningScriptController, type: :controller do
     describe "POST stop" do
       context "when script exists" do
         it "stops the script" do
-          expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "stop")
+          expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).at_least(:once).with("1", "DEFAULT", "stop")
 
           post :stop, params: {id: "1", scope: "DEFAULT"}
 
@@ -127,7 +127,7 @@ RSpec.describe RunningScriptController, type: :controller do
     describe "POST pause" do
       context "when script exists" do
         it "pauses the script" do
-          expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "pause")
+          expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).at_least(:once).with("1", "DEFAULT", "pause")
 
           post :pause, params: {id: "1", scope: "DEFAULT"}
 
@@ -147,7 +147,7 @@ RSpec.describe RunningScriptController, type: :controller do
     describe "POST go" do
       context "when script exists" do
         it "resumes the script" do
-          expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "go")
+          expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).at_least(:once).with("1", "DEFAULT", "go")
 
           post :go, params: {id: "1", scope: "DEFAULT"}
 
@@ -167,7 +167,7 @@ RSpec.describe RunningScriptController, type: :controller do
     describe "POST step" do
       context "when script exists" do
         it "steps the script" do
-          expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "step")
+          expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).at_least(:once).with("1", "DEFAULT", "step")
 
           post :step, params: {id: "1", scope: "DEFAULT"}
 
@@ -187,7 +187,7 @@ RSpec.describe RunningScriptController, type: :controller do
     describe "POST retry" do
       context "when script exists" do
         it "retries the script" do
-          expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "retry")
+          expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).at_least(:once).with("1", "DEFAULT", "retry")
 
           post :retry, params: {id: "1", scope: "DEFAULT"}
 
@@ -227,16 +227,28 @@ RSpec.describe RunningScriptController, type: :controller do
 
       it "stops and deletes the script" do
         allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
-        expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "stop")
+        expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).at_least(:once).with("1", "DEFAULT", "stop")
 
         delete :delete, params: {id: "1", scope: "DEFAULT"}
 
         expect(response.status).to eq(200)
       end
 
+      it "deletes the per-script signing key" do
+        allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
+        allow_any_instance_of(RunningScriptController).to receive(:publish_signed_command)
+        OpenC3::Store.set("script-signing-key:1", "k" * 64)
+        expect(OpenC3::Store.get("script-signing-key:1")).to eq("k" * 64)
+
+        delete :delete, params: {id: "1", scope: "DEFAULT"}
+
+        expect(response.status).to eq(200)
+        expect(OpenC3::Store.get("script-signing-key:1")).to be_nil
+      end
+
       it "moves the script to completed if the process died without cleaning up" do
         allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
-        allow_any_instance_of(RunningScriptController).to receive(:running_script_publish)
+        allow_any_instance_of(RunningScriptController).to receive(:publish_signed_command)
         script_model = OpenC3::ScriptStatusModel.get_model(name: "1", scope: "DEFAULT")
         expect(script_model).to receive(:state=).with("killed")
         expect(script_model).to receive(:update)
@@ -248,7 +260,7 @@ RSpec.describe RunningScriptController, type: :controller do
 
       it "leaves the script alone if the process already completed it" do
         allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
-        allow_any_instance_of(RunningScriptController).to receive(:running_script_publish)
+        allow_any_instance_of(RunningScriptController).to receive(:publish_signed_command)
         script_model = OpenC3::ScriptStatusModel.get_model(name: "1", scope: "DEFAULT")
         allow(script_model).to receive(:is_complete?).and_return(true)
         expect(script_model).not_to receive(:update)
@@ -260,7 +272,7 @@ RSpec.describe RunningScriptController, type: :controller do
 
       it "re-fetches the model to see a completion written while stopping" do
         allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
-        allow_any_instance_of(RunningScriptController).to receive(:running_script_publish)
+        allow_any_instance_of(RunningScriptController).to receive(:publish_signed_command)
         # The initial fetch sees the script running, then the process
         # moves itself to completed before it exits
         running_model = OpenC3::ScriptStatusModel.get_model(name: "1", scope: "DEFAULT")
@@ -290,7 +302,7 @@ RSpec.describe RunningScriptController, type: :controller do
         end
 
         expect(Process).to receive(:kill).with("SIGINT", 12345)
-        expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "stop")
+        expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).at_least(:once).with("1", "DEFAULT", "stop")
 
         delete :delete, params: {id: "1", scope: "DEFAULT"}
 
@@ -317,7 +329,7 @@ RSpec.describe RunningScriptController, type: :controller do
 
         expect(Process).to receive(:kill).with("SIGINT", 12345)
         expect(Process).to receive(:kill).with("SIGKILL", 12345)
-        expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "stop")
+        expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).at_least(:once).with("1", "DEFAULT", "stop")
 
         delete :delete, params: {id: "1", scope: "DEFAULT"}
 
@@ -336,7 +348,7 @@ RSpec.describe RunningScriptController, type: :controller do
         allow(script_model).to receive(:state=)
         allow(script_model).to receive(:update)
         allow(OpenC3::ScriptStatusModel).to receive(:get_model).and_return(script_model)
-        expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "stop")
+        expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).at_least(:once).with("1", "DEFAULT", "stop")
 
         expect(Process).not_to receive(:kill)
         expect(Process).not_to receive(:getpgid)
@@ -362,8 +374,8 @@ RSpec.describe RunningScriptController, type: :controller do
   describe "script prompt interactions" do
     context "when script exists" do
       it "handles standard answer prompts" do
-        expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).with(
-          "cmd-running-script-channel:1",
+        expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).with(
+          "1", "DEFAULT",
           {method: "ask", answer: "yes", prompt_id: "abc123"}
         )
 
@@ -379,8 +391,8 @@ RSpec.describe RunningScriptController, type: :controller do
       end
 
       it "handles password prompts" do
-        expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).with(
-          "cmd-running-script-channel:1",
+        expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).with(
+          "1", "DEFAULT",
           {method: "prompt_for_hazardous", password: "secret", prompt_id: "abc123"}
         )
 
@@ -398,8 +410,8 @@ RSpec.describe RunningScriptController, type: :controller do
       it "handles multiple choice prompts" do
         multiple_options = ["option1", "option2"]
 
-        expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).with(
-          "cmd-running-script-channel:1",
+        expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).with(
+          "1", "DEFAULT",
           {method: "combo_box", multiple: JSON.generate(multiple_options, allow_nan: true), prompt_id: "abc123"}
         )
 
@@ -434,8 +446,8 @@ RSpec.describe RunningScriptController, type: :controller do
       it "invokes a method with arguments" do
         method_args = ["arg1", "arg2"]
 
-        expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).with(
-          "cmd-running-script-channel:1",
+        expect_any_instance_of(RunningScriptController).to receive(:publish_signed_command).with(
+          "1", "DEFAULT",
           {method: "some_method", args: method_args, prompt_id: "abc123"}
         )
 
@@ -463,6 +475,82 @@ RSpec.describe RunningScriptController, type: :controller do
 
         expect(response.status).to eq(404)
       end
+    end
+  end
+
+  describe "signed control messages" do
+    let(:signing_key) { "a" * 64 }
+    let(:channel) { "script-api:cmd-running-script-channel:1" }
+
+    def published
+      messages = []
+      without_partial_double_verification do
+        allow(OpenC3::Store).to receive(:publish) { |ch, msg| messages << [ch, msg] }
+      end
+      messages
+    end
+
+    it "publishes a verifiable signed envelope for stop" do
+      OpenC3::Store.set("script-signing-key:1", signing_key)
+      messages = published
+      post :stop, params: {id: "1", scope: "DEFAULT"}
+      expect(response.status).to eq(200)
+      expect(messages.length).to eq(1)
+      expect(messages[0][0]).to eq(channel)
+      env = JSON.parse(messages[0][1])
+      expect(env["payload"]).to eq("stop")
+      expect(OpenC3::ScriptMessageSigning.verify(signing_key, env)).to be true
+      expect(OpenC3::ScriptMessageSigning.verify("b" * 64, env)).to be false
+    end
+
+    it "refreshes the signing key TTL" do
+      OpenC3::Store.set("script-signing-key:1", signing_key)
+      published
+      post :stop, params: {id: "1", scope: "DEFAULT"}
+      expect(OpenC3::Store.ttl("script-signing-key:1")).to be > 0
+    end
+
+    it "does not publish or raise when the signing key is absent" do
+      messages = published
+      post :stop, params: {id: "1", scope: "DEFAULT"}
+      expect(response.status).to eq(200)
+      expect(messages).to be_empty
+    end
+
+    it "signs the password prompt payload" do
+      OpenC3::Store.set("script-signing-key:1", signing_key)
+      messages = published
+      post :prompt, params: {id: "1", scope: "DEFAULT", method: "ask", password: "secret", prompt_id: "abc123"}
+      env = JSON.parse(messages[0][1])
+      expect(env["payload"]).to eq({"method" => "ask", "password" => "secret", "prompt_id" => "abc123"})
+      expect(OpenC3::ScriptMessageSigning.verify(signing_key, env)).to be true
+    end
+
+    it "signs the multiple prompt payload" do
+      OpenC3::Store.set("script-signing-key:1", signing_key)
+      messages = published
+      post :prompt, params: {id: "1", scope: "DEFAULT", method: "combo_box", multiple: true, answer: ["a", "b"], prompt_id: "abc123"}
+      env = JSON.parse(messages[0][1])
+      expect(env["payload"]["multiple"]).to eq(JSON.generate(["a", "b"], allow_nan: true))
+      expect(OpenC3::ScriptMessageSigning.verify(signing_key, env)).to be true
+    end
+
+    it "signs the answer prompt payload" do
+      OpenC3::Store.set("script-signing-key:1", signing_key)
+      messages = published
+      post :prompt, params: {id: "1", scope: "DEFAULT", method: "ask", answer: "yes", prompt_id: "abc123"}
+      env = JSON.parse(messages[0][1])
+      expect(env["payload"]).to eq({"method" => "ask", "answer" => "yes", "prompt_id" => "abc123"})
+      expect(OpenC3::ScriptMessageSigning.verify(signing_key, env)).to be true
+    end
+
+    it "signs the method payload" do
+      OpenC3::Store.set("script-signing-key:1", signing_key)
+      messages = published
+      post :method, params: {id: "1", scope: "DEFAULT", method: "some_method", args: ["arg1"], prompt_id: "abc123"}
+      env = JSON.parse(messages[0][1])
+      expect(env["payload"]).to eq({"method" => "some_method", "args" => ["arg1"], "prompt_id" => "abc123"})
+      expect(OpenC3::ScriptMessageSigning.verify(signing_key, env)).to be true
     end
   end
 end

@@ -46,10 +46,11 @@ RSpec.describe RunningScript, type: :model do
     before do
       # Only mock the process spawning parts to avoid actual process creation
       process_double = double("process")
-      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
+      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil, stdin: double("stdin", puts: nil, close: nil)))
       allow(process_double).to receive(:cwd=)
       allow(process_double).to receive(:environment).and_return({})
       allow(process_double).to receive(:detach=)
+      allow(process_double).to receive(:duplex=)
       allow(process_double).to receive(:start)
       allow(ChildProcess).to receive(:build).and_return(process_double)
     end
@@ -113,16 +114,17 @@ RSpec.describe RunningScript, type: :model do
 
       process_env_double = {}
       process_double = double("process")
-      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
+      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil, stdin: double("stdin", puts: nil, close: nil)))
       allow(process_double).to receive(:cwd=)
       allow(process_double).to receive(:environment).and_return(process_env_double)
       allow(process_double).to receive(:detach=)
+      allow(process_double).to receive(:duplex=)
       allow(process_double).to receive(:start)
       allow(ChildProcess).to receive(:build).and_return(process_double)
 
       RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
 
-      expect(process_env_double["OPENC3_API_TOKEN"]).to eq("valid_token")
+      expect(process_env_double["OPENC3_API_TOKEN"]).to be_nil
     end
 
     it "raises an error and cleans up script status if offline token is invalid" do
@@ -169,10 +171,11 @@ RSpec.describe RunningScript, type: :model do
 
     it "cleans up script status if process.start raises an error" do
       failing_process = double("process")
-      allow(failing_process).to receive(:io).and_return(double("io", inherit!: nil))
+      allow(failing_process).to receive(:io).and_return(double("io", inherit!: nil, stdin: double("stdin", puts: nil, close: nil)))
       allow(failing_process).to receive(:cwd=)
       allow(failing_process).to receive(:environment).and_return({})
       allow(failing_process).to receive(:detach=)
+      allow(failing_process).to receive(:duplex=)
       allow(failing_process).to receive(:start).and_raise(RuntimeError.new("Failed to start process"))
       allow(ChildProcess).to receive(:build).and_return(failing_process)
 
@@ -184,14 +187,105 @@ RSpec.describe RunningScript, type: :model do
       expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
     end
 
+    context "signing key and stdin secret delivery" do
+      let(:env) { {} }
+      let(:written) { [] }
+      let(:closed) { [false] }
+      let(:process_double) do
+        stdin = double("stdin")
+        allow(stdin).to receive(:puts) { |data| written << data }
+        allow(stdin).to receive(:close) { closed[0] = true }
+        pd = double("process")
+        allow(pd).to receive(:io).and_return(double("io", inherit!: nil, stdin: stdin))
+        allow(pd).to receive(:cwd=)
+        allow(pd).to receive(:environment).and_return(env)
+        allow(pd).to receive(:detach=)
+        allow(pd).to receive(:duplex=)
+        allow(pd).to receive(:start)
+        pd
+      end
+
+      before { allow(ChildProcess).to receive(:build).and_return(process_double) }
+
+      it "stores a signing key with a TTL and keeps it off the environment" do
+        id = RunningScript.spawn("DEFAULT", "script.rb")
+        key = OpenC3::Store.get("script-signing-key:#{id}")
+        expect(key).to match(/\A\h{64}\z/)
+        expect(OpenC3::Store.ttl("script-signing-key:#{id}")).to be > 0
+        expect(env.values).not_to include(key)
+        expect(JSON.parse(written.first)["signing_key"]).to eq(key)
+      end
+
+      it "enables duplex stdin and writes one JSON line then closes stdin (Core)" do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('OPENC3_SERVICE_PASSWORD').and_return("svcpw")
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('OPENC3_SERVICE_PASSWORD').and_return("svcpw")
+        allow(ENV).to receive(:fetch).with('OPENC3_API_USER', nil).and_return("svcuser")
+        expect(process_double).to receive(:duplex=).with(true)
+        RunningScript.spawn("DEFAULT", "script.rb")
+        expect(env["OPENC3_API_TOKEN"]).to be_nil
+        expect(env["OPENC3_API_PASSWORD"]).to be_nil
+        expect(written.length).to eq(1)
+        expect(closed[0]).to be true
+        msg = JSON.parse(written.first)
+        expect(msg["auth"]).to eq({ "user" => "svcuser", "password" => "svcpw" })
+      end
+
+      it "sends the offline token as auth (Enterprise)" do
+        model_double = double("model", offline_access_token: "valid_token", update: nil)
+        auth_double = double("auth", get_token_from_refresh_token: true)
+        allow(OpenC3::OpenC3KeycloakAuthentication).to receive(:new).and_return(auth_double)
+        allow(OpenC3::OfflineAccessModel).to receive(:get_model).with(name: "testuser", scope: "DEFAULT").and_return(model_double)
+        RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
+        expect(env["OPENC3_API_TOKEN"]).to be_nil
+        expect(JSON.parse(written.first)["auth"]).to eq({ "token" => "valid_token" })
+      end
+
+      it "scrubs inherited secrets from the child environment but keeps needed ones" do
+        scrub = %w[ANYCABLE_REDIS_URL OPENC3_SERVICE_PASSWORD OPENC3_API_PASSWORD OPENC3_API_TOKEN
+                   OPENC3_TSDB_USERNAME OPENC3_TSDB_PASSWORD KC_DB_USERNAME KC_DB_PASSWORD
+                   KEYCLOAK_ADMIN KEYCLOAK_ADMIN_PASSWORD]
+        keep = { 'OPENC3_SR_REDIS_USERNAME' => 'sr_user', 'OPENC3_SR_BUCKET_USERNAME' => 'sr_bucket',
+                 'OPENC3_API_USER' => 'apiuser' }
+        saved = (scrub + keep.keys).to_h { |k| [k, ENV[k]] }
+        begin
+          scrub.each { |k| ENV[k] = "secret-#{k}" }
+          keep.each { |k, v| ENV[k] = v }
+          RunningScript.spawn("DEFAULT", "script.rb")
+          scrub.each { |k| expect(env.key?(k) ? env[k] : nil).to be_nil, "#{k} leaked" }
+          expect(env['OPENC3_REDIS_USERNAME']).to eq('sr_user')
+          expect(env['OPENC3_BUCKET_USERNAME']).to eq('sr_bucket')
+          expect(env['OPENC3_API_USER']).to eq('apiuser')
+          expect(env.key?('ANYCABLE_REDIS_URL')).to be true # explicitly nil'd so the child does not inherit it
+        ensure
+          saved.each { |k, v| v.nil? ? ENV.delete(k) : ENV[k] = v }
+        end
+      end
+
+      it "stops the child and deletes the key if the stdin write fails" do
+        allow(process_double.io.stdin).to receive(:puts).and_raise(Errno::EPIPE)
+        expect(process_double).to receive(:stop)
+        expect { RunningScript.spawn("DEFAULT", "script.rb") }.to raise_error(Errno::EPIPE)
+        expect(OpenC3::Store.get("script-signing-key:1")).to be_nil
+      end
+
+      it "deletes the signing key when spawn fails after it is stored" do
+        allow(process_double).to receive(:start).and_raise(RuntimeError.new("boom"))
+        expect { RunningScript.spawn("DEFAULT", "script.rb") }.to raise_error("boom")
+        expect(OpenC3::Store.get("script-signing-key:1")).to be_nil
+      end
+    end
+
     context "per-plugin Python venv detection" do
       before do
         process_env = {}
         @process_double = double("process")
-        allow(@process_double).to receive(:io).and_return(double("io", inherit!: nil))
+        allow(@process_double).to receive(:io).and_return(double("io", inherit!: nil, stdin: double("stdin", puts: nil, close: nil)))
         allow(@process_double).to receive(:cwd=)
         allow(@process_double).to receive(:environment).and_return(process_env)
         allow(@process_double).to receive(:detach=)
+        allow(@process_double).to receive(:duplex=)
         allow(@process_double).to receive(:start)
         allow(ChildProcess).to receive(:build).and_return(@process_double)
       end

@@ -14,6 +14,21 @@ import json
 import os
 import sys
 
+
+# Read the one-line auth JSON the parent wrote to stdin right after spawn.
+# Applied at runtime so the secret is never in the process environment.
+try:
+    auth = json.loads(sys.stdin.readline())["auth"]
+    if not isinstance(auth, dict):
+        raise ValueError("no auth")
+except Exception:
+    raise RuntimeError("run_suite_analysis: missing or malformed stdin credentials") from None
+if str(auth.get("token") or "").strip():
+    os.environ["OPENC3_API_TOKEN"] = auth["token"]
+else:
+    os.environ["OPENC3_API_USER"] = auth.get("user") or ""
+    os.environ["OPENC3_API_PASSWORD"] = auth.get("password") or ""
+
 import openc3.utilities.target_file_importer
 from openc3.script import *  # noqa: F403
 from openc3.script.suite_runner import SuiteRunner

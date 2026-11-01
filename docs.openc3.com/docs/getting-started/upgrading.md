@@ -16,6 +16,10 @@ COSMOS is released as Docker containers. Since we're using Docker containers and
 Always check the release notes associated with the release on the [releases](https://github.com/OpenC3/cosmos/releases) page. Sometimes there are migration notes. When upgrading older versions, be sure to upgrade first to 5.13.0, then to 6.0.0, and then to the latest 7.x release. See [Upgrade Migration Process](/docs/getting-started/upgrading#upgrade-migration-process) for more information.
 :::
 
+:::warning[Script control messages are now signed]
+Script Runner control messages (stop, pause, debug, etc.) are now signed with a per-script key, and the wire format changed with no backward-compatibility shim. COSMOS Core users who stop and start COSMOS (`./openc3.sh stop` then `run`, or `docker compose down` then `up`) are unaffected. Helm users do a rolling upgrade, so make sure **no scripts are running during `helm upgrade`**. A script that is still running across the upgrade will not respond to stop, pause, or other control commands from the new version.
+:::
+
 This example assumes an existing COSMOS project at `cosmos-project`. This should first be performed on a non-production machine that has the same set of plugins as your production system.
 
 1. Stop the current COSMOS application

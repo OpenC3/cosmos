@@ -25,6 +25,7 @@ require 'openc3/io/stderr'
 require 'childprocess'
 require 'openc3/script/suite_runner'
 require 'openc3/utilities/script'
+require 'openc3/utilities/script_message_signing'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
@@ -364,6 +365,12 @@ module OpenC3
 end
 
 class RunningScript
+  # In-memory HMAC key for signing/verifying control channel messages.
+  # Set by run_script.rb from stdin; never written to env or disk.
+  class << self
+    attr_accessor :signing_key
+  end
+
   def id
     return @script_status.id
   end
@@ -463,6 +470,12 @@ class RunningScript
 
     running_script_id = OpenC3::Store.incr('running-script-id')
 
+    # Per-script key used to sign control-channel messages. Lives only under
+    # script-signing-key:* (never on the script_status record, which scripts can read)
+    signing_key = SecureRandom.hex(32)
+    signing_key_ttl = ENV.fetch('OPENC3_SCRIPT_SIGNING_KEY_TTL', 2592000).to_i
+    OpenC3::Store.set("script-signing-key:#{running_script_id}", signing_key, ex: signing_key_ttl)
+
     # COSMOS Core username (Enterprise has the actual name)
     username ||= 'Anonymous'
     # COSMOS Core full name (Enterprise has the actual name)
@@ -471,7 +484,10 @@ class RunningScript
 
     begin
       process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s, scope)
+      # inherit! only wires stdout/stderr (childprocess 5.1.0), leaving stdin
+      # free for the duplex pipe used to deliver secrets
       process.io.inherit! # Helps with debugging
+      process.duplex = true
       script_cwd = File.join(RAILS_ROOT, 'tmp', "script_#{running_script_id}")
       FileUtils.mkdir_p(script_cwd)
       process.cwd = script_cwd
@@ -531,11 +547,18 @@ class RunningScript
       process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
       process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
       process.environment['OPENC3_API_CLIENT'] = ENV.fetch('OPENC3_API_CLIENT', nil)
+      # Scrub inherited secrets the child does not need. Clearing at spawn time is the
+      # only thing effective against /proc/<pid>/environ (exec-time bytes persist).
+      # ANYCABLE_REDIS_URL embeds the all-keys 'openc3' redis user and would expose
+      # every script-signing-key:*.
+      %w[ANYCABLE_REDIS_URL OPENC3_SERVICE_PASSWORD OPENC3_API_PASSWORD OPENC3_API_TOKEN
+         OPENC3_TSDB_USERNAME OPENC3_TSDB_PASSWORD KC_DB_USERNAME KC_DB_PASSWORD
+         KEYCLOAK_ADMIN KEYCLOAK_ADMIN_PASSWORD].each { |k| process.environment[k] = nil }
       if model and model.offline_access_token
         auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV.fetch('OPENC3_KEYCLOAK_URL', nil))
         valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
         if valid_token
-          process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
+          auth_secret = { 'token' => model.offline_access_token }
         else
           model.offline_access_token = nil
           model.update
@@ -544,7 +567,7 @@ class RunningScript
       else
         process.environment['OPENC3_API_USER'] = ENV.fetch('OPENC3_API_USER', nil)
         if ENV['OPENC3_SERVICE_PASSWORD']
-          process.environment['OPENC3_API_PASSWORD'] = ENV.fetch('OPENC3_SERVICE_PASSWORD')
+          auth_secret = { 'user' => ENV.fetch('OPENC3_API_USER', nil), 'password' => ENV.fetch('OPENC3_SERVICE_PASSWORD') }
         else
           raise "No authentication available for script"
         end
@@ -576,8 +599,18 @@ class RunningScript
 
       process.detach = true
       process.start
+      started = true
+      # Secrets go over stdin (not env, which is readable via /proc/<pid>/environ)
+      process.io.stdin.puts(JSON.generate({ 'signing_key' => signing_key, 'auth' => auth_secret }))
+      process.io.stdin.close
       running_script_id
     rescue => e
+      begin
+        # Don't leave a detached child running without credentials
+        process.stop if started && process
+      rescue => stop_error
+        OpenC3::Logger.error("Failed to stop script process after spawn failure: #{stop_error.message}")
+      end
       begin
         # Clean up the orphaned script status record so the script
         # does not remain stuck in 'spawning' state forever.
@@ -586,6 +619,11 @@ class RunningScript
         FileUtils.rm_rf(script_cwd) if script_cwd
       rescue => cleanup_error
         OpenC3::Logger.error("Failed to cleanup after spawn failure: #{cleanup_error.message}")
+      end
+      begin
+        OpenC3::Store.del("script-signing-key:#{running_script_id}") if running_script_id
+      rescue => del_error
+        OpenC3::Logger.error("Failed to delete signing key after spawn failure: #{del_error.message}")
       end
       raise e
     end
@@ -1321,7 +1359,11 @@ class RunningScript
       @script_status.update(queued: true)
       thread.join
     end
-    running_script_publish("cmd-running-script-channel:#{@script_status.id}", "shutdown")
+    shutdown_msg = "shutdown"
+    if RunningScript.signing_key
+      shutdown_msg = OpenC3::ScriptMessageSigning.sign(RunningScript.signing_key, "shutdown")
+    end
+    running_script_publish("cmd-running-script-channel:#{@script_status.id}", shutdown_msg)
   end
 
   def mark_breakpoint
