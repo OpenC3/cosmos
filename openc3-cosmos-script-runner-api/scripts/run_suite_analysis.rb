@@ -45,11 +45,11 @@ end
 require 'openc3'
 require 'openc3/script/suite_runner'
 require 'openc3/utilities/running_script'
+require 'openc3/utilities/script_env'
 
-# The API client has authenticated during the requires above; clear the
-# passwords before loading user code so it can't read them.
-ENV['OPENC3_API_PASSWORD'] = nil
-ENV['OPENC3_SERVICE_PASSWORD'] = nil
+# The API client has authenticated during the requires above; clear secrets
+# (including the API passwords) before loading user code so it can't read them.
+OpenC3::ScriptEnv.clear_credentials
 
 require ARGV[1]
 

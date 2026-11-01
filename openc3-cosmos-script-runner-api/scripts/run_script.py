@@ -55,15 +55,15 @@ if isinstance(auth, dict):
 from openc3.environment import OPENC3_CONFIG_BUCKET  # noqa: E402
 from openc3.models.script_status_model import ScriptStatusModel  # noqa: E402
 from openc3.script import get_overrides  # noqa: E402
-from openc3.utilities.bucket import Bucket  # noqa: E402
 from openc3.utilities.extract import convert_to_value  # noqa: E402
 from openc3.utilities.logger import Logger  # noqa: E402
 from openc3.utilities.running_script import (  # noqa: E402
     RunningScript,
     running_script_anycable_publish,
 )
+from openc3.utilities.script_env import clear_credentials  # noqa: E402
 from openc3.utilities.script_message_signing import NonceCache, accept  # noqa: E402
-from openc3.utilities.store import EphemeralStore, Store  # noqa: E402
+from openc3.utilities.store import Store  # noqa: E402
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued  # noqa: E402
 
 
@@ -81,34 +81,9 @@ def run_script_log(script_id, message, color="BLACK", message_log=True):
 
 
 start_time = time.time()
-# Load the bucket client code to ensure we authenticate outside ENV vars
-Bucket.get_client()
-# Preload Store and remove Redis secrets from ENV
-Store.instance()
-EphemeralStore.instance()
-
-# Clear ENV vars for security purposes so user script code can't read them.
-# Use pop with default to avoid KeyError if vars don't exist (e.g. Enterprise/Keycloak).
-# OPENC3_API_PASSWORD / OPENC3_SERVICE_PASSWORD were applied from the stdin
-# credentials above; openc3.environment captured them as constants at import and the
-# API client has already authenticated, so they are no longer needed in os.environ.
-for key in [
-    "OPENC3_API_PASSWORD",
-    "OPENC3_SERVICE_PASSWORD",
-    "OPENC3_BUCKET_USERNAME",
-    "OPENC3_BUCKET_PASSWORD",
-    "OPENC3_REDIS_USERNAME",
-    "OPENC3_REDIS_PASSWORD",
-    "OPENC3_TSDB_USERNAME",
-    "OPENC3_TSDB_PASSWORD",
-    # This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
-    "ANYCABLE_REDIS_URL",
-    "KC_DB_USERNAME",
-    "KC_DB_PASSWORD",
-    "KEYCLOAK_ADMIN",
-    "KEYCLOAK_ADMIN_PASSWORD",
-]:
-    os.environ.pop(key, None)
+# Clear secrets (including the stdin-applied API passwords, which the API
+# client already captured at import) before any user code runs.
+clear_credentials()
 
 RunningScript.signing_key = signing_key
 seen_nonces = NonceCache()

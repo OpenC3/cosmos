@@ -40,13 +40,8 @@ import openc3.utilities.target_file_importer
 from openc3.script import *  # noqa: F403
 from openc3.script.suite_runner import SuiteRunner
 from openc3.top_level import add_to_search_path
+from openc3.utilities.script_env import clear_credentials
 from openc3.utilities.target_file import TargetFile
-
-
-# openc3.environment captured the passwords at import and the API client has
-# authenticated; clear them before loading user code so it can't read them.
-os.environ.pop("OPENC3_API_PASSWORD", None)
-os.environ.pop("OPENC3_SERVICE_PASSWORD", None)
 
 
 openc3_scope = sys.argv[1]  # argv[0] is the script name
@@ -80,6 +75,8 @@ with open(path) as file:
 
 for path in glob.glob("/gems/gems/**/lib"):
     add_to_search_path(path, True)
+
+clear_credentials()
 
 exec(data, globals())
 

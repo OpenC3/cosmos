@@ -275,6 +275,15 @@ RSpec.describe RunningScript, type: :model do
         expect { RunningScript.spawn("DEFAULT", "script.rb") }.to raise_error("boom")
         expect(OpenC3::Store.get("script-signing-key:1")).to be_nil
       end
+
+      it "does not pass unused credentials to the script process" do
+        RunningScript.spawn("DEFAULT", "script.rb")
+
+        OpenC3::ScriptEnv::UNUSED_VARS.each do |key|
+          expect(env).to have_key(key)
+          expect(env[key]).to be_nil
+        end
+      end
     end
 
     context "per-plugin Python venv detection" do

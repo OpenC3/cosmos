@@ -58,33 +58,14 @@ require 'openc3/utilities/store'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/running_script'
 require 'openc3/utilities/script_message_signing'
+require 'openc3/utilities/script_env'
 
 working_dir = Dir.pwd
 
-# Load the bucket client code to ensure we authenticate outside ENV vars
-OpenC3::Bucket.getClient()
-# Preload Store and remove Redis secrets from ENV
-OpenC3::Store.instance
-OpenC3::EphemeralStore.instance
-
-# Clear ENV vars for security purposes so user script code can't read them.
-# OPENC3_API_PASSWORD / OPENC3_SERVICE_PASSWORD were applied from the stdin
-# credentials above; the API client (built by "include OpenC3::Script" during the
-# requires) has already authenticated with them, so they are no longer needed.
-ENV['OPENC3_API_PASSWORD'] = nil
-ENV['OPENC3_SERVICE_PASSWORD'] = nil
-ENV['OPENC3_BUCKET_USERNAME'] = nil
-ENV['OPENC3_BUCKET_PASSWORD'] = nil
-ENV['OPENC3_REDIS_USERNAME'] = nil
-ENV['OPENC3_REDIS_PASSWORD'] = nil
-ENV['OPENC3_TSDB_USERNAME'] = nil
-ENV['OPENC3_TSDB_PASSWORD'] = nil
-# This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
-ENV['ANYCABLE_REDIS_URL'] = nil
-ENV['KC_DB_USERNAME'] = nil
-ENV['KC_DB_PASSWORD'] = nil
-ENV['KEYCLOAK_ADMIN'] = nil
-ENV['KEYCLOAK_ADMIN_PASSWORD'] = nil
+# Clear secrets (including the stdin-applied API passwords; the API client
+# built by "include OpenC3::Script" during the requires has already
+# authenticated with them) before any user code runs.
+OpenC3::ScriptEnv.clear_credentials
 
 RunningScript.signing_key = signing_key
 seen_nonces = OpenC3::ScriptMessageSigning::NonceCache.new

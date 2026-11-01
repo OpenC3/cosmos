@@ -87,24 +87,31 @@ RSpec.describe 'runner script credential/import ordering' do
   # The passwords must be removed from the environment after openc3 loads (the API
   # client has authenticated by then) and before user code runs, or a script that
   # prints its environment exposes them (playwright "does not expose secrets").
+  RUBY_CLEAR = /^\s*OpenC3::ScriptEnv\.clear_credentials\b/
+  PY_CLEAR   = /^\s*clear_credentials\(\)/
   {
-    'run_script.rb'         => [RUBY_LOAD, /ENV\['%s'\]\s*=\s*nil/, /^\s*running_script\s*=\s*RunningScript\.new/],
-    'run_suite_analysis.rb' => [RUBY_LOAD, /ENV\['%s'\]\s*=\s*nil/, /^\s*require\s+ARGV\[1\]/],
-    'run_script.py'         => [PY_LOAD, /^\s*"%s",$|os\.environ\.pop\("%s"/, /^\s*running_script\s*=\s*RunningScript\(/],
-    'run_suite_analysis.py' => [PY_LOAD, /os\.environ\.pop\("%s"/, /^def load_utility/],
-  }.each do |filename, (load_re, scrub_fmt, user_code_re)|
-    %w[OPENC3_API_PASSWORD OPENC3_SERVICE_PASSWORD].each do |var|
-      it "#{filename} clears #{var} after loading openc3 and before running user code" do
-        lines = File.read(File.join(SCRIPTS_DIR, filename)).lines
-        scrub_re = Regexp.new(scrub_fmt.source.gsub('%s', var))
-        load_line = lines.index { |l| l =~ load_re }
-        scrub_line = lines.index { |l| l =~ scrub_re }
-        user_line = lines.index { |l| l =~ user_code_re }
-        expect(scrub_line).not_to be_nil, "#{filename}: #{var} is never cleared from the environment"
-        expect(user_line).not_to be_nil, "#{filename}: user code entry point not found"
-        expect(scrub_line).to be > load_line, "#{filename}: #{var} cleared before openc3 loads; auth will fail"
-        expect(scrub_line).to be < user_line, "#{filename}: #{var} cleared after user code can read it"
-      end
+    'run_script.rb'         => [RUBY_LOAD, RUBY_CLEAR, /^\s*running_script\s*=\s*RunningScript\.new/],
+    'run_suite_analysis.rb' => [RUBY_LOAD, RUBY_CLEAR, /^\s*require\s+ARGV\[1\]/],
+    'run_script.py'         => [PY_LOAD, PY_CLEAR, /^\s*running_script\s*=\s*RunningScript\(/],
+    'run_suite_analysis.py' => [PY_LOAD, PY_CLEAR, /^exec\(data/],
+  }.each do |filename, (load_re, clear_re, user_code_re)|
+    it "#{filename} clears credentials after loading openc3 and before running user code" do
+      lines = File.read(File.join(SCRIPTS_DIR, filename)).lines
+      load_line = lines.index { |l| l =~ load_re }
+      clear_line = lines.index { |l| l =~ clear_re }
+      user_line = lines.index { |l| l =~ user_code_re }
+      expect(clear_line).not_to be_nil, "#{filename}: credentials are never cleared from the environment"
+      expect(user_line).not_to be_nil, "#{filename}: user code entry point not found"
+      expect(clear_line).to be > load_line, "#{filename}: credentials cleared before openc3 loads; auth will fail"
+      expect(clear_line).to be < user_line, "#{filename}: credentials cleared after user code can read them"
     end
+  end
+
+  it "clears the stdin-applied API passwords in both languages" do
+    lib = File.expand_path('../../../openc3', __dir__)
+    rb = File.read(File.join(lib, 'lib/openc3/utilities/script_env.rb'))
+    py = File.read(File.join(lib, 'python/openc3/utilities/script_env.py'))
+    expect(rb[/CLEARED_VARS = \[.*?\]/m]).to include("'OPENC3_API_PASSWORD'", "'OPENC3_SERVICE_PASSWORD'")
+    expect(py[/CLEARED_VARS = \[.*?\]/m]).to include('"OPENC3_API_PASSWORD"', '"OPENC3_SERVICE_PASSWORD"')
   end
 end
