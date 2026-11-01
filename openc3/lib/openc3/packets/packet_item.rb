@@ -398,14 +398,19 @@ module OpenC3
       if @states
         @states.each do |state_name, state_value|
           config << "    STATE #{state_name.to_s.quote_if_necessary} #{state_value.to_s.quote_if_necessary}"
-          if @hazardous and @hazardous[state_name]
-            config << " HAZARDOUS #{@hazardous[state_name].to_s.quote_if_necessary}"
-          end
-          if @messages_disabled and @messages_disabled[state_name]
-            config << " DISABLE_MESSAGES"
-          end
-          if @state_colors and @state_colors[state_name]
-            config << " #{@state_colors[state_name]}"
+          # Only write the attributes STATE accepts for this packet type so the config parses back
+          if cmd_or_tlm == :TELEMETRY
+            if @state_colors and @state_colors[state_name]
+              config << " #{@state_colors[state_name]}"
+            end
+          else
+            if @hazardous and @hazardous[state_name]
+              config << " HAZARDOUS"
+              config << " #{@hazardous[state_name].to_s.quote_if_necessary}" unless @hazardous[state_name].to_s.empty?
+            end
+            if @messages_disabled and @messages_disabled[state_name]
+              config << " DISABLE_MESSAGES"
+            end
           end
           config << "\n"
         end

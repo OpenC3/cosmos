@@ -239,6 +239,15 @@ TELEMETRY <%= target_name %> MEMDUMP BIG_ENDIAN "Memory dump sent in response to
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
     CONVERTED_DATA 280 STRING
 
+# Test packet the target never sends. Inject it with inject_tlm to stall the
+# decom microservice, see procedures/limits_resync.rb
+TELEMETRY <%= target_name %> DECOM_STALL BIG_ENDIAN "Stalls the decom microservice for testing"
+  HIDDEN
+  <%= render "_ccsds_tlm.txt", locals: {apid: 9} %>
+  APPEND_ITEM SECONDS 32 FLOAT "Seconds to stall the decom microservice (max 300)"
+    UNITS Seconds s
+  PROCESSOR STALL decom_stall_processor.rb SECONDS
+
 TELEMETRY <%= target_name %> JSONTLM BIG_ENDIAN "JSON Accessor Telemetry"
   ACCESSOR JsonAccessor
   # Template is not required for telemetry, but is useful for simulation

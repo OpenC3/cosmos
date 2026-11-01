@@ -59,14 +59,14 @@ module OpenC3
     def ruby_api
       ruby_api = {}
       Dir[File.join(SPEC_DIR,'../lib/openc3/script/*.rb')].each do |filename|
-        next if filename.include?('extract')
-        next if filename.include?('web_socket_api')
-        next if filename.include?('suite_results')
-        next if filename.include?('suite_runner')
+        next if File.basename(filename).include?('extract')
+        next if File.basename(filename).include?('web_socket_api')
+        next if File.basename(filename).include?('suite_results')
+        next if File.basename(filename).include?('suite_runner')
         parse_file(filename, ruby_api)
       end
       Dir[File.join(SPEC_DIR,'../lib/openc3/api/*.rb')].each do |filename|
-        next if filename.include?('metrics_api') # TODO: document and implement Python equivalent
+        next if File.basename(filename).include?('metrics_api') # TODO: document and implement Python equivalent
         parse_file(filename, ruby_api)
       end
       return ruby_api
@@ -75,13 +75,13 @@ module OpenC3
     def python_api
       python_api = {}
       Dir[File.join(SPEC_DIR,'../python/openc3/script/*.py')].each do |filename|
-        next if filename.include?('authorization')
-        next if filename.include?('decorators')
-        next if filename.include?('server_proxy')
-        next if filename.include?('stream')
-        next if filename.include?('web_socket_api')
-        next if filename.include?('suite_results')
-        next if filename.include?('suite_runner')
+        next if File.basename(filename).include?('authorization')
+        next if File.basename(filename).include?('decorators')
+        next if File.basename(filename).include?('server_proxy')
+        next if File.basename(filename).include?('stream')
+        next if File.basename(filename).include?('web_socket_api')
+        next if File.basename(filename).include?('suite_results')
+        next if File.basename(filename).include?('suite_runner')
         parse_file(filename, python_api)
       end
       Dir[File.join(SPEC_DIR,'../python/openc3/api/*.py')].each do |filename|

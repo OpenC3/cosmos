@@ -134,8 +134,13 @@ module OpenC3
       end
     end
 
-    def self.tsdb_lookup(items, start_time:, end_time: nil, scope: $openc3_scope)
-      QuestDBClient.tsdb_lookup(items, start_time: start_time, end_time: end_time, scope: scope)
+    def self.tsdb_lookup(items, start_time:, end_time: nil, scope: $openc3_scope, flatten: true)
+      QuestDBClient.tsdb_lookup(items, start_time: start_time, end_time: end_time, scope: scope, flatten: flatten)
+    end
+
+    # Return the [target_name, packet_name] telemetry packets which have a TSDB table
+    def self.tsdb_packets_with_tables(packets, scope: $openc3_scope)
+      QuestDBClient.tlm_packets_with_tables(packets, scope: scope)
     end
 
     # Return all item values and limit state from the CVT

@@ -10,7 +10,6 @@
 # if purchased from OpenC3, Inc.
 
 import os
-import re
 import tempfile
 import threading
 import traceback
@@ -53,12 +52,13 @@ class LogWriter:
 
     @staticmethod
     def db_shard_for_topic(redis_topic):
-        """Returns the Redis db_shard holding a target stream such as
-        SCOPE__TELEMETRY__{TARGET}__PACKET, or 0 if no target can be determined"""
-        target_match = re.search(r"\{([^{}]+)\}", redis_topic)
-        if not target_match:
-            return 0
-        return Store.db_shard_for_target(target_match.group(1), scope=redis_topic.split("__")[0])
+        """The db_shard of a target topic like DEFAULT__DECOM__{INST}__HEALTH_STATUS
+        or db_shard 0 for a topic without a target"""
+        scope, _, rest = redis_topic.removeprefix("{").partition("__")
+        # The target is a {TARGET} part between two others, e.g. DECOM__{INST}__HEALTH_STATUS
+        parts = rest.split("__")[1:-1]
+        target = next((part for part in parts if len(part) > 2 and part[0] == "{" and part[-1] == "}"), None)
+        return Store.db_shard_for_target(target[1:-1], scope=scope) if scope and target else 0
 
     # self.param remote_log_directory [String] The path to store the log files
     # self.param logging_enabled [Boolean] Whether to start with logging enabled

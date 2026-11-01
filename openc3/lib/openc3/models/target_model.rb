@@ -458,10 +458,13 @@ module OpenC3
     end
 
     def self.get_item_to_packet_map(target_name, scope:)
-      cache_time, item_map = @@item_map_cache[target_name]
-      return item_map if item_map and (Time.now - cache_time) < ITEM_MAP_CACHE_TIMEOUT
-      item_map_key = "#{scope}__#{target_name}__item_to_packet_map"
+      # Normalize before building the key so lowercase lookups share the entry
+      # that update_store_item_map and undeploy refresh and invalidate
       target_name = target_name.upcase
+      # The cache is keyed by item_map_key since the same target can exist in multiple scopes
+      item_map_key = "#{scope}__#{target_name}__item_to_packet_map"
+      cache_time, item_map = @@item_map_cache[item_map_key]
+      return item_map if item_map and (Time.now - cache_time) < ITEM_MAP_CACHE_TIMEOUT
       store = store_for_target(target_name, scope: scope)
       json_data = store.get(item_map_key)
       if json_data
@@ -470,7 +473,7 @@ module OpenC3
         item_map = build_item_to_packet_map(target_name, scope: scope)
         store.set(item_map_key, JSON.generate(item_map, allow_nan: true))
       end
-      @@item_map_cache[target_name] = [Time.now, item_map]
+      @@item_map_cache[item_map_key] = [Time.now, item_map]
       return item_map
     end
 
@@ -917,7 +920,7 @@ module OpenC3
       # Delete item_map
       item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
       db_shard_store.del(item_map_key)
-      @@item_map_cache[@name] = nil
+      @@item_map_cache[item_map_key] = nil
 
       topic = { kind: 'deleted', type: 'target', name: @name }
       # The UNKNOWN target doesn't have an associated plugin
@@ -1101,7 +1104,7 @@ module OpenC3
       item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
       item_map = self.class.build_item_to_packet_map(@name, scope: @scope)
       Store.instance(db_shard: @db_shard).set(item_map_key, JSON.generate(item_map, allow_nan: true))
-      @@item_map_cache[@name] = [Time.now, item_map]
+      @@item_map_cache[item_map_key] = [Time.now, item_map]
     end
 
     def update_store(system, clear_old: true)

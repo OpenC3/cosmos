@@ -52,6 +52,24 @@ module OpenC3
       end
     end
 
+    describe "mock_redis" do
+      # Each shard must get its own mock so specs can catch a read against the
+      # wrong shard instead of silently finding the data in a shared mock
+      it "isolates each db_shard and shares a shard between Store and EphemeralStore" do
+        redis = mock_redis()
+        Store.instance(db_shard: 1).set("key", "shard1")
+        expect(Store.instance(db_shard: 1).get("key")).to eql "shard1"
+        expect(EphemeralStore.instance(db_shard: 1).get("key")).to eql "shard1"
+        expect(Store.instance(db_shard: 0).get("key")).to be_nil
+        expect(Store.instance(db_shard: 2).get("key")).to be_nil
+        expect(redis.get("key")).to be_nil
+
+        Store.set("key", "shard0")
+        expect(redis.get("key")).to eql "shard0"
+        expect(Store.instance(db_shard: 1).get("key")).to eql "shard1"
+      end
+    end
+
     describe "read_topics" do
       before(:each) do
         mock_redis()
