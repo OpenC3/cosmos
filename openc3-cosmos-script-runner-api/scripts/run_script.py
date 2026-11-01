@@ -87,12 +87,14 @@ Bucket.get_client()
 Store.instance()
 EphemeralStore.instance()
 
-# Clear ENV vars for security purposes.
+# Clear ENV vars for security purposes so user script code can't read them.
 # Use pop with default to avoid KeyError if vars don't exist (e.g. Enterprise/Keycloak).
-# OPENC3_API_TOKEN / OPENC3_API_USER / OPENC3_API_PASSWORD / OPENC3_SERVICE_PASSWORD
-# are intentionally NOT cleared here: they were just applied from the stdin
-# credentials above and the API client needs them to authenticate.
+# OPENC3_API_PASSWORD / OPENC3_SERVICE_PASSWORD were applied from the stdin
+# credentials above; openc3.environment captured them as constants at import and the
+# API client has already authenticated, so they are no longer needed in os.environ.
 for key in [
+    "OPENC3_API_PASSWORD",
+    "OPENC3_SERVICE_PASSWORD",
     "OPENC3_BUCKET_USERNAME",
     "OPENC3_BUCKET_PASSWORD",
     "OPENC3_REDIS_USERNAME",

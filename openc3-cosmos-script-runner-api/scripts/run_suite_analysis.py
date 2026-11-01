@@ -43,6 +43,12 @@ from openc3.top_level import add_to_search_path
 from openc3.utilities.target_file import TargetFile
 
 
+# openc3.environment captured the passwords at import and the API client has
+# authenticated; clear them before loading user code so it can't read them.
+os.environ.pop("OPENC3_API_PASSWORD", None)
+os.environ.pop("OPENC3_SERVICE_PASSWORD", None)
+
+
 openc3_scope = sys.argv[1]  # argv[0] is the script name
 path = sys.argv[2]
 

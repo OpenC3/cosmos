@@ -45,6 +45,12 @@ end
 require 'openc3'
 require 'openc3/script/suite_runner'
 require 'openc3/utilities/running_script'
+
+# The API client has authenticated during the requires above; clear the
+# passwords before loading user code so it can't read them.
+ENV['OPENC3_API_PASSWORD'] = nil
+ENV['OPENC3_SERVICE_PASSWORD'] = nil
+
 require ARGV[1]
 
 puts OpenC3::SuiteRunner.build_suites.as_json().to_json(allow_nan: true)
