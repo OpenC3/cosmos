@@ -471,6 +471,9 @@ RSpec.describe Script, type: :model do
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with("OPENC3_SERVICE_PASSWORD").and_return("svc-pass")
         allow(ENV).to receive(:[]).with("OPENC3_API_USER").and_return("svc-user")
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with("OPENC3_SERVICE_PASSWORD").and_return("svc-pass")
+        allow(ENV).to receive(:fetch).with("OPENC3_API_USER", nil).and_return("svc-user")
 
         Script.process_suite("suite.py", "suite content", username: "u", scope: "DEFAULT")
 

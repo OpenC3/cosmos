@@ -152,7 +152,10 @@ class TestCmdResponseProtocol(unittest.TestCase):
 
         mock_system.telemetry = Telemetry(pc, mock_system)
         self.interface.stream = self.CmdResponseStream()
-        self.interface.add_protocol(CmdResponseProtocol, [0.03, 0.02, True], "READ_WRITE")
+        # Use the default response timeout (matches the Ruby spec). This test expects a
+        # successful response, so a short timeout flakes under load when the read thread
+        # has not delivered the response yet.
+        self.interface.add_protocol(CmdResponseProtocol, [], "READ_WRITE")
         # Add extra target names to the interface to ensure we grab the correct one
         self.interface.target_names = ["BLAH", "TGT", "OTHER"]
         packet = Packet("TGT", "CMD")

@@ -134,7 +134,6 @@ class Script < OpenC3::TargetFile
       process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT'] || 'api'
       # Scrub inherited secrets the child does not need (/proc/<pid>/environ exposure)
       CHILD_SCRUB_ENV.each { |k| process.environment[k] = nil }
-      auth_secret = nil
       if model and model.offline_access_token
         auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
         valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
@@ -148,7 +147,7 @@ class Script < OpenC3::TargetFile
       else
         process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER'] || nil
         if ENV['OPENC3_SERVICE_PASSWORD']
-          auth_secret = { 'user' => ENV['OPENC3_API_USER'], 'password' => ENV['OPENC3_SERVICE_PASSWORD'] }
+          auth_secret = { 'user' => ENV.fetch('OPENC3_API_USER', nil), 'password' => ENV.fetch('OPENC3_SERVICE_PASSWORD') }
         else
           # The viewer user doesn't have an offline access token (because they can't run scripts)
           # but they still want to be able to view suite files
