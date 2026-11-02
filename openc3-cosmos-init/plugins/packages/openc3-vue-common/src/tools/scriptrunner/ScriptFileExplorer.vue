@@ -136,11 +136,18 @@
       v-if="mode === 'files'"
       ref="tree"
       density="compact"
-      class="flex-grow-1 py-0"
+      class="flex-grow-1 py-0 overflow-hidden"
+      style="min-height: 0"
       color="primary"
       @keydown="treeKeydown"
     >
-      <v-virtual-scroll ref="scroller" :items="rows" :item-height="ROW_HEIGHT">
+      <v-virtual-scroll
+        ref="scroller"
+        :items="rows"
+        :item-height="ROW_HEIGHT"
+        height="100%"
+        class="explorer-scroll"
+      >
         <template #default="{ item }">
           <v-list-item
             :title="item.node.name"
@@ -514,3 +521,26 @@ onMounted(() => refresh())
 
 defineExpose({ refresh, refreshFile })
 </script>
+
+<style scoped>
+/* Hide the scrollbar until the tree is hovered or focused, like VS Code.
+   Keep the gutter so rows don't shift when it appears. scrollbar-color
+   itself doesn't animate everywhere, so fade a registered color property
+   that it reads from instead. */
+@property --explorer-thumb {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: transparent;
+}
+.explorer-scroll {
+  --explorer-thumb: transparent;
+  scrollbar-gutter: stable;
+  scrollbar-color: var(--explorer-thumb) transparent;
+  transition: --explorer-thumb 0.4s ease-out 0.3s;
+}
+.explorer-scroll:hover,
+.explorer-scroll:focus-within {
+  --explorer-thumb: rgba(var(--v-theme-on-surface), 0.3);
+  transition: --explorer-thumb 0.15s ease-in;
+}
+</style>
