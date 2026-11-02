@@ -14,6 +14,7 @@ import unittest
 from unittest.mock import *
 
 from openc3.topics.limits_event_topic import LimitsEventTopic
+from openc3.topics.topic import Topic
 from test.test_helper import *
 
 
@@ -200,6 +201,44 @@ class TestLimitsEventTopic(unittest.TestCase):
         self.assertEqual(events[1][1]["enabled"], False)
         self.assertEqual(events[1][1]["message"], "TEST2")
 
+    def test_writes_and_reads_limits_group_enable_state(self):
+        # Existing settings for an item must be preserved
+        Store.hset(
+            "DEFAULT__current_limits_settings",
+            "TGT1__PKT1__ITEM1",
+            json.dumps({"persistence_setting": 3, "enabled": True}),
+        )
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "GROUP",
+            json.dumps([["TGT1", "PKT1", "ITEM1"], ["TGT1", "PKT1", "ITEM2"], ["TGT2", "PKT1", "ITEM1"]]),
+        )
+        event = {
+            "type": "LIMITS_GROUP_ENABLE_STATE",
+            "group_name": "GROUP",
+            "enabled": False,
+            "message": "TEST1",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+
+        events = LimitsEventTopic.read("0-0", scope="DEFAULT")
+        self.assertEqual(len(events), 1)
+        self.assertEqual(events[0][1]["type"], "LIMITS_GROUP_ENABLE_STATE")
+        self.assertEqual(events[0][1]["group_name"], "GROUP")
+        self.assertNotIn("items", events[0][1])
+        self.assertFalse(events[0][1]["enabled"])
+        self.assertEqual(events[0][1]["message"], "TEST1")
+
+        settings = {k.decode(): json.loads(v) for k, v in Store.hgetall("DEFAULT__current_limits_settings").items()}
+        self.assertEqual(
+            settings,
+            {
+                "TGT1__PKT1__ITEM1": {"persistence_setting": 3, "enabled": False},
+                "TGT1__PKT1__ITEM2": {"enabled": False},
+                "TGT2__PKT1__ITEM1": {"enabled": False},
+            },
+        )
+
     def test_writes_and_reads_limits_set(self):
         set = LimitsEventTopic.current_set(scope="DEFAULT")
         self.assertEqual(set, "DEFAULT")
@@ -339,6 +378,77 @@ class TestLimitsEventTopic(unittest.TestCase):
         out = LimitsEventTopic.out_of_limits(scope="DEFAULT")
         self.assertEqual(len(out), 0)
 
+    def limits_change_event(self, i):
+        return {
+            "type": "LIMITS_CHANGE",
+            "target_name": "TGT1",
+            "packet_name": "PKT1",
+            "item_name": f"ITEM{i}",
+            "old_limits_state": "GREEN",
+            "new_limits_state": "RED_HIGH",
+            "message": "TEST",
+        }
+
+    def test_events_trimmed_returns_false_when_no_events_after_the_offset_were_trimmed(self):
+        LimitsEventTopic.write(self.limits_change_event(0), scope="DEFAULT")
+        offset = Topic.get_last_offset("DEFAULT__openc3_limits_events")
+        LimitsEventTopic.write(self.limits_change_event(1), scope="DEFAULT")
+        self.assertFalse(LimitsEventTopic.events_trimmed(offset, "DEFAULT"))
+
+    def test_events_trimmed_returns_true_when_events_after_the_offset_were_trimmed(self):
+        LimitsEventTopic.write(self.limits_change_event(0), scope="DEFAULT")
+        offset = Topic.get_last_offset("DEFAULT__openc3_limits_events")
+        # More LIMITS_CHANGE events than the ~1000 entries the limits event stream keeps
+        for i in range(1500):
+            LimitsEventTopic.write(self.limits_change_event(i), scope="DEFAULT")
+        self.assertTrue(LimitsEventTopic.events_trimmed(offset, "DEFAULT"))
+
+    def test_events_trimmed_returns_false_when_the_stream_was_empty_or_there_is_no_offset(self):
+        for i in range(1500):
+            LimitsEventTopic.write(self.limits_change_event(i), scope="DEFAULT")
+        self.assertFalse(LimitsEventTopic.events_trimmed("0-0", "DEFAULT"))
+        self.assertFalse(LimitsEventTopic.events_trimmed(None, "DEFAULT"))
+
+    def test_resync_system_reloads_item_settings_from_the_store(self):
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", json.dumps({"enabled": False}))
+        LimitsEventTopic.resync_system("DEFAULT")
+        self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_sync_system_thread_body_applies_a_limits_group_enable_state_event(self):
+        LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")  # Set the stream offset
+        Store.hset("DEFAULT__limits_groups", "FIRST", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))
+        event = {
+            "type": "LIMITS_GROUP_ENABLE_STATE",
+            "group_name": "FIRST",
+            "enabled": False,
+            "message": "TEST1",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")
+        self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_process_event_applies_the_rest_of_a_group_when_one_item_fails(self):
+        original_disable = System.limits.disable
+
+        def disable(target_name, packet_name, item_name):
+            if item_name == "TEMP1":
+                raise RuntimeError("boom")
+            original_disable(target_name, packet_name, item_name)
+
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "FIRST",
+            json.dumps([["INST", "HEALTH_STATUS", "TEMP1"], ["INST", "HEALTH_STATUS", "TEMP3"]]),
+        )
+        event = {
+            "type": "LIMITS_GROUP_ENABLE_STATE",
+            "group_name": "FIRST",
+            "enabled": False,
+        }
+        with patch.object(System.limits, "disable", side_effect=disable):
+            LimitsEventTopic.process_event(event, "DEFAULT")
+        self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
+
     def test_sync(self):
         for method in ["sync_system", "sync_system_thread_body"]:
             # Make initial call to set the stream offset so we don't miss anything
@@ -442,3 +552,62 @@ class TestLimitsEventTopic(unittest.TestCase):
                 )
                 getattr(LimitsEventTopic, method)(scope="DEFAULT")
                 self.assertEqual(System.limits_set(), "TVAC")
+
+    def test_sync_limits_group_enable_state(self):
+        for method in ["sync_system", "sync_system_thread_body"]:
+            # Make initial call to set the stream offset so we don't miss anything
+            getattr(LimitsEventTopic, method)(scope="DEFAULT")
+
+            Store.hset(
+                "DEFAULT__limits_groups",
+                "FIRST",
+                json.dumps(
+                    [
+                        ["INST", "HEALTH_STATUS", "TEMP1"],
+                        ["INST", "HEALTH_STATUS", "TEMP3"],
+                        ["NOTGT", "NOPKT", "NOITEM"],  # Targets not in this System are ignored
+                    ]
+                ),
+            )
+            event = {
+                "type": "LIMITS_GROUP_ENABLE_STATE",
+                "group_name": "FIRST",
+                "enabled": False,
+                "message": "TEST1",
+            }
+            LimitsEventTopic.write(event, scope="DEFAULT")
+            getattr(LimitsEventTopic, method)(scope="DEFAULT")
+            self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+            self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP2"))
+            self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
+
+            event["enabled"] = True
+            event["message"] = "TEST2"
+            LimitsEventTopic.write(event, scope="DEFAULT")
+            getattr(LimitsEventTopic, method)(scope="DEFAULT")
+            self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+            self.assertTrue(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP3"))
+
+
+class TestLimitsEventTopicMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        # INST is installed on db_shard 1 while SYSTEM stays on db_shard 0
+        setup_system(db_shards={"INST": 1})
+
+    def test_writes_events_to_every_target_db_shard(self):
+        # Each decom microservice reads limits events inline from its own db_shard
+        event = {
+            "type": "LIMITS_CHANGE",
+            "target_name": "INST",
+            "packet_name": "HEALTH_STATUS",
+            "item_name": "TEMP1",
+            "old_limits_state": "GREEN",
+            "new_limits_state": "YELLOW_LOW",
+            "time_nsec": 123456789,
+            "message": "test change",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        self.assertEqual(shard_redis(0).xlen("DEFAULT__openc3_limits_events"), 1)
+        self.assertEqual(shard_redis(1).xlen("DEFAULT__openc3_limits_events"), 1)
+        self.assertFalse(shard_redis(2).exists("DEFAULT__openc3_limits_events"))

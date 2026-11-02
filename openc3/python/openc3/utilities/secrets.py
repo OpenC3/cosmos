@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import os
+import warnings
 
 from openc3.top_level import get_class_from_module
 from openc3.utilities.string import filename_to_class_name
@@ -77,6 +78,14 @@ class Secrets:
             filename_to_class_name(secrets_file),
         )
         return klass()
+
+    @classmethod
+    def getClient(cls):  # noqa: N802
+        """Deprecated: Use get_client() instead. This camelCase method is provided for backwards compatibility."""
+        warnings.warn(
+            "Secrets.getClient() is deprecated, use Secrets.get_client() instead", DeprecationWarning, stacklevel=2
+        )
+        return cls.get_client()
 
     def keys(self, secret_store=None, scope=None):
         raise RuntimeError(f"{self.__class__.__name__} has not implemented method 'keys'")

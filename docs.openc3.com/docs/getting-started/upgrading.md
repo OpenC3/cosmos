@@ -373,6 +373,16 @@ The following target configuration keywords are silently ignored during parsing 
 - **`CMD_DECOM_RETAIN_TIME`** — Sets the retention time for command decommutation data in QuestDB. Accepts a time value with a unit suffix: `h` (hours), `d` (days), `w` (weeks), `M` (months), or `y` (years). Example: `CMD_DECOM_RETAIN_TIME 30d`
 - **`TLM_DECOM_RETAIN_TIME`** — Sets the retention time for telemetry decommutation data in QuestDB. Same format as above. Example: `TLM_DECOM_RETAIN_TIME 1y`
 
+### COSMOS API Changes
+
+#### Python `Secrets.getClient()` renamed to `Secrets.get_client()`
+
+COSMOS 7.0 renamed the Python `Secrets.getClient()` class method to `Secrets.get_client()` without keeping the old name. In COSMOS 7.0 through 7.4, any Python plugin, interface, or microservice that calls `Secrets.getClient()` fails with an `AttributeError`. Releases starting with 7.5 restore `Secrets.getClient()` as a deprecated alias that logs a `DeprecationWarning`, matching the existing `Bucket.getClient()` alias.
+
+Update Python code to call `Secrets.get_client()`. Ruby code is unaffected: `Secrets.getClient` and `Bucket.getClient` still work, and starting with 7.5 Ruby also accepts `Secrets.get_client` and `Bucket.get_client` so the same names work in both languages.
+
+If you've updated your plugin but still see errors about `getClient`, an older copy of your plugin code is probably still being loaded. Check the Admin Console Plugins tab for a previous version of the plugin that is still installed, and check the `shared` Python packages in the Admin Console Packages tab for an old copy of your plugin's Python package that COSMOS 6 installed.
+
 ### Troubleshooting
 
 #### Init Container Failure

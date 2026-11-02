@@ -9,6 +9,7 @@
 # See LICENSE.md for more details.
 
 require 'spec_helper'
+require 'openc3/models/target_model'
 require 'openc3/topics/command_topic'
 require 'openc3/packets/packet'
 
@@ -230,6 +231,51 @@ module OpenC3
           end
         end
       end
+    end
+  end
+
+  describe CommandTopic, "multiple db_shards" do
+    before(:each) do
+      mock_redis()
+      TargetModel.new(name: "TARGET", scope: "DEFAULT", db_shard: 1).create
+    end
+
+    it "writes packets to the target's db_shard" do
+      packet = Packet.new('TARGET', 'COMMAND')
+      packet.received_time = Time.now
+      packet.packet_time = Time.now
+      packet.received_count = 1
+      CommandTopic.write_packet(packet, scope: 'DEFAULT')
+      _, msg_hash = EphemeralStore.instance(db_shard: 1).get_newest_message("DEFAULT__COMMAND__{TARGET}__COMMAND")
+      expect(msg_hash['packet_name']).to eql 'COMMAND'
+      expect(EphemeralStore.instance(db_shard: 0).exists?("DEFAULT__COMMAND__{TARGET}__COMMAND")).to be false
+    end
+
+    it "sends commands and reads the ack on the target's db_shard" do
+      # Act as the interface by acking the command on db_shard 1
+      thread = Thread.new do
+        loop do
+          Topic.read_topics(["{DEFAULT__CMD}TARGET__TARGET"], db_shard: 1) do |topic, msg_id, _msg_hash, _redis|
+            Topic.write_ack(topic, 'SUCCESS', msg_id, db_shard: 1)
+          end
+        end
+      end
+      begin
+        sleep 0.1 # Allow the thread to start reading
+        command = { 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND', 'cmd_params' => {} }
+        expect(CommandTopic.send_command(command, timeout: 2, scope: 'DEFAULT')['cmd_name']).to eql 'COMMAND'
+      ensure
+        thread.kill
+        thread.join
+      end
+    end
+
+    it "writes fire-and-forget commands to the target's db_shard" do
+      command = { 'target_name' => 'TARGET', 'cmd_name' => 'COMMAND', 'cmd_params' => {} }
+      CommandTopic.send_command(command, timeout: 0, scope: 'DEFAULT')
+      _, msg_hash = EphemeralStore.instance(db_shard: 1).get_newest_message("{DEFAULT__CMD}TARGET__TARGET")
+      expect(msg_hash['cmd_name']).to eql 'COMMAND'
+      expect(EphemeralStore.instance(db_shard: 0).exists?("{DEFAULT__CMD}TARGET__TARGET")).to be false
     end
   end
 end
