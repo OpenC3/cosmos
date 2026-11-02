@@ -81,11 +81,14 @@ jobs:
           DOCKERHUB_OIDC_EXPIREIN: 3600 # token defaults to 5 min; long builds pull from Docker Hub later
         with:
           username: openc3inc
-      - name: Manual Trivy Setup
-        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
+      # Only for the local setup-trivy action, which holds the trivy pin. The
+      # scans pull the published images, not anything from the tree.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          cache: true
-          version: v0.76.0
+          persist-credentials: false
+          sparse-checkout: .github/actions
+      - name: Manual Trivy Setup
+        uses: ./.github/actions/setup-trivy
       - name: Create trivy output folder
         run: mkdir trivy_results
       - name: Create sbom folder

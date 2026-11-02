@@ -20,19 +20,17 @@ description: |
   and three of them omitted setup-uv's working-directory, so cache discovery
   ran from the repo root where there is no uv.lock and produced a weaker key.
 
-  The uv version lives in the uv-version default below. That is the single
-  place to bump it, and .github/workflows/tool_version_check.yml watches it
-  against upstream because dependabot cannot see versions inside an Actions
-  input.
+  The uv version is the `uv` dependency group in openc3/python/pyproject.toml,
+  which setup-uv reads through version-file. That is the single place to bump
+  it, and dependabot's uv ecosystem raises it there.
 
 inputs:
   uv-version:
     description: |
-      uv release to install. The default is the version this repository
-      standardizes on; override only to test a candidate.
+      uv release to install. Empty means the version pinned in the
+      working directory's pyproject.toml; override only to test a candidate.
     required: false
-    # Matches OPENC3_UV_VERSION in openc3-ruby/Dockerfile and Dockerfile-ubi.
-    default: "0.13.5"
+    default: ""
   working-directory:
     description: |
       Directory holding pyproject.toml and uv.lock. Also given to setup-uv so
@@ -76,6 +74,9 @@ runs:
       uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d # v10.0.1
       with:
         version: ${{ inputs.uv-version }}
+        # Resolved against working-directory. Named explicitly so a missing
+        # pin fails the step instead of falling back to the latest uv.
+        version-file: pyproject.toml
         enable-cache: true
         cache-suffix: ${{ inputs.cache-suffix }}
         python-version: ${{ inputs.python-version }}
