@@ -172,7 +172,7 @@
                 <v-tooltip
                   activator="parent"
                   :open-delay="600"
-                  location="right"
+                  location="bottom start"
                   :text="item.node.path"
                 />
               </span>

@@ -24,7 +24,7 @@
         <span>{{ content.title }}</span>
         <v-spacer />
       </v-toolbar>
-      <v-card-text class="help-text" style="max-height: 70vh">
+      <v-card-text style="max-height: 70vh">
         <!-- Shortcuts -->
         <template v-if="topic === 'shortcuts'">
           <template v-for="group in shortcutGroups" :key="group.title">
@@ -34,9 +34,9 @@
                 <tr v-for="row in group.rows" :key="row.action">
                   <td>{{ row.action }}</td>
                   <td class="text-right text-no-wrap">
-                    <kbd v-for="key in row.keys" :key="key" class="ms-1">
+                    <v-kbd v-for="key in row.keys" :key="key" class="ms-1">
                       {{ key }}
-                    </kbd>
+                    </v-kbd>
                   </td>
                 </tr>
               </tbody>
@@ -46,50 +46,50 @@
 
         <!-- Goto / Execute Selection -->
         <template v-else-if="topic === 'selection'">
-          <p>
+          <p class="mb-3">
             Right click in the editor to run part of a script instead of the
             whole thing. What the menu offers depends on whether a script is
             running.
           </p>
-          <div class="text-overline">When no script is running</div>
-          <ul>
-            <li>
+          <div class="text-overline mt-3">When no script is running</div>
+          <ul class="ps-5 mb-2">
+            <li class="mb-2">
               <strong>Execute Selection</strong> starts the script but runs only
               the selected lines. Select the lines first, then right click.
             </li>
-            <li>
+            <li class="mb-2">
               <strong>Run From Line</strong> starts the script at the line the
               cursor is on and skips everything above it.
             </li>
           </ul>
-          <div class="text-overline">
+          <div class="text-overline mt-3">
             While a script is paused, at a breakpoint, or stopped on an error
           </div>
-          <ul>
-            <li>
+          <ul class="ps-5 mb-2">
+            <li class="mb-2">
               <strong>Execute Selection</strong> runs the selected lines inside
               the paused script, so they can use its variables. When they finish
               the script stays paused where it was. This is a handy way to retry
               a failed step.
             </li>
-            <li>
+            <li class="mb-2">
               <strong>Goto Line</strong> skips ahead (or back) and continues the
               script from the line the cursor is on.
             </li>
           </ul>
-          <div class="text-overline">Related</div>
-          <ul>
-            <li>
+          <div class="text-overline mt-3">Related</div>
+          <ul class="ps-5 mb-2">
+            <li class="mb-2">
               Click the line number gutter to add or remove a breakpoint. The
               script pauses before running that line.
             </li>
-            <li>
+            <li class="mb-2">
               <strong>Insert Command</strong> (or
               <strong>Edit Command</strong> when the cursor is on a
               <code>cmd()</code> line) opens a command builder and writes the
               line for you.
             </li>
-            <li>
+            <li class="mb-2">
               The Debug prompt (Script &gt; Toggle Debug) runs single statements
               in the running script. Use Up and Down to recall earlier ones.
             </li>
@@ -111,7 +111,7 @@
                 : 'Script Lifecycle is available in COSMOS Enterprise.'
             }}
           </v-alert>
-          <p>
+          <p class="mb-3">
             Script Lifecycle adds a review and approval step before a script can
             be run by operators. Every saved script is in one of three states,
             shown as a chip next to the filename:
@@ -127,22 +127,22 @@
               {{ state.text }}
             </v-chip>
           </div>
-          <ul>
-            <li>
+          <ul class="ps-5 mb-2">
+            <li class="mb-2">
               <strong>In Development</strong>: new and edited scripts. Anyone
               who can edit scripts can change them and move them to review.
             </li>
-            <li>
+            <li class="mb-2">
               <strong>In Review</strong>: waiting on an approver. Only script
               approvers can approve a script.
             </li>
-            <li>
+            <li class="mb-2">
               <strong>Approved</strong>: locked. The script can't be edited or
               deleted until an approver moves it back to review. Users who can
               only run scripts may only run approved scripts.
             </li>
           </ul>
-          <p class="mt-3">
+          <p class="mt-3 mb-3">
             Click the state chip or use Script &gt; Script Lifecycle to change
             the state. Each change can include a comment and is kept in the
             lifecycle history along with who made it and when.
@@ -160,22 +160,22 @@
           >
             Script Versioning is available in COSMOS Enterprise.
           </v-alert>
-          <p>
+          <p class="mb-3">
             Every time a script is saved, a new version is recorded along with
             who saved it and when. Nothing is lost when a script is overwritten.
           </p>
-          <p class="mt-3">
+          <p class="mt-3 mb-3">
             Open Script &gt; Version History to see the versions of the current
             file, newest first.
           </p>
-          <ul>
-            <li>Click a version to view its contents.</li>
-            <li>
+          <ul class="ps-5 mb-2">
+            <li class="mb-2">Click a version to view its contents.</li>
+            <li class="mb-2">
               Use the diff button to compare a version with the one before it.
               Either side of the diff can be changed to compare any two
               versions.
             </li>
-            <li>
+            <li class="mb-2">
               <strong>Restore</strong> saves the selected version as a new
               version. The history is kept, so a restore can itself be undone.
             </li>
@@ -270,23 +270,3 @@ const shortcutGroups = [
   },
 ]
 </script>
-
-<style scoped>
-.help-text p,
-.help-text li {
-  line-height: 1.5;
-}
-.help-text ul {
-  padding-left: 20px;
-}
-kbd {
-  display: inline-block;
-  min-width: 1.6em;
-  padding: 1px 6px;
-  border: 1px solid rgba(var(--v-theme-on-surface), 0.25);
-  border-radius: 4px;
-  font-family: inherit;
-  font-size: 0.8125rem;
-  text-align: center;
-}
-</style>

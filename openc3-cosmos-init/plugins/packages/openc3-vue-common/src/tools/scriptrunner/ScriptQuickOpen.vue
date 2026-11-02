@@ -45,8 +45,8 @@
       <v-divider />
       <v-list
         density="compact"
-        max-height="400"
         class="py-0"
+        max-height="560"
         color="primary"
         data-test="quick-open-results"
       >
@@ -112,6 +112,7 @@ import {
 } from '@/tools/scriptrunner/scriptFiles'
 import { useProcedures } from '@/tools/scriptrunner/useProcedures'
 
+const MAX_RECENT = 5
 const MAX_RESULTS = 50
 
 const props = defineProps({
@@ -155,6 +156,7 @@ const results = computed(() => {
     return props.recent
       .filter((path) => isListed(path) && (!loaded || byPath.has(path)))
       .map((path) => byPath.get(path) || toProcedure(path))
+      .slice(0, MAX_RECENT)
   }
   return searchProcedures(available.value, query.value, MAX_RESULTS)
 })
