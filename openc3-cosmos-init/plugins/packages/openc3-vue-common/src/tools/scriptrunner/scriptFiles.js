@@ -93,23 +93,23 @@ export function displayName(path) {
 
 const LANGUAGES = { rb: 'Ruby', py: 'Python' }
 
-// Temp scripts are unsaved scratch files with generated names, not
-// something users look up by name
+// Procedures shown by name in the library and quick open
 export function isListed(path) {
-  return (
-    isProcedure(path) && !isBinary(path) && !path.startsWith(`${TEMP_FOLDER}/`)
-  )
+  return isProcedure(path) && !isBinary(path)
 }
 
 // Describe a procedure by name and target rather than by file path
 export function toProcedure(path) {
   const [target, ...rest] = path.split('/')
-  // Drop the 'procedures' folder and filename, keep any subfolders
-  const folders = rest.slice(1, -1)
+  const temp = target === TEMP_FOLDER
+  // Drop the 'procedures' folder and filename, keep any subfolders.
+  // Temp scripts have no 'procedures' folder.
+  const folders = temp ? rest.slice(0, -1) : rest.slice(1, -1)
   return {
     path,
     target,
-    name: displayName(path),
+    // Temp names are generated timestamps so show them as is
+    name: temp ? rest.at(-1) : displayName(path),
     folders: folders.join(' · '),
     location: [target, ...folders].join(' · '),
     language: LANGUAGES[extension(path)] || extension(path).toUpperCase(),

@@ -57,10 +57,9 @@
       </v-tooltip>
       <v-divider vertical class="mx-1 my-2" />
       <v-tooltip
-        v-if="mode === 'files'"
         :open-delay="600"
         location="bottom"
-        text="Collapse Folders"
+        :text="mode === 'files' ? 'Collapse Folders' : 'Collapse Collections'"
       >
         <template #activator="{ props: tooltipProps }">
           <v-btn
@@ -68,9 +67,11 @@
             icon="mdi-collapse-all-outline"
             variant="text"
             size="x-small"
-            aria-label="Collapse Folders"
+            :aria-label="
+              mode === 'files' ? 'Collapse Folders' : 'Collapse Collections'
+            "
             data-test="explorer-collapse"
-            @click="collapseAll"
+            @click="mode === 'files' ? collapseAll() : library?.collapseAll()"
           />
         </template>
       </v-tooltip>
@@ -117,6 +118,7 @@
       :script-active="scriptActive"
       @select="emit('select', $event)"
       @error="emit('error', $event)"
+      @contextmenu="showContextMenu"
     />
     <div v-if="mode === 'files'" class="px-2 pb-3">
       <v-text-field
@@ -150,7 +152,6 @@
       >
         <template #default="{ item }">
           <v-list-item
-            :title="item.node.name"
             :active="isActive(item.node)"
             :variant="isActive(item.node) ? 'flat' : 'text'"
             :base-color="isRunning(item.node) ? 'primary' : undefined"
@@ -163,7 +164,19 @@
             :data-test="`explorer-row-${item.node.path}`"
             :data-path="item.node.path"
             @click="rowClick(item.node)"
+            @contextmenu="rowContextMenu($event, item.node)"
           >
+            <template #title>
+              <span>
+                {{ item.node.name }}
+                <v-tooltip
+                  activator="parent"
+                  :open-delay="600"
+                  location="right"
+                  :text="item.node.path"
+                />
+              </span>
+            </template>
             <template #prepend>
               <div class="d-flex align-center me-1">
                 <v-icon
@@ -195,6 +208,17 @@
         </template>
       </v-virtual-scroll>
     </v-list>
+    <v-menu v-model="contextMenu.show" :target="[contextMenu.x, contextMenu.y]">
+      <v-list density="compact" data-test="explorer-context-menu">
+        <v-list-item
+          title="Save As..."
+          prepend-icon="mdi-content-save"
+          :disabled="scriptActive || readOnly"
+          data-test="explorer-context-save-as"
+          @click="emit('save-as', contextMenu.path)"
+        />
+      </v-list>
+    </v-menu>
   </v-sheet>
 </template>
 
@@ -238,9 +262,10 @@ const props = defineProps({
     default: null,
   },
   scriptActive: Boolean,
+  readOnly: Boolean,
 })
 
-const emit = defineEmits(['select', 'hide', 'error'])
+const emit = defineEmits(['select', 'hide', 'error', 'save-as'])
 
 const scroller = ref(null)
 const library = ref(null)
@@ -256,6 +281,18 @@ const items = ref([])
 const search = ref(null)
 const loading = ref(false)
 const expanded = ref(loadExpanded())
+const contextMenu = ref({ show: false, x: 0, y: 0, path: null })
+
+// Files get our menu, folders keep the browser's
+function rowContextMenu(event, node) {
+  if (node.children || isBinary(node.path)) return
+  event.preventDefault()
+  showContextMenu(event, node.path)
+}
+
+function showContextMenu(event, path) {
+  contextMenu.value = { show: true, x: event.clientX, y: event.clientY, path }
+}
 
 function loadExpanded() {
   try {
@@ -485,7 +522,9 @@ async function refreshFile(path) {
   if (isListed(path) && !procedures.value.some((p) => p.path === path)) {
     loadLibrary().catch(() => {}) // Library shows its own load errors
   }
-  if (findNode(path)) return
+  // Saving a plugin file creates a modified copy on the server, so reload
+  // the target to pick up the 'M' marker the first time it's saved
+  if (findNode(path)?.modified) return
   await refresh(path.split('/')[0])
 }
 

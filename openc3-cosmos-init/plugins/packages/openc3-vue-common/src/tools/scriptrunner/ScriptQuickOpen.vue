@@ -12,25 +12,30 @@
 -->
 
 <!--
-# Ctrl/Cmd-O quick open palette. Procedures are listed by name and target
+# Ctrl/Cmd-P quick open palette. Procedures are listed by name and target
 # rather than by file path so users don't need to know the folder layout.
 -->
 <template>
   <v-dialog v-model="show" max-width="640" class="align-start">
     <v-card class="mt-12" data-test="quick-open">
-      <v-text-field
-        v-model="query"
-        autofocus
-        flat
-        hide-details
-        variant="solo"
-        placeholder="Search procedures by name or target"
-        prepend-inner-icon="mdi-magnify"
-        data-test="quick-open-search"
-        @keydown.down.prevent="move(1)"
-        @keydown.up.prevent="move(-1)"
-        @keydown.enter.prevent="openActive"
-      />
+      <!-- Same field style as the explorer and library search so it
+           picks up the theme instead of Vuetify's solo surface color -->
+      <div class="pa-2">
+        <v-text-field
+          v-model="query"
+          class="quick-open-search"
+          autofocus
+          density="compact"
+          variant="outlined"
+          hide-details
+          placeholder="Search procedures by name or target"
+          prepend-inner-icon="mdi-magnify"
+          data-test="quick-open-search"
+          @keydown.down.prevent="move(1)"
+          @keydown.up.prevent="move(-1)"
+          @keydown.enter.prevent="openActive"
+        />
+      </div>
       <v-progress-linear
         :active="loading"
         indeterminate
@@ -52,7 +57,6 @@
           v-for="(item, index) in results"
           :key="item.path"
           :ref="(el) => (itemRefs[index] = el)"
-          :title="item.name"
           :subtitle="item.location"
           :active="index === activeIndex"
           :variant="index === activeIndex ? 'flat' : 'text'"
@@ -60,6 +64,17 @@
           @click="open(item)"
           @mousemove="activeIndex = index"
         >
+          <template #title>
+            <span>
+              {{ item.name }}
+              <v-tooltip
+                activator="parent"
+                :open-delay="600"
+                location="right"
+                :text="item.path"
+              />
+            </span>
+          </template>
           <template #prepend>
             <v-icon :icon="fileIcon(item.path)" size="small" />
           </template>
@@ -177,3 +192,12 @@ watch(show, (value) => {
   }
 })
 </script>
+
+<style scoped>
+/* The field is always focused while the palette is open, so skip the
+   bright 2px focus outline and keep the resting outline */
+.quick-open-search :deep(.v-field--focused .v-field__outline) {
+  --v-field-border-width: 1px;
+  --v-field-border-opacity: 0.38;
+}
+</style>

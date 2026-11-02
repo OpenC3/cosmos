@@ -11,32 +11,19 @@
 # if purchased from OpenC3, Inc.
 */
 
-// Procedure list and open times shared by the Script Runner
-// library, launcher, and quick open so they load once and stay in sync
+// Procedure list shared by the Script Runner library and quick open
+// so they load once and stay in sync
 
 import { ref } from 'vue'
 import {
-  TEMP_FOLDER,
   isListed,
   loadProcedures,
   loadTargets,
   toProcedure,
 } from '@/tools/scriptrunner/scriptFiles'
 
-const OPENED_KEY = 'script_runner__opened'
-const MAX_OPENED = 200
-
-function readStorage(key, fallback) {
-  try {
-    return JSON.parse(localStorage[key]) ?? fallback
-  } catch {
-    return fallback
-  }
-}
-
 const procedures = ref([])
 const loading = ref(false)
-const openedAt = ref(readStorage(OPENED_KEY, {}))
 let pending = null
 
 // Several navigators can ask at once so share the in-flight request
@@ -44,7 +31,7 @@ function load() {
   pending ??= (async () => {
     loading.value = true
     try {
-      const targets = (await loadTargets()).filter((t) => t !== TEMP_FOLDER)
+      const targets = await loadTargets()
       const files = await Promise.all(targets.map(loadProcedures))
       procedures.value = files
         .flat()
@@ -56,16 +43,6 @@ function load() {
     }
   })()
   return pending
-}
-
-// Called whenever Script Runner opens a file
-export function markOpened(path) {
-  if (!isListed(path)) return
-  const entries = Object.entries({ ...openedAt.value, [path]: Date.now() })
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, MAX_OPENED)
-  openedAt.value = Object.fromEntries(entries)
-  localStorage[OPENED_KEY] = JSON.stringify(openedAt.value)
 }
 
 // Procedures grouped by target, each sorted by name. Sections with
@@ -90,6 +67,5 @@ export function useProcedures() {
     loading,
     load,
     sections,
-    openedAt,
   }
 }

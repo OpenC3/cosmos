@@ -119,7 +119,9 @@
           :running-files="runningFiles"
           :loading-file="explorerLoadingFile"
           :script-active="scriptActive"
+          :read-only="readOnlyUser"
           @select="navigatorSelect"
+          @save-as="explorerSaveAs"
           @hide="setShowExplorer(false)"
           @error="setError"
         />
@@ -393,16 +395,6 @@
           @resize="({ prevPane }) => (editorBoxSize = prevPane.size)"
         >
           <pane class="editorbox position-relative" :size="editorBoxSize">
-            <script-launcher
-              v-if="showLauncher"
-              class="position-absolute top-0 left-0 w-100 h-100"
-              style="z-index: 10"
-              :loading-file="explorerLoadingFile"
-              :read-only="readOnlyUser"
-              @select="navigatorSelect"
-              @blank="dismissLauncher"
-              @error="setError"
-            />
             <v-snackbar
               v-model="showSave"
               absolute
@@ -644,7 +636,7 @@
     type="save"
     api-url="/script-api/scripts"
     require-target-parent-dir
-    :input-filename="filenameOrBlank"
+    :input-filename="saveAsSource || filenameOrBlank"
     @filename="saveAsFilename($event)"
     @error="setError($event)"
     @clear-temp="clearTemp($event)"
@@ -659,6 +651,13 @@
     @error="setError"
   />
   <environment-dialog v-if="showEnvironment" v-model="showEnvironment" />
+  <script-runner-help-dialog
+    v-if="showHelp"
+    v-model="showHelp"
+    :topic="helpTopic"
+    :lifecycle-enabled="lifecycleEnabled"
+    :versions-enabled="scriptVersionsEnabled"
+  />
   <ask-dialog
     v-if="ask.show"
     v-model="ask.show"
@@ -852,13 +851,12 @@ import PromptDialog from '@/tools/scriptrunner/Dialogs/PromptDialog.vue'
 import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
 import ScriptLifecycleDialog from '@/tools/scriptrunner/Dialogs/ScriptLifecycleDialog.vue'
+import ScriptRunnerHelpDialog from '@/tools/scriptrunner/Dialogs/ScriptRunnerHelpDialog.vue'
 import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
 import ScriptFileExplorer from '@/tools/scriptrunner/ScriptFileExplorer.vue'
 import ScriptQuickOpen from '@/tools/scriptrunner/ScriptQuickOpen.vue'
-import ScriptLauncher from '@/tools/scriptrunner/ScriptLauncher.vue'
-import { markOpened } from '@/tools/scriptrunner/useProcedures'
 import {
   CmdCompleter,
   TlmCompleter,
@@ -1017,8 +1015,8 @@ export default {
     RunningScripts,
     ScriptLogMessages,
     ScriptFileExplorer,
+    ScriptRunnerHelpDialog,
     ScriptQuickOpen,
-    ScriptLauncher,
     CriticalCmdDialog,
     CommandEditor,
     VersionHistoryDialog,
@@ -1127,6 +1125,9 @@ export default {
       lockedBy: null,
       showEditingToast: false,
       showSaveAs: false,
+      showHelp: false,
+      helpTopic: 'shortcuts',
+      saveAsSource: null, // File picked in the explorer to Save As, null for the editor
       areYouSure: false,
       subscription: null,
       cable: null,
@@ -1226,14 +1227,10 @@ export default {
       criticalCmdUser: null,
       displayCriticalCmd: false,
       editorBoxSize: 50,
-      showExplorer: true,
+      showExplorer: false,
       explorerSize: 20,
       explorerLoadingFile: null, // File being opened from the explorer
       showQuickOpen: false,
-      // The launcher shows when nothing is open. It waits for the startup
-      // file load so it doesn't flash before a remembered file opens.
-      launcherReady: false,
-      launcherDismissed: false,
       lockingEnabled: true,
       canApprove: false,
       // Enterprise-only Version History; enabled when the backend has
@@ -1315,15 +1312,6 @@ export default {
     runningFiles: function () {
       return Object.keys(this.files).filter(
         (name) => this.files[name] && !this.files[name].pending,
-      )
-    },
-    showLauncher: function () {
-      return (
-        !this.inline &&
-        this.launcherReady &&
-        !this.launcherDismissed &&
-        !this.scriptActive &&
-        this.filename === NEW_FILENAME
       )
     },
     recentFilenames: function () {
@@ -1427,16 +1415,10 @@ export default {
             {
               label: 'Open File',
               icon: 'mdi-folder-open',
+              shortcut: 'Mod+O',
               disabled: this.scriptActive,
               command: () => {
                 this.openFileWithConfirm()
-              },
-            },
-            {
-              label: 'Quick Open',
-              icon: 'mdi-magnify',
-              command: () => {
-                this.showQuickOpen = true
               },
             },
             {
@@ -1451,6 +1433,7 @@ export default {
             {
               label: 'Save File',
               icon: 'mdi-content-save',
+              shortcut: 'Mod+S',
               disabled:
                 this.scriptActive || this.readOnlyUser || this.scriptApproved,
               tooltip: this.scriptApproved
@@ -1463,6 +1446,7 @@ export default {
             {
               label: 'Save As...',
               icon: 'mdi-content-save',
+              shortcut: 'Mod+Shift+S',
               disabled: this.scriptActive || this.readOnlyUser,
               command: () => {
                 this.saveAs()
@@ -1679,6 +1663,32 @@ export default {
                   },
                 ]
               : []),
+          ],
+        },
+        {
+          label: 'Help',
+          items: [
+            {
+              label: 'Shortcuts',
+              icon: 'mdi-keyboard',
+              command: () => this.openHelp('shortcuts'),
+            },
+            {
+              label: 'Goto / Execute Selection',
+              icon: 'mdi-cursor-text',
+              command: () => this.openHelp('selection'),
+            },
+            { divider: true },
+            {
+              label: 'Script Lifecycle',
+              icon: 'mdi-list-status',
+              command: () => this.openHelp('lifecycle'),
+            },
+            {
+              label: 'Script Versioning',
+              icon: 'mdi-history',
+              command: () => this.openHelp('versioning'),
+            },
           ],
         },
       ]
@@ -1941,7 +1951,7 @@ export default {
     if (!this.inline && localStorage['script_runner__explorer']) {
       try {
         const explorer = JSON.parse(localStorage['script_runner__explorer'])
-        this.showExplorer = explorer.show !== false
+        this.showExplorer = explorer.show === true
         if (explorer.size) this.explorerSize = explorer.size
       } catch {
         // Keep the defaults
@@ -1968,7 +1978,6 @@ export default {
           await this.reloadFile(false)
         }
       }
-      this.launcherReady = true
     } else {
       if (this.body) {
         this.editor.setValue(this.body)
@@ -2082,10 +2091,6 @@ export default {
     },
     doResize() {
       this.editor.resize()
-    },
-    dismissLauncher() {
-      this.launcherDismissed = true
-      this.$nextTick(() => this.editor.focus())
     },
     persistExplorer() {
       localStorage['script_runner__explorer'] = JSON.stringify({
@@ -2424,10 +2429,19 @@ export default {
       if (
         !this.inline &&
         (event.metaKey || event.ctrlKey) &&
+        event.key?.toLowerCase() === 'p'
+      ) {
+        event.preventDefault() // Don't open the browser's print dialog
+        this.showQuickOpen = true
+        return
+      }
+      if (
+        !this.inline &&
+        (event.metaKey || event.ctrlKey) &&
         event.key?.toLowerCase() === 'o'
       ) {
         event.preventDefault() // Don't open the browser's file picker
-        this.showQuickOpen = true
+        if (!this.scriptActive) this.openFileWithConfirm()
         return
       }
       // Don't ever save if running or readonly
@@ -2450,10 +2464,6 @@ export default {
       }
     },
     onChange(event) {
-      // Content typed or pasted into the blank editor replaces the launcher
-      if (this.showLauncher && this.editor.getValue()) {
-        this.launcherDismissed = true
-      }
       // Don't track changes when we're running or read-only (locked)
       if (this.scriptActive || this.editor.getReadOnly() === true) {
         return
@@ -3438,12 +3448,9 @@ export default {
       const confirmed = await this.confirmUnsavedChanges()
       if (confirmed) {
         this.newFile()
-        // Asking for a new file means a blank editor, not the launcher
-        this.dismissLauncher()
       }
     },
     newFile() {
-      this.launcherDismissed = false
       // Invalidate in-flight loads (reloadFile, processLine fetch) so a
       // late response can't reinstall the old file over the blank editor --
       // especially after delete(), which lands here
@@ -3498,7 +3505,6 @@ export default {
       }
     },
     addToRecent(filename) {
-      markOpened(filename)
       // See if this filename is already in the recent ... if so remove it
       let index = this.recent.findIndex((i) => i.label === filename)
       if (index !== -1) {
@@ -3804,11 +3810,60 @@ export default {
         this.setError('Attempt to save file when not allowed')
       }
     },
+    openHelp(topic) {
+      this.helpTopic = topic
+      this.showHelp = true
+    },
     saveAs() {
+      this.saveAsSource = null
       this.showSaveAs = true
     },
+    // Save As from the explorer context menu. The open file goes through
+    // the normal Save As so unsaved edits are kept, any other file is copied.
+    explorerSaveAs(filename) {
+      if (filename === this.filename) {
+        this.saveAs()
+        return
+      }
+      this.saveAsSource = filename
+      this.showSaveAs = true
+    },
+    async copyScript(source, filename) {
+      try {
+        const response = await Api.get(`/script-api/scripts/${source}`)
+        // Reading a script locks it for us. We only wanted the contents so
+        // release the lock unless someone else already held it.
+        if (!response.data.locked) {
+          Api.post(`/script-api/scripts/${source}/unlock`).catch(console.error)
+        }
+        await Api.post(`/script-api/scripts/${filename}`, {
+          data: { text: response.data.contents, breakpoints: [] },
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'Ignore-Errors': '403',
+          },
+        })
+        this.$refs.explorer?.refreshFile(filename)
+        this.alertType = 'info'
+        this.alertText = `Saved ${source} as ${filename}`
+        this.showAlert = true
+      } catch (error) {
+        const message = error.response?.data?.message || error
+        this.setError(`Failed to save ${source} as ${filename}. ${message}`)
+      }
+    },
     async saveAsFilename(filename) {
-      this.filename = filename.replace(/\*$/, '')
+      filename = filename.replace(/\*$/, '')
+      if (this.saveAsSource) {
+        const source = this.saveAsSource
+        this.saveAsSource = null
+        await this.copyScript(source, filename)
+        return
+      }
+      // We're done editing the old file so release its lock
+      if (filename !== this.filename) this.unlockFile()
+      this.filename = filename
       this.currentFilename = null
       // The lifecycle state belongs to the file, not the editor contents,
       // so clear it before saving under the new name. The server still

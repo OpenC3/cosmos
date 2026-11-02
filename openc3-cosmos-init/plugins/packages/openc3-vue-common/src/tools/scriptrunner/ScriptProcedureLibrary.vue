@@ -35,11 +35,29 @@
     data-test="procedure-library"
   >
     <template v-for="section in groups" :key="section.title">
-      <v-list-subheader>{{ section.title }}</v-list-subheader>
+      <v-list-subheader
+        v-if="section.grouped"
+        class="library-section"
+        :data-test="`library-section-${section.title}`"
+        @click="toggleSection(section.title)"
+      >
+        <v-icon
+          size="16"
+          class="me-1"
+          :icon="
+            collapsed.has(section.title)
+              ? 'mdi-chevron-right'
+              : 'mdi-chevron-down'
+          "
+        />
+        {{ section.title }}
+      </v-list-subheader>
+      <v-list-subheader v-else>{{ section.title }}</v-list-subheader>
       <v-list-item
-        v-for="item in section.items"
+        v-for="item in section.grouped && collapsed.has(section.title)
+          ? []
+          : section.items"
         :key="`${section.title}-${item.path}`"
-        :title="item.name"
         :subtitle="section.grouped ? item.folders : item.location"
         :active="item.path === activeFile"
         :variant="item.path === activeFile ? 'flat' : 'text'"
@@ -47,7 +65,19 @@
         :disabled="scriptActive && !runningSet.has(item.path)"
         :data-test="`library-item-${item.path}`"
         @click="emit('select', item.path)"
+        @contextmenu.prevent="emit('contextmenu', $event, item.path)"
       >
+        <template #title>
+          <span>
+            {{ item.name }}
+            <v-tooltip
+              activator="parent"
+              :open-delay="600"
+              location="right"
+              :text="item.path"
+            />
+          </span>
+        </template>
         <template #prepend>
           <v-icon :icon="itemIcon(item)" size="small" />
         </template>
@@ -79,6 +109,8 @@ import { fileIcon } from '@/util/fileIcon'
 import { searchProcedures } from '@/tools/scriptrunner/scriptFiles'
 import { useProcedures } from '@/tools/scriptrunner/useProcedures'
 
+const COLLAPSED_KEY = 'script_runner__library_collapsed'
+
 const props = defineProps({
   activeFile: {
     type: String,
@@ -99,10 +131,37 @@ const props = defineProps({
   scriptActive: Boolean,
 })
 
-const emit = defineEmits(['select', 'error'])
+const emit = defineEmits(['select', 'error', 'contextmenu'])
 
 const { procedures, loading, load, sections } = useProcedures()
 const query = ref(null)
+const collapsed = ref(loadCollapsed())
+
+function loadCollapsed() {
+  try {
+    return new Set(JSON.parse(localStorage[COLLAPSED_KEY] || '[]'))
+  } catch {
+    return new Set()
+  }
+}
+
+function saveCollapsed() {
+  localStorage[COLLAPSED_KEY] = JSON.stringify([...collapsed.value])
+}
+
+function toggleSection(title) {
+  if (collapsed.value.has(title)) {
+    collapsed.value.delete(title)
+  } else {
+    collapsed.value.add(title)
+  }
+  saveCollapsed()
+}
+
+function collapseAll() {
+  collapsed.value = new Set(sections().map((section) => section.title))
+  saveCollapsed()
+}
 
 const runningSet = computed(() => new Set(props.runningFiles))
 
@@ -127,5 +186,12 @@ function refresh() {
 
 onMounted(refresh)
 
-defineExpose({ refresh })
+defineExpose({ refresh, collapseAll })
 </script>
+
+<style scoped>
+.library-section {
+  cursor: pointer;
+  user-select: none;
+}
+</style>
