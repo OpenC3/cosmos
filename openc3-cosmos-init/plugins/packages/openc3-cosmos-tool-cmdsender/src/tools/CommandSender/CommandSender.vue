@@ -265,6 +265,8 @@ export default {
       criticalCmdUuid: null,
       criticalCmdString: null,
       criticalCmdUser: null,
+      // uuid => interval watching a critical command waiting for approval
+      criticalCmdWatchers: {},
       sendDisabled: false,
       api: null,
       keywords: [],
@@ -449,6 +451,10 @@ export default {
     })
   },
   beforeUnmount() {
+    for (const watcher of Object.values(this.criticalCmdWatchers)) {
+      clearInterval(watcher)
+    }
+    this.criticalCmdWatchers = {}
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -686,8 +692,45 @@ export default {
         },
         (error) => {
           this.processCmdError(targetName, commandName, error)
+          if (error.message?.includes('CriticalCmdError')) {
+            this.watchCriticalCmd(cmd, error.object.data.instance_variables)
+          }
         },
       )
+    },
+
+    // Critical commands aren't sent until enough users approve them, which can
+    // happen long after the approval dialog is closed. Watch for the final
+    // status so approved commands are added to the history like any other.
+    watchCriticalCmd(cmd, criticalError) {
+      const uuid = criticalError['@uuid']
+      const command = criticalError['@command']
+      if (!uuid || !command || this.criticalCmdWatchers[uuid]) return
+      const stop = () => {
+        clearInterval(this.criticalCmdWatchers[uuid])
+        delete this.criticalCmdWatchers[uuid]
+      }
+      this.criticalCmdWatchers[uuid] = setInterval(() => {
+        Api.get('/openc3-api/criticalcmd/status/' + uuid, {
+          headers: { Accept: 'application/json', 'Ignore-Errors': '404' },
+        })
+          .then((response) => {
+            if (response.data.status === 'APPROVED') {
+              stop()
+              this.processCmdSuccess(cmd, command)
+            } else if (response.data.status === 'REJECTED') {
+              stop()
+              this.status = `Critical command rejected: ${command.cmd_string}`
+            }
+          })
+          .catch((error) => {
+            // The critical command no longer exists, e.g. critical commanding
+            // was turned off. Keep watching through transient errors.
+            if (error.response?.status === 404) {
+              stop()
+            }
+          })
+      }, 1000)
     },
 
     cancelHazardousCmd() {

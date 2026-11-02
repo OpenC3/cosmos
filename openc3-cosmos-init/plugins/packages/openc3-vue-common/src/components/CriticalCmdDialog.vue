@@ -30,6 +30,12 @@
           </v-row>
           <v-row class="pa-4" style="color: white">{{ cmdString }}</v-row>
           <v-row class="text-subtitle-2">UUID: {{ uuid }}</v-row>
+          <v-row v-if="approversRequired" class="pt-2" data-test="approvals">
+            Approvals: {{ approvers.length }}/{{ approversRequired }}
+            <span v-if="approvers.length" class="pl-2">
+              ({{ approvers.join(', ') }})
+            </span>
+          </v-row>
 
           <v-row v-if="!canApprove">
             <v-text-field
@@ -107,6 +113,8 @@ export default {
       username: null,
       password: null,
       canApprove: false,
+      approvers: [],
+      approversRequired: null,
       error: false,
       errorText: '',
     }
@@ -133,34 +141,18 @@ export default {
     // If this is a tlm dialog we setup an interval to get the telemetry values
     modelValue: function (newValue, oldValue) {
       if (newValue) {
-        // Check if we can approve without username/password
-        Api.get('/openc3-api/criticalcmd/canapprove/' + this.uuid)
-          .then((response) => {
-            if (response.data.status === 'ok') {
-              this.canApprove = true
-            }
-          })
-          .catch(console.error)
+        this.checkCanApprove()
 
-        // Clear if approved/rejected
-        this.updater = setInterval(() => {
-          if (this.uuid) {
-            Api.get('/openc3-api/criticalcmd/status/' + this.uuid)
-              .then((response) => {
-                if (response.data.status !== 'WAITING') {
-                  this.$emit('status', response.data.status, this.uuid)
-                  this.show = false
-                }
-              })
-              .catch(console.error)
-          } else {
-            this.show = false
-          }
-        }, 1000)
+        // Fetch immediately so the approval count is correct on open,
+        // then poll until approved/rejected
+        this.fetchStatus()
+        this.updater = setInterval(this.fetchStatus, 1000)
       } else {
         clearInterval(this.updater)
         this.updater = null
         this.canApprove = false
+        this.approvers = []
+        this.approversRequired = null
         this.username = null
         this.password = null
       }
@@ -174,14 +166,57 @@ export default {
     this.password = null
   },
   methods: {
+    checkCanApprove() {
+      // Check if we can approve without username/password
+      Api.get('/openc3-api/criticalcmd/canapprove/' + this.uuid)
+        .then((response) => {
+          this.canApprove = response.data.status === 'ok'
+        })
+        .catch(console.error)
+    },
+    fetchStatus() {
+      if (this.uuid) {
+        Api.get('/openc3-api/criticalcmd/status/' + this.uuid)
+          .then((response) => {
+            this.handleStatus(response.data)
+          })
+          .catch(console.error)
+      } else {
+        this.show = false
+      }
+    },
+    // data is the status / approve / reject response:
+    // { status, approvers, approvers_required }
+    handleStatus(data) {
+      if (data.approvers) {
+        this.approvers = data.approvers
+      }
+      if (data.approvers_required) {
+        this.approversRequired = data.approvers_required
+      }
+      if (data.status !== 'WAITING') {
+        this.$emit('status', data.status, this.uuid)
+        this.show = false
+      }
+    },
+    // Called after a successful approval. Stay open until enough
+    // different users have approved.
+    handleApproved(data) {
+      this.error = false
+      this.username = null
+      this.password = null
+      this.handleStatus(data)
+      if (this.show) {
+        // The current user may have just approved so check again
+        this.checkCanApprove()
+      }
+    },
     async approve() {
       if (this.canApprove) {
         await Api.post('/openc3-api/criticalcmd/approve/' + this.uuid, {}).then(
           (response) => {
             if (response.status == 200) {
-              this.$emit('status', 'APPROVED', this.uuid)
-              this.show = false
-              this.error = false
+              this.handleApproved(response.data)
             }
           },
         )
@@ -202,10 +237,8 @@ export default {
               timeout: 5000,
             },
           )
-          .then((_response) => {
-            this.$emit('status', 'APPROVED', this.uuid)
-            this.show = false
-            this.error = false
+          .then((response) => {
+            this.handleApproved(response.data)
           })
           .catch((error) => {
             this.error = true

@@ -81,6 +81,7 @@ module OpenC3
                        cleanup_poll_time: 5,
                        command_authority: true,
                        critical_commanding: "NORMAL",
+                       critical_cmd_approvers: 2,
                        updated_at: 6,
                       ).create()
         model = ScopeModel.get_model(name: "DEFAULT")
@@ -91,7 +92,28 @@ module OpenC3
         expect(model.cleanup_poll_time).to eql 5
         expect(model.command_authority).to eql true
         expect(model.critical_commanding).to eql "NORMAL"
+        expect(model.critical_cmd_approvers).to eql 2
         # model.updated_at is going to be time now
+      end
+    end
+
+    describe "initialize" do
+      it "defaults critical_cmd_approvers to 1" do
+        expect(ScopeModel.new(name: "DEFAULT").critical_cmd_approvers).to eql 1
+        expect(ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: nil).critical_cmd_approvers).to eql 1
+      end
+
+      it "converts critical_cmd_approvers to an integer" do
+        expect(ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: "3").critical_cmd_approvers).to eql 3
+      end
+
+      it "raises on critical_cmd_approvers less than 1" do
+        expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: 0) }.to raise_error(/Invalid value for critical_cmd_approvers: 0 \(must be 1 to 10\)/)
+      end
+
+      it "allows up to 10 critical_cmd_approvers" do
+        expect(ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: 10).critical_cmd_approvers).to eql 10
+        expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: 11) }.to raise_error(/Invalid value for critical_cmd_approvers: 11 \(must be 1 to 10\)/)
       end
     end
 
@@ -140,6 +162,7 @@ module OpenC3
         json = model.as_json()
         expect(json['name']).to eql "DEFAULT"
         expect(json['updated_at']).to eql 12345
+        expect(json['critical_cmd_approvers']).to eql 1
       end
     end
 
