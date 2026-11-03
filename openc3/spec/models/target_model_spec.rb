@@ -1253,6 +1253,12 @@ module OpenC3
         expect(JSON.parse(Store.get("DEFAULT__limits_group_targets"))).to eql []
       end
 
+      it "seeds the CVT so the packet can be read before anything is published" do
+        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
+        expect(CvtModel.get(target_name: "COSMOS", packet_name: "LIMITS_GROUP", scope: "DEFAULT")).to include("RECEIVED_COUNT" => nil)
+        expect(@db_shard1.hexists("DEFAULT__tlm__COSMOS", "LIMITS_GROUP")).to be true
+      end
+
       it "defines two items per group on the COSMOS db_shard and starts TSDB" do
         store_groups({ "THERMAL" => [%w(INST HEALTH_STATUS TEMP1), %w(INST2 HEALTH_STATUS TEMP1)],
                      "SPACECRAFT" => [%w(COSMOS LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS VOLTS)] })

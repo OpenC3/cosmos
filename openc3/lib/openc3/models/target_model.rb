@@ -489,9 +489,12 @@ module OpenC3
     def sync_limits_group_packet(groups)
       db_shard_store = Store.instance(db_shard: @db_shard)
       packet = self.class.limits_group_packet(groups.keys)
-      # Only write the definition. Unlike update_store_telemetry this leaves the CVT alone
-      # because the limits group microservice only publishes values when they change.
       db_shard_store.hset("#{@scope}__openc3tlm__#{@name}", packet.packet_name, JSON.generate(packet.as_json, allow_nan: true))
+      # Seed the CVT like update_store_telemetry so the packet can be read before anything
+      # is published (with no groups nothing ever is). HSETNX never overwrites values
+      # the limits group microservice already published since it only republishes on change.
+      json_hash = packet.sorted_items.to_h { |item| [item.name, nil] }
+      db_shard_store.hsetnx("#{@scope}__tlm__#{@name}", packet.packet_name, JSON.generate(json_hash, allow_nan: true))
       db_shard_store.del("#{@scope}__openc3tlm__#{@name}__allitems")
       packet.sorted_items.each { |item| self.class.add_to_target_allitems_list(@name, item.name, scope: @scope) }
       update_store_item_map()
