@@ -416,6 +416,8 @@ module OpenC3
             $LOAD_PATH.delete(load_dir)
           end
         end
+        # Limits groups may have been added or removed so rebuild COSMOS LIMITS_GROUP
+        TargetModel.sync_limits_group_packet(scope: scope) unless dry_run
       rescue => e
         # Install failed - need to cleanup
         plugin_model.destroy unless dry_run
@@ -525,6 +527,12 @@ module OpenC3
             errors << e
           end
         end
+      end
+      # The plugin's limits groups are gone so rebuild COSMOS LIMITS_GROUP
+      begin
+        TargetModel.sync_limits_group_packet(scope: @scope)
+      rescue => e
+        errors << e
       end
       # Cleanup Redis stuff that might have been left by microservices
       microservices.each do |_name, model_instance|

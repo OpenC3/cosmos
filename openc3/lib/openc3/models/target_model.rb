@@ -33,6 +33,8 @@ require 'openc3/utilities/bucket'
 require 'openc3/utilities/target_file'
 require 'openc3/utilities/zip'
 require 'openc3/utilities/questdb_client'
+require 'openc3/conversions'
+require 'openc3/packets/packet_config'
 require 'fileutils'
 require 'ostruct'
 require 'set'
@@ -446,6 +448,64 @@ module OpenC3
     def self.add_to_target_allitems_list(target_name, item_name, scope:)
       score = 0 # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
       store_for_target(target_name, scope: scope).zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
+    end
+
+    LIMITS_GROUP_STATES = { 'GREEN' => 0, 'YELLOW' => 1, 'RED' => 2 }.freeze
+    LIMITS_GROUP_ENABLED_STATES = { 'FALSE' => 0, 'TRUE' => 1 }.freeze
+
+    # Builds the COSMOS LIMITS_GROUP packet with a <GROUP> and <GROUP>_ENABLED
+    # item for each group, sorted by group name
+    #
+    # @param group_names [Array<String>] Limits group names
+    # @return [Packet]
+    def self.limits_group_packet(group_names)
+      packet = Packet.new('COSMOS', 'LIMITS_GROUP', :BIG_ENDIAN, 'Rolled-up limits state of each limits group')
+      packet.define_reserved_items()
+      group_names.sort.each do |group|
+        item = packet.append_item(group, 8, :UINT)
+        item.states = LIMITS_GROUP_STATES.dup
+        item.description = "Most severe limits state of the members of limits group #{group}"
+        item = packet.append_item("#{group}#{PacketConfig::LIMITS_GROUP_ENABLED_SUFFIX}", 8, :UINT)
+        item.states = LIMITS_GROUP_ENABLED_STATES.dup
+        item.description = "Whether limits are enabled on every member of limits group #{group}"
+      end
+      packet
+    end
+
+    # Rebuilds the COSMOS LIMITS_GROUP packet definition from the limits groups in
+    # the scope. Called after a plugin is installed, upgraded or uninstalled.
+    # Removed groups leave the definition but their QuestDB columns and data remain.
+    def self.sync_limits_group_packet(scope:)
+      model = get_model(name: 'COSMOS', scope: scope)
+      unless model
+        Logger.warn("COSMOS target does not exist in scope #{scope}. Can't update COSMOS LIMITS_GROUP.")
+        return
+      end
+
+      model.sync_limits_group_packet(limits_groups(scope: scope))
+    end
+
+    # @param groups [Hash{String => Array<Array<String, String, String>>}] limits groups in the scope
+    def sync_limits_group_packet(groups)
+      db_shard_store = Store.instance(db_shard: @db_shard)
+      packet = self.class.limits_group_packet(groups.keys)
+      # Only write the definition. Unlike update_store_telemetry this leaves the CVT alone
+      # because the limits group microservice only publishes values when they change.
+      db_shard_store.hset("#{@scope}__openc3tlm__#{@name}", packet.packet_name, JSON.generate(packet.as_json, allow_nan: true))
+      db_shard_store.del("#{@scope}__openc3tlm__#{@name}__allitems")
+      packet.sorted_items.each { |item| self.class.add_to_target_allitems_list(@name, item.name, scope: @scope) }
+      update_store_item_map()
+
+      # Target level permissions on COSMOS LIMITS_GROUP check every target a group references
+      targets = groups.values.flatten(1).map { |target_name, _packet_name, _item_name| target_name }
+      targets = targets.uniq.reject { |target_name| target_name == @name }.sort
+      Store.set("#{@scope}__limits_group_targets", JSON.generate(targets))
+
+      # The first time there are groups start a TSDB microservice so their history is stored.
+      # Later groups need no schema change since QuestDB adds a column when a new item is written.
+      unless groups.empty? or MicroserviceModel.get_model(name: "#{@scope}__TSDB__#{@name}", scope: @scope)
+        deploy_tsdb_microservice(nil, {}, ["#{@scope}__DECOM__{#{@name}}__#{packet.packet_name}"])
+      end
     end
 
     # @return [Hash{String => Array<Array<String, String, String>>}]

@@ -1229,6 +1229,72 @@ module OpenC3
       end
     end
 
+    describe "self.sync_limits_group_packet" do
+      before(:each) do
+        TargetModel.new(name: "COSMOS", scope: "DEFAULT", db_shard: 1).create
+        @db_shard1 = Store.instance(db_shard: 1)
+      end
+
+      def store_groups(groups)
+        Store.del("DEFAULT__limits_groups")
+        groups.each { |group, items| Store.hset("DEFAULT__limits_groups", group, JSON.generate(items)) }
+      end
+
+      def definition
+        JSON.parse(@db_shard1.hget("DEFAULT__openc3tlm__COSMOS", "LIMITS_GROUP"))
+      end
+
+      it "defines only the standard items with no groups" do
+        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
+        names = definition['items'].map { |item| item['name'] }
+        expect(names).to include("RECEIVED_TIMESECONDS", "PACKET_TIMESECONDS")
+        expect(names).to_not include(a_string_ending_with("_ENABLED"))
+        expect(MicroserviceModel.get_model(name: "DEFAULT__TSDB__COSMOS", scope: "DEFAULT")).to be_nil
+        expect(JSON.parse(Store.get("DEFAULT__limits_group_targets"))).to eql []
+      end
+
+      it "defines two items per group on the COSMOS db_shard and starts TSDB" do
+        store_groups({ "THERMAL" => [%w(INST HEALTH_STATUS TEMP1), %w(INST2 HEALTH_STATUS TEMP1)],
+                     "SPACECRAFT" => [%w(COSMOS LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS VOLTS)] })
+        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
+        expect(Store.instance(db_shard: 0).hexists("DEFAULT__openc3tlm__COSMOS", "LIMITS_GROUP")).to be false
+
+        items = definition['items'].reject { |item| Packet::RESERVED_ITEM_NAMES.include?(item['name']) }
+        expect(items.map { |item| item['name'] }).to eql %w(SPACECRAFT SPACECRAFT_ENABLED THERMAL THERMAL_ENABLED)
+        expect(items[0]['data_type']).to eql 'UINT'
+        expect(items[0]['states']).to eql({ 'GREEN' => { 'value' => 0 }, 'YELLOW' => { 'value' => 1 }, 'RED' => { 'value' => 2 } })
+        expect(items[1]['states']).to eql({ 'FALSE' => { 'value' => 0 }, 'TRUE' => { 'value' => 1 } })
+        expect(@db_shard1.zrange("DEFAULT__openc3tlm__COSMOS__allitems", 0, -1)).to include("THERMAL", "THERMAL_ENABLED")
+        expect(TargetModel.get_item_to_packet_map("COSMOS", scope: "DEFAULT")["THERMAL"]).to eql ["LIMITS_GROUP"]
+        expect(JSON.parse(Store.get("DEFAULT__limits_group_targets"))).to eql %w(INST INST2)
+
+        tsdb = MicroserviceModel.get_model(name: "DEFAULT__TSDB__COSMOS", scope: "DEFAULT")
+        expect(tsdb.topics).to eql ["DEFAULT__DECOM__{COSMOS}__LIMITS_GROUP"]
+        expect(tsdb.db_shard).to eql 1
+      end
+
+      it "drops removed groups from the definition but leaves the CVT and TSDB alone" do
+        store_groups({ "THERMAL" => [%w(INST HEALTH_STATUS TEMP1)], "POWER" => [%w(INST HEALTH_STATUS VOLTS)] })
+        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
+        CvtModel.set({ "THERMAL" => 2, "POWER" => 0, "RECEIVED_TIMESECONDS" => Time.now.to_f }, target_name: "COSMOS", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
+
+        store_groups({ "THERMAL" => [%w(INST HEALTH_STATUS TEMP1)] })
+        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
+        names = definition['items'].map { |item| item['name'] }
+        expect(names).to include("THERMAL")
+        expect(names).to_not include("POWER", "POWER_ENABLED")
+        expect(@db_shard1.zrange("DEFAULT__openc3tlm__COSMOS__allitems", 0, -1)).to_not include("POWER")
+        expect(CvtModel.get(target_name: "COSMOS", packet_name: "LIMITS_GROUP", scope: "DEFAULT")["THERMAL"]).to eql 2
+        expect(MicroserviceModel.get_model(name: "DEFAULT__TSDB__COSMOS", scope: "DEFAULT")).to_not be_nil
+      end
+
+      it "warns when the scope has no COSMOS target" do
+        TargetModel.get_model(name: "COSMOS", scope: "DEFAULT").destroy
+        expect(Logger).to receive(:warn).with(/COSMOS target does not exist/)
+        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
+      end
+    end
+
     describe "check_limits_groups" do
       def build_system(groups)
         double("System", limits: double("Limits", groups: groups))
