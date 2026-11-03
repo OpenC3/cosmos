@@ -46,54 +46,37 @@
 
         <!-- Goto / Execute Selection -->
         <template v-else-if="topic === 'selection'">
-          <p class="mb-3">
+          <p class="mb-4">
             Right click in the editor to run part of a script instead of the
             whole thing. What the menu offers depends on whether a script is
             running.
           </p>
-          <div class="text-overline mt-3">When no script is running</div>
-          <ul class="ps-5 mb-2">
-            <li class="mb-2">
-              <strong>Execute Selection</strong> starts the script but runs only
-              the selected lines. Select the lines first, then right click.
-            </li>
-            <li class="mb-2">
-              <strong>Run From Line</strong> starts the script at the line the
-              cursor is on and skips everything above it.
-            </li>
-          </ul>
-          <div class="text-overline mt-3">
-            While a script is paused, at a breakpoint, or stopped on an error
-          </div>
-          <ul class="ps-5 mb-2">
-            <li class="mb-2">
-              <strong>Execute Selection</strong> runs the selected lines inside
-              the paused script, so they can use its variables. When they finish
-              the script stays paused where it was. This is a handy way to retry
-              a failed step.
-            </li>
-            <li class="mb-2">
-              <strong>Goto Line</strong> skips ahead (or back) and continues the
-              script from the line the cursor is on.
-            </li>
-          </ul>
-          <div class="text-overline mt-3">Related</div>
-          <ul class="ps-5 mb-2">
-            <li class="mb-2">
-              Click the line number gutter to add or remove a breakpoint. The
-              script pauses before running that line.
-            </li>
-            <li class="mb-2">
-              <strong>Insert Command</strong> (or
-              <strong>Edit Command</strong> when the cursor is on a
-              <code>cmd()</code> line) opens a command builder and writes the
-              line for you.
-            </li>
-            <li class="mb-2">
-              The Debug prompt (Script &gt; Toggle Debug) runs single statements
-              in the running script. Use Up and Down to recall earlier ones.
-            </li>
-          </ul>
+          <v-card
+            v-for="section in selectionSections"
+            :key="section.title"
+            variant="tonal"
+            class="mb-4"
+          >
+            <v-card-item
+              :prepend-icon="section.icon"
+              :title="section.title"
+              :subtitle="section.subtitle"
+            />
+            <v-divider />
+            <v-list density="compact" bg-color="transparent" class="py-0">
+              <template v-for="(entry, index) in section.items" :key="index">
+                <v-divider v-if="index > 0" />
+                <v-list-item class="py-2">
+                  <v-list-item-title class="font-weight-bold">
+                    {{ entry.name }}
+                  </v-list-item-title>
+                  <div class="text-body-2 text-medium-emphasis mt-1">
+                    {{ entry.text }}
+                  </div>
+                </v-list-item>
+              </template>
+            </v-list>
+          </v-card>
         </template>
 
         <!-- Script Lifecycle -->
@@ -231,14 +214,71 @@ const states = Object.entries(LIFECYCLE_STATE_LABELS).map(([value, text]) => ({
 
 const keys = (...shortcuts) => shortcuts.map(formatShortcut)
 
+const selectionSections = [
+  {
+    title: 'No script running',
+    subtitle: 'Starts a new run',
+    icon: 'mdi-play-outline',
+    items: [
+      {
+        name: 'Execute Selection',
+        text: 'Runs only the selected lines. Select the lines first, then right click.',
+      },
+      {
+        name: 'Run From Line',
+        text: 'Starts at the line the cursor is on and skips everything above it.',
+      },
+    ],
+  },
+  {
+    title: 'Script paused',
+    subtitle: 'Also at a breakpoint or stopped on an error',
+    icon: 'mdi-pause',
+    items: [
+      {
+        name: 'Execute Selection',
+        text: 'Runs the selected lines inside the paused script so they can use its variables, then stays paused where it was. Handy for retrying a failed step.',
+      },
+      {
+        name: 'Goto Line',
+        text: 'Skips ahead (or back) and continues the script from the line the cursor is on.',
+      },
+    ],
+  },
+  {
+    title: 'Related',
+    icon: 'mdi-link-variant',
+    items: [
+      {
+        name: 'Breakpoints',
+        text: 'Click the line number gutter to add or remove one. The script pauses before running that line.',
+      },
+      {
+        name: 'Insert / Edit Command',
+        text: 'Opens a command builder and writes the line for you. Shows Edit Command when the cursor is on a cmd() line.',
+      },
+      {
+        name: 'Debug Prompt',
+        text: 'Script > Toggle Debug runs single statements in the running script. Use Up and Down to recall earlier ones.',
+      },
+    ],
+  },
+]
+
 const shortcutGroups = [
   {
     title: 'Files',
     rows: [
       { action: 'Open File', keys: keys('Mod+O') },
-      { action: 'Quick Open', keys: keys('Mod+P') },
       { action: 'Save File', keys: keys('Mod+S') },
       { action: 'Save As', keys: keys('Mod+Shift+S') },
+    ],
+  },
+  {
+    title: 'Open File Dialog',
+    rows: [
+      { action: 'Select the previous / next file', keys: ['↑', '↓'] },
+      { action: 'Open the selected file', keys: ['Enter'] },
     ],
   },
   {

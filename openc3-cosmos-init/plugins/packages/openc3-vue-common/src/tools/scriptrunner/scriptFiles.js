@@ -11,7 +11,7 @@
 # if purchased from OpenC3, Inc.
 */
 
-// Shared by the Script Runner file explorer and quick open palette
+// Shared by the Script Runner file explorer and procedure library
 
 import { Api } from '@openc3/js-common/services'
 
@@ -93,7 +93,7 @@ export function displayName(path) {
 
 const LANGUAGES = { rb: 'Ruby', py: 'Python' }
 
-// Procedures shown by name in the library and quick open
+// Procedures shown by name in the library
 export function isListed(path) {
   return isProcedure(path) && !isBinary(path)
 }

@@ -19,7 +19,7 @@
 -->
 <template>
   <v-sheet
-    class="d-flex flex-column h-100 border-e"
+    class="script-explorer d-flex flex-column h-100 border-e"
     data-test="script-explorer"
   >
     <div class="d-flex align-center px-2">
@@ -571,14 +571,15 @@ defineExpose({ refresh, refreshFile })
   inherits: false;
   initial-value: transparent;
 }
-.explorer-scroll {
+/* :deep so the library's scroller (a child component) matches */
+.script-explorer :deep(.explorer-scroll) {
   --explorer-thumb: transparent;
   scrollbar-gutter: stable;
   scrollbar-color: var(--explorer-thumb) transparent;
   transition: --explorer-thumb 0.4s ease-out 0.3s;
 }
-.explorer-scroll:hover,
-.explorer-scroll:focus-within {
+.script-explorer :deep(.explorer-scroll:hover),
+.script-explorer :deep(.explorer-scroll:focus-within) {
   --explorer-thumb: rgba(var(--v-theme-on-surface), 0.3);
   transition: --explorer-thumb 0.15s ease-in;
 }

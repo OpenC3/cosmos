@@ -28,73 +28,82 @@
       data-test="library-search"
     />
   </div>
+  <!-- Headers and items are flattened into rows and rendered with
+       v-virtual-scroll so large libraries stay responsive -->
   <v-list
     density="compact"
-    class="flex-grow-1 py-0"
+    class="flex-grow-1 py-0 overflow-hidden"
+    style="min-height: 0"
     color="primary"
     data-test="procedure-library"
   >
-    <template v-for="section in groups" :key="section.title">
-      <v-list-subheader
-        v-if="section.grouped"
-        class="library-section"
-        :data-test="`library-section-${section.title}`"
-        @click="toggleSection(section.title)"
-      >
-        <v-icon
-          size="16"
-          class="me-1"
-          :icon="
-            collapsed.has(section.title)
-              ? 'mdi-chevron-right'
-              : 'mdi-chevron-down'
-          "
-        />
-        {{ section.title }}
-      </v-list-subheader>
-      <v-list-subheader v-else>{{ section.title }}</v-list-subheader>
-      <v-list-item
-        v-for="item in section.grouped && collapsed.has(section.title)
-          ? []
-          : section.items"
-        :key="`${section.title}-${item.path}`"
-        :subtitle="section.grouped ? item.folders : item.location"
-        :active="item.path === activeFile"
-        :variant="item.path === activeFile ? 'flat' : 'text'"
-        :base-color="runningSet.has(item.path) ? 'primary' : undefined"
-        :disabled="scriptActive && !runningSet.has(item.path)"
-        :data-test="`library-item-${item.path}`"
-        @click="emit('select', item.path)"
-        @contextmenu.prevent="emit('contextmenu', $event, item.path)"
-      >
-        <template #title>
-          <span>
-            {{ item.name }}
-            <v-tooltip
-              activator="parent"
-              :open-delay="600"
-              location="bottom start"
-              :text="item.path"
-            />
-          </span>
-        </template>
-        <template #prepend>
-          <v-icon :icon="itemIcon(item)" size="small" />
-        </template>
-        <template #append>
-          <v-progress-circular
-            v-if="item.path === loadingFile"
-            indeterminate
-            size="14"
-            width="2"
-            color="primary"
+    <v-virtual-scroll
+      :items="rows"
+      item-key="key"
+      height="100%"
+      class="explorer-scroll"
+    >
+      <template #default="{ item: row }">
+        <v-list-subheader
+          v-if="row.header && row.section.grouped"
+          class="library-section"
+          :data-test="`library-section-${row.section.title}`"
+          @click="toggleSection(row.section.title)"
+        >
+          <v-icon
+            size="16"
+            class="me-1"
+            :icon="
+              collapsed.has(row.section.title)
+                ? 'mdi-chevron-right'
+                : 'mdi-chevron-down'
+            "
           />
-          <span v-else class="text-caption text-medium-emphasis">
-            {{ item.language }}
-          </span>
-        </template>
-      </v-list-item>
-    </template>
+          {{ row.section.title }}
+        </v-list-subheader>
+        <v-list-subheader v-else-if="row.header">
+          {{ row.section.title }}
+        </v-list-subheader>
+        <v-list-item
+          v-else
+          :subtitle="row.section.grouped ? row.item.folders : row.item.location"
+          :active="row.item.path === activeFile"
+          :variant="row.item.path === activeFile ? 'flat' : 'text'"
+          :base-color="runningSet.has(row.item.path) ? 'primary' : undefined"
+          :disabled="scriptActive && !runningSet.has(row.item.path)"
+          :data-test="`library-item-${row.item.path}`"
+          @click="emit('select', row.item.path)"
+          @contextmenu.prevent="emit('contextmenu', $event, row.item.path)"
+        >
+          <template #title>
+            <span>
+              {{ row.item.name }}
+              <v-tooltip
+                activator="parent"
+                :open-delay="600"
+                location="bottom start"
+                :text="row.item.path"
+              />
+            </span>
+          </template>
+          <template #prepend>
+            <v-icon :icon="itemIcon(row.item)" size="small" />
+          </template>
+          <template #append>
+            <v-progress-circular
+              v-if="row.item.path === loadingFile"
+              indeterminate
+              size="14"
+              width="2"
+              color="primary"
+            />
+            <span v-else class="text-caption text-medium-emphasis">
+              {{ row.item.language }}
+            </span>
+          </template>
+        </v-list-item>
+      </template>
+    </v-virtual-scroll>
     <v-list-item
       v-if="!groups.length && !loading"
       :title="query ? 'No matching procedures' : 'No procedures found'"
@@ -110,6 +119,8 @@ import { searchProcedures } from '@/tools/scriptrunner/scriptFiles'
 import { useProcedures } from '@/tools/scriptrunner/useProcedures'
 
 const COLLAPSED_KEY = 'script_runner__library_collapsed'
+// Typing narrows the results further
+const MAX_RESULTS = 100
 
 const props = defineProps({
   activeFile: {
@@ -172,10 +183,23 @@ function itemIcon(item) {
 
 const groups = computed(() => {
   if (query.value?.trim()) {
-    const items = searchProcedures(procedures.value, query.value)
+    const items = searchProcedures(procedures.value, query.value, MAX_RESULTS)
     return items.length ? [{ title: 'Results', items }] : []
   }
   return sections()
+})
+
+// One row per header and per visible item for the virtual scroller
+const rows = computed(() => {
+  const result = []
+  for (const section of groups.value) {
+    result.push({ key: `header-${section.title}`, header: true, section })
+    if (section.grouped && collapsed.value.has(section.title)) continue
+    for (const item of section.items) {
+      result.push({ key: `${section.title}-${item.path}`, section, item })
+    }
+  }
+  return result
 })
 
 function refresh() {

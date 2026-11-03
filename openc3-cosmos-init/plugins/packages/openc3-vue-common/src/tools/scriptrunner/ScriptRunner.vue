@@ -641,15 +641,6 @@
     @error="setError($event)"
     @clear-temp="clearTemp($event)"
   />
-  <script-quick-open
-    v-if="!inline"
-    v-model="showQuickOpen"
-    :recent="recentFilenames"
-    :running-files="runningFiles"
-    :script-active="scriptActive"
-    @select="navigatorSelect"
-    @error="setError"
-  />
   <environment-dialog v-if="showEnvironment" v-model="showEnvironment" />
   <script-runner-help-dialog
     v-if="showHelp"
@@ -856,7 +847,6 @@ import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
 import ScriptFileExplorer from '@/tools/scriptrunner/ScriptFileExplorer.vue'
-import ScriptQuickOpen from '@/tools/scriptrunner/ScriptQuickOpen.vue'
 import {
   CmdCompleter,
   TlmCompleter,
@@ -1016,7 +1006,6 @@ export default {
     ScriptLogMessages,
     ScriptFileExplorer,
     ScriptRunnerHelpDialog,
-    ScriptQuickOpen,
     CriticalCmdDialog,
     CommandEditor,
     VersionHistoryDialog,
@@ -1230,7 +1219,6 @@ export default {
       showExplorer: false,
       explorerSize: 20,
       explorerLoadingFile: null, // File being opened from the explorer
-      showQuickOpen: false,
       lockingEnabled: true,
       canApprove: false,
       // Enterprise-only Version History; enabled when the backend has
@@ -1313,9 +1301,6 @@ export default {
       return Object.keys(this.files).filter(
         (name) => this.files[name] && !this.files[name].pending,
       )
-    },
-    recentFilenames: function () {
-      return this.recent.map((entry) => entry.label)
     },
     environmentModified: function () {
       return this.scriptEnvironment.env.length > 0
@@ -2107,7 +2092,7 @@ export default {
         this.explorerSize = panes[0].size
       }
     },
-    // Called when a file is picked in the explorer or quick open
+    // Called when a file is picked in the explorer
     async navigatorSelect(filename) {
       if (this.scriptActive) {
         // While running, the explorer works like the filename dropdown
@@ -2425,16 +2410,6 @@ export default {
       }
     },
     async keydown(event) {
-      // Quick open works while running (to view loaded files) and when read only
-      if (
-        !this.inline &&
-        (event.metaKey || event.ctrlKey) &&
-        event.key?.toLowerCase() === 'p'
-      ) {
-        event.preventDefault() // Don't open the browser's print dialog
-        this.showQuickOpen = true
-        return
-      }
       if (
         !this.inline &&
         (event.metaKey || event.ctrlKey) &&

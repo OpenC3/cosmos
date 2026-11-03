@@ -11,8 +11,8 @@
 # if purchased from OpenC3, Inc.
 */
 
-// Procedure list shared by the Script Runner library and quick open
-// so they load once and stay in sync
+// Procedure list for the Script Runner library, shared so every
+// instance loads once and stays in sync
 
 import { ref } from 'vue'
 import {
