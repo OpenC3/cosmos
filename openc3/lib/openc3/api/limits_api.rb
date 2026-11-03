@@ -18,6 +18,7 @@
 require 'openc3/api/target_api'
 require 'openc3/models/cvt_model'
 require 'openc3/packets/packet_item'
+require 'openc3/utilities/limits_rollup'
 
 module OpenC3
   module Api
@@ -61,7 +62,6 @@ module OpenC3
     def get_overall_limits_state(ignored_items = nil, manual: false, scope: $openc3_scope, token: $openc3_token)
       # We only need to check out of limits items so call get_out_of_limits() which authorizes
       out_of_limits = get_out_of_limits(scope: scope, token: token)
-      overall = 'GREEN'
 
       # Build easily matchable ignore list
       if ignored_items
@@ -74,27 +74,15 @@ module OpenC3
         ignored_items = []
       end
 
+      states = []
       out_of_limits.each do |target_name, packet_name, item_name, limits_state|
         # Ignore this item if we match one of the ignored items. Checking against /^#{item}/
         # allows us to detect matches against a TGT__PKT__ with no item defined.
         next if ignored_items.detect { |item| "#{target_name}__#{packet_name}__#{item_name}" =~ /^#{item}/ }
 
-        if limits_state == 'RED' || limits_state == 'RED_HIGH' || limits_state == 'RED_LOW'
-          overall = limits_state
-          break # Red is as high as we go so no need to look for more
-        end
-
-        case overall
-          # If our overall state is currently blue or green we can go to any state
-        when 'BLUE', 'GREEN', 'GREEN_HIGH', 'GREEN_LOW'
-          overall = limits_state
-        # else YELLOW - Stay at YELLOW until we find a red
-        end
+        states << limits_state
       end
-      overall = 'GREEN' if overall == 'GREEN_HIGH' || overall == 'GREEN_LOW' || overall == 'BLUE'
-      overall = 'YELLOW' if overall == 'YELLOW_HIGH' || overall == 'YELLOW_LOW'
-      overall = 'RED' if overall == 'RED_HIGH' || overall == 'RED_LOW'
-      return overall
+      return LimitsRollup.worst(states) || 'GREEN'
     end
 
     # Whether the limits are enabled for the given item

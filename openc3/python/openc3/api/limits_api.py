@@ -18,6 +18,7 @@ from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
 from openc3.packets.packet_item import PacketItem
 from openc3.topics.limits_event_topic import LimitsEventTopic
+from openc3.utilities import limits_rollup
 from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
 from openc3.utilities.time import to_nsec_from_epoch
@@ -64,7 +65,6 @@ def get_out_of_limits(scope=OPENC3_SCOPE):
 def get_overall_limits_state(ignored_items=None, scope=OPENC3_SCOPE):
     # We only need to check out of limits items so call get_out_of_limits() which authorizes
     out_of_limits = get_out_of_limits(scope=scope)
-    overall = "GREEN"
 
     # Build easily matchable ignore list
     if ignored_items is not None:
@@ -79,28 +79,13 @@ def get_overall_limits_state(ignored_items=None, scope=OPENC3_SCOPE):
     else:
         ignored_items = []
 
+    states = []
     for target_name, packet_name, item_name, limits_state in out_of_limits:
         # Ignore this item if we match one of the ignored items
-        for item in ignored_items:
-            if item in f"{target_name}__{packet_name}__{item_name}":
-                break
-        else:  # Executed if 'for item in ignored_items:' did NOT break
-            if limits_state == "RED" or limits_state == "RED_HIGH" or limits_state == "RED_LOW":
-                overall = limits_state
-                break  # Red is as high as we go so no need to look for more
-
-            # If our overall state is currently blue or green we can go to any state
-            if overall in ["BLUE", "GREEN", "GREEN_HIGH", "GREEN_LOW"]:
-                overall = limits_state
-            # else YELLOW - Stay at YELLOW until we find a red
-
-    if overall == "GREEN_HIGH" or overall == "GREEN_LOW" or overall == "BLUE":
-        overall = "GREEN"
-    if overall == "YELLOW_HIGH" or overall == "YELLOW_LOW":
-        overall = "YELLOW"
-    if overall == "RED_HIGH" or overall == "RED_LOW":
-        overall = "RED"
-    return overall
+        if any(item in f"{target_name}__{packet_name}__{item_name}" for item in ignored_items):
+            continue
+        states.append(limits_state)
+    return limits_rollup.worst(states) or "GREEN"
 
 
 # Whether the limits are enabled for the given item
