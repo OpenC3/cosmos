@@ -301,6 +301,20 @@ module OpenC3
         expect(@api.get_limits_groups).to eql({ "FIRST" => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP3)],
                                                 "SECOND" => [%w(INST HEALTH_STATUS TEMP2), %w(INST HEALTH_STATUS TEMP4)] })
       end
+
+      it "returns the limits groups of a target" do
+        Store.hset("DEFAULT__limits_groups", "INST__THIRD", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+        expect(@api.get_limits_groups("system").keys).to eql %w(FIRST SECOND)
+        expect(@api.get_limits_groups("INST")).to eql({ "THIRD" => [%w(INST HEALTH_STATUS TEMP1)] })
+        expect(@api.get_limits_groups("INST2")).to eql({})
+      end
+
+      it "keys a group name several targets define by target" do
+        Store.hset("DEFAULT__limits_groups", "INST__FIRST", JSON.generate([%w(INST HEALTH_STATUS TEMP2)]))
+        expect(@api.get_limits_groups).to eql({ "SYSTEM__FIRST" => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP3)],
+                                                "INST__FIRST" => [%w(INST HEALTH_STATUS TEMP2)],
+                                                "SECOND" => [%w(INST HEALTH_STATUS TEMP2), %w(INST HEALTH_STATUS TEMP4)] })
+      end
     end
 
     describe "enable_limits_group" do
@@ -316,6 +330,42 @@ module OpenC3
         @api.enable_limits_group("FIRST")
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be true
+      end
+
+      it "takes the target name and group name" do
+        @api.disable_limits("INST", "HEALTH_STATUS", "TEMP1")
+        @api.enable_limits_group("system", "first")
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+        expect { @api.enable_limits_group("INST", "FIRST") }.to raise_error(RuntimeError, "LIMITS_GROUP INST FIRST undefined. Ensure target INST contains the line: LIMITS_GROUP FIRST")
+      end
+
+      it "complains about the wrong number of arguments" do
+        expect { @api.enable_limits_group() }.to raise_error(/Invalid number of arguments \(0\) passed to enable_limits_group\(\)/)
+        expect { @api.enable_limits_group("A", "B", "C") }.to raise_error(/Invalid number of arguments \(3\) passed to enable_limits_group\(\)/)
+      end
+
+      it "requires the target name for a group name several targets define" do
+        Store.hset("DEFAULT__limits_groups", "INST__FIRST", JSON.generate([%w(INST HEALTH_STATUS TEMP2)]))
+        expect { @api.enable_limits_group("FIRST") }.to raise_error(RuntimeError, "LIMITS_GROUP FIRST is defined by targets INST, SYSTEM. Specify the target name and the group name, e.g. ('INST', 'FIRST').")
+        @api.disable_limits("INST", "HEALTH_STATUS", "TEMP2")
+        @api.disable_limits("INST", "HEALTH_STATUS", "TEMP1")
+        @api.enable_limits_group("INST", "FIRST")
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP2")).to be true
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+        # The key get_limits_groups returns also works
+        @api.enable_limits_group("SYSTEM__FIRST")
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+      end
+
+      it "enables a group stored before groups were owned by a target" do
+        Store.hset("DEFAULT__limits_groups", "LEGACY", JSON.generate([%w(INST HEALTH_STATUS TEMP2)]))
+        @api.disable_limits("INST", "HEALTH_STATUS", "TEMP2")
+        @redis.del("DEFAULT__openc3_limits_events")
+        @api.enable_limits_group("LEGACY")
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP2")).to be true
+        event = LimitsEventTopic.read("0-0", scope: "DEFAULT")[0][1]
+        expect(event["group_name"]).to eql "LEGACY"
+        expect(event).to_not have_key("target_name")
       end
     end
 
@@ -335,7 +385,7 @@ module OpenC3
       end
 
       it "disables limits for every item below a nested group" do
-        Store.hset("DEFAULT__limits_groups", "SPACECRAFT", JSON.generate([["COSMOS", "LIMITS_GROUP", "FIRST"], ["INST", "HEALTH_STATUS", "TEMP2"]]))
+        Store.hset("DEFAULT__limits_groups", "INST__SPACECRAFT", JSON.generate([["SYSTEM", "LIMITS_GROUP", "FIRST"], ["INST", "HEALTH_STATUS", "TEMP2"]]))
         @api.enable_limits_group("SPACECRAFT")
         %w(TEMP1 TEMP2 TEMP3).each { |item| expect(@api.limits_enabled?("INST", "HEALTH_STATUS", item)).to be true }
         @api.disable_limits_group("SPACECRAFT")
@@ -356,6 +406,7 @@ module OpenC3
         events = LimitsEventTopic.read("0-0", scope: "DEFAULT")
         expect(events.length).to eql 1
         expect(events[0][1]["type"]).to eql "LIMITS_GROUP_ENABLE_STATE"
+        expect(events[0][1]["target_name"]).to eql "SYSTEM"
         expect(events[0][1]["group_name"]).to eql "FIRST"
         expect(events[0][1]["enabled"]).to eql false
         expect(events[0][1]).not_to have_key("items")

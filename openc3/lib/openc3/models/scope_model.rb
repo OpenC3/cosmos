@@ -407,10 +407,6 @@ module OpenC3
       model = TargetModel.new(name: "UNKNOWN", shard: @shard, scope: @scope)
       model.create
 
-      # Create COSMOS target for system-generated telemetry such as COSMOS LIMITS_GROUP
-      model = TargetModel.new(name: "COSMOS", shard: @shard, scope: @scope)
-      model.create
-
       @parent = "#{@scope}__SCOPEMULTI__#{@scope}"
 
       # OpenC3 Log Microservice
@@ -431,7 +427,7 @@ module OpenC3
       # Scope Cleanup Microservice
       deploy_scopecleanup_microservice(gem_path, variables, @parent)
 
-      # Limits Group Microservice publishes COSMOS LIMITS_GROUP
+      # Limits Group Microservice publishes each target's LIMITS_GROUP packet
       deploy_limits_group_microservice(gem_path, variables, @parent)
 
       if ENTERPRISE
@@ -450,9 +446,6 @@ module OpenC3
       # Delete UNKNOWN target
       target = TargetModel.get_model(name: "UNKNOWN", scope: @scope)
       target.destroy
-      # Delete COSMOS target
-      target = TargetModel.get_model(name: "COSMOS", scope: @scope)
-      target.destroy if target
 
       # Destroy all microservices in this scope
       microservices = MicroserviceModel.get_all_models(scope: @name)

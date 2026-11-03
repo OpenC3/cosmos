@@ -152,10 +152,7 @@ module OpenC3
         # Ensure scope_model creates the UNKNOWN target and streams
         target = TargetModel.get(name: "UNKNOWN", scope: "DEFAULT")
         expect(target["name"]).to eql "UNKNOWN"
-        # and the reserved COSMOS target for system-generated telemetry
-        target = TargetModel.get(name: "COSMOS", scope: "DEFAULT")
-        expect(target["name"]).to eql "COSMOS"
-        # and the limits group microservice which publishes COSMOS LIMITS_GROUP under SCOPEMULTI
+        # and the limits group microservice which publishes each target's LIMITS_GROUP under SCOPEMULTI
         limits_group = MicroserviceModel.get_model(name: "DEFAULT__LIMITSGROUP__DEFAULT", scope: "DEFAULT")
         expect(limits_group.cmd).to eql ["ruby", "limits_group_microservice.rb", "DEFAULT__LIMITSGROUP__DEFAULT"]
         expect(limits_group.parent).to eql "DEFAULT__SCOPEMULTI__DEFAULT"

@@ -334,26 +334,56 @@ def set_state_color(target_name, packet_name, item_name, state_name, color, scop
         LimitsEventTopic.write(event, scope=scope)
 
 
-# Returns all limits_groups and their members
+# Returns limits groups and their members. A nested group is the member
+# <TARGET> LIMITS_GROUP <GROUP>.
+#
+# With no target name the groups of every target are keyed by group name. A
+# group name defined by more than one target is keyed TARGET__GROUP instead
+# since the name alone doesn't identify the group.
+#
 # @since 5.0.0 Returns hash with values
+# @param target_name [String, None] Only return the groups defined by this target
 # @return [Hash{String => Array<Array<String, String, String>>]
-def get_limits_groups(scope=OPENC3_SCOPE):
-    authorize(permission="tlm", scope=scope)
-    return TargetModel.limits_groups(scope=scope)
+def get_limits_groups(target_name=None, scope=OPENC3_SCOPE):
+    if target_name:
+        target_name = str(target_name).upper()
+    authorize(permission="tlm", target_name=target_name, scope=scope)
+    groups = []
+    for key, items in TargetModel.limits_groups(scope=scope).items():
+        group_target_name, group_name = LimitsEventTopic.split_limits_group_key(key)
+        groups.append((key, group_target_name, group_name, items))
+    if target_name:
+        return {
+            group_name: items
+            for _key, group_target_name, group_name, items in groups
+            if group_target_name == target_name
+        }
+    counts = {}
+    for group in groups:
+        counts[group[2]] = counts.get(group[2], 0) + 1
+    return {(key if counts[group_name] > 1 else group_name): items for key, _target, group_name, items in groups}
 
 
 # Enables limits for all the items in the group
 #
-# @param group_name [String] Name of the group to enable
-def enable_limits_group(group_name, scope=OPENC3_SCOPE):
-    _limits_group(group_name, action="enable", scope=scope)
+# Usage:
+#   enable_limits_group(group_name)
+#   enable_limits_group(target_name, group_name)
+#
+# A group name alone must only be defined by one target
+def enable_limits_group(*args, scope=OPENC3_SCOPE):
+    _limits_group(args, "enable_limits_group", action="enable", scope=scope)
 
 
 # Disables limits for all the items in the group
 #
-# @param group_name [String] Name of the group to disable
-def disable_limits_group(group_name, scope=OPENC3_SCOPE):
-    _limits_group(group_name, action="disable", scope=scope)
+# Usage:
+#   disable_limits_group(group_name)
+#   disable_limits_group(target_name, group_name)
+#
+# A group name alone must only be defined by one target
+def disable_limits_group(*args, scope=OPENC3_SCOPE):
+    _limits_group(args, "disable_limits_group", action="disable", scope=scope)
 
 
 # Returns all defined limits sets
@@ -431,23 +461,29 @@ def get_limits_events(offset=None, count=100, scope=OPENC3_SCOPE):
 
 
 # Enables or disables a limits group
-def _limits_group(group_name, action, scope):
-    authorize(permission="tlm_set", scope=scope)
-    group_name = group_name.upper()
+def _limits_group(args, method_name, action, scope):
+    match len(args):
+        case 1:
+            target_name = None
+            group_name = args[0]
+        case 2:
+            target_name, group_name = args
+        case _:
+            # Invalid number of arguments
+            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
+    authorize(permission="tlm_set", target_name=str(target_name).upper() if target_name else None, scope=scope)
+    key = LimitsEventTopic.find_limits_group(target_name, group_name, scope)
+    target_name, group_name = LimitsEventTopic.split_limits_group_key(key)
     # Items grouped by target and packet so each packet is read and written once
-    items = LimitsEventTopic.limits_group_items(group_name, scope)
-    if items is None:
-        raise RuntimeError(
-            f"LIMITS_GROUP {group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP {group_name}"
-        )
+    items = LimitsEventTopic.limits_group_items(key, scope)
 
     enabled = action == "enable"
-    message = f"{'Enabling' if enabled else 'Disabling'} Limits Group: {group_name}"
+    message = f"{'Enabling' if enabled else 'Disabling'} Limits Group: {' '.join(name for name in (target_name, group_name) if name)}"
     Logger.info(message, scope=scope)
 
-    for target_name, packets in items.items():
+    for item_target_name, packets in items.items():
         for packet_name, item_names in packets.items():
-            packet = TargetModel.packet(target_name, packet_name, scope=scope)
+            packet = TargetModel.packet(item_target_name, packet_name, scope=scope)
             item_names_set = set(item_names)
             for item in packet["items"]:
                 if item["name"] in item_names_set:
@@ -455,7 +491,7 @@ def _limits_group(group_name, action, scope):
                         item["limits"]["enabled"] = True
                     else:
                         item["limits"].pop("enabled", None)
-            TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
+            TargetModel.set_packet(item_target_name, packet_name, packet, scope=scope)
 
     # Write a single event for the entire group. Writing one event per item
     # floods the limits event stream, which is trimmed to ~1000 entries, so
@@ -469,6 +505,9 @@ def _limits_group(group_name, action, scope):
         "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
         "message": message,
     }
+    # Groups stored before they were owned by a target have no target name
+    if target_name:
+        event["target_name"] = target_name
     LimitsEventTopic.write(event, scope=scope)
 
 

@@ -17,14 +17,13 @@ require 'openc3/api/limits_api'
 
 module OpenC3
   describe LimitsGroupMicroservice do
-    COSMOS_DB_SHARD = 2
-
     before(:each) do
       mock_redis()
       setup_system()
-      # Members on db_shard 1 and the COSMOS target on db_shard 2
+      # Members and INST LIMITS_GROUP on db_shard 1 and INST2 LIMITS_GROUP on db_shard 2
       setup_target_db_shards({ 'INST' => 1 })
-      TargetModel.new(name: 'COSMOS', scope: 'DEFAULT', db_shard: COSMOS_DB_SHARD).create
+      TargetModel.new(name: 'INST2', scope: 'DEFAULT', db_shard: 2).create
+      Store.del("DEFAULT__limits_groups")
       allow_any_instance_of(OpenC3::Microservice).to receive(:at_exit)
       @microservice = LimitsGroupMicroservice.new("DEFAULT__LIMITSGROUP__DEFAULT")
     end
@@ -33,9 +32,13 @@ module OpenC3
       @microservice.shutdown
     end
 
+    # @param groups [Hash] Groups keyed by TARGET__GROUP or by GROUP for INST groups
     def store_groups(groups)
       Store.del("DEFAULT__limits_groups")
-      groups.each { |group, items| Store.hset("DEFAULT__limits_groups", group, JSON.generate(items)) }
+      groups.each do |group, items|
+        group = "INST__#{group}" unless group.include?('__')
+        Store.hset("DEFAULT__limits_groups", group, JSON.generate(items))
+      end
     end
 
     # Write the event like a decom microservice does then hand it to the microservice
@@ -49,13 +52,15 @@ module OpenC3
                      old_limits_state: 'GREEN', new_limits_state: state, time_nsec: 0, message: 'test' })
     end
 
-    def cvt
-      json = Store.instance(db_shard: COSMOS_DB_SHARD).hget("DEFAULT__tlm__COSMOS", "LIMITS_GROUP")
+    DB_SHARDS = { 'INST' => 1, 'INST2' => 2 }
+
+    def cvt(target_name = 'INST')
+      json = Store.instance(db_shard: DB_SHARDS[target_name]).hget("DEFAULT__tlm__#{target_name}", "LIMITS_GROUP")
       json ? JSON.parse(json) : nil
     end
 
-    def publishes
-      EphemeralStore.instance(db_shard: COSMOS_DB_SHARD).xrevrange("DEFAULT__DECOM__{COSMOS}__LIMITS_GROUP", count: 100).length
+    def publishes(target_name = 'INST')
+      EphemeralStore.instance(db_shard: DB_SHARDS[target_name]).xrevrange("DEFAULT__DECOM__{#{target_name}}__LIMITS_GROUP", count: 100).length
     end
 
     def start(groups)
@@ -95,21 +100,35 @@ module OpenC3
       expect(publishes).to eql 1
     end
 
-    it "reads limits on db_shard 0 and writes the packet on the COSMOS db_shard" do
-      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+    it "reads limits on db_shard 0 and writes each packet on its target's db_shard" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
       expect(Store).to receive(:hget).with("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1").and_call_original
       expect(Store).to receive(:hget).with("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1").and_call_original
       change('TEMP1', 'RED')
       expect(cvt['TEMPS__C']).to eql 'RED'
-      expect(Store.instance(db_shard: COSMOS_DB_SHARD).hexists("DEFAULT__tlm__COSMOS", "LIMITS_GROUP")).to be true
-      expect(Store.instance(db_shard: 0).hexists("DEFAULT__tlm__COSMOS", "LIMITS_GROUP")).to be false
-      expect(EphemeralStore.instance(db_shard: 0).exists("DEFAULT__DECOM__{COSMOS}__LIMITS_GROUP")).to eql 0
+      expect(cvt('INST2')['TEMPS__C']).to eql 'GREEN'
+      expect(Store.instance(db_shard: 0).hexists("DEFAULT__tlm__INST", "LIMITS_GROUP")).to be false
+      expect(Store.instance(db_shard: 0).hexists("DEFAULT__tlm__INST2", "LIMITS_GROUP")).to be false
+      expect(EphemeralStore.instance(db_shard: 0).exists("DEFAULT__DECOM__{INST}__LIMITS_GROUP")).to eql 0
+      expect(EphemeralStore.instance(db_shard: 0).exists("DEFAULT__DECOM__{INST2}__LIMITS_GROUP")).to eql 0
+    end
+
+    it "keeps groups with the same name in different targets apart and only publishes the target that changed" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
+      expect(publishes('INST')).to eql 1
+      expect(publishes('INST2')).to eql 1
+      change('TEMP2', 'YELLOW_LOW')
+      expect(cvt('INST2')['TEMPS__C']).to eql 'YELLOW'
+      expect(cvt('INST')['TEMPS__C']).to eql 'GREEN'
+      expect(publishes('INST')).to eql 1
+      expect(publishes('INST2')).to eql 2
+      expect(cvt('INST2')['RECEIVED_COUNT']).to eql 2
     end
 
     it "never raises limits events or changes the overall limits state" do
       start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
       change('TEMP1', 'YELLOW')
-      expect(Store.hkeys("DEFAULT__current_limits")).to_not include(a_string_starting_with("COSMOS"))
+      expect(Store.hkeys("DEFAULT__current_limits")).to_not include(a_string_including("LIMITS_GROUP"))
       api = Object.new.extend(Api)
       allow(api).to receive(:authorize)
       expect(api.get_out_of_limits(scope: 'DEFAULT')).to eql [%w(INST HEALTH_STATUS TEMP1 YELLOW)]
@@ -142,13 +161,13 @@ module OpenC3
       expect(cvt['TEMPS__C']).to eql 'RED'
       expect(cvt['TEMPS_ENABLED__C']).to eql 'TRUE'
       expect(warnings).to eql [
-        "LIMITS_GROUP TEMPS member INST HEALTH_STATUS NOPE does not exist or has no limits. Ignoring it.",
-        "LIMITS_GROUP TEMPS member NOPE PKT ITEM does not exist or has no limits. Ignoring it.",
+        "LIMITS_GROUP INST TEMPS member INST HEALTH_STATUS NOPE does not exist or has no limits. Ignoring it.",
+        "LIMITS_GROUP INST TEMPS member NOPE PKT ITEM does not exist or has no limits. Ignoring it.",
       ]
     end
 
     it "rolls nested groups up to the top in one publish" do
-      start({ 'SPACECRAFT' => [%w(COSMOS LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
+      start({ 'SPACECRAFT' => [%w(INST LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
               'THERMAL' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
       change('TEMP1', 'RED')
       expect(cvt['THERMAL__C']).to eql 'RED'
@@ -163,21 +182,31 @@ module OpenC3
     end
 
     it "counts a child installed after its parent" do
-      start({ 'SPACECRAFT' => [%w(COSMOS LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)] })
+      start({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)] })
       change('TEMP1', 'RED')
       expect(cvt['SPACECRAFT__C']).to eql 'GREEN'
-      store_groups({ 'SPACECRAFT' => [%w(COSMOS LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
-                     'THERMAL' => [%w(INST HEALTH_STATUS TEMP1)] })
+      store_groups({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
+                     'INST2__THERMAL' => [%w(INST HEALTH_STATUS TEMP1)] })
       @microservice.reload
       @microservice.publish
-      expect(cvt['THERMAL__C']).to eql 'RED'
+      expect(cvt('INST2')['THERMAL__C']).to eql 'RED'
       expect(cvt['SPACECRAFT__C']).to eql 'RED'
+    end
+
+    it "rolls up a nested group of another target, not one with the same name" do
+      start({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL)],
+              'THERMAL' => [%w(INST HEALTH_STATUS TEMP1)],
+              'INST2__THERMAL' => [%w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'RED')
+      expect(cvt['SPACECRAFT__C']).to eql 'GREEN'
+      change('TEMP2', 'YELLOW')
+      expect(cvt['SPACECRAFT__C']).to eql 'YELLOW'
     end
 
     it "publishes the first group within one reload and drops removed groups" do
       @microservice.reload
       @microservice.publish(force: true)
-      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'POWER' => [%w(INST HEALTH_STATUS TEMP2)] })
       @microservice.reload
       @microservice.publish
       expect(publishes).to eql 1
@@ -185,15 +214,29 @@ module OpenC3
 
       # A member target uninstalled clears current_limits and the group keeps publishing
       Store.hdel("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1")
-      store_groups({})
+      store_groups({ 'POWER' => [%w(INST HEALTH_STATUS TEMP2)] })
       @microservice.reload
       @microservice.publish
       expect(publishes).to eql 2
       expect(cvt).to_not have_key('TEMPS')
+
+      # A target with no groups left has no packet to publish
+      store_groups({})
+      @microservice.reload
+      @microservice.publish
+      expect(publishes).to eql 2
+    end
+
+    it "skips groups stored before groups were owned by a target" do
+      Store.hset("DEFAULT__limits_groups", "LEGACY", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+      @microservice.reload
+      @microservice.publish(force: true)
+      expect(@microservice.values).to have_key("LEGACY")
+      expect(cvt).to be_nil
     end
 
     it "survives a stored cycle" do
-      start({ 'A' => [%w(COSMOS LIMITS_GROUP B), %w(INST HEALTH_STATUS TEMP1)], 'B' => [%w(COSMOS LIMITS_GROUP A)] })
+      start({ 'A' => [%w(INST LIMITS_GROUP B), %w(INST HEALTH_STATUS TEMP1)], 'B' => [%w(INST LIMITS_GROUP A)] })
       change('TEMP1', 'RED')
       expect(cvt['A__C']).to eql 'RED'
     end

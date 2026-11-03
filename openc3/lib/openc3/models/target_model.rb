@@ -46,7 +46,7 @@ module OpenC3
   # in the target are stored under the <SCOPE>__openc3cmd__<TARGET NAME> key and the
   # telemetry under the <SCOPE>__openc3tlm__<TARGET NAME> key. Any new limits sets
   # are merged into the <SCOPE>__limits_sets key as fields. Any new limits groups are
-  # created under <SCOPE>__limits_groups with field name. These Redis key/fields are
+  # created under <SCOPE>__limits_groups with field <TARGET NAME>__<GROUP NAME>. These Redis key/fields are
   # all removed when the undeploy method is called.
   class TargetModel < Model
     PRIMARY_KEY = 'openc3_targets'
@@ -450,68 +450,25 @@ module OpenC3
       store_for_target(target_name, scope: scope).zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
     end
 
-    LIMITS_GROUP_STATES = { 'GREEN' => 0, 'YELLOW' => 1, 'RED' => 2 }.freeze
-    LIMITS_GROUP_ENABLED_STATES = { 'FALSE' => 0, 'TRUE' => 1 }.freeze
-
-    # Builds the COSMOS LIMITS_GROUP packet with a <GROUP> and <GROUP>_ENABLED
-    # item for each group, sorted by group name
+    # Adds the <TARGET> LIMITS_GROUP packet definition to a target installed before
+    # limits groups were published as telemetry. Installing the target adds it like
+    # any other packet (see PacketConfig#build_limits_group_packet).
     #
-    # @param group_names [Array<String>] Limits group names
-    # @return [Packet]
-    def self.limits_group_packet(group_names)
-      packet = Packet.new('COSMOS', 'LIMITS_GROUP', :BIG_ENDIAN, 'Rolled-up limits state of each limits group')
-      packet.define_reserved_items()
-      group_names.sort.each do |group|
-        item = packet.append_item(group, 8, :UINT)
-        item.states = LIMITS_GROUP_STATES.dup
-        item.description = "Most severe limits state of the members of limits group #{group}"
-        item = packet.append_item("#{group}#{PacketConfig::LIMITS_GROUP_ENABLED_SUFFIX}", 8, :UINT)
-        item.states = LIMITS_GROUP_ENABLED_STATES.dup
-        item.description = "Whether limits are enabled on every member of limits group #{group}"
-      end
-      packet
-    end
-
-    # Rebuilds the COSMOS LIMITS_GROUP packet definition from the limits groups in
-    # the scope. Called after a plugin is installed, upgraded or uninstalled.
-    # Removed groups leave the definition but their QuestDB columns and data remain.
-    def self.sync_limits_group_packet(scope:)
-      model = get_model(name: 'COSMOS', scope: scope)
-      unless model
-        Logger.warn("COSMOS target does not exist in scope #{scope}. Can't update COSMOS LIMITS_GROUP.")
-        return
-      end
-
-      model.sync_limits_group_packet(limits_groups(scope: scope))
-    end
-
-    # @param groups [Hash{String => Array<Array<String, String, String>>}] limits groups in the scope
-    def sync_limits_group_packet(groups)
+    # @param group_names [Array<String>] Names of the limits groups the target defines
+    def add_limits_group_packet(group_names)
       db_shard_store = Store.instance(db_shard: @db_shard)
-      packet = self.class.limits_group_packet(groups.keys)
+      packet = PacketConfig.limits_group_packet(@name, group_names)
       db_shard_store.hset("#{@scope}__openc3tlm__#{@name}", packet.packet_name, JSON.generate(packet.as_json, allow_nan: true))
-      # Seed the CVT like update_store_telemetry so the packet can be read before anything
-      # is published (with no groups nothing ever is). HSETNX never overwrites values
-      # the limits group microservice already published since it only republishes on change.
+      # Seed the CVT like update_store_telemetry so the packet can be read before
+      # the limits group microservice publishes it. HSETNX never overwrites values.
       json_hash = packet.sorted_items.to_h { |item| [item.name, nil] }
       db_shard_store.hsetnx("#{@scope}__tlm__#{@name}", packet.packet_name, JSON.generate(json_hash, allow_nan: true))
-      db_shard_store.del("#{@scope}__openc3tlm__#{@name}__allitems")
       packet.sorted_items.each { |item| self.class.add_to_target_allitems_list(@name, item.name, scope: @scope) }
       update_store_item_map()
-
-      # Target level permissions on COSMOS LIMITS_GROUP check every target a group references
-      targets = groups.values.flatten(1).map { |target_name, _packet_name, _item_name| target_name }
-      targets = targets.uniq.reject { |target_name| target_name == @name }.sort
-      Store.set("#{@scope}__limits_group_targets", JSON.generate(targets))
-
-      # The first time there are groups start a TSDB microservice so their history is stored.
-      # Later groups need no schema change since QuestDB adds a column when a new item is written.
-      unless groups.empty? or MicroserviceModel.get_model(name: "#{@scope}__TSDB__#{@name}", scope: @scope)
-        deploy_tsdb_microservice(nil, {}, ["#{@scope}__DECOM__{#{@name}}__#{packet.packet_name}"])
-      end
     end
 
-    # @return [Hash{String => Array<Array<String, String, String>>}]
+    # @return [Hash{String => Array<Array<String, String, String>>}] Limits groups keyed
+    #   by TARGET__GROUP (see LimitsEventTopic.limits_group_key)
     def self.limits_groups(scope:)
       groups = Store.hgetall("#{scope}__limits_groups")
       if groups
@@ -562,9 +519,6 @@ module OpenC3
         usage = "#{keyword} <TARGET FOLDER NAME> <TARGET NAME>"
         parser.verify_num_parameters(2, 2, usage)
         parser.verify_parameter_naming(2) # Target name is the 2nd parameter
-        if parameters[1].to_s.upcase == 'COSMOS'
-          raise ConfigParser::Error.new(parser, "Target name COSMOS is reserved for system-generated telemetry", usage)
-        end
 
         return self.new(name: parameters[1].to_s.upcase, folder_name: parameters[0].to_s.upcase, plugin: plugin,  needs_dependencies: needs_dependencies, scope: scope)
       else
@@ -939,35 +893,20 @@ module OpenC3
       end
     end
 
-    # Limits groups are defined per scope but become items (and QuestDB columns)
-    # in COSMOS LIMITS_GROUP. Their names must be unique per scope, must not share
-    # a column after QuestDB sanitizes them, and nested groups must not loop.
+    # Limits groups become items (and QuestDB columns) in the <TARGET> LIMITS_GROUP
+    # packet of the target which defines them. Their names must not share a column
+    # after QuestDB sanitizes them and nested groups must not loop.
     def check_limits_groups(system)
-      new_groups = system.limits.groups
+      new_groups = system.limits.groups[@name] || {}
       return if new_groups.empty?
-
-      # On upgrade the old target models are destroyed first and this target's
-      # model is created (without groups) before deploy so skip our own name
-      owners = {}
-      self.class.all(scope: @scope).each do |target_name, target|
-        next if target_name == @name
-
-        (target['limits_groups'] || []).each { |group| owners[group] = target_name }
-      end
-      new_groups.each_key do |group|
-        if owners[group]
-          raise "LIMITS_GROUP #{group} is already defined by target #{owners[group]}. Limits group names must be unique in a scope."
-        end
-      end
 
       # QuestDB replaces characters it doesn't allow with '_' so TEMP.A and TEMP_A share a column
       columns = {}
-      owners.each_key { |group| limits_group_columns(group).each { |column| columns[column] ||= group } }
       new_groups.each_key do |group|
         limits_group_columns(group).each do |column|
           other = columns[column]
           if other and other != group
-            raise "LIMITS_GROUP #{group} and LIMITS_GROUP #{other} would share the column #{column} in COSMOS LIMITS_GROUP. Rename one of them."
+            raise "LIMITS_GROUP #{group} and LIMITS_GROUP #{other} would share the column #{column} in #{@name} #{PacketConfig::LIMITS_GROUP_PACKET}. Rename one of them."
           end
 
           columns[column] = group
@@ -982,29 +921,33 @@ module OpenC3
     end
 
     def check_limits_group_cycles(new_groups)
+      # The groups of other targets plus this target's new groups which replace its old ones
       groups = {}
-      Store.hgetall("#{@scope}__limits_groups").each do |group, json|
-        groups[group] = JSON.parse(json, allow_nan: true, create_additions: true)
+      Store.hgetall("#{@scope}__limits_groups").each do |key, json|
+        next if LimitsEventTopic.split_limits_group_key(key)[0] == @name
+
+        groups[key] = JSON.parse(json, allow_nan: true, create_additions: true)
       end
-      groups.merge!(new_groups)
+      new_groups.each { |group, items| groups[LimitsEventTopic.limits_group_key(@name, group)] = items }
       children = {}
-      groups.each do |group, items|
-        children[group] = items.select { |target_name, packet_name, _item| target_name == 'COSMOS' and packet_name == 'LIMITS_GROUP' }.map { |item| item[2] }
+      groups.each do |key, items|
+        children[key] = items.select { |_target_name, packet_name, _item| packet_name == PacketConfig::LIMITS_GROUP_PACKET }
+                             .map { |target_name, _packet_name, item_name| LimitsEventTopic.limits_group_key(target_name, item_name) }
       end
 
       # Depth first search keeping the current path so a loop can be reported
       done = Set.new
-      visit = lambda do |group, path|
-        if path.include?(group)
-          loop = path[path.index(group)..] + [group]
-          raise "LIMITS_GROUP #{group} contains itself: #{loop.join(' -> ')}. Nested limits groups can't form a loop."
+      visit = lambda do |key, path|
+        if path.include?(key)
+          loop = (path[path.index(key)..] + [key]).map { |name| name.sub('__', ' ') }
+          raise "LIMITS_GROUP #{key.sub('__', ' ')} contains itself: #{loop.join(' -> ')}. Nested limits groups can't form a loop."
         end
-        return if done.include?(group)
+        return if done.include?(key)
 
-        (children[group] || []).each { |child| visit.call(child, path + [group]) }
-        done << group
+        (children[key] || []).each { |child| visit.call(child, path + [key]) }
+        done << key
       end
-      new_groups.each_key { |group| visit.call(group, []) }
+      new_groups.each_key { |group| visit.call(LimitsEventTopic.limits_group_key(@name, group), []) }
     end
 
     def undeploy
@@ -1019,7 +962,7 @@ module OpenC3
       end
 
       self.class.get_model(name: @name, scope: @scope).limits_groups.each do |group|
-        Store.hdel("#{@scope}__limits_groups", group)
+        Store.hdel("#{@scope}__limits_groups", LimitsEventTopic.limits_group_key(@name, group))
       end
       self.class.packets(@name, type: :CMD, scope: @scope).each do |packet|
         Topic.del("#{@scope}__COMMAND__{#{@name}}__#{packet['packet_name']}", db_shard: @db_shard)
@@ -1146,7 +1089,7 @@ module OpenC3
       @ignored_parameters = target.ignored_parameters
       @ignored_items = target.ignored_items
       @cmd_tlm_files = target.cmd_tlm_files
-      @limits_groups = system.limits.groups.keys
+      @limits_groups = (system.limits.groups[@name] || {}).keys
       update()
     end
 
@@ -1217,9 +1160,9 @@ module OpenC3
     end
 
     def update_store_limits_groups(system)
-      system.limits.groups.each do |group, items|
+      (system.limits.groups[@name] || {}).each do |group, items|
         begin
-          Store.hset("#{@scope}__limits_groups", group, JSON.generate(items, allow_nan: true))
+          Store.hset("#{@scope}__limits_groups", LimitsEventTopic.limits_group_key(@name, group), JSON.generate(items, allow_nan: true))
         rescue JSON::GeneratorError => e
           Logger.error("Invalid text present in #{group} limits group")
           raise e

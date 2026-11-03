@@ -829,11 +829,6 @@ module OpenC3
         TargetModel.handle_config(parser, "TARGET", ["TEST", "TEST"], scope: "DEFAULT")
         expect { TargetModel.handle_config(parser, "TARGETS", ["TEST", "TEST"], scope: "DEFAULT") }.to raise_error(ConfigParser::Error)
       end
-
-      it "refuses the reserved COSMOS target name" do
-        parser = double("ConfigParser").as_null_object
-        expect { TargetModel.handle_config(parser, "TARGET", ["MY_FOLDER", "cosmos"], scope: "DEFAULT") }.to raise_error(ConfigParser::Error, /COSMOS is reserved/)
-      end
     end
 
     describe "initialize" do
@@ -1229,81 +1224,49 @@ module OpenC3
       end
     end
 
-    describe "self.sync_limits_group_packet" do
+    describe "limits groups" do
       before(:each) do
-        TargetModel.new(name: "COSMOS", scope: "DEFAULT", db_shard: 1).create
-        @db_shard1 = Store.instance(db_shard: 1)
+        @target_dir = File.join(SPEC_DIR, "install", "config", "targets")
       end
 
-      def store_groups(groups)
-        Store.del("DEFAULT__limits_groups")
-        groups.each { |group, items| Store.hset("DEFAULT__limits_groups", group, JSON.generate(items)) }
+      it "stores the groups and the LIMITS_GROUP packet of the target which defines them" do
+        model = TargetModel.new(folder_name: "SYSTEM", name: "SYSTEM", scope: "DEFAULT", db_shard: 1)
+        model.create
+        model.update_store(System.new(["SYSTEM"], @target_dir))
+        expect(TargetModel.get(name: "SYSTEM", scope: "DEFAULT")["limits_groups"]).to eql %w(FIRST SECOND)
+        expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__FIRST SYSTEM__SECOND)
+
+        db_shard1 = Store.instance(db_shard: 1)
+        packet = JSON.parse(db_shard1.hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))
+        expect(packet["virtual"]).to be true
+        expect(packet["hidden"]).to be_falsey
+        items = packet["items"].map { |item| item["name"] }
+        expect(items).to include("FIRST", "FIRST_ENABLED", "SECOND", "SECOND_ENABLED")
+        # The CVT is seeded like any packet so it can be read before it's published
+        expect(db_shard1.hexists("DEFAULT__tlm__SYSTEM", "LIMITS_GROUP")).to be true
+        expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")["FIRST"]).to eql ["LIMITS_GROUP"]
       end
 
-      def definition
-        JSON.parse(@db_shard1.hget("DEFAULT__openc3tlm__COSMOS", "LIMITS_GROUP"))
-      end
+      it "adds the LIMITS_GROUP packet to a target installed before it existed" do
+        model = TargetModel.new(name: "INST", scope: "DEFAULT", db_shard: 1)
+        model.create
+        model.add_limits_group_packet(%w(TEMPS))
+        db_shard1 = Store.instance(db_shard: 1)
+        items = JSON.parse(db_shard1.hget("DEFAULT__openc3tlm__INST", "LIMITS_GROUP"))["items"].map { |item| item["name"] }
+        expect(items).to include("TEMPS", "TEMPS_ENABLED")
+        expect(CvtModel.get(target_name: "INST", packet_name: "LIMITS_GROUP", scope: "DEFAULT")).to include("TEMPS" => nil)
+        expect(db_shard1.zrange("DEFAULT__openc3tlm__INST__allitems", 0, -1)).to include("TEMPS", "TEMPS_ENABLED")
 
-      it "defines only the standard items with no groups" do
-        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
-        names = definition['items'].map { |item| item['name'] }
-        expect(names).to include("RECEIVED_TIMESECONDS", "PACKET_TIMESECONDS")
-        expect(names).to_not include(a_string_ending_with("_ENABLED"))
-        expect(MicroserviceModel.get_model(name: "DEFAULT__TSDB__COSMOS", scope: "DEFAULT")).to be_nil
-        expect(JSON.parse(Store.get("DEFAULT__limits_group_targets"))).to eql []
-      end
-
-      it "seeds the CVT so the packet can be read before anything is published" do
-        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
-        expect(CvtModel.get(target_name: "COSMOS", packet_name: "LIMITS_GROUP", scope: "DEFAULT")).to include("RECEIVED_COUNT" => nil)
-        expect(@db_shard1.hexists("DEFAULT__tlm__COSMOS", "LIMITS_GROUP")).to be true
-      end
-
-      it "defines two items per group on the COSMOS db_shard and starts TSDB" do
-        store_groups({ "THERMAL" => [%w(INST HEALTH_STATUS TEMP1), %w(INST2 HEALTH_STATUS TEMP1)],
-                     "SPACECRAFT" => [%w(COSMOS LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS VOLTS)] })
-        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
-        expect(Store.instance(db_shard: 0).hexists("DEFAULT__openc3tlm__COSMOS", "LIMITS_GROUP")).to be false
-
-        items = definition['items'].reject { |item| Packet::RESERVED_ITEM_NAMES.include?(item['name']) }
-        expect(items.map { |item| item['name'] }).to eql %w(SPACECRAFT SPACECRAFT_ENABLED THERMAL THERMAL_ENABLED)
-        expect(items[0]['data_type']).to eql 'UINT'
-        expect(items[0]['states']).to eql({ 'GREEN' => { 'value' => 0 }, 'YELLOW' => { 'value' => 1 }, 'RED' => { 'value' => 2 } })
-        expect(items[1]['states']).to eql({ 'FALSE' => { 'value' => 0 }, 'TRUE' => { 'value' => 1 } })
-        expect(@db_shard1.zrange("DEFAULT__openc3tlm__COSMOS__allitems", 0, -1)).to include("THERMAL", "THERMAL_ENABLED")
-        expect(TargetModel.get_item_to_packet_map("COSMOS", scope: "DEFAULT")["THERMAL"]).to eql ["LIMITS_GROUP"]
-        expect(JSON.parse(Store.get("DEFAULT__limits_group_targets"))).to eql %w(INST INST2)
-
-        tsdb = MicroserviceModel.get_model(name: "DEFAULT__TSDB__COSMOS", scope: "DEFAULT")
-        expect(tsdb.topics).to eql ["DEFAULT__DECOM__{COSMOS}__LIMITS_GROUP"]
-        expect(tsdb.db_shard).to eql 1
-      end
-
-      it "drops removed groups from the definition but leaves the CVT and TSDB alone" do
-        store_groups({ "THERMAL" => [%w(INST HEALTH_STATUS TEMP1)], "POWER" => [%w(INST HEALTH_STATUS VOLTS)] })
-        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
-        CvtModel.set({ "THERMAL" => 2, "POWER" => 0, "RECEIVED_TIMESECONDS" => Time.now.to_f }, target_name: "COSMOS", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
-
-        store_groups({ "THERMAL" => [%w(INST HEALTH_STATUS TEMP1)] })
-        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
-        names = definition['items'].map { |item| item['name'] }
-        expect(names).to include("THERMAL")
-        expect(names).to_not include("POWER", "POWER_ENABLED")
-        expect(@db_shard1.zrange("DEFAULT__openc3tlm__COSMOS__allitems", 0, -1)).to_not include("POWER")
-        expect(CvtModel.get(target_name: "COSMOS", packet_name: "LIMITS_GROUP", scope: "DEFAULT")["THERMAL"]).to eql 2
-        expect(MicroserviceModel.get_model(name: "DEFAULT__TSDB__COSMOS", scope: "DEFAULT")).to_not be_nil
-      end
-
-      it "warns when the scope has no COSMOS target" do
-        TargetModel.get_model(name: "COSMOS", scope: "DEFAULT").destroy
-        expect(Logger).to receive(:warn).with(/COSMOS target does not exist/)
-        TargetModel.sync_limits_group_packet(scope: "DEFAULT")
+        # Never overwrites values already published
+        CvtModel.set({ "TEMPS" => 2 }, target_name: "INST", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
+        model.add_limits_group_packet(%w(TEMPS))
+        expect(CvtModel.get(target_name: "INST", packet_name: "LIMITS_GROUP", scope: "DEFAULT")["TEMPS"]).to eql 2
       end
     end
 
     describe "check_limits_groups" do
-      def build_system(groups)
-        double("System", limits: double("Limits", groups: groups))
+      def build_system(groups, name = "INST")
+        double("System", limits: double("Limits", groups: { name => groups }))
       end
 
       def model(name = "INST")
@@ -1312,49 +1275,46 @@ module OpenC3
 
       def install_groups(target_name, groups)
         TargetModel.new(folder_name: target_name, name: target_name, scope: "DEFAULT", plugin: 'OTHER', limits_groups: groups.keys).create
-        groups.each { |group, items| Store.hset("DEFAULT__limits_groups", group, JSON.generate(items)) }
+        groups.each { |group, items| Store.hset("DEFAULT__limits_groups", "#{target_name}__#{group}", JSON.generate(items)) }
       end
 
-      it "allows groups which only this target defines" do
-        install_groups("INST", { "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] })
-        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP2)] })) }.to_not raise_error
-      end
-
-      it "refuses a group another target defines" do
+      it "allows the same group name in different targets" do
         install_groups("INST2", { "TEMPS" => [%w(INST2 HEALTH_STATUS TEMP1)] })
-        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] })) }.to \
-          raise_error("LIMITS_GROUP TEMPS is already defined by target INST2. Limits group names must be unique in a scope.")
+        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] })) }.to_not raise_error
       end
 
-      it "refuses groups which share a QuestDB column" do
-        install_groups("INST2", { "TEMP_A" => [], "POWER" => [] })
-        expect { model.check_limits_groups(build_system({ "TEMP.A" => [] })) }.to raise_error(/TEMP.A and LIMITS_GROUP TEMP_A would share the column TEMP_A/)
-        expect { model.check_limits_groups(build_system({ "POWER.ENABLED" => [] })) }.to raise_error(/POWER.ENABLED and LIMITS_GROUP POWER would share the column POWER_ENABLED/)
-        expect { model.check_limits_groups(build_system({ "VOLT-A" => [], "VOLT+A" => [] })) }.to raise_error(/VOLT\+A and LIMITS_GROUP VOLT-A would share/)
+      it "refuses groups of the target which share a QuestDB column" do
+        expect { model.check_limits_groups(build_system({ "TEMP_A" => [], "TEMP.A" => [] })) }.to raise_error(/TEMP.A and LIMITS_GROUP TEMP_A would share the column TEMP_A in INST LIMITS_GROUP/)
+        expect { model.check_limits_groups(build_system({ "POWER" => [], "POWER.ENABLED" => [] })) }.to raise_error(/POWER.ENABLED and LIMITS_GROUP POWER would share the column POWER_ENABLED/)
       end
 
-      it "ignores collisions between groups it doesn't define" do
+      it "ignores collisions with groups of other targets" do
         install_groups("INST2", { "TEMP_A" => [] })
-        install_groups("INST3", { "TEMP.A" => [] })
-        expect { model.check_limits_groups(build_system({ "OTHER" => [] })) }.to_not raise_error
+        expect { model.check_limits_groups(build_system({ "TEMP.A" => [] })) }.to_not raise_error
       end
 
       it "refuses a group which contains itself" do
-        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(COSMOS LIMITS_GROUP TEMPS)] })) }.to \
-          raise_error(/LIMITS_GROUP TEMPS contains itself: TEMPS -> TEMPS/)
+        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(INST LIMITS_GROUP TEMPS)] })) }.to \
+          raise_error(/LIMITS_GROUP INST TEMPS contains itself: INST TEMPS -> INST TEMPS/)
       end
 
-      it "refuses a loop through installed groups" do
-        install_groups("INST2", { "B" => [%w(COSMOS LIMITS_GROUP C)], "C" => [%w(COSMOS LIMITS_GROUP A)] })
-        expect { model.check_limits_groups(build_system({ "A" => [%w(COSMOS LIMITS_GROUP B)] })) }.to \
-          raise_error(/LIMITS_GROUP A contains itself: A -> B -> C -> A/)
+      it "refuses a loop through groups of other targets" do
+        install_groups("INST2", { "B" => [%w(INST2 LIMITS_GROUP C)], "C" => [%w(INST LIMITS_GROUP A)] })
+        expect { model.check_limits_groups(build_system({ "A" => [%w(INST2 LIMITS_GROUP B)] })) }.to \
+          raise_error(/LIMITS_GROUP INST A contains itself: INST A -> INST2 B -> INST2 C -> INST A/)
+      end
+
+      it "replaces the target's own installed groups" do
+        # The old definition loops but the new one doesn't
+        install_groups("INST", { "A" => [%w(INST LIMITS_GROUP A)] })
+        expect { model.check_limits_groups(build_system({ "A" => [%w(INST HEALTH_STATUS TEMP1)] })) }.to_not raise_error
       end
 
       it "allows nesting, shared children and children which aren't installed yet" do
         install_groups("INST2", { "THERMAL" => [%w(INST2 HEALTH_STATUS TEMP1)] })
         groups = {
-          "SPACECRAFT" => [%w(COSMOS LIMITS_GROUP THERMAL), %w(COSMOS LIMITS_GROUP POWER), %w(COSMOS LIMITS_GROUP LATER)],
-          "POWER" => [%w(COSMOS LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS VOLTS)],
+          "SPACECRAFT" => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST LIMITS_GROUP POWER), %w(INST LIMITS_GROUP LATER)],
+          "POWER" => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS VOLTS)],
         }
         expect { model.check_limits_groups(build_system(groups)) }.to_not raise_error
       end
@@ -1706,7 +1666,7 @@ module OpenC3
         expect(TargetModel.packet_names("INST", type: :CMD, scope: "DEFAULT")).to include("ABORT")
         expect(TargetModel.packet_names("INST", type: :CMD, scope: "DEFAULT")).to_not include("STALE")
         # SYSTEM is still read from db_shard 0
-        expect(TargetModel.packet_names("SYSTEM", scope: "DEFAULT")).to eql %w(LIMITS_CHANGE META)
+        expect(TargetModel.packet_names("SYSTEM", scope: "DEFAULT")).to eql %w(LIMITS_CHANGE LIMITS_GROUP META)
       end
 
       it "set_packet writes to the target's db_shard" do

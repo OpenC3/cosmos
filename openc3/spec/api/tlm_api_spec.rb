@@ -573,13 +573,17 @@ module OpenC3
       end
     end
 
-    describe "COSMOS LIMITS_GROUP" do
-      it "can't be written" do
-        expect { @api.inject_tlm("cosmos", "limits_group", { TEMPS: 0 }) }.to raise_error(RuntimeError, "ERROR: COSMOS LIMITS_GROUP is read-only and is not supported by inject_tlm()")
-        expect { @api.set_tlm("COSMOS LIMITS_GROUP TEMPS = 0") }.to raise_error(RuntimeError, "ERROR: COSMOS LIMITS_GROUP is read-only and is not supported by set_tlm()")
-        expect { @api.override_tlm("COSMOS LIMITS_GROUP TEMPS = 0") }.to raise_error(RuntimeError, "ERROR: COSMOS LIMITS_GROUP is read-only and is not supported by override_tlm()")
-        expect { @api.set_tlm("COSMOS LATEST TEMPS = 0") }.to raise_error(RuntimeError, /COSMOS LIMITS_GROUP is read-only/)
-        expect { @api.override_tlm("COSMOS LATEST TEMPS = 0") }.to raise_error(RuntimeError, /COSMOS LIMITS_GROUP is read-only/)
+    describe "LIMITS_GROUP" do
+      it "can't be written for a target which defines limits groups" do
+        TargetModel.new(name: "GRP", scope: "DEFAULT", limits_groups: ["TEMPS"]).create
+        expect { @api.inject_tlm("grp", "limits_group", { TEMPS: 0 }) }.to raise_error(RuntimeError, "ERROR: GRP LIMITS_GROUP is read-only and is not supported by inject_tlm()")
+        expect { @api.set_tlm("GRP LIMITS_GROUP TEMPS = 0") }.to raise_error(RuntimeError, "ERROR: GRP LIMITS_GROUP is read-only and is not supported by set_tlm()")
+        expect { @api.override_tlm("GRP LIMITS_GROUP TEMPS = 0") }.to raise_error(RuntimeError, "ERROR: GRP LIMITS_GROUP is read-only and is not supported by override_tlm()")
+      end
+
+      it "is an ordinary packet name for a target without limits groups" do
+        TargetModel.new(name: "NOGRP", scope: "DEFAULT").create
+        expect { @api.inject_tlm("NOGRP", "LIMITS_GROUP", { TEMPS: 0 }) }.to raise_error(RuntimeError, /does not exist/)
       end
     end
 

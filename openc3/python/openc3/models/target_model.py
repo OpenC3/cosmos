@@ -36,7 +36,7 @@ from openc3.utilities.store import Store
 # in the target are stored under the <SCOPE>__openc3cmd__<TARGET NAME> key and the
 # telemetry under the <SCOPE>__openc3tlm__<TARGET NAME> key. Any new limits sets
 # are merged into the <SCOPE>__limits_sets key as fields. Any new limits groups are
-# created under <SCOPE>__limits_groups with field name. These Redis key/fields are
+# created under <SCOPE>__limits_groups with field <TARGET NAME>__<GROUP NAME>. These Redis key/fields are
 # all removed when the undeploy method is called.
 class TargetModel(Model):
     PRIMARY_KEY = "openc3_targets"

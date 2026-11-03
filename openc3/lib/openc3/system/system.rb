@@ -197,6 +197,11 @@ module OpenC3
       rescue Exception => e
         errors << "Error processing #{cmd_tlm_file}:\n#{e.message}"
       end
+      begin
+        @packet_config.build_limits_group_packet(target.name)
+      rescue => e
+        errors << e.message
+      end
       unless errors.empty?
         raise parser.error(errors.join("\n"))
       end

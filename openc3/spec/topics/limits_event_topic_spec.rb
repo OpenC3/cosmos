@@ -26,17 +26,47 @@ module OpenC3
         expect(LimitsEventTopic.limits_group_items("NOPE", scope: "DEFAULT")).to be_nil
       end
 
-      it "expands nested groups into their items" do
-        Store.hset("DEFAULT__limits_groups", "SPACECRAFT", JSON.generate([["COSMOS", "LIMITS_GROUP", "THERMAL"], ["INST", "HEALTH_STATUS", "VOLTS"], ["COSMOS", "LIMITS_GROUP", "UNDEFINED"]]))
-        Store.hset("DEFAULT__limits_groups", "THERMAL", JSON.generate([["INST", "HEALTH_STATUS", "TEMP1"], ["INST2", "HEALTH_STATUS", "TEMP2"], ["INST", "HEALTH_STATUS", "VOLTS"]]))
+      it "expands nested groups of any target into their items" do
+        Store.hset("DEFAULT__limits_groups", "SYS__SPACECRAFT", JSON.generate([["INST", "LIMITS_GROUP", "THERMAL"], ["INST", "HEALTH_STATUS", "VOLTS"], ["SYS", "LIMITS_GROUP", "UNDEFINED"]]))
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", JSON.generate([["INST", "HEALTH_STATUS", "TEMP1"], ["INST2", "HEALTH_STATUS", "TEMP2"], ["INST", "HEALTH_STATUS", "VOLTS"]]))
+        # Same group name in another target isn't the child
+        Store.hset("DEFAULT__limits_groups", "INST2__THERMAL", JSON.generate([["INST2", "HEALTH_STATUS", "TEMP4"]]))
         expected = { "INST" => { "HEALTH_STATUS" => ["TEMP1", "VOLTS"] }, "INST2" => { "HEALTH_STATUS" => ["TEMP2"] } }
-        expect(LimitsEventTopic.limits_group_items("SPACECRAFT", scope: "DEFAULT")).to eql expected
+        expect(LimitsEventTopic.limits_group_items("SYS__SPACECRAFT", scope: "DEFAULT")).to eql expected
       end
 
       it "stops at cycles" do
-        Store.hset("DEFAULT__limits_groups", "A", JSON.generate([["COSMOS", "LIMITS_GROUP", "B"], ["INST", "HEALTH_STATUS", "TEMP1"]]))
-        Store.hset("DEFAULT__limits_groups", "B", JSON.generate([["COSMOS", "LIMITS_GROUP", "A"], ["INST", "HEALTH_STATUS", "TEMP2"]]))
-        expect(LimitsEventTopic.limits_group_items("A", scope: "DEFAULT")).to eql({ "INST" => { "HEALTH_STATUS" => ["TEMP2", "TEMP1"] } })
+        Store.hset("DEFAULT__limits_groups", "INST__A", JSON.generate([["INST", "LIMITS_GROUP", "B"], ["INST", "HEALTH_STATUS", "TEMP1"]]))
+        Store.hset("DEFAULT__limits_groups", "INST__B", JSON.generate([["INST", "LIMITS_GROUP", "A"], ["INST", "HEALTH_STATUS", "TEMP2"]]))
+        expect(LimitsEventTopic.limits_group_items("INST__A", scope: "DEFAULT")).to eql({ "INST" => { "HEALTH_STATUS" => ["TEMP2", "TEMP1"] } })
+      end
+    end
+
+    describe "self.find_limits_group" do
+      before(:each) do
+        Store.del("DEFAULT__limits_groups")
+        Store.hset("DEFAULT__limits_groups", "INST__TEMPS", "[]")
+        Store.hset("DEFAULT__limits_groups", "INST2__TEMPS", "[]")
+        Store.hset("DEFAULT__limits_groups", "INST__POWER", "[]")
+        Store.hset("DEFAULT__limits_groups", "LEGACY", "[]")
+      end
+
+      it "finds a group by target and name" do
+        expect(LimitsEventTopic.find_limits_group("inst2", "temps", scope: "DEFAULT")).to eql "INST2__TEMPS"
+        expect { LimitsEventTopic.find_limits_group("INST2", "POWER", scope: "DEFAULT") }.to raise_error(/LIMITS_GROUP INST2 POWER undefined/)
+      end
+
+      it "finds a group by a name only one target defines" do
+        expect(LimitsEventTopic.find_limits_group(nil, "power", scope: "DEFAULT")).to eql "INST__POWER"
+        expect(LimitsEventTopic.find_limits_group(nil, "LEGACY", scope: "DEFAULT")).to eql "LEGACY"
+        expect(LimitsEventTopic.find_limits_group(nil, "INST2__TEMPS", scope: "DEFAULT")).to eql "INST2__TEMPS"
+        expect { LimitsEventTopic.find_limits_group(nil, "NOPE", scope: "DEFAULT") }.to raise_error(/LIMITS_GROUP NOPE undefined/)
+        expect { LimitsEventTopic.find_limits_group(nil, "TEMPS", scope: "DEFAULT") }.to raise_error(/LIMITS_GROUP TEMPS is defined by targets INST, INST2/)
+      end
+
+      it "splits keys" do
+        expect(LimitsEventTopic.split_limits_group_key("INST__TEMPS")).to eql %w(INST TEMPS)
+        expect(LimitsEventTopic.split_limits_group_key("LEGACY")).to eql [nil, "LEGACY"]
       end
     end
 
@@ -335,6 +365,20 @@ module OpenC3
         LimitsEventTopic.write(event, scope: "DEFAULT")
         LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT")
         expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+      end
+
+      it "process_event applies the group of the event's target" do
+        Store.hset("DEFAULT__limits_groups", "INST__TEMPS", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+        Store.hset("DEFAULT__limits_groups", "INST2__TEMPS", JSON.generate([%w(INST HEALTH_STATUS TEMP3)]))
+        event = { 'type' => 'LIMITS_GROUP_ENABLE_STATE', 'target_name' => 'INST2', 'group_name' => "TEMPS", 'enabled' => false }
+        LimitsEventTopic.process_event(event, scope: "DEFAULT")
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be false
+
+        # Without a target the name is ambiguous so nothing changes
+        event = { 'type' => 'LIMITS_GROUP_ENABLE_STATE', 'group_name' => "TEMPS", 'enabled' => false }
+        LimitsEventTopic.process_event(event, scope: "DEFAULT")
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
       end
 
       it "process_event applies the rest of a group when one item fails" do

@@ -1088,23 +1088,24 @@ class TestTlmApi(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, r"LATEST is not supported by inject_tlm\(\)"):
             inject_tlm("INST", "latest", {"TEMP1": 10})
 
-    def test_cosmos_limits_group_cannot_be_written(self):
+    def test_limits_group_cannot_be_written_for_a_target_which_defines_limits_groups(self):
+        # Ruby's TargetModel stores the names of the limits groups the target defines
+        Store.hset("DEFAULT__openc3_targets", "GRP", json.dumps({"name": "GRP", "limits_groups": ["TEMPS"]}))
         with self.assertRaisesRegex(
-            RuntimeError, r"COSMOS LIMITS_GROUP is read-only and is not supported by inject_tlm\(\)"
+            RuntimeError, r"GRP LIMITS_GROUP is read-only and is not supported by inject_tlm\(\)"
         ):
-            inject_tlm("cosmos", "limits_group", {"TEMPS": 0})
+            inject_tlm("grp", "limits_group", {"TEMPS": 0})
+        with self.assertRaisesRegex(RuntimeError, r"GRP LIMITS_GROUP is read-only and is not supported by set_tlm\(\)"):
+            set_tlm("GRP LIMITS_GROUP TEMPS = 0")
         with self.assertRaisesRegex(
-            RuntimeError, r"COSMOS LIMITS_GROUP is read-only and is not supported by set_tlm\(\)"
+            RuntimeError, r"GRP LIMITS_GROUP is read-only and is not supported by override_tlm\(\)"
         ):
-            set_tlm("COSMOS LIMITS_GROUP TEMPS = 0")
-        with self.assertRaisesRegex(
-            RuntimeError, r"COSMOS LIMITS_GROUP is read-only and is not supported by override_tlm\(\)"
-        ):
-            override_tlm("COSMOS LIMITS_GROUP TEMPS = 0")
-        with self.assertRaisesRegex(RuntimeError, "COSMOS LIMITS_GROUP is read-only"):
-            set_tlm("COSMOS LATEST TEMPS = 0")
-        with self.assertRaisesRegex(RuntimeError, "COSMOS LIMITS_GROUP is read-only"):
-            override_tlm("COSMOS LATEST TEMPS = 0")
+            override_tlm("GRP LIMITS_GROUP TEMPS = 0")
+
+    def test_limits_group_is_an_ordinary_packet_name_for_a_target_without_limits_groups(self):
+        TargetModel(name="NOGRP", scope="DEFAULT").create()
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            inject_tlm("NOGRP", "LIMITS_GROUP", {"TEMPS": 0})
 
     def test_get_tlm_values_accepts_the_limits_suffix_from_the_cvt(self):
         vals = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])

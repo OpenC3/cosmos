@@ -25,21 +25,21 @@ class TestLimitsEventTopicLimitsGroupItems(unittest.TestCase):
     def test_returns_none_for_an_undefined_group(self):
         self.assertIsNone(LimitsEventTopic.limits_group_items("NOPE", scope="DEFAULT"))
 
-    def test_expands_nested_groups_into_their_items(self):
+    def test_expands_nested_groups_of_any_target_into_their_items(self):
         Store.hset(
             "DEFAULT__limits_groups",
-            "SPACECRAFT",
+            "SYS__SPACECRAFT",
             json.dumps(
                 [
-                    ["COSMOS", "LIMITS_GROUP", "THERMAL"],
+                    ["INST", "LIMITS_GROUP", "THERMAL"],
                     ["INST", "HEALTH_STATUS", "VOLTS"],
-                    ["COSMOS", "LIMITS_GROUP", "UNDEFINED"],
+                    ["SYS", "LIMITS_GROUP", "UNDEFINED"],
                 ]
             ),
         )
         Store.hset(
             "DEFAULT__limits_groups",
-            "THERMAL",
+            "INST__THERMAL",
             json.dumps(
                 [
                     ["INST", "HEALTH_STATUS", "TEMP1"],
@@ -48,26 +48,60 @@ class TestLimitsEventTopicLimitsGroupItems(unittest.TestCase):
                 ]
             ),
         )
+        # Same group name in another target isn't the child
+        Store.hset("DEFAULT__limits_groups", "INST2__THERMAL", json.dumps([["INST2", "HEALTH_STATUS", "TEMP4"]]))
         self.assertEqual(
-            LimitsEventTopic.limits_group_items("SPACECRAFT", scope="DEFAULT"),
+            LimitsEventTopic.limits_group_items("SYS__SPACECRAFT", scope="DEFAULT"),
             {"INST": {"HEALTH_STATUS": ["TEMP1", "VOLTS"]}, "INST2": {"HEALTH_STATUS": ["TEMP2"]}},
         )
 
     def test_stops_at_cycles(self):
         Store.hset(
             "DEFAULT__limits_groups",
-            "A",
-            json.dumps([["COSMOS", "LIMITS_GROUP", "B"], ["INST", "HEALTH_STATUS", "TEMP1"]]),
+            "INST__A",
+            json.dumps([["INST", "LIMITS_GROUP", "B"], ["INST", "HEALTH_STATUS", "TEMP1"]]),
         )
         Store.hset(
             "DEFAULT__limits_groups",
-            "B",
-            json.dumps([["COSMOS", "LIMITS_GROUP", "A"], ["INST", "HEALTH_STATUS", "TEMP2"]]),
+            "INST__B",
+            json.dumps([["INST", "LIMITS_GROUP", "A"], ["INST", "HEALTH_STATUS", "TEMP2"]]),
         )
         self.assertEqual(
-            LimitsEventTopic.limits_group_items("A", scope="DEFAULT"),
+            LimitsEventTopic.limits_group_items("INST__A", scope="DEFAULT"),
             {"INST": {"HEALTH_STATUS": ["TEMP2", "TEMP1"]}},
         )
+
+
+class TestLimitsEventTopicFindLimitsGroup(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        for key in ["INST__TEMPS", "INST2__TEMPS", "INST__POWER", "LEGACY"]:
+            Store.hset("DEFAULT__limits_groups", key, "[]")
+
+    def test_finds_a_group_by_target_and_name(self):
+        self.assertEqual(LimitsEventTopic.find_limits_group("inst2", "temps", "DEFAULT"), "INST2__TEMPS")
+        with self.assertRaisesRegex(RuntimeError, "LIMITS_GROUP INST2 POWER undefined"):
+            LimitsEventTopic.find_limits_group("INST2", "POWER", "DEFAULT")
+
+    def test_finds_a_group_by_a_name_only_one_target_defines(self):
+        self.assertEqual(LimitsEventTopic.find_limits_group(None, "power", "DEFAULT"), "INST__POWER")
+        self.assertEqual(LimitsEventTopic.find_limits_group(None, "LEGACY", "DEFAULT"), "LEGACY")
+        self.assertEqual(LimitsEventTopic.find_limits_group(None, "INST2__TEMPS", "DEFAULT"), "INST2__TEMPS")
+        with self.assertRaisesRegex(RuntimeError, "LIMITS_GROUP NOPE undefined"):
+            LimitsEventTopic.find_limits_group(None, "NOPE", "DEFAULT")
+        with self.assertRaisesRegex(RuntimeError, "LIMITS_GROUP TEMPS is defined by targets INST, INST2"):
+            LimitsEventTopic.find_limits_group(None, "TEMPS", "DEFAULT")
+
+    def test_splits_keys(self):
+        self.assertEqual(LimitsEventTopic.split_limits_group_key("INST__TEMPS"), ("INST", "TEMPS"))
+        self.assertEqual(LimitsEventTopic.split_limits_group_key("LEGACY"), (None, "LEGACY"))
+
+    def test_finds_the_group_of_an_event(self):
+        event = {"target_name": "INST2", "group_name": "TEMPS"}
+        self.assertEqual(LimitsEventTopic.limits_group_event_key(event, "DEFAULT"), "INST2__TEMPS")
+        self.assertEqual(LimitsEventTopic.limits_group_event_key({"group_name": "POWER"}, "DEFAULT"), "INST__POWER")
+        # Without a target the name is ambiguous
+        self.assertIsNone(LimitsEventTopic.limits_group_event_key({"group_name": "TEMPS"}, "DEFAULT"))
 
 
 class TestLimitsEventTopic(unittest.TestCase):

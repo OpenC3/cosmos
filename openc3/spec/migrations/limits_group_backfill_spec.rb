@@ -21,13 +21,16 @@ module OpenC3
       mock_redis()
       %w(DEFAULT OTHER).each do |scope|
         ScopeModel.new(name: scope).create
-        TargetModel.new(name: 'COSMOS', scope: scope).create
         MicroserviceModel.new(name: "#{scope}__SCOPEMULTI__#{scope}", cmd: ["ruby", "multi_microservice.rb", "#{scope}__SCOPECLEANUP__#{scope}"], scope: scope).create
       end
+      # Groups stored by name alone before they were owned by a target
+      TargetModel.new(name: 'SYSTEM', scope: 'DEFAULT', db_shard: 1, limits_groups: %w(TEMPS POWER)).create
+      TargetModel.new(name: 'INST', scope: 'DEFAULT').create
       Store.hset("DEFAULT__limits_groups", "TEMPS", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+      Store.hset("DEFAULT__limits_groups", "POWER", JSON.generate([%w(INST HEALTH_STATUS VOLTS)]))
     end
 
-    it "defines COSMOS LIMITS_GROUP and adds the microservice to SCOPEMULTI in every scope" do
+    it "stores groups under their target, defines the LIMITS_GROUP packets and adds the microservice to SCOPEMULTI in every scope" do
       LimitsGroupBackfill.run
       %w(DEFAULT OTHER).each do |scope|
         model = MicroserviceModel.get_model(name: "#{scope}__LIMITSGROUP__#{scope}", scope: scope)
@@ -36,15 +39,28 @@ module OpenC3
         multi = MicroserviceModel.get_model(name: "#{scope}__SCOPEMULTI__#{scope}", scope: scope)
         expect(multi.cmd).to eql ["ruby", "multi_microservice.rb", "#{scope}__SCOPECLEANUP__#{scope}", "#{scope}__LIMITSGROUP__#{scope}"]
       end
-      items = TargetModel.packet("COSMOS", "LIMITS_GROUP", scope: "DEFAULT")['items'].map { |item| item['name'] }
-      expect(items).to include("TEMPS", "TEMPS_ENABLED")
-      items = TargetModel.packet("COSMOS", "LIMITS_GROUP", scope: "OTHER")['items'].map { |item| item['name'] }
-      expect(items).to_not include("TEMPS")
+      expected = {
+        "SYSTEM__TEMPS" => JSON.generate([%w(INST HEALTH_STATUS TEMP1)]),
+        "SYSTEM__POWER" => JSON.generate([%w(INST HEALTH_STATUS VOLTS)]),
+      }
+      expect(Store.hgetall("DEFAULT__limits_groups")).to eql expected
+      items = JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))['items'].map { |item| item['name'] }
+      expect(items).to include("TEMPS", "TEMPS_ENABLED", "POWER", "POWER_ENABLED")
+      expect(Store.hexists("DEFAULT__openc3tlm__INST", "LIMITS_GROUP")).to be false
+    end
+
+    it "warns about a target with its own LIMITS_GROUP packet" do
+      Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP", JSON.generate({ 'items' => [] }))
+      expect(Logger).to receive(:warn).with(/Target SYSTEM in scope DEFAULT has its own LIMITS_GROUP packet/)
+      LimitsGroupBackfill.run
+      expect(JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))).to eql({ 'items' => [] })
+      expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__POWER SYSTEM__TEMPS)
     end
 
     it "does nothing the second time" do
       LimitsGroupBackfill.run
       LimitsGroupBackfill.run
+      expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__POWER SYSTEM__TEMPS)
       multi = MicroserviceModel.get_model(name: "DEFAULT__SCOPEMULTI__DEFAULT", scope: "DEFAULT")
       expect(multi.cmd.count("DEFAULT__LIMITSGROUP__DEFAULT")).to eql 1
     end

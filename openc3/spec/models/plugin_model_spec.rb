@@ -303,7 +303,6 @@ module OpenC3
         # Just stub the instance deploy method
         expect(GemModel).to receive(:install).and_return(nil)
         expect_tool_and_target_deploy(erb_variables)
-        expect(TargetModel).to receive(:sync_limits_group_packet).with(scope: "DEFAULT")
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql false
       end
@@ -360,7 +359,6 @@ module OpenC3
         # diff_collector array for the target to append modified files into.
         expect(GemModel).to_not receive(:install)
         expect(GemModel).to_not receive(:destroy_all_other_versions)
-        expect(TargetModel).to_not receive(:sync_limits_group_packet)
         expect_any_instance_of(TargetModel).to receive(:deploy).with(
           anything, erb_variables, validate_only: true,
           upgrade_context: { diff_collector: [] }
@@ -832,7 +830,6 @@ module OpenC3
         uservice = MicroserviceModel.new(name: "DEFAULT__TYPE__NAME", scope: "DEFAULT", plugin: "PLUG")
         uservice.create
         expect_any_instance_of(MicroserviceModel).to receive(:undeploy).once
-        expect(TargetModel).to receive(:sync_limits_group_packet).with(scope: "DEFAULT")
 
         plugin = PluginModel.new(name: "PLUG", scope: "DEFAULT")
         plugin.undeploy

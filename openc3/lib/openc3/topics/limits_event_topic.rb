@@ -25,32 +25,104 @@ module OpenC3
   # While this isn't a clean separation of topics (streams) and models (key-value)
   # it helps maintain consistency as the topic and model are linked.
   class LimitsEventTopic < Topic
+    LIMITS_GROUP_PACKET = 'LIMITS_GROUP'.freeze
+
+    # Limits groups are stored in <SCOPE>__limits_groups under <TARGET>__<GROUP>.
+    # Group names can't contain a double underscore so the key is unambiguous.
+    #
+    # @return [String] The store key of the group
+    def self.limits_group_key(target_name, group_name)
+      "#{target_name}__#{group_name}"
+    end
+
+    # @return [Array(String, String)] The target name and group name of a store key.
+    #   Groups stored before they were owned by a target have no target name.
+    def self.split_limits_group_key(key)
+      target_name, group_name = key.split('__', 2)
+      return [nil, key] unless group_name
+
+      [target_name, group_name]
+    end
+
+    # Finds the store key of a limits group from the arguments passed to the
+    # limits group APIs: either a target name and group name or just a group name.
+    # A group name alone must only be defined by one target. It can also be the
+    # TARGET__GROUP key returned by get_limits_groups for a name several targets share.
+    #
+    # @param target_name [String, nil] Target which defines the group
+    # @param group_name [String] Group name
+    # @return [String] The store key of the group
+    def self.find_limits_group(target_name, group_name, scope:)
+      group_name = group_name.to_s.upcase
+      keys = Store.hkeys("#{scope}__limits_groups")
+      if target_name
+        target_name = target_name.to_s.upcase
+        key = limits_group_key(target_name, group_name)
+        return key if keys.include?(key)
+
+        raise "LIMITS_GROUP #{target_name} #{group_name} undefined. Ensure target #{target_name} contains the line: LIMITS_GROUP #{group_name}"
+      end
+
+      # An exact match is a TARGET__GROUP key or a group stored before groups were owned by a target
+      return group_name if keys.include?(group_name)
+
+      matches = keys.select { |key| split_limits_group_key(key)[1] == group_name }
+      case matches.length
+      when 0
+        raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}"
+      when 1
+        matches[0]
+      else
+        targets = matches.map { |key| split_limits_group_key(key)[0] }.sort
+        raise "LIMITS_GROUP #{group_name} is defined by targets #{targets.join(', ')}. Specify the target name and the group name, e.g. ('#{targets[0]}', '#{group_name}')."
+      end
+    end
+
+    # @return [String, nil] The store key of the group named by a limits group event.
+    #   Events without a target name (written before groups were owned by a target)
+    #   name a group defined by only one target.
+    def self.limits_group_event_key(event, scope:)
+      target_name = event[:target_name] || event['target_name']
+      group_name = event[:group_name] || event['group_name']
+      return limits_group_key(target_name, group_name) if target_name
+
+      begin
+        find_limits_group(nil, group_name, scope: scope)
+      rescue RuntimeError
+        nil
+      end
+    end
+
     # Returns the items in a limits group grouped by target and packet, or nil if the
     # group is undefined. Reads the store directly to avoid a circular reference to TargetModel.
+    #
+    # @param key [String] Store key of the group (see limits_group_key)
     # @return [Hash{String => Hash{String => Array<String>}}, nil]
-    def self.limits_group_items(group_name, scope:)
+    def self.limits_group_items(key, scope:)
+      return nil unless key
+
       groups = Store.hgetall("#{scope}__limits_groups")
-      return nil unless groups[group_name]
+      return nil unless groups[key]
 
       items = {}
-      _expand_limits_group(group_name, groups, items, Set.new)
+      _expand_limits_group(key, groups, items, Set.new)
       items
     end
 
-    # Nested groups are members named COSMOS LIMITS_GROUP <GROUP>. They have no limits
+    # Nested groups are members named <TARGET> LIMITS_GROUP <GROUP>. They have no limits
     # of their own so expand them into the items of the child group. Children which
     # aren't defined (yet) are ignored and each group is only expanded once which
     # also guards against cycles.
-    def self._expand_limits_group(group_name, groups, items, visited)
-      return if visited.include?(group_name)
+    def self._expand_limits_group(key, groups, items, visited)
+      return if visited.include?(key)
 
-      visited << group_name
-      json = groups[group_name]
+      visited << key
+      json = groups[key]
       return unless json
 
       JSON.parse(json, allow_nan: true, create_additions: true).each do |target_name, packet_name, item_name|
-        if target_name == 'COSMOS' and packet_name == 'LIMITS_GROUP'
-          _expand_limits_group(item_name, groups, items, visited)
+        if packet_name == LIMITS_GROUP_PACKET
+          _expand_limits_group(limits_group_key(target_name, item_name), groups, items, visited)
         else
           item_names = ((items[target_name] ||= {})[packet_name] ||= [])
           item_names << item_name unless item_names.include?(item_name)
@@ -121,7 +193,7 @@ module OpenC3
       when :LIMITS_GROUP_ENABLE_STATE
         # Groups can contain many thousands of items so read and write the settings in bulk
         fields = []
-        (limits_group_items(event[:group_name], scope: scope) || {}).each do |target_name, packets|
+        (limits_group_items(limits_group_event_key(event, scope: scope), scope: scope) || {}).each do |target_name, packets|
           packets.each do |packet_name, item_names|
             item_names.each { |item_name| fields << "#{target_name}__#{packet_name}__#{item_name}" }
           end
@@ -369,7 +441,7 @@ module OpenC3
 
       when 'LIMITS_GROUP_ENABLE_STATE'
         enabled = ConfigParser.handle_true_false_nil(event['enabled'])
-        (limits_group_items(event['group_name'], scope: scope) || {}).each do |target_name, packets|
+        (limits_group_items(limits_group_event_key(event, scope: scope), scope: scope) || {}).each do |target_name, packets|
           target = telemetry[target_name]
           next unless target
 
