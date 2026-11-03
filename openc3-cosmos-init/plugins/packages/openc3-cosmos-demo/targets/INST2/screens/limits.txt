@@ -87,15 +87,15 @@ HORIZONTAL
   END
 
   # Rolled up limits state of the groups in cmd_tlm/limits_groups.txt.
-  # <%= target_name %>_PAYLOAD nests <%= target_name %>_TEMPS and <%= target_name %>_GROUND.
+  # PAYLOAD nests TEMPS and GROUND.
   VERTICALBOX "Limits Groups"
     MATRIXBYCOLUMNS 2
-      LIMITSCOLOR COSMOS LIMITS_GROUP <%= target_name %>_PAYLOAD
-      VALUE COSMOS LIMITS_GROUP <%= target_name %>_PAYLOAD_ENABLED
-      LIMITSCOLOR COSMOS LIMITS_GROUP <%= target_name %>_TEMPS
-      VALUE COSMOS LIMITS_GROUP <%= target_name %>_TEMPS_ENABLED
-      LIMITSCOLOR COSMOS LIMITS_GROUP <%= target_name %>_GROUND
-      VALUE COSMOS LIMITS_GROUP <%= target_name %>_GROUND_ENABLED
+      LIMITSCOLOR <%= target_name %> LIMITS_GROUP PAYLOAD
+      VALUE <%= target_name %> LIMITS_GROUP PAYLOAD_ENABLED
+      LIMITSCOLOR <%= target_name %> LIMITS_GROUP TEMPS
+      VALUE <%= target_name %> LIMITS_GROUP TEMPS_ENABLED
+      LIMITSCOLOR <%= target_name %> LIMITS_GROUP GROUND
+      VALUE <%= target_name %> LIMITS_GROUP GROUND_ENABLED
     END
   END
 

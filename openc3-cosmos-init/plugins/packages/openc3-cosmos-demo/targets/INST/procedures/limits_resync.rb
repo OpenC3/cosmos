@@ -18,7 +18,7 @@
 # disable. It must detect the gap and reload the limits settings from the store.
 #
 # 1. Stall the INST decom microservice by injecting the DECOM_STALL packet
-# 2. Disable the INST_TEMP2 limits group while decom is stalled
+# 2. Disable the INST TEMPS limits group while decom is stalled
 # 3. Flood the stream with LIMITS_CHANGE events from INST2 until the group
 #    event is trimmed
 # 4. After decom resumes, verify it stopped checking limits on INST TEMP2
@@ -30,7 +30,7 @@
 STALL_SECONDS = 30 # Long enough to flood the stream (max 300)
 TARGET = 'INST'
 FLOOD_TARGET = 'INST2' # Must have its own decom microservice
-GROUP = 'INST_TEMP2'
+GROUP = 'TEMPS' # Contains TEMP2
 FLOOD_ITEMS = %w(TEMP2 TEMP3 TEMP4) # TEMP1 has a limits response which sends commands
 
 def stream_id(id)
@@ -45,7 +45,7 @@ end
 # Script Runner instruments each line, so keep each condition on a single line
 def group_event?(event)
   # Older versions send a LIMITS_ENABLE_STATE event per item instead of a group event
-  return event['group_name'] == GROUP if event['type'] == 'LIMITS_GROUP_ENABLE_STATE'
+  return event['target_name'] == TARGET && event['group_name'] == GROUP if event['type'] == 'LIMITS_GROUP_ENABLE_STATE'
   event['type'] == 'LIMITS_ENABLE_STATE' && event['target_name'] == TARGET && event['item_name'] == 'TEMP2'
 end
 
@@ -55,7 +55,7 @@ def temp2_change?(event)
 end
 
 begin
-  enable_limits_group(GROUP)
+  enable_limits_group(TARGET, GROUP)
   FLOOD_ITEMS.each { |item| enable_limits("#{FLOOD_TARGET} HEALTH_STATUS #{item}") }
   wait(2) # Let decom apply the enables
 
@@ -72,11 +72,11 @@ begin
 
   # 2. Disable the group while decom can't read the event
   offset = newest_limits_event_id()
-  disable_limits_group(GROUP)
+  disable_limits_group(TARGET, GROUP)
   group_event = get_limits_events(offset, count: 1000).find { |_id, event| group_event?(event) }
   raise "Limits group event not found" unless group_event
   group_event_id = group_event[0]
-  puts "Disabled #{GROUP} with event #{group_event_id}, limits_enabled? reports #{limits_enabled?("#{TARGET} HEALTH_STATUS TEMP2")}"
+  puts "Disabled #{TARGET} #{GROUP} with event #{group_event_id}, limits_enabled? reports #{limits_enabled?("#{TARGET} HEALTH_STATUS TEMP2")}"
 
   # 3. Flood until the group event is trimmed from the stream
   trimmed = false
@@ -122,5 +122,5 @@ begin
     raise "FAIL: #{TARGET} decom microservice missed the group event and is still checking limits on TEMP2"
   end
 ensure
-  enable_limits_group(GROUP)
+  enable_limits_group(TARGET, GROUP)
 end
