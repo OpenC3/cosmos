@@ -452,7 +452,7 @@ export default {
   },
   beforeUnmount() {
     for (const watcher of Object.values(this.criticalCmdWatchers)) {
-      clearInterval(watcher)
+      clearTimeout(watcher)
     }
     this.criticalCmdWatchers = {}
     this.editor.destroy()
@@ -649,6 +649,13 @@ export default {
     // user has confirmed the hazardous command dialog.
     executeCmd(cmdInfo, skipHazardousCheck) {
       const { targetName, commandName, paramList, queueName } = cmdInfo
+      // Snapshot the settings used to send so the history entry matches even
+      // if they change before a critical command is approved
+      const sendOptions = {
+        queueName,
+        validateParameter: this.validateParameter,
+        disableCommandValidation: this.disableCommandValidation,
+      }
       let kwparams = {}
       if (this.validateParameter !== null) {
         kwparams.validate = this.validateParameter.toLowerCase() === 'true'
@@ -688,12 +695,17 @@ export default {
         kwparams,
       ).then(
         (response) => {
-          this.processCmdSuccess(cmd, response)
+          this.processCmdSuccess(cmd, response, sendOptions)
+          this.sendDisabled = false
         },
         (error) => {
           this.processCmdError(targetName, commandName, error)
           if (error.message?.includes('CriticalCmdError')) {
-            this.watchCriticalCmd(cmd, error.object.data.instance_variables)
+            this.watchCriticalCmd(
+              cmd,
+              error.object.data.instance_variables,
+              sendOptions,
+            )
           }
         },
       )
@@ -702,35 +714,61 @@ export default {
     // Critical commands aren't sent until enough users approve them, which can
     // happen long after the approval dialog is closed. Watch for the final
     // status so approved commands are added to the history like any other.
-    watchCriticalCmd(cmd, criticalError) {
+    // Polling backs off from 1s to 30s and gives up after an hour.
+    watchCriticalCmd(cmd, criticalError, sendOptions) {
       const uuid = criticalError['@uuid']
       const command = criticalError['@command']
-      if (!uuid || !command || this.criticalCmdWatchers[uuid]) return
+      if (!uuid || !command || uuid in this.criticalCmdWatchers) return
+      const deadline = Date.now() + 60 * 60 * 1000
+      let delay = 1000
       const stop = () => {
-        clearInterval(this.criticalCmdWatchers[uuid])
+        clearTimeout(this.criticalCmdWatchers[uuid])
         delete this.criticalCmdWatchers[uuid]
       }
-      this.criticalCmdWatchers[uuid] = setInterval(() => {
+      const schedule = () => {
+        // Stopped while the request was in flight, e.g. the tool was closed
+        if (!(uuid in this.criticalCmdWatchers)) return
+        if (Date.now() + delay > deadline) {
+          stop()
+          return
+        }
+        this.criticalCmdWatchers[uuid] = setTimeout(poll, delay)
+        delay = Math.min(delay * 2, 30000)
+      }
+      const poll = () => {
         Api.get('/openc3-api/criticalcmd/status/' + uuid, {
-          headers: { Accept: 'application/json', 'Ignore-Errors': '404' },
+          // Keep failed polls out of the error banner, they're retried
+          headers: {
+            Accept: 'application/json',
+            'Ignore-Errors': '404 500 502 503 504',
+          },
         })
           .then((response) => {
+            // Stopped while the request was in flight, e.g. the tool was closed
+            if (!(uuid in this.criticalCmdWatchers)) return
             if (response.data.status === 'APPROVED') {
               stop()
-              this.processCmdSuccess(cmd, command)
+              this.processCmdSuccess(cmd, command, sendOptions)
             } else if (response.data.status === 'REJECTED') {
               stop()
               this.status = `Critical command rejected: ${command.cmd_string}`
+            } else {
+              schedule()
             }
           })
           .catch((error) => {
+            if (!(uuid in this.criticalCmdWatchers)) return
             // The critical command no longer exists, e.g. critical commanding
             // was turned off. Keep watching through transient errors.
             if (error.response?.status === 404) {
               stop()
+            } else {
+              schedule()
             }
           })
-      }, 1000)
+      }
+      this.criticalCmdWatchers[uuid] = null
+      schedule()
     },
 
     cancelHazardousCmd() {
@@ -739,7 +777,9 @@ export default {
       this.sendDisabled = false
     },
 
-    processCmdSuccess(cmd_sent, response) {
+    processCmdSuccess(cmd_sent, response, sendOptions) {
+      const { queueName, validateParameter, disableCommandValidation } =
+        sendOptions
       let msg = `${cmd_sent}("${response['target_name']} ${response['cmd_name']}`
       let keys = Object.keys(response['cmd_params'])
       if (keys.length > 0) {
@@ -768,16 +808,13 @@ export default {
       }
       // Build the closing part with optional parameters
       const closingParams = []
-      if (this.lastQueueName !== null) {
-        const queue =
-          this.lastQueueName === false ? false : `"${this.lastQueueName}"`
+      if (queueName !== null) {
+        const queue = queueName === false ? false : `"${queueName}"`
         closingParams.push(this.formatKeyword('queue', queue))
       }
-      if (this.validateParameter !== null) {
-        closingParams.push(
-          this.formatKeyword('validate', this.validateParameter),
-        )
-      } else if (this.disableCommandValidation) {
+      if (validateParameter !== null) {
+        closingParams.push(this.formatKeyword('validate', validateParameter))
+      } else if (disableCommandValidation) {
         closingParams.push(this.formatKeyword('validate', false))
       }
 
@@ -809,7 +846,7 @@ export default {
       }
       this.status = msg
 
-      this.processCmdResponse()
+      this.saveHistory()
     },
 
     processCmdError(targetName, commandName, response) {
@@ -824,10 +861,14 @@ export default {
     },
 
     processCmdResponse() {
+      this.saveHistory()
+      this.sendDisabled = false
+    },
+
+    saveHistory() {
       // Make a copy of the history
       this.history = this.editor.getValue()
       localStorage['command_sender__history'] = this.editor.getValue()
-      this.sendDisabled = false
     },
 
     // Format a keyword parameter for the user's scripting language

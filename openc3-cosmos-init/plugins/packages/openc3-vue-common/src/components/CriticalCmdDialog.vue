@@ -207,19 +207,22 @@ export default {
       this.password = null
       this.handleStatus(data)
       if (this.show) {
-        // The current user may have just approved so check again
+        // The current user just approved and can't approve again. Disable
+        // until the check below says otherwise so a quick second click
+        // doesn't send a duplicate approval.
+        this.canApprove = false
         this.checkCanApprove()
       }
     },
     async approve() {
       if (this.canApprove) {
-        await Api.post('/openc3-api/criticalcmd/approve/' + this.uuid, {}).then(
-          (response) => {
+        await Api.post('/openc3-api/criticalcmd/approve/' + this.uuid, {})
+          .then((response) => {
             if (response.status == 200) {
               this.handleApproved(response.data)
             }
-          },
-        )
+          })
+          .catch(console.error)
       } else {
         let token = await this.getKeycloakToken()
         axios
