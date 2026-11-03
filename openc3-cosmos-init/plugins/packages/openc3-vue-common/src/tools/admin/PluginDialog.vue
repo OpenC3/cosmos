@@ -24,7 +24,7 @@
     @keydown.esc.stop="handleEsc"
   >
     <!-- The title, tabs and actions stay in place while the tab content scrolls -->
-    <v-card>
+    <v-card class="plugin-dialog">
       <v-card-title>{{ pluginName }}</v-card-title>
       <div class="px-6 flex-shrink-0">
         <v-alert
@@ -44,7 +44,7 @@
           <v-tab :key="2" data-test="plugin-preview-tab"> Preview </v-tab>
         </v-tabs>
       </div>
-      <v-card-text ref="body" class="pt-0">
+      <v-card-text ref="body" class="plugin-dialog-body pt-0">
         <v-window v-model="tab">
           <v-window-item :value="0" eager="true" class="tab">
             <!-- Markdown from PLUGIN_TEXT_START / PLUGIN_TEXT_END in plugin.txt, collapsible -->
@@ -1649,10 +1649,26 @@ export default {
   font-weight: bold;
   text-decoration: underline;
 }
+/* Fit the dialog to the window and scroll the content between the header
+   (title and tabs) and footer (errors and buttons). Set here rather than
+   relying on the v-dialog scrollable layout reaching the card. */
+.plugin-dialog {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+}
+.plugin-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
 .side-panel {
   position: sticky;
   top: 0;
-  max-height: 100%;
+  /* Long directions scroll within the panel so its end stays reachable */
+  max-height: 60vh;
+  overflow-y: auto;
   border-left: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 .plugin-text-panel {
