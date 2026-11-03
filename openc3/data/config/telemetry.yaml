@@ -61,21 +61,22 @@ LIMITS_GROUP:
     be disabled. If you then enable GROUP1 again it will be enabled.
 
 
-    Each limits group is also published as telemetry in the COSMOS LIMITS_GROUP packet
-    of the reserved COSMOS target. For a group named THERMAL, COSMOS LIMITS_GROUP THERMAL
-    is the most severe limits state (GREEN, YELLOW or RED) of the group's members which
-    have limits enabled, so it can be displayed on screens, graphed, used in scripts with
-    tlm and wait_check, and extracted from history. COSMOS LIMITS_GROUP THERMAL_ENABLED is
-    TRUE when limits are enabled on every member. A group with no enabled members is GREEN
-    with no limits color.
+    Each limits group is also published as telemetry in the LIMITS_GROUP packet of the
+    target which defines the group. For a group named THERMAL defined by the INST target,
+    INST LIMITS_GROUP THERMAL is the most severe limits state (GREEN, YELLOW or RED) of the
+    group's members which have limits enabled, so it can be displayed on screens, graphed,
+    used in scripts with tlm and wait_check, and extracted from history.
+    INST LIMITS_GROUP THERMAL_ENABLED is TRUE when limits are enabled on every member. A
+    group with no enabled members is GREEN with no limits color. A target which defines
+    limits groups can't also define its own LIMITS_GROUP telemetry packet.
 
 
     Group names become item names so they follow the same rules as ITEM names
     (no spaces, quotes, double underscores or trailing underscore). They can't end
     in _ENABLED, use a reserved item name like RECEIVED_COUNT, or be longer than 119
-    characters. Group names must be unique in a scope, so two targets can't define the
-    same group, and two groups can't differ only by characters the time-series
-    database replaces with an underscore (like TEMP.A and TEMP_A).
+    characters. Group names only need to be unique within a target, so two targets
+    can each define a THERMAL group, but two groups in a target can't differ only by
+    characters the time-series database replaces with an underscore (like TEMP.A and TEMP_A).
   parameters:
     - name: Group Name
       required: true
@@ -88,17 +89,19 @@ LIMITS_GROUP_ITEM:
     file in the config/TARGET/cmd_tlm folder named limits_groups.txt.
 
 
-    Pass a single group name instead of a telemetry item to nest an existing
-    group. The parent then rolls up the child's state, and enabling or disabling
-    the parent enables or disables every item below it. The nested group is stored
-    as the item which carries the child's state, so LIMITS_GROUP_ITEM THERMAL is the
-    same as LIMITS_GROUP_ITEM COSMOS LIMITS_GROUP THERMAL. A child group can be installed after its parent. Nested groups
-    can't form a loop, so a group can't contain itself directly or through
-    other groups.
+    Pass a single group name instead of a telemetry item to nest another group
+    defined by the same target. The parent then rolls up the child's state, and
+    enabling or disabling the parent enables or disables every item below it. The
+    nested group is stored as the item which carries the child's state, so in the
+    INST target LIMITS_GROUP_ITEM THERMAL is the same as
+    LIMITS_GROUP_ITEM INST LIMITS_GROUP THERMAL. Use that full form to nest a group
+    defined by another target. A child group can be installed after its parent.
+    Nested groups can't form a loop, so a group can't contain itself directly or
+    through other groups.
   parameters:
     - name: Target Name or Group Name
       required: true
-      description: Name of the target, or the name of a limits group to nest when it's the only parameter
+      description: Name of the target, or the name of a limits group of this target to nest when it's the only parameter
       values: .+
     - name: Packet Name
       required: false
@@ -115,4 +118,5 @@ LIMITS_GROUP_ITEM:
       LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP3
     LIMITS_GROUP SPACECRAFT
       LIMITS_GROUP_ITEM THERMAL
+      LIMITS_GROUP_ITEM INST2 LIMITS_GROUP POWER
       LIMITS_GROUP_ITEM INST HEALTH_STATUS VOLTS

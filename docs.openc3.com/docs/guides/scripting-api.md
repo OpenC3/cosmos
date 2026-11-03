@@ -3573,7 +3573,7 @@ check("INST HEALTH_STATUS COLLECTS == 10", type: :RAW)
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Injects a packet into the system as if it was received from an interface. COSMOS LIMITS_GROUP is computed by COSMOS and can't be injected.
+Injects a packet into the system as if it was received from an interface. The LIMITS_GROUP packet of a target which defines limits groups is computed by COSMOS and can't be injected.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -4698,15 +4698,17 @@ elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HE
 
 These methods deal with handling telemetry limits.
 
-Each limits group is also published as telemetry in the COSMOS LIMITS_GROUP packet. For a group named THERMAL, `COSMOS LIMITS_GROUP THERMAL` is the most severe limits state (GREEN, YELLOW or RED) of the group's members with limits enabled, and `COSMOS LIMITS_GROUP THERMAL_ENABLED` is TRUE when limits are enabled on every member. Read them with `tlm` and wait on them with `wait_check` like any other item. COSMOS LIMITS_GROUP is computed by COSMOS, so `set_tlm`, `inject_tlm` and `override_tlm` reject it.
+Each limits group is also published as telemetry in the LIMITS_GROUP packet of the target which defines the group. For a group named THERMAL defined by the INST target, `INST LIMITS_GROUP THERMAL` is the most severe limits state (GREEN, YELLOW or RED) of the group's members with limits enabled, and `INST LIMITS_GROUP THERMAL_ENABLED` is TRUE when limits are enabled on every member. Read them with `tlm` and wait on them with `wait_check` like any other item. The LIMITS_GROUP packet is computed by COSMOS, so `set_tlm`, `inject_tlm` and `override_tlm` reject it.
+
+Limits group names only need to be unique within the target which defines them, so two targets can each define a THERMAL group. The limits group methods take the target name and the group name. They also accept just the group name, as they always have, as long as only one target defines a group with that name.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
-print(tlm("COSMOS LIMITS_GROUP THERMAL"))  # GREEN, YELLOW or RED
-wait_check("COSMOS LIMITS_GROUP THERMAL != 'RED'", 30)
-check("COSMOS LIMITS_GROUP THERMAL_ENABLED == 'TRUE'")
+print(tlm("INST LIMITS_GROUP THERMAL"))  # GREEN, YELLOW or RED
+wait_check("INST LIMITS_GROUP THERMAL != 'RED'", 30)
+check("INST LIMITS_GROUP THERMAL_ENABLED == 'TRUE'")
 ```
 
 </TabItem>
@@ -4714,9 +4716,9 @@ check("COSMOS LIMITS_GROUP THERMAL_ENABLED == 'TRUE'")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-puts tlm("COSMOS LIMITS_GROUP THERMAL") # GREEN, YELLOW or RED
-wait_check("COSMOS LIMITS_GROUP THERMAL != 'RED'", 30)
-check("COSMOS LIMITS_GROUP THERMAL_ENABLED == 'TRUE'")
+puts tlm("INST LIMITS_GROUP THERMAL") # GREEN, YELLOW or RED
+wait_check("INST LIMITS_GROUP THERMAL != 'RED'", 30)
+check("INST LIMITS_GROUP THERMAL_ENABLED == 'TRUE'")
 ```
 
 </TabItem>
@@ -4872,10 +4874,13 @@ disable_limits("INST HEALTH_STATUS TEMP1")
 
 Enables limits monitoring on a set of telemetry items specified in a limits group. If the group contains nested groups, limits are enabled on every item below it.
 
+The target name parameter is available since _Coming Soon_. Without it the group name must only be defined by one target.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
 ```python
+enable_limits_group("<Target Name>", "<Limits Group Name>")
 enable_limits_group("<Limits Group Name>")
 ```
 
@@ -4884,20 +4889,23 @@ enable_limits_group("<Limits Group Name>")
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
+enable_limits_group("<Target Name>", "<Limits Group Name>")
 enable_limits_group("<Limits Group Name>")
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter         | Description               |
-| ----------------- | ------------------------- |
-| Limits Group Name | Name of the limits group. |
+| Parameter         | Description                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| Target Name       | Name of the target which defines the limits group. Optional if only one target defines it. |
+| Limits Group Name | Name of the limits group.                                                                  |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
+enable_limits_group("INST", "SAFE_MODE")
 enable_limits_group("SAFE_MODE")
 ```
 
@@ -4906,6 +4914,7 @@ enable_limits_group("SAFE_MODE")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
+enable_limits_group("INST", "SAFE_MODE")
 enable_limits_group("SAFE_MODE")
 ```
 
@@ -4918,10 +4927,13 @@ enable_limits_group("SAFE_MODE")
 
 Disables limits monitoring on a set of telemetry items specified in a limits group. If the group contains nested groups, limits are disabled on every item below it.
 
+The target name parameter is available since _Coming Soon_. Without it the group name must only be defined by one target.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
 ```python
+disable_limits_group("<Target Name>", "<Limits Group Name>")
 disable_limits_group("<Limits Group Name>")
 ```
 
@@ -4930,20 +4942,23 @@ disable_limits_group("<Limits Group Name>")
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
+disable_limits_group("<Target Name>", "<Limits Group Name>")
 disable_limits_group("<Limits Group Name>")
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter         | Description               |
-| ----------------- | ------------------------- |
-| Limits Group Name | Name of the limits group. |
+| Parameter         | Description                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------ |
+| Target Name       | Name of the target which defines the limits group. Optional if only one target defines it. |
+| Limits Group Name | Name of the limits group.                                                                  |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
+disable_limits_group("INST", "SAFE_MODE")
 disable_limits_group("SAFE_MODE")
 ```
 
@@ -4952,6 +4967,7 @@ disable_limits_group("SAFE_MODE")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
+disable_limits_group("INST", "SAFE_MODE")
 disable_limits_group("SAFE_MODE")
 ```
 
@@ -4962,13 +4978,38 @@ disable_limits_group("SAFE_MODE")
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Returns the limits groups in the system with their members as `[target, packet, item]` lists. A nested group appears as a COSMOS LIMITS_GROUP member, so a group containing THERMAL lists `["COSMOS", "LIMITS_GROUP", "THERMAL"]`.
+Returns the limits groups in the system keyed by group name with their members as `[target, packet, item]` lists. A nested group appears as the LIMITS_GROUP member of the target which defines it, so a group containing the INST group THERMAL lists `["INST", "LIMITS_GROUP", "THERMAL"]`.
+
+Pass a target name (available since _Coming Soon_) to only return the groups that target defines. Without a target name, a group name which more than one target defines is keyed `TARGET__GROUP` (like `INST__THERMAL`) for each target since the name alone doesn't identify the group.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+get_limits_groups("<Target Name (optional)>")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+get_limits_groups("<Target Name (optional)>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                                |
+| ----------- | -------------------------------------------------------------------------- |
+| Target Name | Name of the target whose limits groups to return. Defaults to all targets. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 limits_groups = get_limits_groups()
+inst_groups = get_limits_groups("INST")
 ```
 
 </TabItem>
@@ -4977,6 +5018,7 @@ limits_groups = get_limits_groups()
 
 ```ruby
 limits_groups = get_limits_groups()
+inst_groups = get_limits_groups("INST")
 ```
 
 </TabItem>
