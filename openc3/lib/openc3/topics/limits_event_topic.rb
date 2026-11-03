@@ -29,14 +29,33 @@ module OpenC3
     # group is undefined. Reads the store directly to avoid a circular reference to TargetModel.
     # @return [Hash{String => Hash{String => Array<String>}}, nil]
     def self.limits_group_items(group_name, scope:)
-      json = Store.hget("#{scope}__limits_groups", group_name)
-      return nil unless json
+      groups = Store.hgetall("#{scope}__limits_groups")
+      return nil unless groups[group_name]
 
       items = {}
-      JSON.parse(json, allow_nan: true, create_additions: true).each do |target_name, packet_name, item_name|
-        ((items[target_name] ||= {})[packet_name] ||= []) << item_name
-      end
+      _expand_limits_group(group_name, groups, items, Set.new)
       items
+    end
+
+    # Nested groups are members named COSMOS LIMITS_GROUP <GROUP>. They have no limits
+    # of their own so expand them into the items of the child group. Children which
+    # aren't defined (yet) are ignored and each group is only expanded once which
+    # also guards against cycles.
+    def self._expand_limits_group(group_name, groups, items, visited)
+      return if visited.include?(group_name)
+
+      visited << group_name
+      json = groups[group_name]
+      return unless json
+
+      JSON.parse(json, allow_nan: true, create_additions: true).each do |target_name, packet_name, item_name|
+        if target_name == 'COSMOS' and packet_name == 'LIMITS_GROUP'
+          _expand_limits_group(item_name, groups, items, visited)
+        else
+          item_names = ((items[target_name] ||= {})[packet_name] ||= [])
+          item_names << item_name unless item_names.include?(item_name)
+        end
+      end
     end
 
     # Collect all unique target db_shards from TargetModel

@@ -39,6 +39,11 @@ require 'tempfile'
 module OpenC3
   # Reads a command or telemetry configuration file and builds a hash of packets.
   class PacketConfig
+    # Limits groups become items in COSMOS LIMITS_GROUP named <GROUP> and <GROUP>_ENABLED
+    LIMITS_GROUP_ENABLED_SUFFIX = '_ENABLED'.freeze
+    # QuestDB column name limit (TargetModel::MAX_COLUMN_HEADER_LENGTH) minus room for _ENABLED
+    MAX_LIMITS_GROUP_NAME_LENGTH = 127 - LIMITS_GROUP_ENABLED_SUFFIX.length
+
     # @return [String] The name of this configuration. To be used by higher
     #   level classes to store information about the current PacketConfig.
     attr_accessor :name
@@ -237,14 +242,28 @@ module OpenC3
           when 'LIMITS_GROUP'
             usage = "LIMITS_GROUP <GROUP NAME>"
             parser.verify_num_parameters(1, 1, usage)
+            parser.verify_parameter_naming(1, usage)
             @current_limits_group = params[0].to_s.upcase
+            verify_limits_group_name(parser, @current_limits_group, usage)
             @limits_groups[@current_limits_group] = [] unless @limits_groups.include?(@current_limits_group)
 
           # Add a telemetry item to the limits group
           when 'LIMITS_GROUP_ITEM'
-            usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME>"
-            parser.verify_num_parameters(3, 3, usage)
-            @limits_groups[@current_limits_group] << [params[0].to_s.upcase, params[1].to_s.upcase, params[2].to_s.upcase] if @current_limits_group
+            usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME> or LIMITS_GROUP_ITEM <GROUP NAME>"
+            parser.verify_num_parameters(1, 3, usage)
+            if params.length == 2
+              raise parser.error("Not enough parameters for LIMITS_GROUP_ITEM.", usage)
+            end
+
+            if @current_limits_group
+              if params.length == 1
+                # A nested group is stored as the item which carries its rollup
+                item = ['COSMOS', 'LIMITS_GROUP', params[0].to_s.upcase]
+              else
+                item = [params[0].to_s.upcase, params[1].to_s.upcase, params[2].to_s.upcase]
+              end
+              @limits_groups[@current_limits_group] << item
+            end
 
           #######################################################################
           # All the following keywords must have a current packet defined
@@ -333,7 +352,11 @@ module OpenC3
           @limits_groups.each do |limits_group_name, limits_group_items|
             file.puts "LIMITS_GROUP #{limits_group_name.to_s.quote_if_necessary}"
             limits_group_items.each do |target_name, packet_name, item_name|
-              file.puts "  LIMITS_GROUP_ITEM #{target_name.to_s.quote_if_necessary} #{packet_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}"
+              if target_name == 'COSMOS' and packet_name == 'LIMITS_GROUP'
+                file.puts "  LIMITS_GROUP_ITEM #{item_name.to_s.quote_if_necessary}"
+              else
+                file.puts "  LIMITS_GROUP_ITEM #{target_name.to_s.quote_if_necessary} #{packet_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}"
+              end
             end
             file.puts ""
           end
@@ -945,6 +968,19 @@ module OpenC3
           latest_data_packets << @current_packet unless latest_data_packets.include?(@current_packet)
         end
         @current_item = nil
+      end
+    end
+
+    # Group names become item names and QuestDB column names in COSMOS LIMITS_GROUP
+    def verify_limits_group_name(parser, group_name, usage)
+      if group_name.length > MAX_LIMITS_GROUP_NAME_LENGTH
+        raise parser.error("LIMITS_GROUP #{group_name} must be #{MAX_LIMITS_GROUP_NAME_LENGTH} characters or less.", usage)
+      end
+      if group_name.end_with?(LIMITS_GROUP_ENABLED_SUFFIX)
+        raise parser.error("LIMITS_GROUP #{group_name} cannot end with #{LIMITS_GROUP_ENABLED_SUFFIX}.", usage)
+      end
+      if Packet::RESERVED_ITEM_NAMES.include?(group_name)
+        raise parser.error("LIMITS_GROUP #{group_name} is a reserved item name.", usage)
       end
     end
   end

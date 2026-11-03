@@ -334,6 +334,15 @@ module OpenC3
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be false
       end
 
+      it "disables limits for every item below a nested group" do
+        Store.hset("DEFAULT__limits_groups", "SPACECRAFT", JSON.generate([["COSMOS", "LIMITS_GROUP", "FIRST"], ["INST", "HEALTH_STATUS", "TEMP2"]]))
+        @api.enable_limits_group("SPACECRAFT")
+        %w(TEMP1 TEMP2 TEMP3).each { |item| expect(@api.limits_enabled?("INST", "HEALTH_STATUS", item)).to be true }
+        @api.disable_limits_group("SPACECRAFT")
+        %w(TEMP1 TEMP2 TEMP3).each { |item| expect(@api.limits_enabled?("INST", "HEALTH_STATUS", item)).to be false }
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP4")).to be true
+      end
+
       it "accepts a lowercase group name" do
         @api.disable_limits_group("first")
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false

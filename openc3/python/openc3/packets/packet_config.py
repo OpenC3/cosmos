@@ -37,10 +37,15 @@ from openc3.utilities.string import (
     class_name_to_filename,
     filename_to_class_name,
     filename_to_module,
+    quote_if_necessary,
 )
 
 
 class PacketConfig:
+    # Limits groups become items in COSMOS LIMITS_GROUP named <GROUP> and <GROUP>_ENABLED
+    LIMITS_GROUP_ENABLED_SUFFIX = "_ENABLED"
+    # QuestDB column name limit (TargetModel MAX_COLUMN_HEADER_LENGTH) minus room for _ENABLED
+    MAX_LIMITS_GROUP_NAME_LENGTH = 127 - len(LIMITS_GROUP_ENABLED_SUFFIX)
     COMMAND_STRING = "Command"
     TELEMETRY_STRING = "Telemetry"
     # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
@@ -207,22 +212,25 @@ class PacketConfig:
                     case "LIMITS_GROUP":
                         usage = "LIMITS_GROUP <GROUP NAME>"
                         parser.verify_num_parameters(1, 1, usage)
+                        parser.verify_parameter_naming(1, usage)
                         self.current_limits_group = params[0].upper()
+                        self._verify_limits_group_name(parser, self.current_limits_group, usage)
                         if self.current_limits_group not in self.limits_groups:
                             self.limits_groups[self.current_limits_group] = []
 
                     # Add a telemetry item to the limits group
                     case "LIMITS_GROUP_ITEM":
-                        usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME>"
-                        parser.verify_num_parameters(3, 3, usage)
+                        usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME> or LIMITS_GROUP_ITEM <GROUP NAME>"
+                        parser.verify_num_parameters(1, 3, usage)
+                        if len(params) == 2:
+                            raise parser.error("Not enough parameters for LIMITS_GROUP_ITEM.", usage)
                         if self.current_limits_group:
-                            self.limits_groups[self.current_limits_group].append(
-                                [
-                                    params[0].upper(),
-                                    params[1].upper(),
-                                    params[2].upper(),
-                                ]
-                            )
+                            if len(params) == 1:
+                                # A nested group is stored as the item which carries its rollup
+                                item = ["COSMOS", "LIMITS_GROUP", params[0].upper()]
+                            else:
+                                item = [params[0].upper(), params[1].upper(), params[2].upper()]
+                            self.limits_groups[self.current_limits_group].append(item)
 
                     #######################################################################
                     # All the following keywords must have a current packet defined
@@ -383,6 +391,9 @@ class PacketConfig:
                     f.write(f"LIMITS_GROUP {group_name}\n")
 
                     for target_name, packet_name, item_name in limits_group_items:
+                        if target_name == "COSMOS" and packet_name == "LIMITS_GROUP":
+                            f.write(f"  LIMITS_GROUP_ITEM {quote_if_necessary(item_name)}\n")
+                            continue
                         # Quote each component if necessary
                         target = (
                             f'"{target_name}"'
@@ -1088,6 +1099,17 @@ class PacketConfig:
         )
 
     # Finish updating packet item
+    # Group names become item names and QuestDB column names in COSMOS LIMITS_GROUP
+    def _verify_limits_group_name(self, parser, group_name, usage):
+        if len(group_name) > self.MAX_LIMITS_GROUP_NAME_LENGTH:
+            raise parser.error(
+                f"LIMITS_GROUP {group_name} must be {self.MAX_LIMITS_GROUP_NAME_LENGTH} characters or less.", usage
+            )
+        if group_name.endswith(self.LIMITS_GROUP_ENABLED_SUFFIX):
+            raise parser.error(f"LIMITS_GROUP {group_name} cannot end with {self.LIMITS_GROUP_ENABLED_SUFFIX}.", usage)
+        if group_name in Packet.RESERVED_ITEM_NAMES:
+            raise parser.error(f"LIMITS_GROUP {group_name} is a reserved item name.", usage)
+
     def finish_item(self):
         if self.current_item:
             if not self.current_packet:

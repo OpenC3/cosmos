@@ -32,6 +32,7 @@ require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/target_file'
 require 'openc3/utilities/zip'
+require 'openc3/utilities/questdb_client'
 require 'fileutils'
 require 'ostruct'
 require 'set'
@@ -782,6 +783,7 @@ module OpenC3
         # Build a System for just this target
         system = System.new([@name], temp_dir)
         check_column_header_lengths(system)
+        check_limits_groups(system)
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
           if variables['time_association_name'].to_s.empty?
@@ -872,6 +874,74 @@ module OpenC3
       unless too_long.empty?
         raise "Item / parameter names must be #{MAX_COLUMN_HEADER_LENGTH} characters or less (QuestDB column header limit). The following are too long:\n  #{too_long.join("\n  ")}"
       end
+    end
+
+    # Limits groups are defined per scope but become items (and QuestDB columns)
+    # in COSMOS LIMITS_GROUP. Their names must be unique per scope, must not share
+    # a column after QuestDB sanitizes them, and nested groups must not loop.
+    def check_limits_groups(system)
+      new_groups = system.limits.groups
+      return if new_groups.empty?
+
+      # On upgrade the old target models are destroyed first and this target's
+      # model is created (without groups) before deploy so skip our own name
+      owners = {}
+      self.class.all(scope: @scope).each do |target_name, target|
+        next if target_name == @name
+
+        (target['limits_groups'] || []).each { |group| owners[group] = target_name }
+      end
+      new_groups.each_key do |group|
+        if owners[group]
+          raise "LIMITS_GROUP #{group} is already defined by target #{owners[group]}. Limits group names must be unique in a scope."
+        end
+      end
+
+      # QuestDB replaces characters it doesn't allow with '_' so TEMP.A and TEMP_A share a column
+      columns = {}
+      owners.each_key { |group| limits_group_columns(group).each { |column| columns[column] ||= group } }
+      new_groups.each_key do |group|
+        limits_group_columns(group).each do |column|
+          other = columns[column]
+          if other and other != group
+            raise "LIMITS_GROUP #{group} and LIMITS_GROUP #{other} would share the column #{column} in COSMOS LIMITS_GROUP. Rename one of them."
+          end
+
+          columns[column] = group
+        end
+      end
+
+      check_limits_group_cycles(new_groups)
+    end
+
+    def limits_group_columns(group)
+      [group, "#{group}#{PacketConfig::LIMITS_GROUP_ENABLED_SUFFIX}"].map { |name| QuestDBClient.sanitize_column_name(name) }
+    end
+
+    def check_limits_group_cycles(new_groups)
+      groups = {}
+      Store.hgetall("#{@scope}__limits_groups").each do |group, json|
+        groups[group] = JSON.parse(json, allow_nan: true, create_additions: true)
+      end
+      groups.merge!(new_groups)
+      children = {}
+      groups.each do |group, items|
+        children[group] = items.select { |target_name, packet_name, _item| target_name == 'COSMOS' and packet_name == 'LIMITS_GROUP' }.map { |item| item[2] }
+      end
+
+      # Depth first search keeping the current path so a loop can be reported
+      done = Set.new
+      visit = lambda do |group, path|
+        if path.include?(group)
+          loop = path[path.index(group)..] + [group]
+          raise "LIMITS_GROUP #{group} contains itself: #{loop.join(' -> ')}. Nested limits groups can't form a loop."
+        end
+        return if done.include?(group)
+
+        (children[group] || []).each { |child| visit.call(child, path + [group]) }
+        done << group
+      end
+      new_groups.each_key { |group| visit.call(group, []) }
     end
 
     def undeploy

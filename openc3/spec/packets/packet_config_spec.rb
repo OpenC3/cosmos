@@ -149,7 +149,8 @@ module OpenC3
               "  PARAMETER PARAM 0 16 UINT 0 0 0 \"Param\"\n"
         tf.write cmd
         limits = "LIMITS_GROUP TVAC\n"\
-                 "  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n"
+                 "  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n"\
+                 "  LIMITS_GROUP_ITEM THERMAL\n"
         tf.write limits
         tf.close
         @pc.process_file(tf.path, "TGT1")
@@ -483,6 +484,29 @@ module OpenC3
           expect(@pc.limits_groups).to include('TVAC', 'VIBE')
           tf.unlink
         end
+
+        it "rejects group names which can't be COSMOS LIMITS_GROUP items" do
+          bad_names = {
+            'TEMP__A' => /cannot contain a double underscore/,
+            'TEMP_' => /cannot end with an underscore/,
+            'FOO_ENABLED' => /LIMITS_GROUP FOO_ENABLED cannot end with _ENABLED/,
+            'received_count' => /LIMITS_GROUP RECEIVED_COUNT is a reserved item name/,
+            'A' * 120 => /must be 119 characters or less/,
+          }
+          bad_names.each do |name, error|
+            tf = Tempfile.new('unittest')
+            tf.puts "LIMITS_GROUP #{name}"
+            tf.close
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, error)
+            tf.unlink
+          end
+          tf = Tempfile.new('unittest')
+          tf.puts "LIMITS_GROUP #{'A' * 119}"
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.limits_groups).to include('A' * 119)
+          tf.unlink
+        end
       end
 
       context "with LIMITS_ITEM" do
@@ -503,6 +527,26 @@ module OpenC3
           tf.close
           @pc.process_file(tf.path, "TGT1")
           expect(@pc.limits_groups["TVAC"]).to eql [%w(TGT1 PKT1 ITEM1), %w(TGT1 PKT1 ITEM2)]
+          tf.unlink
+        end
+
+        it "adds a nested group as its COSMOS LIMITS_GROUP item" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'LIMITS_GROUP SPACECRAFT'
+          tf.puts 'LIMITS_GROUP_ITEM thermal'
+          tf.puts 'LIMITS_GROUP_ITEM COSMOS LIMITS_GROUP POWER'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.limits_groups["SPACECRAFT"]).to eql [%w(COSMOS LIMITS_GROUP THERMAL), %w(COSMOS LIMITS_GROUP POWER)]
+          tf.unlink
+        end
+
+        it "complains about two parameters" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'LIMITS_GROUP TVAC'
+          tf.puts 'LIMITS_GROUP_ITEM TGT1 PKT1'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for LIMITS_GROUP_ITEM/)
           tf.unlink
         end
       end

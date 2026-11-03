@@ -30,13 +30,33 @@ class LimitsEventTopic(Topic):
     # group is undefined. Reads the store directly to avoid a circular reference to TargetModel.
     @classmethod
     def limits_group_items(cls, group_name, scope):
-        group = Store.hget(f"{scope}__limits_groups", group_name)
-        if group is None:
+        groups = Store.hgetall(f"{scope}__limits_groups")
+        groups = {(k.decode() if isinstance(k, bytes) else k): v for k, v in groups.items()}
+        if group_name not in groups:
             return None
         items = {}
-        for target_name, packet_name, item_name in json.loads(group):
-            items.setdefault(target_name, {}).setdefault(packet_name, []).append(item_name)
+        cls._expand_limits_group(group_name, groups, items, set())
         return items
+
+    # Nested groups are members named COSMOS LIMITS_GROUP <GROUP>. They have no limits
+    # of their own so expand them into the items of the child group. Children which
+    # aren't defined (yet) are ignored and each group is only expanded once which
+    # also guards against cycles.
+    @classmethod
+    def _expand_limits_group(cls, group_name, groups, items, visited):
+        if group_name in visited:
+            return
+        visited.add(group_name)
+        group = groups.get(group_name)
+        if group is None:
+            return
+        for target_name, packet_name, item_name in json.loads(group):
+            if target_name == "COSMOS" and packet_name == "LIMITS_GROUP":
+                cls._expand_limits_group(item_name, groups, items, visited)
+            else:
+                item_names = items.setdefault(target_name, {}).setdefault(packet_name, [])
+                if item_name not in item_names:
+                    item_names.append(item_name)
 
     @classmethod
     def _active_db_shards(cls, scope):

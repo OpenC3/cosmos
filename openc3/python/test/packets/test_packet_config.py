@@ -531,6 +531,46 @@ class TestPacketConfig(unittest.TestCase):
             self.pc.process_file(tf.name, "TGT1")
             self.assertEqual(list(self.pc.limits_groups.keys()), ["TVAC", "VIBE"])
 
+    def test_rejects_group_names_which_cant_be_cosmos_limits_group_items(self):
+        bad_names = {
+            "TEMP__A": "cannot contain a double underscore",
+            "TEMP_": "cannot end with an underscore",
+            "FOO_ENABLED": "LIMITS_GROUP FOO_ENABLED cannot end with _ENABLED",
+            "received_count": "LIMITS_GROUP RECEIVED_COUNT is a reserved item name",
+            "A" * 120: "must be 119 characters or less",
+        }
+        for name, error in bad_names.items():
+            with tempfile.NamedTemporaryFile(mode="w") as tf:
+                tf.write(f"LIMITS_GROUP {name}\n")
+                tf.seek(0)
+                with self.assertRaisesRegex(ConfigParser.Error, error):
+                    self.pc.process_file(tf.name, "TGT1")
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write(f"LIMITS_GROUP {'A' * 119}\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertIn("A" * 119, self.pc.limits_groups)
+
+    def test_adds_a_nested_group_as_its_cosmos_limits_group_item(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write("LIMITS_GROUP SPACECRAFT\n")
+            tf.write("LIMITS_GROUP_ITEM thermal\n")
+            tf.write("LIMITS_GROUP_ITEM COSMOS LIMITS_GROUP POWER\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertEqual(
+                self.pc.limits_groups["SPACECRAFT"],
+                [["COSMOS", "LIMITS_GROUP", "THERMAL"], ["COSMOS", "LIMITS_GROUP", "POWER"]],
+            )
+
+    def test_limits_group_item_complains_about_two_parameters(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write("LIMITS_GROUP TVAC\n")
+            tf.write("LIMITS_GROUP_ITEM TGT1 PKT1\n")
+            tf.seek(0)
+            with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for LIMITS_GROUP_ITEM"):
+                self.pc.process_file(tf.name, "TGT1")
+
     def test_adds_a_new_limits_item_to_the_group(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
             tf.write("LIMITS_GROUP TVAC\n")
@@ -1755,6 +1795,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n")
             tf.write("LIMITS_GROUP GROUP2\n")
             tf.write("  LIMITS_GROUP_ITEM TGT2 PKT2 ITEM2\n")
+            tf.write("  LIMITS_GROUP_ITEM GROUP1\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "SYSTEM")
 
@@ -1773,6 +1814,8 @@ class TestPacketConfig(unittest.TestCase):
                 self.assertIn("LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1", content)
                 self.assertIn("LIMITS_GROUP GROUP2", content)
                 self.assertIn("LIMITS_GROUP_ITEM TGT2 PKT2 ITEM2", content)
+                self.assertIn("  LIMITS_GROUP_ITEM GROUP1\n", content)
+                self.assertNotIn("COSMOS", content)
 
         os.unlink(tf.name)
 
@@ -1838,8 +1881,10 @@ class TestPacketConfig(unittest.TestCase):
     def test_to_config_quotes_names_with_spaces(self):
         """Test that to_config quotes names with spaces"""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
-            tf.write('LIMITS_GROUP "GROUP WITH SPACES"\n')
+            # Group names can't contain spaces but their members can
+            tf.write("LIMITS_GROUP GROUP\n")
             tf.write('  LIMITS_GROUP_ITEM "TARGET NAME" "PACKET NAME" "ITEM NAME"\n')
+            tf.write('  LIMITS_GROUP_ITEM "CHILD GROUP"\n')
             tf.seek(0)
             self.pc.process_file(tf.name, "SYSTEM")
 
@@ -1851,7 +1896,7 @@ class TestPacketConfig(unittest.TestCase):
             limits_file = os.path.join(output_dir, "SYSTEM", "cmd_tlm", "limits_groups.txt")
             with open(limits_file) as f:
                 content = f.read()
-                self.assertIn('"GROUP WITH SPACES"', content)
+                self.assertIn('  LIMITS_GROUP_ITEM "CHILD GROUP"\n', content)
                 self.assertIn('"TARGET NAME"', content)
                 self.assertIn('"PACKET NAME"', content)
                 self.assertIn('"ITEM NAME"', content)

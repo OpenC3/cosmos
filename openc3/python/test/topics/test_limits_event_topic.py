@@ -18,6 +18,58 @@ from openc3.topics.topic import Topic
 from test.test_helper import *
 
 
+class TestLimitsEventTopicLimitsGroupItems(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+
+    def test_returns_none_for_an_undefined_group(self):
+        self.assertIsNone(LimitsEventTopic.limits_group_items("NOPE", scope="DEFAULT"))
+
+    def test_expands_nested_groups_into_their_items(self):
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "SPACECRAFT",
+            json.dumps(
+                [
+                    ["COSMOS", "LIMITS_GROUP", "THERMAL"],
+                    ["INST", "HEALTH_STATUS", "VOLTS"],
+                    ["COSMOS", "LIMITS_GROUP", "UNDEFINED"],
+                ]
+            ),
+        )
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "THERMAL",
+            json.dumps(
+                [
+                    ["INST", "HEALTH_STATUS", "TEMP1"],
+                    ["INST2", "HEALTH_STATUS", "TEMP2"],
+                    ["INST", "HEALTH_STATUS", "VOLTS"],
+                ]
+            ),
+        )
+        self.assertEqual(
+            LimitsEventTopic.limits_group_items("SPACECRAFT", scope="DEFAULT"),
+            {"INST": {"HEALTH_STATUS": ["TEMP1", "VOLTS"]}, "INST2": {"HEALTH_STATUS": ["TEMP2"]}},
+        )
+
+    def test_stops_at_cycles(self):
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "A",
+            json.dumps([["COSMOS", "LIMITS_GROUP", "B"], ["INST", "HEALTH_STATUS", "TEMP1"]]),
+        )
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "B",
+            json.dumps([["COSMOS", "LIMITS_GROUP", "A"], ["INST", "HEALTH_STATUS", "TEMP2"]]),
+        )
+        self.assertEqual(
+            LimitsEventTopic.limits_group_items("A", scope="DEFAULT"),
+            {"INST": {"HEALTH_STATUS": ["TEMP2", "TEMP1"]}},
+        )
+
+
 class TestLimitsEventTopic(unittest.TestCase):
     def setUp(self):
         mock_redis(self)

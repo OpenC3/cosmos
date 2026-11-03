@@ -1229,6 +1229,65 @@ module OpenC3
       end
     end
 
+    describe "check_limits_groups" do
+      def build_system(groups)
+        double("System", limits: double("Limits", groups: groups))
+      end
+
+      def model(name = "INST")
+        TargetModel.new(folder_name: name, name: name, scope: "DEFAULT", plugin: 'PLUGIN')
+      end
+
+      def install_groups(target_name, groups)
+        TargetModel.new(folder_name: target_name, name: target_name, scope: "DEFAULT", plugin: 'OTHER', limits_groups: groups.keys).create
+        groups.each { |group, items| Store.hset("DEFAULT__limits_groups", group, JSON.generate(items)) }
+      end
+
+      it "allows groups which only this target defines" do
+        install_groups("INST", { "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] })
+        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP2)] })) }.to_not raise_error
+      end
+
+      it "refuses a group another target defines" do
+        install_groups("INST2", { "TEMPS" => [%w(INST2 HEALTH_STATUS TEMP1)] })
+        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] })) }.to \
+          raise_error("LIMITS_GROUP TEMPS is already defined by target INST2. Limits group names must be unique in a scope.")
+      end
+
+      it "refuses groups which share a QuestDB column" do
+        install_groups("INST2", { "TEMP_A" => [], "POWER" => [] })
+        expect { model.check_limits_groups(build_system({ "TEMP.A" => [] })) }.to raise_error(/TEMP.A and LIMITS_GROUP TEMP_A would share the column TEMP_A/)
+        expect { model.check_limits_groups(build_system({ "POWER.ENABLED" => [] })) }.to raise_error(/POWER.ENABLED and LIMITS_GROUP POWER would share the column POWER_ENABLED/)
+        expect { model.check_limits_groups(build_system({ "VOLT-A" => [], "VOLT+A" => [] })) }.to raise_error(/VOLT\+A and LIMITS_GROUP VOLT-A would share/)
+      end
+
+      it "ignores collisions between groups it doesn't define" do
+        install_groups("INST2", { "TEMP_A" => [] })
+        install_groups("INST3", { "TEMP.A" => [] })
+        expect { model.check_limits_groups(build_system({ "OTHER" => [] })) }.to_not raise_error
+      end
+
+      it "refuses a group which contains itself" do
+        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(COSMOS LIMITS_GROUP TEMPS)] })) }.to \
+          raise_error(/LIMITS_GROUP TEMPS contains itself: TEMPS -> TEMPS/)
+      end
+
+      it "refuses a loop through installed groups" do
+        install_groups("INST2", { "B" => [%w(COSMOS LIMITS_GROUP C)], "C" => [%w(COSMOS LIMITS_GROUP A)] })
+        expect { model.check_limits_groups(build_system({ "A" => [%w(COSMOS LIMITS_GROUP B)] })) }.to \
+          raise_error(/LIMITS_GROUP A contains itself: A -> B -> C -> A/)
+      end
+
+      it "allows nesting, shared children and children which aren't installed yet" do
+        install_groups("INST2", { "THERMAL" => [%w(INST2 HEALTH_STATUS TEMP1)] })
+        groups = {
+          "SPACECRAFT" => [%w(COSMOS LIMITS_GROUP THERMAL), %w(COSMOS LIMITS_GROUP POWER), %w(COSMOS LIMITS_GROUP LATER)],
+          "POWER" => [%w(COSMOS LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS VOLTS)],
+        }
+        expect { model.check_limits_groups(build_system(groups)) }.to_not raise_error
+      end
+    end
+
     describe "destroy" do
       before(:each) do
         @target_dir = File.join(SPEC_DIR, "install", "config")

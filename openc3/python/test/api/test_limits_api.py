@@ -374,6 +374,20 @@ class TestLimitsApi(unittest.TestCase):
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP3"))
 
+    def test_disable_limits_groups_disables_every_item_below_a_nested_group(self):
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "SPACECRAFT",
+            json.dumps([["COSMOS", "LIMITS_GROUP", "FIRST"], ["INST", "HEALTH_STATUS", "TEMP2"]]),
+        )
+        enable_limits_group("SPACECRAFT")
+        for item in ["TEMP1", "TEMP2", "TEMP3"]:
+            self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", item))
+        disable_limits_group("SPACECRAFT")
+        for item in ["TEMP1", "TEMP2", "TEMP3"]:
+            self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", item))
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP4"))
+
     def test_disable_limits_groups_accepts_a_lowercase_group_name(self):
         disable_limits_group("first")
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))

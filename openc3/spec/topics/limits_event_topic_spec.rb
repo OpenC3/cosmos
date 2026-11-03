@@ -21,6 +21,25 @@ module OpenC3
       setup_system()
     end
 
+    describe "self.limits_group_items" do
+      it "returns nil for an undefined group" do
+        expect(LimitsEventTopic.limits_group_items("NOPE", scope: "DEFAULT")).to be_nil
+      end
+
+      it "expands nested groups into their items" do
+        Store.hset("DEFAULT__limits_groups", "SPACECRAFT", JSON.generate([["COSMOS", "LIMITS_GROUP", "THERMAL"], ["INST", "HEALTH_STATUS", "VOLTS"], ["COSMOS", "LIMITS_GROUP", "UNDEFINED"]]))
+        Store.hset("DEFAULT__limits_groups", "THERMAL", JSON.generate([["INST", "HEALTH_STATUS", "TEMP1"], ["INST2", "HEALTH_STATUS", "TEMP2"], ["INST", "HEALTH_STATUS", "VOLTS"]]))
+        expected = { "INST" => { "HEALTH_STATUS" => ["TEMP1", "VOLTS"] }, "INST2" => { "HEALTH_STATUS" => ["TEMP2"] } }
+        expect(LimitsEventTopic.limits_group_items("SPACECRAFT", scope: "DEFAULT")).to eql expected
+      end
+
+      it "stops at cycles" do
+        Store.hset("DEFAULT__limits_groups", "A", JSON.generate([["COSMOS", "LIMITS_GROUP", "B"], ["INST", "HEALTH_STATUS", "TEMP1"]]))
+        Store.hset("DEFAULT__limits_groups", "B", JSON.generate([["COSMOS", "LIMITS_GROUP", "A"], ["INST", "HEALTH_STATUS", "TEMP2"]]))
+        expect(LimitsEventTopic.limits_group_items("A", scope: "DEFAULT")).to eql({ "INST" => { "HEALTH_STATUS" => ["TEMP2", "TEMP1"] } })
+      end
+    end
+
     describe "self.write, self.read" do
       it "writes and reads LIMITS_CHANGE events" do
         event = { type: :LIMITS_CHANGE, target_name: "TGT", packet_name: "PKT",
