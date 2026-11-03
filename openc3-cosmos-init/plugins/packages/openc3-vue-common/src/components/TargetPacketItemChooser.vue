@@ -421,16 +421,8 @@ export default {
     // Ranked copies of the lists for display only. Everything else keeps
     // working off the unranked source arrays, so lookups and the "first
     // packet" defaults are unaffected.
-    // The COSMOS target only holds system generated telemetry (like COSMOS
-    // LIMITS_GROUP) so it has no commands to choose
-    modeTargetNames: function () {
-      if (this.mode === 'cmd') {
-        return this.targetNames.filter((target) => target.value !== 'COSMOS')
-      }
-      return this.targetNames
-    },
     rankedTargetNames: function () {
-      return tokenizedSort(this.modeTargetNames, this.searches.target, 'label')
+      return tokenizedSort(this.targetNames, this.searches.target, 'label')
     },
     rankedPacketNames: function () {
       return tokenizedSort(this.packetNames, this.searches.packet, 'label')
@@ -514,15 +506,6 @@ export default {
     mode: function (newVal, oldVal) {
       this.selectedPacketName = null
       this.selectedItemName = null
-      // A target which isn't offered in this mode can't stay selected
-      if (
-        this.modeTargetNames.length > 0 &&
-        !this.modeTargetNames.some(
-          (target) => target.value === this.selectedTargetName,
-        )
-      ) {
-        this.selectedTargetName = this.modeTargetNames[0].value
-      }
       // This also updates packets and items as needed
       this.targetNameChanged(this.selectedTargetName)
     },
@@ -592,11 +575,11 @@ export default {
         if (this.selectedTargetName) {
           // Selected target name was set but we still have to update packets
           this.updatePackets()
-        } else if (this.modeTargetNames.length === 0) {
+        } else if (this.targetNames.length === 0) {
           // No targets to select so re-enable and let the user see empty lists
           this.internalDisabled = false
         } else {
-          this.selectedTargetName = this.modeTargetNames[0].value
+          this.selectedTargetName = this.targetNames[0].value
           this.targetNameChanged(this.selectedTargetName)
         }
         if (this.unknown) {
