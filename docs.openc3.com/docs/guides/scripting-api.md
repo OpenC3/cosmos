@@ -3573,7 +3573,7 @@ check("INST HEALTH_STATUS COLLECTS == 10", type: :RAW)
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Injects a packet into the system as if it was received from an interface.
+Injects a packet into the system as if it was received from an interface. COSMOS LIMITS_GROUP is computed by COSMOS and can't be injected.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -4698,6 +4698,30 @@ elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HE
 
 These methods deal with handling telemetry limits.
 
+Each limits group is also published as telemetry in the COSMOS LIMITS_GROUP packet. For a group named THERMAL, `COSMOS LIMITS_GROUP THERMAL` is the most severe limits state (GREEN, YELLOW or RED) of the group's members with limits enabled, and `COSMOS LIMITS_GROUP THERMAL_ENABLED` is TRUE when limits are enabled on every member. Read them with `tlm` and wait on them with `wait_check` like any other item. COSMOS LIMITS_GROUP is computed by COSMOS, so `set_tlm`, `inject_tlm` and `override_tlm` reject it.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+print(tlm("COSMOS LIMITS_GROUP THERMAL"))  # GREEN, YELLOW or RED
+wait_check("COSMOS LIMITS_GROUP THERMAL != 'RED'", 30)
+check("COSMOS LIMITS_GROUP THERMAL_ENABLED == 'TRUE'")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+puts tlm("COSMOS LIMITS_GROUP THERMAL") # GREEN, YELLOW or RED
+wait_check("COSMOS LIMITS_GROUP THERMAL != 'RED'", 30)
+check("COSMOS LIMITS_GROUP THERMAL_ENABLED == 'TRUE'")
+```
+
+</TabItem>
+</Tabs>
+
 ### limits_enabled?, limits_enabled
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
@@ -4846,7 +4870,7 @@ disable_limits("INST HEALTH_STATUS TEMP1")
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Enables limits monitoring on a set of telemetry items specified in a limits group.
+Enables limits monitoring on a set of telemetry items specified in a limits group. If the group contains nested groups, limits are enabled on every item below it.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -4892,7 +4916,7 @@ enable_limits_group("SAFE_MODE")
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Disables limits monitoring on a set of telemetry items specified in a limits group.
+Disables limits monitoring on a set of telemetry items specified in a limits group. If the group contains nested groups, limits are disabled on every item below it.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -4938,7 +4962,7 @@ disable_limits_group("SAFE_MODE")
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Returns the list of limits groups in the system.
+Returns the limits groups in the system with their members as `[target, packet, item]` lists. A nested group appears as a COSMOS LIMITS_GROUP member, so a group containing THERMAL lists `["COSMOS", "LIMITS_GROUP", "THERMAL"]`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
