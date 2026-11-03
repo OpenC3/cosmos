@@ -230,6 +230,16 @@ module OpenC3
         expect(result[0][1]).to eql :GREEN
       end
 
+      it "never marks COSMOS target values stale" do
+        update_temp1(time: Time.now - 10)
+        CvtModel.set({ "TEMPS" => 2, "TEMPS__C" => "RED", "TEMPS__L" => :RED, "RECEIVED_TIMESECONDS" => (Time.now - 10).to_f },
+          target_name: "COSMOS", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
+        values = [["COSMOS", "LIMITS_GROUP", "TEMPS", "CONVERTED"], ["INST", "HEALTH_STATUS", "TEMP1", "RAW"]]
+        result = CvtModel.get_tlm_values(values, stale_time: 9)
+        expect(result[0]).to eql ["RED", :RED]
+        expect(result[1][1]).to eql :STALE
+      end
+
       it "returns overridden values" do
         update_temp1()
         json_hash = {}

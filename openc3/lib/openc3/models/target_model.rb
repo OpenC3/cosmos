@@ -498,6 +498,10 @@ module OpenC3
         usage = "#{keyword} <TARGET FOLDER NAME> <TARGET NAME>"
         parser.verify_num_parameters(2, 2, usage)
         parser.verify_parameter_naming(2) # Target name is the 2nd parameter
+        if parameters[1].to_s.upcase == 'COSMOS'
+          raise ConfigParser::Error.new(parser, "Target name COSMOS is reserved for system-generated telemetry", usage)
+        end
+
         return self.new(name: parameters[1].to_s.upcase, folder_name: parameters[0].to_s.upcase, plugin: plugin,  needs_dependencies: needs_dependencies, scope: scope)
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Target: #{keyword} #{parameters.join(" ")}")

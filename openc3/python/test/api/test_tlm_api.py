@@ -1088,6 +1088,24 @@ class TestTlmApi(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, r"LATEST is not supported by inject_tlm\(\)"):
             inject_tlm("INST", "latest", {"TEMP1": 10})
 
+    def test_cosmos_limits_group_cannot_be_written(self):
+        with self.assertRaisesRegex(
+            RuntimeError, r"COSMOS LIMITS_GROUP is read-only and is not supported by inject_tlm\(\)"
+        ):
+            inject_tlm("cosmos", "limits_group", {"TEMPS": 0})
+        with self.assertRaisesRegex(
+            RuntimeError, r"COSMOS LIMITS_GROUP is read-only and is not supported by set_tlm\(\)"
+        ):
+            set_tlm("COSMOS LIMITS_GROUP TEMPS = 0")
+        with self.assertRaisesRegex(
+            RuntimeError, r"COSMOS LIMITS_GROUP is read-only and is not supported by override_tlm\(\)"
+        ):
+            override_tlm("COSMOS LIMITS_GROUP TEMPS = 0")
+        with self.assertRaisesRegex(RuntimeError, "COSMOS LIMITS_GROUP is read-only"):
+            set_tlm("COSMOS LATEST TEMPS = 0")
+        with self.assertRaisesRegex(RuntimeError, "COSMOS LIMITS_GROUP is read-only"):
+            override_tlm("COSMOS LATEST TEMPS = 0")
+
     def test_get_tlm_values_accepts_the_limits_suffix_from_the_cvt(self):
         vals = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])
         self.assertEqual(vals[0][0], (-100.0))

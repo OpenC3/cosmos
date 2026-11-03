@@ -829,6 +829,11 @@ module OpenC3
         TargetModel.handle_config(parser, "TARGET", ["TEST", "TEST"], scope: "DEFAULT")
         expect { TargetModel.handle_config(parser, "TARGETS", ["TEST", "TEST"], scope: "DEFAULT") }.to raise_error(ConfigParser::Error)
       end
+
+      it "refuses the reserved COSMOS target name" do
+        parser = double("ConfigParser").as_null_object
+        expect { TargetModel.handle_config(parser, "TARGET", ["MY_FOLDER", "cosmos"], scope: "DEFAULT") }.to raise_error(ConfigParser::Error, /COSMOS is reserved/)
+      end
     end
 
     describe "initialize" do

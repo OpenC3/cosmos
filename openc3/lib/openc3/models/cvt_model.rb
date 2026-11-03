@@ -184,7 +184,9 @@ module OpenC3
           end
           # If we were able to find a value, try to get the limits state
           if item_result[0]
-            if now - hash['RECEIVED_TIMESECONDS'] > stale_time
+            # COSMOS packets are only published when a value changes so their age
+            # says nothing about whether they are current. Never mark them stale.
+            if target_name != 'COSMOS' and now - hash['RECEIVED_TIMESECONDS'] > stale_time
               item_result[1] = :STALE
             else
               # The last key is simply the name (RAW) so we can append __L

@@ -573,6 +573,16 @@ module OpenC3
       end
     end
 
+    describe "COSMOS LIMITS_GROUP" do
+      it "can't be written" do
+        expect { @api.inject_tlm("cosmos", "limits_group", { TEMPS: 0 }) }.to raise_error(RuntimeError, "ERROR: COSMOS LIMITS_GROUP is read-only and is not supported by inject_tlm()")
+        expect { @api.set_tlm("COSMOS LIMITS_GROUP TEMPS = 0") }.to raise_error(RuntimeError, "ERROR: COSMOS LIMITS_GROUP is read-only and is not supported by set_tlm()")
+        expect { @api.override_tlm("COSMOS LIMITS_GROUP TEMPS = 0") }.to raise_error(RuntimeError, "ERROR: COSMOS LIMITS_GROUP is read-only and is not supported by override_tlm()")
+        expect { @api.set_tlm("COSMOS LATEST TEMPS = 0") }.to raise_error(RuntimeError, /COSMOS LIMITS_GROUP is read-only/)
+        expect { @api.override_tlm("COSMOS LATEST TEMPS = 0") }.to raise_error(RuntimeError, /COSMOS LIMITS_GROUP is read-only/)
+      end
+    end
+
     describe "get_tlm_packet" do
       it "complains about non-existent targets" do
         expect { @api.get_tlm_packet("BLAH", "HEALTH_STATUS") }.to raise_error(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist")

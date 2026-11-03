@@ -120,6 +120,7 @@ module OpenC3
     # @param received_time [Integer, nil] Optional received time as nanoseconds since Unix epoch
     def inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, stored: false, received_time: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
       _tlm_reject_latest(packet_name.to_s.upcase, 'inject_tlm')
+      _tlm_reject_read_only(target_name.to_s.upcase, packet_name.to_s.upcase, 'inject_tlm')
       authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       type = type.to_s.intern
       target_name = target_name.upcase
@@ -568,6 +569,14 @@ module OpenC3
       raise "ERROR: LATEST is not supported by #{method_name}(), specify a packet name" if packet_name == 'LATEST'
     end
 
+    # COSMOS LIMITS_GROUP is computed by the limits group microservice so it can't be written.
+    # LATEST is rejected too because on the COSMOS target it resolves to LIMITS_GROUP.
+    def _tlm_reject_read_only(target_name, packet_name, method_name)
+      if target_name == 'COSMOS' and %w(LIMITS_GROUP LATEST).include?(packet_name)
+        raise "ERROR: COSMOS LIMITS_GROUP is read-only and is not supported by #{method_name}()"
+      end
+    end
+
     def _extract_target_packet_item_names(method_name, *args)
       target_name = nil
       packet_name = nil
@@ -610,6 +619,7 @@ module OpenC3
 
     def _set_tlm_process_args(args, method_name, cache_timeout: nil, scope: $openc3_scope, token: $openc3_token)
       target_name, packet_name, item_name, value = _set_tlm_extract_args(args, method_name)
+      _tlm_reject_read_only(target_name, packet_name, method_name)
       packet_name = _tlm_resolve_packet_name(target_name, packet_name, item_name, cache_timeout: cache_timeout, scope: scope)
       return [target_name, packet_name, item_name, value]
     end
@@ -624,6 +634,7 @@ module OpenC3
 
     def _set_tlm_process_args_all_packets(args, method_name, scope: $openc3_scope)
       target_name, packet_name, item_name, value = _set_tlm_extract_args(args, method_name)
+      _tlm_reject_read_only(target_name, packet_name, method_name)
       return [target_name, _tlm_packet_names(target_name, packet_name, item_name, scope: scope), item_name, value]
     end
 

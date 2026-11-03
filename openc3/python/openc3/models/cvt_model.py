@@ -256,7 +256,9 @@ class CvtModel(Model):
                         break  # We want the first value
                 # If we were able to find a value, try to get the limits state
                 if len(item_result) > 0 and item_result[0] is not None:
-                    if now - pkt_hash["RECEIVED_TIMESECONDS"] > stale_time:
+                    # COSMOS packets are only published when a value changes so their age
+                    # says nothing about whether they are current. Never mark them stale.
+                    if target_name != "COSMOS" and now - pkt_hash["RECEIVED_TIMESECONDS"] > stale_time:
                         item_result.insert(1, "STALE")
                     else:
                         # The last key is simply the name (RAW) so we can append __L

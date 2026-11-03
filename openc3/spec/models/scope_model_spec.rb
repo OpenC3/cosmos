@@ -152,6 +152,9 @@ module OpenC3
         # Ensure scope_model creates the UNKNOWN target and streams
         target = TargetModel.get(name: "UNKNOWN", scope: "DEFAULT")
         expect(target["name"]).to eql "UNKNOWN"
+        # and the reserved COSMOS target for system-generated telemetry
+        target = TargetModel.get(name: "COSMOS", scope: "DEFAULT")
+        expect(target["name"]).to eql "COSMOS"
         # Every scope gets a DEFAULT bridge_microservice (the Iroh hub)
         bridge = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__DEFAULT", scope: "DEFAULT")
         expect(bridge).to_not be_nil

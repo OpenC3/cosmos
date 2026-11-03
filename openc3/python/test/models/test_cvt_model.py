@@ -316,6 +316,19 @@ class TestCvtModel(unittest.TestCase):
         self.assertEqual(result[0][0], 1)
         self.assertEqual(result[0][1], "GREEN")
 
+    def test_never_marks_cosmos_target_values_stale(self):
+        self.update_temp1(rxtime=(time.time() - 10))
+        CvtModel.set(
+            {"TEMPS": 2, "TEMPS__C": "RED", "TEMPS__L": "RED", "RECEIVED_TIMESECONDS": time.time() - 10},
+            "COSMOS",
+            "LIMITS_GROUP",
+            scope="DEFAULT",
+        )
+        values = [["COSMOS", "LIMITS_GROUP", "TEMPS", "CONVERTED"], ["INST", "HEALTH_STATUS", "TEMP1", "RAW"]]
+        result = CvtModel.get_tlm_values(values, stale_time=9)
+        self.assertEqual(result[0], ["RED", "RED"])
+        self.assertEqual(result[1][1], "STALE")
+
     def test_returns_overridden_values(self):
         self.update_temp1()
         json_hash = {}
