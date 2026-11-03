@@ -131,7 +131,7 @@ typedef struct __attribute((packed)){
   double covariance_vel_x_vel_y;
   double covariance_vel_x_vel_z;
   // Below is commented out since not defined in ICD but will be here if that changes
-  // double covariance_vel_y_vel_y;      // vel y
+  double covariance_vel_y_vel_y;      // vel y
   double covariance_vel_y_vel_z;
   double covariance_vel_z_vel_z;      // vel z
 } state_message_t;
