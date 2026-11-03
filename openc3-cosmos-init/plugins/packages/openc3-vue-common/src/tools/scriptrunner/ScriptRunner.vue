@@ -238,6 +238,28 @@
               </template>
               <span>{{ selectedVenvPath }}</span>
             </v-tooltip>
+            <v-tooltip :open-delay="600" location="top">
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  class="mr-2 align-self-center"
+                  icon
+                  :variant="showDebug ? 'tonal' : 'text'"
+                  :color="showDebug ? 'primary' : undefined"
+                  density="compact"
+                  data-test="debug-button"
+                  aria-label="Debug"
+                  :aria-pressed="showDebug"
+                  @click="toggleDebug"
+                >
+                  <v-icon icon="mdi-bug" />
+                </v-btn>
+              </template>
+              <span>
+                {{ showDebug ? 'Hide' : 'Show' }} Debug (Step, Goto, and debug
+                prompt)
+              </span>
+            </v-tooltip>
             <div v-if="startOrGoButton === 'Start'" class="d-flex align-center">
               <v-tooltip
                 v-if="overridesCount > 0"
@@ -363,6 +385,12 @@
               @click="runFromCursor"
             />
             <v-list-item
+              v-if="!scriptActive && pendingStartLine !== null"
+              title="Clear Goto Line"
+              data-test="clear-goto-line"
+              @click="clearPendingStartLine"
+            />
+            <v-list-item
               v-if="!scriptActive"
               title="Clear Local Breakpoints"
               @click="clearBreakpoints"
@@ -378,25 +406,61 @@
       </pane>
       <pane id="messages" class="mt-2" :size="100 - editorBoxSize">
         <div v-if="showDebug" id="debug" class="pa-0">
-          <v-row no-gutters>
-            <v-btn
-              color="primary"
-              style="width: 100px"
-              class="mr-4"
-              text="Step"
-              append-icon="mdi-step-forward"
-              :disabled="!liveScriptId"
-              data-test="step-button"
-              @click="step"
-            />
+          <v-row no-gutters class="flex-nowrap align-center pt-3 pb-2">
+            <v-tooltip :open-delay="600" location="top">
+              <template #activator="{ props }">
+                <div v-bind="props" class="mr-2">
+                  <v-btn
+                    color="primary"
+                    style="width: 100px"
+                    text="Step"
+                    append-icon="mdi-step-forward"
+                    :disabled="!liveScriptId"
+                    data-test="step-button"
+                    @click="step"
+                  />
+                </div>
+              </template>
+              <span>Execute the current line and pause on the next line</span>
+            </v-tooltip>
+            <v-tooltip :open-delay="600" location="top">
+              <template #activator="{ props }">
+                <div v-bind="props" class="d-flex align-center mr-4">
+                  <v-btn
+                    color="primary"
+                    style="width: 100px"
+                    text="Goto"
+                    append-icon="mdi-debug-step-over"
+                    :disabled="gotoDisabled"
+                    data-test="goto-button"
+                    @click="gotoExecutionLine"
+                  />
+                  <v-text-field
+                    v-model="gotoLineNumber"
+                    class="ml-1"
+                    style="width: 80px"
+                    type="number"
+                    min="1"
+                    variant="outlined"
+                    density="compact"
+                    hide-details
+                    label="Line"
+                    data-test="goto-line"
+                    @keydown.enter="gotoExecutionLine"
+                  />
+                </div>
+              </template>
+              <span>{{ gotoTooltip }}</span>
+            </v-tooltip>
             <v-text-field
               ref="debug"
               v-model="debug"
-              class="mb-2"
               variant="outlined"
               density="compact"
               hide-details
               label="Debug"
+              placeholder="GOTO 32, puts x / print(x), or any script code"
+              persistent-placeholder
               data-test="debug-text"
               @keydown="debugKeydown"
             />
@@ -823,6 +887,10 @@ const PYTHON_IMPORT_REGEX = /^\s*(import|from) /
 const PYTHON_BLOCK_REGEX = /^\s*(if|def|while|else|elif|class).*:\s*$/
 const PYTHON_FSTRING_REGEX = /\(f"/ // f strings
 
+// Lines that never execute so a breakpoint on them would never be hit:
+// blank, comment only, or a bare Ruby 'end' (optionally with a trailing comment)
+const NON_EXECUTABLE_LINE_REGEX = /^\s*(end\s*)?(#.*)?$/
+
 const RUBY_SUITE_TEMPLATE = `require 'openc3/script/suite.rb'
 
 # Group class name should indicate what the scripts are testing
@@ -1015,6 +1083,9 @@ export default {
       pauseOrRetryButton: PAUSE,
       showEnvironment: false,
       showDebug: false,
+      gotoLineNumber: null,
+      // Line Start runs from, set by Goto before a script starts
+      pendingStartLine: null,
       debug: '',
       debugHistory: [],
       debugHistoryIndex: 0,
@@ -1167,6 +1238,27 @@ export default {
     },
     stopDisabled: function () {
       return !this.liveScriptId
+    },
+    gotoDisabled: function () {
+      const line = Number.parseInt(this.gotoLineNumber, 10)
+      if (!(line >= 1)) {
+        return true
+      }
+      if (!this.scriptActive) {
+        // Before start Goto sets the line Start runs from. Suites have no Start.
+        return this.suiteRunner || this.startOrGoDisabled
+      }
+      // Goto repositions execution without running, so only while stopped on a line
+      return (
+        !this.liveScriptId ||
+        !['paused', 'breakpoint', 'error'].includes(this.state)
+      )
+    },
+    gotoTooltip: function () {
+      if (!this.scriptActive) {
+        return 'Set the line Start runs from. Click a line in the editor to fill in its number.'
+      }
+      return 'Move execution to this line without running it. Click a line in the editor to fill in its number. Also available by right-clicking a line and choosing Goto Line.'
     },
     stateTimer: function () {
       if (this.state === 'waiting' || this.state === 'paused') {
@@ -1491,13 +1583,6 @@ export default {
               divider: true,
             },
             {
-              label: 'Toggle Debug',
-              icon: 'mdi-bug',
-              command: () => {
-                this.toggleDebug()
-              },
-            },
-            {
               label: 'Toggle Disconnect',
               icon: 'mdi-connection',
               disabled: this.scriptActive,
@@ -1778,6 +1863,12 @@ export default {
     this.editor.focus()
 
     this.editor.on('guttermousedown', this.toggleBreakpoint)
+    // Clicking a line fills in the Goto line number. Only user clicks count:
+    // markLine moves the cursor on every line event, which would overwrite a
+    // number the user typed.
+    this.editor.on('click', () => {
+      this.gotoLineNumber = this.editor.getCursorPosition().row + 1
+    })
     // We listen to tokenizerUpdate rather than change because this
     // is the background process that updates as changes are processed
     // while change fires immediately before the UndoManager is updated.
@@ -1791,6 +1882,11 @@ export default {
     this.editor.session.on('change', ($event, session) => {
       sleepAnnotator.annotate($event, session)
       this.updateBreakpoints($event, session)
+      // Line numbers may have shifted, so a Goto start line could now point at
+      // the wrong line
+      if (!this.scriptActive) {
+        this.clearPendingStartLine()
+      }
     })
 
     this.editor.container.addEventListener('resize', this.doResize)
@@ -2138,10 +2234,12 @@ export default {
         return
       }
       const row = $event.getDocumentPosition().row
-      if ($event.editor.session.getBreakpoints(row, 0)[row]) {
-        $event.editor.session.clearBreakpoint(row)
-      } else {
-        $event.editor.session.setBreakpoint(row)
+      const session = $event.editor.session
+      if (session.getBreakpoints(row, 0)[row]) {
+        // Always allow clearing, even if the line has since become blank
+        session.clearBreakpoint(row)
+      } else if (!NON_EXECUTABLE_LINE_REGEX.test(session.getLine(row))) {
+        session.setBreakpoint(row)
       }
     },
     updateBreakpoints: function ($event, session) {
@@ -2446,7 +2544,9 @@ export default {
       this.scriptEnvironment.env = event
     },
     startHandler: function () {
-      this.start()
+      const startLine = this.pendingStartLine
+      this.pendingStartLine = null
+      this.start(null, null, startLine)
     },
     async start(
       event = null,
@@ -2532,6 +2632,31 @@ export default {
     async step() {
       if (this.liveScriptId) {
         await Api.post(`/script-api/running-script/${this.liveScriptId}/step`)
+      }
+    },
+    gotoExecutionLine() {
+      if (this.gotoDisabled) {
+        return
+      }
+      const line = Number.parseInt(this.gotoLineNumber, 10)
+      if (this.scriptActive) {
+        this.executeRange(line)
+      } else {
+        this.setPendingStartLine(line)
+      }
+    },
+    setPendingStartLine(line) {
+      const lastLine = this.editor.session.getLength()
+      const startLine = Math.min(line, lastLine)
+      this.pendingStartLine = startLine
+      this.gotoLineNumber = startLine
+      // markLine also moves the cursor to the line
+      this.markLine(startLine, 'startLine')
+    },
+    clearPendingStartLine() {
+      if (this.pendingStartLine !== null) {
+        this.pendingStartLine = null
+        this.removeAllMarkers()
       }
     },
     // This is called by processLine no matter the current state
@@ -2649,8 +2774,17 @@ export default {
             const existing = Object.keys(markers).filter(
               (key) => markers[key].clazz === `${this.state}Marker`,
             )
-            if (existing.length === 0) {
-              let line = data.line_no > 0 ? data.line_no : 1
+            const line = data.line_no > 0 ? data.line_no : 1
+            // Re-mark when the line or file changed while staying in the same
+            // state. Goto while paused goes straight from paused on one line to
+            // paused on another, so an existing marker isn't enough. The
+            // once-a-second republish of the same line still skips, so it
+            // doesn't scroll the editor back while the user looks around.
+            if (
+              existing.length === 0 ||
+              this.highlightedLine !== line ||
+              this.highlightedFilename !== this.currentFilename
+            ) {
               this.markLine(line, this.state)
               // Fatal errors don't always have a filename set
               if (data.filename) {
@@ -3689,6 +3823,16 @@ export default {
       } else if (event.key === 'Enter') {
         this.debugHistory.push(this.debug)
         this.debugHistoryIndex = this.debugHistory.length
+        // Before start, GOTO <line> sets the line Start runs from
+        const gotoMatch = this.debug.match(
+          /^\s*goto(?=[\s(])\s*\(?\s*(\d+)\s*\)?\s*$/i,
+        )
+        if (!this.scriptActive && gotoMatch) {
+          this.gotoLineNumber = Number.parseInt(gotoMatch[1], 10)
+          if (!this.gotoDisabled) {
+            this.setPendingStartLine(this.gotoLineNumber)
+          }
+        }
         // Post the code to /debug, output is processed by receive()
         if (this.liveScriptId) {
           Api.post(`/script-api/running-script/${this.liveScriptId}/debug`, {
@@ -3859,6 +4003,14 @@ hr {
   border-style: solid;
   border-color: red;
   background: rgba(0, 255, 0, 0.5);
+  z-index: 20;
+}
+
+.startLineMarker {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed rgba(0, 140, 255, 1);
+  background: rgba(0, 140, 255, 0.15);
   z-index: 20;
 }
 

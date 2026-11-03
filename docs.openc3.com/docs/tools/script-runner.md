@@ -97,6 +97,8 @@ Right clicking a script brings up several options:
 
 'Run from here' causes everything from the current location of the cursor to be copied to a fresh Script Runner tab and executed independently of the current script. This is useful to avoid executing earlier pieces of code but be careful of references to other variables that are not selected. COSMOS will not be able to reference undefined variables!
 
+'Goto Line' replaces 'Run from here' while a script is running. If the script is paused, stopped at a breakpoint, or in error, execution moves to the line under the cursor without running it, and the script stays paused there. Click Step to run that line or Go to continue from it. The Goto button in the Debug bar does the same thing.
+
 'Clear all breakpoints' allows you to quickly clear breakpoints set by clicking on the editor line number.
 
 ## Script Lifecycle
@@ -341,8 +343,14 @@ Break the loop if an Error occurs. Only available if the Loop option is set.
 
 ## Debugging Scripts
 
-When you enable the Debug prompt an additional line appears between the script and the Log Messages. You can type local variables to cause them to be output in the Log Messages. You can also set local variables by typing `var = 10`.
+Click the bug icon in the toolbar to show the Debug bar between the script and the Log Messages. The Debug bar also opens automatically when you click Step.
 
 ![Debug](/img/script_runner/debug.png)
 
 The Step button allows you to step line by line through the script. Clicking Go continues regular execution.
+
+The Goto button moves execution to the line number next to it without running that line. Click a line in the editor to fill in its number, or type one. Goto is available while the script is paused, stopped at a breakpoint, or in error. The script stays paused on the new line so you can inspect it before clicking Step or Go. You can also right-click a line and choose Goto Line.
+
+Before a script starts, Goto marks the line with a dashed outline and moves the cursor there. Clicking Start then runs the script from that line instead of the top. Typing `GOTO 12` in the debug prompt does the same thing. Editing the script clears the mark so Start never runs from a line that has moved.
+
+In the debug prompt you can type local variables to cause them to be output in the Log Messages. You can also set local variables by typing `var = 10`. Type `GOTO 32` (parentheses and capitalization are optional) to move execution to line 32, or `GOTO INST/procedures/other.rb 12` to move to a line in another file. If the script is paused, it stays paused on the new line. If the script is running, it jumps to the new line and keeps running.
