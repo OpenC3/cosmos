@@ -155,6 +155,12 @@ module OpenC3
         # and the reserved COSMOS target for system-generated telemetry
         target = TargetModel.get(name: "COSMOS", scope: "DEFAULT")
         expect(target["name"]).to eql "COSMOS"
+        # and the limits group microservice which publishes COSMOS LIMITS_GROUP under SCOPEMULTI
+        limits_group = MicroserviceModel.get_model(name: "DEFAULT__LIMITSGROUP__DEFAULT", scope: "DEFAULT")
+        expect(limits_group.cmd).to eql ["ruby", "limits_group_microservice.rb", "DEFAULT__LIMITSGROUP__DEFAULT"]
+        expect(limits_group.parent).to eql "DEFAULT__SCOPEMULTI__DEFAULT"
+        multi = MicroserviceModel.get_model(name: "DEFAULT__SCOPEMULTI__DEFAULT", scope: "DEFAULT")
+        expect(multi.cmd).to include("DEFAULT__LIMITSGROUP__DEFAULT")
         # Every scope gets a DEFAULT bridge_microservice (the Iroh hub)
         bridge = MicroserviceModel.get_model(name: "DEFAULT__BRIDGE__DEFAULT", scope: "DEFAULT")
         expect(bridge).to_not be_nil
