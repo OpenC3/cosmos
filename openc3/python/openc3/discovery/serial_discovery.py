@@ -32,15 +32,29 @@ class SerialDiscovery(Discovery):
             except ValueError as error:
                 raise ValueError(f"USB ID '{usb_id}' must be VID:PID in hex, e.g. 10C4:EA60") from error
 
-    def discover(self):
-        results = []
+    def scan(self):
+        devices = []
         for port in sorted(list_ports.comports(), key=lambda port: port.device):
             if port.device in self.IGNORED_DEVICES:
-                continue
-            if self.usb_ids and (port.vid, port.pid) not in self.usb_ids and (port.vid, None) not in self.usb_ids:
                 continue
             text = port.device
             if port.description and port.description != "n/a" and port.description != port.device:
                 text = f"{port.device} - {port.description}"
-            results.append({"value": port.device, "text": text})
-        return results
+            devices.append(
+                {
+                    "value": port.device,
+                    "text": text,
+                    "vid": port.vid,
+                    "pid": port.pid,
+                    "serial_number": getattr(port, "serial_number", None),
+                    "manufacturer": getattr(port, "manufacturer", None),
+                    "product": getattr(port, "product", None),
+                }
+            )
+        return devices
+
+    def match(self, device):
+        if not self.usb_ids:
+            return True
+        vid = device.get("vid")
+        return (vid, device.get("pid")) in self.usb_ids or (vid, None) in self.usb_ids

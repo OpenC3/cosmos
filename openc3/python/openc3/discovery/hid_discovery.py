@@ -17,6 +17,9 @@ class HidDiscovery(Discovery):
     to a vendor ID and product ID (decimal or 0x hex), e.g. 0x054C 0x0CE6 for a
     PS5 DualSense controller"""
 
+    # On macOS hidapi crashes Python on exit if it is first imported on another thread
+    MAIN_THREAD_IMPORTS = ["hid"]
+
     def __init__(self, vendor_id=None, product_id=None):
         super().__init__(vendor_id, product_id)
         self.vendor_id = self._parse_id(vendor_id)
@@ -28,13 +31,13 @@ class HidDiscovery(Discovery):
             return 0
         return int(str(value), 0)
 
-    def discover(self):
+    def scan(self):
         try:
             import hid
         except ImportError as error:
             raise RuntimeError("The hidapi Python package is not installed on the host") from error
 
-        results = []
+        devices = []
         seen = set()
         # hid.enumerate treats 0 as a wildcard for both IDs
         for device in hid.enumerate(self.vendor_id, self.product_id):
@@ -44,5 +47,19 @@ class HidDiscovery(Discovery):
                 continue
             seen.add(serial_number)
             product = device.get("product_string") or f"{device['vendor_id']:04X}:{device['product_id']:04X}"
-            results.append({"value": serial_number, "text": f"{product} ({serial_number})"})
-        return results
+            devices.append(
+                {
+                    "value": serial_number,
+                    "text": f"{product} ({serial_number})",
+                    "vid": device["vendor_id"],
+                    "pid": device["product_id"],
+                    "manufacturer": device.get("manufacturer_string") or None,
+                    "product": device.get("product_string") or None,
+                }
+            )
+        return devices
+
+    def match(self, device):
+        return (not self.vendor_id or device.get("vid") == self.vendor_id) and (
+            not self.product_id or device.get("pid") == self.product_id
+        )

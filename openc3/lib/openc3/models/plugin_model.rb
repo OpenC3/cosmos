@@ -757,6 +757,82 @@ module OpenC3
       name.to_s.delete_suffix('.py').tr('/', '.')
     end
 
+    # Version of the discovery_matchers format, shared with the OpenC3 Store
+    DISCOVERY_MATCHERS_FORMAT = 1
+
+    # The hardware a plugin can be installed for, from the VARIABLE_DISCOVERY of
+    # its variables (as parsed by install_phase1). Hardware discovery on the
+    # host scans for devices once and checks them against the matchers of every
+    # plugin in the OpenC3 Store, which computes them when a plugin is uploaded.
+    #
+    # Each matcher is a discovery class and its parameters (which must find the
+    # device), the variable the found value goes into, other variables to set
+    # when installing for it, and an optional title. Discovery parameters that
+    # use other variables (${name}) give one matcher for each state that sets
+    # them, e.g. one per integration of the Home Assistant plugin. A discovery
+    # without parameters finds any device of its kind, so it isn't a matcher.
+    def self.discovery_matchers(variables)
+      matchers = []
+      variables.each do |variable_name, variable|
+        Array(variable['discovery']).each do |entry|
+          discovery_class = discovery_class_key(entry['discovery'][0])
+          params = entry['discovery'][1..]
+          discovery_set = entry['set'] || {}
+          references = params.flat_map { |param| param.scan(DISCOVERY_REFERENCE).flatten }.uniq
+
+          # Fill in the parameters for each state that sets the variables they use
+          states = discovery_states(variables, variable_name, references)
+          if states.empty?
+            # Nothing sets them, so they keep their default values
+            states = [[nil, nil, references.to_h { |name| [name, variables[name]['value']] }]]
+          end
+          states.each do |control_name, option, values|
+            expanded = params.map { |param| param.gsub(DISCOVERY_REFERENCE) { values[$1].to_s } }.join(' ').split
+            next if expanded.empty?
+            set = {}
+            set[control_name] = option['value'] if control_name
+            set.merge!(discovery_set)
+            matcher = { 'class' => discovery_class, 'params' => expanded, 'variable' => variable_name, 'set' => set }
+            title = option ? option['text'] : discovery_set_title(variables, discovery_set)
+            matcher['title'] = title if title
+            matchers << matcher unless matchers.include?(matcher)
+          end
+        end
+      end
+      { 'format' => DISCOVERY_MATCHERS_FORMAT, 'matchers' => matchers }
+    end
+
+    # The states that set any of references and show variable_name, as
+    # [variable name, state, reference values]. References a state doesn't set
+    # keep their default values.
+    def self.discovery_states(variables, variable_name, references)
+      return [] if references.empty?
+      states = []
+      variables.each do |control_name, control|
+        options = Array(control['options'])
+        # States that use VARIABLE_STATE_SHOW only show the variable if they list it
+        shown_by_states = options.any? { |option| Array(option['show']).include?(variable_name) }
+        options.each do |option|
+          set = option['set'] || {}
+          next unless references.any? { |name| set.key?(name) }
+          next if shown_by_states and !Array(option['show']).include?(variable_name)
+          values = references.to_h { |name| [name, set.fetch(name) { variables[name]['value'] }] }
+          states << [control_name, option, values]
+        end
+      end
+      states
+    end
+
+    # The text of a state selected by a VARIABLE_DISCOVERY_SET, e.g. the model of
+    # controller a USB product ID identifies
+    def self.discovery_set_title(variables, discovery_set)
+      discovery_set.each do |name, value|
+        option = Array(variables.dig(name, 'options')).find { |state| state['value'] == value }
+        return option['text'] if option
+      end
+      nil
+    end
+
     # The value an installed plugin selected for a VARIABLE_DISCOVERY variable
     # "claims" that device (e.g. a serial port or controller serial number) so
     # discovery stops offering it to other plugins. Claims are per bridge, as

@@ -707,6 +707,34 @@ module OpenC3
       end
     end
 
+    describe "self.discovery_matchers" do
+      # Shared with the OpenC3 Store, which derives the same matchers on upload
+      fixtures = File.expand_path('../fixtures/discovery_matchers', __dir__)
+
+      def phase1_variables(plugin_txt)
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) { |path| File.write("#{path}/plugin.txt", plugin_txt) }
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        PluginModel.install_phase1(__FILE__, scope: "DEFAULT")['variables']
+      end
+
+      Dir[File.join(fixtures, '*', 'plugin.txt')].sort.each do |path|
+        name = File.basename(File.dirname(path))
+        it "derives the #{name} fixture matchers" do
+          expected = JSON.parse(File.read(File.join(File.dirname(path), 'expected.json')))
+          expect(PluginModel.discovery_matchers(phase1_variables(File.read(path)))).to eq expected
+        end
+      end
+
+      it "has no matchers without discovery" do
+        expect(PluginModel.discovery_matchers(phase1_variables("VARIABLE port 8080\n"))).to eq({ 'format' => 1, 'matchers' => [] })
+      end
+    end
+
     describe "self.install_phase2" do
       it "creates the plugin by deploying models in the plugin.txt" do
         stub_s3_client

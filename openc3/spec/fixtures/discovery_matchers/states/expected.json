@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "matchers": [
+    {
+      "class": "openc3.discovery.zeroconf_discovery",
+      "params": ["_hue._tcp.local.", "_hap._tcp.local.|md=BSB002*"],
+      "variable": "host",
+      "set": { "integration": "hue" },
+      "title": "Philips Hue"
+    },
+    {
+      "class": "openc3.discovery.zeroconf_discovery",
+      "params": ["_shelly._tcp.local."],
+      "variable": "host",
+      "set": { "integration": "shelly" },
+      "title": "Shelly"
+    },
+    {
+      "class": "openc3.discovery.zeroconf_discovery",
+      "params": ["_shelly._tcp.local."],
+      "variable": "ip_address",
+      "set": { "integration": "shelly" },
+      "title": "Shelly"
+    },
+    {
+      "class": "openc3.discovery.bluetooth_discovery",
+      "params": ["local_name=ACAIA*|manufacturer_id=16962"],
+      "variable": "address",
+      "set": { "integration": "acaia" },
+      "title": "Acaia scale"
+    }
+  ]
+}

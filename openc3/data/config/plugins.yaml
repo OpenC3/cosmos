@@ -179,7 +179,7 @@ VARIABLE_DISCOVERY:
     (lists the IP addresses of devices advertising the mDNS service types given as parameters, each optionally followed by
     `|name=glob` or `|property=glob` filters, e.g. `_http._tcp.local.|name=shelly*`) and openc3/discovery/bluetooth_discovery.py
     (lists the addresses of Bluetooth LE devices matching any of the matchers given as parameters, each made of
-    `local_name=glob`, `service_uuid=uuid`, `service_data_uuid=uuid` or `manufacturer_id=id` joined with `|`).
+    `local_name=glob`, `service_uuid=uuid`, `service_data_uuid=uuid`, `manufacturer_id=id` or `manufacturer_data_start=hex` (the start of that manufacturer's data) joined with `|`).
     A variable can have multiple VARIABLE_DISCOVERY keywords and their results are combined. Each can be followed by
     VARIABLE_DISCOVERY_SET keywords that set other variables when a value it found is selected.
     Discovered values are claimed by the plugin that uses them. Once a plugin is installed, the value it chose

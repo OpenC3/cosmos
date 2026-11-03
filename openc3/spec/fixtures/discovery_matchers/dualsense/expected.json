@@ -1,0 +1,26 @@
+{
+  "format": 1,
+  "matchers": [
+    {
+      "class": "openc3.discovery.hid_discovery",
+      "params": ["0x054C", "0x05C4"],
+      "variable": "dual_sense_serial_num",
+      "set": { "dual_sense_version": "4" },
+      "title": "DualShock 4 v1 (PS4)"
+    },
+    {
+      "class": "openc3.discovery.hid_discovery",
+      "params": ["0x054C", "0x0CE6"],
+      "variable": "dual_sense_serial_num",
+      "set": { "dual_sense_version": "5" },
+      "title": "DualSense (PS5)"
+    },
+    {
+      "class": "openc3.discovery.hid_discovery",
+      "params": ["0x054C", "0x0DF2"],
+      "variable": "dual_sense_serial_num",
+      "set": { "dual_sense_version": "5edge" },
+      "title": "DualSense Edge (PS5)"
+    }
+  ]
+}
