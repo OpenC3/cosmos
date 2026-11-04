@@ -126,7 +126,7 @@ function scoreToken(item, token) {
   if (item.path.toLowerCase().includes(token)) return 4
   // Characters in order, e.g. 'mts' matches 'My Test Suite'
   let index = 0
-  for (const char of name.replace(/ /g, '')) {
+  for (const char of name.replaceAll(' ', '')) {
     if (char === token[index]) index++
   }
   return index === token.length ? 5 : null
@@ -149,7 +149,9 @@ export function searchProcedures(items, query, limit = Infinity) {
     if (total !== null) scored.push({ item, total })
   }
   return scored
-    .sort((a, b) => a.total - b.total || a.item.name.localeCompare(b.item.name))
+    .toSorted(
+      (a, b) => a.total - b.total || a.item.name.localeCompare(b.item.name),
+    )
     .slice(0, limit)
     .map(({ item }) => item)
 }

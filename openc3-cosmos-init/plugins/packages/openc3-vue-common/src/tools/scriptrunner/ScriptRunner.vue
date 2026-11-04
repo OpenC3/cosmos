@@ -1294,7 +1294,8 @@ export default {
       if (!this.filenameSelect || this.filenameSelect === NEW_FILENAME) {
         return null
       }
-      return this.filenameSelect.replace(/\s*\*$/, '')
+      const name = this.filenameSelect
+      return name.endsWith('*') ? name.slice(0, -1).trimEnd() : name
     },
     // Files seen by the running script whose contents are loaded
     runningFiles: function () {
