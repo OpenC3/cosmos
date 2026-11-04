@@ -572,6 +572,124 @@ RSpec.describe StreamingApi, type: :model do
     end
   end
 
+  describe '#build_item_collection' do
+    before(:each) do
+      allow(OpenC3::TargetModel).to receive(:get_item_to_packet_map).with('INST', scope: 'DEFAULT').and_return({
+        'TEMP1' => ['HEALTH_STATUS', 'PARAMS'],
+      })
+    end
+
+    let(:latest_key) { 'DECOM__TLM__INST__LATEST__TEMP1__CONVERTED' }
+    let(:explicit_key) { 'DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED' }
+
+    def build(items)
+      collection = StreamingObjectCollection.new
+      @api.build_item_collection(collection, { 'items' => items }, scope: 'DEFAULT')
+      collection
+    end
+
+    it 'expands LATEST into one object per packet keyed by the LATEST key' do
+      collection = build([latest_key])
+      expect(collection.objects.map { |o| [o.key, o.item_key] }).to eq([
+        ['DECOM__TLM__INST__HEALTH_STATUS__TEMP1__CONVERTED', latest_key],
+        ['DECOM__TLM__INST__PARAMS__TEMP1__CONVERTED', latest_key],
+      ])
+    end
+
+    it 'keeps a LATEST item and an explicit item for the same packet' do
+      collection = build([latest_key, explicit_key])
+      expect(collection.length).to eq(3)
+      expect(collection.objects.select { |o| o.key == explicit_key }.map(&:item_key)).to contain_exactly(latest_key, explicit_key)
+    end
+
+    it 'removing the LATEST item leaves the explicit item' do
+      collection = build([latest_key, explicit_key])
+      build([latest_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map { |o| [o.key, o.item_key] }).to eq([[explicit_key, explicit_key]])
+    end
+
+    it 'removing the explicit item leaves the LATEST item' do
+      collection = build([latest_key, explicit_key])
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key).uniq).to eq([latest_key])
+      expect(collection.length).to eq(2)
+    end
+
+    it 'rejects LATEST for commands' do
+      expect { build(['DECOM__CMD__INST__LATEST__TEMP1__CONVERTED']) }.to raise_error(/LATEST is only supported for telemetry/)
+    end
+
+    it 'skips LATEST packets the user cannot access' do
+      allow_any_instance_of(StreamingObject).to receive(:authorize) do |_object, packet_name:, **|
+        raise OpenC3::ForbiddenError, 'forbidden' if packet_name == 'PARAMS'
+      end
+      expect(build([latest_key]).objects.map(&:packet_name)).to eq(['HEALTH_STATUS'])
+    end
+
+    it 'raises when the user cannot access any LATEST packet' do
+      allow_any_instance_of(StreamingObject).to receive(:authorize).and_raise(OpenC3::ForbiddenError, 'forbidden')
+      expect { build([latest_key]) }.to raise_error(OpenC3::ForbiddenError)
+    end
+
+    it 'removes an item added with an item_key when removed by key alone' do
+      collection = build([[explicit_key, '0']])
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection).to be_empty
+    end
+
+    it 'removing an explicit item by key alone leaves the LATEST item' do
+      collection = build([latest_key, [explicit_key, '0']])
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key).uniq).to eq([latest_key])
+      expect(collection.length).to eq(2)
+    end
+
+    it 'removing a LATEST item by key alone leaves the explicit item' do
+      collection = build([[latest_key, '0'], explicit_key])
+      build([latest_key]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map { |o| [o.key, o.item_key] }).to eq([[explicit_key, explicit_key]])
+    end
+
+    it 'removes every item_key for a key when removed by key alone' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      expect(collection.length).to eq(2)
+      build([explicit_key]).objects.each { |o| collection.remove(o) }
+      expect(collection).to be_empty
+    end
+
+    it 'removing a key with an item_key only removes that item_key' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      build([[explicit_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key)).to eq([explicit_key])
+    end
+
+    it 'removing an unknown item_key does not remove other item_keys' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      build([[explicit_key, '1']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key)).to contain_exactly(explicit_key, '0')
+    end
+
+    it 'falls back to matching source_key and item_key when the exact object is not found' do
+      allow(OpenC3::TargetModel).to receive(:get_item_to_packet_map).with('INST', scope: 'DEFAULT').and_return({
+        'TEMP1' => ['PARAMS'],
+      })
+      collection = build([[latest_key, '0'], [latest_key, '1']])
+      allow(OpenC3::TargetModel).to receive(:get_item_to_packet_map).with('INST', scope: 'DEFAULT').and_return({
+        'TEMP1' => ['HEALTH_STATUS'],
+      })
+      # The HEALTH_STATUS object was never added so the removal falls back to the sweep
+      build([[latest_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map(&:item_key)).to eq(['1'])
+    end
+
+    it 'keeps a LATEST item and an explicit item with the same item_key' do
+      collection = build([[latest_key, '0'], [explicit_key, '0']])
+      expect(collection.length).to eq(3)
+      build([[latest_key, '0']]).objects.each { |o| collection.remove(o) }
+      expect(collection.objects.map { |o| [o.key, o.source_key] }).to eq([[explicit_key, explicit_key]])
+    end
+  end
+
   describe 'add with COSMOS_ALL packets and authorization' do
     it 'skips unauthorized packets when using COSMOS_ALL' do
       $openc3_authorize = true
@@ -1337,6 +1455,54 @@ RSpec.describe StreamingApi, type: :model do
         expect(@messages.length).to eq(2)
         expect(@messages[-1]).to eq([])
       end
+    end
+  end
+
+  context 'multiple db_shards' do
+    # INST lives on db_shard 1. The db_shard 0 EphemeralStore stubbed above
+    # returns no messages so anything streamed must come from db_shard 1.
+    before(:each) do
+      @send_count = 0
+      OpenC3::TargetModel.new(name: 'INST', scope: 'DEFAULT', db_shard: 1).create
+    end
+
+    it 'streams realtime items from the target db_shard' do
+      @api.add({ 'items' => ['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED'], 'scope' => 'DEFAULT' })
+      sleep 0.2 # Allow the thread to start
+      time = Time.now.to_nsec_from_epoch
+      OpenC3::EphemeralStore.instance(db_shard: 1).write_topic('DEFAULT__DECOM__{INST}__PARAMS',
+        { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => time, 'json_data' => JSON.generate({ 'VALUE1' => 5 }) })
+      start = Time.now
+      sleep 0.05 while @messages.empty? and (Time.now - start) < 3
+      expect(@messages[0][0]['DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED']).to eq(5)
+    end
+
+    it 'streams decom packets from the target db_shard TSDB' do
+      # Only the db_shard 1 connection has data
+      db_shard0_conn = instance_double(PG::Connection)
+      allow(db_shard0_conn).to receive(:type_map_for_results).and_return(Object.new)
+      allow(db_shard0_conn).to receive(:exec).and_return(nil)
+      db_shard1_conn = instance_double(PG::Connection)
+      allow(db_shard1_conn).to receive(:type_map_for_results).and_return(Object.new)
+      pg_data = [
+        [["PACKET_TIMESECONDS", Time.at(@file_start_time / 1_000_000_000)], ["VALUE1", 100], ["VALUE1__C", 10.5], ["__pkt_time_ns", @file_start_time], ["__rx_time_ns", @file_start_time]]
+      ]
+      pg_data.define_singleton_method(:ntuples) { 1 }
+      exec_cnt = 0
+      allow(db_shard1_conn).to receive(:exec) do
+        exec_cnt += 1
+        exec_cnt == 1 ? pg_data : nil
+      end
+      allow(OpenC3::QuestDBClient).to receive(:connection) { |db_shard: 0| db_shard == 1 ? db_shard1_conn : db_shard0_conn }
+
+      @api.add({ 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'], 'scope' => 'DEFAULT',
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1_000_000_000 })
+      sleep 1.5 # Allow the threads to run
+
+      expect(@messages.length).to eq(2)
+      expect(@messages[0][0]['__packet']).to eq('DECOM__TLM__INST__PARAMS__CONVERTED')
+      expect(@messages[0][0]['VALUE1']).to eq(10.5)
+      expect(@messages[-1]).to eq([])
     end
   end
 end

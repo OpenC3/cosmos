@@ -18,9 +18,9 @@ import openc3.script
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.extract import (
     compare_values,
+    extract_comparison,
     extract_fields_from_check_text,
     extract_fields_from_tlm_text,
-    extract_operator_and_operand_from_comparison,
 )
 
 from .exceptions import CheckError
@@ -624,7 +624,7 @@ def _check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     target_name, packet_name, item_name, comparison_to_eval = _check_process_args(args, "check")
     value = openc3.script.API_SERVER.tlm(target_name, packet_name, item_name, type=type, scope=scope)
     if comparison_to_eval:
-        return _check_comparison(target_name, packet_name, item_name, comparison_to_eval, value)
+        return _check_comparison(target_name, packet_name, item_name, type, comparison_to_eval, value, scope)
     else:
         print(f"CHECK: {_upcase(target_name, packet_name, item_name)} == {value}")
 
@@ -695,6 +695,9 @@ def _wait_packet(
         type = "CHECK"
     else:
         type = "WAIT"
+    # LATEST would compare the RECEIVED_COUNT of whichever packet was received most recently
+    if str(packet_name).upper() == "LATEST":
+        raise RuntimeError("LATEST is not supported by wait_packet, specify a packet name")
     initial_count = openc3.script.API_SERVER.tlm(target_name, packet_name, "RECEIVED_COUNT", scope=scope)
     # If the packet has not been received the initial_count could be None
     if initial_count is None:
@@ -906,7 +909,7 @@ def _openc3_script_wait(
     return False, value
 
 
-def _comparison_implementation(comparison_to_eval):
+def _comparison_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, scope=OPENC3_SCOPE):
     """Builds a callable which compares a telemetry value against the given comparison string,
     e.g. "> 1". Returns None if there is no comparison, e.g. a check with no comparison.
     Raises if the comparison is invalid, e.g. an unsupported operator or unparsable operand.
@@ -916,7 +919,11 @@ def _comparison_implementation(comparison_to_eval):
     if not comparison_to_eval.isascii():
         raise RuntimeError("ERROR: Invalid comparison to non-ascii value")
 
-    operator, operand = extract_operator_and_operand_from_comparison(comparison_to_eval)
+    operator, operand = extract_comparison(
+        comparison_to_eval,
+        value_type,
+        lambda: openc3.script.API_SERVER.get_item(target_name, packet_name, item_name, scope=scope),
+    )
     if operator is None:
         return None
     return lambda value: compare_values(value, operator, operand)
@@ -969,7 +976,7 @@ def _openc3_script_wait_value(
         value_type,
         timeout,
         polling_rate,
-        _comparison_implementation(comparison_to_eval),
+        _comparison_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, scope),
         scope,
     )
 
@@ -1057,7 +1064,7 @@ def _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, 
     return None
 
 
-def _check_comparison(target_name, packet_name, item_name, comparison_to_eval, value):
+def _check_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, value, scope=OPENC3_SCOPE):
     check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)} {comparison_to_eval}"
     # Show user the check against a quoted string
     if isinstance(value, str):
@@ -1066,7 +1073,11 @@ def _check_comparison(target_name, packet_name, item_name, comparison_to_eval, v
         value_str = value
     with_value = f"with value == {value_str}"
 
-    operator, operand = extract_operator_and_operand_from_comparison(comparison_to_eval)
+    operator, operand = extract_comparison(
+        comparison_to_eval,
+        value_type,
+        lambda: openc3.script.API_SERVER.get_item(target_name, packet_name, item_name, scope=scope),
+    )
     if not _valid_comparison(value, operator, operand):
         message = "Invalid comparison for types"
         if openc3.script.DISCONNECT:

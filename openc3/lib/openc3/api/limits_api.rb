@@ -26,6 +26,7 @@ module OpenC3
                        'get_out_of_limits',
                        'get_overall_limits_state',
                        'limits_enabled?',
+                       'limits_enabled', # Python scripts call this alias since Python method names can't end in ?
                        'enable_limits',
                        'disable_limits',
                        'get_limits',
@@ -121,29 +122,16 @@ module OpenC3
     #
     # Favor the first syntax where possible as it is more succinct.
     #
-    # @param args [String|Array<String>] See the description for calling style
+    # @param args [String|Array<String>] See the description for calling style.
+    #   A packet name of LATEST applies to every packet which contains the item.
     def enable_limits(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
-      target_name, packet_name, item_name = _tlm_process_args(args, 'enable_limits', scope: scope)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
-      packet = TargetModel.packet(target_name, packet_name, scope: scope)
-      found_item = nil
-      packet['items'].each do |item|
-        if item['name'] == item_name
-          item['limits']['enabled'] = true
-          found_item = item
-          break
-        end
+      target_name, packet_names, item_name = _tlm_process_args_all_packets(args, 'enable_limits', scope: scope)
+      packet_names.each do |packet_name|
+        authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       end
-      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist while enabling limits" unless found_item
-
-      TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
-
-      message = "Enabling Limits For '#{target_name} #{packet_name} #{item_name}'"
-      Logger.info(message, scope: scope)
-
-      event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
-                item_name: item_name, enabled: true, time_nsec: Time.now.to_nsec_from_epoch, message: message }
-      LimitsEventTopic.write(event, scope: scope)
+      packet_names.each do |packet_name|
+        _set_limits_enabled(target_name, packet_name, item_name, true, scope: scope)
+      end
     end
 
     # Disable limit checking for a telemetry item
@@ -154,29 +142,16 @@ module OpenC3
     #
     # Favor the first syntax where possible as it is more succinct.
     #
-    # @param args [String|Array<String>] See the description for calling style
+    # @param args [String|Array<String>] See the description for calling style.
+    #   A packet name of LATEST applies to every packet which contains the item.
     def disable_limits(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
-      target_name, packet_name, item_name = _tlm_process_args(args, 'disable_limits', scope: scope)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
-      packet = TargetModel.packet(target_name, packet_name, scope: scope)
-      found_item = nil
-      packet['items'].each do |item|
-        if item['name'] == item_name
-          item['limits']['enabled'] = false
-          found_item = item
-          break
-        end
+      target_name, packet_names, item_name = _tlm_process_args_all_packets(args, 'disable_limits', scope: scope)
+      packet_names.each do |packet_name|
+        authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       end
-      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist while disabling limits" unless found_item
-
-      TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
-
-      message = "Disabling Limits for '#{target_name} #{packet_name} #{item_name}'"
-      Logger.info(message, scope: scope)
-
-      event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
-                item_name: item_name, enabled: false, time_nsec: Time.now.to_nsec_from_epoch, message: message }
-      LimitsEventTopic.write(event, scope: scope)
+      packet_names.each do |packet_name|
+        _set_limits_enabled(target_name, packet_name, item_name, false, scope: scope)
+      end
     end
 
     # Get a Hash of all the limits sets defined for an item. Hash keys are the limit
@@ -189,9 +164,16 @@ module OpenC3
     #
     # @return [Hash{String => Array<Number, Number, Number, Number, Number, Number>}]
     def get_limits(target_name, packet_name, item_name, cache_timeout: nil, manual: false, scope: $openc3_scope, token: $openc3_token)
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
+      item_name = item_name.upcase
+      # Resolve LATEST before authorizing so the real packet is authorized
+      if packet_name == 'LATEST'
+        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: scope)
+      end
       authorize(permission: 'tlm', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
       limits = {}
-      item = _get_item(target_name, packet_name, item_name, cache_timeout: cache_timeout, scope: scope)
+      item = TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
       item['limits'].each do |key, vals|
         next unless vals.is_a?(Hash)
 
@@ -202,56 +184,58 @@ module OpenC3
     end
 
     # Change the limits settings for a given item. By default, a new limits set called 'CUSTOM'
-    # is created to avoid overriding existing limits.
+    # is created to avoid overriding existing limits. A packet name of LATEST
+    # applies to every packet which contains the item.
     def set_limits(target_name, packet_name, item_name, red_low, yellow_low, yellow_high, red_high,
                    green_low = nil, green_high = nil, limits_set = 'CUSTOM', persistence = nil, enabled = true,
                    manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
+      item_name = item_name.upcase
+      packet_names = (packet_name == 'LATEST') ? _tlm_packet_names(target_name, packet_name, item_name, scope: scope) : [packet_name]
+      packet_names.each do |name|
+        authorize(permission: 'tlm_set', target_name: target_name, packet_name: name, manual: manual, scope: scope, token: token)
+      end
       if (red_low > yellow_low) || (yellow_low >= yellow_high) || (yellow_high > red_high)
         raise "Invalid limits specified. Ensure yellow limits are within red limits."
       end
       if (green_low && green_high) && ((yellow_low > green_low) || (green_low >= green_high) || (green_high > yellow_high))
         raise "Invalid limits specified. Ensure green limits are within yellow limits."
       end
-      packet = TargetModel.packet(target_name, packet_name, scope: scope)
-      found_item = nil
-      packet['items'].each do |item|
-        if item['name'] == item_name
-          if item['limits']
-            item['limits']['persistence_setting'] = persistence if persistence
-            if enabled
-              item['limits']['enabled'] = true
-            else
-              item['limits']['enabled'] = false
-            end
-            limits = {}
-            limits['red_low'] = red_low
-            limits['yellow_low'] = yellow_low
-            limits['yellow_high'] = yellow_high
-            limits['red_high'] = red_high
-            limits['green_low'] = green_low if green_low && green_high
-            limits['green_high'] = green_high if green_low && green_high
-            item['limits'][limits_set] = limits
-            found_item = item
-            break
-          else
-            raise "Cannot set_limits on item without any limits"
-          end
-        end
+      # Validate every packet before changing any so an error doesn't leave a partial update.
+      # TargetModel.packet returns a cached hash so it must not be modified until validated.
+      items = packet_names.map do |name|
+        packet = TargetModel.packet(target_name, name, scope: scope)
+        item = packet['items'].find { |packet_item| packet_item['name'] == item_name }
+        raise "Item '#{target_name} #{name} #{item_name}' does not exist while setting limits" unless item
+        raise "Cannot set_limits on item without any limits" unless item['limits']
+        [name, packet, item]
       end
-      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist while setting limits" unless found_item
-      message = "Setting '#{target_name} #{packet_name} #{item_name}' limits to #{red_low} #{yellow_low} #{yellow_high} #{red_high}"
-      message << " #{green_low} #{green_high}" if green_low && green_high
-      message << " in set #{limits_set} with persistence #{persistence} as enabled #{enabled}"
-      Logger.info(message, scope: scope)
+      items.each do |name, packet, item|
+        item['limits']['persistence_setting'] = persistence if persistence
+        item['limits']['enabled'] = enabled ? true : false
+        limits = {}
+        limits['red_low'] = red_low
+        limits['yellow_low'] = yellow_low
+        limits['yellow_high'] = yellow_high
+        limits['red_high'] = red_high
+        limits['green_low'] = green_low if green_low && green_high
+        limits['green_high'] = green_high if green_low && green_high
+        item['limits'][limits_set] = limits
 
-      TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
+        message = "Setting '#{target_name} #{name} #{item_name}' limits to #{red_low} #{yellow_low} #{yellow_high} #{red_high}"
+        message << " #{green_low} #{green_high}" if green_low && green_high
+        message << " in set #{limits_set} with persistence #{persistence} as enabled #{enabled}"
+        Logger.info(message, scope: scope)
 
-      event = { type: :LIMITS_SETTINGS, target_name: target_name, packet_name: packet_name,
-                item_name: item_name, red_low: red_low, yellow_low: yellow_low, yellow_high: yellow_high, red_high: red_high,
-                green_low: green_low, green_high: green_high, limits_set: limits_set, persistence: persistence, enabled: enabled,
-                time_nsec: Time.now.to_nsec_from_epoch, message: message }
-      LimitsEventTopic.write(event, scope: scope)
+        TargetModel.set_packet(target_name, name, packet, scope: scope)
+
+        event = { type: :LIMITS_SETTINGS, target_name: target_name, packet_name: name,
+                  item_name: item_name, red_low: red_low, yellow_low: yellow_low, yellow_high: yellow_high, red_high: red_high,
+                  green_low: green_low, green_high: green_high, limits_set: limits_set, persistence: persistence, enabled: enabled,
+                  time_nsec: Time.now.to_nsec_from_epoch, message: message }
+        LimitsEventTopic.write(event, scope: scope)
+      end
     end
 
     # Change the color associated with a telemetry item state in realtime.
@@ -266,9 +250,16 @@ module OpenC3
     #   or RED. Pass nil to clear (remove) the state color. Setting a color also
     #   enables limits for the item, but clearing the color (nil) does not change
     #   whether limits are enabled.
+    # A packet name of LATEST applies to every packet which contains the item.
     def set_state_color(target_name, packet_name, item_name, state_name, color,
                         manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm_set', target_name: target_name, packet_name: packet_name, manual: manual, scope: scope, token: token)
+      target_name = target_name.upcase
+      packet_name = packet_name.upcase
+      item_name = item_name.upcase
+      packet_names = (packet_name == 'LATEST') ? _tlm_packet_names(target_name, packet_name, item_name, scope: scope) : [packet_name]
+      packet_names.each do |name|
+        authorize(permission: 'tlm_set', target_name: target_name, packet_name: name, manual: manual, scope: scope, token: token)
+      end
       state_name = state_name.to_s.upcase
       unless color.nil?
         color = color.to_s.upcase
@@ -276,40 +267,42 @@ module OpenC3
           raise "Invalid state color '#{color}'. Must be one of #{PacketItem::STATE_COLORS.join(', ')}."
         end
       end
-      packet = TargetModel.packet(target_name, packet_name, scope: scope)
-      found_item = nil
-      packet['items'].each do |item|
-        if item['name'] == item_name
-          unless item['states'] && item['states'][state_name]
-            raise "State '#{state_name}' does not exist for item '#{target_name} #{packet_name} #{item_name}'"
-          end
-          if color.nil?
-            # Clear the state color
-            item['states'][state_name].delete('color')
-          else
-            item['states'][state_name]['color'] = color
-            # Defining a state color implies limits are enabled for the item
-            item['limits'] ||= {}
-            item['limits']['enabled'] = true
-          end
-          found_item = item
-          break
+      # Validate every packet before changing any so an error doesn't leave a partial update.
+      # TargetModel.packet returns a cached hash so it must not be modified until validated.
+      items = packet_names.map do |name|
+        packet = TargetModel.packet(target_name, name, scope: scope)
+        item = packet['items'].find { |packet_item| packet_item['name'] == item_name }
+        raise "Item '#{target_name} #{name} #{item_name}' does not exist while setting state color" unless item
+        unless item['states'] && item['states'][state_name]
+          raise "State '#{state_name}' does not exist for item '#{target_name} #{name} #{item_name}'"
         end
+        [name, packet, item]
       end
-      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist while setting state color" unless found_item
-      if color.nil?
-        message = "Clearing '#{target_name} #{packet_name} #{item_name}' state #{state_name} color"
-      else
-        message = "Setting '#{target_name} #{packet_name} #{item_name}' state #{state_name} color to #{color}"
+      items.each do |name, packet, item|
+        if color.nil?
+          # Clear the state color
+          item['states'][state_name].delete('color')
+        else
+          item['states'][state_name]['color'] = color
+          # Defining a state color implies limits are enabled for the item
+          item['limits'] ||= {}
+          item['limits']['enabled'] = true
+        end
+
+        if color.nil?
+          message = "Clearing '#{target_name} #{name} #{item_name}' state #{state_name} color"
+        else
+          message = "Setting '#{target_name} #{name} #{item_name}' state #{state_name} color to #{color}"
+        end
+        Logger.info(message, scope: scope)
+
+        TargetModel.set_packet(target_name, name, packet, scope: scope)
+
+        event = { type: :LIMITS_STATE_COLOR, target_name: target_name, packet_name: name,
+                  item_name: item_name, state_name: state_name, color: color,
+                  time_nsec: Time.now.to_nsec_from_epoch, message: message }
+        LimitsEventTopic.write(event, scope: scope)
       end
-      Logger.info(message, scope: scope)
-
-      TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
-
-      event = { type: :LIMITS_STATE_COLOR, target_name: target_name, packet_name: packet_name,
-                item_name: item_name, state_name: state_name, color: color,
-                time_nsec: Time.now.to_nsec_from_epoch, message: message }
-      LimitsEventTopic.write(event, scope: scope)
     end
 
     # Returns all limits_groups and their members
@@ -407,58 +400,54 @@ module OpenC3
     def _limits_group(group_name, action:, manual:, scope:, token:)
       authorize(permission: 'tlm_set', manual: manual, scope: scope, token: token)
       group_name.upcase!
-      group = get_limits_groups(scope: scope, token: token)[group_name]
-      raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}" unless group
+      # Items grouped by target and packet so each packet is read and written once
+      items = LimitsEventTopic.limits_group_items(group_name, scope: scope)
+      raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}" unless items
 
-      Logger.info("#{action.to_s.capitalize} Limits Group: #{group_name}", scope: scope)
-      last_target_name = nil
-      last_packet_name = nil
-      packet = nil
-      group.sort.each do |target_name, packet_name, item_name|
-        if last_target_name != target_name || last_packet_name != packet_name
-          if last_target_name && last_packet_name
-            TargetModel.set_packet(last_target_name, last_packet_name, packet, scope: scope)
-          end
+      enabled = (action == :enable)
+      message = "#{enabled ? 'Enabling' : 'Disabling'} Limits Group: #{group_name}"
+      Logger.info(message, scope: scope)
+
+      items.each do |target_name, packets|
+        packets.each do |packet_name, item_names|
           packet = TargetModel.packet(target_name, packet_name, scope: scope)
-        end
-        packet['items'].each do |item|
-          if item['name'] == item_name
-            if action == :enable
-              enabled = true
-              item['limits']['enabled'] = true
-              message = "Enabling Limits for '#{target_name} #{packet_name} #{item_name}'"
-            elsif action == :disable
-              enabled = false
-              item['limits']['enabled'] = false
-              message = "Disabling Limits for '#{target_name} #{packet_name} #{item_name}'"
-            end
-            Logger.info(message, scope: scope)
-
-            event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
-                      item_name: item_name, enabled: enabled, time_nsec: Time.now.to_nsec_from_epoch, message: message }
-            LimitsEventTopic.write(event, scope: scope)
-            break
+          item_names_hash = item_names.to_h { |name| [name, true] }
+          packet['items'].each do |item|
+            item['limits']['enabled'] = enabled if item_names_hash[item['name']]
           end
+          TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
         end
-        last_target_name = target_name
-        last_packet_name = packet_name
       end
-      if last_target_name && last_packet_name
-        TargetModel.set_packet(last_target_name, last_packet_name, packet, scope: scope)
-      end
+
+      # Write a single event for the entire group. Writing one event per item
+      # floods the limits event stream, which is trimmed to ~1000 entries, so
+      # decom microservices could miss events and leave limits enabled.
+      # The event only names the group (readers look up the items) so it stays
+      # small no matter how many items the group contains.
+      event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: group_name,
+                enabled: enabled, time_nsec: Time.now.to_nsec_from_epoch, message: message }
+      LimitsEventTopic.write(event, scope: scope)
     end
 
-    # Gets an item. The code below is mostly duplicated from tlm_process_args in tlm_api.rb.
-    #
-    # @param target_name [String] target name
-    # @param packet_name [String] packet name
-    # @param item_name [String] item name
-    # @param scope [String] scope
-    # @return Hash The requested item based on the packet name
-    def _get_item(target_name, packet_name, item_name, cache_timeout: nil, scope:)
-      # Determine if this item exists, it will raise appropriate errors if not
-      packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout: cache_timeout, scope: $openc3_scope) if packet_name == 'LATEST'
-      return TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
+    def _set_limits_enabled(target_name, packet_name, item_name, enabled, scope:)
+      packet = TargetModel.packet(target_name, packet_name, scope: scope)
+      item = packet['items'].find { |packet_item| packet_item['name'] == item_name }
+      action = enabled ? 'enabling' : 'disabling'
+      raise "Item '#{target_name} #{packet_name} #{item_name}' does not exist while #{action} limits" unless item
+
+      item['limits']['enabled'] = enabled
+      TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
+
+      if enabled
+        message = "Enabling Limits For '#{target_name} #{packet_name} #{item_name}'"
+      else
+        message = "Disabling Limits for '#{target_name} #{packet_name} #{item_name}'"
+      end
+      Logger.info(message, scope: scope)
+
+      event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
+                item_name: item_name, enabled: enabled, time_nsec: Time.now.to_nsec_from_epoch, message: message }
+      LimitsEventTopic.write(event, scope: scope)
     end
   end
 end

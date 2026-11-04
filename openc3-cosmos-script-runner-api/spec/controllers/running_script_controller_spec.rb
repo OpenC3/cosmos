@@ -217,12 +217,59 @@ RSpec.describe RunningScriptController, type: :controller do
         script_model = double("ScriptModel")
         allow(script_model).to receive(:filename).and_return("INST/procedures/test.rb")
         allow(script_model).to receive(:pid).and_return("12345")
+        allow(script_model).to receive(:is_complete?).and_return(false)
+        allow(script_model).to receive(:end_time).and_return(nil)
+        allow(script_model).to receive(:end_time=)
+        allow(script_model).to receive(:state=)
+        allow(script_model).to receive(:update)
         allow(OpenC3::ScriptStatusModel).to receive(:get_model).and_return(script_model)
       end
 
       it "stops and deletes the script" do
         allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
         expect_any_instance_of(RunningScriptController).to receive(:running_script_publish).at_least(:once).with("cmd-running-script-channel:1", "stop")
+
+        delete :delete, params: {id: "1", scope: "DEFAULT"}
+
+        expect(response.status).to eq(200)
+      end
+
+      it "moves the script to completed if the process died without cleaning up" do
+        allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
+        allow_any_instance_of(RunningScriptController).to receive(:running_script_publish)
+        script_model = OpenC3::ScriptStatusModel.get_model(name: "1", scope: "DEFAULT")
+        expect(script_model).to receive(:state=).with("killed")
+        expect(script_model).to receive(:update)
+
+        delete :delete, params: {id: "1", scope: "DEFAULT"}
+
+        expect(response.status).to eq(200)
+      end
+
+      it "leaves the script alone if the process already completed it" do
+        allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
+        allow_any_instance_of(RunningScriptController).to receive(:running_script_publish)
+        script_model = OpenC3::ScriptStatusModel.get_model(name: "1", scope: "DEFAULT")
+        allow(script_model).to receive(:is_complete?).and_return(true)
+        expect(script_model).not_to receive(:update)
+
+        delete :delete, params: {id: "1", scope: "DEFAULT"}
+
+        expect(response.status).to eq(200)
+      end
+
+      it "re-fetches the model to see a completion written while stopping" do
+        allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
+        allow_any_instance_of(RunningScriptController).to receive(:running_script_publish)
+        # The initial fetch sees the script running, then the process
+        # moves itself to completed before it exits
+        running_model = OpenC3::ScriptStatusModel.get_model(name: "1", scope: "DEFAULT")
+        completed_model = double("CompletedScriptModel")
+        allow(completed_model).to receive(:filename).and_return("INST/procedures/test.rb")
+        allow(completed_model).to receive(:is_complete?).and_return(true)
+        allow(OpenC3::ScriptStatusModel).to receive(:get_model).and_return(running_model, completed_model)
+        expect(running_model).not_to receive(:update)
+        expect(completed_model).not_to receive(:update)
 
         delete :delete, params: {id: "1", scope: "DEFAULT"}
 
@@ -257,6 +304,8 @@ RSpec.describe RunningScriptController, type: :controller do
         script_model = double("ScriptModel")
         allow(script_model).to receive(:filename).and_return("INST/procedures/test.rb")
         allow(script_model).to receive(:pid).and_return("12345")
+        allow(script_model).to receive(:is_complete?).and_return(false)
+        allow(script_model).to receive(:end_time).and_return(nil)
         allow(script_model).to receive(:end_time=) do |value|
           @end_time = value
         end
@@ -281,6 +330,8 @@ RSpec.describe RunningScriptController, type: :controller do
         script_model = double("ScriptModel")
         allow(script_model).to receive(:filename).and_return("INST/procedures/test.rb")
         allow(script_model).to receive(:pid).and_return(nil)
+        allow(script_model).to receive(:is_complete?).and_return(false)
+        allow(script_model).to receive(:end_time).and_return(nil)
         allow(script_model).to receive(:end_time=)
         allow(script_model).to receive(:state=)
         allow(script_model).to receive(:update)

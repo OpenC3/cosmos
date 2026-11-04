@@ -28,6 +28,11 @@ module OpenC3
       klass.new
     end
 
+    # snake_case alias to match the Python Bucket.get_client
+    def self.get_client # rubocop:disable Naming/AccessorMethodName
+      getClient()
+    end
+
     def initialize
       # Setup the client instance
     end

@@ -266,7 +266,14 @@ test('displays INST LAUNCHER', async ({ page, utils }) => {
 })
 
 test('displays INST LIMITS', async ({ page, utils }) => {
-  await showScreen(page, utils, 'INST', 'LIMITS')
+  await showScreen(page, utils, 'INST', 'LIMITS', true, async function () {
+    // The second limits bar is LIMITSBAR INST LATEST TEMP1. Its limits come
+    // from get_limits, which renders 'undefined' in the tooltip if it fails.
+    await page.locator('.limitsbar').nth(1).hover()
+    await expect(
+      page.locator('.v-tooltip .v-overlay__content').filter({ visible: true }),
+    ).toHaveText('RL/-80 YL/-70 YH/60 RH/80 GL/-20 GH/20')
+  })
 })
 
 test('displays INST MEMDUMP', async ({ page, utils }) => {

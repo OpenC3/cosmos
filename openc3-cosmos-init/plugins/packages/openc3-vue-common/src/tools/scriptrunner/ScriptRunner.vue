@@ -2395,6 +2395,9 @@ export default {
     async scriptComplete() {
       // Completion can also be reached through status refreshes or failed run
       // requests rather than a queued 'complete' event.
+      // Stop the waiting timer on every path: the 'complete' message sets a
+      // terminal state without going through processLine()
+      this.clearWaiting()
       this.queueReceivedOutputLines()
       this.flushOutputLines(true)
       // Supersede any scriptStart still awaiting its subscription. Must
@@ -2754,6 +2757,12 @@ export default {
               if (data.report) {
                 this.results.text = data.report
                 this.results.show = true
+              }
+              // A crash in the script process itself (not the script thread)
+              // never publishes a terminal state with a line event, so take
+              // the final state from the 'complete' message
+              if (data.state) {
+                this.state = data.state
               }
               // Set before the teardown below: 'complete' is terminal even if
               // scriptComplete() throws, and the catch would otherwise let the

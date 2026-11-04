@@ -1,9 +1,10 @@
 {
   "name": "@openc3/cosmos-tool-cmdtlmserver",
-  "version": "7.5.0-beta0",
+  "version": "7.5.1-beta0",
   "private": true,
   "type": "module",
   "scripts": {
+    "test": "node --test tests/*.test.js",
     "serve": "vite build --watch --mode dev-server",
     "build": "vite build",
     "lint": "eslint src",
