@@ -129,15 +129,15 @@ if [ "${OPENC3_CLOUD}" = "local" ]; then
     attempt=0
     RC=1
     while [ $RC -gt 0 ]; do
-        # Check if buckets endpoint is responding (accept any HTTP response, even 403)
-        # Remove -f flag so curl only fails on connection errors, not HTTP errors
-        # --connect-timeout/--max-time keep each probe short so the loop retries
-        # quickly instead of blocking ~2 min on an unanswered TCP connect (which
-        # also masks the moment the endpoint becomes reachable)
-        curl -s --connect-timeout 5 --max-time 10 ${OPENC3_BUCKET_URL}/ -o /dev/null
+        # A 403 is normal for an unauthenticated S3 probe. A 5xx is not ready.
+        HTTP_CODE=$(curl -s --connect-timeout 5 --max-time 10 -o /dev/null -w '%{http_code}' "${OPENC3_BUCKET_URL}/")
         RC=$?
+        case "$HTTP_CODE" in
+            2??|3??|4??) [ "$RC" -eq 0 ] || RC=1 ;;
+            *) RC=1 ;;
+        esac
         T=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-        echo "${T} waiting for buckets ${OPENC3_BUCKET_URL} RC: ${RC}";
+        echo "${T} waiting for buckets ${OPENC3_BUCKET_URL} HTTP: ${HTTP_CODE} RC: ${RC}";
         # On the 1st and every 5th failure, log whether DNS or TCP is the problem
         if [ $RC -gt 0 ]; then
             attempt=$(( attempt + 1 ))
