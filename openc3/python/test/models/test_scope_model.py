@@ -26,6 +26,11 @@ class TestScopeModel(unittest.TestCase):
     def test_converts_critical_cmd_approvers_to_int(self):
         self.assertEqual(ScopeModel(name="DEFAULT", critical_cmd_approvers="3").critical_cmd_approvers, 3)
 
+    def test_raises_on_non_integer_critical_cmd_approvers(self):
+        for value in [1.9, 2.0, "2oops", "1.9", "", " ", "-1", True]:
+            with self.assertRaisesRegex(RuntimeError, "Invalid value for critical_cmd_approvers"):
+                ScopeModel(name="DEFAULT", critical_cmd_approvers=value)
+
     def test_raises_on_critical_cmd_approvers_less_than_1(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid value for critical_cmd_approvers"):
             ScopeModel(name="DEFAULT", critical_cmd_approvers=0)

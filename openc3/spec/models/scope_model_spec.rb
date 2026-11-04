@@ -107,6 +107,12 @@ module OpenC3
         expect(ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: "3").critical_cmd_approvers).to eql 3
       end
 
+      it "raises on non-integer critical_cmd_approvers" do
+        [1.9, 2.0, "2oops", "1.9", "", " ", "-1", true].each do |value|
+          expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: value) }.to raise_error(/Invalid value for critical_cmd_approvers/)
+        end
+      end
+
       it "raises on critical_cmd_approvers less than 1" do
         expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: 0) }.to raise_error(/Invalid value for critical_cmd_approvers: 0 \(must be 1 to 10\)/)
       end
