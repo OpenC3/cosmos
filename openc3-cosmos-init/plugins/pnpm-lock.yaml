@@ -722,9 +722,6 @@ importers:
       lossless-json:
         specifier: 4.3.3
         version: 4.3.3
-      sass:
-        specifier: 1.106.1
-        version: 1.106.1
       sortablejs:
         specifier: 1.15.7
         version: 1.15.7
