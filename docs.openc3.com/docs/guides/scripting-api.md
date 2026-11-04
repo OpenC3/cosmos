@@ -3575,6 +3575,8 @@ check("INST HEALTH_STATUS COLLECTS == 10", type: :RAW)
 
 Injects a packet into the system as if it was received from an interface.
 
+When the item hash includes an item with a `VARIABLE_BIT_SIZE`, its length item is set automatically from the item's value. A value for that length item in the hash is ignored.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
