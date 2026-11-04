@@ -239,11 +239,12 @@ onUnmounted(() => {
 
 <style>
 /* On phones the details slide up from the bottom edge like a sheet */
-.details-sheet {
-  align-self: flex-end !important;
-  margin: 0 !important;
-  width: 100% !important;
-  max-height: 85vh !important;
+.v-dialog > .v-overlay__content.details-sheet {
+  align-self: flex-end;
+  margin: 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: 85vh;
 }
 </style>
 

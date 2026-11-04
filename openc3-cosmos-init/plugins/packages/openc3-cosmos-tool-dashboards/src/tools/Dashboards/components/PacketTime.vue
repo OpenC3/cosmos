@@ -12,7 +12,8 @@
 -->
 
 <template>
-  <!-- Panels pass their padding, data-test and container query class -->
+  <!-- Panels pass their data-test and padding. One that hides it in a
+       container query wraps it instead (d-flex is !important). -->
   <div
     class="d-flex flex-0-0 align-center justify-end ga-1 text-caption text-medium-emphasis num"
     :title="`Packet time ${time}`"

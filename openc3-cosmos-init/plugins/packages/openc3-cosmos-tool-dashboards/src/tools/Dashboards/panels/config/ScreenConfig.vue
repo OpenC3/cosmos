@@ -176,7 +176,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue'
 import { OpenC3Api } from '@openc3/js-common/services'
 import { ScreenEditor } from '@openc3/vue-common/components'
 import { targetNames } from '../../composables/targets'
@@ -248,13 +248,13 @@ const nameErrors = computed(() => {
 })
 
 // A copy: create() lists a new screen here before it's saved
-listScreens()
-  .then((list) => {
-    screens.value = { ...list }
-  })
-  .catch((error) => {
+onMounted(async () => {
+  try {
+    screens.value = { ...(await listScreens()) }
+  } catch (error) {
     console.error('Dashboards screen list failed to load:', error)
-  })
+  }
+})
 
 function selectTarget(newTarget) {
   target.value = newTarget

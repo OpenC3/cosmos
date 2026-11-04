@@ -18,7 +18,6 @@
       ring,
       { 'elevation-12': dragging },
     ]"
-    border
     flat
     :aria-label="title"
     :aria-roledescription="editing ? 'Movable panel' : undefined"
@@ -198,6 +197,9 @@ function keydown(event) {
 <style scoped>
 .panel-frame {
   container-type: inline-size;
+  /* Not Vuetify's border utility: its !important color would hide the
+     status ring (dashboards.scss) */
+  border: thin solid rgba(var(--v-border-color), var(--v-border-opacity));
 }
 .panel-title {
   font-size: 14px;

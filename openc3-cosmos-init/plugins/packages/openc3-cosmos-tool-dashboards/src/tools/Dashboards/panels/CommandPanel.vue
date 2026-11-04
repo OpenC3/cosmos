@@ -104,7 +104,7 @@
           v-if="confirm === 'HOLD'"
           type="button"
           :class="[
-            'hold d-flex align-center justify-center position-relative overflow-hidden rounded-lg border text-body-2',
+            'hold d-flex align-center justify-center position-relative overflow-hidden rounded-lg text-body-2',
             'w-100',
             { slim, holding, hz: hazardous },
           ]"
@@ -155,7 +155,7 @@
 </template>
 
 <script setup>
-import { computed, inject, onUnmounted, ref, watch } from 'vue'
+import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { CriticalCmdDialog } from '@openc3/vue-common/components'
 import { convertToValue, removeQuotes } from '@openc3/vue-common/util'
@@ -288,8 +288,7 @@ const holdLabel = computed(() => {
 watch(() => [props.panel.command, props.panel.script], load)
 watch(() => props.panel.parameters, applyDefaults, { deep: true })
 
-load()
-
+onMounted(load)
 onUnmounted(() => {
   clearTimeout(holdTimer)
   clearTimeout(hazardTimer)
@@ -580,7 +579,7 @@ function handleError(error) {
   --hold-ink: var(--v-theme-secondary);
   color: rgb(var(--hold-ink));
   background: rgba(var(--hold-color), 0.12);
-  border-color: rgba(var(--hold-ink), 0.5) !important;
+  border: thin solid rgba(var(--hold-ink), 0.5);
 }
 .hold.hz {
   --hold-color: var(--v-theme-warning);

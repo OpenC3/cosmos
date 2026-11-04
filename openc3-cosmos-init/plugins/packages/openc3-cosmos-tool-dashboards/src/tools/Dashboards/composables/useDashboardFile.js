@@ -37,6 +37,12 @@ export function routeKey({ target, dashboard }) {
     : null
 }
 
+function post(target, dashboard, body) {
+  return Api.post('/openc3-api/dashboard', {
+    data: { scope: window.openc3Scope, target, dashboard, text: body },
+  })
+}
+
 // The saved dashboards and the one showing: listing, opening, saving,
 // creating, duplicating and deleting them, and keeping the URL and
 // reopen-on-launch on the dashboard that's showing. model and editing are
@@ -161,11 +167,6 @@ export function useDashboardFile({
         params: { target, dashboard: name },
       })
     }
-  }
-  function post(target, dashboard, body) {
-    return Api.post('/openc3-api/dashboard', {
-      data: { scope: window.openc3Scope, target, dashboard, text: body },
-    })
   }
   // The file is only written out here, not on every edit
   async function save() {

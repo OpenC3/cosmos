@@ -80,12 +80,9 @@
       />
     </div>
     <div v-else class="flex-grow-1" />
-    <packet-time
-      v-if="packetTime"
-      :time="packetTime"
-      class="stat-time px-4 pb-2"
-      data-test="stat-packet-time"
-    />
+    <div v-if="packetTime" class="stat-time flex-0-0 px-4 pb-2">
+      <packet-time :time="packetTime" data-test="stat-packet-time" />
+    </div>
   </div>
 </template>
 
@@ -281,10 +278,9 @@ const tip = computed((previous) => {
     padding-inline: 8px;
   }
 }
-/* !important to win over the time's d-flex utility */
 @container (max-height: 60px) {
   .stat-time {
-    display: none !important;
+    display: none;
   }
 }
 @container (max-height: 160px) {

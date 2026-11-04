@@ -35,7 +35,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { targetNames as loadTargetNames } from '../../composables/targets'
 
 defineProps({
@@ -44,7 +44,7 @@ defineProps({
 defineEmits(['update'])
 
 const targetNames = ref([])
-loadTargetNames().then((names) => {
-  targetNames.value = names
+onMounted(async () => {
+  targetNames.value = await loadTargetNames()
 })
 </script>

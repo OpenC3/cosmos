@@ -80,7 +80,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import DialogToolbar from '../components/DialogToolbar.vue'
 import { targetNames } from '../composables/targets'
 import { GRID_COLUMNS } from '../layout'
@@ -106,12 +106,15 @@ const name = ref(props.initialName)
 const columns = ref(GRID_COLUMNS)
 
 // Fetched once per page (targets.js caches them)
-targetNames()
-  .then((names) => {
+onMounted(async () => {
+  try {
+    const names = await targetNames()
     targets.value = names
     target.value ||= names[0] || null
-  })
-  .catch(() => {})
+  } catch {
+    // Left empty: no targets to pick from
+  }
+})
 
 const heading = computed(() =>
   props.mode === 'duplicate' ? 'Duplicate Dashboard' : 'New Dashboard',

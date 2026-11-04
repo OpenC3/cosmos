@@ -115,12 +115,9 @@
         </div>
       </div>
     </div>
-    <packet-time
-      v-if="packetTime"
-      :time="packetTime"
-      class="gauge-time px-4 pb-2"
-      data-test="gauge-packet-time"
-    />
+    <div v-if="packetTime" class="gauge-time flex-0-0 px-4 pb-2">
+      <packet-time :time="packetTime" data-test="gauge-packet-time" />
+    </div>
   </div>
 </template>
 
@@ -191,7 +188,7 @@ const scale = computed(() => {
   const padded = paddedScale(limits.value)
   const min = option(props.panel, 'MIN') ?? padded?.min ?? null
   const max = option(props.panel, 'MAX') ?? padded?.max ?? null
-  if (min === null || max === null || !(max > min)) return null
+  if (min === null || max === null || max <= min) return null
   return { min, max }
 })
 const zones = computed(() => {
@@ -349,13 +346,13 @@ function compact(value) {
 }
 
 /* One column wide: vertical meter beside the value. No room for the scale
-   ends or the packet time (PacketTime's d-flex is !important). */
+   ends or the packet time. */
 @container (max-width: 140px) {
   .dial {
     display: none;
   }
   .gauge-time {
-    display: none !important;
+    display: none;
   }
   .meter {
     display: flex;

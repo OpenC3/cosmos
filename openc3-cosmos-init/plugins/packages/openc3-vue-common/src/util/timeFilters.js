@@ -1,5 +1,5 @@
 /*
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -93,7 +93,7 @@ export function formatSeconds(secs, timeZone) {
 }
 
 export function formatNanoseconds(nanoSecs, timeZone) {
-  return formatDateTime(new Date(parseInt(nanoSecs) / 1000000), timeZone)
+  return formatDateTime(new Date(Number.parseInt(nanoSecs) / 1000000), timeZone)
 }
 
 // The Options API mixin. formatDate and formatTime have always used the

@@ -195,7 +195,7 @@ const areaPath = computed(() => {
 const marker = computed(() => {
   dependOn(props.version)
   const [start, end] = props.window || []
-  if (!(end > start)) return null
+  if (!props.window || end <= start) return null
   const time = pointer.value
     ? start + pointer.value.fraction * (end - start)
     : props.hoverTime
@@ -234,7 +234,7 @@ onUnmounted(() => {
 // frame as the shared hover, so it and the panel's tooltip move together.
 function move(event) {
   const [start, end] = props.window || []
-  if (!(end > start)) return
+  if (!props.window || end <= start) return
   const box = event.currentTarget.getBoundingClientRect()
   const fraction = (event.clientX - box.left) / box.width
   pending = {

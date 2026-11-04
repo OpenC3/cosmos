@@ -21,7 +21,7 @@ import 'sprintf-js'
 // directly, e.g. from Composition API code
 
 export function isJsonString(value) {
-  return value && value['json_class'] === 'String' && value['raw'] !== undefined
+  return value?.['json_class'] === 'String' && value['raw'] !== undefined
 }
 
 export function formatJsonString(value) {

@@ -282,20 +282,20 @@ test('sends commands with hold and click confirmation', async ({ page, utils }) 
   await expect(holdButton).toBeEnabled()
   await holdButton.hover()
   await page.mouse.down()
-  await page.waitForTimeout(200)
+  await expect(holdButton).toContainText('Keep holding')
   await page.mouse.up()
   await expect(hold.locator('[data-test="command-status"]')).toContainText(
     'not sent',
   )
 
   // Holding sends
+  // The send fires while still held, once the hold time is up
   await holdButton.hover()
   await page.mouse.down()
-  await page.waitForTimeout(1200)
-  await page.mouse.up()
   await expect(hold.locator('[data-test="command-status"]')).toContainText(
     'Sent INST ABORT',
   )
+  await page.mouse.up()
 
   // CLEAR is hazardous so clicking asks first, and cancel doesn't send
   await expect(click.locator('[data-test="command-hazardous"]')).toBeVisible()

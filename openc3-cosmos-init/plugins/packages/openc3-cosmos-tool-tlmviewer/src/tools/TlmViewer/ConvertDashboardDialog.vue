@@ -95,7 +95,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { Api } from '@openc3/js-common/services'
 import {
   SCREEN_HEIGHT,
@@ -154,7 +154,7 @@ async function checkExisting() {
     // Not saved yet
   }
 }
-checkExisting()
+onMounted(checkExisting)
 
 async function convert() {
   saving.value = true

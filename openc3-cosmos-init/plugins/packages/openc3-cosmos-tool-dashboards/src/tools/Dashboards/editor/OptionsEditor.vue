@@ -162,8 +162,9 @@ function setItem(def, key) {
   grid-column: 1 / -1;
 }
 @media (max-width: 700px) {
-  .options-grid > * {
-    grid-column: 1 / -1 !important;
+  .options-grid > *,
+  .options-grid > .new-row {
+    grid-column: 1 / -1;
   }
 }
 </style>

@@ -754,8 +754,6 @@ onBeforeRouteUpdate(async (to) => {
 // dialog, undo and opening all replace, so the poller follows it here
 watch(pollingPeriod, (seconds) => poller.start(seconds))
 
-init()
-
 async function init() {
   itemInfo.start()
   poller.start()
@@ -786,6 +784,7 @@ async function init() {
 }
 
 onMounted(() => {
+  init()
   window.addEventListener('beforeunload', beforeUnload)
   window.addEventListener('keydown', onKeydown)
 })
