@@ -27,6 +27,7 @@ from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.target_model import TargetModel
+from openc3.packets.command_validator import CommandValidatorResult
 from openc3.packets.packet import Packet
 from openc3.system.system import System
 from openc3.topics.interface_topic import InterfaceTopic
@@ -1053,6 +1054,15 @@ class TestInterfaceMicroservice(unittest.TestCase):
         validator.pre_check.return_value = (False, "not ready")
         result = handler.process_cmd(topic, msg_id, msg_hash, None)
         self.assertEqual(result, "pre_check returned false for cmd('INST ABORT') due to not ready")
+
+        validator.pre_check.return_value = CommandValidatorResult(False, "namedtuple return")
+        result = handler.process_cmd(topic, msg_id, msg_hash, None)
+        self.assertEqual(result, "pre_check returned false for cmd('INST ABORT') due to namedtuple return")
+
+        # Validators written before CommandValidatorResult was added return a list
+        validator.pre_check.return_value = [False, "list return"]
+        result = handler.process_cmd(topic, msg_id, msg_hash, None)
+        self.assertEqual(result, "pre_check returned false for cmd('INST ABORT') due to list return")
 
         validator.pre_check.return_value = (True, None)
         validator.post_check.side_effect = RuntimeError("post boom")
