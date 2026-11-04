@@ -49,7 +49,7 @@ Each method below is tagged with where it is available: **openc3.api** (blue; `f
 
 See the [Migrating From COSMOS 6 to COSMOS 7](../getting-started/upgrading#migrating-from-cosmos-6-to-cosmos-7) guide for other changes including password hashing, JSON API session tokens, and configuration changes.
 
-The following API methods have been removed from COSMOS v7. Since WITH_UNITS were removed in COSMOS 7 those APIs are deprecated and simply return the formatted result. In Python, calling a deprecated API emits a `FutureWarning`.
+The following API methods changed in COSMOS v7. The WITH_UNITS APIs are deprecated and still return the formatted result; the remaining APIs were removed.
 
 | Method                   | API        | Status                                                                   |
 | ------------------------ | ---------- | ------------------------------------------------------------------------ |
