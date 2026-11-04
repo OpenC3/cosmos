@@ -12,7 +12,6 @@
     "@astrouxds/astro-web-components": "8.0.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "date-fns": "4.4.0",
     "import-map-overrides": "6.1.0",
     "systemjs": "6.15.1",
     "vuetify": "3.13.7"

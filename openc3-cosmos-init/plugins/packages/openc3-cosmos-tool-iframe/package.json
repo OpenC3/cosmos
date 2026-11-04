@@ -13,7 +13,6 @@
     "@braintree/sanitize-url": "7.1.2",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "date-fns": "4.4.0",
     "lodash": "4.18.1",
     "single-spa-vue": "3.0.1",
     "sprintf-js": "1.1.3"
