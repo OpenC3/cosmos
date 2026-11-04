@@ -55,6 +55,17 @@ module OpenC3
       ensure
         Warning[:deprecated] = orig_deprecated
       end
+
+      # Script Runner evaluates scripts inside OpenC3.disable_warnings ($VERBOSE = nil),
+      # which turns Kernel#warn into a no-op
+      it "warns even when Ruby warnings are disabled" do
+        OpenC3.disable_warnings do
+          expect { metadata_get() }.to output(/\[DEPRECATION\] `metadata_get` is deprecated/).to_stderr
+          expect {
+            expect { metadata_input() }.to raise_error(StandardError, "can only be used in Script Runner")
+          }.to output(/\[DEPRECATION\] `metadata_input` is deprecated/).to_stderr
+        end
+      end
     end
   end
 end

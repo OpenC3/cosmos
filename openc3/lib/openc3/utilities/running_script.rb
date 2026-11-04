@@ -101,7 +101,7 @@ module OpenC3
     SCRIPT_METHODS.each do |method|
       define_method(method) do |*args, **kwargs|
         if method == :metadata_input
-          warn "[DEPRECATION] `metadata_input` is deprecated. Please use the user input methods followed by `inject_tlm` instead."
+          OpenC3.deprecation_warning("`metadata_input` is deprecated. Please use the user input methods followed by `inject_tlm` instead.", uplevel: 1)
         end
         while true
           if RunningScript.instance

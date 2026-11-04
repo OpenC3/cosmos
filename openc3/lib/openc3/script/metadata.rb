@@ -33,7 +33,7 @@ module OpenC3
     #
     # @return The result of the method call.
     def metadata_all(limit: 100, scope: $openc3_scope)
-      warn "[DEPRECATION] `metadata_all` is deprecated. Please use Data Extractor or Telemetry Grapher instead."
+      OpenC3.deprecation_warning("`metadata_all` is deprecated. Please use Data Extractor or Telemetry Grapher instead.", uplevel: 1)
       response = $api_server.request('get', "/openc3-api/metadata", query: { limit: limit }, scope: scope)
       # Non-existent just returns nil
       return nil if response.nil? || response.status != 200
@@ -47,7 +47,7 @@ module OpenC3
     #
     # @return The result of the method call.
     def metadata_get(start: nil, scope: $openc3_scope)
-      warn "[DEPRECATION] `metadata_get` is deprecated. Please use `tlm` or `get_tlm_packet` instead."
+      OpenC3.deprecation_warning("`metadata_get` is deprecated. Please use `tlm` or `get_tlm_packet` instead.", uplevel: 1)
       return _metadata_get(start: start, scope: scope)
     end
     alias get_metadata metadata_get
@@ -72,7 +72,7 @@ module OpenC3
     # @param color [String] Events color to show on Calendar tool, if nil will be blue
     # @return The result of the method call.
     def metadata_set(metadata, start: nil, color: nil, scope: $openc3_scope)
-      warn "[DEPRECATION] `metadata_set` is deprecated. Please use `inject_tlm` instead."
+      OpenC3.deprecation_warning("`metadata_set` is deprecated. Please use `inject_tlm` instead.", uplevel: 1)
       unless metadata.is_a?(Hash)
         raise "metadata must be a Hash: #{metadata} is a #{metadata.class}"
       end
@@ -100,7 +100,7 @@ module OpenC3
     # @param color [String] Events color to show on Calendar tool, if nil will be blue
     # @return The result of the method call.
     def metadata_update(metadata, start: nil, color: nil, scope: $openc3_scope)
-      warn "[DEPRECATION] `metadata_update` is deprecated. Please use `inject_tlm` instead."
+      OpenC3.deprecation_warning("`metadata_update` is deprecated. Please use `inject_tlm` instead.", uplevel: 1)
       unless metadata.is_a?(Hash)
         raise "metadata must be a Hash: #{metadata} is a #{metadata.class}"
       end
@@ -126,7 +126,7 @@ module OpenC3
     #   See https://docs.openc3.com/docs/guides/metadata
     # Requests the metadata from the user for a target
     def metadata_input(*args, **kwargs)
-      warn "[DEPRECATION] `metadata_input` is deprecated. Please use the user input methods followed by `inject_tlm` instead."
+      OpenC3.deprecation_warning("`metadata_input` is deprecated. Please use the user input methods followed by `inject_tlm` instead.", uplevel: 1)
       raise StandardError, "can only be used in Script Runner"
     end
     alias input_metadata metadata_input
