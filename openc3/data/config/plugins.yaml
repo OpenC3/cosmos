@@ -170,7 +170,7 @@ VARIABLE_DISCOVERY:
     previously defined VARIABLE in the plugin installation dialog, after any VARIABLE_STATE options.
     Discovery runs when the dialog opens and can be refreshed. When installing a new plugin, the first available
     discovered value is selected automatically unless a value was already chosen. If openc3-app is not running the variable can
-    still be typed in by hand. Discovery classes subclass openc3/discovery/discovery.py and implement discover().
+    still be typed in by hand. Discovery classes subclass openc3/discovery/discovery.py and implement discover(), or scan() and match().
     Parameters can include the value of another variable as `${name}`. A variable holding several space separated values passes
     each as a parameter. The discovery reruns when a referenced variable changes, and is skipped when they are all blank.
     COSMOS provides openc3/discovery/serial_discovery.py (lists serial ports, optionally limited to USB VID:PID parameters (the PID can be omitted)
@@ -180,6 +180,18 @@ VARIABLE_DISCOVERY:
     `|name=glob` or `|property=glob` filters, e.g. `_http._tcp.local.|name=shelly*`) and openc3/discovery/bluetooth_discovery.py
     (lists the addresses of Bluetooth LE devices matching any of the matchers given as parameters, each made of
     `local_name=glob`, `service_uuid=uuid`, `service_data_uuid=uuid`, `manufacturer_id=id` or `manufacturer_data_start=hex` (the start of that manufacturer's data) joined with `|`).
+    It also provides openc3/discovery/usb_discovery.py (lists USB devices other than hubs by serial number, or by location like `1-2.3`
+    when they have none, matching any of the parameters, each a hex `VID:PID` (the PID can be omitted) or conditions joined with `|`
+    from `vid=hex`, `pid=hex`, `class=hex` (the device class or that of any interface, optionally with `/subclass` and `/protocol`,
+    e.g. `class=0E` for cameras or `class=FE/03` for USB test instruments), `manufacturer=glob`, `product=glob` and `serial=glob`,
+    and requires the pyusb and libusb-package packages on the host), openc3/discovery/ssdp_discovery.py (lists the IP addresses of
+    network devices advertising themselves with SSDP / UPnP, matching any of the parameters, each `key=glob` conditions joined with `|`
+    where the keys are the search response headers `st`, `usn` and `server` and the device description fields `devicetype`,
+    `friendlyname`, `manufacturer`, `manufacturerurl`, `modelname`, `modelnumber`, `modeldescription`, `modelurl`, `serialnumber`, `udn`,
+    `upc` and `presentationurl`, e.g. `manufacturer=Sonos*|modelname=Sonos?Era*`) and openc3/discovery/neighbor_discovery.py
+    (lists the IP addresses in the host's ARP table, i.e. devices it has recently communicated with, matching any of the parameters,
+    each `mac=glob` (hex digits with or without separators, e.g. `mac=00D02D*`), `hostname=glob` (from reverse DNS) or `ip=glob`
+    conditions joined with `|`). Globs are case-insensitive. Use `?` for a space in a glob since parameters are separated by spaces.
     A variable can have multiple VARIABLE_DISCOVERY keywords and their results are combined. Each can be followed by
     VARIABLE_DISCOVERY_SET keywords that set other variables when a value it found is selected.
     Discovered values are claimed by the plugin that uses them. Once a plugin is installed, the value it chose

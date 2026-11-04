@@ -29,6 +29,9 @@ SERIAL = "openc3.discovery.serial_discovery"
 HID = "openc3.discovery.hid_discovery"
 ZEROCONF = "openc3.discovery.zeroconf_discovery"
 BLUETOOTH = "openc3.discovery.bluetooth_discovery"
+USB = "openc3.discovery.usb_discovery"
+SSDP = "openc3.discovery.ssdp_discovery"
+NEIGHBOR = "openc3.discovery.neighbor_discovery"
 
 SERIAL_DEVICES = [
     {"value": "/dev/ttyUSB0", "text": "/dev/ttyUSB0 - CP2102", "vid": 0x10C4, "pid": 0xEA60},
@@ -308,11 +311,46 @@ class TestDiscoveryScan(unittest.TestCase):
         with (
             patch("openc3.discovery.zeroconf_discovery.ZeroconfDiscovery.scan", fake_scan(ZEROCONF)),
             patch("openc3.discovery.bluetooth_discovery.BluetoothDiscovery.scan", fake_scan(BLUETOOTH)),
+            patch("openc3.discovery.usb_discovery.UsbDiscovery.scan", fake_scan(USB)),
+            patch("openc3.discovery.ssdp_discovery.SsdpDiscovery.scan", fake_scan(SSDP)),
+            patch("openc3.discovery.neighbor_discovery.NeighborDiscovery.scan", fake_scan(NEIGHBOR)),
         ):
             response = scan({})
-        self.assertEqual(sorted(scanned), sorted([ZEROCONF, BLUETOOTH]))
+        self.assertEqual(sorted(scanned), sorted([ZEROCONF, BLUETOOTH, USB, SSDP, NEIGHBOR]))
         self.assertEqual({device["class"] for device in response["devices"]}, {SERIAL, HID})
-        self.assertEqual(SCAN_CLASSES, [SERIAL, HID, ZEROCONF, BLUETOOTH])
+        self.assertEqual(SCAN_CLASSES, [SERIAL, HID, ZEROCONF, BLUETOOTH, USB, SSDP, NEIGHBOR])
+
+    def test_a_value_found_more_than_once_is_one_device(self):
+        # A host advertising two mDNS services matches through either of them
+        services = [
+            {
+                "value": "192.168.1.5",
+                "text": "printer (192.168.1.5)",
+                "type": "_ipp._tcp.local.",
+                "name": "p",
+                "properties": {},
+            },
+            {
+                "value": "192.168.1.5",
+                "text": "hue (192.168.1.5)",
+                "type": "_hue._tcp.local.",
+                "name": "h",
+                "properties": {},
+            },
+        ]
+        with patch("openc3.discovery.zeroconf_discovery.ZeroconfDiscovery.scan", Mock(return_value=services)):
+            response = scan(
+                {
+                    "matchers": [
+                        {"id": "ipp", "class": ZEROCONF, "params": ["_ipp._tcp.local."]},
+                        {"id": "hue", "class": ZEROCONF, "params": ["_hue._tcp.local."]},
+                    ],
+                    "classes": [ZEROCONF],
+                }
+            )
+        self.assertEqual(len(response["devices"]), 1)
+        self.assertEqual(response["devices"][0]["text"], "printer (192.168.1.5)")
+        self.assertEqual(response["devices"][0]["matches"], ["ipp", "hue"])
 
     def test_main(self):
         output = io.StringIO()

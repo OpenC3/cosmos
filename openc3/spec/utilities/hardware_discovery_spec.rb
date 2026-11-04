@@ -140,6 +140,11 @@ module OpenC3
       expect(described_class.specificity(hid, ['0x054C', 'nil'])).to eql 1
       expect(described_class.specificity('openc3.discovery.zeroconf_discovery', ['_hue._tcp.local.', '_hap._tcp.local.|md=BSB002*'])).to eql 2
       expect(described_class.specificity('openc3.discovery.bluetooth_discovery', ['manufacturer_id=76|manufacturer_data_start=0215'])).to eql 2
+      expect(described_class.specificity('openc3.discovery.usb_discovery', ['0BDA:2838'])).to eql 2
+      expect(described_class.specificity('openc3.discovery.usb_discovery', ['0BDA:*', 'class=0E'])).to eql 1
+      expect(described_class.specificity('openc3.discovery.usb_discovery', ['046D:085E|product=BRIO*'])).to eql 3
+      expect(described_class.specificity('openc3.discovery.ssdp_discovery', ['manufacturer=Sonos*|modelname=Sonos?Era*'])).to eql 2
+      expect(described_class.specificity('openc3.discovery.neighbor_discovery', ['mac=00D02D*'])).to eql 1
     end
 
     it "names gems without their version" do

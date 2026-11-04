@@ -213,8 +213,11 @@ module OpenC3
         params.map { |param| param =~ /:[0-9A-Fa-f]+\z/ ? 2 : 1 }.max || 0
       when 'hid_discovery'
         params.count { |param| !%w(0 0x0 nil none).include?(param.to_s.strip.downcase) && !param.to_s.strip.empty? }
+      when 'usb_discovery'
+        # |-separated conditions where a VID:PID is two (vendor and product)
+        params.map { |param| param.split('|').sum { |condition| condition =~ /\A\h+:\h+\z/ ? 2 : 1 } }.max || 0
       else
-        # zeroconf and bluetooth matchers are |-separated conditions
+        # zeroconf, bluetooth, ssdp and neighbor matchers are |-separated conditions
         params.map { |param| param.split('|').length }.max || 0
       end
     end

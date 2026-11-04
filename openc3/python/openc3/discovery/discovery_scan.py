@@ -49,6 +49,9 @@ SCAN_CLASSES = [
     "openc3.discovery.hid_discovery",
     "openc3.discovery.zeroconf_discovery",
     "openc3.discovery.bluetooth_discovery",
+    "openc3.discovery.usb_discovery",
+    "openc3.discovery.ssdp_discovery",
+    "openc3.discovery.neighbor_discovery",
 ]
 
 
@@ -70,23 +73,25 @@ def scan_class(name, matchers):
         except Exception as error:
             skipped[matcher["id"]] = f"{error.__class__.__name__}: {error}"
 
-    devices = []
-    seen = set()
-    for device in discovery_class().scan():
-        if device["value"] in seen:
-            continue
-        seen.add(device["value"])
-        details = {key: value for key, value in device.items() if key not in ("value", "text")}
-        devices.append(
-            {
+    # A value can be found more than once, e.g. a host advertising several mDNS
+    # services, so it's one device that matches if any of its records does
+    devices = {}
+    for record in discovery_class().scan():
+        value = str(record["value"])
+        device = devices.get(value)
+        if device is None:
+            details = {key: item for key, item in record.items() if key not in ("value", "text")}
+            device = devices[value] = {
                 "class": name,
-                "value": str(device["value"]),
-                "text": str(device.get("text") or device["value"]),
+                "value": value,
+                "text": str(record.get("text") or value),
                 "details": details,
-                "matches": [matcher_id for matcher_id, check in checks if check.match(device)],
+                "matches": [],
             }
-        )
-    return devices, skipped
+        for matcher_id, check in checks:
+            if matcher_id not in device["matches"] and check.match(record):
+                device["matches"].append(matcher_id)
+    return list(devices.values()), skipped
 
 
 def scan(request):

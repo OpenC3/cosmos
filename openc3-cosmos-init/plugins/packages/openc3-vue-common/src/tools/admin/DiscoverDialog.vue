@@ -218,10 +218,22 @@ const KINDS = {
     text: 'Serial port',
     icon: 'mdi-serial-port',
   },
-  'openc3.discovery.hid_discovery': { text: 'USB device', icon: 'mdi-usb' },
+  'openc3.discovery.hid_discovery': {
+    text: 'USB HID device',
+    icon: 'mdi-gamepad-variant',
+  },
+  'openc3.discovery.usb_discovery': { text: 'USB device', icon: 'mdi-usb' },
   'openc3.discovery.zeroconf_discovery': {
     text: 'Network device',
     icon: 'mdi-lan',
+  },
+  'openc3.discovery.ssdp_discovery': {
+    text: 'UPnP network device',
+    icon: 'mdi-access-point-network',
+  },
+  'openc3.discovery.neighbor_discovery': {
+    text: 'Network host',
+    icon: 'mdi-lan-connect',
   },
   'openc3.discovery.bluetooth_discovery': {
     text: 'Bluetooth device',
