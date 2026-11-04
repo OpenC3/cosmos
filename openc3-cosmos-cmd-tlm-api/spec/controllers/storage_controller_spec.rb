@@ -565,6 +565,33 @@ RSpec.describe StorageController, type: :controller do
         expect(response).to have_http_status(:created)
       end
     end
+
+    # script_edit must be checked in the scope of the key being written, not
+    # the request's scope param, or script_edit in one scope would allow writing
+    # Script Runner files in another.
+    context "with script_edit only in the request scope" do
+      before(:each) do
+        allow(controller).to receive(:authorize) do |args|
+          raise OpenC3::AuthError.new("admin required") if args[:permission] == "admin"
+          if args[:permission] == "script_edit" && args[:scope] != "DEFAULT"
+            raise OpenC3::ForbiddenError.new("script_edit required in #{args[:scope]}")
+          end
+          "authorized_user"
+        end
+        bucket_client = stub_bucket_client
+        allow(bucket_client).to receive(:presigned_request).and_return({url: "https://bucket/x"})
+      end
+
+      it "rejects a procedures upload into another scope" do
+        get :get_upload_presigned_request, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "OTHER/targets_modified/INST/procedures/evil.rb", scope: "DEFAULT"}
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "allows a procedures upload into the scope holding script_edit" do
+        get :get_upload_presigned_request, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/procedures/ok.rb", scope: "DEFAULT"}
+        expect(response).to have_http_status(:created)
+      end
+    end
   end
 
   describe "PUT upload_file" do
@@ -1191,6 +1218,58 @@ RSpec.describe StorageController, type: :controller do
         expect(response).to have_http_status(:ok)
         result = JSON.parse(response.body)
         expect(result["deleted_count"]).to eq(1)
+      end
+
+      # The prefix passes the non-admin check, but the listing contains keys in
+      # the admin-only code areas, so every listed key must be checked too.
+      it "requires admin when a non-admin prefix contains tables/config keys" do
+        ENV["OPENC3_LOCAL_MODE"] = nil
+        stub_authorize(admin: false)
+        allow(bucket_client).to receive(:list_objects).and_return([
+          double(key: "DEFAULT/targets_modified/INST/tables/bin/table.bin"),
+          double(key: "DEFAULT/targets_modified/INST/tables/config/table_def.txt"),
+        ])
+        expect(bucket_client).to_not receive(:delete_objects)
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/tables", scope: "DEFAULT"}
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "requires admin when an ancestor prefix contains cmd_tlm keys" do
+        ENV["OPENC3_LOCAL_MODE"] = nil
+        stub_authorize(admin: false)
+        allow(bucket_client).to receive(:list_objects).and_return([
+          double(key: "DEFAULT/targets_modified/INST/procedures/x.rb"),
+          double(key: "DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt"),
+        ])
+        expect(bucket_client).to_not receive(:delete_objects)
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST", scope: "DEFAULT"}
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      it "allows a non-admin prefix whose keys are all non-admin writable" do
+        ENV["OPENC3_LOCAL_MODE"] = nil
+        stub_authorize(admin: false)
+        allow(bucket_client).to receive(:list_objects).and_return([
+          double(key: "DEFAULT/targets_modified/INST/tables/bin/table.bin"),
+        ])
+        expect(bucket_client).to receive(:delete_objects)
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST/tables", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "allows an admin to delete a prefix containing code area keys" do
+        ENV["OPENC3_LOCAL_MODE"] = nil
+        stub_authorize(admin: true)
+        allow(bucket_client).to receive(:list_objects).and_return([
+          double(key: "DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt"),
+        ])
+        expect(bucket_client).to receive(:delete_objects)
+
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "DEFAULT/targets_modified/INST", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
       end
 
       it "returns 403 for unauthorized scope" do

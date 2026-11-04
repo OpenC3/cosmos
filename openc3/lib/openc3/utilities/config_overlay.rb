@@ -28,7 +28,8 @@ module OpenC3
   #
   # Every API writer that can reach the overlay must consult these predicates:
   #   - storage_controller#get_upload_presigned_request / delete (presigned S3 upload)
-  #   - tables_controller#save / save_as / report / destroy (Table -> TargetFile)
+  #   - tables_controller#save / save_as / report / destroy (Table -> TargetFile;
+  #     destinations outside <TARGET>/tables/ also need script_edit, see table_data?)
   #   - scripts_controller#create / destroy (Script -> TargetFile)
   module ConfigOverlay
     # Config bucket areas a non-admin is allowed to write at all
@@ -68,6 +69,17 @@ module OpenC3
       parts = canonical_parts(name)
       return false if parts.nil?
       parts.length > 3 and parts[1, 2] == ['tables', 'config']
+    end
+
+    # True if the target-relative name is a Table Manager data file, i.e. under
+    # "<TARGET>/tables/" but outside the admin-only "<TARGET>/tables/config/",
+    # e.g. "<TARGET>/tables/bin/table.bin". Table writers only need 'system'
+    # for these; any other overlay destination is loadable by Script Runner and
+    # needs script_edit. Fails closed (false) on non-canonical names.
+    def self.table_data?(name)
+      parts = canonical_parts(name)
+      return false if parts.nil?
+      parts.length >= 3 and parts[1] == 'tables' and !code_area?(parts)
     end
 
     # True if the given config bucket key is a targets_modified/<TARGET> overlay

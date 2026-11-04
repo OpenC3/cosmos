@@ -787,10 +787,26 @@ class StorageController < ApplicationController
   def non_admin_config_overlay_write?(bucket_param, path)
     return false unless config_bucket?(bucket_param)
     return false unless OpenC3::ConfigOverlay.non_admin_writable_key?(path)
-    if OpenC3::ConfigOverlay.script_edit_overlay_key?(path)
-      return !!authorization('script_edit', perform_render: false)
+    return true unless OpenC3::ConfigOverlay.script_edit_overlay_key?(path)
+    authorize_for_path_scope('script_edit', path)
+  end
+
+  # Check a permission against the scope in the bucket key rather than
+  # params[:scope], so a caller with the permission in one scope can't write a
+  # key in another scope. Results are cached per request because
+  # delete_bucket_directory checks every listed key.
+  def authorize_for_path_scope(permission, path)
+    path_scope = extract_scope_from_path(path)
+    @path_scope_authorizations ||= {}
+    @path_scope_authorizations.fetch([permission, path_scope]) do |cache_key|
+      @path_scope_authorizations[cache_key] =
+        begin
+          authorize(permission: permission, scope: path_scope, token: request.headers['HTTP_AUTHORIZATION'])
+          true
+        rescue OpenC3::AuthError, OpenC3::ForbiddenError
+          false
+        end
     end
-    true
   end
 
   # True if the config-bucket key belongs to a target in OPENC3_LOCAL_ONLY_TARGETS.
@@ -889,7 +905,7 @@ class StorageController < ApplicationController
     end
 
     # Non-admins may only touch user-defined buckets and the user-writable config overlay
-    # (targets_modified or tmp), never the cmd_tlm overlay which is evaluated as code.
+    # (targets_modified or tmp), never the code areas (cmd_tlm, tables/config).
     # Everything else is admin.
     return false unless non_admin_write || authorization('admin')
 
@@ -908,6 +924,13 @@ class StorageController < ApplicationController
           keys << key if OpenC3::LocalMode.local_only_key?(key)
         end
       end
+    end
+
+    # The prefix check alone isn't enough for a non-admin: a prefix such as
+    # DEFAULT/targets_modified/INST/tables/ passes, yet contains the admin-only
+    # INST/tables/config/..., so every listed key must pass the same check.
+    if non_admin_write && !keys.all? { |key| non_admin_bucket_write?(params[:bucket], key) }
+      return false unless authorization('admin')
     end
 
     if keys.empty?
