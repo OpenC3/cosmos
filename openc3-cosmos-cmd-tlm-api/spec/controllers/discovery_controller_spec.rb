@@ -92,6 +92,13 @@ RSpec.describe DiscoveryController, type: :controller do
       expect(JSON.parse(response.body)).to eq proposals
     end
 
+    it "returns device and plugin names as text" do
+      proposals = { "devices" => [{ "text" => "Manette \u{1F3AE}", "candidates" => [{ "match_title" => "GIO\u015A (gios)" }] }] }
+      allow(OpenC3::HardwareDiscovery).to receive(:scan).and_return(proposals)
+      post :scan, params: { scope: "DEFAULT" }, as: :json
+      expect(JSON.parse(response.body)).to eq proposals
+    end
+
     it "defaults to the DEFAULT bridge" do
       expect(OpenC3::HardwareDiscovery).to receive(:scan).with(bridge: "DEFAULT", scope: "DEFAULT").and_return({})
       post :scan, params: { scope: "DEFAULT" }, as: :json

@@ -128,6 +128,7 @@ module OpenC3
       ]
       described_class.gem_discovery_matchers('local-plugin-2.0.0.gem', scope: 'DEFAULT')
       expect(PluginModel).to have_received(:install_phase1).with('/gems/local-plugin-2.0.0.gem', validate_only: true, scope: 'DEFAULT').once
+      expect(described_class.gem_discovery_matchers('local-plugin-2.0.0.gem', scope: 'DEFAULT')[0]['params'][0].encoding).to eql Encoding::UTF_8
       allow(PluginModel).to receive(:install_phase1).and_raise('no plugin.txt')
       expect(described_class.gem_discovery_matchers('library-1.0.0.gem', scope: 'DEFAULT')).to eql []
     end

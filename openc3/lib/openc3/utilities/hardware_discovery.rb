@@ -143,7 +143,8 @@ module OpenC3
       @gem_matchers_mutex.synchronize do
         @gem_matchers[gem] ||= begin
           variables = PluginModel.install_phase1(GemModel.get(gem), validate_only: true, scope: scope)['variables']
-          PluginModel.discovery_matchers(variables)['matchers']
+          # plugin.txt is read as binary but its titles are UTF-8 text, as the store's are
+          utf8(PluginModel.discovery_matchers(variables)['matchers'])
         rescue => error
           Logger.warn("Hardware discovery could not read the plugin.txt of #{gem}: #{error.message}", scope: scope)
           []
@@ -215,6 +216,15 @@ module OpenC3
       else
         # zeroconf and bluetooth matchers are |-separated conditions
         params.map { |param| param.split('|').length }.max || 0
+      end
+    end
+
+    def self.utf8(value)
+      case value
+      when String then value.dup.force_encoding('UTF-8')
+      when Array then value.map { |item| utf8(item) }
+      when Hash then value.to_h { |key, item| [utf8(key), utf8(item)] }
+      else value
       end
     end
 

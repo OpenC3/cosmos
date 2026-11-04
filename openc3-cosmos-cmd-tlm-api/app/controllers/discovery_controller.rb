@@ -43,7 +43,7 @@ class DiscoveryController < ApplicationController
     results = OpenC3::DiscoveryTopic.discover(bridge_name, discovery, timeout: DISCOVERY_TIMEOUT_S, scope: params[:scope])
     claims = OpenC3::PluginModel.discovery_claims(bridge_name, discovery[0], exclude_plugin: params[:exclude_plugin].presence, scope: params[:scope])
     available, claimed = results.partition { |result| !claims.key?(result['value'].to_s) }
-    render json: { 'results' => available, 'claimed' => claimed.map { |result| result.merge('plugin' => claims[result['value'].to_s]) } }
+    render json: text_json({ 'results' => available, 'claimed' => claimed.map { |result| result.merge('plugin' => claims[result['value'].to_s]) } })
   rescue StandardError => error
     render json: { status: 'error', message: error.message }, status: :internal_server_error
     logger.error(error.formatted)
@@ -55,10 +55,18 @@ class DiscoveryController < ApplicationController
   def scan
     return unless authorization('admin')
     result = OpenC3::HardwareDiscovery.scan(bridge: params[:bridge].presence || 'DEFAULT', scope: params[:scope])
-    render json: result
+    render json: text_json(result)
   rescue StandardError => error
     status = error.message.include?('not paired') ? :service_unavailable : :internal_server_error
     render json: { status: 'error', message: error.message }, status: status
     logger.error(error.formatted) if status == :internal_server_error
+  end
+
+  private
+
+  # Device names and plugin titles are text, like "Manette 🎮", which the
+  # COSMOS String#as_json would send as raw bytes outside the Latin-1 range
+  def text_json(value)
+    JSON.generate(value)
   end
 end

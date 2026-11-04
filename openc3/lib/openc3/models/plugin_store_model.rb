@@ -18,7 +18,10 @@ module OpenC3
   class PluginStoreModel < Model
     PRIMARY_KEY = 'openc3_plugin_store'
     DEFAULT_STORE_URL = 'https://store.openc3.com'
-    JSON_ENDPOINT = '/api/v1.2/cosmos_plugins'
+    # v1.3 adds the hardware discovery data of each plugin (see HardwareDiscovery).
+    # Older stores (e.g. self-hosted) don't have it, so fall back to v1.2.
+    JSON_ENDPOINT = '/api/v1.3/cosmos_plugins'
+    FALLBACK_JSON_ENDPOINT = '/api/v1.2/cosmos_plugins'
 
     def self.set(plugin_store_data)
       Store.set(PRIMARY_KEY, plugin_store_data)
@@ -57,6 +60,8 @@ module OpenC3
       end
 
       response = conn.get(JSON_ENDPOINT)
+      # Stores without v1.3 reject it as an unknown API version
+      response = conn.get(FALLBACK_JSON_ENDPOINT) if [400, 404].include?(response.status)
       if response.success?
         self.set(response.body)
       else
