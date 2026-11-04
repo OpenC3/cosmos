@@ -21,17 +21,49 @@ from datetime import datetime, timezone
 
 working_dir = os.getcwd()
 
+# Read the one-line credentials JSON the parent wrote to stdin right after spawn,
+# and apply the API credentials to os.environ BEFORE importing openc3. openc3
+# freezes OPENC3_API_* as module constants at import and ApiServerProxy() picks its
+# auth strategy at construction (which runs when openc3.script is imported);
+# applying the credentials afterward leaves the API client with no token and every
+# API call fails with "AuthError: Token is nil". Applying them in-process after
+# exec still keeps the secrets out of /proc/<pid>/environ. run_suite_analysis.py
+# does the same. signing_key is stashed and applied after the imports below.
+try:
+    stdin_creds = json.loads(sys.stdin.readline())
+    signing_key = stdin_creds["signing_key"]
+    if not isinstance(signing_key, str) or not signing_key:
+        raise ValueError("no signing_key")
+except Exception:
+    raise RuntimeError("run_script: missing or malformed stdin credentials") from None
+auth = stdin_creds.get("auth")
+if isinstance(auth, dict):
+    if auth.get("token"):
+        os.environ["OPENC3_API_TOKEN"] = auth["token"]
+    elif auth.get("user") or auth.get("password"):
+        # Leave OPENC3_API_USER unset for a null username: an empty string is not
+        # None, so ApiServerProxy.generate_auth would pick Keycloak over Core auth.
+        if auth.get("user"):
+            os.environ["OPENC3_API_USER"] = auth["user"]
+        if auth.get("password"):
+            os.environ["OPENC3_API_PASSWORD"] = auth["password"]
+            # Core authenticates as the service; OpenC3Authentication sets its service
+            # flag by comparing OPENC3_API_PASSWORD to OPENC3_SERVICE_PASSWORD, so
+            # restore it (runtime-only, so not exposed via /proc/<pid>/environ).
+            os.environ["OPENC3_SERVICE_PASSWORD"] = auth["password"]
+
 from openc3.environment import OPENC3_CONFIG_BUCKET  # noqa: E402
 from openc3.models.script_status_model import ScriptStatusModel  # noqa: E402
 from openc3.script import get_overrides  # noqa: E402
-from openc3.utilities.bucket import Bucket  # noqa: E402
 from openc3.utilities.extract import convert_to_value  # noqa: E402
 from openc3.utilities.logger import Logger  # noqa: E402
 from openc3.utilities.running_script import (  # noqa: E402
     RunningScript,
     running_script_anycable_publish,
 )
-from openc3.utilities.store import EphemeralStore, Store  # noqa: E402
+from openc3.utilities.script_env import clear_credentials  # noqa: E402
+from openc3.utilities.script_message_signing import NonceCache, accept  # noqa: E402
+from openc3.utilities.store import Store  # noqa: E402
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued  # noqa: E402
 
 
@@ -49,32 +81,12 @@ def run_script_log(script_id, message, color="BLACK", message_log=True):
 
 
 start_time = time.time()
-# Load the bucket client code to ensure we authenticate outside ENV vars
-Bucket.get_client()
-# Preload Store and remove Redis secrets from ENV
-Store.instance()
-EphemeralStore.instance()
+# Clear secrets (including the stdin-applied API passwords, which the API
+# client already captured at import) before any user code runs.
+clear_credentials()
 
-# Clear ENV vars for security purposes
-# Use pop with default to avoid KeyError if vars don't exist (e.g. Enterprise/Keycloak)
-for key in [
-    "OPENC3_BUCKET_USERNAME",
-    "OPENC3_BUCKET_PASSWORD",
-    "OPENC3_REDIS_USERNAME",
-    "OPENC3_REDIS_PASSWORD",
-    "OPENC3_TSDB_USERNAME",
-    "OPENC3_TSDB_PASSWORD",
-    "OPENC3_API_PASSWORD",
-    "OPENC3_SERVICE_PASSWORD",
-    # This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
-    "ANYCABLE_REDIS_URL",
-    "KC_DB_USERNAME",
-    "KC_DB_PASSWORD",
-    "KEYCLOAK_ADMIN",
-    "KEYCLOAK_ADMIN_PASSWORD",
-]:
-    os.environ.pop(key, None)
-
+RunningScript.signing_key = signing_key
+seen_nonces = NonceCache()
 
 script_id = sys.argv[1]
 scope = sys.argv[2]
@@ -132,9 +144,12 @@ try:
     )
 
     for msg in p.listen():
-        parsed_cmd = json.loads(msg["data"])
+        accepted, parsed_cmd = accept(signing_key, msg["data"], seen_nonces)
+        if not accepted:
+            run_script_log(script_id, "WARNING: dropped unverified control message", "YELLOW")
+            continue
         if parsed_cmd != "shutdown" or (isinstance(parsed_cmd, dict) and not parsed_cmd.get("method")):
-            run_script_log(script_id, f"Script {path} received command: {msg['data']}")
+            run_script_log(script_id, f"Script {path} received command: {json.dumps(parsed_cmd)}")
         match parsed_cmd:
             case "go":
                 running_script.do_go()
@@ -242,7 +257,7 @@ try:
                 else:
                     run_script_log(
                         script_id,
-                        f"ERROR: Script command not handled: {msg['data']}",
+                        f"ERROR: Script command not handled: {json.dumps(parsed_cmd)}",
                         "RED",
                     )
 except Exception:

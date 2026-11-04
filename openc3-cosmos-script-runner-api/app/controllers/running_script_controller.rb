@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/script'
+require 'openc3/utilities/script_message_signing'
 
 class RunningScriptController < ApplicationController
   def index
@@ -54,7 +55,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
+      publish_signed_command(params[:id], params[:scope], "stop")
       OpenC3::Logger.info("Script stopped: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
@@ -68,7 +69,7 @@ class RunningScriptController < ApplicationController
       target_name = running_script.filename.split('/')[0]
       pid = running_script.pid&.to_i
       return unless authorization('script_run', target_name: target_name)
-      running_script_publish("cmd-running-script-channel:#{params[:id]}", "stop")
+      publish_signed_command(params[:id], params[:scope], "stop")
 
       stopped = false
       if pid and pid > 0
@@ -125,6 +126,9 @@ class RunningScriptController < ApplicationController
         running_script.update
       end
 
+      # Free the per-script signing key now that the run is gone
+      OpenC3::Store.del("script-signing-key:#{params[:id]}")
+
       OpenC3::Logger.info("Script deleted: #{running_script.filename}", scope: params[:scope], user: username())
       head :ok
     else
@@ -137,7 +141,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      running_script_publish("cmd-running-script-channel:#{params[:id]}", "pause")
+      publish_signed_command(params[:id], params[:scope], "pause")
       OpenC3::Logger.info("Script paused: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
@@ -150,7 +154,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      running_script_publish("cmd-running-script-channel:#{params[:id]}", "retry")
+      publish_signed_command(params[:id], params[:scope], "retry")
       OpenC3::Logger.info("Script retried: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
@@ -163,7 +167,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      running_script_publish("cmd-running-script-channel:#{params[:id]}", "go")
+      publish_signed_command(params[:id], params[:scope], "go")
       OpenC3::Logger.info("Script resumed: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
@@ -176,7 +180,7 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      running_script_publish("cmd-running-script-channel:#{params[:id]}", "step")
+      publish_signed_command(params[:id], params[:scope], "step")
       OpenC3::Logger.info("Script stepped: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
@@ -191,13 +195,17 @@ class RunningScriptController < ApplicationController
       return unless authorization('script_run', target_name: target_name)
       if params[:password]
         # TODO: ActionCable is logging this ... probably shouldn't
-        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], password: params[:password], prompt_id: params[:prompt_id] })
+        publish_signed_command(params[:id], params[:scope], { method: params[:method], password: params[:password], prompt_id: params[:prompt_id] })
       elsif params[:multiple]
-        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], multiple: JSON.generate(params[:answer], allow_nan: true), prompt_id: params[:prompt_id] })
+        publish_signed_command(params[:id], params[:scope], { method: params[:method], multiple: JSON.generate(params[:answer], allow_nan: true), prompt_id: params[:prompt_id] })
       else
         # Convert ActionController::Parameters to a plain hash for nested objects (e.g. open_bucket_dialog)
         answer = params[:answer].respond_to?(:to_unsafe_h) ? params[:answer].to_unsafe_h : params[:answer]
-        running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], answer: answer, prompt_id: params[:prompt_id] })
+        # The message signer rejects Floats (their text form differs across languages).
+        # A numeric ask reply like 1.5 would otherwise raise; send it as a string, which
+        # the runners convert back to a value like every other ask reply.
+        answer = answer.to_s if answer.is_a?(Float)
+        publish_signed_command(params[:id], params[:scope], { method: params[:method], answer: answer, prompt_id: params[:prompt_id] })
       end
       OpenC3::Logger.info("Script prompt action #{params[:method]}: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
@@ -211,11 +219,30 @@ class RunningScriptController < ApplicationController
     if running_script
       target_name = running_script['filename'].split('/')[0]
       return unless authorization('script_run', target_name: target_name)
-      running_script_publish("cmd-running-script-channel:#{params[:id]}", { method: params[:method], args: params[:args], prompt_id: params[:prompt_id] })
+      publish_signed_command(params[:id], params[:scope], { method: params[:method], args: params[:args], prompt_id: params[:prompt_id] })
       OpenC3::Logger.info("Script method action #{params[:method]}: #{running_script['filename']}", scope: params[:scope], user: username())
       head :ok
     else
       head :not_found
     end
+  end
+
+  private
+
+  # Signs and publishes a control message to the running script. The caller has
+  # already authorized the user and resolved the script. If the per-script
+  # signing key is gone the run is gone, so there is nothing to publish to.
+  def publish_signed_command(id, _scope, payload)
+    key_name = "script-signing-key:#{id}"
+    ttl = ENV.fetch('OPENC3_SCRIPT_SIGNING_KEY_TTL', 2592000).to_i
+    # get + expire rather than GETEX: the mock_redis used in specs has no getex,
+    # and the refresh does not need to be atomic.
+    key = OpenC3::Store.get(key_name)
+    return if key.nil?
+
+    OpenC3::Store.expire(key_name, ttl)
+
+    envelope = OpenC3::ScriptMessageSigning.sign(key, payload)
+    OpenC3::Store.publish("script-api:cmd-running-script-channel:#{id}", JSON.generate(envelope, allow_nan: true))
   end
 end

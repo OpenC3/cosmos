@@ -319,6 +319,32 @@ RSpec.describe Script, type: :model do
   end
 
   describe "self.instrumented" do
+    it "scrubs inherited secrets from the run_instrument child env" do
+      temp = double("tempfile", write: nil, close: nil, path: "/tmp/x.py")
+      allow(Tempfile).to receive(:new).with(%w[instrument .py]).and_return(temp)
+      env = {}
+      io = double("io", stdout: nil, stderr: nil)
+      allow(io).to receive(:stdout=)
+      allow(io).to receive(:stderr=)
+      process = double("process", cwd: nil, environment: env, io: io, exit_code: 0)
+      allow(process).to receive(:cwd=)
+      allow(process).to receive(:start)
+      allow(process).to receive(:wait)
+      allow(ChildProcess).to receive(:build).and_return(process)
+      out = double("out", sync: nil, rewind: nil, read: "", close: nil, unlink: nil)
+      allow(out).to receive(:sync=)
+      allow(Tempfile).to receive(:new).with("child-stdout").and_return(out)
+      allow(Tempfile).to receive(:new).with("child-stderr").and_return(out)
+
+      Script.instrumented("script.py", "print(1)")
+
+      %w[SECRET_KEY_BASE OPENC3_REDIS_USERNAME OPENC3_REDIS_PASSWORD OPENC3_BUCKET_USERNAME
+         OPENC3_BUCKET_PASSWORD ANYCABLE_REDIS_URL OPENC3_API_TOKEN KEYCLOAK_ADMIN_PASSWORD].each do |k|
+        expect(env).to have_key(k)
+        expect(env[k]).to be_nil
+      end
+    end
+
     context "for Ruby scripts" do
       it "returns instrumented Ruby code" do
         allow(RunningScript).to receive(:instrument_script).and_return("instrumented Ruby code")
@@ -342,7 +368,8 @@ RSpec.describe Script, type: :model do
 
       # Setup ChildProcess to avoid trying to spawn real processes
       process_env = {}
-      io_double = double("io")
+      stdin_double = double("stdin", puts: nil, close: nil)
+      io_double = double("io", stdin: stdin_double)
       allow(io_double).to receive(:stdout=)
       allow(io_double).to receive(:stderr=)
 
@@ -350,6 +377,7 @@ RSpec.describe Script, type: :model do
       allow(process_double).to receive(:cwd=)
       allow(process_double).to receive(:environment).and_return(process_env)
       allow(process_double).to receive(:io).and_return(io_double)
+      allow(process_double).to receive(:duplex=)
       allow(process_double).to receive(:start)
       allow(process_double).to receive(:poll_for_exit).with(10)
       allow(process_double).to receive(:exit_code).and_return(exit_code)
@@ -374,7 +402,7 @@ RSpec.describe Script, type: :model do
       allow(Tempfile).to receive(:new).with("child-stdout").and_return(stdout_double)
       allow(Tempfile).to receive(:new).with("child-stderr").and_return(stderr_double)
 
-      {process_env: process_env}
+      {process_env: process_env, stdin: stdin_double}
     end
 
     context "with successful execution" do
@@ -434,6 +462,35 @@ RSpec.describe Script, type: :model do
         expect(mocks[:process_env]['VIRTUAL_ENV']).to eq(venv_dir)
         expect(mocks[:process_env]['PYTHONPATH'].split(':')).to include(site_packages)
       end
+
+      it "does not pass unused credentials to the analysis process" do
+        mocks = setup_process_suite_mocks(language: "ruby")
+
+        Script.process_suite("suite.rb", "suite content", scope: "DEFAULT")
+
+        OpenC3::ScriptEnv::UNUSED_VARS.each do |key|
+          expect(mocks[:process_env]).to have_key(key)
+          expect(mocks[:process_env][key]).to be_nil
+        end
+      end
+    end
+
+    context "without offline access token" do
+      it "delivers the service credentials over stdin, not env" do
+        allow(OpenC3::OfflineAccessModel).to receive(:get_model).and_return(nil)
+        mocks = setup_process_suite_mocks(language: "python")
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with("OPENC3_SERVICE_PASSWORD").and_return("svc-pass")
+        allow(ENV).to receive(:[]).with("OPENC3_API_USER").and_return("svc-user")
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with("OPENC3_SERVICE_PASSWORD").and_return("svc-pass")
+        allow(ENV).to receive(:fetch).with("OPENC3_API_USER", nil).and_return("svc-user")
+
+        Script.process_suite("suite.py", "suite content", username: "u", scope: "DEFAULT")
+
+        expect(mocks[:process_env]["OPENC3_API_PASSWORD"]).to be_nil
+        expect(mocks[:stdin]).to have_received(:puts).with('{"auth":{"user":"svc-user","password":"svc-pass"}}')
+      end
     end
 
     context "with offline access token" do
@@ -452,7 +509,17 @@ RSpec.describe Script, type: :model do
 
         stdout_result, stderr_result, success = Script.process_suite("suite.rb", "suite content", username: "user1", scope: "DEFAULT")
 
-        expect(mocks[:process_env]["OPENC3_API_TOKEN"]).to eq "valid_token"
+        env = mocks[:process_env]
+        expect(env).to have_key("OPENC3_API_TOKEN")
+        expect(env["OPENC3_API_TOKEN"]).to be_nil
+        expect(env["OPENC3_API_PASSWORD"]).to be_nil
+        %w[ANYCABLE_REDIS_URL OPENC3_SERVICE_PASSWORD OPENC3_TSDB_PASSWORD KC_DB_PASSWORD
+           KEYCLOAK_ADMIN_PASSWORD].each do |k|
+          expect(env).to have_key(k)
+          expect(env[k]).to be_nil
+        end
+        expect(mocks[:stdin]).to have_received(:puts).with('{"auth":{"token":"valid_token"}}')
+        expect(mocks[:stdin]).to have_received(:close)
         expect(stdout_result).to eq '{"suite":"data"}'
         expect(stderr_result).to eq ""
         expect(success).to be true

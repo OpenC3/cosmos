@@ -147,6 +147,7 @@ from openc3.top_level import kill_thread
 from openc3.utilities.logger import Logger, default_level
 from openc3.utilities.message_log import MessageLog
 from openc3.utilities.script_instrumentor import ScriptInstrumentor
+from openc3.utilities.script_message_signing import sign as sign_control_message
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store import Store
 from openc3.utilities.store_queued import EphemeralStoreQueued
@@ -271,6 +272,10 @@ class RunningScript:
     STRFTIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
 
     instance = None
+
+    # In-memory HMAC key for signing/verifying control channel messages.
+    # Set by run_script.py from stdin; never written to env or disk.
+    signing_key = None
 
     def id(self):
         return self.script_status.id
@@ -1036,7 +1041,10 @@ class RunningScript:
             # Wait for the file to get moved to S3 because after this the process will likely die
             thread.join()
 
-        running_script_publish(f"cmd-running-script-channel:{self.script_status.id}", "shutdown")
+        shutdown_msg = "shutdown"
+        if RunningScript.signing_key:
+            shutdown_msg = sign_control_message(RunningScript.signing_key, "shutdown")
+        running_script_publish(f"cmd-running-script-channel:{self.script_status.id}", shutdown_msg)
 
     def mark_breakpoint(self):
         self.update_running_script_store("breakpoint")
