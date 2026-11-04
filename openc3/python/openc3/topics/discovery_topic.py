@@ -17,7 +17,9 @@ from openc3.topics.topic import Topic
 # Discovery requests flow from COSMOS (Ruby DiscoveryTopic.discover) to a bridge
 # hub over the request topic. The hub hands them to openc3-app, which runs the
 # Discovery class on the host and returns the results, which the hub writes to
-# the result topic for the waiting requester.
+# the result topic for the waiting requester. A hardware scan (Ruby
+# DiscoveryTopic.scan) is a request with "scan" instead, which openc3-app runs
+# with openc3.discovery.discovery_scan.
 class DiscoveryTopic(Topic):
     @staticmethod
     def request_topic(bridge_name, scope):
@@ -29,16 +31,20 @@ class DiscoveryTopic(Topic):
 
     @staticmethod
     def parse_request(msg_hash):
-        """Convert a request topic message into {"id", "discovery", "expires_at"}"""
-        return {
+        """Convert a request topic message into {"id", "discovery", "expires_at"},
+        plus "scan" for a hardware scan"""
+        request = {
             "id": msg_hash[b"id"].decode(),
             "discovery": json.loads(msg_hash[b"discovery"]),
             "expires_at": float(msg_hash[b"expires_at"]),
         }
+        if msg_hash.get(b"scan"):
+            request["scan"] = json.loads(msg_hash[b"scan"])
+        return request
 
     @classmethod
     def write_result(cls, bridge_name, request_id, result, scope):
-        """Publish a result ({"results": [...]} or {"error": "..."}) for request_id"""
+        """Publish a result ({"results": [...]}, {"scan": {...}} or {"error": "..."}) for request_id"""
         Topic.write_topic(
             cls.result_topic(bridge_name, scope),
             {"id": request_id, "result": json.dumps(result)},

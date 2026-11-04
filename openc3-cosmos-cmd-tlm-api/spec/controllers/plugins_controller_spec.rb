@@ -198,6 +198,23 @@ RSpec.describe PluginsController, type: :controller do
     end
   end
 
+  describe "POST create from an installed gem" do
+    it "parses the plugin.txt of a gem in COSMOS" do
+      allow(OpenC3::GemModel).to receive(:names).and_return(["openc3-cosmos-dualsense-1.0.0.gem"])
+      expect(OpenC3::PluginModel).to receive(:install_phase1).with("openc3-cosmos-dualsense-1.0.0.gem", scope: "DEFAULT").and_return({ "name" => "openc3-cosmos-dualsense-1.0.0.gem" })
+      post :create, params: { scope: "DEFAULT", gem: "../openc3-cosmos-dualsense-1.0.0.gem" }
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["name"]).to eq "openc3-cosmos-dualsense-1.0.0.gem"
+    end
+
+    it "rejects gems not in COSMOS" do
+      allow(OpenC3::GemModel).to receive(:names).and_return([])
+      post :create, params: { scope: "DEFAULT", gem: "missing-1.0.0.gem" }
+      expect(response).to have_http_status(:not_found)
+      expect(JSON.parse(response.body)["message"]).to eq "Plugin gem 'missing-1.0.0.gem' is not in COSMOS"
+    end
+  end
+
   describe "POST create" do
     before(:each) do
       @file = Tempfile.new(["test-plugin", ".gem"])

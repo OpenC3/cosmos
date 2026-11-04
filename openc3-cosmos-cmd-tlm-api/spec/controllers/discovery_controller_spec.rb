@@ -79,4 +79,36 @@ RSpec.describe DiscoveryController, type: :controller do
       expect(JSON.parse(response.body)["message"]).to eq "Timeout of 15s waiting for discovery"
     end
   end
+
+  describe "POST scan" do
+    it "requires admin and returns the proposals" do
+      expect(controller).to receive(:authorization).with("admin").and_return(true)
+      proposals = { "devices" => [], "errors" => [], "skipped" => 0, "store_matchers" => false }
+      expect(OpenC3::HardwareDiscovery).to receive(:scan).with(bridge: "ALL", scope: "DEFAULT").and_return(proposals)
+
+      post :scan, params: { scope: "DEFAULT", bridge: "ALL" }, as: :json
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq proposals
+    end
+
+    it "defaults to the DEFAULT bridge" do
+      expect(OpenC3::HardwareDiscovery).to receive(:scan).with(bridge: "DEFAULT", scope: "DEFAULT").and_return({})
+      post :scan, params: { scope: "DEFAULT" }, as: :json
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "explains an unpaired bridge" do
+      post :scan, params: { scope: "DEFAULT", bridge: "UNPAIRED" }, as: :json
+      expect(response).to have_http_status(:service_unavailable)
+      expect(JSON.parse(response.body)["message"]).to eq "Bridge 'UNPAIRED' is not paired with openc3-app"
+    end
+
+    it "reports other errors" do
+      allow(OpenC3::HardwareDiscovery).to receive(:scan).and_raise("boom")
+      post :scan, params: { scope: "DEFAULT" }, as: :json
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)["message"]).to eq "boom"
+    end
+  end
 end

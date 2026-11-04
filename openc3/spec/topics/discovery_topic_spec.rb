@@ -56,5 +56,32 @@ module OpenC3
         expect { DiscoveryTopic.discover("BRIDGE2", ["x.py"], timeout: 0.1, scope: "DEFAULT") }.to raise_error(/Timeout of 0.1s waiting for discovery on bridge 'BRIDGE2'/)
       end
     end
+
+    describe "scan" do
+      it "publishes a scan request and returns the scan" do
+        scan = { 'devices' => [{ 'class' => 'openc3.discovery.hid_discovery', 'value' => 'abc', 'matches' => ['1'] }], 'errors' => {}, 'skipped' => {} }
+        stub_result("ID1", { 'scan' => scan })
+        request = { 'matchers' => [{ 'id' => '1', 'class' => 'openc3.discovery.hid_discovery', 'params' => ['0x054C'] }] }
+        expect(DiscoveryTopic.scan("DEFAULT", request, scope: "DEFAULT")).to eql scan
+        expect(Topic).to have_received(:write_topic) do |topic, message, _id, _maxlen|
+          expect(topic).to eql "DEFAULT__DISCOVERY__DEFAULT"
+          expect(JSON.parse(message['scan'])).to eql request
+          # So openc3-app without scan support errors instead of failing to parse it
+          expect(message['discovery']).to eql '[]'
+        end
+      end
+
+      it "explains an openc3-app without scan support" do
+        stub_result("ID1", { 'error' => 'no discovery class given' })
+        expect { DiscoveryTopic.scan("BRIDGE2", {}, scope: "DEFAULT") }.to raise_error(/bridge 'BRIDGE2' does not support hardware discovery. Update openc3-app/)
+        stub_result("ID1", { 'results' => [] })
+        expect { DiscoveryTopic.scan("BRIDGE2", {}, scope: "DEFAULT") }.to raise_error(/Update openc3-app/)
+      end
+
+      it "raises other host errors" do
+        stub_result("ID1", { 'error' => 'boom' })
+        expect { DiscoveryTopic.scan("DEFAULT", {}, scope: "DEFAULT") }.to raise_error("boom")
+      end
+    end
   end
 end

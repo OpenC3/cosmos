@@ -14,6 +14,7 @@
 require 'openc3/models/bridge_model'
 require 'openc3/models/plugin_model'
 require 'openc3/topics/discovery_topic'
+require 'openc3/utilities/hardware_discovery'
 
 # Runs a Python Discovery class on the host paired with a bridge (via openc3-app)
 # and returns what it found, e.g. the serial ports for a VARIABLE_DISCOVERY.
@@ -46,5 +47,18 @@ class DiscoveryController < ApplicationController
   rescue StandardError => error
     render json: { status: 'error', message: error.message }, status: :internal_server_error
     logger.error(error.formatted)
+  end
+
+  # POST /discovery/scan { bridge: 'DEFAULT' | 'ALL' }
+  # Scans the host of the bridge (or of every paired bridge) for hardware and
+  # proposes plugins to install for the devices found (see OpenC3::HardwareDiscovery)
+  def scan
+    return unless authorization('admin')
+    result = OpenC3::HardwareDiscovery.scan(bridge: params[:bridge].presence || 'DEFAULT', scope: params[:scope])
+    render json: result
+  rescue StandardError => error
+    status = error.message.include?('not paired') ? :service_unavailable : :internal_server_error
+    render json: { status: 'error', message: error.message }, status: status
+    logger.error(error.formatted) if status == :internal_server_error
   end
 end

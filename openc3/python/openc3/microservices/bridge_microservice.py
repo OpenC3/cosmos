@@ -999,8 +999,8 @@ class BridgeMicroservice(Microservice):
 
     async def _serve_discovery(self, conn):
         """Long-poll: reply with the pending discovery requests as a JSON list of
-        {"id", "discovery"} as soon as any are available, or an empty list after
-        DISCOVERY_POLL_TIMEOUT."""
+        {"id", "discovery"} (plus "scan" for a hardware scan) as soon as any are
+        available, or an empty list after DISCOVERY_POLL_TIMEOUT."""
         bi = await conn.accept_bi()
         send = bi.send()
         recv = bi.recv()
@@ -1010,22 +1010,32 @@ class BridgeMicroservice(Microservice):
             with contextlib.suppress(asyncio.TimeoutError):
                 await asyncio.wait_for(self._discovery_event.wait(), timeout=DISCOVERY_POLL_TIMEOUT)
             requests = self._take_discovery_requests()
-        payload = [{"id": request["id"], "discovery": request["discovery"]} for request in requests]
+        payload = []
+        for request in requests:
+            item = {"id": request["id"], "discovery": request["discovery"]}
+            if "scan" in request:
+                item["scan"] = request["scan"]
+            payload.append(item)
         await send.write_all(json.dumps(payload).encode())
         with contextlib.suppress(Exception):
             await send.finish()
         await self._drain_close(conn)
 
     async def _serve_discovery_result(self, conn):
-        """Receive one discovery result from openc3-app ({"id", "results"} or
-        {"id", "error"}) and publish it for the waiting requester."""
+        """Receive one discovery result from openc3-app ({"id", "results"},
+        {"id", "scan"} or {"id", "error"}) and publish it for the waiting requester."""
         bi = await conn.accept_bi()
         send = bi.send()
         recv = bi.recv()
         request = await self._read_request(recv)
         try:
             data = json.loads(request or b"{}")
-            result = {"error": str(data["error"])} if data.get("error") else {"results": data.get("results") or []}
+            if data.get("error"):
+                result = {"error": str(data["error"])}
+            elif data.get("scan") is not None:
+                result = {"scan": data["scan"]}
+            else:
+                result = {"results": data.get("results") or []}
             DiscoveryTopic.write_result(self.bridge_name, str(data["id"]), result, scope=self.scope)
         except (ValueError, TypeError, KeyError) as error:
             self.logger.warn(f"Bad api/discovery_result request: {error}")

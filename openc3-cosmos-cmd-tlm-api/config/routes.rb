@@ -60,6 +60,7 @@ Rails.application.routes.draw do
     post '/bridges/:id/token', to: 'bridges#token', id: /[^\/]+/
     delete '/bridges/:id', to: 'bridges#destroy', id: /[^\/]+/
     post '/discovery', to: 'discovery#create'
+    post '/discovery/scan', to: 'discovery#scan'
 
     resources :process_status, only: [:index]
     get '/process_status/:id', to: 'process_status#show', id: /[^\/]+/

@@ -137,6 +137,10 @@ class PluginsController < ModelController
   # Add a new plugin
   def create(update = false)
     return unless authorization('admin')
+    if params[:gem] and !update
+      create_from_gem
+      return
+    end
     file = if params[:store_plugin_id]
       store_data = OpenC3::PluginStoreModel.get_by_id(params[:store_plugin_id])
       unless store_data.nil?
@@ -206,6 +210,24 @@ class PluginsController < ModelController
       render json: { status: 'error', message: "No file received" }, status: :internal_server_error
     end
   end
+
+  # Parse the plugin.txt of a plugin gem already in COSMOS, e.g. to install a
+  # plugin again for another device found by hardware discovery
+  def create_from_gem
+    scope = sanitize_params([:scope])
+    return unless scope
+    gem = File.basename(params[:gem].to_s)
+    unless gem.end_with?('.gem') and OpenC3::GemModel.names.include?(gem)
+      render json: { status: 'error', message: "Plugin gem '#{gem}' is not in COSMOS" }, status: :not_found
+      return
+    end
+    # Given just the gem name, install_phase1 takes the gem from COSMOS
+    render json: OpenC3::PluginModel.install_phase1(gem, scope: scope[0])
+  rescue Exception => error
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
+    logger.error(error.formatted)
+  end
+  private :create_from_gem
 
   def update
     return unless authorization('admin')

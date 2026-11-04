@@ -249,6 +249,24 @@ class TestBridgeDiscovery(unittest.IsolatedAsyncioTestCase):
             "BRIDGE", "1", {"results": [{"value": "/dev/ttyUSB0", "text": "USB"}]}, scope="DEFAULT"
         )
 
+    async def test_scan_requests_carry_the_scan(self):
+        scan = {"matchers": [{"id": "1", "class": "openc3.discovery.hid_discovery", "params": ["0x054C"]}]}
+        self.service._discovery_requests = [
+            {"id": "4", "discovery": [], "scan": scan, "expires_at": time.time() + 10},
+        ]
+        connection = FakeAcceptConnection([b"discovery", b""])
+        connection.disconnect()
+        await asyncio.wait_for(self.service._serve_discovery(connection), timeout=1)
+        self.assertEqual(self.response(connection), [{"id": "4", "discovery": [], "scan": scan}])
+
+    async def test_scan_result_is_published(self):
+        scan = {"devices": [{"class": "x", "value": "abc", "matches": ["1"]}], "errors": {}, "skipped": {}}
+        connection = FakeAcceptConnection([json.dumps({"id": "4", "scan": scan}).encode(), b""])
+        connection.disconnect()
+        with patch("openc3.microservices.bridge_microservice.DiscoveryTopic.write_result") as write_result:
+            await asyncio.wait_for(self.service._serve_discovery_result(connection), timeout=1)
+        write_result.assert_called_once_with("BRIDGE", "4", {"scan": scan}, scope="DEFAULT")
+
     async def test_discovery_error_is_published(self):
         connection = FakeAcceptConnection([json.dumps({"id": "1", "error": "boom"}).encode(), b""])
         connection.disconnect()

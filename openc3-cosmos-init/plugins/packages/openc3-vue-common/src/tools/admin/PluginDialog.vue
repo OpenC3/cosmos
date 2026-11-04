@@ -539,6 +539,11 @@ export default {
       type: Boolean,
       default: false,
     },
+    // Values to start with, e.g. for the device hardware discovery found
+    presetVariables: {
+      type: Object,
+      default: null,
+    },
     existingPluginTxt: {
       type: String,
       required: false,
@@ -793,6 +798,7 @@ export default {
     ) {
       this.loadBridges()
     }
+    this.applyPresetVariables()
     this.runAllDiscovery()
     if (
       Object.values(this.localVariables).some(
@@ -1154,6 +1160,20 @@ export default {
       if (this.editor) {
         AceEditorUtils.toggleVimMode(this.editor)
         // don't worry about this.differ since AceDiff replaces the editor anyway, and thus there's no context menu
+      }
+    },
+    // Set the presetVariables the plugin defines. Variables whose states set
+    // others go first, so a state's defaults don't replace a preset value.
+    applyPresetVariables() {
+      const presets = Object.entries(this.presetVariables || {}).filter(
+        ([name]) => name in this.localVariables,
+      )
+      const controls = (name) => this.isController(this.localVariables[name])
+      for (const [name, value] of [
+        ...presets.filter(([name]) => controls(name)),
+        ...presets.filter(([name]) => !controls(name)),
+      ]) {
+        this.chooseVariableValue(name, String(value))
       }
     },
     // A value chosen in the dialog, which discovery won't replace
