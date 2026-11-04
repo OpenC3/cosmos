@@ -9,6 +9,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import errno
+import socket
 import socketserver
 import unittest
 from unittest.mock import *
@@ -27,6 +29,49 @@ class TestTcpipClientStream(unittest.TestCase):
             "Invalid hostname",
         ):
             TcpipClientStream("asdf", 8888, 8888, 10.0, None)
+
+    def unused_port(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            return s.getsockname()[1]
+
+    def test_raises_connection_refused_when_nothing_is_listening(self):
+        port = self.unused_port()
+        ss = TcpipClientStream("localhost", port, port, 10.0, None)
+        with self.assertRaises(ConnectionRefusedError):
+            ss.connect()
+        self.assertFalse(ss.connected())
+
+    def test_connects_to_a_listening_server(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+            server.bind(("127.0.0.1", 0))
+            server.listen(1)
+            port = server.getsockname()[1]
+            ss = TcpipClientStream("localhost", port, port, 10.0, None)
+            ss.connect()
+            self.assertTrue(ss.connected())
+            self.assertEqual(ss.read_socket, ss.write_socket)
+            conn, _ = server.accept()
+            conn.close()
+            ss.disconnect()
+
+    @patch("openc3.streams.tcpip_client_stream.select.select", return_value=([], [], []))
+    def test_raises_a_timeout_when_the_handshake_does_not_complete(self, _select):
+        ss = TcpipClientStream("localhost", 8888, 8888, 0.1, None, 0.1)
+        with (
+            patch.object(socket.socket, "connect_ex", return_value=errno.EINPROGRESS),
+            self.assertRaisesRegex(TimeoutError, "Connect timeout"),
+        ):
+            ss.connect()
+
+    @patch("openc3.streams.tcpip_client_stream.select.select", side_effect=ValueError("file descriptor cannot be -1"))
+    def test_raises_canceled_when_the_socket_is_closed_during_connect(self, _select):
+        ss = TcpipClientStream("localhost", 8888, 8888, 0.1, None)
+        with (
+            patch.object(socket.socket, "connect_ex", return_value=errno.EINPROGRESS),
+            self.assertRaisesRegex(RuntimeError, "Connect canceled"),
+        ):
+            ss.connect()
 
 
 # TODO: Fails with Traceback (most recent call last):
