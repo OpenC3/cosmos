@@ -13,8 +13,7 @@
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
     "ace-builds": "1.45.2",
-    "single-spa-vue": "3.0.1",
-    "sprintf-js": "1.1.3"
+    "single-spa-vue": "3.0.1"
   },
   "devDependencies": {
     "@rushstack/eslint-patch": "1.16.1",
