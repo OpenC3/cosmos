@@ -242,15 +242,14 @@
     <!-- Overall health across the top: the worst status of any panel, in
          its status color. Out of limits, it names the worst panel and goes
          to it. -->
-    <div
+    <output
       v-if="current && !editing && healthBanner"
       :class="['health-banner', `st-${health.level}`]"
-      role="status"
       aria-live="polite"
       data-test="dashboard-health"
     >
       <!-- Centered on the banner; the button keeps the right column -->
-      <div class="health-center">
+      <span class="health-center">
         <status-symbol :level="health.level" decorative class="health-symbol" />
         <span class="health-label font-weight-bold text-uppercase">{{
           healthBanner.label
@@ -258,7 +257,7 @@
         <span v-if="healthBanner.detail" class="health-detail text-truncate">
           {{ healthBanner.detail }}
         </span>
-      </div>
+      </span>
       <v-btn
         v-if="healthBanner.worst"
         size="small"
@@ -272,7 +271,7 @@
         <template v-if="!isPhone">{{ healthBanner.worst }}</template>
         <template v-else>Show</template>
       </v-btn>
-    </div>
+    </output>
 
     <!-- The same playback banner and controls as Telemetry Viewer. The
          Playback button in the header goes back to live. -->
@@ -344,15 +343,14 @@
     >
       <!-- Switching dashboards: the new one lays out underneath, hidden,
            until it's ready -->
-      <div
+      <output
         v-if="opening"
         class="opening-screen d-flex flex-column align-center ga-3 pt-16 text-medium-emphasis"
-        role="status"
         data-test="dashboard-opening"
       >
         <v-progress-circular indeterminate color="secondary" />
         Loading {{ opening }}…
-      </div>
+      </output>
       <dashboard-grid ref="grid" :panels="model.panels" :columns="columns" />
       <div
         v-if="!model.panels.length"

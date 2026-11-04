@@ -102,7 +102,7 @@ export function useDashboardFile({
   async function selectDashboard(key) {
     if (!key || key === currentKey.value) return
     if (!(await confirmDiscard())) return
-    open(key)
+    await open(key)
   }
   async function open(key, { syncUrl = true } = {}) {
     // Panels share command definitions; opening a dashboard refetches them

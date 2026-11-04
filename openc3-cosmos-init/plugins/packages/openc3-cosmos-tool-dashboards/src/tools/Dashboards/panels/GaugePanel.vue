@@ -17,7 +17,9 @@
       'gauge d-flex flex-column flex-grow-1 min-h-0 overflow-hidden',
       { 'cursor-pointer': !!openDetails },
     ]"
+    :tabindex="openDetails ? 0 : undefined"
     @click="showDetails()"
+    @keydown.enter="showDetails()"
   >
     <svg
       viewBox="0 0 200 160"
@@ -78,12 +80,7 @@
     <!-- The dial straightened into a vertical meter (min at the bottom)
          beside the value when the panel is one column wide. Wider panels,
          however short, keep the dial. -->
-    <div
-      class="meter flex-grow-1 min-h-0"
-      role="img"
-      :aria-label="`${first.text} ${first.units}`"
-      data-test="gauge-meter"
-    >
+    <div class="meter flex-grow-1 min-h-0" data-test="gauge-meter">
       <div class="meter-text min-w-0">
         <span
           :class="[
@@ -98,7 +95,7 @@
           first.units
         }}</span>
       </div>
-      <div class="meter-scale">
+      <div class="meter-scale" aria-hidden="true">
         <div class="meter-track">
           <span
             v-for="(zone, index) in zones"

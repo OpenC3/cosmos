@@ -46,8 +46,8 @@
 import { PANEL_TYPES } from './registry'
 import { equal } from '../composables/equal'
 
-const TRUE_WORDS = ['TRUE', 'ON', 'YES']
-const FALSE_WORDS = ['FALSE', 'OFF', 'NO']
+const TRUE_WORDS = new Set(['TRUE', 'ON', 'YES'])
+const BOOLEAN_WORDS = new Set([...TRUE_WORDS, 'FALSE', 'OFF', 'NO'])
 
 // '#rrggbb' from 'rrggbb' or '#RRGGBB'; null for anything else, so file text
 // never reaches a style binding
@@ -58,11 +58,10 @@ export function normalizeColor(value) {
 
 const OPTION_TYPES = {
   boolean: {
-    decode: (values) => TRUE_WORDS.includes(String(values[0]).toUpperCase()),
+    decode: (values) => TRUE_WORDS.has(String(values[0]).toUpperCase()),
     encode: (value) => [value ? 'TRUE' : 'FALSE'],
     validate: (values) =>
-      values.length === 1 &&
-      [...TRUE_WORDS, ...FALSE_WORDS].includes(String(values[0]).toUpperCase())
+      values.length === 1 && BOOLEAN_WORDS.has(String(values[0]).toUpperCase())
         ? null
         : 'expects TRUE or FALSE',
   },
@@ -97,8 +96,8 @@ const OPTION_TYPES = {
   // Free text, written quoted: SETTING DETAILS "Starts a collect". Line
   // breaks are written as \n so the setting stays on one line.
   text: {
-    decode: (values) => values.join(' ').replace(/\\n/g, '\n'),
-    encode: (value) => [String(value).replace(/\r?\n/g, '\\n')],
+    decode: (values) => values.join(' ').replaceAll(String.raw`\n`, '\n'),
+    encode: (value) => [String(value).replace(/\r?\n/g, String.raw`\n`)],
     validate: (values) => (values.length ? null : 'expects some text'),
   },
   // rrggbb. A bare # starts a comment in dashboard files, so colors are

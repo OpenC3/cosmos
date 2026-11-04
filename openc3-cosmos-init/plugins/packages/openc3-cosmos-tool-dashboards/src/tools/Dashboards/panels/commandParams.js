@@ -13,13 +13,13 @@
 
 // Same list as CommandEditor in vue-common: items every packet has that
 // aren't real command parameters
-const RESERVED = [
+const RESERVED = new Set([
   'PACKET_TIMESECONDS',
   'PACKET_TIMEFORMATTED',
   'RECEIVED_TIMESECONDS',
   'RECEIVED_TIMEFORMATTED',
   'RECEIVED_COUNT',
-]
+])
 
 // get_target / get_cmd promises, keyed by 'TARGET' and 'TARGET COMMAND', so
 // every COMMAND panel and the panel dialog share one request per definition
@@ -60,8 +60,7 @@ export async function loadCommandParams(api, targetName, commandName) {
   const ignored = target?.ignored_parameters || []
   const params = command.items
     .filter(
-      (p) =>
-        !p.hidden && !RESERVED.includes(p.name) && !ignored.includes(p.name),
+      (p) => !p.hidden && !RESERVED.has(p.name) && !ignored.includes(p.name),
     )
     .map((p) => ({
       name: p.name,

@@ -58,9 +58,14 @@ async function createDashboard(page, name: string) {
 async function setCode(page, lines: string[]) {
   await page.locator('[data-test="dashboard-code-btn"]').click()
   await page.locator('[data-test="dashboard-code"] textarea').fill(lines.join('\n'))
-  // Edits apply shortly after typing stops
-  await page.waitForTimeout(800)
+  // Closing blurs the text, which applies it right away
   await page.locator('[data-test="code-dialog"]').getByLabel('Close').click()
+  const title = /^DASHBOARD "(.*)"$/.exec(lines[0])?.[1]
+  if (title) {
+    await expect(
+      page.locator('[data-test="dashboard-title-input"] input'),
+    ).toHaveValue(title)
+  }
 }
 
 async function save(page) {

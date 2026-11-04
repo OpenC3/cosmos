@@ -284,8 +284,9 @@ onMounted(() => {
   // Visible means inside the window minus the app bar and footer (Vuetify
   // publishes their heights to the page as layout variables)
   const style = getComputedStyle(wrapEl.value)
-  const top = parseFloat(style.getPropertyValue('--v-layout-top')) || 0
-  const bottom = parseFloat(style.getPropertyValue('--v-layout-bottom')) || 0
+  const top = Number.parseFloat(style.getPropertyValue('--v-layout-top')) || 0
+  const bottom =
+    Number.parseFloat(style.getPropertyValue('--v-layout-bottom')) || 0
   visibility = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {

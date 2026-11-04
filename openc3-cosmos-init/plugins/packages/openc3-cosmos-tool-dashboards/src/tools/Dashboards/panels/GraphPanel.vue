@@ -451,7 +451,15 @@ function format(index, value) {
   if (formatString) return formatTelemetry(value, formatString)
   return Math.abs(value) >= 1000
     ? value.toFixed(0)
-    : value.toPrecision(4).replace(/\.?0+$/, '')
+    : trimZeros(value.toPrecision(4))
+}
+// '12.30' -> '12.3', '5.000' -> '5'; exponents ('1.230e-7') are left alone
+function trimZeros(text) {
+  if (!text.includes('.') || text.includes('e')) return text
+  let end = text.length
+  while (text[end - 1] === '0') end--
+  if (text[end - 1] === '.') end--
+  return text.slice(0, end)
 }
 </script>
 

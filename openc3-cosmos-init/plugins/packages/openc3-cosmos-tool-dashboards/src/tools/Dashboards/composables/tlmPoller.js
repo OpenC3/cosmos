@@ -93,7 +93,7 @@ export class TlmPoller {
     this.scheduled = true
     queueMicrotask(() => {
       this.scheduled = false
-      this.poll()
+      void this.poll()
     })
   }
 
@@ -103,8 +103,8 @@ export class TlmPoller {
     this.period = Math.min(MAX_PERIOD, Math.max(0.1, periodSeconds))
     // Playback fetches when its time changes, not on a timer
     if (this.playbackTime) return
-    this.timer = setInterval(() => this.poll(), this.period * 1000)
-    this.poll()
+    this.timer = setInterval(() => void this.poll(), this.period * 1000)
+    void this.poll()
   }
 
   // Show values as of `time` (a Date); null goes back to live polling
@@ -113,7 +113,7 @@ export class TlmPoller {
     this.playbackTime = time
     if (time) {
       this.stop()
-      this.poll()
+      void this.poll()
     } else if (!wasLive) {
       this.start()
     }
@@ -189,7 +189,7 @@ export class TlmPoller {
       this.clock.loading--
       if (this.pending) {
         this.pending = false
-        this.poll()
+        void this.poll()
       }
       // Done, with nothing queued behind it
       if (!this.pending && !this.busy) {

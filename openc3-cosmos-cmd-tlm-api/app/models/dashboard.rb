@@ -68,7 +68,9 @@ class Dashboard < OpenC3::TargetFile
         case name.to_s.upcase
         when 'ICON' then result['icon'] = unquote(value)
         when 'COLOR' then result['color'] = unquote(value)
+        else nil # Other settings aren't in the summary
         end
+      else nil # Panel contents aren't in the summary
       end
     end
     result

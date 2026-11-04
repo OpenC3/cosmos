@@ -17,7 +17,9 @@
       'state-panel d-flex flex-column flex-grow-1 min-h-0',
       { 'cursor-pointer': !!openDetails },
     ]"
+    :tabindex="openDetails ? 0 : undefined"
     @click="showDetails()"
+    @keydown.enter="showDetails()"
   >
     <div class="d-flex align-center ga-2">
       <status-symbol :level="first.level" :size="16" />

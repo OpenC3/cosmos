@@ -19,7 +19,12 @@
   <v-footer v-if="!chromeless" id="footer" app height="33">
     <img :src="icon" alt="OpenC3" />
     <!-- Mobile: just the edition and version, and the time without the date -->
-    <span :class="[footerClass, { 'text-truncate': mobile }]" @click="upgrade">
+    <span
+      :class="[footerClass, { 'text-truncate': mobile }]"
+      :tabindex="enterprise ? undefined : 0"
+      @click="upgrade"
+      @keydown.enter="upgrade"
+    >
       <template v-if="mobile">{{ edition }} {{ version }}</template>
       <template v-else>
         OpenC3 {{ edition }} {{ version }} &copy; {{ currentYear }} - License:

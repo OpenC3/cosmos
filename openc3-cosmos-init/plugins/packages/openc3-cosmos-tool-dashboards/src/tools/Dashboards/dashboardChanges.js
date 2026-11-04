@@ -53,7 +53,7 @@ export function describeDashboardChange(previous, text) {
   // Pair panels up: identical text first, then the same type and title
   const unmatched = [...before.panels]
   const take = (test) => {
-    const index = unmatched.findIndex(test)
+    const index = unmatched.findIndex((panel) => test(panel))
     return index < 0 ? null : unmatched.splice(index, 1)[0]
   }
   const rest = after.panels.filter((panel) => {

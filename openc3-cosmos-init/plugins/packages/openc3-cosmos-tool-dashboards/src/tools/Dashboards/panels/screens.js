@@ -36,7 +36,8 @@ export function listScreens() {
       const screens = {}
       for (const path of response.data) {
         const [target, , file] = path.split('/')
-        ;(screens[target] ||= []).push(file.replace(/\.txt$/, '').toUpperCase())
+        screens[target] ||= []
+        screens[target].push(file.replace(/\.txt$/, '').toUpperCase())
       }
       return screens
     })
@@ -82,7 +83,7 @@ export async function newScreenText(api, targetName, packetName) {
   for (const item of packet.items) {
     if (item.hidden) continue
     // Brackets are doubled so they aren't read as array indexes
-    const name = item.name.replace(/\[/g, '[[').replace(/\]/g, ']]')
+    const name = item.name.replaceAll('[', '[[').replaceAll(']', ']]')
     text += `  LABELVALUE ${targetName} ${packetName} ${name}\n`
   }
   return `${text}END\n`

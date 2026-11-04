@@ -91,6 +91,7 @@
 <script setup>
 import { computed, onUnmounted, ref } from 'vue'
 import { limitLines } from '../limits'
+import { dependOn } from '../composables/dependOn'
 import { hoverReach, nearestValue } from '../panels/tlmSeries'
 
 const TOP = 3
@@ -131,7 +132,7 @@ const pointer = ref(null)
 
 // One pass over the points, widened to include the yellow limits
 const range = computed(() => {
-  void props.version
+  dependOn(props.version)
   let min = Infinity
   let max = -Infinity
   for (const v of props.points) {
@@ -149,7 +150,7 @@ const range = computed(() => {
 // [x from 0 to 100, value] to draw. Thinned slots keep their low and
 // high, so spikes still show.
 const samples = computed(() => {
-  void props.version
+  dependOn(props.version)
   const points = props.points
   const n = points.length
   const [start, end] = props.window || []
@@ -192,7 +193,7 @@ const areaPath = computed(() => {
 // dot is on the nearest real point (not a thinned one, which jumps
 // between a slot's low and high)
 const marker = computed(() => {
-  void props.version
+  dependOn(props.version)
   const [start, end] = props.window || []
   if (!(end > start)) return null
   const time = pointer.value

@@ -86,6 +86,7 @@ import StatusSymbol from '../components/StatusSymbol.vue'
 import { panelProps, usePanel } from './panelBase'
 import { baseKey, itemKey } from '../composables/tlmPoller'
 import { formatTelemetry } from '../composables/format'
+import { dependOn } from '../composables/dependOn'
 import { LEVEL_LABELS, limitsReason, stateToLevel } from '../status'
 
 const HISTORY_COUNT = 1000
@@ -114,7 +115,7 @@ const ownNow = ref(Date.now())
 const now = computed(() => {
   if (!seriesStore) return ownNow.value
   // Recomputes on each tick; wall time, since durations are live
-  void seriesStore.state.version
+  dependOn(seriesStore.state.version)
   return Date.now()
 })
 
@@ -147,9 +148,11 @@ const rows = computed(() =>
         since: entry.since || 0,
       }
     })
-    .sort((a, b) =>
-      a.level === b.level ? b.since - a.since : a.level === 'critical' ? -1 : 1,
-    ),
+    .sort((a, b) => {
+      // Critical first, then the most recent within a level
+      if (a.level === b.level) return b.since - a.since
+      return a.level === 'critical' ? -1 : 1
+    }),
 )
 const counts = computed(() =>
   ['critical', 'caution'].map((level) => ({

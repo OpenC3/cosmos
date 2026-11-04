@@ -69,8 +69,7 @@ export function ringClass(level) {
 // Human readable reason an item is out of limits, e.g. "above RED HIGH 55"
 export function limitsReason(state, limits) {
   if (!state) return ''
-  const value = (key) =>
-    limits && limits[key] !== undefined ? ` ${limits[key]}` : ''
+  const value = (key) => (limits?.[key] === undefined ? '' : ` ${limits[key]}`)
   switch (state) {
     case 'RED_HIGH':
       return `above RED HIGH${value('red_high')}`
@@ -81,6 +80,6 @@ export function limitsReason(state, limits) {
     case 'YELLOW_LOW':
       return `below YELLOW LOW${value('yellow_low')}`
     default:
-      return state.replace(/_/g, ' ')
+      return state.replaceAll('_', ' ')
   }
 }

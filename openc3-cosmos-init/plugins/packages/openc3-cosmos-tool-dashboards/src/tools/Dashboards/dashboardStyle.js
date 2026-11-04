@@ -17,7 +17,6 @@
 //     SETTING ICON mdi-satellite-variant
 //     SETTING COLOR "#938bdb"
 
-import { SERIES_COLORS } from './panels/colors'
 import { normalizeColor } from './panels/options'
 
 export const DEFAULT_ICON = 'mdi-view-dashboard-outline'
@@ -50,7 +49,7 @@ export const DASHBOARD_ICONS = [
 ]
 
 // The same eight as graph lines; the color wheel picks any other
-export const DASHBOARD_COLORS = SERIES_COLORS
+export { SERIES_COLORS as DASHBOARD_COLORS } from './panels/colors'
 
 function first(settings, name) {
   return settings?.[name]?.[0] || null

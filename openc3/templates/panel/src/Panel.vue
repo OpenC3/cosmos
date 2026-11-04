@@ -2,7 +2,9 @@
   <div
     class="d-flex flex-column flex-grow-1 align-center justify-center ga-1 pa-2"
     :class="{ 'cursor-pointer': !!openDetails }"
+    :tabindex="openDetails ? 0 : undefined"
     @click="showDetails()"
+    @keydown.enter="showDetails()"
   >
     <div class="d-flex align-center ga-2">
       <StatusSymbol :level="first.level" :size="16" />

@@ -105,8 +105,13 @@ function showScreen(target, screenName) {
     '_blank',
   )
 }
-function closeScreenByName() {}
-function closeAll() {}
+// Nothing to close: the panel's one screen stays until the panel goes
+function closeScreenByName() {
+  // Intentionally empty
+}
+function closeAll() {
+  // Intentionally empty
+}
 
 defineExpose({ showScreen, closeScreenByName, closeAll })
 </script>

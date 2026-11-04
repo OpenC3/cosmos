@@ -237,7 +237,8 @@ const typeItems = computed(() => {
   for (const [value, type] of Object.entries(PANEL_TYPES)) {
     if (type.hidden) continue
     const category = type.category || 'Other'
-    ;(groups[category] ||= []).push({
+    groups[category] ||= []
+    groups[category].push({
       title: type.label,
       value,
       icon: type.icon,

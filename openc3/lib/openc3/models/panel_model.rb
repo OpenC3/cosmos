@@ -44,8 +44,9 @@ module OpenC3
       super("#{scope}__#{PRIMARY_KEY}")
     end
 
-    # Called by the PluginModel to validate its top-level keyword: "PANEL"
-    def self.handle_config(parser, keyword, parameters, plugin: nil, needs_dependencies: false, scope:)
+    # Called by the PluginModel to validate its top-level keyword: "PANEL".
+    # ** takes needs_dependencies, which panels don't use.
+    def self.handle_config(parser, keyword, parameters, plugin: nil, scope:, **)
       case keyword
       when 'PANEL'
         parser.verify_num_parameters(1, 1, "PANEL <Panel Type>")
@@ -61,16 +62,16 @@ module OpenC3
       end
     end
 
-    # url is accepted (and ignored, it's derived from the name) because models
-    # are rebuilt from their as_json, e.g. to find a plugin's models on
-    # upgrade or uninstall
-    def initialize(name:, updated_at: nil, plugin: nil, url: nil, scope:)
+    # ** takes url (ignored, it's derived from the name) because models are
+    # rebuilt from their as_json, e.g. to find a plugin's models on upgrade
+    # or uninstall
+    def initialize(name:, updated_at: nil, plugin: nil, scope:, **)
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
       @filename = "#{@name}.js"
       @bucket_key = "panels/#{@name}/#{@filename}"
     end
 
-    def as_json(*a)
+    def as_json(*)
       {
         'name' => @name,
         'updated_at' => @updated_at,

@@ -11,5 +11,13 @@ export const Api = {
   post: () => Promise.resolve({}),
 }
 export const axios = Api
-export class Cable {}
-export class OpenC3Api {}
+export class Cable {
+  createSubscription() {
+    return Promise.resolve({ unsubscribe: () => Promise.resolve() })
+  }
+}
+export class OpenC3Api {
+  get_tlm_values() {
+    return Promise.resolve([])
+  }
+}

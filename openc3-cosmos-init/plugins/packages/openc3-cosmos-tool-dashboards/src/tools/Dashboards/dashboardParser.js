@@ -440,12 +440,10 @@ function panelLines(panel) {
       if (item.valueType && item.valueType !== 'CONVERTED') {
         line += ` ${item.valueType}`
       }
-      lines.push(line)
-      lines.push(...settingLines('ITEM_SETTING', '    ', item.settings))
+      lines.push(line, ...settingLines('ITEM_SETTING', '    ', item.settings))
     }
   }
-  lines.push(...settingLines('SETTING', '  ', panel.settings))
-  lines.push('END')
+  lines.push(...settingLines('SETTING', '  ', panel.settings), 'END')
   return lines
 }
 

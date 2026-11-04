@@ -19,7 +19,9 @@
     ]"
     :style="{ '--stat-color': levelColor }"
     :data-hovered="hovered ? '' : undefined"
+    :tabindex="openDetails ? 0 : undefined"
     @click="showDetails()"
+    @keydown.enter="showDetails()"
   >
     <div class="stat-value d-flex align-baseline ga-1 pt-1">
       <span
@@ -97,6 +99,7 @@ import LimitsBar from '../components/LimitsBar.vue'
 import PacketTime from '../components/PacketTime.vue'
 import Sparkline from '../components/Sparkline.vue'
 import { clock, compactNumber, formatTelemetry } from '../composables/format'
+import { dependOn } from '../composables/dependOn'
 
 // One value, big. Container queries hide the extras as the panel shrinks:
 // number only at the smallest size, then sparkline, then limits bar. The
@@ -178,7 +181,7 @@ const hovered = computed(() => {
   const time = hover.time
   if (time === null || time > now.value) return null
   // The arrays change in place; the version says when
-  void version.value
+  dependOn(version.value)
   const value = nearestValue(
     series[0],
     series[1],

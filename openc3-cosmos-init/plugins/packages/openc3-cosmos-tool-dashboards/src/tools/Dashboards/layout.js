@@ -159,6 +159,15 @@ export function breakpointFor(width) {
   return 'desktop'
 }
 
+// The leftmost spot for `rect` in row `y` that doesn't overlap `placed`
+function firstFreeInRow(rect, y, columns, placed) {
+  for (let x = 0; x + rect.w <= columns; x++) {
+    const candidate = { ...rect, x, y }
+    if (!placed.some((other) => collides(candidate, other))) return candidate
+  }
+  return null
+}
+
 // Place rects in reading order: each goes in the first spot at or below the
 // previous one, so the derived layout reads in the same order as the desktop
 function packInOrder(rects, columns) {
@@ -166,14 +175,10 @@ function packInOrder(rects, columns) {
   let row = 0
   for (const rect of rects) {
     let spot = null
-    for (let y = row; !spot; y++) {
-      for (let x = 0; x + rect.w <= columns; x++) {
-        const candidate = { ...rect, x, y }
-        if (!placed.some((other) => collides(candidate, other))) {
-          spot = candidate
-          break
-        }
-      }
+    let y = row
+    while (!spot) {
+      spot = firstFreeInRow(rect, y, columns, placed)
+      y++
     }
     placed.push(spot)
     row = spot.y
@@ -190,7 +195,8 @@ function phoneOrder(panels) {
   let band = []
   let bottom = -Infinity
   const flush = () => {
-    ordered.push(...band.sort((a, b) => a.x - b.x || a.y - b.y))
+    band.sort((a, b) => a.x - b.x || a.y - b.y)
+    ordered.push(...band)
     band = []
   }
   for (const panel of [...panels].sort((a, b) => a.y - b.y || a.x - b.x)) {

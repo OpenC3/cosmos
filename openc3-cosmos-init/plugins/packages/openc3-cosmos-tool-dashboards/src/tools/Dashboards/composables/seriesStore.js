@@ -149,7 +149,7 @@ export class SeriesStore {
     if (this.timeline.on) {
       this.pending.clear()
       const end = this.playbackTime
-      if (end) this.loadRange(keys, this.windowStart(end), end)
+      if (end) void this.loadRange(keys, this.windowStart(end), end)
       return
     }
     if (!this.subscription) {
@@ -188,7 +188,7 @@ export class SeriesStore {
     if (!time) return
     const step = previous ? time - previous : 0
     if (step > 0 && step <= this.duration * 1000) {
-      this.loadRange([...this.entries.keys()], previous, time)
+      void this.loadRange([...this.entries.keys()], previous, time)
     } else {
       this.restart()
     }

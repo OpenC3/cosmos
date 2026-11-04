@@ -99,7 +99,7 @@ const GAUGE_LIMITS = [
 function gaugeProblem(panel) {
   if (option(panel, 'LIMITS') === 'CUSTOM') {
     const values = GAUGE_LIMITS.map(([name]) => option(panel, name))
-    if (values.some((value) => value === null)) {
+    if (values.includes(null)) {
       return 'Set the red and yellow limits'
     }
     if (values.some((value, index) => index && value < values[index - 1])) {
