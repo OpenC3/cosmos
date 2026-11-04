@@ -313,6 +313,49 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(packet.read("item1"), [17])
         self.assertEqual(item1.array_size, 8)
 
+    def test_can_handle_writing_variable_sized_arrays_of_32_bit_float_and_int_items(self):
+        packet = Packet()
+        packet.append_item("hdr", 8, "UINT")
+        packet.append_item("len", 8, "UINT")
+        floats = packet.append_item("floats", 32, "FLOAT", 0)
+        floats.variable_bit_size = {
+            "length_item_name": "len",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 32,
+        }
+        packet.append_item("ints_len", 8, "UINT")
+        ints = packet.append_item("ints", 16, "INT", 0)
+        ints.variable_bit_size = {
+            "length_item_name": "ints_len",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 16,
+        }
+        packet.append_item("trailer", 8, "UINT")
+        packet.buffer = b"\x00" * packet.defined_length
+
+        packet.write("hdr", 0xA5)
+        packet.write("floats", [-2.5, 5.0, 3.5])
+        packet.write("ints", [-1, 2])
+        packet.write("trailer", 0x5A)
+        self.assertEqual(packet.buffer, b"\xa5\x03" + struct.pack(">3f", -2.5, 5.0, 3.5) + b"\x02\xff\xff\x00\x02\x5a")
+        self.assertEqual(packet.read("len"), 3)
+        self.assertEqual(packet.read("floats"), [-2.5, 5.0, 3.5])
+        self.assertEqual(packet.read("ints_len"), 2)
+        self.assertEqual(packet.read("ints"), [-1, 2])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
+        # Grow and then shrink the float array and keep the trailing items
+        packet.write("floats", [1.5, 3.0, 4.5, 6.0, 7.5])
+        self.assertEqual(packet.read("len"), 5)
+        self.assertEqual(packet.read("floats"), [1.5, 3.0, 4.5, 6.0, 7.5])
+        self.assertEqual(packet.read("ints"), [-1, 2])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+        packet.write("floats", [1.5])
+        self.assertEqual(packet.buffer, b"\xa5\x01" + struct.pack(">f", 1.5) + b"\x02\xff\xff\x00\x02\x5a")
+        self.assertEqual(packet.read("len"), 1)
+        self.assertEqual(packet.read("floats"), [1.5])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
     def test_complains_about_unknown_data_types(self):
         self.assertRaisesRegex(
             TypeError,

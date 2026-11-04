@@ -274,7 +274,8 @@ module OpenC3
         end
       # Probably not possible to get this condition because we don't allow 0 sized floats
       # but check for it just to cover all the possible data_types
-      elsif item.data_type == :FLOAT
+      # (variable sized FLOAT arrays are handled below)
+      elsif item.data_type == :FLOAT and not item.original_array_size
         raise "Variable bit size not currently supported for FLOAT data type"
       else
         # STRING, BLOCK, or array types
@@ -292,7 +293,11 @@ module OpenC3
           item.bit_size = -bits_after_item
         end
 
-        new_bit_size = value.length * 8
+        if item.original_array_size
+          new_bit_size = value.length * item.bit_size
+        else
+          new_bit_size = value.length * 8
+        end
         length_value = (new_bit_size - item.variable_bit_size['length_value_bit_offset']) / item.variable_bit_size['length_bits_per_count']
         @packet.write(item.variable_bit_size['length_item_name'], length_value)
 
