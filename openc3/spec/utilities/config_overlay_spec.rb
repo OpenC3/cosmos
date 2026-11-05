@@ -63,6 +63,55 @@ module OpenC3
       end
     end
 
+    describe "table_data?" do
+      it "accepts Table Manager data files outside tables/config" do
+        expect(ConfigOverlay.table_data?("INST/tables/bin/table.bin")).to be true
+        expect(ConfigOverlay.table_data?("INST/tables/bin/table.csv")).to be true
+        expect(ConfigOverlay.table_data?("INST/tables/table.bin")).to be true
+      end
+
+      it "rejects code areas, other target areas, and non-canonical names" do
+        expect(ConfigOverlay.table_data?("INST/tables/config/table_def.txt")).to be false
+        expect(ConfigOverlay.table_data?("INST/cmd_tlm/tlm.txt")).to be false
+        expect(ConfigOverlay.table_data?("INST/procedures/x.rb")).to be false
+        expect(ConfigOverlay.table_data?("INST/lib/x.rb")).to be false
+        expect(ConfigOverlay.table_data?("INST/tables")).to be false
+        expect(ConfigOverlay.table_data?("INST/tables/../procedures/x.rb")).to be false
+        expect(ConfigOverlay.table_data?("INST//tables/bin/x.bin")).to be false
+        expect(ConfigOverlay.table_data?(nil)).to be false
+      end
+    end
+
+    describe "script_edit_overlay_key?" do
+      it "flags targets_modified target files Script Runner can execute" do
+        # procedures and lib are run / required directly
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/procedures/x.rb")).to be true
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/lib/helper.rb")).to be true
+        # Script.body / bucket_load will load any overlay path, so other dirs count too
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/screens/x.rb")).to be true
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/tables/bin/t.bin")).to be true
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/__TEMP__/x_temp.rb")).to be true
+      end
+
+      it "does not flag code areas (admin) or tmp scratch (system_set)" do
+        # cmd_tlm / tables/config require admin, handled separately
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/cmd_tlm/tlm.txt")).to be false
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/tables/config/t.txt")).to be false
+        # tmp is not a loadable target path
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/tmp/foo.txt")).to be false
+        # non-overlay areas
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets/INST/procedures/x.rb")).to be false
+      end
+
+      it "fails closed (false) on non-canonical keys" do
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST//procedures/x.rb")).to be false
+        expect(ConfigOverlay.script_edit_overlay_key?("DEFAULT/targets_modified/INST/../procedures/x.rb")).to be false
+        expect(ConfigOverlay.script_edit_overlay_key?("/DEFAULT/targets_modified/INST/procedures/x.rb")).to be false
+        expect(ConfigOverlay.script_edit_overlay_key?("")).to be false
+        expect(ConfigOverlay.script_edit_overlay_key?(nil)).to be false
+      end
+    end
+
     describe "non_admin_writable_key?" do
       it "allows non-cmd_tlm targets_modified and tmp keys" do
         expect(ConfigOverlay.non_admin_writable_key?("DEFAULT/targets_modified/INST/screens/poc.txt")).to be true
