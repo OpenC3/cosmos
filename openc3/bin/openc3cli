@@ -1123,19 +1123,20 @@ if not ARGV[0].nil? # argument(s) given
       exit(ARGV[1].nil? ? 1 : 0)
     end
 
-    # force and enforce_dependencies are booleans so if they are present they are true
-    # See plugins_controller.rb install for usage
-    variables_option = ARGV.find_index('--variables')
+    flags = %w[force enforce_dependencies]
     force = ARGV.include?('force')
     enforce_dependencies = ARGV.include?('enforce_dependencies')
-    if variables_option.nil?
-      scope = ARGV[2]
-      plugin_hash_file = ARGV[3]
-    else
-      scope = ARGV[2] unless variables_option <= 2
-      plugin_hash_file = ARGV[3] unless variables_option <= 3
-      variables_file = ARGV[variables_option + 1]
+    args = ARGV.reject { |arg| flags.include?(arg) }
+
+    variables_file = nil
+    variables_option = args.find_index('--variables')
+    if variables_option
+      variables_file = args[variables_option + 1]
+      args.slice!(variables_option, 2)
     end
+
+    scope = args[2]
+    plugin_hash_file = args[3]
     load_plugin(ARGV[1], scope: scope, plugin_hash_file: plugin_hash_file, force: force, variables_file: variables_file, enforce_dependencies: enforce_dependencies)
 
   when 'list'
