@@ -158,6 +158,24 @@
                 </v-list-item-subtitle>
                 <template #append>
                   <v-chip
+                    v-if="candidate.possible"
+                    size="small"
+                    variant="outlined"
+                    class="mr-2"
+                    data-test="discover-possible"
+                  >
+                    Possible match
+                    <v-tooltip
+                      activator="parent"
+                      location="top"
+                      max-width="320"
+                    >
+                      Recognized only by a name pattern that other devices from
+                      the same maker can share, so this plugin may not support
+                      the device
+                    </v-tooltip>
+                  </v-chip>
+                  <v-chip
                     v-if="!candidate.entitled"
                     size="small"
                     prepend-icon="mdi-lock"

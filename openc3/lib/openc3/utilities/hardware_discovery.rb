@@ -180,19 +180,27 @@ module OpenC3
     # match first
     def self.device_proposal(bridge_name, device, candidates_by_id, claims)
       discovery_class = device['class']
+      matched_params = Hash(device['matched_params'])
       candidates = Array(device['matches']).flat_map do |id|
         candidates_by_id[id].map do |source, matcher|
           variables = Hash(matcher['set']).merge(matcher['variable'] => device['value'], PluginModel::BRIDGE_VARIABLE_NAME => bridge_name)
           candidate = source.slice('source', 'store_id', 'store_version_id', 'gem', 'name', 'title', 'image_url', 'entitled', 'installed').compact
+          # Rated by the parameters the device matched when the host says
+          # which (a matcher's parameters are usually alternatives)
+          params = Array(matcher['params'])
+          indexes = matched_params[id.to_s]
+          params = params.values_at(*indexes).compact if indexes.is_a?(Array) and !indexes.empty?
           candidate.merge(
             'match_title' => matcher['title'],
             'variables' => variables,
-            'specificity' => specificity(discovery_class, Array(matcher['params'])),
+            'specificity' => specificity(discovery_class, params),
+            'possible' => name_pattern_only?(discovery_class, params),
           )
         end
       end
-      # A plugin matched more than once for the device keeps its best match
-      candidates = candidates.sort_by { |candidate| [-candidate['specificity'], candidate['title'].to_s.downcase] }
+      # A plugin matched more than once for the device keeps its best match,
+      # and matches by a name pattern alone come after the others
+      candidates = candidates.sort_by { |candidate| [candidate['possible'] ? 1 : 0, -candidate['specificity'], candidate['title'].to_s.downcase] }
       candidates = candidates.uniq { |candidate| [candidate['source'], candidate['name'], candidate['match_title'], candidate['variables']] }
       {
         'bridge' => bridge_name,
@@ -219,6 +227,28 @@ module OpenC3
       else
         # zeroconf, bluetooth, ssdp and neighbor matchers are |-separated conditions
         params.map { |param| param.split('|').length }.max || 0
+      end
+    end
+
+    # The conditions that only match a device's name, by discovery class
+    NAME_CONDITIONS = {
+      'bluetooth_discovery' => %w(local_name),
+      'neighbor_discovery' => %w(hostname),
+      'usb_discovery' => %w(manufacturer product),
+      'ssdp_discovery' => %w(friendlyname),
+    }
+
+    # Whether a match is only by a name pattern (e.g. a Bluetooth local_name of
+    # Govee*), which other devices from the same maker can share, so the plugin
+    # may not support the device
+    def self.name_pattern_only?(discovery_class, params)
+      keys = NAME_CONDITIONS[discovery_class.to_s.split('.').last]
+      return false if keys.nil? or params.empty?
+      params.all? do |param|
+        param.to_s.split('|').all? do |condition|
+          key, glob = condition.split('=', 2)
+          keys.include?(key.to_s.strip.downcase) and glob.to_s.match?(/[*?\[]/)
+        end
       end
     end
 

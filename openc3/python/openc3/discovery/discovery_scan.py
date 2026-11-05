@@ -27,8 +27,13 @@ Each class scans once, in parallel, and every matcher is checked against its
 devices. Without "classes" every scannable class is scanned, so devices no
 matcher recognizes are listed too. Prints a single JSON object:
 
-    {"devices": [{"class": ..., "value": ..., "text": ..., "details": {...}, "matches": ["1"]}],
+    {"devices": [{"class": ..., "value": ..., "text": ..., "details": {...}, "matches": ["1"],
+                  "matched_params": {"1": [0]}}],
      "errors": {"<class>": "..."}, "skipped": {"<matcher id>": "..."}}
+
+A matcher's parameters are alternatives for most classes (the device matches
+if any does), so matched_params lists the indexes of the ones that matched,
+which tells COSMOS how specifically the device was recognized.
 
 Only the discovery classes shipped with COSMOS are run, never code from a
 plugin, since matchers come from plugins that aren't installed.
@@ -55,6 +60,11 @@ SCAN_CLASSES = [
 ]
 
 
+# Classes whose parameters together describe one device, rather than being
+# alternatives that each match on their own
+COMBINED_PARAM_CLASSES = {"openc3.discovery.hid_discovery"}
+
+
 def class_key(name):
     """The module form of a discovery class given as a filename or module, as
     PluginModel.discovery_class_key does"""
@@ -68,8 +78,13 @@ def scan_class(name, matchers):
     skipped = {}
     checks = []
     for matcher in matchers:
+        params = matcher.get("params", [])
         try:
-            checks.append((matcher["id"], discovery_class(*matcher.get("params", []))))
+            if name in COMBINED_PARAM_CLASSES or len(params) <= 1:
+                checks.append((matcher["id"], [(None, discovery_class(*params))]))
+            else:
+                # Each alternative separately, to know which matched
+                checks.append((matcher["id"], [(index, discovery_class(param)) for index, param in enumerate(params)]))
         except Exception as error:
             skipped[matcher["id"]] = f"{error.__class__.__name__}: {error}"
 
@@ -87,10 +102,17 @@ def scan_class(name, matchers):
                 "text": str(record.get("text") or value),
                 "details": details,
                 "matches": [],
+                "matched_params": {},
             }
-        for matcher_id, check in checks:
-            if matcher_id not in device["matches"] and check.match(record):
-                device["matches"].append(matcher_id)
+        for matcher_id, alternatives in checks:
+            for index, check in alternatives:
+                indexes = device["matched_params"].get(matcher_id, [])
+                if (index is None and matcher_id in device["matches"]) or index in indexes or not check.match(record):
+                    continue
+                if matcher_id not in device["matches"]:
+                    device["matches"].append(matcher_id)
+                if index is not None:
+                    device["matched_params"][matcher_id] = sorted([*indexes, index])
     return list(devices.values()), skipped
 
 

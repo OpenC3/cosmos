@@ -96,7 +96,7 @@ module OpenC3
       expect(dualsense['candidates']).to eql [{
         'source' => 'store', 'store_id' => 65, 'store_version_id' => 90, 'name' => 'openc3-cosmos-dualsense', 'title' => 'PS5 DualSense Controller',
         'image_url' => 'img', 'entitled' => true, 'installed' => true, 'match_title' => 'DualSense (PS5)',
-        'variables' => { 'version' => '5', 'serial_num' => 'abc', 'bridge_name' => 'DEFAULT' }, 'specificity' => 2,
+        'variables' => { 'version' => '5', 'serial_num' => 'abc', 'bridge_name' => 'DEFAULT' }, 'specificity' => 2, 'possible' => false,
       }]
       expect(claimed['claimed_by']).to eql 'DUALSENSE__1'
       # The exact USB product ranks above the generic chip vendor
@@ -145,6 +145,37 @@ module OpenC3
       expect(described_class.specificity('openc3.discovery.usb_discovery', ['046D:085E|product=BRIO*'])).to eql 3
       expect(described_class.specificity('openc3.discovery.ssdp_discovery', ['manufacturer=Sonos*|modelname=Sonos?Era*'])).to eql 2
       expect(described_class.specificity('openc3.discovery.neighbor_discovery', ['mac=00D02D*'])).to eql 1
+    end
+
+    it "rates a match by the parameters the device matched" do
+      bluetooth = 'openc3.discovery.bluetooth_discovery'
+      source = { 'source' => 'store', 'name' => 'ha', 'title' => 'Home Assistant' }
+      govee = { 'class' => bluetooth, 'params' => ['manufacturer_id=60552|service_uuid=0000ec88', 'local_name=Govee*'], 'variable' => 'ha_address', 'title' => 'Govee Bluetooth' }
+      switchbot = { 'class' => bluetooth, 'params' => ['manufacturer_id=2409'], 'variable' => 'ha_address', 'title' => 'SwitchBot' }
+      candidates_by_id = { '1' => [[source, govee]], '2' => [[source, switchbot]] }
+      claims = Hash.new { |hash, key| hash[key] = {} }
+      lamp = { 'class' => bluetooth, 'value' => 'AA:01', 'matches' => %w(1 2), 'matched_params' => { '1' => [1] } }
+      first, second = described_class.device_proposal('DEFAULT', lamp, candidates_by_id, claims)['candidates']
+      # Only Govee's name pattern matched, so it's a possible match, after the others
+      expect([first['match_title'], first['possible'], first['specificity']]).to eql ['SwitchBot', false, 1]
+      expect([second['match_title'], second['possible'], second['specificity']]).to eql ['Govee Bluetooth', true, 1]
+      # A sensor matching the specific parameters isn't
+      sensor = lamp.merge('matches' => %w(1), 'matched_params' => { '1' => [0, 1] })
+      candidate = described_class.device_proposal('DEFAULT', sensor, candidates_by_id, claims)['candidates'][0]
+      expect([candidate['possible'], candidate['specificity']]).to eql [false, 2]
+      # Hosts that don't say which parameters matched rate the whole matcher
+      older = lamp.merge('matches' => %w(1)).except('matched_params')
+      expect(described_class.device_proposal('DEFAULT', older, candidates_by_id, claims)['candidates'][0]['possible']).to be false
+    end
+
+    it "recognizes matches by a name pattern alone" do
+      expect(described_class.name_pattern_only?('openc3.discovery.bluetooth_discovery', ['local_name=Govee*'])).to be true
+      expect(described_class.name_pattern_only?('openc3.discovery.bluetooth_discovery', ['local_name=Govee_H5075'])).to be false
+      expect(described_class.name_pattern_only?('openc3.discovery.bluetooth_discovery', ['local_name=Govee*|manufacturer_id=1'])).to be false
+      expect(described_class.name_pattern_only?('openc3.discovery.neighbor_discovery', ['hostname=lyric-*'])).to be true
+      expect(described_class.name_pattern_only?('openc3.discovery.usb_discovery', ['product=*Camera*'])).to be true
+      expect(described_class.name_pattern_only?('openc3.discovery.zeroconf_discovery', ['_http._tcp.local.|name=shelly*'])).to be false
+      expect(described_class.name_pattern_only?('openc3.discovery.bluetooth_discovery', [])).to be false
     end
 
     it "names gems without their version" do

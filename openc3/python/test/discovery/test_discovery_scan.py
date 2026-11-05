@@ -272,7 +272,13 @@ class TestDiscoveryScan(unittest.TestCase):
                 (HID, "def"): [],
             },
         )
+        # Which of a matcher's alternative parameters matched
+        params = {device["value"]: device["matched_params"] for device in response["devices"]}
+        self.assertEqual(params["/dev/ttyUSB0"], {"cp210x": [0]})
+        self.assertEqual(params["/dev/ttyACM0"], {})
         dualsense = next(device for device in response["devices"] if device["value"] == "abc")
+        # HID parameters together describe one device
+        self.assertEqual(dualsense["matched_params"], {})
         self.assertEqual(dualsense["text"], "DualSense (abc)")
         self.assertEqual(dualsense["details"], {"vid": 0x054C, "pid": 0x0CE6})
 
@@ -351,6 +357,30 @@ class TestDiscoveryScan(unittest.TestCase):
         self.assertEqual(len(response["devices"]), 1)
         self.assertEqual(response["devices"][0]["text"], "printer (192.168.1.5)")
         self.assertEqual(response["devices"][0]["matches"], ["ipp", "hue"])
+
+    def test_reports_the_parameters_that_matched(self):
+        lamp = {"value": "AA:01", "text": "Govee_H607C", "name": "Govee_H607C", "service_uuids": []}
+        lamp.update(service_data_uuids=[], manufacturer_data={"34883": "00"})
+        with patch("openc3.discovery.bluetooth_discovery.BluetoothDiscovery.scan", Mock(return_value=[lamp])):
+            response = scan(
+                {
+                    "matchers": [
+                        {
+                            "id": "govee",
+                            "class": BLUETOOTH,
+                            "params": [
+                                "manufacturer_id=60552|service_uuid=0000ec88",
+                                "local_name=Govee*",
+                                "local_name=GV*",
+                            ],
+                        }
+                    ],
+                    "classes": [BLUETOOTH],
+                }
+            )
+        # Only the broad name pattern matched
+        self.assertEqual(response["devices"][0]["matches"], ["govee"])
+        self.assertEqual(response["devices"][0]["matched_params"], {"govee": [1]})
 
     def test_main(self):
         output = io.StringIO()
