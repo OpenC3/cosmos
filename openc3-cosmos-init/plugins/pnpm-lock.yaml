@@ -739,6 +739,9 @@ importers:
       vue:
         specifier: 3.5.44
         version: 3.5.44(typescript@6.0.3)
+      vue-router:
+        specifier: 4.4.4
+        version: 4.4.4(vue@3.5.44(typescript@6.0.3))
       vuetify:
         specifier: 3.13.7
         version: 3.13.7(typescript@6.0.3)(vue@3.5.44(typescript@6.0.3))
