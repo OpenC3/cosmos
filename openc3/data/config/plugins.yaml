@@ -128,7 +128,7 @@ PANEL:
   summary: Define a custom Dashboards panel type
   example: PANEL BATTERY
   description: Defines a custom panel type that can be used in Dashboards, alongside the built-in panel types.
-  since: 7.5.0
+  since: 7.6.0
   parameters:
     - name: Panel Type
       description: The panel type, used in dashboard files as `PANEL <Panel Type> ...`. It is also used to build a path to the panel implementation. For example, `PANEL BATTERY` will find the as-built file tools/panels/BATTERY/BATTERY.js. Only letters, numbers, '_' and '-' are allowed. See the [Custom Panels](../guides/custom-panels.md)
