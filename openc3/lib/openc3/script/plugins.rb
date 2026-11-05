@@ -96,7 +96,7 @@ module OpenC3
       end
     end
 
-    def plugin_install_phase2(plugin_hash, update: false, scope: $openc3_scope)
+    def plugin_install_phase2(plugin_hash, update: false, scope: $openc3_scope, enforce_dependencies: false)
       response_body = nil
       begin
         plugin_name = plugin_hash['name']
@@ -114,6 +114,7 @@ module OpenC3
           request = Net::HTTP::Post.new(uri)
         end
         form_data = [["plugin_hash", JSON.generate(plugin_hash, allow_nan: true)]]
+        form_data << ["enforce_dependencies", "true"] if enforce_dependencies
         request.set_form(form_data)
         request['User-Agent'] = JsonDRbObject::USER_AGENT
         request['Content-Type'] = 'application/json'

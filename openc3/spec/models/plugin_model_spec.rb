@@ -602,8 +602,8 @@ module OpenC3
           allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(available)
         end
 
-        def install_plugin
-          PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+        def install_plugin(enforce_dependencies: false)
+          PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT", enforce_dependencies: enforce_dependencies)
         end
 
         it "uses uvinstall for python packages when UV is available" do
@@ -661,6 +661,28 @@ module OpenC3
           expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "--default-index", anything, "-r", anything).and_return(["pip ok", success_status])
 
           expect(install_plugin['needs_dependencies']).to eql true
+        end
+
+        it "warns and continues if pipinstall fails by default" do
+          stub_plugin_gem(dep_file: 'requirements.txt', dep_body: 'requests', use_uv: 'false')
+
+          expect(PluginModel).not_to receive(:system)
+          expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "--default-index", anything, "-r", anything).and_return(["pip failed", failure_status])
+          expect(Logger).to receive(:warn).with("Python package installation failed. Plugin Python microservices may not function correctly.")
+
+          expect(install_plugin['needs_dependencies']).to eql true
+        end
+
+        it "raises and rolls back if pipinstall fails when enforcement is requested" do
+          stub_plugin_gem(dep_file: 'requirements.txt', dep_body: 'requests', use_uv: 'false')
+
+          expect(PluginModel).not_to receive(:system)
+          expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "--default-index", anything, "-r", anything).and_return(["pip failed", failure_status])
+
+          expect {
+            install_plugin(enforce_dependencies: true)
+          }.to raise_error(/Failed to install python dependencies from requirements.txt/)
+          expect(PluginModel.names(scope: "DEFAULT")).to be_empty
         end
 
         # Every other example here matches the index with `anything`, so without
