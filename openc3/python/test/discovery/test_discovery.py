@@ -178,7 +178,10 @@ class TestBluetoothDiscovery(unittest.TestCase):
             "AA:03": (types.SimpleNamespace(name=None), advertisement("Nope")),
         }
 
-        async def scan(timeout, return_adv):
+        scans = []
+
+        async def scan(timeout, return_adv, **kwargs):
+            scans.append(kwargs)
             return devices
 
         bleak = types.ModuleType("bleak")
@@ -192,6 +195,8 @@ class TestBluetoothDiscovery(unittest.TestCase):
             results,
             [{"value": "AA:01", "text": "Govee_H6159 (AA:01)"}, {"value": "AA:02", "text": "Other (AA:02)"}],
         )
+        # macOS gives Bluetooth addresses only when asked
+        self.assertEqual(scans, [{"cb": {"use_bdaddr": True}} if sys.platform == "darwin" else {}])
 
     def test_bad_matcher(self):
         with self.assertRaisesRegex(ValueError, "Unknown Bluetooth matcher"):

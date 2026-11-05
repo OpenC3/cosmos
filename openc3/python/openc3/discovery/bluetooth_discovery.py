@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import asyncio
+import sys
 from fnmatch import fnmatch
 
 from openc3.discovery.discovery import Discovery
@@ -29,7 +30,9 @@ class BluetoothDiscovery(Discovery):
     local_name=Govee*|manufacturer_id=34818 or
     manufacturer_id=76|manufacturer_data_start=0215BB70. A device is listed if any matcher
     matches, or every device is listed without matchers. On macOS the address is
-    the CoreBluetooth UUID of the device. Requires the bleak package."""
+    the device's Bluetooth address like on other platforms (as Home Assistant
+    uses), not the UUID CoreBluetooth gives it, which differs between computers.
+    Requires the bleak package."""
 
     SCAN_SECONDS = 5.0
 
@@ -85,7 +88,7 @@ class BluetoothDiscovery(Discovery):
         except ImportError as error:
             raise RuntimeError("The bleak Python package is not installed on the host") from error
 
-        found = asyncio.run(BleakScanner.discover(timeout=self.SCAN_SECONDS, return_adv=True))
+        found = asyncio.run(BleakScanner.discover(timeout=self.SCAN_SECONDS, return_adv=True, **self._scanner_args()))
         devices = []
         for address, (device, advertisement) in sorted(found.items()):
             name = advertisement.local_name or device.name
@@ -104,6 +107,11 @@ class BluetoothDiscovery(Discovery):
                 }
             )
         return devices
+
+    @staticmethod
+    def _scanner_args():
+        # CoreBluetooth hides Bluetooth addresses unless asked for them
+        return {"cb": {"use_bdaddr": True}} if sys.platform == "darwin" else {}
 
     def match(self, device):
         return not self.matchers or any(self._matches(device, matcher) for matcher in self.matchers)

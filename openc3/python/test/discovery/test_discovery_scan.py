@@ -203,7 +203,7 @@ class TestScanAndMatch(unittest.TestCase):
             ),
         }
 
-        async def discover(timeout, return_adv):
+        async def discover(timeout, return_adv, **kwargs):
             return found
 
         bleak = types.ModuleType("bleak")
