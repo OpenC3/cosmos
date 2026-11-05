@@ -323,6 +323,8 @@ For a full example, please see [openc3-cosmos-gems-interface](https://repos.open
 
 The Preidentified Protocol delineates packets using the COSMOS header. This Protocol was created to allow tools to connect and receive the entire packet stream. It can be used with the [FileInterface](/docs/configuration/interfaces#file-interface) to process COSMOS 4 log files. It can also be used to chain COSMOS instances together although that should rarely be needed with the new web native implementation.
 
+Every target named in the incoming packet headers must be mapped to the interface with [MAP_TARGET](plugins.md#map_target) or [MAP_TLM_TARGET](plugins.md#map_tlm_target). Packets for unmapped targets are dropped, and the interface logs a warning the first time it sees each unmapped packet.
+
 | Parameter    | Description                                                                                                                                                                                                                    | Required | Default                 |
 | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- | ----------------------- |
 | Sync Pattern | Hex string representing a byte pattern that will be searched for in the raw data. This pattern represents a packet delimiter and all data found AFTER the sync pattern will be returned. The sync pattern itself is discarded. | No       | nil (no sync pattern)   |

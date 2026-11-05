@@ -210,8 +210,8 @@ class InterfaceCmdHandlerThread:
                     self.interface.stop_raw_logging()
                 return "SUCCESS"
             if msg_hash.get(b"interface_cmd"):
-                params = json.loads(msg_hash[b"interface_cmd"])
                 try:
+                    params = json.loads(msg_hash[b"interface_cmd"])
                     str_params = " ".join([str(i) for i in params["cmd_params"]])
                     self.logger.info(f"{self.interface.name}: interface_cmd: {params['cmd_name']} {str_params}")
                     self.interface.interface_cmd(params["cmd_name"], *params["cmd_params"])
@@ -222,8 +222,8 @@ class InterfaceCmdHandlerThread:
                     return str(e)
                 return "SUCCESS"
             if msg_hash.get(b"protocol_cmd"):
-                params = json.loads(msg_hash[b"protocol_cmd"])
                 try:
+                    params = json.loads(msg_hash[b"protocol_cmd"])
                     str_params = " ".join([str(i) for i in params["cmd_params"]])
                     self.logger.info(
                         f"{self.interface.name}: protocol_cmd: {params['cmd_name']} {str_params} read_write: {params['read_write']} index: {params['index']}"
@@ -295,10 +295,15 @@ class InterfaceCmdHandlerThread:
                     )
                     return str(e)
 
-        target_name = msg_hash[b"target_name"].decode()
+        target_name = msg_hash.get(b"target_name")
+        target_name = target_name.decode() if target_name is not None else None
         if target_name and not self.interface.cmd_target_enabled.get(target_name, False):
+            # A released critical command was already acked as pending so it must get a result
+            if release_critical:
+                return f"Target {target_name} is disabled"
             return None  # Return and don't ack given target_name if disabled
-        cmd_name = msg_hash[b"cmd_name"].decode()
+        cmd_name = msg_hash.get(b"cmd_name")
+        cmd_name = cmd_name.decode() if cmd_name is not None else None
         manual = ConfigParser.handle_true_false(msg_hash.get(b"manual", b"FALSE").decode())
         cmd_params = None
         range_check = True
@@ -306,7 +311,11 @@ class InterfaceCmdHandlerThread:
         cmd_buffer = None
         hazardous_check = None
         if msg_hash.get(b"cmd_params") is not None:
-            cmd_params = json.loads(msg_hash.get(b"cmd_params"), cls=JsonDecoder)
+            try:
+                cmd_params = json.loads(msg_hash.get(b"cmd_params"), cls=JsonDecoder)
+            except ValueError as e:
+                self.logger.error(f"{self.interface.name}: Invalid cmd_params: {e}")
+                return f"Invalid cmd_params: {e}"
             range_check = ConfigParser.handle_true_false(msg_hash.get(b"range_check", b"TRUE").decode())
             raw = ConfigParser.handle_true_false(msg_hash.get(b"raw", b"FALSE").decode())
             hazardous_check = ConfigParser.handle_true_false(msg_hash.get(b"hazardous_check", b"TRUE").decode())
@@ -333,6 +342,8 @@ class InterfaceCmdHandlerThread:
                 if enabled_target_name == "UNKNOWN" and target_name:
                     enabled_target_name = target_name
                 if not self.interface.cmd_target_enabled.get(enabled_target_name, False):
+                    if release_critical:
+                        return f"Target {command.target_name} is disabled"
                     return None  # Don't ack disabled targets
 
                 orig_command = System.commands.packet(command.target_name, command.packet_name)
@@ -402,10 +413,11 @@ class InterfaceCmdHandlerThread:
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.pre_check(command)
-                        except Exception:
+                        except Exception as e:
                             result = False
-                            reason = traceback.format_exc()
-                        if not result:
+                            reason = str(e)
+                        # Explicitly check for False to allow None to represent unknown
+                        if result is False:
                             message = f"pre_check returned false for {command.extra['cmd_string']} due to {reason}"
                             raise WriteRejectError(message)
 
@@ -428,9 +440,9 @@ class InterfaceCmdHandlerThread:
                     if command.validator and validate:
                         try:
                             result, reason = command.validator.post_check(command)
-                        except Exception:
+                        except Exception as e:
                             result = False
-                            reason = traceback.format_exc()
+                            reason = str(e)
                         command.extra["cmd_success"] = result
                         if reason:
                             command.extra["cmd_reason"] = reason
@@ -439,7 +451,8 @@ class InterfaceCmdHandlerThread:
                     CommandTopic.write_packet(command, scope=self.scope)
                     InterfaceStatusModel.set(self.interface.as_json(), queued=True, scope=self.scope)
 
-                    if not result:
+                    # Explicitly check for False to allow None to represent unknown
+                    if result is False:
                         message = f"post_check returned false for {command.extra['cmd_string']} due to {reason}"
                         raise WriteRejectError(message)
 
@@ -673,6 +686,8 @@ class InterfaceMicroservice(Microservice):
     UNKNOWN_BYTES_TO_PRINT = 16
     DISCONNECT_WAIT_TIME = 1
     DEFAULT_UPDATE_INTERVAL = 0.1  # seconds
+    # Most distinct unmapped target / packet names to remember warning about
+    UNMAPPED_TLM_WARNED_MAX = 1000
 
     # Interfaces never use descriptions so don't keep them in memory
     def load_descriptions(self):
@@ -698,6 +713,7 @@ class InterfaceMicroservice(Microservice):
 
         self.scope = name.split("__")[0]
         interface_name = name.split("__")[2]
+        self.interface: Interface
         if self.interface_or_router == "INTERFACE":
             self.interface = InterfaceModel.get_model(name=interface_name, scope=self.scope).build()
         else:
@@ -717,6 +733,8 @@ class InterfaceMicroservice(Microservice):
         else:
             RouterStatusModel.set(self.interface.as_json(), scope=self.scope)
 
+        # Insertion ordered so the oldest key can be evicted (see handle_packet)
+        self.unmapped_tlm_warned: dict[str, bool] = {}
         # Queue Redis writes by default and flush them every update_interval seconds
         update_interval = InterfaceMicroservice.DEFAULT_UPDATE_INTERVAL
         for option_name, option_values in self.interface.options.items():
@@ -816,7 +834,7 @@ class InterfaceMicroservice(Microservice):
         # Catch Exception so any rebuild failure (bad parameters, import errors) keeps the original interface
         except Exception:
             self.logger.error(
-                f"Attempting connection #{self.interface.connection_string} failed due to {traceback.format_exc()}"
+                f"Attempting connection #{self.interface.connection_string()} failed due to {traceback.format_exc()}"
             )
             # if SignalException === error:
             #   self.logger.info(f"{self.interface.name}: Closing from signal")
@@ -923,26 +941,35 @@ class InterfaceMicroservice(Microservice):
         if packet.received_time is None:
             packet.received_time = datetime.now(timezone.utc)
 
+        if packet.identified():
+            if packet.target_name not in self.interface.tlm_target_names:
+                # Trust the identity but drop it because the target isn't mapped to this interface
+                key = f"{packet.target_name} {packet.packet_name}"
+                if key not in self.unmapped_tlm_warned:
+                    # The names come from the wire so bound how many are remembered.
+                    # Evict the oldest rather than stop adding so every new name still warns.
+                    if len(self.unmapped_tlm_warned) >= self.UNMAPPED_TLM_WARNED_MAX:
+                        del self.unmapped_tlm_warned[next(iter(self.unmapped_tlm_warned))]
+                    self.unmapped_tlm_warned[key] = True
+                    self.logger.warn(f"{self.interface.name}: Dropping telemetry for unmapped target: {key}")
+                return
+            if not self._known_tlm_packet(packet):
+                # Packet identified but we don't know about it
+                # Clear packet_name and target_name and try to identify
+                self.logger.warn(
+                    f"{self.interface.name}: Received unknown identified telemetry: {packet.target_name} {packet.packet_name}"
+                )
+                packet.target_name = None
+                packet.packet_name = None
+
         if packet.stored:
             # Stored telemetry does not update the current value table
             identified_packet = System.telemetry.identify_and_define_packet(packet, self.interface.tlm_target_names)
         else:
             # Identify and update packet
             if packet.identified():
-                try:
-                    # Preidentifed packet - place it into the current value table
-                    identified_packet = System.telemetry.update(packet.target_name, packet.packet_name, packet.buffer)
-                except Exception:
-                    # Packet identified but we don't know about it
-                    # Clear packet_name and target_name and try to identify
-                    self.logger.warn(
-                        f"{self.interface.name}: Received unknown identified telemetry: {packet.target_name} {packet.packet_name}"
-                    )
-                    packet.target_name = None
-                    packet.packet_name = None
-                    identified_packet = System.telemetry.identify_and_set_buffer(
-                        packet.buffer, self.interface.tlm_target_names
-                    )
+                # Preidentifed packet - place it into the current value table
+                identified_packet = System.telemetry.update(packet.target_name, packet.packet_name, packet.buffer)
             else:
                 # Packet needs to be identified
                 identified_packet = System.telemetry.identify_and_set_buffer(
@@ -955,22 +982,28 @@ class InterfaceMicroservice(Microservice):
             identified_packet.extra = packet.extra
             packet = identified_packet
         else:
-            unknown_packet = System.telemetry.update("UNKNOWN", "UNKNOWN", packet.buffer)
+            if packet.stored:
+                # Stored telemetry does not update the current value table
+                unknown_packet = System.telemetry.packet("UNKNOWN", "UNKNOWN").clone()
+                unknown_packet.buffer = packet.buffer
+            else:
+                unknown_packet = System.telemetry.update("UNKNOWN", "UNKNOWN", packet.buffer)
             unknown_packet.received_time = packet.received_time
             unknown_packet.stored = packet.stored
             unknown_packet.extra = packet.extra
             packet = unknown_packet
-            json_hash = CvtModel.build_json_from_packet(packet)
-            CvtModel.set(
-                json_hash,
-                packet.target_name,
-                packet.packet_name,
-                queued=self.queued,
-                scope=self.scope,
-            )
+            if not packet.stored:
+                json_hash = CvtModel.build_json_from_packet(packet)
+                CvtModel.set(
+                    json_hash,
+                    packet.target_name,
+                    packet.packet_name,
+                    queued=self.queued,
+                    scope=self.scope,
+                )
             num_bytes_to_print = min(InterfaceMicroservice.UNKNOWN_BYTES_TO_PRINT, len(packet.buffer))
             data = packet.buffer_no_copy()[0:(num_bytes_to_print)]
-            prefix = "".join([format(x, "02x") for x in data])
+            prefix = "".join([format(x, "02X") for x in data])
             self.logger.warn(
                 f"{self.interface.name} {packet.target_name} packet length: {len(packet.buffer)} starting with: {prefix}"
             )
@@ -979,6 +1012,14 @@ class InterfaceMicroservice(Microservice):
         if self.interface.tlm_target_enabled.get(packet.target_name, False):
             TargetModel.sync_tlm_packet_counts(packet, self.interface.tlm_target_names, scope=self.scope)
             TelemetryTopic.write_packet(packet, queued=self.queued, scope=self.scope)
+
+    # Whether a pre-identified packet names a defined packet
+    def _known_tlm_packet(self, packet):
+        try:
+            System.telemetry.packet(packet.target_name, packet.packet_name)
+            return True
+        except Exception:
+            return False
 
     # Equivalent of the Ruby Errno lists. Use the specific ConnectionError subclasses
     # rather than ConnectionError itself, which also covers BrokenPipeError (EPIPE)

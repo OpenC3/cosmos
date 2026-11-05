@@ -18,6 +18,14 @@ else
   output_file = STDOUT
 end
 
+# Failures also go to STDOUT so they show up in the CI log, not just the results file
+def report_error(output_file, *lines)
+  lines.each do |line|
+    output_file.puts line
+    puts line unless output_file == STDOUT
+  end
+end
+
 output_file.puts "Performing ClamAV scan of #{image_name}"
 output_file.puts
 
@@ -30,8 +38,7 @@ begin
   if pull
     docker_output, result = Open3.capture2e("docker pull #{image_name}")
     if not result.success?
-      output_file.puts docker_output
-      output_file.puts "Failed to docker pull #{image_name}"
+      report_error(output_file, docker_output, "Failed to docker pull #{image_name}")
       exit 1
     end
   end
@@ -66,15 +73,13 @@ begin
           # Make sure tar will have permissions
           chmod_output, chmod_result = Open3.capture2e("chmod -R 777 .")
           unless chmod_result.success?
-            output_file.puts chmod_output
-            output_file.puts "Failed to chmod -R 777 ."
+            report_error(output_file, chmod_output, "Failed to chmod -R 777 .")
             exit 1
           end
 
           tar_output, tar_result = Open3.capture2e("tar xvf ../#{layer_tar}")
           unless tar_result.success?
-            output_file.puts tar_output
-            output_file.puts "Failed to tar xvf ../#{layer_tar}"
+            report_error(output_file, tar_output, "Failed to tar xvf ../#{layer_tar}")
             exit 1
           end
         end
@@ -82,8 +87,7 @@ begin
         # Make sure ClamAV will have permissions
         chmod_output, chmod_result = Open3.capture2e("chmod -R 777 .")
         unless chmod_result.success?
-          output_file.puts chmod_output
-          output_file.puts "Failed to chmod -R 777 ."
+          report_error(output_file, chmod_output, "Failed to chmod -R 777 .")
           exit 1
         end
 
@@ -101,6 +105,7 @@ begin
             split_line = line.split(": ")
             count = split_line[-1].strip.to_i
             if count != 0
+              report_error(output_file, "ClamAV found #{count} infected file(s) in #{image_name}")
               exit 1
             end
             break
@@ -110,13 +115,11 @@ begin
         Dir.chdir(temp_dir)
       end
     else
-      output_file.puts tar_output
-      output_file.puts "Failed to tar xvf image.tar"
+      report_error(output_file, tar_output, "Failed to tar xvf image.tar")
       exit 1
     end
   else
-    output_file.puts docker_output
-    output_file.puts "Failed to docker save #{image_name}"
+    report_error(output_file, docker_output, "Failed to docker save #{image_name}")
     exit 1
   end
 ensure

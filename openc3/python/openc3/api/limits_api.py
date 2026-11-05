@@ -12,7 +12,7 @@
 from datetime import datetime, timezone
 
 from openc3.api import WHITELIST
-from openc3.api.tlm_api import _tlm_process_args
+from openc3.api.tlm_api import _tlm_packet_names, _tlm_process_args, _tlm_process_args_all_packets
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
@@ -128,40 +128,14 @@ def limits_enabled(*args, scope=OPENC3_SCOPE):
 #
 # Favor the first syntax where possible as it is more succinct.
 #
-# @param args [String|Array<String>] See the description for calling style
+# @param args [String|Array<String>] See the description for calling style.
+#   A packet name of LATEST applies to every packet which contains the item.
 def enable_limits(*args, scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _tlm_process_args(args, "enable_limits", scope=scope)
-    authorize(
-        permission="tlm_set",
-        target_name=target_name,
-        packet_name=packet_name,
-        scope=scope,
-    )
-    packet = TargetModel.packet(target_name, packet_name, scope=scope)
-    found_item = None
-    for item in packet["items"]:
-        if item["name"] == item_name:
-            item["limits"]["enabled"] = True
-            found_item = item
-            break
-    if found_item is None:
-        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist while enabling limits")
-
-    TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
-
-    message = f"Enabling Limits For '{target_name} {packet_name} {item_name}'"
-    Logger.info(message, scope=scope)
-
-    event = {
-        "type": "LIMITS_ENABLE_STATE",
-        "target_name": target_name,
-        "packet_name": packet_name,
-        "item_name": item_name,
-        "enabled": True,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
-        "message": message,
-    }
-    LimitsEventTopic.write(event, scope=scope)
+    target_name, packet_names, item_name = _tlm_process_args_all_packets(args, "enable_limits", scope=scope)
+    for packet_name in packet_names:
+        authorize(permission="tlm_set", target_name=target_name, packet_name=packet_name, scope=scope)
+    for packet_name in packet_names:
+        _set_limits_enabled(target_name, packet_name, item_name, True, scope)
 
 
 # Disable limit checking for a telemetry item
@@ -172,40 +146,14 @@ def enable_limits(*args, scope=OPENC3_SCOPE):
 #
 # Favor the first syntax where possible as it is more succinct.
 #
-# @param args [String|Array<String>] See the description for calling style
+# @param args [String|Array<String>] See the description for calling style.
+#   A packet name of LATEST applies to every packet which contains the item.
 def disable_limits(*args, scope=OPENC3_SCOPE):
-    target_name, packet_name, item_name = _tlm_process_args(args, "disable_limits", scope=scope)
-    authorize(
-        permission="tlm_set",
-        target_name=target_name,
-        packet_name=packet_name,
-        scope=scope,
-    )
-    packet = TargetModel.packet(target_name, packet_name, scope=scope)
-    found_item = None
-    for item in packet["items"]:
-        if item["name"] == item_name:
-            item["limits"].pop("enabled", None)
-            found_item = item
-            break
-    if found_item is None:
-        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist while disabling limits")
-
-    TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
-
-    message = f"Disabling Limits for '{target_name} {packet_name} {item_name}'"
-    Logger.info(message, scope=scope)
-
-    event = {
-        "type": "LIMITS_ENABLE_STATE",
-        "target_name": target_name,
-        "packet_name": packet_name,
-        "item_name": item_name,
-        "enabled": False,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
-        "message": message,
-    }
-    LimitsEventTopic.write(event, scope=scope)
+    target_name, packet_names, item_name = _tlm_process_args_all_packets(args, "disable_limits", scope=scope)
+    for packet_name in packet_names:
+        authorize(permission="tlm_set", target_name=target_name, packet_name=packet_name, scope=scope)
+    for packet_name in packet_names:
+        _set_limits_enabled(target_name, packet_name, item_name, False, scope)
 
 
 # Get a Hash of all the limits sets defined for an item. Hash keys are the limit
@@ -218,9 +166,15 @@ def disable_limits(*args, scope=OPENC3_SCOPE):
 #
 # @return [Hash{String => Array<Number, Number, Number, Number, Number, Number>}]
 def get_limits(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
+    target_name = target_name.upper()
+    packet_name = packet_name.upper()
+    item_name = item_name.upper()
+    # Resolve LATEST before authorizing so the real packet is authorized
+    if packet_name == "LATEST":
+        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, scope=scope)
     authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     limits = {}
-    item = _get_item(target_name, packet_name, item_name, scope=scope)
+    item = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
     for key, vals in item["limits"].items():
         if not isinstance(vals, dict):
             continue
@@ -237,7 +191,8 @@ def get_limits(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
 
 
 # Change the limits settings for a given item. By default, a new limits set called 'CUSTOM'
-# is created to avoid overriding existing limits.
+# is created to avoid overriding existing limits. A packet name of LATEST
+# applies to every packet which contains the item.
 def set_limits(
     target_name,
     packet_name,
@@ -253,73 +208,76 @@ def set_limits(
     enabled=True,
     scope=OPENC3_SCOPE,
 ):
-    authorize(
-        permission="tlm_set",
-        target_name=target_name,
-        packet_name=packet_name,
-        scope=scope,
+    target_name = target_name.upper()
+    packet_name = packet_name.upper()
+    item_name = item_name.upper()
+    packet_names = (
+        _tlm_packet_names(target_name, packet_name, item_name, scope) if packet_name == "LATEST" else [packet_name]
     )
+    for name in packet_names:
+        authorize(permission="tlm_set", target_name=target_name, packet_name=name, scope=scope)
     if (red_low > yellow_low) or (yellow_low >= yellow_high) or (yellow_high > red_high):
         raise RuntimeError("Invalid limits specified. Ensure yellow limits are within red limits.")
     if (green_low is not None and green_high is not None) and (
         (yellow_low > green_low) or (green_low >= green_high) or (green_high > yellow_high)
     ):
         raise RuntimeError("Invalid limits specified. Ensure green limits are within yellow limits.")
-    packet = TargetModel.packet(target_name, packet_name, scope=scope)
-    found_item = None
-    for item in packet["items"]:
-        if item["name"] == item_name:
-            if item["limits"]:
-                if persistence:
-                    item["limits"]["persistence_setting"] = persistence
-                if enabled:
-                    item["limits"]["enabled"] = True
-                else:
-                    item["limits"].pop("enabled", None)
-                limits = {}
-                limits["red_low"] = red_low
-                limits["yellow_low"] = yellow_low
-                limits["yellow_high"] = yellow_high
-                limits["red_high"] = red_high
-                if green_low is not None and green_high is not None:
-                    limits["green_low"] = green_low
-                if green_low is not None and green_high is not None:
-                    limits["green_high"] = green_high
-                item["limits"][limits_set] = limits
-                found_item = item
-                break
-            else:
-                raise RuntimeError("Cannot set_limits on item without any limits")
-    if found_item is None:
-        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist while setting limits")
-    message = (
-        f"Setting '{target_name} {packet_name} {item_name}' limits to {red_low} {yellow_low} {yellow_high} {red_high}"
-    )
-    if green_low is not None and green_high is not None:
-        message += f" {green_low} {green_high}"
-    message += f" in set {limits_set} with persistence {persistence} as enabled {enabled}"
-    Logger.info(message, scope=scope)
+    # Validate every packet before changing any so an error doesn't leave a partial update.
+    # TargetModel.packet returns a cached dict so it must not be modified until validated.
+    items = []
+    for name in packet_names:
+        packet = TargetModel.packet(target_name, name, scope=scope)
+        item = next((packet_item for packet_item in packet["items"] if packet_item["name"] == item_name), None)
+        if item is None:
+            raise RuntimeError(f"Item '{target_name} {name} {item_name}' does not exist while setting limits")
+        if not item["limits"]:
+            raise RuntimeError("Cannot set_limits on item without any limits")
+        items.append((name, packet, item))
+    for name, packet, item in items:
+        if persistence:
+            item["limits"]["persistence_setting"] = persistence
+        if enabled:
+            item["limits"]["enabled"] = True
+        else:
+            item["limits"].pop("enabled", None)
+        limits = {}
+        limits["red_low"] = red_low
+        limits["yellow_low"] = yellow_low
+        limits["yellow_high"] = yellow_high
+        limits["red_high"] = red_high
+        if green_low is not None and green_high is not None:
+            limits["green_low"] = green_low
+            limits["green_high"] = green_high
+        item["limits"][limits_set] = limits
 
-    TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
+        message = (
+            f"Setting '{target_name} {name} {item_name}' limits to {red_low} {yellow_low} {yellow_high} {red_high}"
+        )
+        if green_low is not None and green_high is not None:
+            message += f" {green_low} {green_high}"
+        message += f" in set {limits_set} with persistence {persistence} as enabled {enabled}"
+        Logger.info(message, scope=scope)
 
-    event = {
-        "type": "LIMITS_SETTINGS",
-        "target_name": target_name,
-        "packet_name": packet_name,
-        "item_name": item_name,
-        "red_low": red_low,
-        "yellow_low": yellow_low,
-        "yellow_high": yellow_high,
-        "red_high": red_high,
-        "green_low": green_low,
-        "green_high": green_high,
-        "limits_set": limits_set,
-        "persistence": persistence,
-        "enabled": enabled,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
-        "message": message,
-    }
-    LimitsEventTopic.write(event, scope=scope)
+        TargetModel.set_packet(target_name, name, packet, scope=scope)
+
+        event = {
+            "type": "LIMITS_SETTINGS",
+            "target_name": target_name,
+            "packet_name": name,
+            "item_name": item_name,
+            "red_low": red_low,
+            "yellow_low": yellow_low,
+            "yellow_high": yellow_high,
+            "red_high": red_high,
+            "green_low": green_low,
+            "green_high": green_high,
+            "limits_set": limits_set,
+            "persistence": persistence,
+            "enabled": enabled,
+            "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+            "message": message,
+        }
+        LimitsEventTopic.write(event, scope=scope)
 
 
 # Change the color associated with a telemetry item state in realtime.
@@ -331,13 +289,16 @@ def set_limits(
 # @param item_name [str] Item name
 # @param state_name [str] Name of the state to change (e.g. 'CONNECTED')
 # @param color [str] New color for the state. Must be GREEN, YELLOW, or RED.
+# A packet name of LATEST applies to every packet which contains the item.
 def set_state_color(target_name, packet_name, item_name, state_name, color, scope=OPENC3_SCOPE):
-    authorize(
-        permission="tlm_set",
-        target_name=target_name,
-        packet_name=packet_name,
-        scope=scope,
+    target_name = target_name.upper()
+    packet_name = packet_name.upper()
+    item_name = item_name.upper()
+    packet_names = (
+        _tlm_packet_names(target_name, packet_name, item_name, scope) if packet_name == "LATEST" else [packet_name]
     )
+    for name in packet_names:
+        authorize(permission="tlm_set", target_name=target_name, packet_name=name, scope=scope)
     state_name = str(state_name).upper()
     if color is not None:
         color = str(color).upper()
@@ -345,46 +306,47 @@ def set_state_color(target_name, packet_name, item_name, state_name, color, scop
             raise RuntimeError(
                 f"Invalid state color '{color}'. Must be one of {', '.join(PacketItem.VALID_STATE_COLORS)}."
             )
-    packet = TargetModel.packet(target_name, packet_name, scope=scope)
-    found_item = None
-    for item in packet["items"]:
-        if item["name"] == item_name:
-            if not (item.get("states") and item["states"].get(state_name)):
-                raise RuntimeError(
-                    f"State '{state_name}' does not exist for item '{target_name} {packet_name} {item_name}'"
-                )
-            if color is None:
-                # Clear the state color
-                item["states"][state_name].pop("color", None)
-            else:
-                item["states"][state_name]["color"] = color
-                # Defining a state color implies limits are enabled for the item
-                if not item.get("limits"):
-                    item["limits"] = {}
-                item["limits"]["enabled"] = True
-            found_item = item
-            break
-    if found_item is None:
-        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist while setting state color")
-    if color is None:
-        message = f"Clearing '{target_name} {packet_name} {item_name}' state {state_name} color"
-    else:
-        message = f"Setting '{target_name} {packet_name} {item_name}' state {state_name} color to {color}"
-    Logger.info(message, scope=scope)
+    # Validate every packet before changing any so an error doesn't leave a partial update.
+    # TargetModel.packet returns a cached dict so it must not be modified until validated.
+    items = []
+    for name in packet_names:
+        packet = TargetModel.packet(target_name, name, scope=scope)
+        item = next((packet_item for packet_item in packet["items"] if packet_item["name"] == item_name), None)
+        if item is None:
+            raise RuntimeError(f"Item '{target_name} {name} {item_name}' does not exist while setting state color")
+        if not (item.get("states") and item["states"].get(state_name)):
+            raise RuntimeError(f"State '{state_name}' does not exist for item '{target_name} {name} {item_name}'")
+        items.append((name, packet, item))
+    for name, packet, item in items:
+        if color is None:
+            # Clear the state color
+            item["states"][state_name].pop("color", None)
+        else:
+            item["states"][state_name]["color"] = color
+            # Defining a state color implies limits are enabled for the item
+            if not item.get("limits"):
+                item["limits"] = {}
+            item["limits"]["enabled"] = True
 
-    TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
+        if color is None:
+            message = f"Clearing '{target_name} {name} {item_name}' state {state_name} color"
+        else:
+            message = f"Setting '{target_name} {name} {item_name}' state {state_name} color to {color}"
+        Logger.info(message, scope=scope)
 
-    event = {
-        "type": "LIMITS_STATE_COLOR",
-        "target_name": target_name,
-        "packet_name": packet_name,
-        "item_name": item_name,
-        "state_name": state_name,
-        "color": color,
-        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
-        "message": message,
-    }
-    LimitsEventTopic.write(event, scope=scope)
+        TargetModel.set_packet(target_name, name, packet, scope=scope)
+
+        event = {
+            "type": "LIMITS_STATE_COLOR",
+            "target_name": target_name,
+            "packet_name": name,
+            "item_name": item_name,
+            "state_name": state_name,
+            "color": color,
+            "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+            "message": message,
+        }
+        LimitsEventTopic.write(event, scope=scope)
 
 
 # Returns all limits_groups and their members
@@ -486,60 +448,71 @@ def get_limits_events(offset=None, count=100, scope=OPENC3_SCOPE):
 # Enables or disables a limits group
 def _limits_group(group_name, action, scope):
     authorize(permission="tlm_set", scope=scope)
-    group_name.upper()
-    group = get_limits_groups(scope=scope).get(group_name)
-    if group is None:
+    group_name = group_name.upper()
+    # Items grouped by target and packet so each packet is read and written once
+    items = LimitsEventTopic.limits_group_items(group_name, scope)
+    if items is None:
         raise RuntimeError(
             f"LIMITS_GROUP {group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP {group_name}"
         )
 
-    Logger.info(f"{action.capitalize()} Limits Group: {group_name}", scope=scope)
-    last_target_name = None
-    last_packet_name = None
-    packet = None
-    for target_name, packet_name, item_name in group:
-        if last_target_name != target_name or last_packet_name != packet_name:
-            if last_target_name and last_packet_name:
-                TargetModel.set_packet(last_target_name, last_packet_name, packet, scope=scope)
+    enabled = action == "enable"
+    message = f"{'Enabling' if enabled else 'Disabling'} Limits Group: {group_name}"
+    Logger.info(message, scope=scope)
+
+    for target_name, packets in items.items():
+        for packet_name, item_names in packets.items():
             packet = TargetModel.packet(target_name, packet_name, scope=scope)
-        for item in packet["items"]:
-            if item["name"] == item_name:
-                if action == "enable":
-                    enabled = True
-                    item["limits"]["enabled"] = True
-                    message = f"Enabling Limits for '{target_name} {packet_name} {item_name}'"
-                elif action == "disable":
-                    enabled = False
-                    item["limits"].pop("enabled", None)
-                    message = f"Disabling Limits for '{target_name} {packet_name} {item_name}'"
-                Logger.info(message, scope=scope)
+            item_names_set = set(item_names)
+            for item in packet["items"]:
+                if item["name"] in item_names_set:
+                    if enabled:
+                        item["limits"]["enabled"] = True
+                    else:
+                        item["limits"].pop("enabled", None)
+            TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
 
-                event = {
-                    "type": "LIMITS_ENABLE_STATE",
-                    "target_name": target_name,
-                    "packet_name": packet_name,
-                    "item_name": item_name,
-                    "enabled": enabled,
-                    "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
-                    "message": message,
-                }
-                LimitsEventTopic.write(event, scope=scope)
-                break
-        last_target_name = target_name
-        last_packet_name = packet_name
-    if last_target_name and last_packet_name:
-        TargetModel.set_packet(last_target_name, last_packet_name, packet, scope=scope)
+    # Write a single event for the entire group. Writing one event per item
+    # floods the limits event stream, which is trimmed to ~1000 entries, so
+    # decom microservices could miss events and leave limits enabled.
+    # The event only names the group (readers look up the items) so it stays
+    # small no matter how many items the group contains.
+    event = {
+        "type": "LIMITS_GROUP_ENABLE_STATE",
+        "group_name": group_name,
+        "enabled": enabled,
+        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "message": message,
+    }
+    LimitsEventTopic.write(event, scope=scope)
 
 
-# Gets an item. The code below is mostly duplicated from tlm_process_args in tlm_api.rb.
-#
-# @param target_name [String] target name
-# @param packet_name [String] packet name
-# @param item_name [String] item name
-# @param scope [String] scope
-# @return Hash The requested item based on the packet name
-def _get_item(target_name, packet_name, item_name, cache_timeout=0.1, scope=OPENC3_SCOPE):
-    # Determine if this item exists, it will raise appropriate errors if not
-    if packet_name == "LATEST":
-        packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
-    return TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
+def _set_limits_enabled(target_name, packet_name, item_name, enabled, scope):
+    packet = TargetModel.packet(target_name, packet_name, scope=scope)
+    item = next((packet_item for packet_item in packet["items"] if packet_item["name"] == item_name), None)
+    if item is None:
+        action = "enabling" if enabled else "disabling"
+        raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not exist while {action} limits")
+
+    if enabled:
+        item["limits"]["enabled"] = True
+    else:
+        item["limits"].pop("enabled", None)
+    TargetModel.set_packet(target_name, packet_name, packet, scope=scope)
+
+    if enabled:
+        message = f"Enabling Limits For '{target_name} {packet_name} {item_name}'"
+    else:
+        message = f"Disabling Limits for '{target_name} {packet_name} {item_name}'"
+    Logger.info(message, scope=scope)
+
+    event = {
+        "type": "LIMITS_ENABLE_STATE",
+        "target_name": target_name,
+        "packet_name": packet_name,
+        "item_name": item_name,
+        "enabled": enabled,
+        "time_nsec": to_nsec_from_epoch(datetime.now(timezone.utc)),
+        "message": message,
+    }
+    LimitsEventTopic.write(event, scope=scope)

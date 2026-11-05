@@ -578,9 +578,9 @@ module OpenC3
     end
 
     # Reinstall
-    def restore
+    def restore(enforce_dependencies: false)
       plugin_hash = self.as_json()
-      OpenC3::PluginModel.install_phase2(plugin_hash, scope: @scope)
+      OpenC3::PluginModel.install_phase2(plugin_hash, scope: @scope, enforce_dependencies: enforce_dependencies)
       @destroyed = false
     end
 

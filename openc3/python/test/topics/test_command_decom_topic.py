@@ -16,8 +16,9 @@ from unittest.mock import MagicMock, patch
 
 from openc3.conversions.polynomial_conversion import PolynomialConversion
 from openc3.packets.packet import Packet
+from openc3.system.system import System
 from openc3.topics.command_decom_topic import CommandDecomTopic
-from test.test_helper import mock_redis
+from test.test_helper import mock_redis, setup_system, shard_redis
 
 
 class TestCommandDecomTopic(unittest.TestCase):
@@ -25,9 +26,10 @@ class TestCommandDecomTopic(unittest.TestCase):
         mock_redis(self)
         self.captured = {}
 
-        def fake_write_topic(topic, msg_hash):
+        def fake_write_topic(topic, msg_hash, minid=None):
             self.captured["topic"] = topic
             self.captured["msg_hash"] = msg_hash
+            self.captured["minid"] = minid
 
         self.store_instance = MagicMock()
         self.store_instance.write_topic.side_effect = fake_write_topic
@@ -75,6 +77,7 @@ class TestCommandDecomTopic(unittest.TestCase):
     def test_writes_to_correct_topic(self):
         CommandDecomTopic.write_packet(self._make_packet(), scope="DEFAULT")
         self.assertEqual(self.captured["topic"], "DEFAULT__DECOMCMD__{TARGET}__CMD")
+        self.assertIsNotNone(self.captured["minid"])
         msg_hash = self.captured["msg_hash"]
         self.assertEqual(msg_hash["target_name"], "TARGET")
         self.assertEqual(msg_hash["packet_name"], "CMD")
@@ -151,3 +154,19 @@ class TestCommandDecomTopic(unittest.TestCase):
         hash = self._json_data(packet)
         self.assertEqual(hash["VALUE"], 10)
         self.assertEqual(hash["VALUE__C"], 10)
+
+
+# INST is installed on db_shard 1 while SYSTEM stays on db_shard 0
+class TestCommandDecomTopicMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+
+    def test_writes_and_reads_the_target_db_shard(self):
+        packet = System.commands.packet("INST", "COLLECT")
+        packet.received_time = datetime.datetime.now(datetime.timezone.utc)
+        packet.received_count = 3
+        CommandDecomTopic.write_packet(packet, scope="DEFAULT")
+        self.assertEqual(shard_redis(1).xlen("DEFAULT__DECOMCMD__{INST}__COLLECT"), 1)
+        self.assertFalse(shard_redis(0).exists("DEFAULT__DECOMCMD__{INST}__COLLECT"))
+        self.assertEqual(CommandDecomTopic.get_cmd_item("INST", "COLLECT", "RECEIVED_COUNT", scope="DEFAULT"), 3)

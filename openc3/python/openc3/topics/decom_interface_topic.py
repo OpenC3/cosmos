@@ -95,7 +95,7 @@ class DecomInterfaceTopic(Topic):
         )
         start_time = time.time()
         while (time.time() - start_time) < timeout:
-            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic]):
+            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic], db_shard=db_shard):
                 if msg_hash[b"id"] == decom_id:
                     if msg_hash[b"result"] == b"SUCCESS":
                         return

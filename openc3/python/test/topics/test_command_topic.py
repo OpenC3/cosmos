@@ -11,11 +11,13 @@
 
 import datetime
 import json
+import time
 import unittest
 from unittest.mock import MagicMock, patch
 
+from openc3.system.system import System
 from openc3.topics.command_topic import CommandTopic
-from test.test_helper import mock_redis
+from test.test_helper import ack_next_message, mock_redis, setup_system, shard_redis
 
 
 class TestCommandTopic(unittest.TestCase):
@@ -23,9 +25,10 @@ class TestCommandTopic(unittest.TestCase):
         mock_redis(self)
         self.captured = {}
 
-        def fake_write_topic(topic, msg_hash):
+        def fake_write_topic(topic, msg_hash, minid=None):
             self.captured["topic"] = topic
             self.captured["msg_hash"] = msg_hash
+            self.captured["minid"] = minid
 
         self.store_instance = MagicMock()
         self.store_instance.write_topic.side_effect = fake_write_topic
@@ -64,6 +67,8 @@ class TestCommandTopic(unittest.TestCase):
         self.assertEqual(msg_hash["packet_name"], "COMMAND")
         self.assertEqual(msg_hash["received_count"], 1)
         self.assertEqual(msg_hash["buffer"], b"\x01\x02\x03\x04")
+        # Safety cap is at least two default log cycles plus the cleanup delay
+        self.assertLessEqual(int(self.captured["minid"]), int(time.time() * 1000) - 1320000)
 
     def test_writes_stored_as_lowercase_like_ruby(self):
         for stored, expected in [(True, "true"), (False, "false")]:
@@ -86,3 +91,34 @@ class TestCommandTopic(unittest.TestCase):
         # Falsy extra (empty dict) should not produce an extra field
         CommandTopic.write_packet(self._make_packet(extra={}), scope="DEFAULT")
         self.assertNotIn("extra", self.captured["msg_hash"])
+
+
+# INST is installed on db_shard 1 while SYSTEM stays on db_shard 0
+class TestCommandTopicMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+        self.shard0 = shard_redis(0)
+        self.shard1 = shard_redis(1)
+
+    def command(self, target_name="INST"):
+        return {"target_name": target_name, "cmd_name": "ABORT", "cmd_params": {}}
+
+    def test_write_packet_writes_to_the_target_db_shard(self):
+        packet = System.commands.packet("INST", "ABORT")
+        packet.received_time = datetime.datetime.now(datetime.timezone.utc)
+        CommandTopic.write_packet(packet, scope="DEFAULT")
+        self.assertEqual(self.shard1.xlen("DEFAULT__COMMAND__{INST}__ABORT"), 1)
+        self.assertFalse(self.shard0.exists("DEFAULT__COMMAND__{INST}__ABORT"))
+
+    def test_send_command_without_ack_writes_to_the_target_db_shard(self):
+        CommandTopic.send_command(self.command(), timeout=0, scope="DEFAULT")
+        self.assertEqual(self.shard1.xlen("{DEFAULT__CMD}TARGET__INST"), 1)
+        self.assertFalse(self.shard0.exists("{DEFAULT__CMD}TARGET__INST"))
+
+    def test_send_command_reads_the_ack_from_the_target_db_shard(self):
+        responder = ack_next_message(self.shard1, "{DEFAULT__CMD}TARGET__INST", "{DEFAULT__ACKCMD}TARGET__INST")
+        command = CommandTopic.send_command(self.command(), timeout=2, scope="DEFAULT")
+        responder.join()
+        self.assertEqual(command["cmd_name"], "ABORT")
+        self.assertFalse(self.shard0.exists("{DEFAULT__CMD}TARGET__INST"))

@@ -313,7 +313,11 @@ def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_line
   rescue => e
     puts e.formatted
     if plugin_model.destroyed?
-      plugin_model.restore
+      begin
+        plugin_model.restore(enforce_dependencies: enforce_dependencies)
+      rescue => restore_error
+        raise "Plugin update failed: #{e.formatted}\nFailed to restore the previous plugin: #{restore_error.formatted}"
+      end
       # Local mode files should still be good because restore will now reuse the old name
     end
     raise e
@@ -495,6 +499,34 @@ def load_plugin(plugin_file_path, scope:, plugin_hash_file: nil, force: false, v
     print "Installing..."
     wait_process_complete(process_name)
   end
+end
+
+def parse_load_arguments(arguments)
+  args = arguments.dup
+  plugin_file_path = args.shift
+  variables_file = nil
+
+  if (variables_option = args.index('--variables'))
+    variables_file = args[variables_option + 1]
+    raise ArgumentError, '--variables requires a file path' unless variables_file
+
+    args.slice!(variables_option, 2)
+  end
+
+  options = { force: false, enforce_dependencies: false }
+  while options.key?(args.last&.to_sym)
+    options[args.pop.to_sym] = true
+  end
+
+  raise ArgumentError, 'load accepts at most a scope and plugin hash before trailing options' if args.length > 2
+
+  {
+    plugin_file_path: plugin_file_path,
+    scope: args[0],
+    plugin_hash_file: args[1],
+    variables_file: variables_file,
+    **options
+  }
 end
 
 def unload_plugin(plugin_name, scope:)
@@ -1123,21 +1155,12 @@ if not ARGV[0].nil? # argument(s) given
       exit(ARGV[1].nil? ? 1 : 0)
     end
 
-    flags = %w[force enforce_dependencies]
-    force = ARGV.include?('force')
-    enforce_dependencies = ARGV.include?('enforce_dependencies')
-    args = ARGV.reject { |arg| flags.include?(arg) }
-
-    variables_file = nil
-    variables_option = args.find_index('--variables')
-    if variables_option
-      variables_file = args[variables_option + 1]
-      args.slice!(variables_option, 2)
+    begin
+      parsed = parse_load_arguments(ARGV[1..])
+    rescue ArgumentError => e
+      abort("Error parsing load arguments: #{e.message}")
     end
-
-    scope = args[2]
-    plugin_hash_file = args[3]
-    load_plugin(ARGV[1], scope: scope, plugin_hash_file: plugin_hash_file, force: force, variables_file: variables_file, enforce_dependencies: enforce_dependencies)
+    load_plugin(parsed[:plugin_file_path], scope: parsed[:scope], plugin_hash_file: parsed[:plugin_hash_file], force: parsed[:force], variables_file: parsed[:variables_file], enforce_dependencies: parsed[:enforce_dependencies])
 
   when 'list'
     if ARGV[1] == '--help' || ARGV[1] == '-h'

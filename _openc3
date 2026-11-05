@@ -295,9 +295,12 @@ _openc3_cli() {
                     _alternative \
                         'json-files:variables file:_files -g "*.json"' \
                         'json-description: :_message "variables JSON file"'
-                elif [[ "${words[5]}" == "force" || "${words[5]}" == "enforce_dependencies" ]]; then
-                    # load gem scope hash.json force|enforce_dependencies (nothing more needed)
-                    return 1
+                elif [[ "${words[5]}" == "force" ]]; then
+                    _message 'enforce_dependencies (optional)'
+                    return 0
+                elif [[ "${words[5]}" == "enforce_dependencies" ]]; then
+                    _message 'force (optional)'
+                    return 0
                 else
                     # load gem scope hash.json [force or enforce_dependencies]
                     _message 'force (optional) or enforce_dependencies (optional)'
@@ -305,11 +308,17 @@ _openc3_cli() {
                 fi
             elif (( CURRENT == 7 )); then
                 # Position 7 - final optional parameters
-                if [[ "${words[*]}" == *"--variables"* ]]; then
-                    if [[ "${words[*]}" != *"force"* && "${words[*]}" != *"enforce_dependencies"* ]]; then
-                        _message 'force (optional) or enforce_dependencies (optional)'
-                        return 0
-                    fi
+                if [[ "${words[*]}" == *"force"* && "${words[*]}" == *"enforce_dependencies"* ]]; then
+                    return 1
+                elif [[ "${words[*]}" == *"force"* ]]; then
+                    _message 'enforce_dependencies (optional)'
+                    return 0
+                elif [[ "${words[*]}" == *"enforce_dependencies"* ]]; then
+                    _message 'force (optional)'
+                    return 0
+                else
+                    _message 'force (optional) or enforce_dependencies (optional)'
+                    return 0
                 fi
             fi
             ;;

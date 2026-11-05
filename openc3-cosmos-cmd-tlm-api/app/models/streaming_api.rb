@@ -38,6 +38,7 @@ class StreamingApi
     @mutex = Mutex.new
     @realtime_thread = nil
     @logged_threads = []
+    @notices = false
   end
 
   # Create new StreamingObjects using the data['items'] and add them to the StreamingObjectCollection
@@ -47,13 +48,23 @@ class StreamingApi
       # Unwrap LATEST packet into individual items
       parsed = StreamingKey.parse(key, item_key: true)
       if parsed.packet_name == 'LATEST'
+        # The item to packet map only covers telemetry
+        raise "LATEST is only supported for telemetry: #{key}" if parsed.cmd_or_tlm == :CMD
         item_map = OpenC3::TargetModel.get_item_to_packet_map(parsed.target_name, scope: scope)
         packet_names = item_map[parsed.item_name]
         raise "Item '#{parsed.target_name} LATEST #{parsed.item_name}' does not exist for scope: #{scope}" unless packet_names
+        # Skip packets the user can't access unless they can't access any of them
+        auth_error = nil
+        added = false
         packet_names.each do |packet_name|
           new_key = parsed.with(packet_name: packet_name).to_key_string
-          collection.add(StreamingObject.new(new_key, start_time, end_time, item_key: item_key, scope: scope, token: token))
+          collection.add(StreamingObject.new(new_key, start_time, end_time, item_key: item_key, source_key: key, scope: scope, token: token))
+          added = true
+        rescue OpenC3::AuthError, OpenC3::ForbiddenError => e
+          OpenC3::Logger.info("Skipping unauthorized LATEST packet: #{new_key}")
+          auth_error = e
         end
+        raise auth_error if auth_error and not added
       else
         collection.add(StreamingObject.new(key, start_time, end_time, item_key: item_key, scope: scope, token: token))
       end
@@ -168,6 +179,8 @@ class StreamingApi
   # token: authorization token
   # start_time: 64-bit nanoseconds from unix epoch - If not present then realtime
   # end_time: 64-bit nanoseconds from unix epoch - If not present stream forever
+  # notices: true to also receive notice Hashes, e.g. { "__type" => "NOTICE", "notice" => "SKIPPED",
+  #   "message" => "...", "skipped_seconds" => 12.3 } when realtime streaming falls behind and skips ahead
   # items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE, item_key] ]
   #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
   #   CMDORTLM - CMD or TLM
@@ -195,6 +208,9 @@ class StreamingApi
       end_time = data["end_time"].to_i if data["end_time"]
       scope = data["scope"]
       token = data["token"]
+      # Clients opt in to out-of-band notices (a Hash rather than the usual
+      # Array of results) so older clients never see a message they can't parse
+      @notices = true if data["notices"]
 
       # Expand ALL wildcards in packets before building the collection
       expand_all_packets(data, scope: scope)
@@ -332,6 +348,14 @@ class StreamingApi
     if results.length > 0 or force
       ActionCable.server.broadcast(@subscription_key, results.as_json())
     end
+  end
+
+  # Send an out-of-band notice (e.g. that data was skipped) to clients that opted in
+  def transmit_notice(notice, message, **extra)
+    return unless @notices
+    # Notices are a Hash while normal results are an Array, which is how clients
+    # tell them apart. Extra keys are stringified to match the JSON the client sees.
+    ActionCable.server.broadcast(@subscription_key, { "__type" => "NOTICE", "notice" => notice, "message" => message }.merge(extra.transform_keys(&:to_s)))
   end
 
   # Returns if the calling thread should be canceled or not

@@ -29,7 +29,7 @@ from openc3.utilities.questdb_client import (
     FLOAT64_NAN_SENTINEL,
     FLOAT64_POS_INF_SENTINEL,
 )
-from test.test_helper import System, capture_io, mock_redis, setup_system
+from test.test_helper import System, capture_io, mock_redis, setup_system, shard_redis
 
 
 class TestTsdbMicroservice(unittest.TestCase):
@@ -1940,3 +1940,74 @@ class TestTsdbMicroservice(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+# INST is installed on db_shard 1 and so is its TSDB microservice. It reads the
+# decom topics from db_shard 1 and writes to the QuestDB for db_shard 1.
+class TestTsdbMicroserviceMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+
+        patcher = patch("openc3.microservices.microservice.Microservice._status_thread")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        env = {
+            "OPENC3_TSDB_HOSTNAME": "tsdb-SHARDNUM",
+            "OPENC3_TSDB_INGEST_PORT": "9009",
+            "OPENC3_TSDB_QUERY_PORT": "8812",
+            "OPENC3_TSDB_USERNAME": "admin",
+            "OPENC3_TSDB_PASSWORD": "quest",
+        }
+        patcher = patch.dict(os.environ, env)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+        # Don't block on reads
+        shard1 = shard_redis(1)
+        orig_xread = shard1.xread
+
+        def xread_side_effect(*args, **kwargs):
+            kwargs.pop("block", None)
+            return orig_xread(*args, **kwargs)
+
+        shard1.xread = Mock(side_effect=xread_side_effect)
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    @patch("openc3.utilities.questdb_client.psycopg.connect")
+    @patch("openc3.microservices.microservice.System")
+    def test_reads_and_writes_the_target_db_shard(self, _system, mock_psycopg, mock_sender):
+        mock_ingest = Mock()
+        mock_sender.return_value = mock_ingest
+        mock_query = Mock()
+        mock_psycopg.return_value = mock_query
+        mock_query.cursor.return_value.__enter__ = Mock(return_value=Mock())
+        mock_query.cursor.return_value.__exit__ = Mock(return_value=False)
+
+        MicroserviceModel(
+            "DEFAULT__TSDB__INST",
+            scope="DEFAULT",
+            topics=["DEFAULT__DECOM__{INST}__HEALTH_STATUS"],
+            target_names=["INST"],
+            db_shard=1,
+        ).create()
+        # Creating the table reads the INST packet definition from db_shard 1
+        tsdb = TsdbMicroservice("DEFAULT__TSDB__INST")
+        self.assertEqual(mock_sender.call_args.args[1], "tsdb-1")
+        self.assertEqual(mock_psycopg.call_args.kwargs["host"], "tsdb-1")
+
+        Topic.write_topic(
+            "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            {
+                b"target_name": b"INST",
+                b"packet_name": b"HEALTH_STATUS",
+                b"time": str(int(time.time() * 1_000_000_000)).encode(),
+                b"json_data": json.dumps({"TEMP1": 42}).encode(),
+            },
+            "*",
+            100,
+            db_shard=1,
+        )
+        tsdb.read_topics()
+        mock_ingest.row.assert_called_once()
+        self.assertEqual(mock_ingest.row.call_args.kwargs["columns"]["TEMP1"], 42)
