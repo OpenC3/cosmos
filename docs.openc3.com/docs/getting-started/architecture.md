@@ -10,13 +10,13 @@ sidebar_custom_props:
 
 ## COSMOS Core Architecture
 
-![COSMOS Core Architecture](/img/core-architecture.png)
+![COSMOS Core Architecture](/img/core-architecture.svg)
 
 COSMOS Core is a cloud native, containerized, microservice oriented command and control system deployed with Docker Compose. The **init** container seeds the initial configuration and plugin data into the system on startup. The **operator** manages the lifecycle of all COSMOS microservices including interfaces that connect to external embedded systems (Targets). Two Rails-based APIs power the system: **cmd-tlm-api** provides the REST API for command and telemetry operations, while **script-runner-api** handles script execution. The **traefik** reverse proxy routes all user browser traffic to the appropriate API. Two **Valkey** (Redis) data stores are used: **redis** holds persistent configuration and the current value table, while **redis-ephemeral** handles real-time data streams. The **buckets** service provides S3-compatible object storage (powered by Versitygw) for plugins, targets, configuration data, text logs, and binary logs of all raw data. The time-series database (**tsdb**), powered by [QuestDB](https://questdb.io/), stores all decommutated command and telemetry data for fast historical queries.
 
 ## COSMOS Enterprise Architecture
 
-![COSMOS Enterprise Architecture](/img/enterprise-architecture.png)
+![COSMOS Enterprise Architecture](/img/enterprise-architecture.svg)
 
 COSMOS Enterprise extends Core with additional services and is optionally deployed on a Kubernetes cluster using **Helm** charts as shown above. The core services (cmd-tlm-api, script-runner-api, traefik, init, operator) remain the same and are deployed by the **openc3** chart. Data services (tsdb, buckets, redis, redis-ephemeral) are deployed by a separate **openc3-db** chart. Enterprise adds **Keycloak** for full identity and access management with role-based permissions, backed by a **PostgreSQL** database. A **Grafana** instance and **metrics** collector provide system monitoring and observability dashboards. The **COSMOS NFS** chart provides shared network file storage across the cluster. All services are orchestrated by Kubernetes, enabling horizontal scaling, high availability, and production-grade deployment.
 
@@ -46,11 +46,11 @@ The main COSMOS [repo](https://github.com/OpenC3/cosmos) contains all the source
 
 ### Images
 
-Per [Docker](https://docs.docker.com/get-started/overview/#images), "An image is a read-only template with instructions for creating a Docker container." The base operating system COSMOS uses is called [Alpine Linux](https://www.alpinelinux.org/). It is a simple and compact image with a full package system that allows us to install our dependencies. Starting with Alpine, we create a [Dockerfile](https://docs.docker.com/engine/reference/builder/) to add Ruby and Python and a few other packages to create our own docker image. We further build upon that image to create a NodeJS image to support our frontend and additional images to support our backend.
+Per [Docker](https://docs.docker.com/get-started/overview/#images), "An image is a read-only template with instructions for creating a Docker container." The base operating system COSMOS uses is [Debian](https://www.debian.org/) (the `trixie-slim` image), with [Red Hat UBI](https://catalog.redhat.com/software/base-images) minimal images available as an alternative. These are small images with a full package system that allows us to install our dependencies. Starting with the base OS image, we create a [Dockerfile](https://docs.docker.com/engine/reference/builder/) to add Ruby and Python and a few other packages to create our own docker image. We further build upon that image to create a NodeJS image to support our frontend and additional images to support our backend.
 
 The following diagram shows all the COSMOS Core and Enterprise container images. Images are built from the bottom up in the Dockerfile using [FROM](https://docs.docker.com/reference/dockerfile/#from). Images referenced with "Uses" are used during the build stage.
 
-![COSMOS Images](/img/cosmos-images.png)
+![COSMOS Images](/img/cosmos-images.svg)
 
 ### Containers
 
@@ -82,7 +82,7 @@ The container list for [COSMOS Enterprise](https://openc3.com/cosmos-enterprise)
 
 A diagram of the running containers is shown below:
 
-![COSMOS Images](/img/cosmos-containers.png)
+![COSMOS Containers](/img/cosmos-containers.svg)
 
 ### Docker Compose
 
