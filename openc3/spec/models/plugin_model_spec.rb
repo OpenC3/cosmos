@@ -884,6 +884,207 @@ module OpenC3
       end
     end
 
+    describe "VARIABLE_FILE" do
+      UPLOAD = "0f1e2d3c-aaaa-bbbb-cccc-000000000001/icd.csv"
+
+      def phase1(lines, existing_variables: nil)
+        allow(GemModel).to receive(:put)
+        gem = double("gem")
+        allow(gem).to receive(:extract_files) do |path|
+          File.write("#{path}/plugin.txt", lines.join("\n"))
+        end
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(Gem::Package).to receive(:new).and_return(gem)
+        PluginModel.install_phase1(__FILE__, existing_variables: existing_variables, scope: "DEFAULT")
+      end
+
+      it "parses a file variable and keeps an existing upload" do
+        lines = ["VARIABLE_FILE icd targets/INST/data/icd.csv", "  VARIABLE_LABEL ICD", "  VARIABLE_REQUIRED"]
+        variable = phase1(lines)['variables']['icd']
+        expect(variable).to eql({ 'value' => '', 'type' => 'FILE', 'file_path' => 'targets/INST/data/icd.csv', 'label' => 'ICD', 'required' => true })
+        expect(phase1(lines, existing_variables: { 'icd' => { 'value' => UPLOAD } })['variables']['icd']['value']).to eql UPLOAD
+        # Anything else isn't an upload
+        expect(phase1(lines, existing_variables: { 'icd' => 'icd.csv' })['variables']['icd']['value']).to eql ''
+      end
+
+      it "only copies files inside the plugin" do
+        ['/etc/passwd', '../outside.txt', 'targets/../../outside', 'C:/x', ''].each do |path|
+          expect { phase1(["VARIABLE_FILE icd #{path}".strip + (path.empty? ? ' ""' : '')]) }.to raise_error(/must be a path inside the plugin/)
+        end
+        expect { phase1(["VARIABLE_FILE icd a.csv", "  VARIABLE_TYPE TEXT"]) }.to raise_error(/VARIABLE_TYPE cannot be used with a VARIABLE_FILE/)
+        expect { phase1(["VARIABLE_FILE scope a.csv"]) }.to raise_error(/VARIABLE name 'scope' is reserved/)
+      end
+
+      it "is the file's path in the plugin in ERB, or blank without a file" do
+        variables = {
+          'icd' => { 'value' => UPLOAD, 'type' => 'FILE', 'file_path' => 'data/icd.csv' },
+          'cert' => { 'value' => '', 'type' => 'FILE', 'file_path' => 'data/cert.pem' },
+        }
+        expect(PluginModel.erb_variables({ 'variables' => variables }, scope: 'DEFAULT')).to eql({ 'icd' => 'data/icd.csv', 'cert' => '', 'scope' => 'DEFAULT' })
+      end
+
+      it "stores uploads in the config bucket and copies them into the plugin" do
+        bucket = double("bucket")
+        allow(Bucket).to receive(:getClient).and_return(bucket)
+        stored = {}
+        allow(bucket).to receive(:put_object) { |bucket:, key:, body:| stored[key] = body.read }
+        allow(bucket).to receive(:get_object) { |bucket:, key:, path:| File.write(path, stored.fetch(key)) if stored.key?(key) }
+        allow(bucket).to receive(:delete_object) { |bucket:, key:| stored.delete(key) }
+
+        Tempfile.create('upload') do |file|
+          file.write('a,b')
+          file.close
+          value = PluginModel.store_upload(file.path, '../../icd.csv', scope: 'DEFAULT')
+          expect(value).to match(PluginModel::UPLOAD_VALUE)
+          expect(value).to end_with('/icd.csv')
+          expect(stored.keys).to eql ["DEFAULT/plugin_uploads/#{value}"]
+
+          variables = { 'icd' => { 'value' => value, 'type' => 'FILE', 'file_path' => 'targets/INST/data/icd.csv' } }
+          Dir.mktmpdir do |gem_path|
+            PluginModel.copy_uploads({ 'variables' => variables }, gem_path, scope: 'DEFAULT')
+            expect(File.read(File.join(gem_path, 'targets/INST/data/icd.csv'))).to eql 'a,b'
+            # A missing upload fails the install rather than installing without it
+            stored.clear
+            expect { PluginModel.copy_uploads({ 'variables' => variables }, gem_path + '/other', scope: 'DEFAULT') }.to raise_error(/file uploaded for VARIABLE_FILE icd is missing/)
+          end
+
+          # Uninstalling deletes uploads no other plugin uses
+          stored["DEFAULT/plugin_uploads/#{value}"] = 'a,b'
+          other = PluginModel.new(name: 'other__0', variables: variables, scope: 'DEFAULT')
+          other.create
+          PluginModel.cleanup_uploads(variables, scope: 'DEFAULT')
+          expect(stored.length).to eql 1
+          other.destroy
+          PluginModel.cleanup_uploads(variables, scope: 'DEFAULT')
+          expect(stored).to be_empty
+        end
+      end
+    end
+
+    describe "VARIABLE_TYPE TARGET_NAME" do
+      def phase1(lines, existing_variables: nil)
+        allow(GemModel).to receive(:put)
+        gem = double("gem")
+        allow(gem).to receive(:extract_files) do |path|
+          File.write("#{path}/plugin.txt", lines.join("\n"))
+        end
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(Gem::Package).to receive(:new).and_return(gem)
+        PluginModel.install_phase1(__FILE__, existing_variables: existing_variables, scope: "DEFAULT")['variables']
+      end
+
+      it "picks a free target name on new installs" do
+        lines = [
+          "VARIABLE inst_target_name INST", "  VARIABLE_TYPE TARGET_NAME",
+          "VARIABLE other_target_name inst", "  VARIABLE_TYPE TARGET_NAME",
+          "VARIABLE free_target_name EXAMPLE", "  VARIABLE_TYPE TARGET_NAME",
+          "VARIABLE text INST",
+        ]
+        expect(phase1(lines).transform_values { |variable| variable['value'] }).to eql(
+          { 'inst_target_name' => 'INST', 'other_target_name' => 'INST_2', 'free_target_name' => 'EXAMPLE', 'text' => 'INST' }
+        )
+        allow(TargetModel).to receive(:names).and_return(['INST', 'INST_2'])
+        expect(phase1(lines).transform_values { |variable| variable['value'] }).to eql(
+          { 'inst_target_name' => 'INST_3', 'other_target_name' => 'INST_4', 'free_target_name' => 'EXAMPLE', 'text' => 'INST' }
+        )
+        # Changing or upgrading an install keeps its target names
+        existing = { 'inst_target_name' => { 'value' => 'INST' }, 'other_target_name' => { 'value' => 'INST_2' } }
+        values = phase1(lines, existing_variables: existing).transform_values { |variable| variable['value'] }
+        expect(values.slice('inst_target_name', 'other_target_name')).to eql({ 'inst_target_name' => 'INST', 'other_target_name' => 'INST_2' })
+      end
+
+      it "numbers names from a numbered name" do
+        expect(PluginModel.available_target_name('inst', Set.new)).to eql 'INST'
+        expect(PluginModel.available_target_name('INST', Set['INST', 'INST_2'])).to eql 'INST_3'
+        expect(PluginModel.available_target_name('INST_2', Set['INST_2'])).to eql 'INST_3'
+        expect(PluginModel.available_target_name('', Set['INST'])).to eql ''
+      end
+    end
+
+    describe "PRE_INSTALL_SCRIPT and POST_INSTALL_SCRIPT" do
+      def install(plugin_txt_lines, scripts, **options)
+        stub_s3_client
+        allow(GemModel).to receive(:get).and_return("my_plugin.gem")
+        allow(GemModel).to receive(:install)
+        allow(GemModel).to receive(:destroy_all_other_versions)
+        gem = double("gem")
+        allow(gem).to receive(:extract_files) do |path|
+          scripts.each do |name, body|
+            FileUtils.mkdir_p(File.dirname(File.join(path, name)))
+            File.write(File.join(path, name), body)
+          end
+        end
+        allow(Gem::Package).to receive(:new).and_return(gem)
+        allow(gem).to receive(:spec).and_return(gem_spec_double)
+        variables = { "folder" => { "value" => "INST" } }
+        PluginModel.install_phase2({ "name" => "name", "variables" => variables, "plugin_txt_lines" => plugin_txt_lines }, scope: "DEFAULT", **options)
+      end
+
+      it "runs the scripts before and after installing, in the plugin" do
+        Dir.mktmpdir do |dir|
+          order = File.join(dir, 'order')
+          allow_any_instance_of(TargetModel).to receive(:deploy) do |_target, gem_path, _variables, **_options|
+            # The pre-install script generated a file the target uses
+            File.open(order, 'a') { |file| file.puts "deploy #{File.read(File.join(gem_path, 'targets/INST/generated.txt'))}" }
+          end
+          script = <<~RUBY
+            require 'json'
+            variables = JSON.parse(ENV['OPENC3_PLUGIN_VARIABLES'])
+            File.open('#{order}', 'a') { |file| file.puts "\#{ARGV[0]} \#{variables['folder']} \#{ENV['OPENC3_PLUGIN_DRY_RUN']} \#{Dir.pwd == File.realpath(ENV['OPENC3_PLUGIN_PATH'])}" }
+            if ARGV[0] == 'pre'
+              require 'helper'
+              require 'fileutils'
+              FileUtils.mkdir_p('targets/INST')
+              File.write('targets/INST/generated.txt', Helper.text)
+            end
+            puts "done \#{ARGV[0]}"
+          RUBY
+          scripts = { 'scripts/setup.rb' => script, 'lib/helper.rb' => "module Helper; def self.text = 'from lib'; end" }
+          lines = ["POST_INSTALL_SCRIPT scripts/setup.rb post", "TARGET <%= folder %> <%= folder %>", "PRE_INSTALL_SCRIPT scripts/setup.rb pre"]
+          expect(Logger).to receive(:info).at_least(:once)
+          install(lines, scripts)
+          expect(File.read(order).lines.map(&:chomp)).to eql ["pre INST false true", "deploy from lib", "post INST false true"]
+
+          # Dry runs run the pre-install script for what it generates, but not the post-install one
+          File.delete(order)
+          install(lines, scripts, validate_only: true)
+          expect(File.read(order).lines.map(&:chomp)).to eql ["pre INST true true", "deploy from lib"]
+        end
+      end
+
+      it "runs Python scripts" do
+        python = `which python3`.strip
+        skip "python3 not found" if python.empty?
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('OPENC3_PYTHON_BIN').and_return(python)
+        Dir.mktmpdir do |dir|
+          out = File.join(dir, 'out')
+          script = "import json, os, sys\nopen(#{out.inspect}, 'w').write(json.loads(os.environ['OPENC3_PLUGIN_VARIABLES'])['folder'] + sys.argv[1])\n"
+          install(["PRE_INSTALL_SCRIPT gen.py <%= folder %>"], { 'gen.py' => script })
+          expect(File.read(out)).to eql 'INSTINST'
+        end
+      end
+
+      it "fails the install when a script fails" do
+        lines = ["PRE_INSTALL_SCRIPT fail.rb", "TARGET INST INST"]
+        expect_any_instance_of(TargetModel).to_not receive(:deploy)
+        expect { install(lines, { 'fail.rb' => "warn 'bad icd'; exit 3" }) }.to raise_error(/PRE_INSTALL_SCRIPT 'fail.rb' failed with exit status 3/)
+        expect(PluginModel.names(scope: 'DEFAULT')).to be_empty
+        expect { install(["PRE_INSTALL_SCRIPT missing.rb"], {}) }.to raise_error(/PRE_INSTALL_SCRIPT 'missing.rb' was not found in the plugin/)
+        expect { install(["POST_INSTALL_SCRIPT ../x.rb"], {}) }.to raise_error(/must be a path inside the plugin/)
+        expect { install(["POST_INSTALL_SCRIPT run.sh"], {}) }.to raise_error(/must be a Ruby \(.rb\) or Python \(.py\) script/)
+      end
+
+      it "fails a script that runs too long" do
+        stub_const("OpenC3::PluginModel::INSTALL_SCRIPT_TIMEOUT_S", 0.5)
+        expect { install(["PRE_INSTALL_SCRIPT slow.rb"], { 'slow.rb' => "sleep 30" }) }.to raise_error(/did not finish within 0.5 seconds/)
+      end
+    end
+
     describe "self.modified_diff" do
       it "delegates to install_phase2 with diff_only and returns the file list" do
         expect(PluginModel).to receive(:install_phase2).with(

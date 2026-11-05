@@ -46,7 +46,10 @@ VARIABLE_TYPE:
     plugin installation dialog. BOOLEAN is a switch that sets true or false (and can be cleared to blank unless required).
     INTEGER and NUMBER must be numbers. PASSWORD hides the value while typing.
     JSON is a full width monospace field that must hold valid JSON. SECRET picks the name of a COSMOS secret from the
-    scope's secrets, and a new secret can be created from the dialog. TEXT is the default.
+    scope's secrets, and a new secret can be created from the dialog. TARGET_NAME is the name of a target the plugin
+    installs, which must be a valid target name not used by another target. On a new install, a TARGET_NAME whose
+    default is already taken defaults to the next free name instead (INST_2, INST_3 and so on), so a plugin can be
+    installed more than once. Changing or upgrading an install keeps its name. TEXT is the default.
     Blank values are allowed unless the variable is required (see VARIABLE_REQUIRED and VARIABLE_STATE_REQUIRED).
     The plugin installation dialog won't install with invalid values. The value is still passed to ERB as a string.
     Must follow a VARIABLE definition.
@@ -58,11 +61,13 @@ VARIABLE_TYPE:
       VARIABLE_TYPE BOOLEAN
     VARIABLE password ""
       VARIABLE_TYPE PASSWORD
+    VARIABLE inst_target_name INST
+      VARIABLE_TYPE TARGET_NAME
   parameters:
     - name: Type
       required: true
       description: Input type of the variable
-      values: ['TEXT', 'BOOLEAN', 'INTEGER', 'NUMBER', 'PASSWORD', 'JSON', 'SECRET']
+      values: ['TEXT', 'BOOLEAN', 'INTEGER', 'NUMBER', 'PASSWORD', 'JSON', 'SECRET', 'TARGET_NAME']
 VARIABLE_GROUP:
   summary: Show a plugin variable in a titled section of the plugin installation dialog
   description: The VARIABLE_GROUP keyword puts the previously defined VARIABLE in a titled section of the plugin
@@ -162,6 +167,33 @@ VARIABLE_BRIDGE:
     - name: Default Bridge Name
       required: false
       description: Bridge selected by default. Defaults to DEFAULT, the bridge every scope has.
+      values: .+
+VARIABLE_FILE:
+  summary: Let the user upload a file into the plugin when installing it
+  description: The VARIABLE_FILE keyword defines a variable whose value is a file the user uploads in the plugin
+    dialog, such as a calibration table, a certificate or an interface control document. The file is stored with
+    the plugin so upgrades keep it, and is copied to the destination path in the plugin before anything is
+    installed from it. In ERB the variable is the destination path, or blank if no file was uploaded, so
+    plugin.txt can include the file conditionally. Uploading a file again replaces it.
+    VARIABLE_DESCRIPTION, VARIABLE_LABEL, VARIABLE_REQUIRED and the other VARIABLE modifiers except VARIABLE_TYPE
+    can follow it. A PRE_INSTALL_SCRIPT can read the file to generate the rest of the plugin.
+    Files can be up to 100 MB.
+  since: 7.5.0
+  example: |
+    VARIABLE_FILE icd targets/INST/data/icd.csv
+      VARIABLE_LABEL "Interface control document"
+      VARIABLE_REQUIRED
+    PRE_INSTALL_SCRIPT scripts/generate_target.py <%%= icd %>
+    TARGET INST INST
+  parameters:
+    - name: Variable Name
+      required: true
+      description: The name of the variable
+      values: .+
+    - name: Destination Path
+      required: true
+      description: Path the uploaded file is copied to, relative to the top of the plugin. It must stay inside the
+        plugin and is created if needed.
       values: .+
 VARIABLE_DISCOVERY:
   summary: Discover the possible values of a plugin variable from the host computer
@@ -430,6 +462,49 @@ NEEDS_DEPENDENCIES:
     NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise, having
     NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
   since: 5.5.0
+PRE_INSTALL_SCRIPT:
+  summary: Run a script in the plugin before the plugin is installed
+  description: The PRE_INSTALL_SCRIPT keyword runs a Ruby (.rb) or Python (.py) script from the plugin after its
+    files (including any VARIABLE_FILE uploads) and Python packages are in place, but before any target, interface
+    or other part of the plugin is installed, so it can generate or change those files. It runs in a copy of the
+    plugin's files with that folder as its working directory. Python scripts use the plugin's Python packages and
+    Ruby scripts can require the plugin's lib folders.
+    The script's environment has OPENC3_SCOPE, OPENC3_PLUGIN_NAME, OPENC3_PLUGIN_PATH (the plugin's folder) and
+    OPENC3_PLUGIN_VARIABLES (the plugin variables as a JSON object). Validating a plugin or checking an upgrade
+    also runs it, with OPENC3_PLUGIN_DRY_RUN set to true, so it should only change files in the plugin's folder
+    then. Its output is logged, and the install fails if it exits with an error or runs longer than 10 minutes.
+    Multiple PRE_INSTALL_SCRIPTs run in the order they appear, wherever they are in plugin.txt.
+  since: 7.5.0
+  example: |
+    PRE_INSTALL_SCRIPT scripts/generate_target.py <%%= icd %>
+  parameters:
+    - name: Script Path
+      required: true
+      description: Path of the .rb or .py script, relative to the top of the plugin
+      values: .+
+    - name: Arguments
+      required: false
+      description: Arguments passed to the script
+      values: .+
+POST_INSTALL_SCRIPT:
+  summary: Run a script in the plugin after the plugin is installed
+  description: The POST_INSTALL_SCRIPT keyword runs a Ruby (.rb) or Python (.py) script from the plugin after
+    every part of the plugin has been installed, for example to load initial settings. It runs the same way as a
+    PRE_INSTALL_SCRIPT, with the same environment, but not when validating a plugin or checking an upgrade.
+    The install fails if it exits with an error or runs longer than 10 minutes.
+    Multiple POST_INSTALL_SCRIPTs run in the order they appear, wherever they are in plugin.txt.
+  since: 7.5.0
+  example: |
+    POST_INSTALL_SCRIPT scripts/initialize.rb
+  parameters:
+    - name: Script Path
+      required: true
+      description: Path of the .rb or .py script, relative to the top of the plugin
+      values: .+
+    - name: Arguments
+      required: false
+      description: Arguments passed to the script
+      values: .+
 INTERFACE:
   modifiers:
     <%= MetaConfigParser.load('interface_modifiers.yaml').to_meta_config_yaml(4) %>

@@ -198,6 +198,42 @@ RSpec.describe PluginsController, type: :controller do
     end
   end
 
+  describe "POST upload_file" do
+    before(:each) do
+      @file = Tempfile.new(["icd", ".csv"])
+      @file.write("a,b")
+      @file.rewind
+      @upload = fixture_file_upload(@file.path, "text/csv")
+      allow(@upload).to receive(:original_filename).and_return("icd.csv")
+    end
+
+    it "stores the file and returns the variable value" do
+      expect(OpenC3::PluginModel).to receive(:store_upload) do |path, filename, scope:|
+        expect(File.read(path)).to eql "a,b"
+        expect(filename).to end_with ".csv"
+        expect(scope).to eql "DEFAULT"
+        "0f1e2d3c-aaaa-bbbb-cccc-000000000001/icd.csv"
+      end
+      post :upload_file, params: {scope: "DEFAULT", file: @upload}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq({"value" => "0f1e2d3c-aaaa-bbbb-cccc-000000000001/icd.csv"})
+    end
+
+    it "rejects a missing or too large file" do
+      post :upload_file, params: {scope: "DEFAULT"}
+      expect(response).to have_http_status(:bad_request)
+      stub_const("PluginsController::MAX_UPLOAD_BYTES", 2)
+      expect(OpenC3::PluginModel).to_not receive(:store_upload)
+      post :upload_file, params: {scope: "DEFAULT", file: @upload}
+      expect(response).to have_http_status(:payload_too_large)
+    end
+
+    it "requires authorization" do
+      post :upload_file, params: {file: @upload}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe "POST create from an installed gem" do
     it "parses the plugin.txt of a gem in COSMOS" do
       allow(OpenC3::GemModel).to receive(:names).and_return(["openc3-cosmos-dualsense-1.0.0.gem"])

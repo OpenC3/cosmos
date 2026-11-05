@@ -38,6 +38,7 @@ require 'tmpdir'
 require 'tempfile'
 require 'fileutils'
 require 'open3'
+require 'securerandom'
 
 module OpenC3
   class EmptyGemFileError < StandardError; end
@@ -56,7 +57,17 @@ module OpenC3
     # ${name} in a VARIABLE_DISCOVERY parameter is replaced by the value of variable name
     DISCOVERY_REFERENCE = /\$\{(\w+)\}/
     # Input types of VARIABLE_TYPE in the plugin dialog
-    VARIABLE_TYPES = ['TEXT', 'BOOLEAN', 'INTEGER', 'NUMBER', 'PASSWORD', 'JSON', 'SECRET']
+    VARIABLE_TYPES = ['TEXT', 'BOOLEAN', 'INTEGER', 'NUMBER', 'PASSWORD', 'JSON', 'SECRET', 'TARGET_NAME']
+    # Type of a variable defined by VARIABLE_FILE, whose value is an uploaded file
+    FILE_VARIABLE_TYPE = 'FILE'
+    # Bucket folder (under the scope) of the files uploaded for VARIABLE_FILE
+    UPLOADS_PATH = 'plugin_uploads'
+    # The value of a VARIABLE_FILE variable: the upload's id and file name
+    UPLOAD_VALUE = %r{\A(\h{8}-\h{4}-\h{4}-\h{4}-\h{12})/([^/\\]+)\z}
+    # Keywords that run a script in the plugin before or after it is installed
+    INSTALL_SCRIPT_KEYWORDS = ['PRE_INSTALL_SCRIPT', 'POST_INSTALL_SCRIPT']
+    # Seconds an install script can run before the install fails
+    INSTALL_SCRIPT_TIMEOUT_S = 600
     PLUGIN_TXT = 'plugin.txt'
 
     attr_accessor :variables
@@ -221,6 +232,26 @@ module OpenC3
                 variables[variable_name]['value'] = existing
               end
             end
+          when 'VARIABLE_FILE'
+            usage = "#{keyword} <Variable Name> <Destination Path>"
+            parser.verify_num_parameters(2, 2, usage)
+            variable_name = params[0]
+            if RESERVED_VARIABLE_NAMES.include?(variable_name) or variable_name == BRIDGE_VARIABLE_NAME
+              raise "VARIABLE name '#{variable_name}' is reserved"
+            end
+            file_path = params[1]
+            unless safe_relative_path?(file_path)
+              raise "VARIABLE_FILE destination '#{file_path}' must be a path inside the plugin"
+            end
+            # The value is the uploaded file (blank until one is uploaded),
+            # which phase 2 copies to file_path in the plugin
+            variables[variable_name] = { 'value' => '', 'type' => FILE_VARIABLE_TYPE, 'file_path' => file_path }
+            current_variable_name = variable_name
+            if existing_variables && existing_variables.key?(variable_name)
+              existing = existing_variables[variable_name]
+              existing = existing['value'] if existing.is_a?(Hash)
+              variables[variable_name]['value'] = existing.to_s if existing.to_s.match?(UPLOAD_VALUE)
+            end
           when 'VARIABLE_DESCRIPTION'
             usage = "#{keyword} <Description>"
             parser.verify_num_parameters(1, 1, usage)
@@ -243,6 +274,9 @@ module OpenC3
               raise "VARIABLE_TYPE must follow a VARIABLE definition"
             end
             type = params[0].upcase
+            if variables[current_variable_name]['type'] == FILE_VARIABLE_TYPE
+              raise "VARIABLE_TYPE cannot be used with a VARIABLE_FILE"
+            end
             unless VARIABLE_TYPES.include?(type)
               raise "VARIABLE_TYPE must be one of #{VARIABLE_TYPES.join(', ')} but got '#{params[0]}'"
             end
@@ -422,6 +456,18 @@ module OpenC3
           end
         end
 
+        # A new install's TARGET_NAME variables default to a target name that
+        # isn't taken, so installing a plugin again doesn't collide with the
+        # targets of the first install. Existing installs keep their names.
+        taken = nil
+        variables.each do |variable_name, variable|
+          next unless variable['type'] == 'TARGET_NAME'
+          next if existing_variables and existing_variables.key?(variable_name)
+          taken ||= Set.new(TargetModel.names(scope: scope))
+          variable['value'] = available_target_name(variable['value'], taken)
+          taken << variable['value'].upcase
+        end
+
         store_plugin_id = Integer(store_plugin_id) if store_plugin_id
         store_version_id = Integer(store_version_id) if store_version_id
         model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, plugin_text: plugin_markdown, store_plugin_id: store_plugin_id, store_version_id: store_version_id, minimum_cosmos_version: minimum_cosmos_version, scope: scope)
@@ -440,6 +486,11 @@ module OpenC3
       erb_variables = {}
       (plugin_hash['variables'] || {}).each do |name, var|
         erb_variables[name] = var.is_a?(Hash) ? var['value'] : var
+        # A VARIABLE_FILE is the path its file is copied to in the plugin, or
+        # blank without a file
+        if var.is_a?(Hash) and var['type'] == FILE_VARIABLE_TYPE
+          erb_variables[name] = var['value'].to_s.match?(UPLOAD_VALUE) ? var['file_path'] : ''
+        end
       end
       erb_variables['scope'] = scope
       erb_variables
@@ -509,6 +560,10 @@ module OpenC3
             raise "Invalid screen filename: #{filename}. Screen filenames must be lowercase."
           end
         end
+
+        # Files uploaded for VARIABLE_FILE go where the plugin expects them
+        # before anything reads the plugin's files
+        copy_uploads(plugin_hash, gem_path, scope: scope)
 
         plugin_model.minimum_cosmos_version = pkg.spec.metadata['openc3_cosmos_minimum_version']
 
@@ -626,6 +681,27 @@ module OpenC3
           plugin_model.update unless dry_run
         end
 
+        # Run the PRE_INSTALL_SCRIPTs now that the plugin's files and Python
+        # packages are in place, before anything is installed from them (they
+        # can generate files, e.g. target definitions). Dry runs (validation
+        # and the upgrade diff) run them too, with OPENC3_PLUGIN_DRY_RUN set,
+        # since what they generate may be needed. POST_INSTALL_SCRIPTs run
+        # after everything is installed, and not in dry runs.
+        erb_variables = self.erb_variables(plugin_hash, scope: scope)
+        scripts_tf = Tempfile.new(PLUGIN_TXT)
+        begin
+          scripts_tf.write(plugin_hash['plugin_txt_lines'].join("\n"))
+          scripts_tf.close
+          install_scripts = install_scripts(scripts_tf.path, erb_variables)
+        ensure
+          scripts_tf.unlink
+        end
+        script_options = { gem_path: gem_path, plugin_name: plugin_model.name, erb_variables: erb_variables, dry_run: dry_run, scope: scope }
+        gem_lib_dirs = -> { Dir.glob("#{gem_path}/**/lib").select { |dir| File.directory?(dir) } }
+        install_scripts['PRE_INSTALL_SCRIPT'].each do |script, args|
+          run_install_script('PRE_INSTALL_SCRIPT', script, args, load_dirs: gem_lib_dirs.call, **script_options)
+        end
+
         # Temporarily add all lib folders from the gem to the end of the load path
         load_dirs = []
         begin
@@ -642,7 +718,6 @@ module OpenC3
           tf.write(file_data)
           tf.close
           plugin_txt_path = tf.path
-          erb_variables = self.erb_variables(plugin_hash, scope: scope)
           if File.exist?(plugin_txt_path)
             parser = OpenC3::ConfigParser.new("https://openc3.com")
 
@@ -661,8 +736,10 @@ module OpenC3
               when 'PLUGIN_TEXT_START', 'VARIABLE_TEXT_START'
                 parser.set_preserve_lines(true)
                 text_end = keyword.sub('_START', '_END')
-              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_GROUP', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'NEEDS_DEPENDENCIES'
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_GROUP', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'VARIABLE_FILE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
+              when *INSTALL_SCRIPT_KEYWORDS
+                # Run before and after the install
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin
                   if current_model
@@ -697,6 +774,11 @@ module OpenC3
                 current_model.deploy(gem_path, erb_variables, validate_only: dry_run)
               end
               current_model = nil
+            end
+          end
+          unless dry_run
+            install_scripts['POST_INSTALL_SCRIPT'].each do |script, args|
+              run_install_script('POST_INSTALL_SCRIPT', script, args, load_dirs: load_dirs, **script_options)
             end
           end
         ensure
@@ -1145,6 +1227,158 @@ module OpenC3
       OpenC3::GemModel.destroy(gem_filename, log_and_raise_needed_errors: false)
     rescue => e
       Logger.warn("Could not remove gem #{gem_filename}: #{e.message}", scope: scope)
+    end
+
+    # name if no target in taken uses it, otherwise the first of name_2,
+    # name_3, ... that is free. A numbered name counts on from its number.
+    def self.available_target_name(name, taken)
+      name = name.to_s.strip.upcase
+      return name if name.empty? or !taken.include?(name)
+      base, number = name.match(/\A(.+?)(?:_(\d+))?\z/).captures
+      number = number ? number.to_i + 1 : 2
+      number += 1 while taken.include?("#{base}_#{number}")
+      "#{base}_#{number}"
+    end
+
+    # Whether path is relative and stays inside the folder it is relative to
+    def self.safe_relative_path?(path)
+      path = path.to_s
+      return false if path.empty? or path.start_with?('/', '\\') or path.match?(/\A[A-Za-z]:/)
+      parts = path.split(%r{[/\\]})
+      !parts.include?('..') and !parts.reject { |part| part.empty? or part == '.' }.empty?
+    end
+
+    # The bucket key of an uploaded VARIABLE_FILE value, or nil if it isn't one
+    def self.upload_key(value, scope:)
+      match = value.to_s.match(UPLOAD_VALUE)
+      return nil unless match
+      "#{scope}/#{UPLOADS_PATH}/#{match[1]}/#{match[2]}"
+    end
+
+    # Store a file uploaded for a VARIABLE_FILE in the config bucket. Returns
+    # the variable value that refers to it.
+    def self.store_upload(file_path, filename, scope:)
+      filename = File.basename(filename.to_s.tr('\\', '/'))
+      if filename.empty? or filename == '.' or filename == '..'
+        raise "Invalid upload filename '#{filename}'"
+      end
+      value = "#{SecureRandom.uuid}/#{filename}"
+      File.open(file_path, 'rb') do |file|
+        Bucket.getClient().put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: upload_key(value, scope: scope), body: file)
+      end
+      value
+    end
+
+    # Copy the files uploaded for the VARIABLE_FILE variables into the
+    # extracted plugin at their destinations
+    def self.copy_uploads(plugin_hash, gem_path, scope:)
+      (plugin_hash['variables'] || {}).each do |name, variable|
+        next unless variable.is_a?(Hash) and variable['type'] == FILE_VARIABLE_TYPE
+        key = upload_key(variable['value'], scope: scope)
+        next unless key
+        unless safe_relative_path?(variable['file_path'])
+          raise "VARIABLE_FILE #{name} destination '#{variable['file_path']}' must be a path inside the plugin"
+        end
+        destination = File.join(gem_path, variable['file_path'])
+        FileUtils.mkdir_p(File.dirname(destination))
+        Bucket.getClient().get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, path: destination)
+        unless File.exist?(destination)
+          raise "The file uploaded for VARIABLE_FILE #{name} is missing. Upload it again."
+        end
+        Logger.info("Copied the file uploaded for #{name} to #{variable['file_path']}", scope: scope)
+      end
+    end
+
+    # Delete the files uploaded for an uninstalled plugin's VARIABLE_FILE
+    # variables, unless another installed plugin uses them
+    def self.cleanup_uploads(variables, scope:)
+      keys = Array(variables&.values).filter_map do |variable|
+        upload_key(variable['value'], scope: scope) if variable.is_a?(Hash) and variable['type'] == FILE_VARIABLE_TYPE
+      end
+      return if keys.empty?
+      in_use = all(scope: scope).values.flat_map do |plugin|
+        Array(plugin['variables']&.values).filter_map do |variable|
+          upload_key(variable['value'], scope: scope) if variable.is_a?(Hash) and variable['type'] == FILE_VARIABLE_TYPE
+        end
+      end
+      (keys - in_use).each do |key|
+        Bucket.getClient().delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key)
+      end
+    rescue => e
+      Logger.warn("Could not remove uploaded plugin files: #{e.message}", scope: scope)
+    end
+
+    # The PRE_INSTALL_SCRIPT and POST_INSTALL_SCRIPT lines of a plugin.txt, in
+    # order, as { 'PRE_INSTALL_SCRIPT' => [[path, args]], ... }
+    def self.install_scripts(plugin_txt_path, erb_variables)
+      scripts = INSTALL_SCRIPT_KEYWORDS.to_h { |keyword| [keyword, []] }
+      parser = OpenC3::ConfigParser.new("https://openc3.com")
+      text_end = nil
+      parser.parse_file(plugin_txt_path, false, true, true, erb_variables) do |keyword, params|
+        if text_end
+          if keyword == text_end
+            parser.set_preserve_lines(false)
+            text_end = nil
+          end
+          next
+        end
+        if keyword == 'PLUGIN_TEXT_START' or keyword == 'VARIABLE_TEXT_START'
+          parser.set_preserve_lines(true)
+          text_end = keyword.sub('_START', '_END')
+        elsif INSTALL_SCRIPT_KEYWORDS.include?(keyword)
+          parser.verify_num_parameters(1, nil, "#{keyword} <Script Path> <Arguments (optional)>")
+          unless safe_relative_path?(params[0])
+            raise "#{keyword} '#{params[0]}' must be a path inside the plugin"
+          end
+          unless ['.rb', '.py'].include?(File.extname(params[0]).downcase)
+            raise "#{keyword} '#{params[0]}' must be a Ruby (.rb) or Python (.py) script"
+          end
+          scripts[keyword] << [params[0], params[1..]]
+        end
+      end
+      scripts
+    end
+
+    # Run a PRE_INSTALL_SCRIPT or POST_INSTALL_SCRIPT from the extracted plugin
+    # in gem_path. Its output goes to the install log, and a failure (non-zero
+    # exit or running too long) fails the install.
+    def self.run_install_script(keyword, script, args, gem_path:, load_dirs:, plugin_name:, erb_variables:, dry_run:, scope:)
+      path = File.join(gem_path, script)
+      raise "#{keyword} '#{script}' was not found in the plugin" unless File.file?(path)
+      environment = {
+        'OPENC3_SCOPE' => scope,
+        'OPENC3_PLUGIN_NAME' => plugin_name,
+        'OPENC3_PLUGIN_PATH' => gem_path,
+        'OPENC3_PLUGIN_VARIABLES' => JSON.generate(erb_variables),
+        'OPENC3_PLUGIN_DRY_RUN' => dry_run ? 'true' : 'false',
+      }
+      if File.extname(path).downcase == '.py'
+        command = [ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python', path, *args]
+        environment['PYTHONPATH'] = (load_dirs + [ENV['PYTHONPATH']]).compact.reject(&:empty?).join(':')
+        venv_dir = PythonVenv.plugin_venv_path(scope: scope, plugin_name: plugin_name)
+        PythonVenv.configure_environment(environment, venv_dir) if venv_dir
+      else
+        command = ['ruby', path, *args]
+        environment['RUBYLIB'] = (load_dirs + [ENV['RUBYLIB']]).compact.reject(&:empty?).join(':')
+      end
+      Logger.info("Running #{keyword} #{([script] + args).join(' ')}", scope: scope)
+      status = nil
+      Open3.popen2e(environment, *command, chdir: gem_path) do |stdin, output, wait_thread|
+        stdin.close
+        reader = Thread.new do
+          output.each_line { |line| Logger.info("#{keyword} #{script}: #{line.chomp}", scope: scope) }
+        rescue IOError
+        end
+        unless wait_thread.join(INSTALL_SCRIPT_TIMEOUT_S)
+          Process.kill('KILL', wait_thread.pid) rescue nil
+          wait_thread.join
+          reader.join(1)
+          raise "#{keyword} '#{script}' did not finish within #{INSTALL_SCRIPT_TIMEOUT_S} seconds"
+        end
+        reader.join
+        status = wait_thread.value
+      end
+      raise "#{keyword} '#{script}' failed with exit status #{status.exitstatus}" unless status.success?
     end
   end
 end

@@ -168,6 +168,28 @@
                         </template>
                       </v-switch>
 
+                      <!-- File picker for VARIABLE_FILE, which uploads the
+                           file as soon as it's chosen -->
+                      <v-file-input
+                        v-else-if="variable.type === 'FILE'"
+                        :label="fieldLabel(name, variable)"
+                        :placeholder="uploadedFilename(variable)"
+                        :persistent-placeholder="!!uploadedFilename(variable)"
+                        :hint="getHint(name, variable)"
+                        :error-messages="
+                          uploadErrors[name] || variableErrors[name]
+                        "
+                        :loading="uploading[name] || false"
+                        persistent-hint
+                        show-size
+                        prepend-icon=""
+                        prepend-inner-icon="mdi-paperclip"
+                        density="comfortable"
+                        variant="outlined"
+                        data-test="variable-file"
+                        @update:model-value="uploadFile(name, $event)"
+                      />
+
                       <!-- Searchable combobox for variables with states, discovery, bridges or secrets -->
                       <v-combobox
                         v-else-if="hasOptions(variable)"
@@ -430,6 +452,7 @@
           <v-btn
             variant="flat"
             data-test="edit-submit"
+            :disabled="uploadingFiles"
             @click="checkVersionAndSubmit"
           >
             Install
@@ -596,6 +619,13 @@ export default {
       showRequired: false,
       // PASSWORD variables shown in plain text
       revealed: {},
+      // Target names in use, and each TARGET_NAME variable's value when the
+      // dialog opened (its own target when the plugin is being changed)
+      takenTargetNames: new Set(),
+      originalTargetNames: {},
+      // VARIABLE_FILE uploads in progress and their errors by variable name
+      uploading: {},
+      uploadErrors: {},
       previewEditor: null,
       previewLoading: false,
       previewError: null,
@@ -621,6 +651,9 @@ export default {
     }
   },
   computed: {
+    uploadingFiles() {
+      return Object.values(this.uploading).some(Boolean)
+    },
     show: {
       get() {
         return this.modelValue
@@ -780,6 +813,14 @@ export default {
             this.localVariables[name] = variable
           }
         }
+        this.originalTargetNames = {}
+        for (const [name, variable] of Object.entries(this.localVariables)) {
+          if (variable.type === 'TARGET_NAME') {
+            this.originalTargetNames[name] = String(variable.value ?? '')
+              .trim()
+              .toUpperCase()
+          }
+        }
         this.localPluginTxt = this.pluginTxt.slice()
         if (this.existingPluginTxt !== null) {
           this.localExistingPluginTxt = this.existingPluginTxt.slice()
@@ -788,6 +829,19 @@ export default {
     },
   },
   created() {
+    if (
+      Object.values(this.localVariables).some(
+        (variable) => variable.type === 'TARGET_NAME',
+      )
+    ) {
+      Api.get('/openc3-api/targets')
+        .then(({ data }) => {
+          this.takenTargetNames = new Set(
+            (data || []).map((target) => String(target).toUpperCase()),
+          )
+        })
+        .catch(console.error)
+    }
     Api.get('/openc3-api/info')
       .then(({ data }) => {
         this.installedCosmosVersion = data.version
@@ -915,6 +969,9 @@ export default {
         'VARIABLE_DISCOVERY',
         'VARIABLE_DISCOVERY_SET',
         'VARIABLE_BRIDGE',
+        'VARIABLE_FILE',
+        'PRE_INSTALL_SCRIPT',
+        'POST_INSTALL_SCRIPT',
         'PLUGIN_TEXT_START',
         'PLUGIN_TEXT_END',
         'VARIABLE_TEXT_START',
@@ -986,6 +1043,30 @@ export default {
         case 'NUMBER':
           if (!Number.isFinite(Number(value))) return 'Must be a number'
           break
+        case 'TARGET_NAME': {
+          if (!/^[A-Za-z0-9]+(?:_[A-Za-z0-9]+)*$/.test(value)) {
+            return 'Use letters, numbers and single underscores, not starting or ending with an underscore'
+          }
+          const target = value.toUpperCase()
+          const sameName = Object.entries(this.localVariables).some(
+            ([other, otherVariable]) =>
+              other !== name &&
+              otherVariable.type === 'TARGET_NAME' &&
+              String(otherVariable.value ?? '')
+                .trim()
+                .toUpperCase() === target,
+          )
+          if (sameName)
+            return `Another target of this plugin is named ${target}`
+          // The plugin's own targets when it's being changed or upgraded
+          if (
+            this.takenTargetNames.has(target) &&
+            target !== this.originalTargetNames[name]
+          ) {
+            return `Target ${target} already exists`
+          }
+          break
+        }
         case 'JSON':
           try {
             JSON.parse(value)
@@ -1006,6 +1087,37 @@ export default {
         }
       }
       return null
+    },
+    // The name of the file uploaded for a VARIABLE_FILE variable, whose value
+    // is "<upload id>/<file name>"
+    uploadedFilename(variable) {
+      const value = variable.value || ''
+      return value.includes('/') ? value.slice(value.indexOf('/') + 1) : ''
+    },
+    async uploadFile(name, files) {
+      const file = Array.isArray(files) ? files[0] : files
+      this.uploadErrors[name] = null
+      if (!file) {
+        // Cleared: install without a file
+        this.localVariables[name].value = ''
+        return
+      }
+      const formData = new FormData()
+      formData.append('file', file, file.name)
+      this.uploading[name] = true
+      try {
+        const { data } = await Api.post('/openc3-api/plugins/files', {
+          data: formData,
+          headers: { 'Content-Type': 'multipart/form-data' },
+        })
+        this.localVariables[name].value = data.value
+      } catch (error) {
+        this.localVariables[name].value = ''
+        this.uploadErrors[name] =
+          `Upload failed: ${error.response?.data?.message || error.message}`
+      } finally {
+        this.uploading[name] = false
+      }
     },
     fieldLabel(name, variable) {
       const label = variable.label || name

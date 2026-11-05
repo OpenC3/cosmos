@@ -501,6 +501,9 @@ def unload_plugin(plugin_name, scope:)
     begin
       plugin_model = OpenC3::PluginModel.get_model(name: plugin_name, scope: scope)
       plugin_model.destroy
+      # Uninstall-only, like the Version History below: an upgrade keeps the
+      # files uploaded for VARIABLE_FILE
+      OpenC3::PluginModel.cleanup_uploads(plugin_model.variables, scope: scope)
       OpenC3::LocalMode.remove_local_plugin(plugin_name, scope: scope)
       # Remove the backing gem now that no PluginModel references it,
       # so it disappears from the admin Packages tab.

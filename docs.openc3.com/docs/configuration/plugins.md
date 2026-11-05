@@ -174,11 +174,11 @@ VARIABLE port_tgt 8080
 ## VARIABLE_TYPE
 <span class="badge badge--secondary since-right">Since 7.5.0</span>**Set the input type of a plugin variable in the plugin installation dialog**
 
-The VARIABLE_TYPE keyword sets how the previously defined VARIABLE is entered and checked in the plugin installation dialog. BOOLEAN is a switch that sets true or false (and can be cleared to blank unless required). INTEGER and NUMBER must be numbers. PASSWORD hides the value while typing. JSON is a full width monospace field that must hold valid JSON. SECRET picks the name of a COSMOS secret from the scope's secrets, and a new secret can be created from the dialog. TEXT is the default. Blank values are allowed unless the variable is required (see VARIABLE_REQUIRED and VARIABLE_STATE_REQUIRED). The plugin installation dialog won't install with invalid values. The value is still passed to ERB as a string. Must follow a VARIABLE definition.
+The VARIABLE_TYPE keyword sets how the previously defined VARIABLE is entered and checked in the plugin installation dialog. BOOLEAN is a switch that sets true or false (and can be cleared to blank unless required). INTEGER and NUMBER must be numbers. PASSWORD hides the value while typing. JSON is a full width monospace field that must hold valid JSON. SECRET picks the name of a COSMOS secret from the scope's secrets, and a new secret can be created from the dialog. TARGET_NAME is the name of a target the plugin installs, which must be a valid target name not used by another target. On a new install, a TARGET_NAME whose default is already taken defaults to the next free name instead (INST_2, INST_3 and so on), so a plugin can be installed more than once. Changing or upgrading an install keeps its name. TEXT is the default. Blank values are allowed unless the variable is required (see VARIABLE_REQUIRED and VARIABLE_STATE_REQUIRED). The plugin installation dialog won't install with invalid values. The value is still passed to ERB as a string. Must follow a VARIABLE definition.
 
 | Parameter | Description | Required |
 |-----------|-------------|----------|
-| Type | Input type of the variable<br/><br/>Valid Values: <span class="values">TEXT, BOOLEAN, INTEGER, NUMBER, PASSWORD, JSON, SECRET</span> | True |
+| Type | Input type of the variable<br/><br/>Valid Values: <span class="values">TEXT, BOOLEAN, INTEGER, NUMBER, PASSWORD, JSON, SECRET, TARGET_NAME</span> | True |
 
 Example Usage:
 ```cosmos
@@ -188,6 +188,8 @@ VARIABLE use_ssl false
   VARIABLE_TYPE BOOLEAN
 VARIABLE password ""
   VARIABLE_TYPE PASSWORD
+VARIABLE inst_target_name INST
+  VARIABLE_TYPE TARGET_NAME
 ```
 
 ## VARIABLE_GROUP
@@ -288,6 +290,25 @@ VARIABLE serial_port /dev/ttyUSB0
   VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py
 INTERFACE SERIAL_INT serial_interface.py <%= serial_port %> <%= serial_port %> 115200 NONE 1 10.0 nil
   BRIDGE <%= bridge_name %>
+```
+
+## VARIABLE_FILE
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Let the user upload a file into the plugin when installing it**
+
+The VARIABLE_FILE keyword defines a variable whose value is a file the user uploads in the plugin dialog, such as a calibration table, a certificate or an interface control document. The file is stored with the plugin so upgrades keep it, and is copied to the destination path in the plugin before anything is installed from it. In ERB the variable is the destination path, or blank if no file was uploaded, so plugin.txt can include the file conditionally. Uploading a file again replaces it. VARIABLE_DESCRIPTION, VARIABLE_LABEL, VARIABLE_REQUIRED and the other VARIABLE modifiers except VARIABLE_TYPE can follow it. A PRE_INSTALL_SCRIPT can read the file to generate the rest of the plugin. Files can be up to 100 MB.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Variable Name | The name of the variable | True |
+| Destination Path | Path the uploaded file is copied to, relative to the top of the plugin. It must stay inside the plugin and is created if needed. | True |
+
+Example Usage:
+```cosmos
+VARIABLE_FILE icd targets/INST/data/icd.csv
+  VARIABLE_LABEL "Interface control document"
+  VARIABLE_REQUIRED
+PRE_INSTALL_SCRIPT scripts/generate_target.py <%= icd %>
+TARGET INST INST
 ```
 
 ## VARIABLE_DISCOVERY
@@ -505,6 +526,36 @@ VARIABLE interface_type tcp
 
 If the plugin has a top level lib folder or lists runtime dependencies in the gemspec, NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise, having NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
 
+
+## PRE_INSTALL_SCRIPT
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Run a script in the plugin before the plugin is installed**
+
+The PRE_INSTALL_SCRIPT keyword runs a Ruby (.rb) or Python (.py) script from the plugin after its files (including any VARIABLE_FILE uploads) and Python packages are in place, but before any target, interface or other part of the plugin is installed, so it can generate or change those files. It runs in a copy of the plugin's files with that folder as its working directory. Python scripts use the plugin's Python packages and Ruby scripts can require the plugin's lib folders. The script's environment has OPENC3_SCOPE, OPENC3_PLUGIN_NAME, OPENC3_PLUGIN_PATH (the plugin's folder) and OPENC3_PLUGIN_VARIABLES (the plugin variables as a JSON object). Validating a plugin or checking an upgrade also runs it, with OPENC3_PLUGIN_DRY_RUN set to true, so it should only change files in the plugin's folder then. Its output is logged, and the install fails if it exits with an error or runs longer than 10 minutes. Multiple PRE_INSTALL_SCRIPTs run in the order they appear, wherever they are in plugin.txt.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Script Path | Path of the .rb or .py script, relative to the top of the plugin | True |
+| Arguments | Arguments passed to the script | False |
+
+Example Usage:
+```cosmos
+PRE_INSTALL_SCRIPT scripts/generate_target.py <%= icd %>
+```
+
+## POST_INSTALL_SCRIPT
+<span class="badge badge--secondary since-right">Since 7.5.0</span>**Run a script in the plugin after the plugin is installed**
+
+The POST_INSTALL_SCRIPT keyword runs a Ruby (.rb) or Python (.py) script from the plugin after every part of the plugin has been installed, for example to load initial settings. It runs the same way as a PRE_INSTALL_SCRIPT, with the same environment, but not when validating a plugin or checking an upgrade. The install fails if it exits with an error or runs longer than 10 minutes. Multiple POST_INSTALL_SCRIPTs run in the order they appear, wherever they are in plugin.txt.
+
+| Parameter | Description | Required |
+|-----------|-------------|----------|
+| Script Path | Path of the .rb or .py script, relative to the top of the plugin | True |
+| Arguments | Arguments passed to the script | False |
+
+Example Usage:
+```cosmos
+POST_INSTALL_SCRIPT scripts/initialize.rb
+```
 
 ## INTERFACE
 **Defines a connection to a physical target**

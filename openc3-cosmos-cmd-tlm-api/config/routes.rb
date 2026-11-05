@@ -102,6 +102,7 @@ Rails.application.routes.draw do
     post '/plugins/install/:id', to: 'plugins#install', id: /[^\/]+/
     post '/plugins/modified_diff', to: 'plugins#modified_diff'
     post '/plugins/preview', to: 'plugins#preview'
+    post '/plugins/files', to: 'plugins#upload_file'
     post '/plugins/:id/migrate_to_uv', to: 'plugins#migrate_to_uv', id: /[^\/]+/ # Migrate legacy plugin to per-plugin UV venv
     resources :plugins, only: [:index, :create]
     get '/plugins/:id', to: 'plugins#show', id: /[^\/]+/

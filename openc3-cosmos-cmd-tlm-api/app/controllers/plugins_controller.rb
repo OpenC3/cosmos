@@ -274,6 +274,31 @@ class PluginsController < ModelController
     end
   end
 
+  # Largest file a VARIABLE_FILE upload can be
+  MAX_UPLOAD_BYTES = 100 * 1024 * 1024
+
+  # Store a file chosen for a VARIABLE_FILE in the plugin dialog. Returns the
+  # variable value that refers to it, which install copies into the plugin.
+  def upload_file
+    return unless authorization('admin')
+    scope = sanitize_params([:scope])
+    return unless scope
+    file = params[:file]
+    unless file.respond_to?(:tempfile)
+      render json: { status: 'error', message: 'No file received' }, status: :bad_request
+      return
+    end
+    if file.size > MAX_UPLOAD_BYTES
+      render json: { status: 'error', message: "File is larger than #{MAX_UPLOAD_BYTES / 1024 / 1024} MB" }, status: :payload_too_large
+      return
+    end
+    value = OpenC3::PluginModel.store_upload(file.tempfile.path, file.original_filename, scope: scope[0])
+    render json: { value: value }
+  rescue Exception => error
+    logger.error(error.formatted)
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
+  end
+
   def install
     return unless authorization('admin')
     begin
