@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 680" width="960" height="680" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 910" width="960" height="910" role="img" aria-labelledby="title desc">
   <title id="title">COSMOS Enterprise architecture</title>
-  <desc id="desc">COSMOS Enterprise deployed on a Kubernetes cluster with Helm. The openc3-nfs chart deploys shared NFS storage. The openc3 chart deploys traefik, init, operator, cmd-tlm-api, script-runner-api, and the Enterprise-only grafana, metrics, and keycloak services. The openc3-db chart deploys tsdb, buckets, redis, redis-ephemeral, and the Enterprise-only postgresql database used by keycloak.</desc>
+  <desc id="desc">COSMOS Enterprise deployed on a Kubernetes cluster with Helm. The openc3-nfs chart deploys shared NFS storage. The openc3 chart deploys traefik, init, operator, cmd-tlm-api, script-runner-api, and the Enterprise-only grafana, metrics, and keycloak services. The openc3-db chart deploys tsdb, buckets, redis, redis-ephemeral, and the Enterprise-only postgresql database used by keycloak. The operator creates a separate pod for each interface, target, and plugin microservice. Interface pods connect to targets outside the cluster.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
       <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
@@ -28,91 +28,115 @@
     </style>
   </defs>
 
-  <rect width="960" height="680" rx="12" fill="#ffffff"/>
+  <rect width="960" height="910" rx="12" fill="#ffffff"/>
 
-  <rect class="group-k8s" x="20" y="24" width="920" height="640" rx="12"/>
+  <rect class="group-k8s" x="20" y="24" width="920" height="790" rx="12"/>
   <rect x="32" y="13" width="182" height="22" rx="11" fill="#475569"/>
   <text class="tab" x="42" y="28" fill="#ffffff" style="fill:#ffffff">KUBERNETES CLUSTER</text>
   <rect class="group" x="200" y="56" width="400" height="96" rx="12"/>
   <rect x="212" y="45" width="164" height="22" rx="11" fill="#047857"/>
   <text class="tab" x="222" y="60" fill="#ffffff" style="fill:#ffffff">OPENC3-NFS CHART</text>
-  <rect class="group-core" x="200" y="180" width="400" height="430" rx="12"/>
-  <rect x="212" y="169" width="129" height="22" rx="11" fill="#1d4ed8"/>
-  <text class="tab" x="222" y="184" fill="#ffffff" style="fill:#ffffff">OPENC3 CHART</text>
-  <rect class="group" x="650" y="180" width="270" height="430" rx="12"/>
-  <rect x="662" y="169" width="156" height="22" rx="11" fill="#475569"/>
-  <text class="tab" x="672" y="184" fill="#ffffff" style="fill:#ffffff">OPENC3-DB CHART</text>
+  <rect class="group-core" x="200" y="194" width="400" height="420" rx="12"/>
+  <rect x="212" y="183" width="129" height="22" rx="11" fill="#1d4ed8"/>
+  <text class="tab" x="222" y="198" fill="#ffffff" style="fill:#ffffff">OPENC3 CHART</text>
+  <rect class="group" x="650" y="194" width="270" height="420" rx="12"/>
+  <rect x="662" y="183" width="156" height="22" rx="11" fill="#475569"/>
+  <text class="tab" x="672" y="198" fill="#ffffff" style="fill:#ffffff">OPENC3-DB CHART</text>
+  <rect class="group" x="200" y="660" width="720" height="120" rx="12"/>
+  <rect x="212" y="649" width="129" height="22" rx="11" fill="#1d4ed8"/>
+  <text class="tab" x="222" y="664" fill="#ffffff" style="fill:#ffffff">DYNAMIC PODS</text>
   <rect x="650" y="64" width="270" height="88" rx="10" fill="#ffffff" stroke="#cbd5e1"/>
   <text class="tab" x="666" y="86">KEY</text>
   <rect x="666" y="98" width="18" height="14" rx="3" class="card"/>
   <text class="desc" x="692" y="110">Core &amp; Enterprise</text>
   <rect x="666" y="122" width="18" height="14" rx="3" class="card-ent"/>
   <text class="desc" x="692" y="134">Enterprise only</text>
-  <path class="link" d="M100,333 L100,104 L198,104" marker-end="url(#arrow)"/>
-  <path class="link" d="M162,365 L198,365" marker-end="url(#arrow)"/>
-  <path class="link" d="M100,397 L100,640 L785,640 L785,612" marker-end="url(#arrow)"/>
-  <path class="link" d="M395,236 L413,236" marker-end="url(#arrow)"/>
-  <path class="link" d="M395,254 L404,254 L404,345 L413,345" marker-end="url(#arrow)"/>
-  <path class="link" d="M602,400 L648,400" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
-  <text class="label" x="625" y="390" text-anchor="middle">data</text>
-  <path class="link" d="M590,545 L668,545" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
-  <rect class="card" x="40" y="335" width="122" height="60" rx="8"/>
-  <g class="icon" stroke="#1d4ed8" transform="translate(54,351.0) scale(1.1667)"><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4M5.3 5.3l2.8 2.8M15.9 15.9l2.8 2.8M5.3 18.7l2.8-2.8M15.9 8.1l2.8-2.8"/></g>
-  <text class="name" x="92" y="370.0">Helm</text>
+  <path class="link" d="M100,368 L100,104 L198,104" marker-end="url(#arrow)"/>
+  <path class="link" d="M100,172 L880,172 L880,192" marker-end="url(#arrow)"/>
+  <circle cx="100" cy="172" r="3.5" fill="#475569"/>
+  <path class="link" d="M162,400 L198,400" marker-end="url(#arrow)"/>
+  <path class="link" d="M395,251 L413,251" marker-end="url(#arrow)"/>
+  <path class="link" d="M395,269 L404,269 L404,360 L413,360" marker-end="url(#arrow)"/>
+  <path class="link" d="M602,415 L648,415" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="label" x="625" y="405" text-anchor="middle">data</text>
+  <path class="link" d="M590,560 L668,560" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <path class="link" d="M375,592 L375,658" marker-end="url(#arrow)"/>
+  <text class="label" x="383" y="640" text-anchor="start">creates</text>
+  <path class="link" d="M327,752 L327,834" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="label" x="337" y="798" text-anchor="start">Interfaces</text>
+  <rect class="card" x="40" y="370" width="122" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(54,386.0) scale(1.1667)"><circle cx="12" cy="12" r="5.5"/><circle cx="12" cy="12" r="1.5"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4M5.3 5.3l2.8 2.8M15.9 15.9l2.8 2.8M5.3 18.7l2.8-2.8M15.9 8.1l2.8-2.8"/></g>
+  <text class="name" x="92" y="405.0">Helm</text>
   <rect class="card-ent" x="220" y="76" width="175" height="60" rx="8"/>
   <g class="icon" stroke="#047857" transform="translate(234,92.0) scale(1.1667)"><path d="M3 6.5a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M3 10h18"/></g>
   <text class="name" x="272" y="103.0">nfs</text>
   <text class="sub" x="272" y="120.0">Shared storage</text>
-  <rect class="card" x="220" y="215" width="175" height="60" rx="8"/>
-  <g class="icon" stroke="#1d4ed8" transform="translate(234,231.0) scale(1.1667)"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="12" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.5 12h9M7.2 10.8l9.5-5M7.2 13.2l9.5 5"/></g>
-  <text class="name" x="272" y="242.0">traefik</text>
-  <text class="sub" x="272" y="259.0">Reverse proxy</text>
-  <rect class="card" x="220" y="315" width="175" height="60" rx="8"/>
-  <g class="icon" stroke="#1d4ed8" transform="translate(234,331.0) scale(1.1667)"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M6.5 9.5l3 2.5-3 2.5"/><path d="M12 15h5"/></g>
-  <text class="name" x="272" y="342.0">init</text>
-  <text class="sub" x="272" y="359.0">Seeds config</text>
-  <rect class="card" x="220" y="415" width="175" height="60" rx="8"/>
-  <g class="icon" stroke="#1d4ed8" transform="translate(234,431.0) scale(1.1667)"><rect x="3" y="3.5" width="18" height="7" rx="1.5"/><rect x="3" y="13.5" width="18" height="7" rx="1.5"/><path d="M7 7h.01M7 17h.01"/><path d="M11 7h6M11 17h6"/></g>
-  <text class="name" x="272" y="442.0">operator</text>
-  <text class="sub" x="272" y="459.0">Spawns pods</text>
-  <rect class="card-ent" x="220" y="515" width="175" height="60" rx="8"/>
-  <g class="icon" stroke="#047857" transform="translate(234,531.0) scale(1.1667)"><path d="M3 3v18h18"/><path d="M6.5 15l4-5 3.5 3 5-7"/></g>
-  <text class="name" x="272" y="542.0">grafana</text>
-  <text class="sub" x="272" y="559.0">Dashboards</text>
-  <rect class="card" x="415" y="215" width="175" height="60" rx="8"/>
-  <g class="icon" stroke="#1d4ed8" transform="translate(429,231.0) scale(1.1667)"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M9 9l-3 3 3 3M15 9l3 3-3 3M13 8.5l-2 7"/></g>
-  <text class="name" x="467" y="242.0">cmd-tlm-api</text>
-  <text class="sub" x="467" y="259.0">Rails</text>
-  <rect class="card" x="415" y="315" width="175" height="60" rx="8"/>
-  <g class="icon" stroke="#1d4ed8" transform="translate(429,331.0) scale(1.1667)"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M9 9l-3 3 3 3M15 9l3 3-3 3M13 8.5l-2 7"/></g>
-  <text class="name" x="467" y="342.0">script-runner-api</text>
-  <text class="sub" x="467" y="359.0">Rails</text>
-  <rect class="card-ent" x="415" y="415" width="175" height="60" rx="8"/>
-  <g class="icon" stroke="#047857" transform="translate(429,431.0) scale(1.1667)"><path d="M3.5 17a8.5 8.5 0 1 1 17 0"/><path d="M12 17l4-6"/><circle cx="12" cy="17" r="1.2"/><path d="M3 20.5h18"/></g>
-  <text class="name" x="467" y="442.0">metrics</text>
-  <text class="sub" x="467" y="459.0">Prometheus</text>
-  <rect class="card-ent" x="415" y="515" width="175" height="60" rx="8"/>
-  <g class="icon" stroke="#047857" transform="translate(429,531.0) scale(1.1667)"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L20 3M16 7l3 3M14 9l2 2"/></g>
-  <text class="name" x="467" y="542.0">keycloak</text>
-  <text class="sub" x="467" y="559.0">SSO &amp; RBAC</text>
-  <rect class="card" x="670" y="215" width="230" height="60" rx="8"/>
-  <g class="icon" stroke="#1d4ed8" transform="translate(684,231.0) scale(1.1667)"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></g>
-  <text class="name" x="722" y="242.0">tsdb</text>
-  <text class="sub" x="722" y="259.0">QuestDB</text>
-  <rect class="card" x="670" y="290" width="230" height="60" rx="8"/>
-  <g class="icon" stroke="#1d4ed8" transform="translate(684,306.0) scale(1.1667)"><ellipse cx="12" cy="5" rx="9" ry="2.5"/><path d="M3 5l2.2 14.5c.2 1.4 3.2 2.5 6.8 2.5s6.6-1.1 6.8-2.5L21 5"/><path d="M7 11c3 1 7 1 10 0"/></g>
-  <text class="name" x="722" y="317.0">buckets</text>
-  <text class="sub" x="722" y="334.0">Versitygw / cloud S3</text>
-  <rect class="card" x="670" y="365" width="230" height="60" rx="8"/>
-  <g class="icon" stroke="#1d4ed8" transform="translate(684,381.0) scale(1.1667)"><path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5l9 4.5 9-4.5"/></g>
-  <text class="name" x="722" y="392.0">redis</text>
-  <text class="sub" x="722" y="409.0">Valkey · config &amp; CVT</text>
-  <rect class="card" x="670" y="440" width="230" height="60" rx="8"/>
-  <g class="icon" stroke="#1d4ed8" transform="translate(684,456.0) scale(1.1667)"><path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5l9 4.5 9-4.5"/></g>
-  <text class="name" x="722" y="467.0">redis-ephemeral</text>
-  <text class="sub" x="722" y="484.0">Valkey · streams</text>
-  <rect class="card-ent" x="670" y="515" width="230" height="60" rx="8"/>
-  <g class="icon" stroke="#047857" transform="translate(684,531.0) scale(1.1667)"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></g>
-  <text class="name" x="722" y="542.0">postgresql</text>
-  <text class="sub" x="722" y="559.0">Keycloak database</text>
+  <rect class="card" x="220" y="230" width="175" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(234,246.0) scale(1.1667)"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="12" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.5 12h9M7.2 10.8l9.5-5M7.2 13.2l9.5 5"/></g>
+  <text class="name" x="272" y="257.0">traefik</text>
+  <text class="sub" x="272" y="274.0">Reverse proxy</text>
+  <rect class="card" x="220" y="330" width="175" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(234,346.0) scale(1.1667)"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M6.5 9.5l3 2.5-3 2.5"/><path d="M12 15h5"/></g>
+  <text class="name" x="272" y="357.0">init</text>
+  <text class="sub" x="272" y="374.0">Seeds config</text>
+  <rect class="card-ent" x="220" y="430" width="175" height="60" rx="8"/>
+  <g class="icon" stroke="#047857" transform="translate(234,446.0) scale(1.1667)"><path d="M3 3v18h18"/><path d="M6.5 15l4-5 3.5 3 5-7"/></g>
+  <text class="name" x="272" y="457.0">grafana</text>
+  <text class="sub" x="272" y="474.0">Dashboards</text>
+  <rect class="card" x="220" y="530" width="175" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(234,546.0) scale(1.1667)"><rect x="3" y="3.5" width="18" height="7" rx="1.5"/><rect x="3" y="13.5" width="18" height="7" rx="1.5"/><path d="M7 7h.01M7 17h.01"/><path d="M11 7h6M11 17h6"/></g>
+  <text class="name" x="272" y="557.0">operator</text>
+  <text class="sub" x="272" y="574.0">Spawns pods</text>
+  <rect class="card" x="415" y="230" width="175" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(429,246.0) scale(1.1667)"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M9 9l-3 3 3 3M15 9l3 3-3 3M13 8.5l-2 7"/></g>
+  <text class="name" x="467" y="257.0">cmd-tlm-api</text>
+  <text class="sub" x="467" y="274.0">Rails</text>
+  <rect class="card" x="415" y="330" width="175" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(429,346.0) scale(1.1667)"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M9 9l-3 3 3 3M15 9l3 3-3 3M13 8.5l-2 7"/></g>
+  <text class="name" x="467" y="357.0">script-runner-api</text>
+  <text class="sub" x="467" y="374.0">Rails</text>
+  <rect class="card-ent" x="415" y="430" width="175" height="60" rx="8"/>
+  <g class="icon" stroke="#047857" transform="translate(429,446.0) scale(1.1667)"><path d="M3.5 17a8.5 8.5 0 1 1 17 0"/><path d="M12 17l4-6"/><circle cx="12" cy="17" r="1.2"/><path d="M3 20.5h18"/></g>
+  <text class="name" x="467" y="457.0">metrics</text>
+  <text class="sub" x="467" y="474.0">Prometheus</text>
+  <rect class="card-ent" x="415" y="530" width="175" height="60" rx="8"/>
+  <g class="icon" stroke="#047857" transform="translate(429,546.0) scale(1.1667)"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3L20 3M16 7l3 3M14 9l2 2"/></g>
+  <text class="name" x="467" y="557.0">keycloak</text>
+  <text class="sub" x="467" y="574.0">SSO &amp; RBAC</text>
+  <rect class="card" x="670" y="230" width="230" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(684,246.0) scale(1.1667)"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></g>
+  <text class="name" x="722" y="257.0">tsdb</text>
+  <text class="sub" x="722" y="274.0">QuestDB</text>
+  <rect class="card" x="670" y="305" width="230" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(684,321.0) scale(1.1667)"><ellipse cx="12" cy="5" rx="9" ry="2.5"/><path d="M3 5l2.2 14.5c.2 1.4 3.2 2.5 6.8 2.5s6.6-1.1 6.8-2.5L21 5"/><path d="M7 11c3 1 7 1 10 0"/></g>
+  <text class="name" x="722" y="332.0">buckets</text>
+  <text class="sub" x="722" y="349.0">Versitygw / cloud S3</text>
+  <rect class="card" x="670" y="380" width="230" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(684,396.0) scale(1.1667)"><path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5l9 4.5 9-4.5"/></g>
+  <text class="name" x="722" y="407.0">redis</text>
+  <text class="sub" x="722" y="424.0">Valkey · config &amp; CVT</text>
+  <rect class="card" x="670" y="455" width="230" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(684,471.0) scale(1.1667)"><path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5l9 4.5 9-4.5"/></g>
+  <text class="name" x="722" y="482.0">redis-ephemeral</text>
+  <text class="sub" x="722" y="499.0">Valkey · streams</text>
+  <rect class="card-ent" x="670" y="530" width="230" height="60" rx="8"/>
+  <g class="icon" stroke="#047857" transform="translate(684,546.0) scale(1.1667)"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></g>
+  <text class="name" x="722" y="557.0">postgresql</text>
+  <text class="sub" x="722" y="574.0">Keycloak database</text>
+  <rect class="card" x="220" y="690" width="215" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(234,706.0) scale(1.1667)"><rect x="3" y="3.5" width="18" height="7" rx="1.5"/><rect x="3" y="13.5" width="18" height="7" rx="1.5"/><path d="M7 7h.01M7 17h.01"/><path d="M11 7h6M11 17h6"/></g>
+  <text class="name" x="272" y="717.0">Interface pods</text>
+  <text class="sub" x="272" y="734.0">One per interface / router</text>
+  <rect class="card" x="455" y="690" width="215" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(469,706.0) scale(1.1667)"><rect x="3" y="3.5" width="18" height="7" rx="1.5"/><rect x="3" y="13.5" width="18" height="7" rx="1.5"/><path d="M7 7h.01M7 17h.01"/><path d="M11 7h6M11 17h6"/></g>
+  <text class="name" x="507" y="717.0">Target pods</text>
+  <text class="sub" x="507" y="734.0">Decom, logging, TSDB</text>
+  <rect class="card" x="690" y="690" width="215" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(704,706.0) scale(1.1667)"><rect x="3" y="3.5" width="18" height="7" rx="1.5"/><rect x="3" y="13.5" width="18" height="7" rx="1.5"/><path d="M7 7h.01M7 17h.01"/><path d="M11 7h6M11 17h6"/></g>
+  <text class="name" x="742" y="717.0">Microservice pods</text>
+  <text class="sub" x="742" y="734.0">Plugin microservices</text>
+  <rect class="actor" x="249" y="836" width="156" height="56" rx="28.0"/>
+  <g class="icon" stroke="#475569" transform="translate(263,850.0) scale(1.1667)"><rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 2.5V6M15 2.5V6M9 18v3.5M15 18v3.5M2.5 9H6M2.5 15H6M18 9h3.5M18 15h3.5"/></g>
+  <text class="name" x="301" y="861.0">Targets</text>
+  <text class="sub" x="301" y="878.0">Your hardware</text>
 </svg>
