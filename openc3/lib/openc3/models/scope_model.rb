@@ -152,8 +152,15 @@ module OpenC3
         raise "Invalid value for critical_commanding: #{@critical_commanding}"
       end
       # Number of distinct users (other than the sender) who must approve each critical command
-      @critical_cmd_approvers = (critical_cmd_approvers || 1).to_i
-      if @critical_cmd_approvers < 1 or @critical_cmd_approvers > MAX_CRITICAL_CMD_APPROVERS
+      # Integer rather than to_i so non-numeric values raise instead of becoming 0
+      # (matching Python's int). Base 10 so '010' isn't parsed as octal.
+      begin
+        value = critical_cmd_approvers || 1
+        @critical_cmd_approvers = value.is_a?(String) ? Integer(value, 10) : Integer(value)
+      rescue ArgumentError, TypeError
+        @critical_cmd_approvers = nil
+      end
+      if @critical_cmd_approvers.nil? or @critical_cmd_approvers < 1 or @critical_cmd_approvers > MAX_CRITICAL_CMD_APPROVERS
         raise "Invalid value for critical_cmd_approvers: #{critical_cmd_approvers} (must be 1 to #{MAX_CRITICAL_CMD_APPROVERS})"
       end
       @shard = shard.to_i # to_i to handle nil

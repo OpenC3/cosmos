@@ -21,10 +21,10 @@ def critical_cmd_status(uuid: str, scope: str = OPENC3_SCOPE):
     try:
         endpoint = f"/openc3-api/criticalcmd/status/{uuid}"
         response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
-        if not response or response.status_code != 200:
+        if response is None or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to critical_cmd_status: {repr(response)}")
         result = json.loads(response.text)
-        return result["status"]
+        return result.get("status")
     except Exception as error:
         raise RuntimeError(f"critical_cmd_status failed due to {traceback.format_exc()}") from error
 
@@ -35,11 +35,11 @@ def critical_cmd_info(uuid: str, scope: str = OPENC3_SCOPE):
     try:
         endpoint = f"/openc3-api/criticalcmd/status/{uuid}"
         response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
-        if not response or response.status_code != 200:
+        if response is None or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to critical_cmd_info: {repr(response)}")
         result = json.loads(response.text)
         return {
-            "status": result["status"],
+            "status": result.get("status"),
             "approvers": result.get("approvers") or [],
             "approvers_required": result.get("approvers_required") or 1,
         }
@@ -83,9 +83,9 @@ def critical_cmd_can_approve(uuid: str, scope: str = OPENC3_SCOPE):
     try:
         endpoint = f"/openc3-api/criticalcmd/canapprove/{uuid}"
         response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
-        if not response or response.status_code != 200:
+        if response is None or response.status_code != 200:
             raise RuntimeError(f"Unexpected response to critical_cmd_can_approve: {repr(response)}")
         result = json.loads(response.text)
-        return result["status"] == "ok"
+        return result.get("status") == "ok"
     except Exception as error:
-        raise RuntimeError(f"critical_cmd_approve failed due to {traceback.format_exc()}") from error
+        raise RuntimeError(f"critical_cmd_can_approve failed due to {traceback.format_exc()}") from error

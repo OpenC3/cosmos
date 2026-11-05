@@ -297,8 +297,9 @@ module OpenC3
     describe "command message handling" do
       # Drive the command handler block directly with one crafted message and
       # return the block's result, which becomes the ack (nil means no ack)
-      def handle(msg_hash, topic: "{DEFAULT__CMD}TARGET__INST")
+      def handle(msg_hash, topic: "{DEFAULT__CMD}TARGET__INST", critical_commanding: nil)
         handler = InterfaceCmdHandlerThread.new(@interface, double("tlm").as_null_object, scope: "DEFAULT")
+        handler.instance_variable_set(:@critical_commanding, critical_commanding) if critical_commanding
         result = :not_run
         mutex = Mutex.new
         allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
@@ -342,12 +343,73 @@ module OpenC3
       end
 
       it "acks a released critical command whose target is now disabled" do
-        critical_model = double("CriticalCmdModel", approver: 'approver',
+        critical_model = double("CriticalCmdModel", approver: 'approver', claim_release: true,
           cmd_hash: { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")' })
         stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
         @interface.cmd_target_enabled['INST'] = false
         result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
         expect(result).to eql "Target INST is disabled"
+        expect(critical_model).to have_received(:claim_release)
+      end
+
+      it "claims a released critical command before sending it" do
+        # CLEAR is hazardous, which a released critical command skips
+        critical_model = double("CriticalCmdModel", approver: 'approver',
+          cmd_hash: { 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")' })
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(critical_model).to receive(:claim_release).ordered.and_return(true)
+        # Counted once on release. It wasn't counted while held for approval.
+        expect(TargetModel).to receive(:increment_command_count).with('INST', 'CLEAR', 1, scope: 'DEFAULT').once.and_call_original
+        expect(@interface).to receive(:write).ordered do |command|
+          expect(command.packet_name).to eql 'CLEAR'
+          expect(command.extra['approver']).to eql 'approver'
+        end
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql 'SUCCESS'
+      end
+
+      it "doesn't count a command held for critical approval" do
+        critical_model = double("CriticalCmdModel", create: nil, name: 'abc-123')
+        stub_const("OpenC3::CriticalCmdModel", double(new: critical_model))
+        expect(TargetModel).to_not receive(:increment_command_count)
+        expect(@interface).to_not receive(:write)
+        msg_hash = { 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")', 'hazardous_check' => 'false' }
+        result = handle(msg_hash, critical_commanding: 'NORMAL')
+        expect(result).to eql "CriticalCmdError\nabc-123"
+      end
+
+      it "doesn't count a command returned for hazardous confirmation" do
+        expect(TargetModel).to_not receive(:increment_command_count)
+        expect(@interface).to_not receive(:write)
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")', 'hazardous_check' => 'true' })
+        expect(result).to start_with("HazardousError")
+      end
+
+      it "doesn't send a released critical command it can't claim" do
+        # A duplicate release message is expected so it's only a warning
+        critical_model = double("CriticalCmdModel", claim_release: false, released: true, status: 'APPROVED')
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(@interface).to_not receive(:write)
+        expect(Logger).to receive(:warn).with("INST_INT: Critical command 'abc-123' not released: already released", scope: 'DEFAULT')
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Critical command 'abc-123' not released: already released"
+
+        # An approved command that won't be sent, e.g. its approval was undone, is an error
+        critical_model = double("CriticalCmdModel", claim_release: false, released: false, status: 'WAITING')
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(Logger).to receive(:error).with("INST_INT: Critical command 'abc-123' not released: WAITING", scope: 'DEFAULT')
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Critical command 'abc-123' not released: WAITING"
+      end
+
+      it "doesn't send a released critical command if the claim fails" do
+        critical_model = double("CriticalCmdModel")
+        allow(critical_model).to receive(:claim_release).and_raise("Timeout updating critical command 'abc-123'")
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(@interface).to_not receive(:write)
+        expect(Logger).to receive(:error).with("INST_INT: Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'", scope: 'DEFAULT')
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'"
       end
 
       it "range checks a command that omits range_check" do

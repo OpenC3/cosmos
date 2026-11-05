@@ -110,6 +110,9 @@ export default {
   data() {
     return {
       updater: null,
+      // uuid the dialog is open for, cleared once a final status is emitted.
+      // Responses for any other uuid are stale and ignored.
+      activeUuid: null,
       username: null,
       password: null,
       canApprove: false,
@@ -141,6 +144,7 @@ export default {
     // If this is a tlm dialog we setup an interval to get the telemetry values
     modelValue: function (newValue, oldValue) {
       if (newValue) {
+        this.activeUuid = this.uuid
         this.checkCanApprove()
 
         // Fetch immediately so the approval count is correct on open,
@@ -150,35 +154,66 @@ export default {
       } else {
         clearInterval(this.updater)
         this.updater = null
+        this.activeUuid = null
         this.canApprove = false
         this.approvers = []
         this.approversRequired = null
+        this.error = false
+        this.errorText = ''
         this.username = null
         this.password = null
+      }
+    },
+    // Switch to the new command if the uuid changes while open
+    uuid: function (newValue) {
+      if (this.modelValue && newValue !== this.activeUuid) {
+        this.activeUuid = newValue
+        this.canApprove = false
+        this.approvers = []
+        this.approversRequired = null
+        this.error = false
+        this.checkCanApprove()
+        this.fetchStatus()
       }
     },
   },
   beforeUnmount() {
     clearInterval(this.updater)
     this.updater = null
+    this.activeUuid = null
     this.canApprove = false
     this.username = null
     this.password = null
   },
   methods: {
+    isActive(uuid) {
+      return uuid !== null && uuid === this.activeUuid
+    },
+    // Stop handling responses and report the final status exactly once
+    finish(status, uuid) {
+      if (!this.isActive(uuid)) return
+      this.activeUuid = null
+      clearInterval(this.updater)
+      this.updater = null
+      this.$emit('status', status, uuid)
+      this.show = false
+    },
     checkCanApprove() {
+      const uuid = this.activeUuid
       // Check if we can approve without username/password
-      Api.get('/openc3-api/criticalcmd/canapprove/' + this.uuid)
+      Api.get('/openc3-api/criticalcmd/canapprove/' + uuid)
         .then((response) => {
+          if (!this.isActive(uuid)) return
           this.canApprove = response.data.status === 'ok'
         })
         .catch(console.error)
     },
     fetchStatus() {
-      if (this.uuid) {
-        Api.get('/openc3-api/criticalcmd/status/' + this.uuid)
+      const uuid = this.activeUuid
+      if (uuid) {
+        Api.get('/openc3-api/criticalcmd/status/' + uuid)
           .then((response) => {
-            this.handleStatus(response.data)
+            this.handleStatus(response.data, uuid)
           })
           .catch(console.error)
       } else {
@@ -187,7 +222,9 @@ export default {
     },
     // data is the status / approve / reject response:
     // { status, approvers, approvers_required }
-    handleStatus(data) {
+    // uuid is the command the request was made for
+    handleStatus(data, uuid) {
+      if (!this.isActive(uuid)) return
       if (data.approvers) {
         this.approvers = data.approvers
       }
@@ -195,18 +232,18 @@ export default {
         this.approversRequired = data.approvers_required
       }
       if (data.status !== 'WAITING') {
-        this.$emit('status', data.status, this.uuid)
-        this.show = false
+        this.finish(data.status, uuid)
       }
     },
     // Called after a successful approval. Stay open until enough
     // different users have approved.
-    handleApproved(data) {
+    handleApproved(data, uuid) {
+      if (!this.isActive(uuid)) return
       this.error = false
       this.username = null
       this.password = null
-      this.handleStatus(data)
-      if (this.show) {
+      this.handleStatus(data, uuid)
+      if (this.isActive(uuid)) {
         // The current user just approved and can't approve again. Disable
         // until the check below says otherwise so a quick second click
         // doesn't send a duplicate approval.
@@ -215,77 +252,68 @@ export default {
       }
     },
     async approve() {
-      if (this.canApprove) {
-        await Api.post('/openc3-api/criticalcmd/approve/' + this.uuid, {})
-          .then((response) => {
-            if (response.status == 200) {
-              this.handleApproved(response.data)
-            }
-          })
-          .catch(console.error)
-      } else {
-        let token = await this.getKeycloakToken()
-        axios
-          .post(
-            '/openc3-api/criticalcmd/approve/' + this.uuid,
-            {},
-            {
-              headers: {
-                Authorization: token,
-                'Content-Type': 'application/json',
-              },
-              params: {
-                scope: window.openc3Scope,
-              },
-              timeout: 5000,
-            },
-          )
-          .then((response) => {
-            this.handleApproved(response.data)
-          })
-          .catch((error) => {
-            this.error = true
-            if (error.response) {
-              this.errorText = error.response.data.message
-            } else {
-              this.errorText = error.message
-            }
-          })
+      const uuid = this.activeUuid
+      try {
+        const response = await this.postAction('approve', uuid)
+        this.handleApproved(response.data, uuid)
+      } catch (error) {
+        this.showError(error, uuid)
+        // e.g. this user already approved elsewhere. Check again so the
+        // username / password fields are shown for another approver.
+        if (this.isActive(uuid)) {
+          this.checkCanApprove()
+        }
       }
     },
     async reject() {
-      if (this.canApprove) {
-        await Api.post('/openc3-api/criticalcmd/reject/' + this.uuid, {}).then(
-          (response) => {
-            if (response.status == 200) {
-              this.$emit('status', 'REJECTED', this.uuid)
-              this.show = false
-              this.error = false
-            }
-          },
-        )
-      } else {
-        let token = await this.getKeycloakToken()
-        const response = await axios.post(
-          '/openc3-api/criticalcmd/reject/' + this.uuid,
-          {},
-          {
-            headers: {
-              Authorization: token,
-              'Content-Type': 'application/json',
-            },
-            params: {
-              scope: window.openc3Scope,
-            },
-            timeout: 5000,
-          },
-        )
-        if (response.status == 200) {
-          this.$emit('status', 'REJECTED', this.uuid)
-          this.show = false
-          this.error = false
-        }
+      const uuid = this.activeUuid
+      try {
+        await this.postAction('reject', uuid)
+        this.error = false
+        this.finish('REJECTED', uuid)
+      } catch (error) {
+        this.showError(error, uuid)
       }
+    },
+    // POST approve / reject as the logged in user if they can approve,
+    // otherwise as the user whose credentials were entered in the dialog
+    async postAction(action, uuid) {
+      const path = `/openc3-api/criticalcmd/${action}/${uuid}`
+      if (this.canApprove) {
+        return Api.post(path, {
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            // Shown in the dialog instead of the global error banner
+            'Ignore-Errors': '403 404 409 500',
+          },
+        })
+      }
+      const token = await this.getKeycloakToken()
+      return axios.post(
+        path,
+        {},
+        {
+          headers: {
+            Authorization: token,
+            'Content-Type': 'application/json',
+          },
+          params: {
+            scope: window.openc3Scope,
+          },
+          timeout: 5000,
+        },
+      )
+    },
+    // Show why an approve / reject failed, e.g. already approved by this user,
+    // already rejected, or invalid credentials
+    showError(error, uuid) {
+      if (!this.isActive(uuid)) return
+      this.error = true
+      this.errorText =
+        error.response?.data?.message ??
+        error.response?.data?.error_description ??
+        error.message
     },
     async getKeycloakToken() {
       const response = await axios.post(

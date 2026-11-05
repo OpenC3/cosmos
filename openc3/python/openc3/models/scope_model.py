@@ -89,8 +89,15 @@ class ScopeModel(Model):
         if self.critical_commanding not in ["OFF", "NORMAL", "ALL"]:
             raise RuntimeError(f"Invalid value for critical_commanding: {self.critical_commanding}")
         # Number of distinct users (other than the sender) who must approve each critical command
-        self.critical_cmd_approvers = int(critical_cmd_approvers if critical_cmd_approvers is not None else 1)
-        if self.critical_cmd_approvers < 1 or self.critical_cmd_approvers > self.MAX_CRITICAL_CMD_APPROVERS:
+        try:
+            self.critical_cmd_approvers = int(critical_cmd_approvers if critical_cmd_approvers is not None else 1)
+        except (TypeError, ValueError):
+            self.critical_cmd_approvers = None
+        if (
+            self.critical_cmd_approvers is None
+            or self.critical_cmd_approvers < 1
+            or self.critical_cmd_approvers > self.MAX_CRITICAL_CMD_APPROVERS
+        ):
             raise RuntimeError(
                 f"Invalid value for critical_cmd_approvers: {critical_cmd_approvers} "
                 f"(must be 1 to {self.MAX_CRITICAL_CMD_APPROVERS})"

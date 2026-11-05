@@ -111,6 +111,14 @@ module OpenC3
         expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: 0) }.to raise_error(/Invalid value for critical_cmd_approvers: 0 \(must be 1 to 10\)/)
       end
 
+      it "raises on non-integer critical_cmd_approvers" do
+        ['', 'abc', '2.5'].each do |value|
+          expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: value) }.to raise_error(RuntimeError, /Invalid value for critical_cmd_approvers: #{Regexp.escape(value)} \(must be 1 to 10\)/)
+        end
+        # Base 10, not octal
+        expect(ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: "010").critical_cmd_approvers).to eql 10
+      end
+
       it "allows up to 10 critical_cmd_approvers" do
         expect(ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: 10).critical_cmd_approvers).to eql 10
         expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: 11) }.to raise_error(/Invalid value for critical_cmd_approvers: 11 \(must be 1 to 10\)/)

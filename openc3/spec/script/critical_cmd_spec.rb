@@ -54,6 +54,29 @@ module OpenC3
       end
     end
 
+    describe "critical_cmd_status and critical_cmd_info" do
+      it "return a nil status if missing" do
+        stub_request('get', '/openc3-api/criticalcmd/status/UUID', body: {})
+        expect(critical_cmd_status('UUID')).to be_nil
+        stub_request('get', '/openc3-api/criticalcmd/status/UUID', body: {})
+        expect(critical_cmd_info('UUID')['status']).to be_nil
+      end
+    end
+
+    describe "critical_cmd_can_approve" do
+      it "returns whether the user can approve" do
+        stub_request('get', '/openc3-api/criticalcmd/canapprove/UUID', body: { status: 'ok' })
+        expect(critical_cmd_can_approve('UUID')).to be true
+        stub_request('get', '/openc3-api/criticalcmd/canapprove/UUID', body: { status: 'error', message: 'already approved by alice' })
+        expect(critical_cmd_can_approve('UUID')).to be false
+      end
+
+      it "raises on error" do
+        stub_request('get', '/openc3-api/criticalcmd/canapprove/UUID', status: 404, body: { status: 'error', message: 'not found' })
+        expect { critical_cmd_can_approve('UUID') }.to raise_error(/critical_cmd_can_approve failed/)
+      end
+    end
+
     describe "critical_cmd_approve" do
       it "raises with the server message" do
         stub_request('post', '/openc3-api/criticalcmd/approve/UUID', status: 500, body: { status: 'error', message: 'already approved by alice' })
