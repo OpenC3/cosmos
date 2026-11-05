@@ -52,6 +52,21 @@ Example:
 OPENC3_API_TIMEOUT=1.0
 ```
 
+## OPENC3_API_READ_TIMEOUT
+
+> CORE, ENTERPRISE
+
+Set the time in seconds to wait for the first response byte from the server. This is
+separate from OPENC3_API_TIMEOUT, which only covers the connection phase. Requests can
+legitimately block for a long time, e.g. `cmd()` with a large timeout waiting on an
+interface ack, so the default is 86400 (one day). A read timeout is not retried.
+
+Example:
+
+```
+OPENC3_API_READ_TIMEOUT=86400
+```
+
 ## OPENC3_SCRIPT_API_SCHEMA
 
 ---
@@ -138,7 +153,7 @@ OPENC3_API_PASSWORD=password
 
 > CORE, ENTERPRISE
 
-The library can log much more of what is happening in the library. If you wish to enable this you can set the environment variable `OPENC3_LOG_LEVEL` to equal "DEBUG". If this is not set you will not get log messages if this is an incorrect log level you will get a ValueError.
+Sets the minimum level logged: `DEBUG`, `INFO`, `WARN`, `ERROR`, or `FATAL`. Logging at a level prints that level and everything above it, so `DEBUG` logs everything and `FATAL` logs almost nothing. Names are case insensitive. If the variable is unset the level is `INFO`; if it names something else the level is `INFO` and a warning is printed to stderr.
 
 Example:
 

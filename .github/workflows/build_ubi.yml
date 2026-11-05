@@ -24,6 +24,19 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
+# Workaround for https://github.com/aquasecurity/trivy-action/issues/389
+# Trivy tries each comma-separated repository in order, so a rate limit on one
+# (e.g. public.ecr.aws "TOOMANYREQUESTS: Data limit exceeded") falls through.
+env:
+  TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
+  TRIVY_JAVA_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db:1,ghcr.io/aquasecurity/trivy-java-db:1
+  # The Fetch VEX Hub step puts the VEX hub in the trivy cache; trivy's own
+  # fetch goes through the GitHub API and fails (see fetch-vexhub/action.yml).
+  TRIVY_SKIP_VEX_REPO_UPDATE: "true"
+  # trivy-action's default cache-dir, which Fetch VEX Hub writes to. Set so
+  # the bare trivy CLI below reads the same place.
+  TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
+
 permissions:
   contents: read
 
@@ -35,16 +48,30 @@ jobs:
       fail-fast: false
     permissions:
       contents: read
+      # Report Trivy status below publishes the scan result as its own commit
+      # status so it is not folded into this job's pass/fail.
+      statuses: write
+      id-token: write # required for Docker Hub OIDC login
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
+      # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
+      # Fork PRs get no id-token, so let them fall back to anonymous pulls.
+      - name: Docker login
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
+        env:
+          DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
+          DOCKERHUB_OIDC_EXPIREIN: 3600 # token defaults to 5 min; long builds pull from Docker Hub later
+        with:
+          username: openc3inc
       - name: login to ironbank
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
@@ -55,6 +82,7 @@ jobs:
           IRONBANK_REGISTRY_CLI: ${{ secrets.IRONBANK_REGISTRY_CLI }}
         run: echo "$IRONBANK_REGISTRY_CLI" | docker login registry1.dso.mil -u jmthomas --password-stdin
       - name: openc3.sh build-ubi
+        id: build
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'
         run: ./openc3.sh build-ubi
@@ -80,3 +108,135 @@ jobs:
             echo "ERROR: One or more containers are unhealthy"
             exit 1
           fi
+
+      # The UBI images are scanned here instead of in trivy.yml because they
+      # are never published: scanning them anywhere else means building all 11
+      # of them again, and unlike the Debian images they have no GHCR build
+      # cache. The build above already left them in the local docker daemon.
+      #
+      # aquasecurity/setup-trivy installs the binary the scan step below calls
+      # directly. The version here is the trivy release, not the action:
+      # dependabot bumps the action SHA but cannot see this input, so it is
+      # watched by .github/workflows/tool_version_check.yml instead.
+      - name: Manual Trivy Setup
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
+        with:
+          cache: true
+          version: v0.76.0
+      - name: Fetch VEX Hub
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: ./.github/actions/fetch-vexhub
+      - name: Run Trivy on the UBI images
+        id: trivy
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        # A vulnerable IronBank base image is not a broken build: the traefik
+        # UBI image, for one, is rebuilt upstream on RedHat's schedule, not
+        # ours. Let the job go green and carry the scan verdict in the separate
+        # commit status posted by the next step.
+        continue-on-error: true
+        shell: bash
+        env:
+          UBI_IMAGES: >-
+            openc3-ruby-ubi
+            openc3-base-ubi
+            openc3-node-ubi
+            openc3-buckets-ubi
+            openc3-redis-ubi
+            openc3-tsdb-ubi
+            openc3-cosmos-cmd-tlm-api-ubi
+            openc3-cosmos-script-runner-api-ubi
+            openc3-operator-ubi
+            openc3-traefik-ubi
+            openc3-cosmos-init-ubi
+        run: |
+          # scripts/linux/openc3_build_ubi.sh tags the images with these .env
+          # values, so read them rather than hardcoding the reference.
+          registry=$(grep -E '^OPENC3_REGISTRY=' .env | cut -d= -f2)
+          namespace=$(grep -E '^OPENC3_NAMESPACE=' .env | cut -d= -f2)
+          tag=$(grep -E '^OPENC3_TAG=' .env | cut -d= -f2)
+          # --image-src docker pins each scan to the image just built. Without
+          # it trivy falls back to pulling the published image of the same name
+          # from Docker Hub, which would scan the last release, not this PR.
+          #
+          # Trivy exits 1 on any fatal error (e.g. a DB or VEX download
+          # failure), which is also the exit-code trivy.yaml sets for findings.
+          # --exit-code 2 overrides that so a scan that never ran is not
+          # reported as a vulnerable image. Record either and keep going: one
+          # bad image should not hide the results for the other ten.
+          failed=()
+          errored=()
+          for image in $UBI_IMAGES; do
+            echo "::group::trivy ${image}"
+            rc=0
+            trivy image --config trivy.yaml --exit-code 2 --image-src docker \
+              "${registry}/${namespace}/${image}:${tag}" || rc=$?
+            case $rc in
+              0) ;;
+              2) failed+=("$image") ;;
+              *) errored+=("$image") ;;
+            esac
+            echo "::endgroup::"
+          done
+          if [ ${#errored[@]} -gt 0 ]; then
+            echo "errored=true" >> "$GITHUB_OUTPUT"
+          fi
+
+          # Each image's output is inside a collapsed ::group:: and a clean
+          # image still prints a full all-zero Report Summary, so a reader who
+          # only sees "exit code 1" cannot tell which of the 11 failed without
+          # expanding every one. Name them where they are visible unexpanded.
+          {
+            echo "### Trivy UBI scan"
+            if [ ${#failed[@]} -eq 0 ] && [ ${#errored[@]} -eq 0 ]; then
+              echo "No fixable CRITICAL/HIGH vulnerabilities."
+            fi
+            if [ ${#failed[@]} -gt 0 ]; then
+              echo "Fixable CRITICAL/HIGH vulnerabilities in:"
+              printf -- '- `%s`\n' "${failed[@]}"
+            fi
+            if [ ${#errored[@]} -gt 0 ]; then
+              echo "Trivy failed to scan (see the log for the error):"
+              printf -- '- `%s`\n' "${errored[@]}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+          for image in "${failed[@]}"; do
+            echo "::error title=Trivy::${image} has fixable CRITICAL/HIGH vulnerabilities"
+          done
+          for image in "${errored[@]}"; do
+            echo "::error title=Trivy::trivy failed to scan ${image}"
+          done
+          [ ${#failed[@]} -eq 0 ] && [ ${#errored[@]} -eq 0 ]
+
+      # Published as a commit status rather than left as this job's outcome so
+      # "did the UBI images build and come up" and "is a base image currently
+      # vulnerable" are two checks on the PR instead of one. Do not mark this
+      # status required unless the images are ones we can actually patch.
+      - name: Report Trivy status
+        if: ${{ !cancelled() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # On a pull_request event github.sha is the throwaway merge commit,
+          # which is not the commit the PR shows checks against.
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          OUTCOME: ${{ steps.trivy.outcome }}
+          ERRORED: ${{ steps.trivy.outputs.errored }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          case "$OUTCOME" in
+            success) state=success; desc="No fixable CRITICAL/HIGH vulnerabilities" ;;
+            skipped) state=error;   desc="Image build failed, scan did not run" ;;
+            *)
+              if [ "$ERRORED" = "true" ]; then
+                state=error; desc="Trivy failed to scan one or more images"
+              else
+                state=failure; desc="Fixable CRITICAL/HIGH vulnerabilities found"
+              fi
+              ;;
+          esac
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${SHA}" \
+            -f state="$state" \
+            -f context="Trivy UBI Scan" \
+            -f target_url="$RUN_URL" \
+            -f description="$desc"

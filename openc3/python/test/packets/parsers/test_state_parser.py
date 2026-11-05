@@ -105,6 +105,22 @@ class TestStateParser(unittest.TestCase):
         self.assertEqual(self.pc.commands["TGT1"]["PKT1"].read("ITEM1"), "FALSE")
         tf.close()
 
+    def test_redefined_state_preserves_other_states_with_the_same_value(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
+            tf.write('  APPEND_ITEM item1 8 UINT "state item"\n')
+            tf.write("    STATE A 1\n")
+            tf.write("    STATE B 1\n")
+            tf.write("    STATE B 2\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+
+        packet = self.pc.telemetry["TGT1"]["PKT1"]
+        packet.buffer = b"\x01"
+        self.assertEqual(packet.read("ITEM1"), "A")
+        packet.buffer = b"\x02"
+        self.assertEqual(packet.read("ITEM1"), "B")
+
     def test_defines_states_on_array_items(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"\n')
@@ -177,7 +193,7 @@ class TestStateParser(unittest.TestCase):
         tf.write('  APPEND_ITEM item1 8 UINT "state item"\n')
         tf.write("    STATE WORST 1 ORANGE\n")
         tf.seek(0)
-        with self.assertRaisesRegex(ConfigParser.Error, "Invalid state color ORANGE"):
+        with self.assertRaisesRegex(ConfigParser.Error, "Invalid state color 'ORANGE'"):
             self.pc.process_file(tf.name, "TGT1")
         tf.close()
 

@@ -560,6 +560,7 @@ RSpec.describe QueuesController, type: :controller do
           queue: false,
           validate: true,
           timeout: nil,
+          queue_username: "user1",
           scope: "DEFAULT",
           token: anything
         }
@@ -589,6 +590,7 @@ RSpec.describe QueuesController, type: :controller do
           queue: false,
           validate: true,
           timeout: nil,
+          queue_username: "user2",
           scope: "DEFAULT",
           token: anything
         }
@@ -655,6 +657,7 @@ RSpec.describe QueuesController, type: :controller do
           queue: false,
           validate: true,
           timeout: nil,
+          queue_username: "user3",
           scope: "DEFAULT",
           token: anything
         }
@@ -683,6 +686,7 @@ RSpec.describe QueuesController, type: :controller do
           queue: false,
           validate: true,
           timeout: 0,
+          queue_username: "user4",
           scope: "DEFAULT",
           token: anything
         }

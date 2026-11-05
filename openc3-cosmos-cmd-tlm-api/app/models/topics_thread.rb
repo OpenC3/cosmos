@@ -90,7 +90,7 @@ class TopicsThread
 
   def thread_body
     results = []
-    OpenC3::Topic.read_topics(@topics, @offsets) do |topic, msg_id, msg_hash, redis|
+    OpenC3::Topic.read_topics(@topics, @offsets, 1000, @max_batch_size) do |topic, msg_id, msg_hash, redis|
       @offsets[@offset_index_by_topic[topic]] = msg_id
       msg_hash[:msg_id] = msg_id if @transmit_msg_id
       results << msg_hash

@@ -18,6 +18,8 @@ on:
         description: "Release version"
         required: true
         type: string
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -27,17 +29,44 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Need write permission to upload release asset
+      id-token: write # required for Docker Hub OIDC login
     env:
-      VERSION: ${{ github.event.inputs.version }}
+      # workflow_dispatch passes a bare version (6.10.0), the release event
+      # passes a tag (v6.10.0). Normalized to a bare version by the step below.
+      RAW_VERSION: ${{ github.event.inputs.version || github.event.release.tag_name }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # Expressions have no string replace, so strip the leading "v" in shell.
+      - name: Determine version
+        run: |
+          version="${RAW_VERSION#v}"
+          if [ -z "$version" ]; then
+            echo "Could not determine the release version to scan" >&2
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Verify release exists
+        id: check_release
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const tag = `v${process.env.VERSION}`;
+            // Fail fast rather than scanning every image and only discovering
+            // at upload time that there is no release to attach the results to.
+            await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag
+            });
+            console.log("found release for tag", tag);
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Set up Ruby 3.4
-        uses: ruby/setup-ruby@c4e5b1316158f92e3d49443a9d58b31d25ac0f8f # v1.306.0
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         with:
           ruby-version: 3.4
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
@@ -47,6 +76,16 @@ jobs:
       - name: Get current date
         id: date
         run: echo "date=$(date -u '+%m_%d_%y_%H_%M_%S')" >> "$GITHUB_OUTPUT"
+      # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
+      # Fork PRs get no id-token, so let them fall back to anonymous pulls.
+      - name: Docker login
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
+        env:
+          DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
+          DOCKERHUB_OIDC_EXPIREIN: 7200 # token defaults to 5 min; scanning every image takes over an hour (max 21600)
+        with:
+          username: openc3inc
       - name: ClamAV setup and update definitions
         # This `shell` line is required to get around a known issue: https://github.com/actions/runner/issues/241#issuecomment-745902718
         shell: 'script -q -e -c "bash {0}"'

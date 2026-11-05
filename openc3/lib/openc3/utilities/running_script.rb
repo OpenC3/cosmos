@@ -28,6 +28,8 @@ require 'openc3/utilities/script'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
+require 'openc3/utilities/python_venv'
+require 'openc3/utilities/script_env'
 require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
 require 'openc3/models/script_engine_model'
@@ -36,7 +38,7 @@ require 'fileutils'
 
 if not defined? RAILS_ROOT
   if ENV['RAILS_ROOT']
-    RAILS_ROOT = ENV['RAILS_ROOT']
+    RAILS_ROOT = ENV.fetch('RAILS_ROOT')
   elsif defined? Rails
     RAILS_ROOT = Rails.root
   else
@@ -45,6 +47,21 @@ if not defined? RAILS_ROOT
 end
 
 SCRIPT_API = 'script-api'
+# Per-script frontend channel events are mirrored into a short-lived Redis
+# stream so RunningScriptChannel can serve both the backlog (events published
+# before a client subscribed -- the anycable broadcast is pub/sub with no
+# history) and the live feed from a single ordered source. MAXLEN bounds
+# memory; the TTL is refreshed on every write so the stream lives while the
+# script runs and is auto-removed by Redis shortly after the last event -- no
+# explicit cleanup is needed for completion, crash, or an orphaned/killed
+# process.
+RUNNING_SCRIPT_CHANNEL_PREFIX = 'running-script-channel:'
+RUNNING_SCRIPT_REPLAY_MAXLEN = 1000
+RUNNING_SCRIPT_REPLAY_TTL = 86400 # seconds
+# Flush the replay queue quickly so live output/state stays near real-time while
+# remaining non-blocking. Applied via set_update_interval in RunningScript's
+# initialize so it only affects this (running script) process.
+RUNNING_SCRIPT_REPLAY_FLUSH_INTERVAL = 0.1 # seconds
 
 def running_script_publish(channel_name, data)
   stream_name = [SCRIPT_API, channel_name].compact.join(":")
@@ -52,9 +69,27 @@ def running_script_publish(channel_name, data)
 end
 
 def running_script_anycable_publish(channel_name, data)
-  stream_name = [SCRIPT_API, channel_name].compact.join(":")
-  stream_data = {"stream" => stream_name, "data" => JSON.generate(data, allow_nan: true)}
-  OpenC3::Store.publish("__anycable__", JSON.generate(stream_data, allow_nan: true))
+  json = JSON.generate(data, allow_nan: true)
+  if channel_name.start_with?(RUNNING_SCRIPT_CHANNEL_PREFIX)
+    # Per-script events are delivered to the frontend by RunningScriptChannel
+    # tailing this replay stream (backlog + live from a single ordered source),
+    # so they are NOT broadcast over anycable pub/sub -- doing both would deliver
+    # every message twice. Queued (EphemeralStoreQueued) so the script never
+    # blocks on Redis; best-effort so a replay failure can never affect script
+    # execution. Topic (read by the channel) uses the EphemeralStore.
+    begin
+      replay_key = "#{channel_name}:replay"
+      OpenC3::EphemeralStoreQueued.instance.write_topic(replay_key, { 'data' => json }, '*', RUNNING_SCRIPT_REPLAY_MAXLEN, '~')
+      OpenC3::EphemeralStoreQueued.instance.expire(replay_key, RUNNING_SCRIPT_REPLAY_TTL)
+    rescue StandardError => e
+      OpenC3::Logger.warn("running_script replay write failed: #{e.message}") rescue nil
+    end
+  else
+    # Other channels (all-scripts, etc.) are still delivered live over pub/sub.
+    stream_name = [SCRIPT_API, channel_name].compact.join(":")
+    stream_data = {"stream" => stream_name, "data" => json}
+    OpenC3::Store.publish("__anycable__", JSON.generate(stream_data, allow_nan: true))
+  end
 end
 
 module OpenC3
@@ -78,16 +113,7 @@ module OpenC3
               RunningScript.instance.perform_pause
             else
               if method.to_s == 'open_bucket_dialog'
-                bucket = input['bucket']
-                path = input['path']
-                filename = input['filename']
-                # Path from bucket dialog already includes scope prefix (e.g. DEFAULT/targets/...)
-                # _get_storage_file prepends scope, so strip it from the path to avoid doubling
-                scope = RunningScript.instance.scope
-                path = path.sub(/\A#{Regexp.escape(scope)}\//, '')
-                file = _get_storage_file(path, bucket: bucket, scope: scope)
-                file.filename = filename
-                return file
+                return _get_bucket_dialog_file(input, scope: RunningScript.instance.scope)
               elsif (method.to_s.include?('open_file'))
                 files = input.map do |filename|
                   file = _get_storage_file("tmp/#{filename}", scope: RunningScript.instance.scope)
@@ -241,10 +267,19 @@ module OpenC3
 
       def goto(line_no_or_procedure_name, line_no = nil)
         if line_no.nil?
-          start(RunningScript.instance.current_filename, line_no: line_no_or_procedure_name, bind_variables: true, complete: true)
+          procedure_name = RunningScript.instance.current_filename
+          line_no = line_no_or_procedure_name
         else
-          start(line_no_or_procedure_name, line_no: line_no, bind_variables: true, complete: true)
+          procedure_name = line_no_or_procedure_name
         end
+        # goto typed at the debug prompt is evaluated on the thread that processes
+        # go/step/stop messages. Running the script there deadlocks at the next pause,
+        # so hand it to the run thread the same way the editor's goto does.
+        unless RunningScript.run_thread?
+          RunningScript.instance.execute_while_paused(procedure_name, line_no, nil, true)
+          return
+        end
+        start(procedure_name, line_no: line_no, bind_variables: true, complete: true)
       end
 
       # Require an additional ruby file
@@ -399,11 +434,11 @@ class RunningScript
     self.class.message_log
   end
 
-  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil, line_no = nil, end_line_no = nil)
+  def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil, line_no = nil, end_line_no = nil, python_venv = nil)
     extension = File.extname(name).to_s.downcase
     script_engine = nil
     if extension == '.py'
-      process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+      process_name = ENV.fetch('OPENC3_PYTHON_BIN', '/openc3/python/.venv/bin/python')
       runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
     elsif extension == '.rb'
       process_name = 'ruby'
@@ -416,7 +451,7 @@ class RunningScript
       if script_engine_model
         script_engine = script_engine_model.filename
         if File.extname(script_engine).to_s.downcase == '.py'
-          process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
+          process_name = ENV.fetch('OPENC3_PYTHON_BIN', '/openc3/python/.venv/bin/python')
           runner_path = File.join(RAILS_ROOT, 'scripts', 'run_script.py')
         else
           process_name = 'ruby'
@@ -435,107 +470,136 @@ class RunningScript
     user_full_name ||= 'Anonymous'
     start_time = Time.now.utc.iso8601
 
-    process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s, scope)
-    process.io.inherit! # Helps with debugging
-    script_cwd = File.join(RAILS_ROOT, 'tmp', "script_#{running_script_id}")
-    FileUtils.mkdir_p(script_cwd)
-    process.cwd = script_cwd
+    begin
+      process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s, scope)
+      process.io.inherit! # Helps with debugging
+      script_cwd = File.join(RAILS_ROOT, 'tmp', "script_#{running_script_id}")
+      FileUtils.mkdir_p(script_cwd)
+      process.cwd = script_cwd
 
-    # Check for offline access token
-    model = nil
-    model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username != 'Anonymous'
+      # Check for offline access token
+      model = nil
+      model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username != 'Anonymous'
 
-    # Load the global environment variables
-    status_environment = {}
-    values = OpenC3::EnvironmentModel.all(scope: scope).values
-    values.each do |env|
-      process.environment[env['key']] = env['value']
-      status_environment[env['key']] = env['value']
-    end
-    # Load the script specific ENV vars set by the GUI
-    # These can override the previously defined global env vars
-    if environment
-      environment.each do |env|
+      # Load the global environment variables
+      status_environment = {}
+      values = OpenC3::EnvironmentModel.all(scope: scope).values
+      values.each do |env|
         process.environment[env['key']] = env['value']
         status_environment[env['key']] = env['value']
       end
-    end
+      # Load the script specific ENV vars set by the GUI
+      # These can override the previously defined global env vars
+      if environment
+        environment.each do |env|
+          process.environment[env['key']] = env['value']
+          status_environment[env['key']] = env['value']
+        end
+      end
 
-    script_status = OpenC3::ScriptStatusModel.new(
-      name: running_script_id.to_s, # Unique id for this script
-      state: 'spawning', # State will be spawning until the script is running
-      shard: 0, # Future enhancement of script runner shards
-      filename: name, # Initial filename never changes
-      current_filename: name, # Current filename updates while we are running
-      line_no: 0, # 0 means not running yet
-      start_line_no: line_no || 1, # Line number to start running the script
-      end_line_no: end_line_no || nil, # Line number to stop running the script
-      username: username, # username of the person who started the script
-      user_full_name: user_full_name, # full name of the person who started the script
-      start_time: start_time, # Time the script started ISO format
-      end_time: nil, # Time the script ended ISO format
-      disconnect: disconnect, # Disconnect is set to true if the script is running in a disconnected mode
-      environment: status_environment, # hash of environment variables set for the script
-      suite_runner: suite_runner ? suite_runner : nil, # current suite information if any
-      errors: nil, # array of errors that occurred during the script run
-      pid: nil, # pid of the script process - set by the script itself when it starts
-      script_engine: script_engine, # script engine filename
-      updated_at: nil, # Set by create/update - ISO format
-      scope: scope # Scope of the script
-    )
-    script_status.create(isoformat: true)
+      script_status = OpenC3::ScriptStatusModel.new(
+        name: running_script_id.to_s, # Unique id for this script
+        state: 'spawning', # State will be spawning until the script is running
+        shard: 0, # Future enhancement of script runner shards
+        filename: name, # Initial filename never changes
+        current_filename: name, # Current filename updates while we are running
+        line_no: 0, # 0 means not running yet
+        start_line_no: line_no || 1, # Line number to start running the script
+        end_line_no: end_line_no || nil, # Line number to stop running the script
+        username: username, # username of the person who started the script
+        user_full_name: user_full_name, # full name of the person who started the script
+        start_time: start_time, # Time the script started ISO format
+        end_time: nil, # Time the script ended ISO format
+        disconnect: disconnect, # Disconnect is set to true if the script is running in a disconnected mode
+        environment: status_environment, # hash of environment variables set for the script
+        suite_runner: suite_runner ? suite_runner : nil, # current suite information if any
+        errors: nil, # array of errors that occurred during the script run
+        pid: nil, # pid of the script process - set by the script itself when it starts
+        script_engine: script_engine, # script engine filename
+        updated_at: nil, # Set by create/update
+        scope: scope # Scope of the script
+      )
+      script_status.create()
 
-    # Set proper secrets for running script
-    process.environment['SECRET_KEY_BASE'] = nil
-    process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME']
-    process.environment['OPENC3_REDIS_PASSWORD'] = ENV['OPENC3_SR_REDIS_PASSWORD']
-    process.environment['OPENC3_BUCKET_USERNAME'] = ENV['OPENC3_SR_BUCKET_USERNAME']
-    process.environment['OPENC3_BUCKET_PASSWORD'] = ENV['OPENC3_SR_BUCKET_PASSWORD']
-    process.environment['OPENC3_SR_REDIS_USERNAME'] = nil
-    process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
-    process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
-    process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
-    process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT']
-    if model and model.offline_access_token
-      auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
-      valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
-      if valid_token
-        process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
+      # Set proper secrets for running script
+      process.environment['SECRET_KEY_BASE'] = nil
+      OpenC3::ScriptEnv.remove_unused(process.environment)
+      process.environment['OPENC3_REDIS_USERNAME'] = ENV.fetch('OPENC3_SR_REDIS_USERNAME', nil)
+      process.environment['OPENC3_REDIS_PASSWORD'] = ENV.fetch('OPENC3_SR_REDIS_PASSWORD', nil)
+      process.environment['OPENC3_BUCKET_USERNAME'] = ENV.fetch('OPENC3_SR_BUCKET_USERNAME', nil)
+      process.environment['OPENC3_BUCKET_PASSWORD'] = ENV.fetch('OPENC3_SR_BUCKET_PASSWORD', nil)
+      process.environment['OPENC3_SR_REDIS_USERNAME'] = nil
+      process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
+      process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
+      process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
+      process.environment['OPENC3_API_CLIENT'] = ENV.fetch('OPENC3_API_CLIENT', nil)
+      if model and model.offline_access_token
+        auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV.fetch('OPENC3_KEYCLOAK_URL', nil))
+        valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
+        if valid_token
+          process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
+        else
+          model.offline_access_token = nil
+          model.update
+          raise "offline_access token invalid for script"
+        end
       else
-        model.offline_access_token = nil
-        model.update
-        raise "offline_access token invalid for script"
+        process.environment['OPENC3_API_USER'] = ENV.fetch('OPENC3_API_USER', nil)
+        if ENV['OPENC3_SERVICE_PASSWORD']
+          process.environment['OPENC3_API_PASSWORD'] = ENV.fetch('OPENC3_SERVICE_PASSWORD')
+        else
+          raise "No authentication available for script"
+        end
       end
-    else
-      process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER']
-      if ENV['OPENC3_SERVICE_PASSWORD']
-        process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_SERVICE_PASSWORD']
-      else
-        raise "No authentication available for script"
-      end
-    end
-    process.environment['GEM_HOME'] = ENV['GEM_HOME']
-    process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE']
-    # Preserve PYTHONPATH to ensure Python can find both UV venv and user packages
-    process.environment['PYTHONPATH'] = ENV['PYTHONPATH']
+      process.environment['GEM_HOME'] = ENV.fetch('GEM_HOME', nil)
 
-    # Spawned process should not be controlled by same Bundler constraints as spawning process
-    ENV.each do |key, _value|
-      if key =~ /^BUNDLE/
-        process.environment[key] = nil
+      python_venv_dir = OpenC3::PythonVenv.configure_for_script(
+        process.environment, name: name, scope: scope, python_venv: python_venv
+      )
+      unless python_venv_dir
+        system_venv = File.dirname(ENV.fetch('OPENC3_PYTHON_BIN', '/openc3/python/.venv/bin/python')).chomp('/bin')
+        process.environment['VIRTUAL_ENV'] = system_venv
+        process.environment['PYTHONUSERBASE'] = ENV.fetch('PYTHONUSERBASE', OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE)
+        # Deliberately nil when PYTHONPATH is unset rather than defaulting to
+        # something like '.', which would put the script's own working directory
+        # on the import path and let a local file shadow a real module.
+        process.environment['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)
       end
-    end
-    process.environment['RUBYOPT'] = nil # Removes loading bundler setup
-    process.environment['OPENC3_SCOPE'] = scope
-    process.environment['RAILS_ROOT'] = RAILS_ROOT
 
-    process.detach = true
-    process.start
-    running_script_id
+      # Spawned process should not be controlled by same Bundler constraints as spawning process
+      ENV.each do |key, _value|
+        if key =~ /^BUNDLE/
+          process.environment[key] = nil
+        end
+      end
+      process.environment['RUBYOPT'] = nil # Removes loading bundler setup
+      process.environment['OPENC3_SCOPE'] = scope
+      process.environment['RAILS_ROOT'] = RAILS_ROOT
+
+      process.detach = true
+      process.start
+      running_script_id
+    rescue => e
+      begin
+        # Clean up the orphaned script status record so the script
+        # does not remain stuck in 'spawning' state forever.
+        # Guard against nil in case the error occurred before these were assigned.
+        script_status.destroy() if script_status
+        FileUtils.rm_rf(script_cwd) if script_cwd
+      rescue => cleanup_error
+        OpenC3::Logger.error("Failed to cleanup after spawn failure: #{cleanup_error.message}")
+      end
+      raise e
+    end
   end
 
   def initialize(script_status)
     @@instance = self
+    # Flush the replay queue (used by running_script_anycable_publish) quickly so
+    # live output/state stays near real-time. Set explicitly here so the interval
+    # is applied even if the queue instance was already created. Only affects
+    # this running-script process.
+    OpenC3::EphemeralStoreQueued.instance.set_update_interval(RUNNING_SCRIPT_REPLAY_FLUSH_INTERVAL)
     @script_status = script_status
     @script_status.pid = Process.pid
     @user_input = ''
@@ -563,7 +627,7 @@ class RunningScript
 
     # Retrieve file
     @body = ::Script.body(@script_status.scope, @script_status.filename)
-    raise "Script not found: #{@script_status.filename}" if @body.nil?
+    raise "Script not found during initialization: #{@script_status.filename}" if @body.nil?
     breakpoints = @@breakpoints[@script_status.filename]&.filter { |_, present| present }&.map { |line_number, _| line_number - 1 } # -1 because frontend lines are 0-indexed
     breakpoints ||= []
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :file, filename: @script_status.filename, scope: @script_status.scope, text: @body.to_utf8, breakpoints: breakpoints })
@@ -735,6 +799,10 @@ class RunningScript
     @@instance = value
   end
 
+  def self.run_thread?
+    Thread.current == @@run_thread
+  end
+
   def self.line_delay
     @@line_delay
   end
@@ -789,17 +857,22 @@ class RunningScript
 
   def run
     if @script_status.suite_runner
-      if @script_status.suite_runner['options']
-        parse_options(@script_status.suite_runner['options'])
+      # Normalize the received hash through the shared helper so options/method
+      # defaults and validation match what openc3cli and the GUI construct.
+      sr = OpenC3::SuiteRunner.build_options(
+        suite: @script_status.suite_runner['suite'],
+        group: @script_status.suite_runner['group'],
+        script: @script_status.suite_runner['script'],
+        method: @script_status.suite_runner['method'],
+        options: @script_status.suite_runner['options'],
+      )
+      parse_options(sr['options'])
+      if sr['script']
+        run_text("OpenC3::SuiteRunner.start(#{sr['suite']}, #{sr['group']}, '#{sr['script']}')", initial_filename: "SCRIPTRUNNER")
+      elsif sr['group']
+        run_text("OpenC3::SuiteRunner.#{sr['method']}(#{sr['suite']}, #{sr['group']})", initial_filename: "SCRIPTRUNNER")
       else
-        parse_options({}) # Set default options
-      end
-      if @script_status.suite_runner['script']
-        run_text("OpenC3::SuiteRunner.start(#{@script_status.suite_runner['suite']}, #{@script_status.suite_runner['group']}, '#{@script_status.suite_runner['script']}')", initial_filename: "SCRIPTRUNNER")
-      elsif script_status.suite_runner['group']
-        run_text("OpenC3::SuiteRunner.#{@script_status.suite_runner['method']}(#{@script_status.suite_runner['suite']}, #{@script_status.suite_runner['group']})", initial_filename: "SCRIPTRUNNER")
-      else
-        run_text("OpenC3::SuiteRunner.#{@script_status.suite_runner['method']}(#{@script_status.suite_runner['suite']})", initial_filename: "SCRIPTRUNNER")
+        run_text("OpenC3::SuiteRunner.#{sr['method']}(#{sr['suite']})", initial_filename: "SCRIPTRUNNER")
       end
     else
       if not @script_engine and (@script_status.start_line_no != 1 or !@script_status.end_line_no.nil?)
@@ -1036,9 +1109,10 @@ class RunningScript
     trace
   end
 
-  def execute_while_paused(filename, line_no = 1, end_line_no = nil)
+  # bind_variables of nil binds only when filename is the currently running file
+  def execute_while_paused(filename, line_no = 1, end_line_no = nil, bind_variables = nil)
     if @script_status.state == 'paused' or @script_status.state == 'error' or @script_status.state == 'breakpoint'
-      @execute_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no }
+      @execute_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no, bind_variables: bind_variables }
     else
       scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
     end
@@ -1150,10 +1224,9 @@ class RunningScript
 
   def check_execute_while_paused
     if @execute_while_paused_info
-      if @script_status.current_filename == @execute_while_paused_info[:filename]
-        bind_variables = true
-      else
-        bind_variables = false
+      bind_variables = @execute_while_paused_info[:bind_variables]
+      if bind_variables.nil?
+        bind_variables = (@script_status.current_filename == @execute_while_paused_info[:filename])
       end
       if @execute_while_paused_info[:end_line_no]
         # Execute Selection While Paused
@@ -1433,7 +1506,7 @@ class RunningScript
       running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints })
     else
       text = ::Script.body(@script_status.scope, filename)
-      raise "Script not found: #{filename}" if text.nil?
+      raise "Script not found during load/require: #{filename}" if text.nil?
       @@file_cache[filename] = text
       @body = text
       running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :file, filename: filename, text: @body.to_utf8, breakpoints: breakpoints })
@@ -1458,7 +1531,7 @@ class RunningScript
     $stdout = OpenC3::Stdout.instance
     $stderr = OpenC3::Stderr.instance
     OpenC3::Logger.stdout = true
-    OpenC3::Logger.level = OpenC3::Logger::INFO
+    OpenC3::Logger.level = OpenC3::Logger.default_level
   end
 
   def output_thread

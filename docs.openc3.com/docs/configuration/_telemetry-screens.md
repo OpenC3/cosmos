@@ -83,12 +83,12 @@ api
 
 The `screen` object provides methods for interacting with widgets and screens:
 
-| Method                         | Description                                              |
-| ------------------------------ | -------------------------------------------------------- |
-| `screen.getNamedWidget(name)`  | Returns a reference to a named widget (see NAMED_WIDGET) |
-| `screen.open(target, screen)`  | Opens another telemetry screen                           |
-| `screen.close(target, screen)` | Closes a specific telemetry screen                       |
-| `screen.closeAll()`            | Closes all open telemetry screens                        |
+| Method                         | Description                                                                             |
+| ------------------------------ | --------------------------------------------------------------------------------------- |
+| `screen.getNamedWidget(name)`  | Returns a reference to a named widget (see NAMED_WIDGET). The name is case insensitive. |
+| `screen.open(target, screen)`  | Opens another telemetry screen                                                          |
+| `screen.close(target, screen)` | Closes a specific telemetry screen                                                      |
+| `screen.closeAll()`            | Closes all open telemetry screens                                                       |
 
 **Example using named widgets:**
 

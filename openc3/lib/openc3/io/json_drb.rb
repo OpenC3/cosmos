@@ -17,6 +17,7 @@
 
 require 'socket'
 require 'json'
+require 'set'
 # require 'drb/acl'
 require 'drb/drb'
 require 'openc3/io/json_rpc'
@@ -47,8 +48,9 @@ module OpenC3
   # JsonDRb implements the JSON-RPC 2.0 Specification to provide an interface
   # for both internal and external tools to access the OpenC3 server. It
   # provides methods to install an access control list to control access to the
-  # API. It also limits the available methods to a known list of allowable API
-  # methods.
+  # API. Access is controlled by a required method_whitelist which names every
+  # method that may be invoked. There is no permissive fallback: any method not
+  # explicitly listed is rejected.
   class JsonDRb
     # Minimum amount of time in seconds to receive the JSON request,
     # process it, and send the response. Requests for less than this amount
@@ -62,24 +64,39 @@ module OpenC3
 
     # @return [Integer] The number of JSON-RPC requests processed
     attr_accessor :request_count
-    # @return [Array<String>] List of methods that should be allowed
-    attr_accessor :method_whitelist
+    # @return [Set<String>] Set of downcased method names which may be called
+    attr_reader :method_whitelist
     # @return [ACL] The access control list
     # attr_accessor :acl
 
     attr_accessor :object
 
-    def initialize
+    # @param method_whitelist [Enumerable<String>] Every method name which may
+    #   be called over JSON-RPC. Required and must not be empty since there is
+    #   no permissive fallback.
+    def initialize(method_whitelist:)
+      self.method_whitelist = method_whitelist
       @thread = nil
       # @acl = nil
       @object = nil
-      @method_whitelist = nil
       @request_count = 0
       @request_times = []
       @request_times_index = 0
       @request_mutex = Mutex.new
       @server = nil
       @server_mutex = Mutex.new
+    end
+
+    # Replaces the set of methods which may be called over JSON-RPC. Names are
+    # downcased to match the dispatch in {#process_request}.
+    #
+    # @param whitelist [Enumerable<String>] Every method name which may be called
+    def method_whitelist=(whitelist)
+      if whitelist.nil? or whitelist.to_a.empty?
+        raise ArgumentError, "method_whitelist is required and must not be empty"
+      end
+
+      @method_whitelist = whitelist.map { |name| name.to_s.downcase }.to_set
     end
 
     # Returns the number of connected clients
@@ -254,8 +271,7 @@ module OpenC3
         error_code = nil
         response_data = nil
 
-        if (@method_whitelist and @method_whitelist.include?(request.method.downcase())) or
-           (!@method_whitelist and !JsonRpcRequest::DANGEROUS_METHODS.include?(request.method.downcase()))
+        if @method_whitelist.include?(request.method.downcase())
           begin
             if request.keyword_params
               result = @object.public_send(request.method.downcase().intern, *request.params, **request.keyword_params)
@@ -266,10 +282,26 @@ module OpenC3
               response = JsonRpcSuccessResponse.new(result, request.id)
             end
           rescue Exception => e
-            # Filter out the framework stack trace (rails, rack, puma etc)
-            lines = e.formatted.split("\n")
-            i = lines.find_index { |row| row.include?('actionpack') || row.include?('activesupport') }
-            Logger.error lines[0...i].join("\n")
+            error_name = e.class.name.split('::')[-1]
+            method_name = request.method.downcase()
+            case e
+            when AuthError, ForbiddenError
+              # Auth failures are expected (e.g. browser requests before login or with an
+              # expired session token) so log a single line without the stack trace
+              Logger.warn "#{error_name} : #{e.message} calling #{method_name}"
+            when HazardousError, CriticalCmdError
+              # Not errors at all: these are the signal that the UI should raise an
+              # operator confirmation dialog, and the user retries with the hazardous
+              # or critical flag set. A stack trace per prompt is pure noise, and
+              # HazardousError#to_s embeds the formatted command with a newline,
+              # so log just the error name and the method that raised it.
+              Logger.info "#{error_name} calling #{method_name}"
+            else
+              # Filter out the framework stack trace (rails, rack, puma etc)
+              lines = e.formatted.split("\n")
+              i = lines.find_index { |row| row.include?('actionpack') || row.include?('activesupport') }
+              Logger.error lines[0...(i || lines.length)].join("\n")
+            end
 
             if request.id
               if NoMethodError === e

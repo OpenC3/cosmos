@@ -249,11 +249,11 @@ module OpenC3
       end
 
       it "complains about non-existent targets" do
-        expect { @api.inject_tlm("BLAH", "HEALTH_STATUS") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
+        expect { @api.inject_tlm("BLAH", "HEALTH_STATUS") }.to raise_error("Packet definition 'BLAH HEALTH_STATUS' does not exist")
       end
 
       it "complains about non-existent packets" do
-        expect { @api.inject_tlm("INST", "BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { @api.inject_tlm("INST", "BLAH") }.to raise_error("Packet definition 'INST BLAH' does not exist")
       end
 
       it "complains about non-existent items" do
@@ -392,6 +392,20 @@ module OpenC3
       end
     end
 
+    describe "override_tlm and normalize_tlm with LATEST" do
+      it "overrides and normalizes the item in every packet which contains it" do
+        packet_names = TargetModel.get_item_to_packet_map('INST', scope: 'DEFAULT')['CCSDSSEQCNT']
+        expect(packet_names.length).to be > 1
+        @api.override_tlm("INST LATEST CCSDSSEQCNT = 5", type: :RAW)
+        expect(@api.get_overrides().map { |o| o['packet_name'] }).to match_array(packet_names)
+        packet_names.each do |packet_name|
+          expect(@api.tlm("INST", packet_name, "CCSDSSEQCNT", type: :RAW)).to eql(5)
+        end
+        @api.normalize_tlm("INST LATEST CCSDSSEQCNT")
+        expect(@api.get_overrides()).to eql([])
+      end
+    end
+
     describe "get_overrides" do
       it "returns empty array with no overrides" do
         expect(@api.get_overrides()).to eql([])
@@ -455,7 +469,7 @@ module OpenC3
 
     describe "get_all_tlm" do
       it "raises if the target does not exist" do
-        expect { @api.get_all_tlm("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist for scope: DEFAULT")
+        expect { @api.get_all_tlm("BLAH", scope: "DEFAULT") }.to raise_error("Target 'BLAH' does not exist for scope: DEFAULT (TargetModel)")
       end
 
       it "returns an array of all packet hashes" do
@@ -501,8 +515,8 @@ module OpenC3
 
     describe "get_tlm" do
       it "raises if the target or packet do not exist" do
-        expect { @api.get_tlm("BLAH", "HEALTH_STATUS", scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
-        expect { @api.get_tlm("INST BLAH", scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { @api.get_tlm("BLAH", "HEALTH_STATUS", scope: "DEFAULT") }.to raise_error("Packet definition 'BLAH HEALTH_STATUS' does not exist")
+        expect { @api.get_tlm("INST BLAH", scope: "DEFAULT") }.to raise_error("Packet definition 'INST BLAH' does not exist")
       end
 
       it "returns a packet hash" do
@@ -517,9 +531,9 @@ module OpenC3
 
     describe "get_item" do
       it "raises if the target or packet or item do not exist" do
-        expect { @api.get_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'BLAH HEALTH_STATUS' does not exist")
-        expect { @api.get_item("INST BLAH CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet 'INST BLAH' does not exist")
-        expect { @api.get_item("INST", "HEALTH_STATUS", "BLAH", scope: "DEFAULT") }.to raise_error("Item 'INST HEALTH_STATUS BLAH' does not exist")
+        expect { @api.get_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet definition 'BLAH HEALTH_STATUS' does not exist")
+        expect { @api.get_item("INST BLAH CCSDSVER", scope: "DEFAULT") }.to raise_error("Packet definition 'INST BLAH' does not exist")
+        expect { @api.get_item("INST", "HEALTH_STATUS", "BLAH", scope: "DEFAULT") }.to raise_error("Item 'INST HEALTH_STATUS BLAH' does not exist (TargetModel)")
         expect { @api.get_item("INST HEALTH_STATUS", scope: "DEFAULT") }.to raise_error(/Target name, packet name and item name are required./)
       end
 
@@ -545,17 +559,31 @@ module OpenC3
       end
     end
 
+    describe "packet APIs with LATEST" do
+      it "complains that LATEST does not identify a packet" do
+        %w(get_tlm_buffer get_tlm_packet get_tlm get_tlm_cnt get_packet_derived_items).each do |method_name|
+          expect { @api.public_send(method_name, "INST", "LATEST") }.to raise_error(RuntimeError, "ERROR: LATEST is not supported by #{method_name}(), specify a packet name")
+          expect { @api.public_send(method_name, "inst latest") }.to raise_error(RuntimeError, /LATEST is not supported/)
+        end
+      end
+
+      it "complains about LATEST in subscribe_packets and inject_tlm" do
+        expect { @api.subscribe_packets([["INST", "latest"]]) }.to raise_error(RuntimeError, "ERROR: LATEST is not supported by subscribe_packets(), specify a packet name")
+        expect { @api.inject_tlm("INST", "latest", { TEMP1: 10 }) }.to raise_error(RuntimeError, "ERROR: LATEST is not supported by inject_tlm(), specify a packet name")
+      end
+    end
+
     describe "get_tlm_packet" do
       it "complains about non-existent targets" do
-        expect { @api.get_tlm_packet("BLAH", "HEALTH_STATUS") }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
+        expect { @api.get_tlm_packet("BLAH", "HEALTH_STATUS") }.to raise_error(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist")
       end
 
       it "complains about non-existent packets" do
-        expect { @api.get_tlm_packet("INST BLAH") }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
+        expect { @api.get_tlm_packet("INST BLAH") }.to raise_error(RuntimeError, "Packet definition 'INST BLAH' does not exist")
       end
 
       it "complains using LATEST" do
-        expect { @api.get_tlm_packet("INST", "LATEST") }.to raise_error(RuntimeError, "Packet 'INST LATEST' does not exist")
+        expect { @api.get_tlm_packet("INST", "LATEST") }.to raise_error(RuntimeError, "ERROR: LATEST is not supported by get_tlm_packet(), specify a packet name")
       end
 
       it "complains about non-existent value_types" do
@@ -685,6 +713,31 @@ module OpenC3
     end
 
     describe "get_tlm_available" do
+      it "returns the best value type and limits of any LATEST packet" do
+        allow(TargetModel).to receive(:get_item_to_packet_map).and_return({ 'TEMP1' => ['PARAMS', 'HEALTH_STATUS'] })
+        allow(CvtModel).to receive(:determine_latest_packet_for_item).and_return('PARAMS')
+        allow(TargetModel).to receive(:packet_item).and_call_original
+        plain = { 'name' => 'TEMP1', 'data_type' => 'UINT', 'limits' => {} }
+        allow(TargetModel).to receive(:packet_item).with('INST', 'PARAMS', 'TEMP1', scope: 'DEFAULT').and_return(plain)
+        expect(@api.get_tlm_available(['INST__LATEST__TEMP1__FORMATTED'])).to eql(['INST__LATEST__TEMP1__FORMATTED__LIMITS'])
+      end
+
+      it "authorizes every LATEST packet before reading its definition" do
+        allow(TargetModel).to receive(:get_item_to_packet_map).and_return({ 'TEMP1' => ['PARAMS', 'HEALTH_STATUS'] })
+        allow(CvtModel).to receive(:determine_latest_packet_for_item).and_return('PARAMS')
+        allow(@api).to receive(:authorize) do |packet_name:, **|
+          raise ForbiddenError, 'forbidden' if packet_name == 'HEALTH_STATUS'
+        end
+        expect(TargetModel).not_to receive(:packet_item)
+        expect { @api.get_tlm_available(['INST__LATEST__TEMP1__FORMATTED']) }.to raise_error(ForbiddenError)
+      end
+
+      it "returns RAW for DERIVED items with a read conversion" do
+        # Packet#decom stores a DERIVED item's read conversion as the raw value with no __C
+        items = ['INST__HEALTH_STATUS__TEMP1HIGH__CONVERTED', 'INST__HEALTH_STATUS__TEMP1HIGH__FORMATTED']
+        expect(@api.get_tlm_available(items)).to eql(['INST__HEALTH_STATUS__TEMP1HIGH__RAW', 'INST__HEALTH_STATUS__TEMP1HIGH__RAW'])
+      end
+
       it "returns a valid list of items based on inputs" do
         items = []
         # Ask for WITH_UNITS for an item which has various formats
@@ -746,11 +799,11 @@ module OpenC3
 
     describe "get_tlm_values" do
       it "complains about non-existent targets" do
-        expect { @api.get_tlm_values(["BLAH__HEALTH_STATUS__TEMP1__CONVERTED"]) }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist")
+        expect { @api.get_tlm_values(["BLAH__HEALTH_STATUS__TEMP1__CONVERTED"]) }.to raise_error(RuntimeError, "Packet 'BLAH HEALTH_STATUS' has no current values in CVT")
       end
 
       it "complains about non-existent packets" do
-        expect { @api.get_tlm_values(["INST__BLAH__TEMP1__CONVERTED"]) }.to raise_error(RuntimeError, "Packet 'INST BLAH' does not exist")
+        expect { @api.get_tlm_values(["INST__BLAH__TEMP1__CONVERTED"]) }.to raise_error(RuntimeError, "Packet 'INST BLAH' has no current values in CVT")
       end
 
       it "complains about non-existent value_types" do
@@ -761,6 +814,171 @@ module OpenC3
         expect { @api.get_tlm_values() }.to raise_error(ArgumentError)
         expect { @api.get_tlm_values({}) }.to raise_error(ArgumentError, /items must be array of strings/)
         expect { @api.get_tlm_values(["INST", "HEALTH_STATUS", "TEMP1"]) }.to raise_error(ArgumentError, /items must be formatted/)
+        expect { @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS__EXTRA"]) }.to raise_error(ArgumentError, /items must be formatted/)
+      end
+
+      it "only authorizes the packets of items which exist" do
+        expect(@api).to receive(:authorize).once.with(hash_including(target_name: "INST", packet_name: "HEALTH_STATUS"))
+        @api.get_tlm_values([nil, "INST__HEALTH_STATUS__TEMP1__CONVERTED", nil])
+      end
+
+      it "passes the limits flag and placeholders to the historical lookup" do
+        # get_tlm_available tacks on __LIMITS and returns nil for items which don't exist
+        expect(CvtModel).to receive(:tsdb_lookup).with(
+          [
+            ["INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", nil],
+            ["INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", "LIMITS"],
+            [nil, nil, nil, nil, nil],
+          ],
+          start_time: "2026-09-13T00:00:00Z", end_time: nil, scope: "DEFAULT"
+        ).and_return([[0.0, nil], [-100.0, "RED_LOW"], [nil, nil]])
+        vals = @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED__LIMITS", nil], start_time: "2026-09-13T00:00:00Z")
+        expect(vals).to eql([[0.0, nil], [-100.0, "RED_LOW"], [nil, nil]])
+      end
+
+      context "with a historical LATEST item" do
+        before(:each) do
+          allow(TargetModel).to receive(:get_item_to_packet_map).and_return({ 'TEMP1' => ['HEALTH_STATUS', 'PARAMS'] })
+          # Pretend PARAMS has the same TEMP1 as HEALTH_STATUS
+          temp1 = TargetModel.packet_item('INST', 'HEALTH_STATUS', 'TEMP1', scope: 'DEFAULT')
+          allow(TargetModel).to receive(:packet_item).and_call_original
+          allow(TargetModel).to receive(:packet_item).with('INST', 'PARAMS', 'TEMP1', scope: 'DEFAULT').and_return(temp1)
+          allow(CvtModel).to receive(:tsdb_packets_with_tables) { |packets, **| packets.to_set }
+        end
+
+        def item(packet_name, item_name, value_type = "CONVERTED")
+          ["INST", packet_name, item_name, value_type, nil]
+        end
+
+        let(:items) { ["INST__LATEST__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED"] }
+
+        it "queries each candidate packet at a point in time and returns the newest" do
+          lookups = {
+            [item("HEALTH_STATUS", "TEMP2")] => [[[5.0, nil]]],
+            [item("HEALTH_STATUS", "TEMP1"), item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")] => [[[10.0, nil], [100.0, nil]]],
+            [item("PARAMS", "TEMP1"), item("PARAMS", "PACKET_TIMESECONDS", "RAW")] => [[[20.0, "RED"], [200.0, nil]]],
+          }
+          allow(CvtModel).to receive(:tsdb_lookup) do |query, start_time:, scope:, flatten:|
+            expect(start_time).to eql("2026-09-13T00:00:00Z")
+            expect(flatten).to be false
+            lookups.fetch(query)
+          end
+          expect(@api.get_tlm_values(items, start_time: "2026-09-13T00:00:00Z")).to eql([[20.0, "RED"], [5.0, nil]])
+        end
+
+        it "ignores candidate packets without data at a point in time" do
+          allow(CvtModel).to receive(:tsdb_lookup) do |query, **|
+            query[0][1] == "PARAMS" ? {} : [[[10.0, nil], [100.0, nil]]]
+          end
+          expect(@api.get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time: "2026-09-13T00:00:00Z")).to eql([[10.0, nil]])
+        end
+
+        it "returns no results when nothing is found at a point in time" do
+          allow(CvtModel).to receive(:tsdb_lookup).and_return({})
+          expect(@api.get_tlm_values(items, start_time: "2026-09-13T00:00:00Z")).to eql({})
+        end
+
+        it "joins the candidates to the rows of the regular items in a range" do
+          expect(CvtModel).to receive(:tsdb_lookup).with(
+            [
+              item("HEALTH_STATUS", "TEMP2"),
+              item("HEALTH_STATUS", "TEMP1"),
+              item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW"),
+              item("PARAMS", "TEMP1"),
+              item("PARAMS", "PACKET_TIMESECONDS", "RAW"),
+            ],
+            start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z", scope: "DEFAULT", flatten: false
+          ).and_return([
+            [[5.0, nil], [10.0, nil], [300.0, nil], [20.0, nil], [200.0, nil]],
+            [[6.0, nil], [11.0, nil], [300.0, nil], [21.0, nil], [400.0, nil]],
+            [[7.0, nil], [nil, nil], [nil, nil], [nil, nil], [nil, nil]],
+          ])
+          vals = @api.get_tlm_values(items, start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+          expect(vals).to eql([[[10.0, nil], [5.0, nil]], [[21.0, nil], [6.0, nil]], [[nil, nil], [7.0, nil]]])
+        end
+
+        it "uses the packet received most recently now for a range of only LATEST items" do
+          allow(CvtModel).to receive(:determine_latest_packet_for_item).and_return("PARAMS")
+          expect(CvtModel).to receive(:tsdb_lookup).with(
+            [item("PARAMS", "TEMP1")], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z", scope: "DEFAULT"
+          ).and_return([[[[20.0, nil]]], [[[21.0, nil]]]])
+          @api.get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+        end
+
+        it "queries each candidate for the value type and limits it has" do
+          plain = { 'name' => 'TEMP1', 'data_type' => 'UINT', 'limits' => {} }
+          allow(TargetModel).to receive(:packet_item).with('INST', 'PARAMS', 'TEMP1', scope: 'DEFAULT').and_return(plain)
+          queries = []
+          allow(CvtModel).to receive(:tsdb_lookup) { |query, **| queries << query; {} }
+          @api.get_tlm_values(["INST__LATEST__TEMP1__FORMATTED__LIMITS"], start_time: "2026-09-13T00:00:00Z")
+          expect(queries).to contain_exactly(
+            [["INST", "HEALTH_STATUS", "TEMP1", "FORMATTED", "LIMITS"], item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")],
+            [["INST", "PARAMS", "TEMP1", "RAW", nil], item("PARAMS", "PACKET_TIMESECONDS", "RAW")],
+          )
+        end
+
+        it "queries the current packet for the value type and limits it has in a range of only LATEST items" do
+          plain = { 'name' => 'TEMP1', 'data_type' => 'UINT', 'limits' => {} }
+          allow(TargetModel).to receive(:packet_item).with('INST', 'PARAMS', 'TEMP1', scope: 'DEFAULT').and_return(plain)
+          allow(CvtModel).to receive(:determine_latest_packet_for_item).and_return("PARAMS")
+          expect(CvtModel).to receive(:tsdb_lookup).with(
+            [["INST", "PARAMS", "TEMP1", "RAW", nil]], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z", scope: "DEFAULT"
+          ).and_return([])
+          @api.get_tlm_values(["INST__LATEST__TEMP1__FORMATTED__LIMITS"], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+        end
+
+        it "skips candidate packets without a table at a point in time" do
+          expect(CvtModel).to receive(:tsdb_packets_with_tables).with([["INST", "HEALTH_STATUS"], ["INST", "PARAMS"]], scope: "DEFAULT").and_return(Set[["INST", "HEALTH_STATUS"]])
+          queries = []
+          allow(CvtModel).to receive(:tsdb_lookup) { |query, **| queries << query; [[[10.0, nil], [100.0, nil]]] }
+          expect(@api.get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time: "2026-09-13T00:00:00Z")).to eql([[10.0, nil]])
+          expect(queries).to eql([[item("HEALTH_STATUS", "TEMP1"), item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")]])
+        end
+
+        it "skips candidate packets without a table in a range" do
+          allow(CvtModel).to receive(:tsdb_packets_with_tables).and_return(Set[["INST", "HEALTH_STATUS"]])
+          expect(CvtModel).to receive(:tsdb_lookup).with(
+            [item("HEALTH_STATUS", "TEMP2"), item("HEALTH_STATUS", "TEMP1"), item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")],
+            start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z", scope: "DEFAULT", flatten: false
+          ).and_return([[[5.0, nil], [10.0, nil], [300.0, nil]]])
+          vals = @api.get_tlm_values(items, start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+          expect(vals).to eql([[10.0, nil], [5.0, nil]])
+        end
+
+        it "returns nil for a LATEST item when no candidate has a table" do
+          allow(CvtModel).to receive(:tsdb_packets_with_tables).and_return(Set.new)
+          expect(CvtModel).to receive(:tsdb_lookup).once.with([item("HEALTH_STATUS", "TEMP2")], any_args).and_return([[[5.0, nil]]])
+          expect(@api.get_tlm_values(items, start_time: "2026-09-13T00:00:00Z")).to eql([[nil, nil], [5.0, nil]])
+        end
+
+        it "authorizes every candidate packet" do
+          allow(CvtModel).to receive(:tsdb_lookup).and_return({})
+          expect(@api).to receive(:authorize).with(hash_including(packet_name: "HEALTH_STATUS"))
+          expect(@api).to receive(:authorize).with(hash_including(packet_name: "PARAMS"))
+          @api.get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time: "2026-09-13T00:00:00Z")
+        end
+      end
+
+      it "accepts the limits suffix from get_tlm_available" do
+        vals = @api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])
+        expect(vals[0][0]).to eql(-100.0)
+        expect(vals[0][1]).to eql(:RED_LOW)
+      end
+
+      it "returns nil values for items which do not exist" do
+        # get_tlm_available returns nil for items which don't exist and its result
+        # is passed directly to get_tlm_values
+        vals = @api.get_tlm_values([nil, "INST__HEALTH_STATUS__TEMP1__CONVERTED", nil])
+        expect(vals[0]).to eql([nil, nil])
+        expect(vals[1][0]).to eql(-100.0)
+        expect(vals[1][1]).to eql(:RED_LOW)
+        expect(vals[2]).to eql([nil, nil])
+      end
+
+      it "returns a row of nils when no item exists in a historical query" do
+        # Nothing to query, so this doesn't need (or touch) the time series database
+        vals = @api.get_tlm_values([nil, nil], start_time: "2026-09-13T00:00:00Z", end_time: "2026-09-13T01:00:00Z")
+        expect(vals).to eql([[nil, nil], [nil, nil]])
       end
 
       it "reads all the specified items" do
@@ -930,11 +1148,11 @@ module OpenC3
 
     describe "get_tlm_cnt" do
       it "complains about non-existent targets" do
-        expect { @api.get_tlm_cnt("BLAH", "ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
+        expect { @api.get_tlm_cnt("BLAH", "ABORT") }.to raise_error("Packet definition 'BLAH ABORT' does not exist")
       end
 
       it "complains about non-existent packets" do
-        expect { @api.get_tlm_cnt("INST BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { @api.get_tlm_cnt("INST BLAH") }.to raise_error("Packet definition 'INST BLAH' does not exist")
       end
 
       it "returns the receive count" do
@@ -959,11 +1177,11 @@ module OpenC3
 
     describe "get_packet_derived_items" do
       it "complains about non-existent targets" do
-        expect { @api.get_packet_derived_items("BLAH", "ABORT") }.to raise_error("Packet 'BLAH ABORT' does not exist")
+        expect { @api.get_packet_derived_items("BLAH", "ABORT") }.to raise_error("Packet definition 'BLAH ABORT' does not exist")
       end
 
       it "complains about non-existent packets" do
-        expect { @api.get_packet_derived_items("INST BLAH") }.to raise_error("Packet 'INST BLAH' does not exist")
+        expect { @api.get_packet_derived_items("INST BLAH") }.to raise_error("Packet definition 'INST BLAH' does not exist")
       end
 
       it "returns the packet derived items" do
@@ -972,6 +1190,75 @@ module OpenC3
         items = @api.get_packet_derived_items("inst   Health_Status")
         expect(items).to include("RECEIVED_TIMESECONDS", "RECEIVED_TIMEFORMATTED", "RECEIVED_COUNT")
       end
+    end
+  end
+
+  describe Api, "multiple db_shards" do
+    # INST lives on db_shard 1 while SYSTEM stays on db_shard 0. Stale copies
+    # planted on the wrong db_shard prove the reads come from the right one.
+    before(:each) do
+      mock_redis()
+      setup_system()
+      local_s3()
+      setup_target_db_shards({ 'INST' => 1, 'SYSTEM' => 0 })
+      @api = ApiTest.new
+    end
+
+    after(:each) do
+      local_s3_unset()
+    end
+
+    def write_decom(target_name, packet_name, values = {})
+      packet = System.telemetry.packet(target_name, packet_name)
+      values.each { |item_name, value| packet.write(item_name, value) }
+      packet.received_time = Time.now.sys
+      TelemetryDecomTopic.write_packet(packet, scope: "DEFAULT")
+      packet
+    end
+
+    it "reads telemetry values from the target's db_shard" do
+      write_decom('INST', 'HEALTH_STATUS', { 'TEMP1' => 10.0 })
+      Store.instance(db_shard: 0).hset("DEFAULT__tlm__INST", "HEALTH_STATUS", JSON.generate({ 'TEMP1__C' => 99.0 }))
+      expect(@api.tlm("INST HEALTH_STATUS TEMP1")).to be_within(0.1).of(10.0)
+      expect(@api.tlm("INST LATEST TEMP1")).to be_within(0.1).of(10.0)
+      expect(@api.get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED"])[0][0]).to be_within(0.1).of(10.0)
+    end
+
+    it "returns the telemetry buffer from the target's db_shard" do
+      packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+      packet.received_time = Time.now.sys
+      packet.buffer = "\x01\x02\x03\x04"
+      TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
+      # A newer stale message on the wrong db_shard must not be returned
+      EphemeralStore.instance(db_shard: 0).write_topic("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", { 'buffer' => "\xFF\xFF\xFF\xFF" })
+      expect(@api.get_tlm_buffer("INST", "HEALTH_STATUS")["buffer"][0..3]).to eq "\x01\x02\x03\x04"
+    end
+
+    it "streams packets from each target's db_shard" do
+      id = @api.subscribe_packets([["INST", "HEALTH_STATUS"], ["SYSTEM", "META"]])
+      # Stale messages on the wrong db_shard must not be returned
+      json_data = JSON.generate({ 'STALE' => true })
+      EphemeralStore.instance(db_shard: 0).write_topic("DEFAULT__DECOM__{INST}__HEALTH_STATUS", { 'target_name' => 'INST', 'packet_name' => 'STALE', 'json_data' => json_data })
+      EphemeralStore.instance(db_shard: 1).write_topic("DEFAULT__DECOM__{SYSTEM}__META", { 'target_name' => 'SYSTEM', 'packet_name' => 'STALE', 'json_data' => json_data })
+      write_decom('INST', 'HEALTH_STATUS')
+      write_decom('SYSTEM', 'META')
+      _, packets = @api.get_packets(id)
+      expect(packets.map { |packet| [packet['target_name'], packet['packet_name']] }).to contain_exactly(%w(INST HEALTH_STATUS), %w(SYSTEM META))
+    end
+
+    it "returns packet counts from each target's db_shard" do
+      Store.instance(db_shard: 0).hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 100)
+      Store.instance(db_shard: 1).hset("DEFAULT__TELEMETRYCNTS__{SYSTEM}", "META", 100)
+      TargetModel.increment_telemetry_count("INST", "HEALTH_STATUS", 5, scope: "DEFAULT")
+      TargetModel.increment_telemetry_count("SYSTEM", "META", 3, scope: "DEFAULT")
+      expect(@api.get_tlm_cnt("INST HEALTH_STATUS")).to eql 5
+      expect(@api.get_tlm_cnts([%w(INST HEALTH_STATUS), %w(SYSTEM META)])).to eql [5, 3]
+    end
+
+    it "returns packet names from the target's db_shard" do
+      Store.instance(db_shard: 0).hset("DEFAULT__openc3tlm__INST", "STALE", JSON.generate({ 'packet_name' => 'STALE' }))
+      expect(@api.get_all_tlm_names("INST")).to eql %w(ADCS HEALTH_STATUS IMAGE MECH PARAMS)
+      expect(@api.get_all_tlm_names("INST", hidden: true)).to eql %w(ADCS HEALTH_STATUS HIDDEN IMAGE MECH PARAMS)
     end
   end
 end

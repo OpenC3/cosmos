@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -86,7 +86,10 @@
         <v-btn icon="mdi-close" variant="text" @click="detailsDialog = false" />
       </v-card-title>
       <v-card-text class="flex-grow-1 pa-4">
-        <InterfaceFlowChart :router-details="routerDetails" />
+        <InterfaceFlowChart
+          v-if="detailsDialog"
+          :router-details="routerDetails"
+        />
       </v-card-text>
     </v-card>
   </v-overlay>
@@ -207,7 +210,6 @@ export default {
           this.detailsDialog = true
         })
         .catch((error) => {
-          // eslint-disable-next-line no-console
           console.error('Failed to fetch router details:', error)
           this.routerDetails = null
         })

@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -52,7 +52,9 @@ class MqttStream:
 
     # Connect the stream
     def connect(self):
-        self.pkt_queue.empty()
+        # Start with a fresh queue so nothing (including a disconnect wake up)
+        # is left over from a previous connection
+        self.pkt_queue = queue.Queue()
 
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.on_connect = self.on_connect
@@ -110,6 +112,8 @@ class MqttStream:
         if self.client:
             self.client.disconnect()
             self.client = None
+        # Wake up any read blocked waiting on a message so it returns None
+        self.pkt_queue.put(None)
 
     def on_message(self, client, userdata, message):
         # userdata is set via user_data_set

@@ -96,13 +96,12 @@ module OpenC3
       @mutex.lock if take_mutex
       begin
         if entry_type == :RAW_PACKET or entry_type == :JSON_PACKET
-          # Only care about the timestamps on the real packets being in order
           process_out_of_order = true
         else
           # Metadata timestamps don't matter
           process_out_of_order = false
         end
-        prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset, allow_new_file: allow_new_file, process_out_of_order: process_out_of_order)
+        prepare_write(time_nsec_since_epoch, data.length, redis_topic, redis_offset, allow_new_file: allow_new_file, process_out_of_order: process_out_of_order, stored: stored)
         write_entry(entry_type, cmd_or_tlm, target_name, packet_name, time_nsec_since_epoch, stored, data, id, received_time_nsec_since_epoch: received_time_nsec_since_epoch, extra: extra) if @file
       ensure
         @mutex.unlock if take_mutex
@@ -312,6 +311,11 @@ module OpenC3
           extra = JSON.parse(extra, allow_nan: true, create_additions: true) if String === extra
           length += OPENC3_EXTRA_LENGTH_FIXED_SIZE
           if @data_format == :CBOR
+            # The reader uses this same flag to pick the extra decoder, so it
+            # must be set here as well as in the JSON_PACKET data branch above.
+            # RAW_PACKET entries never reach that branch and would otherwise
+            # write CBOR extra that the reader tries to JSON.parse.
+            flags |= OPENC3_CBOR_FLAG_MASK
             extra_encoded = extra.as_json.to_cbor
           else
             extra_encoded = JSON.generate(extra.as_json, allow_nan: true)

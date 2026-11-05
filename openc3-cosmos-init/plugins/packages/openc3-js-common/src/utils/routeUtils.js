@@ -1,5 +1,5 @@
 /*
-# Copyright 2024, OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -12,7 +12,7 @@
 */
 
 const prependBasePath = function (route) {
-  if (!route.name !== 'NotFound') {
+  if (route.name !== 'NotFound') {
     route.path = `${__BASE_URL__}/${route.path.replace(/^\//, '')}`
   }
   route.children?.forEach(prependBasePath)

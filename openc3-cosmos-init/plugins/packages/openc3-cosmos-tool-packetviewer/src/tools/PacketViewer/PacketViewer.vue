@@ -81,6 +81,7 @@
         }"
         :items="rows"
         :custom-filter="filter"
+        :filter-keys="filterKeys"
         :sort-by="sortBy"
         :loading="loading > 0"
         multi-sort
@@ -143,24 +144,24 @@
           <v-card-text>
             <div class="pa-3">
               <v-row>
-                <v-text-field
+                <v-number-input
                   v-model="optionsRefreshInterval"
-                  min="1"
-                  max="3600"
-                  step="1"
-                  type="number"
+                  control-variant="stacked"
+                  :min="1"
+                  :max="3600"
+                  :step="1"
                   label="Refresh Interval (s)"
                   :rules="[rules.required, rules.min]"
                   data-test="refresh-interval"
                 />
               </v-row>
               <v-row>
-                <v-text-field
+                <v-number-input
                   v-model="optionsStaleLimit"
-                  min="1"
-                  max="10000"
-                  step="1"
-                  type="number"
+                  control-variant="stacked"
+                  :min="1"
+                  :max="10000"
+                  :step="1"
                   label="Time at which to mark data Stale (s)"
                   :rules="[rules.required, rules.min]"
                   min-width="280px"
@@ -232,7 +233,7 @@ import {
 } from '@openc3/vue-common/components'
 import { ValueWidget } from '@openc3/vue-common/widgets'
 import { useContainerHeight } from '@openc3/vue-common/composables'
-import { useTemplateRef } from 'vue'
+import { tokenizedFilter } from '@openc3/js-common/utils'
 
 // Used in the menu and openConfiguration lookup
 const valueTypeToRadioGroup = {
@@ -275,6 +276,10 @@ export default {
         },
         { title: 'Value', key: 'value' },
       ],
+      // Search the item name only, not the live telemetry value, which would
+      // make rows come and go as values change. Hoisted rather than written
+      // inline so it keeps the same identity across renders.
+      filterKeys: ['name'],
       sortBy: [{ key: 'pinned', order: 'desc' }],
       optionsDialog: false,
       optionsFormValid: true,
@@ -567,14 +572,10 @@ export default {
           item.item === name,
       )
     },
-    filter(value, search, _item) {
-      if (this.isPinned(value)) {
-        return true
-      } else if (value) {
-        return value.toString().indexOf(search.toUpperCase()) >= 0
-      } else {
-        return false
-      }
+    filter(value, search, item) {
+      // Pinned items stay visible no matter what's typed
+      if (item?.raw?.pinned) return true
+      return tokenizedFilter(value, search)
     },
     async packetChanged(event, force = false) {
       if (
@@ -583,6 +584,11 @@ export default {
         !force
       ) {
         return // No change
+      }
+      // The chooser clears its selection when the target has no packets or the
+      // request failed (e.g. no permission). Nothing to look up in that case.
+      if (!event.targetName || !event.packetName) {
+        return
       }
       try {
         this.loadingPacket = true
@@ -706,10 +712,7 @@ export default {
               .then((values) => {
                 this.latestGetTlmValues(values)
               })
-              .catch((error) => {
-                // eslint-disable-next-line no-console
-                console.log(error)
-              })
+              .catch(console.error)
           } else {
             this.api
               .get_all_tlm_item_names(this.targetName)
@@ -729,10 +732,7 @@ export default {
               .then((values) => {
                 this.latestGetTlmValues(values)
               })
-              .catch((error) => {
-                // eslint-disable-next-line no-console
-                console.log(error)
-              })
+              .catch(console.error)
           }
         } else {
           // Regular packet handling using get_tlm_packet
@@ -786,10 +786,7 @@ export default {
             // Catch errors but just log to the console
             // We don't clear the updater because errors can happen on upgrade
             // and we want to continue updating once the new plugin comes online
-            .catch((error) => {
-              // eslint-disable-next-line no-console
-              console.log(error)
-            })
+            .catch(console.error)
         }
         if (loadingFirstTlm) {
           loadingFirstTlm = false

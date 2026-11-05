@@ -23,6 +23,26 @@ class MicroservicesController < ModelController
     @model_class = OpenC3::MicroserviceModel
   end
 
+  # Override show to include computed runtime_python_env field.
+  # This is NOT stored in as_json (which is used for Redis persistence)
+  # to avoid breaking from_json deserialization.
+  def show
+    return unless authorization('system')
+    if params[:id].downcase == 'all'
+      render json: @model_class.all(scope: params[:scope])
+    else
+      model = @model_class.get_model(name: params[:id], scope: params[:scope])
+      if model
+        render json: model.as_json.merge('runtime_python_env' => model.runtime_python_env)
+      else
+        head :not_found
+      end
+    end
+  rescue StandardError => error
+    render json: { status: 'error', message: error.message }, status: :internal_server_error
+    logger.error(error.formatted)
+  end
+
   def start
     return unless authorization('admin')
     microservice = @model_class.get_model(name: params[:id], scope: params[:scope])
@@ -63,9 +83,9 @@ class MicroservicesController < ModelController
         shard = microservice['shard'] || 0
         if ENV['OPENC3_OPERATOR_HOSTNAME']
           if shard != 0
-            url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}-#{shard}:#{port}"
+            url = "http://#{ENV.fetch('OPENC3_OPERATOR_HOSTNAME')}-#{shard}:#{port}"
           else
-            url = "http://#{ENV['OPENC3_OPERATOR_HOSTNAME']}:#{port}"
+            url = "http://#{ENV.fetch('OPENC3_OPERATOR_HOSTNAME')}:#{port}"
           end
         else
           if ENV['KUBERNETES_SERVICE_HOST']

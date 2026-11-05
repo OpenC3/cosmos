@@ -8,21 +8,21 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 */
 
-import { getKeywords, getAutocompleteData } from './utilities'
+import { getKeywords, getAutocompleteData, escapeRegExp } from './utilities'
 
 const toMethodCallSyntaxRegex = (word) => {
   // create regex to find the opening of a ruby method call
   const prefix = '(^|[{\\(\\s])' // Allowable characters before the method name: start of line or { or ( or a space
   const opening = '[\\s\\(]f?[\'"]' // Opening sequence for a method call and a string argument: ( or a space, then ' or "
   const params = '(\\S+\\s?){0,3}' // Only allow up to a few tokens after the keyword to avoid autocompleteception
-  return new RegExp(`${prefix}${word}${opening}${params}$`) // ensure end of line because it's sliced to the current cursor position
+  return new RegExp(`${prefix}${escapeRegExp(word)}${opening}${params}$`) // ensure end of line because it's sliced to the current cursor position
 }
 
 export default class PacketCompleter {
@@ -34,14 +34,18 @@ export default class PacketCompleter {
     this.keywordExpressions = [] // Keywords that trigger the autocomplete feature
     this.autocompleteData = [] // Data to populate the autocomplete list
 
-    getKeywords(type).then((response) => {
-      this.keywordExpressions = response.data.map(toMethodCallSyntaxRegex)
-      expressionsReadyCallback()
-    })
-    getAutocompleteData(type).then((response) => {
-      this.autocompleteData = response.data
-      dataReadyCallback()
-    })
+    getKeywords(type)
+      .then((response) => {
+        this.keywordExpressions = response.data.map(toMethodCallSyntaxRegex)
+        expressionsReadyCallback()
+      })
+      .catch(console.error)
+    getAutocompleteData(type)
+      .then((response) => {
+        this.autocompleteData = response.data
+        dataReadyCallback()
+      })
+      .catch(console.error)
   }
 
   getCompletions(_editor, session, position, _prefix, callback) {

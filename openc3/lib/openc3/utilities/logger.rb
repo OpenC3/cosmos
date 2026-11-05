@@ -42,24 +42,30 @@ module OpenC3
 
     @@mutex = Mutex.new
     @@instance = nil
-    @@scope = ENV['OPENC3_SCOPE']
+    @@scope = ENV.fetch('OPENC3_SCOPE', 'DEFAULT')
 
-    # DEBUG only prints DEBUG messages
+    # Levels in increasing severity. Logging at a level prints that level
+    # and everything above it, e.g. WARN prints WARN, ERROR and FATAL.
     DEBUG = ::Logger::DEBUG
-    # INFO prints INFO, DEBUG messages
     INFO  = ::Logger::INFO
-    # WARN prints WARN, INFO, DEBUG messages
     WARN  = ::Logger::WARN
-    # ERROR prints ERROR, WARN, INFO, DEBUG messages
     ERROR = ::Logger::ERROR
-    # FATAL prints FATAL, ERROR, WARN, INFO, DEBUG messages
     FATAL = ::Logger::FATAL
 
+    # Level names as they appear in log messages and OPENC3_LOG_LEVEL
     DEBUG_LEVEL = 'DEBUG'
     INFO_LEVEL = 'INFO'
     WARN_LEVEL = 'WARN'
     ERROR_LEVEL = 'ERROR'
     FATAL_LEVEL = 'FATAL'
+
+    LEVELS = {
+      DEBUG_LEVEL => DEBUG,
+      INFO_LEVEL => INFO,
+      WARN_LEVEL => WARN,
+      ERROR_LEVEL => ERROR,
+      FATAL_LEVEL => FATAL
+    }.freeze
 
     # Types
     LOG = 'log'
@@ -67,14 +73,30 @@ module OpenC3
     ALERT = 'alert'
     EPHEMERAL = 'ephemeral'
 
+    # @return [Integer] Level named by the OPENC3_LOG_LEVEL env var.
+    #   INFO if the var is unset or isn't a level name.
+    def self.default_level
+      level = ENV.fetch('OPENC3_LOG_LEVEL', '')
+      name = level.to_s.strip.upcase
+      return INFO if name.empty?
+
+      LEVELS.fetch(name) do
+        unless @warned_bad_level
+          @warned_bad_level = true
+          $stderr.puts "OPENC3_LOG_LEVEL '#{level}' is not one of #{LEVELS.keys.join(', ')}, using INFO"
+        end
+        INFO
+      end
+    end
+
     # @param level [Integer] The initial logging level
-    def initialize(level = Logger::INFO)
+    def initialize(level = Logger.default_level)
       @stdout = true
       @level = level
       @detail_string = nil
       @container_name = Socket.gethostname
       @microservice_name = nil
-      @no_store = ENV['OPENC3_NO_STORE']
+      @no_store = ENV.fetch('OPENC3_NO_STORE', nil)
     end
 
     # Only set the microservice name once (to help with multi microservices)

@@ -16,7 +16,7 @@
 -->
 
 <template>
-  <v-dialog v-model="show" width="700">
+  <v-dialog v-model="show" scrollable width="700">
     <v-card>
       <v-toolbar :height="24">
         <v-spacer />
@@ -28,7 +28,7 @@
         {{ targetName }} {{ packetName }} {{ itemName }}
       </v-card-title>
       <v-card-subtitle>{{ details.description }}</v-card-subtitle>
-      <v-card-text>
+      <v-card-text style="max-height: 70vh; overflow-y: auto">
         <v-container fluid>
           <v-row v-if="type === 'tlm'" no-gutters>
             <v-col cols="5" class="label">Item Values</v-col>
@@ -387,33 +387,32 @@ export default {
     },
     async requestDetails() {
       if (this.type === 'tlm') {
-        this.api
-          .get_tlm_available([
-            `${this.targetName}__${this.packetName}__${this.itemName}__RAW`,
-            `${this.targetName}__${this.packetName}__${this.itemName}__CONVERTED`,
-            `${this.targetName}__${this.packetName}__${this.itemName}__FORMATTED`,
-          ])
-          .then((available) => {
-            if (available && available.length > 0) {
-              this.available = available
-            }
-            this.api
-              .get_item(this.targetName, this.packetName, this.itemName)
-              .then((details) => {
-                this.details = details
-                // If the item does not have limits explicitly null it
-                // to make the check in the template easier
-                if (!this.hasLimits(details)) {
-                  this.details.limits = null
-                }
-              })
-          })
+        const available = await this.api.get_tlm_available([
+          `${this.targetName}__${this.packetName}__${this.itemName}__RAW`,
+          `${this.targetName}__${this.packetName}__${this.itemName}__CONVERTED`,
+          `${this.targetName}__${this.packetName}__${this.itemName}__FORMATTED`,
+        ])
+        if (available && available.length > 0) {
+          this.available = available
+        }
+        const details = await this.api.get_item(
+          this.targetName,
+          this.packetName,
+          this.itemName,
+        )
+        this.details = details
+        // If the item does not have limits explicitly null it
+        // to make the check in the template easier
+        if (!this.hasLimits(details)) {
+          this.details.limits = null
+        }
       } else {
-        this.api
-          .get_parameter(this.targetName, this.packetName, this.itemName)
-          .then((details) => {
-            this.details = details
-          })
+        const details = await this.api.get_parameter(
+          this.targetName,
+          this.packetName,
+          this.itemName,
+        )
+        this.details = details
       }
     },
     async changeLimitsEnabled() {

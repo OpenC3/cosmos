@@ -20,7 +20,7 @@ export async function execSql(sql, db_shard, retries = 3) {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       let url = '/openc3-api/tsdb/exec'
-      if (db_shard && db_shard !== '0') {
+      if (db_shard && db_shard !== 0) {
         url += `?db_shard=${db_shard}`
       }
       return await Api.post(url, {

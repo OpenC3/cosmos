@@ -17,6 +17,7 @@ import shutil
 import sys
 import tempfile
 import threading
+import time
 import traceback
 
 from openc3.environment import OPENC3_CONFIG_BUCKET
@@ -31,6 +32,7 @@ from openc3.utilities.secrets import Secrets
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store import EphemeralStore
 from openc3.utilities.thread_manager import ThreadManager
+from openc3.utilities.topic_lag_monitor import TopicLagMonitor
 
 
 # TODO:
@@ -84,7 +86,13 @@ class Microservice:
         if self.error is not None:
             json["error"] = repr(self.error)
         if self.custom is not None:
-            json["custom"] = self.custom.as_json()
+            # Ruby's Hash#as_json exists but Python dicts have no as_json
+            # so allow plain dicts (or anything JSON serializable) directly
+            as_json = getattr(self.custom, "as_json", None)
+            if callable(as_json):
+                json["custom"] = as_json()
+            else:
+                json["custom"] = self.custom
         return json
 
     def __init__(self, name, is_plugin=False):
@@ -140,7 +148,9 @@ class Microservice:
         if self.target_names is None:
             self.target_names = []
         if not is_plugin:
-            System.setup_targets(self.target_names, self.temp_dir, scope=self.scope)
+            System.setup_targets(
+                self.target_names, self.temp_dir, scope=self.scope, descriptions=self.load_descriptions()
+            )
 
         # Use atexit to shutdown cleanly no matter how we die
         atexit.register(self.shutdown)
@@ -160,11 +170,30 @@ class Microservice:
 
             prefix = f"{self.scope}/microservices/{self.name}/"
             file_count = 0
-            for object in client.list_objects(bucket=bucket, prefix=prefix):
-                response_target = os.path.join(self.temp_dir, object.key.split(prefix)[-1])
-                os.makedirs(os.path.dirname(response_target), exist_ok=True)
-                client.get_object(bucket=bucket, key=object.key, path=response_target)
-                file_count += 1
+            # Tolerate transient object store failures during startup. On a busy
+            # or underpowered cluster the bucket store (e.g. MinIO) can be
+            # briefly unreachable while many microservices start at once. Rather
+            # than crash and CrashLoopBackOff (which can outlast deploy
+            # timeouts), retry for a bounded time before giving up.
+            startup_timeout = float(os.environ.get("OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT", 60))
+            startup_deadline = time.time() + startup_timeout
+            while True:
+                try:
+                    file_count = 0
+                    for object in client.list_objects(bucket=bucket, prefix=prefix):
+                        response_target = os.path.join(self.temp_dir, object.key.split(prefix)[-1])
+                        os.makedirs(os.path.dirname(response_target), exist_ok=True)
+                        client.get_object(bucket=bucket, key=object.key, path=response_target)
+                        file_count += 1
+                    break
+                except Exception as error:
+                    if time.time() >= startup_deadline:
+                        raise
+                    self.logger.warn(
+                        f"Microservice {self.name} startup: bucket access failed "
+                        f"({type(error).__name__}: {error}); retrying for up to {int(startup_timeout)}s"
+                    )
+                    time.sleep(5)
 
             # Adjust @work_dir to microservice files downloaded if files and a relative path
             if file_count > 0 and self.work_dir[0] != "/":
@@ -198,6 +227,11 @@ class Microservice:
     def run(self):
         self.shutdown()
 
+    # Whether System keeps packet and item descriptions. Subclasses that never
+    # use them override this to return False to reduce memory.
+    def load_descriptions(self):
+        return True
+
     def shutdown(self, state="STOPPED"):
         if self.shutdown_complete:
             return  # Nothing more to do
@@ -226,11 +260,33 @@ class Microservice:
             ephemeral_store_instance.topic_offsets[thread_id] = {}
         ephemeral_store_instance.topic_offsets[thread_id][self.microservice_topic] = "0-0"
 
+    def update_topic_lag(self, topic, msg_id, metric_name, help):
+        """Update the lag metric for a message read from a topic and notify users
+        if this microservice is falling behind"""
+        return self.topic_lag_monitor.record(topic, msg_id, metric_name=metric_name, help=help)
+
+    @property
+    def topic_lag_monitor(self):
+        """Lag monitor shared by this microservice's topic readers"""
+        monitor = getattr(self, "_topic_lag_monitor", None)
+        if monitor is None:
+            monitor = TopicLagMonitor(
+                name=self.name,
+                logger=getattr(self, "logger", None) or Logger,
+                metric=getattr(self, "metric", None),
+            )
+            self._topic_lag_monitor = monitor
+        return monitor
+
     # Returns if the command was handled
     def microservice_cmd(self, topic, msg_id, msg_hash, _):
-        command = msg_hash.get("command")
-        if command == "ADD_TOPICS" and msg_hash.get("topics"):
-            topics = json.loads(msg_hash["topics"])
+        # Messages from Topic.read_topics have bytes keys and values
+        command = msg_hash.get(b"command", msg_hash.get("command"))
+        if isinstance(command, bytes):
+            command = command.decode()
+        topics = msg_hash.get(b"topics", msg_hash.get("topics"))
+        if command == "ADD_TOPICS" and topics:
+            topics = json.loads(topics)
             if topics and isinstance(topics, list):
                 for new_topic in topics:
                     if new_topic not in self.topics:

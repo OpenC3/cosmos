@@ -133,6 +133,135 @@ module OpenC3
           metric: metric,
         )
       end
+
+      context 'with stored_limits_mode' do
+        it 'checks limits normally for stored packets when mode is PROCESS' do
+          packet = build_packet
+          packet.stored = true
+          allow(TelemetryDecomTopic).to receive(:write_packet)
+          subpackets = packet.subpacketize
+          allow(packet).to receive(:subpacketize).and_return(subpackets)
+          subpackets.each { |p| expect(p).to receive(:check_limits).with(System.limits_set) }
+
+          DecomCommon.decom_and_publish(
+            packet,
+            scope: 'DEFAULT',
+            target_names: ['INST'],
+            logger: Logger.new,
+            name: 'TEST',
+            check_limits: true,
+            stored_limits_mode: 'PROCESS',
+          )
+        end
+
+        it 'checks limits for stored packets when mode is LOG' do
+          packet = build_packet
+          packet.stored = true
+          allow(TelemetryDecomTopic).to receive(:write_packet)
+          subpackets = packet.subpacketize
+          allow(packet).to receive(:subpacketize).and_return(subpackets)
+          subpackets.each { |p| expect(p).to receive(:check_limits).with(System.limits_set) }
+
+          DecomCommon.decom_and_publish(
+            packet,
+            scope: 'DEFAULT',
+            target_names: ['INST'],
+            logger: Logger.new,
+            name: 'TEST',
+            check_limits: true,
+            stored_limits_mode: 'LOG',
+          )
+        end
+
+        it 'skips limits check for stored packets when mode is DISABLE' do
+          packet = build_packet
+          packet.stored = true
+          allow(TelemetryDecomTopic).to receive(:write_packet)
+          subpackets = packet.subpacketize
+          allow(packet).to receive(:subpacketize).and_return(subpackets)
+          subpackets.each { |p| expect(p).not_to receive(:check_limits) }
+
+          DecomCommon.decom_and_publish(
+            packet,
+            scope: 'DEFAULT',
+            target_names: ['INST'],
+            logger: Logger.new,
+            name: 'TEST',
+            check_limits: true,
+            stored_limits_mode: 'DISABLE',
+          )
+        end
+
+        it 'still checks limits for non-stored packets when mode is DISABLE' do
+          packet = build_packet
+          packet.stored = false
+          allow(TelemetryDecomTopic).to receive(:write_packet)
+          subpackets = packet.subpacketize
+          allow(packet).to receive(:subpacketize).and_return(subpackets)
+          subpackets.each { |p| expect(p).to receive(:check_limits).with(System.limits_set) }
+
+          DecomCommon.decom_and_publish(
+            packet,
+            scope: 'DEFAULT',
+            target_names: ['INST'],
+            logger: Logger.new,
+            name: 'TEST',
+            check_limits: true,
+            stored_limits_mode: 'DISABLE',
+          )
+        end
+
+        it 'passes include_limits_states: false to write_packet when DISABLE and stored' do
+          packet = build_packet
+          packet.stored = true
+          expect(TelemetryDecomTopic).to receive(:write_packet)
+            .with(packet, include_limits_states: false, scope: 'DEFAULT')
+
+          DecomCommon.decom_and_publish(
+            packet,
+            scope: 'DEFAULT',
+            target_names: ['INST'],
+            logger: Logger.new,
+            name: 'TEST',
+            check_limits: true,
+            stored_limits_mode: 'DISABLE',
+          )
+        end
+
+        it 'passes include_limits_states: true to write_packet when DISABLE but not stored' do
+          packet = build_packet
+          packet.stored = false
+          expect(TelemetryDecomTopic).to receive(:write_packet)
+            .with(packet, include_limits_states: true, scope: 'DEFAULT')
+
+          DecomCommon.decom_and_publish(
+            packet,
+            scope: 'DEFAULT',
+            target_names: ['INST'],
+            logger: Logger.new,
+            name: 'TEST',
+            check_limits: true,
+            stored_limits_mode: 'DISABLE',
+          )
+        end
+
+        it 'passes include_limits_states: true to write_packet when mode is PROCESS' do
+          packet = build_packet
+          packet.stored = true
+          expect(TelemetryDecomTopic).to receive(:write_packet)
+            .with(packet, include_limits_states: true, scope: 'DEFAULT')
+
+          DecomCommon.decom_and_publish(
+            packet,
+            scope: 'DEFAULT',
+            target_names: ['INST'],
+            logger: Logger.new,
+            name: 'TEST',
+            check_limits: true,
+            stored_limits_mode: 'PROCESS',
+          )
+        end
+      end
     end
 
     describe '.handle_subpacket' do

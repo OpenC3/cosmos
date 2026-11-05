@@ -114,9 +114,9 @@ module OpenC3
 
         expect(Store).to have_received(:bzpopmin).exactly(3).times
         expect(processor).to have_received(:cmd)
-          .with(command1['value'], queue: false, scope: scope, timeout: nil, validate: true)
+          .with(command1['value'], queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
         expect(processor).to have_received(:cmd)
-          .with(command2['value'], queue: false, scope: scope, timeout: nil, validate: true)
+          .with(command2['value'], queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
       end
 
       it 'processes commands with new format (target_name, cmd_name, cmd_params)' do
@@ -136,7 +136,7 @@ module OpenC3
 
         expect(Store).to have_received(:bzpopmin).exactly(2).times
         expect(processor).to have_received(:cmd)
-          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: nil, validate: true)
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
       end
 
       it 'processes commands with new format without cmd_params' do
@@ -156,7 +156,7 @@ module OpenC3
 
         expect(Store).to have_received(:bzpopmin).exactly(2).times
         expect(processor).to have_received(:cmd)
-          .with('TARGET', 'COMMAND4', {}, queue: false, scope: scope, timeout: nil, validate: true)
+          .with('TARGET', 'COMMAND4', {}, queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
       end
 
       it 'processes mixed legacy and new format commands' do
@@ -178,9 +178,9 @@ module OpenC3
 
         expect(Store).to have_received(:bzpopmin).exactly(3).times
         expect(processor).to have_received(:cmd)
-          .with(command1['value'], queue: false, scope: scope, timeout: nil, validate: true)
+          .with(command1['value'], queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
         expect(processor).to have_received(:cmd)
-          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: nil, validate: true)
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: nil, validate: true, queue_username: 'test_user')
       end
 
       it 'processes legacy command with validate false and timeout 0' do
@@ -200,7 +200,7 @@ module OpenC3
         processor.process_queued_commands
 
         expect(processor).to have_received(:cmd)
-          .with(command_no_validate['value'], queue: false, scope: scope, timeout: 0, validate: false)
+          .with(command_no_validate['value'], queue: false, scope: scope, timeout: 0, validate: false, queue_username: 'test_user')
       end
 
       it 'processes new format command with validate false and timeout 0' do
@@ -220,7 +220,7 @@ module OpenC3
         processor.process_queued_commands
 
         expect(processor).to have_received(:cmd)
-          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: 0, validate: false)
+          .with('TARGET', 'COMMAND3', { 'PARAM' => 3 }, queue: false, scope: scope, timeout: 0, validate: false, queue_username: 'test_user')
       end
 
       it 'logs error for invalid command format (missing required fields)' do

@@ -19,6 +19,8 @@ require 'childprocess'
 require 'openc3'
 require 'fileutils'
 require 'tempfile'
+require 'openc3/models/metric_model'
+require 'openc3/utilities/process_stats'
 
 module OpenC3
   # Class to prevent an infinitely growing log file
@@ -156,6 +158,15 @@ module OpenC3
       end
     end
 
+    # The pid of the spawned process, or nil if it isn't running. Note this is
+    # the pid of plugin_microservice.rb, which exec()s the configured cmd, so it
+    # stays the pid of whatever the microservice actually ends up running.
+    def pid
+      @process ? @process.pid : nil
+    rescue Exception
+      nil
+    end
+
     def soft_stop
       Thread.new do
         Logger.info("Soft shutting down process: #{cmd_line()}", scope: @scope)
@@ -233,13 +244,18 @@ module OpenC3
     PROCESS_SHUTDOWN_SECONDS = 5.0
 
     def initialize
-      Logger.level = Logger::INFO
+      Logger.level = Logger.default_level
       Logger.microservice_name = 'MicroserviceOperator'
 
       OperatorProcess.setup()
-      @cycle_time = (ENV['OPERATOR_CYCLE_TIME'] and ENV['OPERATOR_CYCLE_TIME'].to_f) || CYCLE_TIME # time in seconds
+      @cycle_time = ENV.fetch('OPERATOR_CYCLE_TIME', CYCLE_TIME).to_f # time in seconds
+      # Maximum number of new microservices to start per cycle. This spreads a
+      # large startup burst (e.g. installing a plugin with many targets) across
+      # multiple cycles so the shared services (object store, redis) aren't
+      # stampeded by every microservice connecting at once. 0 = no limit.
+      @max_start_per_cycle = ENV.fetch('OPENC3_OPERATOR_MAX_START_PER_CYCLE', 5).to_i
 
-      @ruby_process_name = ENV['OPENC3_RUBY']
+      @ruby_process_name = ENV.fetch('OPENC3_RUBY', nil)
       if RUBY_ENGINE != 'ruby'
         @ruby_process_name ||= 'jruby'
       else
@@ -250,6 +266,9 @@ module OpenC3
       @new_processes = {}
       @changed_processes = {}
       @removed_processes = {}
+      # microservice name => ProcessStats, so cpu deltas survive across cycles
+      @process_stats = {}
+      @process_stats_db_shards = {}
       @mutex = Mutex.new
       @shutdown = false
       @shutdown_complete = false
@@ -259,13 +278,74 @@ module OpenC3
       raise "Implement in subclass"
     end
 
+    # Report cpu and memory for every microservice this operator is running.
+    #
+    # Microservices that are themselves OpenC3::Microservices could report this
+    # about themselves, but ones that exec() into a Rails app, a Python script
+    # or any other binary never load the OpenC3 libraries and so can't. Doing it
+    # here covers every microservice the same way, including plugins we don't
+    # ship, without asking anything of the plugin author.
+    def publish_process_metrics
+      return unless ProcessStats.supported?
+
+      @mutex.synchronize do
+        @processes.each do |name, p|
+          break if @shutdown
+          # Not started yet - queued behind the per cycle start limit
+          next if @new_processes[name]
+
+          # Only processes this operator spawned locally have a pid we can read
+          # from /proc. The KubernetesOperator's processes are pods elsewhere in
+          # the cluster, so they don't implement pid and keep reporting their
+          # own metrics from inside the pod.
+          next unless p.respond_to?(:pid)
+          pid = p.pid
+          next unless pid
+
+          # Isolate each process so one failure doesn't starve the rest of metrics
+          begin
+            stats = @process_stats[name]
+            # A respawn gets a new pid, and the old cpu totals don't carry over
+            if stats.nil? or stats.pid != pid
+              # Look up the shard before caching stats so a failed lookup is retried next cycle
+              @process_stats_db_shards[name] = MetricModel._lookup_db_shard(name, scope: p.scope)
+              stats = ProcessStats.new(pid)
+              @process_stats[name] = stats
+            end
+            next unless stats.sample
+
+            MetricModel.set_process(
+              { 'name' => name, 'db_shard' => @process_stats_db_shards[name], 'values' => stats.values },
+              scope: p.scope
+            )
+          rescue => e
+            Logger.error("#{self.class} failed to publish process metrics for #{name}: #{e.class} #{e.message}")
+          end
+        end
+
+        # Stop tracking microservices that have gone away. Their metrics rows
+        # expire on their own (METRIC_EXPIRE_SECONDS).
+        (@process_stats.keys - @processes.keys).each do |name|
+          @process_stats.delete(name)
+          @process_stats_db_shards.delete(name)
+        end
+      end
+    end
+
     def start_new
       @mutex.synchronize do
         if @new_processes.length > 0
-          # Start all the processes
-          Logger.info("#{self.class} starting each new process...")
-          @new_processes.each { |_name, p| p.start }
-          @new_processes = {}
+          # Start at most @max_start_per_cycle processes this cycle; any
+          # remaining stay queued in @new_processes and start on later cycles.
+          # This avoids a startup stampede when many microservices appear at
+          # once (e.g. a plugin install) overwhelming the object store / redis.
+          start_names = @new_processes.keys
+          start_names = start_names[0...@max_start_per_cycle] if @max_start_per_cycle > 0
+          Logger.info("#{self.class} starting #{start_names.length} of #{@new_processes.length} new process(es)...")
+          start_names.each do |name|
+            @new_processes[name].start
+            @new_processes.delete(name)
+          end
         end
       end
     end
@@ -273,12 +353,22 @@ module OpenC3
     def respawn_changed
       @mutex.synchronize do
         if @changed_processes.length > 0
-          Logger.info("Cycling #{@changed_processes.length} changed microservices...")
-          shutdown_processes(@changed_processes)
+          # Cycle at most @max_start_per_cycle changed microservices this cycle;
+          # any remaining stay queued in @changed_processes and are cycled on
+          # later cycles. This avoids a restart stampede when many microservices
+          # change at once (e.g. a configmap change) overwhelming shared
+          # services. Processes not yet cycled keep running until their turn.
+          cycle_names = @changed_processes.keys
+          cycle_names = cycle_names[0...@max_start_per_cycle] if @max_start_per_cycle > 0
+          cycle = @changed_processes.slice(*cycle_names)
+          Logger.info("Cycling #{cycle.length} of #{@changed_processes.length} changed microservices...")
+          shutdown_processes(cycle)
           break if @shutdown
 
-          @changed_processes.each { |_name, p| p.start }
-          @changed_processes = {}
+          cycle_names.each do |name|
+            @changed_processes[name].start
+            @changed_processes.delete(name)
+          end
         end
       end
     end
@@ -295,8 +385,11 @@ module OpenC3
 
     def respawn_dead
       @mutex.synchronize do
-        @processes.each do |_name, p|
+        @processes.each do |name, p|
           break if @shutdown
+          # Skip processes still queued by the per-cycle start limit; they
+          # haven't been started yet so they aren't "dead" to be respawned.
+          next if @new_processes[name]
           p.output_increment
           unless p.alive?
             # Respawn process
@@ -356,11 +449,22 @@ module OpenC3
       # Monitor processes and respawn if died
       Logger.info("#{self.class} Monitoring processes every #{@cycle_time} sec...")
       loop do
-        update()
-        remove_old()
-        respawn_changed()
-        start_new()
-        respawn_dead()
+        # A single cycle must never be able to take down the operator process.
+        # update() in particular hits Redis every cycle and a transient network
+        # error (the kind that also makes targets reconnect) would otherwise
+        # unwind run() and exit the process, which in the container looks like a
+        # full operator restart. Catch, log, and keep cycling so the next cycle
+        # can recover once Redis is reachable again.
+        begin
+          update()
+          remove_old()
+          respawn_changed()
+          start_new()
+          respawn_dead()
+          publish_process_metrics()
+        rescue => e
+          Logger.error("#{self.class} cycle error, continuing: #{e.class} #{e.message}\n#{e.backtrace.join("\n")}")
+        end
         break if @shutdown
 
         sleep(@cycle_time)

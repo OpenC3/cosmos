@@ -199,11 +199,28 @@ RSpec.describe Script, type: :model do
 
   describe "self.run" do
     it "spawns a running script" do
+      allow(Script).to receive(:body).with("DEFAULT", "script.rb").and_return("puts 'Hello'")
       expect(RunningScript).to receive(:spawn).with(
-        "DEFAULT", "script.rb", nil, false, nil, "User Name", "username", nil, nil
+        "DEFAULT", "script.rb", nil, false, nil, "User Name", "username", nil, nil, nil
+      ).and_return(12345)
+
+      expect(Script.run("DEFAULT", "script.rb", nil, false, nil, "User Name", "username")).to be 12345
+    end
+
+    it "returns nil and does not spawn if the script does not exist" do
+      allow(Script).to receive(:body).with("DEFAULT", "missing.rb").and_return(nil)
+      expect(RunningScript).not_to receive(:spawn)
+
+      expect(Script.run("DEFAULT", "missing.rb", nil, false, nil, "User Name", "username")).to be_nil
+    end
+
+    it "passes python_venv through to RunningScript.spawn" do
+      allow(Script).to receive(:body).with("DEFAULT", "script.py").and_return("print('hello')")
+      expect(RunningScript).to receive(:spawn).with(
+        "DEFAULT", "script.py", nil, false, nil, "User Name", "username", nil, nil, "/gems/plugin_venvs/demo/.venv"
       )
 
-      Script.run("DEFAULT", "script.rb", nil, false, nil, "User Name", "username")
+      Script.run("DEFAULT", "script.py", nil, false, nil, "User Name", "username", nil, nil, "/gems/plugin_venvs/demo/.venv")
     end
   end
 
@@ -334,7 +351,7 @@ RSpec.describe Script, type: :model do
       allow(process_double).to receive(:environment).and_return(process_env)
       allow(process_double).to receive(:io).and_return(io_double)
       allow(process_double).to receive(:start)
-      allow(process_double).to receive(:wait)
+      allow(process_double).to receive(:poll_for_exit).with(10)
       allow(process_double).to receive(:exit_code).and_return(exit_code)
 
       allow(ChildProcess).to receive(:build).and_return(process_double)
@@ -379,6 +396,54 @@ RSpec.describe Script, type: :model do
         expect(stdout_result).to eq '{"suite":"data"}'
         expect(stderr_result).to eq ""
         expect(success).to be true
+      end
+
+      it "adds the owning plugin venv to Python suite analysis" do
+        mocks = setup_process_suite_mocks(language: "python")
+        allow(OpenC3::TargetModel).to receive(:get).with(name: "INST", scope: "DEFAULT").and_return(
+          {"plugin" => "my-plugin__0"}
+        )
+        venv_dir = "/gems/plugin_venvs/DEFAULT__my-plugin__0/.venv"
+        site_packages = "#{venv_dir}/lib/python3.12/site-packages"
+        allow(File).to receive(:directory?).and_call_original
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(Dir).to receive(:glob).with("#{venv_dir}/lib/python*/site-packages").and_return([site_packages])
+
+        Script.process_suite("INST/procedures/suite.py", "suite content", scope: "DEFAULT")
+
+        expect(mocks[:process_env]['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(mocks[:process_env]['PATH']).to start_with("#{venv_dir}/bin:")
+        expect(mocks[:process_env]['PYTHONUSERBASE']).to eq(venv_dir)
+        expect(mocks[:process_env]['PYTHONPATH'].split(':')).to include(site_packages)
+      end
+
+      it "uses the selected plugin venv when analyzing a temp Python suite" do
+        mocks = setup_process_suite_mocks(language: "python")
+        venv_name = "DEFAULT__my-plugin__0"
+        venv_dir = "/gems/plugin_venvs/#{venv_name}/.venv"
+        site_packages = "#{venv_dir}/lib/python3.12/site-packages"
+        allow(File).to receive(:directory?).and_call_original
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(Dir).to receive(:glob).with("#{venv_dir}/lib/python*/site-packages").and_return([site_packages])
+        expect(OpenC3::TargetModel).not_to receive(:get)
+
+        Script.process_suite(
+          "__TEMP__/suite.py", "suite content", scope: "DEFAULT", python_venv: venv_name
+        )
+
+        expect(mocks[:process_env]['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(mocks[:process_env]['PYTHONPATH'].split(':')).to include(site_packages)
+      end
+
+      it "does not pass unused credentials to the analysis process" do
+        mocks = setup_process_suite_mocks(language: "ruby")
+
+        Script.process_suite("suite.rb", "suite content", scope: "DEFAULT")
+
+        OpenC3::ScriptEnv::UNUSED_VARS.each do |key|
+          expect(mocks[:process_env]).to have_key(key)
+          expect(mocks[:process_env][key]).to be_nil
+        end
       end
     end
 

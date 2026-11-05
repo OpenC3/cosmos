@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-// @ts-check
 import { test, expect } from './fixture'
 
 test.use({
@@ -111,23 +110,21 @@ test('gets details with right click', async ({ page, utils }) => {
       button: 'right',
     })
   await page.getByText('Details', { exact: true }).click()
-  await expect(page.locator('.v-overlay--active')).toBeVisible()
-  await expect(page.locator('.v-overlay--active')).toContainText(
-    'INST HEALTH_STATUS TEMP1',
-  )
+  // Scope to the dialog overlay specifically: a lingering Vuetify tooltip is
+  // also a `.v-overlay--active`, which made the bare selector match 2 elements
+  // and fail strict mode. The details popup is a `.v-dialog`.
+  const detailsDialog = page.locator('.v-overlay--active.v-dialog')
+  await expect(detailsDialog).toBeVisible()
+  await expect(detailsDialog).toContainText('INST HEALTH_STATUS TEMP1')
   // Check that a few of the details are there ... that proves the API request
-  await expect(page.locator('.v-overlay--active')).toContainText('UINT')
-  await expect(page.locator('.v-overlay--active')).toContainText(
-    'PolynomialConversion',
-  )
-  await expect(page.locator('.v-overlay--active')).toContainText('CELSIUS')
-  await expect(page.locator('.v-overlay--active')).toContainText(
-    'ExampleLimitsResponse',
-  )
+  await expect(detailsDialog).toContainText('UINT')
+  await expect(detailsDialog).toContainText('PolynomialConversion')
+  await expect(detailsDialog).toContainText('CELSIUS')
+  await expect(detailsDialog).toContainText('ExampleLimitsResponse')
 
   // Get out of the details dialog
   await page.locator('[data-test="notifications"]').click({ force: true })
-  await expect(page.locator('.v-overlay--active')).not.toBeVisible()
+  await expect(detailsDialog).not.toBeVisible()
 
   // Scroll to the top to allow better right click
   await page.mouse.wheel(0, 0)
@@ -139,30 +136,51 @@ test('gets details with right click', async ({ page, utils }) => {
       button: 'right',
     })
   await page.getByText('Details', { exact: true }).click()
-  await expect(page.locator('.v-overlay--active')).toBeVisible()
-  await expect(page.locator('.v-overlay--active')).toContainText(
+  await expect(detailsDialog).toBeVisible()
+  await expect(detailsDialog).toContainText(
     'INST HEALTH_STATUS PACKET_TIMESECONDS',
   )
   // Check that a few of the details are there ... that proves the API request
-  await expect(page.locator('.v-overlay--active')).toContainText('DERIVED')
-  await expect(page.locator('.v-overlay--active')).toContainText(
-    'PacketTimeSecondsConversion',
-  )
+  await expect(detailsDialog).toContainText('DERIVED')
+  await expect(detailsDialog).toContainText('PacketTimeSecondsConversion')
 })
 
-test('stops posting to the api after closing', async ({ page, utils }) => {
-  await page.goto('/tools/packetviewer/INST/ADCS/')
-  let requestCount = 0
-  page.on('request', () => {
-    requestCount++
+test('stops polling the previous packet after switching', async ({
+  page,
+  utils,
+}) => {
+  // Match the polling call for one specific packet. get_tlm_packet is sent as
+  // JSON-RPC with params [target, packet, valueType, staleLimit], so the packet
+  // name appears quoted in the body. Matching the packet (rather than every
+  // request the page makes) keeps unrelated periodic traffic (auth token
+  // refresh, notifications, cable reconnects) from being counted.
+  const isPoll = (packet: string, url: string, postData: string | null) =>
+    url.includes('/openc3-api/api') &&
+    !!postData?.includes('"get_tlm_packet"') &&
+    !!postData?.includes(`"${packet}"`)
+  let adcsCount = 0
+  page.on('request', (request) => {
+    if (isPoll('ADCS', request.url(), request.postData())) {
+      adcsCount++
+    }
   })
-  await utils.sleep(2000)
-  // Commenting out the next two lines causes the test to fail
-  await page.goto('/tools/tablemanager') // No API requests
-  await expect(page.locator('.v-app-bar')).toContainText('Table Manager')
-  const count = requestCount
-  await utils.sleep(2000) // Allow potential API requests to happen
-  expect(requestCount).toBe(count) // no change
+  await page.goto('/tools/packetviewer/INST/ADCS/')
+  // Wait for polling to actually start rather than assuming it has after a
+  // fixed sleep. App boot can take several seconds on a loaded CI runner.
+  await page.waitForRequest((request) =>
+    isPoll('ADCS', request.url(), request.postData()),
+  )
+  // Switching packets is a client-side route change, so the tool has to clear
+  // its own interval. Note this can't be tested by navigating to another tool
+  // with page.goto: that tears down the whole JS context, which kills the
+  // interval no matter what the tool does, and the test would pass regardless.
+  await utils.selectTargetPacketItem('INST', 'HEALTH_STATUS')
+  await page.waitForRequest((request) =>
+    isPoll('HEALTH_STATUS', request.url(), request.postData()),
+  )
+  const count = adcsCount
+  await utils.sleep(2000) // Allow a leaked ADCS interval time to fire
+  expect(adcsCount).toBe(count) // no change, so the old interval was cleared
 })
 
 // Changing the polling rate is fraught with danger because it's all
@@ -358,4 +376,64 @@ test('pins items to the top of the list', async ({ page, utils }) => {
   await expect(page.locator('tr:has(td:nth-child(2))').nth(0)).toContainText(
     'PACKET_TIMESECONDS *',
   )
+})
+
+//
+// Test the tokenized search over the item table. This is a different code
+// path from the chooser dropdowns (v-data-table-virtual's own filter), so it
+// is covered separately from tokenized-search.p.spec.ts.
+//
+test('searches items with tokens typed in any order', async ({ page }) => {
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await expect(
+    page.locator('tr:has(td div:text-is("TEMP1_MEGA"))'),
+  ).toBeVisible()
+
+  await page.locator('[data-test="search"] input').fill('temp mega')
+  await expect(
+    page.locator('tr:has(td div:text-is("TEMP1_MEGA"))'),
+  ).toBeVisible()
+  // Every token has to match, so the plain TEMP items drop out
+  await expect(page.locator('tr:has(td div:text-is("TEMP1"))')).toHaveCount(0)
+  await expect(
+    page.locator('tr:has(td div:text-is("TEMP1_MICRO"))'),
+  ).toHaveCount(0)
+
+  // Order does not matter
+  await page.locator('[data-test="search"] input').fill('mega temp')
+  await expect(
+    page.locator('tr:has(td div:text-is("TEMP1_MEGA"))'),
+  ).toBeVisible()
+})
+
+test('searches items despite typos', async ({ page }) => {
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await page.locator('[data-test="search"] input').fill('tmep mega')
+  await expect(
+    page.locator('tr:has(td div:text-is("TEMP1_MEGA"))'),
+  ).toBeVisible()
+  await expect(page.locator('tr:has(td div:text-is("TEMP1"))')).toHaveCount(0)
+})
+
+test('searches item names rather than values', async ({ page }) => {
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  const row = page.locator('tr:has(td div:text-is("GROUND1STATUS"))')
+  await expect(row).toBeVisible()
+
+  // Read whatever the item currently reads, then search for exactly that.
+  // The table filters on the name column only: searching values would make
+  // rows appear and disappear as telemetry changes.
+  await expect
+    .poll(async () => {
+      return await page.inputValue(
+        'tr:has(td div:text-is("GROUND1STATUS")) input',
+      )
+    })
+    .toMatch(/CONNECTED|UNAVAILABLE/)
+  const value = await page.inputValue(
+    'tr:has(td div:text-is("GROUND1STATUS")) input',
+  )
+
+  await page.locator('[data-test="search"] input').fill(value)
+  await expect(row).toHaveCount(0)
 })

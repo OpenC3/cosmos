@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -31,6 +31,7 @@
       <v-text-field
         v-model="rubygemsUrl"
         label="Rubygems URL"
+        :disabled="settingsLoading"
         data-test="rubygems-url"
       />
     </v-card-text>

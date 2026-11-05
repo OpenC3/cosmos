@@ -168,6 +168,13 @@ module OpenC3
       raise "Length value received larger than max_length: #{length} > #{@max_length}" if @max_length and length > @max_length
 
       packet_length = (length * @length_bytes_per_count) + @length_value_offset
+      # Reject up front rather than buffering the declared number of bytes first
+      if packet_length > @max_buffer_size
+        reset() # Drop the partial frame rather than holding it until disconnect
+        raise "Calculated packet length of #{packet_length} bytes exceeds maximum buffer size of #{@max_buffer_size} bytes. " \
+              "Increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
+      end
+
       # Ensure the calculated packet length is long enough to support the location of the length field
       # without overlap into the next packet
       if (packet_length * 8) < (@length_bit_offset + @length_bit_size)

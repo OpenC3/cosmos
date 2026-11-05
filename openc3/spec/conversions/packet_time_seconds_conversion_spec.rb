@@ -18,6 +18,7 @@
 require 'spec_helper'
 require 'openc3/conversions/packet_time_seconds_conversion'
 require 'openc3/packets/packet'
+require 'openc3/conversions/generic_conversion'
 
 module OpenC3
   describe PacketTimeSecondsConversion do

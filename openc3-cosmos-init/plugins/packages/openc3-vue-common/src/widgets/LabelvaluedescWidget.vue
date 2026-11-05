@@ -82,6 +82,7 @@ export default {
           .then((details) => {
             this.description = details['description']
           })
+          .catch(console.error)
       }
     }
   },

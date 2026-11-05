@@ -225,7 +225,12 @@
 </template>
 
 <script>
-import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Api,
+  Cable,
+  OpenC3Api,
+  logUnlessAuthRequired,
+} from '@openc3/js-common/services'
 import {
   Config,
   OpenC3TimePicker,
@@ -538,8 +543,8 @@ export default {
 
       if (itemBased.length > 0) {
         // Add the items to the subscription
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-          (refreshed) => {
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+          .then((refreshed) => {
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
@@ -549,8 +554,11 @@ export default {
               items: itemBased.map(this.itemSubscriptionKey),
               ...this.startEndTime,
             })
-          },
-        )
+          })
+          // An AuthRequiredError means we have no token and are being
+          // redirected to login, so don't try to subscribe. Anything else is
+          // unexpected and still gets logged.
+          .catch(logUnlessAuthRequired)
       }
 
       if (packetBased.length > 0) {
@@ -567,8 +575,8 @@ export default {
           // This eliminates duplicates by converted to Set and back to Array
           modeGroups[mode] = [...new Set(modeGroups[mode])]
         })
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-          (refreshed) => {
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+          .then((refreshed) => {
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
@@ -580,8 +588,11 @@ export default {
                 ...this.startEndTime,
               })
             })
-          },
-        )
+          })
+          // An AuthRequiredError means we have no token and are being
+          // redirected to login, so don't try to subscribe. Anything else is
+          // unexpected and still gets logged.
+          .catch(logUnlessAuthRequired)
       }
     },
     removeFromSubscription: function (packets) {

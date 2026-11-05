@@ -53,6 +53,58 @@ module OpenC3
         tf.unlink
       end
 
+      it "does not render ERB at runtime (ERB only runs at plugin install)" do
+        # ERB is rendered once, at plugin install (TargetModel#deploy). At runtime
+        # config is parsed as data, never executed, so an ERB tag is treated literally
+        # rather than evaluated. This prevents the targets_modified overlay from
+        # injecting code via ERB.
+        tf = Tempfile.new('unittest')
+        tf.puts('TELEMETRY TGT PKT BIG_ENDIAN "Packet"')
+        tf.puts('  APPEND_ITEM ITEM 16 UINT "<%= 6 * 7 %>"')
+        tf.close
+        @pc.process_file(tf.path, 'TGT')
+        item = @pc.telemetry['TGT']['PKT'].get_item('ITEM')
+        expect(item.description).to eql '<%= 6 * 7 %>'
+        expect(item.description).to_not eql '42'
+        tf.unlink
+      end
+
+      it "drops packet and item descriptions when descriptions is false" do
+        tf = Tempfile.new('unittest')
+        tf.puts('TELEMETRY TGT PKT BIG_ENDIAN "Tlm packet"')
+        tf.puts('  APPEND_ITEM ITEM 16 UINT "Tlm item"')
+        tf.puts('  APPEND_ITEM ITEM2 16 UINT')
+        tf.puts('    DESCRIPTION "Tlm item 2"')
+        tf.puts('COMMAND TGT CMD BIG_ENDIAN "Cmd packet"')
+        tf.puts('  APPEND_PARAMETER PARAM 16 UINT MIN MAX 0 "Cmd param"')
+        tf.puts('SELECT_TELEMETRY TGT PKT')
+        tf.puts('  SELECT_ITEM ITEM')
+        tf.puts('    DESCRIPTION "Selected item"')
+        tf.close
+
+        pc = PacketConfig.new(descriptions: false)
+        pc.process_file(tf.path, 'TGT')
+        tlm = pc.telemetry['TGT']['PKT']
+        cmd = pc.commands['TGT']['CMD']
+        expect(tlm.description).to be_nil
+        expect(tlm.get_item('ITEM').description).to be_nil
+        expect(tlm.get_item('ITEM2').description).to be_nil
+        expect(tlm.get_item('PACKET_TIMESECONDS').description).to be_nil
+        expect(tlm.get_item('RECEIVED_COUNT').description).to be_nil
+        expect(cmd.description).to be_nil
+        expect(cmd.get_item('PARAM').description).to be_nil
+        expect(cmd.get_item('RECEIVED_TIMEFORMATTED').description).to be_nil
+
+        @pc.process_file(tf.path, 'TGT')
+        tlm = @pc.telemetry['TGT']['PKT']
+        expect(tlm.description).to eql 'Tlm packet'
+        expect(tlm.get_item('ITEM').description).to eql 'Selected item'
+        expect(tlm.get_item('ITEM2').description).to eql 'Tlm item 2'
+        expect(tlm.get_item('RECEIVED_COUNT').description).to eql 'OpenC3 packet received count'
+        expect(@pc.commands['TGT']['CMD'].get_item('PARAM').description).to eql 'Cmd param'
+        tf.unlink
+      end
+
       it "creates UNKNOWN cmd/tlm packets" do
         # Only one target called "UNKNOWN"
         expect(@pc.commands.keys).to eql ["UNKNOWN"]
@@ -811,24 +863,48 @@ module OpenC3
 
       context "with TEMPLATE_FILE" do
         it "sets the template via file" do
-          data_file = Tempfile.new('unittest')
-          data_file.write("File data")
-          data_file.close
           tf = Tempfile.new('unittest')
           filename = "datafile2.txt"
           File.open(File.dirname(tf.path) + '/' + filename, 'wb') do |file|
             file.write("relative file")
           end
+          subdir = File.join(File.dirname(tf.path), 'templates')
+          FileUtils.mkdir_p(subdir)
+          File.open(File.join(subdir, 'datafile3.txt'), 'wb') do |file|
+            file.write("subdir file")
+          end
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
-          tf.puts "TEMPLATE_FILE #{data_file.path}"
+          tf.puts "TEMPLATE_FILE templates/datafile3.txt"
           tf.puts 'COMMAND tgt2 pkt1 LITTLE_ENDIAN "Description"'
           tf.puts "TEMPLATE_FILE #{filename}"
           tf.close
           @pc.process_file(tf.path, "SYSTEM")
-          expect(@pc.telemetry["TGT1"]["PKT1"].template).to eq "File data"
+          expect(@pc.telemetry["TGT1"]["PKT1"].template).to eq "subdir file"
           expect(@pc.commands["TGT2"]["PKT1"].template).to eq "relative file"
           File.delete(File.dirname(tf.path) + '/' + filename)
+          FileUtils.rm_rf(subdir)
+          tf.unlink
+        end
+
+        it "rejects absolute template paths" do
+          data_file = Tempfile.new('unittest')
+          data_file.write("File data")
+          data_file.close
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts "TEMPLATE_FILE #{data_file.path}"
+          tf.close
+          expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(ConfigParser::Error, /Absolute paths are not allowed/)
           data_file.unlink
+          tf.unlink
+        end
+
+        it "rejects template paths which traverse out of the config directory" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Description"'
+          tf.puts "TEMPLATE_FILE ../../../../etc/passwd"
+          tf.close
+          expect { @pc.process_file(tf.path, "SYSTEM") }.to raise_error(ConfigParser::Error, /Path traversal is not allowed/)
           tf.unlink
         end
       end
@@ -1493,6 +1569,79 @@ module OpenC3
           tf.close
           @pc.process_file(tf.path, "TGT1", 'python')
           expect(@pc.tlm_unique_id_mode["TGT1"]).to be true
+          tf.unlink
+        end
+
+        # Same accessor class with different args (e.g. HttpAccessor wrapping
+        # JsonAccessor vs CborAccessor) still decodes the buffer differently,
+        # so unique_id_mode must trigger. Without args in the signature both
+        # packets would look identical and the wrong accessor would be used
+        # for any buffer that doesn't match the first-registered packet's body.
+        it "detects unique_id_mode when accessor args differ within a target" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 http_json BIG_ENDIAN "Http JSON Packet"'
+          tf.puts '  ACCESSOR HttpAccessor JsonAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 100 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 http_cbor BIG_ENDIAN "Http CBOR Packet"'
+          tf.puts '  ACCESSOR HttpAccessor CborAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 101 "ID"'
+          tf.puts '    KEY $.id'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_unique_id_mode["TGT1"]).to be true
+          tf.unlink
+        end
+
+        # Two packets with the same outer (default Binary) accessor but
+        # STRUCTUREs whose source packets have different accessors must
+        # trigger unique_id_mode. The cloned structure id_items are decoded
+        # via the parent's structure accessor, so the structure accessor
+        # belongs in the signature.
+        it "detects unique_id_mode when structure accessors differ within a target" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 sub_a BIG_ENDIAN "Structure Source A"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  ACCESSOR JsonAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 100 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 sub_b BIG_ENDIAN "Structure Source B"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  ACCESSOR CborAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 101 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 pkt_a BIG_ENDIAN "Packet A"'
+          tf.puts '  APPEND_STRUCTURE my_struct 16 TLM TGT1 SUB_A'
+          tf.puts 'TELEMETRY tgt1 pkt_b BIG_ENDIAN "Packet B"'
+          tf.puts '  APPEND_STRUCTURE my_struct 16 TLM TGT1 SUB_B'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_unique_id_mode["TGT1"]).to be true
+          tf.unlink
+        end
+
+        # Two packets with the same outer accessor AND structures with the
+        # same accessor (and same args) must NOT trigger unique_id_mode —
+        # the signature should match so the shared hash-lookup path is used.
+        it "does not trigger unique_id_mode when structure accessors match" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 sub_a BIG_ENDIAN "Structure Source A"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  ACCESSOR JsonAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 100 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 sub_b BIG_ENDIAN "Structure Source B"'
+          tf.puts '  SUBPACKET'
+          tf.puts '  ACCESSOR JsonAccessor'
+          tf.puts '  APPEND_ID_ITEM id 16 UINT 101 "ID"'
+          tf.puts '    KEY $.id'
+          tf.puts 'TELEMETRY tgt1 pkt_a BIG_ENDIAN "Packet A"'
+          tf.puts '  APPEND_STRUCTURE my_struct 16 TLM TGT1 SUB_A'
+          tf.puts 'TELEMETRY tgt1 pkt_b BIG_ENDIAN "Packet B"'
+          tf.puts '  APPEND_STRUCTURE my_struct 16 TLM TGT1 SUB_B'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.tlm_unique_id_mode["TGT1"]).to be_falsey
           tf.unlink
         end
       end

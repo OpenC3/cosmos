@@ -278,16 +278,17 @@
           <v-card-text>
             <div class="pa-3">
               <v-row>
-                <v-text-field
+                <v-number-input
                   v-model="refreshInterval"
-                  min="1"
-                  max="3600"
-                  step="1"
-                  type="number"
+                  control-variant="stacked"
+                  :min="1"
+                  :max="3600"
+                  :step="1"
                   label="Refresh Interval (s)"
                   :rules="[rules.required, rules.min]"
                   data-test="refresh-interval"
-              /></v-row>
+                />
+              </v-row>
               <v-row class="mt-5">
                 <v-spacer />
                 <v-btn
@@ -453,7 +454,7 @@ export default {
   },
   watch: {
     // This is the upload function that is activated when the file gets set
-    file: async function () {
+    file: function () {
       if (this.file === null) return
       this.uploadFilePath = `${this.path}${this.file.name}`
       this.uploadPathDialog = true
@@ -614,28 +615,25 @@ export default {
       })
     },
     downloadFile(filename) {
-      const api = this.mode === 'volume' ? 'download_file' : 'download'
+      // Buckets return a presigned URL and volumes return a single use stream URL.
+      // Either way the browser downloads the file directly so large files work.
+      const api = this.mode === 'volume' ? 'volume_download' : 'download'
       Api.get(
         `/openc3-api/storage/${api}/${encodeURIComponent(
           this.path,
         )}${filename}${storageQueryString(this.mode, this.root)}`,
       )
         .then((response) => {
-          if (this.mode === 'bucket') {
-            // For buckets, use the presigned URL
-            const link = document.createElement('a')
-            link.href = response.data.url
-            link.setAttribute('download', filename)
-            link.click()
-          } else {
-            // For volumes, use the helper to download base64 data
-            downloadBase64File(response.data.contents, filename)
-          }
+          const link = document.createElement('a')
+          link.href = response.data.url
+          link.setAttribute('download', filename)
+          link.click()
         })
-
-        .catch((response) => {
+        .catch((error) => {
+          const message = error?.response?.data?.message
           this.$notify.caution({
-            title: `Unable to download file ${this.path}${filename} from bucket ${this.root}`,
+            title: `Unable to download file ${this.path}${filename} from ${this.mode} ${this.root}`,
+            body: message,
           })
         })
     },
@@ -686,7 +684,7 @@ export default {
       )
       // This pushes the file into storage by using the fields in the presignedRequest
       // See storage_controller.rb get_upload_presigned_request()
-      const response = await axios({
+      await axios({
         ...presignedRequest,
         data: this.file,
       })

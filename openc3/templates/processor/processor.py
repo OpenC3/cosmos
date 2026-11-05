@@ -10,7 +10,7 @@ class <%= processor_class %>(Processor):
         self.num_samples = int(num_samples)
         self.reset()
 
-    def call(self, value, packet, buffer):
+    def call(self, packet, buffer):
         value = packet.read(self.item_name, self.value_type, buffer)
         # Don't process NaN or Infinite values
         if math.isnan(value) or math.isinf(value):

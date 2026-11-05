@@ -99,7 +99,11 @@ module OpenC3
     # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
     CONVERTED_DATA_TYPES = [:INT, :UINT, :FLOAT, :STRING, :BLOCK, :BOOL, :OBJECT, :ARRAY, :ANY, :TIME]
 
-    def initialize
+    # @param descriptions [Boolean] Whether to keep packet and item descriptions.
+    #   Pass false in processes that never display them (e.g. decom and
+    #   interface microservices) to reduce memory on large definitions.
+    def initialize(descriptions: true)
+      @descriptions = descriptions
       @name = nil
       @telemetry = {}
       @commands = {}
@@ -145,7 +149,12 @@ module OpenC3
       # Handle .xtce files
       extension = File.extname(filename).to_s.downcase
       if extension == ".xtce" or extension == ".xml"
-        XtceParser.process(@commands, @telemetry, @warnings, filename, process_target_name)
+        target_name = XtceParser.process(@commands, @telemetry, @warnings, filename, process_target_name)
+        # XtceParser adds packets straight into @commands / @telemetry without
+        # going through finish_packet, so the ID lookup metadata finish_packet
+        # builds has to be built here instead. Without it Telemetry#identify
+        # and Commands#identify find no hash for the target and raise on nil.
+        build_xtce_id_metadata(target_name)
         return
       end
 
@@ -161,7 +170,11 @@ module OpenC3
       process_target_name = process_target_name.upcase
       parser = ConfigParser.new("https://docs.openc3.com/docs")
       parser.instance_variable_set(:@target_name, process_target_name)
-      parser.parse_file(filename) do |keyword, params|
+      # run_erb is false: ERB is only rendered once, at plugin install time
+      # (TargetModel#deploy), before files are written to the targets bucket. The
+      # targets_modified overlay (e.g. dynamically created packets) is never ERB
+      # rendered, so it is treated as data here rather than executed as code.
+      parser.parse_file(filename, false, true, false) do |keyword, params|
         if @building_generic_conversion
           case keyword
           # Complete a generic conversion
@@ -336,6 +349,12 @@ module OpenC3
     def finish_packet
       finish_item()
       if @current_packet
+        unless @descriptions
+          @current_packet.description = nil
+          # Reserved items (PACKET_TIMESECONDS, etc.) get descriptions from
+          # define_reserved_items and never pass through finish_item
+          @current_packet.sorted_items.each { |item| item.description = nil }
+        end
         @warnings += @current_packet.check_bit_offsets
         if !@current_packet.virtual && !@current_packet.disabled && !@current_packet.catchall && @current_packet.target_name != 'UNKNOWN' && @current_packet.id_items.empty?
           type = @current_cmd_or_tlm == COMMAND ? "Command" : "Telemetry"
@@ -426,6 +445,36 @@ module OpenC3
 
     protected
 
+    # Build the ID lookup metadata for every packet an XTCE file just added to
+    # the given target. Packets are walked in the order XtceParser left them in,
+    # which is the order the rest of COSMOS sees them, so duplicate ID values
+    # resolve the same way here as they do everywhere else.
+    #
+    # @param target_name [String] Target the XTCE file defined, or nil if the
+    #   file defined no target
+    def build_xtce_id_metadata(target_name)
+      return unless target_name
+
+      @commands[target_name]&.each_value do |packet|
+        next if packet.virtual
+
+        if packet.subpacket
+          build_id_metadata(packet, @cmd_subpacket_id_value_hash, @cmd_subpacket_id_signature, @cmd_subpacket_unique_id_mode)
+        else
+          build_id_metadata(packet, @cmd_id_value_hash, @cmd_id_signature, @cmd_unique_id_mode)
+        end
+      end
+      @telemetry[target_name]&.each_value do |packet|
+        next if packet.virtual
+
+        if packet.subpacket
+          build_id_metadata(packet, @tlm_subpacket_id_value_hash, @tlm_subpacket_id_signature, @tlm_subpacket_unique_id_mode)
+        else
+          build_id_metadata(packet, @tlm_id_value_hash, @tlm_id_signature, @tlm_unique_id_mode)
+        end
+      end
+    end
+
     def build_id_metadata(packet, id_value_hash, id_signature_hash, unique_id_mode_hash)
       target_id_value_hash = id_value_hash[packet.target_name]
       target_id_value_hash = {} unless target_id_value_hash
@@ -437,12 +486,25 @@ module OpenC3
       if packet.id_items.length > 0
         key = []
         id_signature = ""
-        # Accessor class is part of the signature so packets in the same target
-        # with different accessors trigger unique_id_mode (different accessors
-        # decode the buffer differently, so the hash-lookup path is unsafe).
+        # Accessor class AND args are part of the signature so packets in the
+        # same target with different accessors -- or the same accessor class
+        # configured with different args -- trigger unique_id_mode. Different
+        # accessors (or same accessor, different args) decode the buffer
+        # differently, so the shared hash-lookup path is unsafe.
         packet.id_items.each do |item|
           key << item.id_value
-          id_signature << "__#{item.key}__#{item.bit_offset}__#{item.bit_size}__#{item.data_type}__#{packet.accessor.class.to_s}"
+          id_signature << "__#{item.key}__#{item.bit_offset}__#{item.bit_size}__#{item.data_type}__#{packet.accessor.class.to_s}__#{packet.accessor.args.inspect}"
+          # STRUCTURE-derived id_items are decoded by the parent's structure
+          # accessor (see Accessor#read_item), so include that accessor's class
+          # and args in the signature too.
+          if item.parent_item
+            parent = packet.get_item(item.parent_item)
+            structure = parent.structure
+            if structure
+              structure_accessor = structure.accessor
+              id_signature << "__#{structure_accessor.class.to_s}__#{structure_accessor.args.inspect}"
+            end
+          end
         end
         target_id_value_hash[key] = packet
         target_id_signature = id_signature_hash[packet.target_name]
@@ -874,6 +936,7 @@ module OpenC3
     # Finish updating packet item
     def finish_item
       if @current_item
+        @current_item.description = nil unless @descriptions
         @current_packet.set_item(@current_item)
         if @current_cmd_or_tlm == TELEMETRY
           target_latest_data = @latest_data[@current_packet.target_name]

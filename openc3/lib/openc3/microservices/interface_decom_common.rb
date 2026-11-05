@@ -33,7 +33,8 @@ module OpenC3
       end
       stored = inject_tlm_hash.fetch('stored', false)
       packet.stored = stored.to_s.downcase == 'true'
-      packet.received_time = Time.now.sys
+      received_time = inject_tlm_hash['received_time']
+      packet.received_time = received_time.nil? ? Time.now.sys : Time.from_nsec_from_epoch(received_time).sys
       packet.received_count = TargetModel.increment_telemetry_count(packet.target_name, packet.packet_name, 1, scope: @scope)
       TelemetryTopic.write_packet(packet, scope: @scope)
     end
@@ -41,6 +42,8 @@ module OpenC3
     def handle_inject_tlm_with_ack(inject_tlm_json, msg_id)
       inject_tlm_hash = JSON.parse(inject_tlm_json, allow_nan: true, create_additions: true)
       target_name = inject_tlm_hash['target_name']
+      # Ack on the db_shard of the target where DecomInterfaceTopic.inject_tlm waits for it
+      db_shard = Store.db_shard_for_target(target_name, scope: @scope)
       ack_topic = "{#{@scope}__ACKCMD}TARGET__#{target_name}"
       begin
         handle_inject_tlm(inject_tlm_json)
@@ -55,7 +58,7 @@ module OpenC3
           result: error.message
         }
       end
-      Topic.write_topic(ack_topic, msg_hash)
+      Topic.write_topic(ack_topic, msg_hash, db_shard: db_shard)
     end
 
     def handle_build_cmd(build_cmd_json, msg_id)

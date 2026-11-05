@@ -18,5 +18,13 @@ class StopScriptError(Exception):
     pass
 
 
+# Deprecated alias for backwards compatibility
+StopScript = StopScriptError
+
+
 class SkipScriptError(Exception):
     pass
+
+
+# Deprecated alias for backwards compatibility
+SkipScript = SkipScriptError

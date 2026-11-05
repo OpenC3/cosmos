@@ -50,16 +50,16 @@ jobs:
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         # Only needed for SonarQube Scan
         # with:
         #   fetch-depth: 0 # all history for all branches and tags
       - name: Set up Ruby ${{ matrix.ruby-version }}
-        uses: ruby/setup-ruby@c4e5b1316158f92e3d49443a9d58b31d25ac0f8f # v1.306.0
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         env:
           OPENC3_DEVEL: ../openc3
         with:
@@ -76,7 +76,7 @@ jobs:
         working-directory: openc3-cosmos-cmd-tlm-api
         env:
           OPENC3_DEVEL: ../openc3
-      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           directory: openc3-cosmos-cmd-tlm-api/coverage
           flags: ruby-api # See codecov.yml
@@ -100,16 +100,16 @@ jobs:
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         # Only needed for SonarQube Scan
         # with:
         #   fetch-depth: 0
       - name: Set up Ruby ${{ matrix.ruby-version }}
-        uses: ruby/setup-ruby@c4e5b1316158f92e3d49443a9d58b31d25ac0f8f # v1.306.0
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         env:
           OPENC3_DEVEL: ../openc3
         with:
@@ -124,7 +124,7 @@ jobs:
         working-directory: openc3-cosmos-script-runner-api
         env:
           OPENC3_DEVEL: ../openc3
-      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           directory: openc3-cosmos-script-runner-api/coverage
           flags: ruby-api # See codecov.yml
@@ -140,36 +140,31 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     permissions:
       contents: read
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         # Only needed for SonarQube Scan
         # with:
         #   fetch-depth: 0
-      - name: Install uv
-        uses: astral-sh/setup-uv@cec208311dfd045dd5311c1add060b2062131d57 # v7
+      - name: Set up uv and Python ${{ matrix.python-version }}
+        uses: ./.github/actions/setup-uv-python
         with:
-          enable-cache: true
+          python-version: ${{ matrix.python-version }}
           cache-suffix: ${{ matrix.python-version }}
-      - name: Set up Python ${{ matrix.python-version }}
-        run: uv python install ${{ matrix.python-version }}
-      - name: Install dependencies
-        run: uv sync --frozen
-        working-directory: openc3/python
       - name: Run unit tests
         run: |
           uv run --frozen coverage run -m pytest ../../openc3-cosmos-script-runner-api/test/
           uv run --frozen coverage xml -i
         working-directory: openc3/python
-      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           working-directory: openc3/python
           flags: python # See codecov.yml
@@ -188,7 +183,7 @@ jobs:
   #   permissions:
   #     contents: read
   #   steps:
-  #     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  #     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
   #       with:
   #         fetch-depth: 0
   #     - name: Download coverage reports
@@ -206,3 +201,16 @@ jobs:
   #           -Dsonar.test.exclusions=openc3-cosmos-cmd-tlm-api/spec/fixtures/**/*
   #       env:
   #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+  api-tests:
+    needs: [cmd-tlm-api, script-runner-api-ruby, script-runner-api-python]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Ensure all API tests passed as expected on all matrix versions
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: |
+          if echo "$RESULTS" | grep -Eq 'failure|cancelled'; then exit 1; fi

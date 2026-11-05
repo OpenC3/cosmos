@@ -22,30 +22,11 @@ require 'openc3/utilities/store'
 require 'openc3/utilities/bucket'
 require 'json'
 require 'openc3/utilities/running_script'
+require 'openc3/utilities/script_env'
 
 working_dir = Dir.pwd
 
-# Load the bucket client code to ensure we authenticate outside ENV vars
-OpenC3::Bucket.getClient()
-# Preload Store and remove Redis secrets from ENV
-OpenC3::Store.instance
-OpenC3::EphemeralStore.instance
-
-# Clear ENV vars for security purposes
-ENV['OPENC3_BUCKET_USERNAME'] = nil
-ENV['OPENC3_BUCKET_PASSWORD'] = nil
-ENV['OPENC3_REDIS_USERNAME'] = nil
-ENV['OPENC3_REDIS_PASSWORD'] = nil
-ENV['OPENC3_TSDB_USERNAME'] = nil
-ENV['OPENC3_TSDB_PASSWORD'] = nil
-ENV['OPENC3_API_PASSWORD'] = nil
-ENV['OPENC3_SERVICE_PASSWORD'] = nil
-# This actually contains the password via redis://openc3:XXXXXXXX@openc3-redis:6379
-ENV['ANYCABLE_REDIS_URL'] = nil
-ENV['KC_DB_USERNAME'] = nil
-ENV['KC_DB_PASSWORD'] = nil
-ENV['KEYCLOAK_ADMIN'] = nil
-ENV['KEYCLOAK_ADMIN_PASSWORD'] = nil
+OpenC3::ScriptEnv.clear_credentials
 
 id = ARGV[0]
 scope = ARGV[1]
@@ -188,6 +169,17 @@ ensure
 
     # Inform frontend of number of running scripts in this scope
     running_script_anycable_publish("all-scripts-channel", { type: :complete, filename: script_status.filename, active_scripts: running.length, scope: scope })
+
+    # Flush the queued replay-stream writes (EphemeralStoreQueued) before the
+    # process exits. The :complete (and any crash) events above are published
+    # after the StoreQueued.shutdown above, so without this their replay-stream
+    # writes could be lost and a late-subscribing client would never see the
+    # script finish.
+    begin
+      OpenC3::EphemeralStoreQueued.instance.shutdown
+    rescue StandardError
+      # best-effort; the live broadcast already went out
+    end
   ensure
     running_script.stop_message_log if running_script
     FileUtils.remove_entry_secure(working_dir, true)

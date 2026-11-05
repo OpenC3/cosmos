@@ -29,6 +29,18 @@ RSpec.describe PackagesController, type: :controller do
       expect(json["python"]).to eq(["python1", "python2"])
     end
 
+    it "returns per-plugin python package structure" do
+      allow(OpenC3::GemModel).to receive(:names).and_return([])
+      allow(OpenC3::PythonPackageModel).to receive(:names).and_return(
+        {"demo" => ["numpy-2.0.0"], "shared" => ["requests-2.31.0"]}
+      )
+
+      get :index, params: {scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json["python"]).to eq({"demo" => ["numpy-2.0.0"], "shared" => ["requests-2.31.0"]})
+    end
+
     it "returns nothing without authorization" do
       get :index
       expect(response).to have_http_status(:unauthorized)
@@ -72,6 +84,22 @@ RSpec.describe PackagesController, type: :controller do
       post :create, params: {package: @python_upload, scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
       expect(response.body).to eq("python_process")
+    end
+
+    it "passes plugin parameter to PythonPackageModel.put for python packages" do
+      @python_file = Tempfile.new(["test", ".whl"])
+      @python_file.write("python package content")
+      @python_file.rewind
+
+      @python_upload = fixture_file_upload(@python_file.path, "application/octet-stream")
+      allow(@python_upload).to receive(:original_filename).and_return("test.whl")
+
+      expect(OpenC3::PythonPackageModel).to receive(:put).with(
+        anything, package_install: true, scope: "DEFAULT", plugin: "my_plugin"
+      ).and_return("python_process")
+
+      post :create, params: {package: @python_upload, scope: "DEFAULT", plugin: "my_plugin"}
+      expect(response).to have_http_status(:ok)
     end
 
     it "handles error during package installation" do
@@ -125,6 +153,32 @@ RSpec.describe PackagesController, type: :controller do
 
     it "returns nothing without authorization" do
       delete :destroy, params: {id: "test.gem"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "GET trees" do
+    it "returns dependency trees from PythonPackageModel" do
+      trees_data = {"demo" => "Package    Version\n---------- -------\nnumpy      2.0.0"}
+      allow(OpenC3::PythonPackageModel).to receive(:trees).and_return(trees_data)
+
+      get :trees, params: {scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json["demo"]).to include("numpy")
+    end
+
+    it "returns empty hash when no venvs exist" do
+      allow(OpenC3::PythonPackageModel).to receive(:trees).and_return({})
+
+      get :trees, params: {scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json).to eq({})
+    end
+
+    it "returns nothing without authorization" do
+      get :trees
       expect(response).to have_http_status(:unauthorized)
     end
   end

@@ -26,9 +26,50 @@ Accessors are responsible for reading and writing the buffer which is transmitte
 
 For more information about how Interfaces fit with Protocols and Accessors see [Interoperability Without Standards](https://www.openc3.com/news/interoperability-without-standards).
 
+## Mapping Targets to Interfaces
+
+Targets and interfaces have a **many-to-many** relationship. A single interface can serve many targets, and a single target can be mapped to more than one interface (for example one interface for commands and a different interface for telemetry). Mappings are established with the MAP keywords placed beneath an [INTERFACE](plugins.md#interface-1) (or [ROUTER](plugins.md#router-1)) definition:
+
+- [MAP_TARGET](plugins.md#map_target) - map a target for both commands and telemetry
+- [MAP_CMD_TARGET](plugins.md#map_cmd_target) - map a target for commands only
+- [MAP_TLM_TARGET](plugins.md#map_tlm_target) - map a target for telemetry only
+
+Each MAP keyword accepts an optional second parameter, `ENABLED` or `DISABLED`, which sets the initial state of the target (the default is `ENABLED`). Mapping a target as `DISABLED` keeps the association in place but stops commands from being sent and telemetry from being received over that interface until the mapping is enabled. This is useful when a target should be mapped to multiple interfaces but only active on one of them at a time.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```cosmos
+INTERFACE PRIMARY_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 nil BURST
+  MAP_TARGET INST            # INST is active on PRIMARY_INT for cmd and tlm
+  MAP_TARGET INST2 DISABLED  # INST2 is mapped but inactive until enabled
+INTERFACE BACKUP_INT openc3/interfaces/tcpip_client_interface.py host.docker.internal 9080 9081 10.0 nil BURST
+  MAP_TARGET INST2 DISABLED  # INST2 is also mapped here, enable one when needed
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```cosmos
+INTERFACE PRIMARY_INT tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil BURST
+  MAP_TARGET INST            # INST is active on PRIMARY_INT for cmd and tlm
+  MAP_TARGET INST2 DISABLED  # INST2 is mapped but inactive until enabled
+INTERFACE BACKUP_INT tcpip_client_interface.rb host.docker.internal 9080 9081 10.0 nil BURST
+  MAP_TARGET INST2 DISABLED  # INST2 is also mapped here, enable one when needed
+```
+
+</TabItem>
+</Tabs>
+
+The enabled state can be changed at runtime from a script using [interface_target_enable](../guides/scripting-api#interface_target_enable) and [interface_target_disable](../guides/scripting-api#interface_target_disable). To move a target to a different interface entirely, use [map_target_to_interface](../guides/scripting-api#map_target_to_interface).
+
 ## Provided Interfaces
 
-COSMOS provides the following interfaces: TCP/IP Client, TCP/IP Server, UDP, HTTP Client, HTTP Server, MQTT and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords. See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
+COSMOS provides the following interfaces: TCP/IP Client, TCP/IP Server, UDP, HTTP Client, HTTP Server, MQTT and Serial. The interface to use is defined by the [INTERFACE](plugins.md#interface) and [ROUTER](plugins.md#router) keywords.
+
+:::note[Interface Keywords]
+See [Interface Modifiers](plugins.md#interface-modifiers) for a description of the keywords which can follow the INTERFACE keyword.
+:::
 
 COSMOS Enterprise provides the following interfaces: SNMP, SNMP Trap, gRPC, InfluxDB.
 
@@ -42,19 +83,23 @@ Command to send at periodic intervals. Takes 3 parameters: LOG/DONT_LOG, the int
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
   # Send the 'INST2 COLLECT with TYPE NORMAL' command every 10s and output to the CmdTlmServer messages
   OPTION PERIODIC_CMD DONT_LOG 10.0 "INST2 COLLECT with TYPE NORMAL"
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
   # Send the 'INST ABORT' command every 5s and don't log in the CmdTlmServer messages
   # Note that all commands are logged in the binary logs
   OPTION PERIODIC_CMD DONT_LOG 5.0 "INST ABORT"
 ```
+
 </TabItem>
 </Tabs>
 
@@ -64,40 +109,48 @@ Command to send when the interface connects. Takes 2 parameters: LOG/DONT_LOG an
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
   # Send the 'INST2 COLLECT with TYPE NORMAL' on connection and output to the CmdTlmServer messages
   OPTION CONNECT_CMD LOG "INST2 COLLECT with TYPE NORMAL"
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
   # Send the 'INST ABORT' command on connection and don't log in the CmdTlmServer messages
   # Note that all commands are logged in the binary logs
   OPTION CONNECT_CMD DONT_LOG "INST ABORT"
 ```
+
 </TabItem>
 </Tabs>
 
 #### UPDATE_INTERVAL
 
-Number of seconds to wait before writing packets to Redis. By default packets are written to Redis every second (both the Current Value Table (CVT) and the stream). If you have high rate data and you want faster updates you can lower this value. Note that this will increase processor utilization! This option was previously known as `OPTIMIZE_THROUGHPUT`.
+Number of seconds to wait before writing packets to Redis. Interfaces queue the raw packet stream writes they make to Redis and flush them in a single pipelined batch every 0.1 seconds by default. Decommutated telemetry and the Current Value Table (CVT) are written separately by the decom microservice and are not affected by this option. Raising this value reduces processor utilization for high rate data at the cost of slower updates. Lowering it gives faster updates but increases processor utilization. Setting it to 0 disables raw packet stream queuing and writes every packet to Redis immediately, which is the slowest option for high rate data. This option was previously known as `OPTIMIZE_THROUGHPUT`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
   # Wait 0.5 second before writing packets
   OPTION UPDATE_INTERVAL 0.5
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
   # Wait 0.5 second before writing packets
   OPTION UPDATE_INTERVAL 0.5
 ```
+
 </TabItem>
 </Tabs>
 
@@ -107,18 +160,69 @@ Amount of time to wait before syncing packet counts across interfaces. This only
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
   # Immediately sync the packet counts mapped to INTERFACE_NAME (slower)
   OPTION SYNC_PACKET_COUNT_DELAY_SECONDS 0
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
   # Immediately sync the packet counts mapped to INTERFACE_NAME (slower)
   OPTION SYNC_PACKET_COUNT_DELAY_SECONDS 0
 ```
+
+</TabItem>
+</Tabs>
+
+#### READ_QUEUE_MAX_SIZE
+
+Maximum number of bytes buffered on the interface read queue. The stream and UDP interfaces read their socket in a dedicated thread and push the data onto a queue so the operating system receive buffers keep getting drained (and data isn't dropped) while the packet reading thread is busy processing protocols and writing to Redis. By default up to 20MB is buffered before the read thread blocks and lets the operating system do the buffering instead. Raise this for bursty high rate data, lower it to limit how much memory the interface can hold. Each queued read is charged its own length plus a small fixed overhead for the memory the buffer itself costs, so the budget tracks memory actually held rather than just payload bytes. A single read larger than the entire budget is still queued on its own, otherwise it would never fit. Set it to 0 to disable the read thread entirely so the socket is read inline by the packet reading thread, which is how interfaces read before the read queue was added. The bytes on the queue are reported as the `interface_read_queue_bytes` metric and the number of reads holding them is reported as the interface RX Size. For the TCP/IP server interface each client connection has its own queue (each limited to READ_QUEUE_MAX_SIZE), the metric reports their total, and RX Size remains the number of packets waiting to be processed.
+
+:::note Buffering changes flow control
+Because the read thread keeps draining the socket, a sender is no longer slowed by TCP flow control until the queue is full. If the interface can't keep up, telemetry can fall behind by up to READ_QUEUE_MAX_SIZE bytes before the sender is throttled. Lower READ_QUEUE_MAX_SIZE if you'd rather the sender block sooner.
+:::
+
+Packets read through the queue are timestamped with the time their data was read from the socket, not the time they were processed, so the received time stays accurate while the queue is backed up.
+
+:::note Sizing memory
+READ_QUEUE_MAX_SIZE applies to each queue, so the memory an interface can hold is READ_QUEUE_MAX_SIZE times the number of queues. The TCP/IP server interface has one queue per connected client, so 10 clients at the default 20MB can buffer up to 200MB. All the interfaces in a microservice container share its memory, so lower READ_QUEUE_MAX_SIZE when running many interfaces or TCP/IP server interfaces that accept many clients.
+:::
+
+:::note Disconnecting
+When the interface disconnects it closes the stream, which unblocks the read thread, and then waits up to 2 seconds for the thread to exit. The built in interfaces wake up their pending read when they disconnect. A custom stream whose `disconnect` doesn't unblock a pending `read` delays each disconnect by those 2 seconds. In Ruby the thread is then killed and a warning is logged. In Python the thread can't be killed, so it is left blocked until its read returns and then exits without using the data. Make sure `disconnect` wakes up any blocked `read` (for example by closing the socket or writing to a wake up pipe).
+:::
+
+:::note Custom interfaces which read the stream directly
+While the read thread is running the stream's (or UDP read socket's) `read` method is redirected to the read queue. Custom interfaces and protocols which read the stream themselves, for example reading a handshake response in `connect` or an acknowledgement in `write_interface`, keep working unchanged and receive the data in the order it arrived. The read thread is the only thing reading the underlying socket. Code which bypasses `read` and accesses the underlying socket directly (for example with `select` or `recvfrom`) still competes with the read thread, so set `OPTION READ_QUEUE_MAX_SIZE 0` for those interfaces to restore the previous inline reads.
+:::
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python">
+
+```cosmos
+INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0
+  # Buffer up to 256MB
+  OPTION READ_QUEUE_MAX_SIZE 268435456
+  # Or disable the read thread and read inline
+  # OPTION READ_QUEUE_MAX_SIZE 0
+```
+
+</TabItem>
+<TabItem value="ruby" label="Ruby">
+
+```cosmos
+INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0
+  # Buffer up to 256MB
+  OPTION READ_QUEUE_MAX_SIZE 268435456
+  # Or disable the read thread and read inline
+  # OPTION READ_QUEUE_MAX_SIZE 0
+```
+
 </TabItem>
 </Tabs>
 
@@ -138,6 +242,7 @@ The TCP/IP client interface connects to a TCP/IP socket to send commands and rec
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None BURST 4 0xDEADBEEF
@@ -147,8 +252,10 @@ INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_client_interface.py host.docker.internal 8080 8080 10.0 10.0 # no built-in protocol
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil BURST 4 0xDEADBEEF
@@ -158,6 +265,7 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 nil PREIDENTIFIED 0xCAFEBABE
 INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 8080 10.0 10.0 # no built-in protocol
 ```
+
 </TabItem>
 </Tabs>
 
@@ -188,6 +296,7 @@ IP address to accept connections on. Default: `0.0.0.0`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8081 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None BURST 4 0xDEADBEEF
@@ -197,8 +306,10 @@ INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 1
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 None PREIDENTIFIED 0xCAFEBABE
 INTERFACE INTERFACE_NAME openc3/interfaces/tcpip_server_interface.py 8080 8080 10.0 10.0 # no built-in protocol
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8081 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil BURST 4 0xDEADBEEF
@@ -209,6 +320,7 @@ INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 nil PREIDENTIF
 INTERFACE INTERFACE_NAME tcpip_server_interface.rb 8080 8080 10.0 10.0 # no built-in protocol
   OPTION LISTEN_ADDRESS 127.0.0.1
 ```
+
 </TabItem>
 </Tabs>
 
@@ -237,14 +349,18 @@ openc3-operator:
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE INTERFACE_NAME openc3/interfaces/udp_interface.py host.docker.internal 8080 8081 8082 None 128 10.0 None
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE INTERFACE_NAME udp_interface.rb host.docker.internal 8080 8081 8082 nil 128 10.0 nil
 ```
+
 </TabItem>
 </Tabs>
 
@@ -264,14 +380,18 @@ The HTTP client interface connects to a HTTP server to send commands and receive
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE INTERFACE_NAME openc3/interfaces/http_client_interface.py mysecure.com 443 HTTPS
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE INTERFACE_NAME http_client_interface.rb myserver.com 80
 ```
+
 </TabItem>
 </Tabs>
 
@@ -289,16 +409,20 @@ IP address to accept connections on. Default: `0.0.0.0`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE INTERFACE_NAME openc3/interfaces/http_server_interface.py 88
   LISTEN_ADDRESS 127.0.0.1
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE INTERFACE_NAME http_server_interface.rb 88
   LISTEN_ADDRESS 127.0.0.1
 ```
+
 </TabItem>
 </Tabs>
 
@@ -470,6 +594,7 @@ Number of data bits. Default: `8`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE INTERFACE_NAME openc3/interfaces/serial_interface.py COM1 COM1 9600 NONE 1 10.0 None LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 INTERFACE INTERFACE_NAME openc3/interfaces/serial_interface.py /dev/ttyS1 /dev/ttyS1 38400 ODD 1 10.0 None BURST 4 0xDEADBEEF
@@ -481,8 +606,10 @@ INTERFACE INTERFACE_NAME openc3/interfaces/serial_interface.py COM4 COM4 115200 
   OPTION FLOW_CONTROL RTSCTS
   OPTION DATA_BITS 7
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE INTERFACE_NAME serial_interface.rb COM1 COM1 9600 NONE 1 10.0 nil LENGTH 0 16 0 1 BIG_ENDIAN 4 0xBA5EBA11
 INTERFACE INTERFACE_NAME serial_interface.rb /dev/ttyS1 /dev/ttyS1 38400 ODD 1 10.0 nil BURST 4 0xDEADBEEF
@@ -494,6 +621,7 @@ INTERFACE INTERFACE_NAME serial_interface.rb COM4 COM4 115200 NONE 1 10.0 10.0 #
   OPTION FLOW_CONTROL RTSCTS
   OPTION DATA_BITS 7
 ```
+
 </TabItem>
 </Tabs>
 
@@ -550,6 +678,7 @@ openc3-operator:
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
+
 ```cosmos
 INTERFACE FILE_INT openc3/interfaces/file_interface.py None /dropbox /archive 65536 True PREIDENTIFIED
   MAP_TLM_TARGET INST  # Since we passed None to Command Write Folder we map as TLM only
@@ -562,8 +691,10 @@ INTERFACE FILE_INT openc3/interfaces/file_interface.py /archive /dropbox/ /archi
   OPTION RECURSIVE True
   TLM_TARGET INST  # This will store INST commands in the archive folder
 ```
+
 </TabItem>
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE FILE_INT file_interface.rb nil /dropbox /archive 65536 true PREIDENTIFIED
   MAP_TLM_TARGET INST # Since we passed nil to Command Write Folder we map as TLM only
@@ -576,6 +707,7 @@ INTERFACE FILE_INT file_interface.rb /archive /dropbox/ /archive 1024 false
   OPTION RECURSIVE true
   TLM_TARGET INST # This will store INST commands in the archive folder
 ```
+
 </TabItem>
 </Tabs>
 
@@ -636,14 +768,16 @@ Priv password.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE SNMP_INT snmp_interface.rb 192.168.1.249 161
   OPTION VERSION 1
 ```
+
 </TabItem>
 </Tabs>
 
-For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-apc-switched-pdu](https://repos.openc3.com/OpenC3/openc3-cosmos-apc-switched-pdu).
 
 ### SNMP Trap Interface (Enterprise)
 
@@ -663,14 +797,16 @@ SNMP Version: 1, 2, or 3. Default: `1`.
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE SNMP_INT snmp_trap_interface.rb 162
   OPTION VERSION 1
 ```
+
 </TabItem>
 </Tabs>
 
-For a full example, please see the [openc3-cosmos-apc-switched-pdu](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-apc-switched-pdu) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-apc-switched-pdu](https://repos.openc3.com/OpenC3/openc3-cosmos-apc-switched-pdu).
 
 ### gRPC Interface (Enterprise)
 
@@ -683,9 +819,11 @@ The gRPC Interface is for interacting with [gRPC](https://grpc.io/). The gRPC In
 
 <Tabs groupId="script-language">
 <TabItem value="ruby" label="Ruby">
+
 ```cosmos
 INTERFACE GRPC_INT grpc_interface.rb my.grpc.org 8080
 ```
+
 </TabItem>
 </Tabs>
 
@@ -698,7 +836,7 @@ COMMAND PROTO GET_USER BIG_ENDIAN 'Get a User'
   META GRPC_METHOD /example.photoservice.ExamplePhotoService/GetUser
 ```
 
-For a full example, please see the [openc3-cosmos-proto-target](https://github.com/OpenC3/cosmos-enterprise-plugins/tree/main/openc3-cosmos-proto-target) in the COSMOS Enterprise Plugins.
+For a full example, please see [openc3-cosmos-proto-target](https://repos.openc3.com/OpenC3/openc3-cosmos-proto-target).
 
 ## Custom Interfaces
 
@@ -717,11 +855,12 @@ Interfaces also have the following methods that exist and have default implement
 1. **read** - Read the next packet from the interface. COSMOS implements this method to allow the Protocol system to operate on the data and the packet before it is returned.
 1. **write** - Send a packet to the interface. COSMOS implements this method to allow the Protocol system to operate on the packet and the data before it is sent.
 1. **write_raw** - Send a raw binary string of data to the target. COSMOS implements this method by basically calling write_interface with the raw data.
+1. **details** - Return a hash of interface information displayed by the Interfaces tool details dialog. COSMOS implements this method to return the built-in interface state (target names, connection options, counters, raw data, etc). Override it and merge additional keys into super() to display interface specific values.
 
 :::info[Stored Telemetry]
 Custom interfaces that read non-realtime data (e.g. recorded files, back-orbit data, or store-and-forward playback) should set `packet.stored = true` on telemetry packets before returning them. Stored packets are fully processed through the COSMOS pipeline (identification, decommutation, logging) but do **not** update the Current Value Table (CVT). This prevents historical data from overwriting real-time values in displays like Packet Viewer and Telemetry Viewer. See the [File Interface](#file-interface) for a built-in example of this behavior. Also see [Stored Packets](../guides/packet-types#stored-packets) for more details.
 :::
 
 :::warning[Naming Conventions]
-When creating your own interfaces, in most cases they will be subclasses of one of the built-in interfaces described below. It is important to know that both the filename and class name of the interface files must match with correct capitalization or you will receive "class not found" errors when trying to load your new interface. For example, an interface file called labview_interface.rb must contain the class LabviewInterface. If the class was named, LabVIEWInterface, for example, COSMOS would not be able to find the class because of the unexpected capitalization.
+When creating your own interfaces, in most cases they will be subclasses of one of the built-in interfaces described above. It is important to know that both the filename and class name of the interface files must match with correct capitalization or you will receive "class not found" errors when trying to load your new interface. For example, an interface file called labview_interface.rb must contain the class LabviewInterface. If the class was named, LabVIEWInterface, for example, COSMOS would not be able to find the class because of the unexpected capitalization.
 :::

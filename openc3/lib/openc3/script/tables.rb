@@ -22,11 +22,15 @@ module OpenC3
       return _tables_handle_response(response, 'Failed to create binary')
     end
 
-    def table_create_report(filename, definition, table_name: nil, scope: $openc3_scope)
+    # save: true (the default) writes the report into the target's storage next to
+    # the binary so it can be read back with get_target_file(). Pass save: false to
+    # get the contents in the return value without creating a file.
+    def table_create_report(filename, definition, table_name: nil, save: true, scope: $openc3_scope)
       post_data = {}
       post_data['binary'] = filename
       post_data['definition'] = definition
       post_data['table_name'] = table_name if table_name
+      post_data['save'] = save
       response = $api_server.request('post', '/openc3-api/tables/report', json: true, data: post_data, scope: scope)
       return _tables_handle_response(response, 'Failed to create report')
     end

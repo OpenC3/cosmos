@@ -41,7 +41,34 @@ The host computer should ideally be dedicated to running COSMOS and have limited
 
 By default, COSMOS only listens on localhost (127.0.0.1). This configuration keeps COSMOS completely off the network and is only vulnerable to local users of the host computer.
 
-For production use, it is recommended to configure COSMOS to listen on a network interface (not just localhost) so that users can access the web interface from their own workstations rather than directly on the host computer. This means users connect via their web browsers over the local network instead of needing access to the host machine itself, which reduces exposure of the host and allows it to be more tightly secured. See [SSL/TLS](../configuration/ssl-tls) for configuring HTTPS.
+For production use, it is recommended to configure COSMOS to listen on a network interface (not just localhost) so that users can access the web interface from their own workstations rather than directly on the host computer. This means users connect via their web browsers over the local network instead of needing access to the host machine itself, which reduces exposure of the host and allows it to be more tightly secured. See [Network Configuration](../guides/network-configuration) for opening COSMOS to the network and [SSL/TLS](../configuration/ssl-tls) for configuring HTTPS.
+
+### Content Security Policy
+
+COSMOS sets a [Content Security Policy](https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP) (CSP) header via Traefik to mitigate cross-site scripting (XSS) and other code-injection attacks. The default policy forbids inline scripts but allows `eval()` for third-party plugin compatibility. Scripts may only be loaded from the same origin and trusted sources.
+
+The following environment variables control the CSP:
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `OPENC3_ALLOW_HTTP` | _(unset)_ | When set (e.g. `1`), broadens the CSP to allow resources over plain HTTP in addition to HTTPS. Useful for development or air-gapped networks without TLS. |
+| `OPENC3_NO_EVAL` | _(unset)_ | When set (e.g. `1`), removes `'unsafe-eval'` from the CSP `script-src` directive, blocking `eval()`, `new Function()`, and similar dynamic code execution. Only set this if no installed plugins require runtime code evaluation (e.g. Open MCT and other tools that bundle Vue's runtime template compiler will break). |
+
+By default `'unsafe-eval'` is **allowed** for third-party plugin compatibility. WebAssembly (`'wasm-unsafe-eval'`) is always allowed regardless of these flags.
+
+To harden the CSP on a deployment that does not use plugins requiring eval, add `OPENC3_NO_EVAL` to `.env.local` (recommended) or `compose.override.yaml` under the `openc3-traefik` service, then recreate the Traefik container:
+
+```bash
+# .env.local
+OPENC3_NO_EVAL=1
+```
+
+```bash
+./openc3.sh stop
+./openc3.sh run
+```
+
+These are runtime settings evaluated by Traefik at container startup -- no image rebuild is needed.
 
 ### Network Security
 
@@ -55,9 +82,17 @@ There are two ways to pass runtime secrets into containers: environment variable
 
 Environment variables passed to containers can be sourced from host environment variables or from a `.env` file. Files mounted into containers must exist as local files accessible by the user starting COSMOS.
 
+The `.env` file ships the upstream COSMOS defaults and is tracked by git, so editing it directly causes merge conflicts when you pull future COSMOS updates and risks committing secrets. Instead, put secret overrides in a `.env.local` file next to `.env` (see [Overriding Secrets with .env.local](#overriding-secrets-with-envlocal) below).
+
 In both cases, secrets need to be available to the user account starting COSMOS. This account must have sufficient trust to control container lifecycles and all data within the containers.
 
 Most standard containers for databases like VersityGW are set up to receive secrets through environment variables. For a thorough discussion of secrets in Docker, see the [official thread](https://github.com/moby/moby/issues/13490).
+
+### Infrastructure Secrets vs. Plugin Secrets
+
+The variables documented on this page are COSMOS's own infrastructure credentials: Redis/Valkey passwords, bucket keys, and `SECRET_KEY_BASE`. They are configured through the environment because the services need them before COSMOS is running.
+
+Credentials that your **plugins** need — a device password, an API token, a client certificate — should not be put in `.env.local` or `compose.override.yaml`. Use the COSMOS Secrets system instead: store the value once (Admin tool, API, or a Kubernetes Secret) and reference it by name with the `SECRET` keyword in `plugin.txt`. COSMOS then injects it into just the interface or microservice that declared it, rather than into every container. See the [Secrets guide](../guides/secrets.md), which also covers Kubernetes and integrating HashiCorp Vault or AWS Secrets Manager.
 
 ## Credentials
 
@@ -82,12 +117,12 @@ The `OPENC3_SR_REDIS_*` credentials are passed to **spawned user scripts** when 
 
 VersityGW provides S3-compatible object storage for logs, configurations, and other files.
 
-| Variable                    | Default Value               | Description                             |
-| --------------------------- | --------------------------- | --------------------------------------- |
-| `OPENC3_BUCKET_USERNAME`    | `openc3bucket`              | Root username for VersityGW             |
-| `OPENC3_BUCKET_PASSWORD`    | `openc3bucketpassword`      | Root password for VersityGW             |
-| `OPENC3_SR_BUCKET_USERNAME` | `scriptrunnerbucket`        | Username passed to spawned user scripts |
-| `OPENC3_SR_BUCKET_PASSWORD` | `scriptrunnerbucketpassword`| Password passed to spawned user scripts |
+| Variable                    | Default Value                | Description                             |
+| --------------------------- | ---------------------------- | --------------------------------------- |
+| `OPENC3_BUCKET_USERNAME`    | `openc3bucket`               | Root username for VersityGW             |
+| `OPENC3_BUCKET_PASSWORD`    | `openc3bucketpassword`       | Root password for VersityGW             |
+| `OPENC3_SR_BUCKET_USERNAME` | `scriptrunnerbucket`         | Username passed to spawned user scripts |
+| `OPENC3_SR_BUCKET_PASSWORD` | `scriptrunnerbucketpassword` | Password passed to spawned user scripts |
 
 The `OPENC3_BUCKET_*` credentials are the VersityGW root credentials used by COSMOS services to manage buckets and files.
 
@@ -173,11 +208,11 @@ This prevents user scripts from accessing or destroying other COSMOS data.
 
 **admin**: Has `@admin` permissions which includes the `ACL` command. This user is optional and can be disabled by changing `on` to `off` or removing the line entirely.
 
-**healthcheck**: Used during container startup to verify Redis is available. Has no password and can only run `cluster info` and `ping` commands.
+**healthcheck**: Used during container startup to verify Redis is available. Has no password and can only run the `ping` command (Enterprise also allows `info`).
 
 ### Relationship Between .env and users.acl
 
-The passwords in `.env` must match the passwords in `users.acl`:
+The effective Redis passwords (the `.env` defaults as overridden by `.env.local`) must match the passwords in `users.acl`:
 
 | .env Variable              | users.acl User | Must Match                                                      |
 | -------------------------- | -------------- | --------------------------------------------------------------- |
@@ -189,6 +224,33 @@ The `admin` user in `users.acl` does not have a corresponding `.env` variable si
 The VersityGW credentials (`OPENC3_BUCKET_*`, `OPENC3_SR_BUCKET_*`) and `OPENC3_SERVICE_PASSWORD` have no corresponding entries in `users.acl` since they are for different services.
 
 ## Securing Your Deployment
+
+### Overriding Secrets with .env.local
+
+Do not edit `.env` to change passwords. It is tracked by git, so edits cause merge conflicts on upgrade and can leak secrets into your repository. `compose.override.yaml` is also tracked and must not hold secrets either.
+
+Instead, create a `.env.local` file next to `.env`. It is gitignored, and `openc3.sh` loads it after `.env`, so any value you set there overrides the matching default in `.env`. `compose.yaml` already reads every secret via `${VAR}` interpolation, so setting the value in `.env.local` is all that is needed — no `compose.override.yaml` entry is required.
+
+Example `.env.local`:
+
+```
+OPENC3_REDIS_PASSWORD=my-real-redis-password
+OPENC3_SR_REDIS_PASSWORD=my-real-scriptrunner-redis-password
+OPENC3_BUCKET_PASSWORD=my-real-bucket-password
+OPENC3_SR_BUCKET_PASSWORD=my-real-scriptrunner-bucket-password
+OPENC3_SERVICE_PASSWORD=my-real-service-password
+SECRET_KEY_BASE=<output of openssl rand -hex 64>
+```
+
+The precedence order is:
+
+```
+shell environment  >  .env.local  >  .env
+```
+
+So a shell environment variable still wins over `.env.local`, letting you inject secrets from a vault at run time if you prefer (see [Injecting Secrets at Runtime](#injecting-secrets-at-runtime)).
+
+The sections below tell you to set each secret in `.env.local`. When you change a Redis password you must also update the corresponding hash in `users.acl`, since those are two separate files that must stay in sync.
 
 ### Changing Redis Passwords
 
@@ -204,7 +266,7 @@ The VersityGW credentials (`OPENC3_BUCKET_*`, `OPENC3_SR_BUCKET_*`) and `OPENC3_
    user openc3 on #newhashvalue allkeys allchannels ...
    ```
 
-3. Update `.env` with the new cleartext password:
+3. Add the new cleartext password to `.env.local`:
 
    ```
    OPENC3_REDIS_PASSWORD=yournewpassword
@@ -214,7 +276,7 @@ The VersityGW credentials (`OPENC3_BUCKET_*`, `OPENC3_SR_BUCKET_*`) and `OPENC3_
 
 ### Changing VersityGW Passwords
 
-Update the values in `.env`:
+Add the values to `.env.local`:
 
 ```
 OPENC3_BUCKET_PASSWORD=yournewpassword
@@ -223,7 +285,7 @@ OPENC3_SR_BUCKET_PASSWORD=yournewsrpassword
 
 ### Changing the Service Password
 
-Update the value in `.env`:
+Add the value to `.env.local`:
 
 ```
 OPENC3_SERVICE_PASSWORD=yournewservicepassword
@@ -235,30 +297,34 @@ OPENC3_SERVICE_PASSWORD=yournewservicepassword
 openssl rand -hex 64
 ```
 
-Then update `.env` with the new value.
+Then add the new value to `.env.local`:
 
-### Removing Cleartext Passwords from .env
+```
+SECRET_KEY_BASE=yournewsecretkeybase
+```
 
-For enhanced security, you can remove passwords from the `.env` file entirely and pass them as environment variables at runtime:
+### Injecting Secrets at Runtime
+
+For enhanced security, you can keep secrets out of any on-disk file entirely and pass them as shell environment variables at runtime. Shell environment variables override both `.env.local` and `.env`:
 
 ```bash
 OPENC3_REDIS_PASSWORD=mypassword OPENC3_BUCKET_PASSWORD=mypassword ./openc3.sh run
 ```
 
-This prevents cleartext passwords from being stored on disk, though you must provide them each time you start COSMOS.
+This prevents cleartext passwords from being stored on disk, though you must provide them each time you start COSMOS. This pairs well with a secrets vault that exports the values into the environment before launch.
 
 ## Security Recommendations
 
 For production deployments:
 
-1. **Change all default passwords** before deploying COSMOS.
+1. **Change all default passwords** before deploying COSMOS. Put the overrides in `.env.local`, not `.env`.
 
 2. **Use hashed passwords** in `users.acl` to avoid storing cleartext passwords on disk.
 
-3. **Restrict file permissions** on `.env` and `users.acl`:
+3. **Restrict file permissions** on `.env.local` and `users.acl`:
 
    ```bash
-   chmod 600 .env
+   chmod 600 .env.local
    chmod 600 openc3-redis/users.acl
    ```
 

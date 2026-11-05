@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -28,6 +28,14 @@ module OpenC3
         load 'openc3/utilities/bucket.rb'
         client = Bucket.getClient()
         expect(client).to be_a LocalBucket
+      end
+    end
+
+    describe "get_client" do
+      it "is an alias for getClient" do
+        ENV['OPENC3_CLOUD'] = 'AWS'
+        client = Bucket.get_client
+        expect(client).to be_a AwsBucket
       end
     end
   end

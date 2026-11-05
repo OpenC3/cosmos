@@ -70,7 +70,7 @@ The COSMOS Core containers consist of the following:
 | cosmos-openc3-redis-ephemeral-1          | Serves the [streams](https://valkey.io/topics/streams-intro/) containing the raw and decomutated data |
 | cosmos-openc3-tsdb-1                     | [QuestDB](https://questdb.io/) time-series database for long-term storage of decommutated data        |
 
-The container list for [COSMOS Enterprise](https://openc3.com/enterprise) consists of the following:
+The container list for [COSMOS Enterprise](https://openc3.com/cosmos-enterprise) consists of the following:
 
 | Name                                  | Description                                                                                   |
 | ------------------------------------- | --------------------------------------------------------------------------------------------- |
@@ -94,7 +94,7 @@ COSMOS uses an [environment file](https://docs.docker.com/compose/environment-va
 
 ### Kubernetes
 
-Per [Kubernetes.io](https://kubernetes.io/), "Kubernetes, also known as K8s, is an open-source system for automating deployment, scaling, and management of containerized applications. It groups containers that make up an application into logical units for easy management and discovery." [COSMOS Enterprise](https://openc3.com/enterprise) provides [Helm charts](https://helm.sh/docs/topics/charts/) for easy deployment to Kubernetes in various cloud environments.
+Per [Kubernetes.io](https://kubernetes.io/), "Kubernetes, also known as K8s, is an open-source system for automating deployment, scaling, and management of containerized applications. It groups containers that make up an application into logical units for easy management and discovery." [COSMOS Enterprise](https://openc3.com/cosmos-enterprise) provides [Helm charts](https://helm.sh/docs/topics/charts/) for easy deployment to Kubernetes in various cloud environments.
 
 COSMOS Enterprise also provides configuration to deploy COSMOS infrastructure on various cloud environments (e.g. CloudFormation template on AWS).
 
@@ -116,11 +116,11 @@ Per [AstroUXDS](https://www.astrouxds.com/), "The Astro Space UX Design System e
 
 ### Valkey
 
-[Valkey](https://valkey.io/) is an in-memory data store with support for strings, hashes, lists, sets, sorted sets, streams, and more. COSMOS uses Valkey to store both our configuration and data. If you look back at our [container list](/docs/getting-started/architecture#containers) you'll notice two valkey containers: cosmos-openc3-redis-1 and cosmos-openc3-redis-ephemeral-1 (still named Redis after the original). The ephemeral container contains all the real-time data pushed into [streams](https://valkey.io/topics/streams-intro/). The other container contains COSMOS configuration that is meant to persist. [COSMOS Enterprise](https://openc3.com/enterprise) provides helm charts that setup [Valkey](https://valkey.io) to perform horizontal scaling where data is shared across multiple nodes.
+[Valkey](https://valkey.io/) is an in-memory data store with support for strings, hashes, lists, sets, sorted sets, streams, and more. COSMOS uses Valkey to store both our configuration and data. If you look back at our [container list](/docs/getting-started/architecture#containers) you'll notice two valkey containers: cosmos-openc3-redis-1 and cosmos-openc3-redis-ephemeral-1 (still named Redis after the original). The ephemeral container contains all the real-time data pushed into [streams](https://valkey.io/topics/streams-intro/). The other container contains COSMOS configuration that is meant to persist. [COSMOS Enterprise](https://openc3.com/cosmos-enterprise) provides helm charts that setup [Valkey](https://valkey.io) to perform horizontal scaling where data is shared across multiple nodes.
 
 ### Versitygw
 
-[Versitygw](https://github.com/versity/versitygw/) is a high-performance, S3 compatible object store. COSMOS uses this storage technology to host both the COSMOS tools themselves and the long term log files. [COSMOS Enterprise](https://openc3.com/enterprise) deployed in a cloud environment uses the available cloud native bucket storage technology, e.g. AWS S3, GCP Buckets, and Azure Blob Storage. Using bucket storage allows COSMOS to directly serve the tools as a static website and thus we don't need to deploy Tomcat or Nginx for example.
+[Versitygw](https://github.com/versity/versitygw/) is a high-performance, S3 compatible object store. COSMOS uses this storage technology to host both the COSMOS tools themselves and the long term log files. [COSMOS Enterprise](https://openc3.com/cosmos-enterprise) deployed in a cloud environment uses the available cloud native bucket storage technology, e.g. AWS S3, GCP Buckets, and Azure Blob Storage. Using bucket storage allows COSMOS to directly serve the tools as a static website and thus we don't need to deploy Tomcat or Nginx for example.
 
 ### Ruby on Rails
 
@@ -169,13 +169,19 @@ These sentinels allow special float values to be stored and retrieved without da
 - Arrays are always stored as JSON-serialized strings for consistency
 - 64-bit integer values are sent as strings via ILP; QuestDB casts them to DECIMAL
 
+#### Packet Structure Changes
+
+QuestDB table schemas are reconciled against the current packet definitions each time the `tsdb` microservice starts (plugin install or COSMOS restart). New items become new columns, changed item types become `ALTER COLUMN ... TYPE` statements, and removed items leave their existing column in place. Some type changes silently NULL existing values. See [Packet Structure Changes](/docs/guides/packet-structure-changes) for the full behavior and the recommended workflow.
+
 #### Historical Data Migration
 
 COSMOS provides a [migration plugin](https://store.openc3.com/cosmos_plugins/21) for ingesting historical decommutated telemetry and command data from binary log files into QuestDB. The plugin reads COSMOS binary packet log files (`.bin` and `.bin.gz`) from S3-compatible storage and batch-ingests the data into QuestDB. It processes files in reverse chronological order (newest first) and rate-limits ingestion to avoid overwhelming operational systems.
 
+QuestDB tables are partitioned by day, so individual partitions can be detached for long-term archival and reattached later. See [Removing and Restoring Partitions](/docs/guides/backups#removing-and-restoring-partitions) in the Backups guide for the workflow.
+
 ### Keycloak (Enterprise)
 
-[COSMOS Enterprise](https://openc3.com/enterprise) uses [Keycloak](https://www.keycloak.org/) as its Single Sign-On (SSO) solution. Keycloak is an open-source Identity and Access Management system that provides authentication, authorization, and user federation capabilities. Keycloak implements the OAuth 2.0 and OpenID Connect protocols and issues several types of tokens to manage user sessions.
+[COSMOS Enterprise](https://openc3.com/cosmos-enterprise) uses [Keycloak](https://www.keycloak.org/) as its Single Sign-On (SSO) solution. Keycloak is an open-source Identity and Access Management system that provides authentication, authorization, and user federation capabilities. Keycloak implements the OAuth 2.0 and OpenID Connect protocols and issues several types of tokens to manage user sessions.
 
 #### Access Token
 

@@ -287,7 +287,7 @@ module OpenC3
       # Find all the script methods
       methods = []
       self.instance_methods.each do |method_name|
-        if /^test|^script|op_/.match?(method_name.to_s)
+        if /^test_|^script_|^op_/.match?(method_name.to_s)
           methods << method_name.to_s
         end
       end

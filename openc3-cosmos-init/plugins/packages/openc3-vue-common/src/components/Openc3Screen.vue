@@ -152,6 +152,9 @@
             @open="open"
             @close="close"
             @close-all="closeAll"
+            @screen-error="addError"
+            @screen-check-items="checkItems"
+            @screen-errors-cleared="clearErrorSource"
           />
         </div>
       </v-expand-transition>
@@ -188,6 +191,9 @@
         @open="open"
         @close="close"
         @close-all="closeAll"
+        @screen-error="addError"
+        @screen-check-items="checkItems"
+        @screen-errors-cleared="clearErrorSource"
       />
     </div>
 
@@ -236,9 +242,35 @@ import {
   OpenC3Api,
 } from '@openc3/js-common/services'
 import WidgetComponents from '@/widgets/WidgetComponents'
+import { AGING_UPDATES } from '@/widgets/VWidget'
 import EditScreenDialog from './EditScreenDialog.vue'
 
 const MAX_ERRORS = 20
+// Identifies our own get_tlm_values poll as the source of a transient error
+const POLL_ERROR_SOURCE = 'screen:get_tlm_values'
+
+// Values compare equal if they're the same primitive or have equal contents.
+// Array and object values (ARRAY widgets, BLOCK, etc) come back as new objects
+// every poll. Compare recursively because telemetry can contain BigInts.
+function sameValue(a, b) {
+  if (Object.is(a, b)) {
+    return true
+  }
+  if (
+    a === null ||
+    b === null ||
+    typeof a !== 'object' ||
+    typeof b !== 'object' ||
+    Array.isArray(a) !== Array.isArray(b)
+  ) {
+    return false
+  }
+  const keys = Object.keys(a)
+  return (
+    keys.length === Object.keys(b).length &&
+    keys.every((key) => Object.hasOwn(b, key) && sameValue(a[key], b[key]))
+  )
+}
 
 export default {
   components: {
@@ -277,6 +309,10 @@ export default {
     initialZ: {
       type: Number,
       default: 0,
+    },
+    initialWidth: {
+      type: Number,
+      default: null,
     },
     minZ: {
       type: Number,
@@ -358,6 +394,7 @@ export default {
       top: this.initialTop,
       left: this.initialLeft,
       zIndex: this.initialZ,
+      floatedWidth: this.initialWidth,
       changeCounter: 0,
       screenItems: [],
       actualScreenItems: [],
@@ -387,8 +424,8 @@ export default {
     },
     computedStyle() {
       let style = {}
-      // note down what the width was in case it was set to AUTO, because absolute positioning will lose that
-      const origWidth = this.width || this.$refs.bar?.clientWidth
+      const origWidth =
+        this.width || this.floatedWidth || this.$refs.bar?.clientWidth
       if (this.floated) {
         style['position'] = 'absolute'
         style['top'] = this.top + 'px'
@@ -454,27 +491,26 @@ export default {
   // We need this because an error can occur from any of the children
   // in the widget stack and are typically thrown on create()
   errorCaptured(err, vm, info) {
-    if (this.errors.length < MAX_ERRORS) {
-      if (err.usage) {
-        this.errors.push({
-          type: 'usage',
-          message: err.message,
-          usage: err.usage,
-          line: err.line,
-          lineNumber: err.lineNumber,
-          time: new Date().getTime(),
-        })
-      } else {
-        this.errors.push({
-          type: 'error',
-          message: err,
-          time: new Date().getTime(),
-        })
-      }
-    }
+    // Keep the stack for debugging, it isn't preserved in this.errors
+    console.error('Screen widget error', err, info)
+    // Widgets throw ConfigParserError (see screenError in Widget.js) which
+    // carries the screen definition line, but anything else thrown from a
+    // widget lands here too, so pull out what's there rather than assuming.
+    this.addError({
+      type: err.usage ? 'usage' : 'error',
+      // ConfigParserError isn't an Error so String(err) is useless on it,
+      // but a bare throw of a non-Error still needs something readable
+      message: err.message ?? String(err),
+      usage: err.usage,
+      line: err.line,
+      lineNumber: err.lineNumber,
+    })
     return false
   },
   created() {
+    // Consecutive polls each item has come back unchanged. Deliberately not
+    // reactive, nothing renders from it.
+    this.unchangedCounts = {}
     this.api = new OpenC3Api()
     this.configParser = new ConfigParserService()
     this.parseDefinition()
@@ -520,6 +556,38 @@ export default {
     clearErrors: function () {
       this.errors = []
     },
+    // A transient error belongs to whatever produced it and is cleared when
+    // that recovers, so this only drops the errors from one source. Clearing
+    // every transient error on any success would let a screen that both polls
+    // and streams hide a stream that is still disconnected.
+    clearErrorSource: function ({ source }) {
+      this.errors = this.errors.filter(
+        (error) => !error.transient || error.source !== source,
+      )
+    },
+    // Single entry point for every screen error: errorCaptured for widgets that
+    // throw while building, and the 'screen-error' event (emitScreenError in
+    // Widget.js) for widgets that fail after they're built.
+    addError: function (error) {
+      if (!error?.message || this.errors.length >= MAX_ERRORS) {
+        return
+      }
+      // A widget that keeps failing (a reconnect loop, say) would otherwise
+      // fill the list with the same message and push out everything else
+      const duplicate = this.errors.find(
+        (existing) =>
+          existing.message === error.message &&
+          existing.lineNumber === error.lineNumber,
+      )
+      if (duplicate) {
+        return
+      }
+      this.errors.push({
+        ...error,
+        type: error.type || 'error',
+        time: error.time || new Date().getTime(),
+      })
+    },
     updateRefreshInterval: function () {
       if (this.updater) {
         clearInterval(this.updater)
@@ -529,6 +597,9 @@ export default {
       if (this.pollingPeriod === 0) {
         return
       }
+      // Poll right away so values appear immediately rather than after a full
+      // polling period, then continue on the interval from this point
+      this.update()
       let refreshInterval = this.pollingPeriod * 1000
       this.updater = setInterval(() => {
         this.update()
@@ -538,6 +609,16 @@ export default {
       // Each time we start over and parse the screen definition
       this.clearErrors()
       this.screenItems = []
+      this.unchangedCounts = {}
+      // Reset what we poll along with it. The new definition may register no
+      // items at all (a screen of nothing but graphs, say) in which case
+      // nothing calls debouncedUpdateTlmAvailable and this would otherwise
+      // keep polling the previous screen's items forever.
+      this.actualScreenItems = []
+      if (this.tlmAvailableTimeout != null) {
+        clearTimeout(this.tlmAvailableTimeout)
+        this.tlmAvailableTimeout = null
+      }
       this.namedWidgets = {}
       this.layoutStack = []
       this.dynamicWidgets = []
@@ -545,10 +626,58 @@ export default {
       this.layoutStack.push({
         type: 'VerticalWidget',
         parameters: [],
+        // SETTING with no widget in front of it applies to the layout, so this
+        // has to exist even though nothing can set it on the implicit one
+        settings: [],
         widgets: [],
       })
       this.currentLayout = this.layoutStack[this.layoutStack.length - 1]
 
+      // parse_string runs our callback synchronously, so anything it throws
+      // comes back out here. It has to be caught: this runs from created() and
+      // from rerender(), neither of which is a place errorCaptured can see, so
+      // an uncaught throw takes down the whole screen instead of reporting the
+      // bad line.
+      try {
+        this.parseKeywords()
+      } catch (error) {
+        this.addError({
+          type: error.usage ? 'usage' : 'error',
+          message: error.message ?? String(error),
+          usage: error.usage,
+          line: error.line,
+          lineNumber: error.lineNumber,
+        })
+      }
+      // This can happen if there is a typo in a layout widget with a corresponding END
+      if (typeof this.layoutStack[0] === 'undefined') {
+        // Warn about any of the Dynamic widgets we found .. they could be typos
+        const names = this.dynamicWidgets.map(
+          (widget) => `${widget.name} (line ${widget.lineNumber})`,
+        )
+        // lineNumber must stay numeric so the errors sort and format correctly,
+        // so anchor the error on the first suspect and name the rest in the
+        // message
+        const suspect = this.dynamicWidgets[0]
+        this.addError({
+          type: 'usage',
+          message: `Unknown widget! Are these widgets: ${names.join(', ')}?`,
+          line: suspect?.line,
+          lineNumber: suspect?.lineNumber,
+        })
+        // Create a simple VerticalWidget to replace the bad widget so
+        // the layout stack can successfully unwind
+        this.layoutStack[0] = {
+          type: 'VerticalWidget',
+          parameters: [],
+          settings: [],
+          widgets: [],
+        }
+      } else {
+        this.applyGlobalSettings(this.layoutStack[0].widgets)
+      }
+    },
+    parseKeywords: function () {
       this.configParser.parse_string(
         this.currentDefinition,
         '',
@@ -605,6 +734,16 @@ export default {
               }
               case 'END':
                 this.configParser.verify_num_parameters(0, 0, `${keyword}`)
+                // Never pop the implicit VerticalWidget every screen starts
+                // with. Without this an extra END leaves currentLayout
+                // undefined and the next keyword dies with a TypeError.
+                if (this.layoutStack.length === 1) {
+                  throw new ConfigParserError(
+                    this.configParser,
+                    'END without a matching layout widget',
+                    `${keyword}`,
+                  )
+                }
                 this.layoutStack.pop()
                 this.currentLayout =
                   this.layoutStack[this.layoutStack.length - 1]
@@ -704,33 +843,6 @@ export default {
           } // if keyword
         },
       )
-      // This can happen if there is a typo in a layout widget with a corresponding END
-      if (typeof this.layoutStack[0] === 'undefined') {
-        let names = []
-        let lines = []
-        for (const widget of this.dynamicWidgets) {
-          names.push(widget.name)
-          lines.push(widget.lineNumber)
-        }
-        // Warn about any of the Dynamic widgets we found .. they could be typos
-        if (this.errors.length < MAX_ERRORS) {
-          this.errors.push({
-            type: 'usage',
-            message: `Unknown widget! Are these widgets: ${names.join(',')}?`,
-            lineNumber: lines.join(','),
-            time: new Date().getTime(),
-          })
-        }
-        // Create a simple VerticalWidget to replace the bad widget so
-        // the layout stack can successfully unwind
-        this.layoutStack[0] = {
-          type: 'VerticalWidget',
-          parameters: [],
-          widgets: [],
-        }
-      } else {
-        this.applyGlobalSettings(this.layoutStack[0].widgets)
-      }
     },
     openEdit: function () {
       // Make a copy in case they edit and cancel
@@ -746,6 +858,7 @@ export default {
         this.top,
         this.left,
         this.zIndex,
+        this.floatedWidth,
       ])
     },
     downScreen: function () {
@@ -771,6 +884,7 @@ export default {
           this.top,
           this.left,
           this.zIndex,
+          this.floatedWidth,
         ])
       } else {
         let bodyRect =
@@ -778,6 +892,7 @@ export default {
         let elemRect = this.$refs.bar.getBoundingClientRect()
         this.top = elemRect.top - bodyRect.top - 5
         this.left = elemRect.left - bodyRect.left - 5
+        this.floatedWidth = this.$refs.bar.clientWidth
         this.$refs.bar.onmousedown = this.dragMouseDown
         this.$refs.bar.parentElement.parentElement.style =
           'z-index: ' + this.zIndex
@@ -787,6 +902,7 @@ export default {
           this.top,
           this.left,
           this.zIndex,
+          this.floatedWidth,
         ])
       }
     },
@@ -843,6 +959,7 @@ export default {
         this.top,
         this.left,
         this.zIndex,
+        this.floatedWidth,
       ])
     },
     closeDragElement: function () {
@@ -855,9 +972,10 @@ export default {
       this.updateRefreshInterval()
       // Force re-render
       this.screenKey = Math.floor(Math.random() * 1000000)
-      // After re-render clear any errors
+      // Don't clear errors here: parseDefinition already cleared the previous
+      // screen's, and the widgets report theirs as they're created, which
+      // happens before this tick runs
       this.$nextTick(function () {
-        this.clearErrors()
         this.$emit('edit-screen')
       })
     },
@@ -884,16 +1002,16 @@ export default {
             },
           },
           0,
-        )
+        ).catch(console.error)
       })
     },
     deleteScreen: function () {
       this.editDialog = false
-      Api.delete(`/openc3-api/screen/${this.target}/${this.screen}`).then(
-        (response) => {
+      Api.delete(`/openc3-api/screen/${this.target}/${this.screen}`)
+        .then((response) => {
           this.$emit('delete-screen')
-        },
-      )
+        })
+        .catch(console.error)
     },
     minMaxTransition: function () {
       this.expand = !this.expand
@@ -1014,30 +1132,30 @@ export default {
             this.staleTime,
             this.cacheTimeout,
             dateTime,
+            null,
+            // A user without 'tlm' permission on these items gets a 403 on every
+            // update. Don't raise the global notification, we display the error
+            // on the screen itself (click the error icon in the screen toolbar).
+            { 'Ignore-Errors': '403' },
           )
           .then((data) => {
             if (data && data.length > 0) {
               this.updateValues(data)
-              // Clear transient request errors on successful fetch
-              this.errors = this.errors.filter((error) => !error.transient)
+              // Clear the errors from this poll on a successful fetch, but not
+              // errors from anything else: a streaming widget's disconnect has
+              // nothing to do with whether the REST API answered.
+              this.clearErrorSource({ source: POLL_ERROR_SOURCE })
             }
           })
           .catch((error) => {
-            let message = JSON.stringify(error, null, 2)
-            if (
-              !this.errors.find((existing) => {
-                return existing.message === message
-              })
-            ) {
-              if (this.errors.length < MAX_ERRORS) {
-                this.errors.push({
-                  type: 'error',
-                  message: message,
-                  time: new Date().getTime(),
-                  transient: true,
-                })
-              }
-            }
+            // Note: OpenC3Api rejects with an Error built from the server
+            // response so the message is the useful part. JSON.stringify on an
+            // Error returns '{}' because its fields aren't enumerable.
+            this.addError({
+              message: error.message || JSON.stringify(error, null, 2),
+              transient: true,
+              source: POLL_ERROR_SOURCE,
+            })
           })
       }
     },
@@ -1047,19 +1165,52 @@ export default {
         values.length != this.screenItems.length ||
         values.length != this.actualScreenItems.length
       ) {
-        // eslint-disable-next-line no-console
-        console.log(
+        console.error(
           `get_tlm_values mismatch: data.length: ${values.length}, screenItems.length: ${this.screenItems.length}, actualScreenItems.length: ${this.actualScreenItems.length}`,
           JSON.stringify(values),
           JSON.stringify(this.screenItems),
           JSON.stringify(this.actualScreenItems),
         )
       } else {
+        // The same item can appear more than once in screenItems but it
+        // should only count as one poll per update
+        const seen = new Set()
         for (let i = 0; i < values.length; i++) {
+          const valueId = this.screenItems[i]
+          if (seen.has(valueId)) {
+            continue
+          }
+          seen.add(valueId)
+          const previous = this.screenValues[valueId]
+          if (
+            previous &&
+            sameValue(previous[0], values[i][0]) &&
+            previous[1] === values[i][1]
+          ) {
+            const count = (this.unchangedCounts[valueId] || 0) + 1
+            this.unchangedCounts[valueId] = count
+            // Widgets fade unchanged values on each counter bump. Once the
+            // fade is done another update changes nothing on screen, so skip
+            // it rather than re-render every widget on every poll.
+            if (count > AGING_UPDATES) {
+              continue
+            }
+          } else {
+            this.unchangedCounts[valueId] = 0
+          }
           values[i].push(this.updateCounter)
-          this.screenValues[this.screenItems[i]] = values[i]
+          this.screenValues[valueId] = values[i]
         }
       }
+    },
+    // The screen can be re-parsed while a get_tlm_available call is in flight.
+    // The response describes the items we asked for, so it only applies if the
+    // screen still has exactly those items in the same order.
+    sameScreenItems: function (items) {
+      return (
+        items.length === this.screenItems.length &&
+        items.every((item, index) => item === this.screenItems[index])
+      )
     },
     debouncedUpdateTlmAvailable: function () {
       // Skip API calls when frozen - we're using saved values
@@ -1070,15 +1221,25 @@ export default {
         clearTimeout(this.tlmAvailableTimeout)
       }
       this.tlmAvailableTimeout = setTimeout(() => {
+        const requestedItems = [...this.screenItems]
         this.api
-          .get_tlm_available(this.screenItems)
+          .get_tlm_available(requestedItems, {}, { 'Ignore-Errors': '403' })
           .then((data) => {
+            if (!this.sameScreenItems(requestedItems)) {
+              return
+            }
             this.actualScreenItems = data
+            // mounted() starts the interval before any widget has registered an
+            // item, so its immediate poll had nothing to ask for. Now that we
+            // know what to request, poll immediately instead of leaving the
+            // screen blank until the interval comes back around.
+            if (this.updater !== null) {
+              this.updateRefreshInterval()
+            }
             // This must be the same or we're going to have problems
             // because the data comes back in an ordered array
             if (this.screenItems.length != data.length) {
-              // eslint-disable-next-line no-console
-              console.log(
+              console.error(
                 'Error getting tlm available',
                 this.screenItems,
                 this.actualScreenItems,
@@ -1097,18 +1258,15 @@ export default {
                         line.includes(parts[2]),
                     ) + 1 // +1 for 1-based line number
                   if (itemLine > 0) {
-                    this.errors.push({
+                    this.addError({
                       type: 'usage',
                       message: `Null for ${parts.join(' ')}! Does it exist?`,
                       line: lines[itemLine - 1], // 0-based line array
                       lineNumber: itemLine,
-                      time: new Date().getTime(),
                     })
                   } else {
-                    this.errors.push({
-                      type: 'error',
+                    this.addError({
                       message: `Null for ${parts.join(' ')}! Does it exist?`,
-                      time: new Date().getTime(),
                     })
                   }
                 }
@@ -1116,15 +1274,55 @@ export default {
             }
           })
           .catch((error) => {
-            // eslint-disable-next-line no-console
-            console.log('Error getting tlm available', error)
-            this.actualScreenItems = this.screenItems
+            console.error('Error getting tlm available', error)
+            if (this.sameScreenItems(requestedItems)) {
+              this.actualScreenItems = [...this.screenItems]
+              if (this.updater !== null) {
+                this.updateRefreshInterval()
+              }
+            }
           })
         this.tlmAvailableTimeout = null
       }, 100)
     },
+    // Widgets that stream their own data (the graphs) ask us to confirm their
+    // items exist. Unlike screenItems these aren't polled, we just look them up
+    // once so a typo shows up as a screen error instead of an empty series.
+    checkItems: function ({ valueIds, line, lineNumber }) {
+      if (!valueIds?.length) {
+        return
+      }
+      // rerender() clears the errors and installs a different definition, so a
+      // response that arrives after it would report the previous screen's line
+      // text and number against the new screen
+      const requestedKey = this.screenKey
+      this.api
+        .get_tlm_available(valueIds, {}, { 'Ignore-Errors': '403' })
+        .then((available) => {
+          if (this.screenKey !== requestedKey) {
+            return
+          }
+          available.forEach((item, index) => {
+            if (item !== null) {
+              return
+            }
+            const parts = valueIds[index].split('__').slice(0, 3)
+            this.addError({
+              type: 'usage',
+              message: `Null for ${parts.join(' ')}! Does it exist?`,
+              line: line,
+              lineNumber: lineNumber,
+            })
+          })
+        })
+        .catch((error) => {
+          console.error('Error getting tlm available', error)
+        })
+    },
     addItem: function (valueId) {
       this.screenItems.push(valueId)
+      // The value is reset below so a new widget starts its fade from scratch
+      delete this.unchangedCounts[valueId]
       // If frozen and we have a saved value for this item, use it
       // Otherwise initialize to null
       if (this.frozen && this.frozenValues && this.frozenValues[valueId]) {

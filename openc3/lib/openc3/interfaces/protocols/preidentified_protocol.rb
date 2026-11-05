@@ -106,6 +106,13 @@ module OpenC3
       when 4
         string_length = string_length.unpack('N')[0] # UINT32
         raise "Length value received larger than max_length: #{string_length} > #{@max_length}" if @max_length and string_length > @max_length
+
+        # Reject up front rather than buffering the declared number of bytes first
+        if string_length > @max_buffer_size
+          reset() # Drop the partial frame rather than holding it until disconnect
+          raise "Length value received of #{string_length} bytes exceeds maximum buffer size of #{@max_buffer_size} bytes. " \
+                "Increase OPENC3_PROTOCOL_MAX_BUFFER_SIZE."
+        end
       else
         raise "Unsupported length given to read_length_field_followed_by_string: #{length_num_bytes}"
       end

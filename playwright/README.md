@@ -56,12 +56,18 @@ The following examples use the parallel group, but these apply to the serial gro
         playwright> set PWDEBUG=1
         playwright> pnpm test:parallel --headed
 
-1.  _[Optional]_ Fix istanbul/nyc coverage source lookups (use `fixlinux` if not on Windows).
-    Tests will run successfully without this step and you will get coverage statistics, but line-by-line coverage won't work.
+1.  _[Optional]_ Collect code coverage. Coverage uses Chromium's V8 profiler,
+    so the tool bundles must be built with sourcemaps and installed into the
+    running COSMOS first (from openc3-cosmos-init: `COVERAGE_BUILD=1 ./openc3.sh build`),
+    then run the tests with coverage collection enabled:
 
-        playwright> pnpm fixwindows
+        playwright> COVERAGE=1 pnpm test
 
-1.  Create code coverage
+    Every `playwright test` invocation caches its raw coverage in
+    `coverage/.cache`; `pnpm test` merges them all into one report (html,
+    lcov, cobertura) in `coverage/` at the end. After running a subset
+    manually (e.g. `COVERAGE=1 pnpm test:parallel`), generate the combined
+    report yourself with:
 
         playwright> pnpm coverage
 

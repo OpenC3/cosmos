@@ -493,6 +493,31 @@ module OpenC3
         )
       end
 
+      # Regression: a script ending in a bareword method call with no parentheses
+      # and no trailing newline used to yield a nil line number for the final
+      # segment, which crashed instrument_script_implementation with
+      # "NoMethodError: undefined method '+' for nil" (line_no + line_offset).
+      it "yields a valid line number for a trailing bareword call with no newline" do
+        text = "def test_main\n  puts 1\nend\ntest_main"
+        expect { |b| @lex.each_lexed_segment(text, &b) }.to yield_successive_args(
+          ["def test_main\n", false, false, 1],
+          ["  puts 1\n", true, false, 2],
+          ["end\n", false, false, 3],
+          ["test_main", true, false, 4],
+        )
+        # Explicitly verify no yielded line number is nil (the actual crash cause)
+        @lex.each_lexed_segment(text) do |_segment, _instrumentable, _inside_begin, line_no|
+          expect(line_no).to_not be_nil
+        end
+      end
+
+      it "yields a valid line number for a trailing comment with no newline" do
+        text = "test_main\n# done"
+        @lex.each_lexed_segment(text) do |_segment, _instrumentable, _inside_begin, line_no|
+          expect(line_no).to_not be_nil
+        end
+      end
+
       it "has reasonable performance" do
         #require 'ruby-prof'
 

@@ -33,6 +33,9 @@ os.environ.setdefault("OPENC3_TSDB_INGEST_PORT", "9000")
 os.environ.setdefault("OPENC3_TSDB_QUERY_PORT", "8812")
 os.environ.setdefault("OPENC3_TSDB_USERNAME", "admin")
 os.environ.setdefault("OPENC3_TSDB_PASSWORD", "admin")
+# db_shard 1 (questdb-shard1 in docker-compose.test.yml) for the cross-db_shard tests
+os.environ.setdefault("OPENC3_TSDB_SHARD1_INGEST_PORT", "9010")
+os.environ.setdefault("OPENC3_TSDB_SHARD1_QUERY_PORT", "8822")
 
 from openc3.utilities.questdb_client import QuestDBClient
 
@@ -48,6 +51,37 @@ def is_questdb_available():
 # Skip marker for tests requiring QuestDB
 requires_questdb = pytest.mark.skipif(
     not is_questdb_available(), reason="QuestDB not available"
+)
+
+
+def db_shard_ports(db_shard):
+    """QuestDBClient port arguments for the given db_shard.
+
+    Production resolves each db_shard by hostname (SHARDNUM) but locally every
+    db_shard is on 127.0.0.1, so db_shard N > 0 is selected by the
+    OPENC3_TSDB_SHARD<N>_INGEST_PORT and OPENC3_TSDB_SHARD<N>_QUERY_PORT ports.
+    db_shard 0 uses the default OPENC3_TSDB_INGEST_PORT and OPENC3_TSDB_QUERY_PORT.
+    """
+    if not db_shard:
+        return {}
+    return {
+        "ingest_port": int(os.environ[f"OPENC3_TSDB_SHARD{db_shard}_INGEST_PORT"]),
+        "query_port": int(os.environ[f"OPENC3_TSDB_SHARD{db_shard}_QUERY_PORT"]),
+    }
+
+
+def is_questdb_shard1_available():
+    """Check if the db_shard 1 QuestDB is available for testing."""
+    try:
+        return QuestDBClient.check_connection(db_shard=1, port=db_shard_ports(1)["query_port"])
+    except Exception:
+        return False
+
+
+# Skip marker for tests requiring both QuestDB db_shards
+requires_questdb_shards = pytest.mark.skipif(
+    not (is_questdb_available() and is_questdb_shard1_available()),
+    reason="QuestDB db_shards not available",
 )
 
 

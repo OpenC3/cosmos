@@ -63,17 +63,15 @@ export default {
     this.update()
   },
   methods: {
-    update() {
-      Api.get('/openc3-api/interfaces').then((response) => {
-        this.interfaces = response.data
-      })
+    async update() {
+      const response = await Api.get('/openc3-api/interfaces')
+      this.interfaces = response.data
     },
-    showInterface(name) {
-      Api.get(`/openc3-api/interfaces/${name}`).then((response) => {
-        this.jsonContent = JSON.stringify(response.data, null, '\t')
-        this.dialogTitle = name
-        this.showDialog = true
-      })
+    async showInterface(name) {
+      const response = await Api.get(`/openc3-api/interfaces/${name}`)
+      this.jsonContent = JSON.stringify(response.data, null, '\t')
+      this.dialogTitle = name
+      this.showDialog = true
     },
     dialogCallback(content) {
       this.showDialog = false

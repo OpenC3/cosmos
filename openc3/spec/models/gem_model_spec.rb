@@ -27,15 +27,15 @@ module OpenC3
   describe GemModel do
     before(:each) do
       mock_redis()
-      @orig_gem_home = ENV['GEM_HOME']
+      @orig_gem_home = ENV.fetch('GEM_HOME', nil)
       @temp_dir = Dir.mktmpdir
       ENV['GEM_HOME'] = @temp_dir
       @scope = "DEFAULT"
       @gem_list = ['openc3-test1.gem', 'openc3-test2.gem']
-      FileUtils.mkdir_p("#{ENV['GEM_HOME']}/cache")
+      FileUtils.mkdir_p("#{ENV.fetch('GEM_HOME')}/cache")
       @gem_list.each do |gem|
-        FileUtils.mkdir_p("#{ENV['GEM_HOME']}/gems/#{File.basename(gem, '.gem')}")
-        FileUtils.touch("#{ENV['GEM_HOME']}/cache/#{gem}")
+        FileUtils.mkdir_p("#{ENV.fetch('GEM_HOME')}/gems/#{File.basename(gem, '.gem')}")
+        FileUtils.touch("#{ENV.fetch('GEM_HOME')}/cache/#{gem}")
       end
     end
 
@@ -54,7 +54,7 @@ module OpenC3
     describe "self.get" do
       it "get the gem on the local filesystem" do
         path = GemModel.get('openc3-test1.gem')
-        expect(path).to eql "#{ENV['GEM_HOME']}/cache/openc3-test1.gem"
+        expect(path).to eql "#{ENV.fetch('GEM_HOME')}/cache/openc3-test1.gem"
       end
     end
 
@@ -80,7 +80,57 @@ module OpenC3
         expect { GemModel.install("openc3-test1.gem", scope: 'DEFAULT') }.to \
           raise_error(Gem::Package::FormatError, /package metadata is missing/)
         expect { GemModel.install("openc3-test3.gem", scope: 'DEFAULT') }.to \
-          raise_error(RuntimeError, /Gem openc3-test3.gem not found/)
+          raise_error(RuntimeError, /Gem 'openc3-test3.gem' not found/)
+      end
+
+      context "rubygems_url resolution" do
+        # The gem itself is invalid so install always raises, but Gem.sources is
+        # set before that happens which is what we're verifying
+        def install_test_gem
+          expect { GemModel.install("openc3-test1.gem", scope: 'DEFAULT') }.to \
+            raise_error(Gem::Package::FormatError)
+        end
+
+        it "uses the rubygems_url setting" do
+          allow(GemModel).to receive(:get_setting).with('rubygems_url', scope: 'DEFAULT')
+            .and_return("https://gems.example.com")
+          expect(Gem).to receive(:sources=).with(["https://gems.example.com"])
+          install_test_gem()
+        end
+
+        it "replaces an invalid rubygems_url setting with the default" do
+          allow(GemModel).to receive(:get_setting).with('rubygems_url', scope: 'DEFAULT')
+            .and_return("https://rubygems.org ; id > /tmp/PWNED ; #")
+          allow(Logger).to receive(:error)
+          expect(Gem).to receive(:sources=).with([RubygemsUrl::DEFAULT])
+          install_test_gem()
+          expect(Logger).to have_received(:error).with(/Invalid rubygems_url/)
+        end
+
+        it "doesn't set sources when the setting is nil" do
+          allow(GemModel).to receive(:get_setting).with('rubygems_url', scope: 'DEFAULT').and_return(nil)
+          expect(Gem).to_not receive(:sources=)
+          install_test_gem()
+        end
+
+        it "falls back to ENV RUBYGEMS_URL when get_setting raises" do
+          allow(GemModel).to receive(:get_setting).with('rubygems_url', scope: 'DEFAULT')
+            .and_raise(RuntimeError.new("no redis"))
+          allow(ENV).to receive(:fetch).and_call_original
+          allow(ENV).to receive(:fetch).with('RUBYGEMS_URL', RubygemsUrl::DEFAULT)
+            .and_return("https://env.gems.example.com")
+          expect(Gem).to receive(:sources=).with(["https://env.gems.example.com"])
+          install_test_gem()
+        end
+
+        it "falls back to the default when get_setting raises and ENV is unset" do
+          allow(GemModel).to receive(:get_setting).with('rubygems_url', scope: 'DEFAULT')
+            .and_raise(RuntimeError.new("no redis"))
+          allow(ENV).to receive(:fetch).and_call_original
+          allow(ENV).to receive(:fetch).with('RUBYGEMS_URL', RubygemsUrl::DEFAULT).and_return(RubygemsUrl::DEFAULT)
+          expect(Gem).to receive(:sources=).with([RubygemsUrl::DEFAULT])
+          install_test_gem()
+        end
       end
     end
 

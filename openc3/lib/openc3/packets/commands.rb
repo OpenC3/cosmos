@@ -61,7 +61,7 @@ module OpenC3
     #   target name keyed by the packet name
     def packets(target_name)
       target_packets = @config.commands[target_name.to_s.upcase]
-      raise "Command target '#{target_name.to_s.upcase}' does not exist" unless target_packets
+      raise "Command target '#{target_name.to_s.upcase}' does not exist (packets lookup)" unless target_packets
 
       target_packets
     end
@@ -73,7 +73,7 @@ module OpenC3
     def packet(target_name, packet_name)
       target_packets = packets(target_name)
       packet = target_packets[packet_name.to_s.upcase]
-      raise "Command packet '#{target_name.to_s.upcase} #{packet_name.to_s.upcase}' does not exist" unless packet
+      raise "Command packet '#{target_name.to_s.upcase} #{packet_name.to_s.upcase}' does not exist (packet lookup)" unless packet
 
       packet
     end
@@ -187,9 +187,9 @@ module OpenC3
 
       # Lookup the command directly - avoid redundant upcase in packet()/packets()
       target_packets = @config.commands[target_upcase]
-      raise "Command target '#{target_upcase}' does not exist" unless target_packets
+      raise "Command target '#{target_upcase}' does not exist (build_cmd)" unless target_packets
       pkt = target_packets[packet_upcase]
-      raise "Command packet '#{target_upcase} #{packet_upcase}' does not exist" unless pkt
+      raise "Command packet '#{target_upcase} #{packet_upcase}' does not exist (build_cmd)" unless pkt
       # Use deep_copy to avoid shared item modifications affecting the template
       # This is critical for variable_bit_size items where handle_write_variable_bit_size
       # modifies item.bit_offset and item.array_size during writes
@@ -325,10 +325,10 @@ module OpenC3
               unless item.states.values.include?(value)
                 if command.raw
                   # Raw commands report missing value maps
-                  raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.values.join(', ')}"
+                  raise RangeError, "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.values.join(', ')}"
                 else
                   # Normal commands report missing state maps
-                  raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.keys.join(', ')}"
+                  raise RangeError, "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{value.to_s.upcase} not one of #{item.states.keys.join(', ')}"
                 end
               end
             end
@@ -340,7 +340,7 @@ module OpenC3
             # Perform Range Check on command parameter
             if not range.include?(range_check_value)
               range_check_value = "'#{range_check_value}'" if String === range_check_value
-              raise "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{range_check_value} not in valid range of #{range.first} to #{range.last}"
+              raise RangeError, "Command parameter '#{command.target_name} #{command.packet_name} #{item_upcase}' = #{range_check_value} not in valid range of #{range.first} to #{range.last}"
             end
           end
         end

@@ -103,6 +103,7 @@ class CmdResponseProtocol(Protocol):
                     if self.interface is not None:
                         interface_name = self.interface.name
                     self.handle_error(f"{interface_name}: Timeout waiting for response")
+                    break
 
             self.response_packet = None
         return super().post_write_interface(packet, data, extra)

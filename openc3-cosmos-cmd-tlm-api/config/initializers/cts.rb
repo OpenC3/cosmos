@@ -33,8 +33,7 @@ module OpenC3
     @@instance = nil
 
     def initialize
-      @json_drb = JsonDRb.new
-      @json_drb.method_whitelist = Api::WHITELIST.to_set
+      @json_drb = JsonDRb.new(method_whitelist: Api::WHITELIST)
       @json_drb.object = self
     end
 

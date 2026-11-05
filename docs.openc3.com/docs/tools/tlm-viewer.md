@@ -80,3 +80,21 @@ There is no hard limit on the number of telemetry items that can be displayed on
 
 For documentation on how to build Telemetry Screens and how to configure the
 screen widgets please see the [Telemetry Screens](../configuration/telemetry-screens.md).
+
+## Playback Mode
+
+COSMOS 7 adds the ability to play historical telemetry back through Telemetry Viewer screens. Toggle Playback Mode from File -> Playback Mode (checkbox). While enabled, an orange "Playback Mode" banner is displayed above the screens and an additional row of playback controls appears.
+
+![Enable Playback Mode](/img/telemetry_viewer/enable_playback_mode.png)
+
+Set the **Date** and **Time** to the historical moment you want to start from, then use the controls to navigate:
+
+- **Play / Pause** — start or stop continuous playback. While playing, the playback time advances by `Step` seconds every real second.
+- **Step Backward / Step Forward** — jump the playback time by ±`Step` seconds.
+- **Skip Backward / Skip Forward** — jump the playback time by ±`Skip` seconds (the outer arrows).
+- **Step (Speed)** — playback rate in seconds of data per wall-clock second. Default `1` (real-time, 1 Hz). Increase for faster playback.
+- **Skip** — increment used by the Skip buttons. Default `10` seconds.
+
+Playback automatically pauses when the playback time catches up to the current wall-clock time — you cannot play into the future. The Date, Time, Step, and Skip values are persisted in browser localStorage and restored on the next visit.
+
+![Playback Mode](/img/telemetry_viewer/playback_mode.png)

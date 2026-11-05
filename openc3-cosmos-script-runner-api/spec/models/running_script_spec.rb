@@ -125,7 +125,7 @@ RSpec.describe RunningScript, type: :model do
       expect(process_env_double["OPENC3_API_TOKEN"]).to eq("valid_token")
     end
 
-    it "raises an error if offline token is invalid" do
+    it "raises an error and cleans up script status if offline token is invalid" do
       # Mock just the authentication parts
       model_double = double("model", offline_access_token: "invalid_token", update: nil)
       allow(model_double).to receive(:offline_access_token=)
@@ -137,6 +137,204 @@ RSpec.describe RunningScript, type: :model do
       expect {
         RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
       }.to raise_error("offline_access token invalid for script")
+
+      # Verify the orphaned script status was cleaned up
+      expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
+    end
+
+    it "raises an error and cleans up script status if no authentication is available" do
+      # Ensure OPENC3_SERVICE_PASSWORD is not set so the fallback auth fails
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('OPENC3_SERVICE_PASSWORD').and_return(nil)
+
+      expect {
+        RunningScript.spawn("DEFAULT", "script.rb")
+      }.to raise_error("No authentication available for script")
+
+      # Verify the orphaned script status was cleaned up
+      expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
+    end
+
+    it "propagates the error cleanly if failure occurs before script status is created" do
+      # Simulate mkdir_p failing before the ScriptStatusModel is created
+      allow(FileUtils).to receive(:mkdir_p).and_raise(Errno::EACCES.new("Permission denied"))
+
+      expect {
+        RunningScript.spawn("DEFAULT", "script.rb")
+      }.to raise_error(Errno::EACCES)
+
+      # No script status should exist since it was never created
+      expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
+    end
+
+    it "cleans up script status if process.start raises an error" do
+      failing_process = double("process")
+      allow(failing_process).to receive(:io).and_return(double("io", inherit!: nil))
+      allow(failing_process).to receive(:cwd=)
+      allow(failing_process).to receive(:environment).and_return({})
+      allow(failing_process).to receive(:detach=)
+      allow(failing_process).to receive(:start).and_raise(RuntimeError.new("Failed to start process"))
+      allow(ChildProcess).to receive(:build).and_return(failing_process)
+
+      expect {
+        RunningScript.spawn("DEFAULT", "script.rb")
+      }.to raise_error("Failed to start process")
+
+      # Verify the orphaned script status was cleaned up
+      expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
+    end
+
+    it "does not pass unused credentials to the script process" do
+      process_env = {}
+      process_double = double("process", cwd: nil, start: nil)
+      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
+      allow(process_double).to receive(:cwd=)
+      allow(process_double).to receive(:detach=)
+      allow(process_double).to receive(:environment).and_return(process_env)
+      allow(ChildProcess).to receive(:build).and_return(process_double)
+
+      RunningScript.spawn("DEFAULT", "script.rb")
+
+      OpenC3::ScriptEnv::UNUSED_VARS.each do |key|
+        expect(process_env).to have_key(key)
+        expect(process_env[key]).to be_nil
+      end
+    end
+
+    context "per-plugin Python venv detection" do
+      before do
+        process_env = {}
+        @process_double = double("process")
+        allow(@process_double).to receive(:io).and_return(double("io", inherit!: nil))
+        allow(@process_double).to receive(:cwd=)
+        allow(@process_double).to receive(:environment).and_return(process_env)
+        allow(@process_double).to receive(:detach=)
+        allow(@process_double).to receive(:start)
+        allow(ChildProcess).to receive(:build).and_return(@process_double)
+      end
+
+      it "sets per-plugin venv env vars when plugin venv directory exists" do
+        target_info = {'plugin' => 'my-demo-plugin__0'}
+        allow(OpenC3::TargetModel).to receive(:get).with(name: "INST", scope: "DEFAULT").and_return(target_info)
+
+        sanitized_name = "DEFAULT__my-demo-plugin__0"
+        venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+        allow(File).to receive(:directory?).and_call_original
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+
+        RunningScript.spawn("DEFAULT", "INST/script.py")
+
+        env = @process_double.environment
+        expect(env['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(env['PATH']).to start_with("#{venv_dir}/bin:")
+        expect(env['PYTHONUSERBASE']).to eq(venv_dir)
+      end
+
+      it "falls back to system venv when no plugin venv exists" do
+        target_info = {'plugin' => 'my-plugin__0'}
+        allow(OpenC3::TargetModel).to receive(:get).with(name: "INST", scope: "DEFAULT").and_return(target_info)
+
+        venv_dir = "/gems/plugin_venvs/DEFAULT__my-plugin__0/.venv"
+        allow(File).to receive(:directory?).and_call_original
+        allow(File).to receive(:directory?).with(venv_dir).and_return(false)
+
+        RunningScript.spawn("DEFAULT", "INST/script.py")
+
+        env = @process_double.environment
+        expect(env['VIRTUAL_ENV']).to eq('/openc3/python/.venv')
+        expect(env['PYTHONUSERBASE']).to eq(ENV.fetch('PYTHONUSERBASE', OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE))
+      end
+
+      it "gracefully falls back to system venv when TargetModel.get raises an error" do
+        allow(OpenC3::TargetModel).to receive(:get).and_raise(StandardError.new("Redis error"))
+
+        RunningScript.spawn("DEFAULT", "INST/script.py")
+
+        env = @process_double.environment
+        expect(env['VIRTUAL_ENV']).to eq('/openc3/python/.venv')
+        expect(env['PYTHONUSERBASE']).to eq(ENV.fetch('PYTHONUSERBASE', OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE))
+      end
+
+      it "preserves PYTHONPATH from parent environment" do
+        allow(OpenC3::TargetModel).to receive(:get).and_return(nil)
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('PYTHONPATH', nil).and_return('/custom/python/path')
+
+        RunningScript.spawn("DEFAULT", "INST/script.py")
+
+        env = @process_double.environment
+        expect(env['PYTHONPATH']).to eq('/custom/python/path')
+      end
+
+      it "uses python_venv directly for venv resolution on temp scripts" do
+        plugin_name = "DEFAULT__my-demo-plugin__0"
+        venv_dir = "/gems/plugin_venvs/#{plugin_name}/.venv"
+        allow(File).to receive(:directory?).and_call_original
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+
+        RunningScript.spawn("DEFAULT", "__TEMP__/temp_script.py", nil, false, nil, nil, nil, nil, nil, plugin_name)
+
+        env = @process_double.environment
+        expect(env['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(env['PATH']).to start_with("#{venv_dir}/bin:")
+        expect(env['PYTHONUSERBASE']).to eq(venv_dir)
+      end
+
+      it "ignores a temp script python_venv from another scope" do
+        allow(OpenC3::TargetModel).to receive(:get).with(name: "__TEMP__", scope: "DEFAULT").and_return(nil)
+
+        RunningScript.spawn("DEFAULT", "__TEMP__/temp_script.py", nil, false, nil, nil, nil, nil, nil, "OTHER__my-demo-plugin__0")
+
+        env = @process_double.environment
+        expect(env['VIRTUAL_ENV']).to eq('/openc3/python/.venv')
+      end
+
+      it "falls back to system venv for temp scripts without python_venv" do
+        allow(OpenC3::TargetModel).to receive(:get).with(name: "__TEMP__", scope: "DEFAULT").and_return(nil)
+
+        RunningScript.spawn("DEFAULT", "__TEMP__/temp_script.py")
+
+        env = @process_double.environment
+        expect(env['VIRTUAL_ENV']).to eq('/openc3/python/.venv')
+        expect(env['PYTHONUSERBASE']).to eq(ENV.fetch('PYTHONUSERBASE', OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE))
+      end
+    end
+  end
+
+  describe "#run with suite_runner" do
+    before do
+      # Avoid hitting the bucket when RunningScript#initialize fetches the body
+      allow(::Script).to receive(:body).and_return("puts 'test'")
+    end
+
+    it "uses the default method and options when the suite_runner omits them" do
+      script_status.suite_runner = { "suite" => "MySuite", "group" => "MyGroup" }
+      running_script = RunningScript.new(script_status)
+      # run_text instruments and executes the generated call; mock it so we
+      # can assert the dispatch string without actually running anything.
+      expect(running_script).to receive(:run_text).with(
+        "OpenC3::SuiteRunner.start(MySuite, MyGroup)", initial_filename: "SCRIPTRUNNER"
+      )
+
+      running_script.run
+
+      # DEFAULT_OPTIONS (['continueAfterError']) were applied
+      expect(OpenC3::SuiteRunner.settings["Continue After Error"]).to be true
+    end
+
+    it "uses the provided method and options when given" do
+      script_status.suite_runner = {
+        "suite" => "MySuite", "group" => "MyGroup", "method" => "teardown", "options" => ["manual"]
+      }
+      running_script = RunningScript.new(script_status)
+      expect(running_script).to receive(:run_text).with(
+        "OpenC3::SuiteRunner.teardown(MySuite, MyGroup)", initial_filename: "SCRIPTRUNNER"
+      )
+
+      running_script.run
+
+      expect(OpenC3::SuiteRunner.settings["Manual"]).to be true
+      expect(OpenC3::SuiteRunner.settings["Continue After Error"]).to be false
     end
   end
 
@@ -262,6 +460,59 @@ RSpec.describe RunningScript, type: :model do
 
         # Reset the class variable after the test
         RunningScript.class_variable_set(:@@run_thread, nil)
+      end
+    end
+
+    describe "goto" do
+      let(:script_api) { Object.new.extend(OpenC3::Script) }
+
+      after do
+        RunningScript.class_variable_set(:@@run_thread, nil)
+      end
+
+      it "hands off to the run thread when called from another thread" do
+        # The debug prompt evals goto on the redis subscriber thread. Running the
+        # script there deadlocks at the next pause because that thread is the one
+        # that processes go/step/stop, so goto must defer to the run thread.
+        running_script = RunningScript.new(script_status)
+        script_status.state = "breakpoint"
+        RunningScript.class_variable_set(:@@run_thread, Thread.new {})
+        expect(script_api).not_to receive(:start)
+
+        script_api.send(:goto, 9)
+        expect(running_script.execute_while_paused_info).to eq({ filename: "test_script.rb", line_no: 9, end_line_no: nil, bind_variables: true })
+
+        script_api.send(:goto, "other.rb", 3)
+        expect(running_script.execute_while_paused_info).to eq({ filename: "other.rb", line_no: 3, end_line_no: nil, bind_variables: true })
+      end
+
+      it "keeps the script binding when the queued goto targets another file" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "breakpoint"
+        RunningScript.class_variable_set(:@@run_thread, Thread.new {})
+        script_api.send(:goto, "other.rb", 3)
+
+        expect(running_script).to receive(:start).with("other.rb", line_no: 3, bind_variables: true, complete: true)
+        running_script.check_execute_while_paused
+      end
+
+      it "binds the editor's goto only when it targets the current file" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "breakpoint"
+        running_script.execute_while_paused("other.rb", 3)
+
+        expect(running_script).to receive(:start).with("other.rb", line_no: 3, bind_variables: false, complete: true)
+        running_script.check_execute_while_paused
+      end
+
+      it "runs the script directly when called from the run thread" do
+        RunningScript.new(script_status)
+        RunningScript.class_variable_set(:@@run_thread, Thread.current)
+        expect(script_api).to receive(:start).with("test_script.rb", line_no: 9, bind_variables: true, complete: true)
+        script_api.send(:goto, 9)
+
+        expect(script_api).to receive(:start).with("other.rb", line_no: 3, bind_variables: true, complete: true)
+        script_api.send(:goto, "other.rb", 3)
       end
     end
 

@@ -17,9 +17,11 @@ LIMITS_METHODS = [
     "enable_limits",
     "disable_limits",
     "set_limits",
+    "set_state_color",
     "enable_limits_group",
     "disable_limits_group",
     "set_limits_set",
+    "delete_limits_set",
 ]
 
 # Define all the modification methods such that we can disconnect them

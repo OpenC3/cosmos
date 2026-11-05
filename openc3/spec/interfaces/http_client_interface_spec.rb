@@ -78,6 +78,32 @@ module OpenC3
         @interface.connect
         expect(@interface.instance_variable_get(:@http)).to_not be_nil
       end
+
+      it "only queues one disconnect marker per connection" do
+        queue = @interface.instance_variable_get(:@response_queue)
+        @interface.connect
+        @interface.disconnect
+        expect(@interface.read_interface).to be_nil
+        # The microservice disconnects again once read_interface returns nil
+        @interface.disconnect
+        expect(queue.empty?).to be true
+        # Nor does a repeat disconnect discard a marker the reader hasn't consumed yet
+        @interface.connect
+        @interface.disconnect
+        @interface.disconnect
+        expect(queue.length).to eql 1
+      end
+
+      it "discards responses left over from a previous connection" do
+        queue = @interface.instance_variable_get(:@response_queue)
+        @interface.connect
+        @interface.disconnect
+        expect(@interface.read_interface).to be_nil
+        # A request that completed after the disconnect
+        queue.push(['late', {}])
+        @interface.connect
+        expect(queue.empty?).to be true
+      end
     end
 
     describe "#connected?" do
@@ -263,7 +289,6 @@ module OpenC3
     describe "details" do
       it "returns detailed interface information" do
         i = HttpClientInterface.new('api.example.com', 443, 'https', 30.0, 60.0, 10.0, true)
-        i.instance_variable_set(:@request_queue, Queue.new)
 
         details = i.details
 
@@ -273,7 +298,7 @@ module OpenC3
         expect(details['read_timeout']).to eql(60.0)
         expect(details['connect_timeout']).to eql(10.0)
         expect(details['include_request_in_response']).to be true
-        expect(details['request_queue_length']).to eql(0)
+        expect(details['response_queue_length']).to eql(0)
 
         # Check that base interface details are included
         expect(details['name']).to eql('HttpClientInterface')
@@ -282,22 +307,20 @@ module OpenC3
         expect(details).to have_key('options')
       end
 
-      it "shows current request queue length" do
+      it "shows current response queue length" do
         i = HttpClientInterface.new('example.com', 80)
-        request_queue = Queue.new
-        request_queue.push(['test1', {}])
-        request_queue.push(['test2', {}])
-        request_queue.push(['test3', {}])
-        i.instance_variable_set(:@request_queue, request_queue)
+        response_queue = i.instance_variable_get(:@response_queue)
+        response_queue.push(['test1', {}])
+        response_queue.push(['test2', {}])
+        response_queue.push(['test3', {}])
 
         details = i.details
 
-        expect(details['request_queue_length']).to eql(3)
+        expect(details['response_queue_length']).to eql(3)
       end
 
       it "handles default values" do
         i = HttpClientInterface.new('localhost', '8080')
-        i.instance_variable_set(:@request_queue, Queue.new)
 
         details = i.details
 

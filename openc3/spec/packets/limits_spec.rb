@@ -44,6 +44,9 @@ module OpenC3
       tf.puts '    LIMITS DEFAULT 1 ENABLED 1 2 4 5'
       tf.puts '    LIMITS TVAC 1 ENABLED 6 7 12 13 9 10'
       tf.puts '  APPEND_ITEM item5 8 UINT "Item5"'
+      tf.puts '  APPEND_ITEM state1 8 UINT "State1"'
+      tf.puts '    STATE CONNECTED 1 GREEN'
+      tf.puts '    STATE UNAVAILABLE 0 YELLOW'
       tf.puts 'TELEMETRY tgt1 pkt2 LITTLE_ENDIAN "TGT1 PKT2 Description"'
       tf.puts '  APPEND_ID_ITEM item1 8 UINT 2 "Item1"'
       tf.puts '    LIMITS DEFAULT 1 ENABLED 1 2 4 5'
@@ -103,15 +106,15 @@ module OpenC3
 
     describe "enabled?" do
       it "complains about non-existent targets" do
-        expect { @limits.enabled?("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
+        expect { @limits.enabled?("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist (limits lookup)")
       end
 
       it "complains about non-existent packets" do
-        expect { @limits.enabled?("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
+        expect { @limits.enabled?("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist (limits lookup)")
       end
 
       it "complains about non-existent items" do
-        expect { @limits.enabled?("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
+        expect { @limits.enabled?("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Item 'TGT1 PKT1 ITEMX' does not exist (Packet)")
       end
 
       it "returns whether limits are enable for an item" do
@@ -124,15 +127,15 @@ module OpenC3
 
     describe "enable" do
       it "complains about non-existent targets" do
-        expect { @limits.enable("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
+        expect { @limits.enable("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist (limits lookup)")
       end
 
       it "complains about non-existent packets" do
-        expect { @limits.enable("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
+        expect { @limits.enable("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist (limits lookup)")
       end
 
       it "complains about non-existent items" do
-        expect { @limits.enable("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
+        expect { @limits.enable("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Item 'TGT1 PKT1 ITEMX' does not exist (Packet)")
       end
 
       it "enables limits for an item" do
@@ -145,15 +148,15 @@ module OpenC3
 
     describe "disable" do
       it "complains about non-existent targets" do
-        expect { @limits.disable("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist")
+        expect { @limits.disable("TGTX", "PKT1", "ITEM1") }.to raise_error(RuntimeError, "Telemetry target 'TGTX' does not exist (limits lookup)")
       end
 
       it "complains about non-existent packets" do
-        expect { @limits.disable("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist")
+        expect { @limits.disable("TGT1", "PKTX", "ITEM1") }.to raise_error(RuntimeError, "Telemetry packet 'TGT1 PKTX' does not exist (limits lookup)")
       end
 
       it "complains about non-existent items" do
-        expect { @limits.disable("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
+        expect { @limits.disable("TGT1", "PKT1", "ITEMX") }.to raise_error(RuntimeError, "Item 'TGT1 PKT1 ITEMX' does not exist (Packet)")
       end
 
       it "disables limits for an item" do
@@ -210,6 +213,55 @@ module OpenC3
 
       it "handles green limits" do
         expect(@limits.set("TGT1", "PKT1", "ITEM1", 1, 2, 5, 6, 3, 4, nil)).to eql [:DEFAULT, 1, true, 1.0, 2.0, 5.0, 6.0, 3.0, 4.0]
+      end
+    end
+
+    describe "set_state_color" do
+      it "changes the color of a state" do
+        item = @tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        expect(item.state_colors["CONNECTED"]).to eql(:GREEN)
+        expect(@limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED")).to eql(:RED)
+        expect(item.state_colors["CONNECTED"]).to eql(:RED)
+        expect(item.limits.enabled).to be true
+      end
+
+      it "accepts lowercase state names and colors" do
+        @limits.set_state_color("TGT1", "PKT1", "STATE1", "connected", "yellow")
+        item = @tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        expect(item.state_colors["CONNECTED"]).to eql(:YELLOW)
+      end
+
+      it "complains about items without states" do
+        expect { @limits.set_state_color("TGT1", "PKT1", "ITEM5", "CONNECTED", "RED") }.to raise_error(RuntimeError, /does not have any states/)
+      end
+
+      it "complains about non-existent states" do
+        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", "RED") }.to raise_error(RuntimeError, "State 'BLAH' does not exist for item 'TGT1 PKT1 STATE1'")
+      end
+
+      it "complains about invalid colors" do
+        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "PURPLE") }.to raise_error(RuntimeError, "Invalid state color 'PURPLE'. Must be one of GREEN, YELLOW, RED.")
+      end
+
+      it "clears the color of a state when passed nil" do
+        item = @tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED")
+        expect(item.state_colors["CONNECTED"]).to eql(:RED)
+        expect(@limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", nil)).to be_nil
+        expect(item.state_colors).to_not have_key("CONNECTED")
+        # state_colors remains a Hash so limits checking still works
+        expect(item.state_colors).to be_a(Hash)
+      end
+
+      it "clears the color of a state accepting lowercase state names when passed nil" do
+        item = @tlm.packet("TGT1", "PKT1").get_item("STATE1")
+        @limits.set_state_color("TGT1", "PKT1", "STATE1", "CONNECTED", "RED")
+        @limits.set_state_color("TGT1", "PKT1", "STATE1", "connected", nil)
+        expect(item.state_colors).to_not have_key("CONNECTED")
+      end
+
+      it "complains about non-existent states when clearing" do
+        expect { @limits.set_state_color("TGT1", "PKT1", "STATE1", "BLAH", nil) }.to raise_error(RuntimeError, "State 'BLAH' does not exist for item 'TGT1 PKT1 STATE1'")
       end
     end
   end

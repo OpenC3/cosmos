@@ -55,11 +55,16 @@ export default {
       } else {
         // Round up so the start is in the future
         start = new Date(Math.ceil(new Date().getTime() / ms) * ms)
+        const end = add(start, { minutes: 30 })
         this.startTime = this.formatTimeHMS(start, this.timeZone)
-        this.endTime = this.formatTimeHMS(
-          add(start, { minutes: 30 }),
-          this.timeZone,
-        )
+        this.endTime = this.formatTimeHMS(end, this.timeZone)
+        // Re-derive the dates from the rounded values. Rounding up (or the
+        // +30min end) can roll past midnight -- e.g. at 23:52 the next 30-min
+        // boundary is 00:00 the following day. If the dates were left on
+        // "today" (set above) the start would be in the past, and the activity
+        // form (which requires a future start) could never be submitted.
+        this.startDate = this.formatDate(start, this.timeZone)
+        this.endDate = this.formatDate(end, this.timeZone)
       }
     },
   },

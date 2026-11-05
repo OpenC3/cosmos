@@ -185,6 +185,7 @@ class InterfaceTopic(Topic):
         stored=False,
         timeout=None,
         scope=OPENC3_SCOPE,
+        received_time=None,
     ):
         interface_name = interface_name.upper()
         db_shard = cls._db_shard_for_interface(interface_name, scope)
@@ -200,6 +201,8 @@ class InterfaceTopic(Topic):
         data["item_hash"] = item_hash
         data["type"] = type
         data["stored"] = stored
+        if received_time is not None:
+            data["received_time"] = received_time
         cmd_id = Topic.write_topic(
             f"{{{scope}__CMD}}INTERFACE__{interface_name}",
             {"inject_tlm": json.dumps(data)},
@@ -259,5 +262,10 @@ class InterfaceTopic(Topic):
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic], db_shard=db_shard):
                 if msg_hash[b"id"] == cmd_id:
-                    return json.loads(msg_hash[b"result"].decode(), cls=JsonDecoder)
+                    result = msg_hash[b"result"].decode()
+                    try:
+                        return json.loads(result, cls=JsonDecoder)
+                    except json.JSONDecodeError:
+                        # The microservice returns a plain error message rather than JSON if details raises
+                        raise RuntimeError(f"interface_details failed: {result}") from None
         raise RuntimeError(f"Timeout of {timeout}s waiting for cmd ack")

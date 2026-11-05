@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import struct
 import unittest
 from unittest.mock import *
 
@@ -340,7 +341,7 @@ class TestStructureGetItem(unittest.TestCase):
         self.assertIsNotNone(self.s.get_item("test1"))
 
     def test_complains_if_an_item_doesnt_exist(self):
-        self.assertRaisesRegex(ValueError, "Unknown item: test2", self.s.get_item, "test2")
+        self.assertRaisesRegex(ValueError, r"Unknown item: test2 \(get_item\)", self.s.get_item, "test2")
 
 
 class TestStructureSetItem(unittest.TestCase):
@@ -375,7 +376,7 @@ class TestStructureDeleteItem(unittest.TestCase):
         self.s.append_item("test2", 16, "UINT")
         self.assertEqual(self.s.defined_length, 3)
         self.s.delete_item("test1")
-        self.assertRaisesRegex(ValueError, "Unknown item: test1", self.s.get_item, "test1")
+        self.assertRaisesRegex(ValueError, r"Unknown item: test1 \(get_item\)", self.s.get_item, "test1")
         self.assertEqual(self.s.defined_length, 3)
         self.assertIsNone(self.s.items.get("TEST1"))
         self.assertIsNotNone(self.s.items["TEST2"])
@@ -458,7 +459,7 @@ class TestStructureWriteItem(unittest.TestCase):
 
 class TestStructureRead(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):
-        self.assertRaisesRegex(ValueError, "Unknown item: BLAH", Structure().read, "BLAH")
+        self.assertRaisesRegex(ValueError, r"Unknown item: BLAH \(get_item\)", Structure().read, "BLAH")
 
     def test_reads_data_from_the_buffer(self):
         s = Structure()
@@ -487,7 +488,7 @@ class TestStructureRead(unittest.TestCase):
 
 class TestStructureWrite(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):
-        with self.assertRaisesRegex(ValueError, "Unknown item: BLAH"):
+        with self.assertRaisesRegex(ValueError, r"Unknown item: BLAH \(get_item\)"):
             Structure().write("BLAH", 0)
 
     def test_writes_data_to_the_buffer(self):
@@ -867,6 +868,24 @@ class TestStructureSetItemVariableBitSize(unittest.TestCase):
         self.assertEqual(s.defined_length_bits, 64)
         self.assertEqual(s.defined_length, 8)
 
+    def test_raises_if_length_item_reads_none_for_array(self):
+        # When short_buffer_allowed is True and the length item falls outside the
+        # buffer, reading it returns None. calculate_total_bit_size must not silently
+        # use the None value - it should raise a descriptive error.
+        s = Structure("BIG_ENDIAN")
+        s.append_item("LENGTH", 32, "UINT")
+        item = s.append_item("DATA", 8, "UINT", 0)
+        item.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_bits_per_count": 8,
+            "length_value_bit_offset": 0,
+        }
+        s.set_item(item)
+        s.short_buffer_allowed = True
+        # Buffer is too short to contain the 32 bit LENGTH item, so LENGTH reads None
+        with self.assertRaisesRegex(RuntimeError, "Length value LENGTH for item DATA is None"):
+            s.buffer = b"\x00\x01"
+
 
 class TestStructureDeleteItemError(unittest.TestCase):
     def test_complains_if_item_doesnt_exist(self):
@@ -966,7 +985,9 @@ class TestStructureCalculateTotalBitSize(unittest.TestCase):
             "length_value_bit_offset": 8,
             "length_bits_per_count": 8,
         }
-        s.write("length", 5)
+        # The buffer must hold the calculated size, otherwise the item is
+        # rejected as extending past the end of the buffer
+        s.buffer = b"\x05ABCDEF"
         result = s.calculate_total_bit_size(item)
         # 5 * 8 + 8 = 48
         self.assertEqual(result, 48)
@@ -1214,3 +1235,123 @@ class TestStructureShortBufferAllowed(unittest.TestCase):
         s.append_item("item2", 16, "UINT")
         with self.assertRaisesRegex(ValueError, "Buffer length less than defined length"):
             s.buffer = b"\x00\x01"
+
+    def variable_bit_size_structure(self, short_buffer_allowed):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("LENGTH", 32, "UINT")
+        item = s.append_item("DATA", 8, "UINT", 0)
+        item.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_bits_per_count": 8,
+            "length_value_bit_offset": 0,
+        }
+        s.set_item(item)
+        s.append_item("TRAILER", 32, "UINT")
+        s.short_buffer_allowed = short_buffer_allowed
+        return s
+
+    def test_rejects_a_variable_size_outside_the_buffer(self):
+        s = self.variable_bit_size_structure(False)
+        # This length would move TRAILER to bit offset 0x80000000. Without
+        # ALLOW_SHORT the packet must be rejected outright.
+        with self.assertRaisesRegex(
+            ValueError,
+            "Variable bit size 2147483616 for item DATA exceeds the 32 bits available in the buffer",
+        ):
+            s.buffer = struct.pack(">II", 268435452, 0)
+
+    def test_returns_none_for_a_variable_size_outside_the_buffer(self):
+        s = self.variable_bit_size_structure(True)
+        # A short packet is still accepted and both unavailable items read None
+        s.buffer = struct.pack(">II", 268435452, 0)
+        self.assertIsNone(s.read("DATA"))
+        self.assertIsNone(s.read("TRAILER"))
+
+    def test_returns_none_for_a_truncated_variable_bit_size_item(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("LENGTH", 32, "UINT")
+        item = s.append_item("DATA", 8, "UINT", 0)
+        item.variable_bit_size = {
+            "length_item_name": "LENGTH",
+            "length_bits_per_count": 8,
+            "length_value_bit_offset": 0,
+        }
+        s.set_item(item)
+        s.short_buffer_allowed = True
+        # LENGTH says DATA contains two bytes but only one byte was received
+        s.buffer = struct.pack(">I", 2) + b"\xaa"
+        self.assertIsNone(s.read("DATA"))
+        self.assertEqual(len(s.buffer), 5)
+
+    def test_returns_none_for_string_and_block_items_outside_the_buffer(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("ID", 16, "UINT")
+        s.append_item("STR", 64, "STRING")
+        s.append_item("BLK", 32, "BLOCK")
+        s.short_buffer_allowed = True
+        # Only ID and 2 bytes of the 8 byte STRING were received
+        s.buffer = b"\x00\x01AB"
+        self.assertEqual(s.read("ID"), 1)
+        self.assertIsNone(s.read("STR"))
+        self.assertIsNone(s.read("BLK"))
+        self.assertEqual(len(s.buffer), 4)
+
+    def test_returns_none_for_an_array_item_truncated_mid_array(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("ID", 16, "UINT")
+        s.append_item("ARY", 8, "UINT", 32)  # 4 element array
+        s.short_buffer_allowed = True
+        # Only 2 of the 4 array elements were received
+        s.buffer = b"\x00\x01\xaa\xbb"
+        self.assertEqual(s.read("ID"), 1)
+        self.assertIsNone(s.read("ARY"))
+
+    def test_reads_a_fill_to_end_item_using_only_the_bytes_received(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("ID", 16, "UINT")
+        s.append_item("REST", 0, "BLOCK")  # bit size determined by buffer length
+        s.short_buffer_allowed = True
+        s.buffer = b"\x00\x01\xaa"
+        self.assertEqual(s.read("ID"), 1)
+        self.assertEqual(s.read("REST"), b"\xaa")
+
+    def test_returns_none_for_a_fill_to_end_item_starting_past_the_buffer(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("ID", 16, "UINT")
+        s.append_item("REST", 0, "BLOCK")
+        s.define_item("TRAILER", -16, 16, "UINT")  # negative bit offset
+        s.short_buffer_allowed = True
+        # The buffer ends before ID does, so REST calculates a negative bit size
+        s.buffer = b"\x00"
+        self.assertIsNone(s.read("ID"))
+        self.assertIsNone(s.read("REST"))
+
+    def test_reads_all_items_and_formats_without_raising(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("item1", 16, "UINT")
+        s.append_item("item2", 16, "UINT")
+        s.short_buffer_allowed = True
+        s.buffer = b"\x00\x01"
+        self.assertEqual(s.read_all(), [["ITEM1", 1], ["ITEM2", None]])
+        # Note Ruby interpolates nil as an empty string here
+        self.assertEqual(s.formatted(), "ITEM1: 1\nITEM2: None\n")
+
+    def test_raises_a_buffer_error_when_writing_outside_the_buffer(self):
+        s = Structure("BIG_ENDIAN")
+        s.append_item("item1", 16, "UINT")
+        s.append_item("item2", 16, "UINT")
+        s.short_buffer_allowed = True
+        s.buffer = b"\x00\x01"
+        # Reads return None but writes must not silently grow or corrupt the buffer
+        with self.assertRaisesRegex(
+            ValueError, "2 byte buffer insufficient to write UINT at bit_offset 16 with bit_size 16"
+        ):
+            s.write("item2", 5)
+        self.assertEqual(len(s.buffer), 2)
+
+    def test_raises_a_buffer_error_when_writing_beyond_the_native_int_range(self):
+        s = self.variable_bit_size_structure(True)
+        # Pushes TRAILER to bit offset 0x80000000 which does not fit in a C int
+        s.buffer = struct.pack(">II", 268435452, 0)
+        with self.assertRaisesRegex(ValueError, "8 byte buffer insufficient to write UINT"):
+            s.write("TRAILER", 5)

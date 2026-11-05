@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-// @ts-check
 import { test, expect } from './fixture'
 
 test.use({
@@ -125,6 +124,7 @@ test('disable parameter conversions', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText('Sets numbered parameters')
   await expect(page.locator('main')).toContainText('Value 1 setting') // Ensures the params are rendered
   await page.locator('[data-test="select-send"]').click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
   await expect(page.locator('main')).toContainText(
     'cmd_raw("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent',
   )
@@ -138,6 +138,7 @@ test('disable parameter conversions', async ({ page, utils }) => {
   await page.locator('text=Ignore Range Checks').click()
   await page.locator('[data-test=command-sender-mode]').click()
   await page.locator('[data-test="select-send"]').click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click() // Hazardous confirm
   await expect(page.locator('main')).toContainText(
     'cmd_raw_no_range_check("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent',
   )

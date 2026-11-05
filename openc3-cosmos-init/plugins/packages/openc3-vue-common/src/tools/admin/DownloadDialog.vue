@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -134,9 +134,8 @@ export default {
   },
   methods: {
     parseGithub: function () {
-      const gemRegEx = /\w+.gem/
       return this.response.tree
-        .filter((f) => gemRegEx.exec(f.path))
+        .filter((f) => f.path.endsWith('.gem'))
         .map((f) => {
           return {
             name: f.path,
@@ -146,9 +145,12 @@ export default {
     },
     getResponse: function () {
       this.disableSearch = true
-      axios.get(this.url).then((response) => {
-        this.response = response.data
-      })
+      axios
+        .get(this.url)
+        .then((response) => {
+          this.response = response.data
+        })
+        .catch(console.error)
       setTimeout(() => {
         this.disableSearch = false
       }, 10000)

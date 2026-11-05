@@ -45,6 +45,316 @@ module OpenC3
       end
     end
 
+    describe "convert_microservice_to_process_definition" do
+      before(:each) do
+        mock_redis()
+        @operator = MicroserviceOperator.new
+      end
+
+      it "sets per-plugin venv env vars when plugin venv directory exists" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => true,
+          "plugin" => "my-plugin__0"
+        }
+        sanitized_name = "DEFAULT__my-plugin__0"
+        venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(env['PATH']).to start_with("#{venv_dir}/bin:")
+        expect(env['PYTHONUSERBASE']).to eq(venv_dir)
+        expect(env['GEM_HOME']).to eq('/gems')
+      end
+
+      it "falls back to shared python_packages when no plugin venv exists" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => true,
+          "plugin" => "my-plugin__0"
+        }
+        venv_dir = "/gems/plugin_venvs/DEFAULT__my-plugin__0/.venv"
+        allow(File).to receive(:directory?).with(venv_dir).and_return(false)
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['VIRTUAL_ENV']).to be_nil
+        expect(env['PYTHONUSERBASE']).to eq('/gems/python_packages')
+        expect(env['GEM_HOME']).to eq('/gems')
+      end
+
+      it "sets GEM_HOME, PYTHONUSERBASE, and PYTHONPATH to nil when needs_dependencies is false" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => false,
+          "plugin" => "my-plugin__0"
+        }
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['GEM_HOME']).to be_nil
+        expect(env['PYTHONUSERBASE']).to be_nil
+        expect(env['PYTHONPATH']).to be_nil
+      end
+
+      it "sanitizes plugin name for venv directory lookup" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => true,
+          "plugin" => "my.plugin@1.0"
+        }
+        # tr('^a-zA-Z0-9_-', '_') converts dots and @ to underscores
+        sanitized_name = "DEFAULT__my_plugin_1_0"
+        venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(env['PYTHONUSERBASE']).to eq(venv_dir)
+      end
+
+      it "falls back to shared when plugin name is nil" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => true,
+          "plugin" => nil
+        }
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['VIRTUAL_ENV']).to be_nil
+        expect(env['PYTHONUSERBASE']).to eq('/gems/python_packages')
+      end
+
+      it "preserves PYTHONPATH from parent environment" do
+        config = {
+          "env" => {},
+          "needs_dependencies" => true,
+          "plugin" => "test-plugin"
+        }
+        allow(File).to receive(:directory?).and_return(false)
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('PYTHONPATH', nil).and_return('/some/python/path')
+
+        _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+
+        expect(env['PYTHONPATH']).to eq('/some/python/path')
+      end
+
+      describe "FILE secrets" do
+        before(:each) do
+          allow(@operator.instance_variable_get(:@secrets)).to receive(:get).and_return('secret value')
+        end
+
+        def convert(path)
+          config = { "env" => {}, "secrets" => [['FILE', 'KEY', path, nil]] }
+          @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
+        end
+
+        it "writes the secret value to a path under the secret file dir" do
+          path = "/tmp/openc3_operator_spec_#{Process.pid}/cert"
+          begin
+            convert(path)
+            expect(File.read(path)).to eql 'secret value'
+          ensure
+            FileUtils.rm_rf(File.dirname(path))
+          end
+        end
+
+        it "does not write a secret outside the secret file dir" do
+          expect(Logger).to receive(:error).with(/invalid file path/)
+          expect(File).to_not receive(:open)
+          convert('/etc/openc3_operator_spec_should_not_exist')
+        end
+
+        it "does not follow a symlink pointing outside the secret file dir" do
+          link = "/tmp/openc3_operator_spec_link_#{Process.pid}"
+          target = "/tmp/openc3_operator_spec_target_#{Process.pid}"
+          FileUtils.rm_f([link, target])
+          File.symlink(target, link)
+          begin
+            expect(Logger).to receive(:error).with(/is a symlink which is not allowed/)
+            convert(link)
+            expect(File.exist?(target)).to be false
+          ensure
+            FileUtils.rm_f([link, target])
+          end
+        end
+
+        it "does not write through a symlinked directory pointing outside the secret file dir" do
+          dir = "/tmp/openc3_operator_spec_outside_#{Process.pid}"
+          link = "/tmp/openc3_operator_spec_dirlink_#{Process.pid}"
+          FileUtils.rm_rf(dir)
+          FileUtils.rm_f(link)
+          FileUtils.mkdir_p(dir)
+          # A symlink whose target is outside the secret file dir. /tmp is used as
+          # the target's parent so the spec doesn't need write access elsewhere,
+          # with OPENC3_SECRET_FILE_DIR narrowed to make it 'outside'.
+          saved = ENV['OPENC3_SECRET_FILE_DIR']
+          ENV['OPENC3_SECRET_FILE_DIR'] = "/tmp/openc3_operator_spec_base_#{Process.pid}"
+          FileUtils.mkdir_p(ENV['OPENC3_SECRET_FILE_DIR'])
+          File.symlink(dir, "#{ENV['OPENC3_SECRET_FILE_DIR']}/sub")
+          begin
+            expect(Logger).to receive(:error).with(/contains a symlinked directory/)
+            convert("#{ENV['OPENC3_SECRET_FILE_DIR']}/sub/cert")
+            expect(File.exist?("#{dir}/cert")).to be false
+          ensure
+            FileUtils.rm_rf([dir, ENV['OPENC3_SECRET_FILE_DIR']])
+            ENV['OPENC3_SECRET_FILE_DIR'] = saved
+          end
+        end
+
+        it "does not create directories outside the secret file dir through a symlink" do
+          dir = "/tmp/openc3_operator_spec_outside_#{Process.pid}"
+          FileUtils.rm_rf(dir)
+          FileUtils.mkdir_p(dir)
+          saved = ENV['OPENC3_SECRET_FILE_DIR']
+          ENV['OPENC3_SECRET_FILE_DIR'] = "/tmp/openc3_operator_spec_base_#{Process.pid}"
+          FileUtils.mkdir_p(ENV['OPENC3_SECRET_FILE_DIR'])
+          File.symlink(dir, "#{ENV['OPENC3_SECRET_FILE_DIR']}/sub")
+          begin
+            expect(Logger).to receive(:error).with(/contains a symlinked directory/)
+            # The 'deep' directory does not exist yet so mkdir_p would create it
+            # under the symlink target if the containment check ran afterwards
+            convert("#{ENV['OPENC3_SECRET_FILE_DIR']}/sub/deep/cert")
+            expect(File.exist?("#{dir}/deep")).to be false
+          ensure
+            FileUtils.rm_rf([dir, ENV['OPENC3_SECRET_FILE_DIR']])
+            ENV['OPENC3_SECRET_FILE_DIR'] = saved
+          end
+        end
+      end
+    end
+
+    describe "start_new" do
+      before(:each) do
+        @saved_max = ENV.fetch('OPENC3_OPERATOR_MAX_START_PER_CYCLE', nil)
+      end
+
+      after(:each) do
+        if @saved_max.nil?
+          ENV.delete('OPENC3_OPERATOR_MAX_START_PER_CYCLE')
+        else
+          ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = @saved_max
+        end
+      end
+
+      def build_processes(started)
+        processes = {}
+        5.times do |i|
+          name = "DEFAULT__TYPE__NAME#{i}"
+          process = double(name)
+          allow(process).to receive(:start) { started << name }
+          processes[name] = process
+        end
+        processes
+      end
+
+      it "starts at most OPENC3_OPERATOR_MAX_START_PER_CYCLE processes per cycle" do
+        ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = '2'
+        op = MicroserviceOperator.new
+        started = []
+        op.instance_variable_set(:@new_processes, build_processes(started))
+
+        # First cycle starts only the first 2; the rest stay queued for later cycles
+        capture_io { op.start_new }
+        expect(started).to eq(%w(DEFAULT__TYPE__NAME0 DEFAULT__TYPE__NAME1))
+        expect(op.instance_variable_get(:@new_processes).keys).to eq(%w(DEFAULT__TYPE__NAME2 DEFAULT__TYPE__NAME3 DEFAULT__TYPE__NAME4))
+
+        # Subsequent cycles drain the queue 2 at a time until empty
+        capture_io { op.start_new }
+        expect(started).to eq(%w(DEFAULT__TYPE__NAME0 DEFAULT__TYPE__NAME1 DEFAULT__TYPE__NAME2 DEFAULT__TYPE__NAME3))
+        capture_io { op.start_new }
+        expect(started.length).to eq(5)
+        expect(op.instance_variable_get(:@new_processes)).to be_empty
+      end
+
+      it "starts every process in one cycle when the limit is 0 (unlimited)" do
+        ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = '0'
+        op = MicroserviceOperator.new
+        started = []
+        op.instance_variable_set(:@new_processes, build_processes(started))
+
+        capture_io { op.start_new }
+        expect(started.length).to eq(5)
+        expect(op.instance_variable_get(:@new_processes)).to be_empty
+      end
+    end
+
+    describe "respawn_dead" do
+      it "skips processes still queued by the per-cycle start limit" do
+        op = MicroserviceOperator.new
+        queued = double("queued_process")
+        # A queued (not yet started) process must not be treated as dead and respawned
+        expect(queued).to_not receive(:alive?)
+        expect(queued).to_not receive(:start)
+        op.instance_variable_set(:@processes, { "DEFAULT__TYPE__QUEUED" => queued })
+        op.instance_variable_set(:@new_processes, { "DEFAULT__TYPE__QUEUED" => queued })
+        capture_io { op.respawn_dead }
+      end
+    end
+
+    describe "respawn_changed" do
+      before(:each) do
+        @saved_max = ENV.fetch('OPENC3_OPERATOR_MAX_START_PER_CYCLE', nil)
+      end
+
+      after(:each) do
+        if @saved_max.nil?
+          ENV.delete('OPENC3_OPERATOR_MAX_START_PER_CYCLE')
+        else
+          ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = @saved_max
+        end
+      end
+
+      def build_changed(started)
+        processes = {}
+        5.times do |i|
+          name = "DEFAULT__TYPE__NAME#{i}"
+          # as_null_object so the shutdown_processes calls (soft_stop, hard_stop,
+          # output_increment, extract_output) are harmless no-ops
+          process = double(name).as_null_object
+          allow(process).to receive(:alive?).and_return(false)
+          allow(process).to receive(:start) { started << name }
+          processes[name] = process
+        end
+        processes
+      end
+
+      it "cycles at most OPENC3_OPERATOR_MAX_START_PER_CYCLE changed processes per cycle" do
+        ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = '2'
+        op = MicroserviceOperator.new
+        started = []
+        op.instance_variable_set(:@changed_processes, build_changed(started))
+
+        # First cycle restarts only the first 2; the rest keep running, queued for later
+        capture_io { op.respawn_changed }
+        expect(started).to eq(%w(DEFAULT__TYPE__NAME0 DEFAULT__TYPE__NAME1))
+        expect(op.instance_variable_get(:@changed_processes).keys).to eq(%w(DEFAULT__TYPE__NAME2 DEFAULT__TYPE__NAME3 DEFAULT__TYPE__NAME4))
+
+        # Subsequent cycles drain the queue 2 at a time until empty
+        capture_io { op.respawn_changed }
+        expect(started.length).to eq(4)
+        capture_io { op.respawn_changed }
+        expect(started.length).to eq(5)
+        expect(op.instance_variable_get(:@changed_processes)).to be_empty
+      end
+
+      it "cycles all changed processes in one cycle when the limit is 0 (unlimited)" do
+        ENV['OPENC3_OPERATOR_MAX_START_PER_CYCLE'] = '0'
+        op = MicroserviceOperator.new
+        started = []
+        op.instance_variable_set(:@changed_processes, build_changed(started))
+
+        capture_io { op.respawn_changed }
+        expect(started.length).to eq(5)
+        expect(op.instance_variable_get(:@changed_processes)).to be_empty
+      end
+    end
+
     describe "update" do
       # SPEC_DIR: C:/.../openc3/openc3/spec
       before(:all) do
@@ -134,6 +444,50 @@ module OpenC3
       #     expect(stdout.string).to match(/shutting down.*ruby.*while.rb/)
       #   end
       # end
+    end
+
+    describe "redis error resilience" do
+      before(:each) do
+        @redis = mock_redis()
+        ENV['OPERATOR_CYCLE_TIME'] = '0.05'
+      end
+
+      after(:each) do
+        MicroserviceOperator.instance&.stop
+        # run() parks in a second loop waiting for @shutdown_complete, which is
+        # only set by shutdown() via at_exit (stubbed to a no-op in this spec).
+        # Force-kill the thread so teardown doesn't block on that park loop.
+        @thread&.kill
+        @thread&.join
+      rescue Redis::BaseError
+        # Before the fix the loop dies on the Redis error and join re-raises it
+        # here; swallow so the example's own assertion is the reported failure.
+      end
+
+      # A transient network blip (the same kind that makes targets reconnect)
+      # makes one hgetall raise. The operator must absorb it and keep cycling
+      # instead of letting the exception unwind run() and exit the process,
+      # which in the container manifests as a full operator restart.
+      it "survives a transient Redis error during update and keeps cycling" do
+        raised = false
+        allow(@redis).to receive(:hgetall).and_wrap_original do |original, key, *args|
+          if key.to_s.include?('openc3_microservices') && !raised
+            raised = true
+            raise Redis::CannotConnectError.new("Error connecting to Redis on localhost:6379")
+          end
+          original.call(key, *args)
+        end
+
+        capture_io do
+          @thread = Thread.new { MicroserviceOperator.run }
+          sleep 0.5 # Several cycles; the error fires on the first update
+        end
+
+        # The error must actually have been triggered...
+        expect(raised).to be true
+        # ...and the operator loop must have survived it and still be running.
+        expect(@thread.alive?).to be true
+      end
     end
   end
 end

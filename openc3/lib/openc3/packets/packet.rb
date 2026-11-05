@@ -616,7 +616,7 @@ module OpenC3
     def get_item(name)
       return super(name)
     rescue ArgumentError
-      raise "Packet item '#{@target_name} #{@packet_name} #{name.upcase}' does not exist"
+      raise "Item '#{@target_name} #{@packet_name} #{name.upcase}' does not exist (Packet)"
     end
 
     # Read an item in the packet
@@ -637,6 +637,10 @@ module OpenC3
       else
         value = super(item, :RAW, buffer)
       end
+      # An item beyond the end of a short buffer reads as nil (ALLOW_SHORT).
+      # Conversions, states and format strings can't be applied to a nil value.
+      return nil if value.nil? && @short_buffer_allowed && item.data_type != :DERIVED
+
       derived_raw = false
       if item.data_type == :DERIVED && value_type == :RAW
         value_type = :CONVERTED
@@ -875,7 +879,7 @@ module OpenC3
       result = nil
       synchronize_allow_reads(true) do
         result = read_all(value_type, buffer, false).map! do |array|
-          array << @items[array[0]].limits.state
+          array << @items[array[0]].limits_state
         end
       end
       return result
@@ -992,7 +996,7 @@ module OpenC3
     # This is an optimization so we don't have to iterate through all the items when
     # checking for limits.
     def update_limits_items_cache(item)
-      if item.limits.values || item.state_colors
+      if item.limits_values || item.state_colors
         @limits_items ||= []
         @limits_items_hash ||= {}
         unless @limits_items_hash[item]
@@ -1285,7 +1289,7 @@ module OpenC3
       config
     end
 
-    def decom
+    def decom(include_limits_states: true)
       # Read all the RAW at once because this could be optimized by the accessor
       json_hash = read_items(@sorted_items)
 
@@ -1301,7 +1305,9 @@ module OpenC3
           if item.format_string or item.units
             json_hash["#{item.name}__F"] = read_item(item, :FORMATTED, @buffer, given_raw)
           end
-          limits_state = item.limits.state
+          if include_limits_states
+            limits_state = item.limits_state
+          end
           if limits_state
             json_hash["#{item.name}__L"] = limits_state
           end
@@ -1332,6 +1338,12 @@ module OpenC3
     def obfuscate()
       return unless @buffer
       return unless @obfuscated_items
+
+      # Given values hold the plaintext the user sent, so drop them for obfuscated items
+      if @given_values
+        obfuscated_names = @obfuscated_items.map { |item| item.name.upcase }
+        @given_values.delete_if { |key, _| obfuscated_names.include?(key.to_s.upcase) }
+      end
 
       @obfuscated_items.each do |item|
         next if item.data_type == :DERIVED
@@ -1435,7 +1447,7 @@ module OpenC3
 
     def handle_limits_states(item, value)
       # Retrieve limits state for the given value
-      limits_state = item.state_colors[value]
+      limits_state = item.state_colors ? item.state_colors[value] : nil
 
       if item.limits.state != limits_state # PacketItemLimits state has changed
         # Save old limits state

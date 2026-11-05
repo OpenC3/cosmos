@@ -28,6 +28,17 @@ from openc3.utilities.string import (
 
 
 SCRIPT_API = "script-api"
+# See running_script.rb for the rationale: per-script events are mirrored into a
+# short-lived Redis stream so RunningScriptChannel can serve the backlog + live
+# from a single source. MAXLEN bounds memory; the TTL is refreshed on every
+# write so the stream is auto-removed by Redis shortly after the last event.
+RUNNING_SCRIPT_CHANNEL_PREFIX = "running-script-channel:"
+RUNNING_SCRIPT_REPLAY_MAXLEN = 1000
+RUNNING_SCRIPT_REPLAY_TTL = 86400  # seconds
+# Flush the replay queue quickly so live output/state stays near real-time while
+# remaining non-blocking. Applied via set_update_interval in RunningScript's
+# __init__ so it only affects this (running script) process.
+RUNNING_SCRIPT_REPLAY_FLUSH_INTERVAL = 0.1  # seconds
 
 
 def running_script_publish(channel_name, data):
@@ -36,9 +47,27 @@ def running_script_publish(channel_name, data):
 
 
 def running_script_anycable_publish(channel_name, data):
-    stream_name = ":".join([SCRIPT_API, channel_name])
-    stream_data = {"stream": stream_name, "data": json.dumps(data)}
-    Store.publish("__anycable__", json.dumps(stream_data))
+    data_json = json.dumps(data)
+    if channel_name.startswith(RUNNING_SCRIPT_CHANNEL_PREFIX):
+        # Per-script events are delivered to the frontend by RunningScriptChannel
+        # tailing this replay stream (backlog + live from a single ordered
+        # source), so they are NOT broadcast over anycable pub/sub -- doing both
+        # would deliver every message twice. Queued (EphemeralStoreQueued) so the
+        # script never blocks on Redis; best-effort so a replay failure can never
+        # affect script execution. Topic (read by the channel) uses EphemeralStore.
+        try:
+            replay_key = f"{channel_name}:replay"
+            EphemeralStoreQueued.instance().write_topic(
+                replay_key, {"data": data_json}, "*", RUNNING_SCRIPT_REPLAY_MAXLEN, True
+            )
+            EphemeralStoreQueued.instance().expire(replay_key, RUNNING_SCRIPT_REPLAY_TTL)
+        except Exception:
+            pass  # never let a replay failure affect script execution
+    else:
+        # Other channels (all-scripts, etc.) are still delivered live over pub/sub.
+        stream_name = ":".join([SCRIPT_API, channel_name])
+        stream_data = {"stream": stream_name, "data": data_json}
+        Store.publish("__anycable__", json.dumps(stream_data))
 
 
 # sleep in a script - returns true if canceled mid sleep
@@ -61,10 +90,10 @@ def _openc3_script_sleep(sleep_time=None):
     if sleep_time is None:  # Handle infinite wait
         sleep_time = 30000000
     if sleep_time > 0.0:
-        end_time = time.time() + sleep_time
+        end_time = _time.time() + sleep_time
         count = 0
-        while time.time() < end_time:
-            time.sleep(0.01)
+        while _time.time() < end_time:
+            _time.sleep(0.01)
             count += 1
             if RunningScript.instance.use_instrumentation and (count % 100) == 0:  # Approximately Every Second
                 running_script_anycable_publish(
@@ -115,12 +144,18 @@ from openc3.script.exceptions import CheckError, SkipScriptError, StopScriptErro
 from openc3.script.suite import Group
 from openc3.tools.test_runner.test import SkipTestCase
 from openc3.top_level import kill_thread
-from openc3.utilities.logger import Logger
+from openc3.utilities.logger import Logger, default_level
 from openc3.utilities.message_log import MessageLog
 from openc3.utilities.script_instrumentor import ScriptInstrumentor
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store import Store
+from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.utilities.target_file import TargetFile
+
+
+# This is to deconflict with the python `time` module so that user scripts
+# can do `from time import time` instead of just `import time`.
+_time = time
 
 
 # Define all the user input methods used in scripting which we need to broadcast to the frontend
@@ -169,11 +204,21 @@ def running_script_method(method, *args, **kwargs):
                         path = path[len(scope) + 1 :]
                     file = _get_storage_file(path, bucket=bucket, scope=scope)
                     file._filename = the_filename
+                    file._bucket = bucket
+                    file._bucket_path = user_input["path"]
 
                     def filename(self):
                         return self._filename
 
+                    def bucket_name(self):
+                        return self._bucket
+
+                    def bucket_path(self):
+                        return self._bucket_path
+
                     type(file).filename = filename
+                    type(file).bucket = bucket_name
+                    type(file).bucket_path = bucket_path
                     return file
                 elif "open_file" in method:
                     files = []
@@ -220,7 +265,7 @@ class RunningScript:
     # Matches the following test cases:
     # class MySuite(TestSuite)
     # class MySuite(Suite)
-    PYTHON_SUITE_REGEX = re.compile(r"\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)")
+    PYTHON_SUITE_REGEX = re.compile(r"class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)")
 
     # Can't use isoformat because it appends "+00:00" instead of "Z"
     STRFTIME_FORMAT = "%Y-%m-%dT%H:%M:%S.%fZ"
@@ -279,6 +324,11 @@ class RunningScript:
 
     def __init__(self, script_status):
         RunningScript.instance = self
+        # Flush the replay queue (used by running_script_anycable_publish) quickly
+        # so live output/state stays near real-time. Set explicitly here so the
+        # interval is applied even if the queue instance was already created.
+        # Only affects this running-script process.
+        EphemeralStoreQueued.instance().set_update_interval(RUNNING_SCRIPT_REPLAY_FLUSH_INTERVAL)
         self.script_status = script_status
         self.script_status.pid = os.getpid()
         self.user_input = ""
@@ -292,7 +342,7 @@ class RunningScript:
         self.debug_code_completion = None
         self.top_level_instrumented_cache = None
         self.output_time = cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
-        self.output_time_value = time.time()
+        self.output_time_value = _time.time()
         self.script_globals = globals()
         self.suite_report = None
 
@@ -458,7 +508,7 @@ class RunningScript:
         self.retry_needed = False
         self.use_instrumentation = True
         self.call_stack = []
-        self.pre_line_time = time.time()
+        self.pre_line_time = _time.time()
         self.exceptions = None
         self.script_binding = [{}, {}]
         self.inline_eval = None
@@ -492,23 +542,29 @@ class RunningScript:
 
     def run(self):
         if self.script_status.suite_runner is not None:
-            if "options" in self.script_status.suite_runner:
-                self.parse_options(self.script_status.suite_runner["options"])
-            else:
-                self.parse_options({})  # Set default options
-            if "script" in self.script_status.suite_runner:
+            # Normalize the received dict through the shared helper so options/
+            # method defaults and validation match what openc3cli and the GUI build.
+            sr = SuiteRunner.build_options(
+                suite=self.script_status.suite_runner.get("suite"),
+                group=self.script_status.suite_runner.get("group"),
+                script=self.script_status.suite_runner.get("script"),
+                method=self.script_status.suite_runner.get("method"),
+                options=self.script_status.suite_runner.get("options"),
+            )
+            self.parse_options(sr["options"])
+            if "script" in sr:
                 self.run_text(
-                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({self.script_status.suite_runner['suite']}, {self.script_status.suite_runner['group']}, '{self.script_status.suite_runner['script']}')",
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.start({sr['suite']}, {sr['group']}, '{sr['script']}')",
                     initial_filename="SCRIPTRUNNER",
                 )
-            elif "group" in self.script_status.suite_runner:
+            elif "group" in sr:
                 self.run_text(
-                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{self.script_status.suite_runner['method']}({self.script_status.suite_runner['suite']}, {self.script_status.suite_runner['group']})",
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{sr['method']}({sr['suite']}, {sr['group']})",
                     initial_filename="SCRIPTRUNNER",
                 )
             else:
                 self.run_text(
-                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{self.script_status.suite_runner['method']}({self.script_status.suite_runner['suite']})",
+                    f"from openc3.script.suite_runner import SuiteRunner\nSuiteRunner.{sr['method']}({sr['suite']})",
                     initial_filename="SCRIPTRUNNER",
                 )
         else:
@@ -529,7 +585,7 @@ class RunningScript:
         return result
 
     def pre_line_instrumentation(self, filename, line_number, global_variables, local_variables):
-        self.pre_line_time = time.time()
+        self.pre_line_time = _time.time()
         self.script_binding = [global_variables, local_variables]
         self.script_status.current_filename = filename
         self.script_status.line_no = line_number
@@ -656,7 +712,8 @@ class RunningScript:
                 trace.append(f"{filename}:{lineno}:{name}:{line}")
         return trace
 
-    def execute_while_paused(self, filename, line_no=1, end_line_no=None):
+    # bind_variables of None binds only when filename is the currently running file
+    def execute_while_paused(self, filename, line_no=1, end_line_no=None, bind_variables=None):
         if (
             self.script_status.state == "paused"
             or self.script_status.state == "error"
@@ -666,6 +723,7 @@ class RunningScript:
                 "filename": filename,
                 "line_no": line_no,
                 "end_line_no": end_line_no,
+                "bind_variables": bind_variables,
             }
         else:
             self.scriptrunner_puts(
@@ -685,8 +743,8 @@ class RunningScript:
     @classmethod
     def script_get_breakpoints(cls, scope, name):
         breakpoints = Store.hget(
-            f"{scope}__script-breakpoints", name.split("*")[0]
-        )  # Split '*' that indicates modified
+            f"{scope}__script-breakpoints", TargetFile.strip_modified(name)
+        )  # Remove '*' that indicates modified
         if breakpoints:
             return json.loads(breakpoints)
         return []
@@ -697,7 +755,7 @@ class RunningScript:
         if not line_number:
             line_number = self.script_status.line_no
         self.output_time = cdatetime.now(timezone.utc).strftime(RunningScript.STRFTIME_FORMAT)
-        self.output_time_value = time.time()
+        self.output_time_value = _time.time()
         string = self.output_io.getvalue()
         self.output_io.truncate(0)
         self.output_io.seek(0)
@@ -758,7 +816,7 @@ class RunningScript:
             self.prompt_id = prompt["id"]
         while not self.go and not self.stop:
             self.check_execute_while_paused()
-            time.sleep(0.01)
+            _time.sleep(0.01)
             count += 1
             if count % 100 == 0:  # Approximately Every Second
                 running_script_anycable_publish(
@@ -796,7 +854,7 @@ class RunningScript:
         self.go = False
         while not self.go and not self.stop and not self.retry_needed:
             self.check_execute_while_paused()
-            time.sleep(0.01)
+            _time.sleep(0.01)
             count += 1
             if (count % 100) == 0:  # Approximately Every Second
                 running_script_anycable_publish(
@@ -818,10 +876,10 @@ class RunningScript:
     def check_execute_while_paused(self):
         try:
             if self.execute_while_paused_info is not None:
-                if self.script_status.current_filename == self.execute_while_paused_info.get("filename"):
-                    bind_variables = True
-                else:
-                    bind_variables = False
+                filename = self.execute_while_paused_info.get("filename")
+                bind_variables = self.execute_while_paused_info.get("bind_variables")
+                if bind_variables is None:
+                    bind_variables = self.script_status.current_filename == filename
                 if self.execute_while_paused_info.get("end_line_no"):
                     # Execute Selection While Paused
                     state = self.script_status.state
@@ -1047,7 +1105,7 @@ class RunningScript:
                     instrumented_script = self.instrument_script(text, instrument_filename)
 
                 # Execute the script
-                self.pre_line_time = time.time()
+                self.pre_line_time = _time.time()
                 # script_globals["__name__"] == "openc3.utilities.running_script"
                 # ...so instead we set it to "__main__"
                 self.script_globals["__name__"] = "__main__"
@@ -1137,9 +1195,9 @@ class RunningScript:
 
     def handle_line_delay(self):
         if RunningScript.line_delay > 0.0:
-            sleep_time = RunningScript.line_delay - (time.time() - self.pre_line_time)
+            sleep_time = RunningScript.line_delay - (_time.time() - self.pre_line_time)
             if sleep_time > 0.0:
-                time.sleep(sleep_time)
+                _time.sleep(sleep_time)
 
     def handle_exception(self, exc_type, exc_value, exc_traceback, fatal, filename=None, line_number=0):
         self.exceptions = self.exceptions or []
@@ -1224,7 +1282,7 @@ class RunningScript:
         sys.stdout = Stdout.instance()
         sys.stderr = Stderr.instance()
         Logger.stdout = True
-        Logger.level = Logger.INFO
+        Logger.level = default_level()
 
     def output_thread_body(self):
         RunningScript.cancel_output = False
@@ -1232,7 +1290,7 @@ class RunningScript:
         while True:
             if RunningScript.cancel_output:
                 break
-            if (time.time() - self.output_time_value) > 5.0:
+            if (_time.time() - self.output_time_value) > 5.0:
                 self.handle_output_io()
             if RunningScript.cancel_output:
                 break
@@ -1386,7 +1444,7 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
             if end_line_no is None:
                 # Goto line
                 RunningScript.instance.script_engine.run_text(
-                    instrumented_script, filename=procedure_name, line_no=line_no
+                    instrumented_script, filename=procedure_name, line_no=line_no, bind_variables=True
                 )
             else:
                 # Execute selection
@@ -1395,6 +1453,7 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
                     filename=procedure_name,
                     line_no=line_no,
                     end_line_no=end_line_no,
+                    bind_variables=True,
                 )
         else:
             RunningScript.instance.script_engine.run_text(instrumented_script, filename=procedure_name)
@@ -1434,19 +1493,22 @@ openc3.script.start = start
 
 def goto(line_no_or_procedure_name, line_no=None):
     if line_no is None:
-        start(
-            RunningScript.instance.current_filename(),
-            line_no=line_no_or_procedure_name,
-            bind_variables=True,
-            complete=True,
-        )
+        procedure_name = RunningScript.instance.current_filename()
+        line_no = line_no_or_procedure_name
     else:
-        start(
-            line_no_or_procedure_name,
-            line_no=line_no,
-            bind_variables=True,
-            complete=True,
-        )
+        procedure_name = line_no_or_procedure_name
+    # goto typed at the debug prompt is executed on the thread that processes
+    # go/step/stop messages. Running the script there deadlocks at the next pause,
+    # so hand it to the run thread the same way the editor's goto does.
+    if threading.current_thread() is not RunningScript.run_thread:
+        RunningScript.instance.execute_while_paused(procedure_name, line_no, bind_variables=True)
+        return
+    start(
+        procedure_name,
+        line_no=line_no,
+        bind_variables=True,
+        complete=True,
+    )
 
 
 openc3.script.goto = goto

@@ -45,9 +45,9 @@ module OpenC3
       @im_shutdown = false
       allow_any_instance_of(OpenC3::Interface).to receive(:read_interface) { sleep(0.01) until @im_shutdown }
 
-      model = MicroserviceModel.new(name: "DEFAULT__INTERFACE__ROUTE_INT", scope: "DEFAULT", target_names: ["INST"])
+      model = MicroserviceModel.new(name: "DEFAULT__ROUTER__ROUTE_INT", scope: "DEFAULT", target_names: ["INST"])
       model.create
-      @im = RouterMicroservice.new("DEFAULT__INTERFACE__ROUTE_INT")
+      @im = RouterMicroservice.new("DEFAULT__ROUTER__ROUTE_INT")
       @im_thread = Thread.new { @im.run }
       sleep(0.01) # Allow the thread to run
 
@@ -68,6 +68,18 @@ module OpenC3
         # Verify it also includes the status
         expect(router['state']).to match(/CONNECTED|ATTEMPTING/)
         expect(router['clients']).to eql 0
+      end
+
+      it "raises if the router does not exist" do
+        expect { @api.get_router("NONEXISTENT_ROUTER") }.to raise_error("Router 'NONEXISTENT_ROUTER' does not exist (get_router)")
+      end
+
+      it "defaults the state to UNKNOWN if the router status does not exist" do
+        model = RouterModel.new(name: "NO_STATUS_ROUTER", scope: "DEFAULT")
+        model.create
+        router = @api.get_router("NO_STATUS_ROUTER")
+        expect(router['name']).to eql "NO_STATUS_ROUTER"
+        expect(router['state']).to eql "UNKNOWN"
       end
     end
 

@@ -1,37 +1,35 @@
-from openc3.packets.command_validator import CommandValidator
+from openc3.packets.command_validator import CommandValidator, CommandValidatorResult
 # Using the OpenC3 API requires the following imports:
-# from openc3.api import wait_check
+from openc3.api import tlm, wait_check
 
 # Custom command validator class
 # See https://docs.openc3.com/docs/configuration/command
 class <%= validator_class %>(CommandValidator):
-    def __init__(self, *args):
-        super().__init__()
-        self.args = args
-
     # Called before a command is sent
-    # @param command [dict] The command dictionary containing all the command details
-    # @return [list] First element is True/False/None for success/failure/unknown,
-    #   second element is an optional message string
+    # @param command [Packet] The command object containing all the command details
+    # @return [CommandValidatorResult] (result, message) where result is True/False/None
+    #   for success/failure/unknown and message is an optional string
     def pre_check(self, command):
         # Add your pre-command validation logic here
         # Example:
-        # target_name = command['target_name']
-        # command_name = command['cmd_name']
-        # params = command['cmd_params']
+        # target_name = command.target_name
+        # command_name = command.packet_name
+        # for item_name, item_def in command.items.items():
+        #     item_value = command.read(item_name)
+
         # self.count = tlm("TARGET PACKET COUNT")
         #
         # if some_condition:
-        #     return [False, "Command validation failed: reason"]
+        #     return CommandValidatorResult(False, "Command validation failed: reason")
 
         # Return True to indicate Success, False to indicate Failure,
         # and None to indicate Unknown. The second value is the optional message.
-        return [True, None]
+        return CommandValidatorResult(True, None)
 
     # Called after a command is sent
-    # @param command [dict] The command dictionary containing all the command details
-    # @return [list] First element is True/False/None for success/failure/unknown,
-    #   second element is an optional message string
+    # @param command [Packet] The command object containing all the command details
+    # @return [CommandValidatorResult] (result, message) where result is True/False/None
+    #   for success/failure/unknown and message is an optional string
     def post_check(self, command):
         # Add your post-command validation logic here
         # Example:
@@ -40,10 +38,10 @@ class <%= validator_class %>(CommandValidator):
         # wait_check(f"TARGET PACKET COUNT > {self.count}", 5) # Wait up to 5 seconds
         #
         # if some_condition:
-        #     return [False, "Post-command validation failed: reason"]
+        #     return CommandValidatorResult(False, "Post-command validation failed: reason")
         #
         # Wait for telemetry
 
         # Return True to indicate Success, False to indicate Failure,
         # and None to indicate Unknown. The second value is the optional message.
-        return [True, None]
+        return CommandValidatorResult(True, None)

@@ -71,4 +71,97 @@ RSpec.describe StreamingChannel, :type => :channel do
       expect(subscription).to be_confirmed
     end
   end
+
+  context "with a missing broadcaster" do
+    # The broadcaster only exists between subscribed and unsubscribed. A perform
+    # that races a rejected/torn-down subscription (broadcaster == nil) must be a
+    # harmless no-op, not a NoMethodError that reject_subscription()s every panel
+    # on the connection. (String keys here mirror the JSON-parsed data a real
+    # client sends, so validate_data passes and we actually exercise the guard.)
+    before do
+      subscribe()
+      ApplicationCable::BroadcasterRegistry.unregister('streaming_12345')
+    end
+
+    it "does not reject a remove" do
+      subscription.remove({ 'scope' => 'DEFAULT', 'items' => ['TLM__TGT__PKT__ITEM__CONVERTED'] })
+      expect(subscription).not_to be_rejected
+    end
+
+    it "does not reject an add" do
+      subscription.add({ 'scope' => 'DEFAULT', 'items' => ['TLM__TGT__PKT__ITEM__CONVERTED'] })
+      expect(subscription).not_to be_rejected
+    end
+  end
+
+  context "broadcaster lifecycle" do
+    let(:registry) { ApplicationCable::BroadcasterRegistry }
+
+    before(:each) { allow(OpenC3::Logger).to receive(:warn) }
+
+    it "registers on subscribe and unregisters on unsubscribe" do
+      subscribe()
+      expect(registry.get('streaming_12345')).to be_a(StreamingApi)
+      unsubscribe()
+      expect(registry.registered?('streaming_12345')).to be false
+    end
+
+    it "kills a previous broadcaster registered under the same key" do
+      subscribe()
+      first = registry.get('streaming_12345')
+      expect(first).to receive(:kill)
+      subscribe()
+      expect(registry.get('streaming_12345')).not_to equal(first)
+    end
+
+    it "reaps a heartbeating subscription that stops heartbeating" do
+      subscribe()
+      subscription.heartbeat({})
+      broadcaster = registry.get('streaming_12345')
+      expect(broadcaster).to receive(:kill)
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      expect(registry.sweep(now + registry.ttl + 1)).to eql ['streaming_12345']
+      expect(registry.registered?('streaming_12345')).to be false
+    end
+
+    it "does not reap a subscription that never heartbeats" do
+      subscribe()
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      expect(registry.sweep(now + registry.ttl + 1)).to be_empty
+      expect(registry.registered?('streaming_12345')).to be true
+    end
+
+    it "reaps a subscription that said it heartbeats before its first heartbeat" do
+      subscribe(heartbeat: true)
+      expect(registry.get('streaming_12345')).to receive(:kill)
+      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      expect(registry.sweep(now + registry.ttl + 1)).to eql ['streaming_12345']
+    end
+
+    it "does not let a late unsubscribe remove a newer subscription's broadcaster" do
+      subscribe()
+      first = subscription
+      allow(registry.get('streaming_12345')).to receive(:kill)
+      subscribe()
+      second = registry.get('streaming_12345')
+      expect(second).not_to receive(:kill)
+      first.unsubscribe_from_channel
+      expect(registry.get('streaming_12345')).to equal(second)
+    end
+
+    it "does nothing on unsubscribe when subscribe was rejected" do
+      subscribe()
+      subscription.broadcaster_token = nil
+      expect(registry.get('streaming_12345')).not_to receive(:kill)
+      unsubscribe()
+      expect(registry.registered?('streaming_12345')).to be true
+    end
+
+    it "tells a heartbeating client to resubscribe once its broadcaster is gone" do
+      subscribe()
+      registry.unregister('streaming_12345')
+      subscription.heartbeat({})
+      expect(transmissions.last).to eql({ '__openc3_cable__' => 'resubscribe' })
+    end
+  end
 end

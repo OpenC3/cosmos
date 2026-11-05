@@ -287,17 +287,16 @@ get_all_commands = get_all_cmds
 # @param target_name [String] Name of the target
 # @return [Array<String>] Array of all command packet names
 def get_all_cmd_names(target_name, hidden=False, scope=OPENC3_SCOPE, manual=False):
+    target_name = target_name.upper()
+    # Only the names are needed so avoid parsing every packet definition
     try:
-        packets = get_all_cmds(target_name, scope=scope, manual=manual)
+        authorize(permission="cmd_info", target_name=target_name, scope=scope, manual=manual)
+        names = TargetModel.packet_names(target_name, type="CMD", scope=scope)
+        if not hidden:
+            hidden_names = set(TargetModel.hidden_packet_names(target_name, type="CMD", scope=scope))
+            names = [name for name in names if name not in hidden_names]
     except Exception:
-        packets = []
-    names = []
-    for packet in packets:
-        if hidden:
-            names.append(packet["packet_name"])
-        else:
-            if "hidden" not in packet:
-                names.append(packet["packet_name"])
+        names = []
     return names
 
 
@@ -472,11 +471,12 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE, manual
 
         time = 0
         command_name = None
-        for target_name in targets:
-            for packet in TargetModel.packets(target_name, type="CMD", scope=scope):
+        for cur_target in targets:
+            # Only the names are needed so avoid parsing every packet definition
+            for packet_name in TargetModel.packet_names(cur_target, type="CMD", scope=scope):
                 cur_time = CommandDecomTopic.get_cmd_item(
-                    target_name,
-                    packet["packet_name"],
+                    cur_target,
+                    packet_name,
                     "RECEIVED_TIMESECONDS",
                     type="CONVERTED",
                     scope=scope,
@@ -486,7 +486,8 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE, manual
 
                 if cur_time > time:
                     time = cur_time
-                    command_name = packet["packet_name"]
+                    command_name = packet_name
+                    target_name = cur_target
 
         if not command_name:
             target_name = None
@@ -609,6 +610,7 @@ def _cmd_implementation(
         scope=scope,
         manual=manual,
     )
+    queue_username = kwargs.get("queue_username")
     if not user:
         user = {}
         user["username"] = os.environ.get("OPENC3_MICROSERVICE_NAME")
@@ -688,6 +690,11 @@ def _cmd_implementation(
         "log_message": str(log_message),
         "obfuscated_items": json.dumps(packet.get("obfuscated_items", [])),
     }
+    # Record the original queuing user (author) separately from 'username' (the
+    # user or process that actually executed the command). Command History shows
+    # 'username' as "Executed By" and queue_username as "Queued By".
+    if queue_username:
+        command["queue_username"] = queue_username
 
     # Users have to explicitly opt into a default queue by setting the OPENC3_DEFAULT_QUEUE
     # At which point ALL commands will go to that queue unless they specifically opt out with queue=False

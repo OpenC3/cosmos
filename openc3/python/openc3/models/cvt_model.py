@@ -17,7 +17,7 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
 from openc3.models.target_model import TargetModel
 from openc3.utilities.json import JsonDecoder, JsonEncoder
-from openc3.utilities.questdb_client import QuestDBClient
+from openc3.utilities.questdb_client import QuestDBClient, TlmItem
 from openc3.utilities.store import Store
 from openc3.utilities.store_queued import StoreQueued
 
@@ -29,8 +29,8 @@ class CvtModel(Model):
     VALUE_TYPES = {"RAW", "CONVERTED", "FORMATTED"}
 
     @classmethod
-    def build_json_from_packet(cls, packet):
-        return packet.decom()
+    def build_json_from_packet(cls, packet, include_limits_states=True):
+        return packet.decom(include_limits_states=include_limits_states)
 
     @classmethod
     def _store_for_target(cls, target_name, scope):
@@ -112,7 +112,7 @@ class CvtModel(Model):
                 return pkt_hash
         packet = cls._store_for_target(target_name, scope).hget(key, packet_name)
         if packet is None:
-            raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
+            raise RuntimeError(f"Packet '{target_name} {packet_name}' has no current values in CVT")
         pkt_hash = json.loads(packet, cls=JsonDecoder)
         CvtModel.packet_cache[tgt_pkt_key] = [now, pkt_hash]
         return pkt_hash
@@ -142,7 +142,7 @@ class CvtModel(Model):
                 pkt_hash[f"{item_name}__C"] = value
                 pkt_hash[item_name] = value
             case _:
-                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name} (set_item)")
         cls.set(
             pkt_hash,
             target_name=target_name,
@@ -192,9 +192,15 @@ class CvtModel(Model):
         start_time: str,
         end_time: str | None = None,
         scope: str = OPENC3_SCOPE,
+        flatten: bool = True,
     ):
         """Query historical telemetry data from TSDB"""
-        return QuestDBClient.tsdb_lookup(items, start_time=start_time, end_time=end_time, scope=scope)
+        return QuestDBClient.tsdb_lookup(items, start_time=start_time, end_time=end_time, scope=scope, flatten=flatten)
+
+    @classmethod
+    def tsdb_packets_with_tables(cls, packets: list, scope: str = OPENC3_SCOPE):
+        """Return the (target_name, packet_name) telemetry packets which have a TSDB table"""
+        return QuestDBClient.tlm_packets_with_tables(packets, scope=scope)
 
     # Return all item values and limit state from the CVT
     #
@@ -220,13 +226,18 @@ class CvtModel(Model):
         # If a start_time is passed we're doing a QuestDB lookup and directly return the results
         # TODO: This currently does NOT support the override values
         if start_time is not None:
-            return cls.tsdb_lookup(items, start_time=start_time, end_time=end_time)
+            return cls.tsdb_lookup(items, start_time=start_time, end_time=end_time, scope=scope)
 
         # First generate a lookup dict of all the items represented so we can query the CVT
         for item in items:
             cls._parse_item(now, lookups, overrides, item, cache_timeout=cache_timeout, scope=scope)
 
-        for target_packet_key, target_name, packet_name, value_keys in lookups:
+        for lookup in lookups:
+            # Set in _parse_item for an item which doesn't exist
+            if lookup is None:
+                results.append([None, None])
+                continue
+            target_packet_key, target_name, packet_name, value_keys = lookup
             if target_packet_key not in packet_lookup:
                 packet_lookup[target_packet_key] = cls.get(
                     target_name,
@@ -253,7 +264,9 @@ class CvtModel(Model):
                         item_result.insert(1, pkt_hash.get(f"{value_keys[-1]}__L"))
                 else:
                     if value_keys[-1] not in pkt_hash:
-                        raise RuntimeError(f"Item '{target_name} {packet_name} {value_keys[-1]}' does not exist")
+                        raise RuntimeError(
+                            f"Item '{target_name} {packet_name} {value_keys[-1]}' does not exist (get_tlm_values)"
+                        )
                     else:
                         item_result.insert(1, None)
             results.append(item_result)
@@ -313,7 +326,7 @@ class CvtModel(Model):
             case "FORMATTED" | "WITH_UNITS":
                 pkt_hash[f"{item_name}__F"] = str(value)  # Always a String
             case _:
-                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name} (override)")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         CvtModel.override_cache[tgt_pkt_key] = [time.time(), pkt_hash]
         store.hset(f"{scope}__override__{target_name}", packet_name, json.dumps(pkt_hash))
@@ -342,7 +355,7 @@ class CvtModel(Model):
                 if f"{item_name}__F" in pkt_hash:
                     pkt_hash.pop(f"{item_name}__F")
             case _:
-                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name} (normalize)")
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         if len(pkt_hash) == 0:
             if tgt_pkt_key in CvtModel.override_cache:
@@ -398,7 +411,7 @@ class CvtModel(Model):
             case "RAW":
                 types = [item_name]
             case _:
-                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name}")
+                raise RuntimeError(f"Unknown type '{type}' for {target_name} {packet_name} {item_name} (get_item)")
 
         tgt_pkt_key = f"{scope}__tlm__{target_name}__{packet_name}"
         overrides = cls._get_overrides(
@@ -436,7 +449,13 @@ class CvtModel(Model):
     # return an ordered array of dict with keys
     @classmethod
     def _parse_item(cls, now, lookups, overrides, item, cache_timeout, scope):
-        target_name, packet_name, item_name, value_type = item
+        # Items can be a TlmItem or a list of [target_name, packet_name, item_name, value_type]
+        # with an optional trailing limits element which is only used by the QuestDB lookup
+        target_name, packet_name, item_name, value_type, _limits = TlmItem(*item)
+        # They are all None when the item doesn't exist (see get_tlm_available)
+        if item_name is None:
+            lookups.append(None)
+            return
 
         # We build lookup keys by including all the less formatted types to gracefully degrade lookups
         # This allows the user to specify FORMATTED and if there is no conversions it will simply return the RAW value

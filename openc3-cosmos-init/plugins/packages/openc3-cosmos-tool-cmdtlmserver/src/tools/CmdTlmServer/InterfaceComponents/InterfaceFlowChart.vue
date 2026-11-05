@@ -17,6 +17,8 @@ import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { ControlButton, Controls } from '@vue-flow/controls'
 import { Background } from '@vue-flow/background'
 import DetailsTable from './DetailsTable.vue'
+import TargetProcessingDetails from './TargetProcessingDetails.vue'
+import { useFlowMetrics } from './useFlowMetrics'
 import InterfaceNode from './InterfaceNode.vue'
 import RouterNode from './RouterNode.vue'
 import CosmosNode from './CosmosNode.vue'
@@ -44,16 +46,17 @@ const dialog = inject('dialog')
 const api = new OpenC3Api()
 
 const props = defineProps({
-  interfaceDetails: { type: Array, default: () => [] },
-  routerDetails: { type: Array, default: () => [] },
+  interfaceDetails: { type: Object, default: () => ({}) },
+  routerDetails: { type: Object, default: () => ({}) },
 })
+const nodeHealth = useFlowMetrics(api)
 const nodes = ref([])
 const edges = ref([])
 
 let layoutNeeded = false
 let structureChanged = false
 
-async function layoutGraph(direction, force = false) {
+function layoutGraph(direction, force = false) {
   if (layoutNeeded || force) {
     nodes.value = layout(nodes.value, edges.value, direction)
     layoutNeeded = false
@@ -170,7 +173,6 @@ onConnect((params) => {
   edges.value.forEach((edge) => {
     if (edge.id === id) {
       found = true
-      return
     }
   })
   if (found) {
@@ -281,7 +283,7 @@ onConnect((params) => {
               cmd_or_tlm === 'tlm',
               false,
             )
-            .then((response) => {
+            .then(() => {
               addEdges(params)
               edges.value.push(params)
             })
@@ -290,7 +292,7 @@ onConnect((params) => {
   }
 })
 
-onNodesChange(async (changes) => {
+onNodesChange((changes) => {
   const nextChanges = []
 
   for (const change of changes) {
@@ -309,7 +311,7 @@ onNodesChange(async (changes) => {
   applyNodeChanges(nextChanges)
 })
 
-onEdgesChange(async (changes) => {
+onEdgesChange((changes) => {
   const nextChanges = []
   for (const change of changes) {
     if (change.type !== 'remove') {
@@ -353,12 +355,11 @@ onEdgesChange(async (changes) => {
                   cmd_or_tlm === 'cmd',
                   cmd_or_tlm === 'tlm',
                 )
-                .then((response) => {
+                .then(() => {
                   applyEdgeChanges([change])
                   edges.value.forEach((edge, index) => {
                     if (edge.id === change.id) {
                       edges.value.splice(index, 1)
-                      return
                     }
                   })
                 })
@@ -370,12 +371,11 @@ onEdgesChange(async (changes) => {
                   cmd_or_tlm === 'cmd',
                   cmd_or_tlm === 'tlm',
                 )
-                .then((response) => {
+                .then(() => {
                   applyEdgeChanges([change])
                   edges.value.forEach((edge, index) => {
                     if (edge.id === change.id) {
                       edges.value.splice(index, 1)
-                      return
                     }
                   })
                 })
@@ -389,12 +389,11 @@ onEdgesChange(async (changes) => {
                   cmd_or_tlm === 'cmd',
                   cmd_or_tlm === 'tlm',
                 )
-                .then((response) => {
+                .then(() => {
                   applyEdgeChanges([change])
                   edges.value.forEach((edge, index) => {
                     if (edge.id === change.id) {
                       edges.value.splice(index, 1)
-                      return
                     }
                   })
                 })
@@ -406,12 +405,11 @@ onEdgesChange(async (changes) => {
                   cmd_or_tlm === 'cmd',
                   cmd_or_tlm === 'tlm',
                 )
-                .then((response) => {
+                .then(() => {
                   applyEdgeChanges([change])
                   edges.value.forEach((edge, index) => {
                     if (edge.id === change.id) {
                       edges.value.splice(index, 1)
-                      return
                     }
                   })
                 })
@@ -424,14 +422,110 @@ onEdgesChange(async (changes) => {
   applyEdgeChanges(nextChanges)
 })
 
+// Protocol node layout. Protocol nodes are sized from their label so a row of
+// them can be positioned without overlapping and the parent interface / router
+// node can be made wide enough to hold the entire row.
+const PROTOCOL_LEFT_MARGIN = 50 // Left margin inside the interface / router node
+const PROTOCOL_RIGHT_MARGIN = 50 // Right margin (CMD / TLM handle labels live here)
+const PROTOCOL_GAP = 10 // Horizontal space between protocol nodes
+const PROTOCOL_CHAR_WIDTH = 6.5 // Approximate width of a 10px label character
+const PROTOCOL_CHROME = 40 // Icon, padding and border of a protocol node
+const PROTOCOL_MIN_WIDTH = 60
+const PROTOCOL_WRITE_Y = 98 // Upper row
+const PROTOCOL_READ_Y = 148 // Lower row
+const NODE_HEIGHT = 212 // Leave space between the lower row and metrics button
+
+// Position a row of protocols, returning the label, width, relative x position
+// and original protocol index of each. Nodes are laid out in the direction the
+// data flows so the first protocol to run is nearest the data coming in. CMD
+// flows in on the left so write protocols are placed left to right, while TLM
+// flows in on the right so read protocols are placed right to left (pass
+// reverse). The returned array is always ordered left to right.
+function layoutProtocolRow(protocols, reverse = false) {
+  const row = protocols.map((protocol, index) => {
+    let label = protocol.name
+    if (label.slice(-8) === 'Protocol') {
+      label = label.slice(0, -8)
+    }
+    const width = Math.ceil(
+      Math.max(
+        PROTOCOL_MIN_WIDTH,
+        PROTOCOL_CHROME + label.length * PROTOCOL_CHAR_WIDTH,
+      ),
+    )
+    return { label, width, index }
+  })
+  if (reverse) {
+    row.reverse()
+  }
+  let x = PROTOCOL_LEFT_MARGIN
+  row.forEach((node) => {
+    node.x = x
+    x += node.width + PROTOCOL_GAP
+  })
+  return row
+}
+
+function protocolRowWidth(row) {
+  if (row.length === 0) {
+    return 0
+  }
+  const last = row[row.length - 1]
+  return last.x + last.width
+}
+
+// Lay out both protocol rows for an interface or router and calculate the
+// parent node width required to hold them
+function protocolLayout(details) {
+  const writeRow = layoutProtocolRow(details.write_protocols || [])
+  const readRow = layoutProtocolRow(details.read_protocols || [], true)
+  const width = Math.max(
+    200,
+    protocolRowWidth(writeRow) + PROTOCOL_RIGHT_MARGIN,
+    protocolRowWidth(readRow) + PROTOCOL_RIGHT_MARGIN,
+  )
+  return { writeRow, readRow, width }
+}
+
+// kind is 'interface' or 'router' and must already have been pushed as a node
+function addProtocolNodes(kind, name, protocols) {
+  const rows = [
+    { type: 'write-protocol', row: protocols.writeRow, y: PROTOCOL_WRITE_Y },
+    { type: 'read-protocol', row: protocols.readRow, y: PROTOCOL_READ_Y },
+  ]
+  rows.forEach(({ type, row, y }) => {
+    row.forEach((protocol) => {
+      nodes.value.push({
+        id: `${type}__${kind}__${name}__${protocol.index}`,
+        type,
+        position: { x: protocol.x, y },
+        data: {
+          index: protocol.index,
+          [kind]: name,
+          label: protocol.label,
+          width: protocol.width,
+        },
+        draggable: false,
+        parentNode: `${kind}__${name}`,
+        extent: 'parent',
+      })
+    })
+  })
+}
+
 const detailsDialog = ref(false)
 const selectedMode = ref(null)
 const selectedDetails = ref(null)
 const selectedWriteProtocolIndex = ref(null)
 const selectedReadProtocolIndex = ref(null)
+const processingDialog = ref(false)
+const selectedTarget = ref('')
 
 function onNodeClick(event) {
-  if (event.node.type === 'interface') {
+  if (event.node.type === 'cosmos') {
+    selectedTarget.value = event.node.data.label
+    processingDialog.value = true
+  } else if (event.node.type === 'interface') {
     selectedMode.value = 'Interface'
     selectedDetails.value = props.interfaceDetails[event.node.data.label]
     selectedWriteProtocolIndex.value = null
@@ -454,8 +548,13 @@ function onNodeClick(event) {
       selectedMode.value = 'Router'
       selectedDetails.value = props.routerDetails[event.node.data.router]
     }
-    selectedWriteProtocolIndex.value = null
-    selectedReadProtocolIndex.value = event.node.data.index
+    if (event.node.type === 'write-protocol') {
+      selectedWriteProtocolIndex.value = event.node.data.index
+      selectedReadProtocolIndex.value = null
+    } else {
+      selectedWriteProtocolIndex.value = null
+      selectedReadProtocolIndex.value = event.node.data.index
+    }
     detailsDialog.value = true
   }
 }
@@ -685,7 +784,7 @@ function updateFlowChart() {
     let x, y
     // Single target: place to the right
     x = 0
-    y = index * (200 + 50)
+    y = index * (NODE_HEIGHT + 50)
 
     // Create cosmos node
     const cosmosNode = {
@@ -704,23 +803,12 @@ function updateFlowChart() {
   let interfaceOrRouterIndex = 0
   let maxInterfaceOrRouterWidth = 200
   for (const interfaceName in interfaceDetails) {
-    let writeProtocols =
-      props.interfaceDetails[interfaceName].write_protocols || []
-    let readProtocols =
-      props.interfaceDetails[interfaceName].read_protocols || []
-
-    // Calculate interface size based on protocol count
-    const maxProtocols = Math.max(
-      writeProtocols.length,
-      readProtocols.length,
-      1,
-    )
-
-    const interfaceWidth = Math.max(200, 80 + maxProtocols * 70) // Base width + protocol spacing
-    if (interfaceWidth > maxInterfaceOrRouterWidth) {
-      maxInterfaceOrRouterWidth = interfaceWidth
+    // Calculate interface size based on the protocols it must hold
+    const protocols = protocolLayout(props.interfaceDetails[interfaceName])
+    if (protocols.width > maxInterfaceOrRouterWidth) {
+      maxInterfaceOrRouterWidth = protocols.width
     }
-    const interfaceHeight = 200 // Fixed height for two protocol rows
+    const interfaceHeight = NODE_HEIGHT
 
     // Create interface node (center) with dynamic size
     const interfaceNode = {
@@ -729,7 +817,7 @@ function updateFlowChart() {
       position: { x: 400, y: (interfaceHeight + 50) * interfaceOrRouterIndex },
       data: {
         label: interfaceName,
-        width: interfaceWidth,
+        width: protocols.width,
         height: interfaceHeight,
       },
       draggable: true,
@@ -737,75 +825,17 @@ function updateFlowChart() {
     nodes.value.push(interfaceNode)
     interfaceOrRouterIndex += 1
 
-    // Create write protocol nodes (horizontal row above)
-    const startX = 50 // Left margin inside interface
-    writeProtocols.forEach((protocol, index) => {
-      let nameWithoutProtocol = protocol.name
-      if (protocol.name.slice(-8) === 'Protocol') {
-        nameWithoutProtocol = protocol.name.slice(0, -8)
-      }
-      const writeProtocolNode = {
-        id: `write-protocol__interface__${interfaceName}__${index}`,
-        type: 'write-protocol',
-        position: {
-          x: startX + index * 70, // Horizontal spacing
-          y: 98, // Upper row
-        },
-        data: {
-          index: index,
-          interface: interfaceName,
-          label: nameWithoutProtocol,
-        },
-        draggable: false,
-        parentNode: `interface__${interfaceName}`,
-        extent: 'parent',
-      }
-      nodes.value.push(writeProtocolNode)
-    })
-
-    // Create read protocol nodes (horizontal row below write protocols)
-    readProtocols.forEach((protocol, index) => {
-      let nameWithoutProtocol = protocol.name
-      if (protocol.name.slice(-8) === 'Protocol') {
-        nameWithoutProtocol = protocol.name.slice(0, -8)
-      }
-      const readProtocolNode = {
-        id: `read-protocol__interface__${interfaceName}__${index}`,
-        type: 'read-protocol',
-        position: {
-          x: startX + index * 70, // Horizontal spacing
-          y: 148, // Lower row
-        },
-        data: {
-          index: index,
-          interface: interfaceName,
-          label: nameWithoutProtocol,
-        },
-        draggable: false,
-        parentNode: `interface__${interfaceName}`,
-        extent: 'parent',
-      }
-      nodes.value.push(readProtocolNode)
-    })
+    addProtocolNodes('interface', interfaceName, protocols)
   }
 
   // Router Nodes
   for (const routerName in routerDetails) {
-    let writeProtocols = props.routerDetails[routerName].write_protocols || []
-    let readProtocols = props.routerDetails[routerName].read_protocols || []
-
-    // Calculate interface size based on protocol count
-    const maxProtocols = Math.max(
-      writeProtocols.length,
-      readProtocols.length,
-      1,
-    )
-
-    const routerWidth = Math.max(200, 80 + maxProtocols * 70) // Base width + protocol spacing
-    if (routerWidth > maxInterfaceOrRouterWidth) {
-      maxInterfaceOrRouterWidth = routerWidth
+    // Calculate router size based on the protocols it must hold
+    const protocols = protocolLayout(props.routerDetails[routerName])
+    if (protocols.width > maxInterfaceOrRouterWidth) {
+      maxInterfaceOrRouterWidth = protocols.width
     }
-    const routerHeight = 200 // Fixed height for two protocol rows
+    const routerHeight = NODE_HEIGHT
 
     // Create router node (center) with dynamic size
     const routerNode = {
@@ -814,7 +844,7 @@ function updateFlowChart() {
       position: { x: 400, y: (routerHeight + 50) * interfaceOrRouterIndex },
       data: {
         label: routerName,
-        width: routerWidth,
+        width: protocols.width,
         height: routerHeight,
       },
       draggable: true,
@@ -822,56 +852,7 @@ function updateFlowChart() {
     nodes.value.push(routerNode)
     interfaceOrRouterIndex += 1
 
-    // Create write protocol nodes (horizontal row above)
-    const startX = 50 // Left margin inside interface
-    writeProtocols.forEach((protocol, index) => {
-      let nameWithoutProtocol = protocol.name
-      if (protocol.name.slice(-8) === 'Protocol') {
-        nameWithoutProtocol = protocol.name.slice(0, -8)
-      }
-      const writeProtocolNode = {
-        id: `write-protocol__router__${routerName}__${index}`,
-        type: 'write-protocol',
-        position: {
-          x: startX + index * 70, // Horizontal spacing
-          y: 98, // Upper row
-        },
-        data: {
-          index: index,
-          router: routerName,
-          label: nameWithoutProtocol,
-        },
-        draggable: false,
-        parentNode: `router__${routerName}`,
-        extent: 'parent',
-      }
-      nodes.value.push(writeProtocolNode)
-    })
-
-    // Create read protocol nodes (horizontal row below write protocols)
-    readProtocols.forEach((protocol, index) => {
-      let nameWithoutProtocol = protocol.name
-      if (protocol.name.slice(-8) === 'Protocol') {
-        nameWithoutProtocol = protocol.name.slice(0, -8)
-      }
-      const readProtocolNode = {
-        id: `read-protocol__router__${routerName}__${index}`,
-        type: 'read-protocol',
-        position: {
-          x: startX + index * 70, // Horizontal spacing
-          y: 148, // Lower row
-        },
-        data: {
-          index: index,
-          router: routerName,
-          label: nameWithoutProtocol,
-        },
-        draggable: false,
-        parentNode: `router__${routerName}`,
-        extent: 'parent',
-      }
-      nodes.value.push(readProtocolNode)
-    })
+    addProtocolNodes('router', routerName, protocols)
   }
 
   // Target Nodes
@@ -879,7 +860,7 @@ function updateFlowChart() {
     let x, y
     // Single target: place to the right
     x = 200 + 200 + maxInterfaceOrRouterWidth + 200
-    y = index * (200 + 50)
+    y = index * (NODE_HEIGHT + 50)
 
     // Create target node
     const targetNode = {
@@ -924,7 +905,7 @@ function updateFlowChart() {
 
 watch(
   () => props.interfaceDetails,
-  async () => {
+  () => {
     if (props.interfaceDetails !== null) {
       updateFlowChart()
     }
@@ -934,7 +915,7 @@ watch(
 
 watch(
   () => props.routerDetails,
-  async () => {
+  () => {
     if (props.routerDetails !== null) {
       updateFlowChart()
     }
@@ -978,11 +959,19 @@ watch(
       </Controls>
 
       <template #node-interface="{ data }">
-        <InterfaceNode :data="data" />
+        <InterfaceNode
+          :data="data"
+          :health="nodeHealth('interface', data.label)"
+          @details="onNodeClick({ node: { type: 'interface', data } })"
+        />
       </template>
 
       <template #node-router="{ data }">
-        <RouterNode :data="data" />
+        <RouterNode
+          :data="data"
+          :health="nodeHealth('router', data.label)"
+          @details="onNodeClick({ node: { type: 'router', data } })"
+        />
       </template>
 
       <template #node-target="{ data }">
@@ -990,7 +979,15 @@ watch(
       </template>
 
       <template #node-cosmos="cosmosNodeProps">
-        <CosmosNode v-bind="cosmosNodeProps" />
+        <CosmosNode
+          v-bind="cosmosNodeProps"
+          :health="nodeHealth('target', cosmosNodeProps.data.label)"
+          @details="
+            onNodeClick({
+              node: { type: 'cosmos', data: cosmosNodeProps.data },
+            })
+          "
+        />
       </template>
 
       <template #node-write-protocol="{ data }">
@@ -1010,11 +1007,21 @@ watch(
     <!-- Details Dialog -->
     <v-dialog v-model="detailsDialog" max-width="80vw" max-height="80vh">
       <DetailsTable
+        v-if="detailsDialog && selectedDetails"
         :mode="selectedMode"
         :details="selectedDetails"
+        :health="nodeHealth(selectedMode.toLowerCase(), selectedDetails.name)"
         :read-protocol-index="selectedReadProtocolIndex"
         :write-protocol-index="selectedWriteProtocolIndex"
         @close="detailsDialog = false"
+      />
+    </v-dialog>
+    <v-dialog v-model="processingDialog" max-width="1100" max-height="80vh">
+      <TargetProcessingDetails
+        v-if="processingDialog"
+        :name="selectedTarget"
+        :health="nodeHealth('target', selectedTarget)"
+        @close="processingDialog = false"
       />
     </v-dialog>
   </div>
@@ -1056,6 +1063,18 @@ watch(
 
 .vue-flow__node {
   background-color: rgb(23, 38, 53);
+}
+
+.interface-flow-chart .flow-node--warning,
+.interface-flow-chart .flow-node--stale,
+.interface-flow-chart .flow-node--unavailable {
+  border-color: #b45309;
+  box-shadow: 0 0 0 2px #fbbf24;
+}
+
+.interface-flow-chart .flow-node--critical {
+  border-color: #b91c1c;
+  box-shadow: 0 0 0 2px #f87171;
 }
 
 .vue-flow__edges path {

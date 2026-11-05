@@ -17,6 +17,8 @@
 
 require 'tempfile'
 require 'openc3/utilities/target_file'
+require 'openc3/utilities/python_venv'
+require 'openc3/utilities/script_env'
 require 'openc3/utilities/running_script'
 require 'openc3/script/suite'
 require 'openc3/script/suite_runner'
@@ -25,34 +27,64 @@ require 'openc3/tools/test_runner/test'
 OpenC3.require_file 'openc3/utilities/store'
 
 class Script < OpenC3::TargetFile
+  # Script lifecycle states and the transitions allowed from each state
+  LIFECYCLE_STATES = %w(development review approved)
+  LIFECYCLE_TRANSITIONS = {
+    'development' => %w(review approved),
+    'review' => %w(development approved),
+    'approved' => %w(review development),
+  }
+
   def self.all(scope, target = nil)
     super(scope, nil, target: target) # No path matchers
   end
 
   def self.lock(scope, name, username)
-    name = name.split('*')[0] # Split '*' that indicates modified
-    OpenC3::Store.hset("#{scope}__script-locks", name, username)
+    OpenC3::Store.hset("#{scope}__script-locks", strip_modified(name), username)
   end
 
   def self.unlock(scope, name)
-    name = name.split('*')[0] # Split '*' that indicates modified
-    OpenC3::Store.hdel("#{scope}__script-locks", name)
+    OpenC3::Store.hdel("#{scope}__script-locks", strip_modified(name))
   end
 
   def self.locked?(scope, name)
-    name = name.split('*')[0] # Split '*' that indicates modified
-    locked_by = OpenC3::Store.hget("#{scope}__script-locks", name)
+    locked_by = OpenC3::Store.hget("#{scope}__script-locks", strip_modified(name))
     locked_by ||= false
     locked_by
   end
 
   def self.get_breakpoints(scope, name)
-    breakpoints = OpenC3::Store.hget("#{scope}__script-breakpoints", name.split('*')[0]) # Split '*' that indicates modified
+    breakpoints = OpenC3::Store.hget("#{scope}__script-breakpoints", strip_modified(name))
     return JSON.parse(breakpoints, allow_nan: true, create_additions: true) if breakpoints
     []
   end
 
-  def self.process_suite(name, contents, new_process: true, username: nil, scope:)
+  def self.temp_file?(name)
+    strip_modified(name).start_with?("#{TEMP_FOLDER}/")
+  end
+
+  def self.lifecycle_enabled?
+    defined?(::VersionStore) && ::VersionStore.enabled?
+  end
+
+  def self.lifecycle(scope, name)
+    return { 'state' => 'development', 'history' => [] } if temp_file?(name)
+    return { 'state' => 'development', 'history' => [] } unless lifecycle_enabled?
+    ::VersionStore.lifecycle(scope: scope, name: strip_modified(name))
+  end
+
+  # current: the caller-known current state; pass it to avoid a redundant git
+  # read when the controller has already fetched it for transition validation.
+  def self.set_lifecycle(scope, name, state, username, comment, current: nil)
+    raise "Cannot set lifecycle on temporary files" if temp_file?(name)
+    raise "Script lifecycle requires the version history store" unless lifecycle_enabled?
+    name = strip_modified(name)
+    current ||= lifecycle(scope, name)['state']
+    ::VersionStore.set_lifecycle(scope: scope, name: name, from: current, to: state,
+                                 username: username, comment: comment)
+  end
+
+  def self.process_suite(name, contents, new_process: true, username: nil, scope:, python_venv: nil)
     python = false
     python = true if File.extname(name) == '.py'
 
@@ -87,6 +119,7 @@ class Script < OpenC3::TargetFile
 
       # Set proper secrets for running script
       process.environment['SECRET_KEY_BASE'] = nil
+      OpenC3::ScriptEnv.remove_unused(process.environment)
       process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME'] || 'OPENC3_SR_REDIS_USERNAME not set'
       process.environment['OPENC3_REDIS_PASSWORD'] = ENV['OPENC3_SR_REDIS_PASSWORD'] || 'OPENC3_SR_REDIS_PASSWORD not set'
       process.environment['OPENC3_BUCKET_USERNAME'] = ENV['OPENC3_SR_BUCKET_USERNAME'] || 'OPENC3_SR_BUCKET_USERNAME not set'
@@ -119,9 +152,18 @@ class Script < OpenC3::TargetFile
         end
       end
       process.environment['GEM_HOME'] = ENV['GEM_HOME'] || '/gems'
-      process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE'] || '/gems/python_packages'
+      process.environment['PYTHONUSERBASE'] = ENV['PYTHONUSERBASE'] || OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE
       # Preserve PYTHONPATH to ensure Python can find both UV venv and user packages
       process.environment['PYTHONPATH'] = ENV['PYTHONPATH'] || '.'
+
+      # Suite analysis executes Python in a separate process before the script
+      # itself is started. Give that process the same plugin venv visibility as
+      # RunningScript so imports used while defining a suite can be resolved.
+      if python
+        OpenC3::PythonVenv.configure_for_script(
+          process.environment, name: name, scope: scope, python_venv: python_venv
+        )
+      end
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process
       ENV.each do |key, _value|
@@ -139,16 +181,23 @@ class Script < OpenC3::TargetFile
       process.io.stdout = stdout
       process.io.stderr = stderr
       process.start
-      process.wait
+      begin
+        process.poll_for_exit(10) # wait for max 10s
+      rescue ChildProcess::TimeoutError
+        process.stop
+        stderr_results = "Suite analysis timed out - possible infinite loop in script\n"
+        success = false
+      end
       stdout.rewind
       stdout_results = stdout.read
       stdout.close
       stdout.unlink
       stderr.rewind
-      stderr_results = stderr.read
+      stderr_results ||= ""
+      stderr_results += stderr.read
       stderr.close
       stderr.unlink
-      success = process.exit_code == 0
+      success = process.exit_code == 0 if success
     else
       require temp.path
       stdout_results = OpenC3::SuiteRunner.build_suites.as_json().to_json(allow_nan: true)
@@ -182,7 +231,6 @@ class Script < OpenC3::TargetFile
   def self.delete_temp(scope)
     files = super(scope)
     files.each do |name|
-      # Remove any breakpoints associated with the temp files
       OpenC3::Store.hdel("#{scope}__script-breakpoints", "#{TEMP_FOLDER}/#{File.basename(name)}")
     end
   end
@@ -201,9 +249,14 @@ class Script < OpenC3::TargetFile
     user_full_name = nil,
     username = nil,
     line_no = nil,
-    end_line_no = nil
+    end_line_no = nil,
+    python_venv = nil
   )
-    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username, line_no, end_line_no)
+    # Verify the script exists before spawning a run. Without this check a run
+    # is started and the missing file only surfaces as a runtime error inside
+    # the spawned process. Returning nil lets the caller return a 404.
+    return nil unless Script.body(scope, name)
+    RunningScript.spawn(scope, name, suite_runner, disconnect, environment, user_full_name, username, line_no, end_line_no, python_venv)
   end
 
   def self.instrumented(filename, text)

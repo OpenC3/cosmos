@@ -131,8 +131,46 @@
           </v-row>
         </v-col>
         <v-col style="margin: auto">
-          <v-row v-if="!astro.hideClock" class="clock flex-nowrap mt-0">
-            <rux-clock date-in="" :timezone="astroTimeZone" />
+          <v-row class="clock flex-nowrap mt-0">
+            <rux-clock
+              v-if="!astro.hideClock"
+              date-in=""
+              :timezone="astroTimeZone"
+            />
+            <v-tooltip v-if="itemClockRunning" location="bottom">
+              <template #activator="{ props }">
+                <!-- Bind the class on a wrapper because Vue replaces the
+                whole class attribute on change which would remove the
+                'hydrated' class Stencil uses to make rux-clock visible -->
+                <div
+                  v-bind="props"
+                  class="item-clock ml-4"
+                  :class="{ 'item-clock-error': itemClockError }"
+                  data-test="item-clock"
+                >
+                  <!-- Static so the clock only moves when the item updates.
+                  rux-clock hardcodes the 'Time' label so hide it and render
+                  our own title styled like the Astro AOS / LOS labels -->
+                  <rux-clock
+                    static
+                    hide-date
+                    hide-timezone
+                    hide-labels
+                    :date-in="itemClockDate"
+                    :timezone="astroTimeZone"
+                  />
+                  <div
+                    v-if="astro.showItemClockTitle"
+                    class="item-clock-title"
+                    data-test="item-clock-title"
+                  >
+                    {{ itemClockLabel }}
+                  </div>
+                </div>
+              </template>
+              <div>{{ itemClockFullName }}</div>
+              <div v-if="itemClockError">{{ itemClockError }}</div>
+            </v-tooltip>
           </v-row>
         </v-col>
         <v-col align-self="center" class="mt-2">
@@ -157,8 +195,14 @@
 
 <script>
 import { navigateToUrl, registerApplication, start } from 'single-spa'
-import { Api, OpenC3Api } from '@openc3/js-common/services'
+import {
+  Api,
+  OpenC3Api,
+  isAuthRequiredError,
+  logUnlessAuthRequired,
+} from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@/components'
+import { getCachedSetting } from '@/util'
 import Notifications from './Notifications.vue'
 import ScopeSelector from './ScopeSelector.vue'
 import UserMenu from './UserMenu.vue'
@@ -180,13 +224,26 @@ export default {
   },
   data() {
     return {
-      api: new OpenC3Api(),
       timeZone: 'local',
       subtitle: null,
       // Update AstroSettings.vue when changing this
       astro: {
         hideClock: false,
+        showItemClock: false,
+        showItemClockTitle: true,
+        itemClockTitle: '',
+        itemClock: {
+          targetName: null,
+          packetName: null,
+          itemName: null,
+        },
       },
+      itemClockRunning: false,
+      // Until we get a good value display the epoch rather than an empty
+      // date-in which would make rux-clock show the current time
+      itemClockDate: new Date(0).toISOString(),
+      itemClockError: null,
+      itemClockInterval: null,
       items: [],
       drawer: true,
       appNav: {},
@@ -224,45 +281,52 @@ export default {
       }
       return this.timeZone
     },
+    itemClockFullName: function () {
+      const item = this.astro.itemClock
+      return `${item.targetName} ${item.packetName} ${item.itemName}`
+    },
+    itemClockLabel: function () {
+      const item = this.astro.itemClock
+      return (
+        this.astro.itemClockTitle || `${item.targetName} ${item.packetName}`
+      )
+    },
   },
   created() {
     const urlParams = new URLSearchParams(window.location.search)
     this.chromeless = urlParams.get('chromeless')
 
-    this.api
-      .get_setting('astro')
+    // These three go out as a single batched get_settings request
+    getCachedSetting('astro')
       .then((response) => {
         if (response) {
           // The response is an object with settings
-          this.astro = JSON.parse(response)
+          this.astro = { ...this.astro, ...JSON.parse(response) }
+          this.startItemClock()
         }
       })
       .catch((error) => {
-        // Do nothing
+        // Do nothing - malformed setting, keep the defaults
       })
-    this.api
-      .get_setting('subtitle')
+    getCachedSetting('subtitle').then((response) => {
+      if (response) {
+        this.subtitle = response
+      }
+    })
+    getCachedSetting('time_zone').then((response) => {
+      if (response) {
+        this.timeZone = response
+      }
+    })
+    // Tools are global and are always installed into the DEFAULT scope.
+    // This endpoint requires no authorization and the nav has to render even
+    // when we have no token (the login page mounts it too), so don't let the
+    // auth guard block the request.
+    Api.get('/openc3-api/tools/all', {
+      params: { scope: 'DEFAULT' },
+      optionalAuth: true,
+    })
       .then((response) => {
-        if (response) {
-          this.subtitle = response
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
-    this.api
-      .get_setting('time_zone')
-      .then((response) => {
-        if (response) {
-          this.timeZone = response
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
-    // Tools are global and are always installed into the DEFAULT scope
-    Api.get('/openc3-api/tools/all', { params: { scope: 'DEFAULT' } }).then(
-      (response) => {
         this.appNav = response.data
 
         let id = 1
@@ -343,14 +407,19 @@ export default {
 
         // Check every minute if we need to update our token
         setInterval(() => {
-          OpenC3Auth.updateToken(120).then(function (refreshed) {
-            if (refreshed) {
-              OpenC3Auth.setTokens()
-            }
-          })
+          OpenC3Auth.updateToken(120)
+            .then(function (refreshed) {
+              if (refreshed) {
+                OpenC3Auth.setTokens()
+              }
+            })
+            // An AuthRequiredError means we have no token and are being
+            // redirected to login, so there's nothing to do here. Anything
+            // else (network, unexpected auth failure) still gets logged.
+            .catch(logUnlessAuthRequired)
         }, 60000)
-      },
-    )
+      })
+      .catch(logUnlessAuthRequired)
   },
   mounted() {
     globalThis.addEventListener(
@@ -359,6 +428,7 @@ export default {
     )
   },
   beforeUnmount() {
+    clearInterval(this.itemClockInterval)
     globalThis.removeEventListener(
       'single-spa:routing-event',
       this.updateActiveItem,
@@ -366,6 +436,75 @@ export default {
   },
   methods: {
     navigateToUrl,
+    startItemClock() {
+      const item = this.astro.itemClock
+      if (
+        this.chromeless ||
+        !this.astro.showItemClock ||
+        !item?.targetName ||
+        !item?.packetName ||
+        !item?.itemName
+      ) {
+        return
+      }
+      const api = new OpenC3Api()
+      const key = `${item.targetName}__${item.packetName}__${item.itemName}__CONVERTED`
+      this.itemClockRunning = true
+      // Skip ticks while a request is outstanding so a slow API doesn't
+      // pile up concurrent requests
+      let inFlight = false
+      const poll = () => {
+        if (inFlight) {
+          return
+        }
+        inFlight = true
+        api
+          .get_tlm_values([key], 30, null, null, null, {
+            // Don't pop an error notification every second if the item
+            // was deleted or the API is unavailable
+            'Ignore-Errors': '404 500',
+          })
+          .then((data) => {
+            this.itemClockDate = this.parseItemClockValue(data?.[0]?.[0])
+            this.itemClockError = null
+          })
+          .catch((error) => {
+            // No token means we're being redirected to login, not a clock error
+            if (isAuthRequiredError(error)) {
+              return
+            }
+            // Keep the last good value but grey it out and show why
+            this.itemClockError = error?.message || String(error)
+          })
+          .finally(() => {
+            inFlight = false
+          })
+      }
+      poll()
+      this.itemClockInterval = setInterval(poll, 1000)
+    },
+    // Convert the TIMESECONDS (float seconds since epoch) or
+    // TIMEFORMATTED (UTC 'YYYY/MM/DD HH:MM:SS.sss') value to an ISO string.
+    // Throws if the value can't be converted to a date.
+    parseItemClockValue(value) {
+      let date = null
+      if (typeof value === 'number' || typeof value === 'bigint') {
+        date = new Date(Number(value) * 1000)
+      } else if (typeof value === 'string' && value.length > 0) {
+        const match = value.match(
+          /^(\d{4})\/(\d{2})\/(\d{2})[ T](\d{2}:\d{2}:\d{2}(?:\.\d+)?)$/,
+        )
+        if (match) {
+          date = new Date(`${match[1]}-${match[2]}-${match[3]}T${match[4]}Z`)
+        } else {
+          date = new Date(value)
+        }
+      }
+      if (date === null || Number.isNaN(date.getTime())) {
+        throw new Error(`Unable to convert '${value}' to a time`)
+      }
+      return date.toISOString()
+    },
     updateActiveItem() {
       const path = globalThis.location.pathname
       const allTools = this.items.flatMap((item) =>
@@ -402,6 +541,40 @@ export default {
 .clock {
   margin-top: 10px;
   justify-content: center;
+}
+.item-clock {
+  display: flex;
+  flex-direction: column;
+}
+/* Stretch the time box to the width of the title so a long title
+widens the clock rather than getting cut off */
+.item-clock rux-clock::part(container) {
+  display: grid;
+  width: 100%;
+}
+.item-clock rux-clock::part(time) {
+  align-self: stretch;
+  justify-content: center;
+}
+/* Match the rux-clock .rux-clock__segment__label styling */
+.item-clock-title {
+  font-family: var(--font-body-2-font-family);
+  font-size: var(--font-body-2-font-size, 0.875rem);
+  font-weight: var(--font-body-2-font-weight, 400);
+  letter-spacing: var(--font-body-2-letter-spacing, 0.005em);
+  line-height: var(--font-body-3-line-height, calc(16 / 12));
+  color: var(--color-palette-neutral-000, #ffffff);
+  background: var(--gsb-color-background, #172635);
+  padding: 0 var(--spacing-3, 0.75rem);
+  height: var(--spacing-6, 1.5rem);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  white-space: nowrap;
+}
+.item-clock-error {
+  opacity: 0.4;
+  filter: grayscale(1);
 }
 .logo {
   display: block;

@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1957
 
 import contextlib
+import json
 import re
 import threading
 import time
@@ -26,14 +27,43 @@ from openc3.models.interface_model import InterfaceModel
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
+from openc3.utilities.questdb_client import TlmItem
 from openc3.utilities.time import formatted
-from test.test_helper import System, mock_redis, setup_system
+from test.test_helper import System, mock_redis, setup_system, shard_redis
+
+
+ORIGINAL_PACKET_ITEM = TargetModel.packet_item
+PLAIN_TEMP1 = {"name": "TEMP1", "data_type": "UINT", "limits": {}}
+
+
+# Make TEMP1 a LATEST item in HEALTH_STATUS and PARAMS. PARAMS TEMP1 is the
+# same as HEALTH_STATUS TEMP1 unless params_temp1 is given.
+def latest_candidates(params_temp1=None):
+    def packet_item(target_name, packet_name, item_name, type="TLM", scope="DEFAULT"):
+        if packet_name == "PARAMS" and item_name == "TEMP1":
+            return params_temp1 or ORIGINAL_PACKET_ITEM("INST", "HEALTH_STATUS", "TEMP1", scope=scope)
+        return ORIGINAL_PACKET_ITEM(target_name, packet_name, item_name, type=type, scope=scope)
+
+    def item_map(target_name, scope="DEFAULT"):
+        return {"TEMP1": ["HEALTH_STATUS", "PARAMS"]}
+
+    def packets_with_tables(packets, scope="DEFAULT"):
+        return set(packets)
+
+    def decorator(func):
+        func = patch.object(TargetModel, "packet_item", new=packet_item)(func)
+        func = patch.object(CvtModel, "tsdb_packets_with_tables", new=packets_with_tables)(func)
+        return patch.object(TargetModel, "get_item_to_packet_map", new=item_map)(func)
+
+    return decorator
 
 
 class TestTlmApi(unittest.TestCase):
     def setUp(self):
         redis = mock_redis(self)
         setup_system()
+        # Other tests can leave a fake item map in the class level cache
+        TargetModel.item_map_cache = {}
 
         self.process = True
         orig_xread = redis.xread
@@ -211,14 +241,24 @@ class TestTlmApi(unittest.TestCase):
         self.dm_thread.start()
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
         TelemetryTopic.write_packet(packet, scope="DEFAULT")
-        time.sleep(0.001)
+        # Wait until the microservice run loop has actually started and decommed
+        # the packet just written (count increments) before returning. A fixed
+        # 0.001s sleep was racy: callers immediately call inject_tlm, which writes
+        # to the DECOMINTERFACE topic and waits up to 5s for an ack -- if the run
+        # loop had not started reading yet on a loaded CI runner the ack could be
+        # delayed past that timeout. It also makes RECEIVED_COUNT deterministic:
+        # a late decom of this packet could otherwise overwrite the count after
+        # an inject_tlm had already bumped it.
+        start = time.time()
+        while self.dm.count < 1 and (time.time() - start) < 5:
+            time.sleep(0.001)
 
     def test_inject_tlm_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             inject_tlm("BLAH", "HEALTH_STATUS")
 
     def test_inject_tlm_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             inject_tlm("INST", "BLAH")
 
     def test_inject_tlm_complains_about_non_existant_items(self):
@@ -320,6 +360,16 @@ class TestTlmApi(unittest.TestCase):
             override_tlm("INST", "UNKNOWN", "COLLECTS", 1)
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
             override_tlm("INST", "HEALTH_STATUS", "BLAH", 1)
+
+    def test_overrides_and_normalizes_latest_in_every_packet_which_contains_the_item(self):
+        packet_names = TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")["CCSDSSEQCNT"]
+        self.assertGreater(len(packet_names), 1)
+        override_tlm("INST LATEST CCSDSSEQCNT = 5", type="RAW")
+        self.assertCountEqual([o["packet_name"] for o in get_overrides()], packet_names)
+        for packet_name in packet_names:
+            self.assertEqual(tlm("INST", packet_name, "CCSDSSEQCNT", type="RAW"), 5)
+        normalize_tlm("INST LATEST CCSDSSEQCNT")
+        self.assertEqual(get_overrides(), [])
 
     def test_overrides_complains_with_too_many_parameters(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid number of arguments"):
@@ -518,7 +568,7 @@ class TestTlmApi(unittest.TestCase):
 
     # get_all_tlm
     def test_get_all_tlm_raises_if_the_target_does_not_exist(self):
-        with self.assertRaisesRegex(RuntimeError, "Target 'BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Target 'BLAH' does not exist.*\(TargetModel\)"):
             get_all_tlm("BLAH", scope="DEFAULT")
 
     def test_get_all_tlm_returns_an_array_of_all_packet_hashes(self):
@@ -578,9 +628,9 @@ class TestTlmApi(unittest.TestCase):
 
     # get_tlm
     def test_get_tlm_raises_if_the_target_or_packet_do_not_exist(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             get_tlm("BLAH", "HEALTH_STATUS", scope="DEFAULT")
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_tlm("INST BLAH", scope="DEFAULT")
 
     def test_get_tlm_returns_a_packet_hash(self):
@@ -593,11 +643,11 @@ class TestTlmApi(unittest.TestCase):
 
     # get_item
     def test_get_item_raises_if_the_target_or_packet_or_item_do_not_exist(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             get_item("BLAH", "HEALTH_STATUS", "CCSDSVER", scope="DEFAULT")
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_item("INST BLAH CCSDSVER", scope="DEFAULT")
-        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(TargetModel\)"):
             get_item("INST", "HEALTH_STATUS", "BLAH", scope="DEFAULT")
         with self.assertRaisesRegex(RuntimeError, "ERROR: Target name, packet name and item name required."):
             get_item("INST HEALTH_STATUS", scope="DEFAULT")
@@ -633,15 +683,15 @@ class TestTlmApi(unittest.TestCase):
 
     # get_tlm_packet
     def test_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist"):
             get_tlm_packet("BLAH", "HEALTH_STATUS")
 
     def test_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_tlm_packet("INST BLAH")
 
     def test_complains_using_latest(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST LATEST' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "LATEST is not supported by get_tlm_packet"):
             get_tlm_packet("INST", "LATEST")
 
     def test_complains_about_non_existant_value_types(self):
@@ -772,15 +822,15 @@ class TestTlmApi(unittest.TestCase):
 
     # get_tlm_values
     def test_get_tlm_values_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH HEALTH_STATUS' has no current values in CVT"):
             get_tlm_values(["BLAH__HEALTH_STATUS__TEMP1__CONVERTED"])
 
     def test_get_tlm_values_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' has no current values in CVT"):
             get_tlm_values(["INST__BLAH__TEMP1__CONVERTED"])
 
     def test_get_tlm_values_complains_about_non_existant_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Item 'INST HEALTH_STATUS BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(get_tlm_values\)"):
             get_tlm_values(["INST__HEALTH_STATUS__BLAH__CONVERTED"])
         with self.assertRaisesRegex(RuntimeError, "Item 'INST LATEST BLAH' does not exist for scope: DEFAULT"):
             get_tlm_values(["INST__LATEST__BLAH__CONVERTED"])
@@ -796,6 +846,289 @@ class TestTlmApi(unittest.TestCase):
             get_tlm_values([["INST", "HEALTH_STATUS", "TEMP1"]])
         with self.assertRaisesRegex(ValueError, "items must be formatted"):
             get_tlm_values(["INST", "HEALTH_STATUS", "TEMP1"])
+        with self.assertRaisesRegex(ValueError, "items must be formatted"):
+            get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS__EXTRA"])
+
+    def test_get_tlm_values_historical_passes_the_limits_flag_to_the_tsdb_lookup(self):
+        # get_tlm_available tacks on __LIMITS which must be accepted and passed along
+        items = [
+            "INST__HEALTH_STATUS__TEMP1__CONVERTED",
+            "INST__HEALTH_STATUS__TEMP2__CONVERTED__LIMITS",
+        ]
+        with patch("openc3.models.cvt_model.QuestDBClient.tsdb_lookup") as tsdb_lookup:
+            tsdb_lookup.return_value = [[[0.0, None], [(-100.0), "RED_LOW"]]]
+            vals = get_tlm_values(items, start_time="2026-09-13T00:00:00Z", end_time="2026-09-13T01:00:00Z")
+        self.assertEqual(vals, [[[0.0, None], [(-100.0), "RED_LOW"]]])
+        lookup_items = tsdb_lookup.call_args[0][0]
+        self.assertEqual(lookup_items[0], TlmItem("INST", "HEALTH_STATUS", "TEMP1", "CONVERTED", None))
+        self.assertEqual(lookup_items[1], TlmItem("INST", "HEALTH_STATUS", "TEMP2", "CONVERTED", "LIMITS"))
+        self.assertEqual(lookup_items[1].limits, "LIMITS")
+        self.assertEqual(tsdb_lookup.call_args.kwargs["scope"], "DEFAULT")
+
+    def test_get_tlm_values_historical_passes_the_scope_to_the_tsdb_lookup(self):
+        with patch("openc3.models.cvt_model.QuestDBClient.tsdb_lookup") as tsdb_lookup:
+            tsdb_lookup.return_value = [[0.0, None]]
+            with patch("openc3.api.tlm_api.authorize"):
+                get_tlm_values(
+                    ["INST__HEALTH_STATUS__TEMP1__CONVERTED"], start_time="2026-09-13T00:00:00Z", scope="OTHER"
+                )
+        self.assertEqual(tsdb_lookup.call_args.kwargs["scope"], "OTHER")
+
+    def _latest_history_item(self, packet_name, item_name, value_type="CONVERTED"):
+        return TlmItem("INST", packet_name, item_name, value_type, None)
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_queries_each_candidate_at_a_point_in_time(self):
+        item = self._latest_history_item
+        lookups = {
+            (item("HEALTH_STATUS", "TEMP2"),): [[[5.0, None]]],
+            (item("HEALTH_STATUS", "TEMP1"), item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")): [
+                [[10.0, None], [100.0, None]]
+            ],
+            (item("PARAMS", "TEMP1"), item("PARAMS", "PACKET_TIMESECONDS", "RAW")): [[[20.0, "RED"], [200.0, None]]],
+        }
+
+        def tsdb_lookup(query, start_time, scope, flatten):
+            self.assertFalse(flatten)
+            return lookups[tuple(query)]
+
+        with patch.object(CvtModel, "tsdb_lookup", side_effect=tsdb_lookup):
+            vals = get_tlm_values(
+                ["INST__LATEST__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED"],
+                start_time="2026-09-13T00:00:00Z",
+            )
+        self.assertEqual(vals, [[20.0, "RED"], [5.0, None]])
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_ignores_candidates_without_data(self):
+        def tsdb_lookup(query, **_kw):
+            return {} if query[0].packet_name == "PARAMS" else [[[10.0, None], [100.0, None]]]
+
+        with patch.object(CvtModel, "tsdb_lookup", side_effect=tsdb_lookup):
+            vals = get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time="2026-09-13T00:00:00Z")
+        self.assertEqual(vals, [[10.0, None]])
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_returns_nothing_when_nothing_is_found(self):
+        with patch.object(CvtModel, "tsdb_lookup", return_value={}):
+            vals = get_tlm_values(
+                ["INST__LATEST__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED"],
+                start_time="2026-09-13T00:00:00Z",
+            )
+        self.assertEqual(vals, {})
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_joins_candidates_to_regular_rows_in_a_range(self):
+        item = self._latest_history_item
+        with patch.object(CvtModel, "tsdb_lookup") as tsdb_lookup:
+            tsdb_lookup.return_value = [
+                [[5.0, None], [10.0, None], [300.0, None], [20.0, None], [200.0, None]],
+                [[6.0, None], [11.0, None], [300.0, None], [21.0, None], [400.0, None]],
+                [[7.0, None], [None, None], [None, None], [None, None], [None, None]],
+            ]
+            vals = get_tlm_values(
+                ["INST__LATEST__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED"],
+                start_time="2026-09-13T00:00:00Z",
+                end_time="2026-09-13T01:00:00Z",
+            )
+        self.assertEqual(
+            tsdb_lookup.call_args[0][0],
+            [
+                item("HEALTH_STATUS", "TEMP2"),
+                item("HEALTH_STATUS", "TEMP1"),
+                item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW"),
+                item("PARAMS", "TEMP1"),
+                item("PARAMS", "PACKET_TIMESECONDS", "RAW"),
+            ],
+        )
+        self.assertFalse(tsdb_lookup.call_args.kwargs["flatten"])
+        self.assertEqual(vals, [[[10.0, None], [5.0, None]], [[21.0, None], [6.0, None]], [[None, None], [7.0, None]]])
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_range_of_only_latest_uses_the_current_packet(self):
+        with (
+            patch.object(CvtModel, "determine_latest_packet_for_item", return_value="PARAMS"),
+            patch.object(CvtModel, "tsdb_lookup", return_value=[]) as tsdb_lookup,
+        ):
+            get_tlm_values(
+                ["INST__LATEST__TEMP1__CONVERTED"],
+                start_time="2026-09-13T00:00:00Z",
+                end_time="2026-09-13T01:00:00Z",
+            )
+        self.assertEqual(tsdb_lookup.call_args[0][0], [self._latest_history_item("PARAMS", "TEMP1")])
+        self.assertNotIn("flatten", tsdb_lookup.call_args.kwargs)
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_skips_candidates_without_a_table_at_a_point_in_time(self):
+        item = self._latest_history_item
+        queries = []
+
+        def tsdb_lookup(query, **_kw):
+            queries.append(query)
+            return [[[10.0, None], [100.0, None]]]
+
+        with (
+            patch.object(CvtModel, "tsdb_packets_with_tables", return_value={("INST", "HEALTH_STATUS")}) as tables,
+            patch.object(CvtModel, "tsdb_lookup", side_effect=tsdb_lookup),
+        ):
+            vals = get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time="2026-09-13T00:00:00Z")
+        tables.assert_called_once_with([("INST", "HEALTH_STATUS"), ("INST", "PARAMS")], scope="DEFAULT")
+        self.assertEqual(
+            queries, [[item("HEALTH_STATUS", "TEMP1"), item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW")]]
+        )
+        self.assertEqual(vals, [[10.0, None]])
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_skips_candidates_without_a_table_in_a_range(self):
+        item = self._latest_history_item
+        with (
+            patch.object(CvtModel, "tsdb_packets_with_tables", return_value={("INST", "HEALTH_STATUS")}),
+            patch.object(CvtModel, "tsdb_lookup", return_value=[[[5.0, None], [10.0, None], [300.0, None]]]) as lookup,
+        ):
+            vals = get_tlm_values(
+                ["INST__LATEST__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED"],
+                start_time="2026-09-13T00:00:00Z",
+                end_time="2026-09-13T01:00:00Z",
+            )
+        self.assertEqual(
+            lookup.call_args[0][0],
+            [
+                item("HEALTH_STATUS", "TEMP2"),
+                item("HEALTH_STATUS", "TEMP1"),
+                item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW"),
+            ],
+        )
+        self.assertEqual(vals, [[10.0, None], [5.0, None]])
+
+    @latest_candidates()
+    def test_get_tlm_values_historical_latest_returns_none_when_no_candidate_has_a_table(self):
+        with (
+            patch.object(CvtModel, "tsdb_packets_with_tables", return_value=set()),
+            patch.object(CvtModel, "tsdb_lookup", return_value=[[[5.0, None]]]) as lookup,
+        ):
+            vals = get_tlm_values(
+                ["INST__LATEST__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__CONVERTED"],
+                start_time="2026-09-13T00:00:00Z",
+            )
+        lookup.assert_called_once()
+        self.assertEqual(vals, [[None, None], [5.0, None]])
+
+    @latest_candidates(params_temp1=PLAIN_TEMP1)
+    def test_get_tlm_values_historical_latest_queries_each_candidate_for_its_type_and_limits(self):
+        item = self._latest_history_item
+        queries = []
+
+        def tsdb_lookup(query, **_kw):
+            queries.append(query)
+            return {}
+
+        with patch.object(CvtModel, "tsdb_lookup", side_effect=tsdb_lookup):
+            get_tlm_values(["INST__LATEST__TEMP1__FORMATTED__LIMITS"], start_time="2026-09-13T00:00:00Z")
+        self.assertCountEqual(
+            queries,
+            [
+                [
+                    TlmItem("INST", "HEALTH_STATUS", "TEMP1", "FORMATTED", "LIMITS"),
+                    item("HEALTH_STATUS", "PACKET_TIMESECONDS", "RAW"),
+                ],
+                [TlmItem("INST", "PARAMS", "TEMP1", "RAW", None), item("PARAMS", "PACKET_TIMESECONDS", "RAW")],
+            ],
+        )
+
+    @latest_candidates(params_temp1=PLAIN_TEMP1)
+    def test_get_tlm_values_historical_latest_range_of_only_latest_uses_the_current_packet_type_and_limits(self):
+        with (
+            patch.object(CvtModel, "determine_latest_packet_for_item", return_value="PARAMS"),
+            patch.object(CvtModel, "tsdb_lookup", return_value=[]) as tsdb_lookup,
+        ):
+            get_tlm_values(
+                ["INST__LATEST__TEMP1__FORMATTED__LIMITS"],
+                start_time="2026-09-13T00:00:00Z",
+                end_time="2026-09-13T01:00:00Z",
+            )
+        self.assertEqual(tsdb_lookup.call_args[0][0], [TlmItem("INST", "PARAMS", "TEMP1", "RAW", None)])
+
+    @latest_candidates(params_temp1=PLAIN_TEMP1)
+    def test_get_tlm_available_returns_the_best_type_and_limits_of_any_latest_packet(self):
+        with patch.object(CvtModel, "determine_latest_packet_for_item", return_value="PARAMS"):
+            self.assertEqual(
+                get_tlm_available(["INST__LATEST__TEMP1__FORMATTED"]), ["INST__LATEST__TEMP1__FORMATTED__LIMITS"]
+            )
+
+    @latest_candidates()
+    @patch("openc3.api.tlm_api.authorize")
+    def test_get_tlm_available_latest_authorizes_every_candidate(self, mock_authorize):
+        with patch.object(CvtModel, "determine_latest_packet_for_item", return_value="PARAMS"):
+            get_tlm_available(["INST__LATEST__TEMP1__CONVERTED"])
+        self.assertCountEqual(
+            [call.kwargs["packet_name"] for call in mock_authorize.call_args_list], ["HEALTH_STATUS", "PARAMS"]
+        )
+
+    @latest_candidates()
+    @patch("openc3.api.tlm_api.authorize")
+    def test_get_tlm_values_historical_latest_authorizes_every_candidate(self, mock_authorize):
+        with patch.object(CvtModel, "tsdb_lookup", return_value={}):
+            get_tlm_values(["INST__LATEST__TEMP1__CONVERTED"], start_time="2026-09-13T00:00:00Z")
+        self.assertCountEqual(
+            [call.kwargs["packet_name"] for call in mock_authorize.call_args_list], ["HEALTH_STATUS", "PARAMS"]
+        )
+
+    def test_packet_apis_complain_that_latest_does_not_identify_a_packet(self):
+        for method in [get_tlm_buffer, get_tlm_packet, get_tlm, get_tlm_cnt, get_packet_derived_items]:
+            with self.assertRaisesRegex(
+                RuntimeError, f"LATEST is not supported by {method.__name__}\\(\\), specify a packet name"
+            ):
+                method("INST", "LATEST")
+            with self.assertRaisesRegex(RuntimeError, "LATEST is not supported"):
+                method("inst latest")
+
+    def test_subscribe_packets_and_inject_tlm_complain_about_latest(self):
+        with self.assertRaisesRegex(RuntimeError, r"LATEST is not supported by subscribe_packets\(\)"):
+            subscribe_packets([["INST", "latest"]])
+        with self.assertRaisesRegex(RuntimeError, r"LATEST is not supported by inject_tlm\(\)"):
+            inject_tlm("INST", "latest", {"TEMP1": 10})
+
+    def test_get_tlm_values_accepts_the_limits_suffix_from_the_cvt(self):
+        vals = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])
+        self.assertEqual(vals[0][0], (-100.0))
+        self.assertEqual(vals[0][1], "RED_LOW")
+
+    def test_get_tlm_values_returns_none_for_items_which_do_not_exist(self):
+        # get_tlm_available returns None for an item which doesn't exist
+        vals = get_tlm_values([None, "INST__HEALTH_STATUS__TEMP1__CONVERTED", None])
+        self.assertEqual(vals[0], [None, None])
+        self.assertEqual(vals[1][0], (-100.0))
+        self.assertEqual(vals[1][1], "RED_LOW")
+        self.assertEqual(vals[2], [None, None])
+
+    def test_get_tlm_values_takes_the_get_tlm_available_result_directly(self):
+        items = [
+            "INST__HEALTH_STATUS__TEMP1__CONVERTED",
+            "INST__HEALTH_STATUS__BLAH__CONVERTED",
+        ]
+        available = get_tlm_available(items)
+        self.assertEqual(available[0], "INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS")
+        self.assertIsNone(available[1])
+        vals = get_tlm_values(available)
+        self.assertEqual(vals[0][0], (-100.0))
+        self.assertEqual(vals[0][1], "RED_LOW")
+        self.assertEqual(vals[1], [None, None])
+
+    def test_get_tlm_values_historical_returns_nones_when_no_item_exists(self):
+        # Nothing to query, so this doesn't need (or touch) the time series database
+        vals = get_tlm_values([None, None], start_time="2026-09-13T00:00:00Z", end_time="2026-09-13T01:00:00Z")
+        self.assertEqual(vals, [[None, None], [None, None]])
+
+    def test_get_tlm_values_historical_passes_a_placeholder_for_items_which_do_not_exist(self):
+        with patch("openc3.models.cvt_model.QuestDBClient.tsdb_lookup") as tsdb_lookup:
+            tsdb_lookup.return_value = [[[0.0, None], [None, None]]]
+            get_tlm_values(
+                ["INST__HEALTH_STATUS__TEMP1__CONVERTED", None],
+                start_time="2026-09-13T00:00:00Z",
+                end_time="2026-09-13T01:00:00Z",
+            )
+        lookup_items = tsdb_lookup.call_args[0][0]
+        self.assertEqual(lookup_items[1], TlmItem(None, None, None, None, None))
 
     def test_get_tlm_values_reads_all_the_specified_items(self):
         items = []
@@ -942,6 +1275,16 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(result[2], "INST__HEALTH_STATUS__TEMP3__CONVERTED__LIMITS")
         # DURATION should return RAW (no conversions)
         self.assertEqual(result[3], "INST__HEALTH_STATUS__DURATION__RAW")
+
+    def test_get_tlm_available_returns_raw_for_derived_items_with_a_read_conversion(self):
+        # Packet.decom stores a DERIVED item's read conversion as the raw value with no __C
+        items = [
+            "INST__HEALTH_STATUS__DERIVED_GENERIC__CONVERTED",
+            "INST__HEALTH_STATUS__DERIVED_GENERIC__FORMATTED",
+        ]
+        result = get_tlm_available(items)
+        self.assertEqual(result[0], "INST__HEALTH_STATUS__DERIVED_GENERIC__RAW")
+        self.assertEqual(result[1], "INST__HEALTH_STATUS__DERIVED_GENERIC__RAW")
 
     def test_get_tlm_available_handles_fallback_value_types(self):
         # Test fallback logic: WITH_UNITS -> FORMATTED -> CONVERTED -> RAW
@@ -1093,11 +1436,11 @@ class TestTlmApi(unittest.TestCase):
                     raise RuntimeError("Found too many packets")
 
     def test_get_tlm_cnt_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH ABORT' does not exist"):
             get_tlm_cnt("BLAH", "ABORT")
 
     def test_get_tlm_cnt_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_tlm_cnt("INST", "BLAH")
 
     def test_get_tlm_cnt_complains_about_missing_packet(self):
@@ -1128,11 +1471,11 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(cnts, ([result]))
 
     def test_get_packet_derived_items_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH ABORT' does not exist"):
             get_packet_derived_items("BLAH", "ABORT")
 
     def test_get_packet_derived_items_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_packet_derived_items("INST", "BLAH")
 
     def test_get_packet_derived_items_returns_the_packet_derived_items(self):
@@ -1140,3 +1483,42 @@ class TestTlmApi(unittest.TestCase):
         self.assertIn("RECEIVED_TIMESECONDS", items)
         self.assertIn("RECEIVED_TIMEFORMATTED", items)
         self.assertIn("RECEIVED_COUNT", items)
+
+
+# INST is installed on db_shard 1 while SYSTEM stays on db_shard 0. Data is
+# written straight to each db_shard so only the API reads are under test.
+class TestTlmApiMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+        CvtModel.packet_cache = {}
+        CvtModel.override_cache = {}
+
+    def test_tlm_reads_the_target_db_shard(self):
+        shard_redis(1).hset(
+            "DEFAULT__tlm__INST",
+            "HEALTH_STATUS",
+            json.dumps({"TEMP1": 1, "TEMP1__C": 2.0, "TEMP1__F": "2.00 C"}),
+        )
+        self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), 2.0)
+        self.assertEqual(tlm_raw("INST HEALTH_STATUS TEMP1"), 1)
+
+    def test_get_tlm_buffer_reads_the_target_db_shard(self):
+        Topic.write_topic("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", {"buffer": b"\x01\x02"}, db_shard=1)
+        self.assertEqual(get_tlm_buffer("INST", "HEALTH_STATUS")["buffer"], b"\x01\x02")
+
+    def test_get_packets_reads_each_target_from_its_db_shard(self):
+        id = subscribe_packets([["INST", "HEALTH_STATUS"], ["SYSTEM", "LIMITS_CHANGE"]])
+        msg_hash = {"time": 0, "received_time": 0, "stored": "false", "received_count": 1}
+        Topic.write_topic(
+            "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
+            msg_hash | {"target_name": "INST", "packet_name": "HEALTH_STATUS", "json_data": '{"TEMP1": 1}'},
+            db_shard=1,
+        )
+        Topic.write_topic(
+            "DEFAULT__DECOM__{SYSTEM}__LIMITS_CHANGE",
+            msg_hash | {"target_name": "SYSTEM", "packet_name": "LIMITS_CHANGE", "json_data": '{"COUNT": 2}'},
+            db_shard=0,
+        )
+        _, packets = get_packets(id)
+        self.assertEqual(sorted(packet["target_name"] for packet in packets), ["INST", "SYSTEM"])

@@ -1,5 +1,5 @@
 <!--
-# Copyright 2026, OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -18,7 +18,8 @@
         ref="targetPacketChooser"
         :initial-target-name="targetName"
         :initial-packet-name="commandName"
-        :disabled="sendDisabled"
+        :disabled="sendDisabled || commandLoading"
+        :disable-button-text="readOnly ? 'Viewers cannot send commands' : null"
         :button-text="showCommandButton ? 'Send' : null"
         :show-queue-select="showQueueSelect"
         :parameter-hazardous="hasHazardousParameter"
@@ -100,6 +101,7 @@
 <script>
 import 'sprintf-js'
 import { OpenC3Api } from '@openc3/js-common/services'
+import { findKey } from 'lodash'
 import TargetPacketItemChooser from './TargetPacketItemChooser.vue'
 import CommandParameterEditor from './CommandParameterEditor.vue'
 import DetailsDialog from './DetailsDialog.vue'
@@ -127,6 +129,10 @@ export default {
       default: null,
     },
     sendDisabled: {
+      type: Boolean,
+      default: false,
+    },
+    readOnly: {
       type: Boolean,
       default: false,
     },
@@ -170,6 +176,9 @@ export default {
       targetName: '',
       commandName: '',
       commandDescription: '',
+      // Keep Send disabled until the selected command's parameters and
+      // descriptions are loaded so we never send with stale values
+      commandLoading: false,
       ignoredParams: [],
       computedRows: [],
       reservedItemNames: [
@@ -244,6 +253,7 @@ export default {
       this.computedRows = []
       this.hazardousParameters = {}
       if (this.targetName && this.commandName) {
+        this.commandLoading = true
         this.api
           .get_target(this.targetName)
           .then(
@@ -252,12 +262,12 @@ export default {
               return this.api.get_cmd(this.targetName, this.commandName)
             },
             (error) => {
-              // eslint-disable-next-line no-console
               console.error('Error getting ignored parameters:', error)
             },
           )
           .then(
             (command) => {
+              this.commandLoading = false
               if (command) {
                 // Identify length fields that are auto-managed by variable_bit_size arrays
                 // These should be shown but disabled - they will be set when the array is written
@@ -338,7 +348,7 @@ export default {
               }
             },
             (error) => {
-              // eslint-disable-next-line no-console
+              this.commandLoading = false
               console.error('Error getting command parameters:', error)
               this.$emit('command-loaded', null)
             },
@@ -365,12 +375,13 @@ export default {
         if (row.val !== null && row.val !== undefined && row.val !== '') {
           if (row.states) {
             // If states exist, find the state name for the value
-            const stateEntry = Object.entries(row.states).find(
-              ([, state]) => state.value === row.val,
+            const stateKey = findKey(
+              row.states,
+              (state) => state.value === row.val,
             )
-            if (stateEntry) {
+            if (stateKey) {
               // Although not always necessary, always quote states
-              cmd += ` ${row.parameter_name} '${stateEntry[0]}',`
+              cmd += ` ${row.parameter_name} '${stateKey}',`
               continue
             }
           }

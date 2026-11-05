@@ -2,18 +2,123 @@
 
 set +e
 
-if ! command -v docker &> /dev/null
-then
-  if command -v podman &> /dev/null
-  then
-    function docker() {
-      podman $@
-    }
+# Cached container runtime detection
+CONTAINER_CMD=""
+CONTAINER_COMPOSE_CMD=""
+
+# Detect the container runtime (docker or podman). Result is cached.
+detect_container_runtime() {
+  if [[ -n "$CONTAINER_CMD" ]]; then
+    return 0
+  fi
+  if command -v docker &> /dev/null; then
+    CONTAINER_CMD="docker"
+  elif command -v podman &> /dev/null; then
+    CONTAINER_CMD="podman"
   else
-    echo "Neither docker nor podman found!!!"
+    echo "Neither docker nor podman found!" >&2
     exit 1
   fi
-fi
+}
+
+# Detect the compose command. Tries "<runtime> compose" first, then "docker-compose".
+# Never falls back to "podman-compose" since COSMOS only supports docker-compose as the
+# standalone compose tool, even when the container runtime is podman.
+# Result is cached. Exports DOCKER_COMPOSE_COMMAND for backward compatibility with sub-scripts.
+detect_compose_cmd() {
+  if [[ -n "$CONTAINER_COMPOSE_CMD" ]]; then
+    return 0
+  fi
+  detect_container_runtime
+  if $CONTAINER_CMD compose version &> /dev/null; then
+    CONTAINER_COMPOSE_CMD="$CONTAINER_CMD compose"
+  elif command -v "docker-compose" &> /dev/null; then
+    CONTAINER_COMPOSE_CMD="docker-compose"
+  else
+    echo "No compose command found! Install '$CONTAINER_CMD compose' or 'docker-compose'." >&2
+    exit 1
+  fi
+  export DOCKER_COMPOSE_COMMAND="$CONTAINER_COMPOSE_CMD"
+}
+
+# Print a hint suggesting registry login when an image pull is denied.
+# We intentionally do NOT login automatically: forcing a login would require
+# credentials for public registries (e.g. docker.io) and break air-gapped builds.
+suggest_registry_login() {
+  source_env_files
+
+  echo "" >&2
+  echo "A container image pull was denied (403 / authentication required)." >&2
+  echo "If the image lives in a private registry, login and retry the command:" >&2
+  if [[ -n "$OPENC3_REGISTRY" ]]; then
+    echo "  $CONTAINER_CMD login $OPENC3_REGISTRY" >&2
+  fi
+  if [[ "$OPENC3_ENTERPRISE" -eq 1 ]] && [[ -n "$OPENC3_ENTERPRISE_REGISTRY" ]]; then
+    echo "  $CONTAINER_CMD login $OPENC3_ENTERPRISE_REGISTRY" >&2
+  fi
+  if [[ -z "$OPENC3_REGISTRY" ]]; then
+    echo "  $CONTAINER_CMD login <registry>" >&2
+  fi
+}
+
+# Run a container/compose command, streaming its output live. If the command
+# fails with a registry authentication error (e.g. 403), suggest logging in.
+run_with_registry_check() {
+  local tmp status
+  tmp="$(mktemp)"
+  "$@" 2>&1 | tee "$tmp"
+  status=${PIPESTATUS[0]}
+  if [[ $status -ne 0 ]] && grep -qiE '403 Forbidden|pull access denied|requested access to the resource is denied|authentication required|unauthorized' "$tmp"; then
+    suggest_registry_login
+  fi
+  rm -f "$tmp"
+  return $status
+}
+
+# Source the env files into the shell environment, exporting every value.
+# .env ships the upstream defaults (tracked); .env.local (if present) is
+# sourced last so its values override .env. This mirrors the --env-file
+# ordering in COMPOSE_FILE_ARGS below. Sourcing only .env would export its
+# values as real shell variables, which outrank Compose's --env-file
+# interpolation and silently discard .env.local overrides.
+# See https://github.com/OpenC3/cosmos/issues/3710
+#
+# Variables already present in the shell environment win over both files, to
+# match the documented precedence (shell env > .env.local > .env). Sourcing
+# alone would clobber them, so their values are saved first and restored
+# afterwards.
+source_env_files() {
+  local dir
+  dir="$(dirname -- "$0")"
+  local -a env_files=()
+  local file key
+  if [[ -f "$dir/${ENV_FILE:-.env}" ]]; then
+    env_files+=("$dir/${ENV_FILE:-.env}")
+  fi
+  if [[ -f "$dir/.env.local" ]]; then
+    env_files+=("$dir/.env.local")
+  fi
+
+  local -a preset=()
+  for file in "${env_files[@]}"; do
+    while IFS= read -r key; do
+      if [[ -n "${!key+x}" ]]; then
+        preset+=("$key=${!key}")
+      fi
+    done < <(sed -nE 's/^[[:space:]]*(export[[:space:]]+)?([A-Za-z_][A-Za-z0-9_]*)=.*/\2/p' "$file")
+  done
+
+  set -a
+  for file in "${env_files[@]}"; do
+    # Env files are selected at runtime and may be outside the repository.
+    # shellcheck source=/dev/null
+    . "$file"
+  done
+  for key in "${preset[@]}"; do
+    export "${key?}"
+  done
+  set +a
+}
 
 # Helper function to find script - checks PATH first, then falls back to script location
 find_script() {
@@ -25,17 +130,42 @@ find_script() {
   fi
 }
 
-export DOCKER_COMPOSE_COMMAND="docker compose"
-${DOCKER_COMPOSE_COMMAND} version &> /dev/null
-if [[ "$?" -ne 0 ]]; then
-  export DOCKER_COMPOSE_COMMAND="docker-compose"
+# Initialize container runtime and compose detection
+detect_container_runtime
+detect_compose_cmd
+
+# Compose file / env-file arguments used by every compose command below.
+#
+# Env files: .env ships the upstream defaults (tracked). .env.local (if
+# present) is loaded last so its values override .env. .env.local is
+# gitignored, so it is the place to put SECRET overrides (passwords, keys)
+# that must NOT be checked in. Do NOT put secrets in compose.override.yaml -
+# it is tracked. Compose interpolation precedence is:
+#   shell env  >  last --env-file  >  earlier --env-file
+# so a value in .env.local wins over the same value in .env. Once we pass
+# --env-file explicitly, Compose stops auto-loading .env from the cwd, which
+# is why .env must be listed explicitly here.
+#
+# Compose files: a user-provided compose.override.yaml (if present) is merged
+# last so local (non-secret) customizations layer on top of compose.yaml
+# without editing it. See:
+# https://github.com/OpenC3/cosmos/issues/3024
+# https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/
+COMPOSE_ENV_FILE_ARGS=(--env-file "$(dirname -- "$0")/${ENV_FILE:-.env}")
+if [[ -f "$(dirname -- "$0")/.env.local" ]]; then
+  COMPOSE_ENV_FILE_ARGS+=(--env-file "$(dirname -- "$0")/.env.local")
+fi
+COMPOSE_FILE_ARGS=("${COMPOSE_ENV_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose.yaml")
+if [[ -f "$(dirname -- "$0")/compose.override.yaml" ]]; then
+  COMPOSE_FILE_ARGS+=(-f "$(dirname -- "$0")/compose.override.yaml")
 fi
 
-docker info | grep -e "rootless$" -e "rootless: true"
+$CONTAINER_CMD info | grep -e "rootless$" -e "rootless: true"
 if [[ "$?" -ne 0 ]]; then
   export OPENC3_ROOTFUL=1
-  export OPENC3_USER_ID=`id -u`
-  export OPENC3_GROUP_ID=`id -g`
+  OPENC3_USER_ID=$(id -u)
+  OPENC3_GROUP_ID=$(id -g)
+  export OPENC3_USER_ID OPENC3_GROUP_ID
 else
   export OPENC3_ROOTLESS=1
   export OPENC3_USER_ID=0
@@ -181,7 +311,19 @@ EOF
 EOF
   fi
   cat >&2 << EOF
+STATUS:
+  list                  List $COSMOS_NAME Docker images for this installation
+                        Only shows images belonging to the current installation.
+
+  status                Show container status for this $COSMOS_NAME installation
+
 CLEANUP:
+  destroy [OPTIONS]     Remove $COSMOS_NAME Docker images (keeps other images)
+                        Only removes images for the current installation
+                        (Core or Enterprise). Does not affect the other.
+                        Options:
+                          force  - Skip confirmation prompt
+
   cleanup [OPTIONS]     Remove Docker volumes and data
                         WARNING: This deletes all $COSMOS_NAME data!
                         Options:
@@ -232,6 +374,110 @@ check_root() {
   fi
 }
 
+# Apply the host kernel settings COSMOS needs (vm.max_map_count for the tsdb,
+# transparent huge pages off for redis) before starting the containers, so users
+# do not have to remember a separate "util hostsetup" step.
+#
+# Skipped entirely when the host is already tuned, so the common case costs one
+# unprivileged read and never launches a privileged container. Tuning requires
+# --privileged --pid=host, which is not available everywhere (rootless docker,
+# locked down CI, some remote contexts), so a failure only warns: COSMOS runs
+# fine without it until a database grows past the default map count.
+#
+# Set OPENC3_HOSTSETUP_ON_RUN=0 in .env to opt out and manage the host yourself.
+# Pass an image suffix (e.g. -ubi) to use that operator image variant.
+run_hostsetup() {
+  local suffix="${1:-}"
+  if [[ "${OPENC3_HOSTSETUP_ON_RUN:-1}" != "1" ]]; then
+    return 0
+  fi
+  if [[ -z "$OPENC3_MAX_MAP_COUNT" ]]; then
+    echo "WARNING: OPENC3_MAX_MAP_COUNT is not set, skipping host setup. Define it in .env." >&2
+    return 0
+  fi
+
+  local repo namespace tag image
+  if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
+    repo="${OPENC3_ENTERPRISE_REGISTRY:-repos.openc3.com}"
+    namespace="${OPENC3_ENTERPRISE_NAMESPACE:-openc3}"
+    tag="${OPENC3_ENTERPRISE_TAG:-latest}"
+    image="$repo/$namespace/openc3-enterprise-operator$suffix:$tag"
+  else
+    repo="${OPENC3_REGISTRY:-docker.io}"
+    namespace="${OPENC3_NAMESPACE:-openc3inc}"
+    tag="${OPENC3_TAG:-latest}"
+    image="$repo/$namespace/openc3-operator$suffix:$tag"
+  fi
+
+  # Unprivileged probe. vm.max_map_count (mmc) and transparent huge pages (thp)
+  # are not namespaced, so any container reads the host's (or the Docker VM's) values.
+  local probe mmc thp
+  probe="$($CONTAINER_CMD run --rm --entrypoint='' "$image" sh -c 'cat /proc/sys/vm/max_map_count || exit 1; cat /sys/kernel/mm/transparent_hugepage/enabled 2>/dev/null || :' 2>/dev/null)" || return 0
+  { IFS= read -r mmc; IFS= read -r thp || :; } <<<"$probe"  # thp stays empty if unreadable
+  if [[ "$mmc" =~ ^[0-9]+$ ]] && [[ "$mmc" -ge "$OPENC3_MAX_MAP_COUNT" ]] && [[ "$thp" == *"[never]"* ]]; then
+    return 0
+  fi
+
+  echo "Configuring host kernel settings (vm.max_map_count=$OPENC3_MAX_MAP_COUNT, transparent huge pages off)..."
+  if ! "$(find_script openc3_util.sh)" hostsetup "$repo" "$namespace" "$tag" $suffix; then
+    echo "WARNING: host setup failed, continuing without it. $COSMOS_NAME will still start," >&2
+    echo "but the tsdb (QuestDB) may fail to open tables once its database grows past" >&2
+    echo "vm.max_map_count=$mmc. Run '$0 util hostsetup $repo $namespace $tag $suffix' as a user" >&2
+    echo "who can start privileged containers, or set OPENC3_HOSTSETUP_ON_RUN=0 in .env to" >&2
+    echo "silence this and manage the host yourself." >&2
+  fi
+}
+
+# Resolve OPENC3_TAG, reading from the env files if not already set.
+# .env.local is checked first so its override wins over the .env default.
+resolve_openc3_tag() {
+  if [[ -n "$OPENC3_TAG" ]]; then
+    return
+  fi
+  local dir
+  dir="$(dirname -- "$0")"
+  local env_file
+  for env_file in "$dir/.env.local" "$dir/${ENV_FILE:-.env}"; do
+    if [[ -f "$env_file" ]]; then
+      OPENC3_TAG=$(grep -E '^OPENC3_TAG=' "$env_file" 2>/dev/null | head -1 | cut -d= -f2)
+      if [[ -n "$OPENC3_TAG" ]]; then
+        break
+      fi
+    fi
+  done
+  OPENC3_TAG="${OPENC3_TAG:-latest}"
+}
+
+# Build all core images from the sibling cosmos repo when OPENC3_TAG is "latest".
+# This ensures enterprise developers get up-to-date core images without building
+# the core repo separately.  When the core repo is not found, we fall back to
+# whatever images are already tagged locally (e.g. pulled from a registry).
+# Usage: build_core_images [BUILD_FLAGS...]
+build_core_images() {
+  resolve_openc3_tag
+  if [[ "$OPENC3_TAG" != "latest" ]]; then
+    return
+  fi
+  local core_dir
+  core_dir="$(dirname -- "$0")/../cosmos"
+  if [[ -f "$core_dir/compose-build.yaml" ]]; then
+    echo "Building core images from $core_dir ..."
+    # compose depends_on does not order builds, so build the base images
+    # first or the remaining images may build FROM a stale openc3-base
+    local image
+    for image in openc3-ruby openc3-base openc3-node; do
+      ${DOCKER_COMPOSE_COMMAND} --project-directory "$core_dir" \
+        -f "$core_dir/compose.yaml" -f "$core_dir/compose-build.yaml" \
+        build "$@" "$image" || return 1
+    done
+    ${DOCKER_COMPOSE_COMMAND} --project-directory "$core_dir" \
+      -f "$core_dir/compose.yaml" -f "$core_dir/compose-build.yaml" \
+      build "$@"
+  else
+    echo "Warning: Core repo not found at $core_dir — using existing latest tagged images"
+  fi
+}
+
 case $1 in
   cli )
     if [[ "$2" == "--wrapper-help" ]] || [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -268,22 +514,31 @@ case $1 in
       echo "  --wrapper-help    (same as --help)"
       exit 0
     fi
-    # Source the environment file to setup environment variables
-    # Use ENV_FILE if set, otherwise default to .env
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    # Source the environment files (.env then .env.local) to setup
+    # environment variables. Use ENV_FILE if set, otherwise default to .env
+    source_env_files
     # Start (and remove when done --rm) the cmd-tlm-api container with the current working directory
     # mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
     # This allows tools running in the container to have a consistent path to the current working directory.
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     # Shift off the first argument (script name) to get CLI args
     shift
+    # Most subcommands run in the cmd-tlm-api container, but a few only make
+    # sense with the init container's environment. initsettings reads
+    # OPENC3_SETTING_* variables, which are set on openc3-cosmos-init - running
+    # it anywhere else reports "nothing to seed" no matter how it is configured.
+    CLI_SERVICE=openc3-cosmos-cmd-tlm-api
+    case "$1" in
+      initsettings ) CLI_SERVICE=openc3-cosmos-init ;;
+      # Every other subcommand (including an empty or unrecognized one, which
+      # openc3cli itself reports on) runs in the cmd-tlm-api container
+      * ) CLI_SERVICE=openc3-cosmos-cmd-tlm-api ;;
+    esac
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
     else
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps $CLI_SERVICE ruby /openc3/bin/openc3cli "$@"
     fi
-    set +a
     ;;
   cliroot )
     if [[ "$2" == "--wrapper-help" ]] || [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -320,21 +575,19 @@ case $1 in
       echo "  --wrapper-help    (same as --help)"
       exit 0
     fi
-    # Source the environment file to setup environment variables
-    # Use ENV_FILE if set, otherwise default to .env
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    # Source the environment files (.env then .env.local) to setup
+    # environment variables. Use ENV_FILE if set, otherwise default to .env
+    source_env_files
     # Same as cli but run as root user
     # Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
     # (enterprise or non-enterprise) based on environment variables.
     # Shift off the first argument (script name) to get CLI args
     shift
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     else
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" run -it --rm --user=root -v `pwd`:/openc3/local:z -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     fi
-    set +a
     ;;
   start )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -346,6 +599,10 @@ case $1 in
         echo "This command:"
         echo "  1. Builds all $COSMOS_NAME containers (equivalent to 'openc3.sh build')"
         echo "  2. Starts all containers (equivalent to 'openc3.sh run')"
+        echo ""
+        echo "Starting also applies the host kernel settings $COSMOS_NAME needs"
+        echo "(vm.max_map_count, transparent huge pages) when the host lacks them."
+        echo "Set OPENC3_HOSTSETUP_ON_RUN=0 in .env to opt out."
         echo ""
         echo "Options:"
         echo "  -h, --help       Show this help message"
@@ -426,14 +683,14 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-operator
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-script-runner-api
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-cosmos-cmd-tlm-api
+    ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" stop openc3-operator
+    ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" stop openc3-cosmos-script-runner-api
+    ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" stop openc3-cosmos-cmd-tlm-api
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" stop openc3-metrics
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" stop openc3-metrics
     fi
     sleep 5
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30
+    ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" down -t 30
     ;;
   cleanup )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -460,22 +717,152 @@ case $1 in
     # They can specify 'cleanup force' or 'cleanup local force'
     if [[ "$2" == "force" ]] || [[ "$3" == "force" ]]
     then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v
+      ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" down -t 30 -v
     else
       echo "Are you sure? Cleanup removes ALL docker volumes and all $COSMOS_NAME data! (1-Yes / 2-No)"
       select yn in "Yes" "No"; do
         case $yn in
-          Yes ) ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" down -t 30 -v; break;;
+          Yes ) ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" down -t 30 -v; break;;
           No ) exit;;
+          * ) echo "Please select 1 for Yes or 2 for No.";;
         esac
       done
     fi
     if [[ "$2" == "local" ]]
     then
-      cd "$(dirname -- "$0")/plugins/DEFAULT"
-      ls | grep -xv "README.md" | xargs rm -r
-      cd ../..
+      (
+        cd "$(dirname -- "$0")/plugins/DEFAULT" || exit 1
+        for entry in *; do
+          [[ "$entry" == "README.md" ]] && continue
+          [[ -e "$entry" || -L "$entry" ]] || continue
+          rm -r -- "$entry"
+        done
+      )
     fi
+    ;;
+  list )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 list"
+      echo ""
+      echo "List $COSMOS_NAME Docker images for this installation."
+      echo ""
+      echo "Only shows images belonging to the current installation"
+      echo "(Core or Enterprise). Does not show images from other installations."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    # Build the list of compose files to query
+    COMPOSE_FILES="-f $(dirname -- "$0")/compose.yaml"
+    if [[ "$OPENC3_DEVEL" -eq 1 ]] && [[ -f "$(dirname -- "$0")/compose-build.yaml" ]]; then
+      COMPOSE_FILES="$COMPOSE_FILES -f $(dirname -- "$0")/compose-build.yaml"
+    fi
+    # Get the list of image repositories defined in the compose configuration
+    # Strip the docker.io/ prefix that compose adds (docker CLI doesn't recognize it)
+    # and strip the :tag suffix so we match all tags for each repository
+    REPOS=$(${DOCKER_COMPOSE_COMMAND} "${COMPOSE_ENV_FILE_ARGS[@]}" $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||; s|:.*||' | sort -u)
+    if [[ -z "$REPOS" ]]; then
+      echo "No $COSMOS_NAME images found in compose configuration."
+      exit 0
+    fi
+    # Build filter args for each repository that has at least one local image
+    FILTER_ARGS=""
+    for repo in $REPOS; do
+      if $CONTAINER_CMD images -q "$repo" 2>/dev/null | grep -q .; then
+        FILTER_ARGS="$FILTER_ARGS --filter reference=$repo"
+      fi
+    done
+    if [[ -z "$FILTER_ARGS" ]]; then
+      echo "No $COSMOS_NAME images found locally."
+      exit 0
+    fi
+    $CONTAINER_CMD images --format "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}" $FILTER_ARGS
+    ;;
+  status )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 status"
+      echo ""
+      echo "Show container status for this $COSMOS_NAME installation."
+      echo ""
+      echo "Displays the current state of all containers defined in the"
+      echo "compose configuration (running, stopped, etc.)."
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    ${DOCKER_COMPOSE_COMMAND} "${COMPOSE_FILE_ARGS[@]}" ps
+    ;;
+  destroy )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 destroy [force]"
+      echo ""
+      echo "Remove all $COSMOS_NAME Docker images."
+      echo ""
+      echo "This removes only images belonging to the current $COSMOS_NAME installation."
+      echo "If you are running Enterprise, only Enterprise images are removed."
+      echo "If you are running Core, only Core images are removed."
+      echo "This allows you to switch between Core and Enterprise without rebuilding."
+      echo ""
+      echo "After removing images, dangling images are pruned automatically."
+      echo ""
+      echo "Arguments:"
+      echo "  force    Skip confirmation prompt"
+      echo ""
+      echo "Examples:"
+      echo "  $0 destroy              # Remove images (with confirmation)"
+      echo "  $0 destroy force        # Remove images (no confirmation)"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    # Build the list of compose files to query
+    COMPOSE_FILES="-f $(dirname -- "$0")/compose.yaml"
+    if [[ "$OPENC3_DEVEL" -eq 1 ]] && [[ -f "$(dirname -- "$0")/compose-build.yaml" ]]; then
+      COMPOSE_FILES="$COMPOSE_FILES -f $(dirname -- "$0")/compose-build.yaml"
+    fi
+    # Get the list of images defined in the compose configuration
+    # Strip the docker.io/ prefix that compose adds, since docker CLI doesn't recognize it
+    IMAGES=$(${DOCKER_COMPOSE_COMMAND} "${COMPOSE_ENV_FILE_ARGS[@]}" $COMPOSE_FILES config --images 2>/dev/null | sed 's|^docker\.io/||' | sort -u)
+    if [[ -z "$IMAGES" ]]; then
+      echo "No $COSMOS_NAME images found in compose configuration."
+      exit 0
+    fi
+    # Filter to only images that actually exist locally
+    EXISTING_IMAGES=""
+    for img in $IMAGES; do
+      if $CONTAINER_CMD image inspect "$img" &>/dev/null; then
+        EXISTING_IMAGES="$EXISTING_IMAGES $img"
+      fi
+    done
+    EXISTING_IMAGES=$(echo "$EXISTING_IMAGES" | xargs)
+    if [[ -z "$EXISTING_IMAGES" ]]; then
+      echo "No $COSMOS_NAME images found locally. Nothing to remove."
+      exit 0
+    fi
+    echo "The following $COSMOS_NAME images will be removed:"
+    echo ""
+    for img in $EXISTING_IMAGES; do
+      echo "  $img"
+    done
+    echo ""
+    if [[ "$2" == "force" ]]; then
+      $CONTAINER_CMD rmi $EXISTING_IMAGES
+    else
+      echo "Are you sure you want to remove these $COSMOS_NAME images? (1-Yes / 2-No)"
+      select yn in "Yes" "No"; do
+        case $yn in
+          Yes ) $CONTAINER_CMD rmi $EXISTING_IMAGES; break;;
+          No ) exit;;
+          * ) echo "Please select 1 for Yes or 2 for No.";;
+        esac
+      done
+    fi
+    echo ""
+    echo "Pruning dangling images..."
+    $CONTAINER_CMD image prune -f
     ;;
   build )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
@@ -491,8 +878,9 @@ case $1 in
       if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
         echo "This command:"
         echo "  1. Runs setup to download certificates"
-        echo "  2. Builds openc3-enterprise-gem image"
-        echo "  3. Builds all remaining service containers"
+        echo "  2. Builds core images from ../cosmos when OPENC3_TAG=latest"
+        echo "  3. Builds openc3-enterprise-gem image"
+        echo "  4. Builds all remaining enterprise service containers"
       else
         echo "This command:"
         echo "  1. Runs setup to download certificates"
@@ -520,15 +908,16 @@ case $1 in
     umask 0022
     chmod -R +r "$(dirname -- "$0")"
     # Collect any additional build flags from arguments (skip first arg which is "build")
-    BUILD_FLAGS="${@:2}"
+    BUILD_FLAGS=("${@:2}")
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-enterprise-gem
+      build_core_images "${BUILD_FLAGS[@]}"
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-enterprise-gem
     else
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-ruby
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-base
-      ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS openc3-node
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-ruby
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-base
+      run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}" openc3-node
     fi
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build $BUILD_FLAGS
+    run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build "${BUILD_FLAGS[@]}"
     ;;
   build-ubi )
     if [[ "$OPENC3_DEVEL" -eq 0 ]]; then
@@ -582,8 +971,7 @@ case $1 in
     fi
     # Change to cosmos directory since scripts use relative paths
     cd "$(dirname -- "$0")"
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    source_env_files
     if [[ -f /etc/ssl/certs/ca-bundle.crt ]]
     then
       cp /etc/ssl/certs/ca-bundle.crt "$(dirname -- "$0")/cacert.pem"
@@ -591,7 +979,6 @@ case $1 in
     "$(find_script openc3_setup.sh)"
     # Pass through any additional arguments (image names) to openc3_build_ubi.sh
     "$(find_script openc3_build_ubi.sh)" "${@:2}"
-    set +a
     ;;
   run )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -621,7 +1008,9 @@ case $1 in
       exit 0
     fi
     check_root
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
+    source_env_files
+    run_hostsetup
+    run_with_registry_check ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" up -d
     ;;
   run-ubi )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -655,6 +1044,8 @@ case $1 in
       exit 0
     fi
     check_root
+    source_env_files
+    run_hostsetup -ubi
     # QuestDB RHEL images have a native arm64 variant; run tsdb natively on ARM
     # to avoid the x86-64-v3 QEMU emulation failure. All other services run as amd64.
     if [[ "$(uname -m)" == "arm64" ]]; then
@@ -662,7 +1053,7 @@ case $1 in
     else
       OPENC3_TSDB_PLATFORM=linux/amd64
     fi
-    DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" up -d
+    run_with_registry_check env DOCKER_DEFAULT_PLATFORM=linux/amd64 OPENC3_IMAGE_SUFFIX=-ubi OPENC3_TSDB_PLATFORM=$OPENC3_TSDB_PLATFORM ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" up -d
     ;;
   test )
     # Check for help at any position
@@ -696,7 +1087,7 @@ case $1 in
     # Change to cosmos directory since openc3_setup.sh uses relative paths
     cd "$(dirname -- "$0")"
     "$(find_script openc3_setup.sh)"
-    ${DOCKER_COMPOSE_COMMAND} -f "$(dirname -- "$0")/compose.yaml" -f "$(dirname -- "$0")/compose-build.yaml" build
+    ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" -f "$(dirname -- "$0")/compose-build.yaml" build
     "$(find_script openc3_test.sh)" "${@:2}"
     ;;
   upgrade )
@@ -721,8 +1112,10 @@ case $1 in
       echo "  tag REPO1 REPO2 NS1 TAG1 [NS2] [TAG2] [SUFFIX]"
       echo "                              Tag images from one repo to another"
       echo "  push REPO NS TAG [SUFFIX]   Push images to docker repository"
+      echo "  mirror REPO1 REPO2 NS1 TAG1 [NS2] [TAG2] [SUFFIX]"
+      echo "                              Copy multi-arch images between registries"
       echo "  clean                       Remove node_modules, coverage, etc"
-      echo "  hostsetup REPO NS TAG       Configure host for redis"
+      echo "  hostsetup REPO NS TAG       Configure host kernel settings for redis and tsdb"
       echo "  hostenter                   Shell into VM host"
       echo ""
       echo "Run '$0 util COMMAND --help' for detailed help on each command."
@@ -734,10 +1127,8 @@ case $1 in
       echo "  -h, --help                  Show this help message"
       exit 0
     fi
-    set -a
-    . "$(dirname -- "$0")/${ENV_FILE:-.env}"
+    source_env_files
     "$(find_script openc3_util.sh)" "${@:2}"
-    set +a
     ;;
   * )
     usage $0

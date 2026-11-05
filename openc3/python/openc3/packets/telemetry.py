@@ -64,7 +64,7 @@ class Telemetry:
         upcase_target_name = target_name.upper()
         target_packets = self.config.telemetry.get(upcase_target_name, None)
         if not target_packets:
-            raise RuntimeError(f"Telemetry target '{upcase_target_name}' does not exist")
+            raise RuntimeError(f"Telemetry target '{upcase_target_name}' does not exist (packets lookup)")
 
         return target_packets
 
@@ -96,7 +96,7 @@ class Telemetry:
             target_upcase = target_name.upper()
             target_latest_data = self.config.latest_data.get(target_upcase)
             if target_latest_data is None:
-                raise RuntimeError(f"Telemetry Target '{target_upcase}' does not exist")
+                raise RuntimeError(f"Telemetry target '{target_upcase}' does not exist (item_names lookup)")
 
             item_names = target_latest_data.keys()
         else:
@@ -126,7 +126,7 @@ class Telemetry:
         item_upcase = item_name.upper()
         target_latest_data = self.config.latest_data.get(target_upcase)
         if target_latest_data is None:
-            raise RuntimeError(f"Telemetry target '{target_upcase}' does not exist")
+            raise RuntimeError(f"Telemetry target '{target_upcase}' does not exist (latest_packets lookup)")
 
         packets = self.config.latest_data[target_upcase].get(item_upcase)
         if packets is None:

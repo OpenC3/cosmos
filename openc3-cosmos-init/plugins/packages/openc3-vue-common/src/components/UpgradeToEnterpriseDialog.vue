@@ -35,8 +35,8 @@
         multiple scopes, Calendar and Autonomic, various integrations with
         common protocols and hardware, commercial licensing, and much more!<br /><br />
         Learn more at
-        <a href="https://openc3.com/enterprise">
-          https://openc3.com/enterprise
+        <a href="https://openc3.com/cosmos-enterprise">
+          https://openc3.com/cosmos-enterprise
         </a>
         and help support COSMOS Core by supporting our business. Contact us at
         <a href="mailto:support@openc3.com">support@openc3.com</a> for more

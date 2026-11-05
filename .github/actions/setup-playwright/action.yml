@@ -1,0 +1,79 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+name: Setup Playwright
+description: |
+  Install the Playwright node dependencies and browsers with both expensive
+  pieces restored from actions/cache: the pnpm content-addressable store and
+  the ms-playwright browser binaries.
+
+  `playwright.sh install-playwright` is invoked with --no-clean so it keeps
+  the restored directories instead of deleting them (its default clean-slate
+  behavior is for developer machines).
+
+  The apt packages installed by `playwright install --with-deps` cannot be
+  cached, so that part still runs on every invocation. `playwright install`
+  is idempotent for binaries that are already present, so a browser cache hit
+  reduces it to the apt step.
+
+  Enterprise checks core out at cosmos/, so its workflow can use this action
+  as ./cosmos/.github/actions/setup-playwright with working-directory set to
+  cosmos/playwright.
+
+inputs:
+  working-directory:
+    description: Directory containing playwright.sh and package.json.
+    required: false
+    default: playwright
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve cache paths
+      id: paths
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        # The pnpm store location depends on the pnpm/action-setup config, so
+        # ask pnpm rather than hardcoding ~/.local/share/pnpm/store.
+        echo "store=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+        # Key the browser cache on the @playwright/test version rather than a
+        # lockfile hash: the lockfile churns on every unrelated dependabot bump,
+        # which would re-download all three browsers for no reason. Fail loudly
+        # rather than baking "null" into the key, which would never invalidate.
+        pw=$(jq -r '.dependencies["@playwright/test"] // .devDependencies["@playwright/test"] // ""' package.json)
+        if [[ -z "$pw" ]]; then
+          echo "ERROR: @playwright/test not found in package.json"
+          exit 1
+        fi
+        echo "pw=$pw" >> "$GITHUB_OUTPUT"
+
+    - name: Cache pnpm store
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ${{ steps.paths.outputs.store }}
+        key: pnpm-store-${{ runner.os }}-${{ hashFiles(format('{0}/pnpm-lock.yaml', inputs.working-directory)) }}
+        restore-keys: pnpm-store-${{ runner.os }}-
+
+    - name: Cache Playwright browsers
+      uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+      with:
+        path: ~/.cache/ms-playwright
+        # restore-keys is safe here because browsers install into per-version
+        # subdirectories (chromium-1234), so an older entry only costs disk and
+        # `playwright install` still fetches whatever is missing.
+        key: ms-playwright-${{ runner.os }}-${{ steps.paths.outputs.pw }}
+        restore-keys: ms-playwright-${{ runner.os }}-
+
+    - name: Install playwright dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: ./playwright.sh install-playwright --no-clean

@@ -15,8 +15,15 @@ import traceback
 from threading import Lock
 
 from requests import Session
+from requests.exceptions import ReadTimeout
 
-from openc3.environment import OPENC3_API_PASSWORD, OPENC3_API_TOKEN, OPENC3_API_USER, OPENC3_KEYCLOAK_URL
+from openc3.environment import (
+    OPENC3_API_PASSWORD,
+    OPENC3_API_READ_TIMEOUT,
+    OPENC3_API_TOKEN,
+    OPENC3_API_USER,
+    OPENC3_KEYCLOAK_URL,
+)
 from openc3.utilities.authentication import (
     OpenC3Authentication,
     OpenC3KeycloakAuthentication,
@@ -49,17 +56,26 @@ class JsonApiObject:
 
     USER_AGENT = "OpenC3 v7 (python/openc3/io/json_api_object)"
 
+    # Time limit for the first response byte from the server. Requests can
+    # legitimately block for a long time, e.g. cmd() with a large timeout waiting
+    # on an interface ack, so this is effectively "wait forever" while still
+    # bounded so a wedged connection eventually releases the thread.
+    DEFAULT_READ_TIMEOUT_S = 86400
+
     def __init__(
         self,
         url: str,
         timeout: float = 1.0,
         authentication: OpenC3Authentication | None = None,
+        read_timeout: float | None = None,
     ):
         """
         Args:
             url (str): The url of openc3-cosmos-cmd-tlm-api http://openc3-cosmos-cmd-tlm-api:2901
-            timeout (float): The time to wait before disconnecting default = 1.0
+            timeout (float): The time to wait for the connection phase before disconnecting default = 1.0
             authentication (OpenC3Authentication): The authentication object if None initialize will generate default
+            read_timeout (float): The time to wait for the first response byte from the server.
+                Defaults to the OPENC3_API_READ_TIMEOUT environment variable or DEFAULT_READ_TIMEOUT_S.
         """
         self.http = None
         self.mutex = Lock()
@@ -69,6 +85,11 @@ class JsonApiObject:
         self.log = [None, None, None]
         self.authentication = authentication if authentication else self.generate_auth()
         self.timeout: float = timeout
+        if read_timeout is None:
+            read_timeout = OPENC3_API_READ_TIMEOUT
+        if read_timeout is None:
+            read_timeout = self.DEFAULT_READ_TIMEOUT_S
+        self.read_timeout: float = float(read_timeout)
         self._shutdown: bool = False
 
     @staticmethod
@@ -125,6 +146,12 @@ class JsonApiObject:
         kwargs["headers"] = self._generate_headers(kwargs)
         kwargs["data"] = self._generate_data(kwargs)
         kwargs["query"] = self._generate_query(kwargs)
+        # (connect, read) tuple. requests has no default timeout at all, so this must be
+        # set explicitly or every call blocks forever. A caller may pass their own per
+        # request timeout, but timeout=None means "unset, use the default" here rather
+        # than requests' "block forever", matching how read_timeout=None is treated above.
+        timeout = kwargs.pop("timeout", None)
+        kwargs["timeout"] = timeout if timeout is not None else (self.timeout, self.read_timeout)
         kwargs["params"] = kwargs["query"]
         del kwargs["query"]
         del kwargs["scope"]
@@ -197,8 +224,20 @@ class JsonApiObject:
                 self.log[1] = f"{method} Response: {resp.status_code} {resp.headers} {resp.text}"
                 self.response_data = resp.text
                 return resp
+            except ReadTimeout as e:
+                # NOT retryable. A read timeout means the request was fully sent and the
+                # server may have already acted on it. Many endpoints are not idempotent
+                # (create_activity, script_run, cmd), so a retry risks duplicating the
+                # operation. It would also blow past the caller's deadline by RETRY_COUNT
+                # times. Ruby matches this: Faraday::TimeoutError is not in its retry list.
+                # NOTE: ReadTimeout subclasses OSError, so this must precede that branch.
+                self.log[2] = f"{method} Exception: {traceback.format_exc()}"
+                self.disconnect()
+                error = f"Api Exception: {self.log[0]} ::: {self.log[1]} ::: {self.log[2]}"
+                raise RuntimeError(error) from e
             except OSError as e:
-                # Connection errors are retryable - reconnect and try again
+                # Retryable. Nothing was successfully sent, so replaying is safe. This
+                # includes ConnectTimeout, which covers a service that is still starting up.
                 retry += 1
                 self.log[2] = f"{method} Exception: {traceback.format_exc()}"
                 if retry <= RETRY_COUNT:

@@ -50,7 +50,7 @@ from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.packets.packet import Packet
 from openc3.top_level import HazardousError
-from test.test_helper import capture_io, mock_redis, setup_system
+from test.test_helper import capture_io, mock_redis, setup_system, shard_redis
 
 
 class MyInterface(Interface):
@@ -227,6 +227,25 @@ class TestCmdApi(unittest.TestCase):
             func = globals()[name]
             with self.assertRaisesRegex(RuntimeError, "Invalid number of arguments"):
                 func("INST", "COLLECT", "TYPE", "DURATION")
+
+    def test_cmd_records_the_original_queuing_user(self):
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            command = func("INST", "ABORT", queue_username="original_author")
+            # queue_username (author, shown as "Queued By") is recorded separately
+            # from username (executor, shown as "Executed By")
+            self.assertEqual(command["queue_username"], "original_author")
+            # username is the executing user/process, not the author
+            self.assertNotEqual(command["username"], "original_author")
 
     def test_cmd_warns_about_required_parameters(self):
         for name in [
@@ -576,6 +595,20 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(type(result), list)
         self.assertEqual(type(result[0]), str)
 
+    def test_get_all_cmd_names_excludes_hidden_commands_unless_hidden_is_true(self):
+        names = get_all_cmd_names("inst")
+        self.assertEqual(names, sorted(names))
+        self.assertIn("ABORT", names)
+        self.assertNotIn("DISABLED", names)
+        self.assertIn("DISABLED", get_all_cmd_names("inst", hidden=True))
+
+    def test_get_all_cmd_names_builds_the_hidden_list_once(self):
+        # setup_system stores the packets without the hidden list like an older install
+        with patch.object(TargetModel, "packets", wraps=TargetModel.packets) as packets:
+            self.assertNotIn("DISABLED", get_all_cmd_names("inst"))
+            self.assertNotIn("DISABLED", get_all_cmd_names("inst"))
+        packets.assert_called_once()
+
     def test_get_parameter_returns_parameter_hash_for_state_parameter(self):
         result = get_param("inst", "Collect", "Type")
         self.assertEqual(result["name"], "TYPE")
@@ -673,14 +706,19 @@ class TestCmdApi(unittest.TestCase):
             get_cmd_hazardous("INST", "COLLECT", "TYPE", "SPECIAL")
 
     def test_get_cmd_value_returns_command_values(self):
-        now = time.time()
+        before_cmd = time.time()
         cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
+        after_cmd = time.time()
         time.sleep(0.001)
         self.assertEqual(get_cmd_value("inst collect type"), "NORMAL")
         self.assertEqual(get_cmd_value("inst collect type", type="RAW"), 0)
         self.assertEqual(get_cmd_value("INST COLLECT DURATION"), 5.0)
-        self.assertAlmostEqual(get_cmd_value("INST COLLECT RECEIVED_TIMESECONDS"), now, delta=0.1)
-        self.assertAlmostEqual(get_cmd_value("INST COLLECT PACKET_TIMESECONDS"), now, delta=0.1)
+        received_time = get_cmd_value("INST COLLECT RECEIVED_TIMESECONDS")
+        packet_time = get_cmd_value("INST COLLECT PACKET_TIMESECONDS")
+        self.assertGreaterEqual(received_time, before_cmd)
+        self.assertLessEqual(received_time, after_cmd)
+        self.assertGreaterEqual(packet_time, before_cmd)
+        self.assertLessEqual(packet_time, after_cmd)
         self.assertEqual(get_cmd_value("INST COLLECT RECEIVED_COUNT"), 1)
 
         cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
@@ -689,13 +727,18 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(get_cmd_value("INST COLLECT DURATION"), 7.0)
 
     def test_get_cmd_value_returns_command_values_old_style(self):
-        now = time.time()
+        before_cmd = time.time()
         cmd("INST COLLECT with TYPE NORMAL, DURATION 5")
+        after_cmd = time.time()
         time.sleep(0.001)
         self.assertEqual(get_cmd_value("inst", "collect", "type"), "NORMAL")
         self.assertEqual(get_cmd_value("INST", "COLLECT", "DURATION"), 5.0)
-        self.assertAlmostEqual(get_cmd_value("INST", "COLLECT", "RECEIVED_TIMESECONDS"), now, delta=0.1)
-        self.assertAlmostEqual(get_cmd_value("INST", "COLLECT", "PACKET_TIMESECONDS"), now, delta=0.1)
+        received_time = get_cmd_value("INST", "COLLECT", "RECEIVED_TIMESECONDS")
+        packet_time = get_cmd_value("INST", "COLLECT", "PACKET_TIMESECONDS")
+        self.assertGreaterEqual(received_time, before_cmd)
+        self.assertLessEqual(received_time, after_cmd)
+        self.assertGreaterEqual(packet_time, before_cmd)
+        self.assertLessEqual(packet_time, after_cmd)
         self.assertEqual(get_cmd_value("INST", "COLLECT", "RECEIVED_COUNT"), 1)
 
         cmd("INST COLLECT with TYPE NORMAL, DURATION 7")
@@ -735,17 +778,26 @@ class TestCmdApi(unittest.TestCase):
         self.assertEqual(result[1], ("ABORT"))
         self.assertAlmostEqual(result[2], int(now), delta=1)
 
+    def test_get_cmd_time_returns_the_target_of_the_latest_command(self):
+        # A target sorted after INST with no commands sent must not be returned
+        TargetModel(folder_name="ZZZ", name="ZZZ", scope="DEFAULT").create()
+        cmd("INST ABORT")
+        time.sleep(0.001)
+        result = get_cmd_time()
+        self.assertEqual(result[0], "INST")
+        self.assertEqual(result[1], "ABORT")
+
     def test_get_cmd_time_returns_0_if_no_times_are_set(self):
         self.assertEqual(get_cmd_time("INST", "ABORT"), ("INST", "ABORT", 0, 0))
         self.assertEqual(get_cmd_time("INST"), (None, None, 0, 0))
         self.assertEqual(get_cmd_time(), (None, None, 0, 0))
 
     def test_get_cmd_cnt_complains_about_non_existant_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'BLAH ABORT' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'BLAH ABORT' does not exist"):
             get_cmd_cnt("BLAH", "ABORT")
 
     def test_get_cmd_cnt_complains_about_non_existant_packets(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet 'INST BLAH' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, "Packet definition 'INST BLAH' does not exist"):
             get_cmd_cnt("INST BLAH")
 
     def test_get_cmd_cnt_returns_the_transmit_count(self):
@@ -773,6 +825,42 @@ class TestCmdApi(unittest.TestCase):
         time.sleep(0.001)
         cnts = get_cmd_cnts([["INST", "ABORT"], ["INST", "COLLECT"]])
         self.assertEqual(cnts, ([3, 2]))
+
+
+# INST is installed on db_shard 1 while its interface stays on db_shard 0
+class TestCmdApiMultipleDbShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system(db_shards={"INST": 1})
+
+        self.interface = MyInterface()
+        self.interface.name = "INST_INT"
+        self.interface.target_names = ["INST"]
+        self.interface.cmd_target_names = ["INST"]
+        self.interface.tlm_target_names = ["INST"]
+        self.interface.cmd_target_enabled = {"INST": True}
+        self.interface.tlm_target_enabled = {"INST": True}
+        InterfaceModel(name="INST_INT", scope="DEFAULT").create()
+        InterfaceStatusModel.set(self.interface.as_json(), scope="DEFAULT")
+
+        self.icht = InterfaceCmdHandlerThread(self.interface, None, scope="DEFAULT")
+        self.thread = self.icht.start()
+
+    def tearDown(self):
+        self.icht.graceful_kill()
+        self.thread.join()
+
+    def test_cmd_is_sent_acked_and_logged_on_the_target_db_shard(self):
+        command = cmd("INST ABORT", timeout=2)
+        self.assertEqual(command["cmd_name"], "ABORT")
+        shard0 = shard_redis(0)
+        shard1 = shard_redis(1)
+        for topic in ["{DEFAULT__CMD}TARGET__INST", "{DEFAULT__ACKCMD}TARGET__INST", "DEFAULT__COMMAND__{INST}__ABORT"]:
+            self.assertEqual(shard1.xlen(topic), 1, topic)
+            self.assertFalse(shard0.exists(topic), topic)
+        self.assertEqual(shard1.hget("DEFAULT__COMMANDCNTS__{INST}", "ABORT"), b"1")
+        self.assertFalse(shard0.exists("DEFAULT__COMMANDCNTS__{INST}"))
+        self.assertEqual(get_cmd_buffer("INST ABORT")["target_name"], b"INST")
 
 
 class BuildCommand(unittest.TestCase):

@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -16,6 +16,10 @@
 */
 
 import axios from 'axios'
+import { logUnlessAuthRequired } from './authGuard'
+
+// Maximum characters of the request body shown in the network error banner
+const MAX_REQUEST_DATA_LENGTH = 200
 
 const axiosInstance = axios.create({
   baseURL: location.origin,
@@ -27,15 +31,6 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response) {
-      if (error.response.status === 401) {
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity, true).then(
-          function (refreshed) {
-            if (refreshed) {
-              OpenC3Auth.setTokens()
-            }
-          },
-        )
-      }
       // Individual tools can set 'Ignore-Errors' to an error code
       // they potentially expect, e.g. '500', in which case we ignore it
       // For example in CommandSender.vue:
@@ -44,6 +39,10 @@ axiosInstance.interceptors.response.use(
       //     'Ignore-Errors': '404',
       //   },
       // })
+      // NOTE: This must come before the 401 handling below so that callers who
+      // expect a 401 (the login page checking a session token, or checking a
+      // password) opt out of clearing tokens and redirecting to login. Clearing
+      // tokens there would delete the session another tab is still using.
       if (
         error.response.config.headers['Ignore-Errors'] &&
         error.response.config.headers['Ignore-Errors'].includes(
@@ -52,12 +51,45 @@ axiosInstance.interceptors.response.use(
       ) {
         return Promise.reject(error)
       }
+      if (error.response.status === 401) {
+        // updateToken rejects with an AuthRequiredError when it gives up and
+        // redirects to login. Nothing to do about it here, and no banner: the
+        // page is on its way to /login.
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity, true)
+          .then(function (refreshed) {
+            if (refreshed) {
+              OpenC3Auth.setTokens()
+            }
+          })
+          // Only the redirect is expected here; log anything else
+          .catch(logUnlessAuthRequired)
+        return Promise.reject(error)
+      }
+      // HazardousError (409) and CriticalCmdError (428) are command control
+      // signals that the UI handles with an operator confirmation dialog (e.g.
+      // screen BUTTON widgets and Command Sender), not network errors. Don't
+      // show the error banner for them - let the caller handle the rejection.
+      const errorClass = error.response?.data?.error?.data?.class
+      if (
+        errorClass === 'HazardousError' ||
+        errorClass === 'CriticalCmdError'
+      ) {
+        return Promise.reject(error)
+      }
       let body = `HTTP ${error.response.status} - `
       if (error.response?.statusText) {
         body += `${error.response.statusText} `
       }
-      if (error.response?.config?.data) {
-        body += `${error.response.config.data} `
+      // The request body gives useful context (e.g. which JSON-RPC method
+      // failed) but can be an entire file on a save, so truncate it. Non-string
+      // bodies such as FormData would only render as '[object FormData]'.
+      const requestData = error.response?.config?.data
+      if (typeof requestData === 'string' && requestData.length > 0) {
+        if (requestData.length > MAX_REQUEST_DATA_LENGTH) {
+          body += `${requestData.slice(0, MAX_REQUEST_DATA_LENGTH)}... `
+        } else {
+          body += `${requestData} `
+        }
       }
       if (error.response?.data?.message) {
         body += `${error.response.data.message}`

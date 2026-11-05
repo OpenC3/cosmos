@@ -36,6 +36,7 @@
         hide-details
         prepend-icon="mdi-map-clock"
         single-line
+        :disabled="settingsLoading"
         data-test="time-zone"
       />
     </v-card-text>

@@ -116,10 +116,13 @@ def open_files_dialog(title, message="Open File", filter=None):
     _file_dialog(title, message, filter)
 
 
-def open_bucket_dialog(title, message="Open Bucket File"):
+def open_bucket_dialog(title, message="Open Bucket File", default_path=None, filter=None):
     answer = ""
+    hint = f" [default: {default_path}]" if default_path else ""
+    if filter:
+        hint += f" filter: {filter}"
     while len(answer) == 0:
-        print(f"{title}\n{message}\n<Type bucket file path (e.g. BUCKET/path/to/file)>:")
+        print(f"{title}\n{message}\n<Type bucket file path (e.g. BUCKET/path/to/file)>{hint}:")
         answer = input()
     return answer
 

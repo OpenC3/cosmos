@@ -150,11 +150,14 @@ module OpenC3
         if trigger['name'].nil? || trigger['group'].nil?
           raise ReactionInputError.new "invalid trigger, must contain 'name' and 'group' keys: #{trigger}"
         end
-        trigger_name = trigger['name']
-        unless trigger_hash[trigger_name].nil?
+        # Trigger names are only unique within a group so both parts identify
+        # the trigger. Keying on name alone rejects a reaction which references
+        # the same trigger name in two different groups.
+        trigger_key = "#{trigger['group']}__#{trigger['name']}"
+        unless trigger_hash[trigger_key].nil?
           raise ReactionInputError.new "no duplicate triggers allowed: #{triggers}"
         else
-          trigger_hash[trigger_name] = 1
+          trigger_hash[trigger_key] = 1
         end
       end
       return triggers

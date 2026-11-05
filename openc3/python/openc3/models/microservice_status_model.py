@@ -76,7 +76,7 @@ class MicroserviceStatusModel(DbShardedModel, Model):
         self.error = error
         self.custom = custom
 
-    def create(self, update=False, force=False, queued=False, isoformat=False):
+    def create(self, update=False, force=False, queued=False):
         self._db_sharded_create(
             self.__class__._db_shard_for_name(self.name, self.scope, use_cache=True),
             update=update,
@@ -98,5 +98,11 @@ class MicroserviceStatusModel(DbShardedModel, Model):
         if self.error is not None:
             json_data["error"] = repr(self.error)
         if self.custom is not None:
-            json_data["custom"] = self.custom.as_json()
+            # Ruby's Hash#as_json exists but Python dicts have no as_json
+            # so allow plain dicts (or anything JSON serializable) directly
+            as_json = getattr(self.custom, "as_json", None)
+            if callable(as_json):
+                json_data["custom"] = as_json()
+            else:
+                json_data["custom"] = self.custom
         return json_data

@@ -23,9 +23,14 @@ module OpenC3
     def self.getClient
       raise 'OPENC3_CLOUD environment variable is required' unless ENV['OPENC3_CLOUD']
       # Base is AwsBucket which works with S3-compatible storage (versitygw), Enterprise implements additional
-      bucket_class = ENV['OPENC3_CLOUD'].capitalize + 'Bucket'
+      bucket_class = ENV.fetch('OPENC3_CLOUD', 'local').capitalize + 'Bucket'
       klass = OpenC3.require_class('openc3/utilities/'+bucket_class.class_name_to_filename)
       klass.new
+    end
+
+    # snake_case alias to match the Python Bucket.get_client
+    def self.get_client # rubocop:disable Naming/AccessorMethodName
+      getClient()
     end
 
     def initialize

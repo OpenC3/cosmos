@@ -102,6 +102,11 @@ RSpec.describe ToolsController, type: :controller do
     end
 
     it "handles tools with no import_map_items" do
+      # tool1 has no import_map_items and no inline_url
+      allow(OpenC3::ToolModel).to receive(:all_scopes).and_return({
+        "DEFAULT__tool1" => @tool1
+      })
+
       get :importmap
 
       expect(response).to have_http_status(:ok)

@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -190,7 +190,9 @@ export default {
             this.selectedRows = []
           }
           this.configs.splice(this.configs.indexOf(item), 1)
-          new OpenC3Api().delete_config(this.configKey, item.config)
+          new OpenC3Api()
+            .delete_config(this.configKey, item.config)
+            .catch(console.error)
         })
         .catch((error) => {
           if (error !== true) {

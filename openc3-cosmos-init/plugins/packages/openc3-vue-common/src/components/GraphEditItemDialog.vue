@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -135,20 +135,21 @@ export default {
   },
   async created() {
     this.editItem = { ...this.item }
-    new OpenC3Api()
-      .get_item(this.item.targetName, this.item.packetName, this.item.itemName)
-      .then((details) => {
-        for (const [key, value] of Object.entries(details.limits)) {
-          if (Object.keys(value).includes('red_low')) {
-            this.limits[key] = Object.values(value)
-          }
-        }
-        // Locate the key for the value array that we pass in
-        this.limitsName = Object.keys(this.limits).find(
-          // Little hack to compare arrays you convert them to strings
-          (key) => this.limits[key] + '' === this.editItem.limits + '',
-        )
-      })
+    const details = await new OpenC3Api().get_item(
+      this.item.targetName,
+      this.item.packetName,
+      this.item.itemName,
+    )
+    for (const [key, value] of Object.entries(details.limits)) {
+      if (Object.keys(value).includes('red_low')) {
+        this.limits[key] = Object.values(value)
+      }
+    }
+    // Locate the key for the value array that we pass in
+    this.limitsName = Object.keys(this.limits).find(
+      // Little hack to compare arrays you convert them to strings
+      (key) => this.limits[key] + '' === this.editItem.limits + '',
+    )
   },
 }
 </script>

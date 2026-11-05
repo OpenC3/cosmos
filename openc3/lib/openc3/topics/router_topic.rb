@@ -78,13 +78,18 @@ module OpenC3
       end
     end
 
+    # Write to the target's db_shard where its interface reads commands
     def self.route_command(packet, target_names, scope:)
+      # Write to the target's db_shard where its interface reads commands
       if packet.identified?
         topic = "{#{scope}__CMD}TARGET__#{packet.target_name}"
-        Topic.write_topic(topic, { 'target_name' => packet.target_name, 'cmd_name' => packet.packet_name, 'cmd_buffer' => packet.buffer(false) }, '*', 100)
+        db_shard = Store.db_shard_for_target(packet.target_name, scope: scope)
+        Topic.write_topic(topic, { 'target_name' => packet.target_name, 'cmd_name' => packet.packet_name, 'cmd_buffer' => packet.buffer(false) }, '*', 100, db_shard: db_shard)
       elsif target_names.length == 1
         topic = "{#{scope}__CMD}TARGET__#{target_names[0]}"
-        Topic.write_topic(topic, { 'target_name' => packet.target_name ? packet.target_name : 'UNKNOWN', 'cmd_name' => 'UNKNOWN', 'cmd_buffer' => packet.buffer(false) }, '*', 100)
+        db_shard = Store.db_shard_for_target(target_names[0], scope: scope)
+        # Name the routed target so the interface identifies against it (and sends it as UNKNOWN if that fails)
+        Topic.write_topic(topic, { 'target_name' => target_names[0], 'cmd_name' => 'UNKNOWN', 'cmd_buffer' => packet.buffer(false) }, '*', 100, db_shard: db_shard)
       else
         raise "No route for command: #{packet.target_name ? packet.target_name : 'UNKNOWN'} #{packet.packet_name ? packet.packet_name : 'UNKNOWN'}"
       end
@@ -170,7 +175,12 @@ module OpenC3
       while (Time.now - time) < timeout
         Topic.read_topics([ack_topic], db_shard: db_shard) do |_topic, _msg_id, msg_hash, _redis|
           if msg_hash["id"] == cmd_id
-            return JSON.parse(msg_hash["result"], :allow_nan => true, :create_additions => true)
+            begin
+              return JSON.parse(msg_hash["result"], :allow_nan => true, :create_additions => true)
+            rescue JSON::ParserError
+              # The microservice returns a plain error message rather than JSON if details raises
+              raise "router_details failed: #{msg_hash['result']}"
+            end
           end
         end
       end

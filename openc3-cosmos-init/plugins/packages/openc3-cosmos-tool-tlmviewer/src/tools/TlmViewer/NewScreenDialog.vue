@@ -87,6 +87,7 @@
               clearable
               label="Screen Name (without .txt)"
               :rules="[rules.required]"
+              :error-messages="error"
               data-test="new-screen-name"
               @keyup="newScreenKeyup($event)"
             />
@@ -100,7 +101,9 @@
       <v-card-actions class="px-2">
         <v-spacer />
         <v-btn variant="outlined" @click="show = false"> Cancel </v-btn>
-        <v-btn variant="flat" @click="saveNewScreen"> Save </v-btn>
+        <v-btn variant="flat" :disabled="!!error" @click="saveNewScreen">
+          Save
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -152,6 +155,12 @@ export default {
       } else {
         return 'None'
       }
+    },
+    error: function () {
+      if (this.newScreenName && this.newScreenName.match(/\*$/)) {
+        return `${this.newScreenName} is not a valid filename. Must not end in '*'.`
+      }
+      return null
     },
   },
   watch: {
@@ -218,7 +227,7 @@ export default {
       }
     },
     saveNewScreen() {
-      if (this.duplicateScreenAlert || this.newScreenName === '') {
+      if (this.duplicateScreenAlert || !this.newScreenName || this.error) {
         return
       }
       this.newScreenSaving = true

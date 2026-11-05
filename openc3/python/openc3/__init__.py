@@ -14,7 +14,17 @@ import logging
 from openc3.environment import OPENC3_LOG_LEVEL
 
 
+# Level names COSMOS accepts in OPENC3_LOG_LEVEL, mapped to the stdlib
+# logging levels. Anything else (including unset) logs at INFO.
+LOG_LEVELS = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARN": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "FATAL": logging.CRITICAL,
+}
+
 logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s %(message)s",
-    level=logging.getLevelName(OPENC3_LOG_LEVEL),
+    level=LOG_LEVELS.get(OPENC3_LOG_LEVEL.strip().upper(), logging.INFO),
 )

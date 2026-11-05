@@ -84,6 +84,11 @@ module OpenC3
     include InterfaceDecomCommon
     LIMITS_STATE_INDEX = { RED_LOW: 0, YELLOW_LOW: 1, YELLOW_HIGH: 2, RED_HIGH: 3, GREEN_LOW: 4, GREEN_HIGH: 5 }
 
+    # Decom never uses descriptions so don't keep them in memory
+    def load_descriptions?
+      false
+    end
+
     def initialize(*args)
       super(*args)
       # Should only be one target, but there might be multiple decom microservices for a given target
@@ -94,12 +99,18 @@ module OpenC3
       @limits_event_topic = "#{@scope}__openc3_limits_events"
       @topics << @limits_event_topic
       Topic.update_topic_offsets(@topics, db_shard: @db_shard)
+      # Last limits event read, used to detect events trimmed before they were read.
+      # Read from the stream rather than the thread's cached offsets. The run thread
+      # starts reading at or after this point, so it can only cause an extra resync.
+      @limits_event_offset = Topic.get_last_offset(@limits_event_topic, db_shard: @db_shard)
       # Initialize before assigning limits_change_callback - sync_system below
       # can fire the callback synchronously for any persisted-disabled items.
       @limits_response_queue = Queue.new
       @limits_response_thread = nil
       System.telemetry.limits_change_callback = method(:limits_change_callback)
       LimitsEventTopic.sync_system(scope: @scope)
+      target_model = TargetModel.get_model(name: @target_names[0], scope: @scope)
+      @stored_limits_mode = target_model ? (target_model.stored_limits_mode || 'PROCESS') : 'PROCESS'
       @error_count = 0
       @metric.set(name: 'decom_total', value: @count, type: 'counter')
       @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
@@ -114,14 +125,21 @@ module OpenC3
         break if @cancel_thread
 
         begin
+          limits_events_checked = false
           OpenC3.in_span("read_topics") do
             Topic.read_topics(@topics, db_shard: @db_shard) do |topic, msg_id, msg_hash, redis|
               break if @cancel_thread
               if topic == @microservice_topic
                 microservice_cmd(topic, msg_id, msg_hash, redis)
               elsif topic == @limits_event_topic
+                # Any gap is before the first event in a read so only check once per read
+                unless limits_events_checked
+                  resync_if_limits_events_trimmed()
+                  limits_events_checked = true
+                end
+                @limits_event_offset = msg_id
                 event = JSON.parse(msg_hash['event'], allow_nan: true, create_additions: true)
-                LimitsEventTopic.process_event(event)
+                LimitsEventTopic.process_event(event, scope: @scope)
               elsif topic =~ /__DECOMINTERFACE/
                 if msg_hash.key?('inject_tlm')
                   handle_inject_tlm_with_ack(msg_hash['inject_tlm'], msg_id)
@@ -154,11 +172,20 @@ module OpenC3
       @limits_response_thread = nil
     end
 
-    def decom_packet(_topic, msg_id, msg_hash, _redis)
+    # Limits events are only read between batches of packets, so a decom microservice
+    # working through a backlog can fall far enough behind that a flood of LIMITS_CHANGE
+    # events trims control events (enable, settings, etc) before it reads them.
+    # Recover by reloading all limits state from the store, which is always current.
+    def resync_if_limits_events_trimmed
+      if LimitsEventTopic.events_trimmed?(@limits_event_offset, scope: @scope, db_shard: @db_shard)
+        @logger.warn("#{@name}: Limits events were trimmed before they could be read, resyncing limits")
+        LimitsEventTopic.resync_system(scope: @scope)
+      end
+    end
+
+    def decom_packet(topic, msg_id, msg_hash, _redis)
       OpenC3.in_span("decom_packet") do
-        msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
-        delta = Time.now.to_f - msgid_seconds_from_epoch
-        @metric.set(name: 'decom_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and decom start')
+        update_topic_lag(topic, msg_id, metric_name: 'decom_topic_delta_seconds', help: 'Delta time between data written to stream and decom start')
 
         #######################################
         # Build packet object from topic data
@@ -184,6 +211,7 @@ module OpenC3
           logger: @logger,
           name: @name,
           check_limits: true,
+          stored_limits_mode: @stored_limits_mode,
           metric: @metric,
           error_callback: ->(e) {
             @error_count += 1
@@ -253,9 +281,11 @@ module OpenC3
       event = { type: :LIMITS_CHANGE, target_name: packet.target_name, packet_name: packet.packet_name,
                 item_name: item.name, old_limits_state: old_limits_state.to_s, new_limits_state: item.limits.state.to_s,
                 time_nsec: packet_time.to_nsec_from_epoch, message: message.to_s }
+      suppress_stored = packet.stored && @stored_limits_mode != 'PROCESS'
+      event[:suppress_stored] = true if suppress_stored
       LimitsEventTopic.write(event, scope: @scope)
 
-      if item.limits.response
+      if item.limits.response && !suppress_stored
         copied_packet = packet.deep_copy
         copied_item = packet.items[item.name]
         @limits_response_queue << [copied_packet, copied_item, old_limits_state]

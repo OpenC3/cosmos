@@ -20,7 +20,7 @@ from openc3.utilities.time import to_nsec_from_epoch
 
 class TelemetryDecomTopic(Topic):
     @classmethod
-    def write_packet(cls, packet, id=None, scope=None):
+    def write_packet(cls, packet, id=None, include_limits_states=True, scope=None):
         # OpenC3.in_span("write_packet") do
         # Need to build a JSON hash of the decommutated data
         # Support "downward typing"
@@ -29,14 +29,14 @@ class TelemetryDecomTopic(Topic):
         # If nothing - item does not exist - nil
         # __ as separators ITEM1, ITEM1__C, ITEM1__F
 
-        json_hash = CvtModel.build_json_from_packet(packet)
+        json_hash = CvtModel.build_json_from_packet(packet, include_limits_states=include_limits_states)
         # Serialize JSON once and reuse for both topic write and CVT set
         json_data = json.dumps(json_hash, cls=JsonEncoder)
         # Write to stream
         msg_hash = {
             "time": to_nsec_from_epoch(packet.packet_time),
             "received_time": to_nsec_from_epoch(packet.received_time),
-            "stored": str(packet.stored),
+            "stored": str(packet.stored).lower(),  # Match ruby behavior of "true"/"false"
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
@@ -50,6 +50,7 @@ class TelemetryDecomTopic(Topic):
             msg_hash,
             id,
             db_shard=db_shard,
+            minid=Topic.stream_safety_minid(id),
         )
 
         if not packet.stored:

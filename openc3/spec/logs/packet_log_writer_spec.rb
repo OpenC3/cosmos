@@ -18,6 +18,7 @@
 require 'spec_helper'
 require 'openc3/logs/packet_log_writer'
 require 'openc3/logs/packet_log_reader'
+require 'openc3/models/target_model'
 require 'openc3/utilities/aws_bucket'
 require 'fileutils'
 require 'zlib'
@@ -55,6 +56,120 @@ module OpenC3
           expect(stdout.string).to match("Unknown entry_type: BLAH")
           threads = plw.shutdown
           threads.each { |t| t.join }
+        end
+      end
+
+      it "logs an out of order error for live packets with decreasing time" do
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Live packet at the current time then a live packet one second in the past
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, false, "\x01\x02", nil, '0-0')
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now - 1_000_000_000, false, "\x03\x04", nil, '0-0')
+          expect(stdout.string).to match("out of order time detected")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+        end
+      end
+
+      it "does not log an out of order error for stored packets in the past" do
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Live packet at the current time establishes the previous time
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, false, "\x01\x02", nil, '0-0')
+          # Stored (historical) packet way in the past must not trigger the check
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', 1_000_000_000, true, "\x03\x04", nil, '0-0')
+          # A subsequent live packet at the current time must also not trigger the check
+          # because the stored packet did not update the previous time
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now + 1_000_000_000, false, "\x05\x06", nil, '0-0')
+          expect(stdout.string).to_not match("out of order time detected")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+        end
+      end
+
+      it "starts a new file when stored good times move backward" do
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Stored packet at the current time establishes the previous time
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, true, "\x01\x02", nil, '0-0')
+          # A stored packet with a valid but earlier time is a new/overlapping replay
+          # run and must roll a new file rather than log an out of order error
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now - 1_000_000_000, true, "\x03\x04", nil, '0-0')
+          expect(stdout.string).to_not match("out of order time detected")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+          # Rolling produces two files (the first is closed when the second opens)
+          expect(@files.keys.length).to eq 2
+        end
+      end
+
+      it "segregates invalid (pre clock sync) stored times into their own file" do
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Valid stored packet at the current time opens a normally named file
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, true, "\x01\x02", nil, '0-0')
+          # Stored packet with a 1970 time (before clock/GPS sync) rolls into its own file
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', 1_000_000_000, true, "\x03\x04", nil, '0-0')
+          # The first valid packet after the 1970s rolls a fresh, properly named file
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now + 1_000_000_000, true, "\x05\x06", nil, '0-0')
+          expect(stdout.string).to_not match("out of order time detected")
+          expect(stdout.string).to match("segregating invalid packet time")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+          # Three files: valid, invalid (1970), valid
+          expect(@files.keys.length).to eq 3
+          # Exactly one file is named with the invalid (pre clock sync) time; rest are current
+          years = @files.keys.map { |name| name[0..3].to_i }
+          expect(years.count { |y| y < 2000 }).to eq 1
+          expect(years.count { |y| y >= 2000 }).to eq 2
+        end
+      end
+
+      it "segregates invalid (pre clock sync) realtime times into their own file" do
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Realtime packets before the clock/GPS synced report a 1970 time
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', 1_000_000_000, false, "\x01\x02", nil, '0-0')
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', 2_000_000_000, false, "\x03\x04", nil, '0-0')
+          # First valid time after the clock syncs rolls a fresh, properly named file
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, false, "\x05\x06", nil, '0-0')
+          expect(stdout.string).to_not match("out of order time detected")
+          expect(stdout.string).to match("segregating invalid packet time")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+          # Two files: invalid (1970) then valid - the valid file is not tainted with 1970
+          expect(@files.keys.length).to eq 2
+          years = @files.keys.map { |name| name[0..3].to_i }
+          expect(years.count { |y| y < 2000 }).to eq 1
+          expect(years.count { |y| y >= 2000 }).to eq 1
+        end
+      end
+
+      it "does not log an out of order error when historical stored telemetry precedes live telemetry" do
+        # Reproduces issue #3540: injecting historical telemetry with stored=true and a
+        # past received_time then receiving live telemetry logged an out of order error.
+        capture_io do |stdout|
+          now = Time.now.to_nsec_from_epoch
+          past = 2_794_000_000_000 # ~1970-01-01 00:46:34, the time from the issue report
+          plw = PacketLogWriter.new(@log_dir, 'test')
+          # Historical telemetry injected with stored=true and a past time / received_time
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', past, true, "\x01\x02", nil, '0-0', received_time_nsec_since_epoch: past)
+          # Live telemetry with a modern time / received_time must not trigger the check
+          plw.write(:RAW_PACKET, :TLM, 'TGT', 'PKT', now, false, "\x03\x04", nil, '0-0', received_time_nsec_since_epoch: now)
+          expect(stdout.string).to_not match("out of order time detected")
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+          # The historical (1970) packet is segregated from the live packet: two files,
+          # one named with the pre-2000 time, so the live file's name is not tainted
+          expect(@files.keys.length).to eq 2
+          years = @files.keys.map { |name| name[0..3].to_i }
+          expect(years.count { |y| y < 2000 }).to eq 1
+          expect(years.count { |y| y >= 2000 }).to eq 1
         end
       end
 
@@ -103,6 +218,117 @@ module OpenC3
         expect(pkt).to be_nil
         reader.close()
         FileUtils.rm_f 'test_log.bin'
+      end
+
+      %i[CBOR JSON].each do |data_format|
+        it "round trips RAW_PACKET extra using #{data_format}" do
+          time = Time.now.to_nsec_from_epoch
+          timestamp = Time.from_nsec_from_epoch(time).to_timestamp
+          label = 'extra'
+          plw = PacketLogWriter.new(@log_dir, label)
+          plw.data_format = data_format
+          extra = { 'username' => 'test', 'count' => 5 }
+          plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', time, false, "\x01\x02", nil, '0-0', extra: extra)
+          # A second packet without extra to prove a stale extra isn't carried over
+          plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', time, false, "\x03\x04", nil, '0-0')
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+
+          bin = @files["#{timestamp}__#{timestamp}__#{label}.bin.gz"]
+          gz = Zlib::GzipReader.new(StringIO.new(bin))
+          File.open('test_log.bin', 'wb') { |file| file.write gz.read }
+          reader = PacketLogReader.new
+          reader.open('test_log.bin')
+          # The extra must decode without raising regardless of data_format,
+          # which requires the writer to flag CBOR encoded extra
+          pkt = reader.read
+          expect(pkt.target_name).to eq 'TGT1'
+          expect(pkt.packet_name).to eq 'PKT1'
+          expect(pkt.buffer).to eq "\x01\x02"
+          expect(pkt.extra).to eq extra
+          pkt = reader.read
+          expect(pkt.buffer).to eq "\x03\x04"
+          expect(pkt.extra).to be_nil
+          reader.close()
+          FileUtils.rm_f 'test_log.bin'
+        end
+
+        it "clears a stale RAW_PACKET extra on a defined packet using #{data_format}" do
+          time = Time.now.to_nsec_from_epoch
+          timestamp = Time.from_nsec_from_epoch(time).to_timestamp
+          label = 'stale'
+          # INST HEALTH_STATUS is defined, so the reader identifies and defines
+          # it and hands back the shared System packet on every read
+          buffer = System.telemetry.packet('INST', 'HEALTH_STATUS').buffer
+          plw = PacketLogWriter.new(@log_dir, label)
+          plw.data_format = data_format
+          extra = { 'username' => 'test' }
+          plw.write(:RAW_PACKET, :TLM, 'INST', 'HEALTH_STATUS', time, false, buffer, nil, '0-0', extra: extra)
+          plw.write(:RAW_PACKET, :TLM, 'INST', 'HEALTH_STATUS', time, false, buffer, nil, '0-0')
+          threads = plw.shutdown
+          threads.each { |t| t.join }
+
+          bin = @files["#{timestamp}__#{timestamp}__#{label}.bin.gz"]
+          gz = Zlib::GzipReader.new(StringIO.new(bin))
+          File.open('test_log.bin', 'wb') { |file| file.write gz.read }
+          reader = PacketLogReader.new
+          reader.open('test_log.bin')
+          pkt = reader.read
+          expect(pkt.extra).to eq extra
+          pkt = reader.read
+          expect(pkt.extra).to be_nil
+          reader.close()
+          FileUtils.rm_f 'test_log.bin'
+        end
+      end
+
+      it "reads a pre-7.3.1 RAW_PACKET extra written as CBOR without the CBOR flag" do
+        time = Time.now.to_nsec_from_epoch
+        timestamp = Time.from_nsec_from_epoch(time).to_timestamp
+        label = 'legacy'
+        extra = { 'username' => 'test', 'count' => 5 }
+        plw = PacketLogWriter.new(@log_dir, label)
+        plw.write(:RAW_PACKET, :TLM, 'TGT1', 'PKT1', time, false, "\x01\x02", nil, '0-0', extra: extra)
+        threads = plw.shutdown
+        threads.each { |t| t.join }
+
+        bin = @files["#{timestamp}__#{timestamp}__#{label}.bin.gz"]
+        gz = Zlib::GzipReader.new(StringIO.new(bin))
+        bin = gz.read
+        # Turn the file into what the pre-7.3.1 writer produced by clearing
+        # PacketLogConstants::OPENC3_CBOR_FLAG_MASK on the RAW_PACKET entries, leaving the extra
+        # CBOR encoded while the flag claims JSON
+        offset = PacketLogConstants::OPENC3_HEADER_LENGTH
+        cleared = 0
+        while offset < bin.length
+          length = bin[offset, 4].unpack1('N')
+          flags = bin[(offset + 4), 2].unpack1('n')
+          if flags & PacketLogConstants::OPENC3_ENTRY_TYPE_MASK == PacketLogConstants::OPENC3_RAW_PACKET_ENTRY_TYPE_MASK
+            expect(flags & PacketLogConstants::OPENC3_CBOR_FLAG_MASK).to eq PacketLogConstants::OPENC3_CBOR_FLAG_MASK
+            bin[(offset + 4), 2] = [flags & ~PacketLogConstants::OPENC3_CBOR_FLAG_MASK].pack('n')
+            cleared += 1
+          end
+          offset += 4 + length
+        end
+        expect(cleared).to eq 1
+
+        File.open('test_log.bin', 'wb') { |file| file.write bin }
+        reader = PacketLogReader.new
+        reader.open('test_log.bin')
+        pkt = reader.read
+        expect(pkt.buffer).to eq "\x01\x02"
+        expect(pkt.extra).to eq extra
+        reader.close()
+        FileUtils.rm_f 'test_log.bin'
+      end
+
+      it "raises the JSON error when a JSON flagged extra is neither JSON nor CBOR" do
+        reader = PacketLogReader.new
+        garbage = "\xff\xfe\xfd"
+        entry = "\x00" * 12 + [garbage.length].pack('N') + garbage
+        expect {
+          reader.send(:handle_received_time_extra_and_data, entry, 0, false, true, false)
+        }.to raise_error(JSON::ParserError)
       end
 
       it "correctly writes multiple files in a row" do
@@ -357,6 +583,46 @@ module OpenC3
           expect(stdout.string).to_not include("Error closing")
         end
         expect(@files.keys.length).to eq 0
+      end
+    end
+
+    describe "multiple db_shards" do
+      before(:each) do
+        mock_redis()
+        # INST lives on db_shard 1 while SYSTEM stays on db_shard 0
+        TargetModel.new(name: "INST", scope: "DEFAULT", db_shard: 1).create
+        TargetModel.new(name: "SYSTEM", scope: "DEFAULT", db_shard: 0).create
+      end
+
+      it "trims each topic on its target's db_shard" do
+        # Check the cleanup times quickly rather than every 10s
+        stub_const("OpenC3::LogWriter::CYCLE_TIME_INTERVAL", 0.01)
+        trimmed = Queue.new
+        allow(EphemeralStore.instance(db_shard: 0)).to receive(:trim_topic) { |topic, minid, *| trimmed << [0, topic, minid] }
+        allow(EphemeralStore.instance(db_shard: 1)).to receive(:trim_topic) { |topic, minid, *| trimmed << [1, topic, minid] }
+        plw = PacketLogWriter.new(@log_dir, 'test')
+        plw.cleanup_offsets << { "DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS" => "1-0", "DEFAULT__DECOM__{SYSTEM}__META" => "2-0" }
+        plw.cleanup_times << (Time.now - 1)
+        results = []
+        2.times { results << trimmed.pop(timeout: 3) }
+        plw.shutdown.each { |thread| thread.join }
+        expect(results).to contain_exactly([1, "DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", "1-0"], [0, "DEFAULT__DECOM__{SYSTEM}__META", "2-0"])
+      end
+
+      it "looks up the target's db_shard in the topic's scope" do
+        # The same target name is on db_shard 1 in DEFAULT but db_shard 2 in OTHER
+        TargetModel.new(name: "INST", scope: "OTHER", db_shard: 2).create
+        stub_const("OpenC3::LogWriter::CYCLE_TIME_INTERVAL", 0.01)
+        trimmed = Queue.new
+        [0, 1, 2].each do |db_shard|
+          allow(EphemeralStore.instance(db_shard: db_shard)).to receive(:trim_topic) { |topic, minid, *| trimmed << [db_shard, topic, minid] }
+        end
+        plw = PacketLogWriter.new(@log_dir, 'test')
+        plw.cleanup_offsets << { "OTHER__TELEMETRY__{INST}__HEALTH_STATUS" => "1-0" }
+        plw.cleanup_times << (Time.now - 1)
+        result = trimmed.pop(timeout: 3)
+        plw.shutdown.each { |thread| thread.join }
+        expect(result).to eql [2, "OTHER__TELEMETRY__{INST}__HEALTH_STATUS", "1-0"]
       end
     end
   end

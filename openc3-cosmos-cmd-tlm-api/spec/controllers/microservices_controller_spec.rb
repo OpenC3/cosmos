@@ -100,6 +100,8 @@ RSpec.describe MicroservicesController, type: :controller do
     it "uses base operator hostname for shard 0" do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with("OPENC3_OPERATOR_HOSTNAME").and_return("openc3-operator")
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with("OPENC3_OPERATOR_HOSTNAME").and_return("openc3-operator")
 
       get :traefik
 
@@ -112,6 +114,8 @@ RSpec.describe MicroservicesController, type: :controller do
     it "appends shard number to operator hostname for non-zero shards" do
       allow(ENV).to receive(:[]).and_call_original
       allow(ENV).to receive(:[]).with("OPENC3_OPERATOR_HOSTNAME").and_return("openc3-operator")
+      allow(ENV).to receive(:fetch).and_call_original
+      allow(ENV).to receive(:fetch).with("OPENC3_OPERATOR_HOSTNAME").and_return("openc3-operator")
 
       # Create a microservice with shard 1
       micro2 = {

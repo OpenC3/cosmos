@@ -201,27 +201,18 @@ module OpenC3
         tf.unlink
       end
 
-      it "raises on non-integer ports" do
+      it "parses SECRET" do
         model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
         parser = ConfigParser.new
         tf = Tempfile.new
-        tf.puts "PORT asdf"
+        tf.puts 'SECRET ENV USERNAME ENV_USERNAME'
+        tf.puts 'SECRET FILE KEY "/tmp/DATA/cert"'
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
-          expect { model.handle_config(parser, keyword, params) }.to raise_error(/Port must be an integer/)
+          model.handle_config(parser, keyword, params)
         end
-        tf.unlink
-      end
-
-      it "raises on invalid port protocols" do
-        model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
-        parser = ConfigParser.new
-        tf = Tempfile.new
-        tf.puts "PORT 1234 BLAH"
-        tf.close
-        parser.parse_file(tf.path) do |keyword, params|
-          expect { model.handle_config(parser, keyword, params) }.to raise_error(/Unknown port protocol: BLAH/)
-        end
+        expect(model.as_json()['secrets']).to include(['ENV', 'USERNAME', 'ENV_USERNAME'],
+                                                     ['FILE', 'KEY', '/tmp/DATA/cert'])
         tf.unlink
       end
     end
@@ -264,6 +255,21 @@ module OpenC3
       end
     end
 
+    describe "cleanup" do
+      it "clears both metric rows on the configured shard after the model is deleted" do
+        name = 'DEFAULT__USER__EXAMPLE'
+        model = MicroserviceModel.new(folder_name: 'EXAMPLE', name: name, scope: 'DEFAULT', plugin: 'PLUGIN', db_shard: 2)
+        # Uninstall removes the configuration before invoking cleanup.
+        expect(Store.hget('openc3_microservices', name)).to be_nil
+        shard_store = double('ShardStore')
+        expect(EphemeralStore).to receive(:instance).with(db_shard: 2).twice.and_return(shard_store)
+        expect(shard_store).to receive(:hdel).with("DEFAULT#{MetricModel::PRIMARY_KEY}", name)
+        expect(shard_store).to receive(:hdel).with("DEFAULT#{MetricModel::PROCESS_PRIMARY_KEY}", name)
+
+        model.cleanup
+      end
+    end
+
     describe "undeploy" do
       it "calls destroy on a deployed MicroserviceModel" do
         s3 = instance_double("Aws::S3::Client")
@@ -286,6 +292,47 @@ module OpenC3
         expect(config[0][1]['type']).to eql 'microservice'
         expect(config[0][1]['name']).to eql name
         expect(config[0][1]['plugin']).to eql 'PLUGIN'
+      end
+    end
+
+    describe "runtime_python_env" do
+      it "sets per-plugin venv env vars when plugin venv directory exists" do
+        model = MicroserviceModel.new(
+          folder_name: "TEST", name: "DEFAULT__TYPE__NAME",
+          scope: "DEFAULT", plugin: "my-plugin__0", needs_dependencies: true
+        )
+        venv_dir = "/gems/plugin_venvs/DEFAULT__my-plugin__0/.venv"
+        allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(Dir).to receive(:glob).with("#{venv_dir}/lib/python*/site-packages").and_return(["#{venv_dir}/lib/python3.12/site-packages"])
+
+        env = model.runtime_python_env
+        expect(env['VIRTUAL_ENV']).to eq(venv_dir)
+        expect(env['PYTHONUSERBASE']).to eq(venv_dir)
+        expect(env['PYTHONPATH']).to eq("#{venv_dir}/lib/python3.12/site-packages")
+      end
+
+      it "falls back to shared python_packages when no plugin venv exists" do
+        model = MicroserviceModel.new(
+          folder_name: "TEST", name: "DEFAULT__TYPE__NAME",
+          scope: "DEFAULT", plugin: "my-plugin__0", needs_dependencies: true
+        )
+        venv_dir = "/gems/plugin_venvs/DEFAULT__my-plugin__0/.venv"
+        allow(File).to receive(:directory?).with(venv_dir).and_return(false)
+
+        env = model.runtime_python_env
+        expect(env['VIRTUAL_ENV']).to be_nil
+        expect(env['PYTHONUSERBASE']).to eq('/gems/python_packages')
+      end
+
+      it "does not set venv vars when needs_dependencies is false" do
+        model = MicroserviceModel.new(
+          folder_name: "TEST", name: "DEFAULT__TYPE__NAME",
+          scope: "DEFAULT", plugin: "my-plugin__0", needs_dependencies: false
+        )
+
+        env = model.runtime_python_env
+        expect(env['VIRTUAL_ENV']).to be_nil
+        expect(env['PYTHONUSERBASE']).to be_nil
       end
     end
   end

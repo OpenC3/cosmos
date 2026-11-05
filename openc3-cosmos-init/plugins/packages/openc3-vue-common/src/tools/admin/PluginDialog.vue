@@ -268,9 +268,11 @@ export default {
     },
   },
   created() {
-    Api.get('/openc3-api/info').then(({ data }) => {
-      this.installedCosmosVersion = data.version
-    })
+    Api.get('/openc3-api/info')
+      .then(({ data }) => {
+        this.installedCosmosVersion = data.version
+      })
+      .catch(console.error)
   },
   mounted() {
     const pluginMode = this.buildPluginMode()

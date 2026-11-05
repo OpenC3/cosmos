@@ -9,6 +9,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from openc3.packets.packet_item import PacketItem
+
 
 class Limits:
     """Limits uses PacketConfig to parse the command and telemetry
@@ -148,7 +150,7 @@ class Limits:
         limits_for_set[1] = float(yellow_low)
         limits_for_set[2] = float(yellow_high)
         limits_for_set[3] = float(red_high)
-        if green_low and green_high:
+        if green_low is not None and green_high is not None:
             limits_for_set[4] = float(green_low)
             limits_for_set[5] = float(green_high)
         else:
@@ -173,16 +175,56 @@ class Limits:
             limits_for_set[5],
         ]
 
+    # Set the color for a telemetry item state
+    #
+    # @param target_name [str] Target Name
+    # @param packet_name [str] Packet Name
+    # @param item_name [str] Item Name
+    # @param state_name [str] State Name (e.g. 'CONNECTED')
+    # @param color [str, None] New color: GREEN, YELLOW, or RED.
+    #   Pass None to clear (remove) the state color.
+    # @return [str, None] The color that was set, or None if the color was cleared
+    def set_state_color(self, target_name, packet_name, item_name, state_name, color):
+        packet = self._get_packet(target_name, packet_name)
+        item = packet.get_item(item_name)
+        if item.states is None:
+            raise RuntimeError(f"Item '{target_name} {packet_name} {item_name}' does not have any states")
+        state_name = str(state_name).upper()
+        if state_name not in item.states:
+            raise RuntimeError(
+                f"State '{state_name}' does not exist for item '{target_name} {packet_name} {item_name}'"
+            )
+        if color is None:
+            # Clear the state color while keeping state_colors as a dict so limits
+            # checking (which indexes state_colors by value) continues to work.
+            if item.state_colors is not None:
+                item.state_colors.pop(state_name, None)
+            packet.update_limits_items_cache(item)
+            return None
+        color = str(color).upper()
+        if color not in PacketItem.VALID_STATE_COLORS:
+            raise RuntimeError(
+                f"Invalid state color '{color}'. Must be one of {', '.join(PacketItem.VALID_STATE_COLORS)}."
+            )
+        if item.state_colors is None:
+            item.state_colors = {}
+        item.state_colors[state_name] = color
+        item.limits.enabled = True
+        packet.update_limits_items_cache(item)
+        return color
+
     def _get_packet(self, target_name, packet_name):
         if packet_name.upper() == Limits.LATEST_PACKET_NAME:
             raise RuntimeError("LATEST packet not valid")
 
         packets = self.config.telemetry.get(target_name.upper())
         if packets is None:
-            raise RuntimeError(f"Telemetry target '{target_name.upper()}' does not exist")
+            raise RuntimeError(f"Telemetry target '{target_name.upper()}' does not exist (limits lookup)")
 
         packet = packets.get(packet_name.upper())
         if packet is None:
-            raise RuntimeError(f"Telemetry packet '{target_name.upper()} {packet_name.upper()}' does not exist")
+            raise RuntimeError(
+                f"Telemetry packet '{target_name.upper()} {packet_name.upper()}' does not exist (limits lookup)"
+            )
 
         return packet

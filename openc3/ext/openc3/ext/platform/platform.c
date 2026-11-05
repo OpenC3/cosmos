@@ -35,10 +35,13 @@ VALUE cSegFault = Qnil;
 #include <string.h>
 #include <sys/stat.h>
 
+/* Must be a macro rather than a const int so filename below is a fixed size
+ * array rather than a variable length array */
+#define FILENAME_LEN 256
+
 /* Mark that this function does not return (it exits) to remove compiler warning */
 __attribute__((noreturn)) static void catch_sigsegv(int sig_num)
 {
-  const int FILENAME_LEN = 256;
   char *openc3_log_dir = NULL;
   time_t rawtime;
   struct tm timeinfo;

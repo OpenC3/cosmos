@@ -1,0 +1,184 @@
+#!/bin/sh
+# Per-plugin UV virtual environment installer
+# Usage: uvinstall <plugin_venv_name> <gem_path> [extra uv args...]
+#
+# Creates an isolated venv at /gems/plugin_venvs/<plugin_venv_name>/.venv
+# and installs Python dependencies from the plugin's gem_path.
+#
+# Two installation paths:
+#   1. If gem_path contains uv.lock: uses `uv sync --frozen` (reproducible)
+#   2. Otherwise: falls back to `uv pip install` for requirements.txt / pyproject.toml
+#
+# Network safety: uv's own HTTP controls (connect timeout, read timeout,
+# bounded retries) make a slow or unreachable index fail fast instead of
+# hanging the plugin install (which stalls the whole deploy - the init hook
+# never completes and helm's --wait times out). These are idle/connect
+# timeouts, NOT a total-transfer cap, so a large but healthy download (e.g.
+# torch over a slow link) is never killed mid-stream as long as bytes keep
+# arriving. Both paths try OFFLINE first so a plugin whose wheels are already
+# in the seeded UV cache installs deterministically without ever touching the
+# network.
+
+PLUGIN_VENV_NAME="$1"
+GEM_PATH="$2"
+shift 2
+# Index arguments built by PypiUrl.build_args: --default-index (the PyPI URL
+# from Admin Console -> Settings) and, when the deployment opts in,
+# --allow-insecure-host. Only --allow-insecure-host is load bearing on the
+# `uv sync --frozen` path below: a frozen sync never resolves, so uv installs
+# from the registry and wheel URLs already recorded in uv.lock and the default
+# index is unused. On the `uv pip` fallback paths both matter.
+UV_ARGS="$*"
+
+# --no-sources finishes what --no-config starts. PypiUrl.build_args adds
+# --no-config when an operator has designated an index, which stops uv searching
+# a named index the plugin declares in [tool.uv].index - but a package pinned
+# with [tool.uv].sources is project metadata that survives --no-config and still
+# resolves against the plugin author's index. --no-sources drops those pins so
+# the operator's index is the only one consulted.
+#
+# It is added only for the commands that resolve: `uv sync --frozen` rejects
+# --no-sources outright, and has no use for it, because a frozen sync installs
+# the registry and wheel URLs already recorded in uv.lock without resolving.
+RESOLVE_ARGS="$UV_ARGS"
+case " ${UV_ARGS} " in
+    *" --no-config "*) RESOLVE_ARGS="${UV_ARGS} --no-sources" ;;
+esac
+
+if [ -z "$PLUGIN_VENV_NAME" ] || [ -z "$GEM_PATH" ]; then
+    echo "Usage: uvinstall <plugin_venv_name> <gem_path> [extra uv args...]"
+    exit 1
+fi
+
+# Bound uv's network behavior with uv's own HTTP knobs. Unlike a blunt
+# wall-clock cap, these fail fast on a dead/unreachable index or a stalled
+# connection WITHOUT killing a large but progressing download. All overridable.
+#   UV_HTTP_CONNECT_TIMEOUT - give up connecting to an unreachable index (s)
+#   UV_HTTP_TIMEOUT         - give up when a connection stalls mid-read (s)
+#   UV_HTTP_RETRIES         - bounded retries for transient failures
+# The values below match uv's own defaults; they are set explicitly so plugin
+# installs keep this behavior even if a future uv release changes its defaults,
+# and so an operator has a documented place to raise them for a slow index.
+export UV_HTTP_CONNECT_TIMEOUT="${UV_HTTP_CONNECT_TIMEOUT:-10}"
+export UV_HTTP_TIMEOUT="${UV_HTTP_TIMEOUT:-30}"
+export UV_HTTP_RETRIES="${UV_HTTP_RETRIES:-3}"
+
+# Run a uv command offline first (cache-only: instant, cannot hang, works in
+# air-gapped clusters) and only retry online on a cache miss. Both paths below
+# use this so a plugin whose wheels are already in the seeded UV cache never
+# touches the network.
+uv_offline_then_online() {
+    if uv "$@" --offline; then
+        return 0
+    fi
+    # Expected for any plugin whose wheels aren't in the seeded cache (a new
+    # third-party plugin, or a pin that differs from the one baked in), so this
+    # is informational, not an error - the online attempt below is the real one.
+    echo "Offline uv cache miss; retrying online"
+    uv "$@"
+}
+
+# The venv root is overridable so the spec suite can drive this script against
+# a temporary directory. Production never sets it; PluginModel computes the same
+# /gems/plugin_venvs path independently when it records the .uv_managed marker,
+# so pointing this elsewhere outside a test would put the two out of step.
+VENV_ROOT="${UVINSTALL_VENV_ROOT:-/gems/plugin_venvs}"
+VENV_BASE="${VENV_ROOT}/${PLUGIN_VENV_NAME}"
+VENV_DIR="${VENV_BASE}/.venv"
+
+echo "Creating per-plugin venv for '${PLUGIN_VENV_NAME}' at ${VENV_DIR}"
+mkdir -p "${VENV_BASE}"
+
+# Path 1: uv.lock present - use `uv sync --frozen` for reproducible installs
+if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
+    echo "Found uv.lock - using uv sync --frozen for reproducible install"
+
+    # Copy pyproject.toml and uv.lock into the venv base directory
+    cp "${GEM_PATH}/pyproject.toml" "${VENV_BASE}/pyproject.toml"
+    cp "${GEM_PATH}/uv.lock" "${VENV_BASE}/uv.lock"
+
+    # Create venv and sync dependencies
+    # Syncing in the wrong directory would resolve against whatever
+    # pyproject.toml happens to be there, so treat this as fatal.
+    cd "${VENV_BASE}" || exit 1
+    uv venv "${VENV_DIR}" --allow-existing
+
+    # Offline sync first, online only on a cache miss (bounded by UV_HTTP_*).
+    # --inexact keeps sync additive: without it sync makes the venv match the
+    # lock exactly and uninstalls anything else, including packages an admin
+    # uploaded into this plugin venv via PythonPackageModel.install (which uses
+    # the additive `pipinstall`).
+    uv_offline_then_online sync --frozen --inexact --no-dev --no-install-project ${UV_ARGS}
+    RESULT=$?
+
+    if [ $RESULT -eq 0 ]; then
+        echo "uv sync --frozen succeeded"
+        touch "${VENV_BASE}/.uv_managed"
+        exit 0
+    fi
+
+    echo "Warning: uv sync --frozen failed (exit code ${RESULT}), falling back to uv pip install"
+fi
+
+# Path 2: Fallback - use uv pip install for requirements.txt or pyproject.toml
+# Every install here is also offline-first (same reasoning as path 1), so an
+# unlocked plugin whose wheels happen to be cached installs without network too.
+uv venv "${VENV_DIR}" --allow-existing
+
+if [ -f "${GEM_PATH}/requirements.txt" ]; then
+    echo "Installing from requirements.txt via uv pip install"
+    uv_offline_then_online pip install --python "${VENV_DIR}" ${RESOLVE_ARGS} -r "${GEM_PATH}/requirements.txt"
+    RESULT=$?
+elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
+    echo "Installing from pyproject.toml via uv pip install"
+    # --python: The Python interpreter into which packages should be installed.
+    # --project: Discover a project (i.e. pyproject.toml) in the given directory.
+    # -r: Install the packages listed in the given files.
+    uv_offline_then_online pip install --python "${VENV_DIR}" --project "${GEM_PATH}" ${RESOLVE_ARGS} -r "${GEM_PATH}/pyproject.toml"
+    RESULT=$?
+
+    # `uv pip install <path>` builds the plugin as a package before installing
+    # its dependencies, which fails for a pyproject.toml that only declares
+    # dependencies and isn't a buildable distribution (no [build-system], a
+    # missing/empty source layout, or a build backend that can't run offline).
+    # Fall back to installing the declared dependencies without building. The
+    # compile step only resolves declared deps into a pinned requirements file;
+    # the install that follows it is the one that fetches, so it gets the same
+    # offline-then-online treatment. Each compile attempt re-truncates TMPFILE
+    # so a partial offline write can never be mixed into the online result.
+    if [ $RESULT -ne 0 ]; then
+        echo "Warning: Failed to build Python package, attempting to install declared dependencies from pyproject.toml"
+        TMPFILE=$(mktemp)
+        uv pip compile --offline ${RESOLVE_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
+        COMPILED=$?
+        if [ $COMPILED -ne 0 ] || [ ! -s "$TMPFILE" ]; then
+            echo "Offline uv pip compile missed the cache; retrying online"
+            uv pip compile ${RESOLVE_ARGS} "${GEM_PATH}/pyproject.toml" > "$TMPFILE"
+            COMPILED=$?
+        fi
+        # Both the exit status AND a non-empty file are required: uv writes its
+        # "autogenerated by uv" header before resolution runs, so a compile that
+        # fails partway still leaves a non-empty file. Installing from that would
+        # produce a venv missing dependencies and report success.
+        if [ $COMPILED -eq 0 ] && [ -s "$TMPFILE" ]; then
+            uv_offline_then_online pip install --python "${VENV_DIR}" ${RESOLVE_ARGS} -r "$TMPFILE"
+            RESULT=$?
+        fi
+        rm -f "$TMPFILE"
+    fi
+else
+    echo "ERROR: No requirements.txt, pyproject.toml, or uv.lock found in ${GEM_PATH}"
+    exit 1
+fi
+
+if [ $RESULT -eq 0 ]; then
+    echo "Python packages installed successfully"
+    touch "${VENV_BASE}/.uv_managed"
+    exit 0
+fi
+
+# No --no-index last resort here anymore: every attempt above already ran
+# cache-only first via uv_offline_then_online, so a cache-only retry at this
+# point would repeat an attempt that has already failed.
+echo "ERROR: uvinstall failed for plugin ${PLUGIN_VENV_NAME}"
+exit 1

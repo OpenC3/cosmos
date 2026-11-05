@@ -43,6 +43,7 @@ Rails.application.routes.draw do
     post '/targets/:id/download', to: 'targets#download', id: /[^\/]+/
     post '/targets/:id/delete_modified', to: 'targets#delete_modified', id: /[^\/]+/
 
+    get '/packages/trees', to: 'packages#trees' # Per-plugin Python dependency lists for Admin UI
     resources :packages, only: [:index, :create]
     delete '/packages/:id', to: 'packages#destroy', id: /[^\/]+/
     post '/packages/:id/download', to: 'packages#download', id: /[^\/]+/
@@ -53,6 +54,11 @@ Rails.application.routes.draw do
     delete '/microservices/:id', to: 'microservices#destroy', id: /[^\/]+/
     post '/microservices/:id/start', to: 'microservices#start', id: /[^\/]+/
     post '/microservices/:id/stop', to: 'microservices#stop', id: /[^\/]+/
+
+    resources :bridges, only: [:index, :create]
+    get '/bridges/:id', to: 'bridges#show', id: /[^\/]+/
+    post '/bridges/:id/token', to: 'bridges#token', id: /[^\/]+/
+    delete '/bridges/:id', to: 'bridges#destroy', id: /[^\/]+/
 
     resources :process_status, only: [:index]
     get '/process_status/:id', to: 'process_status#show', id: /[^\/]+/
@@ -92,6 +98,8 @@ Rails.application.routes.draw do
     resources :permissions, only: [:index]
 
     post '/plugins/install/:id', to: 'plugins#install', id: /[^\/]+/
+    post '/plugins/modified_diff', to: 'plugins#modified_diff'
+    post '/plugins/:id/migrate_to_uv', to: 'plugins#migrate_to_uv', id: /[^\/]+/ # Migrate legacy plugin to per-plugin UV venv
     resources :plugins, only: [:index, :create]
     get '/plugins/:id', to: 'plugins#show', id: /[^\/]+/
     match '/plugins/:id', to: 'plugins#update', id: /[^\/]+/, via: [:patch, :put]
@@ -168,7 +176,10 @@ Rails.application.routes.draw do
       get '/storage/reingest/:job_id', to: 'storage#reingest_status'
       get '/storage/repair_candidates', to: 'storage#repair_candidates'
       get '/storage/download/:object_id', to: 'storage#get_download_presigned_request', object_id: /.*/
+      get '/storage/volume_download/:object_id', to: 'storage#get_volume_download_token', object_id: /.*/
+      get '/storage/stream/:token', to: 'storage#stream_volume_file', token: /[A-Za-z0-9_-]+/
       get '/storage/upload/:object_id', to: 'storage#get_upload_presigned_request', object_id: /.*/
+      put '/storage/upload_file/:object_id', to: 'storage#upload_file', object_id: /.*/
       delete '/storage/delete/:object_id', to: 'storage#delete', object_id: /.*/
       delete '/storage/delete_directory/(*object_id)', to: 'storage#delete_directory', object_id: /.*/
     end
@@ -218,6 +229,7 @@ Rails.application.routes.draw do
 
     get "/auth/token-exists" => "auth#token_exists"
     post "/auth/verify" => "auth#verify"
+    post "/auth/verify-token" => "auth#verify_token"
     post "/auth/verify_service" => "auth#verify_service"
     post "/auth/set" => "auth#set"
     get "/auth/otp" => "auth#get_otp"
@@ -259,5 +271,9 @@ Rails.application.routes.draw do
     post '/criticalcmd/approve/:id', to: 'critical_cmd#approve'
     post '/criticalcmd/reject/:id', to: 'critical_cmd#reject'
     get '/criticalcmd/canapprove/:id', to: 'critical_cmd#canapprove'
+
+    post '/chat/stream', to: 'chat#stream'
+    get '/chat/config', to: 'chat#config_show'
+    post '/chat/config', to: 'chat#config_update'
   end
 end

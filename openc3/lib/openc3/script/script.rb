@@ -206,10 +206,12 @@ module OpenC3
       _file_dialog(title, message, filter)
     end
 
-    def open_bucket_dialog(title, message = "Open Bucket File")
+    def open_bucket_dialog(title, message = "Open Bucket File", default_path: nil, filter: nil)
       answer = ''
+      hint = default_path ? " [default: #{default_path}]" : ''
+      hint += " filter: #{filter}" if filter
       while answer.empty?
-        print "#{title}\n#{message}\n<Type bucket file path (e.g. BUCKET/path/to/file)>:"
+        print "#{title}\n#{message}\n<Type bucket file path (e.g. BUCKET/path/to/file)>#{hint}:"
         answer = gets
         answer.chomp!
       end
@@ -239,7 +241,7 @@ module OpenC3
     # script_run("INST/procedures/collect.rb")
     #
     def initialize_offline_access
-      keycloak_url = ENV['OPENC3_KEYCLOAK_URL']
+      keycloak_url = ENV.fetch('OPENC3_KEYCLOAK_URL', nil)
       if keycloak_url.nil? or keycloak_url.empty?
         raise "initialize_offline_access only valid in COSMOS Enterprise. OPENC3_KEYCLOAK_URL environment variable must be set."
       end
@@ -311,7 +313,7 @@ module OpenC3
           return disconnect if disconnect
           # The only commands allowed through in disconnect mode are read-only
           # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
-          if method_name =~ /\w*_get$|^get_\w*|\w*_list$|^list_\w*|^tlm|^limits_enabled$|^subscribe$/
+          if method_name =~ /\w*_get$|^get_\w*|\w*_list$|^list_\w*|^tlm|^limits_enabled\??$|^subscribe$/
             return @json_drb.method_missing(method_name, *method_params, **kw_params)
           else
             return nil

@@ -72,6 +72,7 @@ class DecomInterfaceTopic(Topic):
         stored=False,
         timeout=5,
         scope=OPENC3_SCOPE,
+        received_time=None,
     ):
         data = {}
         data["target_name"] = target_name.upper()
@@ -81,6 +82,8 @@ class DecomInterfaceTopic(Topic):
 
         db_shard = Store.db_shard_for_target(target_name, scope=scope)
         data["stored"] = stored
+        if received_time is not None:
+            data["received_time"] = received_time
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
         Topic.update_topic_offsets([ack_topic], db_shard=db_shard)
         decom_id = Topic.write_topic(
@@ -92,7 +95,7 @@ class DecomInterfaceTopic(Topic):
         )
         start_time = time.time()
         while (time.time() - start_time) < timeout:
-            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic]):
+            for _topic, _msg_id, msg_hash, _redis in Topic.read_topics([ack_topic], db_shard=db_shard):
                 if msg_hash[b"id"] == decom_id:
                     if msg_hash[b"result"] == b"SUCCESS":
                         return

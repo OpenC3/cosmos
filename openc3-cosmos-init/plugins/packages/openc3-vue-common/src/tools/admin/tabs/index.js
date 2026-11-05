@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -45,6 +45,12 @@ const TabsList = [
     name: 'MicroservicesTab',
     path: 'microservices',
     component: () => import('./MicroservicesTab.vue'),
+  },
+  {
+    displayName: 'Bridges',
+    name: 'BridgesTab',
+    path: 'bridges',
+    component: () => import('./BridgesTab.vue'),
   },
   {
     displayName: 'Packages',

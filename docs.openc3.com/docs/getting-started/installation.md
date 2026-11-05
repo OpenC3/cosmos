@@ -10,6 +10,10 @@ sidebar_custom_props:
 
 The following sections describe how to get OpenC3 COSMOS installed on various operating systems. This document should help you setup you host machine to allow you to have a running version of COSMOS in no time.
 
+:::info[Network and Cloud Deployments]
+To open COSMOS to other computers on your network, see [Network Configuration](/docs/guides/network-configuration). To serve COSMOS over HTTPS, see [SSL-TLS](/docs/configuration/ssl-tls). To deploy COSMOS Enterprise on Amazon Web Services, see the [AWS EC2](/docs/guides/aws-ec2) guide for a single server using Docker Compose and S3, or the [AWS EKS](/docs/guides/aws-eks) guide for Kubernetes with Helm. To deploy on Google Cloud, see the [GCP GKE](/docs/guides/gcp-gke) guide.
+:::
+
 ## Installing OpenC3 COSMOS on Host Machines
 
 ### Installation Videos
@@ -58,7 +62,7 @@ We recommend using the COSMOS [project template](architecture#projects) to get s
 
 ```bash
 git clone https://github.com/OpenC3/cosmos-project.git
-git clone https://github.com/OpenC3/cosmos-enterprise-project.git
+git clone https://repos.openc3.com/OpenC3/cosmos-enterprise-project.git
 ```
 
 Once the project is cloned you can checkout a specific COSMOS version by using the git tag (NOTE the 'v' prefix):
@@ -74,11 +78,17 @@ git checkout vX.Y.Z # <- change to the specific version you want
 {/* prettier-ignore */}
 <p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util save docker.io openc3inc X.Y.Z # &lt;- update to save a specific version</code></p>
 {/* prettier-ignore */}
-<p style={{"margin-bottom": 20 + 'px'}}>This will download the COSMOS containers from the docker.io repo using the openc3inc namespace and version 5.16.2. The repo, namespace and version are all configurable. Tar files are created in the 'tmp' directory which you can transfer to your offline environment. Transfer the tar files to your offline environment's project 'tmp' dir and  import them with:</p>
+<p style={{"margin-bottom": 20 + 'px'}}>This will download the COSMOS containers from the docker.io repo using the openc3inc namespace and version X.Y.Z. The repo, namespace and version are all configurable. Tar files are created in the 'tmp' directory which you can transfer to your offline environment. Transfer the tar files to your offline environment's project 'tmp' dir and  import them with:</p>
 {/* prettier-ignore */}
 <p style={{"margin-bottom": 20 + 'px'}}><code>./openc3.sh util load X.Y.Z # &lt;- update to match the save version</code></p>
 {/* prettier-ignore */}
 <p style={{"margin-bottom": 20 + 'px'}}>Note the version specified in save needs to match the version in load.</p>
+
+#### Python Dependencies in Offline Environments
+
+COSMOS pre-seeds the UV wheel cache with all system Python dependencies during first startup. This means plugins that only require packages already available in the cache can install without any network access.
+
+To see which Python packages are available in the cache, check the **Cached** section under the **Admin > Packages** tab. If your plugin requires additional packages not in the cache, you can upload `.whl` files via the Admin > Packages tab before installing the plugin.
 :::
 
 ### Certificates
@@ -108,7 +118,7 @@ Add the locally cloned project directory to your path so you can directly use th
 
 Run `openc3.bat run` (Windows), or `./openc3.sh run` (linux/Mac).
 
-Note, you can edit the .env file and change OPENC3_TAG to a specific release (e.g. 5.0.9) rather than 'latest'. For production deployments, you should also change the default passwords in the `.env` file. See [Security](security) for details.
+Note, you can set OPENC3_TAG to a specific release (e.g. 5.0.9) rather than 'latest'. For production deployments, you should also change the default passwords. Don't edit `.env` directly; put your changes in a `.env.local` file next to it so they survive COSMOS upgrades. See [Environment Variables](/docs/configuration/environment) and [Security](security#overriding-secrets-with-envlocal) for details.
 
 If you see an error indicating docker daemon is not running ensure Docker and Docker compose is installed and running. If it errors please try to run `docker --version` or `docker-compose --version` and try to run the start command again. If the error continues please include the version in your issue if you choose to create one.
 
@@ -131,6 +141,8 @@ Usage: ./openc3.sh [cli, cliroot, start, stop, cleanup, run, util]
 ### Connect
 
 Connect a web browser to http://localhost:2900. Set the password to whatever you want. This frontend password is separate from the backend service credentials in the `.env` file. See [Security](security) for details on how COSMOS credentials work.
+
+By default COSMOS only accepts connections from the host computer. To connect from other computers, see [Network Configuration](/docs/guides/network-configuration).
 
 ### Stop COSMOS
 

@@ -326,7 +326,7 @@ module OpenC3
     # @return [StructureItem] StructureItem or one of its subclasses
     def get_item(name)
       item = @items[name.upcase]
-      raise ArgumentError, "Unknown item: #{name}" unless item
+      raise ArgumentError, "Unknown item: #{name} (get_item)" unless item
 
       return item
     end
@@ -358,7 +358,7 @@ module OpenC3
     # @param name [String] Name of the item to delete in the items Hash
     def delete_item(name)
       item = @items[name.upcase]
-      raise ArgumentError, "Unknown item: #{name}" unless item
+      raise ArgumentError, "Unknown item: #{name} (delete_item)" unless item
 
       # Find the item to delete in the sorted_items array
       item_index = nil
@@ -604,19 +604,29 @@ module OpenC3
       if item.variable_bit_size
         # Bit size is determined by length field
         length_value = self.read(item.variable_bit_size['length_item_name'], :CONVERTED)
-        if (item.data_type == :INT or item.data_type == :UINT) and not item.original_array_size
-          case length_value
-          when 0
-            return 6
-          when 1
-            return 14
-          when 2
-            return 30
+        if length_value
+          if (item.data_type == :INT or item.data_type == :UINT) and not item.original_array_size
+            case length_value
+            when 0
+              return 6
+            when 1
+              return 14
+            when 2
+              return 30
+            else
+              return 62
+            end
           else
-            return 62
+            total_bit_size = (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+            available_bit_size = (@buffer.length * 8) - item.bit_offset
+            if total_bit_size < 0 ||
+               (!@short_buffer_allowed && (available_bit_size < 0 || total_bit_size > available_bit_size))
+              raise ArgumentError, "Variable bit size #{total_bit_size} for item #{item.name} exceeds the #{[available_bit_size, 0].max} bits available in the buffer"
+            end
+            return total_bit_size
           end
         else
-          return (length_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+          raise "Length value #{item.variable_bit_size['length_item_name']} for item #{item.name} is nil"
         end
       elsif item.original_bit_size <= 0
         # Bit size is full packet length - bits before item + negative bits saved at end

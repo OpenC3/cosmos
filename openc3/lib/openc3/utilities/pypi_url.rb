@@ -1,0 +1,104 @@
+# encoding: ascii-8bit
+
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+require 'uri'
+require 'openc3/utilities/logger'
+
+module OpenC3
+  class PypiUrl
+    DEFAULT = 'https://pypi.org/simple'
+
+    # Turn a configured PyPI base URL (the pypi_url setting or PYPI_URL) into
+    # its simple index URL. Trailing slashes are dropped first, matching the
+    # ${PYPI_URL%/}/simple the image builds use, so https://mirror/ does not
+    # give https://mirror//simple and https://pypi.org/ still equals DEFAULT.
+    #
+    # @param base_url [String, nil] the configured base url
+    # @return [String, nil] the simple index url, or nil when base_url is nil
+    def self.index_url(base_url)
+      return nil if base_url.nil?
+      "#{base_url.sub(%r{/+\z}, '')}/simple"
+    end
+
+    # Validate that a resolved pypi_url is an http(s) URL before it is handed to
+    # pip. The value can come from a user-writable setting or ENV, so a malformed
+    # or non-http value is rejected and replaced with the default rather than
+    # passed through to pip.
+    #
+    # @param pypi_url [String] the resolved pypi index url to validate
+    # @return [String] the original url if valid, otherwise DEFAULT
+    def self.validate(pypi_url)
+      uri = URI.parse(pypi_url)
+      unless uri.is_a?(URI::HTTP) && !uri.host.to_s.empty?
+        raise URI::InvalidURIError, "not an http(s) URL"
+      end
+      pypi_url
+    rescue URI::InvalidURIError => e
+      Logger.error("Invalid pypi_url '#{pypi_url}' (#{e.message}); falling back to #{DEFAULT}")
+      DEFAULT
+    end
+
+    # Environment variable that opts a deployment into insecure (unverified TLS)
+    # connections to the pypi index host, for operators running a private index
+    # with a self-signed certificate. OPENC3_ prefixed like our other settings,
+    # and kept out of uv's own UV_* namespace (uv reads UV_INSECURE_HOST itself).
+    INSECURE_HOST_ENV = 'OPENC3_PYPI_ALLOW_INSECURE'
+
+    # Previous name for INSECURE_HOST_ENV, still honored so existing helm values
+    # and compose files keep working. It was named for pip's --trusted-host, but
+    # every install path goes through uv (openc3/bin/pipinstall is a uv pip
+    # install wrapper), so the flag it produces is uv's --allow-insecure-host.
+    DEPRECATED_INSECURE_HOST_ENV = 'PIP_ENABLE_TRUSTED_HOST'
+
+    # Build the argv array of index arguments shared by every uv invocation.
+    #
+    # --default-index rather than -i/--index-url: the latter is deprecated by uv
+    # on both `uv sync` and `uv pip install`. Note this only affects the index uv
+    # resolves against, so it has no effect on `uv sync --frozen`, where uv.lock
+    # already pins each package's registry and wheel URL.
+    #
+    # --allow-insecure-host rather than --trusted-host: --trusted-host is an
+    # undocumented uv alias, so use the real uv option.
+    #
+    # @param pypi_url [String] the resolved and validated pypi index url
+    # @return [Array<String>] arguments to append to a uv command line
+    def self.build_args(pypi_url)
+      args = ["--default-index", pypi_url]
+      # --default-index does not win on its own: uv searches a named index
+      # declared in the plugin's own [tool.uv].index table first, so a plugin
+      # can quietly resolve against its author's index instead of the one the
+      # operator configured. --no-config makes uv ignore that table. Gated on
+      # the operator having actually designated an index, because at the public
+      # default there is no operator policy to enforce and the plugin author's
+      # own index configuration is the only signal there is.
+      #
+      # This is half the story: a package pinned with [tool.uv].sources is
+      # project metadata that survives --no-config. openc3/bin/uvinstall and
+      # openc3/bin/pipinstall add --no-sources for that, on the commands where
+      # uv actually resolves.
+      args << "--no-config" if pypi_url != DEFAULT
+      if allow_insecure_host?
+        args += ["--allow-insecure-host", URI.parse(pypi_url).host]
+      end
+      args
+    end
+
+    # @return [Boolean] whether the deployment opted into insecure connections
+    #   to the pypi index host
+    def self.allow_insecure_host?
+      # Empty counts as unset: compose passes both names through as
+      # ${VAR:-}, so an unset .env entry arrives as an empty string.
+      !ENV[INSECURE_HOST_ENV].to_s.empty? || !ENV[DEPRECATED_INSECURE_HOST_ENV].to_s.empty?
+    end
+  end
+end

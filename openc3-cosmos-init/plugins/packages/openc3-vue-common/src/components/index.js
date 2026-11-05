@@ -1,5 +1,5 @@
 /*
-# Copyright 2026, OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -14,6 +14,7 @@
 import { AceEditorModes, AceEditorUtils } from './ace'
 import { ScreenCompleter } from './autocomplete'
 import { Config, OpenConfigDialog, SaveConfigDialog } from './config'
+export { CONFIG_POSTFIX } from './config'
 import CommandEditor from './CommandEditor.vue'
 import CommandParameterEditor from './CommandParameterEditor.vue'
 import CriticalCmdDialog from './CriticalCmdDialog.vue'

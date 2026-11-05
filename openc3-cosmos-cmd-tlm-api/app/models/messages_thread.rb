@@ -149,7 +149,7 @@ class MessagesThread < TopicsThread
 
   def redis_thread_body
     results = []
-    OpenC3::Topic.read_topics(@topics, @offsets) do |topic, msg_id, msg_hash, _redis|
+    OpenC3::Topic.read_topics(@topics, @offsets, 1000, @max_batch_size) do |topic, msg_id, msg_hash, _redis|
       @offsets[@offset_index_by_topic[topic]] = msg_id
       msg_hash[:msg_id] = msg_id
       result_entry = handle_log_entry(msg_hash)

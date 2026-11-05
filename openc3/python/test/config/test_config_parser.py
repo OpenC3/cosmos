@@ -48,14 +48,22 @@ class TestConfigParser(unittest.TestCase):
         self.assertEqual(results["KEYWORD2"], ["PARAM1"])
         tf.close()
 
-    def test_parse_file_reads_an_absolute_file(self):
-        tf = tempfile.NamedTemporaryFile(mode="w+t")
-        tf.writelines("EXAMPLE DATA")
-        tf.seek(0)
+    def test_read_file_rejects_an_absolute_file(self):
+        with tempfile.NamedTemporaryFile(mode="w+t") as tf:
+            tf.writelines("EXAMPLE DATA")
+            tf.seek(0)
 
-        data = self.cp.read_file(tf.name)
-        self.assertEqual(data, b"EXAMPLE DATA")
-        tf.close()
+            with self.assertRaisesRegex(ConfigParser.Error, "Absolute paths are not allowed"):
+                self.cp.read_file(tf.name)
+
+    def test_read_file_rejects_path_traversal(self):
+        with tempfile.NamedTemporaryFile(mode="w+t") as tf:
+            tf.writelines("EXAMPLE DATA")
+            tf.seek(0)
+            self.cp.filename = tf.name
+
+            with self.assertRaisesRegex(ConfigParser.Error, "Path traversal is not allowed"):
+                self.cp.read_file("../../../../etc/passwd")
 
     def test_parse_file_reads_a_relative_file(self):
         tf = tempfile.NamedTemporaryFile(mode="w+b")
@@ -501,6 +509,45 @@ class TestConfigParser(unittest.TestCase):
     def test_tf_returns_values_that_dont_convert(self):
         self.assertEqual(ConfigParser.handle_true_false("HI"), "HI")
         self.assertEqual(ConfigParser.handle_true_false(5.0), 5.0)
+
+    def test_parse_value_prefers_json(self):
+        self.assertEqual(ConfigParser.parse_value("[1, 2, 3]"), [1, 2, 3])
+        self.assertEqual(ConfigParser.parse_value('{"a": 1}'), {"a": 1})
+        self.assertEqual(ConfigParser.parse_value("true"), True)
+        self.assertEqual(ConfigParser.parse_value("null"), None)
+
+    def test_parse_value_falls_back_to_literal_eval(self):
+        for stdout in capture_io():
+            self.assertEqual(ConfigParser.parse_value("['a', 'b']"), ["a", "b"])
+            self.assertIn("is not valid JSON", stdout.getvalue())
+
+    def test_parse_value_warning_includes_parser_context(self):
+        self.cp.filename = "/path/to/config.txt"
+        self.cp.line_number = 42
+        self.cp.keyword = "PARAMETER"
+        for stdout in capture_io():
+            ConfigParser.parse_value("(1, 2)", config_parser=self.cp)
+            message = stdout.getvalue()
+        self.assertIn("/path/to/config.txt:42", message)
+        self.assertIn("PARAMETER", message)
+
+    def test_parse_value_warning_full_line(self):
+        self.cp.filename = "/path/to/config.txt"
+        self.cp.line_number = 42
+        self.cp.keyword = "PARAMETER"
+        for stdout in capture_io():
+            ConfigParser.parse_value("(1, 2)", config_parser=self.cp)
+            message = stdout.getvalue()
+        self.assertIn(
+            "(1, 2) is not valid JSON at /path/to/config.txt:42 (PARAMETER). "
+            "Falling back to Python literal parsing. Please use valid JSON.",
+            message,
+        )
+
+    def test_parse_value_no_warning_when_warn_false(self):
+        for stdout in capture_io():
+            ConfigParser.parse_value("['a']", warn=False)
+            self.assertEqual(stdout.getvalue(), "")
 
     def test_tfn_converts_none_and_null(self):
         self.assertEqual(ConfigParser.handle_true_false_none("NONE"), None)

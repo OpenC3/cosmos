@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -112,9 +112,11 @@ export default {
           height: setting[6],
         }
       })
-    Promise.all(promises).then((images) => {
-      this.images = images
-    })
+    Promise.all(promises)
+      .then((images) => {
+        this.images = images
+      })
+      .catch(console.error)
 
     // Set default image data
     if (this.parameters[4]) {

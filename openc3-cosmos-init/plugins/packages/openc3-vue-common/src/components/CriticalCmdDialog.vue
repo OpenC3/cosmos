@@ -134,25 +134,25 @@ export default {
     modelValue: function (newValue, oldValue) {
       if (newValue) {
         // Check if we can approve without username/password
-        Api.get('/openc3-api/criticalcmd/canapprove/' + this.uuid).then(
-          (response) => {
+        Api.get('/openc3-api/criticalcmd/canapprove/' + this.uuid)
+          .then((response) => {
             if (response.data.status === 'ok') {
               this.canApprove = true
             }
-          },
-        )
+          })
+          .catch(console.error)
 
         // Clear if approved/rejected
         this.updater = setInterval(() => {
           if (this.uuid) {
-            Api.get('/openc3-api/criticalcmd/status/' + this.uuid).then(
-              (response) => {
+            Api.get('/openc3-api/criticalcmd/status/' + this.uuid)
+              .then((response) => {
                 if (response.data.status !== 'WAITING') {
                   this.$emit('status', response.data.status, this.uuid)
                   this.show = false
                 }
-              },
-            )
+              })
+              .catch(console.error)
           } else {
             this.show = false
           }

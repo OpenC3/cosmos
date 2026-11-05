@@ -15,12 +15,12 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/interfaces/interface'
+require 'openc3/interfaces/read_queue_interface'
 
 module OpenC3
   # Base class for interfaces that act read and write from a stream
-  class StreamInterface < Interface
-    attr_accessor :stream
+  class StreamInterface < ReadQueueInterface
+    attr_reader :stream
 
     def initialize(protocol_type = nil, protocol_args = [])
       super()
@@ -34,9 +34,20 @@ module OpenC3
       end
     end
 
+    # Replacing the stream stops the read thread which is reading the old one
+    def stream=(stream)
+      stop_read_queue_thread()
+      @stream = stream
+    end
+
     def connect
       super() # Reset the protocols
       @stream.connect if @stream
+      # The read thread continuously drains the stream so the operating system
+      # buffers don't fill up while we're busy processing the previous read.
+      # @stream.read is redirected to the queue so everything reading the
+      # stream (including subclasses and protocols) still sees all the data.
+      start_read_queue_thread(@stream) if @stream and read_allowed?
     end
 
     def connected?
@@ -48,11 +59,19 @@ module OpenC3
     end
 
     def disconnect
+      # Disconnect the stream first to unblock the read thread
       @stream.disconnect if @stream
+      stop_read_queue_thread()
       super()
     end
 
     def read_interface
+      # The read thread is normally started by connect but interfaces can also
+      # be handed an already connected stream so start it on demand
+      if @stream and !read_queue_started? and read_queue_enabled? and read_allowed? and connected?
+        start_read_queue_thread(@stream)
+      end
+
       timeout = false
       begin
         data = @stream.read

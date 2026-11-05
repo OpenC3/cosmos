@@ -1,17 +1,31 @@
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'eslint/config'
+import tseslint from 'typescript-eslint'
 import baseConfig from '../../eslint.config.mjs'
+
+const packageDir = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig([
   baseConfig,
   {
+    files: ['src/**/*.{js,vue}'],
+
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+    },
+
+    languageOptions: {
+      parserOptions: {
+        parser: tseslint.parser,
+        projectService: true,
+        tsconfigRootDir: resolve(packageDir, '../..'),
+        extraFileExtensions: ['.vue'],
+      },
+    },
+
     rules: {
-      'no-console': 'warn',
-      'vue/no-mutating-props': 'warn',
-      'vue/no-side-effects-in-computed-properties': 'warn',
-      'vue/valid-v-slot': 'warn',
-      'vuetify/no-deprecated-classes': 'warn',
-      'vuetify/no-deprecated-components': 'warn',
-      'vuetify/no-deprecated-props': 'warn',
+      '@typescript-eslint/no-floating-promises': 'error',
     },
   },
 ])

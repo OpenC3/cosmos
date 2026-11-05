@@ -145,7 +145,7 @@ module OpenC3
 
     describe "packets" do
       it "complains about non-existent targets" do
-        expect { @cmd.packets("tgtX") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+        expect { @cmd.packets("tgtX") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist (packets lookup)")
       end
 
       it "returns all packets target TGT1" do
@@ -171,11 +171,11 @@ module OpenC3
 
     describe "params" do
       it "complains about non-existent targets" do
-        expect { @cmd.params("TGTX", "PKT1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+        expect { @cmd.params("TGTX", "PKT1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist (packets lookup)")
       end
 
       it "complains about non-existent packets" do
-        expect { @cmd.params("TGT1", "PKTX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist")
+        expect { @cmd.params("TGT1", "PKTX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist (packet lookup)")
       end
 
       it "returns all items from packet TGT1/PKT1" do
@@ -197,11 +197,11 @@ module OpenC3
 
     describe "packet" do
       it "complains about non-existent targets" do
-        expect { @cmd.packet("tgtX", "pkt1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+        expect { @cmd.packet("tgtX", "pkt1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist (packets lookup)")
       end
 
       it "complains about non-existent packets" do
-        expect { @cmd.packet("TGT1", "PKTX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist")
+        expect { @cmd.packet("TGT1", "PKTX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist (packet lookup)")
       end
 
       it "returns the specified packet" do
@@ -320,15 +320,15 @@ module OpenC3
       [true, false].each do |range_checking|
         [true, false].each do |raw|
           it "complains about non-existent targets" do
-            expect { @cmd.build_cmd("tgtX", "pkt1", range_checking, raw) }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+            expect { @cmd.build_cmd("tgtX", "pkt1", range_checking, raw) }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist (build_cmd)")
           end
 
           it "complains about non-existent packets" do
-            expect { @cmd.build_cmd("tgt1", "pktX", range_checking, raw) }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist")
+            expect { @cmd.build_cmd("tgt1", "pktX", range_checking, raw) }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist (build_cmd)")
           end
 
           it "complains about non-existent items" do
-            expect { @cmd.build_cmd("tgt1", "pkt1", { "itemX" => 1 }, range_checking, raw) }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
+            expect { @cmd.build_cmd("tgt1", "pkt1", { "itemX" => 1 }, range_checking, raw) }.to raise_error(RuntimeError, "Item 'TGT1 PKT1 ITEMX' does not exist (Packet)")
           end
 
           it "complains about missing required parameters" do
@@ -401,29 +401,29 @@ module OpenC3
 
           if range_checking
             it "complains about out of range item values" do
-              expect { @cmd.build_cmd("tgt1", "pkt1", { "item2" => 255 }, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT1 ITEM2' = 255 not in valid range of 0 to 200")
+              expect { @cmd.build_cmd("tgt1", "pkt1", { "item2" => 255 }, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT1 ITEM2' = 255 not in valid range of 0 to 200")
             end
 
             it "complains about out of range item states" do
               items = { "ITEM2" => 3, "ITEM3" => 0.0, "ITEM4" => "WORLD" }
               if raw
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of 0, 1, 2")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of 0, 1, 2")
               else
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of BAD1, BAD2, GOOD")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM2' = 3 not one of BAD1, BAD2, GOOD")
               end
 
               items = { "ITEM2" => 0, "ITEM3" => 2.0, "ITEM4" => "WORLD" }
               if raw
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of 0.0, 0.25, 0.5, 0.75, 1.0")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of 0.0, 0.25, 0.5, 0.75, 1.0")
               else
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of S1, S2, S3, S4, S5")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM3' = 2.0 not one of S1, S2, S3, S4, S5")
               end
 
               items = { "ITEM2" => 0, "ITEM3" => 0.0, "ITEM4" => "TESTY" }
               if raw
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HELLO, WORLD, JASON")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HELLO, WORLD, JASON")
               else
-                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RuntimeError, "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HI, WO, JA")
+                expect { @cmd.build_cmd("tgt1", "pkt2", items, range_checking, raw) }.to raise_error(RangeError, "Command parameter 'TGT1 PKT2 ITEM4' = TESTY not one of HI, WO, JA")
               end
             end
           else
@@ -498,15 +498,15 @@ module OpenC3
 
     describe "cmd_hazardous?" do
       it "complains about non-existent targets" do
-        expect { @cmd.cmd_hazardous?("tgtX", "pkt1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist")
+        expect { @cmd.cmd_hazardous?("tgtX", "pkt1") }.to raise_error(RuntimeError, "Command target 'TGTX' does not exist (build_cmd)")
       end
 
       it "complains about non-existent packets" do
-        expect { @cmd.cmd_hazardous?("tgt1", "pktX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist")
+        expect { @cmd.cmd_hazardous?("tgt1", "pktX") }.to raise_error(RuntimeError, "Command packet 'TGT1 PKTX' does not exist (build_cmd)")
       end
 
       it "complains about non-existent items" do
-        expect { @cmd.cmd_hazardous?("tgt1", "pkt1", { "itemX" => 1 }) }.to raise_error(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist")
+        expect { @cmd.cmd_hazardous?("tgt1", "pkt1", { "itemX" => 1 }) }.to raise_error(RuntimeError, "Item 'TGT1 PKT1 ITEMX' does not exist (Packet)")
       end
 
       it "returns true if the command overall is hazardous" do

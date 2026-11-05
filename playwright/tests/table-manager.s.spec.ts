@@ -12,27 +12,50 @@
 # All Rights Reserved
 */
 
-// @ts-check
-import { test, expect } from './fixture'
+import type { Page } from '@playwright/test'
+import type { Utilities } from '../utilities'
+import { expect, test } from './fixture'
 
 test.use({
   toolPath: '/tools/tablemanager',
   toolName: 'Table Manager',
 })
 
-async function openFile(page, utils, filename) {
-  await expect(page.locator('.v-dialog')).toBeVisible()
+// INST and INST2 both ship tables/bin/ConfigTables.bin and the matching
+// definitions, so a bare filename locator is ambiguous. Scope to one target's
+// top level tree node, which is the only place the target name appears exactly.
+function targetNode(page: Page, target: string) {
+  return page
+    .locator('.tree-container > .tree-node')
+    .filter({ has: page.getByText(target, { exact: true }) })
+}
+
+async function openFile(
+  page: Page,
+  utils: Utilities,
+  filename: string,
+  target: string = 'INST',
+) {
+  let openDialog = page.locator('.v-dialog').locator('text=File Open')
+  await expect(openDialog).toBeVisible()
+  // The dialog requests each target's file list separately and renders each one
+  // as it lands, so until every request is in, tree order is arrival order, not
+  // target order. 'nth=0' then picks whichever target answered first: for 'New
+  // Binary from Definition' that silently generates and saves the binary into
+  // the wrong target, leaving it marked modified for the rest of the run. The
+  // progress bar clears (and the buttons enable) only once all of them return.
   await expect(page.getByRole('progressbar')).not.toBeVisible()
   await expect(page.getByText('TEMPLATED')).not.toBeVisible()
-  let parts = filename.split('.')
-  await page.locator('[data-test=file-open-save-search] input').type(parts[0])
-  await utils.sleep(100)
-  await page
-    .locator('[data-test=file-open-save-search] input')
-    .type(`.${parts[1]}`)
-  await utils.sleep(100)
-  await page.locator(`text=${filename} >> nth=0`).click()
+  await page.locator('[data-test=file-open-save-search] input').fill(filename)
+  await utils.sleep(100) // Allow search to complete
+  // The listing appends '*' to a modified file, so allow a trailing one. The
+  // search string is lower case while the tree shows the real name, hence 'i'.
+  const escaped = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  await targetNode(page, target)
+    .getByText(new RegExp(`^${escaped}\\*?$`, 'i'))
+    .click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
+  await expect(openDialog).not.toBeVisible()
 }
 
 //
@@ -43,7 +66,6 @@ test('creates a single binary file', async ({ page, utils }) => {
   await page.locator('text=New Binary from Definition').click()
   await openFile(page, utils, 'mcconfigurationtable_def.txt')
   // Handle optional confirmation dialog if binary file already exists
-  await utils.sleep(500)
   const confirmDialog = page.locator('.v-dialog:has-text("Confirm")')
   if (await confirmDialog.isVisible()) {
     await expect(confirmDialog).toContainText(
@@ -68,7 +90,6 @@ test('shows confirmation dialog when binary exists', async ({
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New Binary from Definition').click()
   await openFile(page, utils, 'configtables_def.txt')
-  await utils.sleep(1000)
 
   await expect(page.locator('text=already exists')).toBeVisible()
   await expect(page.locator('text=Binary file')).toBeVisible()
@@ -88,7 +109,7 @@ test('shows confirmation dialog when binary exists', async ({
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New Binary from Definition').click()
   await openFile(page, utils, 'configtables_def.txt')
-  await utils.sleep(1000)
+
   await expect(page.locator('text=already exists')).toBeVisible()
   await page.locator('button:has-text("Overwrite")').click()
 
@@ -108,7 +129,7 @@ test('edits a binary file', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New Binary from Definition').click() // Create new since we're editing
   await openFile(page, utils, 'configtables_def.txt')
-  await utils.sleep(1000)
+
   await page.locator('button:has-text("Overwrite")').click()
   await expect(page.getByText('MC_CONFIGURATION')).toBeVisible()
   await expect(page.getByText('TLM_MONITORING')).toBeVisible()
@@ -216,7 +237,7 @@ test('edits a binary file', async ({ page, utils }) => {
 
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save File').click()
-  await utils.sleep(5000) // Saving takes some time
+  await expect(page.locator('[data-test=filename] input')).not.toHaveValue(/\*/)
 
   // Check for new values
   await utils.download(
@@ -235,6 +256,164 @@ test('edits a binary file', async ({ page, utils }) => {
       expect(contents).toContain('REDUNDANT_PPS, CHECKED')
     },
   )
+})
+
+// Save As has to write what the user is looking at, not what the server last
+// stored. The save-as API only copies the stored bytes, so before the fix the
+// new file got the pre-edit contents and the tool then reloaded that copy,
+// wiping the edits off the screen as well (issue #3811).
+test('save as keeps edits', async ({ page, utils }) => {
+  const source = 'INST/tables/bin/ConfigTables.bin'
+  const target = 'INST/tables/bin/ConfigTables3.bin'
+
+  // Generate the binary rather than opening it so the starting value of
+  // SCRUB_REGION_1_START_ADDR is the definition default no matter what the
+  // other tests in this file left behind
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=New Binary from Definition').click()
+  await openFile(page, utils, 'configtables_def.txt')
+  // The tests above already created this binary, so the overwrite prompt is
+  // expected. isVisible() would race the dialog rendering, click() waits.
+  await page.locator('button:has-text("Overwrite")').click()
+  // Save As posts the definition filename, which only lands once tables/load
+  // returns, so wait for it rather than saving an empty definition
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(source)
+
+  // Edit a value and deliberately do not save it
+  await page.locator('text=MC_CONFIGURATION').click()
+  const scrubAddress = page
+    .getByRole('row', { name: '1 SCRUB_REGION_1_START_ADDR' })
+    .locator('[data-test="table-item-text-field"] input')
+  await scrubAddress.fill('0xbeef')
+  // The '*' means the edit exists only in the browser at this point
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(
+    `${source} *`,
+  )
+
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Save As').click()
+  await expect(page.locator('.v-dialog')).toBeVisible()
+  await utils.sleep(100) // Sometimes the old filename gets populated after the test types
+  await expect(page.getByRole('progressbar')).not.toBeVisible()
+  await expect(page.getByText('TEMPLATED')).not.toBeVisible()
+  await page.locator('[data-test=file-open-save-filename] input').fill(target)
+  // Save As ends by reloading the file it just wrote. Watch for that request
+  // here so the assertions below can't be satisfied by the pre-reload screen.
+  const reloaded = page.waitForResponse(
+    (response) =>
+      response.url().includes('/openc3-api/tables/load') && response.ok(),
+  )
+  await page.locator('[data-test=file-open-save-submit-btn]').click()
+  // The target only exists if a previous run failed before its cleanup, so
+  // wait for the confirm rather than racing it with isVisible()
+  const overwrite = page.locator('[data-test=confirm-dialog-overwrite]')
+  const needsOverwrite = await overwrite
+    .waitFor({ state: 'visible', timeout: 2000 })
+    .then(() => true)
+    .catch(() => false)
+  if (needsOverwrite) {
+    await overwrite.click()
+  }
+  await reloaded
+
+  // No '*': the edit was written, not just renamed. The reload above must not
+  // put the marker back either.
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(target)
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
+  await expect(scrubAddress).toHaveValue('0xBEEF')
+
+  // The report is generated from the stored binary, so this is the edit coming
+  // back from the server rather than the value still sitting in the browser
+  await utils.download(
+    page,
+    '[data-test=download-file-report]',
+    function (contents) {
+      expect(contents).toContain('ConfigTables3')
+      expect(contents).toContain('SCRUB_REGION_1_START_ADDR, 0xBEEF')
+    },
+  )
+
+  // Save As must not write through to the file it was invoked from
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Open File').click()
+  await openFile(page, utils, 'configtables.bin')
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(source)
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
+  await expect(scrubAddress).toHaveValue('0x0')
+
+  // Reopen the saved file to confirm the edit survives a round trip
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Open File').click()
+  await openFile(page, utils, 'configtables3.bin')
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(target)
+  await expect(scrubAddress).toHaveValue('0xBEEF')
+
+  // Clean up so a rerun starts from the same state
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Delete File').click()
+  await expect(page.locator('text=Permanently delete file')).toBeVisible()
+  await page.locator('button:has-text("Delete")').click()
+})
+
+// Table Manager is the tool where a leaked modified marker actually corrupts data:
+// saveAsFilename passes the field straight to PUT /openc3-api/tables/.../save-as,
+// and nothing on that path (sanitize_params, Table.save_as, TargetFile.create)
+// strips a trailing '*'. The result is a literal '*' object in the bucket which
+// TargetFile.body then resolves back to the unmarked file, so the saved table is
+// written and immediately unreachable.
+test('strips the modified marker on Save As', async ({ page, utils }) => {
+  const binary = 'INST/tables/bin/ConfigTables.bin'
+
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Open File').click()
+  await openFile(page, utils, 'configtables.bin')
+  // The definition filename only lands once tables/load returns, and Save File
+  // posts it, so wait for it rather than saving an empty definition.
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
+
+  // Save so the binary exists in both targets/ and targets_modified/, the only
+  // state that makes the listing append the marker. Done here rather than
+  // relying on the earlier edit test so this test stands on its own.
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Save File').click()
+  await utils.sleep(5000) // Saving takes some time
+
+  await page.locator('[data-test=table-manager-file]').click()
+  await page.locator('text=Save As').click()
+  await expect(page.locator('.v-dialog')).toBeVisible()
+  await expect(page.getByRole('progressbar')).not.toBeVisible()
+  await expect(page.getByText('TEMPLATED')).not.toBeVisible()
+  await page
+    .locator('[data-test=file-open-save-search] input')
+    .fill('configtables.bin')
+
+  // Precondition: without the marker actually present in the tree this test
+  // would pass no matter what the dialog does with it. Scoped to INST because
+  // INST2 ships the same filename and may carry its own marker.
+  const marked = targetNode(page, 'INST').getByText('ConfigTables.bin*', {
+    exact: true,
+  })
+  await expect(marked).toBeVisible()
+
+  // toHaveValue is an exact match, so a trailing '*' fails here
+  await marked.click()
+  await expect(
+    page.locator('[data-test=file-open-save-filename] input'),
+  ).toHaveValue(binary)
+
+  await page.locator('[data-test=file-open-save-cancel-btn]').click()
+  await expect(
+    page.getByRole('dialog').filter({ hasText: 'File Save As...' }),
+  ).not.toBeVisible()
 })
 
 test('opens and searches file', async ({ page, utils }) => {
@@ -263,11 +442,15 @@ test('opens and searches file', async ({ page, utils }) => {
   await expect.poll(() => page.locator('tr').count()).toBe(12)
 })
 
-test('downloads binary, definition, report', async ({ page, utils }) => {
-  test.setTimeout(60 * 1000) // 1 minute
+test('downloads binary and definition and report', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
   await openFile(page, utils, 'configtables.bin')
+  // The definition filename is only populated once the tables/load request
+  // returns. Downloading before then posts an empty definition which errors.
+  await expect(
+    page.locator('[data-test=definition-filename] input'),
+  ).toHaveValue('INST/tables/config/ConfigTables_def.txt')
   await utils.download(page, '[data-test=download-file-binary]')
   await utils.download(
     page,
@@ -288,7 +471,7 @@ test('downloads binary, definition, report', async ({ page, utils }) => {
     page,
     '[data-test="PPS_SELECTION"] [data-test=download-table-binary]',
     function (contents) {
-      expect(contents.length).toBe(2)
+      expect(contents).toHaveLength(2)
     },
     'binary',
   )

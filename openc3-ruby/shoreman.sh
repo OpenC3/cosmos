@@ -1,9 +1,10 @@
-#!/bin/sh
+#!/bin/bash
 # [shoreman](https://github.com/chrismytton/shoreman) is an
 # implementation of the **Procfile** format. Inspired by the original
 # [foreman](http://ddollar.github.com/foreman/) tool for ruby.
 
-# Edited by OpenC3 to remove output formatting and work with sh shell
+# Edited by OpenC3 to remove output formatting. Requires bash (uses [[ ]],
+# pipefail, and `jobs -p %%`), which is present in the Debian and UBI images.
 
 # Make sure that any errors cause the script to exit immediately.
 set -eo pipefail
@@ -64,7 +65,10 @@ load_env_file() {
   export PORT=${PORT:-5000}
 
   if [[ -f "$env_file" ]]; then
-    export $(grep "^[^#]*=.*" "$env_file" | xargs)
+    local assignment
+    while IFS= read -r -d '' assignment; do
+      [[ -n "$assignment" ]] && export "${assignment?}"
+    done < <(grep "^[^#]*=.*" "$env_file" | xargs printf '%s\0')
   fi
 }
 
@@ -108,7 +112,6 @@ main() {
 
   trap onexit INT TERM
 
-  exitcode=0
   while true; do
     for pid in $pids; do
       # Wait for the children to finish executing before exiting.

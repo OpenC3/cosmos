@@ -19,24 +19,14 @@ from openc3.environment import OPENC3_SCOPE
 def plugin_list(default: bool = False, scope: str = OPENC3_SCOPE):
     try:
         endpoint = f"/openc3-api/plugins?scope={scope}"
+        if not default:
+            endpoint += "&exclude_default=true"
         response = openc3.script.API_SERVER.request("get", endpoint, scope=scope)
         if not response or response.status_code != 200:
-            raise RuntimeError(f"Unexpected response to plugins_list: {response}")
-        plugins = json.loads(response.text)
-        if default:
-            return plugins
-        else:
-            return [
-                plugin
-                for plugin in plugins
-                if not plugin.startswith("openc3-cosmos-tool-")
-                and not plugin.startswith("openc3-tool-base")
-                and not plugin.startswith("openc3-cosmos-enterprise-tool-")
-                and not plugin.startswith("openc3-enterprise-tool-base")
-            ]
-
+            raise RuntimeError(f"Unexpected response to plugin_list: {response}")
+        return json.loads(response.text)
     except Exception as error:
-        raise RuntimeError(f"plugins_list failed due to {traceback.format_exc()}") from error
+        raise RuntimeError(f"plugin_list failed due to {traceback.format_exc()}") from error
 
 
 def plugin_get(plugin_name: str, scope: str = OPENC3_SCOPE):

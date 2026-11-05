@@ -40,6 +40,10 @@ Both languages provides a script writer a lot of power. But with great power com
   - `class CcsdsUtility: # in 'ccsds_utility.py'`
 - Don't add useless comments but instead describe intent
 
+:::note[Languages Cannot Be Mixed]
+Script Runner supports both Python and Ruby, but each script must be written entirely in one language. You cannot import a Ruby script from a Python script (or vice versa) or mix the two syntaxes in a single file.
+:::
+
 <div style={{"clear": 'both'}}></div>
 
 The following is an example of good Ruby style:
@@ -289,11 +293,11 @@ In the unrolled version above, the COSMOS “Start script at selected line” fe
 
 ## Script Organization
 
-All scripts must be part of a [Plugin](../configuration/plugins.md). You can create a simple plugin called SCRIPTS or PROCEDURES that only contains lib and procedures directories to store scripts. If COSMOS detects a plugin without defined cmd/tlm it will not spawn microservices for telemetry processing.
+All scripts must be part of a [Target](../configuration/target.md) in a [Plugin](../configuration/plugins.md). You can create a simple plugin with a target called SCRIPTS or PROCEDURES that only contains lib and procedures directories to store scripts. If COSMOS detects a plugin without defined cmd/tlm it will not spawn microservices for telemetry processing.
 
 ### Organizing Your Scripts into a Plugin
 
-As your scripts become large with many methods, it makes sense to break them up into multiple files within a plugin. Here is a recommended organization for your plugin's scripts/procedures.
+As your scripts become large with many methods, it makes sense to break them up into multiple files and folders within a plugin. Here is a recommended organization for your plugin's scripts/procedures.
 
 | Folder                         | Description                                                               |
 | ------------------------------ | ------------------------------------------------------------------------- |
@@ -643,6 +647,8 @@ value = tlm("INST LATEST TEMP")
 
 When writing COSMOS scripts, checking the most recent value of a telemetry point normally gets the job done. The tlm(), tlm_raw(), etc methods all retrieve the most recent value of a telemetry point. Sometimes you need to perform analysis on every single sample of a telemetry point. This can be done using the COSMOS packet subscription system. The packet subscription system lets you choose one or more packets and receive them all from a queue. You can then pick out the specific telemetry points you care about from each packet. See the [Packet Data Subscriptions](scripting-api.md#packet-data-subscriptions) section of the Scripting API guide for the complete API documentation including the packet hash/dictionary structure.
 
+Note: when subscribing to multiple packets, packets returned from `get_packets` are ordered within each packet stream but are NOT interleaved by time across streams. Sort the returned array by the `time` field if you need chronological order across packets from different streams.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
@@ -766,7 +772,7 @@ A recommended approach to avoid this is to not execute any code that could fail 
 <TabItem value="python" label="Python">
 
 ```python
-tlm_result = tlm("malformed-target-packet-item"): # tlm() throws a RuntimeError which is caught by instrumentation
+tlm_result = tlm("malformed-target-packet-item") # tlm() throws a RuntimeError which is caught by instrumentation
 if tlm_result:
   print("hello")
 ```

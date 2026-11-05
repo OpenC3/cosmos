@@ -72,7 +72,7 @@ class ActivityController < ApplicationController
   # ```
   def create
     return unless authorization('script_run')
-    hash = params.permit(:start, :stop, :kind, :recurring, data: {}).to_h
+    hash = params.permit(:start, :stop, :kind, data: {}, recurring: {}).to_h
     begin
       hash['data'] ||= {}
       hash['data']['username'] = username()

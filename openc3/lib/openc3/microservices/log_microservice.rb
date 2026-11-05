@@ -95,9 +95,7 @@ module OpenC3
     end
 
     def log_data(topic, msg_id, msg_hash, redis)
-      msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
-      delta = Time.now.to_f - msgid_seconds_from_epoch
-      @metric.set(name: 'log_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and log start')
+      update_topic_lag(topic, msg_id, metric_name: 'log_topic_delta_seconds', help: 'Delta time between data written to stream and log start')
 
       topic_split = topic.gsub(/{|}/, '').split("__") # Remove the redis hashtag curly braces
       target_name = topic_split[2]

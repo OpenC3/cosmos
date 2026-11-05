@@ -49,6 +49,14 @@ class TestCrcProtocol(unittest.TestCase):
         TestCrcProtocol.buffer = b""
         self.interface = TestCrcProtocol.MyInterface()
 
+        # The stub streams below return data forever so cap the read queue
+        # rather than letting the read thread buffer the full default budget
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["65536"])
+
+    def tearDown(self):
+        # Stop the StreamInterface read thread started by reading
+        self.interface.stop_read_queue_thread()
+
     def test_complains_if_strip_crc_is_not_boolean(self):
         for strip_crc in ["ERROR", 0, None]:
             with self.assertRaisesRegex(ValueError, "Invalid strip CRC"):
@@ -846,7 +854,7 @@ class TestCrcProtocol(unittest.TestCase):
         packet.append_item("CRC", 32, "UINT")
         packet.append_item("TRAILER", 32, "UINT")
         packet.buffer = b"\x00\x01\x02\x03\x00\x00\x00\x00\x04\x05\x06\x07"
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT MYCRC' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT PKT MYCRC' does not exist \(Packet\)"):
             self.interface.write(packet)
 
     def test_calculates_and_writes_the_8_bit_crc_item(self):

@@ -83,15 +83,20 @@ class CosmosMetaTag
     modifiers = {}
     meta.each do |keyword, data|
       page << "\n#{'#' * @level} #{keyword}\n"
+      # Handle deprecated keyword with a note box
       if data['deprecated']
         page << ":::note[Deprecated]\n"
         page << "#{data['deprecated']}\n"
         page << ":::\n\n"
       end
+
+      # The since badge is displayed on the right side of the summary line if it exists
       since_badge = data['since'] ? "<span class=\"badge badge--secondary since-right\">Since #{data['since']}</span>" : ""
       page << "#{since_badge}**#{data['summary']}**\n\n"
 
       page << "#{data['description']}\n\n" if data['description']
+
+      # Handle warning keyword with a note box
       if data['warning']
         page << ":::warning\n"
         page << "#{data['warning']}\n"
@@ -131,12 +136,19 @@ class CosmosMetaTag
       saved_level = @level
       if data['modifiers']
         bump_level = false
-        unless @modifiers.values.include?(data['modifiers'].keys)
+        keys = data['modifiers'].keys
+        # A subset of an already documented modifier list (e.g. ROUTER vs INTERFACE)
+        # is described by reference rather than repeated
+        superset = @modifiers.find { |_, other| other != keys and (keys - other).empty? and (other - keys).length < keys.length }
+        if superset
+          missing = superset[1] - keys
+          page << "\n#{keyword} accepts the [#{superset[0]} Modifiers](##{superset[0].downcase}-modifiers) except #{missing.join(', ')}.\n"
+        elsif not @modifiers.values.include?(keys)
           if bump_level == false
             bump_level = true
             @level += 1
           end
-          @modifiers[keyword] = data['modifiers'].keys
+          @modifiers[keyword] = keys
           page << "\n#{'#' * (@level - 1)} #{keyword} Modifiers\n"
           page << "The following keywords must follow a #{keyword} keyword.\n"
           build_page(data['modifiers'], page)

@@ -54,11 +54,13 @@ import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import asdict, dataclass, field
+from pathlib import Path
 
 
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class CodeBlock:
@@ -70,7 +72,7 @@ class CodeBlock:
 
 
 @dataclass
-class SyntaxError:
+class SyntaxCheckError:
     file: str
     line_start: int
     language: str
@@ -103,16 +105,34 @@ class CheckResult:
 # ---------------------------------------------------------------------------
 
 # Matches opening fence: ``` optionally followed by a language tag
-FENCE_OPEN = re.compile(r"^(`{3,}|~{3,})\s*(\w[\w+-]*)?.*$")
+FENCE_OPEN = re.compile(r"^(`{3,}|~{3,})\s*(\w[\w+-]*)?")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def validated_doc_path(filepath: str) -> Path:
+    """Return an existing Markdown path contained by this repository."""
+    path = Path(filepath).resolve(strict=True)
+    if not path.is_relative_to(REPO_ROOT) or path.suffix.lower() != ".md":
+        raise ValueError(f"Markdown file must be inside {REPO_ROOT}: {filepath}")
+    return path
+
+
+def validated_docs_directory(directory: str) -> Path:
+    """Return an existing directory contained by this repository."""
+    path = Path(directory).resolve(strict=True)
+    if not path.is_relative_to(REPO_ROOT) or not path.is_dir():
+        raise ValueError(f"Directory must be inside {REPO_ROOT}: {directory}")
+    return path
 
 
 def extract_code_blocks(filepath: str) -> list[CodeBlock]:
     """Extract fenced code blocks from a markdown file."""
     blocks = []
     try:
-        with open(filepath, encoding="utf-8", errors="replace") as f:
+        path = validated_doc_path(filepath)
+        with path.open(encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
-    except OSError:
+    except (OSError, ValueError):
         return blocks
 
     i = 0
@@ -174,6 +194,7 @@ def normalize_lang(lang: str) -> str:
 # ---------------------------------------------------------------------------
 # Syntax checkers
 # ---------------------------------------------------------------------------
+
 
 def check_python(code: str) -> str | None:
     """Return error message if Python code has syntax errors, else None."""
@@ -507,7 +528,11 @@ def is_output_not_code(code: str, lang: str) -> bool:
     lines = stripped.splitlines()
     if lines and re.match(r"^[%$]\s+\w+", lines[0]):
         # Check if subsequent lines look like output (not commands)
-        non_prompt = [line for line in lines[1:] if line.strip() and not re.match(r"^[%$]\s", line)]
+        non_prompt = [
+            line
+            for line in lines[1:]
+            if line.strip() and not re.match(r"^[%$]\s", line)
+        ]
         if len(non_prompt) > len(lines) // 2:
             return True
     # Help/usage text output
@@ -543,6 +568,7 @@ def should_skip_block(code: str, lang: str) -> str | None:
 # ---------------------------------------------------------------------------
 # Bare block language detection (heuristic)
 # ---------------------------------------------------------------------------
+
 
 def guess_language(code: str) -> str:
     """Try to guess language of an untagged code block. Returns '' if unsure."""
@@ -655,9 +681,7 @@ _GITHUB_RELEASE_TAG = re.compile(
     r"^https://github\.com/([^/]+)/([^/]+)/releases/tag/([^/]+)$"
 )
 # Matches github.com/:owner/:repo (with optional trailing slash, .git, or ?query)
-_GITHUB_REPO = re.compile(
-    r"^https://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?(?:\?.*)?$"
-)
+_GITHUB_REPO = re.compile(r"^https://github\.com/([^/?]+)/([^/?]+)/?(?:\?.*)?$")
 
 
 def _github_api_url(url: str) -> str | None:
@@ -674,7 +698,7 @@ def _github_api_url(url: str) -> str | None:
     m = _GITHUB_REPO.match(url)
     if m:
         owner, repo = m.groups()
-        return f"https://api.github.com/repos/{owner}/{repo}"
+        return f"https://api.github.com/repos/{owner}/{repo.removesuffix('.git')}"
     return None
 
 
@@ -682,9 +706,10 @@ def extract_urls(filepath: str) -> list[tuple[int, str]]:
     """Extract external URLs from a markdown file. Returns list of (line_number, url)."""
     urls = []
     try:
-        with open(filepath, encoding="utf-8", errors="replace") as f:
+        path = validated_doc_path(filepath)
+        with path.open(encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
-    except OSError:
+    except (OSError, ValueError):
         return urls
 
     in_code_block = False
@@ -735,9 +760,9 @@ def should_skip_url(url: str) -> bool:
     return False
 
 
-def check_url(url: str, timeout: int = 15, github_token: str | None = None) -> (
-    tuple[int, str]
-):
+def check_url(
+    url: str, timeout: int = 15, github_token: str | None = None
+) -> tuple[int, str]:
     """Check if a URL is reachable. Returns (status_code, error_message).
     status_code 0 means connection error. Empty error_message means success."""
     # Strip trailing punctuation that may have been captured
@@ -840,6 +865,7 @@ def check_urls_in_files(
 # Main logic
 # ---------------------------------------------------------------------------
 
+
 def find_markdown_files(root: str) -> list[str]:
     """Recursively find all .md files under root."""
     files = []
@@ -906,7 +932,8 @@ def check_blocks(
         # Skip trivially small blocks (single comments, blank, etc.)
         stripped = block.code.strip()
         if not stripped or all(
-            line.strip().startswith("#") or not line.strip() for line in stripped.splitlines()
+            line.strip().startswith("#") or not line.strip()
+            for line in stripped.splitlines()
         ):
             result.blocks_skipped += 1
             continue
@@ -923,7 +950,7 @@ def check_blocks(
         error = checker(block.code)
         if error:
             result.errors.append(
-                SyntaxError(
+                SyntaxCheckError(
                     file=block.file,
                     line_start=block.line_start,
                     language=lang,
@@ -979,6 +1006,11 @@ def main():
         if not os.path.isfile(file_path):
             print(f"Error: file not found: {file_path}")
             sys.exit(1)
+        try:
+            file_path = str(validated_doc_path(file_path))
+        except ValueError as error:
+            print(f"Error: {error}")
+            sys.exit(1)
         md_files = [file_path]
         search_path = os.path.dirname(file_path)
     else:
@@ -995,6 +1027,11 @@ def main():
 
         if not os.path.isdir(search_path):
             print(f"Error: not a directory: {search_path}")
+            sys.exit(1)
+        try:
+            search_path = str(validated_docs_directory(search_path))
+        except ValueError as error:
+            print(f"Error: {error}")
             sys.exit(1)
 
         # Find files
@@ -1056,9 +1093,9 @@ def main():
                 if err.file != current_file:
                     current_file = err.file
                     rel = os.path.relpath(err.file, search_path)
-                    print(f"\n{'='*70}")
+                    print(f"\n{'=' * 70}")
                     print(f"FILE: {rel}")
-                    print(f"{'='*70}")
+                    print(f"{'=' * 70}")
                 print(f"\n  [{err.language}] Line {err.line_start}")
                 print(f"  Error: {err.error_message}")
                 print("  Code:")
@@ -1077,9 +1114,9 @@ def main():
                     if err.file != current_file:
                         current_file = err.file
                         rel = os.path.relpath(err.file, search_path)
-                        print(f"\n{'='*70}")
+                        print(f"\n{'=' * 70}")
                         print(f"BROKEN URLs in: {rel}")
-                        print(f"{'='*70}")
+                        print(f"{'=' * 70}")
                     status = (
                         f"HTTP {err.status_code}"
                         if err.status_code
@@ -1091,7 +1128,7 @@ def main():
                 print("No broken URLs found!")
 
         # Summary
-        print(f"\n{'─'*70}")
+        print(f"\n{'─' * 70}")
         print("Summary:")
         print(f"  Files scanned:    {result.total_files}")
         print(f"  Code blocks:      {result.total_blocks}")
@@ -1101,7 +1138,7 @@ def main():
         if args.check_urls:
             print(f"  URLs checked:     {result.urls_checked}")
             print(f"  Broken URLs:      {len(result.url_errors)}")
-        print(f"{'─'*70}")
+        print(f"{'─' * 70}")
 
     has_errors = bool(result.errors) or bool(result.url_errors)
     sys.exit(1 if has_errors else 0)

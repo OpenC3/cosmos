@@ -15,14 +15,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-require 'openc3/interfaces/interface'
+require 'openc3/interfaces/read_queue_interface'
 require 'openc3/io/udp_sockets'
 require 'openc3/config/config_parser'
 
 module OpenC3
   # Base class for interfaces that send and receive messages over UDP
-  class UdpInterface < Interface
+  class UdpInterface < ReadQueueInterface
     HOST_127_0_0_1 = '127.0.0.1'
+    HOST_0_0_0_0 = '0.0.0.0'
 
     # @param hostname [String] Machine to connect to
     # @param write_dest_port [Integer] Port to write commands to
@@ -77,8 +78,11 @@ module OpenC3
       @read_timeout = ConfigParser.handle_nil(read_timeout)
       @read_timeout = @read_timeout.to_f if @read_timeout
       @bind_address = ConfigParser.handle_nil(bind_address)
-      if @bind_address && @bind_address.casecmp('LOCALHOST').zero?
-        @bind_address = HOST_127_0_0_1
+      if @bind_address
+        @bind_address = HOST_127_0_0_1 if @bind_address.casecmp('LOCALHOST').zero?
+      else
+        # nil means all local addresses which is what 0.0.0.0 means
+        @bind_address = HOST_0_0_0_0
       end
       @write_socket = nil
       @read_socket = nil
@@ -91,9 +95,9 @@ module OpenC3
       result = ''
       result += " #{@hostname}:#{@write_dest_port} (write dest port)" if @write_dest_port
       result += " #{@write_src_port} (write src port)" if @write_src_port
-      result += " #{@hostname}:#{@read_port} (read)" if @read_port
+      result += " #{@bind_address}:#{@read_port} (read)" if @read_port
       result += " #{@interface_address} (interface addr)" if @interface_address
-      result += " #{@bind_address} (bind addr)" if @bind_address != '0.0.0.0'
+      result += " #{@bind_address} (bind addr)" if @bind_address != HOST_0_0_0_0
       return result.strip
     end
 
@@ -102,13 +106,20 @@ module OpenC3
     # the constructor.
     def connect
       if @read_port and @write_dest_port and @write_src_port and (@read_port == @write_src_port)
+        # read_multicast is false because this socket is not connected and thus
+        # doesn't filter by peer address. Joining the multicast group we write to
+        # would deliver our own commands back to us as telemetry (multicast
+        # loopback is enabled by default).
         @read_socket = UdpReadWriteSocket.new(
           @read_port,
           @bind_address,
           @write_dest_port,
           @hostname,
           @interface_address,
-          @ttl
+          @ttl,
+          false, # read_multicast
+          true,  # write_multicast
+          false  # connect_socket
         )
         @write_socket = @read_socket
       else
@@ -129,6 +140,11 @@ module OpenC3
       end
       @thread_sleeper = nil
       super()
+      # The read thread continuously drains the socket so the operating system
+      # buffers don't fill up (and drop datagrams) while we're busy processing
+      # the previous read. @read_socket.read is redirected to the queue so
+      # everything reading the socket (including subclasses) still sees all the data.
+      start_read_queue_thread(@read_socket, @read_timeout) if @read_socket
     end
 
     # @return [Boolean] Whether the active ports (read and/or write) have
@@ -152,6 +168,8 @@ module OpenC3
       OpenC3.close_socket(@read_socket)
       @write_socket = nil
       @read_socket = nil
+      # The sockets are closed above which unblocks the read thread
+      stop_read_queue_thread()
       @thread_sleeper.cancel if @thread_sleeper
       @thread_sleeper = nil
       super()
@@ -166,9 +184,16 @@ module OpenC3
       return nil
     end
 
+    # Zero length datagrams are valid so only nil means the socket is done
+    def read_queue_done?(data)
+      data.nil?
+    end
+
     # Reads from the socket if the read_port is defined
     def read_interface
       data = @read_socket.read(@read_timeout)
+      return nil unless data # Disconnected
+
       Logger.info "#{@name}: Udp read returned 0 bytes (stream closed)" if data.length <= 0
       extra = nil
       read_interface_base(data, extra)

@@ -238,3 +238,30 @@ python_files.each do |rel_path|
   end
   puts "Updated: #{full_path}"
 end
+
+# Replace "_Coming Soon_" markers with the actual release version. These mark
+# features that ship in this release (e.g. 'since: _Coming Soon_' in config
+# YAML and 'Since _Coming Soon_' badges in the docs). Only do this on a
+# production release so the "next version" (prerelease) update doesn't consume
+# the markers before the feature has actually shipped.
+if is_prod_release
+  coming_soon_globs = [
+    File.join(base_path, 'openc3', 'data', 'config', '*.yaml'),
+    File.join(base_path, 'docs.openc3.com', '**', '*.md'),
+    File.join(base_path, 'docs.openc3.com', '**', '*.mdx'),
+  ]
+
+  Dir.glob(coming_soon_globs).uniq.sort.each do |full_path|
+    data = nil
+    File.open(full_path, 'rb') do |file|
+      data = file.read
+    end
+    next unless data.include?('_Coming Soon_')
+
+    data = data.gsub('_Coming Soon_', version)
+    File.open(full_path, 'wb') do |file|
+      file.write(data)
+    end
+    puts "Updated: #{full_path}"
+  end
+end

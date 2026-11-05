@@ -49,18 +49,18 @@ See the [Migrating From COSMOS 6 to COSMOS 7](../getting-started/upgrading#migra
 
 The following API methods have been removed from COSMOS v7. Since WITH_UNITS were removed in COSMOS 7 those APIs are deprecated and simply return the formatted result.
 
-| Method                   | API        | Status                                                                    |
-| ------------------------ | ---------- | ------------------------------------------------------------------------- |
-| tlm_with_units           | tlm_api    | Deprecated, use [tlm_formatted](#tlm-tlm_raw-tlm_formatted)               |
-| check_with_units         | api_shared | Deprecated, use [check_formatted](#check-check_raw-check_formatted)       |
-| tlm_variable             | tlm_api    | Removed, use [tlm](#tlm-tlm_raw-tlm_formatted) and pass type              |
-| check_tolerance_raw      | api_shared | Removed, use [check_tolerance](#check_tolerance) and pass type            |
-| wait_raw                 | api_shared | Removed, use [wait](#wait) and pass type                                  |
-| wait_check_raw           | api_shared | Removed, use [wait_check](#wait_check) and pass type                      |
-| wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type              |
-| wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerancet](#wait_check_tolerance) and pass type |
+| Method                   | API        | Status                                                                   |
+| ------------------------ | ---------- | ------------------------------------------------------------------------ |
+| tlm_with_units           | tlm_api    | Deprecated, use [tlm_formatted](#tlm-tlm_raw-tlm_formatted)              |
+| check_with_units         | api_shared | Deprecated, use [check_formatted](#check-check_raw-check_formatted)      |
+| tlm_variable             | tlm_api    | Removed, use [tlm](#tlm-tlm_raw-tlm_formatted) and pass type             |
+| check_tolerance_raw      | api_shared | Removed, use [check_tolerance](#check_tolerance) and pass type           |
+| wait_raw                 | api_shared | Removed, use [wait](#wait) and pass type                                 |
+| wait_check_raw           | api_shared | Removed, use [wait_check](#wait_check) and pass type                     |
+| wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type             |
+| wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerance](#wait_check_tolerance) and pass type |
 
-The following API methods now return `COSMOS__CANCEL` instead of `Cancel` when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. Unless you are _explicitly_ checking the return value for the word 'Cancel' there are no changes required.
+The following API methods now use `COSMOS__CANCEL` instead of `Cancel` as the answer recorded when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. The script is paused at the prompt line and nothing is returned to it, so no changes are required. `COSMOS__CANCEL` only appears in the script output and the Script Runner internals.
 
 ### Migration from COSMOS v5 to v6
 
@@ -175,7 +175,7 @@ These methods allow the user to enter values that are needed by the script.
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Prompts the user for input with a question. User input is automatically converted from a string to the appropriate data type. For example if the user enters "1", the number 1 as an integer will be returned.
+Prompts the user for input with a question. User input is automatically converted from a string to the appropriate data type. For example if the user enters "1", the number 1 as an integer will be returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -228,7 +228,7 @@ password = ask("Enter your password", false, true)
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned.
+Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -292,7 +292,7 @@ password = ask_string("Enter your password", false, true)
 
 <span class="badge badge--secondary since-heading">Since 7.0.0</span>
 
-The message_box, vertical_message_box, combo_box and check_box methods create a message box with buttons / selections / checkboxes that the user can click. The text of the button / selection / checkbox is returned.
+The message_box, vertical_message_box, combo_box and check_box methods create a message box with buttons / selections / checkboxes that the user can click. The text of the button / selection / checkbox is returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -330,7 +330,7 @@ check_box("<Message>", "<checkbox text 1>", ...)
 
 ```python
 value = message_box("Select the sensor number", 'One', 'Two', informative="Smaller informative font")
-value = vertical_message_box("Select the sensor number", 'One', 'Two' details="Regular details")
+value = vertical_message_box("Select the sensor number", 'One', 'Two', details="Regular details")
 value = combo_box("Select the sensor number", 'One', 'Two')
 match value:
     case 'One':
@@ -379,7 +379,7 @@ end
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned.
+The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 Note: COSMOS 5 has deprecated the save_file_dialog and open_directory_dialog methods. save_file_dialog can be replaced by put_target_file if you want to write a file back to the target. open_directory_dialog doesn't make sense in new architecture so you must request individual files.
 
@@ -452,13 +452,15 @@ end
 
 <span class="badge badge--secondary since-heading">Since 7.0.0</span>
 
-The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog.
+The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
+
+The returned file object also provides `filename`, `bucket`, and `bucket_path` (methods in Python) for the selected file's name, the bucket it came from (e.g. `OPENC3_CONFIG_BUCKET`), and its full path within that bucket (e.g. `DEFAULT/targets/INST/procedures/test.rb`). These are only available when running in Script Runner.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
 ```python
-open_bucket_dialog("<Title>", "<Message>")
+open_bucket_dialog("<Title>", "<Message>", default_path=<default_path>, filter=<filter>)
 ```
 
 </TabItem>
@@ -466,24 +468,39 @@ open_bucket_dialog("<Title>", "<Message>")
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-open_bucket_dialog("<Title>", "<Message>")
+open_bucket_dialog("<Title>", "<Message>", default_path: <default_path>, filter: <filter>)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                   |
-| --------- | ------------------------------------------------------------- |
-| Title     | The title to put on the dialog. Required.                     |
-| Message   | The message to display in the dialog box. Optional parameter. |
+| Parameter                                                            | Description                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Title                                                                | The title to put on the dialog. Required.                                                                                                                                                                                                                                                                                             |
+| Message                                                              | The message to display in the dialog box. Optional parameter.                                                                                                                                                                                                                                                                         |
+| default_path <span class="badge badge--secondary">Since 7.1.1</span> | Path to preselect inside the dialog in the form `bucket/path/to/file.ext` (or `bucket/path/to/folder/` for a folder with a trailing slash `/`). The user can still navigate elsewhere. Path traversal segments (`..`) are rejected. Per-scope bucket permissions are still enforced server-side. Optional parameter, defaults to nil. |
+| filter <span class="badge badge--secondary">Since 7.1.1</span>       | Comma-separated list of file suffixes used to restrict the listing (e.g. `".txt"` or `".txt,.json"`). Folders are always shown so the user can navigate. Optional parameter, defaults to nil.                                                                                                                                         |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
-print(file.filename) # The name of the selected file
+print(file.filename()) # The name of the selected file, note filename is a method
+print(file.bucket()) # The bucket the file came from, e.g. OPENC3_CONFIG_BUCKET
+print(file.bucket_path()) # The full path within the bucket
 print(file.read())
+file.close()
+
+# Preselect the procedures folder and restrict to Python files
+file = open_bucket_dialog(
+    "Select a Procedure",
+    "Choose a procedure",
+    # trailing slash indicates folder, otherwise assumes a file
+    default_path="config/DEFAULT/targets/INST2/procedures/",
+    filter=".py",
+)
+print(file.filename())
 file.close()
 ```
 
@@ -494,7 +511,20 @@ file.close()
 ```ruby
 file = open_bucket_dialog("Select a File", "Choose a file from a bucket")
 puts file.filename # The name of the selected file
+puts file.bucket # The bucket the file came from, e.g. OPENC3_CONFIG_BUCKET
+puts file.bucket_path # The full path within the bucket
 puts file.read
+file.delete
+
+# Preselect the procedures folder and restrict to Ruby files
+file = open_bucket_dialog(
+  "Select a Procedure",
+  "Choose a procedure",
+  # trailing slash indicates folder, otherwise assumes a file
+  default_path: "config/DEFAULT/targets/INST/procedures/",
+  filter: ".rb"
+)
+puts file.filename
 file.delete
 ```
 
@@ -735,7 +765,7 @@ These methods notify the user that something has occurred.
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Displays a message to the user and waits for them to press an ok button.
+Displays a message to the user and waits for them to press an ok button. If the user clicks Cancel instead, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -2660,11 +2690,25 @@ check("<Target Name> <Packet Name> <Item Name> <Comparison - optional>")
 | Item Name   | Name of the telemetry item.                                                                                                                        |
 | Comparison  | A comparison to perform against the telemetry item. If a comparison is not given then the telemetry item will just be printed into the script log. |
 
+:::note[Supported Comparisons]
+A comparison is a single operator followed by a literal value. The supported operators are
+`==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
+whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Python also accepts a tuple or set, e.g. `in (1, 2)`.
+Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
+[check_expression](#check_expression) instead.
+:::
+
+:::note[String Comparisons]
+String values which are not state names must be quoted (e.g., `== 'NORMAL'`). State names are matched ignoring case for CONVERTED and FORMATTED values, so `== 'On'` and `in ['on', 'off']` match the ON and OFF states. A state name which is a single word of letters, digits and underscores that does not start with a digit may be unquoted, including inside a list (e.g., `== ON` or `in [On, Off]`). Any other state name must be quoted (e.g., `== 'NOT CONNECTED'`). An unquoted word which is not a state name of the item is rejected, e.g. `== OFFLINE` fails with `Unknown state name OFFLINE. Did you mean 'OFFLINE' as a string?`. Note that `true`, `false` and `nil` (Ruby), `True`, `False` and `None` (Python), and `INF`, `INFINITY` and `NAN` in any case (both languages) are literals rather than state names, so quote a state with one of these names. Strings which are not state names are compared exactly. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double-quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `check("INST HEALTH_STATUS TYPE == '#{expected}'")` or Python `check(f"INST HEALTH_STATUS TYPE == '{expected}'")`.
+:::
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 check("INST HEALTH_STATUS COLLECTS > 1")
+check("INST HEALTH_STATUS TYPE == 'NORMAL'")  # Strings must be quoted
 check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
 # Python passes type as string
@@ -2677,6 +2721,7 @@ check("INST HEALTH_STATUS COLLECTS > 1", type='RAW')
 
 ```ruby
 check("INST HEALTH_STATUS COLLECTS > 1")
+check("INST HEALTH_STATUS TYPE == 'NORMAL'")  # Strings must be quoted
 check_raw("INST HEALTH_STATUS COLLECTS > 1")
 check_formatted("INST HEALTH_STATUS COLLECTS > 1")
 # Ruby passes type as symbol
@@ -2754,6 +2799,10 @@ This evaluates to `yes == 'yes'` which is not valid syntax because the variable 
 `check_expression("'#{answer}' == 'yes'") # where answer contains 'yes'`
 
 Now this evaluates to `'yes' == 'yes'` which is true so the check passes.
+
+:::note[String Comparisons]
+The expression is evaluated as Ruby or Python code, so string and state values must be quoted (e.g., `== 'CONNECTED'`) and are compared exactly. Unlike [check](#check-check_raw-check_formatted), state names are not matched ignoring case and can not be unquoted. An unquoted value is evaluated as a constant and fails with `Uninitialized constant CONNECTED. Did you mean 'CONNECTED' as a string?`.
+:::
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -3144,7 +3193,6 @@ print(packets)
 #  "packet_name"=>"ADCS",
 #  "endianness"=>"BIG_ENDIAN",
 #  "description"=>"Position and attitude data",
-#  "stale"=>true,
 #  "items"=>
 #   [{"name"=>"CCSDSVER",
 #     "bit_offset"=>0,
@@ -3163,7 +3211,6 @@ puts packets
 #  "packet_name"=>"ADCS",
 #  "endianness"=>"BIG_ENDIAN",
 #  "description"=>"Position and attitude data",
-#  "stale"=>true,
 #  "items"=>
 #   [{"name"=>"CCSDSVER",
 #     "bit_offset"=>0,
@@ -3307,7 +3354,6 @@ print(packet)
 # "packet_name"=>"HEALTH_STATUS",
 # "endianness"=>"BIG_ENDIAN",
 # "description"=>"Health and status from the instrument",
-# "stale"=>true,
 # "processors"=>
 #  [{"name"=>"TEMP1STAT",
 #    "class"=>"OpenC3::StatisticsProcessor",
@@ -3333,7 +3379,6 @@ puts packet
 # "packet_name"=>"HEALTH_STATUS",
 # "endianness"=>"BIG_ENDIAN",
 # "description"=>"Health and status from the instrument",
-# "stale"=>true,
 # "processors"=>
 #  [{"name"=>"TEMP1STAT",
 #    "class"=>"OpenC3::StatisticsProcessor",
@@ -3737,7 +3782,9 @@ APIs for subscribing to specific packets of data. This provides an interface to 
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Allows the user to listen for one or more telemetry packets of data to arrive. A unique id is returned which is used to retrieve the data.
+Gets the current Redis stream offsets (IDs) for the given packets. These offsets are used to collect packet data from this point in time by passing them to `get_packets`.
+
+This method is called `subscribe_packets` for historical reasons; no actual subscription is created, thus there is no need to unsubscribe.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -3810,6 +3857,21 @@ id, packets = get_packets(id, block: nil, count: 1000)
 | id        | Unique id returned by subscribe_packets or the previous call to get_packets                             |
 | block     | Number of seconds to block while waiting for packets from ANY stream, default nil / None (do not block) |
 | count     | Maximum number of packets to return from EACH packet stream                                             |
+
+:::note[Packet Ordering]
+Packets returned by `get_packets` are ordered within each subscribed packet stream (target/packet pair) but are NOT interleaved by time across streams. Packets from one stream are appended to the returned array, then packets from the next stream, and so on. If you require strict chronological order across packets from different streams, sort the returned array by the `time` (or `received_time`) field. Note that sorting only orders the current batch — packets across separate `get_packets` calls may still arrive out of order relative to each other, so subscribers needing global ordering must buffer and merge across calls.
+
+```python
+id, packets = get_packets(id)
+packets.sort(key=lambda p: int(p['time']))
+```
+
+```ruby
+id, packets = get_packets(id)
+packets.sort_by! { |p| p['time'].to_i }
+```
+
+:::
 
 Returns a two element array containing the updated id and an array of packet hashes/dictionaries. Each packet hash/dictionary contains the following keys:
 
@@ -4096,6 +4158,19 @@ success = wait(
 | type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).       |
 | quiet        | Named parameter indicating whether to log the result. Defaults to false which means log the wait.              |
 
+:::note[Supported Comparisons]
+A comparison is a single operator followed by a literal value. The supported operators are
+`==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
+whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Python also accepts a tuple or set, e.g. `in (1, 2)`.
+Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
+[wait_expression](#wait_expression) instead.
+:::
+
+:::note[String Comparisons]
+String values which are not state names must be quoted (e.g., `== 'NORMAL'`). State names are matched ignoring case for CONVERTED and FORMATTED values, so `== 'On'` and `in ['on', 'off']` match the ON and OFF states. A state name which is a single word of letters, digits and underscores that does not start with a digit may be unquoted, including inside a list (e.g., `== ON` or `in [On, Off]`). Any other state name must be quoted (e.g., `== 'NOT CONNECTED'`). An unquoted word which is not a state name of the item is rejected, e.g. `== OFFLINE` fails with `Unknown state name OFFLINE. Did you mean 'OFFLINE' as a string?`. Note that `true`, `false` and `nil` (Ruby), `True`, `False` and `None` (Python), and `INF`, `INFINITY` and `NAN` in any case (both languages) are literals rather than state names, so quote a state with one of these names. Strings which are not state names are compared exactly. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double-quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `wait("INST HEALTH_STATUS TYPE == '#{expected}'", 10)` or Python `wait(f"INST HEALTH_STATUS TYPE == '{expected}'", 10)`.
+:::
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
@@ -4103,6 +4178,7 @@ success = wait(
 elapsed = wait()
 elapsed = wait(5)
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
+success = wait("INST HEALTH_STATUS TYPE == 'NORMAL'", 10)  # Strings must be quoted
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=True)
 ```
 
@@ -4114,6 +4190,7 @@ success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type='RAW', quiet=True)
 elapsed = wait
 elapsed = wait 5
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10)
+success = wait("INST HEALTH_STATUS TYPE == 'NORMAL'", 10)  # Strings must be quoted
 success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: true)
 ```
 
@@ -4193,6 +4270,10 @@ success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
+
+:::note[String Comparisons]
+The expression is evaluated as Ruby or Python code, so string and state values must be quoted (e.g., `== 'CONNECTED'`) and are compared exactly. Unlike [wait](#wait), state names are not matched ignoring case and can not be unquoted. An unquoted value is evaluated as a constant and fails with `Uninitialized constant CONNECTED. Did you mean 'CONNECTED' as a string?`.
+:::
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -4371,11 +4452,25 @@ elapsed = wait_check(
 | Polling Rate | How often the comparison is evaluated in seconds. Defaults to 0.25 if not specified.                        |
 | type         | Named parameter specifying the type. RAW, CONVERTED (default) or FORMATTED (Ruby symbol, Python string).    |
 
+:::note[Supported Comparisons]
+A comparison is a single operator followed by a literal value. The supported operators are
+`==`, `!=`, `>`, `>=`, `<`, `<=` and `in`. `in` requires a list operand, e.g. `in [1, 2, 3]`,
+whose elements follow the same rules as any other value, e.g. `in ['ON', 'OFF']`.
+Python also accepts a tuple or set, e.g. `in (1, 2)`.
+Compound expressions, e.g. `TIMEUS & 0x0001 == 0x0000`, are not supported - use
+[wait_check_expression](#wait_check_expression) instead.
+:::
+
+:::note[String Comparisons]
+String values which are not state names must be quoted (e.g., `== 'NORMAL'`). State names are matched ignoring case for CONVERTED and FORMATTED values, so `== 'On'` and `in ['on', 'off']` match the ON and OFF states. A state name which is a single word of letters, digits and underscores that does not start with a digit may be unquoted, including inside a list (e.g., `== ON` or `in [On, Off]`). Any other state name must be quoted (e.g., `== 'NOT CONNECTED'`). An unquoted word which is not a state name of the item is rejected, e.g. `== OFFLINE` fails with `Unknown state name OFFLINE. Did you mean 'OFFLINE' as a string?`. Note that `true`, `false` and `nil` (Ruby), `True`, `False` and `None` (Python), and `INF`, `INFINITY` and `NAN` in any case (both languages) are literals rather than state names, so quote a state with one of these names. Strings which are not state names are compared exactly. Quoted values follow the string literal rules of the script language, so escape sequences are processed in Ruby double-quoted strings and in all Python strings. The Ruby control and meta escapes `\c`, `\C-` and `\M-` are rejected rather than silently changed, as is string interpolation (Ruby `"#{...}"`, Python f-strings) because the comparison is not evaluated as code. Interpolate in the script itself instead: Ruby `wait_check("INST HEALTH_STATUS TYPE == '#{expected}'", 10)` or Python `wait_check(f"INST HEALTH_STATUS TYPE == '{expected}'", 10)`.
+:::
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
+elapsed = wait_check("INST HEALTH_STATUS TYPE == 'NORMAL'", 10)  # Strings must be quoted
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
 ```
 
@@ -4385,6 +4480,7 @@ elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type='RAW')
 
 ```ruby
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10)
+elapsed = wait_check("INST HEALTH_STATUS TYPE == 'NORMAL'", 10)  # Strings must be quoted
 elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
 ```
 
@@ -4467,6 +4563,10 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
+
+:::note[String Comparisons]
+The expression is evaluated as Ruby or Python code, so string and state values must be quoted (e.g., `== 'CONNECTED'`) and are compared exactly. Unlike [wait_check](#wait_check), state names are not matched ignoring case and can not be unquoted. An unquoted value is evaluated as a constant and fails with `Uninitialized constant CONNECTED. Did you mean 'CONNECTED' as a string?`.
+:::
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -4904,6 +5004,52 @@ set_limits_set("DEFAULT")
 </TabItem>
 </Tabs>
 
+### delete_limits_set
+
+<span class="badge badge--secondary since-heading">Since 7.2.1</span>
+
+Deletes a limits set and removes it from all telemetry items. The DEFAULT limits set and the currently active limits set cannot be deleted. Use [set_limits_set](#set_limits_set) to change the active set before deleting it. Use [get_limits_sets](#get_limits_sets) to get the available limit set names.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+delete_limits_set("<Limits Set Name>")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+delete_limits_set("<Limits Set Name>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter       | Description                       |
+| --------------- | --------------------------------- |
+| Limits Set Name | Name of the limits set to delete. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+delete_limits_set("TVAC")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+delete_limits_set("TVAC")
+```
+
+</TabItem>
+</Tabs>
+
 ### get_limits_set
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
@@ -5058,6 +5204,58 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 ```ruby
 set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0, 'TVAC', 1, true)
+```
+
+</TabItem>
+</Tabs>
+
+### set_state_color
+
+<span class="badge badge--secondary since-heading">Since 7.2.1</span>
+
+The set_state_color method changes the color associated with a telemetry item's state in realtime. Items with states (e.g. CONNECTED, UNAVAILABLE) use a state color (GREEN, YELLOW, or RED) to determine their limits state rather than numeric red/yellow/green limits. Pass `None` (Python) or `nil` (Ruby) as the color to clear (remove) the state color. Setting a color also enables limits for the item, but clearing the color (passing `None`/`nil`) does not change whether limits are enabled. Note: In most cases it would be better to update your config files rather than changing state colors in realtime.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+set_state_color(<Target Name>, <Packet Name>, <Item Name>, <State Name>, <Color>)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+set_state_color(<Target Name>, <Packet Name>, <Item Name>, <State Name>, <Color>)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                                                            |
+| ----------- | ------------------------------------------------------------------------------------------------------ |
+| Target Name | Name of the target of the telemetry item.                                                              |
+| Packet Name | Name of the telemetry packet of the telemetry item.                                                    |
+| Item Name   | Name of the telemetry item.                                                                            |
+| State Name  | Name of the state to change, e.g. 'CONNECTED'.                                                         |
+| Color       | New color for the state. Must be one of GREEN, YELLOW, or RED. Pass None/nil to clear the state color. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', None)  # Clear the state color
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', 'RED')
+set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', nil)  # Clear the state color
 ```
 
 </TabItem>
@@ -5693,6 +5891,11 @@ interface_names = get_interface_names() # => ['INST_INT', 'INST2_INT', 'EXAMPLE_
 
 Connects to targets associated with a COSMOS interface.
 
+If the interface is already connected and no interface parameters are given, this
+method is a no-op and the existing connection is left untouched. To force a
+reconnect, call [disconnect_interface](#disconnect_interface) first, or pass
+interface parameters which always rebuild the interface.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
@@ -5740,7 +5943,10 @@ connect_interface("INT1", hostname, port)
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Disconnects from targets associated with a COSMOS interface.
+Disconnects from targets associated with a COSMOS interface. If the interface has
+already been disconnected this is a no-op. Otherwise the interface is asked to
+disconnect regardless of whether it reports being connected, so any resources it
+is still holding are released.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -6223,7 +6429,7 @@ interface_target_disable("INST_INT", "INST", tlm_only: true)
 
 <span class="badge badge--secondary since-heading">Since 6.9.0</span>
 
-Get details on the interface and its protocols.
+Get details on the interface and its protocols. Unlike [get_interface](#get_interface), which returns the stored interface model, `interface_details` queries the running interface microservice and returns its live runtime state, including the most recent raw data read and written and the state of every read and write protocol.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -6251,7 +6457,24 @@ interface_details("<Interface Name>")
 <TabItem value="python" label="Python Example">
 
 ```python
-interface_details("INST_INT")
+details = interface_details("INST_INT")
+print(details["state"])
+# CONNECTED
+print(details["cmd_target_enabled"])
+# {'INST': True}
+print(details["hostname"], details["write_port"], details["read_port"])
+# host.docker.internal 8080 8081
+print([protocol["name"] for protocol in details["read_protocols"]])
+# ['BurstProtocol']
+print(details["read_protocols"][0]["discard_leading_bytes"])
+# 0
+
+# Raw data arrives as a json_class dict when it is not printable text
+raw = details["read_raw_data"]
+if isinstance(raw, dict):
+    raw = bytes(raw["raw"])
+print(raw)
+# b'\x00\x01\x02\x03'
 ```
 
 </TabItem>
@@ -6259,11 +6482,222 @@ interface_details("INST_INT")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-interface_details("INST_INT")
+details = interface_details("INST_INT")
+puts details['state']
+# CONNECTED
+puts details['cmd_target_enabled']
+# {"INST"=>true}
+puts "#{details['hostname']} #{details['write_port']} #{details['read_port']}"
+# host.docker.internal 8080 8081
+puts details['read_protocols'].map { |protocol| protocol['name'] }
+# BurstProtocol
+puts details['read_protocols'][0]['discard_leading_bytes']
+# 0
+puts details['read_raw_data'].formatted
+# 00000000: 00 01 02 03
 ```
 
 </TabItem>
 </Tabs>
+
+**Return Value**
+
+Returns a hash / dict of the interface state. The following keys are always present for every interface type.
+
+<Tabs groupId="common">
+<TabItem value="Status">
+| Key     | Type    | Description                                                       |
+| ------- | ------- | ----------------------------------------------------------------- |
+| name    | String  | Interface name, e.g. "INST_INT"                                   |
+| state   | String  | "CONNECTED", "ATTEMPTING", or "DISCONNECTED"                      |
+| clients | Integer | Number of connected clients (server interfaces only, otherwise 0) |
+| txsize  | Integer | Number of packets currently queued to be written                  |
+| rxsize  | Integer | Number of packets currently queued to be read                     |
+| txbytes | Integer | Running total of bytes written to the interface                   |
+| rxbytes | Integer | Running total of bytes read from the interface                    |
+| txcnt   | Integer | Running total of packets written to the interface                 |
+| rxcnt   | Integer | Running total of packets read from the interface                  |
+</TabItem>
+<TabItem value="Configuration">
+| Key                | Type    | Description                                                                     |
+| ------------------ | ------- | ------------------------------------------------------------------------------- |
+| cmd_target_names   | Array   | Names of the targets mapped to this interface for commanding                    |
+| tlm_target_names   | Array   | Names of the targets mapped to this interface for telemetry                     |
+| cmd_target_enabled | Hash    | Target name to boolean, see [interface_target_enable](#interface_target_enable) |
+| tlm_target_enabled | Hash    | Target name to boolean, see [interface_target_enable](#interface_target_enable) |
+| connect_on_startup | Boolean | Whether the interface connects when the microservice starts                     |
+| auto_reconnect     | Boolean | Whether the interface reconnects after a disconnect                             |
+| reconnect_delay    | Float   | Seconds to wait between reconnect attempts                                      |
+| disable_disconnect | Boolean | Whether the Disconnect button is disabled in CmdTlmServer                       |
+| read_allowed       | Boolean | Whether reading telemetry is allowed                                            |
+| write_allowed      | Boolean | Whether writing commands is allowed                                             |
+| write_raw_allowed  | Boolean | Whether writing raw data is allowed                                             |
+| options            | Hash    | Uppercased option name to option values, as set by the OPTION keyword           |
+| stream_log         | Boolean | Whether stream (raw) logging is currently enabled                               |
+</TabItem>
+<TabItem value="Raw data">
+| Key                   | Type          | Description                                                         |
+| --------------------- | ------------- | ------------------------------------------------------------------- |
+| read_raw_data         | String        | Most recent data read from the interface                            |
+| read_raw_data_time    | String or nil | Timestamp of the most recent read, nil if nothing has been read     |
+| written_raw_data      | String        | Most recent data written to the interface                           |
+| written_raw_data_time | String or nil | Timestamp of the most recent write, nil if nothing has been written |
+</TabItem>
+<TabItem value="Protocol">
+| Key             | Type  | Description                                                              |
+| --------------- | ----- | ------------------------------------------------------------------------ |
+| read_protocols  | Array | One hash / dict per read protocol, in the order data flows through them  |
+| write_protocols | Array | One hash / dict per write protocol, in the order data flows through them |
+
+Every entry in `read_protocols` and `write_protocols` contains the protocol class name plus the data flowing into and out of that protocol. Entries in `read_protocols` use the `read_` prefixed keys, entries in `write_protocols` use the `write_` prefixed keys.
+
+| Key                    | Type          | Description                               |
+| ---------------------- | ------------- | ----------------------------------------- |
+| name                   | String        | Protocol class name, e.g. "BurstProtocol" |
+| read_data_input        | String        | Data passed into the read protocol        |
+| read_data_input_time   | String or nil | Timestamp the read input was captured     |
+| read_data_output       | String        | Data returned by the read protocol        |
+| read_data_output_time  | String or nil | Timestamp the read output was captured    |
+| write_data_input       | String        | Data passed into the write protocol       |
+| write_data_input_time  | String or nil | Timestamp the write input was captured    |
+| write_data_output      | String        | Data returned by the write protocol       |
+| write_data_output_time | String or nil | Timestamp the write output was captured   |
+
+Each protocol also adds keys for its own configuration. Protocols inherit their parent protocol's keys, so for example a `LengthProtocol` entry contains the `BurstProtocol` keys as well.
+
+| Protocol              | Inherits   | Additional read keys                                                                                                                                                                           | Additional write keys                                                                                                                                                                          |
+| --------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BurstProtocol         | —          | discard_leading_bytes, sync_pattern, fill_fields                                                                                                                                               | discard_leading_bytes, sync_pattern, fill_fields                                                                                                                                               |
+| CrcProtocol           | —          | strip_crc, bad_strategy, endianness, bit_offset, bit_size                                                                                                                                      | write_item_name, endianness, bit_offset, bit_size                                                                                                                                              |
+| CmdResponseProtocol   | —          | response_packet, response_timeout, response_polling_period, raise_exceptions                                                                                                                   | response_packet, response_timeout, response_polling_period, raise_exceptions                                                                                                                   |
+| IgnorePacketProtocol  | —          | target_name, packet_name                                                                                                                                                                       | target_name, packet_name                                                                                                                                                                       |
+| FixedProtocol         | Burst      | min_id_size, telemetry, unknown_raise                                                                                                                                                          | min_id_size, telemetry, unknown_raise                                                                                                                                                          |
+| LengthProtocol        | Burst      | length_bit_offset, length_bit_size, length_value_offset, length_bytes_per_count, length_endianness, length_bytes_needed, max_length                                                            | length_bit_offset, length_bit_size, length_value_offset, length_bytes_per_count, length_endianness, length_bytes_needed, max_length                                                            |
+| PreidentifiedProtocol | Burst      | max_length, reduction_state                                                                                                                                                                    | max_length                                                                                                                                                                                     |
+| TerminatedProtocol    | Burst      | read_termination_characters, strip_read_termination                                                                                                                                            | write_termination_characters                                                                                                                                                                   |
+| SlipProtocol          | Terminated | start_char, end_char, esc_char, esc_end_char, esc_esc_char, read_strip_characters, read_enable_escaping                                                                                        | start_char, end_char, esc_char, esc_end_char, esc_esc_char, write_enable_escaping                                                                                                              |
+| TemplateProtocol      | Terminated | response_template, response_packet, response_target_name, response_lines, response_timeout, response_polling_period, ignore_lines, initial_read_delay, connect_complete_time, raise_exceptions | response_template, response_packet, response_target_name, response_lines, response_timeout, response_polling_period, ignore_lines, initial_read_delay, connect_complete_time, raise_exceptions |
+
+</TabItem>
+</Tabs>
+
+Each interface type adds its own keys on top of the common keys above. The values mirror the interface's configuration parameters documented in the [Interfaces](/docs/configuration/interfaces.md) guide.
+
+<Tabs groupId="interfaces">
+<TabItem value="TcpipClientInterface">
+| Key           | Type    | Description                                    |
+| ------------- | ------- | ---------------------------------------------- |
+| hostname      | String  | Host the interface connects to                 |
+| write_port    | Integer | Port used to write commands                    |
+| read_port     | Integer | Port used to read telemetry                    |
+| write_timeout | Float   | Seconds to wait for a write                    |
+| read_timeout  | Float   | Seconds to wait for a read, nil for no timeout |
+</TabItem>
+<TabItem value="TcpipServerInterface">
+| Key            | Type    | Description                                    |
+| -------------- | ------- | ---------------------------------------------- |
+| write_port     | Integer | Port clients connect to for commands           |
+| read_port      | Integer | Port clients connect to for telemetry          |
+| write_timeout  | Float   | Seconds to wait for a write                    |
+| read_timeout   | Float   | Seconds to wait for a read, nil for no timeout |
+| listen_address | String  | Address the server binds to                    |
+</TabItem>
+<TabItem value="UdpInterface">
+| Key               | Type    | Description                                    |
+| ----------------- | ------- | ---------------------------------------------- |
+| hostname          | String  | Host to write to                               |
+| write_dest_port   | Integer | Destination port for writes                    |
+| read_port         | Integer | Port to read from                              |
+| write_src_port    | Integer | Source port for writes                         |
+| interface_address | String  | Multicast interface address                    |
+| ttl               | Integer | Time to live for multicast writes              |
+| write_timeout     | Float   | Seconds to wait for a write                    |
+| read_timeout      | Float   | Seconds to wait for a read, nil for no timeout |
+| bind_address      | String  | Address to bind the read socket to             |
+</TabItem>
+<TabItem value="SerialInterface">
+| Key             | Type    | Description                                    |
+| --------------- | ------- | ---------------------------------------------- |
+| write_port_name | String  | Serial port used to write, nil if write only   |
+| read_port_name  | String  | Serial port used to read, nil if read only     |
+| baud_rate       | Integer | Baud rate                                      |
+| parity          | String  | "NONE", "EVEN", or "ODD"                       |
+| stop_bits       | Integer | Number of stop bits                            |
+| data_bits       | Integer | Number of data bits                            |
+| flow_control    | String  | "NONE" or "RTSCTS"                             |
+| write_timeout   | Float   | Seconds to wait for a write                    |
+| read_timeout    | Float   | Seconds to wait for a read, nil for no timeout |
+</TabItem>
+<TabItem value="FileInterface">
+| Key                       | Type    | Description                                             |
+| ------------------------- | ------- | ------------------------------------------------------- |
+| command_write_folder      | String  | Folder commands are written to                          |
+| telemetry_read_folder     | String  | Folder telemetry files are read from                    |
+| telemetry_archive_folder  | String  | Folder read files are moved to, "DELETE" to delete them |
+| file_read_size            | Integer | Bytes read from the file at a time                      |
+| stored                    | Boolean | Whether packets are marked as stored                    |
+| filename                  | String  | File currently being read, empty if none                |
+| extension                 | String  | Extension of files to read                              |
+| label                     | String  | Label prefix applied to written command files           |
+| queue_length              | Integer | Number of files queued to be read                       |
+| polling                   | Boolean | Whether the folder is polled instead of watched         |
+| recursive                 | Boolean | Whether the read folder is searched recursively         |
+| throttle                  | Integer | Bytes per second read throttle, nil for unthrottled     |
+| discard_file_header_bytes | Integer | Bytes discarded from the front of each file             |
+</TabItem>
+<TabItem value="MqttInterface">
+| Key                   | Type    | Description                                                   |
+| --------------------- | ------- | ------------------------------------------------------------- |
+| hostname              | String  | MQTT broker host                                              |
+| port                  | Integer | MQTT broker port                                              |
+| ssl                   | Boolean | Whether TLS is used                                           |
+| ack_timeout           | Float   | Seconds to wait for a broker acknowledgement                  |
+| username              | String  | Username, nil if unauthenticated                              |
+| password              | String  | "Set" if a password is configured, otherwise absent           |
+| cert                  | String  | "Set" if a client certificate is configured, otherwise absent |
+| key                   | String  | "Set" if a client key is configured, otherwise absent         |
+| ca_file               | String  | "Set" if a CA file is configured, otherwise absent            |
+| read_packets_by_topic | Hash    | MQTT topic to the target and packet name it maps to           |
+</TabItem>
+<TabItem value="MqttStreamInterface">
+Same as MqttInterface except `read_packets_by_topic` is replaced by:
+
+| Key         | Type   | Description                     |
+| ----------- | ------ | ------------------------------- |
+| write_topic | String | Topic commands are published to |
+| read_topic  | String | Topic telemetry is read from    |
+
+</TabItem>
+<TabItem value="HttpClientInterface">
+| Key                         | Type    | Description                                            |
+| --------------------------- | ------- | ------------------------------------------------------ |
+| url                         | String  | Base URL requests are sent to                          |
+| write_timeout               | Float   | Seconds to wait for a write                            |
+| read_timeout                | Float   | Seconds to wait for a read, nil for no timeout         |
+| connect_timeout             | Float   | Seconds to wait for the connection                     |
+| include_request_in_response | Boolean | Whether the request is included in the response packet |
+| response_queue_length       | Integer | Number of responses queued to be read                  |
+</TabItem>
+<TabItem value="HttpServerInterface">
+| Key                  | Type    | Description                          |
+| -------------------- | ------- | ------------------------------------ |
+| listen_address       | String  | Address the server binds to          |
+| port                 | Integer | Port the server listens on           |
+| request_queue_length | Integer | Number of requests queued to be read |
+</TabItem>
+</Tabs>
+
+:::note[Timestamp Formats]
+All timestamp strings are ISO 8601 in UTC with microsecond precision, e.g. `2026-08-26T16:15:30.123456Z`. The format is the same whether the interface is implemented in Ruby or Python.
+:::
+
+:::note[Binary Data]
+The raw data and protocol data values hold the actual bytes that crossed the interface. Data which is not printable text is encoded on the wire as `{"json_class": "String", "raw": [<byte values>]}`. Ruby scripts receive this decoded back into a binary String. Python scripts receive the dict as-is, so convert it with `bytes(value["raw"])` before using it.
+:::
+
+:::note[Disconnect Mode]
+`interface_details` is not on the read-only allowlist used by [disconnect_script](#disconnect_script), so it returns `None` (Python) or `nil` (Ruby) when running in disconnect mode.
+:::
 
 ## Routers
 
@@ -6975,7 +7409,7 @@ Creates a table binary based on a table definition file. You can achieve the sam
 <TabItem value="python" label="Python Syntax">
 
 ```python
-table_create_binary(<Table Definition File>)
+table_create_binary(<Table Definition File>, scope=OPENC3_SCOPE)
 ```
 
 </TabItem>
@@ -6983,7 +7417,7 @@ table_create_binary(<Table Definition File>)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-table_create_binary(<Table Definition File>)
+table_create_binary(<Table Definition File>, scope: $openc3_scope)
 ```
 
 </TabItem>
@@ -6992,6 +7426,7 @@ table_create_binary(<Table Definition File>)
 | Parameter             | Description                                                                     |
 | --------------------- | ------------------------------------------------------------------------------- |
 | Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt |
+| scope                 | Scope to use, defaults to current scope                                         |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -7047,13 +7482,15 @@ put_target_file("INST/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer
 
 <span class="badge badge--secondary since-heading">Since 6.1.0</span>
 
-Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
+Creates a CSV report of the values in a table binary. You can achieve the same result in the Table Manager GUI with the Download Report button. Returns the report filename and the report contents.
+
+The report is written into the target's storage next to the binary, replacing the binary's extension with `.csv`. For example a report of `INST/tables/bin/ConfigTables.bin` is written to `INST/tables/bin/ConfigTables.csv` and can be read back with [get_target_file](#get_target_file). In the Bucket Explorer it appears under `DEFAULT/targets_modified/INST/tables/bin/ConfigTables.csv`. Pass `save` as false to get the contents in the return value without writing a file.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
 ```python
-table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
+table_create_report(<Table Binary Filename>, <Table Definition File>, table_name=None, save=True, scope=OPENC3_SCOPE)
 ```
 
 </TabItem>
@@ -7061,28 +7498,33 @@ table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Nam
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-table_create_report(<Table Binary Filename>, <Table Definition File>, <Table Name (optional)>)
+table_create_report(<Table Binary Filename>, <Table Definition File>, table_name: nil, save: true, scope: $openc3_scope)
 ```
 
 </TabItem>
 </Tabs>
 
-filename, definition, table_name
-
 | Parameter             | Description                                                                                                                                                                                                                                                                                                      |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Table Binary File     | Path to the table binary file, e.g. INST/tables/bin/ConfigTables.bin                                                                                                                                                                                                                                             |
 | Table Definition File | Path to the table definition file, e.g. INST/tables/config/ConfigTables_def.txt                                                                                                                                                                                                                                  |
-| Table Name            | Name of the table to create the report. This only applies if the Table Binary and Table Definition consist of multiple tables. By default the report consists of all tables and is named after the binary file. If the table name is given, the report is just the specified table and is named after the table. |
+| table_name            | Name of the table to create the report. This only applies if the Table Binary and Table Definition consist of multiple tables. By default the report consists of all tables and is named after the binary file. If the table name is given, the report is just the specified table and is named after the table. |
+| save                  | Whether to write the report into the target's storage. Defaults to true. Pass false to only return the contents.                                                                                                                                                                                                 |
+| scope                 | Scope to use, defaults to current scope                                                                                                                                                                                                                                                                          |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") # =>
-# {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION") # =>
-# {'filename': 'INST/tables/bin/ConfigTables.csv', 'contents': 'MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt")
+# Read the report back out of the target
+file = get_target_file(table['filename'])
+print(file.read())
+file.close() # delete file
+
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name="MC_CONFIGURATION", save=False)
+print(table['filename']) #=> INST/tables/bin/McConfiguration.csv
+print(table['contents']) #=> MC_CONFIGURATION\nLabel, Value\n...
 ```
 
 </TabItem>
@@ -7090,10 +7532,16 @@ table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/con
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt") # =>
-# {"filename"=>"INST/tables/bin/ConfigTables.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
-table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION") # =>
-# {"filename"=>"INST/tables/bin/McConfiguration.csv", "contents"=>"MC_CONFIGURATION\nLabel, ...
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt")
+
+# Read the report back out of the target
+file = get_target_file(table['filename'])
+puts file.read()
+file.unlink # delete file
+
+table = table_create_report("INST/tables/bin/ConfigTables.bin", "INST/tables/config/ConfigTables_def.txt", table_name: "MC_CONFIGURATION", save: false)
+puts table['filename'] #=> INST/tables/bin/McConfiguration.csv
+puts table['contents'] #=> MC_CONFIGURATION\nLabel, Value\n...
 ```
 
 </TabItem>
@@ -7467,13 +7915,13 @@ delete_screen("INST", "ADCS")
 
 <span class="badge badge--secondary since-heading">Since 5.6.0</span>
 
-Returns a list of available telemetry screens.
+Returns a hash of available telemetry screens keyed by target name, where each value is a list of screen names for that target.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
-get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
+get_screen_list() # => {'INST': ['ADCS', 'COMMANDING', ...], 'INST2': [...]}
 ```
 
 </TabItem>
@@ -7481,7 +7929,7 @@ get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-get_screen_list() # => ['INST ADCS', 'INST COMMANDING', ...]
+get_screen_list() # => {"INST" => ["ADCS", "COMMANDING", ...], "INST2" => [...]}
 ```
 
 </TabItem>
@@ -7687,7 +8135,7 @@ These methods allow the user to control Script Runner scripts.
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it before jumping back to the calling procedure. Parameters are not directly given to high level test procedures, though they can use environment variables. If parameters are necessary, consider using a subroutine.
+Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it (with line-by-line highlighting in Script Runner) before jumping back to the calling procedure. Parameters are not directly given to high level test procedures, though they can use environment variables. If parameters are necessary, consider using a subroutine.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -7707,15 +8155,15 @@ start("<Procedure Filename>")
 </TabItem>
 </Tabs>
 
-| Parameter          | Description                                                                                                                                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Procedure Filename | Name of the test procedure file. These files are normally in the procedures folder but may be anywhere in the Ruby search path. Additionally, absolute paths are supported. |
+| Parameter          | Description                                                                                                                                                     |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Procedure Filename | Name of the test procedure file. These are target-relative paths, e.g. `TARGET/procedures/proc.rb`. The file is retrieved from the COSMOS configuration bucket. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
-start("test1.rb")
+start("INST/procedures/test1.py")
 ```
 
 </TabItem>
@@ -7723,7 +8171,7 @@ start("test1.rb")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-start("test1.rb")
+start("INST/procedures/test1.rb")
 ```
 
 </TabItem>
@@ -7786,7 +8234,7 @@ goto("TARGET/procedures/other_script.py", 12)
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Reads in a script file that contains useful subroutines for use in your test procedure. When these subroutines run in ScriptRunner or TestRunner, their lines will be highlighted. If you want to import subroutines but do not want their lines to be highlighted in ScriptRunner or TestRunner, use the standard Ruby 'load' or 'require' statement or Python 'import' statement.
+Reads in a script file that contains useful subroutines for use in your test procedure. The file is instrumented, but instrumentation is disabled while load_utility is loading it so lines are not highlighted during the initial load. Afterwards, any functions defined in the loaded file will be highlighted when called. If you want to import subroutines but do not want their lines to be highlighted at all in Script Runner, use the standard Ruby `load` or `require` statement or Python `import` statement instead.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -7806,16 +8254,16 @@ load_utility("TARGET/lib/<Utility Filename>")
 </TabItem>
 </Tabs>
 
-| Parameter        | Description                                                                                                                                                        |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Utility Filename | Name of the script file containing subroutines including the .rb or .py extension. You need to include the full target name and path such as TARGET/lib/utility.rb |
+| Parameter        | Description                                                                                                                                                                                                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Utility Filename | Name of the script file containing subroutines. Include the full target name and path such as `TARGET/lib/utility.rb`. The file extension (`.rb` or `.py`) is optional and will be appended automatically if omitted. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
-load_utility("TARGET/lib/mode_changes.rb") # Ruby
-load_utility("TARGET/lib/mode_changes.py") # Python
+load_utility("INST/lib/mode_changes.py")
+load_utility("INST/lib/mode_changes") # .py extension is added automatically
 ```
 
 </TabItem>
@@ -7823,8 +8271,8 @@ load_utility("TARGET/lib/mode_changes.py") # Python
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-load_utility("TARGET/lib/mode_changes.rb") # Ruby
-load_utility("TARGET/lib/mode_changes.py") # Python
+load_utility("INST/lib/mode_changes.rb")
+load_utility("INST/lib/mode_changes") # .rb extension is added automatically
 ```
 
 </TabItem>
@@ -8007,7 +8455,7 @@ script_delete("INST/procedures/checks.rb")
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Runs a script in Script Runner. The script will run in the background and can be opened in Script Runner by selecting Script->Execution Status and then connecting to it.
+Kicks off running a script in Script Runner. The script will run in the background, while the caller continues to run, and can be opened in Script Runner by selecting "Execution Status" from the "Script" menu at the top, and then connecting to it from the "Running Scripts" tab.
 
 Note: In Enterprise, initialize_offline_access must have been called at least once for the user who calls this method.
 
@@ -8029,12 +8477,22 @@ script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: n
 </TabItem>
 </Tabs>
 
-| Parameter    | Description                                                                                                         |
-| ------------ | ------------------------------------------------------------------------------------------------------------------- |
-| Script Name  | Full path name of the script starting with the target                                                               |
-| disconnect   | Whether to run the script in Disconnect mode                                                                        |
-| environment  | Hash / dict of key / value items to set as script environment variables. Note: Do not use `PATH` as it is reserved. |
-| suite_runner | Hash / dict of suite runner options                                                                                 |
+| Parameter    | Description                                                                                                                                          |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Script Name  | Full path name of the script starting with the target. If this is the path to a test suite file, the `suite_runner` parameter must also be provided. |
+| disconnect   | Boolean indicating whether to run the script in Disconnect                                                                                           |
+| environment  | Hash / dict of key / value items to set as script environment variables. Note: Do not use `PATH` as it is reserved.                                  |
+| suite_runner | Hash / dict of suite runner configuration values. Valid keys are described [below](#script_run-suite_runner-parameter).                              |
+
+#### script_run suite_runner parameter
+
+| Key     | Value                                                                                                                                                                                                                         |
+| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| method  | Valid values are "start", "setup", and "teardown". Defaults to "start" if not provided. If `script` is provided, this value is ignored and `start` is always used.                                                            |
+| suite   | Required; the name of the suite to run. Must be a valid suite within the given file.                                                                                                                                          |
+| group   | The name of the group to run. Must be a valid group within the given suite. If `script` is provided, this is required.                                                                                                        |
+| script  | The name of the specific script to run. Must be a valid method name within the given group.                                                                                                                                   |
+| options | Array of strings of suite runner options to enable. Valid options are: "manual", "pauseOnError", "continueAfterError", "abortAfterError", "loop", and "breakLoopOnError". Defaults to ["continueAfterError"] if not provided. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -8042,7 +8500,7 @@ script_run("<Script Name>", disconnect: false, environment: nil, suite_runner: n
 ```python
 id = script_run("INST2/procedures/checks.py", environment={ 'USER': 'JASON'})
 print(id)
-id = script_run("INST2/procedures/my_script_suite.py", suite_runner={ 'suite': 'MySuite', 'group': 'ExampleGroup', 'script': 'script_2' })
+id = script_run("INST2/procedures/my_script_suite.py", suite_runner={ 'suite': 'MySuite', 'group': 'ExampleGroup', 'script': 'script_2', 'method': 'start' })
 print(id)
 ```
 
@@ -9875,7 +10333,7 @@ metadata_update({ 'key' => 'value' })
 
 <span class="badge badge--secondary since-heading">Since 5.2.0</span>
 
-Prompts the user to set existing metadata values or create new a new one.
+Prompts the user to set existing metadata values or create a new one. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -10011,7 +10469,7 @@ setting = get_settings('version', 'rubygems_url') # => ["5.11.4-beta0", "https:/
 
 Sets the given setting value.
 
-:::note[Admin Passwork Required]
+:::note[Admin Password Required]
 This API is only accessible externally (not within Script Runner) and requires the admin password.
 :::
 

@@ -14,9 +14,13 @@ name: Playwright Tests
 # Only run on a push to main to avoid running for all the dependabot PRs
 on:
   push:
+    paths-ignore:
+      - "docs.openc3.com/**"
     branches:
       - main
   pull_request:
+    paths-ignore:
+      - "docs.openc3.com/**"
     branches:
       - "**"
 
@@ -27,6 +31,14 @@ on:
 
 env:
   OPENC3_ARGON2_PROFILE: "unsafe_cheapest"
+  # Build the tool bundles with sourcemaps (openc3-cosmos-init build arg) so
+  # V8 coverage collected by the tests can map back to original sources.
+  # The build-cosmos action mixes this into the init image cache key, so the
+  # coverage variant caches separately from production builds.
+  COVERAGE_BUILD: "1"
+  # Collect V8 coverage in the Playwright fixture (chromium only) and
+  # generate reports in coverage/ at teardown
+  COVERAGE: "1"
 
 permissions:
   contents: read
@@ -40,23 +52,32 @@ jobs:
     permissions:
       contents: read
       packages: write # required to push the GHCR build cache
+      id-token: write # required for Docker Hub OIDC login
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
-      - uses: ./.github/actions/build-cosmos
-      - uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v6.0.0
+      # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
+      # Fork PRs get no id-token, so let them fall back to anonymous pulls.
+      - name: Docker login
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
+        env:
+          DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
+          DOCKERHUB_OIDC_EXPIREIN: 3600 # token defaults to 5 min; long builds pull from Docker Hub later
         with:
-          version: 10
-      - name: Install playwright dependencies
-        run: ./playwright.sh install-playwright
-        working-directory: playwright
+          username: openc3inc
+      - uses: ./.github/actions/build-cosmos
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          version: 11
+      - uses: ./.github/actions/setup-playwright
       - name: Check for test.only
         run: pnpm playwright test --list --forbid-only
         working-directory: playwright
@@ -85,30 +106,41 @@ jobs:
             echo "ERROR: One or more containers are unhealthy"
             exit 1
           fi
-        # Build a test plugin for playwright and a copy so we can 'upgrade'
+        # Build a test plugin for playwright and a copy so we can 'upgrade'.
+        # The gems are a pure function of the plugin/target templates and the
+        # generator, so cache them rather than paying ~1.5 min of container
+        # startup and `gem build` on every run.
+      - name: Cache test plugin gems
+        id: pw_test_plugin
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: playwright/openc3-cosmos-pw-test
+          key: pw-test-plugin-${{ hashFiles('openc3/templates/plugin/**', 'openc3/templates/target/**', 'openc3/lib/openc3/utilities/cli_generator.rb', 'playwright/playwright.sh') }}
       - name: Build plugin
+        if: steps.pw_test_plugin.outputs.cache-hit != 'true'
         shell: 'script -q -e -c "bash {0}"'
         run: ./playwright.sh build-plugin
         working-directory: playwright
-        # Ensure we're connected and running
-      - name: Wait for build
-        run: pnpm playwright test --project=chromium tests/wait-for-build.spec.ts
-        working-directory: playwright
+      # tests/global.setup.ts (the 'setup' project every other project depends on)
+      # waits for the interfaces to connect and then takes the demo sim out of
+      # QUIET mode, so there is no separate "Wait for build" step to run here.
       - name: Run Playwright tests
-        # Run separately to allow for parallelism
-        run: ./playwright.sh run-chromium --grep-invert='enterprise'
+        # Run separately to allow for parallelism. With COVERAGE=1 each test
+        # caches V8 coverage; `pnpm coverage` (chained at the end of pnpm
+        # test) merges every invocation's cache into coverage/lcov.info
+        # (plus html and cobertura).
+        # Enterprise specs are excluded by testIgnore on the chromium project
+        # in playwright.config.ts, so no --grep-invert is needed here.
+        run: ./playwright.sh run-chromium
         working-directory: playwright
-      - name: Generate coverage
-        run: pnpm fixlinux; pnpm cobertura
-        working-directory: playwright
-      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+      - uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          directory: playwright/coverage
+          files: playwright/coverage/lcov.info
           flags: frontend # See codecov.yml
           token: ${{ secrets.CODECOV_TOKEN }}
       - name: Upload test artifacts
         if: always() # Upload on pass or fail
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: playwright
           path: playwright/test-results

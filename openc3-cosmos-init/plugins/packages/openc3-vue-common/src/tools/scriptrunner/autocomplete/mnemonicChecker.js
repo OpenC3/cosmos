@@ -16,13 +16,13 @@
 */
 
 import { OpenC3Api } from '@openc3/js-common/services'
-import { getKeywords, groupBy } from './utilities'
+import { getKeywords, groupBy, escapeRegExp } from './utilities'
 
 const toKeywordRegex = (word) => {
   // create regex to find the opening of a ruby method call
   const prefix = '(^|[{\\(\\s])' // Allowable characters before the method name: start of line or { or ( or a space
   const call = '((\\s.+)|(\\(.+\\)))' // A method call and its arguments
-  return new RegExp(`${prefix}${word}${call}`)
+  return new RegExp(`${prefix}${escapeRegExp(word)}${call}`)
 }
 const interpolatedStringRegex = /\{/
 const alternateSyntaxRegex = /['"],\s?['"]/
@@ -32,24 +32,31 @@ export default class MnemonicChecker {
     this.api = new OpenC3Api()
 
     this.targets = {}
-    this.api.get_target_names().then((response) => {
-      response.forEach((target) => {
-        this.targets[target] = {
-          cmd: null,
-          tlm: null,
-        }
+    this.api
+      .get_target_names()
+      .then((response) => {
+        response.forEach((target) => {
+          this.targets[target] = {
+            cmd: null,
+            tlm: null,
+          }
+        })
       })
-    })
+      .catch(console.error)
 
     this.cmdKeywordExpressions = []
-    getKeywords('cmd').then((response) => {
-      this.cmdKeywordExpressions = response.data.map(toKeywordRegex)
-    })
+    getKeywords('cmd')
+      .then((response) => {
+        this.cmdKeywordExpressions = response.data.map(toKeywordRegex)
+      })
+      .catch(console.error)
 
     this.tlmKeywordExpressions = []
-    getKeywords('tlm').then((response) => {
-      this.tlmKeywordExpressions = response.data.map(toKeywordRegex)
-    })
+    getKeywords('tlm')
+      .then((response) => {
+        this.tlmKeywordExpressions = response.data.map(toKeywordRegex)
+      })
+      .catch(console.error)
   }
 
   async checkText(text) {
@@ -93,7 +100,7 @@ export default class MnemonicChecker {
 
         let mnemonicMatch = matchStr
           .substring(parenOrSpaceMatch.index + 1) // Trim off leading `(` or space
-          .replace(/\)+.*$/, '') // and the closing )s
+          .replace(/\).*$/, '') // and the closing )s
 
         if (mnemonicMatch.match(interpolatedStringRegex)) {
           result.linesToSkip.push(index + 1)

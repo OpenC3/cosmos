@@ -21,6 +21,7 @@
     :y="parameters[4]"
     :font-size="fontSize"
     :fill="fillColor"
+    :style="computedStyle"
   >
     {{ _value }}
   </text>

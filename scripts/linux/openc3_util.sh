@@ -2,28 +2,27 @@
 
 set -e
 
-if ! command -v docker &> /dev/null
-then
-  if command -v podman &> /dev/null
-  then
+if ! command -v docker &> /dev/null; then
+  if command -v podman &> /dev/null; then
     function docker() {
-      podman $@
+      podman "$@"
       return $?
     }
   else
-    echo "Neither docker nor podman found!!!"
+    echo "Neither docker nor podman found!" >&2
     exit 1
   fi
 fi
 
 usage() {
-  echo "Usage: $1 [encode, hash, save, load, tag, push, pull, clean, hostsetup]" >&2
+  echo "Usage: $1 [encode, hash, save, load, tag, push, mirror, pull, clean, hostsetup]" >&2
   echo "*  encode: encode a string to base64" >&2
   echo "*  hash: hash a string using SHA-256" >&2
   echo "*  save: save images to a tar file" >&2
   echo "*  load: load images from a tar file" >&2
   echo "*  tag: tag images" >&2
   echo "*  push: push images" >&2
+  echo "*  mirror: copy multi-arch images between registries" >&2
   echo "*  pull: pull images from a registry" >&2
   echo "*  clean: remove node_modules, coverage, etc" >&2
   echo "*  hostsetup: configure host for redis" >&2
@@ -157,6 +156,51 @@ tag() {
   return 0
 }
 
+# Copy images directly between registries, preserving all platforms (multi-arch).
+# Unlike pull/tag/push, which only carries the host platform.
+mirror() {
+  if [[ "$#" -lt 4 ]]; then
+    echo "Usage: mirror <REPO1> <REPO2> <NAMESPACE1> <TAG1> <NAMESPACE2> <TAG2> <SUFFIX>" >&2
+    echo "e.g. mirror docker.io localhost:12345 openc3inc latest" >&2
+    echo "Note: NAMESPACE2 and TAG2 default to NAMESPACE1 and TAG1 if not given" >&2
+    exit 1
+  fi
+
+  repo1=$1
+  repo2=$2
+  namespace1=$3
+  tag1=$4
+  namespace2=${5:-$namespace1}
+  tag2=${6:-$tag1}
+  suffix=${7:-}
+
+  if docker buildx imagetools --help &> /dev/null; then
+    copy_cmd="buildx"
+  elif command -v skopeo &> /dev/null; then
+    copy_cmd="skopeo"
+  elif command -v crane &> /dev/null; then
+    copy_cmd="crane"
+  else
+    echo "mirror requires docker buildx, skopeo, or crane" >&2
+    exit 1
+  fi
+
+  set -x
+  for image in openc3-buckets openc3-cosmos-cmd-tlm-api openc3-cosmos-init openc3-cosmos-script-runner-api \
+    openc3-operator openc3-redis openc3-traefik openc3-tsdb; do
+    src=$repo1/$namespace1/$image$suffix:$tag1
+    dst=$repo2/$namespace2/$image$suffix:$tag2
+    case $copy_cmd in
+      buildx ) docker buildx imagetools create --tag $dst $src ;;
+      skopeo ) skopeo copy --all docker://$src docker://$dst ;;
+      crane ) crane copy $src $dst ;;
+      * ) echo "Unknown copy command: $copy_cmd" >&2; exit 1 ;;
+    esac
+  done
+  set +x
+  return 0
+}
+
 push() {
   if [[ "$#" -lt 3 ]]; then
     echo "Usage: push <REPO> <NAMESPACE> <TAG> <SUFFIX>" >&2
@@ -185,8 +229,8 @@ push() {
 }
 
 clean_files() {
-  find . -type d -name "node_modules" -exec sh -c 'echo "Removing {}"; rm -rf "{}"' \;
-  find . -type d -name "coverage" -exec sh -c 'echo "Removing {}"; rm -rf "{}"' \;
+  find . -type d -name "node_modules" -exec sh -c 'echo "Removing $1"; rm -rf -- "$1"' sh {} \;
+  find . -type d -name "coverage" -exec sh -c 'echo "Removing $1"; rm -rf -- "$1"' sh {} \;
   # Prompt for removing pnpm-lock.yaml files
   find . -type f -name "pnpm-lock.yaml" -exec rm -i {} \;
   # Prompt for removing Gemfile.lock files
@@ -325,6 +369,32 @@ case $1 in
     fi
     tag "${@:2}"
     ;;
+  mirror )
+    if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
+      echo "Usage: $0 mirror REPO1 REPO2 NAMESPACE1 TAG1 [NAMESPACE2] [TAG2] [SUFFIX]"
+      echo ""
+      echo "Copy OpenC3 images directly from one registry to another, preserving"
+      echo "all platforms (multi-arch). Requires docker buildx, skopeo, or crane."
+      echo "Log in to both registries first."
+      echo ""
+      echo "Arguments:"
+      echo "  REPO1        Source repository (e.g., docker.io)"
+      echo "  REPO2        Target repository (e.g., localhost:12345)"
+      echo "  NAMESPACE1   Source namespace (e.g., openc3inc)"
+      echo "  TAG1         Source tag (e.g., latest)"
+      echo "  NAMESPACE2   Target namespace (default: same as NAMESPACE1)"
+      echo "  TAG2         Target tag (default: same as TAG1)"
+      echo "  SUFFIX       Optional suffix for image names (e.g., -ubi)"
+      echo ""
+      echo "Example:"
+      echo "  $0 mirror docker.io localhost:12345 openc3inc latest"
+      echo ""
+      echo "Options:"
+      echo "  -h, --help    Show this help message"
+      exit 0
+    fi
+    mirror "${@:2}"
+    ;;
   push )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
       echo "Usage: $0 push REPO NAMESPACE TAG [SUFFIX]"
@@ -366,18 +436,19 @@ case $1 in
     ;;
   hostsetup )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
-      echo "Usage: $0 hostsetup REPO NAMESPACE TAG"
+      echo "Usage: $0 hostsetup REPO NAMESPACE TAG [SUFFIX]"
       echo ""
       echo "Configure Docker host for Redis optimal performance."
       echo ""
       echo "This command:"
       echo "  - Disables transparent huge pages"
-      echo "  - Sets vm.max_map_count to 262144"
+      echo "  - Sets vm.max_map_count to OPENC3_MAX_MAP_COUNT (from .env)"
       echo ""
       echo "Arguments:"
       echo "  REPO        Docker repository (e.g., docker.io)"
       echo "  NAMESPACE   Image namespace (e.g., openc3inc)"
       echo "  TAG         Image tag (e.g., latest)"
+      echo "  SUFFIX      Optional operator image suffix (e.g., -ubi)"
       echo ""
       echo "Example:"
       echo "  $0 hostsetup docker.io openc3inc latest"
@@ -386,17 +457,26 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    if [[ "$#" -ne 4 ]]; then
-      echo "Usage: hostsetup <REPO> <NAMESPACE> <TAG>" >&2
+    if [[ "$#" -lt 4 ]] || [[ "$#" -gt 5 ]]; then
+      echo "Usage: hostsetup <REPO> <NAMESPACE> <TAG> [SUFFIX]" >&2
       echo "e.g. hostsetup docker.io openc3inc latest" >&2
       exit 1
     fi
     repo=$2
     namespace=$3
     tag=$4
-    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
-    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag"
-    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator:$tag nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=1048576"
+    suffix=$5
+    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator$suffix:$tag nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
+    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator$suffix:$tag nsenter -t 1 -m -u -n -i -- sh -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag"
+    # QuestDB (openc3-tsdb) exhausts the default 65530 map count on large
+    # databases. OPENC3_MAX_MAP_COUNT is defined once in .env (openc3.sh sources
+    # it before dispatching here); no default is repeated in this script so the
+    # two can never disagree.
+    if [[ -z "$OPENC3_MAX_MAP_COUNT" ]]; then
+      echo "OPENC3_MAX_MAP_COUNT is not set. Define it in .env (or export it) and retry." >&2
+      exit 1
+    fi
+    docker run --rm --privileged --pid=host --entrypoint='' --user root $repo/$namespace/openc3-operator$suffix:$tag nsenter -t 1 -m -u -n -i -- sh -c "sysctl -w vm.max_map_count=$OPENC3_MAX_MAP_COUNT"
     ;;
   hostenter )
     if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
@@ -411,7 +491,7 @@ case $1 in
       echo "  -h, --help    Show this help message"
       exit 0
     fi
-    docker run -it --rm --privileged --pid=host ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD} nsenter -t 1 -m -u -n -i sh
+    docker run -it --rm --privileged --pid=host ${OPENC3_DEPENDENCY_REGISTRY}/debian:${DEBIAN_RELEASE:-trixie}-slim nsenter -t 1 -m -u -n -i sh
     ;;
   * )
     usage $0

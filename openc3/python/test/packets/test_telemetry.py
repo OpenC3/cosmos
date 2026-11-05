@@ -66,7 +66,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(self.tlm.target_names(), ["TGT1", "TGT2"])
 
     def test_packets_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(packets lookup\)"):
             self.tlm.packets("tgtX")
 
     def test_packets_returns_all_packets_target_tgt1(self):
@@ -81,7 +81,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertIn("PKT1", pkts.keys())
 
     def test_packet_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(packets lookup\)"):
             self.tlm.packet("tgtX", "pkt1")
 
     def test_packet_complains_about_non_existent_packets(self):
@@ -98,7 +98,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(pkt.packet_name, "PKT1")
 
     def test_items_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(packets lookup\)"):
             self.tlm.items("tgtX", "pkt1")
 
     def test_items_complains_about_non_existent_packets(self):
@@ -141,7 +141,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertIn("ITEM4", items)
 
     def test_packet_and_item_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(packets lookup\)"):
             self.tlm.packet_and_item("tgtX", "pkt1", "item1")
 
     def test_packet_and_item_complains_about_non_existent_packets(self):
@@ -149,7 +149,7 @@ class TestTelemetry(unittest.TestCase):
             self.tlm.packet_and_item("TGT1", "PKTX", "ITEM1")
 
     def test_packet_and_item_complains_about_non_existent_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT1 PKT1 ITEMX' does not exist \(Packet\)"):
             self.tlm.packet_and_item("TGT1", "PKT1", "ITEMX")
 
     def test_packet_and_item_returns_the_packet_and_item(self):
@@ -162,7 +162,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(item.name, "ITEM1")
 
     def test_latest_packets_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(latest_packets lookup\)"):
             self.tlm.latest_packets("tgtX", "item1")
 
     def test_latest_packets_complains_about_non_existent_items(self):
@@ -176,7 +176,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(pkts[1].packet_name, "PKT2")
 
     def test_newest_packet_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(latest_packets lookup\)"):
             self.tlm.newest_packet("tgtX", "item1")
 
     def test_newest_packet_complains_about_non_existent_items(self):
@@ -339,7 +339,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertIsNone(pkt)
 
     def test_update_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(packets lookup\)"):
             self.tlm.update("TGTX", "PKT1", b"\x00")
 
     def test_update_complains_about_non_existent_packets(self):
@@ -388,7 +388,7 @@ class TestTelemetry(unittest.TestCase):
         callback.assert_called()
 
     def test_value_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(packets lookup\)"):
             self.tlm.value("TGTX", "PKT1", "ITEM1")
 
     def test_value_complains_about_non_existent_packets(self):
@@ -396,7 +396,7 @@ class TestTelemetry(unittest.TestCase):
             self.tlm.value("TGT1", "PKTX", "ITEM1")
 
     def test_value_complains_about_non_existent_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT1 PKT1 ITEMX' does not exist \(Packet\)"):
             self.tlm.value("TGT1", "PKT1", "ITEMX")
 
     def test_value_returns_the_value(self):
@@ -406,7 +406,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(self.tlm.value("TGT1", "LATEST", "ITEM1"), 0)
 
     def test_set_value_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(packets lookup\)"):
             self.tlm.set_value("TGTX", "PKT1", "ITEM1", 1)
 
     def test_set_value_complains_about_non_existent_packets(self):
@@ -414,7 +414,7 @@ class TestTelemetry(unittest.TestCase):
             self.tlm.set_value("TGT1", "PKTX", "ITEM1", 1)
 
     def test_set_value_complains_about_non_existent_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT1 PKT1 ITEMX' does not exist \(Packet\)"):
             self.tlm.set_value("TGT1", "PKT1", "ITEMX", 1)
 
     def test_set_value_sets_the_value(self):
@@ -427,7 +427,7 @@ class TestTelemetry(unittest.TestCase):
         self.assertEqual(self.tlm.value("TGT1", "PKT2", "ITEM1"), 1)
 
     def test_values_and_limits_states_complains_about_non_existent_targets(self):
-        with self.assertRaisesRegex(RuntimeError, "Telemetry target 'TGTX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Telemetry target 'TGTX' does not exist \(packets lookup\)"):
             self.tlm.values_and_limits_states([["TGTX", "PKT1", "ITEM1"]])
 
     def test_values_and_limits_states_complains_about_non_existent_packets(self):
@@ -435,7 +435,7 @@ class TestTelemetry(unittest.TestCase):
             self.tlm.values_and_limits_states([["TGT1", "PKTX", "ITEM1"]])
 
     def test_values_and_limits_states_complains_about_non_existent_items(self):
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT1 PKT1 ITEMX' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT1 PKT1 ITEMX' does not exist \(Packet\)"):
             self.tlm.values_and_limits_states([["TGT1", "PKT1", "ITEMX"]])
 
     def test_values_and_limits_states_complains_about_non_existent_value_types(self):

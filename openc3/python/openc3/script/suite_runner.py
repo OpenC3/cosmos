@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import inspect
+import re
 
 from openc3.script.exceptions import StopScriptError
 from openc3.tools.test_runner.test import Test, TestSuite
@@ -25,28 +26,85 @@ class UnassignedSuite(Suite):
 
 
 class SuiteRunner:
+    # Default suite_runner options shared by all callers so the values stay
+    # consistent in one place.
+    DEFAULT_METHOD = "start"
+    DEFAULT_OPTIONS = ["continueAfterError"]
+    # The only SuiteRunner entry points a client may request
+    ALLOWED_METHODS = ["start", "setup", "teardown"]
+    # Suite and Group are Python class names, optionally module qualified
+    CLASS_NAME_REGEX = re.compile(r"^[A-Za-z_]\w*(\.[A-Za-z_]\w*)*$")
+    # Script is a Python method name on the Group
+    METHOD_NAME_REGEX = re.compile(r"^[A-Za-z_]\w*$")
+
     suites = []
     settings = {}
     suite_results = None
 
+    # Validate the suite_runner option combinations that don't require the
+    # built suites. Shared by all callers so the contract lives in one place.
+    # Suite/Group existence is checked in execute since it needs the suites.
+    @classmethod
+    def validate_options(cls, group=None, script=None):
+        if script and not group:
+            raise ValueError(f"Script {script} requires a Group")
+
+    # Validate that the raw (client supplied) suite_runner values are plain
+    # identifiers. These values are interpolated into the Python snippet the
+    # running script executes, so anything other than a bare class / method
+    # name must be rejected before it reaches the interpreter.
+    @classmethod
+    def validate_identifiers(cls, suite, group=None, script=None, method=None):
+        if not isinstance(suite, str) or not cls.CLASS_NAME_REGEX.match(suite):
+            raise ValueError(f"Invalid Suite name: {suite!r}")
+        if group and (not isinstance(group, str) or not cls.CLASS_NAME_REGEX.match(group)):
+            raise ValueError(f"Invalid Group name: {group!r}")
+        if script and (not isinstance(script, str) or not cls.METHOD_NAME_REGEX.match(script)):
+            raise ValueError(f"Invalid Script name: {script!r}")
+        if method and method not in cls.ALLOWED_METHODS:
+            raise ValueError(f"Invalid method: {method!r}")
+
+    # Build the canonical, validated suite_runner dict from raw values, applying
+    # defaults. Shared so the dict shape, defaults, and validation live in one
+    # place (used by the running script when normalizing a received dict).
+    @classmethod
+    def build_options(cls, suite, group=None, script=None, method=None, options=None):
+        cls.validate_options(group=group, script=script)
+        cls.validate_identifiers(suite=suite, group=group, script=script, method=method)
+        suite_runner = {"suite": suite}
+        if group:
+            suite_runner["group"] = group
+            if script:
+                suite_runner["script"] = script
+        # A script always runs via start, matching the GUI
+        suite_runner["method"] = cls.DEFAULT_METHOD if script else (method or cls.DEFAULT_METHOD)
+        suite_runner["options"] = options if options is not None else list(cls.DEFAULT_OPTIONS)
+        return suite_runner
+
     @classmethod
     def execute(cls, result_string, suite_class, group_class=None, script=None):
         SuiteRunner.suite_results = SuiteResults()
-        for suite in SuiteRunner.suites:
-            if suite.__class__ == suite_class:
-                SuiteRunner.suite_results.start(
-                    result_string,
-                    suite_class,
-                    group_class,
-                    script,
-                    SuiteRunner.settings,
-                )
-                while True:
-                    yield (suite)
-                    if not SuiteRunner.settings["Loop"] or (
-                        ScriptStatus.instance().fail_count > 0 and SuiteRunner.settings["Break Loop On Error"]
-                    ):
-                        break
+        # Surface invalid suite / group / option combinations rather than
+        # silently running nothing or failing with an opaque error. An
+        # invalid script method raises later in Group.run_method.
+        cls.validate_options(group=group_class, script=script)
+        suite = next((s for s in SuiteRunner.suites if s.__class__ == suite_class), None)
+        if not suite:
+            raise ValueError(f"Suite {suite_class} not found")
+        if group_class and group_class not in suite.scripts():
+            raise ValueError(f"Group {group_class} not found in Suite {suite_class}")
+        SuiteRunner.suite_results.start(
+            result_string,
+            suite_class,
+            group_class,
+            script,
+            SuiteRunner.settings,
+        )
+        while True:
+            yield (suite)
+            if not SuiteRunner.settings["Loop"] or (
+                ScriptStatus.instance().fail_count > 0 and SuiteRunner.settings["Break Loop On Error"]
+            ):
                 break
 
     @classmethod

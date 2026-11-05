@@ -9,14 +9,17 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import os
 import re
 import sys
 import traceback
+from ast import literal_eval
 from collections.abc import Generator
 from typing import Any
 
 from openc3.utilities.extract import remove_quotes
+from openc3.utilities.logger import Logger
 
 
 class ConfigParser:
@@ -78,19 +81,40 @@ class ConfigParser:
             url = self.url
         return self.Error(self, message, usage, url)
 
-    # Can be called during parsing to read a referenced file
+    # Can be called during parsing to read a referenced file. The filename must
+    # be relative to the configuration file being parsed and must resolve to a
+    # location inside that file's directory.
     def read_file(self, filename: str) -> bytes:
-        # Assume the file is there. If not we raise a pretty obvious error
-        if os.path.abspath(filename) == filename:  # absolute path
-            path = filename
-        else:  # relative to the current @filename
-            if not self.filename:
-                raise ValueError(f"Cannot resolve relative path '{filename}' - no current file context")
-            path = os.path.join(os.path.dirname(self.filename), filename)
+        path = self._resolve_config_path(filename)
         data: bytes = b""
         with open(path, "rb") as file:
             data = file.read()
         return data
+
+    # Resolves a filename referenced by a configuration file (TEMPLATE_FILE, etc)
+    # into an absolute path contained by the directory of the file being parsed.
+    # Absolute paths and paths containing '..' are rejected so a configuration
+    # file can not read arbitrary files on the filesystem.
+    #
+    # self.param filename [String] Relative path from the configuration file
+    # self.return [String] Absolute path to the referenced file
+    def _resolve_config_path(self, filename: str) -> str:
+        filename = str(filename)
+        if not filename.strip():
+            raise self.error("Filename must be given")
+        if os.path.isabs(filename) or os.path.abspath(filename) == filename:
+            raise self.error(f"Absolute paths are not allowed: {filename}")
+        if ".." in filename:
+            raise self.error(f"Path traversal is not allowed: {filename}")
+        if not self.filename:
+            raise self.error(f"No configuration file is being parsed, can not resolve: {filename}")
+
+        base = os.path.abspath(os.path.dirname(self.filename))
+        path = os.path.abspath(os.path.join(base, filename))
+        # Final containment check in case the OS normalizes something unexpected
+        if not path.startswith(base + os.sep):
+            raise self.error(f"Path is outside the configuration directory: {filename}")
+        return path
 
     def parse_file(
         self,
@@ -267,6 +291,37 @@ class ConfigParser:
                     return None
         return value
 
+    # Parses a config string into a Python value. Prefers JSON to match the
+    # Ruby parser's JSON.parse (lowercase true/false, null). Falls back to
+    # literal_eval for legacy Python-style config values (single quoted strings,
+    # mixed-type arrays) that predate the JSON switch so we don't break existing
+    # plugins. Raises if neither can parse it.
+    #
+    # self.param value [String]
+    # self.param warn [Boolean] Whether to log a warning when falling back to
+    #   literal_eval. Pass False for ANY items where a raw non-JSON value is valid.
+    # self.param config_parser [ConfigParser] Optional parser used to include the
+    #   file/line/keyword that triggered the fallback in the warning message.
+    # self.return [Object] The parsed value
+    @classmethod
+    def parse_value(cls, value: str, warn: bool = True, config_parser: "ConfigParser | None" = None) -> Any:
+        try:
+            return json.loads(value)
+        # json.loads raises json.JSONDecodeError and can raise UnicodeDecodeError,
+        # both subclasses of ValueError. Catch ValueError so we only fall back on
+        # actual parse failures rather than swallowing unrelated errors.
+        except ValueError:
+            if warn:
+                location = ""
+                if config_parser and config_parser.filename:
+                    location = f" at {config_parser.filename}:{config_parser.line_number}"
+                    if config_parser.keyword:
+                        location += f" ({config_parser.keyword})"
+                Logger.warn(
+                    f"{value} is not valid JSON{location}. Falling back to Python literal parsing. Please use valid JSON."
+                )
+            return literal_eval(value)
+
     # Converts a string representing a defined constant into its value. The
     # defined constants are the minimum and maximum values for all the
     # allowable data types. [MIN/MAX]_[U]INT[8/16/32] and
@@ -410,6 +465,7 @@ class ConfigParser:
         self.parameters = []
         self.line = ""
         errors = []
+        pattern = re.compile(rx, re.X)
 
         # Type checker hint: line_buffer is guaranteed to be str within this method
         line_buffer: str = self.line
@@ -460,7 +516,7 @@ class ConfigParser:
             # Update self.line for external access
             self.line = line_buffer
 
-            data = re.compile(rx, re.X).findall(line_buffer)
+            data = pattern.findall(line_buffer)
             first_item = ""
             if len(data) > 0:
                 first_item += data[0]

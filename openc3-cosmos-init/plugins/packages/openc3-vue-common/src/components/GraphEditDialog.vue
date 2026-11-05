@@ -56,8 +56,29 @@
             </v-row>
           </div>
           <div class="edit-box">
-            <v-card-text class="pa-0">
-              Select a start date/time for the graph. Leave blank for start now.
+            <v-card-text class="pa-0 d-flex align-center">
+              <span>
+                Select a start date/time for the graph. Leave blank to start at
+                current time.
+              </span>
+              <v-spacer />
+              <v-btn
+                size="small"
+                variant="outlined"
+                class="mr-2"
+                data-test="edit-graph-last-hour"
+                @click="setLastHour"
+              >
+                Last Hour
+              </v-btn>
+              <v-btn
+                size="small"
+                variant="outlined"
+                data-test="edit-graph-clear-start"
+                @click="clearStart"
+              >
+                Clear
+              </v-btn>
             </v-card-text>
             <v-row>
               <v-col>
@@ -66,6 +87,7 @@
                   label="Start Date"
                   :name="`date${Date.now()}`"
                   :rules="[rules.date]"
+                  :error-messages="startDateError"
                   type="date"
                 />
               </v-col>
@@ -74,12 +96,24 @@
                   v-model="startTime"
                   label="Start Time"
                   :rules="[rules.time]"
+                  :error-messages="startTimeError"
                 />
               </v-col>
             </v-row>
-            <v-card-text class="pa-0">
-              Select a end date/time for the graph. Leave blank for continuous
-              real-time graphing.
+            <v-card-text class="pa-0 d-flex align-center">
+              <span>
+                Select a end date/time for the graph. Leave blank for continuous
+                real-time graphing.
+              </span>
+              <v-spacer />
+              <v-btn
+                size="small"
+                variant="outlined"
+                data-test="edit-graph-clear-end"
+                @click="clearEnd"
+              >
+                Clear
+              </v-btn>
             </v-card-text>
             <v-row>
               <v-col>
@@ -88,6 +122,7 @@
                   label="End Date"
                   :name="`date${Date.now()}`"
                   :rules="[rules.date]"
+                  :error-messages="endDateError"
                   type="date"
                 />
               </v-col>
@@ -96,6 +131,7 @@
                   v-model="endTime"
                   label="End Time"
                   :rules="[rules.time]"
+                  :error-messages="endTimeError"
                 />
               </v-col>
             </v-row>
@@ -108,22 +144,35 @@
             </v-card-text>
             <v-row dense>
               <v-col class="px-2">
-                <v-text-field
+                <v-number-input
                   v-model="graph.graphMinY"
+                  control-variant="stacked"
                   hide-details
                   label="Min Y Axis (Optional)"
-                  type="number"
                 />
               </v-col>
               <v-col class="px-2">
-                <v-text-field
+                <v-number-input
                   v-model="graph.graphMaxY"
+                  control-variant="stacked"
                   hide-details
                   label="Max Y Axis (Optional)"
-                  type="number"
                 />
               </v-col>
             </v-row>
+          </div>
+          <div class="edit-box">
+            <v-card-text class="pa-0"> Draw style for data series </v-card-text>
+            <v-select
+              v-model="selectedDrawStyle"
+              label="Draw Style"
+              hide-details
+              :items="drawStyles"
+              item-title="title"
+              item-value="value"
+              style="max-width: 280px"
+              data-test="draw-style-select"
+            />
           </div>
           <div class="edit-box">
             <v-list density="compact" class="horizontal-lines">
@@ -167,15 +216,10 @@
           </div>
           <div class="edit-box">
             <v-card-text class="pa-0 text-medium-emphasis">
-              Choose a different item to use for the graph's X axis. If
-              unchecked, the graph will use the packet's PACKET_TIMESECONDS item
-              if it exists, otherwise it will use RECEIVED_TIMESECONDS.
-              <br />
-              <span class="font-italic">
-                Note that the graph may not work correctly if you choose an item
-                that does not strictly increase in value. It is recommended to
-                use a counter or timestamp.
-              </span>
+              Choose a different item to use for the graph's X axis to create an
+              X-Y plot. If unchecked, the graph will use the packet's
+              PACKET_TIMESECONDS item if it exists, otherwise it will use
+              RECEIVED_TIMESECONDS.
             </v-card-text>
             <v-checkbox
               v-model="customXAxisEnabled"
@@ -183,6 +227,7 @@
               label="Custom X axis item"
               density="compact"
               hide-details
+              data-test="custom-x-axis-checkbox"
               @update:model-value="customXAxisToggled"
             />
             <v-card-text
@@ -204,6 +249,29 @@
               @on-set="xAxisItemChanged"
               @add-item="xAxisItemSelected"
             />
+          </div>
+          <div v-if="!xAxisIsTime" class="edit-box">
+            <v-card-text class="pa-0">
+              Set a min or max X value to override automatic scaling
+            </v-card-text>
+            <v-row dense>
+              <v-col class="px-2">
+                <v-number-input
+                  v-model="graph.graphMinX"
+                  control-variant="stacked"
+                  hide-details
+                  label="Min X Axis (Optional)"
+                />
+              </v-col>
+              <v-col class="px-2">
+                <v-number-input
+                  v-model="graph.graphMaxX"
+                  control-variant="stacked"
+                  hide-details
+                  label="Max X Axis (Optional)"
+                />
+              </v-col>
+            </v-row>
           </div>
         </v-tabs-window-item>
         <v-tabs-window-item value="2" eager>
@@ -235,7 +303,9 @@
       <v-card-actions class="px-2">
         <v-spacer />
         <v-btn variant="outlined" @click="$emit('cancel')"> Cancel </v-btn>
-        <v-btn variant="flat" @click="closeOk"> Ok </v-btn>
+        <v-btn variant="flat" :disabled="isInvalid" @click="closeOk">
+          Ok
+        </v-btn>
       </v-card-actions>
     </v-card>
   </v-dialog>
@@ -302,6 +372,22 @@ export default {
       type: String,
       default: '__time',
     },
+    xAxisIsTime: {
+      type: Boolean,
+      default: true,
+    },
+    drawStyle: {
+      type: String,
+      default: 'lines',
+    },
+    graphMinX: {
+      type: Number,
+      default: null,
+    },
+    graphMaxX: {
+      type: Number,
+      default: null,
+    },
   },
   emits: ['cancel', 'ok', 'remove', 'update:modelValue', 'update:xAxisItem'],
   data: function () {
@@ -310,8 +396,13 @@ export default {
       graph: {},
       customXAxisEnabled: false,
       selectedXAxisItem: null,
+      selectedDrawStyle: 'lines',
       pendingXAxisSelection: null,
       legendPositions: ['top', 'bottom', 'left', 'right'],
+      drawStyles: [
+        { title: 'Lines', value: 'lines' },
+        { title: 'Points', value: 'points' },
+      ],
       startDate: null,
       startTime: null,
       endDate: null,
@@ -327,7 +418,11 @@ export default {
         { title: 'Item Name', value: 'itemName' },
         { title: 'Actions', value: 'actions', sortable: false },
       ],
-      rules: {
+    }
+  },
+  computed: {
+    rules() {
+      return {
         date: (value) => {
           if (!value) return true
           try {
@@ -350,10 +445,26 @@ export default {
             return 'Invalid time (HH:MM:SS)'
           }
         },
-      },
-    }
-  },
-  computed: {
+      }
+    },
+    startDateError() {
+      return this.startTime && !this.startDate ? ['Start Date required'] : []
+    },
+    startTimeError() {
+      return this.startDate && !this.startTime ? ['Start Time required'] : []
+    },
+    endDateError() {
+      return this.endTime && !this.endDate ? ['End Date required'] : []
+    },
+    endTimeError() {
+      return this.endDate && !this.endTime ? ['End Time required'] : []
+    },
+    isInvalid() {
+      return (
+        !!this.startDate !== !!this.startTime ||
+        !!this.endDate !== !!this.endTime
+      )
+    },
     show: {
       get() {
         return this.modelValue
@@ -385,8 +496,12 @@ export default {
       items: this.items,
       graphMinY: this.graphMinY,
       graphMaxY: this.graphMaxY,
+      graphMinX: this.graphMinX,
+      graphMaxX: this.graphMaxX,
+      drawStyle: this.drawStyle,
       lines: [...this.lines],
     }
+    this.selectedDrawStyle = this.drawStyle
     this.customXAxisEnabled = this.xAxisItem && this.xAxisItem !== '__time'
     this.selectedXAxisItem = this.xAxisItem
     // Set the date and time if they pass a dateTime or set a default
@@ -394,11 +509,6 @@ export default {
     if (this.startDateTime) {
       // Use the passed dateTime as is
       let date = toDate(this.startDateTime / 1000000)
-      this.startDate = this.formatDate(date, this.timeZone)
-      this.startTime = this.formatTimeHMS(date, this.timeZone)
-    } else {
-      // Create a new date 1 hr in the past as a default
-      let date = new Date() - 3600000
       this.startDate = this.formatDate(date, this.timeZone)
       this.startTime = this.formatTimeHMS(date, this.timeZone)
     }
@@ -411,17 +521,39 @@ export default {
   },
   methods: {
     closeOk() {
-      if (!!this.startDate && !!this.startTime) {
+      if (!!this.startDate !== !!this.startTime) {
+        this.tab = 0
+        return
+      }
+      if (!!this.endDate !== !!this.endTime) {
+        this.tab = 0
+        return
+      }
+      if (this.startDate && this.startTime) {
         this.graph.startDateTime = this.startDate + ' ' + this.startTime
       } else {
         this.graph.startDateTime = null
       }
-      if (!!this.endDate && !!this.endTime) {
+      if (this.endDate && this.endTime) {
         this.graph.endDateTime = this.endDate + ' ' + this.endTime
       } else {
         this.graph.endDateTime = null
       }
+      this.graph.drawStyle = this.selectedDrawStyle
       this.$emit('ok', this.graph)
+    },
+    setLastHour() {
+      const date = new Date(Date.now() - 3600000)
+      this.startDate = this.formatDate(date, this.timeZone)
+      this.startTime = this.formatTimeHMS(date, this.timeZone)
+    },
+    clearStart() {
+      this.startDate = null
+      this.startTime = null
+    },
+    clearEnd() {
+      this.endDate = null
+      this.endTime = null
     },
     addLine() {
       this.graph.lines.push({ yValue: 0, color: 'white' })
@@ -430,6 +562,7 @@ export default {
       let i = this.graph.lines.indexOf(dline)
       this.graph.lines.splice(i, 1)
     },
+
     customXAxisToggled(enabled) {
       if (!enabled) {
         this.selectedXAxisItem = '__time'

@@ -1,27 +1,53 @@
 # Make managed in .env-build
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
-ARG ALPINE_VERSION=3.23
-ARG ALPINE_BUILD=4
+ARG RUBY_VERSION=3.4
+ARG DEBIAN_RELEASE=trixie
 
-# Should be loaded from ARG
-FROM ${OPENC3_DEPENDENCY_REGISTRY}/alpine:${ALPINE_VERSION}.${ALPINE_BUILD}
+# The official ruby image is Debian slim based and provides a current Ruby that
+# Debian's own apt repositories do not package. Should be loaded from ARG.
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/ruby:${RUBY_VERSION}-slim-${DEBIAN_RELEASE}
 
-# An ARG declared before a FROM is outside of a build stage, so it can’t be
-# used in any instruction after a FROM. So we need to re-ARG ALPINE_VERSION
-
-ARG ALPINE_VERSION
-ARG APK_URL
+# An ARG declared before a FROM is outside of a build stage, so it can't be
+# used in any instruction after a FROM. So we need to re-ARG the ones we use.
+ARG RUBY_VERSION
+ARG APT_URL=http://deb.debian.org
+# Debian point release this image must reach. The rolling `<codename>` base
+# tags keep their old base-files until Docker Official Images rebuilds, so the
+# apt upgrade below is what lands a point release - and a cached layer would
+# pin this image to the previous one indefinitely. Bumping this busts that
+# layer; the dpkg check fails the build if apt fell short (stale APT_URL
+# mirror). scripts/release/package_audit.rb verifies it against deb.debian.org.
+ARG DEBIAN_POINT_RELEASE=13.7
+# Python minor version shipped by the chosen Debian release (trixie -> 3.13)
+ARG PYTHON_VERSION=3.13
 ARG RUBYGEMS_URL
 ARG PYPI_URL=https://pypi.org
+# Set to any value to trust the PYPI_URL host when pip installs uv below, for a
+# plain-HTTP or self-signed mirror. Same switch the runtime uses for uv's
+# --allow-insecure-host. Build-time only: compose.yaml sets the runtime value.
+ARG OPENC3_PYPI_ALLOW_INSECURE=
+# Update Dockerfile-ubi and the python .github/workflow actions to match this version
+ARG OPENC3_UV_VERSION=0.13.5
 
-ENV ALPINE_VERSION=${ALPINE_VERSION}
-ENV APK_URL=${APK_URL}
+ENV APT_URL=${APT_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
 ENV PYPI_URL=${PYPI_URL}
+ENV OPENC3_UV_VERSION=${OPENC3_UV_VERSION}
 
-# NOTE: This must match the alpine image used above in FROM
-RUN echo "${APK_URL}/alpine/v${ALPINE_VERSION}/main" > /etc/apk/repositories && \
-    echo "${APK_URL}/alpine/v${ALPINE_VERSION}/community" >> /etc/apk/repositories
+# The official ruby image redirects gem installs to /usr/local/bundle via
+# GEM_HOME. Reset it to Ruby's compiled-in default dir so that at runtime (where
+# compose sets GEM_HOME=/gems and no GEM_PATH) the base gems remain on the
+# default gem path, matching the previous Alpine layout.
+ENV GEM_HOME=/usr/local/lib/ruby/gems/${RUBY_VERSION}.0
+
+# Point apt at the configured mirror (default is the official Debian CDN, so this
+# is a no-op unless APT_URL is overridden). Handles both the single-file
+# sources.list (bookworm) and the deb822 format (trixie).
+RUN for f in /etc/apt/sources.list /etc/apt/sources.list.d/debian.sources; do \
+      [ -f "$f" ] && sed -i \
+        "s|http://deb.debian.org|${APT_URL}|g; s|http://security.debian.org|${APT_URL}|g" \
+        "$f" || true; \
+    done
 
 LABEL maintainer="support@openc3.com"
 
@@ -36,65 +62,131 @@ ENV NODE_EXTRA_CA_CERTS=/devel/cacert.pem
 
 ENV NOKOGIRI_USE_SYSTEM_LIBRARIES=1
 
+# Grow the Ruby heap in smaller steps (default 1.8). Loading large cmd/tlm
+# definitions otherwise overshoots and the extra heap pages are never released.
+# Measured ~15% lower RSS on a 500k item definition for ~2% more parse time.
+ENV RUBY_GC_HEAP_GROWTH_FACTOR=1.2
+# Limit glibc malloc arenas. Multi-threaded Ruby processes (Puma, microservice
+# threads) otherwise create up to 8x CPU arenas, and the resulting fragmentation
+# keeps RSS permanently elevated after transient allocation spikes.
+# Can be overridden at runtime by setting MALLOC_ARENA_MAX in the environment.
+ENV MALLOC_ARENA_MAX=2
+
 COPY .gemrc /root/.gemrc
 RUN sed -i "s|RUBYGEMS_URL|${RUBYGEMS_URL}|g" /root/.gemrc && \
     cp /root/.gemrc /etc/gemrc
 ENV GEMRC=/etc/gemrc
 
-COPY anycable* /usr/bin
-RUN /usr/bin/anycable_install.sh
+# Pin bundler's global config to a fixed path so it stays effective in
+# downstream images that change HOME. The mirror entry itself is configured in
+# the apt step below (once bundler is installed).
+ENV BUNDLE_USER_CONFIG=/etc/bundle/config
 
 COPY shoreman.sh /usr/bin/shoreman
 
-RUN apk update && \
-    apk upgrade && \
-    apk add --no-cache \
+RUN apt-get update && \
+    apt-get -y upgrade && \
+    dpkg --compare-versions "$(cat /etc/debian_version)" ge "${DEBIAN_POINT_RELEASE}" && \
+    echo "debian $(cat /etc/debian_version)" > /etc/openc3-base-os && \
+    apt-get install -y --no-install-recommends \
       autoconf \
       automake \
-      build-base \
+      build-essential \
       ca-certificates \
       cmake \
       curl \
       git \
       htop \
       less \
-      libc6-compat \
       # Ruby 3.2+ no longer bundles libffi so explicitly include
       libffi-dev \
+      libpq-dev \
+      libssl-dev \
       libtool \
       libxml2-dev \
-      libxslt-dev \
-      libpq-dev \
-      openblas-dev \
+      libxslt1-dev \
+      # Ruby 3.2+ no longer bundles libyaml so explicitly include
+      libyaml-dev \
+      libzmq3-dev \
+      # nc (busybox provided this on Alpine); netcat-openbsd supplies /usr/bin/nc
+      netcat-openbsd \
       openssl \
-      openssl-dev \
-      py3-pip \
+      pkg-config \
       python3 \
       python3-dev \
-      rbspy \
-      ruby \
-      ruby-bigdecimal \
-      ruby-dev \
+      python3-pip \
+      python3-venv \
       tini \
-      # Ruby 3.2+ no longer bundles libyaml so explicitly include
-      yaml-dev \
-      zeromq-dev && \
+      unzip \
+      vim && \
     gem update --system 3.7.2 && \
     gem install rake && \
     gem install google-protobuf && \
     gem install grpc && \
+    # resolv 0.7.2 fixes CVE-2026-80212. Ruby ships resolv as a default gem
+    # (0.7.1 in 3.4.10) and a default gem cannot be uninstalled,
+    # so install the patched gem and then delete the default gemspec along with
+    # the stdlib copy of resolv.rb that it describes. Without that removal image
+    # scanners keep reporting the bundled version, and a require "resolv" from a
+    # bundle that does not list resolv would still load the vulnerable code.
+    gem install resolv -v 0.7.2 && \
+    rm -f "$(ruby -e 'print Gem.default_specifications_dir')"/resolv-[0-9]*.gemspec && \
+    rm -f "$(ruby -e 'print RbConfig::CONFIG["rubylibdir"]')"/resolv.rb && \
     gem cleanup && \
     bundle config build.nokogiri --use-system-libraries && \
     bundle config git.allow_insecure true && \
-    python3 -m pip install --break-system-packages uv
+    # Route bundler through the same RUBYGEMS_URL mirror that .gemrc uses for the
+    # gem command, so a custom mirror supplies gems while the Gemfile 'source'
+    # (and thus Gemfile.lock's remote) stays the constant https://rubygems.org.
+    if [ "${RUBYGEMS_URL}" != "https://rubygems.org" ]; then \
+      bundle config set --global mirror.https://rubygems.org "${RUBYGEMS_URL}"; \
+    fi && \
+    chmod -R a+rX /etc/bundle && \
+    # Install uv from the PYPI_URL mirror too - without --index-url pip always
+    # reaches for pypi.org, which fails an air-gapped build before any relock.
+    # OPENC3_PYPI_ALLOW_INSECURE trusts the PYPI_URL host[:port] (scheme, user
+    # info and path stripped); pip treats an empty PIP_TRUSTED_HOST as none.
+    # --only-binary: uv ships wheels for every platform we build, so never run a
+    # setup script from an sdist, even if the mirror serves one.
+    PYPI_HOST="${PYPI_URL#*://}" && PYPI_HOST="${PYPI_HOST%%/*}" && \
+    PIP_TRUSTED_HOST="${OPENC3_PYPI_ALLOW_INSECURE:+${PYPI_HOST##*@}}" python3 -m pip install --break-system-packages \
+      --only-binary :all: --index-url "${PYPI_URL%/}/simple" "uv==${OPENC3_UV_VERSION}" && \
+    rm -rf /var/lib/apt/lists/*
 
 # Configure UV for production container usage
 ENV UV_LINK_MODE=copy
 ENV UV_COMPILE_BYTECODE=1
 ENV UV_PYTHON_DOWNLOADS=never
+# Route uv at the configured PyPI mirror (no-op at the default pypi.org). Matches
+# the runtime pip -i <pypi_url>/simple convention so air-gapped builds resolve
+# Python deps from the same mirror the runtime plugin installs use. A trailing
+# slash on PYPI_URL is dropped so a mirror URL ending in / does not give //simple.
+ENV UV_DEFAULT_INDEX=${PYPI_URL%/}/simple
+
+# That index steers dependency *resolution* only - uv.lock pins absolute
+# pythonhosted.org URLs that `uv sync --frozen` fetches verbatim, so the mirror
+# would never be contacted. Derived images run this helper before each frozen
+# sync to relock against PYPI_URL when a mirror is configured; it is a no-op at
+# the default pypi.org. See the script for the full explanation.
+COPY --chmod=0755 uv_mirror_relock.sh /usr/local/bin/uv-mirror-relock
+
+# Use the Debian system Python instead of the project's .python-version pin
+# (which targets 3.12 for host development) since UV_PYTHON_DOWNLOADS is never.
+ENV UV_PYTHON=python${PYTHON_VERSION}
 
 # Set Python executable path for microservices (uses venv to support editable installs)
 ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
+
+# rbspy - https://github.com/rbspy/rbspy
+# Not packaged for Debian, so ship the prebuilt release binary per architecture.
+ARG RBSPY_VERSION=0.49.0
+ARG TARGETARCH
+COPY rbspy-*-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz /tmp/
+RUN RB_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "aarch64" || echo "x86_64") && \
+    tar -xzf "/tmp/rbspy-${RB_ARCH}-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz" -C /tmp && \
+    mv "/tmp/rbspy-${RB_ARCH}-unknown-linux-gnu" /usr/local/bin/rbspy && \
+    chmod +x /usr/local/bin/rbspy && \
+    rm -f /tmp/rbspy-*-unknown-linux-gnu-"${RBSPY_VERSION}".tar.gz
 
 # libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
@@ -105,6 +197,7 @@ RUN tar -xzf libsocketcan-0.0.12.tar.gz && \
     ./configure && \
     make && \
     make install && \
+    ldconfig && \
     cd /opt && \
     rm -rf libsocketcan-0.0.12 && \
     rm libsocketcan-0.0.12.tar.gz
@@ -122,7 +215,8 @@ RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip && \
     cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USR_RTABLE=ON && \
     make && \
     make install && \
-    cp libcsp_py3* /usr/lib/python3.12/lib-dynload/. && \
+    ldconfig && \
+    cp libcsp_py3* "/usr/lib/python${PYTHON_VERSION}/lib-dynload/." && \
     cd /opt && \
     rm -rf libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 && \
     rm libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
@@ -134,11 +228,11 @@ ENV USER_ID=1001
 ENV GROUP_ID=1001
 # The build time venv is at /openc3/python/.venv and the runtime venv is at /gems/python_packages
 # NOTE: This is declared as PYTHONUSERBASE: "/gems/python_packages" in compose.yaml
-ENV PYTHONPATH=/openc3/python/.venv/lib/python3.12/site-packages/:/gems/python_packages/lib/python3.12/site-packages/
-RUN addgroup -g "${GROUP_ID}" -S "${IMAGE_GROUP}" && \
-    adduser -u "${USER_ID}" -G "${IMAGE_GROUP}" -s /bin/ash -S "${IMAGE_USER}"
+ENV PYTHONPATH=/openc3/python/.venv/lib/python${PYTHON_VERSION}/site-packages/:/gems/python_packages/lib/python${PYTHON_VERSION}/site-packages/
+RUN groupadd -g "${GROUP_ID}" "${IMAGE_GROUP}" && \
+    useradd -u "${USER_ID}" -g "${IMAGE_GROUP}" -s /bin/bash "${IMAGE_USER}"
 
 # Switch to user
 USER ${USER_ID}:${GROUP_ID}
 
-ENTRYPOINT [ "/sbin/tini", "--" ]
+ENTRYPOINT [ "/usr/bin/tini", "--" ]

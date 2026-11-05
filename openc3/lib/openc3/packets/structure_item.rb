@@ -143,7 +143,8 @@ module OpenC3
       raise ArgumentError, "name must be a String but is a #{name.class}" unless String === name
       raise ArgumentError, "name must contain at least one character" if name.empty?
 
-      @name = name.upcase.clone.freeze
+      # Dedup since many packets share the same item names
+      @name = -name.upcase
       verify_overall() if @structure_item_constructed
     end
 
@@ -151,7 +152,7 @@ module OpenC3
       raise ArgumentError, "key must be a String but is a #{key.class}" unless String === key
       raise ArgumentError, "key must contain at least one character" if key.empty?
 
-      @key = key
+      @key = -key
     end
 
     def endianness=(endianness)

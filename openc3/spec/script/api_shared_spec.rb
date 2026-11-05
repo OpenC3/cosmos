@@ -171,12 +171,53 @@ module OpenC3
         $disconnect = false
       end
 
-      it "warns when checking a state against a constant" do
+      it "accepts an unquoted state name" do
         capture_io do |stdout|
           check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'")
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'/)
+          check("INST HEALTH_STATUS CCSDSSHF == FALSE")
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF == FALSE success with value == 'FALSE'/)
         end
-        expect { check("INST HEALTH_STATUS CCSDSSHF == FALSE") }.to raise_error(NameError, "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?")
+        # A bare word which is not a state name is still almost always a missing quote
+        expect { check("INST HEALTH_STATUS CCSDSSHF == MAYBE") }.to raise_error(NameError, "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?")
+        expect { check("INST HEALTH_STATUS CCSDSSHF in FALSE") }.to raise_error(/The 'in' operator requires a list operand: "FALSE"/)
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS CCSDSSHF in [FALSE, TRUE]")
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF in \[FALSE, TRUE\] success with value == 'FALSE'/)
+        end
+      end
+
+      it "compares state names case insensitively" do
+        # https://github.com/OpenC3/cosmos/issues/4046
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS CCSDSSHF == 'false'")
+          expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS CCSDSSHF == 'false' success with value == 'FALSE'/)
+          check("INST HEALTH_STATUS CCSDSSHF != 'true'")
+          check("INST HEALTH_STATUS CCSDSSHF in ['True', 'False']")
+          check_formatted("INST HEALTH_STATUS CCSDSSHF == 'False'")
+        end
+        expect { check("INST HEALTH_STATUS CCSDSSHF == 'true'") }.to raise_error(CheckError, /CHECK: INST HEALTH_STATUS CCSDSSHF == 'true' failed/)
+        # RAW values are never state names so the comparison is exact
+        expect { check_raw("INST HEALTH_STATUS CCSDSSHF == 'false'") }.to raise_error(CheckError, /CHECK: INST HEALTH_STATUS CCSDSSHF == 'false' failed/)
+      end
+
+      it "compares strings without states case sensitively" do
+        expect { check_formatted("INST HEALTH_STATUS TEMP1 == '10.000 c'") }.to raise_error(CheckError, /CHECK: INST HEALTH_STATUS TEMP1 == '10.000 c' failed/)
+      end
+
+      it "only looks up states when comparing strings" do
+        allow(self).to receive(:get_item).and_call_original
+        capture_io do |_stdout|
+          check("INST HEALTH_STATUS TEMP1 == 10")
+          check("INST HEALTH_STATUS TEMP1 in [10, 11]")
+          wait_check("INST HEALTH_STATUS TEMP1 > 1", 0.01)
+          expect(self).not_to have_received(:get_item)
+          check("INST HEALTH_STATUS CCSDSSHF == 'false'")
+          expect(self).to have_received(:get_item).once
+          # RAW values are never state names
+          expect { check_raw("INST HEALTH_STATUS CCSDSSHF == 'false'") }.to raise_error(CheckError)
+          expect(self).to have_received(:get_item).once
+        end
       end
 
       it "raises with an invalid operator" do
@@ -253,7 +294,7 @@ module OpenC3
           check_exception("check", "INST HEALTH_STATUS TEMP1 == 9", type: :RAW, scope: "DEFAULT")
           expect(stdout.string).to match(/CHECK: INST HEALTH_STATUS TEMP1 == 9 failed/)
           check_exception("check", "INST HEALTH_STATUS TEMP1 == 9", type: :RAW, scope: "OTHER")
-          expect(stdout.string).to match(/Packet 'INST HEALTH_STATUS' does not exist/)
+          expect(stdout.string).to match(/Packet definition 'INST HEALTH_STATUS' does not exist/)
         end
       end
 
@@ -654,13 +695,126 @@ module OpenC3
         expect { wait_check("INST HEALTH_STATUS BLOCKTEST == '#{data}'", 0.01) }.to raise_error(RuntimeError, "ERROR: Invalid comparison to non-ascii value")
       end
 
-      it "warns when checking a state against a constant" do
+      it "accepts an unquoted state name" do
         capture_io do |stdout|
           result = wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
           expect(result).to be_a Float
           expect(stdout.string).to include("CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'")
+          wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS CCSDSSHF == FALSE success with value == 'FALSE'")
         end
-        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01) }.to raise_error(NameError, "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?")
+        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01) }.to raise_error(NameError, "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?")
+      end
+
+      it "compares state names case insensitively with wait and wait_check" do
+        # https://github.com/OpenC3/cosmos/issues/4046
+        capture_io do |stdout|
+          wait_check("INST HEALTH_STATUS CCSDSSHF == 'false'", 0.01)
+          expect(stdout.string).to include("CHECK: INST HEALTH_STATUS CCSDSSHF == 'false' success with value == 'FALSE'")
+          expect(wait("INST HEALTH_STATUS CCSDSSHF == 'False'", 0.01)).to be true
+          expect(wait("INST HEALTH_STATUS CCSDSSHF in ['true', 'false']", 0.01)).to be true
+          expect(wait("INST HEALTH_STATUS CCSDSSHF == 'false'", 0.01, type: :RAW)).to be false
+        end
+      end
+    end
+
+    # check(), wait() and wait_check() all parse the same comparison syntax
+    # so they must all accept and reject exactly the same expressions
+    describe "check, wait, wait_check consistency" do
+      it "rejects operators which are not supported" do
+        # Bitwise and boolean operators are not part of the comparison syntax
+        ["&", "|", "^", "and", "or", "==="].each do |operator|
+          expect { check("INST HEALTH_STATUS TEMP1 #{operator} 1") }.to raise_error(RuntimeError, /ERROR: Invalid operator: '#{Regexp.escape(operator)}'/)
+          expect { wait("INST HEALTH_STATUS TEMP1 #{operator} 1", 0.01) }.to raise_error(RuntimeError, /ERROR: Invalid operator: '#{Regexp.escape(operator)}'/)
+          expect { wait_check("INST HEALTH_STATUS TEMP1 #{operator} 1", 0.01) }.to raise_error(RuntimeError, /ERROR: Invalid operator: '#{Regexp.escape(operator)}'/)
+        end
+      end
+
+      it "rejects compound expressions" do
+        # https://github.com/OpenC3/cosmos/issues/3802
+        expression = "INST HEALTH_STATUS TIMEUS & 0x0001 == 0x0000"
+        expect { check(expression) }.to raise_error(RuntimeError, /ERROR: Invalid operator: '&'/)
+        expect { wait(expression, 0.01) }.to raise_error(RuntimeError, /ERROR: Invalid operator: '&'/)
+        expect { wait_check(expression, 0.01) }.to raise_error(RuntimeError, /ERROR: Invalid operator: '&'/)
+      end
+
+      it "rejects operators without an operand" do
+        expect { check("INST HEALTH_STATUS TEMP1 >") }.to raise_error(RuntimeError, /must specify an operand/)
+        expect { wait("INST HEALTH_STATUS TEMP1 >", 0.01) }.to raise_error(RuntimeError, /must specify an operand/)
+        expect { wait_check("INST HEALTH_STATUS TEMP1 >", 0.01) }.to raise_error(RuntimeError, /must specify an operand/)
+      end
+
+      it "suggests a string when comparing against a bare word" do
+        error = "Unknown state name MAYBE. Did you mean 'MAYBE' as a string?"
+        expect { check("INST HEALTH_STATUS CCSDSSHF == MAYBE") }.to raise_error(NameError, error)
+        expect { wait("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01) }.to raise_error(NameError, error)
+        expect { wait_check("INST HEALTH_STATUS CCSDSSHF == MAYBE", 0.01) }.to raise_error(NameError, error)
+      end
+
+      it "accepts state names ignoring case" do
+        capture_io do |stdout|
+          # Note "false" would be a boolean literal so mixed case is used
+          check("INST HEALTH_STATUS CCSDSSHF == fAlSe")
+          expect(wait("INST HEALTH_STATUS CCSDSSHF == fAlSe", 0.01)).to be true
+          wait_check("INST HEALTH_STATUS CCSDSSHF == fAlSe", 0.01)
+          expect(stdout.string).not_to include("failed")
+        end
+      end
+
+      it "accepts hex operands" do
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS TEMP1 == 0x0A") # TEMP1 is 10
+          expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 == 0x0A success with value == 10')
+          expect(wait("INST HEALTH_STATUS TEMP1 == 0x0A", 0.01)).to be true
+          expect(wait_check("INST HEALTH_STATUS TEMP1 == 0x0A", 0.01)).to be_a Float
+        end
+      end
+
+      it "rejects ambiguous leading zero integers" do
+        # Ruby reads 010 as octal 8 while Python rejects it outright so require 0o10 or 10
+        expect { check("INST HEALTH_STATUS TEMP1 == 010") }.to raise_error(/ERROR: Unable to parse operand: 010/)
+        expect { wait("INST HEALTH_STATUS TEMP1 == 010", 0.01) }.to raise_error(/ERROR: Unable to parse operand: 010/)
+        expect { wait_check("INST HEALTH_STATUS TEMP1 == 010", 0.01) }.to raise_error(/ERROR: Unable to parse operand: 010/)
+      end
+
+      it "rejects a comparison which is not a single complete quoted literal" do
+        comparison = "INST HEALTH_STATUS CCSDSSHF == 'a' garbage 'b'"
+        expect { check(comparison) }.to raise_error(/ERROR: Unable to parse operand/)
+        expect { wait(comparison, 0.01) }.to raise_error(/ERROR: Unable to parse operand/)
+        expect { wait_check(comparison, 0.01) }.to raise_error(/ERROR: Unable to parse operand/)
+      end
+
+      it "requires a list operand for the in operator" do
+        error = /ERROR: The 'in' operator requires a list operand/
+        expect { check("INST HEALTH_STATUS TEMP1 in 'abc'") }.to raise_error(error)
+        expect { wait("INST HEALTH_STATUS TEMP1 in 'abc'", 0.01) }.to raise_error(error)
+        expect { wait_check("INST HEALTH_STATUS TEMP1 in 'abc'", 0.01) }.to raise_error(error)
+
+        capture_io do |stdout|
+          check("INST HEALTH_STATUS TEMP1 in [1, 10]") # TEMP1 is 10
+          expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 in [1, 10] success with value == 10')
+          expect(wait("INST HEALTH_STATUS TEMP1 in [1, 10]", 0.01)).to be true
+          expect(wait_check("INST HEALTH_STATUS TEMP1 in [1, 10]", 0.01)).to be_a Float
+        end
+      end
+
+      it "ignores the comparison when wait_check is given a block" do
+        # The block is the condition so the text after the item name is never parsed
+        capture_io do |stdout|
+          result = wait_check("INST HEALTH_STATUS TEMP1 & 0x1", 0.01) do |value|
+            value == 10
+          end
+          expect(result).to be_a Float
+          expect(stdout.string).to include('CHECK: INST HEALTH_STATUS TEMP1 & 0x1 success with value == 10')
+        end
+      end
+
+      it "still rejects non-ascii comparison text when wait_check is given a block" do
+        # The comparison text is logged even when a block is the condition
+        data = "\xFF" * 10
+        expect {
+          wait_check("INST HEALTH_STATUS BLOCKTEST == '#{data}'", 0.01) { |_value| true }
+        }.to raise_error(RuntimeError, "ERROR: Invalid comparison to non-ascii value")
       end
     end
 
@@ -768,6 +922,10 @@ module OpenC3
         describe "wait_packet" do
           before(:each) do
             @sleep_cancel = cancel
+          end
+
+          it "complains about LATEST" do
+            expect { wait_packet("INST", "latest", 1, 0.1) }.to raise_error(/LATEST is not supported by wait_packet/)
           end
 
           it "prints warning if packet not received" do

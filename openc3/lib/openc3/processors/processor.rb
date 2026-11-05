@@ -15,6 +15,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/packets/packet'
+
 module OpenC3
   class Processor
     # @return [Symbol] The value type for the processor

@@ -163,17 +163,21 @@
       v-if="editGraph"
       v-model="editGraph"
       v-model:x-axis-item="xAxisItem"
+      :draw-style="drawStyle"
       :title="title"
       :legend-position="legendPosition"
       :items="items"
       :graph-min-y="graphMinY"
       :graph-max-y="graphMaxY"
+      :graph-min-x="graphMinX"
+      :graph-max-x="graphMaxX"
       :lines="lines"
       :colors="colors"
       :start-date-time="graphStartDateTime"
       :end-date-time="graphEndDateTime"
       :time-zone="timeZone"
       :x-axis-item-packet="allowableXAxisItemPacket"
+      :x-axis-is-time="xAxisIsTime"
       @remove="removeItems([$event])"
       @ok="editGraphClose"
       @cancel="editGraph = false"
@@ -321,7 +325,11 @@ import GraphEditDialog from './GraphEditDialog.vue'
 import GraphEditItemDialog from './GraphEditItemDialog.vue'
 import uPlot from 'uplot'
 import bs from 'binary-search'
-import { OpenC3Api, Cable } from '@openc3/js-common/services'
+import {
+  OpenC3Api,
+  Cable,
+  logUnlessAuthRequired,
+} from '@openc3/js-common/services'
 import { useStore } from '@/plugins/store'
 import { TimeFilters } from '@/util'
 import 'uplot/dist/uPlot.min.css'
@@ -333,6 +341,23 @@ const DEFAULT_X_AXIS_ITEM = '__time'
 // A good rule of thumb is to stay within roughly half the frame budget, so 8–10ms.
 // This leaves the other ~7–8ms for the browser to do layout, paint, compositing, and GC.
 const MAX_PROCESSING_MS = 10
+// Deadband (seconds) applied when comparing the projected realtime x-axis max
+// against the newest received x-axis value. Small enough that a real offset is
+// corrected immediately, large enough that normal packet arrival jitter does
+// not re-anchor (and thus horizontally shift) the plot on every sample.
+const REALTIME_ANCHOR_TOLERANCE = 0.25
+// Minimum on screen movement (CSS pixels) of the right edge required to bother
+// applying a new realtime x scale. With a wide window a single animation frame
+// can move the axis a small fraction of a pixel, and every applied scale costs
+// a full uPlot redraw.
+const MIN_SCROLL_PIXELS = 0.5
+// How far past the newest point the realtime right edge may scroll, as a
+// fraction of secondsGraphed, before it stops advancing. Without this the axis
+// scrolls forever when data stops arriving (interface down, reduced streaming
+// with no producer) and the data eventually leaves the window entirely, so the
+// graph goes blank. At 0.5 the newest data is still visible in the left half of
+// the window when scrolling stops.
+const MAX_EMPTY_WINDOW_FRACTION = 0.5
 
 export default {
   components: {
@@ -417,8 +442,10 @@ export default {
     'click',
     'close-graph',
     'edit',
+    'error',
     'min-max-graph',
     'pause',
+    'recovered',
     'resize',
     'start',
     'started',
@@ -461,9 +488,12 @@ export default {
       interval: null,
       graphMinY: null,
       graphMaxY: null,
+      graphMinX: null,
+      graphMaxX: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
       xAxisItem: this.initialXAxisItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
+      drawStyle: 'lines', // 'lines' or 'points'
       indexes: {},
       items: this.initialItems,
       graphItems: [],
@@ -477,7 +507,15 @@ export default {
       needToUpdate: false,
       pendingData: [],
       processingRAF: null,
+      scrollingRAF: null,
+      realtimeXAxisAnchor: null,
+      realtimeXAxisAnchorTime: null,
+      lastScrolledMax: null,
+      lastOverviewScaleTime: 0,
+      lastOverviewSelectTime: 0,
       lastRenderTime: 0,
+      subscribeTime: null,
+      emptyDataNotified: false,
       notifyNonNumeric: false,
       errorDialog: false,
       errors: [],
@@ -613,9 +651,13 @@ export default {
           // If we were paused we do nothing ... see the data function
           if (oldState === 'stop') {
             this.startGraph()
+          } else {
+            this.startRealtimeScrolling()
           }
           break
-        // case 'pause': Nothing to do ... see the data function
+        case 'pause':
+          this.stopRealtimeScrolling()
+          break
         case 'stop':
           this.stopGraph()
           break
@@ -672,7 +714,6 @@ export default {
               this.updateGraphData()
             })
             .catch((error) => {
-              // eslint-disable-next-line no-console
               console.error('Error fetching playback telemetry:', error)
             })
             .finally(() => {
@@ -705,6 +746,20 @@ export default {
       }
       this.setGraphRange()
     },
+    graphMinX: function (newVal) {
+      let val = Number.parseFloat(newVal)
+      if (Number.isFinite(val)) {
+        this.graphMinX = val
+      }
+      this.setGraphRange()
+    },
+    graphMaxX: function (newVal) {
+      let val = Number.parseFloat(newVal)
+      if (Number.isFinite(val)) {
+        this.graphMaxX = val
+      }
+      this.setGraphRange()
+    },
     graphStartDateTime: function (newVal, oldVal) {
       if (newVal && typeof newVal === 'string') {
         this.graphStartDateTime =
@@ -730,29 +785,24 @@ export default {
         this.graphEndDateTime = null
         this.needToUpdate = true
       }
+      if (this.graphEndDateTime) {
+        this.stopRealtimeScrolling()
+      } else {
+        this.startRealtimeScrolling()
+      }
     },
     actualXAxisItem: function (newVal, oldVal) {
-      let clonedItems = JSON.parse(JSON.stringify(this.items))
-      this.removeItems(clonedItems)
-      this.graph.destroy()
-      this.chartOpts.series[0].label = this.xAxisLabel
-      this.chartOpts.scales.x.time = this.xAxisIsTime
-      this.graph = new uPlot(
-        this.chartOpts,
-        this.data,
-        document.getElementById(`chart${this.id}`),
-      )
-      if (!this.hideOverview) {
-        this.overview.destroy()
-        this.overviewOpts.scales.x.time = this.xAxisIsTime
-        this.overview = new uPlot(
-          this.overviewOpts,
-          this.data,
-          document.getElementById(`overview${this.id}`),
-        )
+      this.rebuildChart()
+    },
+    drawStyle: function () {
+      if (!this.graph || this.items.length === 0) return
+      for (let i = this.items.length; i >= 1; i--) {
+        this.graph.delSeries(i)
       }
-      this.addItems(clonedItems)
-      // Don't need to $emit('edit') because addItems() does that
+      for (let i = 0; i < this.items.length; i++) {
+        this.graph.addSeries(this.createSeriesConfig(this.items[i]), i + 1)
+      }
+      this.graph.setData(this.data)
     },
     refreshIntervalMs: function (val) {
       if (this.interval) {
@@ -823,28 +873,8 @@ export default {
     // NOTE: These are just initial settings ... actual series are added by this.graph.addSeries
     const { chartSeries, overviewSeries } = this.items.reduce(
       (seriesObj, item) => {
-        const commonProps = {
-          spanGaps: true,
-        }
-        seriesObj.chartSeries.push({
-          ...commonProps,
-          item: item,
-          label: this.formatLabel(item),
-          stroke: (u, seriesIdx) => {
-            return this.items[seriesIdx - 1].color
-          },
-          width: 2,
-          value: (self, rawValue) => {
-            if (typeof rawValue === 'string' || Number.isNaN(rawValue)) {
-              return 'NaN'
-            } else {
-              return rawValue == null ? '--' : rawValue.toFixed(3)
-            }
-          },
-        })
-        seriesObj.overviewSeries.push({
-          ...commonProps,
-        })
+        seriesObj.chartSeries.push(this.createSeriesConfig(item))
+        seriesObj.overviewSeries.push(this.createOverviewSeriesConfig())
         return seriesObj
       },
       { chartSeries: [], overviewSeries: [] },
@@ -940,7 +970,12 @@ export default {
         hooks: {
           setScale: [
             (chart, key) => {
-              if (key === 'x' && !this.zoomOverview && this.overview) {
+              if (
+                key === 'x' &&
+                !this.zoomOverview &&
+                this.overview &&
+                this.overviewSyncDue('lastOverviewSelectTime')
+              ) {
                 this.zoomChart = true
                 let left = Math.round(
                   this.overview.valToPos(chart.scales.x.min, 'x'),
@@ -1094,8 +1129,7 @@ export default {
         // This must be the same or we're going to have problems
         // because the data comes back in an ordered array
         if (screenItems.length != data.length) {
-          // eslint-disable-next-line no-console
-          console.log(
+          console.error(
             'Error getting tlm available',
             screenItems,
             this.graphItems,
@@ -1103,13 +1137,39 @@ export default {
         }
       })
     },
+    rebuildChart: function () {
+      let clonedItems = JSON.parse(JSON.stringify(this.items))
+      this.removeItems(clonedItems)
+      this.graph.destroy()
+      this.chartOpts.series[0].label = this.xAxisLabel
+      this.chartOpts.scales.x.time = this.xAxisIsTime
+      this.graph = new uPlot(
+        this.chartOpts,
+        this.data,
+        document.getElementById(`chart${this.id}`),
+      )
+      if (!this.hideOverview) {
+        this.overview.destroy()
+        this.overviewOpts.scales.x.time = this.xAxisIsTime
+        this.overview = new uPlot(
+          this.overviewOpts,
+          this.data,
+          document.getElementById(`overview${this.id}`),
+        )
+      }
+      this.addItems(clonedItems)
+      this.startRealtimeScrolling()
+      // Don't need to $emit('edit') because addItems() does that
+    },
     startGraph: function () {
       this.subscribe()
       this.interval = setInterval(() => {
         this.updateGraphData()
       }, this.refreshIntervalMs)
+      this.startRealtimeScrolling()
     },
     stopGraph: function () {
+      this.stopRealtimeScrolling()
       if (this.processingRAF !== null) {
         cancelAnimationFrame(this.processingRAF)
         this.processingRAF = null
@@ -1124,9 +1184,215 @@ export default {
         this.interval = null
       }
     },
+    shouldScrollRealtime: function () {
+      return (
+        this.playbackMode !== 'playback' &&
+        this.state === 'start' &&
+        this.xAxisIsTime &&
+        !this.graphEndDateTime &&
+        this.graph !== null
+      )
+    },
+    startRealtimeScrolling: function () {
+      if (this.scrollingRAF === null && this.shouldScrollRealtime()) {
+        this.scrollingRAF = requestAnimationFrame(() =>
+          this.scrollRealtimeGraph(),
+        )
+      }
+    },
+    stopRealtimeScrolling: function () {
+      if (this.scrollingRAF !== null) {
+        cancelAnimationFrame(this.scrollingRAF)
+        this.scrollingRAF = null
+      }
+    },
+    scrollRealtimeGraph: function () {
+      this.scrollingRAF = null
+      if (!this.shouldScrollRealtime()) {
+        return
+      }
+
+      if (this.pendingData.length > 0 || this.processingRAF !== null) {
+        // Data is still being buffered or processed. updateGraphData() throttles
+        // renders during bursts and processDataBatch mutates the arrays uPlot
+        // holds, so leave both the data and the scale alone this frame.
+      } else if (this.dataChanged) {
+        // processDataBatch mutates the arrays already held by uPlot. Commit the
+        // batch before setScale causes a redraw, otherwise uPlot can briefly
+        // draw a new point using the previous cached line path. setData(_, false)
+        // nulls those cached paths without redrawing or autoscaling, so
+        // setXAxisScale below is the only redraw this frame. dataChanged is
+        // deliberately left set: the refreshIntervalMs interval still runs
+        // updateGraphData(), which is what clears it and refreshes the overview.
+        this.graph.setData(this.data, false)
+        this.setXAxisScale(this.getRealtimeXAxisMax())
+      } else {
+        const realtimeMax = this.getRealtimeXAxisMax()
+        if (this.xAxisPixelsMoved(realtimeMax) >= MIN_SCROLL_PIXELS) {
+          this.setXAxisScale(realtimeMax)
+        }
+      }
+      this.scrollingRAF = requestAnimationFrame(() =>
+        this.scrollRealtimeGraph(),
+      )
+    },
+    xAxisPixelsMoved: function (realtimeMax) {
+      // valToPos() uses the currently applied scale, so this is how far the
+      // right edge would move on screen if realtimeMax were applied.
+      if (this.lastScrolledMax === null) {
+        return Infinity
+      }
+      return Math.abs(
+        this.graph.valToPos(realtimeMax, 'x') -
+          this.graph.valToPos(this.lastScrolledMax, 'x'),
+      )
+    },
+    overviewSyncDue: function (stampKey) {
+      // Realtime scrolling changes the x scale every animation frame. Syncing
+      // the overview that often is wasted work: each sync redraws the overview,
+      // and it only gains new points at refreshIntervalMs anyway. User driven
+      // scale changes (zoom, pan) are never throttled.
+      if (this.scrollingRAF === null) {
+        return true
+      }
+      const now = performance.now()
+      if (now - this[stampKey] < this.refreshIntervalMs) {
+        return false
+      }
+      this[stampKey] = now
+      return true
+    },
+    getRealtimeXAxisMax: function () {
+      if (
+        this.realtimeXAxisAnchor === null ||
+        this.realtimeXAxisAnchorTime === null
+      ) {
+        return Date.now() / 1000
+      }
+      const projected =
+        this.realtimeXAxisAnchor +
+        (performance.now() - this.realtimeXAxisAnchorTime) / 1000
+      // The anchor is taken from the first batch we receive, which is historical
+      // whenever we subscribe with a start time. In that case the anchor starts
+      // an entire replay behind the live data and, without correction, the right
+      // edge would stay that far behind forever. Re-anchor whenever the newest
+      // point has passed the projection so the right edge can never clip live
+      // data. Only correct forwards: a point arriving late leaves the newest
+      // value behind the projection, and re-anchoring on that would drag the
+      // plot leftwards. It also keeps the axis scrolling through data outages,
+      // which is the whole point of the animation frame loop.
+      const latest = this.data[0]?.at(-1)
+      if (
+        latest !== undefined &&
+        latest - projected > REALTIME_ANCHOR_TOLERANCE
+      ) {
+        this.realtimeXAxisAnchor = latest
+        this.realtimeXAxisAnchorTime = performance.now()
+        return latest
+      }
+      // Stop advancing the right edge once it has run far enough past the newest
+      // point that the data is about to scroll out of the window. The anchor is
+      // deliberately left running so that the projection is still correct when
+      // data resumes and the right edge can snap straight back to live.
+      if (latest !== undefined && this.secondsGraphed > 0) {
+        const limit = latest + this.secondsGraphed * MAX_EMPTY_WINDOW_FRACTION
+        if (projected > limit) {
+          return limit
+        }
+      }
+      return projected
+    },
+    initializeRealtimeXAxisAnchor: function (latestXAxisValue) {
+      // Establish the relationship between telemetry time and the browser's
+      // monotonic clock once. Re-anchoring for every sample makes network
+      // jitter move the entire plot horizontally when a point arrives.
+      // getRealtimeXAxisMax() re-anchors later if the data outruns the
+      // projection, which is how a historical first batch gets corrected.
+      if (
+        this.realtimeXAxisAnchor === null ||
+        this.realtimeXAxisAnchorTime === null
+      ) {
+        this.realtimeXAxisAnchor = latestXAxisValue
+        this.realtimeXAxisAnchorTime = performance.now()
+      }
+    },
+    setXAxisScale: function (realtimeMax = null) {
+      const xAxisData = this.data[0]
+      if (xAxisData && xAxisData.length) {
+        let max = realtimeMax === null ? xAxisData.at(-1) : realtimeMax
+        // Do not show history from before the first received point. The right
+        // edge can advance into empty space, but the left edge should only
+        // begin scrolling once the configured time/point window is full.
+        const possibleMinValues = [xAxisData.at(0)]
+        if (this.pointsGraphed <= xAxisData.length) {
+          // Apply pointsGraphed as the duration spanned by that many points
+          // rather than as the timestamp of the point itself. A raw timestamp
+          // can only move when a point arrives, which makes the left edge step
+          // one sample at a time while the right edge scrolls smoothly.
+          // Measuring the duration and hanging it off max keeps both edges in
+          // sync. When max is the newest point (no realtime scrolling) this
+          // reduces exactly to that timestamp.
+          const pointsDuration =
+            xAxisData.at(-1) - xAxisData.at(-this.pointsGraphed)
+          possibleMinValues.push(max - pointsDuration)
+        }
+        if (this.xAxisIsTime) {
+          possibleMinValues.push(max - this.secondsGraphed)
+        }
+        const min = Math.max(...possibleMinValues)
+        // realtimeMax is decoupled from the data, so min can reach or pass it
+        // (e.g. pointsSaved trimming drops every point older than realtimeMax).
+        // uPlot needs min < max.
+        if (min >= max) {
+          max = min + 1
+        }
+        if (
+          this.overview &&
+          realtimeMax !== null &&
+          this.overviewSyncDue('lastOverviewScaleTime')
+        ) {
+          this.overview.setScale('x', { min: xAxisData.at(0), max })
+        }
+        this.graph.setScale('x', { min, max })
+      } else if (this.graphStartDateTime) {
+        const min = this.graphStartDateTime / 1_000_000_000
+        const max = this.graphEndDateTime
+          ? this.graphEndDateTime / 1_000_000_000
+          : realtimeMax || Date.now() / 1000
+        this.graph.setScale('x', { min, max })
+      } else if (realtimeMax !== null) {
+        const duration = this.secondsGraphed > 0 ? this.secondsGraphed : 3600
+        this.graph.setScale('x', {
+          min: realtimeMax - duration,
+          max: realtimeMax,
+        })
+      }
+      if (realtimeMax !== null) {
+        this.lastScrolledMax = realtimeMax
+      }
+    },
     updateGraphData: function () {
       // Ignore changes to the data while we're paused
-      if (this.state === 'pause' || !this.dataChanged) {
+      if (this.state === 'pause') {
+        return
+      }
+      // Check for empty-data notification independent of dataChanged: a truly
+      // empty time range never triggers a received() so dataChanged stays
+      // false and we'd never notify otherwise.
+      if (
+        !this.emptyDataNotified &&
+        this.graphStartDateTime &&
+        this.subscribeTime !== null &&
+        performance.now() - this.subscribeTime > 5000 &&
+        (!this.data[0] || this.data[0].length === 0)
+      ) {
+        this.emptyDataNotified = true
+        this.$notify.caution({
+          title: 'Empty graph data',
+          body: 'No data was returned for the selected time range.',
+        })
+      }
+      if (!this.dataChanged) {
         return
       }
       // Throttle renders while still receiving/processing burst data
@@ -1136,38 +1402,16 @@ export default {
           return
         }
       }
+      const realtimeMax = this.shouldScrollRealtime()
+        ? this.getRealtimeXAxisMax()
+        : null
       this.graph.setData(this.data)
       if (this.overview) {
         this.overview.setData(this.data)
       }
       this.lastRenderTime = performance.now()
 
-      const xAxisData = this.data[0]
-      if (xAxisData && xAxisData.length) {
-        let max = xAxisData.at(-1)
-        const possibleMinValues = [xAxisData.at(0)]
-        if (this.pointsGraphed <= xAxisData.length) {
-          possibleMinValues.push(xAxisData.at(-this.pointsGraphed))
-        }
-        if (this.xAxisIsTime) {
-          possibleMinValues.push(max - this.secondsGraphed)
-        }
-        const min = Math.max(...possibleMinValues)
-        if (min === max) {
-          max += 1
-        }
-        this.graph.setScale('x', { min, max })
-      } else if (this.graphStartDateTime) {
-        const min = this.graphStartDateTime / 1_000_000_000
-        const max = this.graphEndDateTime
-          ? this.graphEndDateTime / 1_000_000_000
-          : Date.now() / 1000
-        this.graph.setScale('x', { min, max })
-        this.$notify.caution({
-          title: 'Empty graph data',
-          body: 'No data was returned for the selected time range.',
-        })
-      }
+      this.setXAxisScale(realtimeMax)
 
       this.dataChanged = false
     },
@@ -1232,6 +1476,14 @@ export default {
     clearErrors: function () {
       this.errors = []
     },
+    // Our own error list is only reachable through the toolbar, which is hidden
+    // when we're embedded in a screen (LINEGRAPH), so also emit so the screen
+    // can show it. See emitScreenError in Widget.js.
+    addError: function (error) {
+      const entry = { time: new Date().getTime(), ...error }
+      this.errors.push(entry)
+      this.$emit('error', entry)
+    },
     editGraphClose: function (graph) {
       this.editGraph = false
       this.title = graph.title
@@ -1239,6 +1491,9 @@ export default {
       this.legendPosition = graph.legendPosition
       this.graphMinY = graph.graphMinY
       this.graphMaxY = graph.graphMaxY
+      this.graphMinX = graph.graphMinX
+      this.graphMaxX = graph.graphMaxX
+      this.drawStyle = graph.drawStyle
       this.lines = [...graph.lines]
       this.graphStartDateTime = graph.startDateTime
       this.graphEndDateTime = graph.endDateTime
@@ -1304,14 +1559,14 @@ export default {
       this.$emit('min-max-graph', this.id)
     },
     setGraphRange: function () {
-      let pad = 0.1
+      let yPad = 0.1
       if (
         this.graphMinY ||
         this.graphMinY === 0 ||
         this.graphMaxY ||
         this.graphMaxY === 0
       ) {
-        pad = 0
+        yPad = 0
       }
       this.graph.scales.y.range = (u, dataMin, dataMax) => {
         let min = dataMin
@@ -1322,7 +1577,20 @@ export default {
         if (this.graphMaxY || this.graphMaxY === 0) {
           max = this.graphMaxY
         }
-        return uPlot.rangeNum(min, max, pad, true)
+        return uPlot.rangeNum(min, max, yPad, true)
+      }
+      if (!this.xAxisIsTime) {
+        this.graph.scales.x.range = (u, dataMin = 0, dataMax = 1) => {
+          let min = dataMin
+          let max = dataMax
+          if (this.graphMinX || this.graphMinX === 0) {
+            min = this.graphMinX
+          }
+          if (this.graphMaxX || this.graphMaxX === 0) {
+            max = this.graphMaxX
+          }
+          return [min, max]
+        }
       }
     },
     subscribe: function () {
@@ -1330,6 +1598,10 @@ export default {
         .createSubscription('StreamingChannel', window.openc3Scope, {
           received: (data) => this.received(data),
           connected: () => {
+            // The connection is back, so drop the disconnect we reported below
+            // and tell whoever embedded us (LINEGRAPH) to do the same
+            this.errors = this.errors.filter((error) => !error.transient)
+            this.$emit('recovered')
             const itemsToAdd = [...this.items]
             if (!this.xAxisIsDefault && !this.xAxisIsAlsoGraphedItem) {
               itemsToAdd.push(this.actualXAxisItem)
@@ -1340,18 +1612,18 @@ export default {
             // If allowReconnect is true it means we got a disconnect due to connection lost or server disconnect
             // If allowReconnect is false this is a normal server close or client close
             if (data.allowReconnect) {
-              this.errors.push({
+              this.addError({
                 type: 'disconnected',
                 message: 'OpenC3 backend connection disconnected',
-                time: new Date().getTime(),
+                // Cleared when 'connected' fires again, not left on the screen
+                transient: true,
               })
             }
           },
           rejected: () => {
-            this.errors.push({
+            this.addError({
               type: 'rejected',
               message: 'OpenC3 backend connection rejected',
-              time: new Date().getTime(),
             })
           },
         })
@@ -1440,7 +1712,25 @@ export default {
                 }
                 return [0, 1]
               }
-              return [dataMin, dataMax]
+              let min = dataMin
+              let max = dataMax
+              if (!this.xAxisIsTime) {
+                if (
+                  this.graphMinX !== null &&
+                  this.graphMinX !== undefined &&
+                  Number.isFinite(this.graphMinX)
+                ) {
+                  min = this.graphMinX
+                }
+                if (
+                  this.graphMaxX !== null &&
+                  this.graphMaxX !== undefined &&
+                  Number.isFinite(this.graphMaxX)
+                ) {
+                  max = this.graphMaxX
+                }
+              }
+              return [min, max]
             },
             time: this.xAxisIsTime,
           },
@@ -1677,7 +1967,7 @@ export default {
       this.$emit('edit')
     },
     createSeriesConfig: function (item) {
-      return {
+      const config = {
         spanGaps: true,
         item: item,
         label: this.formatLabel(item),
@@ -1698,6 +1988,17 @@ export default {
           }
         },
       }
+      if (this.drawStyle === 'points') {
+        config.paths = () => null
+        config.width = 0
+        config.points = {
+          show: true,
+          size: 6,
+          fill: (u, seriesIdx) => this.items[seriesIdx - 1].color,
+          stroke: (u, seriesIdx) => this.items[seriesIdx - 1].color,
+        }
+      }
+      return config
     },
     createOverviewSeriesConfig: function () {
       return {
@@ -1731,23 +2032,36 @@ export default {
         }
       })
       if (this.subscription) {
-        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity).then(
-          (refreshed) => {
+        this.subscribeTime = performance.now()
+        this.emptyDataNotified = false
+        OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
+          .then((refreshed) => {
             if (refreshed) {
               OpenC3Auth.setTokens()
             }
-            this.subscription.perform('add', {
+            // this.subscription may have been torn down (stopGraph nulls it on
+            // unsubscribe/re-subscribe) while the async token refresh above was
+            // pending, so re-check rather than crash on null.perform.
+            this.subscription?.perform('add', {
               scope: window.openc3Scope,
               token: localStorage.openc3Token,
               items: items,
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
+              // Ask to be told when realtime streaming skips data
+              notices: true,
             })
-          },
-        )
+          })
+          // An AuthRequiredError means we have no token and are being
+          // redirected to login, so don't try to subscribe. Anything else is
+          // unexpected and still gets logged.
+          .catch(logUnlessAuthRequired)
       }
     },
     clearAllData: function () {
+      this.realtimeXAxisAnchor = null
+      this.realtimeXAxisAnchorTime = null
+      this.lastScrolledMax = null
       // Clear all data so delete the time data as well
       this.data[0] = []
       this.clearData(this.items)
@@ -1829,6 +2143,11 @@ export default {
     },
     received: function (data) {
       this.cable.recordPing()
+      // Data always arrives as an Array, notices we opted into are an Object
+      if (!Array.isArray(data)) {
+        this.receivedNotice(data)
+        return
+      }
       // Buffer incoming data and schedule processing via requestAnimationFrame
       // to prevent blocking the main thread during historical data floods
       this.pendingData.push(data)
@@ -1836,6 +2155,47 @@ export default {
         this.processingRAF = requestAnimationFrame(() =>
           this.processReceivedData(),
         )
+      }
+    },
+    receivedNotice: function (notice) {
+      // Ignore anything we don't understand so new notice types added on the
+      // server don't break older clients
+      if (notice.__type !== 'NOTICE' || notice.notice !== 'SKIPPED') {
+        return
+      }
+      // Coalesce repeated skips into one entry so a graph that can't keep up
+      // doesn't bury every other error, and only re-report it to an embedding
+      // screen (which keeps its own list) once a minute
+      const now = Date.now()
+      const existing = this.errors.find((error) => error.type === 'skipped')
+      // Accumulate the totals across every skip since the entry was created
+      const skippedSeconds =
+        (existing?.skippedSeconds || 0) + notice.skipped_seconds
+      const count = (existing?.count || 0) + 1
+      let message = `Streaming fell behind realtime, skipped ${skippedSeconds.toFixed(1)}s of data`
+      if (count > 1) {
+        message += ` (${count} times)`
+      }
+      if (existing) {
+        // Update in place so the errors list shows the latest totals
+        existing.skippedSeconds = skippedSeconds
+        existing.count = count
+        existing.message = message
+        existing.time = now
+        // Throttle emits to the parent, which would otherwise add a new entry per skip
+        if (now - existing.emitted > 60000) {
+          existing.emitted = now
+          this.$emit('error', existing)
+        }
+      } else {
+        // First skip: addError stamps the time and emits to the parent
+        this.addError({
+          type: 'skipped',
+          message: message,
+          skippedSeconds: skippedSeconds,
+          count: count,
+          emitted: now,
+        })
       }
     },
     // Drains the pendingData buffer in a time-boxed loop. Each call is
@@ -1911,6 +2271,13 @@ export default {
       if (this.startTime == null && this.data[0][0]) {
         let newStartTime = this.data[0][0] * 1_000_000_000
         this.$emit('started', newStartTime)
+      }
+      if (
+        this.playbackMode !== 'playback' &&
+        this.xAxisIsTime &&
+        this.data[0].length > 0
+      ) {
+        this.initializeRealtimeXAxisAnchor(this.data[0].at(-1))
       }
       this.dataChanged = true
     },

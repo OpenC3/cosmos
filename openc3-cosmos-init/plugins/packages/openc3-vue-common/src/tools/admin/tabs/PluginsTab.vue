@@ -128,9 +128,10 @@
       :plugins="plugins"
       :targets="targets"
       :show-default-tools="showDefaultTools"
-      :default-plugins="defaultPlugins"
+      :script-versions-enabled="scriptVersionsEnabled"
       @edit="editPlugin"
       @upgrade="upgradePlugin"
+      @migrate-to-uv="migrateToUv"
       @delete="deletePrompt"
     />
     <plugin-dialog
@@ -148,9 +149,11 @@
     <modified-plugin-dialog
       v-if="showModifiedPluginDialog"
       v-model="showModifiedPluginDialog"
-      :plugin-name="currentPlugin"
+      :plugin="currentPlugin"
       :targets="pluginTargets(currentPlugin)"
+      :plugin-hash="pluginHashTmp"
       :plugin-delete="pluginDelete"
+      :version-history="scriptVersionsEnabled"
       @submit="modifiedSubmit"
     />
     <!-- <download-dialog v-model="showDownloadDialog" /> -->
@@ -215,36 +218,10 @@ export default {
       showPluginDialog: false,
       showModifiedPluginDialog: false,
       showDefaultTools: false,
+      // Enterprise Version History backend availability (OPENC3_VERSION_HISTORY_DIR
+      // set, reported by /openc3-api/info). Gates per-plugin Export/Import History.
+      scriptVersionsEnabled: false,
       timeZone: 'local',
-      // When updating update local_mode.rb, local_mode.py, plugins.p.spec.ts
-      defaultPlugins: [
-        'openc3-cosmos-tool-admin',
-        'openc3-cosmos-tool-bucketexplorer',
-        'openc3-cosmos-tool-cmdsender',
-        'openc3-cosmos-tool-cmdqueue', // Enterprise only
-        'openc3-cosmos-tool-cmdhistory', // Enterprise only
-        'openc3-cosmos-tool-cmdtlmserver',
-        'openc3-cosmos-tool-dataextractor',
-        'openc3-cosmos-tool-dataviewer',
-        'openc3-cosmos-tool-docs',
-        'openc3-cosmos-tool-handbooks',
-        'openc3-cosmos-tool-iframe',
-        'openc3-cosmos-tool-limitsmonitor',
-        'openc3-cosmos-tool-packetviewer',
-        'openc3-cosmos-tool-scriptrunner',
-        'openc3-cosmos-tool-tablemanager',
-        'openc3-cosmos-tool-tlmgrapher',
-        'openc3-cosmos-tool-tlmviewer',
-        'openc3-cosmos-enterprise-tool-admin', // Enterprise only
-        'openc3-cosmos-tool-autonomic', // Enterprise only
-        'openc3-cosmos-tool-calendar', // Enterprise only
-        'openc3-cosmos-tool-grafana', // Enterprise only
-        'openc3-cosmos-tool-logexplorer', // Enterprise only
-        'openc3-cosmos-tool-notebooks', // Enterprise only
-        'openc3-cosmos-tool-systemhealth', // Enterprise only
-        'openc3-enterprise-tool-base', // Enterprise only
-        'openc3-tool-base',
-      ],
     }
   },
   watch: {
@@ -273,12 +250,23 @@ export default {
     this.update()
     this.updateProcesses()
 
+    // Detect whether the Enterprise Version History backend is enabled
+    // (OPENC3_VERSION_HISTORY_DIR set) so per-plugin Export/Import History
+    // actions can be shown. The promise is kept so the upgrade flow can wait
+    // for it before opening ModifiedPluginDialog, which picks its flow once.
+    this.infoLoaded = Api.get('/openc3-api/info')
+      .then((response) => {
+        this.scriptVersionsEnabled = !!response.data?.script_versions
+      })
+      .catch(() => {
+        this.scriptVersionsEnabled = false
+      })
+
     // Handle going "back" from the plugin store
     // (idk why v-bottom-sheet's close-on-back prop isn't working)
-    const that = this
-    window.onpopstate = function () {
-      if (that.showPluginStore) {
-        that.showPluginStore = false
+    window.onpopstate = () => {
+      if (this.showPluginStore) {
+        this.showPluginStore = false
         history.go(1)
       }
     }
@@ -317,18 +305,22 @@ export default {
       this.showProcessOutput = true
     },
     update: function () {
-      Api.get('/openc3-api/plugins/all').then((response) => {
-        this.plugins = Object.entries(response.data).map(
-          ([_, plugin]) => plugin,
-        )
-      })
-      Api.get('/openc3-api/targets_modified').then((response) => {
-        this.targets = response.data
-      })
+      Api.get('/openc3-api/plugins/all')
+        .then((response) => {
+          this.plugins = Object.entries(response.data).map(
+            ([_, plugin]) => plugin,
+          )
+        })
+        .catch(console.error)
+      Api.get('/openc3-api/targets_modified')
+        .then((response) => {
+          this.targets = response.data
+        })
+        .catch(console.error)
     },
     updateProcesses: function () {
-      Api.get('openc3-api/process_status/plugin_?substr=true').then(
-        (response) => {
+      Api.get('openc3-api/process_status/plugin_?substr=true')
+        .then((response) => {
           this.processes = response.data
           if (Object.keys(this.processes).length > 0) {
             setTimeout(() => {
@@ -336,8 +328,8 @@ export default {
               this.update()
             }, 5000)
           }
-        },
-      )
+        })
+        .catch(console.error)
     },
     upload: function (existing = null, storeData = null) {
       const method = existing ? 'put' : 'post'
@@ -351,15 +343,14 @@ export default {
         formData.append('store_plugin_id', storeData.id)
         formData.append('store_version_id', storeData.version_id)
       }
-      let self = this
       const promise = Api[method](path, {
         data: formData,
         headers: { 'Content-Type': 'multipart/form-data' },
-        onUploadProgress: function (progressEvent) {
+        onUploadProgress: (progressEvent) => {
           let percentCompleted = Math.round(
             (progressEvent.loaded * 100) / progressEvent.total,
           )
-          self.progress = percentCompleted
+          this.progress = percentCompleted
         },
       })
       promise
@@ -393,69 +384,98 @@ export default {
           this.file = undefined
         })
     },
-    pluginCallback: function (pluginHash) {
+    pluginCallback: async function (pluginHash) {
       this.showPluginDialog = false
       if (this.currentPlugin !== null) {
         pluginHash['name'] = this.currentPlugin
       }
       this.pluginHashTmp = pluginHash
       if (this.isModified(this.currentPlugin)) {
+        // The upgrade flow depends on scriptVersionsEnabled
+        await this.infoLoaded
         this.pluginDelete = false
         this.showModifiedPluginDialog = true
       } else {
         this.pluginInstall()
       }
     },
-    modifiedSubmit: async function (deleteModified) {
-      if (deleteModified === true) {
-        for (let target of this.pluginTargets(this.currentPlugin)) {
-          if (target.modified == true) {
-            await Api.post(`/openc3-api/targets/${target.name}/delete_modified`)
-          }
+    modifiedSubmit: async function (decision) {
+      // Delete the modified files the user opted to remove (non-scripts on
+      // upgrade, or all files when deleting the plugin), grouped per target
+      // because the endpoint is target-scoped.
+      const deleteFiles = decision.deleteFiles || []
+      if (deleteFiles.length) {
+        const byTarget = {}
+        for (const fullName of deleteFiles) {
+          const targetName = fullName.split('/')[0]
+          byTarget[targetName] ||= []
+          byTarget[targetName].push(fullName)
         }
+        const deletePromises = Object.entries(byTarget).map(
+          async ([targetName, files]) => {
+            await Api.post(
+              `/openc3-api/targets/${targetName}/delete_modified`,
+              {
+                data: { files },
+              },
+            )
+          },
+        )
+        await Promise.all(deletePromises)
       }
       if (this.pluginDelete) {
         this.deletePlugin(this.currentPlugin)
       } else {
-        this.pluginInstall()
+        // Script files taken from the plugin are versioned + their modified
+        // shadow removed by the backend during install.
+        this.pluginInstall(decision.installFromPlugin || [])
       }
     },
-    pluginInstall: function () {
+    pluginInstall: function (versionHistoryFiles = []) {
+      const pluginHash = { ...this.pluginHashTmp }
+      if (versionHistoryFiles.length) {
+        pluginHash['version_history_files'] = versionHistoryFiles
+      }
       Api.post(`/openc3-api/plugins/install/${this.pluginName}`, {
         data: {
-          plugin_hash: JSON.stringify(this.pluginHashTmp),
+          plugin_hash: JSON.stringify(pluginHash),
         },
-      }).then((response) => {
-        this.alert = `Started installing plugin ${this.pluginName} ...`
-        this.alertType = 'success'
-        this.showAlert = true
-        this.currentPlugin = null
-        this.file = undefined
-        this.variables = {}
-        this.pluginTxt = ''
-        this.existingPluginTxt = null
-        this.storePluginId = null
-        this.storeVersionId = null
-        setTimeout(() => {
-          this.showAlert = false
-          this.updateProcesses()
-        }, 5000)
-        this.update()
       })
+        .then((response) => {
+          this.alert = `Started installing plugin ${this.pluginName} ...`
+          this.alertType = 'success'
+          this.showAlert = true
+          this.currentPlugin = null
+          this.file = undefined
+          this.variables = {}
+          this.pluginTxt = ''
+          this.existingPluginTxt = null
+          this.storePluginId = null
+          this.storeVersionId = null
+          setTimeout(() => {
+            this.showAlert = false
+            this.updateProcesses()
+          }, 5000)
+          this.update()
+        })
+        .catch(console.error)
     },
     editPlugin: function (plugin) {
       this.resetControlState()
-      Api.get(`/openc3-api/plugins/${plugin}`).then((response) => {
-        let existingPluginTxt = null
-        if (response.data.existing_plugin_txt_lines !== undefined) {
-          existingPluginTxt = response.data.existing_plugin_txt_lines.join('\n')
-        }
-        this.pluginName = response.data.name
-        this.variables = response.data.variables
-        this.pluginTxt = response.data.plugin_txt_lines.join('\n')
-        this.existingPluginTxt = existingPluginTxt
-        this.showPluginDialog = true
-      })
+      Api.get(`/openc3-api/plugins/${plugin}`)
+        .then((response) => {
+          let existingPluginTxt = null
+          if (response.data.existing_plugin_txt_lines !== undefined) {
+            existingPluginTxt =
+              response.data.existing_plugin_txt_lines.join('\n')
+          }
+          this.pluginName = response.data.name
+          this.variables = response.data.variables
+          this.pluginTxt = response.data.plugin_txt_lines.join('\n')
+          this.existingPluginTxt = existingPluginTxt
+          this.showPluginDialog = true
+        })
+        .catch(console.error)
     },
     deletePrompt: function (plugin) {
       this.resetControlState()
@@ -478,13 +498,40 @@ export default {
       this.alert = `Removing plugin ${plugin} ...`
       this.alertType = 'success'
       this.showAlert = true
-      Api.delete(`/openc3-api/plugins/${plugin}`).then((response) => {
-        setTimeout(() => {
-          this.showAlert = false
-          this.updateProcesses()
-        }, 5000)
-      })
+      Api.delete(`/openc3-api/plugins/${plugin}`)
+        .then((response) => {
+          setTimeout(() => {
+            this.showAlert = false
+            this.updateProcesses()
+          }, 5000)
+        })
+        .catch(console.error)
       this.update()
+    },
+    migrateToUv: async function (plugin) {
+      try {
+        await this.$dialog.confirm(
+          `Migrate plugin ${plugin} to a per-plugin UV virtual environment?`,
+          {
+            okText: 'Migrate',
+            cancelText: 'Cancel',
+          },
+        )
+        try {
+          await Api.post(`/openc3-api/plugins/${plugin}/migrate_to_uv`)
+          this.alert = `Started migrating plugin ${plugin} to UV ...`
+          this.alertType = 'success'
+          this.showAlert = true
+          setTimeout(() => {
+            this.showAlert = false
+            this.updateProcesses()
+          }, 5000)
+        } catch (error) {
+          console.error(error)
+        }
+      } catch {
+        // user cancelled, do nothing
+      }
     },
     upgradePlugin(plugin) {
       this.resetControlState()

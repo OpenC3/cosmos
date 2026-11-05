@@ -1,8 +1,8 @@
 #!/bin/bash
 
 usage() {
-  echo "Usage: $1 [install-playwright, build-plugin, reset-storage-state, run-chromium, run-aws]" >&2
-  echo "*  install-playwright: installs playwright and its dependencies" >&2
+  echo "Usage: $1 [install-playwright, build-plugin, reset-storage-state, run-chromium, run-enterprise, run-aws]" >&2
+  echo "*  install-playwright [--no-clean]: installs playwright and its dependencies" >&2
   echo "*  build-plugin: builds the plugin to be used in the playwright tests" >&2
   echo "*  reset-storage-state: clear out cached data" >&2
   echo "*  run-chromium: runs the playwright tests against a locally running version of Cosmos using Chrome" >&2
@@ -23,27 +23,36 @@ fi
 case $1 in
     install-playwright )
         if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
-            echo "Usage: $0 install-playwright"
+            echo "Usage: $0 install-playwright [--no-clean]"
             echo ""
             echo "Install Playwright and its dependencies."
             echo ""
             echo "This command:"
-            echo "  - Removes cached Playwright browser binaries"
-            echo "  - Removes node_modules directory"
+            echo "  - Removes cached Playwright browser binaries (unless --no-clean)"
+            echo "  - Removes node_modules directory (unless --no-clean)"
             echo "  - Runs pnpm install with frozen lockfile"
             echo "  - Installs Playwright browsers with dependencies"
             echo "  - Resets storage state"
             echo ""
             echo "Options:"
             echo "  -h, --help    Show this help message"
+            echo "  --no-clean    Keep the browser cache and node_modules. Used by CI,"
+            echo "                where those directories are restored from an"
+            echo "                actions/cache entry that a wipe would discard."
             exit 0
         fi
-        # Attempt to clean up downloaded browser binaries
-        #   https://playwright.dev/docs/ci#directories-to-cache
-        [[ -d $HOME/.cache/ms-playwright ]] && rm -rf $HOME/.cache/ms-playwright # linux
-        [[ -d $HOME/Library/Caches/ms-playwright ]] && rm -rf $HOME/Library/Caches/ms-playwright # mac
+        # The wipes give a clean slate on a developer machine, where stale browser
+        # binaries left over from an older @playwright/test produce "Executable
+        # doesn't exist" at run time. CI passes --no-clean because the runner
+        # starts fresh anyway and the directories come from a restored cache.
+        if [[ "$2" != "--no-clean" ]]; then
+            # Attempt to clean up downloaded browser binaries
+            #   https://playwright.dev/docs/ci#directories-to-cache
+            [[ -d $HOME/.cache/ms-playwright ]] && rm -rf $HOME/.cache/ms-playwright # linux
+            [[ -d $HOME/Library/Caches/ms-playwright ]] && rm -rf $HOME/Library/Caches/ms-playwright # mac
 
-        rm -rf node_modules
+            rm -rf node_modules
+        fi
 
         pnpm install --frozen-lockfile --ignore-scripts; pnpm exec playwright install --with-deps; pnpm playwright --version
 
@@ -68,12 +77,28 @@ case $1 in
         fi
         rm -rf openc3-cosmos-pw-test
         ../openc3.sh cli generate plugin PW_TEST --ruby
-        cd openc3-cosmos-pw-test
+        cd openc3-cosmos-pw-test || exit 1
         ../../openc3.sh cli generate target PW_TEST --ruby
+        # Give the plugin Python dependencies so PluginModel runs uvinstall and
+        # creates a per-plugin venv. Without one, Script Runner's Python venv
+        # selector never renders and python-venv.p.spec.ts has nothing to test.
+        cp ../fixtures/pw-test-pyproject.toml pyproject.toml
+        # The generated gemspec's s.files does not list pyproject.toml, so the
+        # file would be dropped from the gem and PluginModel would never see it.
+        # Add it, then fail loudly if it still is not packaged - a silent miss
+        # here looks like "the venv feature is broken", not "the fixture is".
+        sed -i.bak 's/plugin\.txt)/plugin.txt pyproject.toml)/' openc3-cosmos-pw-test.gemspec
+        rm -f openc3-cosmos-pw-test.gemspec.bak
+        grep -q 'pyproject.toml' openc3-cosmos-pw-test.gemspec || {
+            echo "ERROR: failed to add pyproject.toml to the PW_TEST gemspec" >&2
+            exit 1
+        }
         ../../openc3.sh cli rake build VERSION=1.0.0
-        cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
+        # Build 1.0.1 rather than copying 1.0.0: the gem's internal version must
+        # match its filename or an upgrade installs 1.0.0 and uninstalling 1.0.1 fails
+        ../../openc3.sh cli rake build VERSION=1.0.1
         ../../openc3.sh cli validate openc3-cosmos-pw-test-1.0.0.gem
-        cd -
+        cd - || exit 1
         ;;
 
     reset-storage-state )
@@ -113,12 +138,19 @@ case $1 in
             echo "See: https://playwright.dev/docs/test-cli"
             exit 0
         fi
-        pnpm test
+        # Chain the leaf scripts here rather than calling `pnpm test`. pnpm appends
+        # script args to the end of the whole command string, so with an && chain
+        # they would only reach the last link (the coverage merge, which ignores
+        # argv). Forwarding to each leaf individually keeps quoted args intact,
+        # e.g. --grep='command sender'.
+        pnpm test:parallel --quiet "${@:2}" \
+          && pnpm test:serial --quiet "${@:2}" \
+          && pnpm coverage
         ;;
 
     run-enterprise )
         if [[ "$2" == "--help" ]] || [[ "$2" == "-h" ]]; then
-            echo "Usage: $0 run-enterprise"
+            echo "Usage: $0 run-enterprise [PLAYWRIGHT_OPTIONS]"
             echo ""
             echo "Run enterprise Playwright tests."
             echo ""
@@ -126,10 +158,17 @@ case $1 in
             echo "running OpenC3 Enterprise instance."
             echo ""
             echo "Options:"
-            echo "  -h, --help    Show this help message"
+            echo "  -h, --help              Show this help message"
+            echo "  PLAYWRIGHT_OPTIONS      Additional Playwright CLI options"
+            echo ""
+            echo "See: https://playwright.dev/docs/test-cli"
             exit 0
         fi
-        pnpm test:enterprise
+        # Chain the leaf scripts here so extra options reach every playwright
+        # invocation (see run-chromium above for why `pnpm test:enterprise` can't
+        # forward them itself).
+        pnpm test:enterprise:parallel "${@:2}" \
+          && pnpm test:enterprise:serial "${@:2}"
         ;;
 
     run-aws )
@@ -147,8 +186,13 @@ case $1 in
             echo "  -h, --help    Show this help message"
             exit 0
         fi
-        sed -i 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts
-        KEYCLOAK_URL=https://aws.openc3.com/auth/admin/master/console REDIRECT_URL=https://aws.openc3.com/* pnpm test:keycloak
+        sed -i.bak 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts && rm -f playwright.config.ts.bak
+        KEYCLOAK_URL=https://aws.openc3.com/auth/admin/master/console REDIRECT_URL="https://aws.openc3.com/*" pnpm test:keycloak
         pnpm test:enterprise
+        ;;
+
+    * )
+        echo "Unknown command: $1" >&2
+        usage $0
         ;;
 esac

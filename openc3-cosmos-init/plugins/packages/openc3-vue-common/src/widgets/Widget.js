@@ -16,11 +16,12 @@
 */
 
 import { ConfigParserError } from '@openc3/js-common/services'
+import TargetFiles from './TargetFiles'
 import WidgetComponents from './WidgetComponents'
 import { useStore } from '@/plugins/store'
 
 export default {
-  mixins: [WidgetComponents],
+  mixins: [TargetFiles, WidgetComponents],
   props: {
     widgetIndex: {
       type: Number,
@@ -100,21 +101,25 @@ export default {
     screen: function () {
       // This exists for backwards compatibility of screen definitions since widgets no longer have a reference
       // to the Openc3Screen component instance
-      const that = this
       return {
-        getNamedWidget: function (widgetName) {
-          return that.store.namedWidget(that.toQualifiedWidgetName(widgetName))
+        getNamedWidget: (widgetName) => {
+          return this.store.namedWidget(this.toQualifiedWidgetName(widgetName))
         },
-        open: function (target, screen) {
-          that.$emit('open', target, screen)
+        open: (target, screen) => {
+          this.$emit('open', target, screen)
         },
-        close: function (target, screen) {
-          that.$emit('close', target, screen)
+        close: (target, screen) => {
+          this.$emit('close', target, screen)
         },
-        closeAll: function () {
-          that.$emit('closeAll')
+        closeAll: () => {
+          this.$emit('closeAll')
         },
       }
+    },
+    // Identifies this widget as the source of a transient screen error. The
+    // definition line is unique per widget, which is all this has to be.
+    errorSource: function () {
+      return `widget:${this.lineNumber}`
     },
     listeners: function () {
       // Vue 3 deprecated $listeners, which was used to bubble up events to the Openc3Screen component. The new way is
@@ -178,6 +183,66 @@ export default {
     }
   },
   methods: {
+    // Build an error for something wrong with the screen definition. Callers
+    // throw it: Openc3Screen's errorCaptured hook catches the throw and records
+    // it against the screen definition line that created this widget.
+    screenError(keyword, message, usage = '') {
+      return new ConfigParserError(
+        {
+          line: this.line,
+          lineNumber: this.lineNumber,
+          keyword: keyword,
+          parameters: this.parameters,
+        },
+        message,
+        usage,
+        'https://docs.openc3.com/docs/configuration',
+      )
+    },
+    // Report an error that happens after the widget is built, i.e. from a
+    // websocket callback or a promise. These can't throw: errorCaptured only
+    // sees throws made from Vue's own call stack, so anything thrown from an
+    // async callback is lost (or worse, tears down an unrelated caller).
+    // Emit instead - the listener bubbles up through the layout widgets, which
+    // pass it down with v-bind="listeners", to Openc3Screen.
+    emitScreenError(message, options = {}) {
+      // Deliberately not called 'error': undeclared on* listeners get bound to
+      // the root DOM element, and a DOM error event (a broken img, say) would
+      // otherwise be reported as a screen error.
+      this.$emit('screen-error', {
+        type: options.type || 'error',
+        message: message,
+        line: this.line,
+        lineNumber: this.lineNumber,
+        // Transient errors are cleared when their source recovers (see
+        // clearScreenErrors) rather than sticking around forever
+        transient: options.transient || false,
+        // A transient error is cleared by whatever produced it recovering, so
+        // it has to say what that was. Default to this widget so one graph
+        // reconnecting doesn't clear another graph's disconnect.
+        source: options.source || this.errorSource,
+        time: new Date().getTime(),
+      })
+    },
+    // The counterpart to a transient emitScreenError: the thing that failed is
+    // working again, so drop the errors it reported. Errors from other sources
+    // and non-transient errors are left alone.
+    clearScreenErrors(source = null) {
+      this.$emit('screen-errors-cleared', {
+        source: source || this.errorSource,
+      })
+    },
+    // Ask the screen to check these TARGET__PACKET__ITEM__TYPE ids actually
+    // exist. Widgets that emit 'addItem' get this for free because the screen
+    // polls them, but ones that stream their own data (the graphs) never told
+    // anybody about their items, so a typo'd item just silently never plotted.
+    checkScreenItems(valueIds) {
+      this.$emit('screen-check-items', {
+        valueIds: valueIds,
+        line: this.line,
+        lineNumber: this.lineNumber,
+      })
+    },
     applyStyleSetting(setting) {
       switch (setting[0]) {
         case 'TEXTALIGN':
@@ -234,33 +299,24 @@ export default {
       }
     },
     verifyNumParams(keyword, min_num_params, max_num_params, usage = '') {
-      let parser = {
-        line: this.line,
-        lineNumber: this.lineNumber,
-        keyword: keyword,
-        parameters: this.parameters,
-      }
-
       // This syntax works with 0 because each doesn't return any values
       // for a backwards range
       for (let index = 1; index <= min_num_params; index++) {
         // If the parameter is nil (0 based) then we have a problem
         if (this.parameters[index - 1] === undefined) {
-          throw new ConfigParserError(
-            parser,
+          throw this.screenError(
+            keyword,
             `Not enough parameters for ${keyword}.`,
             usage,
-            'https://docs.openc3.com/docs/configuration',
           )
         }
       }
       // If they pass null for max_params we don't check for a maximum number
       if (max_num_params !== null && this.parameters.length > max_num_params) {
-        throw new ConfigParserError(
-          parser,
+        throw this.screenError(
+          keyword,
           `Too many parameters for ${keyword}.`,
           usage,
-          'https://docs.openc3.com/docs/configuration',
         )
       }
     },
@@ -310,8 +366,58 @@ export default {
           return `rgb(${setting[0]},${setting[1]},${setting[2]})`
       }
     },
+    // Named widget lookups are case insensitive so we upcase the name to build
+    // the store key. Note NAMED_WIDGET names are already upcased at parse time.
     toQualifiedWidgetName(widgetName) {
-      return `${this.screenId}:${widgetName}`
+      return `${this.screenId}:${String(widgetName).toUpperCase()}`
+    },
+    // Capture a point-in-time snapshot of every named widget on this screen so a
+    // sandboxed BUTTON script can read them synchronously (the sandbox bridge is
+    // async, so getNamedWidget('X').text() cannot be a live cross-frame call).
+    // Only the read accessors (and value) that exist on each widget are captured.
+    namedWidgetsSnapshot() {
+      const snapshot = {}
+      const prefix = `${this.screenId}:`
+      const namedWidgets = this.store.namedWidgets
+      for (const key in namedWidgets) {
+        if (!key.startsWith(prefix)) continue
+        const widget = namedWidgets[key]
+        if (!widget) continue
+        const entry = {}
+        if (typeof widget.text === 'function') entry.text = widget.text()
+        if (typeof widget.selected === 'function')
+          entry.selected = widget.selected()
+        if (typeof widget.checked === 'function')
+          entry.checked = widget.checked()
+        if (typeof widget.date === 'function') entry.date = widget.date()
+        if (typeof widget.time === 'function') entry.time = widget.time()
+        // Also capture the raw value data property (CHECKBUTTON, COMBOBOX,
+        // TEXTFIELD) so a script can read .value like it could back when
+        // getNamedWidget returned the live component. Restricted to primitives
+        // so the snapshot always survives structuredClone into the sandbox.
+        const value = widget.value
+        if (
+          value === null ||
+          typeof value === 'string' ||
+          typeof value === 'number' ||
+          typeof value === 'boolean'
+        ) {
+          entry.value = value
+        }
+        snapshot[key.slice(prefix.length)] = entry
+      }
+      return snapshot
+    },
+    // Write a value back to a named widget on behalf of a sandboxed BUTTON script
+    // (e.g. screen.getNamedWidget('CHECK').value = true). The store returns the
+    // live component instance so the assignment is reactive.
+    setNamedWidgetValue(widgetName, value) {
+      const widget = this.store.namedWidget(
+        this.toQualifiedWidgetName(widgetName),
+      )
+      if (widget) {
+        widget.value = value
+      }
     },
     // Parse a screen-definition item name into its semantic parts.
     //   ITEM        → plain item

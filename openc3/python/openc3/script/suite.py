@@ -300,7 +300,7 @@ class Group:
             func
             for func in dir(cls)
             if callable(getattr(cls, func))
-            and re.search(r"^test|^script|op_", func)
+            and re.search(r"^test_|^script_|^op_", func)
             and func != "scripts"
             and func != "test_cases"
         ]

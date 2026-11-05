@@ -28,8 +28,9 @@ class SimulatedTarget:
         for _name, packet in self.tlm_packets.items():
             packet.restore_defaults()
             packet.packet_rate = 0
-            for item in packet.id_items:
-                packet.write_item(item, item.id_value)
+            if packet.id_items is not None:
+                for item in packet.id_items:
+                    packet.write_item(item, item.id_value)
 
         self.current_cycle_delta = {}
 

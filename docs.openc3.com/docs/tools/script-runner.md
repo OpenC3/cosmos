@@ -17,9 +17,11 @@ Script Runner is both an editor of COSMOS scripts as well as executes scripts. S
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/script_runner/file_menu.png').default}
-alt="File Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
+<img
+  src={require("@site/static/img/script_runner/file_menu.png").default}
+  alt="File Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 250 + "px" }}
+/>
 
 - Clears the editor and filename
 - Creates a new test suite in Ruby or Python
@@ -29,8 +31,8 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 250 + 'px'}} />
 - Rename the current file
 - Downloads the current file to the browser
 - Deletes the current file (Permanently!)
-  <br/>
-  <br/>
+  <br />
+  <br />
 
 #### File Open
 
@@ -46,9 +48,11 @@ When saving a file for the first time, or using File Save As, the File Save As D
 
 {/* Image sized to match up with bullets */}
 
-<img src={require('@site/static/img/script_runner/script_menu.png').default}
-alt="Script Menu"
-style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
+<img
+  src={require("@site/static/img/script_runner/script_menu.png").default}
+  alt="Script Menu"
+  style={{ float: "left", "margin-right": 50 + "px", height: 330 + "px" }}
+/>
 
 - Display started and finished scripts
 - Show environment variables
@@ -61,6 +65,7 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 330 + 'px'}} />
 - Display the [debug](script-runner.md#debugging-scripts) prompt
 - Disconnect from real interfaces
 - Delete all script breakpoints
+- View the script [Version History](script-runner.md#version-history-enterprise) (Enterprise)
 
 The Execution Status popup lists the currently running scripts. This allows other users to connect to running scripts and follow along with the currently executing script. It also lists previously executed scripts so you can download the script log.
 
@@ -94,6 +99,66 @@ Right clicking a script brings up several options:
 
 'Clear all breakpoints' allows you to quickly clear breakpoints set by clicking on the editor line number.
 
+## Script Lifecycle
+
+<span class="badge badge--secondary since-heading">Since 7.3.0</span>
+
+The Script Lifecycle feature tracks scripts through three states: **In Development**, **In Review**, and **Approved**. It is disabled by default and can be enabled in the Admin Console under Settings → Script Lifecycle Settings.
+
+When enabled, a colored chip next to the Script State field shows the current lifecycle state of the open script (blue for In Development, orange for In Review, green for Approved). Clicking the chip, or selecting Script → Script Lifecycle, opens the lifecycle dialog. New scripts always begin **In Development**.
+
+The dialog displays the current state, lets you move the script to another state with an optional comment (up to 1000 characters), and shows the complete audit history of every transition: who made the change, when it happened, the states involved, and the comment. Timestamps are displayed in the time zone configured in the Admin Console Settings.
+
+![script-lifecycle](/img/script_runner/script_lifecycle.png)
+
+### Lifecycle Transitions
+
+| From           | To (and back) | Required Permission |
+| -------------- | ------------- | ------------------- |
+| In Development | In Review     | script_edit         |
+| In Review      | Approved      | script_approver     |
+| In Development | Approved      | script_approver     |
+
+Users with the script_edit permission (e.g. Operators) can move scripts between In Development and In Review. Only users with the script_approver permission can approve a script or move an approved script back to In Review or In Development. Role-based restrictions require COSMOS Enterprise. Ensure that a new role that has the `script_approver` permission is created, and assigned to your users of choice.
+
+### Approved Scripts
+
+Once a script is Approved it cannot be modified or deleted. The editor becomes read-only and the Save and Delete menu items are disabled. This is also enforced by the server, so the script cannot be changed through the API. To edit an approved script, a user with the script_approver permission must first move it back to In Review or In Development.
+
+In addition, users with only the runner role (or the script_run permission) can only run Approved scripts. This ensures operators in a production environment only execute scripts that have completed the review process. Users who can edit scripts can run scripts in any lifecycle state.
+
+## Version History (Enterprise)
+
+<span class="badge badge--secondary since-heading">Since 7.3.0</span>
+
+Script Runner keeps a history of every saved version of a script. Each save creates a new version recording who saved it and when. Deleting a script is also recorded, so a deleted script's history is preserved. Temporary (unsaved) scripts are not tracked.
+
+Open a saved script and select Script → Version History to open the full-screen Version History dialog. The menu item is disabled for new, unsaved scripts and while a script is running.
+
+<img
+  src={require("@site/static/img/script_runner/version-history-file-menu.png").default}
+  alt="Version History Menu"
+  style={{ display: "block", margin: "0 auto", height: 400 + "px" }}
+/>
+
+The left pane lists versions newest first, so the highest numbered version is the latest. Each entry shows the timestamp and the user who saved it. Scripts installed by a plugin start with an initial version recording the plugin that installed them. Versions created when a plugin upgrade overwrote a modified script show the plugin name and a **Plugin upgrade** chip. Hover over an entry to see its full details.
+
+When the dialog opens, it diffs the latest version against the previous one. If there is only one version, that version is shown instead.
+
+- **Click a version** to view it read-only. Click it again to close the view.
+- **Click the diff icon** to compare a version with the version before it. In diff mode, use the **Left** and **Right** dropdowns to compare any two versions side by side.
+- **Click Restore** on an older version to make it the current script contents. Restore saves the older contents as a new version, so no history is lost. Restoring requires the script_edit permission.
+
+The latest version always shows the current editor contents, including unsaved edits. This makes it easy to review your changes against the last saved version before saving.
+
+![version-history](/img/script_runner/version-history.png)
+
+### Storage and Plugins
+
+Version History is stored in a git repository on the server, one per installed plugin, at the location given by the `OPENC3_VERSION_HISTORY_DIR` environment variable. The feature is only available when this variable is set (it is set by default in COSMOS Enterprise). All versions are kept; there is no automatic pruning. History is preserved across plugin upgrades and removed when the plugin is uninstalled.
+
+To move a plugin's history between COSMOS installations, use Export History and Import History from the plugin's menu in the [Admin Console](admin.md) Plugins tab. Importing preserves the current contents of the plugin's scripts as the latest version.
+
 ## Script Environment Variables
 
 Environment variables are used for storing information about the runtime environment of a running script. If your script depends on environment variables, you can access the "Script Environment Variables" dialog by clicking on the "(x)" icon next to the "Start" button.
@@ -120,6 +185,22 @@ puts ENV['MYVAR'] # prints "foo"
 </TabItem>
 </Tabs>
 
+## Python Virtual Environments
+
+When plugins are installed with Python dependencies, COSMOS creates an isolated virtual environment (venv) for each plugin using [UV](https://docs.astral.sh/uv/). Scripts automatically run inside their plugin's venv based on the target folder they belong to.
+
+### Automatic Venv Resolution
+
+Scripts saved under a target folder (e.g. `INST2/procedures/my_script.py`) automatically use that target's plugin venv. No manual activation is needed — COSMOS sets `VIRTUAL_ENV`, `PATH`, and `PYTHONUSERBASE` on the spawned process so that `import` statements resolve against the plugin's installed packages.
+
+### Temp Scripts and the Target Selector
+
+Temporary (unsaved) scripts are not associated with any target, so they cannot automatically resolve a plugin venv. By default they run under the system Python environment, which has access to the core `openc3` library but not plugin-specific packages. To run a temp script with a specific plugin's Python dependencies, use the **Target** dropdown in the Script Runner toolbar. This dropdown appears next to the Start button when working with Python scripts and only lists targets whose plugins have a Python virtual environment installed. Select the target whose plugin dependencies you want to use, and the script will run inside that plugin's venv.
+
+When you open a saved script, the target selector resets automatically because the venv is determined from the file path.
+
+For information on managing per-plugin Python packages, see the [Admin Packages documentation](/docs/tools/admin#packages).
+
 ## Running Script Suites
 
 If a script is structured as a Suite it automatically causes Script Runner to parse the file to populate the Suite, Group, and Script drop down menus.
@@ -130,7 +211,10 @@ To generate a new Suite use the File -> New Suite and then choose either Ruby or
 
 ### Group
 
-The Group class contains the methods used to run the test or operations. Any methods starting with 'script', 'op', or 'test' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
+{/* prettier-ignore */}
+<div>
+The Group class contains the methods used to run the test or operations. Any methods starting with 'script_', 'op_', or 'test_' which are implemented inside a Group class are automatically included as scripts to run. For example, in the above image, you'll notice the 'script_power_on' is in the Script drop down menu. Here's another simple example:
+</div>
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -142,6 +226,10 @@ class ExampleGroup(Group):
         print("setup")
     def script_1(self):
         print("script 1")
+    def test_1(self):
+        print("test 1")
+    def op_1(self):
+        print("op 1")
     def teardown(self):
         print("teardown")
 ```
@@ -157,6 +245,12 @@ class ExampleGroup < OpenC3::Group
   end
   def script_1
     puts "script 1"
+  end
+  def test_1
+    puts "test 1"
+  end
+  def op_1
+    puts "op 1"
   end
   def teardown
     puts "teardown"

@@ -9,7 +9,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. After dozens of installed targets and interfaces, the CmdTlmServer logs indicate "unable to create thread". Microservices are crashing or not starting.
 
-   This is typically due to hard limits on processes or file handles imposed by Linux. If you're on Podman, ensure you've followed the directions from the [Podman](/docs/guides/podman) page and have increased the `pids_limit` in `/etc/containers/containers.conf`. Also check your `ulimit` variables by typing `ulimit -a` and increase your file descriptors (`ulimit -t 65536`).
+   This is typically due to hard limits on processes or file handles imposed by Linux. If you're on Podman, ensure you've followed the directions from the [Podman](/docs/guides/podman) page and have increased the `pids_limit` in `/etc/containers/containers.conf`. Also check your `ulimit` variables by typing `ulimit -a` and increase your file descriptors (`ulimit -n 1048576`).
 
 1. COSMOS becomes slow or unresponsive especially as additional plugins are added
 
@@ -27,7 +27,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. You're getting "too many files open" errors
 
-   Check your `ulimit` variables by typing `ulimit -a` and increase your file descriptors `ulimit -t 65536`. Note that you may want to put this in your `.bashrc`, `.zshrc`, etc to make this permanent.
+   Check your `ulimit` variables by typing `ulimit -a` and increase your file descriptors `ulimit -n 1048576`. Note that you may want to put this in your `.bashrc`, `.zshrc`, etc to make this permanent.
 
 1. You get networking errors (without certificates)
 
@@ -39,7 +39,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. You've enabled certificates and you're getting networking errors
 
-   Make sure you've read both the [SSL-TLS](/docs/configuration/ssl-tls) docs and the [COSMOS Enterprise Project](https://github.com/OpenC3/cosmos-enterprise-project?tab=readme-ov-file#opening-to-the-network) instructions.
+   Make sure you've read both the [SSL-TLS](/docs/configuration/ssl-tls) docs and the [Network Configuration](/docs/guides/network-configuration) guide.
 
 1. You're getting 404 errors, missing icons, missing tools or functionality
 
@@ -69,7 +69,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. When exposing COSMOS to the network through http, Chrome [DevTools](https://developer.chrome.com/docs/devtools/open) shows "Web crypto API is not available".
 
-   Make sure to follow all the instructions in the [COSMOS Enterprise Project README](https://github.com/OpenC3/cosmos-enterprise-project/blob/main/README.md). In this case you need to do the following:
+   Make sure to follow all the instructions in the [COSMOS Enterprise Project README](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/README.md). In this case you need to do the following:
    - In Chrome go to: chrome://flags/#unsafely-treat-insecure-origin-as-secure
    - For Edge to to: edge://flags/#unsafely-treat-insecure-origin-as-secure
    - Add your http://&lt;Your IP Address&gt;:2900
@@ -88,5 +88,9 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
    ```
 
    If this does not return you could be blocking the 443 port to Keycloak. Update your firewall settings and try again.
+
+1. On AWS, QuestDB CPU utilization is high.
+
+   If you are running on older AWS instance families (like t2, m4, or c4), your virtualization layer relies heavily on Xen. Modern Nitro-based instances (like m5, c5, t3, or newer) leverage hardware-assisted virtualization that has much better performance on time based system calls. Switch to one of these instance types.
 
 Encountering an issue not on this list? If you're a customer, please get in touch at [support@openc3.com](mailto:support@openc3.com).

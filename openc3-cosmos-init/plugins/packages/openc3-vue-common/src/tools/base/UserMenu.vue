@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -78,6 +78,8 @@
                 color="primary"
                 density="compact"
                 block
+                :disabled="!isAdmin"
+                data-test="refresh-news"
                 @click="refreshNews"
               >
                 Refresh
@@ -116,9 +118,10 @@
 </template>
 
 <script>
-import { Api } from '@openc3/js-common/services'
+import { Api, logUnlessAuthRequired } from '@openc3/js-common/services'
 import { OpenC3Api } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@/components'
+import { getCachedSetting } from '@/util'
 import DOMPurify from 'dompurify'
 
 export default {
@@ -144,6 +147,8 @@ export default {
       activeUsers: ['None'],
       newsFeed: false,
       news: [],
+      // update_news requires the admin permission
+      isAdmin: (OpenC3Auth.userroles() || []).includes('admin'),
     }
   },
   computed: {
@@ -163,21 +168,22 @@ export default {
         }
 
         if (this.name !== 'Anonymous') {
-          Api.get('/openc3-api/users/active').then((response) => {
-            this.activeUsers = response.data.filter(
-              (item) => !item.includes(this.name),
-            )
-            if (this.activeUsers.length === 0) {
-              this.activeUsers = ['None']
-            }
-          })
+          Api.get('/openc3-api/users/active')
+            .then((response) => {
+              this.activeUsers = response.data.filter(
+                (item) => !item.includes(this.name),
+              )
+              if (this.activeUsers.length === 0) {
+                this.activeUsers = ['None']
+              }
+            })
+            .catch(logUnlessAuthRequired)
         }
       }
     },
   },
   created: function () {
-    this.api
-      .get_setting('news_feed')
+    getCachedSetting('news_feed')
       .then((response) => {
         if (response) {
           this.newsFeed = response
@@ -208,25 +214,35 @@ export default {
       return date.split('T')[0]
     },
     fetchNews: function () {
-      Api.get('/openc3-api/news').then((response) => {
-        // We always get the full list of news we want to display
-        // At some point we may delete old news items so we don't
-        // want to persist news items in the frontend
-        this.news = response.data.sort(
-          (a, b) => Date.parse(b.date) - Date.parse(a.date),
-        )
-        // If we've previously read the news then mark anything older than that as read
-        if (localStorage.lastNewsRead) {
-          this.news.forEach((news) => {
-            news.read =
-              Date.parse(news.date) <= Date.parse(localStorage.lastNewsRead)
-          })
-        }
-      })
+      Api.get('/openc3-api/news')
+        .then((response) => {
+          // We always get the full list of news we want to display
+          // At some point we may delete old news items so we don't
+          // want to persist news items in the frontend
+          this.news = response.data.sort(
+            (a, b) => Date.parse(b.date) - Date.parse(a.date),
+          )
+          // If we've previously read the news then mark anything older than that as read
+          if (localStorage.lastNewsRead) {
+            this.news.forEach((news) => {
+              news.read =
+                Date.parse(news.date) <= Date.parse(localStorage.lastNewsRead)
+            })
+          }
+        })
+        .catch(logUnlessAuthRequired)
     },
-    logout: function () {
-      OpenC3Auth.logout()
-      Api.put(`/openc3-api/users/logout/${this.username}`)
+    logout: async function () {
+      // Terminating the server side session requires the current token, and
+      // OpenC3Auth.logout() clears it (and reloads the page), so this request
+      // has to go out first.
+      try {
+        await Api.put(`/openc3-api/users/logout/${this.username}`)
+      } catch (error) {
+        logUnlessAuthRequired(error)
+      } finally {
+        OpenC3Auth.logout()
+      }
     },
     login: function () {
       OpenC3Auth.login(location.href)

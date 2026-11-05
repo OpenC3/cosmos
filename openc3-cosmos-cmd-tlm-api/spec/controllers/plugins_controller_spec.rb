@@ -30,6 +30,37 @@ RSpec.describe PluginsController, type: :controller do
       expect(json).to eq(["PLUGIN1", "PLUGIN2"])
     end
 
+    context "with exclude_default" do
+      before(:each) do
+        allow(OpenC3::PluginModel).to receive(:names).and_return(
+          ["openc3-cosmos-tool-admin-1.0.0.gem__20260101000000",
+           "openc3-cosmos-demo-1.0.0.gem__20260101000000",
+           "openc3-cosmos-tool-newtool-1.0.0.gem__20260101000000"]
+        )
+      end
+
+      it "omits the default plugins when true" do
+        get :index, params: {scope: "DEFAULT", exclude_default: "true"}
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)).to eq(
+          ["openc3-cosmos-demo-1.0.0.gem__20260101000000",
+           "openc3-cosmos-tool-newtool-1.0.0.gem__20260101000000"]
+        )
+      end
+
+      it "returns all plugins when false" do
+        get :index, params: {scope: "DEFAULT", exclude_default: "false"}
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body).length).to eq(3)
+      end
+
+      it "rejects any other value" do
+        get :index, params: {scope: "DEFAULT", exclude_default: "yes"}
+        expect(response).to have_http_status(:bad_request)
+        expect(JSON.parse(response.body)["message"]).to eq("Invalid exclude_default: yes")
+      end
+    end
+
     it "returns nothing without authorization" do
       get :index
       expect(response).to have_http_status(:unauthorized)
@@ -71,6 +102,27 @@ RSpec.describe PluginsController, type: :controller do
       expect(json).to eq(plugins_data)
     end
 
+    it "flags default plugins when id is 'all'" do
+      plugins_data = {
+        "openc3-cosmos-tool-admin-1.0.0.gem__20260101000000" => {"name" => "openc3-cosmos-tool-admin-1.0.0.gem__20260101000000"},
+        "openc3-tool-base-1.0.0.gem__20260101000000" => {"name" => "openc3-tool-base-1.0.0.gem__20260101000000"},
+        "openc3-cosmos-demo-1.0.0.gem__20260101000000" => {"name" => "openc3-cosmos-demo-1.0.0.gem__20260101000000"},
+        "openc3-cosmos-tool-newtool-1.0.0.gem__20260101000000" => {"name" => "openc3-cosmos-tool-newtool-1.0.0.gem__20260101000000"},
+      }
+      allow(OpenC3::PluginModel).to receive(:all).and_return(plugins_data)
+      allow(OpenC3::PluginStoreModel).to receive(:all).and_return([].to_json)
+
+      get :show, params: {id: "all", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json.transform_values { |plugin| plugin["default"] }).to eq(
+        "openc3-cosmos-tool-admin-1.0.0.gem__20260101000000" => true,
+        "openc3-tool-base-1.0.0.gem__20260101000000" => true,
+        "openc3-cosmos-demo-1.0.0.gem__20260101000000" => false,
+        "openc3-cosmos-tool-newtool-1.0.0.gem__20260101000000" => false,
+      )
+    end
+
     it "returns nothing without authorization" do
       get :show, params: {id: "TEST_PLUGIN"}
       expect(response).to have_http_status(:unauthorized)
@@ -84,6 +136,39 @@ RSpec.describe PluginsController, type: :controller do
       json = JSON.parse(response.body)
       expect(json["status"]).to eq("error")
       expect(json["message"]).to eq("Plugin not found")
+    end
+  end
+
+  describe "POST modified_diff" do
+    it "returns the list of modified files that differ from the plugin" do
+      allow(OpenC3::PluginModel).to receive(:modified_diff)
+        .with({"name" => "x"}, scope: "DEFAULT").and_return(["INST/screen.txt"])
+
+      post :modified_diff, params: {scope: "DEFAULT", plugin_hash: '{"name":"x"}'}
+      expect(response).to have_http_status(:ok)
+      json = JSON.parse(response.body)
+      expect(json["files"]).to eq(["INST/screen.txt"])
+    end
+
+    it "returns internal_server_error when the diff fails" do
+      allow(OpenC3::PluginModel).to receive(:modified_diff).and_raise("boom")
+
+      post :modified_diff, params: {scope: "DEFAULT", plugin_hash: '{"name":"x"}'}
+      expect(response).to have_http_status(:internal_server_error)
+      json = JSON.parse(response.body)
+      expect(json["message"]).to eq("boom")
+    end
+
+    it "returns bad_request on invalid plugin_hash JSON" do
+      post :modified_diff, params: {scope: "DEFAULT", plugin_hash: "not json"}
+      expect(response).to have_http_status(:bad_request)
+      json = JSON.parse(response.body)
+      expect(json["status"]).to eq("error")
+    end
+
+    it "returns nothing without authorization" do
+      post :modified_diff, params: {plugin_hash: "{}"}
+      expect(response).to have_http_status(:unauthorized)
     end
   end
 
@@ -341,6 +426,34 @@ RSpec.describe PluginsController, type: :controller do
 
     it "returns nothing without authorization" do
       delete :destroy, params: {id: "TEST_PLUGIN"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "POST migrate_to_uv" do
+    it "spawns a migratetouv process and returns its name" do
+      process = double("process", name: "process_1")
+      expect(OpenC3::ProcessManager.instance).to receive(:spawn).with(
+        ["ruby", "/openc3/bin/openc3cli", "migratetouv", "TEST_PLUGIN", "DEFAULT"],
+        "plugin_migrate_to_uv", "TEST_PLUGIN", anything, scope: "DEFAULT"
+      ).and_return(process)
+
+      post :migrate_to_uv, params: {id: "TEST_PLUGIN", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include("process_1")
+    end
+
+    it "returns error when spawn raises" do
+      expect(OpenC3::ProcessManager.instance).to receive(:spawn).and_raise(RuntimeError.new("Spawn failed"))
+
+      post :migrate_to_uv, params: {id: "TEST_PLUGIN", scope: "DEFAULT"}
+      expect(response).to have_http_status(:internal_server_error)
+      json = JSON.parse(response.body)
+      expect(json["status"]).to eq("error")
+    end
+
+    it "returns nothing without authorization" do
+      post :migrate_to_uv, params: {id: "TEST_PLUGIN"}
       expect(response).to have_http_status(:unauthorized)
     end
   end

@@ -1,190 +1,68 @@
 # OpenC3 COSMOS Root Development Commands
 # Run `just` or `just --list` to see all available commands
+#
+# Component commands live in per-component justfiles and are reached through
+# their namespace, e.g. `just plugins::lint-all` or `just python::test`. Only
+# repo-wide recipes belong here; RuboCop is one because its config, Gemfile
+# and scan scope all span the whole repository.
 
-plugins_dir := "openc3-cosmos-init/plugins/packages"
+# The root Gemfile reads its source from RUBYGEMS_URL (see .env)
+rubygems_url := env("RUBYGEMS_URL", "https://rubygems.org")
+
+# RuboCop config that inherits .rubocop.yml but excludes spec files
+rubocop_src_config := ".rubocop-src.yml"
+
+# Component command namespaces
+mod playwright 'playwright/justfile'
+mod plugins 'openc3-cosmos-init/plugins/justfile'
+mod python 'openc3/python/justfile'
+mod ruby 'openc3/justfile'
 
 # Default recipe - show available commands
 default:
     @just --list
 
-# ---------------------------------------------------------------------------
-# Shared dependency builds
-# ---------------------------------------------------------------------------
-
-# Build all shared frontend dependencies (js-common, vue-common, tool-base)
-# Skips packages whose src/ hasn't changed since the last build
-build-deps:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    build_if_stale() {
-        local name="$1" src="$2" out="$3"
-        local dir="{{ plugins_dir }}/$name"
-        if [[ ! -d "$dir/$out" ]] || [[ -n "$(find "$dir/$src" -newer "$dir/$out" -type f 2>/dev/null | head -1)" ]]; then
-            echo "Building $name ..."
-            (cd "$dir" && pnpm install && pnpm build)
-        else
-            echo "Skipping $name (up to date)"
-        fi
-    }
-    build_if_stale openc3-js-common  src dist
-    build_if_stale openc3-vue-common src dist
-    build_if_stale openc3-tool-base  src tools/base
-
-# Force-build all shared frontend dependencies (ignore cache)
-build-deps-force:
-    cd {{ plugins_dir }}/openc3-js-common && pnpm install && pnpm build
-    cd {{ plugins_dir }}/openc3-vue-common && pnpm install && pnpm build
-    cd {{ plugins_dir }}/openc3-tool-base && pnpm install && pnpm build
-
-# ---------------------------------------------------------------------------
-# Generic dev server
-# ---------------------------------------------------------------------------
-
-# Run any plugin dev server: just dev openc3-cosmos-tool-admin
-dev plugin *FLAGS:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    plugin="{{ plugin }}"
-    skip_deps=false
-    for flag in {{ FLAGS }}; do
-        if [[ "$flag" == "--skip-deps" ]]; then
-            skip_deps=true
-        fi
-    done
-    dir="{{ plugins_dir }}/$plugin"
-    if [[ ! -d "$dir" ]]; then
-        echo "Error: plugin '$plugin' not found in {{ plugins_dir }}"
-        echo ""
-        echo "Available plugins:"
-        ls {{ plugins_dir }} | grep openc3-cosmos-tool-
-        exit 1
-    fi
-    if [[ "$skip_deps" == false ]]; then
-        just build-deps
-    fi
-    cd "$dir"
-    pnpm install
-    port=$(grep -o 'port: [0-9]*' vite.config.js 2>/dev/null | grep -o '[0-9]*' | head -1)
-    port="${port:-2900}"
-    echo ""
-    echo "Starting $plugin on http://localhost:$port"
-    echo ""
-    pnpm serve
-
-# ---------------------------------------------------------------------------
-# Individual tool dev servers (alphabetical)
-# ---------------------------------------------------------------------------
-
-# Dev server for Admin (port 2930)
-dev-admin *FLAGS:
-    just dev openc3-cosmos-tool-admin {{ FLAGS }}
-
-# Dev server for Bucket Explorer (port 2921)
-dev-bucket-explorer *FLAGS:
-    just dev openc3-cosmos-tool-bucketexplorer {{ FLAGS }}
-
-# Dev server for Command Sender (port 2913)
-dev-cmd-sender *FLAGS:
-    just dev openc3-cosmos-tool-cmdsender {{ FLAGS }}
-
-# Dev server for CmdTlm Server (port 2911)
-dev-cmd-tlm-server *FLAGS:
-    just dev openc3-cosmos-tool-cmdtlmserver {{ FLAGS }}
-
-# Dev server for Data Extractor (port 2918)
-dev-data-extractor *FLAGS:
-    just dev openc3-cosmos-tool-dataextractor {{ FLAGS }}
-
-# Dev server for Data Viewer (port 2919)
-dev-data-viewer *FLAGS:
-    just dev openc3-cosmos-tool-dataviewer {{ FLAGS }}
-
-# Dev server for Handbooks (port 2922)
-dev-handbooks *FLAGS:
-    just dev openc3-cosmos-tool-handbooks {{ FLAGS }}
-
-# Dev server for iFrame (port 2915)
-dev-iframe *FLAGS:
-    just dev openc3-cosmos-tool-iframe {{ FLAGS }}
-
-# Dev server for Limits Monitor (port 2912)
-dev-limits-monitor *FLAGS:
-    just dev openc3-cosmos-tool-limitsmonitor {{ FLAGS }}
-
-# Dev server for Packet Viewer (port 2915)
-dev-packet-viewer *FLAGS:
-    just dev openc3-cosmos-tool-packetviewer {{ FLAGS }}
-
-# Dev server for Script Runner (port 2914)
-dev-script-runner *FLAGS:
-    just dev openc3-cosmos-tool-scriptrunner {{ FLAGS }}
-
-# Dev server for Table Manager (port 2916)
-dev-table-manager *FLAGS:
-    just dev openc3-cosmos-tool-tablemanager {{ FLAGS }}
-
-# Dev server for Telemetry Grapher (port 2917)
-dev-tlm-grapher *FLAGS:
-    just dev openc3-cosmos-tool-tlmgrapher {{ FLAGS }}
-
-# Dev server for Telemetry Viewer (port 2920)
-dev-tlm-viewer *FLAGS:
-    just dev openc3-cosmos-tool-tlmviewer {{ FLAGS }}
+# Run every linter/formatter check in the repo (no tests)
+check:
+    just lint-ruby
+    just plugins::lint-check
+    just python::lint-check
+    just playwright::lint-check
 
 # ---------------------------------------------------------------------------
 # Linting
 # ---------------------------------------------------------------------------
 
-# Lint a specific package: just lint openc3-cosmos-tool-dataextractor
-lint package:
-    cd {{ plugins_dir }}/{{ package }} && pnpm lint
+# Install the RuboCop gems declared in the root Gemfile
+lint-ruby-install:
+    RUBYGEMS_URL={{ rubygems_url }} bundle install
 
-# Lint and auto-fix a specific package
-lint-fix package:
-    cd {{ plugins_dir }}/{{ package }} && pnpm lint --fix
+# Lint Ruby with RuboCop: just lint-ruby openc3/lib
+lint-ruby *ARGS:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop {{ ARGS }}
 
-# Lint all packages that have a lint script
-lint-all:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    failed=0
-    for dir in {{ plugins_dir }}/openc3-*/; do
-        if grep -q '"lint"' "$dir/package.json" 2>/dev/null; then
-            name=$(basename "$dir")
-            echo "Linting $name ..."
-            if (cd "$dir" && pnpm lint --max-warnings 0); then
-                echo "  OK"
-            else
-                echo "  FAILED"
-                failed=$((failed + 1))
-            fi
-        fi
-    done
-    if [ $failed -gt 0 ]; then
-        echo ""
-        echo "$failed package(s) failed linting"
-        exit 1
-    fi
-    echo ""
-    echo "All packages passed!"
+# Lint Ruby source only, skipping spec files: just lint-ruby-src openc3/lib
+lint-ruby-src *ARGS:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop -c {{ rubocop_src_config }} --force-exclusion {{ ARGS }}
 
-# Lint and auto-fix all packages that have a lint script
-lint-fix-all:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    for dir in {{ plugins_dir }}/openc3-*/; do
-        if grep -q '"lint"' "$dir/package.json" 2>/dev/null; then
-            name=$(basename "$dir")
-            echo "Fixing $name ..."
-            (cd "$dir" && pnpm lint --fix) || true
-        fi
-    done
-    echo "Done"
+# Never use -A/--autocorrect-all here: unsafe corrections can undo a SonarQube
+# fix. The unsafe cops also have AutoCorrect: false set in .rubocop.yml.
+# Auto-fix Ruby with RuboCop, safe corrections only
+lint-ruby-fix *ARGS:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop --autocorrect {{ ARGS }}
 
-# ---------------------------------------------------------------------------
-# Utilities
-# ---------------------------------------------------------------------------
+# Auto-fix Ruby source only, skipping spec files, safe corrections only
+lint-ruby-src-fix *ARGS:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop -c {{ rubocop_src_config }} --force-exclusion --autocorrect {{ ARGS }}
 
-# List all available frontend plugins
-list-plugins:
-    @ls {{ plugins_dir }} | grep openc3-cosmos-tool-
+# Show RuboCop offense counts by cop
+lint-ruby-stats:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop --format offenses
+
+# Show RuboCop offense counts by cop for source only, skipping spec files
+lint-ruby-src-stats:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop -c {{ rubocop_src_config }} --format offenses
+
+# Write a RuboCop JSON report for SonarQube (sonar.ruby.rubocop.reportPaths)
+lint-ruby-report:
+    RUBYGEMS_URL={{ rubygems_url }} bundle exec rubocop --format json --out rubocop-report.json

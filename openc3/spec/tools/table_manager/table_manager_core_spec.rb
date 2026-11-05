@@ -21,6 +21,10 @@ require 'openc3/tools/table_manager/table_manager_core'
 
 module OpenC3
   describe TableManagerCore do
+    after(:all) do
+      FileUtils.rm_rf(File.join(SPEC_DIR, 'tmp'))
+    end
+
     describe "self.binary" do
       it "pulls out a table binary from a multi-table file" do
         tmp = File.join(SPEC_DIR, 'tmp')

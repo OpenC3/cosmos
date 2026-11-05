@@ -17,14 +17,17 @@ module OpenC3
   class SystemEventsTopic < Topic
     PRIMARY_KEY = "OPENC3__SYSTEM__EVENTS".freeze
 
-    # Collect all unique target db_shards from TargetModel
+    # Collect all unique target and interface db_shards. Interfaces read system
+    # events on their own db_shard which may not have any targets on it.
     def self._active_db_shards
       db_shards = Set.new([0])
-      # Iterate all scopes to find all target db_shards
-      Store.scan_each(match: '*__openc3_targets', type: 'hash') do |key|
-        Store.hgetall(key).each do |_name, json|
-          parsed = JSON.parse(json, allow_nan: true, create_additions: true)
-          db_shards << (parsed['db_shard'] || 0).to_i
+      # Iterate all scopes to find all target and interface db_shards
+      ['*__openc3_targets', '*__openc3_interfaces'].each do |match|
+        Store.scan_each(match: match, type: 'hash') do |key|
+          Store.hgetall(key).each do |_name, json|
+            parsed = JSON.parse(json, allow_nan: true, create_additions: true)
+            db_shards << (parsed['db_shard'] || 0).to_i
+          end
         end
       end
       db_shards

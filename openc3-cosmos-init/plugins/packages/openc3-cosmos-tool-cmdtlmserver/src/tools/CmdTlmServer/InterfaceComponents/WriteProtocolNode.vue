@@ -12,7 +12,7 @@
 -->
 
 <template>
-  <div class="write-protocol-node">
+  <div class="write-protocol-node" :style="protocolStyle">
     <v-icon color="#f97316" size="small">mdi-arrow-right-bold</v-icon>
     <div class="protocol-label">{{ data.label }}</div>
   </div>
@@ -27,6 +27,15 @@ export default {
       required: true,
     },
   },
+  computed: {
+    // Width is calculated by the flow chart so protocols don't overlap
+    protocolStyle() {
+      if (!this.data.width) {
+        return {}
+      }
+      return { width: `${this.data.width}px` }
+    },
+  },
 }
 </script>
 
@@ -35,6 +44,7 @@ export default {
   background: #fff7ed;
   border: 2px solid #f97316;
   border-radius: 4px;
+  box-sizing: border-box;
   padding: 4px 6px;
   text-align: center;
   font-size: 10px;
@@ -53,5 +63,8 @@ export default {
   font-size: 10px;
   margin: 2px 0;
   color: #374151;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

@@ -40,9 +40,15 @@ module OpenC3
     # inject_tlm, set_tlm, override_tlm, and normalize_tlm are implemented here simply to add a puts
     # these methods modify the telemetry so the user should be notified in the Script Runner log messages
 
-    def inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, stored: false, scope: $openc3_scope, token: $openc3_token)
-      puts "inject_tlm(\"#{target_name}\", \"#{packet_name}\", #{item_hash}, type: #{type}, stored: #{stored})"
-      $api_server.method_missing(:inject_tlm, target_name, packet_name, item_hash, type: type, stored: stored, scope: scope, token: token)
+    def inject_tlm(target_name, packet_name, item_hash = nil, type: :CONVERTED, stored: false, received_time: nil, scope: $openc3_scope, token: $openc3_token)
+      message = "inject_tlm(\"#{target_name}\", \"#{packet_name}\", #{item_hash}, type: #{type}, stored: #{stored}"
+      kwargs = { type: type, stored: stored, scope: scope, token: token }
+      unless received_time.nil?
+        message << ", received_time: #{received_time}"
+        kwargs[:received_time] = received_time
+      end
+      puts "#{message})"
+      $api_server.method_missing(:inject_tlm, target_name, packet_name, item_hash, **kwargs)
     end
 
     def set_tlm(*args, type: :ALL, scope: $openc3_scope, token: $openc3_token)

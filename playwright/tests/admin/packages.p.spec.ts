@@ -1,5 +1,5 @@
 /*
-# Copyright 2025 OpenC3, Inc
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -8,7 +8,6 @@
 # See LICENSE.md for more details.
 */
 
-// @ts-check
 import { test, expect } from '../fixture'
 
 test.use({

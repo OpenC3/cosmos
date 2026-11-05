@@ -8,13 +8,45 @@
 # See LICENSE.md for more details.
 */
 
-// @ts-check
+import { Page } from '@playwright/test'
 import { test, expect } from './fixture'
 
 test.use({
   toolPath: '/tools/bucketexplorer',
   toolName: 'Bucket Explorer',
 })
+
+// Script Runner's File menu button is teleported into the tool bar while the
+// tool is still fetching its file list and the user's roles. A click that lands
+// mid-mount is swallowed and the menu never opens, so the follow-up
+// `text=New File` waits out the whole action timeout. Retry the open, and only
+// click when the menu is actually closed so we never toggle it shut again.
+async function openScriptRunnerFileMenu(page: Page) {
+  await expect(async () => {
+    if (!(await page.locator('text=New File').isVisible())) {
+      await page.locator('[data-test=script-runner-file]').click()
+    }
+    await expect(page.locator('text=New File')).toBeVisible({ timeout: 2000 })
+  }).toPass()
+}
+
+// Run a trivial script so that config/DEFAULT/targets_modified/__TEMP__ exists
+// and has something in it for the bucket explorer tests below.
+async function runTempScript(page: Page) {
+  await page.goto('/tools/scriptrunner')
+  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+  await openScriptRunnerFileMenu(page)
+  await page.locator('text=New File').click()
+  await expect(page.locator('textarea')).toHaveText('')
+  await page.locator('textarea').fill(`print('hello world')`)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    {
+      timeout: 30000,
+    },
+  )
+}
 
 //
 // Test the basic functionality of the application
@@ -25,7 +57,7 @@ test('navigate config bucket', async ({ page, utils }) => {
     page.getByRole('cell', { name: 'No data available' }),
   ).toBeVisible()
 
-  await page.getByText('config').click()
+  await page.getByText('config', { exact: true }).click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
   await expect(page.locator('[data-test="file-path"]')).toContainText(
@@ -115,6 +147,81 @@ test('navigate gems volume', async ({ page, utils }) => {
   expect(await page.locator('tbody > tr').count()).toBeGreaterThanOrEqual(1)
 })
 
+// Volume downloads used to be base64 encoded into JSON which fails for files
+// over ~2GB (Ruby memory / browser max string length). Create a sparse >2GB
+// file in the plugin_default volume via Script Runner (which shares /plugins
+// with the API) so it takes no real disk space. Runs as admin because the
+// cleanup deletes from a volume, which is admin-only (core users are always
+// admin, Enterprise's default operator is not). The @admin tag makes the
+// fixture sign in as admin if the saved session has gone stale.
+test.describe(() => {
+  test.use({ storageState: 'adminStorageState.json' })
+  test(
+    'download large file from volume',
+    { tag: '@admin' },
+    async ({ page, utils }) => {
+      test.setTimeout(5 * 60 * 1000)
+      const filename = `large_download_${Math.ceil(Math.random() * 1_000_000)}.bin`
+      const size = 2_200_000_000
+
+      await page.goto('/tools/scriptrunner')
+      await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+      await openScriptRunnerFileMenu(page)
+      await page.locator('text=New File').click()
+      await expect(page.locator('textarea')).toHaveText('')
+      // Leading puts forces Ruby language detection
+      await page
+        .locator('textarea')
+        .fill(
+          `puts "start"\nFile.open('/plugins/DEFAULT/${filename}', 'wb') { |f| f.truncate(${size}) }`,
+        )
+      await page.locator('[data-test=start-button]').click()
+      await expect(page.locator('[data-test=state] input')).toHaveValue(
+        'completed',
+        { timeout: 30000 },
+      )
+
+      try {
+        await page.goto('/tools/bucketexplorer/%2Fplugin_default%2F')
+        await expect(page.locator('.v-app-bar')).toContainText(
+          'Bucket Explorer',
+        )
+        await page.locator('[data-test="search-input"] input').fill(filename)
+        await expect(page.getByRole('cell', { name: filename })).toBeVisible()
+
+        // Either the browser starts a download or we get the failure toast
+        const downloadPromise = page.waitForEvent('download', {
+          timeout: 120000,
+        })
+        const failurePromise = page
+          .getByText(`Unable to download file ${filename}`)
+          .waitFor({ timeout: 120000 })
+          .then(() => {
+            throw new Error(`Failed to download ${filename} from volume`)
+          })
+        failurePromise.catch(() => {}) // Ignore the loser of the race
+        await page
+          .locator(`tr:has-text("${filename}") [data-test="download-file"]`)
+          .click()
+        const download = await Promise.race([downloadPromise, failurePromise])
+        expect(download.suggestedFilename()).toBe(filename)
+        // Streaming started which is all we need, don't write 2GB to disk
+        await download.cancel()
+      } finally {
+        await page.goto('/tools/bucketexplorer/%2Fplugin_default%2F')
+        await page.locator('[data-test="search-input"] input').fill(filename)
+        await page
+          .locator(`tr:has-text("${filename}") [data-test="delete-file"]`)
+          .click()
+        await page.locator('[data-test="confirm-dialog-delete"]').click()
+        await expect(
+          page.getByRole('cell', { name: filename }),
+        ).not.toBeVisible()
+      }
+    },
+  )
+})
+
 test('direct URLs', async ({ page, utils }) => {
   await utils.sleep(500) // Wait for the app to be ready
   // Verify using slashes rather than %2F works
@@ -127,18 +234,22 @@ test('direct URLs', async ({ page, utils }) => {
   await page.goto('/tools/bucketexplorer/blah')
   await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(
-    page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET'),
+    page.getByText('Unknown bucket / volume OPENC3_BLAH_BUCKET', {
+      exact: true,
+    }),
   ).toBeVisible()
   // Prepending %2F makes it a volume
   await page.goto('/tools/bucketexplorer/%2FBAD')
   await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
   await expect(
-    page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME'),
+    page.getByText('Unknown bucket / volume OPENC3_BAD_VOLUME', {
+      exact: true,
+    }),
   ).toBeVisible()
 })
 
 test('view file', async ({ page, utils }) => {
-  await page.getByText('config').click()
+  await page.getByText('config', { exact: true }).click()
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
   await page.getByRole('cell', { name: 'targets', exact: true }).click()
   await page.getByRole('cell', { name: 'INST', exact: true }).click()
@@ -158,23 +269,10 @@ test('view file', async ({ page, utils }) => {
 
 test('upload and delete', async ({ page, utils }) => {
   // Create a file so we have something in __TEMP__
-  await page.goto('/tools/scriptrunner')
-  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
-  await page.locator('[data-test=script-runner-file]').click()
-  await page.locator('text=New File').click()
-  await expect(page.locator('textarea')).toHaveText('')
-  await page.locator('textarea').fill(`print('hello world')`)
-  await page.locator('[data-test=script-runner-file]').click()
-  await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue(
-    'completed',
-    {
-      timeout: 30000,
-    },
-  )
+  await runTempScript(page)
 
   await page.goto('/tools/bucketexplorer')
-  await page.getByText('config').click()
+  await page.getByText('config', { exact: true }).click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/config%2F/)
   await expect(page.locator('[data-test="file-path"]')).toHaveText('/')
   await page.getByRole('cell', { name: 'DEFAULT' }).click()
@@ -226,7 +324,11 @@ async function uploadAs(page: any, filename: string) {
 
 test('delete multiple selected files', async ({ page, utils }) => {
   const id = Math.ceil(Math.random() * 1_000_000)
-  const files = [`multi_${id}_a.json`, `multi_${id}_b.json`, `multi_${id}_c.json`]
+  const files = [
+    `multi_${id}_a.json`,
+    `multi_${id}_b.json`,
+    `multi_${id}_c.json`,
+  ]
 
   await page.goto(
     '/tools/bucketexplorer/config%2FDEFAULT%2Ftargets_modified%2F__TEMP__%2F',
@@ -272,7 +374,10 @@ test('delete multiple selected files', async ({ page, utils }) => {
 })
 
 test('navigate logs and tools bucket', async ({ page, utils }) => {
-  test.setTimeout(3 * 60 * 1000) // 3 minutes
+  // raw_logs only appears once the raw packet log file is cut to the bucket,
+  // which happens on INST's TLM_LOG_CYCLE_TIME (60s in CI, 300s locally), so
+  // allow enough time for that cycle plus the reload retries below.
+  test.setTimeout(7 * 60 * 1000)
   // Keep clicking alternatively on tools and then logs to force a refresh
   // This allows the DEFAULT folder to appear in time
   await expect(async () => {
@@ -287,19 +392,26 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
     '/ DEFAULT /',
   )
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
-  if (process.env.ENTERPRISE === '1') {
-    await expect(page.locator('tbody > tr').first()).toHaveText(/notebooks/)
-    await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
-  } else {
-    await expect(page.locator('tbody > tr').first()).toHaveText(/\w+_logs/)
-    await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
-  }
-  // Reload and ensure we get to the same place
-  await page.reload()
-  await expect(page.locator('[data-test="file-path"]')).toHaveText(
-    '/ DEFAULT /',
+  // Don't require the Enterprise 'notebooks' folder here: it is only created
+  // once a notebook is actually run (Notebook.run puts the running copy into
+  // OPENC3_LOGS_BUCKET), so it exists only if the enterprise notebooks spec
+  // already ran in this stack. Allow it, but don't depend on it.
+  await expect(page.locator('tbody > tr').first()).toHaveText(
+    /notebooks|\w+_logs/,
   )
-  await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
+  await expect(page.locator('tbody > tr').last()).toHaveText(/\w+_logs/)
+  // Reload (also verifies we return to the same place) until the raw_logs
+  // folder has been cut to the bucket - on a fresh instance it isn't there
+  // until the first TLM_LOG_CYCLE_TIME elapses, and the listing only refreshes
+  // on reload.
+  await expect(async () => {
+    await page.reload()
+    await expect(page.locator('[data-test="file-path"]')).toHaveText(
+      '/ DEFAULT /',
+    )
+    await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/logs%2FDEFAULT%2F/)
+    await expect(page.getByRole('cell', { name: 'raw_logs' })).toBeVisible()
+  }).toPass({ timeout: 6 * 60 * 1000 })
   // Ensure the log files have the correct dates
   let date = new Date().toISOString().split('T')[0].replace(/-/g, '')
   await page.getByRole('cell', { name: 'raw_logs' }).click()
@@ -327,24 +439,12 @@ test('auto refreshes to update files', async ({ page, utils, context }) => {
   const identifier = Math.ceil(Math.random() * 1000)
   const filename = `refresh_package_${identifier}.json`
   // Create a file so we have something in __TEMP__
-  await page.goto('/tools/scriptrunner')
-  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
-  await page.locator('[data-test=script-runner-file]').click()
-  await page.locator('text=New File').click()
-  await expect(page.locator('textarea')).toHaveText('')
-  await page.locator('textarea').fill(`print('hello world')`)
-  await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue(
-    'completed',
-    {
-      timeout: 30000,
-    },
-  )
+  await runTempScript(page)
 
   // Open another tab and navigate to the __TEMP__ dir
   const pageTwo = await context.newPage()
   pageTwo.goto('/tools/bucketexplorer')
-  await pageTwo.getByText('config').click()
+  await pageTwo.getByText('config', { exact: true }).click()
   await pageTwo.getByRole('cell', { name: 'DEFAULT' }).click()
   await pageTwo.getByRole('cell', { name: 'targets_modified' }).click()
   await pageTwo.getByRole('cell', { name: '__TEMP__' }).click()

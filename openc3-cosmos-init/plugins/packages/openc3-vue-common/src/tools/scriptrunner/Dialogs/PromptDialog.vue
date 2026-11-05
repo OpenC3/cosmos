@@ -37,6 +37,18 @@
           <v-row class="mt-1">
             <span v-text="message" />
           </v-row>
+          <v-row v-if="description" class="mt-4">
+            <span>Description: {{ description }}</span>
+          </v-row>
+          <v-row v-if="hazardous" class="mt-4">
+            <span
+              class="openc3-yellow font-weight-bold"
+              data-test="hazardous-description"
+            >
+              <v-icon class="mr-1">mdi-alert</v-icon>
+              Hazardous: {{ hazardous }}
+            </span>
+          </v-row>
           <v-row v-if="details" class="mt-3">
             <span v-text="details" />
           </v-row>
@@ -151,6 +163,14 @@ const props = defineProps({
     required: true,
   },
   details: {
+    type: String,
+    default: '',
+  },
+  description: {
+    type: String,
+    default: '',
+  },
+  hazardous: {
     type: String,
     default: '',
   },

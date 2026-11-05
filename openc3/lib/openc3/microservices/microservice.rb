@@ -26,6 +26,7 @@ OpenC3.require_file 'openc3/utilities/secrets'
 OpenC3.require_file 'openc3/utilities/sleeper'
 OpenC3.require_file 'openc3/utilities/open_telemetry'
 OpenC3.require_file 'openc3/utilities/thread_manager'
+OpenC3.require_file 'openc3/utilities/topic_lag_monitor'
 OpenC3.require_file 'openc3/models/microservice_model'
 OpenC3.require_file 'openc3/models/microservice_status_model'
 OpenC3.require_file 'tmpdir'
@@ -43,7 +44,7 @@ module OpenC3
     attr_accessor :secrets
 
     def self.run(name = nil)
-      name = ENV['OPENC3_MICROSERVICE_NAME'] unless name
+      name = ENV.fetch('OPENC3_MICROSERVICE_NAME', nil) unless name
       microservice = self.new(name)
       thread = Thread.new do
         begin
@@ -133,7 +134,7 @@ module OpenC3
       @target_names = @config["target_names"]
       @target_names ||= []
       # NOTE: setup_targets doesn't do anything if @target_names is empty
-      System.setup_targets(@target_names, @temp_dir, scope: @scope) unless is_plugin
+      System.setup_targets(@target_names, @temp_dir, scope: @scope, descriptions: load_descriptions?) unless is_plugin
 
       # Use at_exit to shutdown cleanly no matter how we die
       at_exit do
@@ -150,16 +151,31 @@ module OpenC3
         cmd_array = @config["cmd"]
 
         # Get Microservice files from bucket storage
-        bucket = ENV['OPENC3_CONFIG_BUCKET']
+        bucket = ENV.fetch('OPENC3_CONFIG_BUCKET') { raise 'OPENC3_CONFIG_BUCKET environment variable is required' }
         client = Bucket.getClient()
 
         prefix = "#{@scope}/microservices/#{@name}/"
         file_count = 0
-        client.list_objects(bucket: bucket, prefix: prefix).each do |object|
-          response_target = OpenC3.sanitize_path(File.join(@temp_dir, object.key.split(prefix)[-1]))
-          FileUtils.mkdir_p(File.dirname(response_target))
-          client.get_object(bucket: bucket, key: object.key, path: response_target)
-          file_count += 1
+        # Tolerate transient object store failures during startup. On a busy or
+        # underpowered cluster the bucket store (e.g. MinIO) can be briefly
+        # unreachable while many microservices start at once. Rather than crash
+        # and CrashLoopBackOff (which can outlast deploy timeouts), retry for a
+        # bounded time before giving up.
+        startup_timeout = (ENV.fetch('OPENC3_MICROSERVICE_STARTUP_BUCKET_TIMEOUT', 60)).to_f
+        startup_deadline = Time.now + startup_timeout
+        begin
+          file_count = 0
+          client.list_objects(bucket: bucket, prefix: prefix).each do |object|
+            response_target = OpenC3.sanitize_path(File.join(@temp_dir, object.key.split(prefix)[-1]))
+            FileUtils.mkdir_p(File.dirname(response_target))
+            client.get_object(bucket: bucket, key: object.key, path: response_target)
+            file_count += 1
+          end
+        rescue => error
+          raise if Time.now >= startup_deadline
+          @logger.warn("Microservice #{@name} startup: bucket access failed (#{error.class}: #{error.message}); retrying for up to #{startup_timeout.to_i}s")
+          sleep(5)
+          retry
         end
 
         # Adjust @work_dir to microservice files downloaded if files and a relative path
@@ -216,6 +232,12 @@ module OpenC3
       shutdown()
     end
 
+    # Whether System keeps packet and item descriptions. Subclasses that never
+    # use them override this to return false to reduce memory.
+    def load_descriptions?
+      true
+    end
+
     def shutdown(state = 'STOPPED')
       return if @shutdown_complete
       begin
@@ -246,6 +268,23 @@ module OpenC3
       Thread.current[:topic_offsets] ||= {}
       topic_offsets = Thread.current[:topic_offsets]
       topic_offsets[@microservice_topic] = "0-0" # Always get all available
+    end
+
+    # Update the lag metric for a message read from a topic and notify users
+    # if this microservice is falling behind
+    #
+    # @param topic [String] Redis stream the message was read from
+    # @param msg_id [String] Redis stream id of the message
+    # @param metric_name [String] Gauge metric to update with the lag
+    # @param help [String] Help text for the gauge metric
+    # @return [Float] The lag in seconds
+    def update_topic_lag(topic, msg_id, metric_name:, help:)
+      topic_lag_monitor.record(topic, msg_id, metric_name: metric_name, help: help)
+    end
+
+    # @return [TopicLagMonitor] Lag monitor shared by this microservice's topic readers
+    def topic_lag_monitor
+      @topic_lag_monitor ||= TopicLagMonitor.new(name: @name, logger: @logger || Logger, metric: @metric)
     end
 
     # Returns if the command was handled

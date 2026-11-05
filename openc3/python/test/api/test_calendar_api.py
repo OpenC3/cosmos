@@ -158,8 +158,12 @@ class TestCalendarApi(unittest.TestCase):
         self._make_timeline()
         start, stop = self._future_window()
         result = create_timeline_activity(
-            TIMELINE, kind="COMMAND", start=start, stop=stop,
-            data={"cmd": "INST ABORT"}, scope=SCOPE,
+            TIMELINE,
+            kind="COMMAND",
+            start=start,
+            stop=stop,
+            data={"cmd": "INST ABORT"},
+            scope=SCOPE,
         )
         self.assertEqual(result["kind"], "command")
         self.assertEqual(result["start"], int(start.timestamp()))
@@ -170,8 +174,12 @@ class TestCalendarApi(unittest.TestCase):
         self._make_timeline()
         start, stop = self._future_window()
         result = create_timeline_activity(
-            TIMELINE, kind="SCRIPT", start=start.isoformat(), stop=stop.isoformat(),
-            data={"script": "INST/foo.py"}, scope=SCOPE,
+            TIMELINE,
+            kind="SCRIPT",
+            start=start.isoformat(),
+            stop=stop.isoformat(),
+            data={"script": "INST/foo.py"},
+            scope=SCOPE,
         )
         self.assertEqual(result["kind"], "script")
         self.assertEqual(result["start"], int(start.timestamp()))
@@ -180,8 +188,10 @@ class TestCalendarApi(unittest.TestCase):
         self._make_timeline()
         start, stop = self._future_window()
         result = create_timeline_activity(
-            TIMELINE, kind="reserve",
-            start=int(start.timestamp()), stop=int(stop.timestamp()),
+            TIMELINE,
+            kind="reserve",
+            start=int(start.timestamp()),
+            stop=int(stop.timestamp()),
             scope=SCOPE,
         )
         self.assertEqual(result["kind"], "reserve")
@@ -190,8 +200,12 @@ class TestCalendarApi(unittest.TestCase):
         self._make_timeline()
         start, stop = self._future_window()
         result = create_timeline_activity(
-            TIMELINE, kind="COMMAND", start=start, stop=stop,
-            data={"username": "alice"}, scope=SCOPE,
+            TIMELINE,
+            kind="COMMAND",
+            start=start,
+            stop=stop,
+            data={"username": "alice"},
+            scope=SCOPE,
         )
         self.assertEqual(result["events"][0]["username"], "alice")
 
@@ -201,8 +215,13 @@ class TestCalendarApi(unittest.TestCase):
         stop = start + 1800
         recurring = {"frequency": "1", "span": "days", "end": start + 86400 * 3}
         create_timeline_activity(
-            TIMELINE, kind="COMMAND", start=start, stop=stop,
-            data={"cmd": "INST ABORT"}, recurring=recurring, scope=SCOPE,
+            TIMELINE,
+            kind="COMMAND",
+            start=start,
+            stop=stop,
+            data={"cmd": "INST ABORT"},
+            recurring=recurring,
+            scope=SCOPE,
         )
         all_acts = ActivityModel.all(name=TIMELINE, scope=SCOPE)
         self.assertEqual(len(all_acts), 4)
@@ -212,8 +231,10 @@ class TestCalendarApi(unittest.TestCase):
         now = datetime.now(timezone.utc)
         with self.assertRaises(ActivityInputError):
             create_timeline_activity(
-                TIMELINE, kind="COMMAND",
-                start=now - timedelta(hours=1), stop=now,
+                TIMELINE,
+                kind="COMMAND",
+                start=now - timedelta(hours=1),
+                stop=now,
                 scope=SCOPE,
             )
 
@@ -222,8 +243,10 @@ class TestCalendarApi(unittest.TestCase):
         now = datetime.now(timezone.utc)
         with self.assertRaises(ActivityInputError):
             create_timeline_activity(
-                TIMELINE, kind="COMMAND",
-                start=now + timedelta(hours=1), stop=now + timedelta(days=2),
+                TIMELINE,
+                kind="COMMAND",
+                start=now + timedelta(hours=1),
+                stop=now + timedelta(days=2),
                 scope=SCOPE,
             )
 
@@ -232,8 +255,13 @@ class TestCalendarApi(unittest.TestCase):
     def test_update_returns_none_when_missing(self):
         self._make_timeline()
         result = update_timeline_activity(
-            TIMELINE, id=0, kind="COMMAND", start=0, stop=0,
-            uuid="no-such", scope=SCOPE,
+            TIMELINE,
+            id=0,
+            kind="COMMAND",
+            start=0,
+            stop=0,
+            uuid="no-such",
+            scope=SCOPE,
         )
         self.assertIsNone(result)
 
@@ -241,14 +269,19 @@ class TestCalendarApi(unittest.TestCase):
         self._make_timeline()
         start, stop = self._future_window(offset_hours=1)
         created = create_timeline_activity(
-            TIMELINE, kind="COMMAND", start=start, stop=stop, scope=SCOPE,
+            TIMELINE,
+            kind="COMMAND",
+            start=start,
+            stop=stop,
+            scope=SCOPE,
         )
         new_start, new_stop = self._future_window(offset_hours=4)
         updated = update_timeline_activity(
             TIMELINE,
             id=created["start"],
             kind="SCRIPT",
-            start=new_start, stop=new_stop,
+            start=new_start,
+            stop=new_stop,
             uuid=created["uuid"],
             data={"script": "foo.py"},
             scope=SCOPE,
@@ -266,7 +299,11 @@ class TestCalendarApi(unittest.TestCase):
         self._make_timeline()
         start, stop = self._future_window()
         created = create_timeline_activity(
-            TIMELINE, kind="COMMAND", start=start, stop=stop, scope=SCOPE,
+            TIMELINE,
+            kind="COMMAND",
+            start=start,
+            stop=stop,
+            scope=SCOPE,
         )
         result = get_timeline_activity(TIMELINE, created["start"], created["uuid"], scope=SCOPE)
         self.assertEqual(result["uuid"], created["uuid"])
@@ -290,9 +327,7 @@ class TestCalendarApi(unittest.TestCase):
         create_timeline_activity(TIMELINE, kind="COMMAND", start=start, stop=stop, scope=SCOPE)
         far = (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()
         far_stop = (datetime.now(timezone.utc) + timedelta(days=31)).isoformat()
-        self.assertEqual(
-            get_timeline_activities(TIMELINE, start=far, stop=far_stop, scope=SCOPE), []
-        )
+        self.assertEqual(get_timeline_activities(TIMELINE, start=far, stop=far_stop, scope=SCOPE), [])
 
     # --- delete_timeline_activity ----------------------------------------
 
@@ -305,7 +340,11 @@ class TestCalendarApi(unittest.TestCase):
         self._make_timeline()
         start, stop = self._future_window()
         created = create_timeline_activity(
-            TIMELINE, kind="COMMAND", start=start, stop=stop, scope=SCOPE,
+            TIMELINE,
+            kind="COMMAND",
+            start=start,
+            stop=stop,
+            scope=SCOPE,
         )
         ret = delete_timeline_activity(TIMELINE, created["start"], created["uuid"], scope=SCOPE)
         self.assertEqual(ret, 1)
@@ -329,19 +368,25 @@ class TestCalendarApi(unittest.TestCase):
 
     def test_commit_returns_none_when_missing(self):
         self._make_timeline()
-        self.assertIsNone(
-            commit_timeline_activity(TIMELINE, 0, "no-such", status="done", scope=SCOPE)
-        )
+        self.assertIsNone(commit_timeline_activity(TIMELINE, 0, "no-such", status="done", scope=SCOPE))
 
     def test_commit_appends_event(self):
         self._make_timeline()
         start, stop = self._future_window()
         created = create_timeline_activity(
-            TIMELINE, kind="COMMAND", start=start, stop=stop, scope=SCOPE,
+            TIMELINE,
+            kind="COMMAND",
+            start=start,
+            stop=stop,
+            scope=SCOPE,
         )
         result = commit_timeline_activity(
-            TIMELINE, created["start"], created["uuid"],
-            status="completed", message="finished", scope=SCOPE,
+            TIMELINE,
+            created["start"],
+            created["uuid"],
+            status="completed",
+            message="finished",
+            scope=SCOPE,
         )
         self.assertEqual(len(result["events"]), 2)
         last = result["events"][-1]

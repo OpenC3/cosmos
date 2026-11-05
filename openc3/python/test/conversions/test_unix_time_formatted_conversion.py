@@ -47,14 +47,14 @@ class TestUnixTimeFormattedConversion(unittest.TestCase):
     def test_complains_if_the_seconds_item_doesnt_exist(self):
         utfc = UnixTimeFormattedConversion("TIME")
         packet = Packet("TGT", "PKT")
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT TIME' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT PKT TIME' does not exist \(Packet\)"):
             utfc.call(None, packet, packet.buffer)
 
     def test_complains_if_the_microseconds_item_doesnt_exist(self):
         utfc = UnixTimeFormattedConversion("TIME", "TIME_US")
         packet = Packet("TGT", "PKT")
         packet.append_item("TIME", 32, "UINT")
-        with self.assertRaisesRegex(RuntimeError, "Packet item 'TGT PKT TIME_US' does not exist"):
+        with self.assertRaisesRegex(RuntimeError, r"Item 'TGT PKT TIME_US' does not exist \(Packet\)"):
             utfc.call(None, packet, packet.buffer)
 
     def test_returns_the_seconds_conversion(self):

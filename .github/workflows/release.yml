@@ -42,24 +42,24 @@ jobs:
     environment: Release # See https://github.com/OpenC3/cosmos/settings/environments
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@8d3c67de8e2fe68ef647c8db1e6a09f647780f40 # v2.19.0
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ secrets.QA_PAT }}
       - name: Set up Ruby 3.4
-        uses: ruby/setup-ruby@c4e5b1316158f92e3d49443a9d58b31d25ac0f8f # v1.306.0
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         with:
           ruby-version: 3.4
           bundler-cache: false # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
       - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.12"
       - name: Install dependencies
@@ -77,38 +77,36 @@ jobs:
           IRONBANK_REGISTRY_CLI: ${{ secrets.IRONBANK_REGISTRY_CLI }}
         run: echo "$IRONBANK_REGISTRY_CLI" | docker login registry1.dso.mil -u jmthomas --password-stdin
       - name: Login to DockerHub
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Login to the GitHub Container registry
-        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
+        uses: docker/setup-buildx-action@594f3bf4285d9ea8dc53c9a0c9c4092420091003 # v4.4.0
         with:
           driver: cloud
           endpoint: "openc3inc/github-builder"
-          install: true
       - name: Update version to desired
         run: ruby openc3_set_versions.rb
         working-directory: scripts/release
         env:
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.version }}
-      - uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+      - uses: stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c # v7.2.1
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.version }}"
           tagging_message: "v${{ github.event.inputs.version }}"
-          push_options: --force
       - name: Build Python Package
         working-directory: openc3/python
         run: python -m build
-      - uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v6.0.0
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
-          version: 10
+          version: 11
       - name: Build pnpm Packages
         run: pnpm install --frozen-lockfile --ignore-scripts; pnpm build:common
         working-directory: openc3-cosmos-init/plugins
@@ -169,7 +167,7 @@ jobs:
       #   python3 -m twine upload dist/*
       - name: Publish python package
         continue-on-error: true
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086
         with:
           packages-dir: openc3/python/dist
       # Publish npm packages. We continue on error here because we don't want a failure to block the version update.
@@ -193,12 +191,21 @@ jobs:
         continue-on-error: true
         run: pnpm -F "@openc3/*-common" publish --no-git-checks --tag pre --access public --provenance
         working-directory: openc3-cosmos-init/plugins
+      # The build steps above take ~30 minutes, during which people can push
+      # to the release branch. Rebase so the next version commit is a fast
+      # forward. main is protected and rejects force pushes, so a diverged
+      # branch fails the release.
+      - name: Rebase onto the current release branch
+        env:
+          RELEASE_BRANCH: ${{ github.ref_name }}
+        run: |
+          git fetch origin "$RELEASE_BRANCH"
+          git rebase --autostash FETCH_HEAD
       - name: Update version to next
         run: ruby openc3_set_versions.rb
         working-directory: scripts/release
         env:
           OPENC3_RELEASE_VERSION: ${{ github.event.inputs.next_version }}
-      - uses: stefanzweifel/git-auto-commit-action@04702edda442b2e678b25b537cec683a1493fcb9 # v7.1.0
+      - uses: stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c # v7.2.1
         with:
           commit_message: "[Github Action] Update version to ${{ github.event.inputs.next_version }}"
-          push_options: --force

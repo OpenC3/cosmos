@@ -31,11 +31,14 @@
           density="compact"
           variant="outlined"
           :disabled="autocompleteDisabled || lockTarget"
-          :items="targetNames"
+          :items="rankedTargetNames"
           item-title="label"
           item-value="value"
+          :custom-filter="tokenizedFilter"
+          :filter-keys="filterKeys"
+          @update:search="searches.target = $event"
           @update:model-value="targetNameChanged"
-          @focus="selectOnFocus('targetAutocomplete')"
+          @focus="resetSearchAndFocus('targetAutocomplete', 'target')"
         />
       </v-col>
       <v-col :cols="colSize" class="tpic-select pr-4" data-test="select-packet">
@@ -49,11 +52,15 @@
           density="compact"
           variant="outlined"
           :disabled="packetsDisabled || autocompleteDisabled || lockPacket"
-          :items="packetNames"
+          :items="rankedPacketNames"
           item-title="label"
           item-value="value"
+          :custom-filter="tokenizedFilter"
+          :filter-keys="filterKeys"
+          @update:search="searches.packet = $event"
           @update:model-value="packetNameChanged"
-          @focus="selectOnFocus('packetAutocomplete')"
+          @update:focused="packetFocusChanged"
+          @focus="resetSearchAndFocus('packetAutocomplete', 'packet')"
         />
       </v-col>
       <v-col
@@ -71,11 +78,14 @@
           density="compact"
           variant="outlined"
           :disabled="autocompleteDisabled || queueNames.length === 1"
-          :items="queueNames"
+          :items="rankedQueueNames"
           item-title="label"
           item-value="value"
+          :custom-filter="tokenizedFilter"
+          :filter-keys="filterKeys"
+          @update:search="searches.queue = $event"
           @update:model-value="queueNameChanged"
-          @focus="selectOnFocus('queueAutocomplete')"
+          @focus="resetSearchAndFocus('queueAutocomplete', 'queue')"
         />
       </v-col>
       <v-col
@@ -94,11 +104,15 @@
           density="compact"
           variant="outlined"
           :disabled="itemsDisabled || autocompleteDisabled"
-          :items="itemNames"
+          :items="rankedItemNames"
           item-title="label"
           item-value="value"
+          :custom-filter="tokenizedFilter"
+          :filter-keys="filterKeys"
+          @update:search="searches.item = $event"
           @update:model-value="itemNameChanged($event)"
-          @focus="selectOnFocus('itemAutocomplete')"
+          @update:focused="itemFocusChanged"
+          @focus="resetSearchAndFocus('itemAutocomplete', 'item')"
         />
       </v-col>
       <!-- min-width: 105px is enough to display a 2 digit index -->
@@ -126,14 +140,25 @@
         />
       </v-col>
       <v-col v-if="buttonText" :cols="colSize" style="max-width: 140px">
-        <v-btn
-          :disabled="buttonDisabled"
-          color="primary"
-          data-test="select-send"
-          @click="buttonPressed"
+        <v-tooltip
+          :disabled="!disableButtonText"
+          :open-delay="600"
+          location="top"
         >
-          {{ actualButtonText }}
-        </v-btn>
+          <template #activator="{ props }">
+            <div v-bind="props" class="d-inline-block">
+              <v-btn
+                :disabled="buttonDisabled"
+                color="primary"
+                data-test="select-send"
+                @click="buttonPressed"
+              >
+                {{ actualButtonText }}
+              </v-btn>
+            </div>
+          </template>
+          <span>{{ disableButtonText }}</span>
+        </v-tooltip>
       </v-col>
     </v-row>
     <v-row v-if="selectTypes" class="pt-6 align-center" no-gutters>
@@ -180,10 +205,20 @@
       <v-col :cols="colSize" style="max-width: 140px"> </v-col>
     </v-row>
     <v-row no-gutters class="pt-3 px-3 align-center">
-      <v-col :cols="colSize" :class="{ 'openc3-yellow': isHazardous }">
-        <v-icon v-if="isHazardous" class="mr-1">mdi-alert</v-icon>
-        Description: {{ description }}
-        <template v-if="isHazardous"> (HAZARDOUS) </template>
+      <v-col :cols="colSize">
+        <div>Description: {{ description }}</div>
+        <div
+          v-if="isHazardous"
+          class="openc3-yellow font-weight-bold mt-2"
+          data-test="hazardous-description"
+        >
+          <v-icon class="mr-1">mdi-alert</v-icon>
+          <!-- The HAZARDOUS keyword description is optional -->
+          <template v-if="hazardousDescription">
+            Hazardous: {{ hazardousDescription }}
+          </template>
+          <template v-else> Hazardous </template>
+        </div>
       </v-col>
     </v-row>
   </div>
@@ -191,6 +226,7 @@
 
 <script>
 import { Api, OpenC3Api } from '@openc3/js-common/services'
+import { tokenizedFilter, tokenizedSort } from '@openc3/js-common/utils'
 
 export default {
   props: {
@@ -217,6 +253,10 @@ export default {
     disabled: {
       type: Boolean,
       default: false,
+    },
+    disableButtonText: {
+      type: String,
+      default: null,
     },
     initialTargetName: {
       type: String,
@@ -305,10 +345,25 @@ export default {
       selectedReducedType: 'AVG',
       description: '',
       hazardous: false,
+      hazardousDescription: '',
       internalDisabled: false,
       packetsDisabled: false,
       itemsDisabled: false,
       api: null,
+      // Restrict the dropdown search to the displayed name. Without this
+      // Vuetify filters over every key of its internal item, including the
+      // literal type of "item", so searching "ite" matches everything.
+      // Note this is 'title' rather than 'label' because Vuetify has already
+      // mapped item-title="label" onto its own title key by then.
+      filterKeys: ['title'],
+      // What the user has typed into each dropdown, tracked so the lists can
+      // be ranked by how well they match
+      searches: {
+        target: '',
+        packet: '',
+        queue: '',
+        item: '',
+      },
       ALL: {
         label: '[ ALL ]',
         value: 'ALL',
@@ -342,6 +397,7 @@ export default {
     buttonDisabled: function () {
       return (
         this.disabled ||
+        !!this.disableButtonText ||
         this.internalDisabled ||
         this.selectedTargetName === null ||
         this.selectedPacketName === null ||
@@ -361,6 +417,21 @@ export default {
       } else {
         return this.selectedItemName
       }
+    },
+    // Ranked copies of the lists for display only. Everything else keeps
+    // working off the unranked source arrays, so lookups and the "first
+    // packet" defaults are unaffected.
+    rankedTargetNames: function () {
+      return tokenizedSort(this.targetNames, this.searches.target, 'label')
+    },
+    rankedPacketNames: function () {
+      return tokenizedSort(this.packetNames, this.searches.packet, 'label')
+    },
+    rankedQueueNames: function () {
+      return tokenizedSort(this.queueNames, this.searches.queue, 'label')
+    },
+    rankedItemNames: function () {
+      return tokenizedSort(this.itemNames, this.searches.item, 'label')
     },
     includeLatestPacketInDropdown: function () {
       return this.showLatest && this.mode === 'tlm' // because LATEST cmd doesn't have much use and thus isn't currently implemented
@@ -469,50 +540,107 @@ export default {
           }
         })
         .catch((error) => {
-          // eslint-disable-next-line no-console
           console.error('Error fetching queues:', error)
           // Keep default "None" option even if fetch fails
         })
     }
 
-    this.api.get_target_names().then((result) => {
-      this.targetNames = result.flatMap((target) => {
-        // Ignore the UNKNOWN target as it doesn't make sense to select this
-        if (target == 'UNKNOWN') {
-          return []
+    this.api
+      .get_target_names()
+      .then((result) => {
+        this.targetNames = result.flatMap((target) => {
+          // Ignore the UNKNOWN target as it doesn't make sense to select this
+          if (target == 'UNKNOWN') {
+            return []
+          }
+          return { label: target, value: target }
+        })
+        // TODO: This is a nice enhancement but results in logs of API calls for many targets
+        // See if we can reduce this to a single API call
+        // Filter out any targets without packets
+        // for (let i = this.targetNames.length - 1; i >= 0; i--) {
+        //   const cmd =
+        //     this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
+        //   await this.api[cmd](this.targetNames[i].value).then((names) => {
+        //     if (names.length === 0) {
+        //       this.targetNames.splice(i, 1)
+        //     }
+        //   })
+        // }
+        if (this.allowAllTargets) {
+          this.targetNames.unshift(this.ALL)
         }
-        return { label: target, value: target }
+        // If the initial target name is not set, default to the first target
+        // which also updates packets and items as needed
+        if (this.selectedTargetName) {
+          // Selected target name was set but we still have to update packets
+          this.updatePackets()
+        } else if (this.targetNames.length === 0) {
+          // No targets to select so re-enable and let the user see empty lists
+          this.internalDisabled = false
+        } else {
+          this.selectedTargetName = this.targetNames[0].value
+          this.targetNameChanged(this.selectedTargetName)
+        }
+        if (this.unknown) {
+          this.targetNames.push(this.UNKNOWN)
+        }
       })
-      // TODO: This is a nice enhancement but results in logs of API calls for many targets
-      // See if we can reduce this to a single API call
-      // Filter out any targets without packets
-      // for (let i = this.targetNames.length - 1; i >= 0; i--) {
-      //   const cmd =
-      //     this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
-      //   await this.api[cmd](this.targetNames[i].value).then((names) => {
-      //     if (names.length === 0) {
-      //       this.targetNames.splice(i, 1)
-      //     }
-      //   })
-      // }
-      if (this.allowAllTargets) {
-        this.targetNames.unshift(this.ALL)
-      }
-      // If the initial target name is not set, default to the first target
-      // which also updates packets and items as needed
-      if (this.selectedTargetName) {
-        // Selected target name was set but we still have to update packets
-        this.updatePackets()
-      } else {
-        this.selectedTargetName = this.targetNames[0].value
-        this.targetNameChanged(this.selectedTargetName)
-      }
-      if (this.unknown) {
-        this.targetNames.push(this.UNKNOWN)
-      }
-    })
+      .catch(() => {
+        // Re-enable the dropdowns so we're not stuck disabled forever
+        this.internalDisabled = false
+      })
   },
   methods: {
+    tokenizedFilter,
+    // A v-combobox (glob mode) keeps its model in sync with the text as you
+    // type and commits whatever is left when it loses focus. With tokenized
+    // search that text can be a multi word query like "heal stat", which is
+    // never a valid name, so throw it away instead of selecting it - but only
+    // once focus is gone, because while typing that same text is a half
+    // finished query. Names are only rejected when they're unknown, so a
+    // quoted name that really does contain a space still selects normally.
+    packetFocusChanged: function (focused) {
+      if (
+        !focused &&
+        this.isSearchText(this.selectedPacketName, this.packetNames)
+      ) {
+        this.selectedPacketName = null
+      }
+    },
+    itemFocusChanged: function (focused) {
+      if (
+        !focused &&
+        this.isSearchText(this.selectedItemName, this.itemNames)
+      ) {
+        this.selectedItemName = null
+      }
+    },
+    isSearchText: function (value, names) {
+      return (
+        typeof value === 'string' &&
+        /\s/.test(value) &&
+        !names.some((name) => name.value === value)
+      )
+    },
+    emitOnSet: function () {
+      this.$emit('on-set', {
+        targetName: this.selectedTargetName,
+        packetName: this.selectedPacketName,
+        itemName: this.selectedItemNameWIndex,
+        valueType: this.selectedValueType,
+        reduced: this.selectedReduced,
+        reducedType: this.selectedReducedType,
+        queueName: this.selectedQueueName,
+      })
+    },
+    // Focus handler for the four name dropdowns. The search text sticks
+    // around after a selection, so clear it to put the list back in name
+    // order, then select the input contents as every other field does.
+    resetSearchAndFocus: function (refName, searchKey) {
+      this.searches[searchKey] = ''
+      this.selectOnFocus(refName)
+    },
     selectOnFocus: function (refName) {
       this.$nextTick(() => {
         const component = this.$refs[refName]
@@ -542,23 +670,36 @@ export default {
       this.internalDisabled = true
       const cmd =
         this.mode === 'tlm' ? 'get_all_tlm_names' : 'get_all_cmd_names'
-      this.api[cmd](this.selectedTargetName, this.hidden).then((names) => {
-        this.packetNames = names.map((name) => {
-          return {
-            label: name,
-            value: name,
+      this.api[cmd](this.selectedTargetName, this.hidden)
+        .then((names) => {
+          this.packetNames = names.map((name) => {
+            return {
+              label: name,
+              value: name,
+            }
+          })
+          if (this.includeLatestPacketInDropdown) {
+            this.packetNames.unshift(this.LATEST)
           }
-        })
-        if (this.includeLatestPacketInDropdown) {
-          this.packetNames.unshift(this.LATEST)
-        }
-        if (this.allowAll) {
-          this.packetNames.unshift(this.ALL)
-        }
-        if (!this.selectedPacketName) {
+          if (this.allowAll) {
+            this.packetNames.unshift(this.ALL)
+          }
+          // Nothing to select, e.g. a target with no commands. Don't call
+          // updatePacketDetails which would request a null packet.
           if (this.packetNames.length === 0) {
             this.selectedPacketName = null
-          } else {
+            this.itemNames = []
+            this.selectedItemName = null
+            this.description = ''
+            this.hazardous = false
+            this.hazardousDescription = ''
+            this.internalDisabled = false
+            // Tell the parent the selection is gone so it doesn't keep acting
+            // on the previous packet / item
+            this.emitOnSet()
+            return
+          }
+          if (!this.selectedPacketName) {
             this.selectedPacketName = this.packetNames[0].value
             if (
               this.selectedPacketName === 'LATEST' &&
@@ -567,20 +708,36 @@ export default {
               this.selectedPacketName = this.packetNames[1].value
             }
           }
-        }
-        this.updatePacketDetails(this.selectedPacketName)
-        const item = this.packetNames.find((packet) => {
-          return packet.value === this.selectedPacketName
+          // Note: updatePacketDetails calls updateItems if chooseItem is set
+          this.updatePacketDetails(this.selectedPacketName)
+          this.internalDisabled = false
         })
-        if (item && this.chooseItem) {
-          this.updateItems()
-        }
-        this.internalDisabled = false
-      })
+        .catch(() => {
+          // The request failed, e.g. the user doesn't have permission on this
+          // target. Clear the packets but re-enable the dropdowns so they can
+          // select a different target. The error itself is displayed by the
+          // global error notification.
+          this.packetNames = []
+          this.selectedPacketName = null
+          this.itemNames = []
+          this.selectedItemName = null
+          this.description = ''
+          this.hazardous = false
+          this.hazardousDescription = ''
+          this.internalDisabled = false
+          this.emitOnSet()
+        })
     },
 
     updateItems: function () {
       if (this.selectedPacketName === 'ALL') {
+        return
+      }
+      // No packet selected, e.g. a target with no packets, so nothing to request
+      if (!this.selectedPacketName) {
+        this.itemNames = []
+        this.selectedItemName = null
+        this.internalDisabled = false
         return
       }
       // In glob mode, skip API calls if the packet name is free text (not a known packet)
@@ -609,10 +766,16 @@ export default {
             })
             this.finishUpdateItems()
           })
+          .catch(() => {
+            this.itemNames = []
+            this.selectedItemName = null
+            this.internalDisabled = false
+            this.emitOnSet()
+          })
       } else {
         const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
-        this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
-          (packet) => {
+        this.api[cmd](this.selectedTargetName, this.selectedPacketName)
+          .then((packet) => {
             let items = []
             packet.items.forEach((item) => {
               if (!item['hidden']) {
@@ -633,27 +796,31 @@ export default {
             })
             this.itemNames.sort((a, b) => (a.label > b.label ? 1 : -1))
             this.finishUpdateItems()
-          },
-        )
+          })
+          .catch(() => {
+            this.itemNames = []
+            this.selectedItemName = null
+            this.internalDisabled = false
+            this.emitOnSet()
+          })
       }
     },
     finishUpdateItems: function () {
       if (this.allowAll) {
         this.itemNames.unshift(this.ALL)
       }
+      if (this.itemNames.length === 0) {
+        this.selectedItemName = null
+        this.description = ''
+        this.internalDisabled = false
+        this.emitOnSet()
+        return
+      }
       if (!this.selectedItemName) {
         this.selectedItemName = this.itemNames[0].value
       }
       this.description = this.itemNames[0].description
-      this.$emit('on-set', {
-        targetName: this.selectedTargetName,
-        packetName: this.selectedPacketName,
-        itemName: this.selectedItemNameWIndex,
-        valueType: this.selectedValueType,
-        reduced: this.selectedReduced,
-        reducedType: this.selectedReducedType,
-        queueName: this.selectedQueueName,
-      })
+      this.emitOnSet()
       this.internalDisabled = false
     },
 
@@ -698,15 +865,7 @@ export default {
 
     queueNameChanged: function (value) {
       this.selectedQueueName = value
-      this.$emit('on-set', {
-        targetName: this.selectedTargetName,
-        packetName: this.selectedPacketName,
-        itemName: this.selectedItemNameWIndex,
-        valueType: this.selectedValueType,
-        reduced: this.selectedReduced,
-        reducedType: this.selectedReducedType,
-        queueName: this.selectedQueueName,
-      })
+      this.emitOnSet()
     },
 
     updatePacketDetails: function (value) {
@@ -718,6 +877,7 @@ export default {
         this.selectedPacketName = 'LATEST'
         this.description = 'Latest values from all packets'
         this.hazardous = false
+        this.hazardousDescription = ''
       } else {
         this.itemsDisabled = false
         const packet = this.packetNames.find((packet) => {
@@ -726,26 +886,24 @@ export default {
         if (packet) {
           this.selectedPacketName = packet.value
           const cmd = this.mode === 'tlm' ? 'get_tlm' : 'get_cmd'
-          this.api[cmd](this.selectedTargetName, this.selectedPacketName).then(
-            (packet) => {
+          this.api[cmd](this.selectedTargetName, this.selectedPacketName)
+            .then((packet) => {
               this.description = packet.description
               this.hazardous = packet.hazardous
-            },
-          )
+              this.hazardousDescription = packet.hazardous_description || ''
+            })
+            .catch(() => {
+              this.description = ''
+              this.hazardous = false
+              this.hazardousDescription = ''
+              this.internalDisabled = false
+            })
         }
       }
       if (this.chooseItem) {
         this.updateItems()
       } else {
-        this.$emit('on-set', {
-          targetName: this.selectedTargetName,
-          packetName: this.selectedPacketName,
-          itemName: this.selectedItemNameWIndex,
-          valueType: this.selectedValueType,
-          reduced: this.selectedReduced,
-          reducedType: this.selectedReducedType,
-          queueName: this.selectedQueueName,
-        })
+        this.emitOnSet()
       }
     },
 
@@ -761,15 +919,7 @@ export default {
       if (item) {
         this.selectedItemName = item.value
         this.description = item.description
-        this.$emit('on-set', {
-          targetName: this.selectedTargetName,
-          packetName: this.selectedPacketName,
-          itemName: this.selectedItemNameWIndex,
-          valueType: this.selectedValueType,
-          reduced: this.selectedReduced,
-          reducedType: this.selectedReducedType,
-          queueName: this.selectedQueueName,
-        })
+        this.emitOnSet()
       } else if (
         this.globEnabled &&
         typeof value === 'string' &&
@@ -781,15 +931,7 @@ export default {
     },
 
     indexChanged: function (value) {
-      this.$emit('on-set', {
-        targetName: this.selectedTargetName,
-        packetName: this.selectedPacketName,
-        itemName: this.selectedItemNameWIndex,
-        valueType: this.selectedValueType,
-        reduced: this.selectedReduced,
-        reducedType: this.selectedReducedType,
-        queueName: this.selectedQueueName,
-      })
+      this.emitOnSet()
     },
 
     buttonPressed: function () {

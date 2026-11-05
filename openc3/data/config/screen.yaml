@@ -159,7 +159,8 @@ NAMED_WIDGET:
     - name: Widget Name
       required: true
       description: The unique name applied to the following widget instance.
-        Names must be unique per screen.
+        Names must be unique per screen. Names are case insensitive, e.g.
+        getNamedWidget('duration') returns the widget named DURATION.
       values: .+
     - name: Widget Type
       required: true

@@ -260,8 +260,12 @@ img[alt="TIME"] {
   width: 200px;
 }
 
+img[alt="CANVAS"] {
+  width: 220px;
+}
+
 img[alt="CANVASLABEL"] {
-  width: 200px;
+  width: 220px;
 }
 
 img[alt="CANVASLABELVALUE"] {

@@ -62,6 +62,12 @@ module OpenC3
       _db_sharded_get("#{scope}__#{_get_key}", name: name, scope: scope)
     end
 
+    # Like get but returns default instead of nil when no status exists
+    def self.get_or_default(name:, scope:, default: { 'state' => 'UNKNOWN' })
+      status = get(name: name, scope: scope)
+      status.nil? ? default : status
+    end
+
     def self.names(scope:)
       _db_sharded_names("#{scope}__#{_get_key}", scope: scope)
     end
@@ -118,8 +124,8 @@ module OpenC3
       @rxcnt = rxcnt
     end
 
-    def create(update: false, force: false, queued: false, isoformat: false)
-      _db_sharded_create(self.class._db_shard_for_name(@name, scope: @scope, use_cache: true), update: update, force: force, queued: queued, isoformat: isoformat)
+    def create(update: false, force: false, queued: false)
+      _db_sharded_create(self.class._db_shard_for_name(@name, scope: @scope, use_cache: true), update: update, force: force, queued: queued)
     end
 
     def destroy

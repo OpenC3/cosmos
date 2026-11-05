@@ -21,6 +21,7 @@ Usage:
   cli load /PATH/FILENAME.gem SCOPE plugin_hash.json    # Loads a COSMOS plugin gem file
     OPTIONS: --variables lets you pass a path to a JSON file containing your plugin\'s variables
   cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given
+  cli unload PLUGIN_NAME [SCOPE]    # Unload an installed COSMOS plugin
   cli generate TYPE OPTIONS         # Generate various COSMOS entities
     OPTIONS: --ruby or --python is required to specify the language in the generated code unless OPENC3_LANGUAGE is set
   cli bridge CONFIG_FILENAME        # Run COSMOS host bridge
@@ -31,6 +32,7 @@ Usage:
   cli xtce_converter                # Convert to and from the XTCE format. Run with --help for more info.
   cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info.
   cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var
+  cli migratetouv PLUGIN_NAME SCOPE # Migrate plugin to per-plugin UV virtual environment
 ```
 
 :::note[seccomp profile]
@@ -57,6 +59,8 @@ If you are having issues getting "argument completion" working for `openc3.sh` t
 
 ## Rake
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 You can execute rake tasks using `openc3.sh cli rake`. The most typical usage is to generate a plugin and then build it. For example:
 
 ```bash
@@ -64,6 +68,8 @@ You can execute rake tasks using `openc3.sh cli rake`. The most typical usage is
 ```
 
 ## IRB
+
+<span class="badge badge--secondary since-heading">Since 5.5.0</span>
 
 IRB stands for Interactive Ruby and is a way to start a Ruby interpreter that you can play around with. When using it from the CLI, it includes the COSMOS Ruby path so you can `require 'cosmos'` and try out various methods. For example:
 
@@ -81,17 +87,23 @@ irb(main):002:0> Cosmos::Api::WHITELIST
 
 ## Script
 
+<span class="badge badge--secondary since-heading">Since 5.19.0</span>
+
 The script methods allow you to list the available scripts, spawn a script, and run a script while monitoring its output. Note that you must set the OPENC3_API_PASSWORD in COSMOS Core and both the OPENC3_API_USER and OPENC3_API_PASSWORD in COSMOS Enterprise.
 
 :::note[Offline Access Token (since 6.3.0)]
 You must visit the frontend Script Runner page as the OPENC3_API_USER or run "openc3.sh cli script init" in order to obtain an offline access token before the other script cli methods will work.
 :::
 
-### Init (Enterprise Only since 6.3.0)
+### Init (Enterprise Only)
+
+<span class="badge badge--secondary since-heading">Since 6.3.0</span>
 
 Obtain an offline access token without visiting the frontend GUI. This is required when running in a headless CI/CD environment before accessing any of the other commands.
 
 ### List
+
+<span class="badge badge--secondary since-heading">Since 5.19.0</span>
 
 List all the available scripts which includes all the files in every target directory. You can filter this list using bash to only include procedures, Ruby files, Python files, etc.
 
@@ -106,6 +118,8 @@ EXAMPLE/cmd_tlm/example_tlm.txt
 
 ### Spawn
 
+<span class="badge badge--secondary since-heading">Since 5.19.0</span>
+
 The ID of the spawned script is returned. You can connect to it in Script Runner by visiting `http://localhost:2900/tools/scriptrunner/1` where the final value is the ID. For available options see `Run`.
 
 ```bash
@@ -114,6 +128,8 @@ The ID of the spawned script is returned. You can connect to it in Script Runner
 ```
 
 ### Run
+
+<span class="badge badge--secondary since-heading">Since 5.19.0</span>
 
 Run spawns the script and then captures the output and prints it to the shell. Note that this will not work with user input prompts so the script must be written to prevent user input. You can also pass variables to the script as shown in the CLI help.
 
@@ -158,7 +174,7 @@ script complete
 %
 ```
 
-You can also run Test Runner suites by passing the `--suite SUITE`, `--group GROUP`, and `--script SCRIPT` options as shown below. Pass the `--method` option to run `--method setup` or `--method teardown`. The default is `--method start`. In addition you can pass an `--options` argument to control the flags set in the Test Runner GUI and a `--format` option to output results as `text` (default) or `ctrf` for CI/CD integration. See the CLI help for more information.
+You can also run Test Runner suites by passing the `--suite SUITE`, `--group GROUP`, and `--script SCRIPT` options as shown below. Pass the `--method` option to run `--method setup` or `--method teardown`. The default is `--method start`. In addition you can pass an `--options` argument to control the flags set in the Test Runner GUI (the default is `continueAfterError`) and a `--format` option to output results as `text` (default) or `ctrf` for CI/CD integration. See the CLI help for more information.
 
 **Text Format (default):**
 
@@ -237,7 +253,9 @@ You can output test results in [CTRF (Common Test Report Format)](https://ctrf.i
 }
 ```
 
-### Running (since 6.5.0)
+### Running
+
+<span class="badge badge--secondary since-heading">Since 6.5.0</span>
 
 List all the running scripts. Add the --verbose option to print the raw output.
 
@@ -248,7 +266,9 @@ ID    User                 Filename                       Start Time            
 4     The Operator         INST/procedures/checks.rb      2025-06-06T22:40:21Z   error
 ```
 
-### Status (since 6.5.0)
+### Status
+
+<span class="badge badge--secondary since-heading">Since 6.5.0</span>
 
 List status for a specific script based on the script ID. Add the --verbose option to print the raw output.
 
@@ -258,7 +278,9 @@ ID    User                 Filename                       Start Time            
 5     The Operator         INST/procedures/collect.rb     2025-06-06T22:40:48Z   paused
 ```
 
-### Stop (since 6.5.0)
+### Stop
+
+<span class="badge badge--secondary since-heading">Since 6.5.0</span>
 
 Stop a script based on the script ID.
 
@@ -267,6 +289,8 @@ Stop a script based on the script ID.
 ```
 
 ## Validate
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Validate is used to validate built COSMOS plugins. It walks through the installation process without actually installing the plugin.
 
@@ -279,6 +303,8 @@ Successfully validated openc3-cosmos-cfdp-1.0.0.gem
 You can optionally pass it the scope to install the plugin in (for Enterprise) and the path to a JSON file containing your plugin variables. If using COSMOS Core, use `DEFAULT` for the scope. If you pass a variables file, any variables not defined in the file will take the default value (as defined in your `plugin.txt` file).
 
 ## Load
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Load can load a plugin into COSMOS without using the GUI. This is useful for scripts or CI/CD pipelines.
 
@@ -294,6 +320,8 @@ You can optionally pass it the scope to install the plugin in (for Enterprise) a
 There is also a `--variables` option, which allows you to pass the path to a JSON file containing your plugin variables. This is the same as the optional variables file mentioned above for `cli validate`.
 
 ## List
+
+<span class="badge badge--secondary since-heading">Since 5.16.0</span>
 
 List displays all the installed plugins.
 
@@ -323,16 +351,36 @@ openc3-cosmos-tool-tlmviewer-6.2.2.pre.beta0.20250325143108.gem__20250325160216
 openc3-enterprise-tool-base-6.2.2.pre.beta0.20250325155704.gem__20250325160153
 ```
 
+## Unload
+
+Unload removes an installed plugin from COSMOS without using the GUI. This is the counterpart to `cli load`.
+
+```bash
+% openc3.sh cli unload openc3-cosmos-cfdp-1.0.0.gem__20250325160956
+```
+
+You can find the full plugin name (including the timestamp suffix) by running `cli list`. You can optionally pass the scope to unload from (defaults to `DEFAULT`).
+
+```bash
+% openc3.sh cli unload openc3-cosmos-cfdp-1.0.0.gem__20250325160956 SCOPE_NAME
+```
+
 ## Generate
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Generate is used to scaffold new COSMOS plugins, targets, conversions, and more! See the [Generators](/docs/getting-started/generators) page for more information.
 
 ## Bridge
 
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+
 A COSMOS Bridge is a small application that is run on the local computer to connect to hardware not available to Docker containers. A good example is connecting to a serial port on a non-linux system. See the
-[Bridge Guide](/docs/guides/bridges) for more information.
+[Bridge Guide](/docs/guides/bridges) for more information. Note that the `bridgegem` subcommand was added in 5.5.0.
 
 ## Pkginstall and pkguninstall
+
+<span class="badge badge--secondary since-heading">Since 5.12.0</span>
 
 Allows you to install or remove Ruby gems or Python wheels into COSMOS. These are dependencies that are not packaged with the COSMOS plugin itself.
 
@@ -341,6 +389,8 @@ Allows you to install or remove Ruby gems or Python wheels into COSMOS. These ar
 ```
 
 ## XTCE Converter
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Converts from the XTCE format to the COSMOS format and also exports XTCE files given a COSMOS plugin.
 
@@ -358,6 +408,8 @@ Usage: xtce_converter [options] --import input_xtce_filename --output output_dir
 
 ## Set Password
 
+<span class="badge badge--secondary since-heading">Since 7.0.1</span>
+
 Sets the initial COSMOS password from the `OPENC3_API_PASSWORD` environment variable. This allows you to skip the password creation screen in the web interface, which is useful for automated or scripted deployments.
 
 The password must be at least 8 characters. This command will fail if a password has already been set — use the web interface to change an existing password.
@@ -367,11 +419,139 @@ The password must be at least 8 characters. This command will fail if a password
 Password set successfully.
 ```
 
-:::note OPENC3_API_PASSWORD
+:::note[OPENC3_API_PASSWORD]
 The `OPENC3_API_PASSWORD` environment variable must be set (typically in your `.env` file). The password is read from this variable, not from a command line argument, to avoid exposing it in shell history.
 :::
 
+## Initsettings
+
+<span class="badge badge--secondary since-heading">Since 7.3.1</span>
+
+Seeds the [Admin Settings](/docs/tools/admin#settings) from `OPENC3_SETTING_<NAME>` environment variables. This lets you configure the default time zone, time format, theme, package URLs and the other server-side settings at deploy time, instead of clicking through the Admin Console after each fresh install.
+
+The init container runs this automatically on every start, so normally you only add the variables and start COSMOS. Add them to the `openc3-cosmos-init` service in `compose.override.yaml`:
+
+```yaml
+services:
+  openc3-cosmos-init:
+    environment:
+      - OPENC3_SETTING_TIME_ZONE=UTC
+      - OPENC3_SETTING_TIME_FORMAT=24hr
+      - OPENC3_SETTING_THEME=cosmosDarkSlate
+      - OPENC3_SETTING_PYPI_URL=https://pypi.org
+```
+
+The variable name is `OPENC3_SETTING_` plus the setting name in upper case, so `OPENC3_SETTING_TIME_ZONE` sets `time_zone`. These variables are not listed in `compose.yaml` - adding them to an override is what makes them reach the container, so no `compose.yaml` edit is needed to add a setting. See [Docker Compose](../configuration/compose.md) for how the two compose files merge, and [Environment Variables](../configuration/environment.md) for where a given value belongs.
+
+Run `openc3.sh cli initsettings --help` to list every setting that can be seeded, its allowed values, and the shape of each JSON setting. The list comes from the running version, so it can't drift from what your COSMOS actually accepts.
+
+:::note[Not every control on the Settings tab is a server-side setting]
+Only settings stored server-side (in Redis) can be seeded, and `--help` lists exactly those. Some controls on the Admin Settings tab write to the browser's local storage instead, so they are per-browser and cannot be set from the environment:
+
+- **Code Editor Settings** - Vim mode and the default scripting language are browser-local. The Script File Locking and Script Lifecycle switches on that same card are server-side (`script_runner_locking`, `script_runner_lifecycle`) and can be seeded.
+- **Suppressed Warnings** and **Default Configs** - entirely browser-local.
+:::
+
+### Admin Console edits are kept
+
+initsettings records each value it writes, so a later init can tell a setting nobody touched from one an operator changed:
+
+- A setting that does not exist yet is written
+- A setting still holding the value last seeded is updated, so changing a variable's value and restarting works
+- A setting changed in the Admin Console is left alone on every later init
+- Commenting out a variable does not revert the setting
+
+To replace an Admin Console edit with the environment value, set `OPENC3_SETTINGS_OVERWRITE=true` to make the environment authoritative.
+
+:::note[Upgrading from a version before this command existed]
+Settings written by an earlier release carry no record of having been seeded, so they all count as operator-edited and are left alone no matter what the environment says. On such an upgrade, run one init with `OPENC3_SETTINGS_OVERWRITE=true` to adopt the environment values, then turn it back off.
+:::
+
+### Typos are reported, not fatal
+
+An unrecognized setting name, an invalid value, or malformed JSON is reported in the init logs and that one setting is skipped - init still finishes and COSMOS uses the default. Nothing reads a misspelled key, so `OPENC3_SETTING_TIME_ZONES=UTC` would otherwise leave you believing you configured a setting you did not.
+
+```bash
+% openc3.sh cli initsettings
+ERROR: 'time_zones' is not a known COSMOS setting. Did you mean 'time_zone'?
+```
+
+`OPENC3_SETTINGS_STRICT=true` turns the same problem into a failed init instead. It is off by default because the init container restarts on failure, so a typo in a cosmetic setting would crash loop COSMOS with the cause buried in restarting container logs. Turn it on for a deployment that would rather not come up than come up misconfigured.
+
+### Controlling how the settings are applied
+
+Three variables on the init container control the behavior above rather than setting a value. Unlike the settings themselves, none of them is seeded - all three are re-read on every init.
+
+| Variable | Default | Effect when true |
+| --- | --- | --- |
+| `OPENC3_SETTINGS_OVERWRITE` | off | Rewrite every `OPENC3_SETTING_*` value on every init, discarding Admin Console edits |
+| `OPENC3_SETTINGS_ALLOW_UNKNOWN` | off | Accept a setting name this COSMOS version doesn't recognize, for one added by a newer tool |
+| `OPENC3_SETTINGS_STRICT` | off | Exit non-zero when a setting is rejected, failing init, rather than skipping that setting |
+
+```yaml
+services:
+  openc3-cosmos-init:
+    environment:
+      - OPENC3_SETTING_TIME_ZONE=UTC
+      # Make this file authoritative: revert Admin Console edits on every init
+      - OPENC3_SETTINGS_OVERWRITE=true
+```
+
+All three accept `true`/`false`, and `1`/`0` also work. They read their value rather than being enabled by presence, so `OPENC3_SETTINGS_OVERWRITE=false` means off, as it reads - unlike the `OPENC3_NO_*` install flags, where any non-empty value including `0` means on.
+
+### Checking before you start COSMOS
+
+`--dry-run` validates every name and value, writes nothing, and exits non-zero if anything would be skipped. It works before Redis is up, so it can gate a CI job:
+
+```bash
+% openc3.sh cli initsettings --dry-run
+[dry run] Set default setting 'time_zone' to: "UTC"
+[dry run] ERROR: Invalid value "Pacific" for setting 'time_zone'. Must be one of: "local", "UTC"
+```
+
+### Exporting what is already configured
+
+`--export` prints every stored setting as a line you can paste into `compose.override.yaml`, already quoted so the JSON settings survive YAML. Configure a setting in the Admin Console, export it, and commit the result - this is far easier than hand-writing a JSON blob like `classification_banner` or `system_health`.
+
+```bash
+% openc3.sh cli initsettings --export
+# Paste under the openc3-cosmos-init service's "environment:" key in
+# compose.override.yaml, keeping this indentation.
+      - OPENC3_SETTING_NEWS_FEED=true
+      - OPENC3_SETTING_TIME_FORMAT=ampm
+      - OPENC3_SETTING_THEME=cosmosDarkSlate
+      - "OPENC3_SETTING_SOURCE_URL=https://github.com/OpenC3/cosmos"
+```
+
+It reads the stored values, so COSMOS has to be running for it.
+
+:::note[Local Mode]
+In [Local Mode](/docs/guides/local-mode) a `plugins/<SCOPE>/settings/<name>.json` file wins over the environment variable for that setting. The files are applied after the variables are, and the Admin Console writes every edit back into them.
+:::
+
+## Migrate to UV
+
+Migrates an installed plugin from the shared Python virtual environment to a per-plugin UV virtual environment. This creates an isolated Python environment for the plugin with its own dependencies, preventing version conflicts between plugins.
+
+Plugins installed on COSMOS 7.3+ automatically get per-plugin virtual environments. This command is only needed for plugins that were installed on an earlier version and are still using the shared Python environment. Running it on a plugin that is already migrated is a safe no-op.
+
+The `PLUGIN_NAME` argument is the full installed plugin name (including the timestamp suffix), not a `.gem` file path. Use `cli list` to find the installed plugin name. The `SCOPE` argument is optional and defaults to `DEFAULT`.
+
+```bash
+% openc3.sh cli list
+openc3-cosmos-demo-7.2.0.gem__20260101120000
+openc3-cosmos-my-plugin-1.0.0.gem__20260501150000
+% openc3.sh cli migratetouv openc3-cosmos-my-plugin-1.0.0.gem__20260501150000
+Successfully migrated plugin 'openc3-cosmos-my-plugin-1.0.0.gem__20260501150000' to per-plugin UV venv
+```
+
+If the plugin has no Python dependencies (`pyproject.toml` or `requirements.txt`), the command reports success without creating a venv. If the plugin is already migrated, the command is a no-op.
+
+This command performs the same operation as the **Migrate to UV** button in the [Admin Plugins tab](/docs/tools/admin#plugins).
+
 ## CSTOL Converter
+
+<span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
 Converts from the Colorado System Test and Operations Language (CSTOL) to a COSMOS Script Runner Ruby script. It currently does not support conversion to Python. Simply run it in the same directory as CSTOL files (\*.prc) and it will convert them all.
 

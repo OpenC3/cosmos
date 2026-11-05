@@ -1,6 +1,21 @@
 AllCops:
   NewCops: enable
   TargetRubyVersion: 3.4
+  # RuboCop's built-in excludes (node_modules, vendor, tmp, .git) are anchored at
+  # the config directory, so they only cover the repo root. This is a monorepo
+  # with node_modules, vendor and build output nested several levels deep, and
+  # pnpm's node_modules/.pnpm is a symlink graph - walking it enumerates a
+  # combinatorial number of paths and exhausts memory before any file is parsed.
+  # Re-state the excludes with a '**/' prefix so they match at any depth.
+  Exclude:
+    - '**/node_modules/**/*'
+    - '**/vendor/**/*'
+    - '**/tmp/**/*'
+    - '**/.git/**/*'
+    - '**/.venv/**/*'
+    - '**/coverage/**/*'
+    - '**/dist/**/*'
+    - '**/.yardoc/**/*'
 
 # Layout
 Layout/LineLength:
@@ -45,3 +60,33 @@ Lint/RedundantStringCoercion:
 # This rule interferes with a lot of unit tests as well as json_accessor.rb
 Lint/ConstantDefinitionInBlock:
   Enabled: false
+
+# ---------------------------------------------------------------------------
+# SonarQube coexistence
+#
+# SonarQube owns behavior, security, and complexity findings; RuboCop owns
+# layout and naming. The cops below are RuboCop's "unsafe correctable" set -
+# their autocorrections can change semantics, which means `rubocop -A` could
+# silently undo a hand-written fix for a SonarQube issue. Autocorrect is
+# disabled on them so they report only and a human decides. Safe corrections
+# are semantics-preserving by RuboCop's own contract and stay enabled.
+# ---------------------------------------------------------------------------
+Lint/AmbiguousRange:
+  AutoCorrect: false
+Lint/AssignmentInCondition:
+  AutoCorrect: false
+Lint/DuplicateRequire:
+  AutoCorrect: false
+Lint/IncompatibleIoSelectWithFiberScheduler:
+  AutoCorrect: false
+Lint/InterpolationCheck:
+  AutoCorrect: false
+Lint/Loop:
+  AutoCorrect: false
+# Sonar flags the same TOCTOU race; let Sonar's fix stand
+Lint/NonAtomicFileOperation:
+  AutoCorrect: false
+Lint/RedundantDirGlobSort:
+  AutoCorrect: false
+Lint/UselessMethodDefinition:
+  AutoCorrect: false

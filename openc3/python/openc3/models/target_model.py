@@ -94,7 +94,7 @@ class TargetModel(Model):
             f"{scope}__openc3{type.lower()}__{target_name}", packet_name
         )
         if not json_data:
-            raise RuntimeError(f"Packet '{target_name} {packet_name}' does not exist")
+            raise RuntimeError(f"Packet definition '{target_name} {packet_name}' does not exist")
         packet = json.loads(json_data)
 
         # Store in cache
@@ -109,13 +109,48 @@ class TargetModel(Model):
         if type not in cls.VALID_TYPES:
             raise RuntimeError(f"Unknown type {type} for {target_name}")
         if not cls.get(name=target_name, scope=scope):
-            raise RuntimeError(f"Target '{target_name}' does not exist")
+            raise RuntimeError(f"Target '{target_name}' does not exist for scope: {scope} (TargetModel)")
 
         result = []
         packets = cls._store_for_target(target_name, scope).hgetall(f"{scope}__openc3{type.lower()}__{target_name}")
         for _, packet_json in packets.items():
             result.append(json.loads(packet_json))
         return result
+
+    @classmethod
+    def packet_names(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE) -> list[str]:
+        """Returns just the packet names without fetching and parsing every packet
+        definition, which is expensive for targets with thousands of packets.
+        @return [Array<String>] Sorted packet names under the target_name"""
+        if type not in cls.VALID_TYPES:
+            raise RuntimeError(f"Unknown type {type} for {target_name}")
+        if not cls.get(name=target_name, scope=scope):
+            raise RuntimeError(f"Target '{target_name}' does not exist for scope: {scope} (TargetModel)")
+
+        names = cls._store_for_target(target_name, scope).hkeys(f"{scope}__openc3{type.lower()}__{target_name}")
+        return sorted(name.decode() if isinstance(name, bytes) else name for name in names)
+
+    @classmethod
+    def hidden_packet_names(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE) -> list[str]:
+        """Returns the names of the hidden packets without parsing every packet definition.
+        The list is stored when the target is installed. Targets installed before the
+        list existed have it built once from the packet definitions and stored.
+        @return [Array<String>] Sorted hidden packet names under the target_name"""
+        if type not in cls.VALID_TYPES:
+            raise RuntimeError(f"Unknown type {type} for {target_name}")
+
+        store = cls._store_for_target(target_name, scope)
+        # Stored as a JSON string rather than a set so an empty list is distinct from a missing one
+        # e.g. DEFAULT__openc3tlm__INST__hidden
+        key = f"{scope}__openc3{type.lower()}__{target_name}__hidden"
+        names_json = store.get(key)
+        if names_json:
+            return json.loads(names_json)
+
+        packets = cls.packets(target_name, type=type, scope=scope)
+        names = sorted(packet["packet_name"] for packet in packets if packet.get("hidden"))
+        store.set(key, json.dumps(names))
+        return names
 
     @classmethod
     def set_packet(
@@ -166,7 +201,9 @@ class TargetModel(Model):
                 found = item
                 break
         if not found:
-            raise RuntimeError(f"Item '{packet['target_name']} {packet['packet_name']} {item_name}' does not exist")
+            raise RuntimeError(
+                f"Item '{packet['target_name']} {packet['packet_name']} {item_name}' does not exist (TargetModel)"
+            )
         return found
 
     # @return [Array<Hash>] Item hash array or raises an exception
@@ -226,12 +263,15 @@ class TargetModel(Model):
 
     @classmethod
     def get_item_to_packet_map(cls, target_name: str, scope: str = OPENC3_SCOPE):
-        if target_name in TargetModel.item_map_cache:
-            cache_time, item_map = TargetModel.item_map_cache[target_name]
+        # Normalize before building the key so lowercase lookups share the entry
+        # that update_store_item_map refreshes
+        target_name = target_name.upper()
+        # The cache is keyed by item_map_key since the same target can exist in multiple scopes
+        item_map_key = f"{scope}__{target_name}__item_to_packet_map"
+        if item_map_key in TargetModel.item_map_cache:
+            cache_time, item_map = TargetModel.item_map_cache[item_map_key]
             if (time.time() - cache_time) < TargetModel.ITEM_MAP_CACHE_TIMEOUT:
                 return item_map
-        item_map_key = f"{scope}__{target_name}__item_to_packet_map"
-        target_name = target_name.upper()
         store = cls._store_for_target(target_name, scope)
         json_data = store.get(item_map_key)
         if json_data:
@@ -239,7 +279,7 @@ class TargetModel(Model):
         else:
             item_map = cls.build_item_to_packet_map(target_name, scope=scope)
             store.set(item_map_key, json.dumps(item_map))
-        TargetModel.item_map_cache[target_name] = [time.time(), item_map]
+        TargetModel.item_map_cache[item_map_key] = [time.time(), item_map]
         return item_map
 
     @classmethod
@@ -485,12 +525,14 @@ class TargetModel(Model):
         tlm_log_retain_time=None,
         cmd_decom_retain_time=None,
         tlm_decom_retain_time=None,
+        decom_flush_period=5.0,
         cleanup_poll_time=3600,
         needs_dependencies=False,
         target_microservices=None,
         disable_erb=None,
         shard=0,
         db_shard=0,
+        stored_limits_mode="PROCESS",
         scope: str = OPENC3_SCOPE,
     ):
         if target_microservices is None:
@@ -507,6 +549,8 @@ class TargetModel(Model):
             requires = []
         self.shard = int(shard) if shard is not None else 0
         self.db_shard = int(db_shard) if db_shard is not None else 0
+        mode = str(stored_limits_mode).upper() if stored_limits_mode else "PROCESS"
+        self.stored_limits_mode = mode if mode in ("PROCESS", "LOG", "DISABLE") else "PROCESS"
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,
@@ -543,6 +587,7 @@ class TargetModel(Model):
                     packet.packet_name,
                     json.dumps(json_hash, cls=JsonEncoder),
                 )
+            self.update_store_hidden_packet_names(db_shard_store, target_name, packets, type="TLM", clear_old=clear_old)
 
     def update_store_commands(self, packet_hash, clear_old=True):
         db_shard_store = Store.instance(db_shard=self.db_shard)
@@ -561,13 +606,32 @@ class TargetModel(Model):
                 except Exception as e:
                     Logger.error(f"Invalid text present in {target_name} {packet_name} cmd packet")
                     raise e
+            self.update_store_hidden_packet_names(db_shard_store, target_name, packets, type="CMD", clear_old=clear_old)
+
+    def update_store_hidden_packet_names(self, db_shard_store, target_name, packets, type, clear_old):
+        """Store the names of the hidden packets so listing packet names doesn't require
+        parsing every packet definition. When only some packets are updated
+        (clear_old False) merge them into the existing list."""
+        # e.g. DEFAULT__openc3tlm__INST__hidden
+        key = f"{self.scope}__openc3{type.lower()}__{target_name}__hidden"
+        names = []
+        if not clear_old:
+            names_json = db_shard_store.get(key)
+            # Without an existing list hidden_packet_names builds it from all the packets
+            if not names_json:
+                return
+            names = [name for name in json.loads(names_json) if name not in packets]
+        for packet_name, packet in packets.items():
+            if packet.hidden:
+                names.append(packet_name)
+        db_shard_store.set(key, json.dumps(sorted(names)))
 
     def update_store_item_map(self):
         # Create item_map
         item_map_key = f"{self.scope}__{self.name}__item_to_packet_map"
         item_map = TargetModel.build_item_to_packet_map(self.name, scope=self.scope)
         Store.instance(db_shard=self.db_shard).set(item_map_key, json.dumps(item_map))
-        TargetModel.item_map_cache[self.name] = [time.time(), item_map]
+        TargetModel.item_map_cache[item_map_key] = [time.time(), item_map]
 
     def dynamic_update(self, packets, cmd_or_tlm="TELEMETRY", filename="dynamic_tlm.txt"):
         # Build hash of targets/packets
@@ -590,11 +654,9 @@ class TargetModel(Model):
         configs = {}
         for packet in packets:
             target_name = packet.target_name.upper()
-            if not configs.get(target_name):
-                configs[target_name] = ""
-            config = configs[target_name]
-            config += packet.to_config(cmd_or_tlm)
-            config += "\n"
+            configs.setdefault(target_name, "")
+            configs[target_name] += packet.to_config(cmd_or_tlm) + "\n"
+
         for target_name, config in configs.items():
             bucket_key = f"{self.scope}/targets_modified/{target_name}/cmd_tlm/{filename}"
             client = Bucket.get_client()

@@ -1,7 +1,7 @@
 
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG OPENC3_TSDB_IMAGE=questdb/questdb
-ARG OPENC3_TSDB_VERSION=9.3.5
+ARG OPENC3_TSDB_VERSION=9.4.3
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_TSDB_IMAGE}:${OPENC3_TSDB_VERSION}
 
@@ -51,7 +51,7 @@ USER root
 # Update packages to eliminate CVEs
 # QuestDB 9.3.3+ uses Fedora as the base image (dnf, not apt-get)
 RUN dnf -y upgrade && \
-    dnf install htop -y && \
+    dnf install htop procps-ng -y && \
     dnf clean all && \
     rm -f /usr/local/bin/gosu
 COPY --chmod=0755 ./docker-entrypoint.sh /docker-entrypoint.sh

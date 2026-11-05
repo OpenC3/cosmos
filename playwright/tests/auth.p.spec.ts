@@ -12,13 +12,17 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Auth API', () => {
   test('verifies rate limiting is enforced', async ({ request }) => {
-    if (process.env.ENTERPRISE === '1') {
-      // Rate limiting handled by Keycloak in Enterprise
-      return
-    }
+    test.skip(
+      process.env.ENTERPRISE === '1',
+      'Rate limiting is handled by Keycloak in Enterprise',
+    )
 
     const maxRequests = Number.parseInt(process.env.OPENC3_AUTH_RATE_LIMIT_TO || '10')
 
+    // Note: rate limiting is scoped per client ip, and traefik discards client
+    // supplied X-Forwarded-For, so this test can only exercise its own bucket.
+    // That a client can't lock out other clients is covered by the cmd-tlm-api
+    // auth_controller_spec.
     let gotRateLimited = false
     for (let i = 0; i <= maxRequests; i++) {
       const response = await request.post('/openc3-api/auth/verify', {

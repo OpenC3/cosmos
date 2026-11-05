@@ -240,33 +240,37 @@ export default {
       if (this.note) {
         Api.put(`/openc3-api/notes/${this.note.start}`, {
           data: { start, stop, color, description },
-        }).then((response) => {
-          const desc =
-            response.data.description.length > 16
-              ? `${response.data.description.substring(0, 16)}...`
-              : response.data.description
-          this.$notify.normal({
-            title: 'Updated Note',
-            body: `Note updated: (${response.data.start}): "${desc}"`,
-          })
-          this.$emit('update', response.data)
-          this.show = !this.show
         })
+          .then((response) => {
+            const desc =
+              response.data.description.length > 16
+                ? `${response.data.description.substring(0, 16)}...`
+                : response.data.description
+            this.$notify.normal({
+              title: 'Updated Note',
+              body: `Note updated: (${response.data.start}): "${desc}"`,
+            })
+            this.$emit('update', response.data)
+            this.show = !this.show
+          })
+          .catch(console.error)
       } else {
         Api.post('/openc3-api/notes', {
           data: { start, stop, color, description },
-        }).then((response) => {
-          const desc =
-            response.data.description.length > 16
-              ? `${response.data.description.substring(0, 16)}...`
-              : response.data.description
-          this.$notify.normal({
-            title: 'Created new Note',
-            body: `Note: (${response.data.start}) created: "${desc}"`,
-          })
-          this.$emit('update', response.data)
-          this.show = !this.show
         })
+          .then((response) => {
+            const desc =
+              response.data.description.length > 16
+                ? `${response.data.description.substring(0, 16)}...`
+                : response.data.description
+            this.$notify.normal({
+              title: 'Created new Note',
+              body: `Note: (${response.data.start}) created: "${desc}"`,
+            })
+            this.$emit('update', response.data)
+            this.show = !this.show
+          })
+          .catch(console.error)
       }
       // We don't do the $emit or set show here because it has to be in the callback
     },

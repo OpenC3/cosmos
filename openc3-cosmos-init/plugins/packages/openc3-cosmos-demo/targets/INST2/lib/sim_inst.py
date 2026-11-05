@@ -13,6 +13,7 @@ import os
 import time
 import base64
 import random
+import struct
 import threading
 from io import BytesIO
 from openc3.utilities.simulated_target import SimulatedTarget
@@ -21,6 +22,7 @@ from openc3.packets.packet import Packet
 from openc3.system.system import System
 from openc3.top_level import kill_thread
 from openc3.accessors.binary_accessor import BinaryAccessor
+from openc3.utilities.crc import Crc32
 
 
 # Simulated instrument for the demo. Populates several packets and cycles
@@ -106,9 +108,9 @@ class SimInst(SimulatedTarget):
         packet.write("CcsdsSeqFlags", "NOGROUP")
         packet.write("CcsdsLength", len(packet.buffer) - 7)
         packet.write("value1", 0)
-        packet.write("value2", 1)
+        packet.write("value2", 0)
         packet.write("value3", 2)
-        packet.write("value4", 1)
+        packet.write("value4", 0)
         packet.write("value5", 0)
         packet.write("P_2.2,2", BinaryAccessor.MIN_INT64)
         packet.write("P-3+3=3", BinaryAccessor.MAX_INT64)
@@ -123,6 +125,9 @@ class SimInst(SimulatedTarget):
         packet = self.tlm_packets["MECH"]
         packet.write("CcsdsSeqFlags", "NOGROUP")
         packet.write("CcsdsLength", len(packet.buffer) - 7)
+
+        packet = self.tlm_packets["MEMDUMP"]
+        packet.write("CcsdsSeqFlags", "NOGROUP")
 
         self.solar_panel_positions = SimInst.SOLAR_PANEL_DFLTS[:]
         self.solar_panel_thread = None
@@ -142,10 +147,12 @@ class SimInst(SimulatedTarget):
 
         self.bad_temp2 = False
         self.last_temp2 = 0
-        self.quiet = False
+        self.quiet = True
         self.time_offset = 0
         self.ip_address = 0
         self.variable_arrays_updated = False
+        self.memdump_response = None
+        self.crc = Crc32()
 
     def set_rates(self):
         self.set_rate("ADCS", 10)
@@ -244,6 +251,28 @@ class SimInst(SimulatedTarget):
                 # Write only arrays - variable_bit_size will auto-update length fields
                 arrays_packet.write("array1", packet.read("ARRAY1"))
                 arrays_packet.write("array2", packet.read("ARRAY2"))
+            case "MEMDUMP":
+                offset = packet.read("OFFSET")
+                size = packet.read("SIZE")
+                bad_crc = packet.read("BAD_CRC", "RAW")
+                # Reject the command if the CRC over OFFSET, SIZE and BAD_CRC doesn't match
+                if packet.read("CRC") != self.crc.calc(struct.pack(">IIB", offset, size, bad_crc)):
+                    return
+                # Reject sizes outside the command's range since cmd_raw skips range checks
+                size_item = packet.get_item("SIZE")
+                if not size_item.minimum <= size <= size_item.maximum:
+                    return
+                hs_packet.write("cmd_acpt_cnt", hs_packet.read("cmd_acpt_cnt") + 1)
+                # Simulated memory is a byte counter where each byte holds its address
+                data = bytearray((offset + i) & 0xFF for i in range(size))
+                crc = self.crc.calc(data)
+                if bad_crc == 1:
+                    # Flip a random bit after calculating the CRC to simulate downlink corruption
+                    bit = random.randrange(size * 8)  # NOSONAR - simulated bit error, not security related
+                    data[bit // 8] ^= 0x80 >> (bit % 8)
+                # Commands arrive on a different thread than read so only hand off the
+                # values here and let read write them into the MEMDUMP packet
+                self.memdump_response = (offset, bytes(data), crc)
 
     def solar_panel_thread_method(self):
         self.solar_panel_thread_cancel = False
@@ -360,6 +389,8 @@ class SimInst(SimulatedTarget):
                         self.cycle_tlm_item(packet, "temp1", -15.0, 15.0, 5.0)
                         self.cycle_tlm_item(packet, "temp2", -50.0, 25.0, -1.0)
                         self.cycle_tlm_item(packet, "temp3", 0.0, 50.0, 2.0)
+                        self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
+                        self.cycle_tlm_item(packet, "bracket[0]", 0, 100, 10)
                     else:
                         self.cycle_tlm_item(packet, "temp1", -95.0, 95.0, 5.0)
                         if self.bad_temp2:
@@ -378,8 +409,8 @@ class SimInst(SimulatedTarget):
                             packet.write("temp2", float("inf"))
                             self.bad_temp2 = True
                         self.cycle_tlm_item(packet, "temp3", -30.0, 80.0, 2.0)
-                    self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
-                    self.cycle_tlm_item(packet, "bracket[0]", 0, 255, 10)
+                        self.cycle_tlm_item(packet, "temp4", 0.0, 20.0, -0.1)
+                        self.cycle_tlm_item(packet, "bracket[0]", 0, 255, 10)
 
                     packet.write("timesec", int(time - self.time_offset))
                     packet.write("timeus", int((time % 1) * 1000000))
@@ -411,6 +442,13 @@ class SimInst(SimulatedTarget):
                     packet.write("timeus", int((time % 1) * 1000000))
                     packet.write("ccsdsseqcnt", packet.read("ccsdsseqcnt") + 1)
                     packet.write("ip_address", self.ip_address)
+
+                    if self.quiet:
+                        packet.write("value2", 0)
+                        packet.write("value4", 0)
+                    else:
+                        packet.write("value2", 1)
+                        packet.write("value4", 1)
 
                 case "IMAGE":
                     packet.write("timesec", int(time - self.time_offset))
@@ -445,7 +483,7 @@ class SimInst(SimulatedTarget):
                     packet.write("CcsdsLength", len(packet.buffer) - 7)
 
         # Every 10s throw an unknown packet at the server just to demo that
-        if count_100hz % 1000 == 900:
+        if not self.quiet and count_100hz % 1000 == 900:
             pending_packets.append(
                 Packet(None, None, "BIG_ENDIAN", None, random.randbytes(10))
             )
@@ -457,5 +495,19 @@ class SimInst(SimulatedTarget):
             arrays_packet.write("timeus", int((time % 1) * 1000000))
             arrays_packet.write("ccsdsseqcnt", arrays_packet.read("ccsdsseqcnt") + 1)
             pending_packets.append(arrays_packet)
+
+        memdump_response, self.memdump_response = self.memdump_response, None
+        if memdump_response:
+            offset, data, crc = memdump_response
+            memdump_packet = self.tlm_packets["MEMDUMP"]
+            memdump_packet.write("OFFSET", offset)
+            # Writing DATA resizes the packet and updates SIZE due to VARIABLE_BIT_SIZE
+            memdump_packet.write("DATA", data)
+            memdump_packet.write("CRC", crc)
+            memdump_packet.write("ccsdslength", len(memdump_packet.buffer) - 7)
+            memdump_packet.write("timesec", int(time - self.time_offset))
+            memdump_packet.write("timeus", int((time % 1) * 1000000))
+            memdump_packet.write("ccsdsseqcnt", memdump_packet.read("ccsdsseqcnt") + 1)
+            pending_packets.append(memdump_packet)
 
         return pending_packets

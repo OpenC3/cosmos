@@ -1,6 +1,6 @@
 # encoding: ascii-8bit
 
-# Copyright 2022 OpenC3, Inc
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -12,6 +12,7 @@
 # if purchased from OpenC3, Inc.
 
 require "spec_helper"
+require "ostruct"
 require "openc3/utilities/bucket_utilities"
 
 module OpenC3

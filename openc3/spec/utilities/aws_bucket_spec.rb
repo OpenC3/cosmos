@@ -98,6 +98,13 @@ module OpenC3
         expect(client.get_object(bucket: @bucket, key: 'nope')).to eql nil
       end
 
+      # AWS S3 returns AccessDenied instead of NoSuchKey when the caller lacks s3:ListBucket
+      it "returns nil if access is denied" do
+        allow(client.instance_variable_get(:@client)).to receive(:get_object)
+          .and_raise(Aws::S3::Errors::AccessDenied.new(nil, 'Access Denied.'))
+        expect(client.get_object(bucket: @bucket, key: 'nope')).to be_nil
+      end
+
       # Basic get_object is tested by put_object, it's the exact same test code
 
       it "downloads an object" do
@@ -107,6 +114,8 @@ module OpenC3
         expect(File.exist?(local_path)).to be true
         expect(File.read(local_path)).to eql 'contents'
         client.delete_object(bucket: @bucket, key: 'test')
+      ensure
+        FileUtils.rm_f(local_path)
       end
 
       it "internal presigned_request" do
@@ -169,7 +178,7 @@ module OpenC3
 
     describe 'list_files' do
       it "returns BucketNotFound if the bucket doesn't exist" do
-        expect { client.list_files(bucket: "NOPE", path: "") }.to raise_error(Bucket::NotFound, "Bucket 'NOPE' does not exist.")
+        expect { client.list_files(bucket: "NOPE", path: "") }.to raise_error(Bucket::NotFound, "Bucket 'NOPE' does not exist (list_files)")
       end
 
       it "lists the root" do

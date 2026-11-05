@@ -107,18 +107,22 @@ export default {
     }
   },
   created() {
-    Api.get('/openc3-api/info').then(({ data }) => {
-      this.isEnterprise = data.enterprise
-    })
+    Api.get('/openc3-api/info')
+      .then(({ data }) => {
+        this.isEnterprise = data.enterprise
+      })
+      .catch(console.error)
   },
   mounted() {
     this.update()
   },
   methods: {
     update() {
-      Api.get('/openc3-api/secrets').then((response) => {
-        this.secrets = response.data
-      })
+      Api.get('/openc3-api/secrets')
+        .then((response) => {
+          this.secrets = response.data
+        })
+        .catch(console.error)
     },
     upload: function () {
       this.loadingSecret = true

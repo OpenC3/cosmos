@@ -99,9 +99,9 @@ module OpenC3
     # Apply bucket policy to grant ScriptRunner user access to config and logs buckets
     # This provides reduced permissions compared to the root user for security
     def ensure_scriptrunner_policy(config_bucket, logs_bucket)
-      sr_username = ENV['OPENC3_SR_BUCKET_USERNAME']
+      sr_username = ENV.fetch('OPENC3_SR_BUCKET_USERNAME', nil)
       return unless sr_username
-      return if sr_username == ENV['OPENC3_BUCKET_USERNAME'] # Same as root, no policy needed
+      return if sr_username == ENV.fetch('OPENC3_BUCKET_USERNAME', nil) # Same as root, no policy needed
 
       # Policy for config bucket - read targets, read/write targets_modified
       # Note: versitygw expects Principal as comma-separated raw usernames
@@ -213,6 +213,14 @@ module OpenC3
     # If the key is not found return nil
     rescue Aws::S3::Errors::NoSuchKey
       nil
+    # AWS S3 returns 403 AccessDenied rather than 404 NoSuchKey when the caller
+    # does not have s3:ListBucket on the bucket. Callers which probe for an
+    # optional key (i.e. TargetFile.body checking targets_modified first) would
+    # otherwise raise instead of falling through, so treat it as not found.
+    # Warn since a genuine permission problem looks identical from here.
+    rescue Aws::S3::Errors::AccessDenied
+      Logger.warn("Access denied reading #{bucket}/#{key}. Treating as not found. Verify bucket permissions if this key should exist.")
+      nil
     end
 
     def list_objects(bucket:, prefix: nil, max_request: 1000, max_total: 100_000)
@@ -233,7 +241,7 @@ module OpenC3
       # Array of objects with key and size methods
       result
     rescue Aws::S3::Errors::NoSuchBucket
-      raise NotFound, "Bucket '#{bucket}' does not exist."
+      raise NotFound, "Bucket '#{bucket}' does not exist (list_objects)"
     end
 
     # Lists the files under a specified path
@@ -283,7 +291,7 @@ module OpenC3
       end
       result
     rescue Aws::S3::Errors::NoSuchBucket
-      raise NotFound, "Bucket '#{bucket}' does not exist."
+      raise NotFound, "Bucket '#{bucket}' does not exist (list_files)"
     end
 
     # get metadata for a specific object

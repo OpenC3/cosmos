@@ -44,8 +44,10 @@ module OpenC3
       @tlm_packets.each do |name, packet|
         packet.restore_defaults
         ids = packet.id_items
-        ids.each do |id|
-          packet.public_send((id.name + '=').to_sym, id.id_value)
+        if ids
+          ids.each do |id|
+            packet.public_send((id.name + '=').to_sym, id.id_value)
+          end
         end
       end
 

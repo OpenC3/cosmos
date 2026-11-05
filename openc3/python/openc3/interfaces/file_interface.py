@@ -13,6 +13,7 @@ import gzip
 import os
 import pathlib
 import queue
+import shutil
 
 from watchdog.events import FileSystemEvent, FileSystemEventHandler
 from watchdog.observers import Observer
@@ -95,6 +96,10 @@ class FileInterface(Interface):
 
     def connect(self):
         super().connect()  # Reset the protocols
+        # Discard a disconnect marker left over from a previous connection. Entries only
+        # wake read_interface, which finds files by listing the folder, so none are lost.
+        while not self.queue.empty():
+            self.queue.get_nowait()
 
         if self.telemetry_read_folder:
             event_handler = NewFileEventHandler(self)
@@ -120,7 +125,10 @@ class FileInterface(Interface):
         if self.sleeper:
             self.sleeper.cancel()
         self.listener = None
-        self.queue.put(None)
+        # Only wake read_interface for the first disconnect of a connection, otherwise the
+        # unconsumed marker would immediately disconnect the next connection
+        if self._connected:
+            self.queue.put(None)
         super().disconnect()
         self._connected = False
 
@@ -199,7 +207,9 @@ class FileInterface(Interface):
             os.remove(self.file_path)
         else:
             new_path = os.path.join(self.telemetry_archive_folder, os.path.basename(self.file_path))
-            os.rename(self.file_path, new_path)
+            # shutil.move falls back to copy+delete across filesystems (e.g.
+            # separate Docker bind mounts where os.rename raises EXDEV).
+            shutil.move(self.file_path, new_path)
         self.file_path = None
 
     def get_next_telemetry_file(self):

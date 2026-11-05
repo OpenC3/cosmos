@@ -54,11 +54,20 @@ module OpenC3
     @@db_shard_cache_mutex = Mutex.new
     DB_SHARD_CACHE_TIMEOUT = 60 # seconds
 
+    # Maximum number of entries read_topics returns PER STREAM when the caller
+    # does not pass a count. XREAD without COUNT returns everything from the
+    # offset to the tail of the stream, which for a consumer that has fallen
+    # behind on a high-rate stream can be an enormous reply materialized in
+    # memory all at once. Callers loop on their offsets so a capped read simply
+    # continues on the next call.
+    READ_TOPICS_DEFAULT_COUNT = 1000
+
     # Mutex used to ensure that only one instance is created
     @@instance_mutex = Mutex.new
 
     attr_reader :redis_url
     attr_reader :redis_pool
+    attr_reader :db_shard
 
     # Look up the db_shard number for a target with a 1-minute cache.
     # Reads directly from Redis db_shard 0 to avoid circular deps with TargetModel.
@@ -116,15 +125,54 @@ module OpenC3
     end
 
     def initialize(pool_size = 10, db_shard: 0)
-      @redis_username = ENV['OPENC3_REDIS_USERNAME']
-      @redis_key = ENV['OPENC3_REDIS_PASSWORD']
+      @db_shard = db_shard
+      @redis_username = ENV.fetch('OPENC3_REDIS_USERNAME', nil)
+      @redis_key = ENV.fetch('OPENC3_REDIS_PASSWORD', nil)
       hostname = ENV['OPENC3_REDIS_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
       @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_PORT', 6379)}"
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
     end
 
+    # cap/base for the equal-jitter reconnect backoff (seconds)
+    REDIS_BACKOFF_CAP = 5.0
+    REDIS_BACKOFF_BASE = 0.625
+
     def build_redis
-      return Redis.new(url: @redis_url, username: @redis_username, password: @redis_key)
+      # reconnect_attempts retries the connection a few times with equal-jitter
+      # backoff so a transient network blip is handled inside the client instead
+      # of immediately surfacing a connection error to callers. The jitter
+      # de-syncs many clients retrying the same blip to avoid a thundering herd
+      # on recovery.
+      #
+      # This mirrors the Python store's Retry(EqualJitterBackoff(cap: 5, base:
+      # 0.625), 3): per-retry backoff tops out at 5s on the final (3rd) retry
+      # (~0.6-1.25s, ~1.25-2.5s, ~2.5-5s). redis-rb takes a fixed Array of delays
+      # (no per-failure backoff callable), so we sample the jittered delays once
+      # per connection here.
+      # Connection, read, and write timeouts are left as the default: 1s
+      return Redis.new(
+        url: @redis_url,
+        username: @redis_username,
+        password: @redis_key,
+        reconnect_attempts: reconnect_backoff_delays()
+      )
+    end
+
+    # Equal-jitter backoff delays for 3 retries, matching Python's
+    # EqualJitterBackoff. Each retry's delay is randomized within the upper half
+    # of an exponentially-growing ceiling.
+    def reconnect_backoff_delays
+      (1..3).map do |failures|
+        # ceiling = exponential growth (base doubles each retry), clamped to cap.
+        # For base=0.625, cap=5: failures 1,2,3 -> 1.25, 2.5, 5.0 seconds.
+        # temp = half the ceiling: the guaranteed minimum wait for this retry.
+        temp = [REDIS_BACKOFF_CAP, REDIS_BACKOFF_BASE * (2 ** failures)].min / 2.0
+        # Final delay = fixed half (temp) + random half (rand*temp, in [0, temp)),
+        # i.e. a value uniformly in [temp, 2*temp) = [ceiling/2, ceiling).
+        # The fixed half keeps a sane floor; the random half de-syncs clients so
+        # they don't all reconnect in lockstep (thundering herd) after a blip.
+        temp + rand * temp
+      end
     end
 
     ###########################################################################
@@ -187,8 +235,10 @@ module OpenC3
       return offsets
     end
 
+    # @param count [Integer] Maximum entries to return per stream. nil uses READ_TOPICS_DEFAULT_COUNT.
     def read_topics(topics, offsets = nil, timeout_ms = 1000, count = nil)
       return {} if topics.empty?
+      count ||= READ_TOPICS_DEFAULT_COUNT
       Thread.current[:topic_offsets] ||= {}
       topic_offsets = Thread.current[:topic_offsets]
       begin
@@ -226,13 +276,20 @@ module OpenC3
     # @option opts [String]  :id          the entry id, default value is `*`, it means auto generation,
     #   if `nil` id is passed it will be changed to `*`
     # @option opts [Integer] :maxlen      max length of entries, default value is `nil`, it means will grow forever
-    # @option opts [String] :approximate whether to add `~` modifier of maxlen or not, default value is 'true'
+    # @option opts [String] :approximate whether to add `~` modifier of maxlen or minid or not, default value is 'true'
+    # @option opts [String] :minid       trim entries with ids lower than this as part of the add (XADD MINID).
+    #   Cannot be combined with maxlen. See Topic.stream_safety_minid for the safety cap applied to target streams.
     #
     # @return [String] the entry id
-    def write_topic(topic, msg_hash, id = '*', maxlen = nil, approximate = 'true')
+    def write_topic(topic, msg_hash, id = '*', maxlen = nil, approximate = 'true', minid: nil)
       id = '*' if id.nil?
+      raise ArgumentError, "write_topic can't supply both maxlen and minid" if maxlen and minid
       @redis_pool.with do |redis|
-        return redis.xadd(topic, msg_hash, id: id, maxlen: maxlen, approximate: approximate)
+        if minid
+          return redis.xadd(topic, msg_hash, id: id, minid: minid, approximate: approximate)
+        else
+          return redis.xadd(topic, msg_hash, id: id, maxlen: maxlen, approximate: approximate)
+        end
       end
     end
 
@@ -259,7 +316,7 @@ module OpenC3
 
   class EphemeralStore < Store
     def initialize(pool_size = 10, db_shard: 0)
-      super(pool_size)
+      super(pool_size, db_shard: db_shard)
       hostname = ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
       @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_EPHEMERAL_PORT', 6380)}"
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }

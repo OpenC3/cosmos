@@ -108,7 +108,7 @@ module OpenC3
     # This method is taken directly from the Rails source:
     #   https://api.rubyonrails.org/v5.2/classes/ActiveStorage/Filename.html#method-i-sanitized
     # NOTE: I removed the '/' character because we have to allow this in order to traverse the path
-    sanitized = path.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "�").strip.tr("\u{202E}%$|:;\t\r\n\\", "-").gsub('..', '-')
+    sanitized = path.encode(Encoding::UTF_8, invalid: :replace, undef: :replace, replace: "\u{FFFD}").strip.tr("\u{202E}%$|:;\t\r\n\\", "-").gsub('..', '-')
     if sanitized != path
       raise StorageError, "Invalid path: #{path}"
     end
@@ -503,7 +503,7 @@ end
 # New plugins should only use openc3 paths and module OpenC3
 unless ENV['OPENC3_NO_COSMOS_COMPATIBILITY']
   Cosmos = OpenC3
-  ENV['COSMOS_SCOPE'] = ENV['OPENC3_SCOPE']
+  ENV['COSMOS_SCOPE'] = ENV.fetch('OPENC3_SCOPE', 'DEFAULT')
 
   # Don't apply the compatibility layer in test environments to avoid conflicts with RSpec
   unless defined?(RSpec) || ENV['RAILS_ENV'] == 'test' || ENV['RACK_ENV'] == 'test'

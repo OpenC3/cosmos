@@ -94,6 +94,16 @@ class TestFileInterface(unittest.TestCase):
         self.assertTrue(self.interface.connected())
         self.assertIsNone(self.interface.listener)
 
+    def test_only_queues_one_disconnect_marker_per_connection(self):
+        self.interface = FileInterface(self.command_dir, None, None)
+        self.interface.connect()
+        self.interface.disconnect()
+        self.interface.disconnect()
+        self.assertEqual(self.interface.queue.qsize(), 1)
+        # The next connect discards it so it doesn't immediately disconnect
+        self.interface.connect()
+        self.assertTrue(self.interface.queue.empty())
+
     def test_disconnect(self):
         """Test closes the file if open"""
         self.interface = FileInterface(self.command_dir, self.telemetry_dir, self.archive_dir)

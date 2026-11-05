@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -29,6 +29,7 @@
         label="Allow COSMOS backend to pull the news feed from the COSMOS external news site.
         This is a low bandwidth poll which only happens every 12 hrs. To immediately update the news feed, click the 'Refresh' in the User Menu."
         color="primary"
+        :disabled="settingsLoading"
       />
     </v-card-text>
     <v-card-actions>

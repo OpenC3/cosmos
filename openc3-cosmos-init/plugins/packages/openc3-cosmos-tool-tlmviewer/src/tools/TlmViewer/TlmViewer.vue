@@ -17,7 +17,20 @@
 
 <template>
   <top-bar :title="title" :menus="menus" />
-  <div v-if="playbackMode === 'playback'" class="playback">Playback Mode</div>
+  <v-alert
+    v-if="playbackMode === 'playback'"
+    class="playback text-overline mb-1 py-0 align-center justify-center flex-0-0"
+    type="warning"
+    variant="tonal"
+    density="compact"
+    border="start"
+    :icon="false"
+  >
+    <span class="d-inline-flex align-center">
+      <v-icon icon="mdi-play-circle-outline" size="16" class="mr-2" />
+      Playback Mode
+    </span>
+  </v-alert>
   <v-expansion-panels v-model="panel" class="mb-1">
     <v-expansion-panel>
       <v-expansion-panel-title class="pulse-i"></v-expansion-panel-title>
@@ -170,31 +183,31 @@
                 ></v-btn>
               </template>
             </v-tooltip>
-            <v-text-field
+            <v-number-input
               v-model="playbackStep"
+              control-variant="stacked"
               class="mr-4 ml-4"
               density="compact"
               hide-details
               variant="outlined"
               label="Step (Speed)"
               suffix="secs"
-              type="number"
-              step="1"
+              :step="1"
               data-test="playback-speed"
-              style="max-width: 120px"
+              style="max-width: 180px"
             />
-            <v-text-field
+            <v-number-input
               v-model="playbackSkip"
+              control-variant="stacked"
               class="mr-4"
               density="compact"
               hide-details
               variant="outlined"
               label="Skip"
               suffix="secs"
-              type="number"
-              step="1"
+              :step="1"
               data-test="skip"
-              style="max-width: 120px"
+              style="max-width: 180px"
             />
           </v-row>
         </div>
@@ -221,6 +234,7 @@
           :initial-top="def.top"
           :initial-left="def.left"
           :initial-z="def.zIndex"
+          :initial-width="def.width"
           :time-zone="timeZone"
           :playback-mode="playbackMode"
           :playback-date-time="playbackDateTime"
@@ -371,6 +385,7 @@ export default {
           top: def.top,
           left: def.left,
           zIndex: def.zIndex,
+          width: def.width,
         }
       })
     },
@@ -487,7 +502,6 @@ export default {
         }
       })
       .catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Error loading screens:', error)
       })
     Api.get('/openc3-api/autocomplete/keywords/screen')
@@ -495,15 +509,14 @@ export default {
         this.keywords = response.data
       })
       .catch((error) => {
-        // eslint-disable-next-line no-console
         console.error('Error loading screen keywords:', error)
       })
 
     if (localStorage[`${this.configKey}__step`]) {
-      this.playbackStep = localStorage[`${this.configKey}__step`]
+      this.playbackStep = Number(localStorage[`${this.configKey}__step`])
     }
     if (localStorage[`${this.configKey}__skip`]) {
-      this.playbackSkip = localStorage[`${this.configKey}__skip`]
+      this.playbackSkip = Number(localStorage[`${this.configKey}__skip`])
     }
     if (localStorage[`${this.configKey}__date`]) {
       this.playbackDate = localStorage[`${this.configKey}__date`]
@@ -593,6 +606,7 @@ export default {
             top: 0,
             left: 0,
             zIndex: 0,
+            width: null,
           })
         })
       }
@@ -605,7 +619,6 @@ export default {
           'Ignore-Errors': '404',
         },
       }).catch((error) => {
-        // eslint-disable-next-line no-console
         console.error(
           `Error loading screen ${screen} for target ${target}:`,
           error,
@@ -660,31 +673,34 @@ export default {
         }
       }
     },
-    floatScreen(definition, floated, top, left, zIndex) {
+    floatScreen(definition, floated, top, left, zIndex, width) {
       definition.floated = floated
       definition.top = top
       definition.left = left
       definition.zIndex = zIndex
+      definition.width = width
       let items = this.grid.getItems([
         document.getElementById(this.screenId(definition.id)),
       ])
       this.grid.remove(items)
       this.grid.refreshItems().layout()
     },
-    unfloatScreen(definition, floated, top, left, zIndex) {
+    unfloatScreen(definition, floated, top, left, zIndex, width) {
       definition.floated = floated
       definition.top = top
       definition.left = left
       definition.zIndex = zIndex
+      definition.width = width
       let items = [document.getElementById(this.screenId(definition.id))]
       this.grid.add(items)
       this.grid.refreshItems().layout()
     },
-    dragScreen(definition, floated, top, left, zIndex) {
+    dragScreen(definition, floated, top, left, zIndex, width) {
       definition.floated = floated
       definition.top = top
       definition.left = left
       definition.zIndex = zIndex
+      definition.width = width
     },
     refreshLayout() {
       setTimeout(() => {
@@ -701,6 +717,11 @@ export default {
           // Then add all the screens in order
           config.forEach((definition, index) => {
             const response = responses[index]
+            // loadScreen catches its own errors and resolves undefined (a
+            // removed plugin makes 404 expected), so skip screens that
+            // failed rather than dereferencing undefined in the timeout
+            // below, where the TypeError would be unrecoverable.
+            if (!response || !response.data) return
             setTimeout(() => {
               let floated = definition.floated
               if (!floated) {
@@ -709,6 +730,7 @@ export default {
               let top = definition.top || 0
               let left = definition.left || 0
               let zIndex = definition.zIndex || 0
+              let width = definition.width || null
               this.pushScreen({
                 id: this.counter++,
                 target: definition.target,
@@ -718,6 +740,7 @@ export default {
                 top: top,
                 left: left,
                 zIndex: zIndex,
+                width: width,
               })
             }, 0) // I don't even know... but Muuri complains if this isn't in a setTimeout
           })
@@ -825,11 +848,9 @@ export default {
 </script>
 
 <style scoped>
-.playback {
-  text-align: center;
-  color: black;
-  font-weight: bold;
-  background-color: darkorange;
+.playback :deep(.v-alert__content) {
+  /* v-alert pads content to fit its default 28px icon; ours is 18px */
+  padding-block: 0;
 }
 .v-application {
   /* fix for playwright scrolling I guess? */

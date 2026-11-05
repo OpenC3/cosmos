@@ -21,26 +21,59 @@
 
 set -eux
 cd ../..
-eval $(sed -e '/^#/d' -e 's/^/export /' -e 's/$/;/' .env) ;
+# Load .env as DEFAULTS only. Variables already set in the environment (e.g. by
+# the GitHub Actions release workflow) win, so CI can point OPENC3_ENTERPRISE_REGISTRY
+# at ghcr.io even though .env defaults it to repos.openc3.com.
+while IFS='=' read -r key value; do
+  [[ -z "$key" || "$key" == \#* ]] && continue
+  printf -v "$key" '%s' "${!key:-$value}"
+  export "${key?}"
+done < .env
 # OPENC3_REGISTRY=localhost:5000 # Uncomment for local builds
 # OPENC3_ENTERPRISE_REGISTRY=localhost:5000 # Uncomment for local builds
+
+# Registries intermittently fail the push with transient auth or network errors,
+# e.g. "failed to authorize: failed to fetch oauth token: denied: denied" from
+# ghcr.io. buildx has no built in retry, so a single hiccup kills an otherwise
+# good release partway through and every remaining image has to be rebuilt.
+# Wrap the build so each one gets a few attempts with exponential backoff.
+# Retries are cheap: the layers are already cached, only the push repeats.
+OPENC3_BUILD_ATTEMPTS=${OPENC3_BUILD_ATTEMPTS:-3}
+OPENC3_BUILD_RETRY_DELAY=${OPENC3_BUILD_RETRY_DELAY:-15}
+retry_build() {
+  local attempt=1
+  local delay=$OPENC3_BUILD_RETRY_DELAY
+  while true; do
+    if docker buildx build "$@"; then
+      return 0
+    fi
+    if [[ $attempt -ge $OPENC3_BUILD_ATTEMPTS ]]; then
+      echo "ERROR: docker buildx build failed after ${attempt} attempts" 1>&2
+      return 1
+    fi
+    echo "WARNING: docker buildx build attempt ${attempt} failed, retrying in ${delay}s" 1>&2
+    sleep "$delay"
+    attempt=$((attempt + 1))
+    delay=$((delay * 2))
+  done
+}
 
 # check if the first parameter is 'ubi'
 if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_PLATFORMS=linux/amd64
   DOCKERFILE='Dockerfile-ubi'
   SUFFIX='-ubi'
-  OPENC3_VERSITYGW_VERSION=v1.4.1
+  OPENC3_VERSITYGW_VERSION=v1.10.0
 else
   OPENC3_PLATFORMS=linux/amd64,linux/arm64
   DOCKERFILE='Dockerfile'
   SUFFIX=''
-  OPENC3_VERSITYGW_VERSION=v1.4.1
+  OPENC3_VERSITYGW_VERSION=v1.10.0
 fi
 
 # Setup cacert.pem
 echo "Downloading cert from curl"
-curl -q -L https://curl.se/ca/cacert.pem --output ./cacert.pem
+curl -q -L --proto "=https" https://curl.se/ca/cacert.pem --output ./cacert.pem
 if [[ $? -ne 0 ]]; then
   echo "ERROR: Problem downloading cacert.pem file from https://curl.se/ca/cacert.pem" 1>&2
   echo "openc3_setup FAILED" 1>&2
@@ -56,13 +89,14 @@ cp ./cacert.pem openc3-traefik/cacert.pem
 cp ./cacert.pem openc3-buckets/cacert.pem
 
 cd openc3-ruby
-docker buildx build \
+retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
-  --build-arg ALPINE_BUILD=${ALPINE_BUILD} \
-  --build-arg APK_URL=${APK_URL} \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+  --build-arg RUBY_VERSION=${RUBY_VERSION} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg PYPI_URL=$PYPI_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
@@ -74,13 +108,14 @@ docker buildx build \
 
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
-docker buildx build \
+retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
-  --build-arg ALPINE_VERSION=${ALPINE_VERSION} \
-  --build-arg ALPINE_BUILD=${ALPINE_BUILD} \
-  --build-arg APK_URL=${APK_URL} \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+  --build-arg RUBY_VERSION=${RUBY_VERSION} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg PYPI_URL=$PYPI_URL \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
@@ -92,7 +127,7 @@ docker buildx build \
 fi
 
 cd ../openc3
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -104,7 +139,7 @@ docker buildx build \
 
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -116,7 +151,7 @@ docker buildx build \
 fi
 
 cd ../openc3-node
-docker buildx build \
+retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
@@ -129,7 +164,7 @@ docker buildx build \
 
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
-docker buildx build \
+retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
@@ -145,7 +180,7 @@ fi
 cd ../openc3-redis
 if [[ "${1:-default}" == "ubi" ]]; then
   # UBI build uses Dockerfile-ubi which builds Valkey from source
-  docker buildx build \
+  retry_build \
     --file Dockerfile-ubi \
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
@@ -157,7 +192,7 @@ if [[ "${1:-default}" == "ubi" ]]; then
 
   if [[ $OPENC3_UPDATE_LATEST == true ]]
   then
-  docker buildx build \
+  retry_build \
     --file Dockerfile-ubi \
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
@@ -168,21 +203,25 @@ if [[ "${1:-default}" == "ubi" ]]; then
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
   fi
 else
-  # Standard build uses Valkey alpine image
+  # Standard build uses Valkey Debian image
   # OPENC3_REDIS_IMAGE and OPENC3_REDIS_VERSION default in the Dockerfile
-  docker buildx build \
+  retry_build \
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+    --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+    --build-arg APT_URL=${APT_URL} \
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:${OPENC3_RELEASE_VERSION} .
 
   if [[ $OPENC3_UPDATE_LATEST == true ]]
   then
-  docker buildx build \
+  retry_build \
     --platform ${OPENC3_PLATFORMS} \
     --progress plain \
     --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
+    --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+    --build-arg APT_URL=${APT_URL} \
     --push -t ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/openc3-redis${SUFFIX}:latest \
     --push -t ${OPENC3_ENTERPRISE_REGISTRY}/${OPENC3_ENTERPRISE_NAMESPACE}/openc3-redis${SUFFIX}:latest .
   fi
@@ -194,7 +233,7 @@ else
   OPENC3_TSDB_VERSION_EXT=""
 fi
 cd ../openc3-tsdb
-docker buildx build \
+retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
@@ -204,7 +243,7 @@ docker buildx build \
 
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
-docker buildx build \
+retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
@@ -214,10 +253,13 @@ docker buildx build \
 fi
 
 cd ../openc3-buckets
-docker buildx build \
+retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_VERSITYGW_VERSION=${OPENC3_VERSITYGW_VERSION} \
   --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
@@ -228,10 +270,13 @@ docker buildx build \
 
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
-docker buildx build \
+retry_build \
   --file ${DOCKERFILE} \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
+  --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
+  --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
+  --build-arg APT_URL=${APT_URL} \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
   --build-arg OPENC3_VERSITYGW_VERSION=${OPENC3_VERSITYGW_VERSION} \
   --build-arg OPENC3_UBI_REGISTRY=${OPENC3_UBI_REGISTRY} \
@@ -242,8 +287,9 @@ docker buildx build \
 fi
 
 cd ../openc3-cosmos-cmd-tlm-api
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -254,8 +300,9 @@ docker buildx build \
 
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -266,8 +313,9 @@ docker buildx build \
 fi
 
 cd ../openc3-cosmos-script-runner-api
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -278,8 +326,9 @@ docker buildx build \
 
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
+  --build-context anycable=../openc3-anycable \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
   --build-arg OPENC3_NAMESPACE=${OPENC3_NAMESPACE} \
@@ -290,7 +339,7 @@ docker buildx build \
 fi
 
 cd ../openc3-operator
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -302,7 +351,7 @@ docker buildx build \
 
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_REGISTRY=${OPENC3_REGISTRY} \
@@ -316,12 +365,12 @@ fi
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
-  OPENC3_TRAEFIK_RELEASE=v3.6.15
+  OPENC3_TRAEFIK_RELEASE=v3.7.17
 else
-  OPENC3_TRAEFIK_RELEASE=v3.6.15
+  OPENC3_TRAEFIK_RELEASE=v3.7.17
 fi
 cd ../openc3-traefik
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
@@ -331,7 +380,7 @@ docker buildx build \
 
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-arg OPENC3_DEPENDENCY_REGISTRY=${OPENC3_DEPENDENCY_REGISTRY} \
@@ -344,7 +393,7 @@ if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource
 fi
 cd ../openc3-cosmos-init
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-context docs=../docs.openc3.com \
@@ -360,7 +409,7 @@ docker buildx build \
 
 if [[ $OPENC3_UPDATE_LATEST == true ]]
 then
-docker buildx build \
+retry_build \
   --platform ${OPENC3_PLATFORMS} \
   --progress plain \
   --build-context docs=../docs.openc3.com \

@@ -58,7 +58,22 @@ COSMOS uploads the plugin gem file to an internal gem server and extracts the ge
 
 ### Phase 2: Deploy
 
-Once variables are set, COSMOS registers the plugin model in Redis, installs the Ruby gem, and if the plugin contains a `pyproject.toml` or `requirements.txt`, installs Python dependencies as well. It then parses `plugin.txt` again with [ERB](/docs/configuration/format#erb) variable substitution applied and deploys each component declared in the file: targets, interfaces, routers, microservices, tools, widgets, and script engines.
+Once variables are set, COSMOS registers the plugin model in Redis and installs the Ruby gem. If the plugin contains Python dependencies (`pyproject.toml` or `requirements.txt`), COSMOS creates an isolated [UV](https://docs.astral.sh/uv/) virtual environment for the plugin at `/gems/plugin_venvs/<plugin>/.venv` and installs the dependencies into it. This gives each plugin full dependency isolation — different plugins can require different versions of the same package without conflicts.
+
+COSMOS supports two formats for declaring Python dependencies:
+
+- **`pyproject.toml`** (recommended) — When paired with a `uv.lock` file, enables reproducible installs via `uv sync --frozen`. COSMOS uses `uv sync` for `pyproject.toml`-based plugins.
+- **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins.
+
+System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning.
+
+Dependencies are resolved against the `pypi_url` Admin Console setting, falling back to the `PYPI_URL` environment variable and then to public PyPI. When that setting names an index other than `https://pypi.org`, COSMOS treats it as authoritative and passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. A plugin depending on a package published only to its author's private index therefore fails to install unless your index serves that package too.
+
+This applies only to the paths where uv resolves — `requirements.txt` plugins, and `pyproject.toml` plugins with no `uv.lock`. A plugin shipping a `uv.lock` installs with `uv sync --frozen`, which reuses the registry and wheel URLs already recorded in that lock and never consults an index, so a locked plugin still downloads from whatever index its author locked against.
+
+Shipping a `uv.lock` is still recommended, including for air-gapped deployments. COSMOS first tries `uv sync --frozen` offline against its seeded package cache. If the URLs recorded in the lock are unreachable, for example because they point at public PyPI from an air-gapped network, COSMOS falls back to resolving the plugin's `pyproject.toml` against the configured `pypi_url` index, so the install still succeeds as long as that index serves the packages. This fallback ignores the versions pinned in `uv.lock`. To keep those pins in an air-gapped deployment, generate the lock against the same mirror, e.g. `uv lock --no-config --no-sources --default-index <mirror-url>`, so the recorded URLs point at an index the deployment can reach.
+
+After installing dependencies, COSMOS parses `plugin.txt` again with [ERB](/docs/configuration/format#erb) variable substitution applied and deploys each component declared in the file: targets, interfaces, routers, microservices, tools, widgets, and script engines.
 
 ### Target Deployment
 

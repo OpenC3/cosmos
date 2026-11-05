@@ -32,5 +32,30 @@ module OpenC3
       expect(metric.data['test']['time_ms']).to eq(12345.6)
       Metric.class_variable_set(:@@update_thread, nil)
     end
+
+    describe "add_update_generator" do
+      # Generators produce process level cpu/memory. When the operator is
+      # already reporting those for us, running one here too would mean two
+      # writers for the same microservice.
+      around(:each) do |example|
+        original = Metric.class_variable_get(:@@update_generators)
+        Metric.class_variable_set(:@@update_generators, [])
+        example.run
+        Metric.class_variable_set(:@@update_generators, original)
+        ENV.delete(Metric::SUPERVISED_ENV_VAR)
+      end
+
+      it "registers a generator when unsupervised" do
+        ENV.delete(Metric::SUPERVISED_ENV_VAR)
+        Metric.add_update_generator(Object.new)
+        expect(Metric.class_variable_get(:@@update_generators).length).to eq(1)
+      end
+
+      it "ignores a generator when the operator reports process metrics for us" do
+        ENV[Metric::SUPERVISED_ENV_VAR] = '1'
+        Metric.add_update_generator(Object.new)
+        expect(Metric.class_variable_get(:@@update_generators)).to be_empty
+      end
+    end
   end
 end

@@ -20,7 +20,42 @@ require 'openc3/utilities/store'
 
 module OpenC3
   module Extract
-    SCANNING_REGULAR_EXPRESSION = %r{ (?:"(?:[^\\"]|\\.)*") | (?:'(?:[^\\']|\\.)*') | (?:\[(?:[^\\\[\]]|\\.)*\]) | \S+ }x # "
+    # Tokenizer for command parameters: matches double quoted strings, single quoted strings,
+    # bracket delimited arrays (one level of nesting), a bare comma delimiter, or bare words
+    # (runs of non-whitespace, non-comma characters). Commas are tokenized separately so
+    # whitespace around them is optional.
+    SCANNING_REGULAR_EXPRESSION = %r{ (?:"(?:[^\\"]|\\.)*") | (?:'(?:[^\\']|\\.)*') | (?:\[(?:[^\\\[\]]|\\.|\[(?:[^\\\[\]]|\\.)*\])*\]) | , | [^\s,]+ }x # "
+
+    # Operators supported by check(), wait() and wait_check() comparisons
+    COMPARISON_OPERATORS = ["==", "!=", ">=", "<=", ">", "<", "in"]
+
+    # Single character escape sequences processed inside a double quoted comparison operand.
+    # The numeric (\nnn, \xHH, \uHHHH, \u{...}) forms are handled by unescape_double_quoted().
+    DOUBLE_QUOTE_ESCAPES = {
+      '\\' => "\\", '"' => '"', "'" => "'", '#' => '#', 'n' => "\n", 't' => "\t",
+      'r' => "\r", 'a' => "\a", 'b' => "\b", 'e' => "\e", 'f' => "\f", 'v' => "\v", 's' => ' '
+    }
+
+    # Tokenizes a double quoted operand into escape sequences, interpolation markers and runs
+    # of plain characters. The alternatives are ordered longest first so \u{1F600} is not read
+    # as \u, and the escape alternatives precede the markers so \#{ is a literal '#{'.
+    DOUBLE_QUOTE_TOKEN_REGEX =
+      /\\u\{[\h\s]*\}|\\u\h{4}|\\x\h{1,2}|\\[0-7]{1,3}|\\M-\\C-.|\\M-.|\\C-.|\\c.|\\.|\#[{@$]|[^\\\#]+|\#/m
+
+    # Escape sequences which have a meaning we deliberately do not implement. Dropping the
+    # backslash would silently change the value so they are rejected instead.
+    UNSUPPORTED_ESCAPE_REGEX = /\A\\(?:c|C-|M-)/
+
+    # The Ruby string interpolation markers. Interpolation would be code execution so it is
+    # rejected rather than silently compared against the uninterpolated text.
+    INTERPOLATION_REGEX = /\A\#[{@$]/
+
+    # Limits Ruby enforces on a \u escape. A codepoint is written with at most six hex digits,
+    # the largest character Unicode defines is 0x10FFFF, and the surrogate range is reserved
+    # for UTF-16 pairs so it is not a character on its own.
+    MAX_UNICODE_DIGITS = 6
+    MAX_UNICODE_CODEPOINT = 0x10FFFF
+    UNICODE_SURROGATE_RANGE = (0xD800..0xDFFF)
 
     private
 
@@ -88,35 +123,26 @@ module OpenC3
         second_half = split_string[1].scan(SCANNING_REGULAR_EXPRESSION)
         keyword = nil
         value = nil
-        comma = nil
         second_half.each do |item|
-          unless keyword
+          if item == ','
+            # A comma completes the current keyword / value pair.
+            # A comma with nothing pending is a leading or duplicated comma.
+            raise "Missing command parameter before comma: #{text}" unless keyword
+            raise "Missing value for last command parameter: #{text}" unless value
+            add_cmd_parameter(keyword, value, packet, cmd_params)
+            keyword = nil
+            value = nil
+          elsif keyword.nil?
             keyword = item
-            next
+          elsif value.nil?
+            value = item
+          else
+            raise "Missing comma in command parameters: #{text}"
           end
-          unless value
-            if item[-1..-1] == ','
-              value = item[0..-2]
-              comma = true
-            else
-              value = item
-              next
-            end
-          end
-          unless comma
-            raise "Missing comma in command parameters: #{text}" if item != ','
-          end
-          add_cmd_parameter(keyword, value, packet, cmd_params)
-          keyword = nil
-          value = nil
-          comma = nil
         end
         if keyword
-          if value
-            add_cmd_parameter(keyword, value, packet, cmd_params)
-          else
-            raise "Missing value for last command parameter: #{text}"
-          end
+          raise "Missing value for last command parameter: #{text}" unless value
+          add_cmd_parameter(keyword, value, packet, cmd_params)
         end
       end
 
@@ -169,9 +195,8 @@ module OpenC3
     end
 
     # Splits `check()` comparison expressions, e.g. "== 'foo bar'" becomes ["==", "foo bar"]
-    def extract_operator_and_operand_from_comparison(comparison)
-      valid_operators = ["==", "!=", ">=", "<=", ">", "<", "in"]
-
+    # The optional block resolves an unquoted word, see extract_operand
+    def extract_operator_and_operand_from_comparison(comparison, &resolve_name)
       operator, operand = comparison.split(nil, 2) # Ruby: second split arg is max number of resultant elements
 
       if operand.nil?
@@ -180,29 +205,242 @@ module OpenC3
         return [nil, nil]
       end
 
-      raise "ERROR: Invalid operator: '#{operator}'" unless valid_operators.include?(operator)
+      raise "ERROR: Invalid operator: '#{operator}'" unless COMPARISON_OPERATORS.include?(operator)
 
-      # Handle string operand: remove surrounding double/single quotes
-      if operand.match?(/^(['"])(.*)\1$/m) # Starts with single or double quote, and ends with matching quote
-        operand = operand[1..-2]
-        return [operator, operand]
+      # split leaves any trailing whitespace on the operand which the anchored matches reject
+      operand = extract_operand(operand.strip, &resolve_name)
+      # 'in' is containment against a list of values in both Ruby and Python.
+      # Enforced here so check(), wait() and wait_check() all reject the same thing.
+      if operator == "in" and !operand.is_a?(Array)
+        raise "ERROR: The 'in' operator requires a list operand: #{operand.inspect}"
       end
 
-      # Handle other operand types
-      if operand == "nil"
-        operand = nil
-      elsif operand == "false"
-        operand = false
-      elsif operand == "true"
-        operand = true
-      else
-        begin
-          operand = JSON.parse(operand)
-        rescue JSON::ParserError
-          raise "ERROR: Unable to parse operand: #{operand}"
-        end
-      end
       return [operator, operand]
+    end
+
+    # Converts the operand of a `check()` comparison expression into a Ruby value.
+    # Note this deliberately does not eval the operand so only literal values are supported.
+    # The optional block is called with an unquoted word, including one inside a list, and
+    # returns the value to use or nil if the word is not recognized, e.g. a state name.
+    def extract_operand(operand, &resolve_name)
+      # A quoted operand must be a single complete string literal. Anything trailing the
+      # closing quote, e.g. "== 'a' garbage 'b'", is a syntax error rather than a string.
+      if (match = operand.match(/\A'((?:[^'\\]|\\.)*)'\z/m))
+        # Ruby single quoted strings only escape the backslash and the single quote
+        return match[1].gsub(/\\([\\'])/) { $1 }
+      end
+      if (match = operand.match(/\A"((?:[^"\\]|\\.)*)"\z/m))
+        return unescape_double_quoted(match[1])
+      end
+      return nil if operand == "nil"
+      return false if operand == "false"
+      return true if operand == "true"
+
+      # Ruby's Float() rejects these but Python's float() accepts them
+      case operand.upcase
+      when 'INFINITY', '+INFINITY', 'INF', '+INF'
+        return Float::INFINITY
+      when '-INFINITY', '-INF'
+        return -Float::INFINITY
+      when 'NAN', '+NAN', '-NAN'
+        return Float::NAN
+      else
+        # Not an infinity or NaN keyword so fall through to the formats below
+      end
+
+      # Arrays are parsed recursively so their elements follow exactly the same rules as a
+      # bare operand. JSON alone would reject ['ON', 'OFF'], [0xA, 0xB] and [true, nil].
+      if operand.start_with?('[') and operand.end_with?(']')
+        return split_operand_list(operand[1..-2]).map { |element| extract_operand(element, &resolve_name) }
+      end
+      # JSON handles decimal numbers and hashes
+      begin
+        return JSON.parse(operand)
+      rescue JSON::ParserError
+        # Fall through to the number formats JSON does not accept
+      end
+      # Number formats JSON does not accept
+      begin
+        # Explicit base prefix: hex (0x), octal (0o) or binary (0b)
+        return Integer(operand) if operand.match?(/\A[+-]?0[xXoObB][0-9a-fA-F_]+\z/)
+        # Integers with underscore separators, e.g. 1_000. A leading zero is deliberately
+        # rejected because it is ambiguous: Ruby reads 010 as octal 8 while Python rejects it.
+        # Write 0o10 for octal 8 or 10 for decimal 10.
+        return Integer(operand, 10) if operand.match?(/\A[+-]?[1-9][0-9_]*\z/)
+        # Floats with underscore separators, e.g. 1_000.5. A leading zero is unambiguous here.
+        return Float(operand) if operand.match?(/\A[+-]?[0-9][0-9_]*(?:\.[0-9_]+(?:[eE][+-]?[0-9_]+)?|[eE][+-]?[0-9_]+)\z/)
+      rescue ArgumentError
+        # Fall through to the error cases
+      end
+
+      # A bare word is almost always a string the user forgot to quote
+      if operand.match?(/\A[A-Za-z_][A-Za-z0-9_]*\z/)
+        value = resolve_name&.call(operand)
+        return value unless value.nil?
+
+        raise NameError, "Unknown state name #{operand}. Did you mean '#{operand}' as a string?"
+      end
+      raise "ERROR: Unable to parse operand: #{operand}"
+    end
+
+    # Processes the escape sequences in the contents of a double quoted operand
+    def unescape_double_quoted(string)
+      # A \xHH or octal escape can produce a byte which is not valid UTF-8 so build the result
+      # in binary. Otherwise preserve the encoding of the comparison the user passed in.
+      # The escape must not itself be escaped, e.g. "C:\\0" is a backslash followed by a zero.
+      binary = string.match?(/(?<!\\)(?:\\\\)*\\(?:x\h|[0-7])/)
+      result = binary ? ''.b : String.new(encoding: string.encoding)
+      string.scan(DOUBLE_QUOTE_TOKEN_REGEX).each do |token|
+        replacement =
+          if token.match?(INTERPOLATION_REGEX)
+            raise "ERROR: String interpolation is not supported in an operand: #{token}. " +
+                  'Interpolate in the script itself or escape it as \#' + token[1] +
+                  ' to compare against the literal text'
+          elsif !token.start_with?('\\')
+            token
+          elsif token.start_with?('\u{')
+            # \u{1F600} or \u{48 49} which is one or more whitespace separated codepoints
+            token[3..-2].split.map { |codepoint| pack_unicode_codepoint(codepoint, token) }.join
+          elsif token.length == 6 and token.start_with?('\u')
+            pack_unicode_codepoint(token[2..-1], token)
+          elsif token.length > 2 and token.start_with?('\x')
+            [token[2..-1].hex].pack('C')
+          elsif token.match?(/\A\\[0-7]/)
+            [token[1..-1].to_i(8) & 0xFF].pack('C')
+          elsif token.match?(UNSUPPORTED_ESCAPE_REGEX)
+            raise "ERROR: Unsupported escape sequence in operand: #{token}"
+          elsif token == '\u' or token == '\x'
+            raise "ERROR: Invalid escape sequence in operand: #{token}"
+          else
+            # Ruby drops the backslash of an escape which has no special meaning, e.g. "\q"
+            DOUBLE_QUOTE_ESCAPES.fetch(token[1], token[1])
+          end
+        result << (binary ? replacement.b : replacement)
+      end
+      return result
+    end
+
+    # Packs a single codepoint of a \u escape into a UTF-8 character. Ruby rejects a codepoint
+    # which is too long, above the largest Unicode character or in the UTF-16 surrogate range,
+    # so those raise here rather than silently packing into an invalid UTF-8 string.
+    def pack_unicode_codepoint(codepoint, token)
+      value = codepoint.hex
+      if codepoint.length > MAX_UNICODE_DIGITS or value > MAX_UNICODE_CODEPOINT or
+         UNICODE_SURROGATE_RANGE.include?(value)
+        raise "ERROR: Invalid Unicode codepoint in operand: #{token}"
+      end
+      return [value].pack('U')
+    end
+
+    # Splits the contents of a bracketed operand list on the top level commas.
+    # Quotes and nesting are tracked so "['a,b', [1, 2]]" is two elements, not four.
+    def split_operand_list(text)
+      elements = []
+      current = String.new(encoding: text.encoding)
+      depth = 0
+      quote = nil
+      escaped = false
+      text.each_char do |char|
+        if escaped
+          escaped = false
+        elsif quote
+          if char == '\\'
+            escaped = true
+          elsif char == quote
+            quote = nil
+          end
+        elsif char == "'" or char == '"'
+          quote = char
+        elsif char == '[' or char == '{'
+          depth += 1
+        elsif char == ']' or char == '}'
+          depth -= 1
+          raise "ERROR: Unable to parse operand: [#{text}]" if depth < 0
+        elsif char == ',' and depth == 0
+          elements << current.strip
+          current = String.new(encoding: text.encoding)
+          next
+        end
+        current << char
+      end
+      raise "ERROR: Unable to parse operand: [#{text}]" if depth != 0 or quote
+
+      elements << current.strip
+      # A single empty element is an empty list, e.g. []
+      return [] if elements.length == 1 and elements[0].empty?
+      # A trailing comma is allowed, e.g. [1,], matching both Ruby and Python list literals
+      elements.pop if elements[-1].empty?
+      raise "ERROR: Unable to parse operand: [#{text}]" if elements.empty? or elements.any?(&:empty?)
+
+      return elements
+    end
+
+    # Splits a comparison like extract_operator_and_operand_from_comparison but matches state names.
+    # State names are stored upper case so a string operand which matches a state name ignoring case
+    # is compared against that state name, e.g. "== 'Connected'" matches the CONNECTED state.
+    # An unquoted state name, e.g. "== Connected" or "in [On, Off]", is also accepted. The block returns
+    # the item hash. It is only called once, when the operand could be a state name, so numeric
+    # comparisons don't make an additional API call. RAW values are never state names so it is never called.
+    def extract_comparison(comparison, value_type, &get_item)
+      item_states = nil
+      looked_up = false
+      states = lambda do
+        unless looked_up
+          looked_up = true
+          item_states = get_item.call['states'] unless value_type.to_s.upcase == 'RAW'
+        end
+        item_states
+      end
+      operator, operand = extract_operator_and_operand_from_comparison(comparison) do |name|
+        name.upcase if states.call&.key?(name.upcase)
+      end
+      return [operator, operand] unless operand_contains_string?(operand)
+
+      return [operator, states.call ? upcase_state_names(operand, states.call) : operand]
+    end
+
+    # Returns whether the operand is or contains a string, i.e. could be a state name
+    def operand_contains_string?(operand)
+      return true if operand.is_a?(String)
+      return operand.any? { |element| operand_contains_string?(element) } if operand.is_a?(Array)
+      return false
+    end
+
+    # State names are stored upper case so any string in the operand which matches
+    # a state name ignoring case is replaced with that state name
+    def upcase_state_names(operand, states)
+      if operand.is_a?(String)
+        return states.key?(operand.upcase) ? operand.upcase : operand
+      end
+      return operand.map { |element| upcase_state_names(element, states) } if operand.is_a?(Array)
+      return operand
+    end
+
+    # Compares a telemetry value against an operand using the given operator.
+    # Returns false rather than raising if the two values can not be compared.
+    def compare_values(value, operator, operand)
+      case operator
+      when "=="
+        value == operand
+      when "!="
+        value != operand
+      when ">"
+        value > operand
+      when ">="
+        value >= operand
+      when "<"
+        value < operand
+      when "<="
+        value <= operand
+      when "in"
+        # 'in' is containment against a list of values, matching Python
+        operand.is_a?(Array) && operand.include?(value)
+      else
+        raise "ERROR: Invalid operator: '#{operator}'"
+      end
+    rescue ArgumentError, NoMethodError, TypeError
+      # Comparing incompatible types, e.g. nil > 1, is simply not a match
+      false
     end
   end
 end

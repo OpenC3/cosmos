@@ -1,5 +1,5 @@
 /*
-# Copyright 2026, OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -64,6 +64,7 @@ import SignalWidget from './SignalWidget.vue'
 import SpacerWidget from './SpacerWidget.vue'
 import SparklineWidget from './SparklineWidget.vue'
 import TabbookWidget from './TabbookWidget.vue'
+import TargetFiles from './TargetFiles'
 import TextboxWidget from './TextboxWidget.vue'
 import TextfieldWidget from './TextfieldWidget.vue'
 import TimeWidget from './TimeWidget.vue'
@@ -132,6 +133,7 @@ export {
   SpacerWidget,
   SparklineWidget,
   TabbookWidget,
+  TargetFiles,
   TextboxWidget,
   TextfieldWidget,
   TimeWidget,

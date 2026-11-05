@@ -9,6 +9,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import sys
+
 from openc3.packets.packet_item import PacketItem
 from openc3.utilities.extract import convert_to_value
 from openc3.utilities.logger import Logger
@@ -26,7 +28,7 @@ class StateParser:
     #   appended with any warnings found case parsing the limits:
     @classmethod
     def parse(cls, parser, packet, cmd_or_tlm, item, warnings):
-        if item.limits.values:
+        if item.limits_values:
             raise parser.error("Items with LIMITS can't define STATE")
         if item.units:
             raise parser.error("Items with UNITS can't define STATE")
@@ -58,12 +60,21 @@ class StateParser:
         if item.states is None:
             item.states = {}
 
-        state_name = self._get_state_name()
+        # Intern since many items share the same state names
+        state_name = sys.intern(self._get_state_name())
         self._check_for_duplicate_states(item, warnings)
-        # Get the states, set one, then reassign for the setter to work
+        # Update states and states_by_value in place rather than reassigning
+        # item.states, which rebuilds both dicts for every STATE line
         states = item.states
-        states[state_name] = self._get_state_value(item.data_type)
-        item.states = states
+        value = self._get_state_value(item.data_type)
+        if state_name in states:
+            # Duplicate state (rare) so rebuild both dicts through the setter
+            # to keep states_by_value consistent with other states sharing a value
+            states[state_name] = value
+            item.states = states
+        else:
+            states[state_name] = value
+            item.states_by_value()[value] = state_name
         self._parse_additional_parameters(packet, cmd_or_tlm, item)
 
     def _get_state_name(self):
@@ -122,7 +133,7 @@ class StateParser:
         color = self.parser.parameters[2].upper()
         if color not in PacketItem.VALID_STATE_COLORS:
             raise self.parser.error(
-                f"Invalid state color {color}. Must be one of {' '.join(PacketItem.VALID_STATE_COLORS)}.",
+                f"Invalid state color '{color}'. Must be one of {', '.join(PacketItem.VALID_STATE_COLORS)}.",
                 self.usage,
             )
 

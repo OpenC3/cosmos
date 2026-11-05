@@ -7,6 +7,6 @@
 SELECT_TELEMETRY <%= target_name %> MECH
   # Existing items can be selected and modified by adding conversions, limits, etc
   SELECT_ITEM SLRPNL1
-    LIMITS DEFAULT 1 ENABLED -180.0 -170.0 170.0 180.0
+    LIMITS DEFAULT 1 ENABLED -190.0 -180.0 180.0 190.0
   # Delete an item so it doesn't appear in the packet
   DELETE_ITEM EXTRA

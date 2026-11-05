@@ -26,8 +26,8 @@ module OpenC3
     @@override_cache = {}
 
     VALUE_TYPES = [:RAW, :CONVERTED, :FORMATTED]
-    def self.build_json_from_packet(packet)
-      packet.decom
+    def self.build_json_from_packet(packet, include_limits_states: true)
+      packet.decom(include_limits_states: include_limits_states)
     end
 
     # Get a Store instance routed to the correct db_shard for a target
@@ -86,7 +86,7 @@ module OpenC3
         return hash if hash and (now - cache_time) < cache_timeout
       end
       packet = store_for_target(target_name, scope: scope).hget(key, packet_name)
-      raise "Packet '#{target_name} #{packet_name}' does not exist" unless packet
+      raise "Packet '#{target_name} #{packet_name}' has no current values in CVT" unless packet
       hash = JSON.parse(packet, allow_nan: true, create_additions: true)
       @@packet_cache[tgt_pkt_key] = [now, hash]
       hash
@@ -107,7 +107,7 @@ module OpenC3
         hash["#{item_name}__C"] = value
         hash[item_name] = value
       else
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name} (set_item)"
       end
       set(hash, target_name: target_name, packet_name: packet_name, queued: queued, scope: scope)
     end
@@ -134,8 +134,13 @@ module OpenC3
       end
     end
 
-    def self.tsdb_lookup(items, start_time:, end_time: nil, scope: $openc3_scope)
-      QuestDBClient.tsdb_lookup(items, start_time: start_time, end_time: end_time, scope: scope)
+    def self.tsdb_lookup(items, start_time:, end_time: nil, scope: $openc3_scope, flatten: true)
+      QuestDBClient.tsdb_lookup(items, start_time: start_time, end_time: end_time, scope: scope, flatten: flatten)
+    end
+
+    # Return the [target_name, packet_name] telemetry packets which have a TSDB table
+    def self.tsdb_packets_with_tables(packets, scope: $openc3_scope)
+      QuestDBClient.tlm_packets_with_tables(packets, scope: scope)
     end
 
     # Return all item values and limit state from the CVT
@@ -252,7 +257,7 @@ module OpenC3
       when :FORMATTED, :WITH_UNITS
         hash["#{item_name}__F"] = value.to_s # Always a String
       else
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name} (override)"
       end
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
@@ -277,7 +282,7 @@ module OpenC3
       when :FORMATTED, :WITH_UNITS
         hash.delete("#{item_name}__F")
       else
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name} (normalize)"
       end
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"
@@ -327,7 +332,7 @@ module OpenC3
       when :RAW
         types = [item_name]
       else
-        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name}"
+        raise "Unknown type '#{type}' for #{target_name} #{packet_name} #{item_name} (get_item)"
       end
 
       tgt_pkt_key = "#{scope}__tlm__#{target_name}__#{packet_name}"

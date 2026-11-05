@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -120,27 +120,25 @@ export default {
       visible: null,
     }
   },
-  created() {
-    this.api.get_target_names().then((targets) => {
-      const promises = targets.map((target) => {
-        return this.api.get_all_cmd_names(target)
-      })
+  async created() {
+    const targets = await this.api.get_target_names()
+    const promises = targets.map((target) => {
+      return this.api.get_all_cmd_names(target)
+    })
 
-      Promise.all(promises).then((responses) => {
-        let index = 0
-        targets.forEach((target) => {
-          let names = responses[index]
-          this.data = this.data.concat(
-            names.map((packet) => {
-              return { target_name: target, packet_name: packet, count: 0 }
-            }),
-          )
-          index += 1
-        })
-        this.$nextTick(() => {
-          this.update()
-        })
-      })
+    const responses = await Promise.all(promises)
+    let index = 0
+    targets.forEach((target) => {
+      let names = responses[index]
+      this.data = this.data.concat(
+        names.map((packet) => {
+          return { target_name: target, packet_name: packet, count: 0 }
+        }),
+      )
+      index += 1
+    })
+    this.$nextTick(() => {
+      this.update()
     })
   },
   methods: {

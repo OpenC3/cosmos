@@ -11,7 +11,13 @@
 
 name: Trivy Scan
 
-# Only run on a push to main to avoid running for all the dependabot PRs
+# Runs on every pull request, on pushes to main, and from the Actions tab.
+# Deliberately unfiltered by path: the point of scanning a pull request is to
+# catch vulnerable dependencies, and those arrive through manifests scattered
+# across the whole repo (Gemfile.lock, uv.lock, package.json, every
+# Dockerfile), so a path filter would silently skip the bump PRs that matter
+# most. The GHCR build cache in .github/actions/build-cosmos is what makes
+# that affordable: an unrelated PR pulls all 11 images instead of building.
 on:
   push:
     branches:
@@ -19,34 +25,78 @@ on:
   pull_request:
     branches:
       - "**"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
+# Trivy tries each comma-separated repository in order, so a rate limit on one
+# (e.g. public.ecr.aws "TOOMANYREQUESTS: Data limit exceeded") falls through.
 env:
-  TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
-  TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+  TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
+  TRIVY_JAVA_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db:1,ghcr.io/aquasecurity/trivy-java-db:1
+  # The Fetch VEX Hub step puts the VEX hub in the trivy cache; trivy's own
+  # fetch goes through the GitHub API and fails (see fetch-vexhub/action.yml).
+  TRIVY_SKIP_VEX_REPO_UPDATE: "true"
+
+permissions:
+  contents: read
 
 jobs:
   openc3-scan:
-    if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write # required to push the GHCR build cache
+      id-token: write # required for Docker Hub OIDC login
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
+      # Fork PRs get no id-token, so let them fall back to anonymous pulls.
+      - name: Docker login
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
+        env:
+          DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
+          DOCKERHUB_OIDC_EXPIREIN: 3600 # token defaults to 5 min; long builds pull from Docker Hub later
+        with:
+          username: openc3inc
       - id: build
         uses: ./.github/actions/build-cosmos
         with:
           tag: ${{ github.sha }}
+      # aquasecurity/setup-trivy installs the binary once for all the scan
+      # steps below (each passes skip-setup-trivy: true). The version here is
+      # the trivy release, not the action: dependabot bumps the action SHA but
+      # cannot see this input, so it is watched by
+      # .github/workflows/tool_version_check.yml instead.
       - name: Manual Trivy Setup
-        uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514
+        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
           cache: true
-          version: v0.69.3
+          version: v0.76.0
+      # trivy-action's own cache (cache: false on each scan below) restores all
+      # of .cache/trivy at every scan step, which would overwrite the VEX Hub
+      # checkout with whatever was cached and save that back, so a VEX Hub pin
+      # bump would never take effect. Cache only the vulnerability DBs, once,
+      # before the VEX Hub is fetched. Keyed by day like trivy-action's.
+      - name: Get current date
+        id: date
+        run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
+      - name: Restore Trivy DB cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ github.workspace }}/.cache/trivy/db
+            ${{ github.workspace }}/.cache/trivy/java-db
+          key: trivy-db-${{ steps.date.outputs.date }}
+          restore-keys: trivy-db-
+      - name: Fetch VEX Hub
+        uses: ./.github/actions/fetch-vexhub
       - name: Run Trivy on image ruby
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         # See https://github.com/aquasecurity/trivy-action
@@ -56,6 +106,7 @@ jobs:
           # output: "trivy-ruby.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # NOTE: Disabling upload of SARIF files so we can see the output in the job
       # like with COSMOS Enterprise. To re-enable, uncomment the Upload lines,
       # and output: "trivy-ruby.sarif" as well as setting format: "sarif" in trivy.yaml.
@@ -74,6 +125,7 @@ jobs:
           # output: "trivy-node.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -88,6 +140,7 @@ jobs:
           # output: "trivy-base.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -102,6 +155,7 @@ jobs:
           # output: "trivy-init.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -116,6 +170,7 @@ jobs:
           # output: "trivy-redis.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -130,6 +185,7 @@ jobs:
           # output: "trivy-bucket.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -144,6 +200,7 @@ jobs:
           # output: "trivy-tsdb.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -158,6 +215,7 @@ jobs:
           # output: "trivy-operator.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -172,6 +230,7 @@ jobs:
           # output: "trivy-cmd-tlm-api.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -186,6 +245,7 @@ jobs:
           # output: "trivy-script-runner-api.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
@@ -200,22 +260,13 @@ jobs:
           # output: "trivy-traefik.sarif"
           trivy-config: trivy.yaml
           skip-setup-trivy: true
+          cache: false
       # - name: Upload Trivy scan results
       #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
       #   uses: github/codeql-action/upload-sarif@v3
       #   with:
       #     category: "openc3-traefik"
       #     sarif_file: "trivy-traefik.sarif"
-      - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          scan-type: "fs"
-          format: "github"
-          exit-code: 0
-          output: "dependency-results.sbom.json"
-          image-ref: "."
-          github-pat: ${{ secrets.GITHUB_TOKEN }}
       # - uses: anchore/scan-action/download-grype@v3
       #   id: grype
       # - name: Run grype on the image ruby
@@ -240,3 +291,28 @@ jobs:
       #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-script-runner-api:latest
       # - name: Run grype on the image traefik
       #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-traefik:latest
+
+  # Dependency Snapshots are recorded against GITHUB_REF, so this is kept off
+  # pull requests: filing a PR branch's dependencies would corrupt the repo
+  # dependency graph (and a fork PR has no write token to submit with anyway).
+  # Separate job because submitting needs contents: write, which the build job
+  # must not hold while it runs `docker compose build` on the checked-out tree.
+  # scan-type: fs only parses manifests, so no repo code runs here.
+  sbom:
+    if: ${{ github.event_name != 'pull_request' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # required by the Dependency Snapshot submission API
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Run Trivy in GitHub SBOM mode and submit results to Dependency Snapshots
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        with:
+          scan-type: "fs"
+          format: "github"
+          exit-code: 0
+          output: "dependency-results.sbom.json"
+          image-ref: "."
+          github-pat: ${{ secrets.GITHUB_TOKEN }}

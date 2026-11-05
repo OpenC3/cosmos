@@ -13,7 +13,7 @@ from openc3.script.exceptions import SkipScriptError
 from openc3.script.suite import Group, Suite
 
 
-# @deprecated Use SkipScript
+# @deprecated Use SkipScriptError
 class SkipTestCase(SkipScriptError):  # noqa: N818
     pass
 

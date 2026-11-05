@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-// @ts-check
 import { test, expect } from './fixture'
 
 test.use({
@@ -68,14 +67,32 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
     .locator('[data-test="name-input-save-config-dialog"] input')
     .fill('playwright')
   await page.locator('button:has-text("Ok")').click()
-  await expect(page.getByText(`Saved configuration: playwright`)).toBeVisible()
+  await expect(page.getByText(`Saved configurationplaywright`)).toBeVisible()
+  // Saving the config shows a toast banner that auto-hides after ~5s, so its
+  // Dismiss button can disappear (or be briefly covered by a transitioning
+  // toast) before the click lands. Tolerate it already being gone, then make
+  // sure no toast remains over the page before continuing.
+  await page
+    .getByRole('button', { name: 'Dismiss' })
+    .click({ timeout: 5000 })
+    .catch(() => {})
 
   // Open the config
   await page.locator('[data-test="data-viewer-file"]').click()
   await page.locator('text=Open Configuration').click()
   await page.locator(`td:has-text("playwright")`).click()
   await page.locator('button:has-text("Ok")').click()
-  await page.getByRole('button', { name: 'Dismiss' }).click({ timeout: 20000 })
+  // Opening the config shows a toast banner that auto-hides after ~5s, so its
+  // Dismiss button can disappear (or be briefly covered by a transitioning
+  // toast) before the click lands. Tolerate it already being gone, then make
+  // sure no toast remains over the page before continuing.
+  await page
+    .getByRole('button', { name: 'Dismiss' })
+    .click({ timeout: 5000 })
+    .catch(() => {})
+  await expect(page.getByRole('button', { name: 'Dismiss' })).toBeHidden({
+    timeout: 10000,
+  })
 
   // Verify the config
   await expect(page.getByText('Current Time:')).toBeVisible()
@@ -213,12 +230,12 @@ test('controls playback', async ({ page, utils }) => {
     page.locator('[data-test=history-component-text-area] textarea'),
   ).not.toHaveValue(content)
   await page.getByLabel('appended action').click()
-  expect(
+  await expect(
     page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(content)
   // Resume
   await page.locator('[data-test=history-component-play-pause]').click()
-  expect(
+  await expect(
     page.locator('[data-test=history-component-text-area] textarea'),
   ).not.toHaveValue(content)
   // Stop
@@ -228,7 +245,7 @@ test('controls playback', async ({ page, utils }) => {
     .locator('[data-test=history-component-text-area] textarea')
     .inputValue()
   await utils.sleep(500) // Wait for potential changes
-  expect(
+  await expect(
     page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(content)
 })

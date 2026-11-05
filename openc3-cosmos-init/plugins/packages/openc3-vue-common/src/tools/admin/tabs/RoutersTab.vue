@@ -64,17 +64,18 @@ export default {
   },
   methods: {
     update() {
-      Api.get('/openc3-api/routers').then((response) => {
-        this.routers = response.data
-      })
+      Api.get('/openc3-api/routers')
+        .then((response) => {
+          this.routers = response.data
+        })
+        .catch(console.error)
     },
     add() {},
-    showRouter(name) {
-      Api.get(`/openc3-api/routers/${name}`).then((response) => {
-        this.jsonContent = JSON.stringify(response.data, null, '\t')
-        this.dialogTitle = name
-        this.showDialog = true
-      })
+    async showRouter(name) {
+      const response = await Api.get(`/openc3-api/routers/${name}`)
+      this.jsonContent = JSON.stringify(response.data, null, '\t')
+      this.dialogTitle = name
+      this.showDialog = true
     },
     dialogCallback(content) {
       this.showDialog = false

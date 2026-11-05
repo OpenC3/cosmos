@@ -18,6 +18,7 @@
 require "spec_helper"
 require "openc3/utilities/local_mode"
 require "openc3/models/scope_model"
+require "openc3/models/setting_model"
 require "openc3/models/gem_model"
 require "openc3/models/plugin_model"
 require "openc3/utilities/aws_bucket"
@@ -46,6 +47,13 @@ module OpenC3
     after(:each) do
       ENV['OPENC3_LOCAL_MODE'] = nil
       FileUtils.rm_rf @tmp_dir if @tmp_dir
+    end
+
+    # The Admin Console writes all five keys together and classification_banner
+    # declares require_keys, so a fixture has to seed the whole object
+    def banner_json
+      JSON.generate({ text: 'CLASS', fontColor: '#ffffff', backgroundColor: '#00cc00',
+                      topHeight: 20, bottomHeight: 0 })
     end
 
     def setup_sync_test
@@ -110,7 +118,7 @@ module OpenC3
       key = "DEFAULT/settings/classification_banner.json"
       full_path = "#{@tmp_dir}/#{key}"
       FileUtils.mkdir_p(File.dirname(full_path))
-      File.open(full_path, 'wb') {|file| file.write(JSON.generate({text: 'CLASS'}, allow_nan: true))}
+      File.open(full_path, 'wb') {|file| file.write(banner_json)}
       expect(File.exist?(full_path)).to be true
 
       # Setup remote catalog
@@ -210,7 +218,9 @@ module OpenC3
 
         expect(ToolConfigModel).to receive(:save_config).with("telemetry-grapher", "temps", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
         expect(ToolConfigModel).to receive(:save_config).with("tlm-viewer", "screens", "[]", {:local_mode=>false, :scope=>"DEFAULT"})
-        expect(SettingModel).to receive(:set).with({name: "classification_banner", data: "{\"text\":\"CLASS\"}"}, {:scope=>"DEFAULT"})
+        # classification_banner holds JSON *text* - the component JSON.parses it,
+        # so it must not be stored as a parsed object
+        expect(SettingModel).to receive(:set).with({name: "classification_banner", data: banner_json}, {:scope=>"DEFAULT"})
         expect(SettingModel).to receive(:set).with({name: "source_url", data: "https://github.com/openc3/cosmos"}, {:scope=>"DEFAULT"})
 
         $load_plugin_plugin_file_path = []
@@ -426,7 +436,7 @@ module OpenC3
 
     describe "scan_plugin_dir" do
       it "should scan a plugin dir" do
-        test_gems, _ = setup_plugin_test()
+        test_gems = setup_plugin_test().first
         full_path = File.dirname(test_gems[0])
         gems, plugin_instance = LocalMode.scan_plugin_dir(full_path)
         expect(gems.length).to be 1
@@ -579,6 +589,47 @@ module OpenC3
         LocalMode.delete_local(key)
         expect(File.exist?(full_path)).to be false
       end
+
+      it "does not delete files outside the scope via a traversal key" do
+        victim = "#{@tmp_dir}/OTHER/targets_modified/INST/procedures/mod.rb"
+        FileUtils.mkdir_p(File.dirname(victim))
+        File.write(victim, "Some data")
+        # The traversal only resolves on disk if the caller's own directory exists, as it does in a real install
+        FileUtils.mkdir_p("#{@tmp_dir}/DEFAULT/targets_modified")
+        LocalMode.delete_local("DEFAULT/targets_modified/../../OTHER/targets_modified/INST/procedures/mod.rb")
+        expect(File.exist?(victim)).to be true
+      end
+
+      it "does not delete files in a sibling of the local mode root" do
+        sibling = "#{@tmp_dir}_old/DEFAULT/file.rb"
+        FileUtils.mkdir_p(File.dirname(sibling))
+        File.write(sibling, "Some data")
+        LocalMode.delete_local("../#{File.basename(@tmp_dir)}_old/DEFAULT/file.rb")
+        expect(File.exist?(sibling)).to be true
+      ensure
+        FileUtils.rm_rf("#{@tmp_dir}_old")
+      end
+    end
+
+    describe "safe_key? and path_within?" do
+      it "accepts plain relative keys" do
+        expect(LocalMode.safe_key?("DEFAULT/targets_modified/INST/procedures/a.rb")).to be true
+        expect(LocalMode.safe_key?("DEFAULT/tool_config/tlm-viewer/my.config")).to be true
+      end
+
+      it "rejects traversal and malformed keys" do
+        ["../OTHER", "DEFAULT/../OTHER", "DEFAULT/./x", "/etc/passwd", "DEFAULT//x", "DEFAULT/x/",
+         "DEFAULT\\..\\x", "DEFAULT/x\0", "", nil].each do |key|
+          expect(LocalMode.safe_key?(key)).to be(false), key.inspect
+        end
+      end
+
+      it "requires a separator boundary" do
+        expect(LocalMode.path_within?("/plugins/DEFAULT/x", "/plugins")).to be true
+        expect(LocalMode.path_within?("/plugins", "/plugins")).to be true
+        expect(LocalMode.path_within?("/plugins_old/DEFAULT/x", "/plugins")).to be false
+        expect(LocalMode.path_within?("/plugins/DEFAULT/../OTHER/x", "/plugins/DEFAULT")).to be false
+      end
     end
 
     describe "delete_remote" do
@@ -693,6 +744,55 @@ module OpenC3
         3.times do |index|
           expect(catalog["OTHER/targets_modified/INST/screens/myscreen#{index}.txt"]).to be(index * 10)
         end
+      end
+    end
+
+    describe "local only targets" do
+      after(:each) do
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = nil
+      end
+
+      it "parses OPENC3_LOCAL_ONLY_TARGETS" do
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = nil
+        expect(LocalMode.local_only_targets).to eql []
+        expect(LocalMode.local_only_target?('INST')).to be false
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = " inst, INST2 ,,"
+        expect(LocalMode.local_only_targets).to eql ['INST', 'INST2']
+        expect(LocalMode.local_only_target?('INST')).to be true
+        expect(LocalMode.local_only_target?('inst2')).to be true
+        expect(LocalMode.local_only_target?('EXAMPLE')).to be false
+        expect(LocalMode.local_only_target?(nil)).to be false
+      end
+
+      it "matches names and bucket keys" do
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = "INST"
+        expect(LocalMode.local_only_name?('INST/procedures/test.rb')).to be true
+        expect(LocalMode.local_only_name?('INST2/procedures/test.rb')).to be false
+        expect(LocalMode.local_only_key?('DEFAULT/targets_modified/INST/procedures/test.rb')).to be true
+        expect(LocalMode.local_only_key?('DEFAULT/targets/INST/screens/a.txt')).to be true
+        expect(LocalMode.local_only_key?('DEFAULT/targets/INST2/screens/a.txt')).to be false
+        expect(LocalMode.local_only_key?('DEFAULT/target_archives/INST/INST.zip')).to be false
+        expect(LocalMode.local_only_key?('DEFAULT/tmp/INST/a.txt')).to be false
+      end
+
+      it "does not sync local only targets with the bucket" do
+        ENV['OPENC3_LOCAL_MODE_SECONDARY'] = nil
+        ENV['OPENC3_LOCAL_MODE_FORCE_SYNC'] = nil
+        ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE'] = "1"
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = "INST"
+        rubys3_client, resp = setup_sync_test()
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
+        expect(rubys3_client).to receive(:list_objects_v2).and_return(resp)
+        keys = []
+        allow(rubys3_client).to receive(:put_object) { |args| keys << args[:key] }
+        allow(rubys3_client).to receive(:get_object) { |args| keys << args[:key] }
+        allow(rubys3_client).to receive(:delete_object) { |args| keys << args[:key] }
+        LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
+        expect(keys).to_not be_empty
+        expect(keys.select { |key| key.include?('/INST/') }).to eql []
+        # Local only files are left where they are
+        expect(File.exist?("#{@tmp_dir}/DEFAULT/targets_modified/INST/procedures/mod0.rb")).to be true
+        ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE'] = nil
       end
     end
 
@@ -923,6 +1023,164 @@ module OpenC3
         LocalMode.delete_tool_config('DEFAULT', 'tlm-viewer', 'temps')
         expect(File.exist?("#{@tmp_dir}/DEFAULT/tool_config/tlm-viewer/temps.json")).to be false
       end
+
+      it "does not write or delete outside the scope directory" do
+        setup_sync_test()
+        LocalMode.save_tool_config('DEFAULT', '../../OTHER/tool_config/x', 'temps', '{}')
+        LocalMode.save_tool_config('DEFAULT', 'tlm-viewer', '../../../OTHER/temps', '{}')
+        LocalMode.save_tool_config('../OTHER', 'tlm-viewer', 'temps', '{}')
+        expect(Dir.exist?("#{@tmp_dir}/OTHER")).to be false
+
+        victim = "#{@tmp_dir}/OTHER/tool_config/tlm-viewer/temps.json"
+        FileUtils.mkdir_p(File.dirname(victim))
+        File.write(victim, '{}')
+        LocalMode.delete_tool_config('DEFAULT', 'tlm-viewer', '../../../OTHER/tool_config/tlm-viewer/temps')
+        expect(File.exist?(victim)).to be true
+      end
+    end
+
+    describe "sync_settings" do
+      # Write a settings file the way an operator would drop one into the
+      # local plugins folder
+      def write_setting(name, contents)
+        FileUtils.mkdir_p("#{@tmp_dir}/DEFAULT/settings")
+        File.write("#{@tmp_dir}/DEFAULT/settings/#{name}.json", contents)
+      end
+
+      before(:each) do
+        mock_redis()
+        ScopeModel.new(name: 'DEFAULT').create
+        ENV.delete('OPENC3_SETTINGS_OVERWRITE')
+        allow($stdout).to receive(:puts)
+      end
+
+      after(:each) do
+        ENV.delete('OPENC3_SETTINGS_OVERWRITE')
+      end
+
+      it "syncs a setting that doesn't exist yet" do
+        write_setting('time_zone', 'UTC')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "stores a boolean as a boolean rather than the string" do
+        # "false" is truthy in the frontend, so the file has to round trip
+        write_setting('ai_chat', 'false')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'ai_chat', scope: 'DEFAULT')['data']).to be false
+      end
+
+      it "keeps a JSON text setting as text" do
+        # The component JSON.parses this, so a parsed Hash would throw.
+        # classification_banner declares require_keys, so the whole object.
+        json = '{"text":"UNCLASSIFIED","fontColor":"#ffffff","backgroundColor":"#00cc00","topHeight":20,"bottomHeight":0}'
+        write_setting('classification_banner', json)
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'classification_banner', scope: 'DEFAULT')['data']).to eq(json)
+      end
+
+      it "leaves an unknown setting as the text given" do
+        write_setting('brand_new', 'true')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'brand_new', scope: 'DEFAULT')['data']).to eq('true')
+      end
+
+      it "applies the file over an existing setting" do
+        # The file is the source of truth in local mode. An Admin Console edit is
+        # mirrored into the file by set_setting, so this reverts nothing - while
+        # skipping would mean a file for a setting seed_database writes never
+        # applied at all
+        SettingModel.set({ name: 'time_zone', data: 'local' }, scope: 'DEFAULT')
+        write_setting('time_zone', 'UTC')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "applies a file for a setting the scope already seeded" do
+        # localinit runs after the first plugin load, so seed_database has
+        # already written pypi_url by the time sync_settings sees the file
+        SettingModel.set({ name: 'pypi_url', data: 'https://pypi.org' }, scope: 'DEFAULT')
+        write_setting('pypi_url', 'https://mirror.example.com/pypi/web/')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'pypi_url', scope: 'DEFAULT')['data'])
+          .to eq('https://mirror.example.com/pypi/web/')
+      end
+
+      it "applies the file regardless of OPENC3_SETTINGS_OVERWRITE" do
+        # That flag governs OPENC3_SETTING_* env seeding, not these files
+        SettingModel.set({ name: 'time_zone', data: 'local' }, scope: 'DEFAULT')
+        write_setting('time_zone', 'UTC')
+        ENV['OPENC3_SETTINGS_OVERWRITE'] = '0'
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "round trips every type through save_setting" do
+        # The Admin Console stores each setting with save_setting, so whatever it
+        # wrote has to come back out of the file as the same thing. The halves
+        # are tested apart from each other everywhere else, which is how the
+        # string "false" coming back for a boolean survived
+        values = {
+          'time_zone' => 'UTC',                                  # plain text
+          'ai_chat' => false,                                    # real boolean
+          'classification_banner' => '{"text":"UNCLASSIFIED","fontColor":"#ffffff","backgroundColor":"#00cc00","topHeight":20,"bottomHeight":0}', # JSON kept as text
+          'ai_chat_config' => { 'provider' => 'anthropic' },     # JSON as an object
+        }
+        values.each { |name, data| LocalMode.save_setting('DEFAULT', name, data) }
+        LocalMode.sync_settings()
+        values.each do |name, data|
+          expect(SettingModel.get(name: name, scope: 'DEFAULT')['data']).to eql data
+        end
+      end
+
+      it "syncs the files of every scope that exists" do
+        # Settings are global despite the per-scope path, so this is about which
+        # folders are read, not about isolating values
+        ScopeModel.new(name: 'OTHER').create
+        write_setting('time_zone', 'UTC')
+        FileUtils.mkdir_p("#{@tmp_dir}/OTHER/settings")
+        File.write("#{@tmp_dir}/OTHER/settings/time_format.json", '24hr')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone')['data']).to eq('UTC')
+        expect(SettingModel.get(name: 'time_format')['data']).to eq('24hr')
+      end
+
+      it "ignores a settings folder for a scope that doesn't exist" do
+        # The loop is driven by ScopeModel.names, so a folder left behind by a
+        # destroyed scope doesn't resurrect its settings
+        FileUtils.mkdir_p("#{@tmp_dir}/GONE/settings")
+        File.write("#{@tmp_dir}/GONE/settings/time_zone.json", 'UTC')
+        LocalMode.sync_settings()
+        expect(SettingModel.get(name: 'time_zone')).to be_nil
+      end
+
+      it "does nothing when there are no settings files" do
+        expect { LocalMode.sync_settings() }.to_not raise_error
+        expect(SettingModel.names()).to be_empty
+      end
+
+      it "reports a file that won't coerce and keeps syncing the rest" do
+        # One unparsable boolean file shouldn't stop the rest of localinit
+        write_setting('ai_chat', 'nope')
+        write_setting('time_zone', 'UTC')
+        expect($stdout).to receive(:puts).with(/ERROR:.*ai_chat\.json.*Invalid value "nope"/)
+        allow($stdout).to receive(:puts)
+        expect { LocalMode.sync_settings() }.to_not raise_error
+        expect(SettingModel.get(name: 'ai_chat', scope: 'DEFAULT')).to be_nil
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
+
+      it "ignores a malformed OPENC3_SETTINGS_OVERWRITE" do
+        # sync_settings doesn't read the flag, so a bad value can't stop a file
+        # from applying or add a spurious error to localinit
+        write_setting('time_zone', 'UTC')
+        ENV['OPENC3_SETTINGS_OVERWRITE'] = 'maybe'
+        expect($stdout).to_not receive(:puts).with(/ERROR/)
+        allow($stdout).to receive(:puts)
+        expect { LocalMode.sync_settings() }.to_not raise_error
+        expect(SettingModel.get(name: 'time_zone', scope: 'DEFAULT')['data']).to eq('UTC')
+      end
     end
 
     describe "save_setting" do
@@ -938,9 +1196,25 @@ module OpenC3
         LocalMode.save_setting('DEFAULT', 'data', JSON.generate(json, allow_nan: true))
         expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/settings/data.json"))).to eq(json)
       end
+
+      it "should write non-String data as JSON so it can be read back" do
+        setup_sync_test()
+        hash = {"cpu" => {"redThreshold" => 90.0, "lastTriggerTimeRed" => nil}}
+        LocalMode.save_setting('DEFAULT', 'hash', hash)
+        expect(JSON.parse(File.read("#{@tmp_dir}/DEFAULT/settings/hash.json"))).to eq(hash)
+      end
     end
 
     describe "open_local_file" do
+      it "does not open files in another scope" do
+        victim = "#{@tmp_dir}/OTHER/targets_modified/INST/secret.txt"
+        FileUtils.mkdir_p(File.dirname(victim))
+        File.write(victim, "secret")
+        # The traversal only resolves on disk if the caller's own directory exists, as it does in a real install
+        FileUtils.mkdir_p("#{@tmp_dir}/DEFAULT/targets_modified")
+        expect(LocalMode.open_local_file("../../OTHER/targets_modified/INST/secret.txt", scope: 'DEFAULT')).to be_nil
+      end
+
       it "opens local files" do
         setup_sync_test()
         key = "ANOTHER/something/mod0.ext"
@@ -962,6 +1236,12 @@ module OpenC3
     end
 
     describe "put_target_file" do
+      it "does not write outside the given scope" do
+        LocalMode.put_target_file("DEFAULT/targets_modified/../../OTHER/x.rb", "data", scope: 'DEFAULT')
+        LocalMode.put_target_file("OTHER/targets_modified/INST/x.rb", "data", scope: 'DEFAULT')
+        expect(Dir.exist?("#{@tmp_dir}/OTHER")).to be false
+      end
+
       it "puts a target file locally" do
         path = "DEFAULT/demo-plugin/a_file.rb"
         string = "Some data for the file"

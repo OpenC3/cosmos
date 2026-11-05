@@ -15,6 +15,18 @@
     {
       "path": "../cosmos-enterprise-plugins",
     },
+    {
+      "path": "../port-tunnel",
+    },
+    {
+      "path": "../openc3-cosmos-cfdp",
+    },
+    {
+      "path": "../app-store",
+    },
+    {
+      "path": "../openc3-news",
+    },
   ],
   "settings": {
     "rubyLsp.bundleGemfile": "openc3/Gemfile",
@@ -56,7 +68,6 @@
       "cosmos-enterprise-plugins/openc3-cosmos-influx/spec/install/targets",
       "openc3-cosmos-load-sim/targets",
       "openc3-cosmos-cfdp/targets",
-      "cosmos-enterprise/openc3-enterprise-gem/spec/install/config/targets",
       "cosmos/openc3-cosmos-ruby/targets",
       "cosmos/examples/openc3-cosmos-http-example/targets",
       "cosmos/examples/openc3-cosmos-html-get/targets",

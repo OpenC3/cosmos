@@ -8,59 +8,127 @@
 # See LICENSE.md for more details.
 */
 
-/* Per https://github.com/anishkny/playwright-test-coverage/blob/main/LICENSE
-   The code marked Copyright (c) 2021 Anish Karandikar has the following license:
-
-  MIT License
-
-  Copyright (c) 2021 Anish Karandikar
-
-  Permission is hereby granted, free of charge, to any person obtaining a copy
-  of this software and associated documentation files (the "Software"), to deal
-  in the Software without restriction, including without limitation the rights
-  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-  copies of the Software, and to permit persons to whom the Software is
-  furnished to do so, subject to the following conditions:
-
-  The above copyright notice and this permission notice shall be included in all
-  copies or substantial portions of the Software.
-
-  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-  SOFTWARE.
-*/
-
+import { writeFile } from 'node:fs/promises'
 import { expect, test as base } from '@playwright/test'
 import { Utilities } from '../utilities'
+import { CoverageReport } from 'monocart-coverage-reports'
+import coverageOptions from '../coverage.config.mjs'
+import { ADMIN_STORAGE_STATE, STORAGE_STATE } from '../playwright.config'
 
-// Copyright (c) 2021 Anish Karandikar
-const fs = require('fs')
-const path = require('path')
-const crypto = require('crypto')
-const istanbulTempDir = process.env.ISTANBUL_TEMP_DIR
-  ? path.resolve(process.env.ISTANBUL_TEMP_DIR)
-  : path.join(process.cwd(), '.nyc_output')
-function generateUUID() {
-  return crypto.randomBytes(16).toString('hex')
+// V8 coverage is Chromium-only and only collected when COVERAGE=1,
+// so normal runs pay no profiler overhead. Requires bundles built with
+// sourcemaps: `vite build --mode coverage` (see tool vite.config.js).
+const collectCoverage = (browserName: string) =>
+  process.env.COVERAGE === '1' && browserName === 'chromium'
+
+// resetOnNavigation: false keeps counters across the reloads and route changes
+// our tests perform constantly. Never let coverage bookkeeping fail a test.
+const startCoverage = async (page: any) => {
+  try {
+    await page.coverage.startJSCoverage({ resetOnNavigation: false })
+  } catch {
+    // Page already closed or navigated away - nothing to profile.
+  }
 }
-// End Copyright
+
+const stopCoverage = async (page: any) => {
+  try {
+    const coverage = await page.coverage.stopJSCoverage()
+    // Empty when the page never loaded a script with a URL (e.g. a blank popup)
+    // or profiling never started on it. MCR rejects [] with "The added coverage
+    // data must be Array(V8) or Object(Istanbul)", so skip it.
+    if (!coverage.length) return
+    // Appends raw V8 data to coverage/.cache (safe across workers AND
+    // separate `playwright test` invocations); generate-coverage.mjs
+    // merges everything into one report at the end of `pnpm test`
+    await new CoverageReport(coverageOptions).add(coverage)
+  } catch {
+    // Page closed (directly or by context teardown) before we could read it.
+    // Swallow so we don't mask the real test failure.
+  }
+}
+
+// The only localStorage keys worth carrying in the shared storage state files.
+// Allowlisted rather than denylisted: every context is created from those files,
+// so anything else that gets captured silently changes app behavior for the rest
+// of the run - a persisted notoast disables alert toasts (Notifications.vue
+// reads it on load), and notificationStreamOffset / lastReadNotification /
+// ackedAlerts make alerts come back already read. A missing key here breaks
+// every spec loudly, which is the failure mode we want.
+const AUTH_STATE_KEYS = new Set([
+  // Session: openc3Token is core's whole auth story, the rest are Enterprise
+  // (see the two public/js/auth.js copies).
+  'openc3Token',
+  'openc3RefreshToken',
+  'openc3OfflineToken',
+  'openc3LoginMode',
+  // Keycloak client config, written at boot by Enterprise auth.js.
+  'keycloakUrl',
+  'keycloakRealm',
+  'keycloakClientId',
+  // Enterprise tool-base main.js reads this at boot to set window.openc3Scope.
+  'openc3Scope',
+])
+
+// Persist just the signed-in session, dropping everything else (UI preferences,
+// notification read state, keycloak kc-callback-* redirect leftovers).
+const saveAuthState = async (context: any, path: string) => {
+  const state = await context.storageState()
+  for (const origin of state.origins || []) {
+    origin.localStorage = (origin.localStorage || []).filter(
+      (item: { name: string }) => AUTH_STATE_KEYS.has(item.name),
+    )
+  }
+  await writeFile(path, JSON.stringify(state))
+}
 
 // Extend the page fixture to goto the OpenC3 tool and wait for potential
 // redirect to authentication login (Enterprise only).
-// Login and click the hamburger nav icon to close the navigation drawer
+// Login and click the hamburger nav icon to close the navigation drawer.
 export const test = base.extend<{
   context: any
   utils: Utilities
   toolPath: string
   toolName: string
+  disableToasts: boolean
 }>({
   toolPath: '/tools/cmdtlmserver',
   toolName: 'CmdTlmServer',
-  utils: async ({ context, baseURL, toolPath, toolName, page }, use) => {
+  // By default every test disables alert toast popups so they can't intercept
+  // clicks. Toasts are gated by per-browser localStorage (reset each test), so
+  // this must live in the fixture. The notifications spec opts out.
+  disableToasts: true,
+  utils: async (
+    { context, baseURL, toolPath, toolName, page, disableToasts, browserName },
+    use,
+  ) => {
+    if (collectCoverage(browserName)) {
+      await startCoverage(page)
+      // Specs also open secondary pages (context.newPage() and screen popups);
+      // profile those too or their bundles are missing from the report.
+      context.on('page', startCoverage)
+    }
+    // Set the alert toast preference before the first navigation so the
+    // Notifications component reads it on load (localStorage.notoast === 'true'
+    // means "don't toast"). Runs on every page in the context, so it survives
+    // reloads too. Always write the value rather than only setting it when
+    // disabling: contexts start from storageState.json, which can already carry
+    // a notoast from a previous test, and a spec that opts out (notifications)
+    // needs it actually removed.
+    await context.addInitScript((disable: boolean) => {
+      // Runs in every frame, including sandboxed iframes (e.g. the screen
+      // ButtonWidget command sandbox) whose opaque origin has no localStorage
+      // access - guard so we don't throw a SecurityError there.
+      try {
+        if (disable) {
+          window.localStorage.setItem('notoast', 'true')
+        } else {
+          window.localStorage.removeItem('notoast')
+        }
+      } catch {
+        // Sandboxed/cross-origin frame: nothing to set here.
+      }
+    }, disableToasts)
     await page.goto(`${baseURL}${toolPath}`, { waitUntil: 'domcontentloaded' })
     let utils = new Utilities(page)
     if (process.env.ENTERPRISE === '1') {
@@ -78,23 +146,24 @@ export const test = base.extend<{
           username = 'admin'
           password = 'admin'
         }
-        if (username === 'admin') {
-          await page.locator('input[name="username"]').fill('admin')
-          await page.locator('input[name="password"]').fill('admin')
-          await Promise.all([
-            page.waitForURL(`${baseURL}${toolPath}`),
-            page.locator('button:has-text("Sign In")').click(),
-          ])
-          await page.context().storageState({ path: 'adminStorageState.json' })
-        } else {
-          await page.locator('input[name="username"]').fill('operator')
-          await page.locator('input[name="password"]').fill('operator')
-          await Promise.all([
-            page.waitForURL(`${baseURL}${toolPath}`),
-            page.locator('button:has-text("Sign In")').click(),
-          ])
-          await page.context().storageState({ path: 'storageState.json' })
-        }
+        // Persisting the refreshed session is load-bearing, not just a cache:
+        // the admin/operator choice above is inferred from the @admin tag or an
+        // 'admin' tool path, so a spec that only sets
+        // `storageState: adminStorageState.json` (e.g. systemhealth) would come
+        // back through here as *operator* if its saved session had gone stale.
+        // Keeping the file fresh is what stops that. Safe because every spec
+        // that logs out mid-test runs in the single-worker *.s.spec.ts batch, so
+        // these fixed paths are never written by two workers at once.
+        await page.locator('input[name="username"]').fill(username)
+        await page.locator('input[name="password"]').fill(password)
+        await Promise.all([
+          page.waitForURL(`${baseURL}${toolPath}`),
+          page.locator('button:has-text("Sign In")').click(),
+        ])
+        await saveAuthState(
+          page.context(),
+          username === 'admin' ? ADMIN_STORAGE_STATE : STORAGE_STATE,
+        )
       }
     }
     await expect(page.locator('.v-app-bar')).toContainText(toolName, {
@@ -103,36 +172,17 @@ export const test = base.extend<{
     await page.locator('rux-icon-apps').getByRole('img').click()
     await expect(page.locator('#openc3-nav-drawer')).not.toBeInViewport()
 
-    // Copyright (c) 2021 Anish Karandikar
-    await context.addInitScript(() =>
-      window.addEventListener('beforeunload', () =>
-        window.collectIstanbulCoverage(JSON.stringify(window.__coverage__)),
-      ),
-    )
-    await fs.promises.mkdir(istanbulTempDir, { recursive: true })
-    await context.exposeFunction('collectIstanbulCoverage', (coverageJSON) => {
-      if (coverageJSON)
-        fs.writeFileSync(
-          path.join(
-            istanbulTempDir,
-            `playwright_coverage_${generateUUID()}.json`,
-          ),
-          coverageJSON,
-        )
-    })
-    // End Copyright
-
     // This is like a yield in a Ruby block where we call back to the
     // test and execute the individual test code
     await use(utils)
 
-    // Copyright (c) 2021 Anish Karandikar
-    for (const page of context.pages()) {
-      await page.evaluate(() =>
-        window.collectIstanbulCoverage(JSON.stringify(window.__coverage__)),
-      )
+    if (collectCoverage(browserName)) {
+      context.off('page', startCoverage)
+      // Only pages still open can be read; ones the test closed itself are lost.
+      for (const open of context.pages()) {
+        await stopCoverage(open)
+      }
     }
-    // End Copyright
   },
 })
 export { expect } from '@playwright/test'

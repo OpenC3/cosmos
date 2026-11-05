@@ -12,7 +12,6 @@
 # All Rights Reserved
 */
 
-// @ts-check
 import { test, expect } from './../fixture'
 
 test.use({
@@ -46,7 +45,7 @@ test('displays the packet count', async ({ page, utils }) => {
   expect(parseInt(adcsCountStr)).toBeGreaterThan(500)
 })
 
-test.fixme('displays raw packets', async ({ page, utils }) => {
+test('displays raw packets', async ({ page, utils }) => {
   await expect(page.locator('text=INSTHEALTH_STATUS')).toBeVisible()
   await page
     .getByRole('row', { name: 'INST MECH' })
@@ -69,6 +68,8 @@ test.fixme('displays raw packets', async ({ page, utils }) => {
   })
 
   // Open another raw packet to show we can display more than one
+  // Filter the table since INST PARAMS isn't necessarily on the first page
+  await page.getByRole('textbox', { name: 'Search' }).first().fill('PARAMS')
   await page
     .getByRole('row', { name: 'INST PARAMS' })
     .getByRole('button', { name: 'View Raw' })

@@ -37,6 +37,19 @@ class TestInterfaceStatusModel(unittest.TestCase):
         status = InterfaceStatusModel.get("MyInterface", "DEFAULT")
         self.assertEqual(my.name, status["name"])
 
+    def test_get_or_default_returns_unknown_for_nonexistent(self):
+        self.assertEqual(InterfaceStatusModel.get_or_default(name="IS", scope="DEFAULT"), {"state": "UNKNOWN"})
+
+    def test_get_or_default_returns_custom_default_for_nonexistent(self):
+        result = InterfaceStatusModel.get_or_default(name="IS", scope="DEFAULT", default={"state": "OTHER"})
+        self.assertEqual(result, {"state": "OTHER"})
+
+    def test_get_or_default_returns_status_when_exists(self):
+        InterfaceStatusModel.set({"name": "IS", "state": "CONNECTED"}, scope="DEFAULT")
+        result = InterfaceStatusModel.get_or_default(name="IS", scope="DEFAULT")
+        self.assertEqual(result["name"], "IS")
+        self.assertEqual(result["state"], "CONNECTED")
+
     def test_names_and_all(self):
         my = MyInterface()
         InterfaceStatusModel.set(my.as_json(), "DEFAULT")

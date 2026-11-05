@@ -45,11 +45,17 @@ class TargetsController < ModelController
   end
 
   def delete_modified
-    return unless authorization('system')
+    # Deleting is a write, so require admin (the only caller is the admin
+    # plugin upgrade dialog) rather than the read-only 'system' permission
+    return unless authorization('admin', target_name: params[:id])
     scope, id = sanitize_params([:scope, :id], require_params: true)
     return unless scope
+    # Optional: delete only specific modified files (e.g. plugin upgrade
+    # removing non-script modifications while keeping versioned scripts).
+    files = params[:files]
+    files = nil unless files.is_a?(Array)
     begin
-      @model_class.delete_modified(id, scope: scope)
+      @model_class.delete_modified(id, scope: scope, files: files)
       head :ok
     rescue Exception => e
       log_error(e)

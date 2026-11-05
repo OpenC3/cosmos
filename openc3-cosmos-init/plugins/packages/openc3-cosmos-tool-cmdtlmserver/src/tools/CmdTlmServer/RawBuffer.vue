@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025, OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -27,8 +27,6 @@
 </template>
 
 <script>
-import { format } from 'date-fns'
-
 export default {
   props: {
     modelValue: {

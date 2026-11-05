@@ -15,6 +15,24 @@ require 'spec_helper'
 require 'openc3/script/suite'
 require 'openc3/script/suite_runner'
 
+# Fixtures for exercising SuiteRunner option validation. OptionsGroup is part
+# of OptionsSuite; OtherGroup is intentionally left out of any suite plan.
+class SuiteRunnerOptionsGroup < OpenC3::Group
+  def test_valid_script
+    # Mock for testing, no implementation needed
+  end
+end
+class SuiteRunnerOptionsSuite < OpenC3::Suite
+  def initialize
+    add_group('SuiteRunnerOptionsGroup')
+  end
+end
+class SuiteRunnerOtherGroup < OpenC3::Group
+  def test_other
+    # Mock for testing, no implementation needed
+  end
+end
+
 module OpenC3
   describe SuiteRunner do
     describe "self.build_suites" do
@@ -73,6 +91,101 @@ module OpenC3
         expect(suites.keys).to include "OrderedSuite"
         # Scripts should be in the order they were added, not alphabetical
         expect(suites["OrderedSuite"][:groups]["OrderedGroup"][:scripts]).to eql %w(test_m_middle test_z_last test_a_first)
+      end
+    end
+
+    # These validate the suite_runner option combinations that flow through
+    # RunningScript#run into SuiteRunner.start / setup / teardown (all of
+    # which funnel through SuiteRunner.execute).
+    describe "self.start option validation" do
+      before(:each) do
+        SuiteRunner.build_suites
+      end
+
+      it "raises when a script is given without a group" do
+        expect { SuiteRunner.start(SuiteRunnerOptionsSuite, nil, 'test_valid_script') }
+          .to raise_error(/Script test_valid_script requires a Group/)
+      end
+
+      it "raises for an unknown suite" do
+        expect { SuiteRunner.start(String) }.to raise_error(/Suite String not found/)
+      end
+
+      it "raises for a group not in the suite" do
+        expect { SuiteRunner.start(SuiteRunnerOptionsSuite, SuiteRunnerOtherGroup) }
+          .to raise_error(/Group SuiteRunnerOtherGroup not found in Suite SuiteRunnerOptionsSuite/)
+      end
+    end
+
+    describe "self.build_options" do
+      it "applies default method and options when omitted" do
+        expect(SuiteRunner.build_options(suite: 'MySuite', group: 'MyGroup')).to eq(
+          'suite' => 'MySuite', 'group' => 'MyGroup',
+          'method' => 'start', 'options' => ['continueAfterError']
+        )
+      end
+
+      it "uses the provided method and options" do
+        expect(SuiteRunner.build_options(suite: 'MySuite', group: 'MyGroup', method: 'teardown', options: ['manual'])).to eq(
+          'suite' => 'MySuite', 'group' => 'MyGroup',
+          'method' => 'teardown', 'options' => ['manual']
+        )
+      end
+
+      it "nests script under group and forces method to start" do
+        expect(SuiteRunner.build_options(suite: 'MySuite', group: 'MyGroup', script: 'test_foo', method: 'teardown')).to eq(
+          'suite' => 'MySuite', 'group' => 'MyGroup', 'script' => 'test_foo',
+          'method' => 'start', 'options' => ['continueAfterError']
+        )
+      end
+
+      it "omits group and script when no group is given" do
+        expect(SuiteRunner.build_options(suite: 'MySuite')).to eq(
+          'suite' => 'MySuite', 'method' => 'start', 'options' => ['continueAfterError']
+        )
+      end
+
+      it "raises when a script is given without a group" do
+        expect { SuiteRunner.build_options(suite: 'MySuite', script: 'test_foo') }
+          .to raise_error(/Script test_foo requires a Group/)
+      end
+
+      it "returns a mutable copy of the default options" do
+        result = SuiteRunner.build_options(suite: 'MySuite')
+        expect(result['options']).to_not be_frozen
+        expect(result['options']).to_not equal(SuiteRunner::DEFAULT_OPTIONS)
+      end
+
+      it "rejects a suite that isn't a class name" do
+        expect { SuiteRunner.build_options(suite: "MySuite) rescue nil; File.write('/tmp/x', 'y'); x=(1") }
+          .to raise_error(ArgumentError, /Invalid Suite name/)
+        expect { SuiteRunner.build_options(suite: 'my_suite') }
+          .to raise_error(ArgumentError, /Invalid Suite name/)
+        expect { SuiteRunner.build_options(suite: nil) }
+          .to raise_error(ArgumentError, /Invalid Suite name/)
+        expect { SuiteRunner.build_options(suite: 'MySuite; puts 1') }
+          .to raise_error(ArgumentError, /Invalid Suite name/)
+      end
+
+      it "allows a namespaced suite and group" do
+        expect(SuiteRunner.build_options(suite: 'My::Suite', group: 'My::Group')['suite']).to eq('My::Suite')
+      end
+
+      it "rejects a group that isn't a class name" do
+        expect { SuiteRunner.build_options(suite: 'MySuite', group: 'MyGroup) ; system("id") ; x=(1') }
+          .to raise_error(ArgumentError, /Invalid Group name/)
+      end
+
+      it "rejects a script that isn't a method name" do
+        expect { SuiteRunner.build_options(suite: 'MySuite', group: 'MyGroup', script: "test'); system('id'); ('") }
+          .to raise_error(ArgumentError, /Invalid Script name/)
+      end
+
+      it "rejects a method that isn't a SuiteRunner entry point" do
+        expect { SuiteRunner.build_options(suite: 'MySuite', method: 'instance_eval') }
+          .to raise_error(ArgumentError, /Invalid method/)
+        expect { SuiteRunner.build_options(suite: 'MySuite', method: 'start(1) ; system("id") ; start') }
+          .to raise_error(ArgumentError, /Invalid method/)
       end
     end
   end

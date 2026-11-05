@@ -1,0 +1,62 @@
+# Builds this plugin and installs it into a real COSMOS with Playwright.
+#
+# Runs the most recent COSMOS Core release in Docker, builds the plugin gem, and
+# drives the Admin tool the way an operator would: Install From File, submit the
+# variables dialog, and wait for the install to report Complete. That catches
+# what unit tests can't - a plugin.txt that doesn't parse, a target that doesn't
+# build, a microservice that won't start.
+#
+# Nothing here needs configuring as the plugin grows. Tool pages are discovered
+# from the COSMOS API after install and checked for browser console errors, and
+# a frontend is built with pnpm whenever the plugin has a package.json, so
+# `cli generate tool` and `cli generate widget` are covered with no edit here.
+#
+# Runs on every commit and once a week. The weekly run is what catches a new
+# COSMOS release breaking this plugin. Note that GitHub disables scheduled
+# workflows in a repo with no activity for 60 days.
+
+name: Playwright
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+  # Off the hour because scheduled runs at :00 get queued behind everyone else's
+  schedule:
+    - cron: '27 7 * * 1'
+  workflow_dispatch:
+    inputs:
+      cosmos_version:
+        description: 'COSMOS version to run, or latest'
+        required: false
+        type: string
+        default: 'latest'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # Superseding a pull request run is fine, but a scheduled run and a push to
+  # main share a ref, so cancelling on those would have them kill each other
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  playwright:
+    uses: OpenC3/.github/.github/workflows/plugin-playwright-reusable.yml@main
+    with:
+      plugin_directory: .
+      cosmos_version: ${{ inputs.cosmos_version || 'latest' }}
+      # Once you have added targets with `cli generate target`, list them here
+      # and the install is checked for them:
+      # expected_targets: MY_TARGET ANOTHER_TARGET
+      #
+      # install_demo: true  # Uncomment if this plugin references INST/INST2
+      # is_tool: true  # Uncomment to require that this plugin registers a tool
+      #
+      # Tool pages are checked for browser console errors automatically. Add
+      # regexes here for errors to allow:
+      # console_ignore: |
+      #   some third party gripe
+      #   another known message

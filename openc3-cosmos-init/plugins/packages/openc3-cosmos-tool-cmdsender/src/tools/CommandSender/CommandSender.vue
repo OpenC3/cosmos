@@ -23,6 +23,7 @@
       :initial-target-name="$route.params.target"
       :initial-packet-name="$route.params.packet"
       :send-disabled="sendDisabled"
+      :read-only="readOnlyUser"
       :states-in-hex="statesInHex"
       :show-ignored-params="showIgnoredParams"
       :cmd-raw="cmdRaw"
@@ -131,11 +132,18 @@
           <v-spacer />
         </v-toolbar>
         <v-card-text class="mt-6">
-          Warning: Command {{ hazardousCommand }} is Hazardous. Send?
-          <br />
-          <span class="openc3-yellow">
-            Description: {{ commandDescription }}
-          </span>
+          Warning: {{ hazardousMessage }}. Send?
+          <div v-if="hazardousDialogDescription" class="mt-1">
+            Description: {{ hazardousDialogDescription }}
+          </div>
+          <div
+            v-if="hazardousDialogHazardousDescription"
+            class="openc3-yellow font-weight-bold mt-2"
+            data-test="hazardous-description"
+          >
+            <v-icon class="mr-1">mdi-alert</v-icon>
+            Hazardous: {{ hazardousDialogHazardousDescription }}
+          </div>
         </v-card-text>
         <v-card-actions class="px-2">
           <v-spacer />
@@ -228,6 +236,7 @@ export default {
       targetName: '',
       commandName: '',
       commandDescription: '',
+      hazardousDescription: '',
       paramList: '',
       queueName: null,
       validateParameter: null,
@@ -246,6 +255,9 @@ export default {
       status: '',
       history: '',
       hazardousCommand: '',
+      commandIsHazardous: false,
+      hazardousDialogDescription: '',
+      hazardousDialogHazardousDescription: '',
       displaySendHazardous: false,
       displayErrorDialog: false,
       displaySendRaw: false,
@@ -263,6 +275,31 @@ export default {
     }
   },
   computed: {
+    // Modes that make every command hazardous, e.g. 'range checks are ignored'
+    hazardousModes() {
+      const modes = []
+      if (this.ignoreRangeChecks) {
+        modes.push('range checks are ignored')
+      }
+      if (this.cmdRaw) {
+        modes.push('parameter conversions are disabled')
+      }
+      return modes.join(' and ')
+    },
+    hazardousMessage() {
+      const command = `Command ${this.hazardousCommand}`
+      if (!this.hazardousModes) {
+        return `${command} is Hazardous`
+      } else if (this.commandIsHazardous) {
+        return `${command} is Hazardous and ${this.hazardousModes}`
+      } else {
+        return `${command} is considered Hazardous because ${this.hazardousModes}`
+      }
+    },
+    readOnlyUser: function () {
+      const roles = OpenC3Auth.userroles() || []
+      return roles.length > 0 && roles.every((role) => role === 'viewer')
+    },
     menus: function () {
       return [
         // TODO: Implement send raw
@@ -357,6 +394,12 @@ export default {
     this.editor.container.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault()
+        // Don't start another command while one is in flight or waiting on the
+        // hazardous confirmation. Sending would overwrite the last* variables
+        // the pending command still needs.
+        if (this.sendDisabled) {
+          return
+        }
         let command = this.editor.session.getLine(
           this.editor.getCursorPosition().row,
         )
@@ -447,6 +490,7 @@ export default {
     onCommandLoaded(command) {
       if (command) {
         this.commandDescription = command.description
+        this.hazardousDescription = command.hazardous_description || ''
         if (command.screen) {
           this.loadScreen(command.screen[0], command.screen[1]).then(
             (response) => {
@@ -474,6 +518,7 @@ export default {
         }
       } else {
         this.commandDescription = ''
+        this.hazardousDescription = ''
         this.screenTarget = null
         this.screenName = null
         this.screenDefinition = null
@@ -484,6 +529,13 @@ export default {
     createParamList() {
       let paramList = {}
       for (const row of this.$refs.commandEditor.getRows()) {
+        // A null val marks a required parameter the user hasn't set (see
+        // CommandEditor). Omit it entirely so the backend reports it as "not
+        // given" rather than receiving an empty value and reporting that it is
+        // "not one of" the valid states.
+        if (row.val === null) {
+          continue
+        }
         paramList[row.parameter_name] = this.convertToValue(row)
       }
       return paramList
@@ -506,6 +558,20 @@ export default {
     // sent from the history. In that case commandName and paramList are undefined
     // and the api calls handle that.
     sendCmd(targetName, commandName, paramList) {
+      // The command history editor doesn't go through the Send button
+      if (this.readOnlyUser) {
+        this.status = 'Viewers cannot send commands'
+        return
+      }
+      // Snapshot what's being sent. The history editor stays editable while the
+      // hazardous check is in flight so this.queueName and the last* variables
+      // can change out from under us before the command actually goes out.
+      const cmdInfo = {
+        targetName,
+        commandName,
+        paramList,
+        queueName: this.queueName,
+      }
       // Store what was actually sent for use in resending hazardous commands
       this.lastTargetName = targetName
       this.lastCommandName = commandName
@@ -513,122 +579,70 @@ export default {
       this.lastQueueName = this.queueName
 
       this.sendDisabled = true
-      let hazardous = false
-      let cmd = ''
       this.api.get_cmd_hazardous(targetName, commandName, paramList).then(
-        (response) => {
-          hazardous = response
-
-          if (hazardous) {
-            // If it was sent from history it's all in targetName
+        (hazardous) => {
+          // Ignoring range checks allows arbitrary values (e.g. manually
+          // entered states) and disabling conversions bypasses any that make
+          // a command safe so treat every command as hazardous
+          if (hazardous || this.hazardousModes) {
+            this.commandIsHazardous = hazardous
+            // If it was sent from history it's all in targetName and may
+            // differ from the selected command so look up its descriptions
             if (commandName === undefined) {
               this.hazardousCommand = targetName
                 .split(' ')
                 .slice(0, 2)
                 .join(' ')
+              this.api.get_cmd(...this.hazardousCommand.split(' ')).then(
+                (command) => {
+                  this.showHazardousDialog(command)
+                },
+                () => {
+                  this.showHazardousDialog(null)
+                },
+              )
             } else {
               this.hazardousCommand = `${targetName} ${commandName}`
+              this.showHazardousDialog({
+                description: this.commandDescription,
+                hazardous_description: this.hazardousDescription,
+              })
             }
-            this.displaySendHazardous = true
           } else {
-            let obs
-            let kwparams = {}
-            if (this.validateParameter !== null) {
-              kwparams.validate =
-                this.validateParameter.toLowerCase() === 'true'
-            } else if (this.disableCommandValidation) {
-              kwparams.validate = false
-            }
-            // Add queue parameter if a queue is selected
-            if (this.queueName !== null) {
-              kwparams.queue = this.queueName
-            }
-            if (this.cmdRaw) {
-              if (this.ignoreRangeChecks) {
-                cmd = 'cmd_raw_no_range_check'
-                obs = this.api.cmd_raw_no_range_check(
-                  targetName,
-                  commandName,
-                  paramList,
-                  {
-                    'Ignore-Errors': '428',
-                  },
-                  kwparams,
-                )
-              } else {
-                cmd = 'cmd_raw'
-                obs = this.api.cmd_raw(
-                  targetName,
-                  commandName,
-                  paramList,
-                  {
-                    // This request could be denied due to out of range but since
-                    // we're explicitly handling it we don't want the interceptor to fire
-                    'Ignore-Errors': '428 500',
-                  },
-                  kwparams,
-                )
-              }
-            } else {
-              if (this.ignoreRangeChecks) {
-                cmd = 'cmd_no_range_check'
-                obs = this.api.cmd_no_range_check(
-                  targetName,
-                  commandName,
-                  paramList,
-                  {
-                    'Ignore-Errors': '428',
-                  },
-                  kwparams,
-                )
-              } else {
-                cmd = 'cmd'
-                obs = this.api.cmd(
-                  targetName,
-                  commandName,
-                  paramList,
-                  {
-                    // This request could be denied due to out of range but since
-                    // we're explicitly handling it we don't want the interceptor to fire
-                    'Ignore-Errors': '428 500',
-                  },
-                  kwparams,
-                )
-              }
-            }
-
-            obs.then(
-              (response) => {
-                this.processCmdResponse(
-                  true,
-                  targetName,
-                  commandName,
-                  cmd,
-                  response,
-                )
-              },
-              (error) => {
-                this.processCmdResponse(
-                  false,
-                  targetName,
-                  commandName,
-                  cmd,
-                  error,
-                )
-              },
-            )
+            this.executeCmd(cmdInfo, false)
           }
         },
         (error) => {
-          this.processCmdResponse(false, targetName, commandName, cmd, error)
+          this.processCmdError(targetName, commandName, error)
         },
       )
     },
 
+    showHazardousDialog(command) {
+      this.hazardousDialogDescription = command?.description || ''
+      this.hazardousDialogHazardousDescription =
+        command?.hazardous_description || ''
+      this.displaySendHazardous = true
+    },
+
     sendHazardousCmd() {
       this.displaySendHazardous = false
-      let obs = ''
-      let cmd = ''
+      this.executeCmd(
+        {
+          targetName: this.lastTargetName,
+          commandName: this.lastCommandName,
+          paramList: this.lastParamList,
+          queueName: this.lastQueueName,
+        },
+        true,
+      )
+    },
+
+    // Sends the command described by cmdInfo using the api method matching the
+    // current raw and range check settings. skipHazardousCheck is true once the
+    // user has confirmed the hazardous command dialog.
+    executeCmd(cmdInfo, skipHazardousCheck) {
+      const { targetName, commandName, paramList, queueName } = cmdInfo
       let kwparams = {}
       if (this.validateParameter !== null) {
         kwparams.validate = this.validateParameter.toLowerCase() === 'true'
@@ -636,81 +650,42 @@ export default {
         kwparams.validate = false
       }
       // Add queue parameter if a queue is selected
-      if (this.lastQueueName !== null) {
-        kwparams.queue = this.lastQueueName
+      if (queueName !== null) {
+        kwparams.queue = queueName
       }
-      if (this.cmdRaw) {
-        if (this.ignoreRangeChecks) {
-          cmd = 'cmd_raw_no_range_check'
-          obs = this.api.cmd_raw_no_checks(
-            this.lastTargetName,
-            this.lastCommandName,
-            this.lastParamList,
-            {
-              'Ignore-Errors': '428',
-            },
-            kwparams,
-          )
-        } else {
-          cmd = 'cmd_raw'
-          obs = this.api.cmd_raw_no_hazardous_check(
-            this.lastTargetName,
-            this.lastCommandName,
-            this.lastParamList,
-            {
-              // This request could be denied due to out of range but since
-              // we're explicitly handling it we don't want the interceptor to fire
-              'Ignore-Errors': '428 500',
-            },
-            kwparams,
-          )
-        }
+      const raw = this.cmdRaw ? '_raw' : ''
+      // The no_hazardous_check variants are an implementation detail of the
+      // confirmation dialog so the history shows the checked equivalent
+      const cmd = this.ignoreRangeChecks
+        ? `cmd${raw}_no_range_check`
+        : `cmd${raw}`
+      let method
+      if (this.ignoreRangeChecks) {
+        method = skipHazardousCheck
+          ? `cmd${raw}_no_checks`
+          : `cmd${raw}_no_range_check`
       } else {
-        if (this.ignoreRangeChecks) {
-          cmd = 'cmd_no_range_check'
-          obs = this.api.cmd_no_checks(
-            this.lastTargetName,
-            this.lastCommandName,
-            this.lastParamList,
-            {
-              'Ignore-Errors': '428',
-            },
-            kwparams,
-          )
-        } else {
-          cmd = 'cmd'
-          obs = this.api.cmd_no_hazardous_check(
-            this.lastTargetName,
-            this.lastCommandName,
-            this.lastParamList,
-            {
-              // This request could be denied due to out of range but since
-              // we're explicitly handling it we don't want the interceptor to fire
-              'Ignore-Errors': '428 500',
-            },
-            kwparams,
-          )
-        }
+        method = skipHazardousCheck
+          ? `cmd${raw}_no_hazardous_check`
+          : `cmd${raw}`
       }
-
-      obs.then(
+      // Range checked requests could be denied due to out of range but since
+      // we're explicitly handling it we don't want the interceptor to fire
+      const headers = {
+        'Ignore-Errors': this.ignoreRangeChecks ? '428' : '428 500',
+      }
+      this.api[method](
+        targetName,
+        commandName,
+        paramList,
+        headers,
+        kwparams,
+      ).then(
         (response) => {
-          this.processCmdResponse(
-            true,
-            this.lastTargetName,
-            this.lastCommandName,
-            cmd,
-            response,
-          )
+          this.processCmdSuccess(cmd, response)
         },
         (error) => {
-          this.processCmdResponse(
-            false,
-            this.lastTargetName,
-            this.lastCommandName,
-            cmd,
-            error,
-          )
+          this.processCmdError(targetName, commandName, error)
         },
       )
     },
@@ -721,109 +696,104 @@ export default {
       this.sendDisabled = false
     },
 
-    processCmdResponse(success, targetName, commandName, cmd_sent, response) {
+    processCmdSuccess(cmd_sent, response) {
+      let msg = `${cmd_sent}("${response['target_name']} ${response['cmd_name']}`
+      let keys = Object.keys(response['cmd_params'])
+      if (keys.length > 0) {
+        msg += ' with '
+        for (let i = 0; i < keys.length; i++) {
+          let key = keys[i]
+          let value = ''
+          if (response['obfuscated_items'].includes(key)) {
+            value = '*****'
+          } else {
+            value = this.convertToString(response['cmd_params'][key])
+          }
+          // If the response has unquoted string data we add quotes
+          if (
+            typeof response['cmd_params'][key] === 'string' &&
+            value.charAt(0) !== "'" &&
+            value.charAt(0) !== '"'
+          ) {
+            value = `'${value}'`
+          }
+          msg += key + ' ' + value
+          if (i < keys.length - 1) {
+            msg += ', '
+          }
+        }
+      }
+      // Build the closing part with optional parameters
+      const closingParams = []
+      if (this.lastQueueName !== null) {
+        const queue =
+          this.lastQueueName === false ? false : `"${this.lastQueueName}"`
+        closingParams.push(this.formatKeyword('queue', queue))
+      }
+      if (this.validateParameter !== null) {
+        closingParams.push(
+          this.formatKeyword('validate', this.validateParameter),
+        )
+      } else if (this.disableCommandValidation) {
+        closingParams.push(this.formatKeyword('validate', false))
+      }
+
+      if (closingParams.length > 0) {
+        msg += '", ' + closingParams.join(', ') + ')'
+      } else {
+        msg += '")'
+      }
+      if (!this.history.includes(msg)) {
+        let value = msg
+        if (this.history.length !== 0) {
+          value += `\n${this.history}`
+        }
+        this.editor.setValue(value)
+        this.editor.moveCursorTo(0, 0)
+      }
+      msg += ' sent.'
+      // Add the number of commands sent to the status message
+      if (this.status.includes(msg)) {
+        let parts = this.status.split('sent.')
+        if (parts[1].includes('(')) {
+          let num = Number.parseInt(
+            parts[1].substr(2, parts[1].indexOf(')') - 2),
+          )
+          msg = parts[0] + 'sent. (' + (num + 1) + ')'
+        } else {
+          msg += ' (2)'
+        }
+      }
+      this.status = msg
+
+      this.processCmdResponse()
+    },
+
+    processCmdError(targetName, commandName, response) {
       // If it was sent from history it's all in targetName, see sendCmd for details
       if (commandName === undefined) {
         ;[targetName, commandName] = targetName.split(' ').slice(0, 2)
       }
-      let msg = ''
-      if (success) {
-        msg = `${cmd_sent}("${response['target_name']} ${response['cmd_name']}`
-        let keys = Object.keys(response['cmd_params'])
-        if (keys.length > 0) {
-          msg += ' with '
-          for (let i = 0; i < keys.length; i++) {
-            let key = keys[i]
-            let value = ''
-            if (response['obfuscated_items'].includes(key)) {
-              value = '*****'
-            } else {
-              value = this.convertToString(response['cmd_params'][key])
-            }
-            // If the response has unquoted string data we add quotes
-            if (
-              typeof response['cmd_params'][key] === 'string' &&
-              value.charAt(0) !== "'" &&
-              value.charAt(0) !== '"'
-            ) {
-              value = `'${value}'`
-            }
-            msg += key + ' ' + value
-            if (i < keys.length - 1) {
-              msg += ', '
-            }
-          }
-        }
-        // Build the closing part with optional parameters
-        let closingParams = []
-        if (this.lastQueueName !== null) {
-          const language = AceEditorUtils.getDefaultScriptingLanguage()
-          if (language === 'python') {
-            if (this.lastQueueName === false) {
-              closingParams.push('queue=False')
-            } else {
-              closingParams.push(`queue="${this.lastQueueName}"`)
-            }
-          } else {
-            if (this.lastQueueName === false) {
-              closingParams.push('queue: false')
-            } else {
-              closingParams.push(`queue: "${this.lastQueueName}"`)
-            }
-          }
-        }
-        if (this.disableCommandValidation || this.validateParameter !== null) {
-          const language = AceEditorUtils.getDefaultScriptingLanguage()
-          if (this.validateParameter !== null) {
-            if (language === 'python') {
-              closingParams.push(`validate=${this.validateParameter}`)
-            } else {
-              closingParams.push(`validate: ${this.validateParameter}`)
-            }
-          } else {
-            if (language === 'python') {
-              closingParams.push('validate=False')
-            } else {
-              closingParams.push('validate: false')
-            }
-          }
-        }
+      const context = 'sending ' + targetName + ' ' + commandName
+      this.displayError(context, response, true)
 
-        if (closingParams.length > 0) {
-          msg += '", ' + closingParams.join(', ') + ')'
-        } else {
-          msg += '")'
-        }
-        if (!this.history.includes(msg)) {
-          let value = msg
-          if (this.history.length !== 0) {
-            value += `\n${this.history}`
-          }
-          this.editor.setValue(value)
-          this.editor.moveCursorTo(0, 0)
-        }
-        msg += ' sent.'
-        // Add the number of commands sent to the status message
-        if (this.status.includes(msg)) {
-          let parts = this.status.split('sent.')
-          if (parts[1].includes('(')) {
-            let num = Number.parseInt(
-              parts[1].substr(2, parts[1].indexOf(')') - 2),
-            )
-            msg = parts[0] + 'sent. (' + (num + 1) + ')'
-          } else {
-            msg += ' (2)'
-          }
-        }
-        this.status = msg
-      } else {
-        let context = 'sending ' + targetName + ' ' + commandName
-        this.displayError(context, response, true)
-      }
+      this.processCmdResponse()
+    },
+
+    processCmdResponse() {
       // Make a copy of the history
       this.history = this.editor.getValue()
       localStorage['command_sender__history'] = this.editor.getValue()
       this.sendDisabled = false
+    },
+
+    // Format a keyword parameter for the user's scripting language
+    formatKeyword(name, value) {
+      const python = AceEditorUtils.getDefaultScriptingLanguage() === 'python'
+      if (value === false) {
+        return python ? `${name}=False` : `${name}: false`
+      }
+      return python ? `${name}=${value}` : `${name}: ${value}`
     },
 
     clearHistory() {

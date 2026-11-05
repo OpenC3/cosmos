@@ -17,6 +17,9 @@
 
 require 'json'
 require 'openc3/utilities/script'
+require 'openc3/utilities/config_overlay'
+require 'openc3/models/setting_model'
+require 'openc3/models/target_model'
 
 class ScriptsController < ApplicationController
   # This REGEX is also found in running_script.rb
@@ -28,6 +31,14 @@ class ScriptsController < ApplicationController
   # # class MySuite < Suite # <-- doesn't match commented out
   SUITE_REGEX = /^\s*class\s+\w+\s+<\s+(Cosmos::|OpenC3::)?(Suite|TestSuite)/
   PYTHON_SUITE_REGEX = /^\s*class\s+\w+\s*\(\s*(Suite|TestSuite)\s*\)/
+  MAX_LIFECYCLE_COMMENT_LENGTH = 1000
+
+  # These are also enforced in OpenC3::SuiteRunner.validate_identifiers.
+  # Suite / Group are class names (Ruby '::' or Python '.' qualified),
+  # script is a method name, method is one of the SuiteRunner entry points.
+  SUITE_RUNNER_CLASS_REGEX = /\A[A-Za-z_][A-Za-z0-9_]*((::|\.)[A-Za-z_][A-Za-z0-9_]*)*\z/
+  SUITE_RUNNER_SCRIPT_REGEX = /\A[A-Za-z_][A-Za-z0-9_]*[?!]?\z/
+  SUITE_RUNNER_METHODS = ['start', 'setup', 'teardown'].freeze
 
   def ping
     render plain: 'OK'
@@ -40,6 +51,29 @@ class ScriptsController < ApplicationController
     scope = scope[0]
     target = params[:target]
     render json: Script.all(scope, target)
+  end
+
+  def plugin_python_venvs
+    return unless authorization('script_view')
+    scope = sanitize_params([:scope])
+    return unless scope
+    scope = scope[0]
+    venvs_dir = OpenC3::PythonVenv::PLUGIN_VENVS_DIR
+    result = []
+    if File.directory?(venvs_dir)
+      # Venv directories are named "<scope>__<plugin>" by
+      # PluginModel.plugin_venv_name, so match that prefix to keep each scope's
+      # venvs private to it. The same tr() the name is built with is applied
+      # here, which also leaves no glob metacharacters in the pattern.
+      prefix = "#{scope}__".tr('^a-zA-Z0-9_-', '_')
+      Dir.glob("#{venvs_dir}/#{prefix}*/").each do |plugin_dir|
+        name = File.basename(plugin_dir)
+        next unless File.exist?(File.join(plugin_dir, '.uv_managed'))
+        next unless File.directory?(File.join(plugin_dir, '.venv'))
+        result << { name: name, venv: File.join(plugin_dir, '.venv') }
+      end
+    end
+    render json: result
   end
 
   def delete_temp
@@ -57,6 +91,14 @@ class ScriptsController < ApplicationController
 
     file = Script.body(scope, name)
     if file
+      # Enterprise-only: seed Version History with the deployed body so
+      # plugin-installed scripts have a baseline commit before any user edit.
+      # Constant only loaded by the openc3-enterprise gem. Skip __TEMP__
+      # scratch scripts — they are throwaway and need no history.
+      if defined?(::VersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
+        plugin = OpenC3::TargetModel.plugin_version_label(name.split('/')[0], scope: scope)
+        ::VersionStore.seed_initial_if_empty(scope: scope, name: name, body: file, plugin: plugin)
+      end
       locked = Script.locked?(scope, name)
       unless locked
         Script.lock(scope, name, username())
@@ -67,8 +109,9 @@ class ScriptsController < ApplicationController
         breakpoints: breakpoints,
         locked: locked
       }
-      if ((File.extname(name) == '.py') and (file =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (file =~ SUITE_REGEX))
-        results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope)
+      # Viewers without script_run still get the file contents, just no suite chrome.
+      if suite_with_run_permission?(name, file)
+        results_suites, results_error, success = Script.process_suite(name, file, username: username(), scope: scope, python_venv: params[:pythonVenv])
         results['suites'] = results_suites
         results['error'] = results_error
         results['success'] = success
@@ -81,17 +124,89 @@ class ScriptsController < ApplicationController
     end
   end
 
+  def lifecycle
+    return unless authorization('script_view')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    unless lifecycle_enabled?()
+      render json: { status: 'error', message: 'Script lifecycle is not enabled' }, status: :bad_request
+      return
+    end
+    render json: Script.lifecycle(scope, name)
+  end
+
+  def set_lifecycle
+    # All transitions require at least script_edit; transitions involving
+    # 'approved' additionally require the script_approver permission (checked
+    # below once the current state is known).
+    return unless authorization('script_edit')
+    scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
+    return unless scope
+    unless lifecycle_enabled?()
+      render json: { status: 'error', message: 'Script lifecycle is not enabled' }, status: :bad_request
+      return
+    end
+    if Script.temp_file?(name)
+      render json: { status: 'error', message: 'Cannot set lifecycle on temporary files' }, status: :bad_request
+      return
+    end
+    state = params[:state]
+    comment = params[:comment].to_s.strip
+    unless Script::LIFECYCLE_STATES.include?(state)
+      render json: { status: 'error', message: "Invalid lifecycle state: #{state}" }, status: :bad_request
+      return
+    end
+    if comment.length > MAX_LIFECYCLE_COMMENT_LENGTH
+      render json: { status: 'error', message: "Comment must be #{MAX_LIFECYCLE_COMMENT_LENGTH} characters or less" }, status: :bad_request
+      return
+    end
+    current = Script.lifecycle(scope, name)['state']
+    unless Script::LIFECYCLE_TRANSITIONS[current].include?(state)
+      render json: { status: 'error', message: "Cannot move script from #{current} to #{state}" }, status: :bad_request
+      return
+    end
+    if (state == 'approved' or current == 'approved') and !authorization('script_approver')
+      return
+    end
+    result = Script.set_lifecycle(scope, name, state, username(), comment, current: current)
+    # The Enterprise store logs-and-swallows backend failures, returning nil.
+    # Render an error instead of `json: nil`, which the ScriptLifecycleDialog
+    # would try to read as `response.data.state` and crash on.
+    if result.nil?
+      render json: { status: 'error', message: 'Failed to change lifecycle' }, status: :internal_server_error
+      return
+    end
+    OpenC3::Logger.info("Script lifecycle changed from #{current} to #{state}: #{name} (#{comment})", scope: scope, user: username())
+    render json: result
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
+  end
+
   def create
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    return unless authorize_overlay_write(name)
+    if lifecycle_enabled?() and lifecycle_state(scope, name) == 'approved'
+      render json: { status: 'error', message: 'Script is approved and cannot be modified. Move it back to review to edit.' }, status: :forbidden
+      return
+    end
     args = params.permit(:text, breakpoints: [])
     args[:scope] = scope
     args[:name] = name
     Script.create(args)
     results = {}
-    if ((File.extname(name) == '.py') and (params[:text] =~ PYTHON_SUITE_REGEX)) or ((File.extname(name) != '.py') and (params[:text] =~ SUITE_REGEX))
-      results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope)
+    # Enterprise-only: capture a git commit alongside the bucket write so
+    # the new version_id can travel back to the editor. Skip __TEMP__ scratch
+    # scripts — they are throwaway and would only add history noise.
+    if defined?(::VersionStore) && !name.start_with?("#{OpenC3::TargetFile::TEMP_FOLDER}/")
+      sha = ::VersionStore.commit(scope: scope, name: name, text: params[:text], username: username())
+      results['version_id'] = sha if sha
+    end
+    # The file is still saved above; only the suite chrome is omitted when the editor lacks script_run.
+    if suite_with_run_permission?(name, params[:text])
+      results_suites, results_error, success = Script.process_suite(name, params[:text], username: username(), scope: scope, python_venv: params[:pythonVenv])
       results['suites'] = results_suites
       results['error'] = results_error
       results['success'] = success
@@ -112,17 +227,36 @@ class ScriptsController < ApplicationController
     # Extract the target that this script lives under
     target_name = name.split('/')[0]
     return unless authorization('script_run', target_name: target_name)
+    # Users with only the script_run (runner) permission may only run
+    # approved scripts. Users who can edit may run any lifecycle state.
+    if lifecycle_enabled?() and (state = lifecycle_state(scope, name)) and state != 'approved' and !authorization('script_edit')
+      return
+    end
     # TODO 7.0: Should suiteRunner be snake case?
     suite_runner = params[:suiteRunner] ? params[:suiteRunner].as_json() : nil
+    # The suite / group / script / method values are interpolated into the code
+    # snippet the running script evaluates, so reject anything that isn't a
+    # bare identifier here (defense in depth, also validated in SuiteRunner).
+    if suite_runner
+      error = validate_suite_runner(suite_runner)
+      if error
+        render json: { status: 'error', message: error }, status: :bad_request
+        return
+      end
+    end
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
-    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username(), line_no, end_line_no)
+    python_venv = params[:pythonVenv]
+    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username(), line_no, end_line_no, python_venv)
     if running_script_id
       OpenC3::Logger.info("Script started: #{name}", scope: scope, user: username())
       render plain: running_script_id.to_s
     else
-      head :not_found
+      render plain: "Script not found: #{name}", status: :not_found
     end
+  rescue => e
+    log_error(e)
+    render json: { status: 'error', message: e.message }, status: :internal_server_error
   end
 
   def lock
@@ -146,7 +280,16 @@ class ScriptsController < ApplicationController
     return unless authorization('script_edit')
     scope, name = sanitize_params([:scope, :name], :allow_forward_slash => true)
     return unless scope
+    return unless authorize_overlay_write(name)
+    if lifecycle_enabled?() and lifecycle_state(scope, name) == 'approved'
+      render json: { status: 'error', message: 'Script is approved and cannot be deleted. Move it back to review to delete.' }, status: :forbidden
+      return
+    end
     Script.destroy(scope, name)
+    # Enterprise-only: record the deletion in git history.
+    if defined?(::VersionStore)
+      ::VersionStore.delete(scope: scope, name: name, username: username())
+    end
     OpenC3::Logger.info("Script destroyed: #{name}", scope: scope, user: username())
     head :ok
   rescue => e
@@ -205,4 +348,78 @@ class ScriptsController < ApplicationController
     OpenC3::Store.del("#{scope}__script-breakpoints")
     head :ok
   end
+
+  private
+
+  # Gates the Script writers (create, destroy) that funnel through
+  # TargetFile.create/destroy into the targets_modified overlay. Script.all lists
+  # every target file with no path matchers, so the Script Runner editor can reach
+  # targets_modified/<TARGET>/cmd_tlm/... and <TARGET>/tables/config/..., whose
+  # GENERIC_*_CONVERSION blocks are evaluated as code (see
+  # OpenC3::ConfigOverlay). Writing those areas therefore requires admin even though script editing only requires
+  # 'script_edit'. Mirrors tables_controller#authorize_overlay_write and
+  # storage_controller#non_admin_config_overlay_write?, the other two writers.
+  # `name` is the overlay-relative path (e.g. "<TARGET>/procedures/x.rb").
+  # Returns true if allowed; otherwise renders the 401/403 and returns false.
+  def authorize_overlay_write(name)
+    return true unless OpenC3::ConfigOverlay.code_overlay?(name)
+    return false unless authorization('admin')
+    true
+  end
+
+  # Suite analysis executes the file, so it is gated at the script_run tier rather
+  # than the read-only script_view / script_edit endpoints that call this. Returns
+  # true only when the text defines a suite AND the user has script_run permission.
+  def suite_with_run_permission?(name, text)
+    is_suite = if File.extname(name) == '.py'
+      text =~ PYTHON_SUITE_REGEX
+    else
+      text =~ SUITE_REGEX
+    end
+    is_suite && authorized?('script_run', target_name: name.split('/')[0])
+  end
+  
+  # Returns an error message if any suiteRunner value isn't a bare identifier,
+  # else nil. suite is required; group / script / method are optional.
+  def validate_suite_runner(suite_runner)
+    return "suiteRunner must be a Hash" unless suite_runner.is_a?(Hash)
+    suite = suite_runner['suite']
+    return "Invalid Suite name: #{suite.inspect}" unless suite.is_a?(String) and SUITE_RUNNER_CLASS_REGEX.match?(suite)
+    group = suite_runner['group']
+    if group and !(group.is_a?(String) and SUITE_RUNNER_CLASS_REGEX.match?(group))
+      return "Invalid Group name: #{group.inspect}"
+    end
+    script = suite_runner['script']
+    if script and !(script.is_a?(String) and SUITE_RUNNER_SCRIPT_REGEX.match?(script))
+      return "Invalid Script name: #{script.inspect}"
+    end
+    method = suite_runner['method']
+    if method and !SUITE_RUNNER_METHODS.include?(method.to_s)
+      return "Invalid method: #{method.inspect}"
+    end
+    nil
+  end
+
+  # Whether the Script Lifecycle feature is active: the Admin/Settings flag is
+  # on AND the git-backed version store is available (Enterprise). Both are
+  # required since the lifecycle is tracked as git commits/tags.
+  def lifecycle_enabled?
+    return false unless Script.lifecycle_enabled?
+    setting = OpenC3::SettingModel.get(name: 'script_runner_lifecycle')
+    return false unless setting
+    setting['data'] == true or setting['data'] == 'true'
+  end
+
+  # Current lifecycle state for the create/run/destroy gates. The lookup hits
+  # git (VersionStore); a transient backend error must not 500 the hottest
+  # paths (especially run), so we log and fail OPEN by returning nil. Every
+  # gate treats nil as "no restriction" (nil != 'approved', nil is falsey), so
+  # an outage never blocks work — approval enforcement resumes once git heals.
+  def lifecycle_state(scope, name)
+    Script.lifecycle(scope, name)['state']
+  rescue => e
+    log_error(e)
+    nil
+  end
+
 end

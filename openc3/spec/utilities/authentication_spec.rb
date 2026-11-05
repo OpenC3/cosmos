@@ -18,7 +18,7 @@ module OpenC3
   describe OpenC3Authentication do
     describe "initialize" do
       it "raises an error if OPENC3_API_PASSWORD is not set" do
-        old_password = ENV['OPENC3_API_PASSWORD']
+        old_password = ENV.fetch('OPENC3_API_PASSWORD', nil)
         ENV.delete('OPENC3_API_PASSWORD')
         expect { OpenC3Authentication.new }.to raise_error(OpenC3AuthenticationError, /Authentication requires environment variable/)
         ENV['OPENC3_API_PASSWORD'] = old_password

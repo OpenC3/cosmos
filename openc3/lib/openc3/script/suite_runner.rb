@@ -26,6 +26,17 @@ module OpenC3
   end
 
   class SuiteRunner
+    # Default suite_runner options shared by all callers (e.g. openc3cli) so
+    # the values stay consistent in one place.
+    DEFAULT_METHOD = 'start'
+    DEFAULT_OPTIONS = ['continueAfterError'].freeze
+    # The only SuiteRunner entry points a client may request
+    ALLOWED_METHODS = ['start', 'setup', 'teardown'].freeze
+    # Suite and Group are Ruby constant (class) names, optionally namespaced
+    CLASS_NAME_REGEX = /\A[A-Z]\w*(::[A-Z]\w*)*\z/
+    # Script is a Ruby method name on the Group
+    METHOD_NAME_REGEX = /\A[a-z_]\w*[?!]?\z/
+
     @@suites = []
     @@settings = {}
     @@suite_results = nil
@@ -42,17 +53,66 @@ module OpenC3
       @@suite_results
     end
 
+    # Validate the suite_runner option combinations that don't require the
+    # built suites. Shared by all callers (the running script via execute and
+    # openc3cli when constructing options) so the contract lives in one place.
+    # Suite/Group existence is checked in execute since it needs @@suites.
+    def self.validate_options(group: nil, script: nil)
+      raise ArgumentError, "Script #{script} requires a Group" if script and not group
+    end
+
+    # Validate that the raw (client supplied) suite_runner values are plain
+    # identifiers. These values are interpolated into the Ruby snippet the
+    # running script evaluates, so anything other than a bare class / method
+    # name must be rejected before it reaches the interpreter.
+    def self.validate_identifiers(suite:, group: nil, script: nil, method: nil)
+      unless suite.is_a?(String) and CLASS_NAME_REGEX.match?(suite)
+        raise ArgumentError, "Invalid Suite name: #{suite.inspect}"
+      end
+      if group && !(group.is_a?(String) and CLASS_NAME_REGEX.match?(group))
+        raise ArgumentError, "Invalid Group name: #{group.inspect}"
+      end
+      if script && !(script.is_a?(String) and METHOD_NAME_REGEX.match?(script))
+        raise ArgumentError, "Invalid Script name: #{script.inspect}"
+      end
+      if method && !ALLOWED_METHODS.include?(method.to_s)
+        raise ArgumentError, "Invalid method: #{method.inspect}"
+      end
+    end
+
+    # Build the canonical, validated suite_runner hash from raw values,
+    # applying defaults. Shared by openc3cli (constructing from CLI flags) and
+    # the running script (normalizing a received hash before dispatch) so the
+    # hash shape, defaults, and validation live in one place.
+    def self.build_options(suite:, group: nil, script: nil, method: nil, options: nil)
+      validate_options(group: group, script: script)
+      validate_identifiers(suite: suite, group: group, script: script, method: method)
+      suite_runner = { 'suite' => suite }
+      if group
+        suite_runner['group'] = group
+        suite_runner['script'] = script if script
+      end
+      # A script always runs via start, matching the GUI
+      suite_runner['method'] = script ? DEFAULT_METHOD : (method || DEFAULT_METHOD)
+      suite_runner['options'] = options || DEFAULT_OPTIONS.dup
+      suite_runner
+    end
+
     def self.execute(result_string, suite_class, group_class = nil, script = nil)
       @@suite_results = SuiteResults.new
-      @@suites.each do |suite|
-        if suite.class == suite_class
-          @@suite_results.start(result_string, suite_class, group_class, script, @@settings)
-          loop do
-            yield(suite)
-            break if not @@settings['Loop'] or (ScriptStatus.instance.fail_count > 0 and @@settings['Break Loop On Error'])
-          end
-          break
-        end
+      # Surface invalid suite / group / option combinations rather than
+      # silently running nothing or failing with an opaque nil error. An
+      # invalid script method raises later in Group#run_method.
+      validate_options(group: group_class, script: script)
+      suite = @@suites.find { |s| s.class == suite_class }
+      raise ArgumentError, "Suite #{suite_class} not found" unless suite
+      if group_class and not suite.scripts.key?(group_class)
+        raise ArgumentError, "Group #{group_class} not found in Suite #{suite_class}"
+      end
+      @@suite_results.start(result_string, suite_class, group_class, script, @@settings)
+      loop do
+        yield(suite)
+        break if not @@settings['Loop'] or (ScriptStatus.instance.fail_count > 0 and @@settings['Break Loop On Error'])
       end
     end
 

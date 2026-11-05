@@ -162,6 +162,41 @@ RSpec.describe ActivityController, type: :controller do
       expect(ret["name"]).to eql("test")
       expect(response).to have_http_status(:created)
     end
+
+    it "passes recurring hash through strong params and creates multiple activities" do
+      dt = DateTime.now.new_offset(0)
+      start_time = dt + (1.0 / 24.0)
+      stop_time = start_time + (30.0 / 1440.0) # 30 minutes after start
+      end_time = start_time + (5.0 / 24.0) # 5 hours after start
+      hash = {
+        "start" => start_time.to_s,
+        "stop" => stop_time.to_s,
+        "kind" => "RESERVE",
+        "data" => {"reserve" => ""},
+        "recurring" => {
+          "frequency" => "60",
+          "span" => "minutes",
+          "end" => end_time.to_s,
+        }
+      }
+      post :create, params: hash.merge({"scope" => timeline_scope, "name" => timeline_name})
+      expect(response).to have_http_status(:created)
+      ret = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(ret["recurring"]).not_to be_nil
+      expect(ret["recurring"]["frequency"]).to eql("60")
+      expect(ret["recurring"]["span"]).to eql("minutes")
+      expect(ret["recurring"]["end"]).not_to be_nil
+
+      # Verify multiple activities were created across the recurring window
+      get :index, params: {
+        "scope" => timeline_scope,
+        "name" => timeline_name,
+        "start" => start_time.to_s,
+        "stop" => (end_time + (1.0 / 24.0)).to_s,
+      }
+      activities = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(activities.length).to be > 1
+    end
   end
 
   describe "POST event" do

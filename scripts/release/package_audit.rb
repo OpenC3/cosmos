@@ -27,95 +27,115 @@ traefik_version = get_docker_version("openc3-traefik/Dockerfile")
 valkey_version = get_docker_version("openc3-redis/Dockerfile")
 versitygw_version = get_docker_version("openc3-buckets/Dockerfile", arg: 'OPENC3_VERSITYGW_VERSION')
 tsdb_version = get_docker_version("openc3-tsdb/Dockerfile", arg: 'OPENC3_TSDB_VERSION')
-alpine_version = ENV.fetch('ALPINE_VERSION', '3.23')
-alpine_build = ENV.fetch('ALPINE_BUILD', '4')
+debian_release = ENV.fetch('DEBIAN_RELEASE', 'trixie')
+ruby_version = ENV.fetch('RUBY_VERSION', '3.4')
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
   # This should match the values in the .env file
-  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "alpine:#{alpine_version}.#{alpine_build}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true },
-  { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-cosmos-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true,
+  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "ruby:#{ruby_version}-slim-#{debian_release}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apt: true },
+  { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-cosmos-init:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apt: true, gems: true, python: true,
     pnpm: ["/openc3/plugins/pnpm-lock.yaml"] },
-  { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apk: true, gems: true, python: true },
-  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "valkey:#{valkey_version}", apk: true },
+  { name: "openc3inc/openc3-operator:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-cosmos-script-runner-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-redis:#{version_tag}", base_image: "valkey:#{valkey_version}", apt: true },
   { name: "openc3inc/openc3-traefik:#{version_tag}", base_image: "traefik:#{traefik_version}", apk: true },
-  { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "alpine:#{alpine_version}.#{alpine_build}", apk: true },
+  { name: "openc3inc/openc3-buckets:#{version_tag}", base_image: "debian:#{debian_release}-slim", apt: true },
   { name: "openc3inc/openc3-tsdb:#{version_tag}", base_image: "tsdb:#{tsdb_version}", dnf: true },
 ]
-# Update the bundles
-Dir.chdir(File.join(__dir__, '../../openc3')) do
-  `rm Gemfile.lock 2>&1`
-  `bundle update --all`
-end
-Dir.chdir(File.join(__dir__, '../../openc3-cosmos-cmd-tlm-api')) do
-  `rm Gemfile.lock 2>&1`
-  `bundle update --all`
-end
-Dir.chdir(File.join(__dir__, '../../openc3-cosmos-script-runner-api')) do
-  `rm Gemfile.lock 2>&1`
-  `bundle update --all`
-end
 
 client = Faraday.new do |f|
   f.response :follow_redirects
 end
 
-# Build reports
-report = build_report(containers, client)
+# Build reports (uses currently-running container images for the package inventory)
+report = build_report(containers)
 summary_report = build_summary_report(containers)
 
-# Now check for latest versions
-check_alpine(client)
+# Check for new versions of all third-party base images / binaries and prompt the
+# user to apply each update inline. The previous version of this script only
+# printed NOTEs; it now edits the Dockerfiles, .env, and build scripts.
+check_debian(client)
+check_node(client)
 check_container_version(client, containers, 'traefik')
-check_versitygw(client, versitygw_version)
-check_tsdb(client, tsdb_version)
-check_build_files(versitygw_version, traefik_version)
 check_container_version(client, containers, 'redis') # valkey base image
-base_pkgs = %w(import-map-overrides pinia single-spa systemjs vue vue-router vuetify)
-check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs)
+new_versitygw = check_versitygw(client, versitygw_version)
+check_tsdb(client, tsdb_version)
+check_cacert(client)
+# Re-read RUBY_VERSION rather than using the local captured at startup:
+# check_debian above may have accepted a Ruby minor bump, and update_debian_files
+# writes the new value back into ENV. Using the stale local would audit
+# Dockerfile-ubi against the old minor line and leave it behind the Debian image.
+check_ubi_ruby(client, ENV.fetch('RUBY_VERSION', ruby_version))
+anycable_containers = containers.select { |c| c[:name].include?('openc3-cosmos-cmd-tlm-api') || c[:name].include?('openc3-cosmos-script-runner-api') }
+check_anycable(client, anycable_containers.map { |c| c[:name] }) unless anycable_containers.empty?
+
+# After per-image prompts, ensure the build scripts still match the Dockerfiles.
+# Re-read the canonical version values in case they just changed.
+check_build_files(
+  new_versitygw || get_docker_version('openc3-buckets/Dockerfile', arg: 'OPENC3_VERSITYGW_VERSION'),
+  get_docker_version('openc3-traefik/Dockerfile')
+)
+
+# The UBI images build on Ironbank's ubi9-minimal at OPENC3_UBI_TAG from .env.
+# The Dockerfile-ubi defaults are only used when building directly but keep them
+# in sync so they don't fall behind.
+ubi_tag = check_ironbank('ubi9-minimal', 'redhat/ubi/ubi9-minimal', 'OPENC3_UBI_TAG', [File.join(ROOT_DIR, '.env')])
+if ubi_tag
+  %w(openc3-buckets openc3-redis openc3-ruby).each do |dir|
+    dockerfile = File.join(ROOT_DIR, dir, 'Dockerfile-ubi')
+    current = ironbank_current_version('OPENC3_UBI_TAG', dockerfile)
+    next if current.nil? || current == ubi_tag
+    if prompt_yes_no("#{dir}/Dockerfile-ubi: OPENC3_UBI_TAG is #{current} but .env is #{ubi_tag}. Sync?")
+      update_ironbank_version(dockerfile, 'OPENC3_UBI_TAG', current, ubi_tag)
+    end
+  end
+  # openc3-traefik-ubi builds the Docker Hub OPENC3_TRAEFIK_RELEASE from Ironbank
+  traefik_release = get_docker_version('openc3-traefik/Dockerfile', arg: 'OPENC3_TRAEFIK_RELEASE')
+  unless ironbank_tag_exists?('opensource/traefik/traefik', traefik_release)
+    puts "WARN: traefik #{traefik_release} is not on Ironbank yet so openc3-traefik-ubi will fail to build"
+  end
+else
+  puts "WARN: Unable to access registry1.dso.mil, skipping Ironbank (UBI) version checks"
+end
+
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
-# Check the bundles
-Dir.chdir(File.join(__dir__, '../../openc3')) do
-  puts "\nChecking outdated gems in openc3:"
-  puts `bundle outdated`
-end
-Dir.chdir(File.join(__dir__, '../../openc3-cosmos-cmd-tlm-api')) do
-  puts "\nChecking outdated gems in openc3-cosmos-cmd-tlm-api:"
-  puts `bundle outdated`
-end
-Dir.chdir(File.join(__dir__, '../../openc3-cosmos-script-runner-api')) do
-  puts "\nChecking outdated gems in openc3-cosmos-script-runner-api:"
-  puts `bundle outdated`
+# Per-language outdated dependency prompts. Each helper enumerates outdated
+# packages and asks the user yes/no before updating that single package.
+# Gems approved in one directory are auto-approved in the following ones.
+approved_gems = {}
+%w(openc3 openc3-cosmos-cmd-tlm-api openc3-cosmos-script-runner-api).each do |dir|
+  update_outdated_gems(File.join(__dir__, '..', '..', dir), approved: approved_gems)
 end
 
-# Check the wheels
-Dir.chdir(File.join(__dir__, '../../openc3/python')) do
-  puts "\nChecking outdated wheels in openc3/python:"
-  puts `uv pip list --outdated`
+update_outdated_wheels(File.join(__dir__, '..', '..', 'openc3', 'python'))
+update_outdated_requirements_txt(
+  File.join(__dir__, '..', '..', 'openc3-cosmos-init', 'plugins', 'packages', 'openc3-cosmos-demo'),
+  client
+)
+
+%w(openc3-cosmos-init/plugins playwright docs.openc3.com).each do |dir|
+  update_outdated_pnpm(File.join(__dir__, '..', '..', dir), client)
 end
-Dir.chdir(File.join(__dir__, '../../openc3-cosmos-init/plugins/packages/openc3-cosmos-demo')) do
-  puts "\nChecking outdated wheels in openc3-cosmos-demo:"
-  if system('which uv > /dev/null 2>&1')
-    puts `uv venv venv; source venv/bin/activate; uv pip install -r requirements.txt; uv pip list --outdated; deactivate; rm -rf venv`
-  else
-    puts `python -m venv venv; source venv/bin/activate; pip install -r requirements.txt; pip list --outdated; deactivate; rm -rf venv`
-  end
-end
+
+# The externalized (import map / <link>) copies of these packages live in
+# openc3-tool-base/public and are referenced by hardcoded filenames in
+# index.html, so nothing in the build validates them against package.json.
+# This has to run AFTER update_outdated_pnpm so it reads the versions that
+# were just accepted rather than the ones package.json had on entry.
+base_pkgs = %w(@astrouxds/astro-web-components import-map-overrides pinia single-spa systemjs vue vue-router vuetify)
+# FORCE=1 re-downloads the tool-base js/css even when it already matches
+# package.json (and downloads fresh when the existing file was deleted).
+check_tool_base('openc3-cosmos-init/plugins/packages/openc3-tool-base', base_pkgs, force: ENV['FORCE'] == '1')
 
 File.open("openc3_package_report.txt", "w") do |file|
   file.write(summary_report)
   file.write(report)
 end
-
-puts "\n\nRun the following:"
-puts "cd openc3-cosmos-init/plugins; pnpm install; pnpm update --interactive --latest --recursive; cd ../.."
-puts "cd playwright; pnpm install; pnpm update --interactive --latest; cd .."
-puts "cd docs.openc3.com; pnpm install; pnpm update --interactive --latest; cd .."
 
 # Commenting this out since the templates don't really need to be updated, and updates broke them over time
 # puts "\n\nYou can run the following, but check that the templates still work if you do:"
@@ -124,5 +144,3 @@ puts "cd docs.openc3.com; pnpm install; pnpm update --interactive --latest; cd .
 # puts "cd openc3/templates/tool_react; pnpm install; pnpm update --interactive --latest; cd ../../.."
 # puts "cd openc3/templates/tool_angular; pnpm install; pnpm update --interactive --latest; cd ../../.."
 # puts "cd openc3/templates/tool_svelte; pnpm install; pnpm update --interactive --latest; cd ../../.."
-
-puts "\n\n*** If you update #{base_pkgs.join(', ')} then re-run! ***\n\n"

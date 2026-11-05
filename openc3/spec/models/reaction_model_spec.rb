@@ -30,6 +30,7 @@ module OpenC3
 
     def generate_custom_trigger(
       name: 'TRIG1',
+      group: RMO_GROUP,
       left: {'type' => 'float', 'float' => '9000'},
       operator: '>',
       right: {'type' => 'float', 'float' => '42'}
@@ -37,7 +38,7 @@ module OpenC3
       return TriggerModel.new(
         name: name,
         scope: $openc3_scope,
-        group: RMO_GROUP,
+        group: group,
         left: left,
         operator: operator,
         right: right,
@@ -197,6 +198,22 @@ module OpenC3
           {'name' => 'TRIG1', 'group' => RMO_GROUP} # duplicate
         ]
         expect { generate_custom_reaction(triggers: triggers) }.to raise_error(/no duplicate triggers allowed/)
+      end
+
+      it "allows the same trigger name in different groups" do
+        # Trigger names are only unique within a group so every group has a TRIG1
+        generate_trigger_group_model(name: 'GROUP2').create()
+        generate_custom_trigger().create()
+        generate_custom_trigger(group: 'GROUP2').create()
+        triggers = [
+          {'name' => 'TRIG1', 'group' => RMO_GROUP},
+          {'name' => 'TRIG1', 'group' => 'GROUP2'}
+        ]
+        generate_custom_reaction(triggers: triggers).create()
+        expect(ReactionModel.get(name: 'REACT1', scope: $openc3_scope).triggers).to eql triggers
+        # Both triggers must pick up the reaction as a dependent
+        expect(TriggerModel.get(name: 'TRIG1', group: RMO_GROUP, scope: $openc3_scope).dependents).to eql ['REACT1']
+        expect(TriggerModel.get(name: 'TRIG1', group: 'GROUP2', scope: $openc3_scope).dependents).to eql ['REACT1']
       end
 
       it "validates actions" do

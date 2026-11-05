@@ -4,7 +4,7 @@ set -e
 PLUGINS="/openc3/plugins"
 GEMS="/openc3/plugins/gems/"
 PACKAGES="packages"
-OPENC3_RELEASE_VERSION=7.1.1-beta0
+OPENC3_RELEASE_VERSION=7.5.1-beta0
 
 # 2nd argument provides an override for the build folder
 FOLDER_NAME=$2
@@ -14,9 +14,54 @@ if [ -z "${FOLDER_NAME}" ]; then # if WORKSPACE_NAME is unset or empty string
 fi
 
 mkdir -p ${GEMS}
+# Plugin wheels are warmed into their OWN directory, not /openc3/uv_cache. The
+# docs stage (openc3-tmp5) copies all of /openc3 in from openc3-base, so it
+# already has base's /openc3/uv_cache; warming into that same path would make
+# the Dockerfile's COPY duplicate the entire base cache into the final image.
+# A dedicated dir keeps every stage's contribution to just its own plugins,
+# which is what lets the Dockerfile COPY unconditionally from all stages.
+# Created unconditionally so that COPY succeeds even for a stage whose plugins
+# have no Python dependencies.
+UV_CACHE_PLUGINS=/openc3/uv_cache_plugins
+mkdir -p ${UV_CACHE_PLUGINS}
+
+# Trust a plain-HTTP or self-signed PYPI_URL mirror for the relock and cache
+# warm below: uv gets the bare host:port, credentials and path stripped.
+if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then
+  PYPI_HOST="${PYPI_URL#*://}"
+  PYPI_HOST="${PYPI_HOST%%/*}"
+  export UV_INSECURE_HOST="${PYPI_HOST##*@}"
+fi
 
 echo "<<< packageBuild $1"
 cd ${FOLDER_NAME}
+
+# Point this plugin's uv.lock at the PYPI_URL mirror before anything else runs.
+# It has to happen before `rake build` so the lockfile packaged into the gem
+# references the mirror too - a gem pinned to pythonhosted.org URLs would miss
+# the cache warmed below and send the runtime plugin install to the public PyPI,
+# which is exactly what fails in an air-gapped cluster. No-op when PYPI_URL is
+# the default public pypi.org. The trade-off: the shipped gem's lockfile names
+# the build-time mirror. The frozen sync never reads the pypi_url setting, so it
+# still installs from the cache warmed below; only a package missing from that
+# cache, in a cluster that cannot reach the build-time mirror, sends uvinstall
+# to its `uv pip install` fallback against pypi_url. --no-build matches the sync below: no third-party
+# sdist gets built during the image build. A base image that predates the
+# helper fails the build when PYPI_URL is a mirror, since the gem would ship a
+# lockfile pinned to pythonhosted.org, and skips the relock otherwise. The
+# relock uses a throwaway cache, not UV_CACHE_PLUGINS, so whatever it downloads
+# while resolving the dev groups stays out of the image.
+if command -v uv-mirror-relock >/dev/null; then
+  RELOCK_CACHE="$(mktemp -d)"
+  UV_CACHE_DIR="${RELOCK_CACHE}" uv-mirror-relock --no-build
+  rm -rf "${RELOCK_CACHE}"
+else
+  case "${PYPI_URL%/}" in
+    ""|https://pypi.org) echo "--- relock skipped: base image has no uv-mirror-relock, PYPI_URL is the public index" ;;
+    *) echo "ERROR: base image has no uv-mirror-relock but PYPI_URL host ${PYPI_URL##*@} is a mirror; rebuild openc3-ruby" >&2; exit 1 ;;
+  esac
+fi
+
 echo "--- packageBuild $1 pnpm run build"
 pnpm run build
 echo "=== packageBuild $1 pnpm run build complete"
@@ -27,3 +72,29 @@ ls *.gem
 echo "--- packageInstall $1 mv gem file"
 mv ${1}-*.gem ${GEMS}
 echo "=== packageInstall $1 mv gem complete"
+
+# Pre-warm the shared UV wheel cache with this plugin's locked Python
+# dependencies (cwd is still FOLDER_NAME from the cd above). Without this the
+# runtime per-plugin venv install (uvinstall) must fetch the plugin's exact
+# locked wheels from PyPI, because the image only seeds core's own dependency
+# versions - a guaranteed cache miss for any plugin pinning a different version
+# (e.g. demo numpy 2.4.6 vs core 2.2.6). Seeding here makes the runtime install
+# an offline cache hit: fast, deterministic, and works in air-gapped clusters.
+#
+# uv is provided by the openc3-ruby base image (which openc3-node, and therefore
+# every plugin build stage, derives from), so it is not checked for here - a
+# missing uv or a failed sync means the offline guarantee is silently broken, so
+# let set -e fail the build loudly instead of warning and moving on.
+#
+# --no-build forbids building source distributions, so no third-party setup.py
+# runs during the image build. This script only ever handles first-party plugins
+# (the Dockerfile invokes it with hardcoded package names), and every Python
+# dependency they declare today publishes wheels. If a future first-party plugin
+# genuinely needs an sdist, drop --no-build here AND in verify-uv-cache.sh and
+# document why. Runtime plugin installs (uvinstall) intentionally stay
+# permissive - user plugins are allowed to depend on sdist-only packages.
+if [ -f uv.lock ] && [ -f pyproject.toml ]; then
+  echo "--- packageBuild $1 warm UV cache (uv sync --frozen)"
+  UV_CACHE_DIR=${UV_CACHE_PLUGINS} uv sync --frozen --no-dev --no-install-project --no-build
+  echo "=== packageBuild $1 warm UV cache complete"
+fi

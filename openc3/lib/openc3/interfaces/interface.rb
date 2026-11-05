@@ -15,6 +15,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+require 'openc3/packets/packet'
 require 'openc3/api/api'
 require 'openc3/logs/stream_log_pair'
 require 'openc3/utilities/secrets'
@@ -68,6 +69,9 @@ module OpenC3
     # @return [Boolean] Flag indicating if the user is allowed to disconnect
     #   this interface
     attr_accessor :disable_disconnect
+
+    # @return [Boolean] Flag indicating if the interface is allowed to read
+    attr_writer :read_allowed
 
     # @return [StreamLogPair] StreamLogPair instance or nil
     attr_accessor :stream_log_pair
@@ -325,6 +329,12 @@ module OpenC3
         # Return packet
         @read_count += 1
         Logger.warn("#{@name}: Interface unexpectedly requested disconnect") unless packet
+        # Timestamp buffered reads with when the data arrived rather than when
+        # it was processed (otherwise received_time is set when it is handled)
+        if packet and !packet.received_time
+          data_time = read_queue_data_time
+          packet.received_time = data_time if data_time
+        end
         return packet
       end
     rescue Exception => e
@@ -348,7 +358,8 @@ module OpenC3
           if packet == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} write_packet requested disconnect")
             disconnect()
-            return
+            # Nothing was written so reject rather than report success
+            raise WriteRejectError.new("Protocol #{protocol.class} write_packet requested disconnect")
           end
           return if packet == :STOP
         end
@@ -368,7 +379,8 @@ module OpenC3
           if data == :DISCONNECT
             Logger.info("#{@name}: Protocol #{protocol.class} write_data requested disconnect")
             disconnect()
-            return
+            # Nothing was written so reject rather than report success
+            raise WriteRejectError.new("Protocol #{protocol.class} write_data requested disconnect")
           end
           return if data == :STOP
         end
@@ -433,13 +445,26 @@ module OpenC3
       config['name'] = @name
       config['state'] = @state
       config['clients'] = self.num_clients
-      config['txsize'] = @write_queue_size
-      config['rxsize'] = @read_queue_size
+      config['txsize'] = self.write_queue_size
+      config['rxsize'] = self.read_queue_size
       config['txbytes'] = @bytes_written
       config['rxbytes'] = @bytes_read
       config['txcnt'] = @write_count
       config['rxcnt'] = @read_count
       config
+    end
+
+    # @return [Integer] The number of bytes waiting on the read queue.
+    #   Interfaces which buffer raw reads override this (see ReadQueueInterface).
+    def read_queue_bytes
+      0
+    end
+
+    # @return [Time, nil] When the data most recently returned by
+    #   read_interface was read from the underlying source, or nil if unknown.
+    #   Interfaces which buffer raw reads override this (see ReadQueueInterface).
+    def read_queue_data_time
+      nil
     end
 
     # @return [Boolean] Whether reading is allowed
@@ -563,7 +588,7 @@ module OpenC3
     # @return [String] Raw packet data
     def read_interface_base(data, _extra = nil)
       if @save_raw_data
-        @read_raw_data_time = Time.now
+        @read_raw_data_time = read_queue_data_time || Time.now
         @read_raw_data = data.clone
       end
       @bytes_read += data.length
@@ -677,12 +702,12 @@ module OpenC3
       result['read_raw_data'] = @read_raw_data
       result['written_raw_data'] = @written_raw_data
       if @read_raw_data_time
-        result['read_raw_data_time'] = @read_raw_data_time.iso8601
+        result['read_raw_data_time'] = @read_raw_data_time.getutc.iso8601(6)
       else
         result['read_raw_data_time'] = nil
       end
       if @written_raw_data_time
-        result['written_raw_data_time'] = @written_raw_data_time.iso8601
+        result['written_raw_data_time'] = @written_raw_data_time.getutc.iso8601(6)
       else
         result['written_raw_data_time'] = nil
       end

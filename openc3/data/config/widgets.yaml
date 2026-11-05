@@ -206,6 +206,9 @@ Decoration Widgets:
         END
     FILEDISPLAY:
       summary: Displays the contents of a target file with syntax highlighting
+      description: Files are read from the COSMOS bucket, either the target's installed files or the modified
+        copy under targets_modified. In local mode a file created only on the local filesystem
+        (plugins/SCOPE/targets_modified) is not in the bucket and cannot be read.
       since: 6.10.3
       parameters:
         - name: File path
@@ -224,6 +227,9 @@ Decoration Widgets:
         FILEDISPLAY "INST/data/sample.json" 400 200
     FILECHECKSUM:
       summary: Displays SHA-256 checksum of one or more files, with comparison if multiple
+      description: Files are read from the COSMOS bucket, either the target's installed files or the modified
+        copy under targets_modified. In local mode a file created only on the local filesystem
+        (plugins/SCOPE/targets_modified) is not in the bucket and cannot be read.
       since: 6.10.3
       parameters:
         - name: File path
@@ -1224,7 +1230,7 @@ Telemetry Widgets:
       parameters:
         - name: Icon name
           required: true
-          description: The astro UX icon to display. Valid choices are 'astro' icons taken from https://github.com/RocketCommunicationsInc/astro-components/blob/master/static/json/rux-icons.json.
+          description: The astro UX icon to display. Valid choices are 'astro' icons taken from https://www.astrouxds.com/components/icon-library/.
           values: .+
         - name: Icon label
           required: false
@@ -1442,6 +1448,19 @@ Interactive Widgets:
         Scripts can be launched from a BUTTON using the `runScript()` method. `runScript()` takes three parameters,
         the name of the script, whether to open the script in the foreground of Script Runner (default = true), and a hash of
         environment variables. For example: `runScript('INST/procedures/script.rb', false, {'VAR': 'VALUE'})`
+
+        For security, button code does NOT run in the main application. It runs in an isolated,
+        sandboxed browser context that has no access to your login session, browser storage, or
+        the page, and no network access of its own. The `api`, `screen`, `runScript` and `alert`
+        objects still work exactly as before (the real work is performed by the application on the
+        button code's behalf). A few consequences of this isolation:
+
+        - `alert()` no longer pauses code execution while the alert is displayed.
+        - `screen.getNamedWidget("WIDGET_NAME").text()` (and `selected()` / `checked()` / `value`)
+          return the widget's value as it was when the button was clicked; a `.value =` assignment
+          made earlier in the same button click is not guaranteed to be visible to a later read in
+          that same click.
+        - The `self` variable (the internal widget component) is no longer available to button code.
       parameters:
         - name: Button Text
           required: true
@@ -1579,7 +1598,10 @@ Canvas Widgets:
   collection:
     CANVAS:
       summary: Layout widget for the other canvas widgets
-      description: All canvas widgets must be enclosed within a CANVAS widget.
+      description:
+        All canvas widgets must be enclosed within a CANVAS widget.
+        The canvas background defaults to white. Use SETTING BACKCOLOR to set a
+        different background color.
       warning: The canvas coordinate frame places (0,0) in the upper-left corner of the canvas.
       parameters:
         - name: Width
@@ -1590,6 +1612,30 @@ Canvas Widgets:
           required: true
           description: Height of the canvas
           values: .+
+      settings:
+        BACKCOLOR:
+          summary: Sets the background color of the canvas
+          since: 7.2.1
+          parameters:
+            - name: Color name or Red value
+              required: true
+              description: Common name for the color, e.g. 'black', 'red', etc.
+                Alternatively if two more parameters are passed this is the
+                Red value of the RGB value
+              values: .+
+            - name: Green value
+              required: false
+              description: Green value of the RGB value
+              values: .+
+            - name: Blue value
+              required: false
+              description: Blue value of the RGB value
+              values: .+
+      example: |
+        CANVAS 150 50
+          SETTING BACKCOLOR 17 21 28
+          CANVASLABEL 5 30 "Dark canvas" 18 white
+        END
     CANVASLABEL:
       summary: Draws text onto the canvas
       parameters:
@@ -1655,8 +1701,8 @@ Canvas Widgets:
           values: <%= %w(RAW CONVERTED FORMATTED) %>
       example: |
         CANVAS 200 100
-          CANVASLABELVALUE INST HEALTH_STATUS TEMP1 5 34 12 red
-          CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 10 blue FORMATTED
+          CANVASLABELVALUE INST HEALTH_STATUS TEMP1 5 34 20 red
+          CANVASLABELVALUE INST HEALTH_STATUS TEMP2 5 70 16 blue FORMATTED
         END
     CANVASIMAGE:
       summary: Displays an image on the canvas

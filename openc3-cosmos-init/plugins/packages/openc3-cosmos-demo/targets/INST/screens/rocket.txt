@@ -1,0 +1,100 @@
+SCREEN AUTO AUTO 1.0
+
+VERTICAL
+  TITLE "INST Rocket Body Ring"
+
+  CANVAS 600 660
+    # Dark background to match the Enterprise themes
+    SETTING BACKCOLOR 17 21 28
+
+    # ---------------------------------------------------------------
+    # Single clean body ring with a center core. Center is (300, 300).
+    # "Cut" circles reuse the background color to carve the ring band.
+    # ---------------------------------------------------------------
+    CANVASDOT 300 300 "#3a4150" 250
+    CANVASDOT 300 300 "#11151c" 230
+    CANVASDOT 300 300 "#14324d" 78
+    CANVASDOT 300 300 "#11151c" 60
+
+    # Sensor markers on the ring at the four compass points
+    CANVASDOT 300 60 "#4fd2ff" 9
+    CANVASDOT 540 300 "#4fd2ff" 9
+    CANVASDOT 300 540 "#4fd2ff" 9
+    CANVASDOT 60 300 "#4fd2ff" 9
+
+    # ---------------------------------------------------------------
+    # Bay dividers: four radial lines on the diagonals splitting the
+    # ring into four bays. Drawn from just outside the core out to the
+    # ring edge. Radial spokes never cross each other and sit in the
+    # gaps between the cardinal temp readouts so nothing overlaps.
+    # offset = radius / sqrt(2): core r=82 -> 58, ring r=250 -> 177
+    # ---------------------------------------------------------------
+    CANVASLINE 358 242 477 123 "#3a4150" 2
+    CANVASLINE 358 358 477 477 "#3a4150" 2
+    CANVASLINE 242 358 123 477 "#3a4150" 2
+    CANVASLINE 242 242 123 123 "#3a4150" 2
+
+    # Bay labels, centered in each sector (cardinal centers, off the
+    # diagonal divider lines) as a small header above each temp readout.
+    CANVASLABEL 300 124 "BAY 1" 13 "#5a6678"
+      SETTING RAW text-anchor middle
+    CANVASLABEL 450 268 "BAY 2" 13 "#5a6678"
+      SETTING RAW text-anchor middle
+    CANVASLABEL 300 422 "BAY 3" 13 "#5a6678"
+      SETTING RAW text-anchor middle
+    CANVASLABEL 150 268 "BAY 4" 13 "#5a6678"
+      SETTING RAW text-anchor middle
+
+    # ---------------------------------------------------------------
+    # Four temperature readouts (live, with units), centered on each
+    # compass point. SETTING RAW text-anchor middle centers the text
+    # on its X position.
+    # ---------------------------------------------------------------
+    CANVASLABEL 300 150 "TEMP 1" 15 "#8b97a8"
+      SETTING RAW text-anchor middle
+    CANVASLABELVALUE <%= target_name %> HEALTH_STATUS TEMP1 300 180 24 "white" WITH_UNITS
+      SETTING RAW text-anchor middle
+
+    CANVASLABEL 450 294 "TEMP 2" 15 "#8b97a8"
+      SETTING RAW text-anchor middle
+    CANVASLABELVALUE <%= target_name %> HEALTH_STATUS TEMP2 450 324 24 "white" WITH_UNITS
+      SETTING RAW text-anchor middle
+
+    CANVASLABEL 300 448 "TEMP 3" 15 "#8b97a8"
+      SETTING RAW text-anchor middle
+    CANVASLABELVALUE <%= target_name %> HEALTH_STATUS TEMP3 300 478 24 "white" WITH_UNITS
+      SETTING RAW text-anchor middle
+
+    CANVASLABEL 150 294 "TEMP 4" 15 "#8b97a8"
+      SETTING RAW text-anchor middle
+    CANVASLABELVALUE <%= target_name %> HEALTH_STATUS TEMP4 150 324 24 "white" WITH_UNITS
+      SETTING RAW text-anchor middle
+
+    # ---------------------------------------------------------------
+    # Center core readout (collect count), centered on the hub
+    # ---------------------------------------------------------------
+    CANVASLABEL 300 296 "COLLECTS" 13 "#6f7b8c"
+      SETTING RAW text-anchor middle
+    CANVASLABELVALUE <%= target_name %> HEALTH_STATUS COLLECTS 300 326 22 "#cfd8e3"
+      SETTING RAW text-anchor middle
+
+    # ---------------------------------------------------------------
+    # Two ground links, top-left. The bar color is live telemetry:
+    # green = CONNECTED, amber = UNAVAILABLE.
+    # ---------------------------------------------------------------
+    CANVASLINEVALUE <%= target_name %> HEALTH_STATUS GROUND1STATUS 30 124 70 124 16 CONVERTED
+      SETTING VALUE_EQ CONNECTED "#00e676"
+      SETTING VALUE_EQ UNAVAILABLE "#ffb300"
+    CANVASLABEL 80 129 "GROUND 1" 15 "#cfd8e3"
+    CANVASLINEVALUE <%= target_name %> HEALTH_STATUS GROUND2STATUS 30 154 70 154 16 CONVERTED
+      SETTING VALUE_EQ CONNECTED "#00e676"
+      SETTING VALUE_EQ UNAVAILABLE "#ffb300"
+    CANVASLABEL 80 159 "GROUND 2" 15 "#cfd8e3"
+
+    # Legend along the bottom, clear of the ring
+    CANVASDOT 36 602 "#00e676" 8
+    CANVASLABEL 52 607 "CONNECTED" 13 "#8b97a8"
+    CANVASDOT 200 602 "#ffb300" 8
+    CANVASLABEL 216 607 "UNAVAILABLE" 13 "#8b97a8"
+  END
+END

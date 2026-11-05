@@ -206,7 +206,9 @@ export default {
             this.configName = ''
           }
           this.configs.splice(this.configs.indexOf(item), 1)
-          new OpenC3Api().delete_config(this.configKey, item.config)
+          new OpenC3Api()
+            .delete_config(this.configKey, item.config)
+            .catch(console.error)
         })
         .catch((error) => {
           if (error !== true) {

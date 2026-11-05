@@ -278,16 +278,16 @@ class QueuesController < ApplicationController
               cmd_params = {}
             end
             if hazardous
-              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, scope: params[:scope], token: token)
+              cmd_no_hazardous_check(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], scope: params[:scope], token: token)
             else
-              cmd(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, scope: params[:scope], token: token)
+              cmd(command_data['target_name'], command_data['cmd_name'], cmd_params, queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], scope: params[:scope], token: token)
             end
           elsif command_data['value']
             # Legacy format: use single string parameter
             if hazardous
-              cmd_no_hazardous_check(command_data['value'], queue: false, validate: validate, timeout: timeout, scope: params[:scope], token: token)
+              cmd_no_hazardous_check(command_data['value'], queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], scope: params[:scope], token: token)
             else
-              cmd(command_data['value'], queue: false, validate: validate, timeout: timeout, scope: params[:scope], token: token)
+              cmd(command_data['value'], queue: false, validate: validate, timeout: timeout, queue_username: command_data['username'], scope: params[:scope], token: token)
             end
           else
             log_error("Invalid command format in queue: #{command_data}")
@@ -349,7 +349,7 @@ class QueuesController < ApplicationController
 
   def get_token(username, scope:)
     if ENV['OPENC3_API_CLIENT'].nil?
-      ENV['OPENC3_API_PASSWORD'] ||= ENV['OPENC3_SERVICE_PASSWORD']
+      ENV['OPENC3_API_PASSWORD'] ||= ENV.fetch('OPENC3_SERVICE_PASSWORD', nil)
       return OpenC3::OpenC3Authentication.new().token
     else
       # Check for offline access token

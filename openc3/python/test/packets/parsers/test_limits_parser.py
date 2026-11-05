@@ -98,7 +98,7 @@ class TestLimitsParser(unittest.TestCase):
         tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
         tf.write('  APPEND_ID_ITEM item1 16 UINT 1 "Item"\n')
         tf.write("    LIMITS DEFAULT 3 ENABLED 1 2 6 7 3 5\n")
-        tf.write("    LIMITS TVAC 1 DISABLED 1 2 6 7 3 5\n")
+        tf.write("    LIMITS TVAC 1 ENABLED 1 2 6 7 3 5\n")
         tf.seek(0)
         self.pc.process_file(tf.name, "TGT1")
         self.assertIn("persistence setting conflict with DEFAULT", self.pc.warnings[-1])

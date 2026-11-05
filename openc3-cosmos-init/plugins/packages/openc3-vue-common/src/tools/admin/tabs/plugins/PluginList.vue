@@ -26,8 +26,10 @@
         :targets="pluginTargets(plugin.name)"
         :is-modified="isModified(plugin.name)"
         :microservices="microservices"
+        :script-versions-enabled="scriptVersionsEnabled"
         @edit="() => editPlugin(plugin.name)"
         @upgrade="() => upgradePlugin(plugin.name)"
+        @migrate-to-uv="() => migrateToUv(plugin.name)"
         @delete="() => deletePrompt(plugin.name)"
       />
     </template>
@@ -55,12 +57,12 @@ export default {
       type: Boolean,
       default: false,
     },
-    defaultPlugins: {
-      type: Array,
-      required: true,
+    scriptVersionsEnabled: {
+      type: Boolean,
+      default: false,
     },
   },
-  emits: ['edit', 'delete', 'upgrade'],
+  emits: ['edit', 'delete', 'upgrade', 'migrate-to-uv'],
   data() {
     return {
       showPluginDetails: false,
@@ -73,22 +75,16 @@ export default {
       const pluginsToShow = []
       const defaultPluginsToShow = []
       this.plugins.forEach((plugin) => {
-        const pluginNameFirst = plugin.name.split('__')[0]
-        const pluginNameSplit = pluginNameFirst.split('-').slice(0, -1)
-        const pluginNameShort = pluginNameSplit.join('-')
-        if (this.defaultPlugins.includes(pluginNameShort)) {
+        // The API flags the plugins that ship with COSMOS
+        if (plugin.default) {
           defaultPluginsToShow.push(plugin)
         } else {
           pluginsToShow.push(plugin)
         }
       })
-      pluginsToShow.sort((a, b) =>
-        a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-      )
+      pluginsToShow.sort((a, b) => a.name.localeCompare(b.name))
       if (this.showDefaultTools) {
-        defaultPluginsToShow.sort((a, b) =>
-          a.name < b.name ? -1 : a.name > b.name ? 1 : 0,
-        )
+        defaultPluginsToShow.sort((a, b) => a.name.localeCompare(b.name))
         return pluginsToShow.concat(defaultPluginsToShow)
       }
       return pluginsToShow
@@ -122,13 +118,15 @@ export default {
     upgradePlugin(plugin) {
       this.$emit('upgrade', plugin)
     },
+    migrateToUv: function (plugin) {
+      this.$emit('migrate-to-uv', plugin)
+    },
     deletePrompt: function (plugin) {
       this.$emit('delete', plugin)
     },
-    fetchMicroservices: function () {
-      Api.get('/openc3-api/microservices/all').then((response) => {
-        this.microservices = response.data
-      })
+    fetchMicroservices: async function () {
+      const response = await Api.get('/openc3-api/microservices/all')
+      this.microservices = response.data
     },
   },
 }

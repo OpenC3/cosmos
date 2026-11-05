@@ -130,7 +130,7 @@ class TemplateAccessor(Accessor):
         updated_buffer = buffer.decode().replace(f"{self.left_char}{key}{self.right_char}", str(value)).encode()
 
         if buffer == updated_buffer:
-            raise RuntimeError(f"Key {key} not found in template")
+            raise RuntimeError(f"Key '{key}' not found in template (write_item)")
         buffer[0:] = updated_buffer
         return value
 
@@ -146,7 +146,7 @@ class TemplateAccessor(Accessor):
             )
 
             if buffer == updated_buffer:
-                raise RuntimeError(f"Key {key} not found in template")
+                raise RuntimeError(f"Key '{key}' not found in template (write_items)")
             buffer[0:] = updated_buffer
         return values
 

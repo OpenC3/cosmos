@@ -192,7 +192,12 @@ _openc3_cli() {
             'destroyscope:destroy a scope'
             'localinit:initialize local mode'
             'initbuckets:initialize buckets'
+            'initsettings:seed settings from OPENC3_SETTING_* env vars'
             'runmigrations:run database migrations'
+            'reingest:reingest log files for a job (spawned internally)'
+            'setpassword:set initial password from OPENC3_API_PASSWORD'
+            'migratepassword:migrate password hash to argon2'
+            'migratetouv:migrate plugin to per-plugin UV virtual environment'
         )
         _describe 'cli commands' cli_commands
         return
@@ -428,7 +433,11 @@ _openc3_cli() {
                 '(-i --import)'{-i,--import}'[import .xtce file]:file:_files -g "*.xtce"' \
                 '(-o --output)'{-o,--output}'[output directory]:directory:_directories' \
                 '(-p --plugin)'{-p,--plugin}'[export from plugin]:plugin:_files -g "*.gem"' \
-                '(-v --variables)'{-v,--variables}'[variables file]:file:_files'
+                '(-v --variables)'{-v,--variables}'[variables file]:file:_files' \
+                '(-r --root_target)'{-r,--root_target}'[target at the root of the XTCE document]:target name' \
+                '(-t --time_association_name)'{-t,--time_association_name}'[time association name]:name' \
+                '(--validate --no-validate)--validate[validate against the XTCE 1.2 schema]' \
+                '(--validate --no-validate)--no-validate[skip XTCE 1.2 schema validation]'
             ;;
         cstol_converter)
             _arguments \
@@ -494,6 +503,40 @@ _openc3_cli() {
                 fi
             fi
             ;;
+        migratetouv)
+            if (( CURRENT == 2 )); then
+                _message 'PLUGIN_NAME'
+            elif (( CURRENT == 3 )); then
+                _message 'SCOPE (default: DEFAULT)'
+            fi
+            ;;
+        reingest)
+            # Both arguments are required - unlike most commands, SCOPE has no default
+            if (( CURRENT == 2 )); then
+                _message 'JOB_ID'
+            elif (( CURRENT == 3 )); then
+                _message 'SCOPE'
+            fi
+            ;;
+        setpassword|migratepassword)
+            if (( CURRENT == 2 )); then
+                local -a options
+                options=('--help:show help message' '-h:show help message')
+                _describe 'options' options
+            fi
+            ;;
+        initsettings)
+            if (( CURRENT == 2 )); then
+                local -a options
+                options=(
+                    '--dry-run:report what would be seeded without writing'
+                    '--export:print stored settings as compose environment lines'
+                    '--help:show help message'
+                    '-h:show help message'
+                )
+                _describe 'options' options
+            fi
+            ;;
         removebase|removeenterprise|localinit|initbuckets)
             if (( CURRENT == 2 )); then
                 local -a options
@@ -523,6 +566,9 @@ _openc3() {
                 'cliroot:run a cli command as root user'
                 'start:build and run'
                 'stop:stop the containers'
+                'list:list Docker images for this installation'
+                'status:show container status'
+                'destroy:remove Docker images for this installation'
                 'cleanup:REMOVE volumes / data'
                 'build:build the containers'
                 'run:run the containers'
@@ -536,6 +582,10 @@ _openc3() {
             ;;
         args)
             case $line[1] in
+                destroy)
+                    _values 'destroy options' \
+                        'force[skip confirmation prompt]'
+                    ;;
                 cleanup)
                     _values 'cleanup options' \
                         'local[also cleanup local plugin files]' \
@@ -601,7 +651,7 @@ _openc3() {
                     words=("${save_words[@]}")
                     CURRENT=$save_current
                     ;;
-                start|stop|build|run|start-ubi|build-ubi|run-ubi)
+                start|stop|list|status|build|run|start-ubi|build-ubi|run-ubi)
                     # These commands don't take arguments
                     ;;
             esac

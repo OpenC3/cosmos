@@ -320,7 +320,7 @@ export default {
     this.api = new OpenC3Api()
     // Value is passed in as the list of ignored items
     for (let item of this.modelValue) {
-      if (item.match(/.+__.+__.+/)) {
+      if (item.split('__').length >= 3) {
         // TARGET__PACKET__ITEM
         this.ignoreItem(item, true)
       } else {
@@ -507,6 +507,11 @@ export default {
         // We only want to handle LIMITS_CHANGE messages
         // NOTE: The channel also sends LIMITS_SETTINGS and LIMITS_SET messages
         if (message.type != 'LIMITS_CHANGE') {
+          continue
+        }
+        // Skip events from stored packets where limits are suppressed
+        // (STORED_LIMITS_MODE LOG or DISABLE) so they don't affect the UI state
+        if (message.suppress_stored) {
           continue
         }
 

@@ -63,7 +63,10 @@ module OpenC3
     CYCLE_TIME_INTERVAL = 10
 
     # Delay in seconds before trimming Redis streams
-    CLEANUP_DELAY = 60
+    # This is the primary trimmer of the TELEMETRY__ and COMMAND__ streams. Writers
+    # also apply a safety MINID cap (see Topic.stream_safety_minid) which depends on this
+    # value, so it is defined in Topic.
+    CLEANUP_DELAY = Topic::LOG_CLEANUP_DELAY_SECONDS
 
     # Mutex protecting class variables
     @@mutex = Mutex.new
@@ -113,6 +116,7 @@ module OpenC3
       @cycle_minute = Integer(@cycle_minute) if @cycle_minute
       @enforce_time_order = ConfigParser.handle_true_false(enforce_time_order)
       @out_of_order = false
+      @bad_time = false
       @mutex = Mutex.new
       @file = nil
       @file_size = 0
@@ -125,6 +129,13 @@ module OpenC3
       @cleanup_offsets = []
       @cleanup_times = []
       @previous_time_nsec_since_epoch = nil
+      # Stored packets older than 20 years are treated as invalid (e.g. 1970 before
+      # clock/GPS sync). They never drive file segmentation nor become the ordering
+      # baseline, so a late-syncing clock doesn't thrash log files.
+      @min_valid_time_nsec = (@start_time - (20 * 365 * 24 * 60 * 60)).to_nsec_from_epoch
+      # Validity (valid/invalid time) of the packets in the currently open file. Used to
+      # segregate invalid-time (1970) packets into their own file. nil = no packets yet.
+      @current_file_valid = nil
       @tmp_dir = Dir.mktmpdir
       @wait_threads = []
 
@@ -203,6 +214,15 @@ module OpenC3
       end
     end
 
+    # The db_shard of a target topic like DEFAULT__DECOM__{INST}__HEALTH_STATUS
+    # or db_shard 0 for a topic without a target
+    def self.db_shard_for_topic(redis_topic)
+      scope, _, rest = redis_topic.delete_prefix('{').partition('__')
+      # The target is a {TARGET} part between two others, e.g. DECOM__{INST}__HEALTH_STATUS
+      target = rest.split('__', -1)[1...-1]&.find { |part| part.length > 2 and part.start_with?('{') and part.end_with?('}') }
+      (!scope.empty? and target) ? Store.db_shard_for_target(target[1...-1], scope: scope) : 0
+    end
+
     def cycle_thread_body
       @@cycle_sleeper = Sleeper.new
       while true
@@ -237,9 +257,7 @@ module OpenC3
                   # Now that the file is in S3, trim the Redis stream up until the previous file.
                   # This keeps one minute of data in Redis
                   instance.cleanup_offsets[index].each do |redis_topic, cleanup_offset|
-                    target_match = redis_topic.match(/__\{?([^}_]+)\}?__/)
-                    db_shard = target_match ? Store.db_shard_for_target(target_match[1]) : 0
-                    Topic.trim_topic(redis_topic, cleanup_offset, db_shard: db_shard)
+                    Topic.trim_topic(redis_topic, cleanup_offset, db_shard: LogWriter.db_shard_for_topic(redis_topic))
                   end
                   indexes_to_clear << index
                 end
@@ -280,6 +298,7 @@ module OpenC3
       @first_time = nil
       @last_time = nil
       @previous_time_nsec_since_epoch = nil
+      @current_file_valid = nil
       Logger.debug "Log File Opened : #{@filename}"
     rescue => e
       Logger.error "Error starting new log file: #{e.formatted}"
@@ -289,7 +308,14 @@ module OpenC3
 
     # @enforce_time_order requires the timestamps on each write to be greater than the previous
     # process_out_of_order ignores the timestamps for the current entry (used to ignore timestamps on metadata entries, vs actual packets)
-    def prepare_write(time_nsec_since_epoch, data_length, redis_topic = nil, redis_offset = nil, allow_new_file: true, process_out_of_order: true)
+    # stored: stored packets roll a new file when GOOD times move backward (a new /
+    #   overlapping replay run). Packets with an invalid time (e.g. 1970 before clock/GPS
+    #   sync) - realtime or stored - are segregated into their own file: the first valid
+    #   packet after a run of 1970s rolls a fresh, properly-named file (and vice-versa).
+    def prepare_write(time_nsec_since_epoch, data_length, redis_topic = nil, redis_offset = nil, allow_new_file: true, process_out_of_order: true, stored: false)
+      # An invalid time is a packet from before the clock/GPS synced (e.g. 1970). This
+      # applies to both realtime and stored packets so neither taints a file's filename.
+      packet_valid = !(process_out_of_order and time_nsec_since_epoch < @min_valid_time_nsec)
       # This check includes logging_enabled again because it might have changed since we acquired the mutex
       # Ensures new files based on size, and ensures always increasing time order in files
       if @logging_enabled
@@ -299,17 +325,37 @@ module OpenC3
         elsif @cycle_size and ((@file_size + data_length) > @cycle_size)
           Logger.debug("Log writer start new file due to cycle size #{@cycle_size}")
           start_new_file() if allow_new_file
+        elsif process_out_of_order and !@current_file_valid.nil? and packet_valid != @current_file_valid and allow_new_file
+          # Time validity changed (1970 <-> valid): segregate invalid-time packets into
+          # their own file so valid files keep a clean, correctly-timed filename.
+          Logger.debug("Log writer start new file due to time validity change")
+          start_new_file()
         elsif process_out_of_order and @enforce_time_order and @previous_time_nsec_since_epoch and (@previous_time_nsec_since_epoch > time_nsec_since_epoch)
-          # Warning: Creating new files here can cause lots of files to be created if packets make it through out of order
-          # Changed to just a error to prevent file thrashing
-          unless @out_of_order
-            Logger.error("Log writer out of order time detected (increase buffer depth?): #{Time.from_nsec_from_epoch(@previous_time_nsec_since_epoch)} #{Time.from_nsec_from_epoch(time_nsec_since_epoch)}")
-            @out_of_order = true
+          if stored and packet_valid and allow_new_file
+            # Good stored time went backward => new/overlapping replay run. Roll a new
+            # file so each stored file stays monotonic (start_new_file resets @previous_time).
+            Logger.debug("Log writer start new file due to out of order stored time")
+            start_new_file()
+          elsif !stored
+            # Warning: Creating new files here can cause lots of files to be created if packets make it through out of order
+            # Changed to just a warning to prevent file thrashing
+            unless @out_of_order
+              Logger.warn("Log writer out of order time detected (increase buffer depth?): #{Time.from_nsec_from_epoch(@previous_time_nsec_since_epoch)} #{Time.from_nsec_from_epoch(time_nsec_since_epoch)}")
+              @out_of_order = true
+            end
           end
         end
       end
       @last_offsets[redis_topic] = redis_offset if redis_topic and redis_offset # This is needed for the redis offset marker entry at the end of the log file
-      @previous_time_nsec_since_epoch = time_nsec_since_epoch if process_out_of_order
+      if process_out_of_order
+        @current_file_valid = packet_valid
+        if packet_valid
+          @previous_time_nsec_since_epoch = time_nsec_since_epoch
+        elsif !@bad_time
+          Logger.warn("Log writer segregating invalid packet time (before clock sync?): #{Time.from_nsec_from_epoch(time_nsec_since_epoch)}")
+          @bad_time = true
+        end
+      end
     end
 
     # Closing a log file isn't critical so we just log an error. NOTE: This also trims the Redis stream

@@ -127,29 +127,29 @@
                       </v-radio-group>
                     </v-col>
                     <v-col>
-                      <v-text-field
+                      <v-number-input
                         v-model="currentConfig.history"
+                        control-variant="stacked"
                         label="History Buffer"
-                        type="number"
-                        min="1"
+                        :min="1"
                         persistent-hint
                         :rules="[rules.required, rules.min]"
                         data-test="history-component-settings-history"
                       />
-                      <v-text-field
+                      <v-number-input
                         v-if="hasRaw"
                         v-model="currentConfig.bytesPerLine"
+                        control-variant="stacked"
                         label="Bytes per line"
-                        type="number"
-                        min="1"
+                        :min="1"
                         :rules="[rules.required, rules.min]"
                         data-test="history-component-settings-num-bytes"
                       />
-                      <v-text-field
+                      <v-number-input
                         v-model="currentConfig.packetsToShow"
+                        control-variant="stacked"
                         label="Entries to show"
-                        type="number"
-                        min="1"
+                        :min="1"
                         :hint="`Maximum: ${currentConfig.history}`"
                         persistent-hint
                         :rules="[rules.required, rules.min, rules.max]"

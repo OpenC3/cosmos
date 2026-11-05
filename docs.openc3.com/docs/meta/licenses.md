@@ -28,7 +28,7 @@ You can read the whole license here:
 ```
 # OpenC3 Evaluation and Educational License
 #
-# Copyright 2023 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 #
 # This work is licensed for evaluation and educational purposes only.
 # It may NOT be used for formal development, integration and test, operations
@@ -63,7 +63,6 @@ Of course with our commercial license, you also get all the extra functionality 
 1. You want to save years and tens of millions of dollars developing the same functionality yourself.
 
 2. You want all of the Enterprise functionality of COSMOS Enterprise
-
    1. User Accounts
    2. Role Based Access Control
    3. LDAP Support
@@ -73,7 +72,7 @@ Of course with our commercial license, you also get all the extra functionality 
    7. Grafana Support
    8. Support from the COSMOS Developers
    9. Calendar, Autonomic, Command History, Log Explorer, System Health
-   10. Lots more - See our [Enterprise](https://openc3.com/enterprise) page
+   10. Lots more - See our [Enterprise](https://openc3.com/cosmos-enterprise) page
 
 3. You want to support the continued development and innovation of the COSMOS product
 

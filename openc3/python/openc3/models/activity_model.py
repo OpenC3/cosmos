@@ -277,10 +277,10 @@ class ActivityModel(Model):
 
     # Update the Redis hash at primary_key and set the score equal to the start Epoch time.
     # The member is set to the JSON generated via calling as_json.
-    # update / force / queued / isoformat are accepted for Liskov compatibility with
+    # update / force / queued are accepted for Liskov compatibility with
     # Model.create but are not used by this override (which writes to a sorted set).
-    def create(self, update=False, force=False, queued=False, isoformat=False, overlap=True, username=None):
-        del update, force, queued, isoformat  # unused — kept for base-class compatibility
+    def create(self, update=False, force=False, queued=False, overlap=True, username=None):
+        del update, force, queued  # unused — kept for base-class compatibility
         # Avoid circular import: timeline_model imports activity-related modules indirectly
         from openc3.models.timeline_model import TimelineModel
 
