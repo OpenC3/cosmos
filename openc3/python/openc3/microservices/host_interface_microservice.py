@@ -361,20 +361,32 @@ class HostInterfaceMicroservice:
         alpn = f"{HOSTCTRL_ALPN_PREFIX}{self.channel}".encode()
         while not self.shutdown:
             connection = None
+            tasks = set()
             try:
                 connection = await endpoint.connect(addr, alpn)
                 bi = await connection.accept_bi()  # hub opens+primes
                 send = bi.send()
                 recv = bi.recv()
                 await recv.read(PRIME_BYTES)
-                reader = asyncio.create_task(self._read_commands(recv))
-                writer = asyncio.create_task(self._send_status(send))
-                await asyncio.wait({reader, writer}, return_when=asyncio.FIRST_COMPLETED)
-                reader.cancel()
-                writer.cancel()
+                tasks = {
+                    asyncio.create_task(self._read_commands(recv)),
+                    asyncio.create_task(self._send_status(send)),
+                }
+                done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                # The channel dropping (e.g. the connection closed at shutdown)
+                # ends a task with an error, which only matters while running
+                for task in done:
+                    if not task.cancelled() and task.exception() is not None and not self.shutdown:
+                        Logger.warn(f"{self.name}: control channel error: {_iroh_error_detail(task.exception())}")
             except Exception as error:
-                Logger.warn(f"{self.name}: control channel error: {_iroh_error_detail(error)}")
+                if not self.shutdown:
+                    Logger.warn(f"{self.name}: control channel error: {_iroh_error_detail(error)}")
             finally:
+                # Collect both tasks so neither leaves an unretrieved exception
+                for task in tasks:
+                    task.cancel()
+                if tasks:
+                    await asyncio.gather(*tasks, return_exceptions=True)
                 if connection is not None:
                     with contextlib.suppress(Exception):
                         result = connection.close()
@@ -466,6 +478,7 @@ class HostInterfaceMicroservice:
                 break
             interface = None
             connection = None
+            tasks = set()
             try:
                 # 1. Pair the data tunnel first — no hardware touched yet.
                 connection = await endpoint.connect(addr, alpn)
@@ -492,17 +505,25 @@ class HostInterfaceMicroservice:
                 self._status_ping.set()  # report CONNECTED promptly
 
                 loop = asyncio.get_event_loop()
-                up = asyncio.create_task(self._device_to_bridge(loop, interface, send))
-                down = asyncio.create_task(self._bridge_to_device(loop, interface, recv))
+                pumps = {
+                    asyncio.create_task(self._device_to_bridge(loop, interface, send)),
+                    asyncio.create_task(self._bridge_to_device(loop, interface, recv)),
+                }
                 # Also break out promptly if COSMOS requests a disconnect.
-                stop = asyncio.create_task(self._disconnect_event.wait())
-                await asyncio.wait({up, down, stop}, return_when=asyncio.FIRST_COMPLETED)
-                up.cancel()
-                down.cancel()
-                stop.cancel()
+                tasks = pumps | {asyncio.create_task(self._disconnect_event.wait())}
+                done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                for task in done & pumps:
+                    if not task.cancelled() and task.exception() is not None and not self.shutdown:
+                        Logger.error(f"{self.name}: bridge error: {_iroh_error_detail(task.exception())}")
             except Exception as error:
-                Logger.error(f"{self.name}: bridge error: {_iroh_error_detail(error)}")
+                if not self.shutdown:
+                    Logger.error(f"{self.name}: bridge error: {_iroh_error_detail(error)}")
             finally:
+                # Collect the tasks so none leaves an unretrieved exception
+                for task in tasks:
+                    task.cancel()
+                if tasks:
+                    await asyncio.gather(*tasks, return_exceptions=True)
                 self._interface = None
                 if interface is not None:
                     try:
