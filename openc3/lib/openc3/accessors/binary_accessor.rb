@@ -287,18 +287,25 @@ module OpenC3
         # Calculate bits after this item
         bits_with_item = item.bit_offset + current_bit_size
         bits_after_item = (buffer.length * 8) - bits_with_item
-        if item.original_array_size
-          item.array_size = -bits_after_item
-        else
-          item.bit_size = -bits_after_item
-        end
 
         if item.original_array_size
           new_bit_size = value.length * item.bit_size
         else
           new_bit_size = value.length * 8
         end
-        length_value = (new_bit_size - item.variable_bit_size['length_value_bit_offset']) / item.variable_bit_size['length_bits_per_count']
+        # Reject sizes the length item can't represent exactly or the reader would decode the wrong size
+        length_bits = new_bit_size - item.variable_bit_size['length_value_bit_offset']
+        if length_bits % item.variable_bit_size['length_bits_per_count'] != 0
+          raise ArgumentError, "Variable bit size #{new_bit_size} for item #{item.name} is not representable with length_bits_per_count #{item.variable_bit_size['length_bits_per_count']} and length_value_bit_offset #{item.variable_bit_size['length_value_bit_offset']}"
+        end
+
+        if item.original_array_size
+          item.array_size = -bits_after_item
+        else
+          item.bit_size = -bits_after_item
+        end
+
+        length_value = length_bits / item.variable_bit_size['length_bits_per_count']
         @packet.write(item.variable_bit_size['length_item_name'], length_value)
 
         # Later items need their bit_offset adjusted by the change in this item

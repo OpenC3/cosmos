@@ -314,6 +314,24 @@ module OpenC3
         expect(@packet.read("trailer")).to eql 0x5A
       end
 
+      it "complains about variable sized arrays not representable by the length item" do
+        @packet.append_item("len", 8, :UINT)
+        floats = @packet.append_item("floats", 32, :FLOAT, 0)
+        floats.variable_bit_size = {'length_item_name' => 'len', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 64}
+        @packet.append_item("trailer", 8, :UINT)
+        @packet.buffer = "\x00" * @packet.defined_length
+        @packet.write("floats", [1.5, 3.0])
+        @packet.write("trailer", 0x5A)
+        buffer = @packet.buffer
+        array_size = floats.array_size
+
+        expect { @packet.write("floats", [1.5, 3.0, 4.5]) }.to raise_error(ArgumentError, /Variable bit size 96 for item FLOATS is not representable/)
+        expect(@packet.buffer).to eql buffer
+        expect(floats.array_size).to eql array_size
+        expect(@packet.read("floats")).to eql [1.5, 3.0]
+        expect(@packet.read("trailer")).to eql 0x5A
+      end
+
       it "raises a clear error when the length item is nil in an undersized packet" do
         @packet.append_item("item1_length", 32, :UINT)
         item1 = @packet.append_item("item1", 8, :UINT, 0)

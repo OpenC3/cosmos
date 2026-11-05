@@ -356,6 +356,29 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(packet.read("floats"), [1.5])
         self.assertEqual(packet.read("trailer"), 0x5A)
 
+    def test_complains_about_variable_sized_arrays_not_representable_by_the_length_item(self):
+        packet = Packet()
+        packet.append_item("len", 8, "UINT")
+        floats = packet.append_item("floats", 32, "FLOAT", 0)
+        floats.variable_bit_size = {
+            "length_item_name": "len",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 64,
+        }
+        packet.append_item("trailer", 8, "UINT")
+        packet.buffer = b"\x00" * packet.defined_length
+        packet.write("floats", [1.5, 3.0])
+        packet.write("trailer", 0x5A)
+        buffer = packet.buffer
+        array_size = floats.array_size
+
+        with self.assertRaisesRegex(ValueError, "Variable bit size 96 for item FLOATS is not representable"):
+            packet.write("floats", [1.5, 3.0, 4.5])
+        self.assertEqual(packet.buffer, buffer)
+        self.assertEqual(floats.array_size, array_size)
+        self.assertEqual(packet.read("floats"), [1.5, 3.0])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
     def test_complains_about_unknown_data_types(self):
         self.assertRaisesRegex(
             TypeError,
