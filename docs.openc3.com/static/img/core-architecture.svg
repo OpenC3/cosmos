@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" width="960" height="520" role="img" aria-labelledby="title desc">
+  <title id="title">COSMOS Core architecture</title>
+  <desc id="desc">COSMOS Core deployed with Docker Compose. Users connect through the traefik reverse proxy to the cmd-tlm-api and script-runner-api Rails services. The operator runs interfaces that connect to targets. The init container seeds configuration. All services use the data stores: tsdb (QuestDB), buckets (Versitygw S3), redis and redis-ephemeral (Valkey).</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #1e293b; }
+      .card { fill: #ffffff; stroke: #475569; stroke-width: 1.5; }
+      .card-ent { fill: #ecfdf5; stroke: #047857; stroke-width: 1.5; }
+      .actor { fill: #f1f5f9; stroke: #475569; stroke-width: 1.5; stroke-dasharray: 6 4; }
+      .name { font-size: 14px; font-weight: 600; }
+      .sub { font-size: 12px; fill: #475569; }
+      .desc { font-size: 12px; fill: #334155; }
+      .group-core { fill: #eff6ff; stroke: #1d4ed8; stroke-width: 1.5; }
+      .group { fill: #f8fafc; stroke: #64748b; stroke-width: 1.5; }
+      .group-k8s { fill: #ffffff; stroke: #475569; stroke-width: 2; }
+      .tab { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; }
+      .link { fill: none; stroke: #475569; stroke-width: 1.75; }
+      .uses { fill: none; stroke: #64748b; stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .label { font-size: 12px; fill: #334155; }
+      .icon { fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+      .layer-ent { fill: #ecfdf5; stroke: #047857; stroke-width: 1.25; }
+      .layer-core { fill: #eff6ff; stroke: #1d4ed8; stroke-width: 1.25; }
+      .layer-oss { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.25; }
+      .layer-text { font-size: 12px; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect width="960" height="520" rx="12" fill="#ffffff"/>
+
+  <rect class="group-core" x="196" y="24" width="744" height="476" rx="12"/>
+  <rect x="208" y="13" width="271" height="22" rx="11" fill="#1d4ed8"/>
+  <text class="tab" x="218" y="28" fill="#ffffff" style="fill:#ffffff">COSMOS CORE · DOCKER COMPOSE</text>
+  <rect class="group" x="680" y="56" width="240" height="424" rx="12"/>
+  <rect x="692" y="45" width="58" height="22" rx="11" fill="#475569"/>
+  <text class="tab" x="702" y="60" fill="#ffffff" style="fill:#ffffff">DATA</text>
+  <path class="link" d="M170,180 L223,180" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <path class="link" d="M170,322 L418,322" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="label" x="300" y="312" text-anchor="middle">Interfaces</text>
+  <path class="link" d="M375,168 L396,168 L396,102 L418,102" marker-end="url(#arrow)"/>
+  <path class="link" d="M375,192 L406,192 L406,212 L418,212" marker-end="url(#arrow)"/>
+  <path class="link" d="M622,102 L678,102" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <path class="link" d="M622,212 L678,212" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <path class="link" d="M622,322 L678,322" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <path class="link" d="M622,432 L678,432" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <rect class="actor" x="14" y="150" width="156" height="60" rx="30.0"/>
+  <g class="icon" stroke="#475569" transform="translate(28,166.0) scale(1.1667)"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M2.5 8.5h19"/><path d="M5.5 6.3h.01M8 6.3h.01"/></g>
+  <text class="name" x="66" y="177.0">Users</text>
+  <text class="sub" x="66" y="194.0">Web browser</text>
+  <rect class="actor" x="14" y="292" width="156" height="60" rx="30.0"/>
+  <g class="icon" stroke="#475569" transform="translate(28,308.0) scale(1.1667)"><rect x="6" y="6" width="12" height="12" rx="1.5"/><rect x="9.5" y="9.5" width="5" height="5"/><path d="M9 2.5V6M15 2.5V6M9 18v3.5M15 18v3.5M2.5 9H6M2.5 15H6M18 9h3.5M18 15h3.5"/></g>
+  <text class="name" x="66" y="319.0">Targets</text>
+  <text class="sub" x="66" y="336.0">Your hardware</text>
+  <rect class="card" x="225" y="150" width="150" height="60" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(239,166.0) scale(1.1667)"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="5" r="2.5"/><circle cx="19" cy="12" r="2.5"/><circle cx="19" cy="19" r="2.5"/><path d="M7.5 12h9M7.2 10.8l9.5-5M7.2 13.2l9.5 5"/></g>
+  <text class="name" x="277" y="177.0">traefik</text>
+  <text class="sub" x="277" y="194.0">Reverse proxy</text>
+  <rect class="card" x="420" y="70" width="200" height="64" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(434,88.0) scale(1.1667)"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M9 9l-3 3 3 3M15 9l3 3-3 3M13 8.5l-2 7"/></g>
+  <text class="name" x="472" y="99.0">cmd-tlm-api</text>
+  <text class="sub" x="472" y="116.0">Rails + AnyCable</text>
+  <rect class="card" x="420" y="180" width="200" height="64" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(434,198.0) scale(1.1667)"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M9 9l-3 3 3 3M15 9l3 3-3 3M13 8.5l-2 7"/></g>
+  <text class="name" x="472" y="209.0">script-runner-api</text>
+  <text class="sub" x="472" y="226.0">Rails + AnyCable</text>
+  <rect class="card" x="420" y="290" width="200" height="64" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(434,308.0) scale(1.1667)"><rect x="3" y="3.5" width="18" height="7" rx="1.5"/><rect x="3" y="13.5" width="18" height="7" rx="1.5"/><path d="M7 7h.01M7 17h.01"/><path d="M11 7h6M11 17h6"/></g>
+  <text class="name" x="472" y="319.0">operator</text>
+  <text class="sub" x="472" y="336.0">Interfaces &amp; microservices</text>
+  <rect class="card" x="420" y="400" width="200" height="64" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(434,418.0) scale(1.1667)"><rect x="2.5" y="4" width="19" height="16" rx="2"/><path d="M6.5 9.5l3 2.5-3 2.5"/><path d="M12 15h5"/></g>
+  <text class="name" x="472" y="429.0">init</text>
+  <text class="sub" x="472" y="446.0">Seeds config &amp; plugins</text>
+  <rect class="card" x="700" y="85" width="200" height="64" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(714,103.0) scale(1.1667)"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></g>
+  <text class="name" x="752" y="114.0">tsdb</text>
+  <text class="sub" x="752" y="131.0">QuestDB</text>
+  <rect class="card" x="700" y="180" width="200" height="64" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(714,198.0) scale(1.1667)"><ellipse cx="12" cy="5" rx="9" ry="2.5"/><path d="M3 5l2.2 14.5c.2 1.4 3.2 2.5 6.8 2.5s6.6-1.1 6.8-2.5L21 5"/><path d="M7 11c3 1 7 1 10 0"/></g>
+  <text class="name" x="752" y="209.0">buckets</text>
+  <text class="sub" x="752" y="226.0">Versitygw (S3)</text>
+  <rect class="card" x="700" y="290" width="200" height="64" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(714,308.0) scale(1.1667)"><path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5l9 4.5 9-4.5"/></g>
+  <text class="name" x="752" y="319.0">redis</text>
+  <text class="sub" x="752" y="336.0">Valkey · config &amp; CVT</text>
+  <rect class="card" x="700" y="400" width="200" height="64" rx="8"/>
+  <g class="icon" stroke="#1d4ed8" transform="translate(714,418.0) scale(1.1667)"><path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5l9 4.5 9-4.5"/></g>
+  <text class="name" x="752" y="429.0">redis-ephemeral</text>
+  <text class="sub" x="752" y="446.0">Valkey · streams</text>
+</svg>
