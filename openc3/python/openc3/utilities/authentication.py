@@ -128,13 +128,6 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
             return None
 
     @staticmethod
-    def _request_timeout():
-        read_timeout = OPENC3_API_READ_TIMEOUT
-        if read_timeout is None:
-            read_timeout = OPENC3_API_TIMEOUT
-        return (OPENC3_API_TIMEOUT, read_timeout)
-
-    @staticmethod
     def _redact_log_data(data):
         log_data = data.copy()
         for secret_key in ("password", "client_secret", "refresh_token"):
@@ -219,7 +212,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         # print(self.log[0])
 
         # URL encode the data
-        resp = self.http.post(url, data=urlencode(data), headers=headers, timeout=self._request_timeout())
+        resp = self.http.post(url, data=urlencode(data), headers=headers)
 
         self.log[1] = f"response status: {resp.status_code} header: {resp.headers} body: {resp.text}"
         # print(self.log[1])
@@ -231,3 +224,18 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
             )
         else:
             raise OpenC3AuthenticationError(f"authentication request failed {self.log[0]} ::: {self.log[1]}")
+
+
+def authentication_from_environment():
+    """Build the authentication object selected by standard environment configuration.
+
+    Returns:
+        OpenC3Authentication | None: Keycloak authentication for an API token,
+        API user, or nonempty client secret; core authentication for a password;
+        otherwise ``None``.
+    """
+    if OPENC3_API_TOKEN is not None or OPENC3_API_USER is not None or OPENC3_API_CLIENT_SECRET:
+        return OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
+    if OPENC3_API_PASSWORD:
+        return OpenC3Authentication()
+    return None

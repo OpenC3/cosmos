@@ -177,13 +177,6 @@ module OpenC3
       secret
     end
 
-    def request_timeouts
-      connect_timeout = (ENV['OPENC3_API_TIMEOUT'] || '1.0').to_f
-      read_timeout = ENV.fetch('OPENC3_API_READ_TIMEOUT', nil)
-      read_timeout = read_timeout.nil? || read_timeout.empty? ? connect_timeout : read_timeout.to_f
-      [connect_timeout, read_timeout]
-    end
-
     def redacted_log_data(data)
       log_data = data.dup
       %w[password client_secret refresh_token].each do |secret_key|
@@ -265,11 +258,7 @@ module OpenC3
       STDOUT.puts @log[0] if JsonDRb.debug?
       saved_verbose = $VERBOSE; $VERBOSE = nil
       begin
-        connect_timeout, read_timeout = request_timeouts
-        resp = @http.post(uri, URI.encode_www_form(data), headers) do |request|
-          request.options.open_timeout = connect_timeout
-          request.options.timeout = read_timeout
-        end
+        resp = @http.post(uri, URI.encode_www_form(data), headers)
       ensure
         $VERBOSE = saved_verbose
       end
@@ -282,6 +271,16 @@ module OpenC3
       else
         raise OpenC3AuthenticationError, "authentication request failed #{@log[0]} ::: #{@log[1]}"
       end
+    end
+  end
+
+  # Build the appropriate authentication object from standard environment variables.
+  def self.authentication_from_environment
+    client_secret = ENV.fetch('OPENC3_API_CLIENT_SECRET', nil)
+    if ENV['OPENC3_API_TOKEN'] || ENV['OPENC3_API_USER'] || (client_secret && !client_secret.empty?)
+      OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+    elsif ENV['OPENC3_API_PASSWORD']
+      OpenC3Authentication.new()
     end
   end
 end

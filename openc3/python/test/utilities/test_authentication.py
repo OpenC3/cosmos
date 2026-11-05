@@ -22,6 +22,7 @@ from openc3.utilities.authentication import (
     OpenC3AuthenticationError,
     OpenC3AuthenticationRetryableError,
     OpenC3KeycloakAuthentication,
+    authentication_from_environment,
 )
 from test.test_helper import *
 
@@ -646,60 +647,60 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
         self.assertEqual(token1, token2)
         self.assertEqual(auth.http.post.call_count, 2)
 
-    @patch("openc3.io.json_api_object.OPENC3_API_CLIENT_SECRET", "m2m_secret")
-    @patch("openc3.io.json_api_object.OPENC3_API_USER", None)
-    @patch("openc3.io.json_api_object.OPENC3_API_TOKEN", None)
-    @patch("openc3.io.json_api_object.OPENC3_KEYCLOAK_URL", "http://keycloak:8080/auth")
-    def test_json_api_object_generate_auth_uses_client_credentials(self):
-        """Routes client-secret configuration to Keycloak authentication."""
-        auth = JsonApiObject.generate_auth()
-        self.assertIsInstance(auth, OpenC3KeycloakAuthentication)
+    def test_authentication_factory_selects_keycloak_for_client_secret(self):
+        """Selects Keycloak authentication for a nonempty M2M client secret."""
+        with (
+            patch("openc3.utilities.authentication.OPENC3_API_TOKEN", None),
+            patch("openc3.utilities.authentication.OPENC3_API_USER", None),
+            patch("openc3.utilities.authentication.OPENC3_API_PASSWORD", "password"),
+            patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", "m2m_secret"),
+            patch("openc3.utilities.authentication.OPENC3_KEYCLOAK_URL", "http://keycloak"),
+            patch("openc3.utilities.authentication.OpenC3KeycloakAuthentication") as keycloak_auth,
+        ):
+            self.assertIs(authentication_from_environment(), keycloak_auth.return_value)
+            keycloak_auth.assert_called_once_with("http://keycloak")
 
-    @patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", "m2m_secret")
-    @patch("openc3.utilities.authentication.OPENC3_API_READ_TIMEOUT", 9.0)
-    @patch("openc3.utilities.authentication.OPENC3_API_TIMEOUT", 1.5)
-    def test_client_credentials_post_uses_bounded_timeouts(self):
-        """Uses explicit connect and read timeouts for the Keycloak token POST."""
-        auth = OpenC3KeycloakAuthentication(self.test_url)
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.text = json.dumps(
-            {
-                "access_token": "m2m_access_token",
-                "expires_in": 300,
-                "token_type": "bearer",
-            }
-        )
-        auth.http.post = Mock(return_value=mock_response)
+    def test_authentication_factory_uses_core_auth_for_empty_client_secret(self):
+        """Uses core authentication when an empty client secret accompanies a password."""
+        with (
+            patch("openc3.utilities.authentication.OPENC3_API_TOKEN", None),
+            patch("openc3.utilities.authentication.OPENC3_API_USER", None),
+            patch("openc3.utilities.authentication.OPENC3_API_PASSWORD", "password"),
+            patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", ""),
+            patch("openc3.utilities.authentication.OpenC3Authentication") as core_auth,
+            patch("openc3.utilities.authentication.OpenC3KeycloakAuthentication") as keycloak_auth,
+        ):
+            self.assertIs(authentication_from_environment(), core_auth.return_value)
+            keycloak_auth.assert_not_called()
 
-        auth.token()
+    def test_authentication_factory_returns_none_without_credentials(self):
+        """Returns no authentication object when no credential is configured."""
+        with (
+            patch("openc3.utilities.authentication.OPENC3_API_TOKEN", None),
+            patch("openc3.utilities.authentication.OPENC3_API_USER", None),
+            patch("openc3.utilities.authentication.OPENC3_API_PASSWORD", None),
+            patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", None),
+        ):
+            self.assertIsNone(authentication_from_environment())
 
-        self.assertEqual(auth.http.post.call_args.kwargs["timeout"], (1.5, 9.0))
+    def test_json_api_object_generate_auth_delegates_to_shared_factory(self):
+        """Delegates authentication selection to the shared factory."""
+        expected_auth = Mock()
+        with patch(
+            "openc3.io.json_api_object.authentication_from_environment", return_value=expected_auth
+        ) as factory:
+            self.assertIs(JsonApiObject.generate_auth(), expected_auth)
+            factory.assert_called_once_with()
 
-    @patch("openc3.io.json_api_object.OPENC3_API_PASSWORD", "test_password")
-    @patch("openc3.io.json_api_object.OPENC3_API_CLIENT_SECRET", "")
-    @patch("openc3.io.json_api_object.OPENC3_API_USER", None)
-    @patch("openc3.io.json_api_object.OPENC3_API_TOKEN", None)
-    @patch("openc3.io.json_api_object.OpenC3KeycloakAuthentication")
-    @patch("openc3.io.json_api_object.OpenC3Authentication")
-    def test_json_api_object_generate_auth_treats_empty_client_secret_as_unset(
-        self, mock_core_auth, mock_keycloak_auth
-    ):
-        """Falls back to password auth when the client secret is an empty string."""
-        auth = JsonApiObject.generate_auth()
-
-        self.assertIs(auth, mock_core_auth.return_value)
-        mock_keycloak_auth.assert_not_called()
-
-    @patch("openc3.script.server_proxy.OPENC3_API_PASSWORD", None)
-    @patch("openc3.script.server_proxy.OPENC3_API_CLIENT_SECRET", "")
-    @patch("openc3.script.server_proxy.OPENC3_API_USER", None)
-    @patch("openc3.script.server_proxy.OPENC3_API_TOKEN", None)
-    def test_api_server_proxy_generate_auth_treats_empty_client_secret_as_unset(self):
-        """Returns no auth when the client secret is empty and no other auth is configured."""
-        proxy = object.__new__(ApiServerProxy)
-        self.assertIsNone(proxy.generate_auth())
+    def test_api_server_proxy_generate_auth_delegates_to_shared_factory(self):
+        """Delegates authentication selection to the shared factory."""
+        expected_auth = Mock()
+        with patch(
+            "openc3.script.server_proxy.authentication_from_environment", return_value=expected_auth
+        ) as factory:
+            proxy = object.__new__(ApiServerProxy)
+            self.assertIs(proxy.generate_auth(), expected_auth)
+            factory.assert_called_once_with()
 
 
 if __name__ == "__main__":

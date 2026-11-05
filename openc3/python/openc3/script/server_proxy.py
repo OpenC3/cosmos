@@ -18,10 +18,7 @@ import openc3.script
 from openc3.environment import *
 from openc3.io.json_api_object import JsonApiObject
 from openc3.io.json_drb_object import JsonDRbObject
-from openc3.utilities.authentication import (
-    OpenC3Authentication,
-    OpenC3KeycloakAuthentication,
-)
+from openc3.utilities.authentication import authentication_from_environment
 
 
 class ApiServerProxy:
@@ -44,18 +41,8 @@ class ApiServerProxy:
         return float(OPENC3_API_TIMEOUT)
 
     def generate_auth(self):
-        """Generate auth object for use with the JsonDRbObject"""
-        if (
-            OPENC3_API_TOKEN is None
-            and OPENC3_API_USER is None
-            and not OPENC3_API_CLIENT_SECRET
-        ):
-            if OPENC3_API_PASSWORD:
-                return OpenC3Authentication()
-            else:
-                return None
-        else:
-            return OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
+        """Build the standard OpenC3 authentication object from environment configuration."""
+        return authentication_from_environment()
 
     def __init__(self):
         """Create a JsonDRbObject connection to the API server"""

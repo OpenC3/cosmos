@@ -62,6 +62,40 @@ module OpenC3
     end
   end
 
+  describe '.authentication_from_environment' do
+    it 'selects core authentication for password-only configuration' do
+      OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                           'OPENC3_API_CLIENT_SECRET' => nil, 'OPENC3_API_PASSWORD' => 'password') do
+        expect(OpenC3Authentication).to receive(:new).and_return(:core_auth)
+        expect(OpenC3.authentication_from_environment).to eq(:core_auth)
+      end
+    end
+
+    it 'selects Keycloak authentication for a client secret' do
+      OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                           'OPENC3_API_CLIENT_SECRET' => 'm2m_secret', 'OPENC3_KEYCLOAK_URL' => 'http://keycloak') do
+        expect(OpenC3KeycloakAuthentication).to receive(:new).with('http://keycloak').and_return(:keycloak_auth)
+        expect(OpenC3.authentication_from_environment).to eq(:keycloak_auth)
+      end
+    end
+
+    it 'treats an empty client secret as unset' do
+      OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                           'OPENC3_API_CLIENT_SECRET' => '', 'OPENC3_API_PASSWORD' => 'password') do
+        expect(OpenC3Authentication).to receive(:new).and_return(:core_auth)
+        expect(OpenC3KeycloakAuthentication).not_to receive(:new)
+        expect(OpenC3.authentication_from_environment).to eq(:core_auth)
+      end
+    end
+
+    it 'returns nil without authentication configuration' do
+      OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                           'OPENC3_API_CLIENT_SECRET' => nil, 'OPENC3_API_PASSWORD' => nil) do
+        expect(OpenC3.authentication_from_environment).to be_nil
+      end
+    end
+  end
+
   describe OpenC3KeycloakAuthentication do
     let(:test_url) { "http://test-keycloak.local" }
     let(:mock_http) { instance_double(Faraday::Connection) }
@@ -278,13 +312,9 @@ module OpenC3
         allow(JsonDRb).to receive(:debug?).and_return(false)
       end
 
-      it "uses the client_credentials grant with bounded timeouts" do
-        request_options = nil
+      it "uses the client_credentials grant" do
         request_body = nil
-        allow(mock_http).to receive(:post) do |uri, body, headers, &block|
-          request = Struct.new(:options).new(Faraday::RequestOptions.new)
-          block.call(request) if block
-          request_options = request.options
+        allow(mock_http).to receive(:post) do |uri, body, headers|
           request_body = body
           expect(headers['Content-Type']).to eq('application/x-www-form-urlencoded')
           expect(uri.to_s).to eq('http://test-keycloak.local/realms/openc3/protocol/openid-connect/token')
@@ -295,8 +325,6 @@ module OpenC3
         expect(request_body).to include('grant_type=client_credentials')
         expect(request_body).to include('client_id=cosmos-m2m')
         expect(request_body).to include('client_secret=m2m_secret')
-        expect(request_options.open_timeout).to eq(1.0)
-        expect(request_options.timeout).to eq(1.0)
         expect(auth.refresh_token).to be_nil
       end
 

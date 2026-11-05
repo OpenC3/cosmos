@@ -79,19 +79,9 @@ module OpenC3
       # JsonDRb.debug = true # Enable for debugging
     end
 
-    # generate the auth object
+    # Generate the authentication object from the standard environment variables.
     def generate_auth
-      client_secret = ENV.fetch('OPENC3_API_CLIENT_SECRET', nil)
-      client_secret = nil if client_secret&.empty?
-      if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil? and client_secret.nil?
-        if ENV['OPENC3_API_PASSWORD']
-          return OpenC3Authentication.new()
-        else
-          return nil
-        end
-      else
-        return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
-      end
+      OpenC3.authentication_from_environment
     end
 
     # Forwards all method calls to the remote service.
