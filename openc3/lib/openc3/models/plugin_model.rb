@@ -67,6 +67,9 @@ module OpenC3
     # The plugin's requirements.txt as installed, which bridges send to the host
     # (openc3-app) to provision bridged interfaces
     attr_accessor :python_requirements
+    # The plugin's pyproject.toml as installed, sent to the host like
+    # python_requirements
+    attr_accessor :python_pyproject
     attr_accessor :store_plugin_id
     attr_accessor :store_version_id
     attr_accessor :title
@@ -549,8 +552,11 @@ module OpenC3
           render_python_dependency_erb(path, self.erb_variables(plugin_hash, scope: scope)) if File.exist?(path)
         end
 
-        if File.exist?(requirements_path)
-          plugin_model.python_requirements = File.read(requirements_path)
+        # Stored as rendered (installs of one gem can render them differently)
+        # for bridges to provision the host
+        if File.exist?(requirements_path) || File.exist?(pyproject_path)
+          plugin_model.python_requirements = File.read(requirements_path) if File.exist?(requirements_path)
+          plugin_model.python_pyproject = File.read(pyproject_path) if File.exist?(pyproject_path)
           plugin_model.update unless dry_run
         end
 
@@ -876,6 +882,7 @@ module OpenC3
       minimum_cosmos_version: nil,
       needs_dependencies: false,
       python_requirements: nil,
+      python_pyproject: nil,
       store_plugin_id: nil,
       store_version_id: nil,
       title: nil,
@@ -895,6 +902,7 @@ module OpenC3
       @minimum_cosmos_version = minimum_cosmos_version
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
       @python_requirements = python_requirements
+      @python_pyproject = python_pyproject
       @store_plugin_id = store_plugin_id
       @store_version_id = store_version_id
       @title = title
@@ -925,6 +933,7 @@ module OpenC3
         'minimum_cosmos_version' => @minimum_cosmos_version,
         'needs_dependencies' => @needs_dependencies,
         'python_requirements' => @python_requirements,
+        'python_pyproject' => @python_pyproject,
         'store_plugin_id' => @store_plugin_id,
         'store_version_id' => @store_version_id,
         'title' => @title,

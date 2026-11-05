@@ -154,6 +154,28 @@ def plugin_files_dir(plugin):
     return gem[:-4] if gem.endswith(".gem") else gem
 
 
+def plugin_instance(plugin):
+    """The install number of a plugin, e.g. 1 for openc3-cosmos-demo-1.0.0.gem__1.
+    Installs of the same gem share their synced files directory but can render
+    different Python dependencies from their plugin variables."""
+    _, separator, instance = str(plugin).partition("__")
+    return instance if separator and instance else "0"
+
+
+def plugin_requirements_file(plugin):
+    """The name of a plugin install's own requirements file in its synced files
+    directory, e.g. requirements__1.txt (next to the gem's files it may include
+    with -r or -c)."""
+    return f"requirements__{plugin_instance(plugin)}.txt" if plugin else None
+
+
+def plugin_project_dir(plugin):
+    """The directory of a plugin install's own pyproject.toml in its synced
+    files directory, e.g. installs/1 (its own directory since uv only reads a
+    file named pyproject.toml as a project)."""
+    return f"installs/{plugin_instance(plugin)}" if plugin else None
+
+
 def requirement_includes(content):
     """The relative paths of the files a requirements.txt includes with
     -r/--requirement or -c/--constraint."""
@@ -786,6 +808,9 @@ class BridgeMicroservice(Microservice):
                     # The plugin's synced files (see api/files), whose Python
                     # dependencies the host installs for this microservice
                     "plugin_files": plugin_files_dir(data.get("plugin")),
+                    # This install's own dependency files in plugin_files
+                    "plugin_requirements": plugin_requirements_file(data.get("plugin")),
+                    "plugin_project": plugin_project_dir(data.get("plugin")),
                 }
             )
         return json.dumps(entries).encode()
@@ -830,9 +855,9 @@ class BridgeMicroservice(Microservice):
         # bridged stream. The plugin list is a fast Redis read done on the loop;
         # the heavy disk/CPU work runs in a thread so byte pumping keeps going.
         gems = self._plugin_gem_names()
-        requirements = self._installed_requirements()
+        dependency_files = self._installed_dependency_files()
         loop = asyncio.get_event_loop()
-        payload = await loop.run_in_executor(None, self._build_files_payload, gems, have, requirements)
+        payload = await loop.run_in_executor(None, self._build_files_payload, gems, have, dependency_files)
         with contextlib.suppress(Exception):
             await send.write_all(payload)
             await send.finish()
@@ -843,25 +868,38 @@ class BridgeMicroservice(Microservice):
         plugins = Model.all(f"{self.scope}__openc3_plugins")
         return {str(name).split("__")[0] for name in plugins}
 
-    def _installed_requirements(self):
-        """{gem stem: requirements.txt as installed} (Redis read). Installed
-        requirements can differ from the gem's (e.g. rendered from ERB with the
-        plugin variables) so they're sent to the host in place of the gem's."""
-        requirements = {}
-        for name, plugin in Model.all(f"{self.scope}__openc3_plugins").items():
-            content = plugin.get("python_requirements") if isinstance(plugin, dict) else None
-            if content is not None:
-                requirements[plugin_files_dir(name)] = content
-        return requirements
+    def _installed_dependency_files(self):
+        """{synced path: content} of the Python dependency files as installed
+        (Redis read). Installed files can differ from the gem's (e.g. rendered
+        from ERB with the plugin variables), and between installs of the same
+        gem, so each install's are sent as <gem stem>/requirements__<n>.txt and
+        <gem stem>/installs/<n>/pyproject.toml. The gem's own files are replaced
+        with the first install's for openc3-app versions that don't read the
+        per-install files."""
+        files = {}
+        for name, plugin in sorted(Model.all(f"{self.scope}__openc3_plugins").items(), reverse=True):
+            if not isinstance(plugin, dict):
+                continue
+            stem = plugin_files_dir(name)
+            requirements = plugin.get("python_requirements")
+            if requirements is not None:
+                files[f"{stem}/{plugin_requirements_file(name)}"] = requirements
+                files[f"{stem}/requirements.txt"] = requirements
+            pyproject = plugin.get("python_pyproject")
+            if pyproject is not None:
+                files[f"{stem}/{plugin_project_dir(name)}/pyproject.toml"] = pyproject
+                files[f"{stem}/pyproject.toml"] = pyproject
+        return files
 
-    def _build_files_payload(self, gems, have, requirements=None):
+    def _build_files_payload(self, gems, have, dependency_files=None):
         """Build the api/files hash-delta JSON (changed/new files + deletions) for
         `gems` vs the client's `have` manifest. Pure disk/CPU work (no Redis) so it
         runs in a thread off the event loop — see `_serve_files`."""
         current = self._collect_plugin_files(gems)
-        for stem, content in (requirements or {}).items():
-            path = f"{stem}/requirements.txt"
-            if path in current:
+        for path, content in (dependency_files or {}).items():
+            # Only for gems being synced that have that kind of file
+            kind = "pyproject.toml" if path.endswith("pyproject.toml") else "requirements.txt"
+            if f"{path.split('/', 1)[0]}/{kind}" in current:
                 data = content.encode()
                 current[path] = (data, hashlib.sha256(data).hexdigest())
         files = []

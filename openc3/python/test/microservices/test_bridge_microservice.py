@@ -20,7 +20,11 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
-from openc3.microservices.bridge_microservice import BridgeMicroservice
+from openc3.microservices.bridge_microservice import (
+    BridgeMicroservice,
+    plugin_project_dir,
+    plugin_requirements_file,
+)
 
 
 class FakeRecv:
@@ -304,6 +308,7 @@ class TestBridgeFiles(unittest.TestCase):
                 "targets/HA/lib/interface.py": b"target lib",
                 "targets/HA/cmd_tlm/cmd.txt": b"not needed",
                 "requirements.txt": b"-c constraints.txt\n--requirement=more/extra.txt\n-r https://x/y.txt\nrequests\n",
+                "pyproject.toml": b"<%= template %>",
                 "constraints.txt": b"requests<3",
                 "more/extra.txt": b"six",
                 "README.md": b"not needed",
@@ -312,7 +317,16 @@ class TestBridgeFiles(unittest.TestCase):
         with patch.object(self.service, "_find_gem", return_value=path):
             payload = json.loads(
                 self.service._build_files_payload(
-                    {"plugin-1.0.0.gem"}, {}, {"plugin-1.0.0": "rendered\n", "other-1.0.0": "ignored"}
+                    {"plugin-1.0.0.gem"},
+                    {},
+                    {
+                        "plugin-1.0.0/requirements.txt": "rendered\n",
+                        "plugin-1.0.0/requirements__1.txt": "rendered 1\n",
+                        "plugin-1.0.0/pyproject.toml": "rendered project",
+                        "plugin-1.0.0/installs/1/pyproject.toml": "rendered project 1",
+                        "other-1.0.0/requirements__0.txt": "ignored",
+                        "other-1.0.0/installs/0/pyproject.toml": "ignored",
+                    },
                 )
             )
         files = {entry["path"]: base64.b64decode(entry["content"]) for entry in payload["files"]}
@@ -323,19 +337,42 @@ class TestBridgeFiles(unittest.TestCase):
                 "plugin-1.0.0/targets/HA/lib/interface.py": b"target lib",
                 # The installed (e.g. ERB rendered) requirements replace the gem's
                 "plugin-1.0.0/requirements.txt": b"rendered\n",
+                "plugin-1.0.0/requirements__1.txt": b"rendered 1\n",
+                "plugin-1.0.0/pyproject.toml": b"rendered project",
+                "plugin-1.0.0/installs/1/pyproject.toml": b"rendered project 1",
                 "plugin-1.0.0/constraints.txt": b"requests<3",
                 "plugin-1.0.0/more/extra.txt": b"six",
             },
         )
 
-    def test_installed_requirements(self):
+    def test_installed_dependency_files(self):
         plugins = {
-            "plugin-1.0.0.gem__0": {"python_requirements": "requests\n"},
+            "plugin-1.0.0.gem__1": {"python_requirements": "govee\n", "python_pyproject": "govee project"},
+            "plugin-1.0.0.gem__0": {"python_requirements": "wled\n", "python_pyproject": "wled project"},
             "other-1.0.0.gem__0": {"python_requirements": None},
         }
         with patch("openc3.microservices.bridge_microservice.Model.all", return_value=plugins):
             self.service.scope = "DEFAULT"
-            self.assertEqual(self.service._installed_requirements(), {"plugin-1.0.0": "requests\n"})
+            self.assertEqual(
+                self.service._installed_dependency_files(),
+                {
+                    # Each install of a gem has its own
+                    "plugin-1.0.0/requirements__0.txt": "wled\n",
+                    "plugin-1.0.0/requirements__1.txt": "govee\n",
+                    "plugin-1.0.0/installs/0/pyproject.toml": "wled project",
+                    "plugin-1.0.0/installs/1/pyproject.toml": "govee project",
+                    # and the first install's replace the gem's
+                    "plugin-1.0.0/requirements.txt": "wled\n",
+                    "plugin-1.0.0/pyproject.toml": "wled project",
+                },
+            )
+
+    def test_plugin_requirements_file(self):
+        self.assertEqual(plugin_requirements_file("plugin-1.0.0.gem__1"), "requirements__1.txt")
+        self.assertEqual(plugin_requirements_file("plugin-1.0.0.gem"), "requirements__0.txt")
+        self.assertIsNone(plugin_requirements_file(None))
+        self.assertEqual(plugin_project_dir("plugin-1.0.0.gem__1"), "installs/1")
+        self.assertIsNone(plugin_project_dir(None))
 
     def test_host_microservices_name_their_plugin_files(self):
         self.service.scope = "DEFAULT"
@@ -346,4 +383,10 @@ class TestBridgeFiles(unittest.TestCase):
         }
         with patch("openc3.microservices.bridge_microservice.HostInterfaceMicroserviceModel.all", return_value=models):
             payload = json.loads(self.service._host_microservices_payload())
-        self.assertEqual([(entry["name"], entry["plugin_files"]) for entry in payload], [("INT", "my-plugin-1.0.0")])
+        self.assertEqual(
+            [
+                (entry["name"], entry["plugin_files"], entry["plugin_requirements"], entry["plugin_project"])
+                for entry in payload
+            ],
+            [("INT", "my-plugin-1.0.0", "requirements__0.txt", "installs/0")],
+        )

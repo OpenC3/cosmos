@@ -1145,10 +1145,9 @@ module OpenC3
 
             PluginModel.install_phase2({"name" => "name", "variables" => {"driver" => {"value" => "aioshelly"}}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
             expect(rendered).to eql(expected)
-            if dep_file == 'requirements.txt'
-              # Stored rendered for bridges to provision the host
-              expect(PluginModel.get(name: "name__0", scope: "DEFAULT")['python_requirements']).to eql(expected)
-            end
+            # Stored rendered for bridges to provision the host
+            key = dep_file == 'requirements.txt' ? 'python_requirements' : 'python_pyproject'
+            expect(PluginModel.get(name: "name__0", scope: "DEFAULT")[key]).to eql(expected)
           end
         end
 
