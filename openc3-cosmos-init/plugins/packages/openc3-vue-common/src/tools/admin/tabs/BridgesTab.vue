@@ -194,14 +194,17 @@ export default {
   },
   methods: {
     update: function () {
-      Api.get('/openc3-api/bridges/all').then((response) => {
-        let bridges = []
-        for (const [_name, bridge] of Object.entries(response.data)) {
-          bridges.push(bridge)
-        }
-        bridges.sort((a, b) => a.name.localeCompare(b.name))
-        this.bridges = bridges
-      })
+      Api.get('/openc3-api/bridges/all')
+        .then((response) => {
+          let bridges = []
+          for (const [_name, bridge] of Object.entries(response.data)) {
+            bridges.push(bridge)
+          }
+          bridges.sort((a, b) => a.name.localeCompare(b.name))
+          this.bridges = bridges
+        })
+        // Polled on an interval, so a failed request is retried on the next update
+        .catch(() => {})
     },
     showTempAlert: function (message, type = 'success', ms = 3000) {
       this.alert = message
