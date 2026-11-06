@@ -160,7 +160,7 @@ RUN rm -f ./*.gem \
 COPY --from=python-build /openc3/python/ /openc3/python/
 COPY --from=python-build /openc3/uv_cache/ /openc3/uv_cache/
 
-# [F6] Same override as python-build, re-declared because ENV doesn't carry across
+# [F6] Same override as python-build, redeclared because ENV doesn't carry across
 # stages. Baked into the image.
 ARG PYPI_URL_OVERRIDE=
 ENV PYPI_URL=${PYPI_URL_OVERRIDE:-$PYPI_URL}
