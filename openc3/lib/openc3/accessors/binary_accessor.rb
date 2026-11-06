@@ -279,24 +279,25 @@ module OpenC3
         raise "Variable bit size not currently supported for FLOAT data type"
       else
         # STRING, BLOCK, or array types
+        length_item_name = item.variable_bit_size['length_item_name']
+        length_bits_per_count = item.variable_bit_size['length_bits_per_count']
+        length_value_bit_offset = item.variable_bit_size['length_value_bit_offset']
 
         # Calculate current bit size so we can preserve bytes after the item
-        length_item_value = @packet.read(item.variable_bit_size['length_item_name'], :CONVERTED)
-        current_bit_size = (length_item_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+        length_item_value = @packet.read(length_item_name, :CONVERTED)
+        current_bit_size = (length_item_value * length_bits_per_count) + length_value_bit_offset
 
         # Calculate bits after this item
         bits_with_item = item.bit_offset + current_bit_size
         bits_after_item = (buffer.length * 8) - bits_with_item
 
-        if item.original_array_size
-          new_bit_size = value.length * item.bit_size
-        else
-          new_bit_size = value.length * 8
-        end
+        # Arrays are sized in elements, STRING and BLOCK in bytes
+        value_unit_bit_size = item.original_array_size ? item.bit_size : 8
+        new_bit_size = value.length * value_unit_bit_size
         # Reject sizes the length item can't represent exactly or the reader would decode the wrong size
-        length_bits = new_bit_size - item.variable_bit_size['length_value_bit_offset']
-        if length_bits % item.variable_bit_size['length_bits_per_count'] != 0
-          raise ArgumentError, "Variable bit size #{new_bit_size} for item #{item.name} is not representable with length_bits_per_count #{item.variable_bit_size['length_bits_per_count']} and length_value_bit_offset #{item.variable_bit_size['length_value_bit_offset']}"
+        length_bits = new_bit_size - length_value_bit_offset
+        if length_bits % length_bits_per_count != 0
+          raise ArgumentError, "Variable bit size #{new_bit_size} for item #{item.name} is not representable with length_bits_per_count #{length_bits_per_count} and length_value_bit_offset #{length_value_bit_offset}"
         end
 
         if item.original_array_size
@@ -305,8 +306,7 @@ module OpenC3
           item.bit_size = -bits_after_item
         end
 
-        length_value = length_bits / item.variable_bit_size['length_bits_per_count']
-        @packet.write(item.variable_bit_size['length_item_name'], length_value)
+        @packet.write(length_item_name, length_bits / length_bits_per_count)
 
         # Later items need their bit_offset adjusted by the change in this item
         adjustment = new_bit_size - current_bit_size

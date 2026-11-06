@@ -295,27 +295,28 @@ class BinaryAccessor(Accessor):
         return adjustment
 
     def _write_variable_other(self, item, value, buffer):
+        length_item_name = item.variable_bit_size["length_item_name"]
+        length_bits_per_count = item.variable_bit_size["length_bits_per_count"]
+        length_value_bit_offset = item.variable_bit_size["length_value_bit_offset"]
+
         # Calculate current bit size so we can preserve bytes after the item
-        length_item_value = self.packet.read(item.variable_bit_size["length_item_name"], "CONVERTED")
-        current_bit_size = (
-            length_item_value * item.variable_bit_size["length_bits_per_count"]
-        ) + item.variable_bit_size["length_value_bit_offset"]
+        length_item_value = self.packet.read(length_item_name, "CONVERTED")
+        current_bit_size = (length_item_value * length_bits_per_count) + length_value_bit_offset
 
         # Calculate bits after this item
         bits_with_item = item.bit_offset + current_bit_size
         bits_after_item = (len(buffer) * 8) - bits_with_item
 
-        if item.original_array_size is not None:
-            new_bit_size = len(value) * item.bit_size
-        else:
-            new_bit_size = len(value) * 8
+        # Arrays are sized in elements, STRING and BLOCK in bytes
+        value_unit_bit_size = item.bit_size if item.original_array_size is not None else 8
+        new_bit_size = len(value) * value_unit_bit_size
         # Reject sizes the length item can't represent exactly or the reader would decode the wrong size
-        length_bits = new_bit_size - item.variable_bit_size["length_value_bit_offset"]
-        if length_bits % item.variable_bit_size["length_bits_per_count"] != 0:
+        length_bits = new_bit_size - length_value_bit_offset
+        if length_bits % length_bits_per_count != 0:
             raise ValueError(
                 f"Variable bit size {new_bit_size} for item {item.name} is not representable with "
-                f"length_bits_per_count {item.variable_bit_size['length_bits_per_count']} and "
-                f"length_value_bit_offset {item.variable_bit_size['length_value_bit_offset']}"
+                f"length_bits_per_count {length_bits_per_count} and "
+                f"length_value_bit_offset {length_value_bit_offset}"
             )
 
         if item.original_array_size is not None:
@@ -323,8 +324,7 @@ class BinaryAccessor(Accessor):
         else:
             item.bit_size = -bits_after_item
 
-        length_value = length_bits // item.variable_bit_size["length_bits_per_count"]
-        self.packet.write(item.variable_bit_size["length_item_name"], length_value)
+        self.packet.write(length_item_name, length_bits // length_bits_per_count)
 
         # Later items need their bit_offset adjusted by the change in this item
         # so return the adjustment value
