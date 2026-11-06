@@ -817,7 +817,6 @@ const RUBY_END_REGEX = /^\s*end\s*$/
 // Each half below has one unambiguous quantifier and so is linear.
 // Python type annotations are defined like "def method(string: str):", so
 // requiring the line to end in ')' rather than ':' is what excludes them.
-const CLOSING_PAREN_REGEX = /\)$/
 const NAMED_PARAM_REGEX = /\w:\s/
 const PYTHON_IMPORT_REGEX = /^\s*(import|from) /
 const PYTHON_BLOCK_REGEX = /^\s*(if|def|while|else|elif|class).*:\s*$/
@@ -3426,7 +3425,7 @@ export default {
         this.showSuiteError = true
       }
       // Disable suite buttons if we didn't successfully parse the suite
-      this.disableSuiteButtons = file.success == false
+      this.disableSuiteButtons = !file.success
       this.fetchLifecycle(this.filename)
       this.doResize()
     },
@@ -3456,7 +3455,7 @@ export default {
           return 'python'
         }
         // Cheap end-anchored test first so most lines never run the second
-        if (CLOSING_PAREN_REGEX.test(line) && NAMED_PARAM_REGEX.test(line)) {
+        if (line.endsWith(')') && NAMED_PARAM_REGEX.test(line)) {
           return 'ruby'
         }
       }

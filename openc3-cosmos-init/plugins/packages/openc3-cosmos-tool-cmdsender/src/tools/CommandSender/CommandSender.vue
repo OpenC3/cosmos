@@ -713,8 +713,8 @@ export default {
           // If the response has unquoted string data we add quotes
           if (
             typeof response['cmd_params'][key] === 'string' &&
-            value.charAt(0) !== "'" &&
-            value.charAt(0) !== '"'
+            !value.startsWith("'") &&
+            !value.startsWith('"')
           ) {
             value = `'${value}'`
           }
