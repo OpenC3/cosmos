@@ -11,6 +11,7 @@
 
 import json
 import unittest
+import warnings
 from datetime import datetime, timezone
 from unittest.mock import *
 
@@ -48,6 +49,12 @@ class TestMetadata(unittest.TestCase):
     def setUp(self):
         mock_redis(self)
         setup_system()
+        # The metadata methods are deprecated; keep the warnings out of the
+        # other tests' output. assertWarns installs its own filter.
+        catcher = warnings.catch_warnings()
+        catcher.__enter__()
+        self.addCleanup(catcher.__exit__, None, None, None)
+        warnings.simplefilter("ignore", FutureWarning)
 
     def test_metadata(self):
         global gData
@@ -115,3 +122,22 @@ class TestMetadata(unittest.TestCase):
     def test_metadata_input(self):
         with self.assertRaises(RuntimeError):
             metadata_input()
+
+    def test_metadata_deprecation_warnings(self):
+        for method, args in (
+            (metadata_set, ({"key1": "value1"},)),
+            (metadata_all, ()),
+            (metadata_get, ()),
+            (metadata_update, ({"key1": "value2"},)),
+        ):
+            with self.assertWarnsRegex(FutureWarning, f"{method.__name__} is deprecated"):
+                method(*args)
+        with self.assertWarnsRegex(FutureWarning, "metadata_input is deprecated"), self.assertRaises(RuntimeError):
+            metadata_input()
+
+    def test_metadata_update_warns_once(self):
+        metadata_set({"key1": "value1"})
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            metadata_update({"key1": "value2"})
+        self.assertEqual(len(caught), 1)

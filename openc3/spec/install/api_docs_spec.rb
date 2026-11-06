@@ -17,6 +17,7 @@ require 'find'
 module OpenC3
   describe OpenC3 do
     DEPRECATED_APIS = %w(require_utility save_setting check_with_units tlm_with_units)
+    DEPRECATED_APIS.concat(%w(metadata_all metadata_get metadata_set metadata_update metadata_input))
     # These are only internal APIs
     IGNORED_APIS = %w(method_missing self.included write puts openc3_script_sleep)
     IGNORED_APIS.concat(%w(running_script_backtrace running_script_debug running_script_prompt update_news update_plugin_store))
