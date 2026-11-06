@@ -1823,14 +1823,12 @@ export default {
           await this.reloadFile(false)
         }
       }
-    } else {
-      if (this.body) {
-        this.editor.setValue(this.body)
-        this.editor.clearSelection()
-        // If initialFilename is provided, use it for path resolution
-        if (this.initialFilename) {
-          this.filename = this.initialFilename
-        }
+    } else if (this.body) {
+      this.editor.setValue(this.body)
+      this.editor.clearSelection()
+      // If initialFilename is provided, use it for path resolution
+      if (this.initialFilename) {
+        this.filename = this.initialFilename
       }
     }
     this.updateInterval = setInterval(() => {
@@ -3485,24 +3483,22 @@ export default {
             // Menu driven saves on a new file should prompt SaveAs
             this.saveAs()
             return
-          } else {
+          } else if (this.tempFilename === null) {
             // start or auto with NEW_FILENAME
-            if (this.tempFilename === null) {
-              let language = this.detectLanguage()
-              if (language === 'unknown') {
-                language = AceEditorUtils.getDefaultScriptingLanguage()
-              }
-              const ext = { ruby: 'rb', python: 'py' }[language]
-              if (!ext) {
-                // No autosave for unknown language
-                return
-              }
-              const uuid = crypto.randomUUID().split('-')[0]
-              const timestamp = format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')
-              this.tempFilename = `${TEMP_FOLDER}/${timestamp}_${uuid}_temp.${ext}`
-              this.filename = this.tempFilename
-              this.addToRecent(this.filename)
+            let language = this.detectLanguage()
+            if (language === 'unknown') {
+              language = AceEditorUtils.getDefaultScriptingLanguage()
             }
+            const ext = { ruby: 'rb', python: 'py' }[language]
+            if (!ext) {
+              // No autosave for unknown language
+              return
+            }
+            const uuid = crypto.randomUUID().split('-')[0]
+            const timestamp = format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')
+            this.tempFilename = `${TEMP_FOLDER}/${timestamp}_${uuid}_temp.${ext}`
+            this.filename = this.tempFilename
+            this.addToRecent(this.filename)
           }
         }
         this.showSave = true

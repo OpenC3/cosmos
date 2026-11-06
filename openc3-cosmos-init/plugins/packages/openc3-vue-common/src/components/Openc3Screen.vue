@@ -469,11 +469,9 @@ export default {
             clearInterval(this.updater)
             this.updater = null
           }
-        } else {
+        } else if (this.playbackMode === 'realtime') {
           // Resume updates when unfrozen
-          if (this.playbackMode === 'realtime') {
-            this.updateRefreshInterval()
-          }
+          this.updateRefreshInterval()
         }
       },
     },
