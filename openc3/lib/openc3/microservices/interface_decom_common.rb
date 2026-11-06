@@ -19,6 +19,14 @@ require 'openc3/system/system'
 
 module OpenC3
   module InterfaceDecomCommon
+    # Names of the length items owned by the variable sized items in item_names
+    def variable_length_item_names(packet, item_names)
+      item_names.filter_map do |name|
+        item = packet.items[name.to_s.upcase]
+        item.variable_bit_size['length_item_name'].upcase if item&.variable_bit_size
+      end
+    end
+
     def handle_inject_tlm(inject_tlm_json)
       inject_tlm_hash = JSON.parse(inject_tlm_json, allow_nan: true, create_additions: true)
       target_name = inject_tlm_hash['target_name']
@@ -27,15 +35,11 @@ module OpenC3
       type = inject_tlm_hash['type'].to_s.intern
       packet = System.telemetry.packet(target_name, packet_name)
       if item_hash
-        # Writing a VARIABLE_BIT_SIZE item sets its length item to match. Writing the
-        # length item directly would make it disagree with the bytes in the buffer, so
-        # skip it when its variable sized item is also given.
-        given_names = item_hash.keys.map { |name| name.to_s.upcase }
-        length_names = packet.sorted_items.filter_map do |item|
-          item.variable_bit_size['length_item_name'] if item.variable_bit_size and given_names.include?(item.name)
-        end
+        length_item_names = variable_length_item_names(packet, item_hash.keys)
         item_hash.each do |name, value|
-          next if length_names.include?(name.to_s.upcase)
+          # Writing the variable sized item sets its length item, and writing the
+          # length item first would make the item's current size disagree with the buffer
+          next if length_item_names.include?(name.to_s.upcase)
 
           packet.write(name.to_s, value, type)
         end
