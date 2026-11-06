@@ -29,7 +29,9 @@ class TestScopeModel(unittest.TestCase):
 
     def test_raises_on_non_integer_critical_cmd_approvers(self):
         for value in [1.9, 2.0, "2oops", "1.9", "", " ", "-1", True]:
-            with self.assertRaisesRegex(RuntimeError, rf"Invalid value for critical_cmd_approvers: {value} \(must be 1 to 10\)"):
+            with self.assertRaisesRegex(
+                RuntimeError, rf"Invalid value for critical_cmd_approvers: {value} \(must be 1 to 10\)"
+            ):
                 ScopeModel(name="DEFAULT", critical_cmd_approvers=value)
         # Base 10, matching Ruby
         self.assertEqual(ScopeModel(name="DEFAULT", critical_cmd_approvers="010").critical_cmd_approvers, 10)
