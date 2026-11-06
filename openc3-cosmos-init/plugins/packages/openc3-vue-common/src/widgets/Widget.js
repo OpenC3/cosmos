@@ -329,14 +329,12 @@ export default {
       )
       if (foundSetting) {
         return foundSetting['WIDTH']
+      } else if (width) {
+        this.appliedSettings.push(['WIDTH', `${width}${units}`])
+        return parseInt(width)
       } else {
-        if (width) {
-          this.appliedSettings.push(['WIDTH', `${width}${units}`])
-          return parseInt(width)
-        } else {
-          this.appliedSettings.push(['WIDTH', `${defaultWidth}${units}`])
-          return parseInt(defaultWidth)
-        }
+        this.appliedSettings.push(['WIDTH', `${defaultWidth}${units}`])
+        return parseInt(defaultWidth)
       }
     },
     setHeight(height, units = 'px', defaultHeight = '20') {
@@ -347,14 +345,12 @@ export default {
       )
       if (foundSetting) {
         return foundSetting['HEIGHT']
+      } else if (height) {
+        this.appliedSettings.push(['HEIGHT', `${height}${units}`])
+        return parseInt(height)
       } else {
-        if (height) {
-          this.appliedSettings.push(['HEIGHT', `${height}${units}`])
-          return parseInt(height)
-        } else {
-          this.appliedSettings.push(['HEIGHT', `${defaultHeight}${units}`])
-          return parseInt(defaultHeight)
-        }
+        this.appliedSettings.push(['HEIGHT', `${defaultHeight}${units}`])
+        return parseInt(defaultHeight)
       }
     },
     // Expects an array, can either be a single color or 3 rgb values
