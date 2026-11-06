@@ -13,11 +13,11 @@
 
 This completes the processing chain:
 
-    bridge_interface  ->  bridge_microservice  ->  openc3-app  ->  host microservice
+    bridge_interface  ->  bridge_microservice  ->  openc3-cosmos-app  ->  host microservice
 
 It lets COSMOS (running in Docker) drive host-side interfaces such as serial
 ports that aren't reachable from inside the container. The host microservice
-(spawned by openc3-app) talks to the real device; openc3-app relays over Iroh to
+(spawned by openc3-cosmos-app) talks to the real device; openc3-cosmos-app relays over Iroh to
 bridge_microservice; and this interface is the COSMOS end of that pipe.
 
 The Iroh stream carries **raw device bytes** (no framing), so this behaves like
@@ -27,7 +27,7 @@ TERMINATED, ...) can be layered on top via the interface configuration.
 The interface takes the BRIDGE_NAME (its first parameter, or the
 ``OPENC3_BRIDGE_NAME`` environment variable) and looks up that bridge's current
 ticket from its ``BridgeModel`` at connect time, so multiple named bridges are
-supported. The ALPN must match bridge_microservice / openc3-app.
+supported. The ALPN must match bridge_microservice / openc3-cosmos-app.
 """
 
 import asyncio
@@ -87,7 +87,7 @@ class BridgeInterface(Interface):
     """Streams raw bytes to/from bridge_microservice over an Iroh connection.
 
     Routing is by ALPN: the connection uses ALPN ``stream/<INTERFACE_NAME>`` so
-    openc3-app routes it to the host microservice serving that stream.
+    openc3-cosmos-app routes it to the host microservice serving that stream.
     """
 
     def __init__(self, bridge_name=None):
@@ -260,7 +260,7 @@ class BridgeInterface(Interface):
 
         addr = iroh.EndpointTicket.from_string(self.ticket).endpoint_addr()
         self._addr = addr
-        # Route by ALPN: stream/<INTERFACE_NAME>. openc3-app pairs this with the
+        # Route by ALPN: stream/<INTERFACE_NAME>. openc3-cosmos-app pairs this with the
         # host microservice serving the same stream. Raw device bytes only; this
         # flows transparently through bridge_microservice.
         alpn = f"stream/{self.name}".encode()
@@ -346,7 +346,7 @@ class BridgeInterface(Interface):
     # which carries the same bytes the host device sees. Injecting host-reported
     # fields here both lagged the state after a Disconnect and pushed keys
     # (connection_string) that InterfaceStatusModel doesn't accept. The host's
-    # live status is surfaced separately to openc3-app via the hub control tap.
+    # live status is surfaced separately to openc3-cosmos-app via the hub control tap.
 
     # ------------------------------------------------------------------ control
     async def _control_loop(self):

@@ -501,6 +501,9 @@ def unload_plugin(plugin_name, scope:)
     begin
       plugin_model = OpenC3::PluginModel.get_model(name: plugin_name, scope: scope)
       plugin_model.destroy
+      # Uninstall-only, like the Version History below: an upgrade keeps the
+      # files uploaded for VARIABLE_FILE
+      OpenC3::PluginModel.cleanup_uploads(plugin_model.variables, scope: scope)
       OpenC3::LocalMode.remove_local_plugin(plugin_name, scope: scope)
       # Remove the backing gem now that no PluginModel references it,
       # so it disappears from the admin Packages tab.
@@ -1275,14 +1278,14 @@ if not ARGV[0].nil? # argument(s) given
     if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
       puts "Usage: cli bridgeenroll BRIDGE_NAME APP_PUBLIC_KEY [SCOPE]"
       puts ""
-      puts "Authorize an openc3-app control identity for a bridge (Iroh hub) and"
-      puts "print that bridge's current connection ticket. Used by openc3-app to"
+      puts "Authorize an openc3-cosmos-app control identity for a bridge (Iroh hub) and"
+      puts "print that bridge's current connection ticket. Used by openc3-cosmos-app to"
       puts "auto-enroll over the local Docker control plane: the bridge then only"
       puts "accepts api/* control connections from the given app identity."
       puts ""
       puts "Arguments:"
       puts "  BRIDGE_NAME       Name of the bridge (hub)"
-      puts "  APP_PUBLIC_KEY    openc3-app's Iroh public key (EndpointId, hex)"
+      puts "  APP_PUBLIC_KEY    openc3-cosmos-app's Iroh public key (EndpointId, hex)"
       puts "  SCOPE             Scope (optional, default: OPENC3_SCOPE or DEFAULT)"
       puts ""
       puts "On success the bridge ticket is printed alone on stdout."
@@ -1304,7 +1307,7 @@ if not ARGV[0].nil? # argument(s) given
     old_app_public_key = model.app_public_key
     model.app_public_key = app_public_key
     model.update
-    # Print ONLY the ticket so openc3-app can capture it from stdout.
+    # Print ONLY the ticket so openc3-cosmos-app can capture it from stdout.
     puts model.ticket
 
   when 'bridgegem'

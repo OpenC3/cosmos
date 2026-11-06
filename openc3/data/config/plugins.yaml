@@ -26,12 +26,267 @@ VARIABLE_DESCRIPTION:
     - name: Description
       required: true
       description: Human-readable description of the variable's purpose
+VARIABLE_LABEL:
+  summary: Set the label of a plugin variable in the plugin installation dialog
+  description: The VARIABLE_LABEL keyword sets the label shown for the previously defined VARIABLE in the plugin
+    installation dialog instead of the variable name. The variable name is still used in ERB and is shown when
+    hovering over the field. Must follow a VARIABLE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE port_tgt 8080
+      VARIABLE_LABEL "Target Port"
+  parameters:
+    - name: Label
+      required: true
+      description: Label shown in the plugin installation dialog
+      values: .+
+VARIABLE_TYPE:
+  summary: Set the input type of a plugin variable in the plugin installation dialog
+  description: The VARIABLE_TYPE keyword sets how the previously defined VARIABLE is entered and checked in the
+    plugin installation dialog. BOOLEAN is a switch that sets true or false (and can be cleared to blank unless required).
+    INTEGER and NUMBER must be numbers. PASSWORD hides the value while typing.
+    JSON is a full width monospace field that must hold valid JSON. SECRET picks the name of a COSMOS secret from the
+    scope's secrets, and a new secret can be created from the dialog. TARGET_NAME is the name of a target the plugin
+    installs, which must be a valid target name not used by another target. On a new install, a TARGET_NAME whose
+    default is already taken defaults to the next free name instead (INST_2, INST_3 and so on), so a plugin can be
+    installed more than once. Changing or upgrading an install keeps its name. TEXT is the default.
+    Blank values are allowed unless the variable is required (see VARIABLE_REQUIRED and VARIABLE_STATE_REQUIRED).
+    The plugin installation dialog won't install with invalid values. The value is still passed to ERB as a string.
+    Must follow a VARIABLE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE port 8080
+      VARIABLE_TYPE INTEGER
+    VARIABLE use_ssl false
+      VARIABLE_TYPE BOOLEAN
+    VARIABLE password ""
+      VARIABLE_TYPE PASSWORD
+    VARIABLE inst_target_name INST
+      VARIABLE_TYPE TARGET_NAME
+  parameters:
+    - name: Type
+      required: true
+      description: Input type of the variable
+      values: ['TEXT', 'BOOLEAN', 'INTEGER', 'NUMBER', 'PASSWORD', 'JSON', 'SECRET', 'TARGET_NAME']
+VARIABLE_GROUP:
+  summary: Show a plugin variable in a titled section of the plugin installation dialog
+  description: The VARIABLE_GROUP keyword puts the previously defined VARIABLE in a titled section of the plugin
+    installation dialog, e.g. Connection or Authentication. Variables without a group are shown first, then each
+    group in the order it is first used. VARIABLE_ADVANCED variables are shown in the collapsed Advanced section
+    whatever their group. Must follow a VARIABLE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE hostname localhost
+      VARIABLE_GROUP Connection
+    VARIABLE port 8080
+      VARIABLE_GROUP Connection
+    VARIABLE username ""
+      VARIABLE_GROUP Authentication
+  parameters:
+    - name: Group Name
+      required: true
+      description: Title of the section
+      values: .+
+VARIABLE_REQUIRED:
+  summary: Require a value for a plugin variable in the plugin installation dialog
+  description: The VARIABLE_REQUIRED keyword marks the previously defined VARIABLE as required. The plugin installation
+    dialog won't install while the variable is shown and blank. Required variables are marked with *.
+    Use VARIABLE_STATE_REQUIRED to require a variable only while a state is selected. Must follow a VARIABLE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE hostname ""
+      VARIABLE_REQUIRED
+VARIABLE_PATTERN:
+  summary: Check the value of a plugin variable against a regular expression
+  description: The VARIABLE_PATTERN keyword gives a regular expression that the whole value of the previously defined
+    VARIABLE must match in the plugin installation dialog. Blank values aren't checked (see VARIABLE_REQUIRED).
+    The plugin installation dialog won't install while a shown variable doesn't match, and shows the error message.
+    The pattern is checked in the browser so use regular expressions that JavaScript supports.
+    Must follow a VARIABLE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE target_name INST
+      VARIABLE_PATTERN "[A-Z][A-Z0-9_]*" "Use capital letters, numbers and underscores"
+  parameters:
+    - name: Regular Expression
+      required: true
+      description: Regular expression the whole value must match
+      values: .+
+    - name: Error Message
+      required: false
+      description: Message shown when the value doesn't match. Defaults to showing the regular expression.
+      values: .+
+VARIABLE_HIDDEN:
+  summary: Hide a plugin variable from the plugin installation dialog
+  description: The VARIABLE_HIDDEN keyword hides the previously defined VARIABLE in the plugin installation dialog.
+    Its value is set by the VARIABLE_STATE_SET and VARIABLE_DISCOVERY_SET keywords of other variables and can be used
+    in ERB and as a VARIABLE_DISCOVERY parameter, for example to pass per state parameters to a discovery.
+    Since it can't be edited, a hidden variable always takes the values set by the selected states of the installed
+    plugin.txt, including when upgrading. Must follow a VARIABLE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE device shelly
+      VARIABLE_STATE Shelly shelly
+        VARIABLE_STATE_SET mdns_types _shelly._tcp.local.
+      VARIABLE_STATE "Philips Hue" hue
+        VARIABLE_STATE_SET mdns_types _hue._tcp.local.
+    VARIABLE mdns_types ""
+      VARIABLE_HIDDEN
+    VARIABLE host ""
+      VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}
+      values: .+
+VARIABLE_ADVANCED:
+  summary: Show a plugin variable in the advanced section of the plugin installation dialog
+  description: The VARIABLE_ADVANCED keyword marks the previously defined VARIABLE as advanced. Advanced variables are
+    shown in a section of the plugin installation dialog that is collapsed by default, for settings that normally
+    don't need to change. VARIABLE_STATE_SHOW still controls whether an advanced variable is shown.
+    Must follow a VARIABLE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE host 127.0.0.1
+    VARIABLE timeout 10
+      VARIABLE_DESCRIPTION Connection timeout in seconds
+      VARIABLE_ADVANCED
+VARIABLE_BRIDGE:
+  summary: Let the user select which bridge the plugin uses
+  description: The VARIABLE_BRIDGE keyword defines a variable named bridge_name whose value is selected from the
+    bridges available in COSMOS when the plugin is installed. Bridges connect COSMOS to openc3-cosmos-app running on a host
+    computer, so this chooses which host the plugin's bridged interfaces and VARIABLE_DISCOVERY run on.
+    Use bridge_name in ERB like any other variable, for example with the BRIDGE interface modifier.
+    VARIABLE_DESCRIPTION, VARIABLE_STATE and the other VARIABLE modifiers can follow it.
+    Defining VARIABLE bridge_name in the same plugin.txt is an error.
+  since: 7.5.0
+  example: |
+    VARIABLE_BRIDGE
+      VARIABLE_DESCRIPTION "Bridge to the computer the serial device is connected to"
+    VARIABLE serial_port /dev/ttyUSB0
+      VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py
+    INTERFACE SERIAL_INT serial_interface.py <%%= serial_port %> <%%= serial_port %> 115200 NONE 1 10.0 nil
+      BRIDGE <%%= bridge_name %>
+  parameters:
+    - name: Default Bridge Name
+      required: false
+      description: Bridge selected by default. Defaults to DEFAULT, the bridge every scope has.
+      values: .+
+VARIABLE_FILE:
+  summary: Let the user upload a file into the plugin when installing it
+  description: The VARIABLE_FILE keyword defines a variable whose value is a file the user uploads in the plugin
+    dialog, such as a calibration table, a certificate or an interface control document. The file is stored with
+    the plugin so upgrades keep it, and is copied to the destination path in the plugin before anything is
+    installed from it. In ERB the variable is the destination path, or blank if no file was uploaded, so
+    plugin.txt can include the file conditionally. Uploading a file again replaces it.
+    VARIABLE_DESCRIPTION, VARIABLE_LABEL, VARIABLE_REQUIRED and the other VARIABLE modifiers except VARIABLE_TYPE
+    can follow it. A PRE_INSTALL_SCRIPT can read the file to generate the rest of the plugin.
+    Files can be up to 100 MB.
+  since: 7.5.0
+  example: |
+    VARIABLE_FILE icd targets/INST/data/icd.csv
+      VARIABLE_LABEL "Interface control document"
+      VARIABLE_REQUIRED
+    PRE_INSTALL_SCRIPT scripts/generate_target.py <%%= icd %>
+    TARGET INST INST
+  parameters:
+    - name: Variable Name
+      required: true
+      description: The name of the variable
+      values: .+
+    - name: Destination Path
+      required: true
+      description: Path the uploaded file is copied to, relative to the top of the plugin. It must stay inside the
+        plugin and is created if needed.
+      values: .+
+VARIABLE_DISCOVERY:
+  summary: Discover the possible values of a plugin variable from the host computer
+  description: The VARIABLE_DISCOVERY keyword runs a Python discovery class on the host computer paired with
+    COSMOS through openc3-cosmos-app, using the bridge selected by VARIABLE_BRIDGE (or the DEFAULT bridge). The values it finds are added to the dropdown for the
+    previously defined VARIABLE in the plugin installation dialog, after any VARIABLE_STATE options.
+    Discovery runs when the dialog opens and can be refreshed. When installing a new plugin, the first available
+    discovered value is selected automatically unless a value was already chosen. If openc3-cosmos-app is not running the variable can
+    still be typed in by hand. Discovery classes subclass openc3/discovery/discovery.py and implement discover(), or scan() and match().
+    Parameters can include the value of another variable as `${name}`. A variable holding several space separated values passes
+    each as a parameter. The discovery reruns when a referenced variable changes, and is skipped when they are all blank.
+    COSMOS provides openc3/discovery/serial_discovery.py (lists serial ports, optionally limited to USB VID:PID parameters (the PID can be omitted)
+    like `10C4:EA60`), openc3/discovery/hid_discovery.py (lists the serial numbers of USB HID devices, optionally limited by
+    Vendor ID and Product ID, and requires the hidapi package on the host), openc3/discovery/zeroconf_discovery.py
+    (lists the IP addresses of devices advertising the mDNS service types given as parameters, each optionally followed by
+    `|name=glob` or `|property=glob` filters, e.g. `_http._tcp.local.|name=shelly*`) and openc3/discovery/bluetooth_discovery.py
+    (lists the addresses of Bluetooth LE devices matching any of the matchers given as parameters, each made of
+    `local_name=glob`, `service_uuid=uuid`, `service_data_uuid=uuid`, `manufacturer_id=id` or `manufacturer_data_start=hex` (the start of that manufacturer's data) joined with `|`).
+    It also provides openc3/discovery/usb_discovery.py (lists USB devices other than hubs by serial number, or by location like `1-2.3`
+    when they have none, matching any of the parameters, each a hex `VID:PID` (the PID can be omitted) or conditions joined with `|`
+    from `vid=hex`, `pid=hex`, `class=hex` (the device class or that of any interface, optionally with `/subclass` and `/protocol`,
+    e.g. `class=0E` for cameras or `class=FE/03` for USB test instruments), `manufacturer=glob`, `product=glob` and `serial=glob`,
+    and requires the pyusb and libusb-package packages on the host), openc3/discovery/ssdp_discovery.py (lists the IP addresses of
+    network devices advertising themselves with SSDP / UPnP, matching any of the parameters, each `key=glob` conditions joined with `|`
+    where the keys are the search response headers `st`, `usn` and `server` and the device description fields `devicetype`,
+    `friendlyname`, `manufacturer`, `manufacturerurl`, `modelname`, `modelnumber`, `modeldescription`, `modelurl`, `serialnumber`, `udn`,
+    `upc` and `presentationurl`, e.g. `manufacturer=Sonos*|modelname=Sonos?Era*`) and openc3/discovery/neighbor_discovery.py
+    (lists the IP addresses in the host's ARP table, i.e. devices it has recently communicated with, matching any of the parameters,
+    each `mac=glob` (hex digits with or without separators, e.g. `mac=00D02D*`), `hostname=glob` (from reverse DNS) or `ip=glob`
+    conditions joined with `|`). Globs are case-insensitive. Use `?` for a space in a glob since parameters are separated by spaces.
+    A variable can have multiple VARIABLE_DISCOVERY keywords and their results are combined. Each can be followed by
+    VARIABLE_DISCOVERY_SET keywords that set other variables when a value it found is selected.
+    Discovered values are claimed by the plugin that uses them. Once a plugin is installed, the value it chose
+    for a VARIABLE_DISCOVERY variable (for example a serial port) is no longer offered to other plugins
+    discovering with the same class on the same bridge, and the dialog notes which plugin is using it.
+    The claim is released when the plugin is uninstalled. Upgrading or editing the plugin still offers the values it holds.
+    Must follow a VARIABLE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE serial_port /dev/ttyUSB0
+      VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py
+    VARIABLE controller_serial nil
+      VARIABLE_STATE "First controller found" nil
+      VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x0CE6
+    VARIABLE light_host ""
+      VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py _hue._tcp.local.
+  parameters:
+    - name: Discovery Class Filename or Module
+      required: true
+      description: Python filename (e.g. openc3/discovery/serial_discovery.py) or module name
+        (e.g. openc3.discovery.serial_discovery) of the discovery class, relative to the Python path on the host.
+        The class is named after the file, e.g. SerialDiscovery.
+      values: .+
+    - name: Discovery Parameters
+      required: false
+      description: Additional parameters are passed to the discovery class constructor
+      values: .+
+VARIABLE_DISCOVERY_SET:
+  summary: Set another plugin variable when a value found by this discovery is selected
+  description: The VARIABLE_DISCOVERY_SET keyword applies to the previously defined VARIABLE_DISCOVERY.
+    When the user selects a value in the plugin installation dialog that this discovery found, the named variable
+    is set to the given value. This lets one variable configure others based on the kind of device found,
+    for example the controller model. If several discoveries find the same value, the first one's sets apply.
+    The user can still change the value afterwards. Multiple VARIABLE_DISCOVERY_SET keywords can be used.
+    Must follow a VARIABLE_DISCOVERY definition.
+  since: 7.5.0
+  example: |
+    VARIABLE dual_sense_version 5
+      VARIABLE_STATE 5 5
+      VARIABLE_STATE 4 4
+    VARIABLE dual_sense_serial_num None
+      VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x05C4
+        VARIABLE_DISCOVERY_SET dual_sense_version 4
+      VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x0CE6
+        VARIABLE_DISCOVERY_SET dual_sense_version 5
+  parameters:
+    - name: Variable Name
+      required: true
+      description: Name of the variable to set when a value found by this discovery is selected
+      values: .+
+    - name: Value
+      required: true
+      description: Value to set the variable to
       values: .+
 VARIABLE_STATE:
   summary: Add a selectable state for a plugin variable
   description: The VARIABLE_STATE keyword defines a selectable state for a previously defined VARIABLE.
     When states are defined for a variable, it renders as a dropdown/combobox in the plugin installation dialog instead of a text field.
     Users can still type custom values if needed. Multiple VARIABLE_STATE keywords can be used to define multiple states.
+    The dropdown is searched by typing words in any order, allowing small typos, with the closest matches first.
+    Text left in the field that doesn't name a state is kept as a custom value, unless it was a search that found
+    states without one being picked. That is text with spaces, or any such search when the variable's states show, set or
+    require other variables (or have VARIABLE_TEXT). Enter picks the closest match for those searches.
     Must follow a VARIABLE definition.
   since: 7.0.0
   example: |
@@ -48,12 +303,208 @@ VARIABLE_STATE:
       required: true
       description: The value that will be used when this state is selected
       values: .+
+VARIABLE_STATE_SHOW:
+  summary: Show other plugin variables when this state is selected
+  description: The VARIABLE_STATE_SHOW keyword applies to the previously defined VARIABLE_STATE.
+    The listed variables are only displayed in the plugin installation dialog when this state is selected.
+    Variables listed in any VARIABLE_STATE_SHOW of a variable are hidden unless the selected state lists them,
+    or when the controlling variable is itself hidden. Variables never listed by a VARIABLE_STATE_SHOW are always shown. If a custom value is typed that doesn't match a state, all variables are shown.
+    Hidden variables keep their current values and are still passed to the plugin.
+    Multiple VARIABLE_STATE_SHOW keywords can be used and each can list multiple variables.
+    Must follow a VARIABLE_STATE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE interface_type tcp
+    VARIABLE_STATE "TCP/IP Client" tcp
+      VARIABLE_STATE_SHOW hostname port
+    VARIABLE_STATE "Serial" serial
+      VARIABLE_STATE_SHOW serial_port baud_rate
+    VARIABLE_STATE "Simulated" sim # hostname, port, serial_port, baud_rate all hidden
+    VARIABLE hostname 127.0.0.1
+    VARIABLE port 8080
+    VARIABLE serial_port /dev/ttyUSB0
+    VARIABLE baud_rate 115200
+  parameters:
+    - name: Variable Name
+      required: true
+      description: Name of a variable to show when this state is selected. Additional variable names can follow.
+      values: .+
+VARIABLE_STATE_SET:
+  summary: Set the value of another plugin variable when this state is selected
+  description: The VARIABLE_STATE_SET keyword applies to the previously defined VARIABLE_STATE.
+    When this state is selected in the plugin installation dialog, the named variable is set to the given value.
+    The user can still change the value afterwards. If the variable's new value selects a state that has its own
+    VARIABLE_STATE_SET keywords, those are applied as well. The VARIABLE_STATE_SET values of the initially selected state are
+    applied when the dialog opens, except for variables that already have a value from a previous install.
+    Often used together with VARIABLE_STATE_SHOW. Must follow a VARIABLE_STATE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE interface_type tcp
+    VARIABLE_STATE "TCP/IP Client" tcp
+      VARIABLE_STATE_SHOW port
+      VARIABLE_STATE_SET port 8080
+    VARIABLE_STATE "Serial" serial
+      VARIABLE_STATE_SHOW port baud_rate
+      VARIABLE_STATE_SET port /dev/ttyUSB0
+      VARIABLE_STATE_SET baud_rate 9600
+    VARIABLE port 8080
+    VARIABLE baud_rate 115200
+  parameters:
+    - name: Variable Name
+      required: true
+      description: Name of the variable to set when this state is selected
+      values: .+
+    - name: Value
+      required: true
+      description: Value to set the variable to
+      values: .+
+VARIABLE_STATE_DESCRIPTION:
+  summary: Describe a VARIABLE_STATE in the plugin installation dialog dropdown
+  description: The VARIABLE_STATE_DESCRIPTION keyword adds a line of text below the previously defined VARIABLE_STATE
+    in the plugin installation dialog dropdown. The dropdown can be searched by it as well as the state's text.
+    Must follow a VARIABLE_STATE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE interface_type tcp
+      VARIABLE_STATE "TCP/IP" tcp
+        VARIABLE_STATE_DESCRIPTION "Ethernet or Wi-Fi"
+        VARIABLE_STATE_ICON mdi-lan
+      VARIABLE_STATE Serial serial
+        VARIABLE_STATE_DESCRIPTION "RS-232 or USB serial adapter"
+        VARIABLE_STATE_ICON mdi-serial-port
+  parameters:
+    - name: Description
+      required: true
+      description: Text shown below the state
+      values: .+
+VARIABLE_STATE_ICON:
+  summary: Show an icon for a VARIABLE_STATE in the plugin installation dialog dropdown
+  description: The VARIABLE_STATE_ICON keyword shows an icon beside the previously defined VARIABLE_STATE in the plugin
+    installation dialog dropdown. Use a [Material Design Icons](https://pictogrammers.com/library/mdi/) name like
+    mdi-lan. Must follow a VARIABLE_STATE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE interface_type tcp
+      VARIABLE_STATE "TCP/IP" tcp
+        VARIABLE_STATE_ICON mdi-lan
+  parameters:
+    - name: Icon Name
+      required: true
+      description: Material Design Icons name, e.g. mdi-lan
+      values: .+
+VARIABLE_STATE_REQUIRED:
+  summary: Require values for plugin variables while this state is selected
+  description: The VARIABLE_STATE_REQUIRED keyword applies to the previously defined VARIABLE_STATE.
+    While this state is selected (and its variable is shown) the listed variables are required in the plugin
+    installation dialog, like VARIABLE_REQUIRED. Useful when a variable is shown by several states but only some need it.
+    Multiple VARIABLE_STATE_REQUIRED keywords can be used. Must follow a VARIABLE_STATE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE interface_type tcp
+    VARIABLE_STATE "TCP/IP Client" tcp
+      VARIABLE_STATE_SHOW hostname port
+      VARIABLE_STATE_REQUIRED hostname
+    VARIABLE_STATE "TCP/IP Server" server
+      VARIABLE_STATE_SHOW hostname port
+    VARIABLE hostname ""
+    VARIABLE port 8080
+  parameters:
+    - name: Variable Name
+      required: true
+      description: Name of a variable required while this state is selected. Multiple names can be given.
+      values: .+
+PLUGIN_TEXT_START:
+  summary: Start a block of markdown text shown in the plugin installation dialog
+  description: The PLUGIN_TEXT_START keyword begins a block of Markdown that is displayed at the top of the
+    Variables tab in the plugin installation dialog. Use it to explain how to configure the plugin, for example
+    which VARIABLE_STATE to choose for your hardware. All lines up to PLUGIN_TEXT_END are taken as-is
+    (keywords, quotes and markdown headings are not processed as plugin.txt syntax) and the common leading indentation is removed.
+    ERB is not evaluated in the text, but avoid ERB tags since the whole plugin.txt is still processed with ERB at install.
+    Multiple PLUGIN_TEXT_START / PLUGIN_TEXT_END blocks are joined together. The text can be hidden in the dialog,
+    which is remembered for the plugin.
+  since: 7.5.0
+  example: |
+    PLUGIN_TEXT_START
+      # Power Supply Plugin
+      Supports both **TCP/IP** and **Serial** power supplies.
+      1. Choose the `interface_type` for your hardware
+      2. Fill in the connection settings that appear
+    PLUGIN_TEXT_END
+PLUGIN_TEXT_END:
+  summary: Complete a block of markdown text started by PLUGIN_TEXT_START
+  since: 7.5.0
+VARIABLE_TEXT_START:
+  summary: Start a block of markdown text shown when a VARIABLE_STATE is selected
+  description: The VARIABLE_TEXT_START keyword begins a block of Markdown that belongs to the previous VARIABLE_STATE.
+    While that state is selected (and its variable is shown) the text is displayed in the plugin installation dialog
+    below the PLUGIN_TEXT (or beside the variables on wide screens), for directions specific to the choice made. The text of each variable's selected state is
+    shown in the order the variables are defined. The lines up to VARIABLE_TEXT_END are taken as-is like PLUGIN_TEXT,
+    and multiple blocks for the same state are joined together. Must follow a VARIABLE_STATE definition.
+  since: 7.5.0
+  example: |
+    VARIABLE interface_type tcp
+      VARIABLE_STATE "TCP/IP" tcp
+        VARIABLE_STATE_SHOW hostname port
+        VARIABLE_TEXT_START
+          Enter the power supply's **hostname** and **port** from its network settings menu.
+        VARIABLE_TEXT_END
+      VARIABLE_STATE Serial serial
+        VARIABLE_STATE_SHOW serial_port
+        VARIABLE_TEXT_START
+          Connect the power supply's RS-232 port and select the **serial_port**.
+        VARIABLE_TEXT_END
+VARIABLE_TEXT_END:
+  summary: Complete a block of markdown text started by VARIABLE_TEXT_START
+  since: 7.5.0
 NEEDS_DEPENDENCIES:
   summary: Indicates the plugin needs dependencies and sets the GEM_HOME environment variable
   description: If the plugin has a top level lib folder or lists runtime dependencies in the gemspec,
     NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise, having
     NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
   since: 5.5.0
+PRE_INSTALL_SCRIPT:
+  summary: Run a script in the plugin before the plugin is installed
+  description: The PRE_INSTALL_SCRIPT keyword runs a Ruby (.rb) or Python (.py) script from the plugin after its
+    files (including any VARIABLE_FILE uploads) and Python packages are in place, but before any target, interface
+    or other part of the plugin is installed, so it can generate or change those files. It runs in a copy of the
+    plugin's files with that folder as its working directory. Python scripts use the plugin's Python packages and
+    Ruby scripts can require the plugin's lib folders.
+    The script's environment has OPENC3_SCOPE, OPENC3_PLUGIN_NAME, OPENC3_PLUGIN_PATH (the plugin's folder) and
+    OPENC3_PLUGIN_VARIABLES (the plugin variables as a JSON object). Validating a plugin or checking an upgrade
+    also runs it, with OPENC3_PLUGIN_DRY_RUN set to true, so it should only change files in the plugin's folder
+    then. Its output is logged, and the install fails if it exits with an error or runs longer than 10 minutes.
+    Multiple PRE_INSTALL_SCRIPTs run in the order they appear, wherever they are in plugin.txt.
+  since: 7.5.0
+  example: |
+    PRE_INSTALL_SCRIPT scripts/generate_target.py <%%= icd %>
+  parameters:
+    - name: Script Path
+      required: true
+      description: Path of the .rb or .py script, relative to the top of the plugin
+      values: .+
+    - name: Arguments
+      required: false
+      description: Arguments passed to the script
+      values: .+
+POST_INSTALL_SCRIPT:
+  summary: Run a script in the plugin after the plugin is installed
+  description: The POST_INSTALL_SCRIPT keyword runs a Ruby (.rb) or Python (.py) script from the plugin after
+    every part of the plugin has been installed, for example to load initial settings. It runs the same way as a
+    PRE_INSTALL_SCRIPT, with the same environment, but not when validating a plugin or checking an upgrade.
+    The install fails if it exits with an error or runs longer than 10 minutes.
+    Multiple POST_INSTALL_SCRIPTs run in the order they appear, wherever they are in plugin.txt.
+  since: 7.5.0
+  example: |
+    POST_INSTALL_SCRIPT scripts/initialize.rb
+  parameters:
+    - name: Script Path
+      required: true
+      description: Path of the .rb or .py script, relative to the top of the plugin
+      values: .+
+    - name: Arguments
+      required: false
+      description: Arguments passed to the script
+      values: .+
 INTERFACE:
   modifiers:
     <%= MetaConfigParser.load('interface_modifiers.yaml').to_meta_config_yaml(4) %>

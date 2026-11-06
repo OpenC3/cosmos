@@ -59,6 +59,8 @@ Rails.application.routes.draw do
     get '/bridges/:id', to: 'bridges#show', id: /[^\/]+/
     post '/bridges/:id/token', to: 'bridges#token', id: /[^\/]+/
     delete '/bridges/:id', to: 'bridges#destroy', id: /[^\/]+/
+    post '/discovery', to: 'discovery#create'
+    post '/discovery/scan', to: 'discovery#scan'
 
     resources :process_status, only: [:index]
     get '/process_status/:id', to: 'process_status#show', id: /[^\/]+/
@@ -99,6 +101,8 @@ Rails.application.routes.draw do
 
     post '/plugins/install/:id', to: 'plugins#install', id: /[^\/]+/
     post '/plugins/modified_diff', to: 'plugins#modified_diff'
+    post '/plugins/preview', to: 'plugins#preview'
+    post '/plugins/files', to: 'plugins#upload_file'
     post '/plugins/:id/migrate_to_uv', to: 'plugins#migrate_to_uv', id: /[^\/]+/ # Migrate legacy plugin to per-plugin UV venv
     resources :plugins, only: [:index, :create]
     get '/plugins/:id', to: 'plugins#show', id: /[^\/]+/

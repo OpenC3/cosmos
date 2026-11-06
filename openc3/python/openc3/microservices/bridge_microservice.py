@@ -15,20 +15,22 @@ This microservice runs an Iroh endpoint inside COSMOS that everything else
 dials. It is the hub of the bridge:
 
     bridge_interface (COSMOS) ->\\
-                                 bridge_microservice (hub) -> host interface (openc3-app)
-    openc3-app (api/*)       ->/
+                                 bridge_microservice (hub) -> host interface (openc3-cosmos-app)
+    openc3-cosmos-app (api/*)       ->/
 
 Two kinds of ALPN are served:
 
 * ``stream/<interface-name>`` — the raw device data path. Both the COSMOS
   ``bridge_interface`` and the host-side interface dial in with the same ALPN;
   the hub rendezvous-pairs the two connections and pumps raw bytes between them
-  (no framing). openc3-app is NOT in this data path.
-* ``api/*`` — control APIs that openc3-app (the host launcher) dials:
+  (no framing). openc3-cosmos-app is NOT in this data path.
+* ``api/*`` — control APIs that openc3-cosmos-app (the host launcher) dials:
   * ``api/host_microservices`` returns the JSON list of host microservices this
-    bridge should run (from HostInterfaceMicroserviceModel); openc3-app polls it.
-  * ``api/log`` receives host microservice stdout lines from openc3-app and
+    bridge should run (from HostInterfaceMicroserviceModel); openc3-cosmos-app polls it.
+  * ``api/log`` receives host microservice stdout lines from openc3-cosmos-app and
     re-emits them through the real COSMOS Logger.
+  * ``api/discovery`` long-polls for discovery requests (DiscoveryTopic) that
+    openc3-cosmos-app runs on the host; ``api/discovery_result`` returns each result.
 
 The bridge keeps a stable Iroh identity across restarts: the private key lives
 in the secrets store and the public key + current ticket are published in the
@@ -43,6 +45,7 @@ import inspect
 import io
 import json
 import os
+import re
 import tarfile
 import time
 import traceback
@@ -54,6 +57,7 @@ from openc3.models.host_interface_microservice_model import HostInterfaceMicrose
 from openc3.models.model import Model
 from openc3.models.scope_model import ScopeModel
 from openc3.topics.config_topic import ConfigTopic
+from openc3.topics.discovery_topic import DiscoveryTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.store_queued import EphemeralStoreQueued
 
@@ -75,18 +79,26 @@ HOSTCTRL_ALPN_PREFIX = "hostctrl/"
 # the data path's bare <name> key).
 CTRL_CHANNEL_PREFIX = b"ctrl/"
 
-# Control API ALPNs dialed by openc3-app.
+# Control API ALPNs dialed by openc3-cosmos-app.
 API_HOST_MICROSERVICES = b"api/host_microservices"
 API_LOG = b"api/log"
-# Publishes the set of authorized host-microservice identities (openc3-app-minted
+# Publishes the set of authorized host-microservice identities (openc3-cosmos-app-minted
 # public keys) that may use the host/<name> data path.
 API_AUTHORIZE = b"api/authorize"
 # Serves the scope's plugin lib/ files (hash-delta) so host interfaces can use
 # plugin code. The host has no bucket/gem access, so the hub reads and ships it.
 API_FILES = b"api/files"
 # Returns the latest host InterfaceStatus per interface (tapped from the control
-# channel), so openc3-app can display host interface status in its bridge section.
+# channel), so openc3-cosmos-app can display host interface status in its bridge section.
 API_INTERFACE_STATUS = b"api/interface_status"
+# Discovery: openc3-cosmos-app long-polls api/discovery for pending discovery requests
+# (published by COSMOS on the DiscoveryTopic), runs them on the host, and posts
+# each result back on api/discovery_result.
+API_DISCOVERY = b"api/discovery"
+API_DISCOVERY_RESULT = b"api/discovery_result"
+# How long an api/discovery poll waits for a request before returning an empty
+# list. Kept under the QUIC idle timeout so the held connection stays alive.
+DISCOVERY_POLL_TIMEOUT = 20.0
 
 # The /gems volume (present in all deployments) holds the plugin gem cache.
 GEM_HOME = os.environ.get("GEM_HOME") or "/gems"
@@ -128,6 +140,53 @@ MAX_REQUEST_BYTES = 1024 * 1024
 CLOSE_DRAIN_TIMEOUT = 10
 
 
+# Plugin gem files needed to run interfaces on the host
+HOST_FILE_PATTERN = re.compile(r"^(lib/|targets/[^/]+/lib/|requirements\.txt$|pyproject\.toml$)")
+
+
+def plugin_files_dir(plugin):
+    """The directory a plugin's files are synced to on the host: its gem
+    filename without .gem, e.g. openc3-cosmos-demo-1.0.0 for the plugin
+    openc3-cosmos-demo-1.0.0.gem__0."""
+    if not plugin:
+        return None
+    gem = str(plugin).split("__")[0]
+    return gem[:-4] if gem.endswith(".gem") else gem
+
+
+def plugin_instance(plugin):
+    """The install number of a plugin, e.g. 1 for openc3-cosmos-demo-1.0.0.gem__1.
+    Installs of the same gem share their synced files directory but can render
+    different Python dependencies from their plugin variables."""
+    _, separator, instance = str(plugin).partition("__")
+    return instance if separator and instance else "0"
+
+
+def plugin_requirements_file(plugin):
+    """The name of a plugin install's own requirements file in its synced files
+    directory, e.g. requirements__1.txt (next to the gem's files it may include
+    with -r or -c)."""
+    return f"requirements__{plugin_instance(plugin)}.txt" if plugin else None
+
+
+def plugin_project_dir(plugin):
+    """The directory of a plugin install's own pyproject.toml in its synced
+    files directory, e.g. installs/1 (its own directory since uv only reads a
+    file named pyproject.toml as a project)."""
+    return f"installs/{plugin_instance(plugin)}" if plugin else None
+
+
+def requirement_includes(content):
+    """The relative paths of the files a requirements.txt includes with
+    -r/--requirement or -c/--constraint."""
+    includes = []
+    for line in content.decode(errors="replace").splitlines():
+        match = re.match(r"^\s*(?:-r|-c|--requirement|--constraint)(?:\s+|=)(\S+)", line)
+        if match and "://" not in match.group(1) and not os.path.isabs(match.group(1)):
+            includes.append(os.path.normpath(match.group(1)))
+    return includes
+
+
 def _iroh_error_detail(error):
     """Human-readable detail for an exception. iroh's IrohError keeps its message
     behind a .message() method (its str()/repr() is just the class name), so call
@@ -151,7 +210,7 @@ class BridgeMicroservice(Microservice):
     an Iroh keypair if one isn't already stored, so the bridge keeps a stable
     identity across restarts. The private key is held in the secrets store; the
     public key and current connection ticket are written to the BridgeModel so
-    bridge_interfaces (and openc3-app) can look the bridge up by name.
+    bridge_interfaces (and openc3-cosmos-app) can look the bridge up by name.
     """
 
     def __init__(self, name):
@@ -167,11 +226,11 @@ class BridgeMicroservice(Microservice):
         # the first arrival on a data/control channel, awaiting its partner.
         self._waiting = {}
         # Latest host InterfaceStatus per interface name, tapped from the control
-        # channel as it flows host -> COSMOS. Served to openc3-app over
+        # channel as it flows host -> COSMOS. Served to openc3-cosmos-app over
         # api/interface_status so it can show host interface status too.
         self._interface_status = {}
         # Authorized host-microservice identities (Iroh EndpointId hex strings)
-        # allowed on the host/<name> data path. Published by openc3-app over
+        # allowed on the host/<name> data path. Published by openc3-cosmos-app over
         # api/authorize each cycle; held in memory only (matches the ephemeral,
         # never-persisted host keys).
         self._authorized_hosts = set()
@@ -181,6 +240,10 @@ class BridgeMicroservice(Microservice):
         # connections (the hub process is long-lived), so only a genuine gem
         # change (or a hub restart) does the expensive work.
         self._gem_file_cache = {}
+        # Pending discovery requests ({"id", "discovery", "expires_at"}) read from
+        # the DiscoveryTopic, waiting for openc3-cosmos-app to collect them on api/discovery.
+        self._discovery_requests = []
+        self._discovery_event = asyncio.Event()
 
     def _streams(self):
         """The stream (interface) names this bridge relays, from the
@@ -209,7 +272,16 @@ class BridgeMicroservice(Microservice):
             alpns.append(f"{HOST_ALPN_PREFIX}{s}".encode())
             alpns.append(f"{CTRL_ALPN_PREFIX}{s}".encode())
             alpns.append(f"{HOSTCTRL_ALPN_PREFIX}{s}".encode())
-        alpns += [API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_ENROLL, API_FILES, API_INTERFACE_STATUS]
+        alpns += [
+            API_HOST_MICROSERVICES,
+            API_LOG,
+            API_AUTHORIZE,
+            API_ENROLL,
+            API_FILES,
+            API_INTERFACE_STATUS,
+            API_DISCOVERY,
+            API_DISCOVERY_RESULT,
+        ]
         return alpns
 
     def _bridge_name(self):
@@ -251,7 +323,7 @@ class BridgeMicroservice(Microservice):
         secret_key = bytes.fromhex(private_key)
         # Advertise a stream/<name> ALPN quad for each relayed stream (data +
         # control paths) plus the fixed control API ALPNs (always available for
-        # openc3-app). _stream_watcher re-advertises this set as streams change.
+        # openc3-cosmos-app). _stream_watcher re-advertises this set as streams change.
         alpns = self._build_alpns()
         # Bind a fixed UDP port (published to the host from the operator
         # container). By default there is NO relay: co-located peers reach the hub
@@ -305,6 +377,7 @@ class BridgeMicroservice(Microservice):
 
         watcher = asyncio.create_task(self._shutdown_watcher(endpoint))
         streams = asyncio.create_task(self._stream_watcher(endpoint))
+        discovery = asyncio.create_task(self._discovery_watcher())
         # Hold strong references to the per-connection handler tasks: asyncio
         # keeps only weak references, so an un-stored task can be garbage
         # collected mid-flight. Discard each when it finishes.
@@ -321,6 +394,7 @@ class BridgeMicroservice(Microservice):
         finally:
             watcher.cancel()
             streams.cancel()
+            discovery.cancel()
 
     async def _shutdown_watcher(self, endpoint):
         """Close the endpoint on shutdown so the accept loop wakes and exits."""
@@ -411,8 +485,16 @@ class BridgeMicroservice(Microservice):
             if alpn == API_ENROLL:
                 # Bootstrap: gated by a one-time code, not the app identity.
                 await self._serve_enroll(conn)
-            elif alpn in (API_HOST_MICROSERVICES, API_LOG, API_AUTHORIZE, API_FILES, API_INTERFACE_STATUS):
-                # Control APIs are restricted to the enrolled openc3-app identity.
+            elif alpn in (
+                API_HOST_MICROSERVICES,
+                API_LOG,
+                API_AUTHORIZE,
+                API_FILES,
+                API_INTERFACE_STATUS,
+                API_DISCOVERY,
+                API_DISCOVERY_RESULT,
+            ):
+                # Control APIs are restricted to the enrolled openc3-cosmos-app identity.
                 if not self._authorized(conn):
                     self.logger.warn(f"Rejected unauthorized control connection from {conn.remote_id()} on {alpn!r}")
                     await self._close(conn)
@@ -425,10 +507,14 @@ class BridgeMicroservice(Microservice):
                     await self._serve_files(conn)
                 elif alpn == API_INTERFACE_STATUS:
                     await self._serve_interface_status(conn)
+                elif alpn == API_DISCOVERY:
+                    await self._serve_discovery(conn)
+                elif alpn == API_DISCOVERY_RESULT:
+                    await self._serve_discovery_result(conn)
                 else:
                     await self._serve_log(conn)
             elif alpn.startswith(HOST_ALPN_PREFIX.encode()):
-                # Host-side data leg: must be an openc3-app-authorized identity.
+                # Host-side data leg: must be an openc3-cosmos-app-authorized identity.
                 if str(conn.remote_id()) not in self._authorized_hosts:
                     self.logger.warn(f"Rejected unauthorized host data connection from {conn.remote_id()}")
                     await self._close(conn)
@@ -486,7 +572,7 @@ class BridgeMicroservice(Microservice):
     async def _serve_enroll(self, conn):
         """Redeem a one-time manual-enrollment code (Phase 2 remote pairing).
 
-        openc3-app opens the bi-stream and sends a JSON request ``{"code": ...}``.
+        openc3-cosmos-app opens the bi-stream and sends a JSON request ``{"code": ...}``.
         The connector's identity is taken cryptographically from the connection
         (not a claimed value). If the code matches the bridge's pending
         unexpired ``enroll_code``, that identity becomes the authorized app key
@@ -507,7 +593,7 @@ class BridgeMicroservice(Microservice):
                 model.enroll_code_generated_at = None
                 model.create(force=True)
                 response = {"ok": True, "app_public_key": model.app_public_key}
-                self.logger.info(f"Enrolled openc3-app identity {model.app_public_key} for '{self.bridge_name}'")
+                self.logger.info(f"Enrolled openc3-cosmos-app identity {model.app_public_key} for '{self.bridge_name}'")
             else:
                 self.logger.warn(f"Rejected enrollment attempt from {conn.remote_id()} (bad/absent code)")
         except Exception as error:
@@ -527,7 +613,7 @@ class BridgeMicroservice(Microservice):
         return str(conn.remote_id()) == expected
 
     def _authorized(self, conn):
-        """True if `conn`'s remote Iroh identity is the enrolled openc3-app key.
+        """True if `conn`'s remote Iroh identity is the enrolled openc3-cosmos-app key.
 
         The authorized key is read fresh from the BridgeModel each time so
         enrollment (which sets app_public_key out of band) takes effect without
@@ -679,7 +765,7 @@ class BridgeMicroservice(Microservice):
     async def _serve_host_microservices(self, conn):
         """Return the JSON list of host microservices for this bridge.
 
-        openc3-app opens the bi-stream and writes a (content-ignored) request;
+        openc3-cosmos-app opens the bi-stream and writes a (content-ignored) request;
         we reply with the JSON payload and finish.
         """
         bi = await conn.accept_bi()
@@ -719,13 +805,19 @@ class BridgeMicroservice(Microservice):
                     "env": data.get("env") or {},
                     "container": data.get("container"),
                     "needs_dependencies": data.get("needs_dependencies", False),
+                    # The plugin's synced files (see api/files), whose Python
+                    # dependencies the host installs for this microservice
+                    "plugin_files": plugin_files_dir(data.get("plugin")),
+                    # This install's own dependency files in plugin_files
+                    "plugin_requirements": plugin_requirements_file(data.get("plugin")),
+                    "plugin_project": plugin_project_dir(data.get("plugin")),
                 }
             )
         return json.dumps(entries).encode()
 
     async def _serve_authorize(self, conn):
         """Record the set of authorized host-microservice identities that may use
-        the host/<name> data path. openc3-app opens the bi-stream and sends
+        the host/<name> data path. openc3-cosmos-app opens the bi-stream and sends
         ``{"keys": ["<pubkey_hex>", ...]}``; the set replaces the previous one."""
         bi = await conn.accept_bi()
         send = bi.send()
@@ -742,9 +834,9 @@ class BridgeMicroservice(Microservice):
         await self._drain_close(conn)
 
     async def _serve_files(self, conn):
-        """Ship the scope's plugin lib/ files to openc3-app as a hash-delta.
+        """Ship the scope's plugin lib/ files to openc3-cosmos-app as a hash-delta.
 
-        openc3-app opens the bi-stream and sends ``{"have": {path: sha256}}``.
+        openc3-cosmos-app opens the bi-stream and sends ``{"have": {path: sha256}}``.
         We reply with only files whose hash differs (base64 content) plus a list
         of paths to delete, so unchanged files are never resent. The host has no
         bucket/gem access, so all plugin code routes through here over Iroh.
@@ -759,12 +851,13 @@ class BridgeMicroservice(Microservice):
         # Reading/untarring the plugin gems and hashing+encoding their files is
         # slow and fully synchronous. Running it on the event loop would stall the
         # data-path _pump tasks for the duration, so a client that polls this API
-        # (openc3-app, every operator cycle) causes periodic latency bursts in the
+        # (openc3-cosmos-app, every operator cycle) causes periodic latency bursts in the
         # bridged stream. The plugin list is a fast Redis read done on the loop;
         # the heavy disk/CPU work runs in a thread so byte pumping keeps going.
         gems = self._plugin_gem_names()
+        dependency_files = self._installed_dependency_files()
         loop = asyncio.get_event_loop()
-        payload = await loop.run_in_executor(None, self._build_files_payload, gems, have)
+        payload = await loop.run_in_executor(None, self._build_files_payload, gems, have, dependency_files)
         with contextlib.suppress(Exception):
             await send.write_all(payload)
             await send.finish()
@@ -775,11 +868,40 @@ class BridgeMicroservice(Microservice):
         plugins = Model.all(f"{self.scope}__openc3_plugins")
         return {str(name).split("__")[0] for name in plugins}
 
-    def _build_files_payload(self, gems, have):
+    def _installed_dependency_files(self):
+        """{synced path: content} of the Python dependency files as installed
+        (Redis read). Installed files can differ from the gem's (e.g. rendered
+        from ERB with the plugin variables), and between installs of the same
+        gem, so each install's are sent as <gem stem>/requirements__<n>.txt and
+        <gem stem>/installs/<n>/pyproject.toml. The gem's own files are replaced
+        with the first install's for openc3-cosmos-app versions that don't read the
+        per-install files."""
+        files = {}
+        for name, plugin in sorted(Model.all(f"{self.scope}__openc3_plugins").items(), reverse=True):
+            if not isinstance(plugin, dict):
+                continue
+            stem = plugin_files_dir(name)
+            requirements = plugin.get("python_requirements")
+            if requirements is not None:
+                files[f"{stem}/{plugin_requirements_file(name)}"] = requirements
+                files[f"{stem}/requirements.txt"] = requirements
+            pyproject = plugin.get("python_pyproject")
+            if pyproject is not None:
+                files[f"{stem}/{plugin_project_dir(name)}/pyproject.toml"] = pyproject
+                files[f"{stem}/pyproject.toml"] = pyproject
+        return files
+
+    def _build_files_payload(self, gems, have, dependency_files=None):
         """Build the api/files hash-delta JSON (changed/new files + deletions) for
         `gems` vs the client's `have` manifest. Pure disk/CPU work (no Redis) so it
         runs in a thread off the event loop — see `_serve_files`."""
         current = self._collect_plugin_files(gems)
+        for path, content in (dependency_files or {}).items():
+            # Only for gems being synced that have that kind of file
+            kind = "pyproject.toml" if path.endswith("pyproject.toml") else "requirements.txt"
+            if f"{path.split('/', 1)[0]}/{kind}" in current:
+                data = content.encode()
+                current[path] = (data, hashlib.sha256(data).hexdigest())
         files = []
         for path, (content, digest) in current.items():
             if have.get(path) != digest:
@@ -790,15 +912,16 @@ class BridgeMicroservice(Microservice):
     def _collect_plugin_files(self, gems):
         """Return {relative_path: (content_bytes, sha256_hex)} of the files host
         interfaces may need from the given plugin `gems`: everything under
-        ``lib/`` plus any ``requirements.txt`` / ``pyproject.toml`` (used to
-        provision the host venv). Read from the .gem files cached on the /gems
-        volume.
+        ``lib/`` and ``targets/<TARGET>/lib/`` plus any ``requirements.txt`` /
+        ``pyproject.toml`` (used to provision the host venv) and the files
+        ``requirements.txt`` includes with -r / -c. Read from the .gem files
+        cached on the /gems volume.
 
         A gem is only opened/unzipped/hashed when it is new or its file has
         changed (by mtime + size); otherwise the cached result is reused, so
         repeated syncs of unchanged plugins do no work. Paths are prefixed by the
         gem's stem (``<gem>/lib/...``) so files from different plugins don't
-        collide and openc3-app can put each lib dir on PYTHONPATH / install each
+        collide and openc3-cosmos-app can put each lib dir on PYTHONPATH / install each
         gem's Python requirements.
         """
         files = {}
@@ -842,14 +965,24 @@ class BridgeMicroservice(Microservice):
                 if data_member is None:
                     return gem_files
                 with tarfile.open(fileobj=io.BytesIO(data_member.read()), mode="r:gz") as data:
-                    for member in data.getmembers():
-                        if not member.isfile():
-                            continue
-                        if member.name.startswith("lib/") or member.name in ("requirements.txt", "pyproject.toml"):
-                            extracted = data.extractfile(member)
-                            if extracted is not None:
-                                content = extracted.read()
-                                gem_files[f"{stem}/{member.name}"] = (content, hashlib.sha256(content).hexdigest())
+                    members = {member.name: member for member in data.getmembers() if member.isfile()}
+
+                    def add(name):
+                        extracted = data.extractfile(members[name])
+                        if extracted is not None:
+                            content = extracted.read()
+                            gem_files[f"{stem}/{name}"] = (content, hashlib.sha256(content).hexdigest())
+
+                    for name in members:
+                        if HOST_FILE_PATTERN.match(name):
+                            add(name)
+                    # Constraint / requirement files included by requirements.txt
+                    # are resolved relative to it by pip so ship those too
+                    requirements = gem_files.get(f"{stem}/requirements.txt")
+                    if requirements is not None:
+                        for name in requirement_includes(requirements[0]):
+                            if name in members:
+                                add(name)
         except Exception as error:
             self.logger.warn(f"Failed reading files from {gem}: {type(error).__name__}: {error}")
             return None
@@ -862,9 +995,96 @@ class BridgeMicroservice(Microservice):
                 return path
         return None
 
+    # --- Discovery ------------------------------------------------------------
+
+    def _read_discovery_requests(self, topic, offset, timeout_ms):
+        """Block (in an executor thread) until discovery requests are published or
+        timeout_ms elapses, returning [(msg_id, msg_hash), ...]."""
+        messages = []
+        with contextlib.suppress(Exception):
+            for _topic, msg_id, msg_hash, _redis in Topic.read_topics([topic], [offset], timeout_ms):
+                messages.append((msg_id, msg_hash))
+        return messages
+
+    async def _discovery_watcher(self):
+        """Queue discovery requests published for this bridge until openc3-cosmos-app
+        collects them on api/discovery."""
+        loop = asyncio.get_event_loop()
+        topic = DiscoveryTopic.request_topic(self.bridge_name, self.scope)
+        # Start at the current end of the topic so stale requests are ignored
+        try:
+            offset = await loop.run_in_executor(None, Topic.get_last_offset, topic)
+        except Exception:
+            offset = "0-0"
+        while not self.cancel_thread:
+            messages = await loop.run_in_executor(None, self._read_discovery_requests, topic, offset, 1000)
+            for msg_id, msg_hash in messages:
+                offset = msg_id
+                try:
+                    self._discovery_requests.append(DiscoveryTopic.parse_request(msg_hash))
+                except Exception as error:
+                    self.logger.warn(f"Bridge '{self.bridge_name}': bad discovery request: {error}")
+            if self._discovery_requests:
+                self._discovery_event.set()
+
+    def _take_discovery_requests(self):
+        """Remove and return the pending, unexpired discovery requests."""
+        now = time.time()
+        requests = [request for request in self._discovery_requests if request["expires_at"] > now]
+        self._discovery_requests = []
+        self._discovery_event.clear()
+        return requests
+
+    async def _serve_discovery(self, conn):
+        """Long-poll: reply with the pending discovery requests as a JSON list of
+        {"id", "discovery"} (plus "scan" for a hardware scan) as soon as any are
+        available, or an empty list after DISCOVERY_POLL_TIMEOUT."""
+        bi = await conn.accept_bi()
+        send = bi.send()
+        recv = bi.recv()
+        await self._read_request(recv)  # consume the (content-ignored) request
+        requests = self._take_discovery_requests()
+        if not requests:
+            with contextlib.suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(self._discovery_event.wait(), timeout=DISCOVERY_POLL_TIMEOUT)
+            requests = self._take_discovery_requests()
+        payload = []
+        for request in requests:
+            item = {"id": request["id"], "discovery": request["discovery"]}
+            if "scan" in request:
+                item["scan"] = request["scan"]
+            payload.append(item)
+        await send.write_all(json.dumps(payload).encode())
+        with contextlib.suppress(Exception):
+            await send.finish()
+        await self._drain_close(conn)
+
+    async def _serve_discovery_result(self, conn):
+        """Receive one discovery result from openc3-cosmos-app ({"id", "results"},
+        {"id", "scan"} or {"id", "error"}) and publish it for the waiting requester."""
+        bi = await conn.accept_bi()
+        send = bi.send()
+        recv = bi.recv()
+        request = await self._read_request(recv)
+        try:
+            data = json.loads(request or b"{}")
+            if data.get("error"):
+                result = {"error": str(data["error"])}
+            elif data.get("scan") is not None:
+                result = {"scan": data["scan"]}
+            else:
+                result = {"results": data.get("results") or []}
+            DiscoveryTopic.write_result(self.bridge_name, str(data["id"]), result, scope=self.scope)
+        except (ValueError, TypeError, KeyError) as error:
+            self.logger.warn(f"Bad api/discovery_result request: {error}")
+        with contextlib.suppress(Exception):
+            await send.write_all(b'{"ok":true}')
+            await send.finish()
+        await self._drain_close(conn)
+
     async def _serve_log(self, conn):
-        """Ingest host microservice log lines from openc3-app and re-emit them
-        through the real COSMOS Logger. openc3-app opens the bi-stream and
+        """Ingest host microservice log lines from openc3-cosmos-app and re-emit them
+        through the real COSMOS Logger. openc3-cosmos-app opens the bi-stream and
         streams newline-delimited lines."""
         bi = await conn.accept_bi()
         recv = bi.recv()

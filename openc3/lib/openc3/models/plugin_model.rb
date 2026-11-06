@@ -38,6 +38,7 @@ require 'tmpdir'
 require 'tempfile'
 require 'fileutils'
 require 'open3'
+require 'securerandom'
 
 module OpenC3
   class EmptyGemFileError < StandardError; end
@@ -51,12 +52,35 @@ module OpenC3
     PRIMARY_KEY = 'openc3_plugins'
     # Reserved VARIABLE names. See local_mode.rb: update_local_plugin()
     RESERVED_VARIABLE_NAMES = ['target_name', 'microservice_name', 'scope']
+    # Variable defined by VARIABLE_BRIDGE holding the selected bridge
+    BRIDGE_VARIABLE_NAME = 'bridge_name'
+    # ${name} in a VARIABLE_DISCOVERY parameter is replaced by the value of variable name
+    DISCOVERY_REFERENCE = /\$\{(\w+)\}/
+    # Input types of VARIABLE_TYPE in the plugin dialog
+    VARIABLE_TYPES = ['TEXT', 'BOOLEAN', 'INTEGER', 'NUMBER', 'PASSWORD', 'JSON', 'SECRET', 'TARGET_NAME']
+    # Type of a variable defined by VARIABLE_FILE, whose value is an uploaded file
+    FILE_VARIABLE_TYPE = 'FILE'
+    # Bucket folder (under the scope) of the files uploaded for VARIABLE_FILE
+    UPLOADS_PATH = 'plugin_uploads'
+    # The value of a VARIABLE_FILE variable: the upload's id and file name
+    UPLOAD_VALUE = %r{\A(\h{8}-\h{4}-\h{4}-\h{4}-\h{12})/([^/\\]+)\z}
+    # Keywords that run a script in the plugin before or after it is installed
+    INSTALL_SCRIPT_KEYWORDS = ['PRE_INSTALL_SCRIPT', 'POST_INSTALL_SCRIPT']
+    # Seconds an install script can run before the install fails
+    INSTALL_SCRIPT_TIMEOUT_S = 600
     PLUGIN_TXT = 'plugin.txt'
 
     attr_accessor :variables
     attr_accessor :plugin_txt_lines
+    attr_accessor :plugin_text
     attr_accessor :minimum_cosmos_version
     attr_accessor :needs_dependencies
+    # The plugin's requirements.txt as installed, which bridges send to the host
+    # (openc3-cosmos-app) to provision bridged interfaces
+    attr_accessor :python_requirements
+    # The plugin's pyproject.toml as installed, sent to the host like
+    # python_requirements
+    attr_accessor :python_pyproject
     attr_accessor :store_plugin_id
     attr_accessor :store_version_id
     attr_accessor :title
@@ -129,20 +153,75 @@ module OpenC3
         # Phase 1 Gather Variables
         variables = {}
         current_variable_name = nil
+        plugin_text_blocks = []
+        plugin_text_lines = nil # Non-nil while inside PLUGIN_TEXT_START / PLUGIN_TEXT_END
+        variable_text_lines = nil # Non-nil while inside VARIABLE_TEXT_START / VARIABLE_TEXT_END
+        # Yield non-keyword lines so blank lines and markdown headers (# lines) are captured in PLUGIN_TEXT
         parser.parse_file(plugin_txt_path,
-                          false,
+                          true,
                           true,
                           false) do |keyword, params|
-          case keyword
-          when 'VARIABLE'
-            usage = "#{keyword} <Variable Name> <Default Value>"
-            parser.verify_num_parameters(2, nil, usage)
-            variable_name = params[0]
-            if RESERVED_VARIABLE_NAMES.include?(variable_name)
-              raise "VARIABLE name '#{variable_name}' is reserved"
+          if plugin_text_lines
+            if keyword == 'PLUGIN_TEXT_END'
+              parser.set_preserve_lines(false)
+              plugin_text_blocks << plugin_text_lines
+              plugin_text_lines = nil
+            else
+              plugin_text_lines << parser.line
             end
-            value = params[1..-1].join(" ")
+            next
+          end
+          if variable_text_lines
+            if keyword == 'VARIABLE_TEXT_END'
+              parser.set_preserve_lines(false)
+              # Shown below the PLUGIN_TEXT when the VARIABLE_STATE is selected
+              option = variables[current_variable_name]['options'][-1]
+              option['markdown'] = [option['markdown'], unindent_lines(variable_text_lines)].compact.join("\n\n")
+              variable_text_lines = nil
+            else
+              variable_text_lines << parser.line
+            end
+            next
+          end
+
+          case keyword
+          when 'PLUGIN_TEXT_START'
+            parser.verify_num_parameters(0, 0, keyword)
+            # Preserve the raw lines (no stripping, quote or continuation processing) until PLUGIN_TEXT_END
+            parser.set_preserve_lines(true)
+            plugin_text_lines = []
+          when 'PLUGIN_TEXT_END'
+            raise "PLUGIN_TEXT_END must follow a PLUGIN_TEXT_START"
+          when 'VARIABLE_TEXT_START'
+            parser.verify_num_parameters(0, 0, keyword)
+            unless current_variable_name and variables[current_variable_name]['options']
+              raise "VARIABLE_TEXT_START must follow a VARIABLE_STATE definition"
+            end
+            parser.set_preserve_lines(true)
+            variable_text_lines = []
+          when 'VARIABLE_TEXT_END'
+            raise "VARIABLE_TEXT_END must follow a VARIABLE_TEXT_START"
+          when 'VARIABLE', 'VARIABLE_BRIDGE'
+            if keyword == 'VARIABLE'
+              usage = "#{keyword} <Variable Name> <Default Value>"
+              parser.verify_num_parameters(2, nil, usage)
+              variable_name = params[0]
+              if RESERVED_VARIABLE_NAMES.include?(variable_name)
+                raise "VARIABLE name '#{variable_name}' is reserved"
+              end
+              value = params[1..-1].join(" ")
+            else
+              usage = "#{keyword} <Default Bridge Name (optional)>"
+              parser.verify_num_parameters(0, 1, usage)
+              variable_name = BRIDGE_VARIABLE_NAME
+              value = (params[0] || 'DEFAULT').upcase
+            end
+            if variables[variable_name] and (keyword == 'VARIABLE_BRIDGE' or variables[variable_name]['bridge'])
+              raise "VARIABLE '#{BRIDGE_VARIABLE_NAME}' is defined by VARIABLE_BRIDGE and cannot be redefined"
+            end
             variables[variable_name] = { 'value' => value }
+            # Selected from the available bridges in the plugin dialog
+            variables[variable_name]['bridge'] = true if keyword == 'VARIABLE_BRIDGE'
             current_variable_name = variable_name
             if existing_variables && existing_variables.key?(variable_name)
               existing = existing_variables[variable_name]
@@ -153,6 +232,26 @@ module OpenC3
                 variables[variable_name]['value'] = existing
               end
             end
+          when 'VARIABLE_FILE'
+            usage = "#{keyword} <Variable Name> <Destination Path>"
+            parser.verify_num_parameters(2, 2, usage)
+            variable_name = params[0]
+            if RESERVED_VARIABLE_NAMES.include?(variable_name) or variable_name == BRIDGE_VARIABLE_NAME
+              raise "VARIABLE name '#{variable_name}' is reserved"
+            end
+            file_path = params[1]
+            unless safe_relative_path?(file_path)
+              raise "VARIABLE_FILE destination '#{file_path}' must be a path inside the plugin"
+            end
+            # The value is the uploaded file (blank until one is uploaded),
+            # which phase 2 copies to file_path in the plugin
+            variables[variable_name] = { 'value' => '', 'type' => FILE_VARIABLE_TYPE, 'file_path' => file_path }
+            current_variable_name = variable_name
+            if existing_variables && existing_variables.key?(variable_name)
+              existing = existing_variables[variable_name]
+              existing = existing['value'] if existing.is_a?(Hash)
+              variables[variable_name]['value'] = existing.to_s if existing.to_s.match?(UPLOAD_VALUE)
+            end
           when 'VARIABLE_DESCRIPTION'
             usage = "#{keyword} <Description>"
             parser.verify_num_parameters(1, 1, usage)
@@ -160,6 +259,72 @@ module OpenC3
               raise "VARIABLE_DESCRIPTION must follow a VARIABLE definition"
             end
             variables[current_variable_name]['description'] = params[0]
+          when 'VARIABLE_LABEL'
+            usage = "#{keyword} <Label>"
+            parser.verify_num_parameters(1, 1, usage)
+            unless current_variable_name
+              raise "VARIABLE_LABEL must follow a VARIABLE definition"
+            end
+            # Shown in the plugin dialog instead of the variable name
+            variables[current_variable_name]['label'] = params[0]
+          when 'VARIABLE_TYPE'
+            usage = "#{keyword} <#{VARIABLE_TYPES.join(' | ')}>"
+            parser.verify_num_parameters(1, 1, usage)
+            unless current_variable_name
+              raise "VARIABLE_TYPE must follow a VARIABLE definition"
+            end
+            type = params[0].upcase
+            if variables[current_variable_name]['type'] == FILE_VARIABLE_TYPE
+              raise "VARIABLE_TYPE cannot be used with a VARIABLE_FILE"
+            end
+            unless VARIABLE_TYPES.include?(type)
+              raise "VARIABLE_TYPE must be one of #{VARIABLE_TYPES.join(', ')} but got '#{params[0]}'"
+            end
+            variables[current_variable_name]['type'] = type
+          when 'VARIABLE_GROUP'
+            usage = "#{keyword} <Group Name>"
+            parser.verify_num_parameters(1, 1, usage)
+            unless current_variable_name
+              raise "VARIABLE_GROUP must follow a VARIABLE definition"
+            end
+            # Shown in a titled section of the plugin dialog
+            variables[current_variable_name]['group'] = params[0]
+          when 'VARIABLE_REQUIRED'
+            parser.verify_num_parameters(0, 0, keyword)
+            unless current_variable_name
+              raise "VARIABLE_REQUIRED must follow a VARIABLE definition"
+            end
+            # The plugin dialog won't install while it is shown and blank
+            variables[current_variable_name]['required'] = true
+          when 'VARIABLE_PATTERN'
+            usage = "#{keyword} <Regular Expression> <Error Message (optional)>"
+            parser.verify_num_parameters(1, 2, usage)
+            unless current_variable_name
+              raise "VARIABLE_PATTERN must follow a VARIABLE definition"
+            end
+            begin
+              Regexp.new(params[0])
+            rescue RegexpError => e
+              raise "VARIABLE_PATTERN '#{params[0]}' is not a valid regular expression: #{e.message}"
+            end
+            # Matched against the whole value of a non-blank variable in the plugin dialog
+            variables[current_variable_name]['pattern'] = params[0]
+            variables[current_variable_name]['pattern_message'] = params[1] if params[1]
+          when 'VARIABLE_HIDDEN'
+            parser.verify_num_parameters(0, 0, keyword)
+            unless current_variable_name
+              raise "VARIABLE_HIDDEN must follow a VARIABLE definition"
+            end
+            # Never shown in the plugin dialog. Its value comes from VARIABLE_STATE_SET or
+            # VARIABLE_DISCOVERY_SET for use in ERB and VARIABLE_DISCOVERY parameters.
+            variables[current_variable_name]['hidden'] = true
+          when 'VARIABLE_ADVANCED'
+            parser.verify_num_parameters(0, 0, keyword)
+            unless current_variable_name
+              raise "VARIABLE_ADVANCED must follow a VARIABLE definition"
+            end
+            # Shown in a collapsed section of the plugin dialog
+            variables[current_variable_name]['advanced'] = true
           when 'VARIABLE_STATE'
             usage = "#{keyword} <Display Text> <Value>"
             parser.verify_num_parameters(1, 2, usage)
@@ -169,12 +334,143 @@ module OpenC3
             variables[current_variable_name]['options'] ||= []
             option = { 'value' => params[1] || params[0], 'text' => params[0] }
             variables[current_variable_name]['options'] << option
+          when 'VARIABLE_DISCOVERY'
+            usage = "#{keyword} <Discovery Class Filename or Module> <Discovery Parameters (optional)> ..."
+            parser.verify_num_parameters(1, nil, usage)
+            unless current_variable_name
+              raise "VARIABLE_DISCOVERY must follow a VARIABLE definition"
+            end
+            # Either a filename (openc3/discovery/hid_discovery.py) or a module (openc3.discovery.hid_discovery)
+            unless params[0].end_with?('.py') or params[0] =~ /\A[A-Za-z_]\w*(\.[A-Za-z_]\w*)*\z/
+              raise "VARIABLE_DISCOVERY requires a Python discovery class filename (.py) or module name but got '#{params[0]}'"
+            end
+            # A variable can have multiple discoveries whose results are combined.
+            # Each is the discovery class followed by the parameters passed to it.
+            variables[current_variable_name]['discovery'] ||= []
+            variables[current_variable_name]['discovery'] << { 'discovery' => params }
+          when 'VARIABLE_DISCOVERY_SET'
+            usage = "#{keyword} <Variable Name> <Value>"
+            parser.verify_num_parameters(2, nil, usage)
+            discoveries = variables[current_variable_name]['discovery'] if current_variable_name
+            unless discoveries
+              raise "#{keyword} must follow a VARIABLE_DISCOVERY definition"
+            end
+            # Applied when the user selects a value found by this discovery
+            discoveries[-1]['set'] ||= {}
+            discoveries[-1]['set'][params[0]] = params[1..-1].join(" ")
+          when 'VARIABLE_STATE_SHOW'
+            usage = "#{keyword} <Variable Name> <Variable Name (optional)> ..."
+            parser.verify_num_parameters(1, nil, usage)
+            options = variables[current_variable_name]['options'] if current_variable_name
+            unless options
+              raise "#{keyword} must follow a VARIABLE_STATE definition"
+            end
+            options[-1]['show'] ||= []
+            options[-1]['show'].concat(params)
+            options[-1]['show'].uniq!
+          when 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON'
+            usage = keyword == 'VARIABLE_STATE_ICON' ? "#{keyword} <Icon Name>" : "#{keyword} <Description>"
+            parser.verify_num_parameters(1, 1, usage)
+            options = variables[current_variable_name]['options'] if current_variable_name
+            unless options
+              raise "#{keyword} must follow a VARIABLE_STATE definition"
+            end
+            if keyword == 'VARIABLE_STATE_ICON'
+              # Material Design Icons like mdi-cloud, or another icon set's prefix:name
+              unless params[0] =~ /\A[\w:-]+\z/
+                raise "VARIABLE_STATE_ICON '#{params[0]}' is not a valid icon name like mdi-cloud"
+              end
+              options[-1]['icon'] = params[0]
+            else
+              # Shown below the state's text in the plugin dialog dropdown
+              options[-1]['description'] = params[0]
+            end
+          when 'VARIABLE_STATE_REQUIRED'
+            usage = "#{keyword} <Variable Name> <Variable Name (optional)> ..."
+            parser.verify_num_parameters(1, nil, usage)
+            options = variables[current_variable_name]['options'] if current_variable_name
+            unless options
+              raise "#{keyword} must follow a VARIABLE_STATE definition"
+            end
+            # Required in the plugin dialog while the state is selected
+            options[-1]['required'] ||= []
+            options[-1]['required'].concat(params)
+            options[-1]['required'].uniq!
+          when 'VARIABLE_STATE_SET'
+            usage = "#{keyword} <Variable Name> <Value>"
+            parser.verify_num_parameters(2, nil, usage)
+            options = variables[current_variable_name]['options'] if current_variable_name
+            unless options
+              raise "#{keyword} must follow a VARIABLE_STATE definition"
+            end
+            options[-1]['set'] ||= {}
+            options[-1]['set'][params[0]] = params[1..-1].join(" ")
           end
+        end
+
+        raise "PLUGIN_TEXT_START without a matching PLUGIN_TEXT_END" if plugin_text_lines
+        raise "VARIABLE_TEXT_START without a matching VARIABLE_TEXT_END" if variable_text_lines
+        plugin_markdown = plugin_text_blocks.empty? ? nil : plugin_text_blocks.map { |lines| unindent_lines(lines) }.join("\n\n")
+
+        # Variables can be defined after the VARIABLE_STATE_SHOW / SET and VARIABLE_DISCOVERY_SET
+        # that reference them so validate the references once all variables are known
+        variables.each do |variable_name, variable|
+          references = []
+          Array(variable['options']).each do |option|
+            (Array(option['show']) + Array(option['required']) + Array(option['set']&.keys)).each do |target_name|
+              references << [target_name, "state '#{option['text']}'"]
+            end
+          end
+          Array(variable['discovery']).each do |discovery|
+            source = "discovery '#{discovery['discovery'].join(' ')}'"
+            Array(discovery['set']&.keys).each do |target_name|
+              references << [target_name, source]
+            end
+            # Discovery parameters can use the value of another variable as ${name}
+            discovery['discovery'][1..].each do |param|
+              param.scan(DISCOVERY_REFERENCE).flatten.each do |target_name|
+                references << [target_name, source]
+              end
+            end
+          end
+          references.each do |target_name, source|
+            if target_name == variable_name
+              raise "VARIABLE '#{variable_name}' #{source} cannot reference itself"
+            end
+            unless variables.key?(target_name)
+              raise "VARIABLE '#{variable_name}' #{source} references undefined VARIABLE '#{target_name}'"
+            end
+          end
+        end
+
+        # Apply the VARIABLE_STATE_SET values of each initially selected state (in file order so
+        # a set can select the state of a later variable). Values from an existing install win,
+        # except for hidden variables which always follow the state (they can't be edited).
+        variables.each do |_variable_name, variable|
+          next unless variable['options']
+          selected = variable['options'].find { |option| option['value'] == variable['value'] }
+          next unless selected and selected['set']
+          selected['set'].each do |target_name, value|
+            next if existing_variables and existing_variables.key?(target_name) and not variables[target_name]['hidden']
+            variables[target_name]['value'] = value
+          end
+        end
+
+        # A new install's TARGET_NAME variables default to a target name that
+        # isn't taken, so installing a plugin again doesn't collide with the
+        # targets of the first install. Existing installs keep their names.
+        taken = nil
+        variables.each do |variable_name, variable|
+          next unless variable['type'] == 'TARGET_NAME'
+          next if existing_variables and existing_variables.key?(variable_name)
+          taken ||= Set.new(TargetModel.names(scope: scope))
+          variable['value'] = available_target_name(variable['value'], taken)
+          taken << variable['value'].upcase
         end
 
         store_plugin_id = Integer(store_plugin_id) if store_plugin_id
         store_version_id = Integer(store_version_id) if store_version_id
-        model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, store_plugin_id: store_plugin_id, store_version_id: store_version_id, minimum_cosmos_version: minimum_cosmos_version, scope: scope)
+        model = PluginModel.new(name: gem_name, variables: variables, plugin_txt_lines: plugin_txt_lines, plugin_text: plugin_markdown, store_plugin_id: store_plugin_id, store_version_id: store_version_id, minimum_cosmos_version: minimum_cosmos_version, scope: scope)
         result = model.as_json()
         result['existing_plugin_txt_lines'] = existing_plugin_txt_lines if existing_plugin_txt_lines and not process_existing and existing_plugin_txt_lines != result['plugin_txt_lines']
         return result
@@ -182,6 +478,33 @@ module OpenC3
         FileUtils.remove_entry_secure(temp_dir, true)
         tf.unlink if tf
       end
+    end
+
+    # Extract simple key-value pairs for ERB substitution
+    # Variables can be either new format (hash with 'value' key) or old format (string)
+    def self.erb_variables(plugin_hash, scope:)
+      erb_variables = {}
+      (plugin_hash['variables'] || {}).each do |name, var|
+        erb_variables[name] = var.is_a?(Hash) ? var['value'] : var
+        # A VARIABLE_FILE is the path its file is copied to in the plugin, or
+        # blank without a file
+        if var.is_a?(Hash) and var['type'] == FILE_VARIABLE_TYPE
+          erb_variables[name] = var['value'].to_s.match?(UPLOAD_VALUE) ? var['file_path'] : ''
+        end
+      end
+      erb_variables['scope'] = scope
+      erb_variables
+    end
+
+    # Renders ERB in a plugin's Python dependency file (requirements.txt or
+    # pyproject.toml) in place using the plugin variables. The ERB filename is
+    # set so templates can locate files next to it with File.dirname(__FILE__).
+    def self.render_python_dependency_erb(path, erb_variables)
+      data = File.read(path).force_encoding("UTF-8")
+      return unless data.include?('<%')
+      erb = ERB.new(data.comment_erb(), trim_mode: "-")
+      erb.filename = path
+      File.write(path, erb.result(binding.set_variables(erb_variables)))
     end
 
     # Called by the PluginsController to create the plugin
@@ -238,6 +561,10 @@ module OpenC3
           end
         end
 
+        # Files uploaded for VARIABLE_FILE go where the plugin expects them
+        # before anything reads the plugin's files
+        copy_uploads(plugin_hash, gem_path, scope: scope)
+
         plugin_model.minimum_cosmos_version = pkg.spec.metadata['openc3_cosmos_minimum_version']
 
         # Process OpenC3 Store metadata
@@ -275,6 +602,18 @@ module OpenC3
         # Handle python dependencies (pyproject.toml or requirements.txt)
         pyproject_path = File.join(gem_path, 'pyproject.toml')
         requirements_path = File.join(gem_path, 'requirements.txt')
+        # Dependency files may use ERB so plugin variables can select dependencies
+        [pyproject_path, requirements_path].each do |path|
+          render_python_dependency_erb(path, self.erb_variables(plugin_hash, scope: scope)) if File.exist?(path)
+        end
+
+        # Stored as rendered (installs of one gem can render them differently)
+        # for bridges to provision the host
+        if File.exist?(requirements_path) || File.exist?(pyproject_path)
+          plugin_model.python_requirements = File.read(requirements_path) if File.exist?(requirements_path)
+          plugin_model.python_pyproject = File.read(pyproject_path) if File.exist?(pyproject_path)
+          plugin_model.update unless dry_run
+        end
 
         if File.exist?(pyproject_path) || File.exist?(requirements_path)
           pypi_url = resolve_pypi_url(scope: scope)
@@ -342,6 +681,27 @@ module OpenC3
           plugin_model.update unless dry_run
         end
 
+        # Run the PRE_INSTALL_SCRIPTs now that the plugin's files and Python
+        # packages are in place, before anything is installed from them (they
+        # can generate files, e.g. target definitions). Dry runs (validation
+        # and the upgrade diff) run them too, with OPENC3_PLUGIN_DRY_RUN set,
+        # since what they generate may be needed. POST_INSTALL_SCRIPTs run
+        # after everything is installed, and not in dry runs.
+        erb_variables = self.erb_variables(plugin_hash, scope: scope)
+        scripts_tf = Tempfile.new(PLUGIN_TXT)
+        begin
+          scripts_tf.write(plugin_hash['plugin_txt_lines'].join("\n"))
+          scripts_tf.close
+          install_scripts = install_scripts(scripts_tf.path, erb_variables)
+        ensure
+          scripts_tf.unlink
+        end
+        script_options = { gem_path: gem_path, plugin_name: plugin_model.name, erb_variables: erb_variables, dry_run: dry_run, scope: scope }
+        gem_lib_dirs = -> { Dir.glob("#{gem_path}/**/lib").select { |dir| File.directory?(dir) } }
+        install_scripts['PRE_INSTALL_SCRIPT'].each do |script, args|
+          run_install_script('PRE_INSTALL_SCRIPT', script, args, load_dirs: gem_lib_dirs.call, **script_options)
+        end
+
         # Temporarily add all lib folders from the gem to the end of the load path
         load_dirs = []
         begin
@@ -358,23 +718,28 @@ module OpenC3
           tf.write(file_data)
           tf.close
           plugin_txt_path = tf.path
-          variables = plugin_hash['variables']
-          variables ||= {}
-          # Extract simple key-value pairs for ERB substitution
-          # Variables can be either new format (hash with 'value' key) or old format (string)
-          erb_variables = {}
-          variables.each do |name, var|
-            erb_variables[name] = var.is_a?(Hash) ? var['value'] : var
-          end
-          erb_variables['scope'] = scope
           if File.exist?(plugin_txt_path)
             parser = OpenC3::ConfigParser.new("https://openc3.com")
 
             current_model = nil
+            text_end = nil # The END keyword while inside a PLUGIN_TEXT or VARIABLE_TEXT block
             parser.parse_file(plugin_txt_path, false, true, true, erb_variables) do |keyword, params|
+              # PLUGIN_TEXT and VARIABLE_TEXT were captured in phase 1 so skip them
+              if text_end
+                if keyword == text_end
+                  parser.set_preserve_lines(false)
+                  text_end = nil
+                end
+                next
+              end
               case keyword
-              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE', 'NEEDS_DEPENDENCIES'
+              when 'PLUGIN_TEXT_START', 'VARIABLE_TEXT_START'
+                parser.set_preserve_lines(true)
+                text_end = keyword.sub('_START', '_END')
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_GROUP', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'VARIABLE_FILE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
+              when *INSTALL_SCRIPT_KEYWORDS
+                # Run before and after the install
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
                 begin
                   if current_model
@@ -411,6 +776,11 @@ module OpenC3
               current_model = nil
             end
           end
+          unless dry_run
+            install_scripts['POST_INSTALL_SCRIPT'].each do |script, args|
+              run_install_script('POST_INSTALL_SCRIPT', script, args, load_dirs: load_dirs, **script_options)
+            end
+          end
         ensure
           load_dirs.each do |load_dir|
             $LOAD_PATH.delete(load_dir)
@@ -436,12 +806,165 @@ module OpenC3
       install_phase2(plugin_hash, scope: scope, diff_only: true)
     end
 
+    # The plugin.txt lines that install the plugin with ERB rendered using the
+    # plugin_hash variables, without the variable definitions and text blocks.
+    # Returns { 'plugin_txt' => text } or { 'error' => message } if ERB fails.
+    def self.preview(plugin_hash, scope:)
+      erb_variables = self.erb_variables(plugin_hash, scope: scope)
+      text = Array(plugin_hash['plugin_txt_lines']).join("\n")
+      begin
+        output = ERB.new(text.comment_erb(), trim_mode: "-").result(binding.set_variables(erb_variables))
+      rescue Exception => e # SyntaxError and NameError are common ERB mistakes
+        line = e.backtrace_locations&.find { |location| location.path == '(erb)' }&.lineno
+        line ||= e.message[/\(erb\):(\d+)/, 1]
+        return { 'error' => "ERB error#{" at line #{line}" if line}: #{e.message.lines.first&.strip}" }
+      end
+      lines = []
+      text_end = nil
+      output.each_line(chomp: true) do |line|
+        keyword = line.strip.split(/\s+/, 2)[0]
+        if text_end
+          text_end = nil if keyword == text_end
+          next
+        end
+        if keyword.nil?
+          lines << '' unless lines.empty? or lines[-1].empty?
+        elsif keyword == 'PLUGIN_TEXT_START' or keyword == 'VARIABLE_TEXT_START'
+          text_end = keyword.sub('_START', '_END')
+        elsif not keyword.start_with?('VARIABLE', '#')
+          lines << line
+        end
+      end
+      lines.pop while lines[-1] == ''
+      { 'plugin_txt' => lines.join("\n") }
+    end
+
+    # Discovery classes can be given as a filename or module name, so compare
+    # them as module names, e.g. openc3.discovery.serial_discovery
+    def self.discovery_class_key(name)
+      name.to_s.delete_suffix('.py').tr('/', '.')
+    end
+
+    # Version of the discovery_matchers format, shared with the OpenC3 Store
+    DISCOVERY_MATCHERS_FORMAT = 1
+
+    # The hardware a plugin can be installed for, from the VARIABLE_DISCOVERY of
+    # its variables (as parsed by install_phase1). Hardware discovery on the
+    # host scans for devices once and checks them against the matchers of every
+    # plugin in the OpenC3 Store, which computes them when a plugin is uploaded.
+    #
+    # Each matcher is a discovery class and its parameters (which must find the
+    # device), the variable the found value goes into, other variables to set
+    # when installing for it, and an optional title. Discovery parameters that
+    # use other variables (${name}) give one matcher for each state that sets
+    # them, e.g. one per integration of the Home Assistant plugin. A discovery
+    # without parameters finds any device of its kind, so it isn't a matcher.
+    def self.discovery_matchers(variables)
+      matchers = []
+      variables.each do |variable_name, variable|
+        Array(variable['discovery']).each do |entry|
+          discovery_class = discovery_class_key(entry['discovery'][0])
+          params = entry['discovery'][1..]
+          discovery_set = entry['set'] || {}
+          references = params.flat_map { |param| param.scan(DISCOVERY_REFERENCE).flatten }.uniq
+
+          # Fill in the parameters for each state that sets the variables they use
+          states = discovery_states(variables, variable_name, references)
+          if states.empty?
+            # Nothing sets them, so they keep their default values
+            states = [[nil, nil, references.to_h { |name| [name, variables[name]['value']] }]]
+          end
+          states.each do |control_name, option, values|
+            expanded = params.map { |param| param.gsub(DISCOVERY_REFERENCE) { values[$1].to_s } }.join(' ').split
+            next if expanded.empty?
+            set = {}
+            set[control_name] = option['value'] if control_name
+            set.merge!(discovery_set)
+            matcher = { 'class' => discovery_class, 'params' => expanded, 'variable' => variable_name, 'set' => set }
+            title = option ? option['text'] : discovery_set_title(variables, discovery_set)
+            matcher['title'] = title if title
+            matchers << matcher unless matchers.include?(matcher)
+          end
+        end
+      end
+      { 'format' => DISCOVERY_MATCHERS_FORMAT, 'matchers' => matchers }
+    end
+
+    # The states that set any of references and show variable_name, as
+    # [variable name, state, reference values]. References a state doesn't set
+    # keep their default values.
+    def self.discovery_states(variables, variable_name, references)
+      return [] if references.empty?
+      states = []
+      variables.each do |control_name, control|
+        options = Array(control['options'])
+        # States that use VARIABLE_STATE_SHOW only show the variable if they list it
+        shown_by_states = options.any? { |option| Array(option['show']).include?(variable_name) }
+        options.each do |option|
+          set = option['set'] || {}
+          next unless references.any? { |name| set.key?(name) }
+          next if shown_by_states and !Array(option['show']).include?(variable_name)
+          values = references.to_h { |name| [name, set.fetch(name) { variables[name]['value'] }] }
+          states << [control_name, option, values]
+        end
+      end
+      states
+    end
+
+    # The text of a state selected by a VARIABLE_DISCOVERY_SET, e.g. the model of
+    # controller a USB product ID identifies
+    def self.discovery_set_title(variables, discovery_set)
+      discovery_set.each do |name, value|
+        option = Array(variables.dig(name, 'options')).find { |state| state['value'] == value }
+        return option['text'] if option
+      end
+      nil
+    end
+
+    # The value an installed plugin selected for a VARIABLE_DISCOVERY variable
+    # "claims" that device (e.g. a serial port or controller serial number) so
+    # discovery stops offering it to other plugins. Claims are per bridge, as
+    # each bridge is a different host, and per discovery class (not its
+    # parameters) so e.g. a HID serial number claimed through one product ID is
+    # claimed for every HID discovery. Uninstalling the plugin releases its claims.
+    #
+    # @param exclude_plugin [String] Plugin being upgraded or edited, which must
+    #   still be offered the devices it already holds
+    # @return [Hash] Claimed value => name of the plugin holding it
+    def self.discovery_claims(bridge_name, discovery_class, exclude_plugin: nil, scope:)
+      bridge_name = bridge_name.to_s.upcase
+      key = discovery_class_key(discovery_class)
+      claims = {}
+      all(scope: scope).each do |plugin_name, plugin|
+        next if plugin_name == exclude_plugin
+        variables = (plugin['variables'] || {}).values.select { |variable| variable.is_a?(Hash) }
+        bridge = variables.find { |variable| variable['bridge'] }
+        next unless (bridge ? bridge['value'] : 'DEFAULT').to_s.upcase == bridge_name
+        variables.each do |variable|
+          next unless variable['discovery'].is_a?(Array)
+          next unless variable['discovery'].any? { |entry| discovery_class_key(Array(entry['discovery'])[0]) == key }
+          claims[variable['value'].to_s] ||= plugin_name
+        end
+      end
+      claims
+    end
+
+    # Remove the common leading whitespace so PLUGIN_TEXT can be indented in plugin.txt
+    # without turning the markdown into code blocks
+    def self.unindent_lines(lines)
+      indent = lines.reject { |line| line.strip.empty? }.map { |line| line[/\A[ \t]*/].length }.min || 0
+      lines.map { |line| line[indent..] || '' }.join("\n").strip
+    end
+
     def initialize(
       name:,
       variables: {},
       plugin_txt_lines: [],
+      plugin_text: nil,
       minimum_cosmos_version: nil,
       needs_dependencies: false,
+      python_requirements: nil,
+      python_pyproject: nil,
       store_plugin_id: nil,
       store_version_id: nil,
       title: nil,
@@ -457,8 +980,11 @@ module OpenC3
       super("#{scope}__#{PRIMARY_KEY}", name: name, updated_at: updated_at, scope: scope)
       @variables = variables
       @plugin_txt_lines = plugin_txt_lines
+      @plugin_text = plugin_text
       @minimum_cosmos_version = minimum_cosmos_version
       @needs_dependencies = ConfigParser.handle_true_false(needs_dependencies)
+      @python_requirements = python_requirements
+      @python_pyproject = python_pyproject
       @store_plugin_id = store_plugin_id
       @store_version_id = store_version_id
       @title = title
@@ -485,8 +1011,11 @@ module OpenC3
         'name' => @name,
         'variables' => @variables,
         'plugin_txt_lines' => @plugin_txt_lines,
+        'plugin_text' => @plugin_text,
         'minimum_cosmos_version' => @minimum_cosmos_version,
         'needs_dependencies' => @needs_dependencies,
+        'python_requirements' => @python_requirements,
+        'python_pyproject' => @python_pyproject,
         'store_plugin_id' => @store_plugin_id,
         'store_version_id' => @store_version_id,
         'title' => @title,
@@ -698,6 +1227,158 @@ module OpenC3
       OpenC3::GemModel.destroy(gem_filename, log_and_raise_needed_errors: false)
     rescue => e
       Logger.warn("Could not remove gem #{gem_filename}: #{e.message}", scope: scope)
+    end
+
+    # name if no target in taken uses it, otherwise the first of name_2,
+    # name_3, ... that is free. A numbered name counts on from its number.
+    def self.available_target_name(name, taken)
+      name = name.to_s.strip.upcase
+      return name if name.empty? or !taken.include?(name)
+      base, number = name.match(/\A(.+?)(?:_(\d+))?\z/).captures
+      number = number ? number.to_i + 1 : 2
+      number += 1 while taken.include?("#{base}_#{number}")
+      "#{base}_#{number}"
+    end
+
+    # Whether path is relative and stays inside the folder it is relative to
+    def self.safe_relative_path?(path)
+      path = path.to_s
+      return false if path.empty? or path.start_with?('/', '\\') or path.match?(/\A[A-Za-z]:/)
+      parts = path.split(%r{[/\\]})
+      !parts.include?('..') and !parts.reject { |part| part.empty? or part == '.' }.empty?
+    end
+
+    # The bucket key of an uploaded VARIABLE_FILE value, or nil if it isn't one
+    def self.upload_key(value, scope:)
+      match = value.to_s.match(UPLOAD_VALUE)
+      return nil unless match
+      "#{scope}/#{UPLOADS_PATH}/#{match[1]}/#{match[2]}"
+    end
+
+    # Store a file uploaded for a VARIABLE_FILE in the config bucket. Returns
+    # the variable value that refers to it.
+    def self.store_upload(file_path, filename, scope:)
+      filename = File.basename(filename.to_s.tr('\\', '/'))
+      if filename.empty? or filename == '.' or filename == '..'
+        raise "Invalid upload filename '#{filename}'"
+      end
+      value = "#{SecureRandom.uuid}/#{filename}"
+      File.open(file_path, 'rb') do |file|
+        Bucket.getClient().put_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: upload_key(value, scope: scope), body: file)
+      end
+      value
+    end
+
+    # Copy the files uploaded for the VARIABLE_FILE variables into the
+    # extracted plugin at their destinations
+    def self.copy_uploads(plugin_hash, gem_path, scope:)
+      (plugin_hash['variables'] || {}).each do |name, variable|
+        next unless variable.is_a?(Hash) and variable['type'] == FILE_VARIABLE_TYPE
+        key = upload_key(variable['value'], scope: scope)
+        next unless key
+        unless safe_relative_path?(variable['file_path'])
+          raise "VARIABLE_FILE #{name} destination '#{variable['file_path']}' must be a path inside the plugin"
+        end
+        destination = File.join(gem_path, variable['file_path'])
+        FileUtils.mkdir_p(File.dirname(destination))
+        Bucket.getClient().get_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key, path: destination)
+        unless File.exist?(destination)
+          raise "The file uploaded for VARIABLE_FILE #{name} is missing. Upload it again."
+        end
+        Logger.info("Copied the file uploaded for #{name} to #{variable['file_path']}", scope: scope)
+      end
+    end
+
+    # Delete the files uploaded for an uninstalled plugin's VARIABLE_FILE
+    # variables, unless another installed plugin uses them
+    def self.cleanup_uploads(variables, scope:)
+      keys = Array(variables&.values).filter_map do |variable|
+        upload_key(variable['value'], scope: scope) if variable.is_a?(Hash) and variable['type'] == FILE_VARIABLE_TYPE
+      end
+      return if keys.empty?
+      in_use = all(scope: scope).values.flat_map do |plugin|
+        Array(plugin['variables']&.values).filter_map do |variable|
+          upload_key(variable['value'], scope: scope) if variable.is_a?(Hash) and variable['type'] == FILE_VARIABLE_TYPE
+        end
+      end
+      (keys - in_use).each do |key|
+        Bucket.getClient().delete_object(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: key)
+      end
+    rescue => e
+      Logger.warn("Could not remove uploaded plugin files: #{e.message}", scope: scope)
+    end
+
+    # The PRE_INSTALL_SCRIPT and POST_INSTALL_SCRIPT lines of a plugin.txt, in
+    # order, as { 'PRE_INSTALL_SCRIPT' => [[path, args]], ... }
+    def self.install_scripts(plugin_txt_path, erb_variables)
+      scripts = INSTALL_SCRIPT_KEYWORDS.to_h { |keyword| [keyword, []] }
+      parser = OpenC3::ConfigParser.new("https://openc3.com")
+      text_end = nil
+      parser.parse_file(plugin_txt_path, false, true, true, erb_variables) do |keyword, params|
+        if text_end
+          if keyword == text_end
+            parser.set_preserve_lines(false)
+            text_end = nil
+          end
+          next
+        end
+        if keyword == 'PLUGIN_TEXT_START' or keyword == 'VARIABLE_TEXT_START'
+          parser.set_preserve_lines(true)
+          text_end = keyword.sub('_START', '_END')
+        elsif INSTALL_SCRIPT_KEYWORDS.include?(keyword)
+          parser.verify_num_parameters(1, nil, "#{keyword} <Script Path> <Arguments (optional)>")
+          unless safe_relative_path?(params[0])
+            raise "#{keyword} '#{params[0]}' must be a path inside the plugin"
+          end
+          unless ['.rb', '.py'].include?(File.extname(params[0]).downcase)
+            raise "#{keyword} '#{params[0]}' must be a Ruby (.rb) or Python (.py) script"
+          end
+          scripts[keyword] << [params[0], params[1..]]
+        end
+      end
+      scripts
+    end
+
+    # Run a PRE_INSTALL_SCRIPT or POST_INSTALL_SCRIPT from the extracted plugin
+    # in gem_path. Its output goes to the install log, and a failure (non-zero
+    # exit or running too long) fails the install.
+    def self.run_install_script(keyword, script, args, gem_path:, load_dirs:, plugin_name:, erb_variables:, dry_run:, scope:)
+      path = File.join(gem_path, script)
+      raise "#{keyword} '#{script}' was not found in the plugin" unless File.file?(path)
+      environment = {
+        'OPENC3_SCOPE' => scope,
+        'OPENC3_PLUGIN_NAME' => plugin_name,
+        'OPENC3_PLUGIN_PATH' => gem_path,
+        'OPENC3_PLUGIN_VARIABLES' => JSON.generate(erb_variables),
+        'OPENC3_PLUGIN_DRY_RUN' => dry_run ? 'true' : 'false',
+      }
+      if File.extname(path).downcase == '.py'
+        command = [ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python', path, *args]
+        environment['PYTHONPATH'] = (load_dirs + [ENV['PYTHONPATH']]).compact.reject(&:empty?).join(':')
+        venv_dir = PythonVenv.plugin_venv_path(scope: scope, plugin_name: plugin_name)
+        PythonVenv.configure_environment(environment, venv_dir) if venv_dir
+      else
+        command = ['ruby', path, *args]
+        environment['RUBYLIB'] = (load_dirs + [ENV['RUBYLIB']]).compact.reject(&:empty?).join(':')
+      end
+      Logger.info("Running #{keyword} #{([script] + args).join(' ')}", scope: scope)
+      status = nil
+      Open3.popen2e(environment, *command, chdir: gem_path) do |stdin, output, wait_thread|
+        stdin.close
+        reader = Thread.new do
+          output.each_line { |line| Logger.info("#{keyword} #{script}: #{line.chomp}", scope: scope) }
+        rescue IOError
+        end
+        unless wait_thread.join(INSTALL_SCRIPT_TIMEOUT_S)
+          Process.kill('KILL', wait_thread.pid) rescue nil
+          wait_thread.join
+          reader.join(1)
+          raise "#{keyword} '#{script}' did not finish within #{INSTALL_SCRIPT_TIMEOUT_S} seconds"
+        end
+        reader.join
+        status = wait_thread.value
+      end
+      raise "#{keyword} '#{script}' failed with exit status #{status.exitstatus}" unless status.success?
     end
   end
 end

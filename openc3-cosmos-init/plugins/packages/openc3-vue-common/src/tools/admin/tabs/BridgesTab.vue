@@ -35,7 +35,7 @@
         <v-list-item>
           <v-list-item-title>{{ bridge.name }}</v-list-item-title>
           <v-list-item-subtitle>
-            openc3-app enrolled:
+            openc3-cosmos-app enrolled:
             {{ bridge.app_public_key ? 'Yes' : 'No' }}
             <template v-if="bridge.app_public_key">
               ({{ bridge.app_public_key.slice(0, 12) }}…)
@@ -106,9 +106,10 @@
         </v-toolbar>
         <v-card-text class="mt-4">
           <p class="mb-2">
-            Paste this one-time token into openc3-app (on the remote host) to
-            pair it with this bridge. It authorizes that openc3-app's identity,
-            expires after 10 minutes, and can only be redeemed once.
+            Paste this one-time token into openc3-cosmos-app (on the remote
+            host) to pair it with this bridge. It authorizes that
+            openc3-cosmos-app's identity, expires after 10 minutes, and can only
+            be redeemed once.
           </p>
           <v-textarea
             :model-value="token"
@@ -193,14 +194,17 @@ export default {
   },
   methods: {
     update: function () {
-      Api.get('/openc3-api/bridges/all').then((response) => {
-        let bridges = []
-        for (const [_name, bridge] of Object.entries(response.data)) {
-          bridges.push(bridge)
-        }
-        bridges.sort((a, b) => a.name.localeCompare(b.name))
-        this.bridges = bridges
-      })
+      Api.get('/openc3-api/bridges/all')
+        .then((response) => {
+          let bridges = []
+          for (const [_name, bridge] of Object.entries(response.data)) {
+            bridges.push(bridge)
+          }
+          bridges.sort((a, b) => a.name.localeCompare(b.name))
+          this.bridges = bridges
+        })
+        // Polled on an interval, so a failed request is retried on the next update
+        .catch(() => {})
     },
     showTempAlert: function (message, type = 'success', ms = 3000) {
       this.alert = message

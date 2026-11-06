@@ -16,7 +16,7 @@ require 'openc3/models/bridge_model'
 
 module OpenC3
   # Ensure every existing scope has a DEFAULT bridge_microservice (the Iroh hub
-  # that lets openc3-app run COSMOS interfaces on the host). New scopes get one
+  # that lets openc3-cosmos-app run COSMOS interfaces on the host). New scopes get one
   # via ScopeModel#deploy; this backfills any scope created before that.
   class DefaultBridge < Migration
     def self.run

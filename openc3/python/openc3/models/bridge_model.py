@@ -15,7 +15,7 @@ from openc3.models.model import Model
 class BridgeModel(Model):
     """Stores the identity of a named Iroh bridge.
 
-    A bridge is the openc3-app/host connection endpoint managed by a
+    A bridge is the openc3-cosmos-app/host connection endpoint managed by a
     ``BridgeMicroservice``. This model stores the bridge's public key (its Iroh
     EndpointId) and most recent connection ticket, so a ``BridgeInterface`` can
     look the bridge up by name and dial it. The corresponding **private key is
@@ -69,7 +69,7 @@ class BridgeModel(Model):
         # Most recent EndpointTicket (endpoint id + addressing), refreshed by
         # the BridgeMicroservice each startup.
         self.ticket = ticket
-        # The authorized openc3-app control identity (its Iroh EndpointId, hex).
+        # The authorized openc3-cosmos-app control identity (its Iroh EndpointId, hex).
         # Set during enrollment; the hub only accepts api/* connections from it.
         self.app_public_key = app_public_key
         # Pending one-time manual-enrollment code (set when a manual enrollment

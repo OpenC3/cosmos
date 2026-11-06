@@ -22,6 +22,14 @@
         <v-btn append-icon="mdi-store" @click="openStore">
           Browse Plugins
         </v-btn>
+        <v-btn
+          append-icon="mdi-radar"
+          class="ml-2"
+          data-test="discover-hardware"
+          @click="showDiscover = true"
+        >
+          Discover Hardware
+        </v-btn>
         <v-btn append-icon="mdi-paperclip" class="mx-2" @click="selectFile">
           Install From File
         </v-btn>
@@ -140,11 +148,20 @@
       :plugin-name="pluginName"
       :variables="variables"
       :plugin-txt="pluginTxt"
+      :plugin-text="pluginText"
+      :exclude-plugin="currentPlugin || pluginName"
+      :installed="currentPlugin !== null"
       :existing-plugin-txt="existingPluginTxt"
       :store-plugin-id="storePluginId"
       :store-version-id="storeVersionId"
       :min-cosmos-version="minCosmosVersion"
+      :preset-variables="presetVariables"
       @callback="pluginCallback"
+    />
+    <discover-dialog
+      v-if="showDiscover"
+      v-model="showDiscover"
+      @install="installDiscovered"
     />
     <modified-plugin-dialog
       v-if="showModifiedPluginDialog"
@@ -174,13 +191,18 @@
 <script>
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { SimpleTextDialog } from '@/components'
-import { ModifiedPluginDialog, PluginDialog } from '@/tools/admin'
+import {
+  DiscoverDialog,
+  ModifiedPluginDialog,
+  PluginDialog,
+} from '@/tools/admin'
 import { PluginList } from '@/tools/admin/tabs/plugins'
 import { PluginStore } from '@/plugins/plugin-store'
 import { TimeFilters } from '@/util'
 
 export default {
   components: {
+    DiscoverDialog,
     PluginDialog,
     PluginList,
     PluginStore,
@@ -193,10 +215,14 @@ export default {
       // Control state
       pluginName: null,
       variables: {},
+      // Values for the plugin dialog to start with, from hardware discovery
+      presetVariables: null,
+      showDiscover: false,
       storePluginId: null,
       storeVersionId: null,
       minCosmosVersion: null,
       pluginTxt: '',
+      pluginText: null,
       file: null,
       currentPlugin: null,
       pluginHashTmp: null,
@@ -230,6 +256,8 @@ export default {
       if (newValue === false) {
         this.file = null
         this.$refs.fileInput.value = null
+        // Presets are only for the install hardware discovery started
+        this.presetVariables = null
       }
     },
   },
@@ -275,10 +303,12 @@ export default {
     resetControlState: function () {
       this.pluginName = null
       this.variables = {}
+      this.presetVariables = null
       this.storePluginId = null
       this.storeVersionId = null
       this.minCosmosVersion = null
       this.pluginTxt = ''
+      this.pluginText = null
       this.file = null
       this.currentPlugin = null
       this.pluginHashTmp = null
@@ -337,7 +367,10 @@ export default {
         ? `/openc3-api/plugins/${existing}`
         : '/openc3-api/plugins'
       const formData = new FormData()
-      if (storeData === null) {
+      if (storeData?.gem) {
+        // A plugin gem already in COSMOS
+        formData.append('gem', storeData.gem)
+      } else if (storeData === null) {
         formData.append('plugin', this.file, this.file.name)
       } else {
         formData.append('store_plugin_id', storeData.id)
@@ -375,6 +408,7 @@ export default {
           this.storeVersionId = response.data.store_version_id
           this.minCosmosVersion = response.data.minimum_cosmos_version
           this.pluginTxt = pluginTxt
+          this.pluginText = response.data.plugin_text
           this.existingPluginTxt = existingPluginTxt
           this.showPluginDialog = true
           this.file = undefined
@@ -382,6 +416,7 @@ export default {
         .catch((error) => {
           this.currentPlugin = null
           this.file = undefined
+          this.presetVariables = null
         })
     },
     pluginCallback: async function (pluginHash) {
@@ -449,6 +484,7 @@ export default {
           this.file = undefined
           this.variables = {}
           this.pluginTxt = ''
+          this.pluginText = null
           this.existingPluginTxt = null
           this.storePluginId = null
           this.storeVersionId = null
@@ -472,6 +508,7 @@ export default {
           this.pluginName = response.data.name
           this.variables = response.data.variables
           this.pluginTxt = response.data.plugin_txt_lines.join('\n')
+          this.pluginText = response.data.plugin_text
           this.existingPluginTxt = existingPluginTxt
           this.showPluginDialog = true
         })
@@ -599,6 +636,18 @@ export default {
       } else {
         // Reset the input element
         this.$refs.fileInput.value = null
+      }
+    },
+    // Install a plugin hardware discovery proposed, starting with the device it found
+    installDiscovered(candidate) {
+      this.presetVariables = candidate.variables
+      if (candidate.source === 'store') {
+        this.upload(null, {
+          id: candidate.store_id,
+          version_id: candidate.store_version_id,
+        })
+      } else {
+        this.upload(null, { gem: candidate.gem })
       }
     },
     openStore() {

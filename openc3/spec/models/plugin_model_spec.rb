@@ -167,6 +167,394 @@ module OpenC3
         })
       end
 
+      it "parses VARIABLE_STATE_SHOW" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts "VARIABLE interface_type tcp"
+            file.puts '  VARIABLE_STATE "TCP/IP" tcp'
+            file.puts '    VARIABLE_STATE_SHOW hostname port'
+            file.puts '    VARIABLE_STATE_SHOW port'
+            file.puts '  VARIABLE_STATE "Serial" serial'
+            file.puts '    VARIABLE_STATE_SHOW serial_port'
+            file.puts '  VARIABLE_STATE "None" none'
+            file.puts "VARIABLE hostname 127.0.0.1"
+            file.puts "VARIABLE port 8080"
+            file.puts "VARIABLE serial_port /dev/ttyUSB0"
+          end
+        end
+        spec = double("spec")
+        metadata = { "openc3_cosmos_minimum_version" => "6.0.0" }
+        allow(spec).to receive(:metadata).and_return(metadata)
+        allow(gem).to receive(:spec).and_return(spec)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        model = PluginModel.install_phase1(__FILE__, scope: "DEFAULT")
+        expect(model['variables']['interface_type']).to eq({
+          'value' => 'tcp',
+          'options' => [
+            { 'value' => 'tcp', 'text' => 'TCP/IP', 'show' => ['hostname', 'port'] },
+            { 'value' => 'serial', 'text' => 'Serial', 'show' => ['serial_port'] },
+            { 'value' => 'none', 'text' => 'None' }
+          ]
+        })
+        expect(model['variables']['hostname']).to eq({ 'value' => '127.0.0.1' })
+      end
+
+      it "parses VARIABLE_STATE_SET and applies the selected state's values" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE interface_type serial',
+          '  VARIABLE_STATE "TCP/IP" tcp',
+          '    VARIABLE_STATE_SHOW port',
+          '    VARIABLE_STATE_SET port 8080',
+          '  VARIABLE_STATE "Serial" serial',
+          '    VARIABLE_STATE_SHOW port baud_rate',
+          '    VARIABLE_STATE_SET port /dev/ttyUSB0',
+          '    VARIABLE_STATE_SET baud_rate 9600',
+          '    VARIABLE_STATE_SET description Serial port interface',
+          'VARIABLE port 0',
+          'VARIABLE baud_rate 115200',
+          'VARIABLE description none',
+        ])
+        expect(model['variables']['interface_type']['options'][0]['set']).to eq({ 'port' => '8080' })
+        expect(model['variables']['interface_type']['options'][1]['set']).to eq({
+          'port' => '/dev/ttyUSB0', 'baud_rate' => '9600', 'description' => 'Serial port interface'
+        })
+        # Initially selected state is serial so its values are applied
+        expect(model['variables']['port']['value']).to eq '/dev/ttyUSB0'
+        expect(model['variables']['baud_rate']['value']).to eq '9600'
+        expect(model['variables']['description']['value']).to eq 'Serial port interface'
+      end
+
+      it "does not override existing variable values with VARIABLE_STATE_SET" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            file.puts 'VARIABLE interface_type serial'
+            file.puts '  VARIABLE_STATE serial'
+            file.puts '    VARIABLE_STATE_SET baud_rate 9600'
+            file.puts 'VARIABLE baud_rate 115200'
+          end
+        end
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        model = PluginModel.install_phase1(__FILE__, existing_variables: { 'baud_rate' => '19200' }, scope: "DEFAULT")
+        expect(model['variables']['baud_rate']['value']).to eq '19200'
+      end
+
+      it "raises error for VARIABLE_STATE_SET problems" do
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE_SET other 1', 'VARIABLE other 1']) }.to raise_error(/VARIABLE_STATE_SET must follow a VARIABLE_STATE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_SET missing 1']) }.to raise_error(/references undefined VARIABLE 'missing'/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_SET type udp']) }.to raise_error(/cannot reference itself/)
+      end
+
+      it "parses VARIABLE_DISCOVERY" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE port /dev/ttyUSB0',
+          '  VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py',
+          'VARIABLE serial_number nil',
+          '  VARIABLE_STATE "Any controller" nil',
+          '  VARIABLE_DISCOVERY openc3/discovery/hid_discovery.py 0x054C 0x0CE6',
+        ])
+        expect(model['variables']['port']).to eq({ 'value' => '/dev/ttyUSB0', 'discovery' => [{ 'discovery' => ['openc3/discovery/serial_discovery.py'] }] })
+        expect(model['variables']['serial_number']['discovery']).to eq [{ 'discovery' => ['openc3/discovery/hid_discovery.py', '0x054C', '0x0CE6'] }]
+        expect(model['variables']['serial_number']['options']).to eq [{ 'value' => 'nil', 'text' => 'Any controller' }]
+      end
+
+      it "parses multiple VARIABLE_DISCOVERY with VARIABLE_DISCOVERY_SET" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE dual_sense_target_name DUALSENSE',
+          'VARIABLE dual_sense_version 5',
+          '  VARIABLE_STATE 5 5',
+          '  VARIABLE_STATE 4 4',
+          'VARIABLE dual_sense_serial_num None',
+          '  VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x05C4',
+          '    VARIABLE_DISCOVERY_SET dual_sense_version 4',
+          '  VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x0CE6',
+          '    VARIABLE_DISCOVERY_SET dual_sense_version 5',
+          '    VARIABLE_DISCOVERY_SET dual_sense_target_name PS5 CONTROLLER',
+        ])
+        expect(model['variables']['dual_sense_serial_num']['discovery']).to eq [
+          { 'discovery' => ['openc3.discovery.hid_discovery', '0x054C', '0x05C4'], 'set' => { 'dual_sense_version' => '4' } },
+          { 'discovery' => ['openc3.discovery.hid_discovery', '0x054C', '0x0CE6'], 'set' => { 'dual_sense_version' => '5', 'dual_sense_target_name' => 'PS5 CONTROLLER' } },
+        ]
+      end
+
+      it "raises error for VARIABLE_DISCOVERY problems" do
+        expect { phase1_with_plugin_txt(['VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py']) }.to raise_error(/VARIABLE_DISCOVERY must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY serial-discovery']) }.to raise_error(/requires a Python discovery class filename/)
+        expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY openc3/discovery']) }.to raise_error(/requires a Python discovery class filename/)
+      end
+
+      it "parses VARIABLE_HIDDEN" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE device shelly',
+          '  VARIABLE_STATE Shelly shelly',
+          '    VARIABLE_STATE_SET mdns_types _shelly._tcp.local.',
+          '  VARIABLE_STATE Hue hue',
+          '    VARIABLE_STATE_SET mdns_types _hue._tcp.local.',
+          'VARIABLE mdns_types ""',
+          '  VARIABLE_HIDDEN',
+        ])
+        expect(model['variables']['mdns_types']).to eq({ 'value' => '_shelly._tcp.local.', 'hidden' => true })
+        expect { phase1_with_plugin_txt(['VARIABLE_HIDDEN']) }.to raise_error(/VARIABLE_HIDDEN must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_HIDDEN true']) }.to raise_error(/Too many parameters/)
+      end
+
+      it "parses VARIABLE_ADVANCED" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE host 127.0.0.1',
+          'VARIABLE timeout 10',
+          '  VARIABLE_ADVANCED',
+        ])
+        expect(model['variables']['host']).to eq({ 'value' => '127.0.0.1' })
+        expect(model['variables']['timeout']).to eq({ 'value' => '10', 'advanced' => true })
+        expect { phase1_with_plugin_txt(['VARIABLE_ADVANCED']) }.to raise_error(/VARIABLE_ADVANCED must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_ADVANCED true']) }.to raise_error(/Too many parameters/)
+      end
+
+      it "sets hidden variables from the selected state on upgrade" do
+        lines = [
+          'VARIABLE device hue',
+          '  VARIABLE_STATE Hue hue',
+          '    VARIABLE_STATE_SET mdns_types _hue._tcp.local.',
+          '    VARIABLE_STATE_SET host ""',
+          'VARIABLE host ""',
+          'VARIABLE mdns_types ""',
+          '  VARIABLE_HIDDEN',
+        ]
+        existing = { 'device' => 'hue', 'host' => '10.0.0.5', 'mdns_types' => '_old._tcp.local.' }
+        model = phase1_with_plugin_txt(lines, existing_variables: existing)
+        # A user entered value is kept but the hidden value follows the new plugin.txt
+        expect(model['variables']['host']['value']).to eq('10.0.0.5')
+        expect(model['variables']['mdns_types']['value']).to eq('_hue._tcp.local.')
+      end
+
+      it "parses VARIABLE_DISCOVERY references to other variables" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE host ""',
+          '  VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}',
+          'VARIABLE mdns_types _hue._tcp.local.',
+          '  VARIABLE_HIDDEN',
+        ])
+        expect(model['variables']['host']['discovery']).to eq([{ 'discovery' => ['openc3/discovery/zeroconf_discovery.py', '${mdns_types}'] }])
+        expect { phase1_with_plugin_txt(['VARIABLE host ""', 'VARIABLE_DISCOVERY a.b ${missing}']) }.to raise_error(/discovery 'a.b \$\{missing\}' references undefined VARIABLE 'missing'/)
+        expect { phase1_with_plugin_txt(['VARIABLE host ""', 'VARIABLE_DISCOVERY a.b x${host}']) }.to raise_error(/cannot reference itself/)
+      end
+
+      it "raises error for VARIABLE_DISCOVERY_SET problems" do
+        expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY_SET other 1', 'VARIABLE other 1']) }.to raise_error(/VARIABLE_DISCOVERY_SET must follow a VARIABLE_DISCOVERY definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY a.b', 'VARIABLE_DISCOVERY_SET missing 1']) }.to raise_error(/discovery 'a.b' references undefined VARIABLE 'missing'/)
+        expect { phase1_with_plugin_txt(['VARIABLE port 1', 'VARIABLE_DISCOVERY a.b', 'VARIABLE_DISCOVERY_SET port 1']) }.to raise_error(/cannot reference itself/)
+      end
+
+      it "parses VARIABLE_BRIDGE" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE_BRIDGE',
+          '  VARIABLE_DESCRIPTION "Bridge to the host with the hardware"',
+          'VARIABLE port /dev/ttyUSB0',
+        ])
+        expect(model['variables']['bridge_name']).to eq({
+          'value' => 'DEFAULT', 'bridge' => true, 'description' => 'Bridge to the host with the hardware'
+        })
+        model = phase1_with_plugin_txt(['VARIABLE_BRIDGE lab'])
+        expect(model['variables']['bridge_name']['value']).to eq 'LAB'
+      end
+
+      it "keeps the existing bridge_name on upgrade" do
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') { |file| file.puts 'VARIABLE_BRIDGE' }
+        end
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        model = PluginModel.install_phase1(__FILE__, existing_variables: { 'bridge_name' => { 'value' => 'LAB' } }, scope: "DEFAULT")
+        expect(model['variables']['bridge_name']).to eq({ 'value' => 'LAB', 'bridge' => true })
+      end
+
+      it "raises error for redefining bridge_name" do
+        expect { phase1_with_plugin_txt(['VARIABLE_BRIDGE', 'VARIABLE bridge_name X']) }.to raise_error(/defined by VARIABLE_BRIDGE/)
+        expect { phase1_with_plugin_txt(['VARIABLE bridge_name X', 'VARIABLE_BRIDGE']) }.to raise_error(/defined by VARIABLE_BRIDGE/)
+        expect { phase1_with_plugin_txt(['VARIABLE_BRIDGE', 'VARIABLE_BRIDGE']) }.to raise_error(/defined by VARIABLE_BRIDGE/)
+        expect { phase1_with_plugin_txt(['VARIABLE_BRIDGE A B']) }.to raise_error(/Too many parameters/)
+      end
+
+      it "makes bridge_name available to ERB in phase 2" do
+        stub_s3_client
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        allow(gem).to receive(:spec).and_return(gem_spec_double)
+        expect(GemModel).to receive(:install).and_return(nil)
+        variables = { "bridge_name" => { "value" => "LAB", "bridge" => true } }
+        expect_any_instance_of(ToolModel).to receive(:deploy).with(anything, { "bridge_name" => "LAB", "scope" => "DEFAULT" }, validate_only: false).and_return(nil)
+        PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["VARIABLE_BRIDGE", "TOOL <%= bridge_name %> NAME", "  #{URL}"]}, scope: "DEFAULT")
+        expect(ToolModel.get(name: "NAME", scope: "DEFAULT")['folder_name']).to eq "LAB"
+      end
+
+      it "captures PLUGIN_TEXT_START / PLUGIN_TEXT_END markdown" do
+        model = phase1_with_plugin_txt([
+          'PLUGIN_TEXT_START',
+          '  # Instrument Plugin',
+          '',
+          '  Select the **interface type** first. Don\'t forget "quotes" \\',
+          '    - indented item',
+          '  VARIABLE not_a_variable 1',
+          'PLUGIN_TEXT_END',
+          'VARIABLE port 8080',
+          '  PLUGIN_TEXT_START',
+          '  Second block',
+          '  PLUGIN_TEXT_END',
+        ])
+        expect(model['plugin_text']).to eq "# Instrument Plugin\n\nSelect the **interface type** first. Don't forget \"quotes\" \\\n  - indented item\nVARIABLE not_a_variable 1\n\nSecond block"
+        expect(model['variables'].keys).to eq ['port']
+      end
+
+      it "captures VARIABLE_TEXT_START / VARIABLE_TEXT_END markdown for the previous VARIABLE_STATE" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE type tcp',
+          '  VARIABLE_STATE TCP tcp',
+          '    VARIABLE_TEXT_START',
+          '    ## TCP',
+          '    Enter the **host**.',
+          '      VARIABLE_STATE_SHOW not_a_keyword',
+          '    VARIABLE_TEXT_END',
+          '    VARIABLE_TEXT_START',
+          '    More',
+          '    VARIABLE_TEXT_END',
+          '  VARIABLE_STATE Serial serial',
+          '    VARIABLE_STATE_SET port 1',
+          'VARIABLE port 0',
+        ])
+        expect(model['variables']['type']['options']).to eq [
+          { 'value' => 'tcp', 'text' => 'TCP', 'markdown' => "## TCP\nEnter the **host**.\n  VARIABLE_STATE_SHOW not_a_keyword\n\nMore" },
+          { 'value' => 'serial', 'text' => 'Serial', 'set' => { 'port' => '1' } },
+        ]
+      end
+
+      it "raises error for VARIABLE_TEXT_START / VARIABLE_TEXT_END problems" do
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_TEXT_START', 'VARIABLE_TEXT_END']) }.to raise_error(/VARIABLE_TEXT_START must follow a VARIABLE_STATE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_STATE One 1', 'VARIABLE_TEXT_START', 'Text']) }.to raise_error(/VARIABLE_TEXT_START without a matching VARIABLE_TEXT_END/)
+        expect { phase1_with_plugin_txt(['VARIABLE_TEXT_END']) }.to raise_error(/VARIABLE_TEXT_END must follow a VARIABLE_TEXT_START/)
+      end
+
+      it "parses VARIABLE_LABEL, VARIABLE_TYPE, VARIABLE_REQUIRED and VARIABLE_PATTERN" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE port 8080',
+          '  VARIABLE_LABEL "TCP Port"',
+          '  VARIABLE_TYPE integer',
+          '  VARIABLE_REQUIRED',
+          'VARIABLE name ""',
+          '  VARIABLE_PATTERN "[A-Z_]+" "Use capital letters"',
+          'VARIABLE id ""',
+          '  VARIABLE_PATTERN "\\d+"',
+        ])
+        expect(model['variables']['port']).to eq({ 'value' => '8080', 'label' => 'TCP Port', 'type' => 'INTEGER', 'required' => true })
+        expect(model['variables']['name']).to eq({ 'value' => '', 'pattern' => '[A-Z_]+', 'pattern_message' => 'Use capital letters' })
+        expect(model['variables']['id']).to eq({ 'value' => '', 'pattern' => '\\d+' })
+      end
+
+      it "raises error for VARIABLE_LABEL, VARIABLE_TYPE, VARIABLE_REQUIRED and VARIABLE_PATTERN problems" do
+        %w(VARIABLE_LABEL VARIABLE_TYPE VARIABLE_REQUIRED VARIABLE_PATTERN).each do |keyword|
+          expect { phase1_with_plugin_txt(["#{keyword} x"]) }.to raise_error(/#{keyword} must follow a VARIABLE definition|Too many parameters/)
+        end
+        expect { phase1_with_plugin_txt(['VARIABLE_REQUIRED']) }.to raise_error(/VARIABLE_REQUIRED must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_TYPE DATE']) }.to raise_error(/VARIABLE_TYPE must be one of TEXT, BOOLEAN/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_PATTERN "("']) }.to raise_error(/not a valid regular expression/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_LABEL']) }.to raise_error(/Not enough parameters/)
+      end
+
+      it "parses VARIABLE_GROUP and VARIABLE_TYPE SECRET" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE host ""',
+          '  VARIABLE_GROUP Connection',
+          'VARIABLE password_secret ""',
+          '  VARIABLE_TYPE secret',
+          '  VARIABLE_GROUP "Sign In"',
+        ])
+        expect(model['variables']['host']).to eq({ 'value' => '', 'group' => 'Connection' })
+        expect(model['variables']['password_secret']).to eq({ 'value' => '', 'type' => 'SECRET', 'group' => 'Sign In' })
+        expect { phase1_with_plugin_txt(['VARIABLE_GROUP Connection']) }.to raise_error(/VARIABLE_GROUP must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_GROUP']) }.to raise_error(/Not enough parameters/)
+      end
+
+      it "parses VARIABLE_STATE_DESCRIPTION and VARIABLE_STATE_ICON" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE type tcp',
+          '  VARIABLE_STATE "TCP/IP" tcp',
+          '    VARIABLE_STATE_DESCRIPTION "Ethernet or Wi-Fi"',
+          '    VARIABLE_STATE_ICON mdi-lan',
+          '  VARIABLE_STATE Serial serial',
+        ])
+        expect(model['variables']['type']['options']).to eq [
+          { 'value' => 'tcp', 'text' => 'TCP/IP', 'description' => 'Ethernet or Wi-Fi', 'icon' => 'mdi-lan' },
+          { 'value' => 'serial', 'text' => 'Serial' },
+        ]
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE_ICON mdi-lan']) }.to raise_error(/VARIABLE_STATE_ICON must follow a VARIABLE_STATE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_ICON "<b>"']) }.to raise_error(/not a valid icon name/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE_DESCRIPTION Text']) }.to raise_error(/VARIABLE_STATE_DESCRIPTION must follow a VARIABLE_STATE definition/)
+      end
+
+      it "parses VARIABLE_STATE_REQUIRED" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE type tcp',
+          '  VARIABLE_STATE TCP tcp',
+          '    VARIABLE_STATE_SHOW host port',
+          '    VARIABLE_STATE_REQUIRED host',
+          '    VARIABLE_STATE_REQUIRED host port',
+          'VARIABLE host ""',
+          'VARIABLE port 80',
+        ])
+        expect(model['variables']['type']['options'][0]['required']).to eq ['host', 'port']
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE_REQUIRED host']) }.to raise_error(/VARIABLE_STATE_REQUIRED must follow a VARIABLE_STATE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_REQUIRED missing']) }.to raise_error(/references undefined VARIABLE 'missing'/)
+      end
+
+      it "returns nil plugin_text without PLUGIN_TEXT_START" do
+        model = phase1_with_plugin_txt(['VARIABLE port 8080'])
+        expect(model['plugin_text']).to be_nil
+      end
+
+      it "raises error for unbalanced PLUGIN_TEXT_START / PLUGIN_TEXT_END" do
+        expect { phase1_with_plugin_txt(['PLUGIN_TEXT_START', 'Text']) }.to raise_error(/PLUGIN_TEXT_START without a matching PLUGIN_TEXT_END/)
+        expect { phase1_with_plugin_txt(['PLUGIN_TEXT_END']) }.to raise_error(/PLUGIN_TEXT_END must follow a PLUGIN_TEXT_START/)
+      end
+
+      def phase1_with_plugin_txt(lines, existing_variables: nil)
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') do |file|
+            lines.each { |line| file.puts line }
+          end
+        end
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        PluginModel.install_phase1(__FILE__, existing_variables: existing_variables, scope: "DEFAULT")
+      end
+
+      it "raises error for VARIABLE_STATE_SHOW without VARIABLE_STATE" do
+        expect { phase1_with_plugin_txt(['VARIABLE_STATE_SHOW other']) }.to raise_error(/VARIABLE_STATE_SHOW must follow a VARIABLE_STATE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE_SHOW other', 'VARIABLE other 1']) }.to raise_error(/VARIABLE_STATE_SHOW must follow a VARIABLE_STATE definition/)
+      end
+
+      it "raises error for VARIABLE_STATE_SHOW referencing an undefined variable" do
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_SHOW missing']) }.to raise_error(/references undefined VARIABLE 'missing'/)
+      end
+
+      it "raises error for VARIABLE_STATE_SHOW referencing itself" do
+        expect { phase1_with_plugin_txt(['VARIABLE type tcp', 'VARIABLE_STATE tcp', 'VARIABLE_STATE_SHOW type']) }.to raise_error(/cannot reference itself/)
+      end
+
       it "raises error for VARIABLE_DESCRIPTION without VARIABLE" do
         expect(GemModel).to receive(:put)
         gem = double("gem")
@@ -280,6 +668,73 @@ module OpenC3
       end
     end
 
+    describe "self.discovery_claims" do
+      def serial_variable(value, discovery = 'openc3/discovery/serial_discovery.py')
+        { 'value' => value, 'discovery' => [{ 'discovery' => [discovery] }] }
+      end
+
+      before(:each) do
+        PluginModel.new(name: "SERIAL__0", scope: "DEFAULT", variables: {
+          'port' => serial_variable('/dev/ttyUSB0'),
+          'other' => { 'value' => '/dev/ttyUSB9' },
+        }).create
+        PluginModel.new(name: "SERIAL__1", scope: "DEFAULT", variables: {
+          'port' => serial_variable('/dev/ttyUSB1', 'openc3.discovery.serial_discovery'),
+        }).create
+        PluginModel.new(name: "LAB__0", scope: "DEFAULT", variables: {
+          'bridge_name' => { 'value' => 'lab', 'bridge' => true },
+          'port' => serial_variable('/dev/ttyUSB2'),
+        }).create
+        PluginModel.new(name: "HID__0", scope: "DEFAULT", variables: {
+          'serial' => { 'value' => 'abc', 'discovery' => [
+            { 'discovery' => ['openc3.discovery.hid_discovery', '0x054C', '0x05C4'] },
+            { 'discovery' => ['openc3.discovery.hid_discovery', '0x054C', '0x0CE6'] },
+          ] },
+        }).create
+        PluginModel.new(name: "OLD__0", scope: "DEFAULT", variables: { 'port' => '/dev/ttyUSB3' }).create
+      end
+
+      it "returns values claimed on the bridge for the discovery class" do
+        expect(PluginModel.discovery_claims('DEFAULT', 'openc3.discovery.serial_discovery', scope: 'DEFAULT')).to eq({
+          '/dev/ttyUSB0' => 'SERIAL__0', '/dev/ttyUSB1' => 'SERIAL__1'
+        })
+        expect(PluginModel.discovery_claims('lab', 'openc3/discovery/serial_discovery.py', scope: 'DEFAULT')).to eq({ '/dev/ttyUSB2' => 'LAB__0' })
+        expect(PluginModel.discovery_claims('DEFAULT', 'openc3/discovery/hid_discovery.py', scope: 'DEFAULT')).to eq({ 'abc' => 'HID__0' })
+      end
+
+      it "excludes the plugin being upgraded" do
+        expect(PluginModel.discovery_claims('DEFAULT', 'openc3/discovery/serial_discovery.py', exclude_plugin: 'SERIAL__0', scope: 'DEFAULT')).to eq({ '/dev/ttyUSB1' => 'SERIAL__1' })
+      end
+    end
+
+    describe "self.discovery_matchers" do
+      # Shared with the OpenC3 Store, which derives the same matchers on upload
+      fixtures = File.expand_path('../fixtures/discovery_matchers', __dir__)
+
+      def phase1_variables(plugin_txt)
+        expect(GemModel).to receive(:put)
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) { |path| File.write("#{path}/plugin.txt", plugin_txt) }
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        PluginModel.install_phase1(__FILE__, scope: "DEFAULT")['variables']
+      end
+
+      Dir[File.join(fixtures, '*', 'plugin.txt')].sort.each do |path|
+        name = File.basename(File.dirname(path))
+        it "derives the #{name} fixture matchers" do
+          expected = JSON.parse(File.read(File.join(File.dirname(path), 'expected.json')))
+          expect(PluginModel.discovery_matchers(phase1_variables(File.read(path)))).to eq expected
+        end
+      end
+
+      it "has no matchers without discovery" do
+        expect(PluginModel.discovery_matchers(phase1_variables("VARIABLE port 8080\n"))).to eq({ 'format' => 1, 'matchers' => [] })
+      end
+    end
+
     describe "self.install_phase2" do
       it "creates the plugin by deploying models in the plugin.txt" do
         stub_s3_client
@@ -305,6 +760,65 @@ module OpenC3
         expect_tool_and_target_deploy(erb_variables)
         plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => ["TOOL THE_FOLDER THE_NAME", "  #{URL}", "TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT")
         expect(plugin_model['needs_dependencies']).to eql false
+      end
+
+      it "previews the plugin.txt install lines with ERB rendered" do
+        plugin_txt_lines = [
+          "PLUGIN_TEXT_START",
+          "  TARGET not_a_target",
+          "PLUGIN_TEXT_END",
+          "# Comment",
+          "VARIABLE folder INST",
+          "  VARIABLE_LABEL Folder",
+          "  VARIABLE_STATE Inst INST",
+          "    VARIABLE_TEXT_START",
+          "    INTERFACE not_an_interface",
+          "    VARIABLE_TEXT_END",
+          "",
+          "",
+          "TARGET <%= folder %> <%= folder %>_2",
+          "<% if folder == 'NONE' %>",
+          "INTERFACE NONE_INT",
+          "<% end %>",
+          "",
+        ]
+        variables = { "folder" => { "value" => "INST" } }
+        result = PluginModel.preview({ "variables" => variables, "plugin_txt_lines" => plugin_txt_lines }, scope: "DEFAULT")
+        expect(result).to eq({ 'plugin_txt' => "TARGET INST INST_2" })
+        result = PluginModel.preview({ "variables" => variables, "plugin_txt_lines" => ["TARGET A", "", "TARGET <%= missing %> B"] }, scope: "DEFAULT")
+        expect(result['error']).to match(/ERB error at line 3: undefined local variable or method .missing/)
+      end
+
+      it "skips PLUGIN_TEXT and VARIABLE_TEXT during install and stores plugin_text" do
+        stub_s3_client
+
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files)
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        allow(gem).to receive(:spec).and_return(gem_spec_double)
+
+        variables = { "folder" => { "value" => "THE_FOLDER" }, "name" => { "value" => "THE_NAME" } }
+        erb_variables = { "folder" => "THE_FOLDER", "name" => "THE_NAME", "scope" => 'DEFAULT' }
+        expect(GemModel).to receive(:install).and_return(nil)
+        expect_tool_and_target_deploy(erb_variables)
+        plugin_txt_lines = [
+          "PLUGIN_TEXT_START",
+          "  # Heading",
+          "  INTERFACE looks like a keyword \"but isn't",
+          "PLUGIN_TEXT_END",
+          "VARIABLE folder THE_FOLDER",
+          "  VARIABLE_STATE Folder THE_FOLDER",
+          "    VARIABLE_TEXT_START",
+          "    TARGET looks like a keyword",
+          "    VARIABLE_TEXT_END",
+          "TOOL THE_FOLDER THE_NAME",
+          "  #{URL}",
+          "TARGET THE_FOLDER THE_NAME",
+        ]
+        plugin_model = PluginModel.install_phase2({"name" => "name", "variables" => variables, "plugin_txt_lines" => plugin_txt_lines, "plugin_text" => "# Heading"}, scope: "DEFAULT")
+        expect(plugin_model['plugin_text']).to eql "# Heading"
+        expect(PluginModel.get(name: plugin_model['name'], scope: "DEFAULT")['plugin_text']).to eql "# Heading"
       end
 
       it "threads version_history_files and username into the TargetModel upgrade_context" do
@@ -367,6 +881,207 @@ module OpenC3
           "plugin_txt_lines" => ["TARGET THE_FOLDER THE_NAME"]}, scope: "DEFAULT", diff_only: true)
         # Returns the (deduped) collected diff list rather than the plugin json.
         expect(result).to eql([])
+      end
+    end
+
+    describe "VARIABLE_FILE" do
+      UPLOAD = "0f1e2d3c-aaaa-bbbb-cccc-000000000001/icd.csv"
+
+      def phase1(lines, existing_variables: nil)
+        allow(GemModel).to receive(:put)
+        gem = double("gem")
+        allow(gem).to receive(:extract_files) do |path|
+          File.write("#{path}/plugin.txt", lines.join("\n"))
+        end
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(Gem::Package).to receive(:new).and_return(gem)
+        PluginModel.install_phase1(__FILE__, existing_variables: existing_variables, scope: "DEFAULT")
+      end
+
+      it "parses a file variable and keeps an existing upload" do
+        lines = ["VARIABLE_FILE icd targets/INST/data/icd.csv", "  VARIABLE_LABEL ICD", "  VARIABLE_REQUIRED"]
+        variable = phase1(lines)['variables']['icd']
+        expect(variable).to eql({ 'value' => '', 'type' => 'FILE', 'file_path' => 'targets/INST/data/icd.csv', 'label' => 'ICD', 'required' => true })
+        expect(phase1(lines, existing_variables: { 'icd' => { 'value' => UPLOAD } })['variables']['icd']['value']).to eql UPLOAD
+        # Anything else isn't an upload
+        expect(phase1(lines, existing_variables: { 'icd' => 'icd.csv' })['variables']['icd']['value']).to eql ''
+      end
+
+      it "only copies files inside the plugin" do
+        ['/etc/passwd', '../outside.txt', 'targets/../../outside', 'C:/x', ''].each do |path|
+          expect { phase1(["VARIABLE_FILE icd #{path}".strip + (path.empty? ? ' ""' : '')]) }.to raise_error(/must be a path inside the plugin/)
+        end
+        expect { phase1(["VARIABLE_FILE icd a.csv", "  VARIABLE_TYPE TEXT"]) }.to raise_error(/VARIABLE_TYPE cannot be used with a VARIABLE_FILE/)
+        expect { phase1(["VARIABLE_FILE scope a.csv"]) }.to raise_error(/VARIABLE name 'scope' is reserved/)
+      end
+
+      it "is the file's path in the plugin in ERB, or blank without a file" do
+        variables = {
+          'icd' => { 'value' => UPLOAD, 'type' => 'FILE', 'file_path' => 'data/icd.csv' },
+          'cert' => { 'value' => '', 'type' => 'FILE', 'file_path' => 'data/cert.pem' },
+        }
+        expect(PluginModel.erb_variables({ 'variables' => variables }, scope: 'DEFAULT')).to eql({ 'icd' => 'data/icd.csv', 'cert' => '', 'scope' => 'DEFAULT' })
+      end
+
+      it "stores uploads in the config bucket and copies them into the plugin" do
+        bucket = double("bucket")
+        allow(Bucket).to receive(:getClient).and_return(bucket)
+        stored = {}
+        allow(bucket).to receive(:put_object) { |bucket:, key:, body:| stored[key] = body.read }
+        allow(bucket).to receive(:get_object) { |bucket:, key:, path:| File.write(path, stored.fetch(key)) if stored.key?(key) }
+        allow(bucket).to receive(:delete_object) { |bucket:, key:| stored.delete(key) }
+
+        Tempfile.create('upload') do |file|
+          file.write('a,b')
+          file.close
+          value = PluginModel.store_upload(file.path, '../../icd.csv', scope: 'DEFAULT')
+          expect(value).to match(PluginModel::UPLOAD_VALUE)
+          expect(value).to end_with('/icd.csv')
+          expect(stored.keys).to eql ["DEFAULT/plugin_uploads/#{value}"]
+
+          variables = { 'icd' => { 'value' => value, 'type' => 'FILE', 'file_path' => 'targets/INST/data/icd.csv' } }
+          Dir.mktmpdir do |gem_path|
+            PluginModel.copy_uploads({ 'variables' => variables }, gem_path, scope: 'DEFAULT')
+            expect(File.read(File.join(gem_path, 'targets/INST/data/icd.csv'))).to eql 'a,b'
+            # A missing upload fails the install rather than installing without it
+            stored.clear
+            expect { PluginModel.copy_uploads({ 'variables' => variables }, gem_path + '/other', scope: 'DEFAULT') }.to raise_error(/file uploaded for VARIABLE_FILE icd is missing/)
+          end
+
+          # Uninstalling deletes uploads no other plugin uses
+          stored["DEFAULT/plugin_uploads/#{value}"] = 'a,b'
+          other = PluginModel.new(name: 'other__0', variables: variables, scope: 'DEFAULT')
+          other.create
+          PluginModel.cleanup_uploads(variables, scope: 'DEFAULT')
+          expect(stored.length).to eql 1
+          other.destroy
+          PluginModel.cleanup_uploads(variables, scope: 'DEFAULT')
+          expect(stored).to be_empty
+        end
+      end
+    end
+
+    describe "VARIABLE_TYPE TARGET_NAME" do
+      def phase1(lines, existing_variables: nil)
+        allow(GemModel).to receive(:put)
+        gem = double("gem")
+        allow(gem).to receive(:extract_files) do |path|
+          File.write("#{path}/plugin.txt", lines.join("\n"))
+        end
+        spec = double("spec")
+        allow(spec).to receive(:metadata).and_return({})
+        allow(gem).to receive(:spec).and_return(spec)
+        allow(Gem::Package).to receive(:new).and_return(gem)
+        PluginModel.install_phase1(__FILE__, existing_variables: existing_variables, scope: "DEFAULT")['variables']
+      end
+
+      it "picks a free target name on new installs" do
+        lines = [
+          "VARIABLE inst_target_name INST", "  VARIABLE_TYPE TARGET_NAME",
+          "VARIABLE other_target_name inst", "  VARIABLE_TYPE TARGET_NAME",
+          "VARIABLE free_target_name EXAMPLE", "  VARIABLE_TYPE TARGET_NAME",
+          "VARIABLE text INST",
+        ]
+        expect(phase1(lines).transform_values { |variable| variable['value'] }).to eql(
+          { 'inst_target_name' => 'INST', 'other_target_name' => 'INST_2', 'free_target_name' => 'EXAMPLE', 'text' => 'INST' }
+        )
+        allow(TargetModel).to receive(:names).and_return(['INST', 'INST_2'])
+        expect(phase1(lines).transform_values { |variable| variable['value'] }).to eql(
+          { 'inst_target_name' => 'INST_3', 'other_target_name' => 'INST_4', 'free_target_name' => 'EXAMPLE', 'text' => 'INST' }
+        )
+        # Changing or upgrading an install keeps its target names
+        existing = { 'inst_target_name' => { 'value' => 'INST' }, 'other_target_name' => { 'value' => 'INST_2' } }
+        values = phase1(lines, existing_variables: existing).transform_values { |variable| variable['value'] }
+        expect(values.slice('inst_target_name', 'other_target_name')).to eql({ 'inst_target_name' => 'INST', 'other_target_name' => 'INST_2' })
+      end
+
+      it "numbers names from a numbered name" do
+        expect(PluginModel.available_target_name('inst', Set.new)).to eql 'INST'
+        expect(PluginModel.available_target_name('INST', Set['INST', 'INST_2'])).to eql 'INST_3'
+        expect(PluginModel.available_target_name('INST_2', Set['INST_2'])).to eql 'INST_3'
+        expect(PluginModel.available_target_name('', Set['INST'])).to eql ''
+      end
+    end
+
+    describe "PRE_INSTALL_SCRIPT and POST_INSTALL_SCRIPT" do
+      def install(plugin_txt_lines, scripts, **options)
+        stub_s3_client
+        allow(GemModel).to receive(:get).and_return("my_plugin.gem")
+        allow(GemModel).to receive(:install)
+        allow(GemModel).to receive(:destroy_all_other_versions)
+        gem = double("gem")
+        allow(gem).to receive(:extract_files) do |path|
+          scripts.each do |name, body|
+            FileUtils.mkdir_p(File.dirname(File.join(path, name)))
+            File.write(File.join(path, name), body)
+          end
+        end
+        allow(Gem::Package).to receive(:new).and_return(gem)
+        allow(gem).to receive(:spec).and_return(gem_spec_double)
+        variables = { "folder" => { "value" => "INST" } }
+        PluginModel.install_phase2({ "name" => "name", "variables" => variables, "plugin_txt_lines" => plugin_txt_lines }, scope: "DEFAULT", **options)
+      end
+
+      it "runs the scripts before and after installing, in the plugin" do
+        Dir.mktmpdir do |dir|
+          order = File.join(dir, 'order')
+          allow_any_instance_of(TargetModel).to receive(:deploy) do |_target, gem_path, _variables, **_options|
+            # The pre-install script generated a file the target uses
+            File.open(order, 'a') { |file| file.puts "deploy #{File.read(File.join(gem_path, 'targets/INST/generated.txt'))}" }
+          end
+          script = <<~RUBY
+            require 'json'
+            variables = JSON.parse(ENV['OPENC3_PLUGIN_VARIABLES'])
+            File.open('#{order}', 'a') { |file| file.puts "\#{ARGV[0]} \#{variables['folder']} \#{ENV['OPENC3_PLUGIN_DRY_RUN']} \#{Dir.pwd == File.realpath(ENV['OPENC3_PLUGIN_PATH'])}" }
+            if ARGV[0] == 'pre'
+              require 'helper'
+              require 'fileutils'
+              FileUtils.mkdir_p('targets/INST')
+              File.write('targets/INST/generated.txt', Helper.text)
+            end
+            puts "done \#{ARGV[0]}"
+          RUBY
+          scripts = { 'scripts/setup.rb' => script, 'lib/helper.rb' => "module Helper; def self.text = 'from lib'; end" }
+          lines = ["POST_INSTALL_SCRIPT scripts/setup.rb post", "TARGET <%= folder %> <%= folder %>", "PRE_INSTALL_SCRIPT scripts/setup.rb pre"]
+          expect(Logger).to receive(:info).at_least(:once)
+          install(lines, scripts)
+          expect(File.read(order).lines.map(&:chomp)).to eql ["pre INST false true", "deploy from lib", "post INST false true"]
+
+          # Dry runs run the pre-install script for what it generates, but not the post-install one
+          File.delete(order)
+          install(lines, scripts, validate_only: true)
+          expect(File.read(order).lines.map(&:chomp)).to eql ["pre INST true true", "deploy from lib"]
+        end
+      end
+
+      it "runs Python scripts" do
+        python = `which python3`.strip
+        skip "python3 not found" if python.empty?
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('OPENC3_PYTHON_BIN').and_return(python)
+        Dir.mktmpdir do |dir|
+          out = File.join(dir, 'out')
+          script = "import json, os, sys\nopen(#{out.inspect}, 'w').write(json.loads(os.environ['OPENC3_PLUGIN_VARIABLES'])['folder'] + sys.argv[1])\n"
+          install(["PRE_INSTALL_SCRIPT gen.py <%= folder %>"], { 'gen.py' => script })
+          expect(File.read(out)).to eql 'INSTINST'
+        end
+      end
+
+      it "fails the install when a script fails" do
+        lines = ["PRE_INSTALL_SCRIPT fail.rb", "TARGET INST INST"]
+        expect_any_instance_of(TargetModel).to_not receive(:deploy)
+        expect { install(lines, { 'fail.rb' => "warn 'bad icd'; exit 3" }) }.to raise_error(/PRE_INSTALL_SCRIPT 'fail.rb' failed with exit status 3/)
+        expect(PluginModel.names(scope: 'DEFAULT')).to be_empty
+        expect { install(["PRE_INSTALL_SCRIPT missing.rb"], {}) }.to raise_error(/PRE_INSTALL_SCRIPT 'missing.rb' was not found in the plugin/)
+        expect { install(["POST_INSTALL_SCRIPT ../x.rb"], {}) }.to raise_error(/must be a path inside the plugin/)
+        expect { install(["POST_INSTALL_SCRIPT run.sh"], {}) }.to raise_error(/must be a Ruby \(.rb\) or Python \(.py\) script/)
+      end
+
+      it "fails a script that runs too long" do
+        stub_const("OpenC3::PluginModel::INSTALL_SCRIPT_TIMEOUT_S", 0.5)
+        expect { install(["PRE_INSTALL_SCRIPT slow.rb"], { 'slow.rb' => "sleep 30" }) }.to raise_error(/did not finish within 0.5 seconds/)
       end
     end
 
@@ -615,6 +1330,28 @@ module OpenC3
           expect(install_plugin['needs_dependencies']).to eql true
         end
 
+        {
+          'requirements.txt' => ["-c constraints.txt\n<%= driver %>==1.0", "-c constraints.txt\naioshelly==1.0\n"],
+          'pyproject.toml' => ["[project]\ndependencies = [\"<%= driver %>==1.0\"]", "[project]\ndependencies = [\"aioshelly==1.0\"]\n"],
+        }.each do |dep_file, (template, expected)|
+          it "renders ERB in #{dep_file} with the plugin variables before installing" do
+            stub_plugin_gem(dep_file: dep_file, dep_body: template)
+            stub_uv_on_path(true)
+            allow(PythonVenv).to receive(:purge_reserved_packages).and_return([])
+            rendered = nil
+            expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "--default-index", anything) do |_, _, gem_path, *_|
+              rendered = File.read(File.join(gem_path, dep_file))
+              ["ok", success_status]
+            end
+
+            PluginModel.install_phase2({"name" => "name", "variables" => {"driver" => {"value" => "aioshelly"}}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
+            expect(rendered).to eql(expected)
+            # Stored rendered for bridges to provision the host
+            key = dep_file == 'requirements.txt' ? 'python_requirements' : 'python_pyproject'
+            expect(PluginModel.get(name: "name__0", scope: "DEFAULT")[key]).to eql(expected)
+          end
+        end
+
         it "purges a plugin-supplied openc3 from the venv after uvinstall succeeds" do
           stub_plugin_gem
           stub_uv_on_path(true)
@@ -714,6 +1451,33 @@ module OpenC3
           result = PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines},
             scope: "DEFAULT", diff_only: true)
           expect(result).to eql([])
+        end
+      end
+    end
+
+    describe "self.render_python_dependency_erb" do
+      it "renders variables and resolves files relative to the dependency file" do
+        Dir.mktmpdir do |dir|
+          path = File.join(dir, 'requirements.txt')
+          File.write(File.join(dir, 'drivers.json'), '{"shelly": ["aioshelly==13.23.1", "bleak==2.1.1"]}')
+          File.write(path, <<~ERB)
+            # Comment mentioning <%= not_a_variable %>
+            homeassistant==2026.2.3
+            <%- require 'json' -%>
+            <%= JSON.parse(File.read(File.join(File.dirname(__FILE__), 'drivers.json')))[integration].join("\\n") %>
+          ERB
+          PluginModel.render_python_dependency_erb(path, {'integration' => 'shelly'})
+          expect(File.read(path)).to eql("# Comment mentioning \nhomeassistant==2026.2.3\naioshelly==13.23.1\nbleak==2.1.1\n")
+        end
+      end
+
+      it "leaves files without ERB untouched" do
+        Dir.mktmpdir do |dir|
+          path = File.join(dir, 'requirements.txt')
+          File.write(path, "requests\n")
+          expect(File).not_to receive(:write)
+          PluginModel.render_python_dependency_erb(path, {})
+          expect(File.read(path)).to eql("requests\n")
         end
       end
     end

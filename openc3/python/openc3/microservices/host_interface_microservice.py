@@ -9,7 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-"""Host side of a bridged COSMOS interface, launched by openc3-app.
+"""Host side of a bridged COSMOS interface, launched by openc3-cosmos-app.
 
 This runs on the host computer (outside Docker) so it can reach hardware such
 as serial ports. It builds the real interface, opens the device, and tunnels
@@ -27,18 +27,18 @@ handshakes, CRC, ...) happens before bytes ever cross the Iroh tunnel. There is
 no Redis access on the host.
 
 The host uses the normal COSMOS ``Logger`` API, but configured so it only writes
-its JSON records to **stdout** (no Redis). openc3-app captures that stdout and
+its JSON records to **stdout** (no Redis). openc3-cosmos-app captures that stdout and
 forwards it up to the bridge_microservice, which re-emits it into COSMOS, so log
 messages appear in the main system as well.
 
-Configuration is passed by openc3-app via environment variables:
+Configuration is passed by openc3-cosmos-app via environment variables:
 
 * ``OPENC3_BRIDGE_TICKET``  — the bridge_microservice's Iroh ticket to dial.
 * ``OPENC3_BRIDGE_CHANNEL`` — the stream/interface name (the ``stream/<name>`` ALPN).
 * ``OPENC3_HOST_INTERFACE`` — JSON ``{"config_params": [...], "options": [...]}``.
 * ``OPENC3_MICROSERVICE_NAME`` — name used for logging.
 * ``OPENC3_STOP_ON_STDIN_EOF`` — when set, stdin is a pipe whose write end only
-  openc3-app holds. EOF means openc3-app asked us to stop (it closes the pipe on
+  openc3-cosmos-app holds. EOF means openc3-cosmos-app asked us to stop (it closes the pipe on
   a graceful stop — the only graceful signal it has on Windows) or that it has
   exited, even if it was force-killed or crashed. Either way we shut down, so a
   host interface never outlives the app and keeps holding its device.
@@ -63,7 +63,7 @@ from openc3.utilities.string import filename_to_class_name, filename_to_module
 def add_lib_dirs_to_path():
     """Put the synced plugin ``lib`` directories on ``sys.path``.
 
-    openc3-app mirrors the scope's plugin files to the host and passes the
+    openc3-cosmos-app mirrors the scope's plugin files to the host and passes the
     ``lib`` directories in ``PYTHONPATH`` so host interfaces can import custom
     interface/protocol code (e.g. a plugin's ``lib/my_interface.py``). We fold
     those directories into ``sys.path`` explicitly rather than relying on the
@@ -114,17 +114,17 @@ HANDSHAKE_TIMEOUT = 30.0
 # bound how long the async control loop waits for either operation.
 DEVICE_OPERATION_TIMEOUT = 30.0
 
-# See the module docstring. MUST match openc3-app's child_guard.rs.
+# See the module docstring. MUST match openc3-cosmos-app's child_guard.rs.
 STOP_ON_STDIN_EOF_ENV = "OPENC3_STOP_ON_STDIN_EOF"
 
 # After a stdin-EOF stop request, exit regardless if the clean shutdown hasn't
 # finished by then. Device reads run in executor threads that can block
-# indefinitely, and with openc3-app gone nothing else would ever kill us.
+# indefinitely, and with openc3-cosmos-app gone nothing else would ever kill us.
 STOP_GRACE = 10.0
 
 
 class _PipeSafeStream:
-    """Wraps stdout/stderr so writing after openc3-app (the reader) has gone away
+    """Wraps stdout/stderr so writing after openc3-cosmos-app (the reader) has gone away
     doesn't raise BrokenPipeError out of Logger calls mid-shutdown; output is
     silently dropped instead."""
 
@@ -172,8 +172,8 @@ class HostInterfaceMicroservice:
         self.name = os.environ.get("OPENC3_MICROSERVICE_NAME", "host_interface")
         self.ticket = os.environ.get("OPENC3_BRIDGE_TICKET")
         self.channel = os.environ.get("OPENC3_BRIDGE_CHANNEL")
-        # openc3-app mints this identity and hands it over (never persisted). The
-        # hub authorizes its public key, so only microservices openc3-app spawned
+        # openc3-cosmos-app mints this identity and hands it over (never persisted). The
+        # hub authorizes its public key, so only microservices openc3-cosmos-app spawned
         # may use the data path.
         self.secret_key = os.environ.get("OPENC3_BRIDGE_PRIVATE_KEY")
         config = json.loads(os.environ.get("OPENC3_HOST_INTERFACE") or "{}")
@@ -196,7 +196,7 @@ class HostInterfaceMicroservice:
         # The currently-connected interface, read (thread-safely enough for a
         # snapshot) by the status publisher.
         self._interface = None
-        # Use the real COSMOS Logger, but only to stdout (openc3-app forwards it
+        # Use the real COSMOS Logger, but only to stdout (openc3-cosmos-app forwards it
         # up to COSMOS). Never write to a (nonexistent) host Redis.
         Logger.no_store = True
         Logger.microservice_name = self.name
@@ -259,7 +259,7 @@ class HostInterfaceMicroservice:
         self._disconnect_event.set()  # start disconnected; COSMOS drives connect
         self._status_ping = asyncio.Event()
 
-        # Shut down cleanly on SIGINT/SIGTERM. openc3-app soft-stops us with
+        # Shut down cleanly on SIGINT/SIGTERM. openc3-cosmos-app soft-stops us with
         # SIGINT when it closes; without this the default handler raises
         # KeyboardInterrupt and dumps a traceback. Instead: flip `shutdown`, wake
         # any parked loop, and set `stop` so the run loop below cancels the tasks
@@ -278,22 +278,22 @@ class HostInterfaceMicroservice:
             with contextlib.suppress(NotImplementedError, ValueError, RuntimeError):
                 loop.add_signal_handler(sig, _request_stop)
 
-        # openc3-app's lifeline: stop when it closes our stdin or goes away.
+        # openc3-cosmos-app's lifeline: stop when it closes our stdin or goes away.
         if os.environ.get(STOP_ON_STDIN_EOF_ENV) and sys.stdin is not None:
 
             def _stdin_closed():
-                Logger.info(f"{self.name}: openc3-app closed the lifeline; shutting down")
+                Logger.info(f"{self.name}: openc3-cosmos-app closed the lifeline; shutting down")
                 with contextlib.suppress(RuntimeError):  # loop already closed
                     loop.call_soon_threadsafe(_request_stop)
 
             threading.Thread(
                 target=self._watch_stdin,
                 args=(sys.stdin.buffer, _stdin_closed),
-                name="openc3-app-lifeline",
+                name="openc3-cosmos-app-lifeline",
                 daemon=True,
             ).start()
 
-        # Bind with the openc3-app-provided identity so the hub can verify us.
+        # Bind with the openc3-cosmos-app-provided identity so the hub can verify us.
         # No relay by default (co-located); set OPENC3_BRIDGE_RELAY to the same
         # relay the hub uses to reach it remotely.
         relay = os.environ.get("OPENC3_BRIDGE_RELAY")
@@ -330,7 +330,7 @@ class HostInterfaceMicroservice:
         `on_eof` (which requests a clean shutdown). Runs on a daemon thread."""
         with contextlib.suppress(Exception):
             while stdin.read(4096):
-                pass  # openc3-app never writes; just wait for EOF
+                pass  # openc3-cosmos-app never writes; just wait for EOF
         backstop = threading.Timer(STOP_GRACE, os._exit, args=(0,))
         backstop.daemon = True
         backstop.start()
@@ -361,20 +361,32 @@ class HostInterfaceMicroservice:
         alpn = f"{HOSTCTRL_ALPN_PREFIX}{self.channel}".encode()
         while not self.shutdown:
             connection = None
+            tasks = set()
             try:
                 connection = await endpoint.connect(addr, alpn)
                 bi = await connection.accept_bi()  # hub opens+primes
                 send = bi.send()
                 recv = bi.recv()
                 await recv.read(PRIME_BYTES)
-                reader = asyncio.create_task(self._read_commands(recv))
-                writer = asyncio.create_task(self._send_status(send))
-                await asyncio.wait({reader, writer}, return_when=asyncio.FIRST_COMPLETED)
-                reader.cancel()
-                writer.cancel()
+                tasks = {
+                    asyncio.create_task(self._read_commands(recv)),
+                    asyncio.create_task(self._send_status(send)),
+                }
+                done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                # The channel dropping (e.g. the connection closed at shutdown)
+                # ends a task with an error, which only matters while running
+                for task in done:
+                    if not task.cancelled() and task.exception() is not None and not self.shutdown:
+                        Logger.warn(f"{self.name}: control channel error: {_iroh_error_detail(task.exception())}")
             except Exception as error:
-                Logger.warn(f"{self.name}: control channel error: {_iroh_error_detail(error)}")
+                if not self.shutdown:
+                    Logger.warn(f"{self.name}: control channel error: {_iroh_error_detail(error)}")
             finally:
+                # Collect both tasks so neither leaves an unretrieved exception
+                for task in tasks:
+                    task.cancel()
+                if tasks:
+                    await asyncio.gather(*tasks, return_exceptions=True)
                 if connection is not None:
                     with contextlib.suppress(Exception):
                         result = connection.close()
@@ -466,6 +478,7 @@ class HostInterfaceMicroservice:
                 break
             interface = None
             connection = None
+            tasks = set()
             try:
                 # 1. Pair the data tunnel first — no hardware touched yet.
                 connection = await endpoint.connect(addr, alpn)
@@ -492,17 +505,25 @@ class HostInterfaceMicroservice:
                 self._status_ping.set()  # report CONNECTED promptly
 
                 loop = asyncio.get_event_loop()
-                up = asyncio.create_task(self._device_to_bridge(loop, interface, send))
-                down = asyncio.create_task(self._bridge_to_device(loop, interface, recv))
+                pumps = {
+                    asyncio.create_task(self._device_to_bridge(loop, interface, send)),
+                    asyncio.create_task(self._bridge_to_device(loop, interface, recv)),
+                }
                 # Also break out promptly if COSMOS requests a disconnect.
-                stop = asyncio.create_task(self._disconnect_event.wait())
-                await asyncio.wait({up, down, stop}, return_when=asyncio.FIRST_COMPLETED)
-                up.cancel()
-                down.cancel()
-                stop.cancel()
+                tasks = pumps | {asyncio.create_task(self._disconnect_event.wait())}
+                done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
+                for task in done & pumps:
+                    if not task.cancelled() and task.exception() is not None and not self.shutdown:
+                        Logger.error(f"{self.name}: bridge error: {_iroh_error_detail(task.exception())}")
             except Exception as error:
-                Logger.error(f"{self.name}: bridge error: {_iroh_error_detail(error)}")
+                if not self.shutdown:
+                    Logger.error(f"{self.name}: bridge error: {_iroh_error_detail(error)}")
             finally:
+                # Collect the tasks so none leaves an unretrieved exception
+                for task in tasks:
+                    task.cancel()
+                if tasks:
+                    await asyncio.gather(*tasks, return_exceptions=True)
                 self._interface = None
                 if interface is not None:
                     try:
