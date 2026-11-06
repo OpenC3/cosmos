@@ -29,9 +29,18 @@ test('sets and clears breakpoints', async ({ page, utils }) => {
   await page.locator('textarea').fill(`puts "a"
 puts "b"
 puts "c"
+# This is a comment so it can't have a breakpoint
 puts "d"
 puts "e"`)
   await page.locator('.ace_gutter-cell').nth(2).click({ force: true })
+  // Clicking the comment line's gutter must not set a breakpoint
+  await page.locator('.ace_gutter-cell').nth(3).click({ force: true })
+  await expect(page.locator('.ace_gutter-cell').nth(2)).toHaveClass(
+    /ace_breakpoint/,
+  )
+  await expect(page.locator('.ace_gutter-cell').nth(3)).not.toHaveClass(
+    /ace_breakpoint/,
+  )
 
   await page.locator('[data-test=start-button]').click()
   await expect(page.locator('[data-test=state] input')).toHaveValue(

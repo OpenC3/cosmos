@@ -505,6 +505,93 @@ RSpec.describe RunningScript, type: :model do
         running_script.check_execute_while_paused
       end
 
+      it "lands paused on the goto line instead of running it" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "paused"
+        running_script.execute_while_paused("test_script.rb", 7)
+
+        # The goto line must pause before it executes so the user can inspect it
+        expect(running_script).to receive(:start).with("test_script.rb", line_no: 7, bind_variables: true, complete: true) do
+          expect(running_script.pause?).to be true
+        end
+        running_script.check_execute_while_paused
+      end
+
+      it "jumps without pausing when goto is requested while running" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "running"
+        running_script.execute_while_paused("test_script.rb", 7)
+
+        expect(running_script).to receive(:start).with("test_script.rb", line_no: 7, bind_variables: true, complete: true) do
+          expect(running_script.pause?).to be false
+        end
+        running_script.check_execute_while_paused(pause: false)
+      end
+
+      it "rejects execute selection while running" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "running"
+        running_script.execute_while_paused("test_script.rb", 7, 9)
+        expect(running_script.execute_while_paused_info).to be_nil
+      end
+
+      it "rejects goto while waiting on a prompt" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "waiting"
+        running_script.execute_while_paused("test_script.rb", 7)
+        expect(running_script.execute_while_paused_info).to be_nil
+      end
+
+      describe "validate_partial_script" do
+        let(:collect_rb) {
+          "load_utility 'INST/procedures/utilities/clear.rb'\n" \
+          "\n" \
+          "def collect(type, duration)\n" \
+          "  collects = tlm('INST HEALTH_STATUS COLLECTS')\n" \
+          "  cmd(\"INST COLLECT with TYPE \#{type}\")\n" \
+          "end\n" \
+          "puts 'done'\n"
+        }
+
+        it "raises a clear error when goto starts inside a method" do
+          partial = collect_rb.lines[3..].join
+          expect {
+            RunningScript.validate_partial_script(collect_rb, partial, "collect.rb", 4, nil)
+          }.to raise_error(RunningScript::InvalidStartLineError, /Cannot start at line 4 of collect.rb.*inside a method or block/)
+        end
+
+        it "raises a clear error when a selection is not complete code" do
+          partial = collect_rb.lines[2..3].join
+          expect {
+            RunningScript.validate_partial_script(collect_rb, partial, "collect.rb", 3, 4)
+          }.to raise_error(RunningScript::InvalidStartLineError, /Cannot run lines 3-4 of collect.rb/)
+        end
+
+        it "allows starting outside any method or block" do
+          partial = collect_rb.lines[6..].join
+          expect { RunningScript.validate_partial_script(collect_rb, partial, "collect.rb", 7, nil) }.not_to raise_error
+        end
+
+        it "leaves syntax errors in the whole file to the normal error" do
+          broken = collect_rb + "end\n"
+          partial = broken.lines[3..].join
+          expect { RunningScript.validate_partial_script(broken, partial, "collect.rb", 4, nil) }.not_to raise_error
+        end
+      end
+
+      it "stays paused on the current line when a goto target is invalid" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "paused"
+        running_script.execute_while_paused("collect.rb", 4)
+        expect(running_script).to receive(:start).and_raise(RunningScript::InvalidStartLineError, "Cannot start at line 4")
+        expect(running_script).to receive(:scriptrunner_puts).with("Cannot start at line 4", "RED")
+
+        expect { running_script.check_execute_while_paused }.not_to raise_error
+        # The pause set for the goto must not leak into the next line
+        expect(running_script.pause?).to be false
+        expect(running_script.execute_while_paused_info).to be_nil
+      end
+
       it "runs the script directly when called from the run thread" do
         RunningScript.new(script_status)
         RunningScript.class_variable_set(:@@run_thread, Thread.current)
@@ -513,6 +600,40 @@ RSpec.describe RunningScript, type: :model do
 
         expect(script_api).to receive(:start).with("other.rb", line_no: 3, bind_variables: true, complete: true)
         script_api.send(:goto, "other.rb", 3)
+      end
+    end
+
+    describe "scriptrunner_puts" do
+      around(:each) do |example|
+        saved_stdout = $stdout
+        example.run
+      ensure
+        $stdout = saved_stdout
+      end
+
+      it "publishes and logs once while a script is capturing stdout" do
+        running_script = RunningScript.new(script_status)
+        output_io = running_script.instance_variable_get(:@output_io)
+        # Like run_thread_body: $stdout feeds output_io for handle_output_io
+        capture = OpenC3::IoMultiplexer.new
+        capture.add_stream(output_io)
+        $stdout = capture
+        running_script.instance_variable_set(:@capturing_output, true)
+
+        expect(STDOUT).to receive(:puts).with(/\(SCRIPTRUNNER\): Cannot start at line 4/)
+        expect(running_script).to receive(:running_script_anycable_publish).once
+        expect(@message_log_double).to receive(:write).with(/\(SCRIPTRUNNER\): Cannot start at line 4\n/).once
+        running_script.scriptrunner_puts("Cannot start at line 4", "RED")
+
+        # Nothing left for handle_output_io to publish again
+        expect(output_io.string).to eql ""
+      end
+
+      it "does not write the message log when not capturing stdout" do
+        running_script = RunningScript.new(script_status)
+        allow(STDOUT).to receive(:puts)
+        expect(@message_log_double).not_to receive(:write)
+        running_script.scriptrunner_puts("Cannot execute selection")
       end
     end
 
@@ -644,6 +765,18 @@ RSpec.describe RunningScript, type: :model do
           expect {
             running_script.pre_line_instrumentation("new_file.rb", 42)
           }.to raise_error(OpenC3::StopScript)
+        end
+
+        it "performs a goto requested while running before the next line" do
+          running_script = RunningScript.new(script_status)
+          running_script.use_instrumentation = true
+          script_status.state = "running"
+          running_script.execute_while_paused("test_script.rb", 7)
+
+          expect(running_script).to receive(:start).with("test_script.rb", line_no: 7, bind_variables: true, complete: true) do
+            expect(running_script.pause?).to be false
+          end
+          running_script.pre_line_instrumentation("test_script.rb", 3)
         end
 
         it "doesn't update anything when use_instrumentation is false" do
@@ -800,6 +933,35 @@ RSpec.describe RunningScript, type: :model do
           expect(running_script).to receive(:handle_output_io).twice
           expect(script_binding.eval("test_var")).to eq("test value")
           running_script.debug("test_var")
+        end
+
+        [
+          ["GOTO 32", "test_script.rb", 32],
+          ["goto 32", "test_script.rb", 32],
+          ["  Goto   32  ", "test_script.rb", 32],
+          ["goto(32)", "test_script.rb", 32],
+          ["goto INST/procedures/other.rb 12", "INST/procedures/other.rb", 12],
+          ["GOTO 'other.rb', 12", "other.rb", 12],
+          ["goto(\"other.rb\", 12)", "other.rb", 12],
+        ].each do |text, filename, line_no|
+          it "treats '#{text}' as a goto without evaluating it" do
+            running_script = RunningScript.new(script_status)
+            script_status.state = "paused"
+            running_script.script_binding = binding
+            expect(running_script).not_to receive(:eval)
+
+            running_script.debug(text)
+            expect(running_script.execute_while_paused_info).to eq({ filename: filename, line_no: line_no, end_line_no: nil, bind_variables: true })
+          end
+        end
+
+        it "does not treat other text starting with goto as a goto" do
+          running_script = RunningScript.new(script_status)
+          running_script.script_binding = nil
+          expect(Object).to receive(:class_eval).with("goto_line = 5", "debug", 1)
+
+          running_script.debug("goto_line = 5")
+          expect(running_script.execute_while_paused_info).to be_nil
         end
 
         it "evaluates in Object context when script_binding is not available" do

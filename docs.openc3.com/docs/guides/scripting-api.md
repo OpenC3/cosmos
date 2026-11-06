@@ -8183,6 +8183,8 @@ start("INST/procedures/test1.rb")
 
 Jumps to a specific line in either the current file or another file. Script context and local variables are retained if jumping in the same file. This method should not be used to create loops or in any other case where normal Python/Ruby functionality could perform the same function. Use of goto increases stack depth and excess use can lead to stack level too deep errors.
 
+When typed at the Script Runner debug prompt, the parentheses are optional (`GOTO 32` or `goto INST/procedures/other.rb 12`). If the script is paused, execution moves to the line without running it and the script stays paused there. If the script is running, it jumps to the line and keeps running.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
@@ -9098,7 +9100,7 @@ running_script_go(15)
 
 <span class="badge badge--secondary since-heading">Since 6.4.0</span>
 
-Perform a goto or execute selection on a running script.
+Perform a goto or execute selection on a running script. Execute selection requires the script to be paused, stopped at a breakpoint, or in error. A goto on a paused script moves execution to the line without running it and stays paused. A goto on a running script jumps to the line and keeps running.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">

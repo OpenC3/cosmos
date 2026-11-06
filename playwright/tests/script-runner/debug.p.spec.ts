@@ -12,6 +12,7 @@
 # All Rights Reserved
 */
 
+import type { Page } from '@playwright/test'
 import { test, expect } from './../fixture'
 
 test.use({
@@ -32,8 +33,7 @@ puts "two"`)
       timeout: 20000,
     },
   )
-  await page.locator('[data-test=script-runner-script]').click()
-  await page.locator('text=Toggle Debug').click()
+  await page.locator('[data-test=debug-button]').click()
   await expect(page.locator('[data-test=debug-text]')).toBeVisible()
   await page.locator('[data-test=debug-text]').locator('input').fill('x')
   await page.keyboard.press('Enter')
@@ -100,9 +100,178 @@ puts "two"`)
     'x:67890',
   )
 
-  await page.locator('[data-test=script-runner-script]').click()
-  await page.locator('text=Toggle Debug').click()
+  await page.locator('[data-test=debug-button]').click()
   await expect(page.locator('[data-test=debug-text]')).not.toBeVisible()
+})
+
+// Starts the goto script and steps once so it is paused on line 2
+async function pauseOnSecondLine(page: Page) {
+  await page.locator('textarea').fill(`wait
+puts "line two"
+puts "line three"
+puts "line four"`)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /waiting \d+s/,
+    {
+      timeout: 20000,
+    },
+  )
+  await page.locator('[data-test=debug-button]').click()
+  await page.locator('[data-test=step-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /paused \d+s/,
+  )
+}
+
+test('goto button moves execution without running the line', async ({
+  page,
+  utils,
+}) => {
+  await pauseOnSecondLine(page)
+  await page.locator('[data-test=goto-line] input').fill('3')
+  await page.locator('[data-test=goto-button]').click()
+  // Lands paused on line 3 without running it
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /paused \d+s/,
+  )
+  await expect(page.locator('.ace_gutter-active-line')).toHaveText('3')
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'line three',
+  )
+  // Step runs the line we jumped to
+  await page.locator('[data-test=step-button]').click()
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'line three',
+  )
+  await page.locator('[data-test=go-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'line four',
+  )
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'line two',
+  )
+})
+
+test('GOTO at the debug prompt moves execution', async ({ page, utils }) => {
+  await pauseOnSecondLine(page)
+  await page.locator('[data-test=debug-text] input').fill('GOTO 4')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.ace_gutter-active-line')).toHaveText('4')
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    /paused \d+s/,
+  )
+  await page.locator('[data-test=go-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue('completed')
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'line four',
+  )
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'line two',
+  )
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'line three',
+  )
+})
+
+test('goto before start runs the script from that line', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('textarea').fill(`puts "line one"
+puts "line two"
+puts "line three"`)
+  await page.locator('[data-test=debug-button]').click()
+  await page.locator('[data-test=goto-line] input').fill('2')
+  await page.locator('[data-test=goto-button]').click()
+  await expect(page.locator('.ace_gutter-active-line')).toHaveText('2')
+  await expect(page.locator('.startLineMarker')).toHaveCount(1)
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    { timeout: 20000 },
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'line three',
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'line two',
+  )
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'line one',
+  )
+})
+
+test('GOTO at the debug prompt before start sets the start line', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('textarea').fill(`puts "line one"
+puts "line two"
+puts "line three"`)
+  await page.locator('[data-test=debug-button]').click()
+  await page.locator('[data-test=debug-text] input').fill('GOTO 3')
+  await page.keyboard.press('Enter')
+  await expect(page.locator('.ace_gutter-active-line')).toHaveText('3')
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    { timeout: 20000 },
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'line three',
+  )
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'line two',
+  )
+})
+
+test('editing the script clears a goto start line', async ({ page, utils }) => {
+  await page.locator('textarea').fill(`puts "line one"
+puts "line two"`)
+  await page.locator('[data-test=debug-button]').click()
+  await page.locator('[data-test=goto-line] input').fill('2')
+  await page.locator('[data-test=goto-button]').click()
+  await expect(page.locator('.startLineMarker')).toHaveCount(1)
+  await page.locator('textarea').press('End')
+  await page.locator('textarea').type(' # edited')
+  await expect(page.locator('.startLineMarker')).toHaveCount(0)
+})
+
+test('Clear Goto Line makes Start run from the top', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('textarea').fill(`puts "line one"
+puts "line two"`)
+  await page.locator('[data-test=debug-button]').click()
+  await page.locator('[data-test=goto-line] input').fill('2')
+  await page.locator('[data-test=goto-button]').click()
+  await expect(page.locator('.startLineMarker')).toHaveCount(1)
+  await page.locator('.ace_content').click({ button: 'right' })
+  await page.locator('[data-test=clear-goto-line]').click()
+  await expect(page.locator('.startLineMarker')).toHaveCount(0)
+  // Only offered while a Goto start line is set
+  await page.locator('.ace_content').click({ button: 'right' })
+  await expect(page.getByText('Execute Selection')).toBeVisible()
+  await expect(page.locator('[data-test=clear-goto-line]')).toHaveCount(0)
+  // Vuetify can drop an Escape sent right after the menu opens, so retry
+  await expect(async () => {
+    await page.keyboard.press('Escape')
+    await expect(page.getByText('Execute Selection')).toBeHidden({
+      timeout: 500,
+    })
+  }).toPass()
+
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'completed',
+    { timeout: 20000 },
+  )
+  await expect(page.locator('[data-test=output-messages]')).toContainText(
+    'line one',
+  )
 })
 
 test('retries failed checks', async ({ page, utils }) => {
