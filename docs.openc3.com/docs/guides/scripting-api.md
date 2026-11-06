@@ -837,15 +837,16 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 </TabItem>
 </Tabs>
 
-| Parameter      | Description                                                                                          |
-| -------------- | ---------------------------------------------------------------------------------------------------- |
-| Target Name    | Name of the target this command is associated with.                                                  |
-| Command Name   | Name of this command. Also referred to as its mnemonic.                                              |
-| Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given. |
-| Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
-| timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
-| log_message    | Optional named parameter to prevent logging of the command                                           |
-| validate       | Optional named parameter to enable/disable validation (default is True)                              |
+| Parameter      | Description                                                                                                                                                                         |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Target Name    | Name of the target this command is associated with.                                                                                                                                 |
+| Command Name   | Name of this command. Also referred to as its mnemonic.                                                                                                                             |
+| Param #x Name  | Name of a command parameter. If there are no parameters then the 'with' keyword should not be given.                                                                                |
+| Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.                                                                                         |
+| timeout        | Optional named parameter to change the default timeout value of 5 seconds                                                                                                           |
+| log_message    | Optional named parameter to prevent logging of the command                                                                                                                          |
+| validate       | Optional named parameter to enable/disable validation (default is True)                                                                                                             |
+| queue          | Optional named parameter to send the command to a queue. If not given, `OPENC3_DEFAULT_QUEUE` is used when set. Pass `False` to never queue. See [Command Queues](#command-queues). |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -854,6 +855,8 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", { "DURATION": 10, "TYPE": "NORMAL" })
 cmd("INST ABORT", timeout=10, log_message=False, validate=False)
+cmd("INST ABORT", queue="TEST")  # Add to the TEST queue
+cmd("INST ABORT", queue=False)  # Bypass OPENC3_DEFAULT_QUEUE
 ```
 
 </TabItem>
@@ -866,6 +869,8 @@ cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", "DURATION" => 10, "TYPE" => "NORMAL")
 cmd("INST", "COLLECT", { "DURATION" => 10, "TYPE" => "NORMAL" })
 cmd("INST ABORT", timeout: 10, log_message: false, validate: false)
+cmd("INST ABORT", queue: "TEST") # Add to the TEST queue
+cmd("INST ABORT", queue: false) # Bypass OPENC3_DEFAULT_QUEUE
 ```
 
 </TabItem>
@@ -905,6 +910,7 @@ cmd_no_range_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param 
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
+| queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -960,6 +966,7 @@ cmd_no_hazardous_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Pa
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
+| queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1015,6 +1022,7 @@ cmd_no_checks("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Va
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
+| queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1070,6 +1078,7 @@ cmd_raw("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
+| queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1125,6 +1134,7 @@ cmd_raw_no_range_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
+| queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1180,6 +1190,7 @@ cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", "<Param #1 Name>" 
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
+| queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1235,6 +1246,7 @@ cmd_raw_no_checks("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param
 | Param #x Value | Value of the command parameter. Values are automatically converted to the appropriate type.          |
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
+| queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -2179,7 +2191,17 @@ status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") # => t
 
 Command queues can be used to store commands prior to "releasing" them for execution. Commands are sent to queues via the `queue` keyword argument to the various `cmd` API calls. Queues can be in three different states: `HOLD`, `RELEASE`, and `DISABLE`. `HOLD` builds up a FIFO of commands as they are generated. `RELEASE` sends the commands to the interface for execution. `DISABLE` rejects all commands that are sent via the `cmd` API calls. Sending a command while a queue is in the `DISABLE` state will raise an exception and stop the script.
 
-By setting the environment variable `OPENC3_DEFAULT_QUEUE` in the .env file you can create a "default" queue that all commands will go to unless explicitly excluded by passing `false/False` to the `queue` keyword argument. This queue is created during COSMOS initialization and is created in `RELEASE` mode so normal commanding will still work. Note that this will introduce delay in the command chain because all commands will flow through the queue instead of being directly executed by the interface.
+By setting the environment variable `OPENC3_DEFAULT_QUEUE` you can create a "default" queue that all commands go to unless the script says otherwise. Set it on both the `openc3-cosmos-cmd-tlm-api` and `openc3-cosmos-init` services in `compose.override.yaml` (there is a commented-out example for each). The init container creates the queue in `RELEASE` mode so normal commanding still works. This adds delay to the command chain because every command flows through the queue instead of going directly to the interface.
+
+The `queue` keyword argument accepts three kinds of values. Note that not passing `queue` and passing `False` / `false` behave differently when `OPENC3_DEFAULT_QUEUE` is set:
+
+| `queue` value              | `OPENC3_DEFAULT_QUEUE` not set | `OPENC3_DEFAULT_QUEUE` set               |
+| -------------------------- | ------------------------------ | ---------------------------------------- |
+| Not given (`None` / `nil`) | Sent directly to the interface | Sent to the `OPENC3_DEFAULT_QUEUE` queue |
+| Queue name, e.g. `"TEST"`  | Sent to the named queue        | Sent to the named queue                  |
+| `False` / `false`          | Sent directly to the interface | Sent directly to the interface           |
+
+The queue name is case sensitive and the queue must already exist (see [queue_create](#queue_create)), otherwise the `cmd` call raises an error. When a command is queued, `cmd` returns as soon as the command is added to the queue. It does not wait for the command to be released or sent.
 
 Here is an example of sending a command to a queue:
 
@@ -2187,8 +2209,11 @@ Here is an example of sending a command to a queue:
 <TabItem value="python" label="Python Example">
 
 ```python
+# Send the command to the TEST queue
 cmd("INST ABORT", queue="TEST")
-# Do NOT queue the command (useful if OPENC3_DEFAULT_QUEUE is set)
+# Send to OPENC3_DEFAULT_QUEUE if it is set, otherwise send directly
+cmd("INST ABORT")
+# Do NOT queue the command, even if OPENC3_DEFAULT_QUEUE is set
 cmd("INST ABORT", queue=False)
 ```
 
@@ -2197,8 +2222,11 @@ cmd("INST ABORT", queue=False)
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
+# Send the command to the TEST queue
 cmd("INST ABORT", queue: "TEST")
-# Do NOT queue the command (useful if OPENC3_DEFAULT_QUEUE is set)
+# Send to OPENC3_DEFAULT_QUEUE if it is set, otherwise send directly
+cmd("INST ABORT")
+# Do NOT queue the command, even if OPENC3_DEFAULT_QUEUE is set
 cmd("INST ABORT", queue: false)
 ```
 
