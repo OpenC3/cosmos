@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 
 from openc3.system.system import System
 from openc3.topics.command_topic import CommandTopic
+from openc3.utilities.json import JsonDecoder
 from test.test_helper import ack_next_message, mock_redis, setup_system, shard_redis
 
 
@@ -82,6 +83,11 @@ class TestCommandTopic(unittest.TestCase):
         CommandTopic.write_packet(self._make_packet(extra=extra), scope="DEFAULT")
         self.assertIn("extra", self.captured["msg_hash"])
         self.assertEqual(json.loads(self.captured["msg_hash"]["extra"]), extra)
+
+    def test_encodes_binary_extra(self):
+        extra = {"data": b"\xff"}
+        CommandTopic.write_packet(self._make_packet(extra=extra), scope="DEFAULT")
+        self.assertEqual(json.loads(self.captured["msg_hash"]["extra"], cls=JsonDecoder), extra)
 
     def test_omits_extra_when_none(self):
         CommandTopic.write_packet(self._make_packet(extra=None), scope="DEFAULT")
