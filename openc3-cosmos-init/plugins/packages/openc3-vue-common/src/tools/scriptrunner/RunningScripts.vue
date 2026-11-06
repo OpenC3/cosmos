@@ -477,7 +477,7 @@ function connectScript(script) {
     const { href } = router.resolve(destination)
     window.open(href, '_blank')
   } else {
-    router.push(destination)
+    void router.push(destination)
     emit('close')
   }
 }
