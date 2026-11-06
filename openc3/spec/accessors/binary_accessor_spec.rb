@@ -332,6 +332,37 @@ module OpenC3
         expect(@packet.read("trailer")).to eql 0x5A
       end
 
+      it "can handle writing variable sized arrays with a length value bit offset" do
+        @packet.append_item("len", 8, :UINT)
+        floats = @packet.append_item("floats", 32, :FLOAT, 0)
+        @packet.append_item("trailer", 8, :UINT)
+        @packet.buffer = "\x00" * @packet.defined_length
+        @packet.write("len", 1) # Lengths must be initialized to zero equivalent
+        # The length item holds the element count plus one
+        floats.variable_bit_size = {'length_item_name' => 'len', 'length_value_bit_offset' => -32, 'length_bits_per_count' => 32}
+
+        @packet.write("floats", [-2.5, 5.0, 3.5])
+        @packet.write("trailer", 0x5A)
+        expect(@packet.buffer).to eql "\x04" + [-2.5, 5.0, 3.5].pack("g*") + "\x5A"
+        expect(@packet.read("len")).to eql 4
+        expect(@packet.read("floats")).to eql [-2.5, 5.0, 3.5]
+        expect(@packet.read("trailer")).to eql 0x5A
+
+        @packet.write("floats", [1.5, 3.0, 4.5, 6.0, 7.5])
+        expect(@packet.read("len")).to eql 6
+        expect(@packet.read("floats")).to eql [1.5, 3.0, 4.5, 6.0, 7.5]
+        expect(@packet.read("trailer")).to eql 0x5A
+      end
+
+      it "complains about writing variable sized FLOAT items that are not arrays" do
+        @packet.append_item("len", 8, :UINT)
+        item = @packet.append_item("item", 32, :FLOAT)
+        item.variable_bit_size = {'length_item_name' => 'len', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        @packet.buffer = "\x00" * @packet.defined_length
+
+        expect { @packet.write("item", 1.5) }.to raise_error(RuntimeError, "Variable bit size not currently supported for FLOAT data type")
+      end
+
       it "raises a clear error when the length item is nil in an undersized packet" do
         @packet.append_item("item1_length", 32, :UINT)
         item1 = @packet.append_item("item1", 8, :UINT, 0)

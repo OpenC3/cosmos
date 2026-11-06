@@ -379,6 +379,46 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(packet.read("floats"), [1.5, 3.0])
         self.assertEqual(packet.read("trailer"), 0x5A)
 
+    def test_can_handle_writing_variable_sized_arrays_with_a_length_value_bit_offset(self):
+        packet = Packet()
+        packet.append_item("len", 8, "UINT")
+        floats = packet.append_item("floats", 32, "FLOAT", 0)
+        packet.append_item("trailer", 8, "UINT")
+        packet.buffer = b"\x00" * packet.defined_length
+        packet.write("len", 1)  # Lengths must be initialized to zero equivalent
+        # The length item holds the element count plus one
+        floats.variable_bit_size = {
+            "length_item_name": "len",
+            "length_value_bit_offset": -32,
+            "length_bits_per_count": 32,
+        }
+
+        packet.write("floats", [-2.5, 5.0, 3.5])
+        packet.write("trailer", 0x5A)
+        self.assertEqual(packet.buffer, b"\x04" + struct.pack(">3f", -2.5, 5.0, 3.5) + b"\x5a")
+        self.assertEqual(packet.read("len"), 4)
+        self.assertEqual(packet.read("floats"), [-2.5, 5.0, 3.5])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
+        packet.write("floats", [1.5, 3.0, 4.5, 6.0, 7.5])
+        self.assertEqual(packet.read("len"), 6)
+        self.assertEqual(packet.read("floats"), [1.5, 3.0, 4.5, 6.0, 7.5])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
+    def test_complains_about_writing_variable_sized_float_items_that_are_not_arrays(self):
+        packet = Packet()
+        packet.append_item("len", 8, "UINT")
+        item = packet.append_item("item", 32, "FLOAT")
+        item.variable_bit_size = {
+            "length_item_name": "len",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        packet.buffer = b"\x00" * packet.defined_length
+
+        with self.assertRaisesRegex(ValueError, "Variable bit size not currently supported for FLOAT data type"):
+            packet.write("item", 1.5)
+
     def test_complains_about_unknown_data_types(self):
         self.assertRaisesRegex(
             TypeError,
