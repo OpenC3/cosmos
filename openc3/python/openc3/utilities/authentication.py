@@ -84,6 +84,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
     #     "scope": "openid email profile"
     # }
 
+    FORM_URLENCODED_CONTENT_TYPE = "application/x-www-form-urlencoded"
     REFRESH_OFFSET_SECONDS = 60
 
     # @param url [String] The url of the openc3 or keycloak in the cluster
@@ -102,7 +103,13 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         with self.auth_mutex:
             self.log = [None, None]
             current_time = time.time()
-            if self._token is None or self.refresh_expires_at < current_time:
+            if OPENC3_API_CLIENT_SECRET:
+                # Machine-to-machine client_credentials grant: the token has no
+                # refresh token, so re-mint it whenever it is (or is about to be)
+                # expired.
+                if self._token is None or self.expires_at is None or self.expires_at < current_time:
+                    self._make_token(current_time, openid_scope=openid_scope)
+            elif self._token is None or self.refresh_expires_at < current_time:
                 self._make_token(current_time, openid_scope=openid_scope)
             elif self.expires_at < current_time:
                 self._refresh_token(current_time)
@@ -120,10 +127,37 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         except OpenC3AuthenticationError:
             return None
 
+    @staticmethod
+    def _redact_log_data(data):
+        log_data = data.copy()
+        for secret_key in ("password", "client_secret", "refresh_token"):
+            if secret_key in log_data:
+                log_data[secret_key] = "***"
+        return str(log_data)
+
     # Make the token and save token to instance
     def _make_token(self, current_time, openid_scope="openid"):
         client_id = OPENC3_API_CLIENT or "api"
-        if OPENC3_API_USER and OPENC3_API_PASSWORD:
+        if OPENC3_API_CLIENT_SECRET:
+            # Machine-to-machine client_credentials grant (no user, no refresh
+            # token). Used by service accounts such as the cosmos-m2m client.
+            data = {
+                "client_id": client_id,
+                "client_secret": OPENC3_API_CLIENT_SECRET,
+                "grant_type": "client_credentials",
+                "scope": openid_scope,
+            }
+            headers = {
+                "Content-Type": self.FORM_URLENCODED_CONTENT_TYPE,
+                "User-Agent": OPENC3_USER_AGENT,
+            }
+            oath = self._make_request(headers, data)
+            self._token = oath["access_token"]
+            # The client_credentials grant does not return a refresh token.
+            self.refresh_token = None
+            self.expires_at = current_time + oath["expires_in"] - self.REFRESH_OFFSET_SECONDS
+            self.refresh_expires_at = None
+        elif OPENC3_API_USER and OPENC3_API_PASSWORD:
             # Username and password
             data = {
                 "username": OPENC3_API_USER,
@@ -133,7 +167,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
                 "scope": openid_scope,
             }
             headers = {
-                "Content-Type": "application/x-www-form-urlencoded",
+                "Content-Type": self.FORM_URLENCODED_CONTENT_TYPE,
                 "User-Agent": OPENC3_USER_AGENT,
             }
             oath = self._make_request(headers, data)
@@ -157,7 +191,7 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
             "grant_type": "refresh_token",
         }
         headers = {
-            "Content-Type": "application/x-www-form-urlencoded",
+            "Content-Type": self.FORM_URLENCODED_CONTENT_TYPE,
             "User-Agent": OPENC3_USER_AGENT,
         }
         oath = self._make_request(headers, data)
@@ -171,17 +205,8 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         realm = OPENC3_KEYCLOAK_REALM or "openc3"
         url = f"{self.url}/realms/{realm}/protocol/openid-connect/token"
 
-        # Obfuscate password and refresh token in logs unless debug mode is enabled
-        if OPENC3_DEVEL:
-            log_data = str(data)
-        else:
-            # Create a copy of the dict with sensitive values obfuscated
-            log_data = data.copy()
-            if "password" in log_data:
-                log_data["password"] = "***"
-            if "refresh_token" in log_data:
-                log_data["refresh_token"] = "***"
-            log_data = str(log_data)
+        # Obfuscate password, client secret, and refresh token before logging.
+        log_data = self._redact_log_data(data)
 
         self.log[0] = f"request uri: {url} header: {headers} body: {log_data}"
         # print(self.log[0])
@@ -199,3 +224,18 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
             )
         else:
             raise OpenC3AuthenticationError(f"authentication request failed {self.log[0]} ::: {self.log[1]}")
+
+
+def authentication_from_environment():
+    """Build the authentication object selected by standard environment configuration.
+
+    Returns:
+        OpenC3Authentication | None: Keycloak authentication for an API token,
+        API user, or nonempty client secret; core authentication for a password;
+        otherwise ``None``.
+    """
+    if OPENC3_API_TOKEN is not None or OPENC3_API_USER is not None or OPENC3_API_CLIENT_SECRET:
+        return OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
+    if OPENC3_API_PASSWORD:
+        return OpenC3Authentication()
+    return None
