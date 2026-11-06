@@ -9,6 +9,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.:
 
+import warnings
+
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.setting_model import SettingModel
@@ -65,6 +67,11 @@ def set_setting(name, data, local_mode=True, scope=OPENC3_SCOPE):
     Logger.info(f"User {username} saved setting '{name}': {data}", scope=scope, user=username)
 
 
-# DEPRECATED
 def save_setting(name, data, local_mode=True, scope=OPENC3_SCOPE):
+    """Saves a setting
+
+    .. deprecated:: 5.12.0
+       Use set_setting instead.
+    """
+    warnings.warn("save_setting is deprecated, use set_setting", FutureWarning, stacklevel=2)
     set_setting(name, data, local_mode, scope)

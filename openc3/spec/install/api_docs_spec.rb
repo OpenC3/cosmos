@@ -16,7 +16,7 @@ require 'find'
 
 module OpenC3
   describe OpenC3 do
-    DEPRECATED_APIS = %w(require_utility save_setting check_with_units tlm_with_units)
+    DEPRECATED_APIS = %w(require_utility save_setting check_with_units tlm_with_units get_all_telemetry get_all_telemetry_names get_telemetry)
     # These are only internal APIs
     IGNORED_APIS = %w(method_missing self.included write puts openc3_script_sleep)
     IGNORED_APIS.concat(%w(running_script_backtrace running_script_debug running_script_prompt update_news update_plugin_store))
@@ -45,6 +45,7 @@ module OpenC3
           if line.strip =~ /^def /
             next if line.include?('def _')
             next if line.include?('initialize') and not line.include?('initialize_')
+
             method = line.strip.split(' ')[1]
             if method.include?('(')
               methods[method.split('(')[0]] = filename
@@ -58,15 +59,17 @@ module OpenC3
 
     def ruby_api
       ruby_api = {}
-      Dir[File.join(SPEC_DIR,'../lib/openc3/script/*.rb')].each do |filename|
+      Dir[File.join(SPEC_DIR, '../lib/openc3/script/*.rb')].each do |filename|
         next if File.basename(filename).include?('extract')
         next if File.basename(filename).include?('web_socket_api')
         next if File.basename(filename).include?('suite_results')
         next if File.basename(filename).include?('suite_runner')
+
         parse_file(filename, ruby_api)
       end
-      Dir[File.join(SPEC_DIR,'../lib/openc3/api/*.rb')].each do |filename|
+      Dir[File.join(SPEC_DIR, '../lib/openc3/api/*.rb')].each do |filename|
         next if File.basename(filename).include?('metrics_api') # TODO: document and implement Python equivalent
+
         parse_file(filename, ruby_api)
       end
       return ruby_api
@@ -74,7 +77,7 @@ module OpenC3
 
     def python_api
       python_api = {}
-      Dir[File.join(SPEC_DIR,'../python/openc3/script/*.py')].each do |filename|
+      Dir[File.join(SPEC_DIR, '../python/openc3/script/*.py')].each do |filename|
         next if File.basename(filename).include?('authorization')
         next if File.basename(filename).include?('decorators')
         next if File.basename(filename).include?('server_proxy')
@@ -82,9 +85,10 @@ module OpenC3
         next if File.basename(filename).include?('web_socket_api')
         next if File.basename(filename).include?('suite_results')
         next if File.basename(filename).include?('suite_runner')
+
         parse_file(filename, python_api)
       end
-      Dir[File.join(SPEC_DIR,'../python/openc3/api/*.py')].each do |filename|
+      Dir[File.join(SPEC_DIR, '../python/openc3/api/*.py')].each do |filename|
         parse_file(filename, python_api)
       end
       return python_api
@@ -92,7 +96,7 @@ module OpenC3
 
     def documented
       documented = []
-      File.open(File.join(SPEC_DIR,'../../docs.openc3.com/docs/guides/scripting-api.md')) do |file|
+      File.open(File.join(SPEC_DIR, '../../docs.openc3.com/docs/guides/scripting-api.md')) do |file|
         apis = false
         file.each do |line|
           if line.strip.include?('###') && !line.strip.include?('####') # Only look at ### headings, not #### headings
@@ -101,6 +105,7 @@ module OpenC3
               next
             end
             next unless apis
+
             line = line.strip[4..-1]
             if line.include?(",") # Split lines like '### check, check_raw'
               line.split(',').each do |method|

@@ -310,3 +310,10 @@ img[alt="CANVASDOT"] {
   font-size: 0.75rem;
   margin-top: -2.6rem;
 }
+
+/* Badges grouped inside a since-heading keep the same text styling as the since badge */
+.since-heading .badge {
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+}
