@@ -18,6 +18,7 @@ import requests
 import openc3.script
 from openc3.script.critical_cmd import (
     critical_cmd_approve,
+    critical_cmd_can_approve,
     critical_cmd_info,
     critical_cmd_reject,
     critical_cmd_status,
@@ -64,6 +65,23 @@ class TestCriticalCmd(unittest.TestCase):
         self.stub_request(status_code=404, body={"status": "error", "message": "not found"})
         with self.assertRaisesRegex(RuntimeError, "critical_cmd_info failed"):
             critical_cmd_info("UUID")
+
+    def test_critical_cmd_status_and_info_without_status(self):
+        # Matches Ruby which returns nil rather than raising
+        self.stub_request(body={})
+        self.assertIsNone(critical_cmd_status("UUID"))
+        self.assertIsNone(critical_cmd_info("UUID")["status"])
+
+    def test_critical_cmd_can_approve(self):
+        self.stub_request(body={"status": "ok"})
+        self.assertTrue(critical_cmd_can_approve("UUID"))
+        self.stub_request(body={"status": "error", "message": "already approved by alice"})
+        self.assertFalse(critical_cmd_can_approve("UUID"))
+
+    def test_critical_cmd_can_approve_raises_on_error(self):
+        self.stub_request(status_code=404, body={"status": "error", "message": "not found"})
+        with self.assertRaisesRegex(RuntimeError, "critical_cmd_can_approve failed"):
+            critical_cmd_can_approve("UUID")
 
     def test_critical_cmd_approve_raises_with_server_message(self):
         self.stub_request(status_code=500, body={"status": "error", "message": "already approved by alice"})

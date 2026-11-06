@@ -736,6 +736,13 @@ export default {
         delay = Math.min(delay * 2, 30000)
       }
       const poll = () => {
+        // The approval dialog polls this command itself while it's open.
+        // Check again shortly so the result is picked up once it closes.
+        if (this.displayCriticalCmd && this.criticalCmdUuid === uuid) {
+          delay = 1000
+          schedule()
+          return
+        }
         Api.get('/openc3-api/criticalcmd/status/' + uuid, {
           // Keep failed polls out of the error banner, they're retried
           headers: {
@@ -748,7 +755,15 @@ export default {
             if (!(uuid in this.criticalCmdWatchers)) return
             if (response.data.status === 'APPROVED') {
               stop()
-              this.processCmdSuccess(cmd, command, sendOptions)
+              // APPROVED only means the command was released to the interface,
+              // which can still fail to send it (e.g. disconnected), so don't
+              // claim it was sent
+              const msg = this.formatCmd(cmd, command, sendOptions)
+              this.insertHistory(msg)
+              const released = response.data.interface_name
+                ? ` and released to ${response.data.interface_name}`
+                : ''
+              this.status = `Critical command approved${released}: ${msg}`
             } else if (response.data.status === 'REJECTED') {
               stop()
               this.status = `Critical command rejected: ${command.cmd_string}`
@@ -778,6 +793,26 @@ export default {
     },
 
     processCmdSuccess(cmd_sent, response, sendOptions) {
+      let msg = this.formatCmd(cmd_sent, response, sendOptions)
+      this.addToHistory(msg)
+      msg += ' sent.'
+      // Add the number of commands sent to the status message
+      if (this.status.includes(msg)) {
+        let parts = this.status.split('sent.')
+        if (parts[1].includes('(')) {
+          let num = Number.parseInt(
+            parts[1].substr(2, parts[1].indexOf(')') - 2),
+          )
+          msg = parts[0] + 'sent. (' + (num + 1) + ')'
+        } else {
+          msg += ' (2)'
+        }
+      }
+      this.status = msg
+    },
+
+    // Format the sent command the way the user would script it
+    formatCmd(cmd_sent, response, sendOptions) {
       const { queueName, validateParameter, disableCommandValidation } =
         sendOptions
       let msg = `${cmd_sent}("${response['target_name']} ${response['cmd_name']}`
@@ -823,6 +858,24 @@ export default {
       } else {
         msg += '")'
       }
+      return msg
+    },
+
+    // Add a command that completed in the background (e.g. an approved
+    // critical command) to the top of the history without disturbing the
+    // user's cursor, selection or edits. Ace shifts them down with the insert.
+    insertHistory(msg) {
+      const value = this.editor.getValue()
+      if (!value.includes(msg)) {
+        this.editor.session.insert(
+          { row: 0, column: 0 },
+          value.length !== 0 ? `${msg}\n` : msg,
+        )
+      }
+      this.saveHistory()
+    },
+
+    addToHistory(msg) {
       if (!this.history.includes(msg)) {
         let value = msg
         if (this.history.length !== 0) {
@@ -831,21 +884,6 @@ export default {
         this.editor.setValue(value)
         this.editor.moveCursorTo(0, 0)
       }
-      msg += ' sent.'
-      // Add the number of commands sent to the status message
-      if (this.status.includes(msg)) {
-        let parts = this.status.split('sent.')
-        if (parts[1].includes('(')) {
-          let num = Number.parseInt(
-            parts[1].substr(2, parts[1].indexOf(')') - 2),
-          )
-          msg = parts[0] + 'sent. (' + (num + 1) + ')'
-        } else {
-          msg += ' (2)'
-        }
-      }
-      this.status = msg
-
       this.saveHistory()
     },
 

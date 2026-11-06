@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import re
 import unittest
 
 from openc3.models.scope_model import ScopeModel
@@ -34,6 +35,15 @@ class TestScopeModel(unittest.TestCase):
     def test_raises_on_critical_cmd_approvers_less_than_1(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid value for critical_cmd_approvers"):
             ScopeModel(name="DEFAULT", critical_cmd_approvers=0)
+
+    def test_raises_on_non_integer_critical_cmd_approvers(self):
+        for value in ["", "abc", "2.5"]:
+            with self.assertRaisesRegex(
+                RuntimeError, rf"Invalid value for critical_cmd_approvers: {re.escape(value)} \(must be 1 to 10\)"
+            ):
+                ScopeModel(name="DEFAULT", critical_cmd_approvers=value)
+        # Base 10, matching Ruby
+        self.assertEqual(ScopeModel(name="DEFAULT", critical_cmd_approvers="010").critical_cmd_approvers, 10)
 
     def test_allows_up_to_10_critical_cmd_approvers(self):
         self.assertEqual(ScopeModel(name="DEFAULT", critical_cmd_approvers=10).critical_cmd_approvers, 10)

@@ -27,6 +27,7 @@ from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.models.target_model import TargetModel
+from openc3.packets.command_validator import CommandValidatorResult
 from openc3.packets.packet import Packet
 from openc3.system.system import System
 from openc3.topics.interface_topic import InterfaceTopic
@@ -1007,6 +1008,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         critical_model = Mock()
         critical_model.approver = "approver"
+        critical_model.claim_release.return_value = True
         critical_model.cmd_hash = {
             b"target_name": b"INST",
             b"cmd_name": b"ABORT",
@@ -1020,6 +1022,132 @@ class TestInterfaceMicroservice(unittest.TestCase):
                 "{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, {b"release_critical": b"abc-123"}, None
             )
         self.assertEqual(result, "Target INST is disabled")
+        critical_model.claim_release.assert_called_once()
+
+    def test_process_cmd_claims_released_critical_cmd_before_sending(self):
+        """CLEAR is hazardous, which a released critical command skips"""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        msg_id = f"{int(time.time() * 1000)}-0"
+        handler.interface.connected = Mock(return_value=True)
+        calls = []
+
+        def write(command):
+            calls.append("write")
+            self.assertEqual(command.packet_name, "CLEAR")
+            self.assertEqual(command.extra["approver"], "approver")
+
+        handler.interface.write = Mock(side_effect=write)
+        critical_model = Mock()
+        critical_model.approver = "approver"
+        critical_model.claim_release.side_effect = lambda: calls.append("claim") or True
+        critical_model.cmd_hash = {
+            b"target_name": b"INST",
+            b"cmd_name": b"CLEAR",
+            b"cmd_params": json.dumps({}).encode(),
+            b"cmd_string": b"cmd('INST CLEAR')",
+        }
+        with (
+            patch("openc3.microservices.interface_microservice.CriticalCmdModel", create=True) as model_class,
+            patch(
+                "openc3.microservices.interface_microservice.TargetModel.increment_command_count", return_value=1
+            ) as increment,
+        ):
+            model_class.get_model.return_value = critical_model
+            result = handler.process_cmd(
+                "{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, {b"release_critical": b"abc-123"}, None
+            )
+        self.assertEqual(result, "SUCCESS")
+        self.assertEqual(calls, ["claim", "write"])
+        # Counted once on release. It wasn't counted while held for approval.
+        increment.assert_called_once_with("INST", "CLEAR", 1, scope="DEFAULT")
+
+    def test_process_cmd_does_not_count_held_or_hazardous_cmds(self):
+        """A command held for critical approval or returned for hazardous
+        confirmation isn't sent so it isn't counted"""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        msg_id = f"{int(time.time() * 1000)}-0"
+        handler.interface.connected = Mock(return_value=True)
+        handler.interface.write = Mock()
+
+        def clear(hazardous_check):
+            return {
+                b"target_name": b"INST",
+                b"cmd_name": b"CLEAR",
+                b"cmd_params": json.dumps({}).encode(),
+                b"cmd_string": b"cmd('INST CLEAR')",
+                b"hazardous_check": hazardous_check,
+            }
+
+        with (
+            patch("openc3.microservices.interface_microservice.CriticalCmdModel", create=True) as model_class,
+            patch("openc3.microservices.interface_microservice.TargetModel.increment_command_count") as increment,
+        ):
+            model_class.return_value.name = "abc-123"
+            result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", msg_id, clear(b"TRUE"), None)
+            self.assertTrue(result.startswith("HazardousError"))
+
+            handler.critical_commanding = "NORMAL"
+            result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", msg_id, clear(b"FALSE"), None)
+            self.assertEqual(result, "CriticalCmdError\nabc-123")
+        increment.assert_not_called()
+        handler.interface.write.assert_not_called()
+
+    def test_process_cmd_does_not_send_unclaimed_critical_cmd(self):
+        """A duplicate release message, or one whose approval was undone, can't claim
+        the release so the command isn't sent again."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        msg_id = f"{int(time.time() * 1000)}-0"
+        handler.interface.write = Mock()
+
+        handler.logger = Mock()
+        critical_model = Mock()
+        # A duplicate release message is expected so it's only a warning. An approved
+        # command that won't be sent, e.g. its approval was undone, is an error.
+        for released, status, reason, level in [
+            (True, "APPROVED", "already released", "warn"),
+            (False, "WAITING", "WAITING", "error"),
+        ]:
+            critical_model.claim_release.return_value = False
+            critical_model.released = released
+            critical_model.status = status
+            with patch("openc3.microservices.interface_microservice.CriticalCmdModel", create=True) as model_class:
+                model_class.get_model.return_value = critical_model
+                result = handler.process_cmd(
+                    "{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, {b"release_critical": b"abc-123"}, None
+                )
+            self.assertEqual(result, f"Critical command 'abc-123' not released: {reason}")
+            getattr(handler.logger, level).assert_called_with(
+                f"INST_INT: Critical command 'abc-123' not released: {reason}", scope="DEFAULT"
+            )
+        handler.interface.write.assert_not_called()
+
+    def test_process_cmd_does_not_send_critical_cmd_if_claim_fails(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        msg_id = f"{int(time.time() * 1000)}-0"
+        handler.interface.write = Mock()
+
+        handler.logger = Mock()
+        critical_model = Mock()
+        critical_model.claim_release.side_effect = RuntimeError("Timeout updating critical command 'abc-123'")
+        with patch("openc3.microservices.interface_microservice.CriticalCmdModel", create=True) as model_class:
+            model_class.get_model.return_value = critical_model
+            result = handler.process_cmd(
+                "{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, {b"release_critical": b"abc-123"}, None
+            )
+        self.assertEqual(result, "Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'")
+        handler.logger.error.assert_called_with(
+            "INST_INT: Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'",
+            scope="DEFAULT",
+        )
+        handler.interface.write.assert_not_called()
 
     def test_process_cmd_validator_results(self):
         """Only an explicit False from pre_check/post_check rejects a command (None
@@ -1053,6 +1181,15 @@ class TestInterfaceMicroservice(unittest.TestCase):
         validator.pre_check.return_value = (False, "not ready")
         result = handler.process_cmd(topic, msg_id, msg_hash, None)
         self.assertEqual(result, "pre_check returned false for cmd('INST ABORT') due to not ready")
+
+        validator.pre_check.return_value = CommandValidatorResult(False, "namedtuple return")
+        result = handler.process_cmd(topic, msg_id, msg_hash, None)
+        self.assertEqual(result, "pre_check returned false for cmd('INST ABORT') due to namedtuple return")
+
+        # Validators written before CommandValidatorResult was added return a list
+        validator.pre_check.return_value = [False, "list return"]
+        result = handler.process_cmd(topic, msg_id, msg_hash, None)
+        self.assertEqual(result, "pre_check returned false for cmd('INST ABORT') due to list return")
 
         validator.pre_check.return_value = (True, None)
         validator.post_check.side_effect = RuntimeError("post boom")
