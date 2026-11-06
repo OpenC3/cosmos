@@ -14,16 +14,16 @@
 require 'openc3/models/model'
 
 module OpenC3
-  # Captures the information openc3-app needs to spawn a COSMOS interface on the
+  # Captures the information openc3-cosmos-app needs to spawn a COSMOS interface on the
   # host computer (outside Docker) so it can reach hardware such as serial ports
   # that aren't available inside a container. A host microservice performs raw
   # data transfer and basic functionality only; complex processing (protocols,
   # target definitions) stays on the Docker side of COSMOS. The host side speaks
-  # Iroh back to openc3-app which forwards the data into COSMOS through the named
+  # Iroh back to openc3-cosmos-app which forwards the data into COSMOS through the named
   # bridge_microservice relay.
   #
   # This model is written by InterfaceModel#deploy for bridged interfaces (those
-  # configured with the BRIDGE keyword) and read by openc3-app. It is deliberately
+  # configured with the BRIDGE keyword) and read by openc3-cosmos-app. It is deliberately
   # kept separate from MicroserviceModel so it is NOT run by the normal COSMOS
   # microservice operator.
   class HostInterfaceMicroserviceModel < Model
@@ -42,7 +42,7 @@ module OpenC3
     # The bridge (bridge_microservice relay) this host interface routes through.
     attr_accessor :bridge_name
     # The Iroh ALPN stream name (the interface name) used to route data back to
-    # openc3-app and on to the matching COSMOS bridge_interface.
+    # openc3-cosmos-app and on to the matching COSMOS bridge_interface.
     attr_accessor :stream
 
     # NOTE: The following three class methods are reimplemented (like other

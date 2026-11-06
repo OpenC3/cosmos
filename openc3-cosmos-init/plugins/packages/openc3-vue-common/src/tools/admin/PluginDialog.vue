@@ -1554,7 +1554,7 @@ export default {
           value: bridge.name,
           text: bridge.app_public_key
             ? bridge.name
-            : `${bridge.name} (not paired with openc3-app)`,
+            : `${bridge.name} (not paired with openc3-cosmos-app)`,
         }))
       } catch (error) {
         this.bridges = []
@@ -1603,7 +1603,7 @@ export default {
         visiting.delete(name)
       }
     },
-    // Ask the host (through openc3-app and the DEFAULT bridge) for the
+    // Ask the host (through openc3-cosmos-app and the DEFAULT bridge) for the
     // possible values of a VARIABLE_DISCOVERY variable
     // Each of the variable's VARIABLE_DISCOVERYs runs in parallel and their
     // results are combined, remembering which discovery found each value

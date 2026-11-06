@@ -217,8 +217,8 @@ module OpenC3
     end
 
     # Every scope gets a DEFAULT bridge_microservice: the Iroh hub that lets
-    # openc3-app run COSMOS interfaces on the host. It idles (no data streams,
-    # no enrolled app) until an interface is bridged / openc3-app enrolls.
+    # openc3-cosmos-app run COSMOS interfaces on the host. It idles (no data streams,
+    # no enrolled app) until an interface is bridged / openc3-cosmos-app enrolls.
     #
     # It is a top-level microservice (spawned directly by the operator), NOT a
     # child of SCOPEMULTI: that runs its Ruby children in-process, and the bridge

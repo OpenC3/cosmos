@@ -13,7 +13,7 @@
 class Discovery:
     """Base class for discovering hardware available on the host computer.
 
-    Discovery classes run on the host (via openc3-app and the COSMOS bridge), not
+    Discovery classes run on the host (via openc3-cosmos-app and the COSMOS bridge), not
     inside COSMOS, so they can see local devices such as serial ports and USB HID
     devices. They are referenced from plugin.txt by filename, for example
     VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py, and any additional

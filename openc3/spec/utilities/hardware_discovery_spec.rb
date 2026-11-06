@@ -129,9 +129,9 @@ module OpenC3
     end
 
     it "requires a paired bridge" do
-      expect { described_class.scan(bridge: 'UNPAIRED', scope: 'DEFAULT') }.to raise_error("Bridge 'UNPAIRED' is not paired with openc3-app")
+      expect { described_class.scan(bridge: 'UNPAIRED', scope: 'DEFAULT') }.to raise_error("Bridge 'UNPAIRED' is not paired with openc3-cosmos-app")
       allow(BridgeModel).to receive(:all).and_return({})
-      expect { described_class.scan(bridge: 'ALL', scope: 'DEFAULT') }.to raise_error('No bridge is paired with openc3-app')
+      expect { described_class.scan(bridge: 'ALL', scope: 'DEFAULT') }.to raise_error('No bridge is paired with openc3-cosmos-app')
     end
 
     it "reads installed plugin matchers once and skips unreadable gems" do

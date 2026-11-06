@@ -76,7 +76,7 @@ module OpenC3
     attr_accessor :minimum_cosmos_version
     attr_accessor :needs_dependencies
     # The plugin's requirements.txt as installed, which bridges send to the host
-    # (openc3-app) to provision bridged interfaces
+    # (openc3-cosmos-app) to provision bridged interfaces
     attr_accessor :python_requirements
     # The plugin's pyproject.toml as installed, sent to the host like
     # python_requirements

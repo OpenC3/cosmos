@@ -27,9 +27,9 @@
       </v-card-title>
       <div class="px-6 flex-shrink-0">
         <p class="text-body-2 text-medium-emphasis mb-3">
-          Scans the computers connected to COSMOS through openc3-app for USB,
-          serial, network and Bluetooth devices, and proposes plugins to install
-          for them.
+          Scans the computers connected to COSMOS through openc3-cosmos-app for
+          USB, serial, network and Bluetooth devices, and proposes plugins to
+          install for them.
         </p>
         <v-row dense align="center">
           <v-col cols="12" sm="6">
@@ -67,8 +67,8 @@
           variant="tonal"
           data-test="discover-no-bridge"
         >
-          No bridge is paired with openc3-app. Pair a computer with COSMOS from
-          the Bridges tab to discover its hardware.
+          No bridge is paired with openc3-cosmos-app. Pair a computer with
+          COSMOS from the Bridges tab to discover its hardware.
         </v-alert>
         <div v-if="scanning" class="text-center py-8">
           <v-progress-circular indeterminate class="mb-3" />
@@ -284,7 +284,7 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
-    // Only bridges paired with openc3-app can scan their host
+    // Only bridges paired with openc3-cosmos-app can scan their host
     bridgeItems() {
       const items = this.bridges.map((name) => ({ value: name, text: name }))
       if (items.length > 1) {

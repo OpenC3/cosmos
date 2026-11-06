@@ -11,7 +11,7 @@
 
 """Runs a Discovery class and prints its results as JSON on stdout.
 
-Used by openc3-app on the host to answer discovery requests from COSMOS:
+Used by openc3-cosmos-app on the host to answer discovery requests from COSMOS:
 
     python -m openc3.discovery.discovery_runner <discovery filename or module> [args...]
 

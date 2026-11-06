@@ -11,7 +11,7 @@
 
 """Scans the host for hardware and checks it against discovery matchers.
 
-Used by openc3-app on the host to answer hardware discovery requests from
+Used by openc3-cosmos-app on the host to answer hardware discovery requests from
 COSMOS, which proposes plugins for the devices found:
 
     python -m openc3.discovery.discovery_scan < request.json

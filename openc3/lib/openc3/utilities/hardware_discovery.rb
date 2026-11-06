@@ -45,8 +45,8 @@ module OpenC3
       matchers, candidates_by_id = unique_matchers(sources)
       bridges = bridge_names(bridge, scope: scope)
       if bridges.empty?
-        raise "No bridge is paired with openc3-app" if bridge.to_s.upcase == 'ALL'
-        raise "Bridge '#{bridge.to_s.upcase}' is not paired with openc3-app"
+        raise "No bridge is paired with openc3-cosmos-app" if bridge.to_s.upcase == 'ALL'
+        raise "Bridge '#{bridge.to_s.upcase}' is not paired with openc3-cosmos-app"
       end
 
       results = {}

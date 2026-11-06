@@ -150,7 +150,7 @@ VARIABLE_ADVANCED:
 VARIABLE_BRIDGE:
   summary: Let the user select which bridge the plugin uses
   description: The VARIABLE_BRIDGE keyword defines a variable named bridge_name whose value is selected from the
-    bridges available in COSMOS when the plugin is installed. Bridges connect COSMOS to openc3-app running on a host
+    bridges available in COSMOS when the plugin is installed. Bridges connect COSMOS to openc3-cosmos-app running on a host
     computer, so this chooses which host the plugin's bridged interfaces and VARIABLE_DISCOVERY run on.
     Use bridge_name in ERB like any other variable, for example with the BRIDGE interface modifier.
     VARIABLE_DESCRIPTION, VARIABLE_STATE and the other VARIABLE modifiers can follow it.
@@ -198,10 +198,10 @@ VARIABLE_FILE:
 VARIABLE_DISCOVERY:
   summary: Discover the possible values of a plugin variable from the host computer
   description: The VARIABLE_DISCOVERY keyword runs a Python discovery class on the host computer paired with
-    COSMOS through openc3-app, using the bridge selected by VARIABLE_BRIDGE (or the DEFAULT bridge). The values it finds are added to the dropdown for the
+    COSMOS through openc3-cosmos-app, using the bridge selected by VARIABLE_BRIDGE (or the DEFAULT bridge). The values it finds are added to the dropdown for the
     previously defined VARIABLE in the plugin installation dialog, after any VARIABLE_STATE options.
     Discovery runs when the dialog opens and can be refreshed. When installing a new plugin, the first available
-    discovered value is selected automatically unless a value was already chosen. If openc3-app is not running the variable can
+    discovered value is selected automatically unless a value was already chosen. If openc3-cosmos-app is not running the variable can
     still be typed in by hand. Discovery classes subclass openc3/discovery/discovery.py and implement discover(), or scan() and match().
     Parameters can include the value of another variable as `${name}`. A variable holding several space separated values passes
     each as a parameter. The discovery reruns when a referenced variable changes, and is skipped when they are all blank.

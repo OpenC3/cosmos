@@ -427,7 +427,7 @@ module OpenC3
         expect(relay.options).to include(["BRIDGE_NAME", "MYBRIDGE"])
         expect(relay.options).to_not include(["STREAM", "SERIAL_INT"])
 
-        # Host spawn spec for openc3-app: the real interface + bridge connection
+        # Host spawn spec for openc3-cosmos-app: the real interface + bridge connection
         # options and BRIDGE_PROTOCOLs that run on the host next to the device.
         host = HostInterfaceMicroserviceModel.get_model(name: "SERIAL_INT", scope: "DEFAULT")
         expect(host).to_not be_nil

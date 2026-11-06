@@ -193,7 +193,7 @@ if __name__ == "__main__":
 
 
 class FakeAcceptConnection(FakeConnection):
-    """A connection whose peer opens the bi-stream (as openc3-app does)."""
+    """A connection whose peer opens the bi-stream (as openc3-cosmos-app does)."""
 
     async def accept_bi(self):
         return self.bi

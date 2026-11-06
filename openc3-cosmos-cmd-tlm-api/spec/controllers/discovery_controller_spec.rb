@@ -67,7 +67,7 @@ RSpec.describe DiscoveryController, type: :controller do
       expect(OpenC3::DiscoveryTopic).not_to receive(:discover)
       post :create, params: { scope: "DEFAULT", bridge: "unpaired", discovery: ["x.py"] }, as: :json
       expect(response).to have_http_status(:service_unavailable)
-      expect(JSON.parse(response.body)["message"]).to eq "Bridge 'UNPAIRED' is not paired with openc3-app"
+      expect(JSON.parse(response.body)["message"]).to eq "Bridge 'UNPAIRED' is not paired with openc3-cosmos-app"
       post :create, params: { scope: "DEFAULT", bridge: "missing", discovery: ["x.py"] }, as: :json
       expect(response).to have_http_status(:service_unavailable)
     end
@@ -108,7 +108,7 @@ RSpec.describe DiscoveryController, type: :controller do
     it "explains an unpaired bridge" do
       post :scan, params: { scope: "DEFAULT", bridge: "UNPAIRED" }, as: :json
       expect(response).to have_http_status(:service_unavailable)
-      expect(JSON.parse(response.body)["message"]).to eq "Bridge 'UNPAIRED' is not paired with openc3-app"
+      expect(JSON.parse(response.body)["message"]).to eq "Bridge 'UNPAIRED' is not paired with openc3-cosmos-app"
     end
 
     it "reports other errors" do

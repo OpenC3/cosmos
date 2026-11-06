@@ -16,7 +16,7 @@ require 'openc3/models/plugin_model'
 require 'openc3/topics/discovery_topic'
 require 'openc3/utilities/hardware_discovery'
 
-# Runs a Python Discovery class on the host paired with a bridge (via openc3-app)
+# Runs a Python Discovery class on the host paired with a bridge (via openc3-cosmos-app)
 # and returns what it found, e.g. the serial ports for a VARIABLE_DISCOVERY.
 class DiscoveryController < ApplicationController
   DISCOVERY_TIMEOUT_S = 15
@@ -36,7 +36,7 @@ class DiscoveryController < ApplicationController
     bridge_name = (params[:bridge].presence || 'DEFAULT').to_s.upcase
     bridge = OpenC3::BridgeModel.get_model(name: bridge_name, scope: params[:scope])
     unless bridge and bridge.app_public_key
-      render json: { status: 'error', message: "Bridge '#{bridge_name}' is not paired with openc3-app" }, status: :service_unavailable
+      render json: { status: 'error', message: "Bridge '#{bridge_name}' is not paired with openc3-cosmos-app" }, status: :service_unavailable
       return
     end
     discovery = discovery.map(&:to_s)

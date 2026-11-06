@@ -66,16 +66,16 @@ module OpenC3
         expect(Topic).to have_received(:write_topic) do |topic, message, _id, _maxlen|
           expect(topic).to eql "DEFAULT__DISCOVERY__DEFAULT"
           expect(JSON.parse(message['scan'])).to eql request
-          # So openc3-app without scan support errors instead of failing to parse it
+          # So openc3-cosmos-app without scan support errors instead of failing to parse it
           expect(message['discovery']).to eql '[]'
         end
       end
 
-      it "explains an openc3-app without scan support" do
+      it "explains an openc3-cosmos-app without scan support" do
         stub_result("ID1", { 'error' => 'no discovery class given' })
-        expect { DiscoveryTopic.scan("BRIDGE2", {}, scope: "DEFAULT") }.to raise_error(/bridge 'BRIDGE2' does not support hardware discovery. Update openc3-app/)
+        expect { DiscoveryTopic.scan("BRIDGE2", {}, scope: "DEFAULT") }.to raise_error(/bridge 'BRIDGE2' does not support hardware discovery. Update openc3-cosmos-app/)
         stub_result("ID1", { 'results' => [] })
-        expect { DiscoveryTopic.scan("BRIDGE2", {}, scope: "DEFAULT") }.to raise_error(/Update openc3-app/)
+        expect { DiscoveryTopic.scan("BRIDGE2", {}, scope: "DEFAULT") }.to raise_error(/Update openc3-cosmos-app/)
       end
 
       it "raises other host errors" do

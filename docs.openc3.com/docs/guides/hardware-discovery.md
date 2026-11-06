@@ -5,15 +5,15 @@ sidebar_custom_props:
   myEmoji: 📡
 ---
 
-Hardware discovery lets COSMOS find the devices that are connected to, or reachable from, the computers paired with it through openc3-app. These include serial ports, USB and HID devices, network devices and Bluetooth LE devices. COSMOS uses what it finds in two ways:
+Hardware discovery lets COSMOS find the devices that are connected to, or reachable from, the computers paired with it through openc3-cosmos-app. These include serial ports, USB and HID devices, network devices and Bluetooth LE devices. COSMOS uses what it finds in two ways:
 
 - **When installing a plugin**, a variable can list the matching devices in a dropdown, so the user picks the serial port, controller or IP address instead of typing it.
 - **With Discover Hardware**, COSMOS scans a computer for devices and proposes plugins that support them, from the OpenC3 Store and from the plugins already installed. Choosing one opens the plugin install dialog with the device already filled in.
 
 Plugin authors make a plugin discoverable with a few `plugin.txt` keywords. They are covered in [Configuring a Plugin for Discovery](#configuring-a-plugin-for-discovery).
 
-:::info[Requires openc3-app]
-Discovery runs on a computer paired with COSMOS through openc3-app, the same computer that runs the plugin's [bridged](bridges.md) interfaces. Without a paired computer, plugins still install normally and their values can be typed in by hand.
+:::info[Requires openc3-cosmos-app]
+Discovery runs on a computer paired with COSMOS through openc3-cosmos-app, the same computer that runs the plugin's [bridged](bridges.md) interfaces. Without a paired computer, plugins still install normally and their values can be typed in by hand.
 :::
 
 ## How It Works
@@ -22,7 +22,7 @@ Discovery runs on a computer paired with COSMOS through openc3-app, the same com
  Browser                COSMOS                          Host computer
  ───────                ──────                          ─────────────
  Plugin dialog ──┐
-                 ├──▶  cmd-tlm-api ──▶ bridge hub ◀──── openc3-app
+                 ├──▶  cmd-tlm-api ──▶ bridge hub ◀──── openc3-cosmos-app
  Discover        │     (admin only)    (per bridge)       │
  Hardware ───────┘                                        ▼
                                                      Python discovery classes
@@ -30,9 +30,9 @@ Discovery runs on a computer paired with COSMOS through openc3-app, the same com
                                                       SSDP, ARP, Bluetooth)
 ```
 
-1. The plugin dialog or the Discover Hardware dialog asks COSMOS to run a discovery on one of its **bridges**. Each bridge is a computer paired through openc3-app; every scope has one named `DEFAULT`.
-2. COSMOS passes the request to the bridge, and openc3-app picks it up. openc3-app keeps its own Python environment for discovery with the packages the built-in discovery classes need, so the host needs no setup.
-3. openc3-app runs the discovery classes on the host, and the devices they find come back to COSMOS.
+1. The plugin dialog or the Discover Hardware dialog asks COSMOS to run a discovery on one of its **bridges**. Each bridge is a computer paired through openc3-cosmos-app; every scope has one named `DEFAULT`.
+2. COSMOS passes the request to the bridge, and openc3-cosmos-app picks it up. openc3-cosmos-app keeps its own Python environment for discovery with the packages the built-in discovery classes need, so the host needs no setup.
+3. openc3-cosmos-app runs the discovery classes on the host, and the devices they find come back to COSMOS.
 
 Running discovery requires the `admin` permission, the same as installing a plugin, because it runs code on the host.
 
@@ -212,11 +212,11 @@ class MyRadioDiscovery(Discovery):
         return not self.models or device["model"] in self.models
 ```
 
-The class is named after its file: `my_radio_discovery.py` contains `MyRadioDiscovery`. openc3-app finds it if it's in the `lib` folder of a plugin already installed in COSMOS, since openc3-app syncs those folders to the host. It isn't available when the plugin that contains it is being installed for the first time. Discover Hardware only uses the classes COSMOS provides.
+The class is named after its file: `my_radio_discovery.py` contains `MyRadioDiscovery`. openc3-cosmos-app finds it if it's in the `lib` folder of a plugin already installed in COSMOS, since openc3-cosmos-app syncs those folders to the host. It isn't available when the plugin that contains it is being installed for the first time. Discover Hardware only uses the classes COSMOS provides.
 
 ### Testing Discovery on a Computer
 
-The runners openc3-app uses can be run directly in a Python environment with the `openc3` package and the packages the class needs (`hidapi`, `pyusb` and `libusb-package`, `zeroconf` or `bleak`):
+The runners openc3-cosmos-app uses can be run directly in a Python environment with the `openc3` package and the packages the class needs (`hidapi`, `pyusb` and `libusb-package`, `zeroconf` or `bleak`):
 
 ```bash
 python -m openc3.discovery.discovery_runner openc3/discovery/serial_discovery.py 10C4:EA60
@@ -232,10 +232,10 @@ echo '{"matchers": [{"id": "1", "class": "openc3.discovery.hid_discovery", "para
 
 | Problem | Cause |
 | --- | --- |
-| No bridge is paired with openc3-app | Install openc3-app on the computer with the devices and pair it with COSMOS from the **Bridges** tab of the Admin Console |
-| Timeout waiting for discovery | openc3-app isn't running or can't reach COSMOS, or it is still setting up its discovery environment, which happens the first time it starts |
-| openc3-app does not support hardware discovery | Update openc3-app |
-| A device isn't found | Check that it is connected and powered, and that the computer can use it: on Linux, serial and HID devices need permission for the user running openc3-app (e.g. the `dialout` group or a udev rule). Bluetooth requires the computer's Bluetooth to be on, and the operating system may ask to allow openc3-app to use it. |
+| No bridge is paired with openc3-cosmos-app | Install openc3-cosmos-app on the computer with the devices and pair it with COSMOS from the **Bridges** tab of the Admin Console |
+| Timeout waiting for discovery | openc3-cosmos-app isn't running or can't reach COSMOS, or it is still setting up its discovery environment, which happens the first time it starts |
+| openc3-cosmos-app does not support hardware discovery | Update openc3-cosmos-app |
+| A device isn't found | Check that it is connected and powered, and that the computer can use it: on Linux, serial and HID devices need permission for the user running openc3-cosmos-app (e.g. the `dialout` group or a udev rule). Bluetooth requires the computer's Bluetooth to be on, and the operating system may ask to allow openc3-cosmos-app to use it. |
 | A network host isn't found by `neighbor_discovery` | It only lists hosts the computer has communicated with recently. Ping the device or open its web page first. |
 | A device is listed as in use | Another installed plugin uses it on that computer. Uninstall that plugin, or choose a different device. |
 | An error is shown for one kind of device | That discovery class failed, e.g. Bluetooth isn't available on the computer. Other kinds of devices are still listed. |

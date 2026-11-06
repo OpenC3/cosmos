@@ -16,7 +16,7 @@ require 'openc3/topics/topic'
 
 module OpenC3
   # Discovery requests are published to a bridge hub (bridge_microservice) which
-  # hands them to openc3-app. openc3-app runs the Python Discovery class on the
+  # hands them to openc3-cosmos-app. openc3-cosmos-app runs the Python Discovery class on the
   # host and the hub publishes the result back on the result topic.
   # See openc3/python/openc3/topics/discovery_topic.py
   class DiscoveryTopic < Topic
@@ -49,13 +49,13 @@ module OpenC3
     # @param timeout [Numeric] Seconds to wait for the host to respond
     # @return [Hash] { 'devices' => [...], 'errors' => {...}, 'skipped' => {...} }
     def self.scan(bridge_name, scan, timeout: nil, scope:)
-      # An empty discovery makes an openc3-app without scan support answer with an error
+      # An empty discovery makes an openc3-cosmos-app without scan support answer with an error
       fields = { 'discovery' => '[]', 'scan' => JSON.generate(scan) }
       result = request(bridge_name, fields, timeout: timeout, scope: scope)
       return result['scan'] if result['scan']
-      raise "openc3-app on the host for bridge '#{bridge_name}' does not support hardware discovery. Update openc3-app."
+      raise "openc3-cosmos-app on the host for bridge '#{bridge_name}' does not support hardware discovery. Update openc3-cosmos-app."
     rescue RuntimeError => error
-      raise "openc3-app on the host for bridge '#{bridge_name}' does not support hardware discovery. Update openc3-app." if error.message == 'no discovery class given'
+      raise "openc3-cosmos-app on the host for bridge '#{bridge_name}' does not support hardware discovery. Update openc3-cosmos-app." if error.message == 'no discovery class given'
       raise
     end
 
@@ -77,7 +77,7 @@ module OpenC3
           return result
         end
       end
-      raise "Timeout of #{timeout}s waiting for discovery on bridge '#{bridge_name}'. Is openc3-app running and paired with COSMOS?"
+      raise "Timeout of #{timeout}s waiting for discovery on bridge '#{bridge_name}'. Is openc3-cosmos-app running and paired with COSMOS?"
     end
     private_class_method :request
   end
