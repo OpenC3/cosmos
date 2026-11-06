@@ -15,7 +15,8 @@ import threading
 import unittest
 from unittest.mock import MagicMock
 
-import test.test_helper  # noqa: F401
+from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
+from test.test_helper import mock_redis
 
 
 def load_real_store_queued():
@@ -68,6 +69,27 @@ class TestStoreQueued(unittest.TestCase):
         self.store_queued.shutdown()
         self.assertEqual(seen, [False])
         self.assertTrue(self.store_queued.is_shutdown)
+
+
+class TestStoreQueuedUpdateIntervalAllShards(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+
+    def test_updates_existing_instances_and_later_ones(self):
+        existing = StoreQueued.instance(db_shard=0)
+        self.assertEqual(existing.update_interval, 1)
+        StoreQueued.set_update_interval_all_shards(0.25)
+        self.assertEqual(existing.update_interval, 0.25)
+        self.assertEqual(StoreQueued.instance(db_shard=1).update_interval, 0.25)
+        # Separate setting per class
+        self.assertEqual(EphemeralStoreQueued.instance(db_shard=1).update_interval, 1)
+        # An explicit interval still wins for a new instance
+        self.assertEqual(StoreQueued.instance(update_interval=0.5, db_shard=2).update_interval, 0.5)
+
+    def test_ignores_intervals_of_zero_or_less(self):
+        StoreQueued.set_update_interval_all_shards(0.25)
+        StoreQueued.set_update_interval_all_shards(0)
+        self.assertEqual(StoreQueued.instance().update_interval, 0.25)
 
 
 if __name__ == "__main__":

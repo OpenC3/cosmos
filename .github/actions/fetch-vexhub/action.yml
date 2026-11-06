@@ -1,0 +1,54 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+name: Fetch VEX Hub
+description: |
+  Put a pinned commit of the Aqua VEX Hub into the trivy cache so trivy can
+  apply it without fetching it itself. Run trivy afterwards with
+  TRIVY_SKIP_VEX_REPO_UPDATE=true.
+
+  trivy reads vex-repository.json through the GitHub contents API. Without a
+  token that is rate limited per runner IP ("403 API rate limit exceeded");
+  with GITHUB_TOKEN it is rejected outright because the aquasecurity org has an
+  IP allow list. A git fetch hits neither limit.
+
+  The hub is pinned, not tracking main, because VEX statements suppress
+  findings: a tampered hub could hide real vulnerabilities. git verifies every
+  object against the commit hash, so the pin is also the integrity check. To
+  update, set VEXHUB_COMMIT to a newer commit on aquasecurity/vexhub main.
+
+  With the repo update skipped, trivy's pkg/vex/repo only reads
+  $CACHE_DIR/vex/repositories/default/0.1/index.json and the documents it
+  points to, so the hub checkout is all that is written.
+inputs:
+  cache-dir:
+    description: Trivy cache dir. The default matches trivy-action's cache-dir default.
+    required: false
+    default: ${{ github.workspace }}/.cache/trivy
+runs:
+  using: composite
+  steps:
+    - name: Download VEX Hub
+      shell: bash
+      env:
+        CACHE_DIR: ${{ inputs.cache-dir }}
+        VEXHUB_COMMIT: 8ae2a8c69e5958df726d228327a2c5fb13c2e640 # 2026-03-23
+      run: |
+        set -euo pipefail
+        dir="${CACHE_DIR}/vex/repositories/default/0.1"
+        rm -rf "$dir"
+        git init -q "$dir"
+        git -C "$dir" fetch -q --depth 1 https://github.com/aquasecurity/vexhub.git "$VEXHUB_COMMIT"
+        git -C "$dir" -c advice.detachedHead=false checkout -q FETCH_HEAD
+        test "$(git -C "$dir" rev-parse HEAD)" = "$VEXHUB_COMMIT"
+        rm -rf "$dir/.git"
+        test -s "$dir/index.json"
+        echo "VEX Hub ${VEXHUB_COMMIT}: $(grep -o '"id"' "$dir/index.json" | wc -l) packages"

@@ -22,7 +22,7 @@ REM 1. (Optional) While COSMOS 6 is running, run: openc3_migrate_s3.bat start &&
 REM 2. Stop COSMOS 6: openc3.bat stop
 REM 3. Upgrade to COSMOS 7
 REM 4. Run final migration: openc3_migrate_s3.bat migrate
-REM 5. Cleanup: openc3_migrate_s3.bat cleanup
+REM 5. Stop the migration containers: openc3_migrate_s3.bat stop
 REM 6. Start COSMOS 7: openc3.bat run
 
 REM Configuration - can be overridden by environment variables
@@ -36,8 +36,12 @@ REM User IDs - must match openc3.bat behavior
 REM On Windows, typically runs as 1001:1001 (no rootless detection needed)
 if "%OPENC3_USER_ID%"=="" set "OPENC3_USER_ID=1001"
 if "%OPENC3_GROUP_ID%"=="" set "OPENC3_GROUP_ID=1001"
-if "%OLD_VOLUME%"=="" set "OLD_VOLUME=openc3-bucket-v"
-if "%NEW_VOLUME%"=="" set "NEW_VOLUME=openc3-object-v"
+REM Volume names - set both OLD_VOLUME and NEW_VOLUME to full volume names, or
+REM neither to detect them (including any docker compose project prefix)
+set "OLD_VOLUME_BASE=openc3-bucket-v"
+set "NEW_VOLUME_BASE=openc3-object-v"
+REM Length of OLD_VOLUME_BASE, used to strip it from the end of a volume name
+set "OLD_VOLUME_BASE_LENGTH=15"
 
 REM Container/image names
 set "MINIO_MIGRATION_CONTAINER=openc3-minio-migration"
@@ -69,10 +73,12 @@ if "%1"=="-h" goto :usage
 if "%1"=="start" goto :cmd_start
 if "%1"=="migrate" goto :cmd_migrate
 if "%1"=="status" goto :cmd_status
-if "%1"=="cleanup" goto :cmd_cleanup
+if "%1"=="stop" goto :cmd_stop
 goto :usage
 
 :cmd_start
+call :check_volume_env
+if errorlevel 1 exit /b 1
 call :ensure_mc_image
 if errorlevel 1 exit /b 1
 call :detect_environment
@@ -90,6 +96,8 @@ echo Run '%~nx0 migrate' to start migration
 exit /b 0
 
 :cmd_migrate
+call :check_volume_env
+if errorlevel 1 exit /b 1
 call :ensure_mc_image
 if errorlevel 1 exit /b 1
 call :detect_environment
@@ -102,6 +110,8 @@ call :migrate_data
 exit /b %errorlevel%
 
 :cmd_status
+call :check_volume_env
+if errorlevel 1 exit /b 1
 call :ensure_mc_image
 if errorlevel 1 exit /b 1
 call :detect_environment
@@ -109,12 +119,14 @@ if errorlevel 1 exit /b 1
 call :show_status
 exit /b %errorlevel%
 
-:cmd_cleanup
-call :cleanup
+:cmd_stop
+call :check_volume_env
+if errorlevel 1 exit /b 1
+call :stop_containers
 exit /b %errorlevel%
 
 :usage
-echo Usage: %~nx0 [start^|migrate^|status^|cleanup^|help]
+echo Usage: %~nx0 [start^|migrate^|status^|stop^|help]
 echo.
 echo Migrate data from MINIO (COSMOS 6) to versitygw (COSMOS 7).
 echo.
@@ -127,7 +139,7 @@ echo Commands:
 echo   start     Start temporary containers needed for migration
 echo   migrate   Mirror data from MINIO to versitygw (idempotent)
 echo   status    Check migration status and compare bucket contents
-echo   cleanup   Remove temporary migration containers
+echo   stop      Stop and remove temporary migration containers
 echo   help      Show this help message
 echo.
 echo Migration workflow:
@@ -141,13 +153,16 @@ echo.
 echo   3. Final migration:
 echo      %~nx0 migrate
 echo.
-echo   4. Cleanup and start COSMOS 7:
-echo      %~nx0 cleanup
+echo   4. Stop the migration containers and start COSMOS 7:
+echo      %~nx0 stop
 echo      openc3.bat run
 echo.
 echo Configuration (via environment variables):
-echo   OLD_VOLUME    Old MINIO volume name (default: openc3-bucket-v)
-echo   NEW_VOLUME    New versitygw volume name (default: openc3-object-v)
+echo   OLD_VOLUME    Full name of the old MINIO volume
+echo   NEW_VOLUME    Full name of the new versitygw volume
+echo                 Set both or neither. If neither is set, they are detected as
+echo                 [^<prefix^>_]openc3-bucket-v and [^<prefix^>_]openc3-object-v,
+echo                 where ^<prefix^> is the docker compose project name, if any.
 echo   OPENC3_BUCKET_USERNAME  S3 credentials (default: openc3minio)
 echo   OPENC3_BUCKET_PASSWORD  S3 credentials (default: openc3miniopassword)
 echo   MC_IMAGE      COSMOS 6 init image used to run mc
@@ -173,36 +188,19 @@ exit /b 1
 :detect_environment
 echo [==>] Detecting environment...
 
-REM Check for old volume
-set "VOLUME_FOUND="
-set "VOLUME_PREFIX="
-for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do set "VOLUME_FOUND=1"
-if "%VOLUME_FOUND%"=="" (
-    REM Check for prefixed volume (docker compose adds project name)
-    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /e /c:"_%OLD_VOLUME%"') do (
-        set "PREFIXED_VOL=%%i"
-        set "VOLUME_FOUND=1"
+call :resolve_volumes
+if errorlevel 2 exit /b 1
+if errorlevel 1 (
+    if "%OLD_VOLUME%"=="" (
+        echo [ERROR] Old MINIO volume '%OLD_VOLUME_BASE%' not found
+    ) else (
+        echo [ERROR] Old MINIO volume '%OLD_VOLUME%' not found
     )
-    if "!VOLUME_FOUND!"=="1" (
-        REM Extract prefix by removing the old volume name from the end
-        set "VOLUME_PREFIX=!PREFIXED_VOL:%OLD_VOLUME%=!"
-        set "OLD_VOLUME=!PREFIXED_VOL!"
-        echo [INFO] Found old volume with prefix: !OLD_VOLUME!
-    )
-)
-if "%VOLUME_FOUND%"=="" (
-    echo [ERROR] Old MINIO volume '%OLD_VOLUME%' not found
     echo This volume should exist from your COSMOS 6 installation.
     echo If you haven't run COSMOS 6 before, there's nothing to migrate.
     exit /b 1
 )
-if "%VOLUME_PREFIX%"=="" echo [INFO] Found old MINIO volume: %OLD_VOLUME%
-
-REM Apply the same prefix to new volume if one was detected
-if not "%VOLUME_PREFIX%"=="" (
-    set "NEW_VOLUME=%VOLUME_PREFIX%%NEW_VOLUME%"
-    echo [INFO] Using matching prefix for new volume: !NEW_VOLUME!
-)
+echo [INFO] Using old MINIO volume: %OLD_VOLUME%
 
 REM Check for new volume
 set "NEW_VOL_FOUND="
@@ -255,6 +253,17 @@ if not "%VERSITY_DEST%"=="" (
     )
 )
 
+REM Existing containers keep the volume they were created with, so make sure
+REM the ones we will use (live, or temp ones that get restarted) match
+set "MINIO_CHECK=%MINIO_SOURCE%"
+if "%MINIO_CHECK%"=="" for /f "tokens=*" %%i in ('docker ps -a --format "{{.Names}}" 2^>nul ^| findstr /l /x /c:"%MINIO_MIGRATION_CONTAINER%"') do set "MINIO_CHECK=%%i"
+set "VERSITY_CHECK=%VERSITY_DEST%"
+if "%VERSITY_CHECK%"=="" for /f "tokens=*" %%i in ('docker ps -a --format "{{.Names}}" 2^>nul ^| findstr /l /x /c:"%VERSITY_MIGRATION_CONTAINER%"') do set "VERSITY_CHECK=%%i"
+call :check_container_volume "%MINIO_CHECK%" "%OLD_VOLUME%"
+if errorlevel 1 exit /b 1
+call :check_container_volume "%VERSITY_CHECK%" "%NEW_VOLUME%"
+if errorlevel 1 exit /b 1
+
 REM Ensure network exists
 if "%DOCKER_NETWORK%"=="" (
     set "NET_EXISTS="
@@ -267,6 +276,94 @@ if "%DOCKER_NETWORK%"=="" (
 )
 echo [INFO] Using Docker network: %DOCKER_NETWORK%
 exit /b 0
+
+:check_volume_env
+REM Require OLD_VOLUME and NEW_VOLUME to be set together, so a prefix is never
+REM applied to a user-supplied name
+if not "%OLD_VOLUME%"=="" if not "%NEW_VOLUME%"=="" exit /b 0
+if "%OLD_VOLUME%"=="" if "%NEW_VOLUME%"=="" exit /b 0
+echo [ERROR] OLD_VOLUME and NEW_VOLUME must be set together, as full volume names, e.g.:
+echo   set OLD_VOLUME=cosmos_%OLD_VOLUME_BASE%
+echo   set NEW_VOLUME=cosmos_%NEW_VOLUME_BASE%
+echo   %~nx0 %COMMAND%
+echo Leave both unset to detect them automatically.
+exit /b 1
+
+:resolve_volumes
+REM Set OLD_VOLUME and NEW_VOLUME. If the user set them, use them as given.
+REM Otherwise find OLD_VOLUME_BASE with or without a docker compose project
+REM prefix, asking the user which to use if more than one matches, and give
+REM NEW_VOLUME_BASE the same prefix.
+REM Returns 0 if resolved, 1 if no volume matches, 2 if no volume was selected.
+if "%OLD_VOLUME%"=="" goto :resolve_detect
+for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /l /x /c:"%OLD_VOLUME%"') do exit /b 0
+exit /b 1
+
+:resolve_detect
+set "CANDIDATE_COUNT=0"
+for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /l /x /c:"%OLD_VOLUME_BASE%"') do (
+    set /a CANDIDATE_COUNT+=1
+    set "CANDIDATE_!CANDIDATE_COUNT!=%%i"
+)
+for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /l /e /c:"_%OLD_VOLUME_BASE%"') do (
+    set /a CANDIDATE_COUNT+=1
+    set "CANDIDATE_!CANDIDATE_COUNT!=%%i"
+)
+if %CANDIDATE_COUNT%==0 exit /b 1
+set "CHOICE=1"
+if %CANDIDATE_COUNT%==1 goto :resolve_selected
+
+echo [WARN] Multiple volumes match '%OLD_VOLUME_BASE%':
+for /l %%n in (1,1,%CANDIDATE_COUNT%) do echo   %%n^) !CANDIDATE_%%n!
+:resolve_prompt
+set "CHOICE="
+set /p "CHOICE=Select the volume to use [1-%CANDIDATE_COUNT%]: "
+REM No input (including no console to read from) means no selection
+if not defined CHOICE goto :resolve_none
+set "NOT_NUMBER="
+for /f "delims=0123456789" %%x in ("!CHOICE!") do set "NOT_NUMBER=1"
+if "!CHOICE:~0,1!"=="0" set "NOT_NUMBER=1"
+if defined NOT_NUMBER goto :resolve_invalid
+if !CHOICE! gtr %CANDIDATE_COUNT% goto :resolve_invalid
+goto :resolve_selected
+:resolve_invalid
+echo Invalid selection: !CHOICE!
+goto :resolve_prompt
+
+:resolve_none
+echo.
+echo [ERROR] No volume selected
+echo Set OLD_VOLUME and NEW_VOLUME for the volume you want to use, then run %~nx0 %COMMAND%:
+for /l %%n in (1,1,%CANDIDATE_COUNT%) do (
+    set "HINT_OLD=!CANDIDATE_%%n!"
+    set "HINT_PREFIX=!HINT_OLD:~0,-%OLD_VOLUME_BASE_LENGTH%!"
+    echo   set OLD_VOLUME=!HINT_OLD!
+    echo   set NEW_VOLUME=!HINT_PREFIX!%NEW_VOLUME_BASE%
+    echo.
+)
+exit /b 2
+
+:resolve_selected
+set "OLD_VOLUME=!CANDIDATE_%CHOICE%!"
+set "VOLUME_PREFIX=!OLD_VOLUME:~0,-%OLD_VOLUME_BASE_LENGTH%!"
+set "NEW_VOLUME=!VOLUME_PREFIX!%NEW_VOLUME_BASE%"
+exit /b 0
+
+:check_container_volume
+REM Fail if a container exists but mounts a different volume at /data
+if "%~1"=="" exit /b 0
+set "ACTUAL_VOLUME="
+for /f "tokens=*" %%v in ('docker inspect --format "{{range .Mounts}}{{if eq .Destination `/data`}}{{.Name}}{{end}}{{end}}" "%~1" 2^>nul') do set "ACTUAL_VOLUME=%%v"
+if "%ACTUAL_VOLUME%"=="%~2" exit /b 0
+if "%ACTUAL_VOLUME%"=="" set "ACTUAL_VOLUME=none"
+echo [ERROR] Container '%~1' uses volume '%ACTUAL_VOLUME%', not '%~2'
+if "%~1"=="%MINIO_MIGRATION_CONTAINER%" goto :check_container_temp
+if "%~1"=="%VERSITY_MIGRATION_CONTAINER%" goto :check_container_temp
+echo Set OLD_VOLUME and NEW_VOLUME to the volumes the running COSMOS uses, or stop it.
+exit /b 1
+:check_container_temp
+echo Run '%~nx0 stop' to remove the temporary containers, then try again.
+exit /b 1
 
 :start_temp_minio
 REM Check if already running
@@ -463,23 +560,12 @@ if not "%MINIO_SOURCE%"=="" if not "%VERSITY_DEST%"=="" (
 echo.
 exit /b 0
 
-:cleanup
-REM Resolve volume names with prefix detection for display
-set "VOLUME_FOUND="
-for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /x "%OLD_VOLUME%"') do set "VOLUME_FOUND=1"
-if "%VOLUME_FOUND%"=="" (
-    for /f "tokens=*" %%i in ('docker volume ls --format "{{.Name}}" 2^>nul ^| findstr /e /c:"_%OLD_VOLUME%"') do (
-        set "PREFIXED_VOL=%%i"
-        set "VOLUME_FOUND=1"
-    )
-    if "!VOLUME_FOUND!"=="1" (
-        set "VOLUME_PREFIX=!PREFIXED_VOL:%OLD_VOLUME%=!"
-        set "OLD_VOLUME=!PREFIXED_VOL!"
-        set "NEW_VOLUME=!VOLUME_PREFIX!%NEW_VOLUME%"
-    )
-)
+:stop_containers
+REM Read the destination volume from the temp versitygw container before removing it
+set "DEST_VOLUME="
+for /f "tokens=*" %%v in ('docker inspect --format "{{range .Mounts}}{{if eq .Destination `/data`}}{{.Name}}{{end}}{{end}}" "%VERSITY_MIGRATION_CONTAINER%" 2^>nul') do set "DEST_VOLUME=%%v"
 
-echo [==>] Cleaning up migration containers...
+echo [==>] Stopping migration containers...
 
 set "CONTAINER_EXISTS="
 for /f "tokens=*" %%i in ('docker ps -a --format "{{.Names}}" 2^>nul ^| findstr /x "%MINIO_MIGRATION_CONTAINER%"') do set "CONTAINER_EXISTS=1"
@@ -505,12 +591,11 @@ if "%NET_EXISTS%"=="1" (
 )
 
 echo.
-echo [INFO] Cleanup complete
+echo [INFO] Migration containers stopped
 echo.
-echo Your data has been migrated to volume '%NEW_VOLUME%'.
-echo.
-echo After verifying COSMOS 7 works correctly, you can remove the old volume:
-echo   docker volume rm %OLD_VOLUME%
+REM Only name the new volume when a temp versitygw container recorded it
+if not defined DEST_VOLUME exit /b 0
+echo Your data has been migrated to volume '%DEST_VOLUME%'.
 echo.
 exit /b 0
 

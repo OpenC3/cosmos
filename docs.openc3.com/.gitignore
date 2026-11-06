@@ -8,6 +8,15 @@
 # Generated files
 .docusaurus
 .cache-loader
+# Built from docs/configuration/_*.md + openc3/data/config/*.yaml by scripts/generate_docs_from_yaml.rb
+/docs/configuration/command.md
+/docs/configuration/conversions.md
+/docs/configuration/plugins.md
+/docs/configuration/processors.md
+/docs/configuration/table.md
+/docs/configuration/target.md
+/docs/configuration/telemetry-screens.md
+/docs/configuration/telemetry.md
 
 # Misc
 .DS_Store

@@ -51,5 +51,48 @@ module OpenC3
         expect(a).not_to eq(b)
       end
     end
+
+    describe "mock_redis" do
+      # Each shard must get its own mock so specs can catch a read against the
+      # wrong shard instead of silently finding the data in a shared mock
+      it "isolates each db_shard and shares a shard between Store and EphemeralStore" do
+        redis = mock_redis()
+        Store.instance(db_shard: 1).set("key", "shard1")
+        expect(Store.instance(db_shard: 1).get("key")).to eql "shard1"
+        expect(EphemeralStore.instance(db_shard: 1).get("key")).to eql "shard1"
+        expect(Store.instance(db_shard: 0).get("key")).to be_nil
+        expect(Store.instance(db_shard: 2).get("key")).to be_nil
+        expect(redis.get("key")).to be_nil
+
+        Store.set("key", "shard0")
+        expect(redis.get("key")).to eql "shard0"
+        expect(Store.instance(db_shard: 1).get("key")).to eql "shard1"
+      end
+    end
+
+    describe "read_topics" do
+      before(:each) do
+        mock_redis()
+        stub_const("OpenC3::Store::READ_TOPICS_DEFAULT_COUNT", 2)
+      end
+
+      it "caps the read at READ_TOPICS_DEFAULT_COUNT when no count is given" do
+        5.times { |i| EphemeralStore.write_topic("TEST__TOPIC", { "i" => i.to_s }) }
+        ids = []
+        EphemeralStore.read_topics(["TEST__TOPIC"], ["0-0"]) { |_t, msg_id, _h, _r| ids << msg_id }
+        expect(ids.length).to eql 2
+        # Continuing from the last offset picks up where the capped read stopped
+        EphemeralStore.read_topics(["TEST__TOPIC"], [ids[-1]]) { |_t, msg_id, _h, _r| ids << msg_id }
+        expect(ids.length).to eql 4
+        expect(ids.uniq.length).to eql 4
+      end
+
+      it "honors an explicit count" do
+        5.times { |i| EphemeralStore.write_topic("TEST__TOPIC", { "i" => i.to_s }) }
+        ids = []
+        EphemeralStore.read_topics(["TEST__TOPIC"], ["0-0"], nil, 4) { |_t, msg_id, _h, _r| ids << msg_id }
+        expect(ids.length).to eql 4
+      end
+    end
   end
 end

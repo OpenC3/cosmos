@@ -14,6 +14,22 @@ COSMOS is a suite of applications that can be used to control a set of embedded 
 
 COSMOS is a cloud native, containerized, microservice oriented command and control system. See the [Architecture](/docs/getting-started/architecture) page for a detailed breakdown of both the Core and Enterprise architectures.
 
+## Where does COSMOS fit?
+
+COSMOS sits at the center of your system, talking to every piece of hardware and software that needs to be commanded or monitored. The same COSMOS installation can follow a program from the first bench test through flight operations.
+
+### Test Environment
+
+In a test environment, COSMOS controls the test equipment and the Unit Under Test (UUT) together. Test engineers use the COSMOS web tools and scripts to command a Keysight power supply over SCPI, talk to custom Ground Support Equipment (GSE), and command and monitor the UUT directly. Because all of this data passes through COSMOS, it's logged together and can be checked by automated test procedures.
+
+![COSMOS in a test environment](/img/context/test-environment.svg)
+
+### Satellite Mission Operations
+
+In an operational satellite mission, COSMOS is the command and control hub between Mission Planning and the ground antenna network. COSMOS receives the schedule from Mission Planning and translates it into commands that go out through the antenna network to the satellite. The downlink splits after the antenna network: telemetry goes to COSMOS for real-time display, limits checking, and logging, while images and other payload data go to Mission Data Processing. COSMOS sends satellite ephemeris, such as onboard GPS data, to Flight Dynamics, which provides orbit and contact predictions back to Mission Planning.
+
+![COSMOS in satellite mission operations](/img/context/satellite-operations.svg)
+
 Watch this video for a demo and walkthrough of COSMOS:
 
 <div style={{textAlign: 'center'}}>

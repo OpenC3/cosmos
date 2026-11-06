@@ -96,6 +96,47 @@ RSpec.describe RunningScriptChannel, type: :channel do
       expect(transmissions).to eq([[{ 'type' => 'line', 'line_no' => 1 }]])
     end
 
+    it 'replays only the newest events that fit under the size cap' do
+      stub_const('RunningScriptChannel::MAX_REPLAY_BYTES', 100)
+      # Each event is ~40 bytes of JSON so only the newest two fit
+      events = (1..5).map { |i| { 'type' => 'output', 'line' => "line #{i}".ljust(20) } }
+      backlog(*events)
+
+      subscribe id: '42'
+
+      expect(subscription).to be_confirmed
+      replayed = transmissions.flatten
+      expect(replayed[0]['type']).to eq('output')
+      expect(replayed[0]['line']).to include('3 earlier events omitted')
+      expect(replayed[1..]).to eq(events[3..])
+      # Streaming still starts after the newest entry, not the oldest replayed
+      expect(RunningScriptReplayThread).to have_received(:new).with(
+        subscription_key, '42', '104-0', arm_delay: RunningScriptChannel::ARM_TIMEOUT
+      )
+    end
+
+    it 'keeps a contiguous tail rather than skipping one large event' do
+      stub_const('RunningScriptChannel::MAX_REPLAY_BYTES', 100)
+      small = { 'type' => 'line', 'line_no' => 1 }
+      backlog(small, { 'type' => 'file', 'text' => 'x' * 200 }, { 'type' => 'line', 'line_no' => 2 })
+
+      subscribe id: '42'
+
+      replayed = transmissions.flatten
+      expect(replayed[0]['line']).to include('2 earlier events omitted')
+      expect(replayed[1..]).to eq([{ 'type' => 'line', 'line_no' => 2 }])
+    end
+
+    it 'always delivers complete, dropping an oversized report' do
+      stub_const('RunningScriptChannel::MAX_REPLAY_BYTES', 100)
+      backlog({ 'type' => 'line', 'line_no' => 1 }, { 'type' => 'complete', 'report' => 'r' * 200 })
+
+      subscribe id: '42'
+
+      expect(transmissions.flatten.last).to eq({ 'type' => 'complete' })
+      expect(RunningScriptReplayThread).not_to have_received(:new)
+    end
+
     it 'stops a leftover broadcaster for the same connection before starting a new one' do
       old_broadcaster = instance_double(RunningScriptReplayThread, stop: nil)
       RunningScriptChannel.class_variable_set(:@@broadcasters, { subscription_key => old_broadcaster })

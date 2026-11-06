@@ -59,6 +59,14 @@ class TestCmdResponseProtocol(unittest.TestCase):
         self.read_cnt = 0
         self.read_result = None
 
+        # The stub streams below return data forever so cap the read queue
+        # rather than letting the read thread buffer the full default budget
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["65536"])
+
+    def tearDown(self):
+        # Stop the StreamInterface read thread started by reading
+        self.interface.stop_read_queue_thread()
+
     def test_unblocks_writes_waiting_for_responses(self):
         self.interface.stream = self.CmdResponseStream()
         self.interface.add_protocol(CmdResponseProtocol, [], "READ_WRITE")
@@ -156,9 +164,9 @@ class TestCmdResponseProtocol(unittest.TestCase):
         packet.template = b"SOUR:VOLT <VOLTAGE>, (@<CHANNEL>)"
         packet.response = ["TGT", "READ_VOLTAGE"]
         packet.restore_defaults()
+        TestCmdResponseProtocol.read_buffer = b"\x31\x30"  # ASCII 31, 30 is '10'
         self.interface.connect()
         self.read_result = None
-        TestCmdResponseProtocol.read_buffer = b"\x31\x30"  # ASCII 31, 30 is '10'
 
         # write blocks waiting for the response so spawn a thread
         def my_read():

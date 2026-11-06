@@ -5,6 +5,7 @@ TITLE "<%= target_name %> Instrument Limits"
 HORIZONTAL
   VERTICALBOX "Limits Bars"
     LIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
+    LIMITSBAR <%= target_name %> LATEST TEMP1
     VALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1
       SUBSETTING 0 WIDTH 130
     LABELVALUELIMITSBAR <%= target_name %> HEALTH_STATUS TEMP1

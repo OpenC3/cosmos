@@ -65,7 +65,9 @@ class MqttInterface(Interface):
     def connect(self):
         self.read_topics = []
         self.write_topics = []
-        self.pkt_queue.empty()
+        # Discard messages and any disconnect marker left over from a previous connection
+        while not self.pkt_queue.empty():
+            self.pkt_queue.get_nowait()
 
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.on_connect = self.on_connect
@@ -123,9 +125,14 @@ class MqttInterface(Interface):
 
     # Disconnects the interface from its target(s)
     def disconnect(self):
-        self.pkt_queue.put(None)
         if self.client:
+            # Only wake read_interface for the first disconnect of a connection, otherwise
+            # the unconsumed marker would immediately disconnect the next connection
+            self.pkt_queue.put(None)
             self.client.disconnect()
+            # Wait for the network thread so a late on_message can't race the next connect
+            # resetting read_topics and pkt_queue, which would misalign topics and payloads
+            self.client.loop_stop()
             self.client = None
         super().disconnect()
 

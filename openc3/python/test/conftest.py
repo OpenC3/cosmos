@@ -12,6 +12,15 @@
 import os
 
 
+# Unit tests never talk to a real bucket but constructing the boto3 session
+# without credentials makes botocore walk the ambient credential chain, which
+# picks up whatever is in the developer's AWS config. Pin dummy credentials so
+# the session is built from these and the chain is never consulted. conftest is
+# imported before any test module, and so before aws_bucket builds its session.
+os.environ.setdefault("OPENC3_BUCKET_USERNAME", "openc3bucket")
+os.environ.setdefault("OPENC3_BUCKET_PASSWORD", "openc3bucket_password")
+
+
 # Keep boto3 away from the developer's real AWS setup. Without this a local
 # ~/.aws/config (e.g. an `aws login` session, which needs botocore[crt]) makes
 # every boto3 client creation fail, while CI with no AWS config passes. Set

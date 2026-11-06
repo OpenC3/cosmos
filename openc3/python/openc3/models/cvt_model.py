@@ -192,9 +192,15 @@ class CvtModel(Model):
         start_time: str,
         end_time: str | None = None,
         scope: str = OPENC3_SCOPE,
+        flatten: bool = True,
     ):
         """Query historical telemetry data from TSDB"""
-        return QuestDBClient.tsdb_lookup(items, start_time=start_time, end_time=end_time, scope=scope)
+        return QuestDBClient.tsdb_lookup(items, start_time=start_time, end_time=end_time, scope=scope, flatten=flatten)
+
+    @classmethod
+    def tsdb_packets_with_tables(cls, packets: list, scope: str = OPENC3_SCOPE):
+        """Return the (target_name, packet_name) telemetry packets which have a TSDB table"""
+        return QuestDBClient.tlm_packets_with_tables(packets, scope=scope)
 
     # Return all item values and limit state from the CVT
     #

@@ -14,6 +14,7 @@
 # if purchased from OpenC3, Inc.
 
 import ast
+import functools
 import re
 
 
@@ -273,7 +274,8 @@ def extract_fields_from_check_text(text):
 
 
 # Splits `check()` comparison expressions, e.g. "== 'foo bar'" becomes ["==", "foo bar"]
-def extract_operator_and_operand_from_comparison(comparison):
+# The optional resolve_name resolves an unquoted word, see extract_operand
+def extract_operator_and_operand_from_comparison(comparison, resolve_name=None):
     parts = comparison.split(None, 1)  # Python: second split arg is max number of splits
     operator = parts[0] if len(parts) >= 1 else None
     operand = parts[1] if len(parts) >= 2 else None
@@ -287,7 +289,7 @@ def extract_operator_and_operand_from_comparison(comparison):
         raise RuntimeError(f"ERROR: Invalid operator: '{operator}'")
 
     # split leaves any trailing whitespace on the operand which the anchored matches reject
-    operand = extract_operand(operand.strip())
+    operand = extract_operand(operand.strip(), resolve_name)
     # 'in' is containment against a list of values in both Ruby and Python. A tuple or set is
     # also accepted since that is how Python scripts commonly spell a collection of values.
     # Enforced here so check(), wait() and wait_check() all reject the same thing.
@@ -299,7 +301,9 @@ def extract_operator_and_operand_from_comparison(comparison):
 
 # Converts the operand of a `check()` comparison expression into a Python value.
 # Note this deliberately does not eval the operand so only literal values are supported.
-def extract_operand(operand):
+# The optional resolve_name is called with an unquoted word, including one inside a collection,
+# and returns the value to use or None if the word is not recognized, e.g. a state name.
+def extract_operand(operand, resolve_name=None):
     # A bytearray is spelled as a constructor call around a literal. Only this one wrapper is
     # recognized and its contents still go through extract_operand, so nothing is executed.
     bytearray_match = BYTEARRAY_REGEX.match(operand)
@@ -319,6 +323,11 @@ def extract_operand(operand):
         return ast.literal_eval(operand)
     except (ValueError, SyntaxError, MemoryError, RecursionError):
         pass  # Fall through to the formats literal_eval does not support
+    # literal_eval rejects a whole collection if any element is not a literal, e.g. [ON, OFF] or
+    # [inf]. Parse the elements individually so they follow exactly the same rules as a bare operand.
+    collection = extract_operand_collection(operand, resolve_name)
+    if collection is not None:
+        return collection
     if INFINITY_NAN_REGEX.match(operand):
         return float(operand)
 
@@ -331,8 +340,73 @@ def extract_operand(operand):
     # A bare word is almost always a string the user forgot to quote. re.ASCII keeps \w to
     # [A-Za-z0-9_] so this matches the same words as the Ruby implementation.
     if re.match(r"^[A-Za-z_]\w*$", operand, re.ASCII):
-        raise NameError(f"Uninitialized constant {operand}. Did you mean '{operand}' as a string?")
+        value = resolve_name(operand) if resolve_name else None
+        if value is not None:
+            return value
+        raise NameError(f"Unknown state name {operand}. Did you mean '{operand}' as a string?")
     raise RuntimeError(f"ERROR: Unable to parse operand: {operand}")
+
+
+# Parses a list, tuple or set operand element by element. ast.parse only builds a syntax tree, nothing
+# is executed, and each element's source goes back through extract_operand.
+# Returns None if the operand is not a collection.
+def extract_operand_collection(operand, resolve_name):
+    try:
+        node = ast.parse(operand, mode="eval").body
+    except (ValueError, SyntaxError, MemoryError, RecursionError):
+        return None
+    collection_type = {ast.List: list, ast.Tuple: tuple, ast.Set: set}.get(type(node))
+    if collection_type is None:
+        return None
+    elements = [extract_operand(ast.get_source_segment(operand, element), resolve_name) for element in node.elts]
+    try:
+        return collection_type(elements)
+    except TypeError:  # An unhashable element in a set, e.g. {[1]}
+        raise RuntimeError(f"ERROR: Unable to parse operand: {operand}") from None
+
+
+# Splits a comparison like extract_operator_and_operand_from_comparison but matches state names.
+# State names are stored upper case so a string operand which matches a state name ignoring case
+# is compared against that state name, e.g. "== 'Connected'" matches the CONNECTED state.
+# An unquoted state name, e.g. "== Connected" or "in [On, Off]", is also accepted. get_item is a
+# callable returning the item hash. It is only called once, when the operand could be a state name,
+# so numeric comparisons don't make an additional API call. RAW values are never state names so it
+# is never called.
+def extract_comparison(comparison, value_type, get_item):
+    @functools.cache
+    def states():
+        if str(value_type).upper() == "RAW":
+            return None
+        return get_item().get("states")
+
+    def resolve_name(name):
+        return name.upper() if name.upper() in (states() or {}) else None
+
+    operator, operand = extract_operator_and_operand_from_comparison(comparison, resolve_name)
+    if not operand_contains_string(operand):
+        return operator, operand
+
+    item_states = states()
+    return operator, upcase_state_names(operand, item_states) if item_states else operand
+
+
+# Returns whether the operand is or contains a string, i.e. could be a state name
+def operand_contains_string(operand):
+    if isinstance(operand, str):
+        return True
+    if isinstance(operand, IN_OPERAND_TYPES):
+        return any(operand_contains_string(element) for element in operand)
+    return False
+
+
+# State names are stored upper case so any string in the operand which matches
+# a state name ignoring case is replaced with that state name
+def upcase_state_names(operand, states):
+    if isinstance(operand, str):
+        return operand.upper() if operand.upper() in states else operand
+    if isinstance(operand, IN_OPERAND_TYPES):
+        return type(operand)(upcase_state_names(element, states) for element in operand)
+    return operand
 
 
 # Compares a telemetry value against an operand using the given operator.

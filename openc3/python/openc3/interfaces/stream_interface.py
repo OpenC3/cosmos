@@ -10,19 +10,19 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.config.config_parser import ConfigParser
-from openc3.interfaces.interface import Interface
+from openc3.interfaces.read_queue_interface import ReadQueueInterface
 from openc3.top_level import get_class_from_module
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import class_name_to_filename
 
 
 # Base class for interfaces that act read and write from a stream
-class StreamInterface(Interface):
+class StreamInterface(ReadQueueInterface):
     def __init__(self, protocol_type=None, protocol_args=None):
         if protocol_args is None:
             protocol_args = []
         super().__init__()
-        self.stream = None
+        self._stream = None
         self.protocol_type = ConfigParser.handle_none(protocol_type)
         self.protocol_args = protocol_args
         if self.protocol_type:
@@ -31,10 +31,26 @@ class StreamInterface(Interface):
             klass = get_class_from_module(f"openc3.interfaces.protocols.{filename}", protocol_class_name)
             self.add_protocol(klass, protocol_args, "PARAMS")
 
+    @property
+    def stream(self):
+        return self._stream
+
+    # Replacing the stream stops the read thread which is reading the old one
+    @stream.setter
+    def stream(self, stream):
+        self.stop_read_queue_thread()
+        self._stream = stream
+
     def connect(self):
         super().connect()  # Reset the protocols
         if self.stream:
             self.stream.connect()
+        # The read thread continuously drains the stream so the operating system
+        # buffers don't fill up while we're busy processing the previous read.
+        # stream.read is redirected to the queue so everything reading the
+        # stream (including subclasses and protocols) still sees all the data.
+        if self.stream and self.read_allowed:
+            self.start_read_queue_thread(self.stream)
 
     def connected(self):
         if self.stream:
@@ -43,11 +59,24 @@ class StreamInterface(Interface):
             return False
 
     def disconnect(self):
+        # Disconnect the stream first to unblock the read thread
         if self.stream:
             self.stream.disconnect()
+        self.stop_read_queue_thread()
         super().disconnect()
 
     def read_interface(self):
+        # The read thread is normally started by connect but interfaces can also
+        # be handed an already connected stream so start it on demand
+        if (
+            self.stream
+            and not self.read_queue_started()
+            and self.read_queue_enabled()
+            and self.read_allowed
+            and self.connected()
+        ):
+            self.start_read_queue_thread(self.stream)
+
         timeout = False
         try:
             data = self.stream.read()

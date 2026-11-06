@@ -69,6 +69,10 @@ class Interface:
         self.read_raw_data = ""
         self.written_raw_data = ""
         self.read_raw_data_time = None
+        # When the data most recently returned by read_interface was read from the
+        # underlying source, or None if unknown. Set by interfaces which buffer
+        # raw reads (see ReadQueueInterface).
+        self.read_queue_data_time = None
         self.written_raw_data_time = None
         self.config_params = []
         self.interfaces = []
@@ -91,6 +95,11 @@ class Interface:
     def write_queue_size(self):
         return self._write_queue_size
 
+    # @return [Integer] The number of bytes waiting on the read queue.
+    #   Interfaces which buffer raw reads override this (see ReadQueueInterface).
+    def read_queue_bytes(self):
+        return 0
+
     # Should be implemented by subclass to return human readable connection string
     # which will be placed in log messages when connecting and during connection failures
     def connection_string(self):
@@ -108,12 +117,14 @@ class Interface:
             # revive a thread from a previous connection that has not exited yet
             if self.scheduler_cancel:
                 self.scheduler_cancel.set()
-            self.scheduler = schedule.Scheduler()
+            scheduler = schedule.Scheduler()
+            self.scheduler = scheduler
 
             for log_dont_log, period, cmd_string in periodic_cmds:
                 upper_log_dont_log = log_dont_log.upper()
                 period = float(period)
-                self.scheduler.every(period).seconds.do(
+                # schedule annotates the interval as int but supports float periods
+                scheduler.every(period).seconds.do(  # ty: ignore[invalid-argument-type]
                     self.run_periodic_cmd,
                     log_dont_log=upper_log_dont_log,
                     cmd_string=cmd_string,
@@ -220,6 +231,10 @@ class Interface:
                 self.read_count += 1
                 if not packet:
                     Logger.warn(f"{self.name}: Interface unexpectedly requested disconnect")
+                # Timestamp buffered reads with when the data arrived rather than
+                # when it was processed (otherwise received_time is set when handled)
+                if packet and packet.received_time is None and self.read_queue_data_time is not None:
+                    packet.received_time = self.read_queue_data_time
                 return packet
         except Exception as error:
             Logger.error(f"{self.name}: Error reading from interface")
@@ -427,7 +442,7 @@ class Interface:
     # self.return [String] Raw packet data
     def read_interface_base(self, data, extra=None):
         if self.save_raw_data:
-            self.read_raw_data_time = datetime.now(timezone.utc)
+            self.read_raw_data_time = self.read_queue_data_time or datetime.now(timezone.utc)
             self.read_raw_data = data
         self.bytes_read += len(data)
         if self.stream_log_pair:

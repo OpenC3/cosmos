@@ -76,6 +76,10 @@ DISABLE_DISCONNECT:
     Use this keyword to prevent the user from disconnecting from the interface.
     This is typically used in a 'production' environment where you would not want
     the user to inadvertently disconnect from a target.
+DONT_LOG:
+  summary: Deprecated keyword that has no effect
+  description: Accepted for backwards compatibility with older plugins. A warning is logged and the keyword is otherwise ignored.
+  deprecated: DONT_LOG does nothing and can be removed
 LOG_STREAM:
   summary: Log all data on the interface exactly as it is sent and received
   description:
@@ -154,15 +158,15 @@ OPTION:
         connections on (default 0.0.0.0).
       values: .*
     - name: Parameters
-      required: false
-      description: Parameters to pass to the option
+      required: true
+      description: One or more parameters to pass to the option
       values: .*
   example: |
     INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil
       OPTION FLOW_CONTROL RTSCTS
       OPTION DATA_BITS 8
     ROUTER SERIAL_ROUTER tcpip_server_interface.rb 2950 2950 10.0 nil BURST
-      ROUTE SERIAL_INT
+      MAP_TARGET DATA
       OPTION LISTEN_ADDRESS 127.0.0.1
 SECRET:
   summary: Define a secret needed by this interface
@@ -261,7 +265,7 @@ CONTAINER:
   since: 5.7.0
   parameters:
     - name: Args
-      required: false
+      required: true
       description: Name of the container
       values: .+
 ROUTE_PREFIX:
@@ -281,11 +285,22 @@ SHARD:
   since: 6.0.0
   parameters:
     - name: Shard
-      required: false
+      required: true
       description: Shard number starting from 0
       values: \d+
   example: |
     SHARD 0
+DB_SHARD:
+  summary: Database shard for this interface's command and directive streams
+  description: DB Shard. Only used if running multiple database shards typically in Kubernetes
+  since: 7.1.0
+  parameters:
+    - name: DB Shard
+      required: true
+      description: DB Shard number starting from 0
+      values: \d+
+  example: |
+    DB_SHARD 0
 BRIDGE:
   summary: Name of the bridge to run this interface on
   description: Run this interface on a bridge host rather than within COSMOS. Note only python is supported.
@@ -338,8 +353,8 @@ BRIDGE_OPTION:
         connections on (default 0.0.0.0).
       values: .*
     - name: Parameters
-      required: false
-      description: Parameters to pass to the option
+      required: true
+      description: One or more parameters to pass to the option
       values: .*
   example: |
     INTERFACE SERIAL_INT serial_interface.rb COM1 COM1 115200 NONE 1 10.0 nil

@@ -350,6 +350,35 @@ module OpenC3
       result
     end
 
+    # Returns just the packet names without fetching and parsing every packet
+    # definition, which is expensive for targets with thousands of packets.
+    # @return [Array<String>] Sorted packet names under the target_name
+    def self.packet_names(target_name, type: :TLM, scope:)
+      raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
+      raise "Target '#{target_name}' does not exist for scope: #{scope} (TargetModel)" unless get(name: target_name, scope: scope)
+
+      store_for_target(target_name, scope: scope).hkeys("#{scope}__openc3#{type.to_s.downcase}__#{target_name}").sort
+    end
+
+    # Returns the names of the hidden packets without parsing every packet definition.
+    # The list is stored when the target is installed. Targets installed before the
+    # list existed have it built once from the packet definitions and stored.
+    # @return [Array<String>] Sorted hidden packet names under the target_name
+    def self.hidden_packet_names(target_name, type: :TLM, scope:)
+      raise "Unknown type #{type} for #{target_name}" unless VALID_TYPES.include?(type)
+
+      store = store_for_target(target_name, scope: scope)
+      # Stored as a JSON string rather than a set so an empty list is distinct from a missing one
+      # e.g. DEFAULT__openc3tlm__INST__hidden
+      key = "#{scope}__openc3#{type.to_s.downcase}__#{target_name}__hidden"
+      names_json = store.get(key)
+      return JSON.parse(names_json) if names_json
+
+      names = packets(target_name, type: type, scope: scope).select { |packet| packet['hidden'] }.map { |packet| packet['packet_name'] }
+      store.set(key, JSON.generate(names))
+      names
+    end
+
     # @return [Array<Hash>] All packet hashes under the target_name
     def self.all_packet_name_descriptions(target_name, type: :TLM, scope:)
       self.packets(target_name, type: type, scope: scope).map! { |hash| hash.slice("packet_name", "description") }
@@ -429,10 +458,13 @@ module OpenC3
     end
 
     def self.get_item_to_packet_map(target_name, scope:)
-      cache_time, item_map = @@item_map_cache[target_name]
-      return item_map if item_map and (Time.now - cache_time) < ITEM_MAP_CACHE_TIMEOUT
-      item_map_key = "#{scope}__#{target_name}__item_to_packet_map"
+      # Normalize before building the key so lowercase lookups share the entry
+      # that update_store_item_map and undeploy refresh and invalidate
       target_name = target_name.upcase
+      # The cache is keyed by item_map_key since the same target can exist in multiple scopes
+      item_map_key = "#{scope}__#{target_name}__item_to_packet_map"
+      cache_time, item_map = @@item_map_cache[item_map_key]
+      return item_map if item_map and (Time.now - cache_time) < ITEM_MAP_CACHE_TIMEOUT
       store = store_for_target(target_name, scope: scope)
       json_data = store.get(item_map_key)
       if json_data
@@ -441,7 +473,7 @@ module OpenC3
         item_map = build_item_to_packet_map(target_name, scope: scope)
         store.set(item_map_key, JSON.generate(item_map, allow_nan: true))
       end
-      @@item_map_cache[target_name] = [Time.now, item_map]
+      @@item_map_cache[item_map_key] = [Time.now, item_map]
       return item_map
     end
 
@@ -865,6 +897,8 @@ module OpenC3
       db_shard_store = Store.instance(db_shard: @db_shard)
       db_shard_store.del("#{@scope}__openc3tlm__#{@name}")
       db_shard_store.del("#{@scope}__openc3cmd__#{@name}")
+      db_shard_store.del("#{@scope}__openc3tlm__#{@name}__hidden")
+      db_shard_store.del("#{@scope}__openc3cmd__#{@name}__hidden")
       db_shard_store.del("#{@scope}__TELEMETRYCNTS__{#{@name}}")
       db_shard_store.del("#{@scope}__COMMANDCNTS__{#{@name}}")
 
@@ -886,7 +920,7 @@ module OpenC3
       # Delete item_map
       item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
       db_shard_store.del(item_map_key)
-      @@item_map_cache[@name] = nil
+      @@item_map_cache[item_map_key] = nil
 
       topic = { kind: 'deleted', type: 'target', name: @name }
       # The UNKNOWN target doesn't have an associated plugin
@@ -1002,6 +1036,7 @@ module OpenC3
           end
           CvtModel.set(json_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: @scope)
         end
+        update_store_hidden_packet_names(db_shard_store, target_name, packets, type: :TLM, clear_old: clear_old)
       end
     end
 
@@ -1021,7 +1056,27 @@ module OpenC3
             raise e
           end
         end
+        update_store_hidden_packet_names(db_shard_store, target_name, packets, type: :CMD, clear_old: clear_old)
       end
+    end
+
+    # Store the names of the hidden packets so listing packet names doesn't require
+    # parsing every packet definition. When only some packets are updated
+    # (clear_old false) merge them into the existing list.
+    def update_store_hidden_packet_names(db_shard_store, target_name, packets, type:, clear_old:)
+      # e.g. DEFAULT__openc3tlm__INST__hidden
+      key = "#{@scope}__openc3#{type.to_s.downcase}__#{target_name}__hidden"
+      names = []
+      unless clear_old
+        names_json = db_shard_store.get(key)
+        # Without an existing list hidden_packet_names builds it from all the packets
+        return unless names_json
+        names = JSON.parse(names_json) - packets.keys
+      end
+      packets.each do |packet_name, packet|
+        names << packet_name if packet.hidden
+      end
+      db_shard_store.set(key, JSON.generate(names.sort))
     end
 
     def update_store_limits_groups(system)
@@ -1049,7 +1104,7 @@ module OpenC3
       item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
       item_map = self.class.build_item_to_packet_map(@name, scope: @scope)
       Store.instance(db_shard: @db_shard).set(item_map_key, JSON.generate(item_map, allow_nan: true))
-      @@item_map_cache[@name] = [Time.now, item_map]
+      @@item_map_cache[item_map_key] = [Time.now, item_map]
     end
 
     def update_store(system, clear_old: true)

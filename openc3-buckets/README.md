@@ -49,7 +49,7 @@ chmod +x openc3_migrate_s3.sh
 # 2. Run the migration (COSMOS 6 MINIO -> temporary versitygw container)
 ./openc3_migrate_s3.sh migrate
 ./openc3_migrate_s3.sh status
-./openc3_migrate_s3.sh cleanup
+./openc3_migrate_s3.sh stop
 
 # 3. Stop COSMOS 6
 ./openc3.sh stop
@@ -57,7 +57,7 @@ chmod +x openc3_migrate_s3.sh
 # 4. Rerun the migration (only copies new files since the previous migration)
 ./openc3_migrate_s3.sh migrate
 ./openc3_migrate_s3.sh status
-./openc3_migrate_s3.sh cleanup
+./openc3_migrate_s3.sh stop
 
 # 5. Upgrade to COSMOS 7+ and start
 ./openc3.sh upgrade v7.0.0
@@ -79,7 +79,7 @@ Stop COSMOS 6 first, then migrate after upgrading:
 # 3. Migrate all data from old COSMOS 6 MINIO volume to running versitygw
 ./scripts/linux/openc3_migrate_s3.sh migrate
 ./scripts/linux/openc3_migrate_s3.sh status
-./scripts/linux/openc3_migrate_s3.sh cleanup
+./scripts/linux/openc3_migrate_s3.sh stop
 ```
 
 ### Migration Script Features
@@ -89,7 +89,7 @@ The migration script:
 - **Auto-detects environment**: Detects running MINIO (COSMOS 6) or versitygw (COSMOS 7) containers
 - **Starts temporary containers as needed**: If source or destination isn't running, creates temporary containers
 - **Idempotent operation**: Uses `mc mirror --preserve` so it only copies new or changed files (safe to run multiple times)
-- **Handles volume prefixes**: Automatically detects Docker Compose project prefixes (e.g., `cosmos_openc3-buckets-v`)
+- **Handles volume prefixes**: Automatically detects Docker Compose project prefixes (e.g., `cosmos_openc3-bucket-v`)
 - **Preserves metadata**: Maintains object metadata and timestamps during migration
 
 ### Configuration
@@ -108,18 +108,20 @@ OPENC3_BUCKET_USERNAME=your_bucket_user OPENC3_BUCKET_PASSWORD=your_bucket_pass 
 # See all your docker volumes
 docker volume ls
 
-# Custom volume names (if using docker compose project prefix)
-OLD_VOLUME=cosmos-project_openc3-bucket-v ./openc3_migrate_s3.sh migrate
+# Custom volume names - set both, as full volume names
+OLD_VOLUME=cosmos-project_openc3-bucket-v NEW_VOLUME=cosmos-project_openc3-object-v ./openc3_migrate_s3.sh migrate
 ```
 
 | Variable                 | Description                          | Default                |
 | ------------------------ | ------------------------------------ | ---------------------- |
-| `OLD_VOLUME`             | Source MINIO volume name             | `openc3-bucket-v`      |
-| `NEW_VOLUME`             | Destination versitygw volume name    | `openc3-object-v`      |
+| `OLD_VOLUME`             | Full source MINIO volume name        | auto-detected          |
+| `NEW_VOLUME`             | Full destination versitygw volume    | auto-detected          |
 | `MINIO_ROOT_USER`        | MINIO access key (COSMOS 6 source)   | `openc3minio`          |
 | `MINIO_ROOT_PASSWORD`    | MINIO secret key (COSMOS 6 source)   | `openc3miniopassword`  |
 | `OPENC3_BUCKET_USERNAME` | versitygw access key (COSMOS 7 dest) | `openc3bucket`         |
 | `OPENC3_BUCKET_PASSWORD` | versitygw secret key (COSMOS 7 dest) | `openc3bucketpassword` |
+
+`OLD_VOLUME` and `NEW_VOLUME` must be set together. If neither is set, the script finds `openc3-bucket-v` with or without a Docker Compose project prefix and uses the same prefix for `openc3-object-v`.
 
 ### Migration Performance
 

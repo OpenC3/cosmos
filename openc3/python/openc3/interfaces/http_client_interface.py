@@ -73,6 +73,11 @@ class HttpClientInterface(Interface):
         """
         Initializes an HTTP session and then calls the parent class's connect method.
         """
+        # Discard anything still queued from a previous connection, such as a response to a
+        # request that completed after disconnect. A request still in flight across the
+        # reconnect can queue its response after this; that is a real response and is read normally.
+        while not self.response_queue.empty():
+            self.response_queue.get_nowait()
         self.http = requests.Session()
         super().connect()
 
@@ -94,13 +99,19 @@ class HttpClientInterface(Interface):
         clears the response queue, calls the superclass's disconnect method, and unblocks
         the response queue to allow the read_interface method to return.
         """
+        was_connected = self.http is not None
         if self.http:
             self.http.close()
         self.http = None
-        while not self.response_queue.empty():
-            self.response_queue.get_nowait()
         super().disconnect()
-        self.response_queue.put((None, None))
+        # disconnect is called more than once per connection loss (e.g. again after
+        # read_interface returns None), so only the first call queues the marker. Another
+        # marker would be left unconsumed and immediately disconnect the next connection,
+        # and clearing again could discard a marker the reader hasn't consumed yet.
+        if was_connected:
+            while not self.response_queue.empty():
+                self.response_queue.get_nowait()
+            self.response_queue.put((None, None))
 
     def convert_packet_to_data(self, packet):
         """

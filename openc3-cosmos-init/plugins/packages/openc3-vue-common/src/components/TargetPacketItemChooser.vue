@@ -208,12 +208,16 @@
       <v-col :cols="colSize">
         <div>Description: {{ description }}</div>
         <div
-          v-if="hazardousDescription"
+          v-if="isHazardous"
           class="openc3-yellow font-weight-bold mt-2"
           data-test="hazardous-description"
         >
           <v-icon class="mr-1">mdi-alert</v-icon>
-          Hazardous: {{ hazardousDescription }}
+          <!-- The HAZARDOUS keyword description is optional -->
+          <template v-if="hazardousDescription">
+            Hazardous: {{ hazardousDescription }}
+          </template>
+          <template v-else> Hazardous </template>
         </div>
       </v-col>
     </v-row>

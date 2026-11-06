@@ -328,15 +328,37 @@
 # ---------------------------------------------------------------------------
 # COSMOS discovers additional buckets/volumes from OPENC3_<NAME>_BUCKET /
 # OPENC3_<NAME>_VOLUME variables, where <NAME> is the displayed name and the
-# value is the actual bucket name / root path. These must be visible to the
-# COSMOS services that use storage, and a volume also needs a top-level
-# "volumes:" entry plus a mount on each service. For example:
+# value is the actual bucket name / root path. Bucket names must be valid S3
+# names (lowercase letters, digits, '.' and '-'; no underscores).
+#
+# A bucket variable must be visible to every COSMOS service that uses
+# storage: openc3-cosmos-init creates the bucket at startup (local mode),
+# openc3-cosmos-cmd-tlm-api lists it in Bucket Explorer, and the operator and
+# script-runner-api access it from microservices and scripts.
+#
+# A volume is created by Docker from the top-level "volumes:" entry, not by
+# COSMOS. Only openc3-cosmos-cmd-tlm-api reads the volume variable (to show it
+# in Bucket Explorer); other services just need the mount if their scripts or
+# microservices read the files by path. For example:
 #
 # services:
+#   openc3-cosmos-init:
+#     environment:
+#       - OPENC3_TEST_BUCKET=test-bucket
+#   openc3-cosmos-cmd-tlm-api:
+#     environment:
+#       - OPENC3_TEST_BUCKET=test-bucket
+#       - OPENC3_TEST_VOLUME=/data/test
+#     volumes:
+#       - "openc3-test-v:/data/test"
 #   openc3-operator:
 #     environment:
-#       - OPENC3_TEST_BUCKET=test_bucket
-#       - OPENC3_TEST_VOLUME=/data/test
+#       - OPENC3_TEST_BUCKET=test-bucket
+#     volumes:
+#       - "openc3-test-v:/data/test"
+#   openc3-cosmos-script-runner-api:
+#     environment:
+#       - OPENC3_TEST_BUCKET=test-bucket
 #     volumes:
 #       - "openc3-test-v:/data/test"
 # volumes:

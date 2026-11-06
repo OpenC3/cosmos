@@ -13,6 +13,8 @@
 
 require 'spec_helper'
 require 'openc3/topics/interface_topic'
+require 'openc3/topics/command_topic'
+require 'openc3/models/target_model'
 
 module OpenC3
   describe InterfaceTopic do
@@ -46,6 +48,39 @@ module OpenC3
         expect { InterfaceTopic.interface_details("INST_INT", scope: "DEFAULT") }.to \
           raise_error(/interface_details failed: undefined method 'foo' for nil/)
       end
+    end
+  end
+
+  describe InterfaceTopic, "multiple db_shards" do
+    before(:each) do
+      mock_redis()
+      # INST lives on db_shard 1 while SYSTEM and the interface stay on db_shard 0
+      TargetModel.new(name: "INST", scope: "DEFAULT", db_shard: 1).create
+      TargetModel.new(name: "SYSTEM", scope: "DEFAULT", db_shard: 0).create
+    end
+
+    it "receives and acks target commands on each target's db_shard" do
+      interface = Struct.new(:name, :cmd_target_names).new("INST_INT", %w(INST SYSTEM))
+      received = Queue.new
+      thread = Thread.new do
+        InterfaceTopic.receive_commands(interface, scope: "DEFAULT", db_shard: 0) do |topic, _msg_id, msg_hash, _redis|
+          received << [topic, msg_hash['cmd_name']]
+          'SUCCESS'
+        end
+      end
+      begin
+        sleep 0.1 # Allow the thread to start reading
+        CommandTopic.send_command({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => {} }, timeout: 3, scope: "DEFAULT")
+        CommandTopic.send_command({ 'target_name' => 'SYSTEM', 'cmd_name' => 'STARTLOGGING', 'cmd_params' => {} }, timeout: 3, scope: "DEFAULT")
+      ensure
+        thread.kill
+        thread.join
+      end
+      expect(received.pop(true)).to eql ["{DEFAULT__CMD}TARGET__INST", "ABORT"]
+      expect(received.pop(true)).to eql ["{DEFAULT__CMD}TARGET__SYSTEM", "STARTLOGGING"]
+      _, msg_hash = EphemeralStore.instance(db_shard: 1).get_newest_message("{DEFAULT__CMD}TARGET__INST")
+      expect(msg_hash['cmd_name']).to eql 'ABORT'
+      expect(EphemeralStore.instance(db_shard: 0).exists?("{DEFAULT__CMD}TARGET__INST")).to be false
     end
   end
 end

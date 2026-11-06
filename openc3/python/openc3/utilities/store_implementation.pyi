@@ -43,6 +43,7 @@ class Store(metaclass=StoreMeta):
     _db_shard_cache: Incomplete
     _db_shard_cache_lock: Incomplete
     DB_SHARD_CACHE_TIMEOUT: int
+    READ_TOPICS_DEFAULT_COUNT: int
 
     @classmethod
     def instance(cls, pool_size: int = 100, db_shard: int = 0): ...
@@ -72,7 +73,7 @@ class Store(metaclass=StoreMeta):
         cls, topics, offsets=None, timeout_ms: int = 1000, count=None
     ) -> Generator[Incomplete, None, Incomplete]: ...
     @classmethod
-    def write_topic(cls, topic, msg_hash, id: str = "*", maxlen=None, approximate: bool = True): ...
+    def write_topic(cls, topic, msg_hash, id: str = "*", maxlen=None, approximate: bool = True, minid=None): ...
     @classmethod
     def trim_topic(cls, topic, minid, approximate: bool = True, limit: int = 0): ...
 

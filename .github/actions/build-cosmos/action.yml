@@ -197,8 +197,8 @@ runs:
         openc3-traefik|openc3-traefik|
         openc3-base|openc3|openc3-ruby
         openc3-node|openc3-node|openc3-base
-        openc3-cosmos-cmd-tlm-api|openc3-cosmos-cmd-tlm-api|openc3-base
-        openc3-cosmos-script-runner-api|openc3-cosmos-script-runner-api|openc3-base
+        openc3-cosmos-cmd-tlm-api|openc3-cosmos-cmd-tlm-api openc3-anycable|openc3-base
+        openc3-cosmos-script-runner-api|openc3-cosmos-script-runner-api openc3-anycable|openc3-base
         openc3-operator|openc3-operator|openc3-base
         openc3-cosmos-init|openc3-cosmos-init docs.openc3.com|openc3-node openc3-base
         EOF

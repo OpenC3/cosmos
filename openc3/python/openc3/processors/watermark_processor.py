@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.processors.processor import Processor
+from openc3.utilities.string import class_to_filename
 
 
 class WatermarkProcessor(Processor):
@@ -39,11 +40,11 @@ class WatermarkProcessor(Processor):
 
     # Convert to configuration file string
     def to_config(self):
-        return f"  PROCESSOR {self.name} {self.__class__.__name__} {self.item_name} {self.value_type}\n"
+        return f"  PROCESSOR {self.name} {class_to_filename(self.__class__)} {self.item_name} {self.value_type}\n"
 
     def as_json(self):
         return {
             "name": self.name,
-            "class": self.__class__.__name__.name,
+            "class": self.__class__.__name__,
             "params": [self.item_name, self.value_type],
         }

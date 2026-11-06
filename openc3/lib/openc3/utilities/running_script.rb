@@ -29,6 +29,7 @@ require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
 require 'openc3/utilities/python_venv'
+require 'openc3/utilities/script_env'
 require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
 require 'openc3/models/script_engine_model'
@@ -112,16 +113,7 @@ module OpenC3
               RunningScript.instance.perform_pause
             else
               if method.to_s == 'open_bucket_dialog'
-                bucket = input['bucket']
-                path = input['path']
-                filename = input['filename']
-                # Path from bucket dialog already includes scope prefix (e.g. DEFAULT/targets/...)
-                # _get_storage_file prepends scope, so strip it from the path to avoid doubling
-                scope = RunningScript.instance.scope
-                path = path.sub(/\A#{Regexp.escape(scope)}\//, '')
-                file = _get_storage_file(path, bucket: bucket, scope: scope)
-                file.filename = filename
-                return file
+                return _get_bucket_dialog_file(input, scope: RunningScript.instance.scope)
               elsif (method.to_s.include?('open_file'))
                 files = input.map do |filename|
                   file = _get_storage_file("tmp/#{filename}", scope: RunningScript.instance.scope)
@@ -275,10 +267,19 @@ module OpenC3
 
       def goto(line_no_or_procedure_name, line_no = nil)
         if line_no.nil?
-          start(RunningScript.instance.current_filename, line_no: line_no_or_procedure_name, bind_variables: true, complete: true)
+          procedure_name = RunningScript.instance.current_filename
+          line_no = line_no_or_procedure_name
         else
-          start(line_no_or_procedure_name, line_no: line_no, bind_variables: true, complete: true)
+          procedure_name = line_no_or_procedure_name
         end
+        # goto typed at the debug prompt is evaluated on the thread that processes
+        # go/step/stop messages. Running the script there deadlocks at the next pause,
+        # so hand it to the run thread the same way the editor's goto does.
+        unless RunningScript.run_thread?
+          RunningScript.instance.execute_while_paused(procedure_name, line_no, nil, true)
+          return
+        end
+        start(procedure_name, line_no: line_no, bind_variables: true, complete: true)
       end
 
       # Require an additional ruby file
@@ -522,6 +523,7 @@ class RunningScript
 
       # Set proper secrets for running script
       process.environment['SECRET_KEY_BASE'] = nil
+      OpenC3::ScriptEnv.remove_unused(process.environment)
       process.environment['OPENC3_REDIS_USERNAME'] = ENV.fetch('OPENC3_SR_REDIS_USERNAME', nil)
       process.environment['OPENC3_REDIS_PASSWORD'] = ENV.fetch('OPENC3_SR_REDIS_PASSWORD', nil)
       process.environment['OPENC3_BUCKET_USERNAME'] = ENV.fetch('OPENC3_SR_BUCKET_USERNAME', nil)
@@ -795,6 +797,10 @@ class RunningScript
 
   def self.instance=(value)
     @@instance = value
+  end
+
+  def self.run_thread?
+    Thread.current == @@run_thread
   end
 
   def self.line_delay
@@ -1103,9 +1109,10 @@ class RunningScript
     trace
   end
 
-  def execute_while_paused(filename, line_no = 1, end_line_no = nil)
+  # bind_variables of nil binds only when filename is the currently running file
+  def execute_while_paused(filename, line_no = 1, end_line_no = nil, bind_variables = nil)
     if @script_status.state == 'paused' or @script_status.state == 'error' or @script_status.state == 'breakpoint'
-      @execute_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no }
+      @execute_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no, bind_variables: bind_variables }
     else
       scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
     end
@@ -1217,10 +1224,9 @@ class RunningScript
 
   def check_execute_while_paused
     if @execute_while_paused_info
-      if @script_status.current_filename == @execute_while_paused_info[:filename]
-        bind_variables = true
-      else
-        bind_variables = false
+      bind_variables = @execute_while_paused_info[:bind_variables]
+      if bind_variables.nil?
+        bind_variables = (@script_status.current_filename == @execute_while_paused_info[:filename])
       end
       if @execute_while_paused_info[:end_line_no]
         # Execute Selection While Paused

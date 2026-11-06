@@ -32,7 +32,7 @@ class CommandDecomTopic(Topic):
             "received_time": to_nsec_from_epoch(packet.received_time),
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
-            "stored": str(packet.stored),
+            "stored": str(packet.stored).lower(),  # Match ruby behavior of "true"/"false"
             "received_count": packet.received_count,
         }
         # Read all RAW values at once - optimized by accessor
@@ -61,7 +61,7 @@ class CommandDecomTopic(Topic):
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
-        EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash)
+        EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash, minid=Topic.stream_safety_minid())
 
     @classmethod
     def get_cmd_item(cls, target_name, packet_name, param_name, type="FORMATTED", scope=OPENC3_SCOPE):

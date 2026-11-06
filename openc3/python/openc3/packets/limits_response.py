@@ -10,6 +10,9 @@
 # if purchased from OpenC3, Inc.
 
 
+from openc3.utilities.string import class_to_filename
+
+
 class LimitsResponse:
     """This class defines a #call method which is called case a PacketItem
     goes out of limits. This class must be subclassed and the call method
@@ -27,7 +30,7 @@ class LimitsResponse:
         raise RuntimeError("call method must be defined by subclass")
 
     def to_config(self):
-        return f"    LIMITS_RESPONSE {self.__class__.__name__}\n"
+        return f"    LIMITS_RESPONSE {class_to_filename(self.__class__)}\n"
 
     def as_json(self):
         return {"class": self.__class__.__name__}

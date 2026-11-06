@@ -696,6 +696,49 @@ RSpec.describe TablesController, type: :controller do
       end
     end
 
+    # Destinations outside <TARGET>/tables/ (procedures, lib, ...) are loaded by
+    # Script Runner, so copying a file there must require script_edit, not just
+    # the 'system' permission every Table Manager operation needs.
+    context "when the caller has system but not script_edit" do
+      before do
+        allow(controller).to receive(:authorization).with('system').and_return(true)
+        allow(controller).to receive(:authorization).with('admin').and_return(false)
+        allow(controller).to receive(:authorization).with('script_edit').and_return(false)
+        allow(Table).to receive(:save_as)
+      end
+
+      it "blocks save_as into procedures" do
+        post :save_as, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", new_name: "INST/procedures/evil.rb"}
+        expect(Table).not_to have_received(:save_as)
+      end
+
+      it "blocks save_as into lib" do
+        post :save_as, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", new_name: "INST/lib/evil.rb"}
+        expect(Table).not_to have_received(:save_as)
+      end
+
+      it "still allows save_as within tables/bin" do
+        post :save_as, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", new_name: "INST/tables/bin/copy.bin"}
+        expect(response).to have_http_status(:ok)
+        expect(Table).to have_received(:save_as)
+      end
+    end
+
+    context "when the caller has system and script_edit" do
+      before do
+        allow(controller).to receive(:authorization).with('system').and_return(true)
+        allow(controller).to receive(:authorization).with('admin').and_return(false)
+        allow(controller).to receive(:authorization).with('script_edit').and_return(true)
+      end
+
+      it "allows save_as into procedures" do
+        allow(Table).to receive(:save_as)
+        post :save_as, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", new_name: "INST/procedures/copy.rb"}
+        expect(response).to have_http_status(:ok)
+        expect(Table).to have_received(:save_as)
+      end
+    end
+
     context "when the caller is admin" do
       before do
         allow(controller).to receive(:authorization).with('system').and_return(true)
