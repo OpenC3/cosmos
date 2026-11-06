@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -173,7 +173,7 @@ export class ConfigParserService {
         first_item = first_item + data[0]
       }
 
-      if (first_item.length === 0 || first_item.charAt(0) === '#') {
+      if (first_item.length === 0 || first_item.startsWith('#')) {
         this.keyword = null
       } else {
         this.keyword = first_item.toUpperCase()
