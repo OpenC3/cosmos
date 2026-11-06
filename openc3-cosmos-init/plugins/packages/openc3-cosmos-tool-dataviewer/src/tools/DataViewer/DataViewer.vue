@@ -399,42 +399,20 @@ export default {
   },
   async created() {
     this.api = new OpenC3Api()
-    await this.api
-      .get_setting('time_zone')
-      .then((response) => {
-        if (response) {
-          this.timeZone = response
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
+    try {
+      const response = await this.api.get_setting('time_zone')
+      if (response) {
+        this.timeZone = response
+      }
+    } catch {
+      // Do nothing
+    }
     let now = new Date()
     this.startDate = this.formatDate(now, this.timeZone)
     this.startTime = this.formatTimeHMS(now, this.timeZone)
 
     // Determine if there are any user added widgets
-    Api.get('/openc3-api/widgets').then((response) => {
-      response.data.forEach((widget) => {
-        // Only list the ones following the naming convention DataviewerxxxxxWidget
-        const found = widget.match(/DATAVIEWER([A-Z]+)/)
-        if (found) {
-          Api.get(`/openc3-api/widgets/${widget}`).then((response) => {
-            let label = response.data.label
-            let items = response.data.items
-            if (label === null) {
-              label = response.data.name.slice(10)
-              label = label.charAt(0) + label.slice(1).toLowerCase()
-            }
-            this.components.push({
-              label: label,
-              value: found[0],
-              items: items,
-            })
-          })
-        }
-      })
-    })
+    this.loadUserWidgets()
     this.subscribe()
   },
   mounted: function () {
@@ -458,6 +436,37 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    // Only list the widgets following the naming convention DataviewerxxxxxWidget
+    loadUserWidgets: async function () {
+      try {
+        const { data: widgets } = await Api.get('/openc3-api/widgets')
+        const matches = widgets
+          .map((widget) => ({
+            widget,
+            found: widget.match(/DATAVIEWER([A-Z]+)/),
+          }))
+          .filter(({ found }) => found)
+        // Promise.all keeps the original widget order
+        const details = await Promise.all(
+          matches.map(({ widget }) => Api.get(`/openc3-api/widgets/${widget}`)),
+        )
+        details.forEach((response, index) => {
+          let label = response.data.label
+          if (label === null) {
+            label = response.data.name.slice(10)
+            label = label.charAt(0) + label.slice(1).toLowerCase()
+          }
+          this.components.push({
+            label: label,
+            value: matches[index].found[0],
+            items: response.data.items,
+          })
+        })
+      } catch (error) {
+        // User widgets are optional, don't break DataViewer without them
+        console.error('Unable to load user widgets', error)
+      }
+    },
     packetTitle: function (packet) {
       if (packet.itemName !== undefined) {
         return `${packet.targetName} ${packet.packetName} ${packet.itemName}`
