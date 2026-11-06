@@ -9,7 +9,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import re
 import unittest
 
 from openc3.models.scope_model import ScopeModel
