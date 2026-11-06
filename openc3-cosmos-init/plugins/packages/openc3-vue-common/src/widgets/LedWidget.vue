@@ -143,10 +143,9 @@ export default {
   // What this means practically is that future lifecycle hooks may not have valueId set.
   created() {
     this.appliedSettings.forEach((setting) => {
-      switch (setting[0]) {
-        case 'LED_COLOR':
-          this.colors[setting[1]] = setting[2]
-          break
+      if (setting[0] === 'LED_COLOR') {
+        this.colors[setting[1]] = setting[2]
+        break
       }
     })
     // Throw width and height into the appliedSettings so they are set

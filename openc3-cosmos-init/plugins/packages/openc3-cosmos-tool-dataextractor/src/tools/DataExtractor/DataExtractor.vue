@@ -723,7 +723,7 @@ export default {
       this.startDateTimeFilename = this.startDate + '_' + this.startTime
       // Replace the colons, dashes and periods with underscores in the filename
       this.startDateTimeFilename = this.startDateTimeFilename.replaceAll(
-        /(:|-|\.)\s*/g,
+        /[:\-.]\s*/g,
         '_',
       )
       let startTemp
@@ -871,7 +871,7 @@ export default {
         let keys = new Set()
         for (let packet of data) {
           let packetKeys = Object.keys(packet)
-          packetKeys.forEach(keys.add, keys)
+          packetKeys.forEach(keys.add)
           // Don't count metadata keys (__type, __time, COSMOS_EXTRA)
           let metadataCount = packetKeys.filter(
             (k) => k.startsWith('__') || k === 'COSMOS_EXTRA',
