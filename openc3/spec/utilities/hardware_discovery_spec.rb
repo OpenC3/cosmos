@@ -108,6 +108,18 @@ module OpenC3
       expect(unrecognized['candidates']).to eql []
     end
 
+    it "ignores store matchers in a format it doesn't know" do
+      store[0]['discovery']['format'] = 2
+      store[1]['discovery']['matchers'] << 'not a matcher' << { 'class' => serial }
+      allow(PluginStoreModel).to receive(:all).and_return(store.to_json)
+      stub_scan('DEFAULT' => { 'devices' => [] })
+      described_class.scan(bridge: 'DEFAULT', scope: 'DEFAULT')
+      expect(@requests['DEFAULT']['matchers']).to eql [
+        { 'id' => '1', 'class' => serial, 'params' => ['1A86'] },
+        { 'id' => '2', 'class' => serial, 'params' => ['1A86:7523'] },
+      ]
+    end
+
     it "scans every paired bridge" do
       stub_scan('DEFAULT' => { 'devices' => [{ 'class' => hid, 'value' => 'abc', 'matches' => ['1'] }] }, 'LAB' => 'Timeout waiting for discovery')
       result = described_class.scan(bridge: 'ALL', scope: 'DEFAULT')

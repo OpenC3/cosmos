@@ -97,7 +97,7 @@ module OpenC3
 
       sources = []
       store_plugins.each do |plugin|
-        matchers = Array(plugin.dig('discovery', 'matchers'))
+        matchers = store_matchers(plugin)
         next if matchers.empty?
         name = gem_name(plugin['gem_filename'].to_s)
         sources << {
@@ -136,6 +136,15 @@ module OpenC3
       plugins.is_a?(Array) ? plugins : []
     rescue JSON::ParserError
       []
+    end
+
+    # The matchers the Store computed for a plugin, if they're in a format this
+    # COSMOS understands. The Store bumps the format when matchers change
+    # meaning, which older COSMOS versions must not guess at.
+    def self.store_matchers(plugin)
+      discovery = plugin['discovery']
+      return [] unless discovery.is_a?(Hash) and discovery['format'] == PluginModel::DISCOVERY_MATCHERS_FORMAT
+      Array(discovery['matchers']).select { |matcher| matcher.is_a?(Hash) and matcher['class'].is_a?(String) and matcher['variable'].is_a?(String) }
     end
 
     # The matchers of an installed plugin gem, from its plugin.txt
