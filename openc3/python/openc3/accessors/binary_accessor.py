@@ -295,12 +295,11 @@ class BinaryAccessor(Accessor):
         return adjustment
 
     def _write_variable_other(self, item, value, buffer):
-        length_item_name = item.variable_bit_size["length_item_name"]
         length_bits_per_count = item.variable_bit_size["length_bits_per_count"]
         length_value_bit_offset = item.variable_bit_size["length_value_bit_offset"]
 
         # Calculate current bit size so we can preserve bytes after the item
-        length_item_value = self.packet.read(length_item_name, "CONVERTED")
+        length_item_value = self.packet.read(item.variable_bit_size["length_item_name"], "CONVERTED")
         current_bit_size = (length_item_value * length_bits_per_count) + length_value_bit_offset
 
         # Calculate bits after this item
@@ -324,7 +323,8 @@ class BinaryAccessor(Accessor):
         else:
             item.bit_size = -bits_after_item
 
-        self.packet.write(length_item_name, length_bits // length_bits_per_count)
+        length_value = length_bits // length_bits_per_count
+        self.packet.write(item.variable_bit_size["length_item_name"], length_value)
 
         # Later items need their bit_offset adjusted by the change in this item
         # so return the adjustment value

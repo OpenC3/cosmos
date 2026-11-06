@@ -279,12 +279,11 @@ module OpenC3
         raise "Variable bit size not currently supported for FLOAT data type"
       else
         # STRING, BLOCK, or array types
-        length_item_name = item.variable_bit_size['length_item_name']
         length_bits_per_count = item.variable_bit_size['length_bits_per_count']
         length_value_bit_offset = item.variable_bit_size['length_value_bit_offset']
 
         # Calculate current bit size so we can preserve bytes after the item
-        length_item_value = @packet.read(length_item_name, :CONVERTED)
+        length_item_value = @packet.read(item.variable_bit_size['length_item_name'], :CONVERTED)
         current_bit_size = (length_item_value * length_bits_per_count) + length_value_bit_offset
 
         # Calculate bits after this item
@@ -306,7 +305,8 @@ module OpenC3
           item.bit_size = -bits_after_item
         end
 
-        @packet.write(length_item_name, length_bits / length_bits_per_count)
+        length_value = length_bits / length_bits_per_count
+        @packet.write(item.variable_bit_size['length_item_name'], length_value)
 
         # Later items need their bit_offset adjusted by the change in this item
         adjustment = new_bit_size - current_bit_size
