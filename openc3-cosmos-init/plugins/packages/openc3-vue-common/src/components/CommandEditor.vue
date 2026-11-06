@@ -248,6 +248,21 @@ export default {
         this.contextMenuShown = true
       })
     },
+    formatRange(parameter) {
+      if (parameter.minimum != null && parameter.maximum != null) {
+        if (parameter.data_type === 'FLOAT') {
+          if (parameter.minimum < -1e6) {
+            parameter.minimum = parameter.minimum.toExponential(3)
+          }
+          if (parameter.maximum > 1e6) {
+            parameter.maximum = parameter.maximum.toExponential(3)
+          }
+        }
+        return `${parameter.minimum}..${parameter.maximum}`
+      } else {
+        return 'N/A'
+      }
+    },
     updateCmdParams() {
       this.ignoredParams = []
       this.computedRows = []
@@ -280,13 +295,15 @@ export default {
                   }
                 })
 
-                command.items.forEach((parameter) => {
-                  if (this.reservedItemNames.includes(parameter.name)) return
-                  if (
-                    !parameter.hidden &&
-                    (!this.ignoredParams.includes(parameter.name) ||
-                      this.showIgnoredParams)
-                  ) {
+                command.items
+                  .filter(
+                    (parameter) =>
+                      !this.reservedItemNames.includes(parameter.name) &&
+                      !parameter.hidden &&
+                      (!this.ignoredParams.includes(parameter.name) ||
+                        this.showIgnoredParams),
+                  )
+                  .forEach((parameter) => {
                     let val = parameter.default
                     if (
                       !parameter.states &&
@@ -307,21 +324,7 @@ export default {
                     ) {
                       val = this.convertToString(val)
                     }
-                    let range = 'N/A'
-                    if (
-                      parameter.minimum != null &&
-                      parameter.maximum != null
-                    ) {
-                      if (parameter.data_type === 'FLOAT') {
-                        if (parameter.minimum < -1e6) {
-                          parameter.minimum = parameter.minimum.toExponential(3)
-                        }
-                        if (parameter.maximum > 1e6) {
-                          parameter.maximum = parameter.maximum.toExponential(3)
-                        }
-                      }
-                      range = `${parameter.minimum}..${parameter.maximum}`
-                    }
+                    const range = this.formatRange(parameter)
                     // Disable auto-managed length fields for variable_bit_size arrays
                     const isAutoLengthField = autoLengthFields.has(
                       parameter.name.toUpperCase(),
@@ -336,8 +339,7 @@ export default {
                       type: parameter.data_type,
                       disabled: isAutoLengthField,
                     })
-                  }
-                })
+                  })
                 this.commandDescription = command.description
 
                 // Populate with parsed parameters if available
