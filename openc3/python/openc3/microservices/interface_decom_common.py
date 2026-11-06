@@ -32,7 +32,18 @@ def handle_inject_tlm(inject_tlm_json, scope):
     data_type = str(inject_tlm_hash["type"])
     packet = System.telemetry.packet(target_name, packet_name)
     if item_hash:
+        # Writing a VARIABLE_BIT_SIZE item sets its length item to match. Writing the
+        # length item directly would make it disagree with the bytes in the buffer, so
+        # skip it when its variable sized item is also given.
+        given_names = [str(name).upper() for name in item_hash]
+        length_names = [
+            item.variable_bit_size["length_item_name"]
+            for item in packet.sorted_items
+            if item.variable_bit_size and item.name in given_names
+        ]
         for name, value in item_hash.items():
+            if str(name).upper() in length_names:
+                continue
             packet.write(str(name), value, data_type)
     stored = inject_tlm_hash.get("stored", False)
     packet.stored = str(stored).lower() == "true"
