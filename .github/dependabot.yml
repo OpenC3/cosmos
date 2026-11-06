@@ -16,7 +16,12 @@
 version: 2
 updates:
   - package-ecosystem: github-actions
-    directory: "/"
+    # "/" alone covers only .github/workflows. The composite actions need
+    # listing too, or the pins inside them (setup-uv, setup-trivy,
+    # actions/cache) are never raised.
+    directories:
+      - "/"
+      - "/.github/actions/*"
     schedule:
       interval: weekly
     groups:
@@ -54,10 +59,9 @@ updates:
       # users resolve, so it should be a maintainer decision rather than a
       # weekly automated PR.
       #
-      # ruff and ty lose nothing here: both are pre-1.0, so their breaking
-      # releases arrive as minors today. .github/workflows/tool_version_check.yml
-      # watches them, uv and mypy against upstream and opens a bump pull request,
-      # which is the notification this exclusion would otherwise cost.
+      # ruff, ty and uv (the `uv` group CI installs through setup-uv's
+      # version-file) lose nothing here: all are pre-1.0, so their breaking
+      # releases arrive as minors today.
       uv:
         patterns:
           - "*"

@@ -26,7 +26,7 @@ ARG PYPI_URL=https://pypi.org
 # plain-HTTP or self-signed mirror. Same switch the runtime uses for uv's
 # --allow-insecure-host. Build-time only: compose.yaml sets the runtime value.
 ARG OPENC3_PYPI_ALLOW_INSECURE=
-# Update Dockerfile-ubi and the python .github/workflow actions to match this version
+# Keep in step with Dockerfile-ubi and the uv group in openc3/python/pyproject.toml
 ARG OPENC3_UV_VERSION=0.13.5
 
 ENV APT_URL=${APT_URL}

@@ -13,14 +13,15 @@
 # dependabot would: one pull request, updated in place each week rather than
 # reopened, carrying the bump itself so it can be reviewed and merged:
 #
-#   * versions inside an Actions input (setup-uv's and setup-trivy's
-#     `version`) or a Dockerfile ARG consumed by pip -- dependabot parses
-#     neither
-#   * major releases, since every group in dependabot.yml is limited to
-#     update-types: [minor, patch]
-#   * PEP 723 script lockfiles (openc3/python/tools/*.py.lock)
+#   * the trivy release inside setup-trivy's `version` input
+#   * Dockerfile ARGs consumed by pip, which follow pyproject.toml's uv pin
+#   * PEP 723 script headers and their lockfiles (*.py.lock)
 #
 # See .github/scripts/check_tool_versions.py for the list of watched pins.
+#
+# Every watched pin lives outside .github/workflows/ on purpose: GitHub refuses
+# a push that touches a workflow file from GITHUB_TOKEN, which can never be
+# granted the `workflows` permission.
 
 name: Tool Version Check
 
@@ -102,12 +103,10 @@ jobs:
           uv run --script --locked --no-build .github/scripts/check_tool_versions.py --fix > "$REPORT" || true
           cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
 
-          # A bumped pin is only half the change: ruff and ty live in
-          # pyproject.toml's dev group, and mypy, ruff and requests live in
-          # PEP 723 headers, all of which CI installs with --locked/--frozen.
-          # Leaving the lockfiles behind would put up a pull request that
-          # cannot pass its own checks.
-          uv lock --project openc3/python
+          # A bumped pin is only half the change: mypy, ruff and requests live
+          # in PEP 723 headers, which CI installs with --locked. Leaving the
+          # lockfiles behind would put up a pull request that cannot pass its
+          # own checks.
           uv lock --script .github/scripts/check_tool_versions.py
           uv lock --script openc3/python/tools/generate_singleton_stubs.py
 

@@ -1,0 +1,43 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+name: Setup Trivy
+description: |
+  Install the trivy binary once so later trivy-action steps can pass
+  skip-setup-trivy: true.
+
+  This exists to keep one trivy release across the image scans (trivy.yml,
+  post_release_trivy.yml, build_ubi.yml), which used to repeat the version
+  in each workflow.
+
+  The trivy-version default below is the trivy release, not the action.
+  Dependabot bumps the setup-trivy SHA but cannot see an action input, so
+  .github/workflows/tool_version_check.yml watches this default against
+  upstream. It lives here rather than in a workflow because GITHUB_TOKEN
+  cannot push changes under .github/workflows/, which is what that check's
+  bump pull request has to do.
+
+inputs:
+  trivy-version:
+    description: |
+      trivy release to install. The default is the version this repository
+      standardizes on; override only to test a candidate.
+    required: false
+    default: "v0.76.0"
+
+runs:
+  using: composite
+  steps:
+    - name: Install trivy
+      uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567 # v0.3.1
+      with:
+        cache: true
+        version: ${{ inputs.trivy-version }}
