@@ -269,14 +269,16 @@ class RunningScript:
     def validate_partial_script(text, partial_text, filename, line_no, end_line_no):
         """Goto and Execute Selection run a slice of the file as its own code. Explain a
         slice that can't run on its own instead of raising a confusing SyntaxError. A whole
-        file that doesn't parse is left to the normal SyntaxError."""
+        file that doesn't parse is left to the normal SyntaxError. Uses compile rather than
+        ast.parse because only the compiler reports a slice with 'return' outside a function
+        or 'break' outside a loop."""
         try:
-            ast.parse(partial_text)
+            compile(partial_text, filename, "exec", dont_inherit=True)
             return
         except SyntaxError:
             pass
         try:
-            ast.parse(text)
+            compile(text, filename, "exec", dont_inherit=True)
         except SyntaxError:
             return
         if end_line_no is not None:
@@ -682,21 +684,40 @@ class RunningScript:
         self.handle_output_io(filename, line_number)
         self.wait_for_go_or_stop()
 
-    # Matches debug prompt gotos with or without parens and an optional filename:
-    # GOTO 32, goto(32), goto INST/procedures/other.py 12, goto("other.py", 12)
-    DEBUG_GOTO_REGEX = re.compile(
-        r"""\A\s*goto(?=[\s(])\s*\(?\s*(?:(?P<quote>["']?)(?P<filename>[^\s"',()]+\.\w+)(?P=quote)\s*,?\s*)?(?P<line_no>\d+)\s*\)?\s*\Z""",
-        re.IGNORECASE,
+    # Matches the arguments of a debug prompt goto: an optional filename (quoted
+    # or not, followed by spaces and/or a comma) and then a line number
+    DEBUG_GOTO_ARGS_REGEX = re.compile(
+        r"""(?:(?P<quote>["']?)(?P<filename>[^\s"',()]+)(?P=quote)[\s,]+)?(?P<line_no>\d+)"""
     )
+
+    @staticmethod
+    def parse_debug_goto(debug_text):
+        """Parse a debug prompt goto with or without parens and an optional filename:
+        GOTO 32, goto(32), goto INST/procedures/other.py 12, goto("other.py", 12)
+        Returns (filename or None, line_no) or None if the text is not a goto."""
+        text = debug_text.strip()
+        if not re.match(r"goto[\s(]", text, re.IGNORECASE):
+            return None
+        args = text[4:].strip()
+        if args.startswith("(") and args.endswith(")"):
+            args = args[1:-1].strip()
+        match = RunningScript.DEBUG_GOTO_ARGS_REGEX.fullmatch(args)
+        if not match:
+            return None
+        filename = match.group("filename")
+        # A filename needs an extension so "goto 5 6" isn't read as file "5"
+        if filename and "." not in filename:
+            return None
+        return filename, int(match.group("line_no"))
 
     def debug(self, debug_text):
         try:
             self.handle_output_io()
 
-            match = RunningScript.DEBUG_GOTO_REGEX.match(debug_text)
-            if match:
-                filename = match.group("filename") or self.current_filename()
-                self.execute_while_paused(filename, int(match.group("line_no")), bind_variables=True)
+            goto_target = RunningScript.parse_debug_goto(debug_text)
+            if goto_target:
+                filename, line_no = goto_target
+                self.execute_while_paused(filename or self.current_filename(), line_no, bind_variables=True)
                 return
 
             use_script_engine = False

@@ -243,6 +243,15 @@ class TestGoto(unittest.TestCase):
         ):
             RunningScript.validate_partial_script(self.COLLECT_PY, partial, "collect.py", 5, None)
 
+    def test_validate_partial_script_rejects_return_outside_function(self):
+        # The dedented slice parses but only compiles inside the function, so it
+        # must be rejected here rather than crash the script in instrument_script
+        partial = "return\nprint('done')\n"
+        with self.assertRaisesRegex(
+            RunningScript.InvalidStartLineError, r"Cannot start at line 4 of collect.py.*inside a method or block"
+        ):
+            RunningScript.validate_partial_script(self.COLLECT_PY, partial, "collect.py", 4, None)
+
     def test_validate_partial_script_rejects_incomplete_selection(self):
         partial = "".join(self.COLLECT_PY.splitlines(keepends=True)[2:3])
         with self.assertRaisesRegex(RunningScript.InvalidStartLineError, r"Cannot run lines 3-3 of collect.py"):

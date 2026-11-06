@@ -1069,10 +1069,10 @@ class RunningScript
   def debug(debug_text)
     handle_output_io()
 
-    match = DEBUG_GOTO_REGEX.match(debug_text)
-    if match
-      filename = match[:filename] || current_filename()
-      execute_while_paused(filename, match[:line_no].to_i, nil, true)
+    goto_target = RunningScript.parse_debug_goto(debug_text)
+    if goto_target
+      filename, line_no = goto_target
+      execute_while_paused(filename || current_filename(), line_no, nil, true)
       return
     end
 
@@ -1153,9 +1153,28 @@ class RunningScript
     end
   end
 
-  # Matches debug prompt gotos with or without parens and an optional filename:
+  # Matches the arguments of a debug prompt goto: an optional filename (quoted
+  # or not, followed by spaces and/or a comma) and then a line number
+  DEBUG_GOTO_ARGS_REGEX = /\A(?:(?<quote>["']?)(?<filename>[^\s"',()]+)\k<quote>[\s,]+)?(?<line_no>\d+)\z/
+
+  # Parse a debug prompt goto with or without parens and an optional filename:
   # GOTO 32, goto(32), goto INST/procedures/other.rb 12, goto("other.rb", 12)
-  DEBUG_GOTO_REGEX = /\A\s*goto(?=[\s(])\s*\(?\s*(?:(?<quote>["']?)(?<filename>[^\s"',()]+\.\w+)\k<quote>\s*,?\s*)?(?<line_no>\d+)\s*\)?\s*\z/i
+  # Returns [filename or nil, line_no] or nil if the text is not a goto
+  def self.parse_debug_goto(debug_text)
+    text = debug_text.strip
+    return nil unless /\Agoto[\s(]/i.match?(text)
+
+    args = text[4..].strip
+    args = args[1...-1].strip if args.start_with?('(') && args.end_with?(')')
+    match = DEBUG_GOTO_ARGS_REGEX.match(args)
+    return nil unless match
+
+    filename = match[:filename]
+    # A filename needs an extension so "goto 5 6" isn't read as file "5"
+    return nil if filename && !filename.include?('.')
+
+    return [filename, match[:line_no].to_i]
+  end
 
   def scriptrunner_puts(string, color = 'BLACK')
     line_to_write = Time.now.sys.formatted + " (SCRIPTRUNNER): " + string

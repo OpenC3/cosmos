@@ -1241,7 +1241,7 @@ export default {
     },
     gotoDisabled: function () {
       const line = Number.parseInt(this.gotoLineNumber, 10)
-      if (!(line >= 1)) {
+      if (Number.isNaN(line) || line < 1) {
         return true
       }
       if (!this.scriptActive) {
@@ -1249,9 +1249,14 @@ export default {
         return this.suiteRunner || this.startOrGoDisabled
       }
       // Goto repositions execution without running, so only while stopped on a line
+      return !this.stoppedOnLine
+    },
+    // A live script stopped on a line, the only time the backend accepts
+    // goto and execute selection
+    stoppedOnLine: function () {
       return (
-        !this.liveScriptId ||
-        !['paused', 'breakpoint', 'error'].includes(this.state)
+        !!this.liveScriptId &&
+        ['paused', 'breakpoint', 'error'].includes(this.state)
       )
     },
     gotoTooltip: function () {
@@ -2169,6 +2174,11 @@ export default {
       this.doResize()
     },
     showExecuteSelectionMenu: function ($event) {
+      // While a script runs (or waits on a prompt) none of the menu actions
+      // apply, so the menu only opens when idle or stopped on a line
+      if (this.scriptActive && !this.stoppedOnLine) {
+        return
+      }
       this.menuX = $event.pageX
       this.menuY = $event.pageY
       // Check if the current line contains a command
@@ -3816,6 +3826,18 @@ export default {
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect
     },
+    // Returns the line of a debug prompt GOTO 32 or goto(32), otherwise null
+    parseDebugGotoLine(text) {
+      let args = text.trim()
+      if (!/^goto[\s(]/i.test(args)) {
+        return null
+      }
+      args = args.slice(4).trim()
+      if (args.startsWith('(') && args.endsWith(')')) {
+        args = args.slice(1, -1).trim()
+      }
+      return /^\d+$/.test(args) ? Number.parseInt(args, 10) : null
+    },
     debugKeydown(event) {
       if (event.key === 'Escape') {
         this.debug = ''
@@ -3824,11 +3846,9 @@ export default {
         this.debugHistory.push(this.debug)
         this.debugHistoryIndex = this.debugHistory.length
         // Before start, GOTO <line> sets the line Start runs from
-        const gotoMatch = this.debug.match(
-          /^\s*goto(?=[\s(])\s*\(?\s*(\d+)\s*\)?\s*$/i,
-        )
-        if (!this.scriptActive && gotoMatch) {
-          this.gotoLineNumber = Number.parseInt(gotoMatch[1], 10)
+        const gotoLine = this.parseDebugGotoLine(this.debug)
+        if (!this.scriptActive && gotoLine !== null) {
+          this.gotoLineNumber = gotoLine
           if (!this.gotoDisabled) {
             this.setPendingStartLine(this.gotoLineNumber)
           }
