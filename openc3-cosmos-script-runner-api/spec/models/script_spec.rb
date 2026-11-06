@@ -434,6 +434,17 @@ RSpec.describe Script, type: :model do
         expect(mocks[:process_env]['VIRTUAL_ENV']).to eq(venv_dir)
         expect(mocks[:process_env]['PYTHONPATH'].split(':')).to include(site_packages)
       end
+
+      it "does not pass unused credentials to the analysis process" do
+        mocks = setup_process_suite_mocks(language: "ruby")
+
+        Script.process_suite("suite.rb", "suite content", scope: "DEFAULT")
+
+        OpenC3::ScriptEnv::UNUSED_VARS.each do |key|
+          expect(mocks[:process_env]).to have_key(key)
+          expect(mocks[:process_env][key]).to be_nil
+        end
+      end
     end
 
     context "with offline access token" do

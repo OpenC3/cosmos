@@ -265,6 +265,37 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(item2_length.bit_offset, 152)
         self.assertEqual(item2.bit_offset, 168)
 
+    def test_reads_zero_length_variable_sized_items_as_empty_rather_than_filling_the_buffer(self):
+        packet = Packet()
+        packet.append_item("string_length", 8, "UINT")
+        string = packet.append_item("string", 0, "STRING")
+        string.variable_bit_size = {
+            "length_item_name": "string_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        packet.append_item("block_length", 8, "UINT")
+        block = packet.append_item("block", 0, "BLOCK")
+        block.variable_bit_size = {
+            "length_item_name": "block_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        packet.append_item("array_length", 8, "UINT")
+        array = packet.append_item("array", 8, "UINT", 0)
+        array.variable_bit_size = {
+            "length_item_name": "array_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        packet.append_item("trailer", 8, "UINT")
+        packet.buffer = b"\x00\x00\x00\x5a"
+        self.assertEqual(packet.read("string"), "")
+        self.assertEqual(packet.read("block"), bytearray(b""))
+        self.assertIsInstance(packet.read("block"), bytearray)
+        self.assertEqual(packet.read("array"), [])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
     def test_can_handle_reading_and_writing_multiple_variable_sized_array_items(self):
         packet = Packet()
         item1_length = packet.append_item("item1_length", 32, "UINT")

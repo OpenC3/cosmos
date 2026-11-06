@@ -179,7 +179,15 @@ module OpenC3
         structure = parent_item.structure
         structure.read(item.key, :RAW, structure_buffer)
       else
-        handle_read_variable_bit_size(item, buffer) if item.variable_bit_size
+        if item.variable_bit_size
+          handle_read_variable_bit_size(item, buffer)
+          # A size of 0 normally means fill the rest of the buffer but here it means empty
+          if item.array_size
+            return [] if item.array_size == 0
+          elsif item.bit_size == 0
+            return ''.b
+          end
+        end
         if @packet.short_buffer_allowed && (native_value_out_of_range?(item) || derived_size_negative?(item, buffer))
           return nil
         end

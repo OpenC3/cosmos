@@ -28,7 +28,8 @@ module OpenC3
   #
   # Every API writer that can reach the overlay must consult these predicates:
   #   - storage_controller#get_upload_presigned_request / delete (presigned S3 upload)
-  #   - tables_controller#save / save_as / report / destroy (Table -> TargetFile)
+  #   - tables_controller#save / save_as / report / destroy (Table -> TargetFile;
+  #     destinations outside <TARGET>/tables/ also need script_edit, see table_data?)
   #   - scripts_controller#create / destroy (Script -> TargetFile)
   module ConfigOverlay
     # Config bucket areas a non-admin is allowed to write at all
@@ -68,6 +69,39 @@ module OpenC3
       parts = canonical_parts(name)
       return false if parts.nil?
       parts.length > 3 and parts[1, 2] == ['tables', 'config']
+    end
+
+    # True if the target-relative name is a Table Manager data file, i.e. under
+    # "<TARGET>/tables/" but outside the admin-only "<TARGET>/tables/config/",
+    # e.g. "<TARGET>/tables/bin/table.bin". Table writers only need 'system'
+    # for these; any other overlay destination is loadable by Script Runner and
+    # needs script_edit. Fails closed (false) on non-canonical names.
+    def self.table_data?(name)
+      parts = canonical_parts(name)
+      return false if parts.nil?
+      parts.length >= 3 and parts[1] == 'tables' and !code_area?(parts)
+    end
+
+    # True if the given config bucket key is a targets_modified/<TARGET> overlay
+    # file whose write requires script_edit rather than only system_set. Script
+    # Runner executes these files: procedures and lib are run / required
+    # directly, and Script.body / bucket_load will load any overlay path, so
+    # every targets_modified target file outside the admin-only code areas
+    # (cmd_tlm, tables/config) counts. tmp/ scratch and non-overlay keys return
+    # false. Fails closed (false) on non-canonical keys.
+    #
+    # Callers must still require admin for code areas (code_overlay? /
+    # non_admin_writable_key? already fail those), so the tiers are:
+    #   code area        -> admin
+    #   script_edit area -> script_edit  (this predicate)
+    #   tmp / user bucket -> system_set
+    def self.script_edit_overlay_key?(key)
+      parts = canonical_parts(key)
+      return false if parts.nil?
+      # parts: <SCOPE> / <area> / <TARGET> / <subdir> / ...
+      return false unless parts[1] == 'targets_modified'
+      return false if code_area?(parts[2..])
+      true
     end
 
     # True if the given config bucket key is an overlay path a non-admin may
