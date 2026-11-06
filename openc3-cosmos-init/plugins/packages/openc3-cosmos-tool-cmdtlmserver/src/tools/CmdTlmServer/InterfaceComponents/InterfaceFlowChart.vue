@@ -380,40 +380,38 @@ onEdgesChange((changes) => {
                   })
                 })
             }
+          } else if (interface_or_router == 'interface') {
+            api
+              .unmap_target_from_interface(
+                target_name,
+                interface_or_router_name,
+                cmd_or_tlm === 'cmd',
+                cmd_or_tlm === 'tlm',
+              )
+              .then(() => {
+                applyEdgeChanges([change])
+                edges.value.forEach((edge, index) => {
+                  if (edge.id === change.id) {
+                    edges.value.splice(index, 1)
+                  }
+                })
+              })
           } else {
-            if (interface_or_router == 'interface') {
-              api
-                .unmap_target_from_interface(
-                  target_name,
-                  interface_or_router_name,
-                  cmd_or_tlm === 'cmd',
-                  cmd_or_tlm === 'tlm',
-                )
-                .then(() => {
-                  applyEdgeChanges([change])
-                  edges.value.forEach((edge, index) => {
-                    if (edge.id === change.id) {
-                      edges.value.splice(index, 1)
-                    }
-                  })
+            api
+              .unmap_target_from_router(
+                target_name,
+                interface_or_router_name,
+                cmd_or_tlm === 'cmd',
+                cmd_or_tlm === 'tlm',
+              )
+              .then(() => {
+                applyEdgeChanges([change])
+                edges.value.forEach((edge, index) => {
+                  if (edge.id === change.id) {
+                    edges.value.splice(index, 1)
+                  }
                 })
-            } else {
-              api
-                .unmap_target_from_router(
-                  target_name,
-                  interface_or_router_name,
-                  cmd_or_tlm === 'cmd',
-                  cmd_or_tlm === 'tlm',
-                )
-                .then(() => {
-                  applyEdgeChanges([change])
-                  edges.value.forEach((edge, index) => {
-                    if (edge.id === change.id) {
-                      edges.value.splice(index, 1)
-                    }
-                  })
-                })
-            }
+              })
           }
         })
     }
