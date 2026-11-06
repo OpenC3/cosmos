@@ -1,5 +1,6 @@
 import prettierConfig from '@vue/eslint-config-prettier'
 import { defineConfig } from 'eslint/config'
+import pluginPromise from 'eslint-plugin-promise'
 import pluginVue from 'eslint-plugin-vue'
 import vuetify from 'eslint-plugin-vuetify'
 import globals from 'globals'
@@ -9,6 +10,9 @@ export default defineConfig([
   pluginVue.configs['flat/recommended'],
   vuetify.configs['flat/base'],
   {
+    plugins: {
+      promise: pluginPromise,
+    },
     languageOptions: {
       globals: {
         ...globals.node,
@@ -30,6 +34,8 @@ export default defineConfig([
           endOfLine: 'auto',
         },
       ],
+
+      'promise/no-nesting': 'error',
 
       'require-await': 'error',
 

@@ -318,15 +318,32 @@ export default {
         this.timeZone = response
       }
     })
-    // Tools are global and are always installed into the DEFAULT scope.
-    // This endpoint requires no authorization and the nav has to render even
-    // when we have no token (the login page mounts it too), so don't let the
-    // auth guard block the request.
-    Api.get('/openc3-api/tools/all', {
-      params: { scope: 'DEFAULT' },
-      optionalAuth: true,
-    })
-      .then((response) => {
+    this.getTools()
+  },
+  mounted() {
+    globalThis.addEventListener(
+      'single-spa:routing-event',
+      this.updateActiveItem,
+    )
+  },
+  beforeUnmount() {
+    clearInterval(this.itemClockInterval)
+    globalThis.removeEventListener(
+      'single-spa:routing-event',
+      this.updateActiveItem,
+    )
+  },
+  methods: {
+    async getTools() {
+      // Tools are global and are always installed into the DEFAULT scope.
+      // This endpoint requires no authorization and the nav has to render even
+      // when we have no token (the login page mounts it too), so don't let the
+      // auth guard block the request.
+      try {
+        const response = await Api.get('/openc3-api/tools/all', {
+          params: { scope: 'DEFAULT' },
+          optionalAuth: true,
+        })
         this.appNav = response.data
 
         let id = 1
@@ -418,23 +435,10 @@ export default {
             // else (network, unexpected auth failure) still gets logged.
             .catch(logUnlessAuthRequired)
         }, 60000)
-      })
-      .catch(logUnlessAuthRequired)
-  },
-  mounted() {
-    globalThis.addEventListener(
-      'single-spa:routing-event',
-      this.updateActiveItem,
-    )
-  },
-  beforeUnmount() {
-    clearInterval(this.itemClockInterval)
-    globalThis.removeEventListener(
-      'single-spa:routing-event',
-      this.updateActiveItem,
-    )
-  },
-  methods: {
+      } catch (error) {
+        logUnlessAuthRequired(error)
+      }
+    },
     navigateToUrl,
     startItemClock() {
       const item = this.astro.itemClock
