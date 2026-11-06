@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import re
 
 from openc3.models.model import Model
 
@@ -89,10 +90,15 @@ class ScopeModel(Model):
         if self.critical_commanding not in ["OFF", "NORMAL", "ALL"]:
             raise RuntimeError(f"Invalid value for critical_commanding: {self.critical_commanding}")
         # Number of distinct users (other than the sender) who must approve each critical command
-        try:
-            self.critical_cmd_approvers = int(critical_cmd_approvers if critical_cmd_approvers is not None else 1)
-        except (TypeError, ValueError):
-            self.critical_cmd_approvers = None
+        # Only accept whole numbers so values like 1.9 or "2oops" aren't silently truncated
+        approvers = critical_cmd_approvers if critical_cmd_approvers is not None else 1
+        if isinstance(approvers, str):
+            approvers = approvers.strip()
+        self.critical_cmd_approvers = None
+        if (isinstance(approvers, int) and not isinstance(approvers, bool)) or (
+            isinstance(approvers, str) and re.fullmatch(r"[0-9]+", approvers)
+        ):
+            self.critical_cmd_approvers = int(approvers)
         if (
             self.critical_cmd_approvers is None
             or self.critical_cmd_approvers < 1
