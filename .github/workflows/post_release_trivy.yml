@@ -118,7 +118,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-ruby.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image ruby in SBOM mode
@@ -134,7 +133,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-node:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-node.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image node in SBOM mode
@@ -150,7 +148,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-base:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-base.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image base in SBOM mode
@@ -166,7 +163,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-cosmos-init.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image cosmos-init in SBOM mode
@@ -182,7 +178,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-redis.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image redis in SBOM mode
@@ -198,7 +193,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-buckets:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-buckets.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image bucket in SBOM mode
@@ -214,7 +208,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-tsdb:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-tsdb.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image tsdb in SBOM mode
@@ -230,7 +223,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-operator.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image operator in SBOM mode
@@ -246,7 +238,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-cosmos-cmd-tlm-api.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image cosmos-cmd-tlm-api in SBOM mode
@@ -262,7 +253,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-cosmos-script-runner-api.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image cosmos-script-runner-api in SBOM mode
@@ -278,7 +268,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-traefik.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image traefik in SBOM mode
@@ -317,11 +306,10 @@ jobs:
           for image in $UBI_IMAGES; do
             ref="docker.io/openc3inc/${image}:${VERSION}"
             echo "::group::trivy ${image}"
-            trivy image --image-src remote --exit-code 0 \
-              --pkg-types os,library --scanners vuln \
+            trivy image --image-src remote --scanners vuln \
               --format json --output "trivy_results_ubi/${image}.json" \
               "$ref" || status=1
-            trivy image --image-src remote --exit-code 0 \
+            trivy image --image-src remote \
               --format cyclonedx --output "sbom_ubi/${image}.sbom.json" \
               "$ref" || status=1
             echo "::endgroup::"
