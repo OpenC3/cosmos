@@ -253,6 +253,8 @@ export default {
     },
     async approve() {
       const uuid = this.activeUuid
+      // The dialog may have already finished, e.g. a final status arrived
+      if (!this.isActive(uuid)) return
       try {
         const response = await this.postAction('approve', uuid)
         this.handleApproved(response.data, uuid)
@@ -267,6 +269,8 @@ export default {
     },
     async reject() {
       const uuid = this.activeUuid
+      // The dialog may have already finished, e.g. a final status arrived
+      if (!this.isActive(uuid)) return
       try {
         await this.postAction('reject', uuid)
         this.error = false

@@ -249,11 +249,9 @@ class InterfaceCmdHandlerThread:
                 return "SUCCESS"
             if msg_hash.get(b"release_critical"):
                 # Note: intentional fall through below this point
-                critical_model = CriticalCmdModel.get_model(
-                    name=msg_hash[b"release_critical"].decode(), scope=self.scope
-                )
+                name = msg_hash[b"release_critical"].decode()
+                critical_model = CriticalCmdModel.get_model(name=name, scope=self.scope)
                 if critical_model is not None:
-                    name = msg_hash[b"release_critical"].decode()
                     # Claim the release so the command is sent at most once. Refuses a
                     # duplicate release message and one whose approval was undone.
                     # Nothing reads the ack for a release so log why it was refused.
@@ -276,7 +274,7 @@ class InterfaceCmdHandlerThread:
                     msg_hash = critical_model.cmd_hash
                     release_critical = True
                 else:
-                    return f"Critical command {msg_hash[b'release_critical'].decode()} not found"
+                    return f"Critical command {name} not found"
             if msg_hash.get(b"target_control"):
                 try:
                     params = json.loads(msg_hash[b"target_control"])
