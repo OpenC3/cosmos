@@ -197,6 +197,28 @@ module OpenC3
               # Note: intentional fall through below this point
               critical_model = CriticalCmdModel.get_model(name: msg_hash['release_critical'], scope: @scope)
               if critical_model
+                # Claim the release so the command is sent at most once. Refuses a
+                # duplicate release message and one whose approval was undone.
+                # Nothing reads the ack for a release so log why it was refused.
+                begin
+                  claimed = critical_model.claim_release
+                rescue => e
+                  message = "Critical command '#{msg_hash['release_critical']}' not released: #{e.message}"
+                  @logger.error("#{@interface.name}: #{message}", scope: @scope)
+                  next message
+                end
+                unless claimed
+                  if critical_model.released
+                    # A duplicate release message, the command was already sent
+                    message = "Critical command '#{msg_hash['release_critical']}' not released: already released"
+                    @logger.warn("#{@interface.name}: #{message}", scope: @scope)
+                  else
+                    # An approved command that won't be sent, e.g. its approval was undone
+                    message = "Critical command '#{msg_hash['release_critical']}' not released: #{critical_model.status}"
+                    @logger.error("#{@interface.name}: #{message}", scope: @scope)
+                  end
+                  next message
+                end
                 msg_hash = critical_model.cmd_hash
                 release_critical = true
               else
@@ -284,13 +306,9 @@ module OpenC3
               # An unidentified buffer is sent as UNKNOWN on behalf of the target it was sent to
               enabled_target_name = command.target_name
               enabled_target_name = target_name if enabled_target_name == 'UNKNOWN' and target_name
-              if @interface.cmd_target_enabled[enabled_target_name]
-                orig_command = System.commands.packet(command.target_name, command.packet_name)
-                orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope: @scope)
-                command.received_count = orig_command.received_count
-                command.received_time = Time.now
-              else
+              unless @interface.cmd_target_enabled[enabled_target_name]
                 next "Target #{command.target_name} is disabled" if release_critical
+
                 next nil # Don't ack disabled targets
               end
             rescue RangeError => e
@@ -337,6 +355,14 @@ module OpenC3
                 next "CriticalCmdError\n#{model.name}"
               end
             end
+
+            # Count the command only once it's going to the interface. A command
+            # returned for hazardous confirmation or held for critical approval
+            # isn't counted until it's resent or released.
+            orig_command = System.commands.packet(command.target_name, command.packet_name)
+            orig_command.received_count = TargetModel.increment_command_count(command.target_name, command.packet_name, 1, scope: @scope)
+            command.received_count = orig_command.received_count
+            command.received_time = Time.now
 
             validate = ConfigParser.handle_true_false(msg_hash['validate'], default: true)
             begin

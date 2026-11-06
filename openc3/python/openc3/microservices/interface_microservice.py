@@ -249,14 +249,32 @@ class InterfaceCmdHandlerThread:
                 return "SUCCESS"
             if msg_hash.get(b"release_critical"):
                 # Note: intentional fall through below this point
-                critical_model = CriticalCmdModel.get_model(
-                    name=msg_hash[b"release_critical"].decode(), scope=self.scope
-                )
+                name = msg_hash[b"release_critical"].decode()
+                critical_model = CriticalCmdModel.get_model(name=name, scope=self.scope)
                 if critical_model is not None:
+                    # Claim the release so the command is sent at most once. Refuses a
+                    # duplicate release message and one whose approval was undone.
+                    # Nothing reads the ack for a release so log why it was refused.
+                    try:
+                        claimed = critical_model.claim_release()
+                    except Exception as e:
+                        message = f"Critical command '{name}' not released: {e}"
+                        self.logger.error(f"{self.interface.name}: {message}", scope=self.scope)
+                        return message
+                    if not claimed:
+                        if critical_model.released:
+                            # A duplicate release message, the command was already sent
+                            message = f"Critical command '{name}' not released: already released"
+                            self.logger.warn(f"{self.interface.name}: {message}", scope=self.scope)
+                        else:
+                            # An approved command that won't be sent, e.g. its approval was undone
+                            message = f"Critical command '{name}' not released: {critical_model.status}"
+                            self.logger.error(f"{self.interface.name}: {message}", scope=self.scope)
+                        return message
                     msg_hash = critical_model.cmd_hash
                     release_critical = True
                 else:
-                    return f"Critical command {msg_hash[b'release_critical'].decode()} not found"
+                    return f"Critical command {name} not found"
             if msg_hash.get(b"target_control"):
                 try:
                     params = json.loads(msg_hash[b"target_control"])
@@ -345,13 +363,6 @@ class InterfaceCmdHandlerThread:
                     if release_critical:
                         return f"Target {command.target_name} is disabled"
                     return None  # Don't ack disabled targets
-
-                orig_command = System.commands.packet(command.target_name, command.packet_name)
-                orig_command.received_count = TargetModel.increment_command_count(
-                    command.target_name, command.packet_name, 1, scope=self.scope
-                )
-                command.received_count = orig_command.received_count
-                command.received_time = datetime.now(timezone.utc)
             except ValueError as e:
                 # Command parameter out of range is a user error, not a bug,
                 # so only log the message and not the full stack trace
@@ -404,6 +415,16 @@ class InterfaceCmdHandlerThread:
                         scope=self.scope,
                     )
                     return f"CriticalCmdError\n{model.name}"
+
+            # Count the command only once it's going to the interface. A command
+            # returned for hazardous confirmation or held for critical approval
+            # isn't counted until it's resent or released.
+            orig_command = System.commands.packet(command.target_name, command.packet_name)
+            orig_command.received_count = TargetModel.increment_command_count(
+                command.target_name, command.packet_name, 1, scope=self.scope
+            )
+            command.received_count = orig_command.received_count
+            command.received_time = datetime.now(timezone.utc)
 
             validate = ConfigParser.handle_true_false(msg_hash.get(b"validate", b"TRUE").decode())
             try:
