@@ -111,15 +111,17 @@ async function clearOverrides() {
       ]),
     ).values(),
   ]
-  for (const item of items) {
-    await api.normalize_tlm(
-      item.target_name,
-      item.packet_name,
-      item.item_name,
-      'ALL',
-    )
-    overrides.value = []
-  }
+  await Promise.all(
+    items.map((item) =>
+      api.normalize_tlm(
+        item.target_name,
+        item.packet_name,
+        item.item_name,
+        'ALL',
+      ),
+    ),
+  )
+  overrides.value = []
 }
 
 async function deleteOverride(item) {
