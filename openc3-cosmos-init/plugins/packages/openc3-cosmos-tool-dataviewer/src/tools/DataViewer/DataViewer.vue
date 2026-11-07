@@ -477,7 +477,7 @@ export default {
     start: function () {
       this.autoStart = false
       // Check for a future start time
-      if (this.startEndTime.start_time > new Date().getTime() * 1000000) {
+      if (this.startEndTime.start_time > Date.now() * 1000000) {
         this.warningText = 'Start date/time is in the future!'
         this.warning = true
         return
@@ -491,7 +491,7 @@ export default {
       // Check for a future End Time
       if (
         this.startEndTime.end_time &&
-        this.startEndTime.end_time > new Date().getTime() * 1000000
+        this.startEndTime.end_time > Date.now() * 1000000
       ) {
         this.warningText =
           'Note: End date/time is greater than current date/time. Data will continue to stream in real-time until ' +

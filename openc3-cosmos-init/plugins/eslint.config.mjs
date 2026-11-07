@@ -46,6 +46,7 @@ export default defineConfig([
 
       'unicorn/no-typeof-undefined': 'error',
       'unicorn/prefer-array-some': 'error',
+      'unicorn/prefer-date-now': 'error',
       'unicorn/prefer-includes': 'error',
       'unicorn/prefer-math-min-max': 'error',
       'unicorn/prefer-single-call': 'error',
