@@ -64,7 +64,7 @@ export default class ScreenCompleter {
     // If we found suggestions and the suggestions have params
     // then we do logic to substitute suggestions using the actual
     // target, packet, item data
-    if (suggestions && suggestions['params']) {
+    if (suggestions?.['params']) {
       // Check if this is the last autocomplete parameter
       if (suggestions['params'].length == parsedLine.length - 1) {
         more = false
