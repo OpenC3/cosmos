@@ -233,7 +233,7 @@ export default {
       }
     },
     formatKey(key) {
-      return key.replaceAll('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+      return key.replaceAll('_', ' ').replaceAll(/\b\w/, (l) => l.toUpperCase())
     },
     formatValue(value) {
       if (value === null || value === undefined) {

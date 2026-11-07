@@ -562,7 +562,7 @@ export default {
               // Bracket characters need to be escaped with double brackets
               // This is to distinguish them from individual array items
               // See LabelvalueWidget.vue, VWidget.js, and GraphWidget.js
-              const name = item.name.replace(/\[/g, '[[').replace(/\]/g, ']]')
+              const name = item.name.replaceAll('[', '[[').replaceAll(']', ']]')
               text += `  LABELVALUE ${targetName} ${packetName} ${name}\n`
             }
           })

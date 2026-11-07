@@ -722,8 +722,8 @@ export default {
     setTimestamps: function () {
       this.startDateTimeFilename = this.startDate + '_' + this.startTime
       // Replace the colons, dashes and periods with underscores in the filename
-      this.startDateTimeFilename = this.startDateTimeFilename.replace(
-        /[:\-.]\s*/g,
+      this.startDateTimeFilename = this.startDateTimeFilename.replaceAll(
+        /[:\-.]\s*/,
         '_',
       )
       let startTemp
