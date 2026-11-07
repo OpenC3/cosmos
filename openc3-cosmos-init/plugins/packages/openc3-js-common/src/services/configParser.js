@@ -143,7 +143,8 @@ export class ConfigParserService {
           case '+': // String concatenation with newlines
             newline = true
           // Deliberate fall through
-          case '\\': // String concatenation
+          case '\\': {
+            // String concatenation
             // Trim off the concat character plus any spaces, e.g. "line" \
             let trim = line.substring(0, line.length - 1).trim()
             // Now trim off the last quote so it will flow into the next line
@@ -153,6 +154,7 @@ export class ConfigParserService {
             }
             string_concat = true
             continue
+          }
           case '&': // Line continuation
             this.line += line.substring(0, line.length - 1)
             continue

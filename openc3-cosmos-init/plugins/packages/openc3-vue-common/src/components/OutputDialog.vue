@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -93,28 +93,32 @@ export default {
     let languageMode = null
     const fileExtension = this.filename ? this.filename.split('.').pop() : 'txt'
     switch (fileExtension) {
-      case 'json':
+      case 'json': {
         const JsonMode = this.buildJsonMode()
         languageMode = new JsonMode()
         this.editor.setOptions({
           useWorker: false,
         })
         break
+      }
       case 'py':
-      case 'pyi':
+      case 'pyi': {
         const PythonMode = this.buildPythonMode()
         languageMode = new PythonMode()
         break
-      case 'md':
+      }
+      case 'md': {
         const MarkdownMode = this.buildMarkdownMode()
         languageMode = new MarkdownMode()
         break
-      default:
+      }
+      default: {
         // Most of the COSMOS text files are best display in Ruby
         // This includes Rakefiles, Gemfiles, etc.
         const RubyMode = this.buildRubyMode()
         languageMode = new RubyMode()
         break
+      }
     }
     this.editor.session.setMode(languageMode)
     this.editor.session.setUseWrapMode(true)

@@ -26,6 +26,7 @@ export default defineConfig([
     rules: {
       'no-console': ['error', { allow: ['error'] }],
       'no-debugger': 'error',
+      'no-case-declarations': 'error',
       'no-lonely-if': 'error',
 
       'prettier/prettier': [
