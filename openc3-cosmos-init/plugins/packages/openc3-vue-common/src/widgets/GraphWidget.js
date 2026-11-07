@@ -67,7 +67,7 @@ export default {
           break
         }
         case 'HISTORY': {
-          let amount = parseInt(setting[1].slice(0, setting[1].length - 1))
+          let amount = Number.parseInt(setting[1].slice(0, setting[1].length - 1))
           let key = null
           let multiplier = 1
           switch (setting[1][setting[1].length - 1]) {
@@ -104,17 +104,17 @@ export default {
           break
         }
         case 'SECONDSGRAPHED':
-          this.secondsGraphed = parseInt(setting[1])
+          this.secondsGraphed = Number.parseInt(setting[1])
           break
         case 'POINTSSAVED':
-          this.pointsSaved = parseInt(setting[1])
+          this.pointsSaved = Number.parseInt(setting[1])
           break
         case 'POINTSGRAPHED':
-          this.pointsGraphed = parseInt(setting[1])
+          this.pointsGraphed = Number.parseInt(setting[1])
           break
         case 'SIZE':
-          this.size.width = parseInt(setting[1])
-          this.size.height = parseInt(setting[2])
+          this.size.width = Number.parseInt(setting[1])
+          this.size.height = Number.parseInt(setting[2])
           break
       }
     })
