@@ -49,6 +49,7 @@ export default defineConfig([
       'unicorn/prefer-date-now': 'error',
       'unicorn/prefer-includes': 'error',
       'unicorn/prefer-math-min-max': 'error',
+      'unicorn/prefer-number-properties': 'error',
       'unicorn/prefer-single-call': 'error',
       'unicorn/prefer-string-replace-all': 'error',
       'unicorn/prefer-structured-clone': 'error',
