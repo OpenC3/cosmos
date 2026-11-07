@@ -386,7 +386,7 @@ export default {
           })
         })
         .catch((error) => {
-          if (error.response && error.response.data) {
+          if (error.response?.data) {
             this.metricsError = error.response.data.message
           } else {
             this.metricsError = error.message

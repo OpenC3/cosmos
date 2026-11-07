@@ -264,7 +264,7 @@ export default {
       }
     },
     async onImportFileSelected(event) {
-      const file = event.target.files && event.target.files[0]
+      const file = event.target.files?.[0]
       if (!file) return
       this.importing = true
       try {

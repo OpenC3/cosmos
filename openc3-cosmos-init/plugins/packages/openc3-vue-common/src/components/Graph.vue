@@ -1318,7 +1318,7 @@ export default {
     },
     setXAxisScale: function (realtimeMax = null) {
       const xAxisData = this.data[0]
-      if (xAxisData && xAxisData.length) {
+      if (xAxisData?.length) {
         let max = realtimeMax === null ? xAxisData.at(-1) : realtimeMax
         // Do not show history from before the first received point. The right
         // edge can advance into empty space, but the left edge should only
