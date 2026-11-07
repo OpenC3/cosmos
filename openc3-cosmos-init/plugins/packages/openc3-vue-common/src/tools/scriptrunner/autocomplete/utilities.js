@@ -40,7 +40,7 @@ const groupBy = (array, lambda) => {
 
 // Escape characters like the ? in limits_enabled? so keywords match literally
 const escapeRegExp = (string) => {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
+  return string.replaceAll(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`)
 }
 
 export { getKeywords, getAutocompleteData, groupBy, escapeRegExp }

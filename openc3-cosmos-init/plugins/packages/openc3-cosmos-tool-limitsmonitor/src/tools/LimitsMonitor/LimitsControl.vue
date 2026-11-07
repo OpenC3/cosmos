@@ -298,7 +298,7 @@ export default {
       }
     },
     ignoredFormatted() {
-      return this.ignored.map((x) => x.split('__').join(' '))
+      return this.ignored.map((x) => x.replaceAll('__', ' '))
     },
     astroStatus() {
       switch (this.overallState) {
@@ -388,7 +388,7 @@ export default {
     // Escape brackets in item names so VWidget doesn't interpret them as array indexes
     escapeBrackets(itemName) {
       if (itemName.includes('[')) {
-        return itemName.replace(/\[/g, '[[').replace(/\]/g, ']]')
+        return itemName.replaceAll('[', '[[').replaceAll(']', ']]')
       }
       return itemName
     },

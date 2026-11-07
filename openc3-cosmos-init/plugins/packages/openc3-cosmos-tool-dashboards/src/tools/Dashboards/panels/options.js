@@ -97,7 +97,7 @@ const OPTION_TYPES = {
   // breaks are written as \n so the setting stays on one line.
   text: {
     decode: (values) => values.join(' ').replaceAll(String.raw`\n`, '\n'),
-    encode: (value) => [String(value).replace(/\r?\n/g, String.raw`\n`)],
+    encode: (value) => [String(value).replaceAll(/\r?\n/g, String.raw`\n`)],
     validate: (values) => (values.length ? null : 'expects some text'),
   },
   // rrggbb. A bare # starts a comment in dashboard files, so colors are

@@ -53,6 +53,7 @@ export default defineConfig([
       'unicorn/prefer-number-properties': 'error',
       'unicorn/prefer-single-call': 'error',
       'unicorn/prefer-string-raw': 'error',
+      'unicorn/prefer-string-replace-all': 'error',
 
       'vue/multi-word-component-names': 'off',
 

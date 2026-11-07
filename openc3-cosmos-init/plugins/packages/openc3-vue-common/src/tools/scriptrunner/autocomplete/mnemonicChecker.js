@@ -150,10 +150,12 @@ export default class MnemonicChecker {
         // Clean up the quotes and whitespace from the parts of the mnemonic
         for (const property in mnemonic) {
           if (typeof mnemonic[property] === 'string') {
-            mnemonic[property] = mnemonic[property].replace(/['"]/g, '').trim()
+            mnemonic[property] = mnemonic[property]
+              .replaceAll(/['"]/g, '')
+              .trim()
           } else {
             mnemonic[property] = mnemonic[property].map((item) =>
-              item.replace(/['"]/g, '').trim(),
+              item.replaceAll(/['"]/g, '').trim(),
             )
           }
         }
