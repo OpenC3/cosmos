@@ -648,7 +648,7 @@ export default {
         })
       }
       // This can happen if there is a typo in a layout widget with a corresponding END
-      if (typeof this.layoutStack[0] === 'undefined') {
+      if (this.layoutStack[0] === undefined) {
         // Warn about any of the Dynamic widgets we found .. they could be typos
         const names = this.dynamicWidgets.map(
           (widget) => `${widget.name} (line ${widget.lineNumber})`,

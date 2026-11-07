@@ -44,6 +44,7 @@ export default defineConfig([
 
       'require-await': 'error',
 
+      'unicorn/no-typeof-undefined': 'error',
       'unicorn/prefer-array-some': 'error',
       'unicorn/prefer-includes': 'error',
       'unicorn/prefer-math-min-max': 'error',
