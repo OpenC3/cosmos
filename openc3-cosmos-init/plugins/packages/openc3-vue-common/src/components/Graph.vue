@@ -1760,7 +1760,7 @@ export default {
             size: 80, // This size supports values up to 8 digits plus sign
             stroke: axisColor,
             grid: {
-              show: type === 'overview' ? false : true,
+              show: type !== 'overview',
               stroke: strokeColor,
               width: 2,
             },
