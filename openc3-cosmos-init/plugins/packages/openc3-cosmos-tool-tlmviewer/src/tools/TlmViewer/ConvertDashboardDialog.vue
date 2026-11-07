@@ -116,7 +116,7 @@ const targets = computed(() => [
   ...new Set(props.definitions.map((def) => def.target)),
 ])
 const target = ref(targets.value[0] ?? null)
-const name = ref(props.initialName.replace(/[^A-Za-z0-9_-]/g, '_'))
+const name = ref(props.initialName.replaceAll(/[^\w-]/g, '_'))
 const exists = ref(false)
 const saving = ref(false)
 const error = ref(null)

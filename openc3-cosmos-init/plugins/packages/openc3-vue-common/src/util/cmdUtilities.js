@@ -146,7 +146,7 @@ export function convertToString(value) {
       returnValue = value.raw
     } else {
       // For other objects, use JSON.stringify as a fallback
-      returnValue = JSON.stringify(value).replace(/\\n/g, '')
+      returnValue = JSON.stringify(value).replaceAll('\\n', '')
     }
   } else {
     returnValue = String(value)
