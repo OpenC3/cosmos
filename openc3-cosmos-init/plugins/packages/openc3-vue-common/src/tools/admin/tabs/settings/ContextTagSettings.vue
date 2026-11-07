@@ -228,12 +228,12 @@ export default {
       }
     },
     customFontColor: function (val) {
-      if (val && val.length && !val.startsWith('#')) {
+      if (val?.length && !val.startsWith('#')) {
         this.customFontColor = `#${val}`
       }
     },
     customBackgroundColor: function (val) {
-      if (val && val.length && !val.startsWith('#')) {
+      if (val?.length && !val.startsWith('#')) {
         this.customBackgroundColor = `#${val}`
       }
     },

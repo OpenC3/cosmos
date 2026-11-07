@@ -90,9 +90,7 @@ export default {
       return value.toString()
     },
     isJsonString(value) {
-      return (
-        value && value['json_class'] === 'String' && value['raw'] !== undefined
-      )
+      return value?.['json_class'] === 'String' && value?.['raw'] !== undefined
     },
     formatJsonString(value) {
       let result = Array.from(value['raw'].slice(0, 32), (byte) =>

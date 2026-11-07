@@ -3071,10 +3071,7 @@ export default {
         case 'combo_box':
         case 'check_box':
           // check_box is always multiple choice, combo_box is single choice unless kwargs.multiple is set to true
-          if (
-            data.method === 'check_box' ||
-            (data.kwargs && data.kwargs.multiple)
-          ) {
+          if (data.method === 'check_box' || data.kwargs?.multiple) {
             this.prompt.multiple = true
           }
           this.prompt.message = data.args[0]
@@ -3113,9 +3110,8 @@ export default {
         case 'open_bucket_dialog':
           this.bucket.title = data.args[0]
           this.bucket.message = data.args[1]
-          this.bucket.defaultPath =
-            (data.kwargs && data.kwargs.default_path) || null
-          this.bucket.filter = (data.kwargs && data.kwargs.filter) || null
+          this.bucket.defaultPath = data.kwargs?.default_path || null
+          this.bucket.filter = data.kwargs?.filter || null
           this.bucket.show = true
           break
         // This is called continuously by the backend
@@ -3123,7 +3119,7 @@ export default {
         case 'open_files_dialog':
           this.file.title = data.args[0]
           this.file.message = data.args[1]
-          if (data.kwargs && data.kwargs.filter) {
+          if (data.kwargs?.filter) {
             this.file.filter = data.kwargs.filter
           }
           if (data.method == 'open_files_dialog') {

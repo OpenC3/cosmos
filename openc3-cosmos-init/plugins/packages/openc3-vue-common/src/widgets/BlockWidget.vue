@@ -113,7 +113,7 @@ export default {
     },
     formatValue: function (data) {
       let text = ''
-      if (data && data.raw) {
+      if (data?.raw) {
         let space = ' '
         let newLine = '\n'
 
