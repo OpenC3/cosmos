@@ -583,7 +583,7 @@ export default {
       this.errors.push({
         ...error,
         type: error.type || 'error',
-        time: error.time || new Date().getTime(),
+        time: error.time || Date.now(),
       })
     },
     updateRefreshInterval: function () {
