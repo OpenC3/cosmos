@@ -572,7 +572,7 @@ export default {
       }
       // A widget that keeps failing (a reconnect loop, say) would otherwise
       // fill the list with the same message and push out everything else
-      const duplicate = this.errors.find(
+      const duplicate = this.errors.some(
         (existing) =>
           existing.message === error.message &&
           existing.lineNumber === error.lineNumber,
@@ -1101,10 +1101,7 @@ export default {
             widget.type.toLowerCase() ===
             setting[0].toLowerCase() + 'widget'
           ) {
-            const existingSetting = widget.settings.find(
-              (s) => s[0] === setting[1],
-            )
-            if (!existingSetting) {
+            if (!widget.settings.some((s) => s[0] === setting[1])) {
               widget.settings.push(setting.slice(1))
             }
           }
