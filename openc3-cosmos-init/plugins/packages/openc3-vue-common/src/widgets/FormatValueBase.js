@@ -23,10 +23,10 @@ export default {
         return this.formatJsonString(value)
       }
       if (Array.isArray(value)) {
-        return JSON.stringify(value).replaceAll('\\n', '')
+        return JSON.stringify(value).replaceAll(String.raw`\n`, '')
       }
       if (this.isObject(value)) {
-        return JSON.stringify(value).replaceAll('\\n', '')
+        return JSON.stringify(value).replaceAll(String.raw`\n`, '')
       }
       if (formatString && value) {
         if (typeof value === 'bigint') {
