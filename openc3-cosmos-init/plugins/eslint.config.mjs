@@ -52,6 +52,7 @@ export default defineConfig([
       'unicorn/prefer-negative-index': 'error',
       'unicorn/prefer-number-properties': 'error',
       'unicorn/prefer-single-call': 'error',
+      'unicorn/prefer-string-raw': 'error',
 
       'vue/multi-word-component-names': 'off',
 

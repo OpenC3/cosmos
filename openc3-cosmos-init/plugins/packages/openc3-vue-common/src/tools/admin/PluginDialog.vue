@@ -360,7 +360,7 @@ export default {
 
       // TODO: Grab from code
       let keywords = ['VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_STATE']
-      let regex = new RegExp(`(\\b${keywords.join('\\b|\\b')}\\b)`)
+      let regex = new RegExp(String.raw`(\b${keywords.join('\\b|\\b')}\b)`)
       let PluginHighlightRules = function () {
         RubyHighlightRules.call(this)
         // add openc3 rules to the ruby rules

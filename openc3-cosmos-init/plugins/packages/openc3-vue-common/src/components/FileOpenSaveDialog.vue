@@ -218,11 +218,11 @@ export default {
     },
     validFilenameRegex: function () {
       const alphanumeric = '0-9a-zA-Z'
-      const charset = `${alphanumeric}\\/\\!\\-\\_\\.\\*\\'\\(\\)` // From https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html a-z A-Z 0-9 / ! - _ . * ' ( )
-      let expression = `[${charset}]+\\.[${alphanumeric}]+`
+      const charset = String.raw`${alphanumeric}/!\-_.*'()` // From https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-keys.html a-z A-Z 0-9 / ! - _ . * ' ( )
+      let expression = String.raw`[${charset}]+\.[${alphanumeric}]+`
       if (this.requireTargetParentDir) {
         const targets = `(${this.targets.join('|')})`
-        expression = `\\/?${targets}\\/${expression}`
+        expression = String.raw`\/?${targets}\/${expression}`
       }
       return new RegExp(expression)
     },
