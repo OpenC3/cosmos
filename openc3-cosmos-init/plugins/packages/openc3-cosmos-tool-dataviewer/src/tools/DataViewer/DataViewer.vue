@@ -842,7 +842,7 @@ export default {
         })
         // Filter out any items that are in use
         let filtered = this.config.tabs[tabIndex].packets.filter(
-          (packet) => itemsInUse.indexOf(this.itemKey(packet)) === -1,
+          (packet) => !itemsInUse.includes(this.itemKey(packet)),
         )
         if (filtered.length > 0) {
           this.removeFromSubscription(filtered)
@@ -860,7 +860,7 @@ export default {
         })
         // Filter out any packets that are in use
         let filtered = this.config.tabs[tabIndex].packets.filter(
-          (packet) => packetsInUse.indexOf(this.packetKey(packet)) === -1,
+          (packet) => !packetsInUse.includes(this.packetKey(packet)),
         )
         if (filtered.length > 0) {
           this.removeFromSubscription(filtered)

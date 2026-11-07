@@ -239,7 +239,7 @@ export default class MnemonicChecker {
             continue
           }
           if (lineObj.mnemonic.item) {
-            if (!items.some((item) => item === lineObj.mnemonic.item)) {
+            if (!items.includes(lineObj.mnemonic.item)) {
               problemLines.push({
                 ...lineObj,
                 error: `Item "${target} ${packet} ${lineObj.mnemonic.item}" does not exist.`,
@@ -248,7 +248,7 @@ export default class MnemonicChecker {
             }
           } else {
             for (const param of lineObj.mnemonic.params) {
-              if (!items.some((item) => item === param)) {
+              if (!items.includes(param)) {
                 problemLines.push({
                   ...lineObj,
                   error: `Command "${target} ${packet}" param "${param}" does not exist.`,
