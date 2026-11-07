@@ -20,6 +20,7 @@ export default defineConfig([
     },
 
     rules: {
+      'no-await-in-loop': 'error',
       'no-console': ['error', { allow: ['error'] }],
       'no-debugger': 'error',
       'no-case-declarations': 'error',
