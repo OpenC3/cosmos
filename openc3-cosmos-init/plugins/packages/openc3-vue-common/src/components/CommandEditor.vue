@@ -207,7 +207,7 @@ export default {
   },
   computed: {
     hasHazardousParameter() {
-      return Object.values(this.hazardousParameters).some((v) => v === true)
+      return Object.values(this.hazardousParameters).includes(true)
     },
   },
   created() {
