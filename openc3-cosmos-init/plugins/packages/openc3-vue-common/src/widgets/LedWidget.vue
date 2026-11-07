@@ -145,7 +145,6 @@ export default {
     this.appliedSettings.forEach((setting) => {
       if (setting[0] === 'LED_COLOR') {
         this.colors[setting[1]] = setting[2]
-        break
       }
     })
     // Throw width and height into the appliedSettings so they are set
