@@ -1852,11 +1852,11 @@ export default {
             // Draw red limits
             ctx.fillStyle = 'rgba(255,0,0,0.15)'
             if (u.scales.y.min < this.limitsValues[0]) {
-              let start = redLow < yMax ? yMax : redLow
+              let start = Math.max(redLow, yMax)
               ctx.fillRect(bbox.left, redLow, bbox.width, yMin - start)
             }
             if (u.scales.y.max > this.limitsValues[3]) {
-              let end = yMin < redHigh ? yMin : redHigh
+              let end = Math.min(yMin, redHigh)
               ctx.fillRect(bbox.left, yMax, bbox.width, end - yMax)
             }
 
@@ -1866,15 +1866,15 @@ export default {
               u.scales.y.min < this.limitsValues[1] && // yellowLow
               u.scales.y.max > this.limitsValues[0] // redLow
             ) {
-              let start = yellowLow < yMax ? yMax : yellowLow
+              let start = Math.max(yellowLow, yMax)
               ctx.fillRect(bbox.left, start, bbox.width, redLow - start)
             }
             if (
               u.scales.y.max > this.limitsValues[2] && // yellowHigh
               u.scales.y.min < this.limitsValues[3] // redHigh
             ) {
-              let start = yMin < redHigh ? yMin : redHigh
-              let end = yMin < yellowHigh ? yMin : yellowHigh
+              let start = Math.min(yMin, redHigh)
+              let end = Math.min(yMin, yellowHigh)
               ctx.fillRect(bbox.left, start, bbox.width, end - start)
             }
 
@@ -1887,8 +1887,8 @@ export default {
                 u.scales.y.min < this.limitsValues[2] && // yellowHigh
                 u.scales.y.max > this.limitsValues[1] // yellowLow
               ) {
-                let start = yellowHigh < yMax ? yMax : yellowHigh
-                let end = yMin < yellowLow ? yMin : yellowLow
+                let start = Math.max(yellowHigh, yMax)
+                let end = Math.min(yMin, yellowLow)
                 ctx.fillRect(bbox.left, start, bbox.width, end - start)
               }
             } else {
@@ -1899,20 +1899,20 @@ export default {
                 u.scales.y.min < this.limitsValues[4] && // greenLow
                 u.scales.y.max > this.limitsValues[1] // yellowLow
               ) {
-                let start = greenLow < yMax ? yMax : greenLow
+                let start = Math.max(greenLow, yMax)
                 ctx.fillRect(bbox.left, start, bbox.width, yellowLow - start)
               }
               if (
                 u.scales.y.max > this.limitsValues[5] && // greenHigh
                 u.scales.y.min < this.limitsValues[2] // yellowHigh
               ) {
-                let start = yMin < yellowHigh ? yMin : yellowHigh
-                let end = yMin < greenHigh ? yMin : greenHigh
+                let start = Math.min(yMin, yellowHigh)
+                let end = Math.min(yMin, greenHigh)
                 ctx.fillRect(bbox.left, start, bbox.width, end - start)
               }
               ctx.fillStyle = 'rgba(0,0,255,0.15)'
-              let start = greenHigh < yMax ? yMax : greenHigh
-              let end = yMin < greenLow ? yMin : greenLow
+              let start = Math.max(greenHigh, yMax)
+              let end = Math.min(yMin, greenLow)
               ctx.fillRect(bbox.left, start, bbox.width, end - start)
             }
             ctx.stroke()
