@@ -12,23 +12,12 @@
 # if purchased from OpenC3, Inc.
 
 class QueueEventsChannel < ApplicationCable::Channel
-  @@broadcasters = {}
+  include ApplicationCable::BroadcasterChannel
+  broadcaster_prefix 'queue_events'
 
-  def subscribed
-    # Defensive: if the auth before_subscribe callback rejected us, skip work.
-    return if subscription_rejected?
-    subscription_key = "queue_events_#{uuid}"
-    stream_from subscription_key
-    @@broadcasters[subscription_key] = QueueEventsApi.new(subscription_key, params['history_count'], scope: scope)
-  end
+  private
 
-  def unsubscribed
-    subscription_key = "queue_events_#{uuid}"
-    if @@broadcasters[subscription_key]
-      stop_stream_from subscription_key
-      @@broadcasters[subscription_key].kill
-      @@broadcasters[subscription_key] = nil
-      @@broadcasters.delete(subscription_key)
-    end
+  def create_broadcaster
+    QueueEventsApi.new(subscription_key, params['history_count'], scope: scope)
   end
 end

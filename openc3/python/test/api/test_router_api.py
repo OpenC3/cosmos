@@ -15,6 +15,7 @@ from unittest.mock import *
 
 from openc3.api.router_api import *
 from openc3.interfaces.interface import Interface
+from openc3.microservices.router_microservice import RouterMicroservice
 from openc3.models.router_model import RouterModel
 from test.test_helper import *
 
@@ -68,22 +69,50 @@ class TestRouterApi(unittest.TestCase):
             config_params=["openc3/interfaces/interface.py"],
         )
         model.create()
-        # self.im = RouterMicroservice("DEFAULT__INTERFACE__ROUTE_INT")
-        # self.im_thread = threading.Thread(target=self.im.run)
-        # self.im_thread.start()
+        self.im = RouterMicroservice("DEFAULT__ROUTER__ROUTE_INT")
+        self.im_thread = threading.Thread(target=self.im.run)
+        self.im_thread.start()
+        # Wait for the command handler thread to subscribe to the interface
+        # command topic before returning. The handler captures its stream read
+        # offset lazily on its first read, so a command written by a test before
+        # that happens would be skipped (xread only returns newer messages),
+        # causing flaky failures under load.
+        self._wait_for_handler_ready()
         # time.sleep(0.001)  # Allow the thread to run
 
-    # def tearDown(self):
-    #     self.im.shutdown()
-    #     time.sleep(0.001)
+    def tearDown(self):
+        self.im.shutdown()
+        self.im.graceful_kill()
+        self.im_thread.join()
+        time.sleep(0.001)
 
-    # def test_returns_router_hash(self):
-    #     interface = get_router("ROUTE_INT")
-    #     self.assertEqual(type(interface), dict)
-    #     self.assertEqual(interface["name"], "ROUTE_INT")
-    #     # Verify it also includes the status
-    #     self.assertEqual(interface["state"], "CONNECTED")
-    #     self.assertEqual(interface["clients"], 0)
+    def _wait_for_handler_ready(self, timeout=2.0):
+        topic = "{DEFAULT__CMD}ROUTER__ROUTE_INT"
+        store = EphemeralStore.instance()
+        end_time = time.time() + timeout
+        while time.time() < end_time:
+            if any(topic in offsets for offsets in store.topic_offsets.values()):
+                return
+            time.sleep(0.001)
+
+    def test_returns_router_hash(self):
+        interface = get_router("ROUTE_INT")
+        self.assertEqual(type(interface), dict)
+        self.assertEqual(interface["name"], "ROUTE_INT")
+        # Verify it also includes the status
+        self.assertIn(interface["state"], ["ATTEMPTING", "CONNECTED"])
+        self.assertEqual(interface["clients"], 0)
+
+    def test_get_router_raises_if_router_does_not_exist(self):
+        with self.assertRaisesRegex(RuntimeError, "Router 'NONEXISTENT_ROUTER' does not exist"):
+            get_router("NONEXISTENT_ROUTER")
+
+    def test_get_router_defaults_state_if_router_status_does_not_exist(self):
+        model = RouterModel(name="NO_STATUS_ROUTER", scope="DEFAULT")
+        model.create()
+        router = get_router("NO_STATUS_ROUTER")
+        self.assertEqual(router["name"], "NO_STATUS_ROUTER")
+        self.assertEqual(router["state"], "UNKNOWN")
 
     def test_returns_all_router_names(self):
         model = RouterModel(name="INT1", scope="DEFAULT")

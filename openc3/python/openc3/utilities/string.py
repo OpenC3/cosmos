@@ -142,6 +142,15 @@ def class_name_to_filename(string, include_extension=False):
     return filename
 
 
+# Returns the filename config keywords load a class from, i.e. the class
+# MyGreatClass in module path.to.my_great_class returns "path/to/my_great_class.py".
+# This is the inverse of filename_to_module and filename_to_class_name.
+#
+# self.return [String] Filename which implements the class
+def class_to_filename(klass):
+    return klass.__module__.replace(".", "/") + ".py"
+
+
 # Converts a String representing a filename (i.e. "path/to/my_great_class.py")
 # to a Python class name (i.e. "MyGreatClass").
 #

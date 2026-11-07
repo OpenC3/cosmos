@@ -176,6 +176,49 @@ module OpenC3
         sleep 0.1 # Allow threads to exit
       end
 
+      it "queues writes by default with the default update interval" do
+        InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: []).update
+        # Set a different interval to verify the default gets applied
+        StoreQueued.instance.set_update_interval(1)
+        EphemeralStoreQueued.instance.set_update_interval(1)
+
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        expect(im.instance_variable_get(:@queued)).to eql true
+        expect(InterfaceMicroservice::DEFAULT_UPDATE_INTERVAL).to eql 0.1
+        expect(StoreQueued.instance.update_interval).to eql 0.1
+        expect(EphemeralStoreQueued.instance.update_interval).to eql 0.1
+
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
+      it "applies UPDATE_INTERVAL to every db_shard" do
+        InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: [["UPDATE_INTERVAL", "0.25"]]).update
+        existing_store = StoreQueued.instance(db_shard: 2)
+        existing_ephemeral = EphemeralStoreQueued.instance(db_shard: 2)
+
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        # Instances that already existed
+        expect(existing_store.update_interval).to eql 0.25
+        expect(existing_ephemeral.update_interval).to eql 0.25
+        # Instances first used after startup, e.g. a target on another shard
+        expect(StoreQueued.instance(db_shard: 1).update_interval).to eql 0.25
+        expect(EphemeralStoreQueued.instance(db_shard: 1).update_interval).to eql 0.25
+
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
+      it "disables queued writes when UPDATE_INTERVAL is 0" do
+        InterfaceModel.new(name: "INST_INT", scope: "DEFAULT", target_names: ["INST"], cmd_target_names: ["INST"], tlm_target_names: ["INST"], config_params: ["TestInterface"], options: [["UPDATE_INTERVAL", "0"]]).update
+
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        expect(im.instance_variable_get(:@queued)).to eql false
+
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
       it "preserves existing packet counts" do
         # Initialize the telemetry topic with a non-zero RECEIVED_COUNT
         System.telemetry.packets("INST").each do |_packet_name, packet|
@@ -187,6 +230,29 @@ module OpenC3
         System.telemetry.packets("INST").each do |_packet_name, packet|
           expect(packet.read("RECEIVED_COUNT")).to eql 10
         end
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+    end
+
+    describe "connect directive" do
+      it "acks malformed params with an error and keeps the handler running" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        tlm = double("tlm").as_null_object
+        allow(tlm).to receive(:attempting).and_return(interface)
+        handler = InterfaceCmdHandlerThread.new(interface, tlm, scope: "DEFAULT")
+        results = []
+        allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
+          msg_id = "#{(Time.now.to_f * 1000).to_i}-0"
+          results << block.call("{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, { 'connect' => 'true', 'params' => '{not json' }, nil)
+          results << block.call("{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, { 'connect' => 'true', 'params' => '["host", 1]' }, nil)
+        end
+        handler.run
+        expect(results[0]).to be_a(String)
+        expect(results[0]).not_to eql 'SUCCESS'
+        expect(results[1]).to eql 'SUCCESS'
+        expect(tlm).to have_received(:attempting).with("host", 1).once
         im.shutdown
         sleep 0.1 # Allow threads to exit
       end
@@ -228,6 +294,91 @@ module OpenC3
       end
     end
 
+    describe "command message handling" do
+      # Drive the command handler block directly with one crafted message and
+      # return the block's result, which becomes the ack (nil means no ack)
+      def handle(msg_hash, topic: "{DEFAULT__CMD}TARGET__INST")
+        handler = InterfaceCmdHandlerThread.new(@interface, double("tlm").as_null_object, scope: "DEFAULT")
+        result = :not_run
+        mutex = Mutex.new
+        allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
+          # The microservice's own handler thread may also land here, so only run the message once
+          mutex.synchronize do
+            result = block.call(topic, "#{(Time.now.to_f * 1000).to_i}-0", msg_hash, nil) if result == :not_run
+          end
+        end
+        handler.run
+        result
+      end
+
+      before(:each) do
+        @im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        @interface = @im.instance_variable_get(:@interface)
+        allow(@interface).to receive(:connected?).and_return(true)
+        allow(@interface).to receive(:write)
+      end
+
+      after(:each) do
+        @im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
+      it "acks malformed interface_cmd and protocol_cmd JSON with an error" do
+        %w(interface_cmd protocol_cmd).each do |directive|
+          result = handle({ directive => '{not json' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+          expect(result).to be_a(String)
+          expect(result).to_not eql 'SUCCESS'
+        end
+      end
+
+      it "acks malformed cmd_params JSON with an error" do
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{not json' })
+        expect(result).to match(/Invalid cmd_params/)
+      end
+
+      it "does not ack a command for a disabled target" do
+        @interface.cmd_target_enabled['INST'] = false
+        expect(handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}' })).to be_nil
+      end
+
+      it "acks a released critical command whose target is now disabled" do
+        critical_model = double("CriticalCmdModel", approver: 'approver',
+          cmd_hash: { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")' })
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        @interface.cmd_target_enabled['INST'] = false
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Target INST is disabled"
+      end
+
+      it "range checks a command that omits range_check" do
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'COLLECT', 'cmd_params' => JSON.generate({ 'TYPE' => 'NORMAL', 'DURATION' => 100 }) })
+        expect(result).to match(/DURATION/)
+      end
+
+      it "hazardous checks a command that omits hazardous_check" do
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")' })
+        expect(result).to start_with("HazardousError")
+      end
+
+      it "validates and logs a command that omits validate and log_message" do
+        validator = double("validator")
+        allow_any_instance_of(Packet).to receive(:validator).and_return(validator)
+        expect(validator).to receive(:pre_check).and_return([true, nil])
+        expect(validator).to receive(:post_check).and_return([true, nil])
+        expect(Logger).to receive(:info).with('cmd("INST ABORT")', anything).at_least(:once)
+        allow(Logger).to receive(:info)
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")' })
+        expect(result).to eql 'SUCCESS'
+      end
+
+      it "does not log a command with log_message false" do
+        expect(Logger).to_not receive(:info).with('cmd("INST ABORT")', anything)
+        allow(Logger).to receive(:info)
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")', 'log_message' => 'false' })
+        expect(result).to eql 'SUCCESS'
+      end
+    end
+
     describe "handle_packet" do
       it "does not write the status model after cancel_thread is set" do
         # A packet already buffered can be returned from read() after stop()
@@ -246,6 +397,71 @@ module OpenC3
 
         im.shutdown
         sleep 0.1 # Allow threads to exit
+      end
+
+      context "identification" do
+        def health_status_buffer
+          packet = System.telemetry.packet('INST', 'HEALTH_STATUS').clone
+          packet.id_items.each { |item| packet.write_item(item, item.id_value, :RAW) }
+          packet.buffer
+        end
+
+        def handle(im, buffer, target_name: nil, packet_name: nil, stored: false)
+          packet = Packet.new(target_name, packet_name)
+          packet.buffer = buffer
+          packet.stored = stored
+          im.send(:handle_packet, packet)
+        end
+
+        before(:each) do
+          @im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          @warnings = []
+          allow(@im.instance_variable_get(:@logger)).to receive(:warn) { |msg| @warnings << msg }
+          @written = []
+          allow(TelemetryTopic).to receive(:write_packet) { |packet, **_| @written << packet }
+        end
+
+        after(:each) do
+          @im.shutdown
+          sleep 0.1 # Allow threads to exit
+        end
+
+        it "drops a packet pre-identified with a target not mapped to the interface and warns once" do
+          expect(System.telemetry).to_not receive(:identify!)
+          expect(System.telemetry).to_not receive(:identify_and_define_packet)
+          2.times { handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE') }
+          handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE', stored: true)
+          expect(@warnings.grep(/unmapped target/)).to eql ["INST_INT: Dropping telemetry for unmapped target: SYSTEM LIMITS_CHANGE"]
+          expect(@written).to be_empty
+        end
+
+        it "bounds the unmapped warnings it remembers by evicting the oldest" do
+          stub_const("OpenC3::InterfaceMicroservice::UNMAPPED_TLM_WARNED_MAX", 2)
+          %w(A B C A).each { |name| handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: name) }
+          # C evicted A so A warns again, and every new name warned
+          expect(@warnings.grep(/unmapped target/).map { |w| w.split(' ').last }).to eql %w(A B C A)
+          expect(@im.instance_variable_get(:@unmapped_tlm_warned).length).to eql 2
+        end
+
+        it "falls back to identifying a stored packet pre-identified with an unknown packet" do
+          handle(@im, health_status_buffer, target_name: 'INST', packet_name: 'NOPE', stored: true)
+          expect(@warnings).to include("INST_INT: Received unknown identified telemetry: INST NOPE")
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'INST'
+          expect(@written[0].packet_name).to eql 'HEALTH_STATUS'
+          expect(@written[0].stored).to be true
+        end
+
+        it "publishes an unidentified stored packet as UNKNOWN without updating the CVT" do
+          expect(CvtModel).to_not receive(:set)
+          expect(System.telemetry).to_not receive(:update!)
+          handle(@im, "\xAB\xCD", stored: true)
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'UNKNOWN'
+          expect(@written[0].packet_name).to eql 'UNKNOWN'
+          expect(@written[0].stored).to be true
+          expect(@warnings).to include("INST_INT UNKNOWN packet length: 2 starting with: ABCD")
+        end
       end
     end
 
@@ -297,6 +513,102 @@ module OpenC3
         end
       end
 
+      describe "connection error logging" do
+        def raised(error)
+          raise error
+        rescue Exception => e
+          e
+        end
+
+        it "does not log a backtrace for expected connection failures" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          im.handle_connection_failed("default:12345", raised(Errno::ECONNREFUSED.new))
+          expect(errors.length).to eql 1
+          expect(errors[0]).to include("failed due to")
+          im.shutdown
+        end
+
+        it "logs an unexpected connection failure backtrace only once per message" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          im.handle_connection_failed("default:12345", raised(ArgumentError.new("bad thing")))
+          expect(errors.length).to eql 2
+          expect(errors[1]).to include("interface_microservice_spec.rb")
+          errors.clear
+          im.handle_connection_failed("default:12345", raised(ArgumentError.new("bad thing")))
+          expect(errors.length).to eql 1
+          expect(errors[0]).to_not include("interface_microservice_spec.rb")
+          im.shutdown
+        end
+
+        it "does not log a backtrace for expected lost connections" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          im.handle_connection_lost(raised(Errno::ECONNRESET.new))
+          expect(errors).to be_empty
+          im.shutdown
+        end
+
+        it "logs an unexpected lost connection backtrace only once per message" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          im.handle_connection_lost(raised(ArgumentError.new("bad thing")))
+          expect(errors.length).to eql 1
+          expect(errors[0]).to include("interface_microservice_spec.rb")
+          errors.clear
+          im.handle_connection_lost(raised(ArgumentError.new("bad thing")))
+          expect(errors).to be_empty
+          im.shutdown
+        end
+
+        it "logs a backtrace for each exception class with the same message" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          im.handle_connection_failed("default:12345", raised(ArgumentError.new("bad thing")))
+          im.handle_connection_failed("default:12345", raised(TypeError.new("bad thing")))
+          im.handle_connection_lost(raised(ArgumentError.new("bad thing")))
+          im.handle_connection_lost(raised(TypeError.new("bad thing")))
+          expect(errors.count { |msg| msg.include?("interface_microservice_spec.rb") }).to eql 4
+          im.shutdown
+        end
+
+        it "logs backtraces again only after a user requested connect" do
+          im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          allow(im).to receive(:disconnect)
+          errors = []
+          allow(im.instance_variable_get(:@logger)).to receive(:error) { |msg, **| errors << msg }
+          log_both = lambda do
+            errors.clear
+            im.handle_connection_failed("default:12345", raised(ArgumentError.new("bad thing")))
+            im.handle_connection_lost(raised(ArgumentError.new("lost thing")))
+            errors.count { |msg| msg.include?("interface_microservice_spec.rb") }
+          end
+          expect(log_both.call).to eql 2
+          expect(log_both.call).to eql 0 # Already seen
+
+          # Connection Success does not clear them, otherwise an error on the first
+          # read after every reconnect would log its backtrace every time
+          im.connect
+          expect(log_both.call).to eql 0
+
+          im.instance_variable_get(:@interface).state = 'ATTEMPTING'
+          im.attempting # A user requested connect clears them
+          expect(log_both.call).to eql 2
+          im.shutdown
+        end
+      end
+
       it "sends a command to the interface" do
         im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
         all = InterfaceStatusModel.all(scope: "DEFAULT")
@@ -325,6 +637,90 @@ module OpenC3
         expect(captured.target_name).to eql("INST")
         expect(captured.packet_name).to eql("ABORT")
         expect(captured.extra['queue_username']).to eql("DEFAULT__MULTI__INST")
+      end
+
+      it "acks SUCCESS for a write protocol STOP but rejects a DISCONNECT" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        published = []
+        allow(CommandTopic).to receive(:write_packet) { |command, **| published << command.packet_name }
+        allow(CommandDecomTopic).to receive(:write_packet)
+        Thread.new { im.run }
+        sleep 0.01
+
+        protocol = Protocol.new
+        interface.write_protocols << protocol
+        # STOP means the protocol handled the command, so it is acked and published
+        allow(protocol).to receive(:write_packet).and_return(:STOP)
+        @api.cmd("INST", "ABORT")
+        expect(published).to eql ["ABORT"]
+
+        # DISCONNECT means nothing was written, so the command is rejected and not published
+        allow(protocol).to receive(:write_packet).and_return(:DISCONNECT)
+        expect { @api.cmd("INST", "ABORT") }.to raise_error(/write_packet requested disconnect/)
+        expect(published).to eql ["ABORT"]
+        im.shutdown
+      end
+
+      it "identifies a routed command against the routed target" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        captured = nil
+        allow(CommandTopic).to receive(:write_packet) do |command, _scope|
+          captured = command
+        end
+        Thread.new { im.run }
+        sleep 0.01
+
+        # A router that did not identify the buffer forwards it unidentified
+        packet = Packet.new(nil, nil)
+        packet.buffer = System.commands.build_cmd("INST", "ABORT").buffer
+        RouterTopic.route_command(packet, ['INST'], scope: 'DEFAULT')
+        sleep 0.05
+        im.shutdown
+
+        expect(captured).to_not be_nil
+        expect([captured.target_name, captured.packet_name]).to eql(["INST", "ABORT"])
+      end
+
+      it "sends an unidentified routed command as UNKNOWN" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        captured = nil
+        allow(CommandTopic).to receive(:write_packet) do |command, _scope|
+          captured = command
+        end
+        # INST has a catch-all command, so force identification to fail
+        allow(System.commands).to receive(:identify).and_return(nil)
+        # Sent on behalf of the routed target, so UNKNOWN itself need not be enabled
+        im.instance_variable_get(:@interface).cmd_target_enabled.delete('UNKNOWN')
+        Thread.new { im.run }
+        sleep 0.01
+
+        # An unidentified buffer as a router would forward it
+        packet = Packet.new(nil, nil)
+        packet.buffer = "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
+        RouterTopic.route_command(packet, ['INST'], scope: 'DEFAULT')
+        sleep 0.05
+        im.shutdown
+
+        expect(captured).to_not be_nil
+        expect([captured.target_name, captured.packet_name]).to eql(["UNKNOWN", "UNKNOWN"])
+        expect(captured.packet_name).to eql("UNKNOWN")
+        expect(captured.buffer(false)).to eql("\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF")
+      end
+
+      it "drops an unidentified routed command for a disabled target" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        im.instance_variable_get(:@interface).cmd_target_enabled['INST'] = false
+        expect(CommandTopic).to_not receive(:write_packet)
+        allow(System.commands).to receive(:identify).and_return(nil)
+        Thread.new { im.run }
+        sleep 0.01
+
+        packet = Packet.new(nil, nil)
+        packet.buffer = "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF"
+        RouterTopic.route_command(packet, ['INST'], scope: 'DEFAULT')
+        sleep 0.05
+        im.shutdown
       end
 
       it "handles obfuscated params" do
@@ -466,6 +862,23 @@ module OpenC3
 
         allow(interface).to receive(:disconnect).and_call_original # Allow a clean shutdown
         im.shutdown
+      end
+
+      it "cleans up on shutdown even if the interface disconnect raises" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        stream_log_pair = double("StreamLogPair", shutdown: [], cleanup: nil)
+        interface.stream_log_pair = stream_log_pair
+        expect(InterfaceStatusModel.get_model(name: "INST_INT", scope: "DEFAULT")).not_to be_nil
+        allow(interface).to receive(:disconnect).and_raise('test-error')
+
+        capture_io do |stdout|
+          im.shutdown
+          expect(stdout.string).to include("Disconnect failed during stop")
+        end
+        expect(InterfaceStatusModel.get_model(name: "INST_INT", scope: "DEFAULT")).to be_nil
+        expect(stream_log_pair).to have_received(:shutdown)
+        interface.stream_log_pair = nil # Don't leak the double past this example
       end
 
       it "still reconnects if the interface disconnect leaves it connected" do

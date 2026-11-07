@@ -9,12 +9,18 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import base64
+import io
 import os
+import shutil
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
 import openc3.script
-from openc3.script.storage import get_target_file
+from openc3.script.storage import get_target_file, put_target_file
+from openc3.utilities.local_mode import LocalMode
+from openc3.utilities.target_file import TargetFile
 from test.test_helper import mock_redis
 
 
@@ -281,6 +287,73 @@ class TestGetTargetFile(unittest.TestCase):
         result = get_target_file("INST/procedures/test.rb", original=False, scope="DEFAULT")
 
         self.assertIsNone(result)
+
+
+class TestLocalOnlyTargetFiles(unittest.TestCase):
+    def setUp(self):
+        self.api_server_mock = Mock()
+        for name, value in (("API_SERVER", self.api_server_mock), ("OPENC3_IN_CLUSTER", True)):
+            script_patcher = patch.object(openc3.script, name, value)
+            script_patcher.start()
+            self.addCleanup(script_patcher.stop)
+        self.tmp_dir = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp_dir, ignore_errors=True)
+        patcher = patch.object(LocalMode, "LOCAL_MODE_PATH", self.tmp_dir)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        env_patcher = patch.dict(os.environ, {"OPENC3_LOCAL_ONLY_TARGETS": "LOCAL"})
+        env_patcher.start()
+        self.addCleanup(env_patcher.stop)
+
+    def test_put_and_get_use_only_the_local_volume(self):
+        put_target_file("LOCAL/procedures/test.py", "print('local')", scope="DEFAULT")
+        with open(f"{self.tmp_dir}/DEFAULT/targets_modified/LOCAL/procedures/test.py") as file:
+            self.assertEqual(file.read(), "print('local')")
+        file = get_target_file("LOCAL/procedures/test.py", scope="DEFAULT")
+        self.assertEqual(file.read(), b"print('local')")
+        # No original fallback to the bucket
+        self.assertIsNone(get_target_file("LOCAL/procedures/missing.py", scope="DEFAULT"))
+        self.assertIsNone(get_target_file("LOCAL/procedures/missing.py", original=True, scope="DEFAULT"))
+        self.api_server_mock.request.assert_not_called()
+
+    def test_body_uses_only_the_local_volume(self):
+        put_target_file("LOCAL/screens/a.txt", "SCREEN", scope="DEFAULT")
+        with patch("openc3.utilities.target_file.Bucket.get_client") as mock_client:
+            self.assertEqual(TargetFile.body("DEFAULT", "LOCAL/screens/a.txt"), b"SCREEN")
+            self.assertIsNone(TargetFile.body("DEFAULT", "LOCAL/screens/missing.txt"))
+            mock_client.assert_not_called()
+
+    def test_outside_the_cluster_uses_the_api(self):
+        cluster_patcher = patch.object(openc3.script, "OPENC3_IN_CLUSTER", False)
+        cluster_patcher.start()
+        self.addCleanup(cluster_patcher.stop)
+        response = Mock()
+        response.status_code = 200
+        self.api_server_mock.request.return_value = response
+        put_target_file("LOCAL/tables/table.bin", io.BytesIO(b"\x00\xff"), scope="DEFAULT")
+        args, kwargs = self.api_server_mock.request.call_args
+        self.assertEqual(
+            args, ("put", "/openc3-api/storage/upload_file/DEFAULT/targets_modified/LOCAL/tables/table.bin")
+        )
+        self.assertEqual(kwargs["data"], {"contents": base64.b64encode(b"\x00\xff").decode("ascii")})
+        self.assertTrue(kwargs["json"])
+        # Nothing is written locally from outside the cluster
+        self.assertFalse(os.path.exists(f"{self.tmp_dir}/DEFAULT/targets_modified/LOCAL/tables/table.bin"))
+
+        response.json.return_value = {"contents": base64.b64encode(b"\x00\xff").decode("ascii")}
+        file = get_target_file("LOCAL/tables/table.bin", scope="DEFAULT")
+        self.assertEqual(file.read(), b"\x00\xff")
+        args, kwargs = self.api_server_mock.request.call_args
+        self.assertEqual(
+            args, ("get", "/openc3-api/storage/download_file/DEFAULT/targets_modified/LOCAL/tables/table.bin")
+        )
+        self.assertEqual(kwargs["query"], {"bucket": "OPENC3_CONFIG_BUCKET"})
+
+        response.status_code = 404
+        self.assertIsNone(get_target_file("LOCAL/tables/missing.bin", scope="DEFAULT"))
+        response.status_code = 500
+        with self.assertRaisesRegex(RuntimeError, "Failed to write"):
+            put_target_file("LOCAL/tables/table.bin", b"data", scope="DEFAULT")
 
 
 if __name__ == "__main__":

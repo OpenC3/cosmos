@@ -82,9 +82,7 @@ module OpenC3
     end
 
     def log_data(topic, msg_id, msg_hash, redis)
-      msgid_seconds_from_epoch = msg_id.split('-')[0].to_i / 1000.0
-      delta = Time.now.to_f - msgid_seconds_from_epoch
-      @metric.set(name: 'text_log_topic_delta_seconds', value: delta, type: 'gauge', unit: 'seconds', help: 'Delta time between data written to stream and text log start')
+      update_topic_lag(topic, msg_id, metric_name: 'text_log_topic_delta_seconds', help: 'Delta time between data written to stream and text log start')
       @tlws[topic].write(msg_hash["time"].to_i, msg_hash.as_json(allow_nan: true).to_json(allow_nan: true), topic, msg_id)
       @count += 1
     rescue => err

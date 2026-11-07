@@ -62,6 +62,12 @@ module OpenC3
       _db_sharded_get("#{scope}__#{_get_key}", name: name, scope: scope)
     end
 
+    # Like get but returns default instead of nil when no status exists
+    def self.get_or_default(name:, scope:, default: { 'state' => 'UNKNOWN' })
+      status = get(name: name, scope: scope)
+      status.nil? ? default : status
+    end
+
     def self.names(scope:)
       _db_sharded_names("#{scope}__#{_get_key}", scope: scope)
     end

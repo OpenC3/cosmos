@@ -21,7 +21,7 @@
 # 2. Stop COSMOS 6: ./openc3.sh stop
 # 3. Upgrade to COSMOS 7
 # 4. Run final migration: ./openc3_migrate_s3.sh migrate
-# 5. Cleanup: ./openc3_migrate_s3.sh cleanup
+# 5. Stop the migration containers: ./openc3_migrate_s3.sh stop
 # 6. Start COSMOS 7: ./openc3.sh run
 
 set -e
@@ -33,8 +33,12 @@ MINIO_PASS="${MINIO_ROOT_PASSWORD:-openc3miniopassword}"
 # Versitygw credentials (destination - uses COSMOS 7 bucket credentials)
 VERSITY_USER="${OPENC3_BUCKET_USERNAME:-openc3bucket}"
 VERSITY_PASS="${OPENC3_BUCKET_PASSWORD:-openc3bucketpassword}"
-OLD_VOLUME="${OLD_VOLUME:-openc3-bucket-v}"
-NEW_VOLUME="${NEW_VOLUME:-openc3-object-v}"
+# Volume names - set both OLD_VOLUME and NEW_VOLUME to full volume names, or
+# neither to detect them (including any docker compose project prefix)
+OLD_VOLUME_BASE="openc3-bucket-v"
+NEW_VOLUME_BASE="openc3-object-v"
+OLD_VOLUME="${OLD_VOLUME:-}"
+NEW_VOLUME="${NEW_VOLUME:-}"
 # User IDs - must match openc3.sh behavior
 # openc3.sh sets these to current user (id -u/id -g) for non-rootless Docker
 if [[ -z "$OPENC3_USER_ID" ]]; then
@@ -55,7 +59,10 @@ MINIO_MIGRATION_CONTAINER="openc3-minio-migration"
 VERSITY_MIGRATION_CONTAINER="openc3-versity-migration"
 MINIO_IMAGE="ghcr.io/openc3/openc3-minio:latest"
 VERSITY_IMAGE="${OPENC3_REGISTRY:-docker.io}/${OPENC3_NAMESPACE:-openc3inc}/openc3-buckets:${OPENC3_TAG:-latest}"
-MC_IMAGE="ghcr.io/openc3/openc3-cosmos-init:6.10.4"  # Contains patched mc client
+# COSMOS 6 init image containing the patched mc client used for the migration.
+# Defaults to the Core init image. Set MC_IMAGE to use a different init image,
+# e.g. one already available locally on an offline / air-gapped system.
+MC_IMAGE="${MC_IMAGE:-ghcr.io/openc3/openc3-cosmos-init:6.10.4}"
 
 # Network - will be auto-detected or created
 MIGRATION_NETWORK="openc3-migration-net"
@@ -74,7 +81,7 @@ DOCKER_NETWORK=""
 
 usage() {
     cat << EOF
-Usage: $0 [start|migrate|status|cleanup|help]
+Usage: $0 [start|migrate|status|stop|help]
 
 Migrate data from MINIO (COSMOS 6) to versitygw (COSMOS 7).
 
@@ -87,7 +94,7 @@ Commands:
   start     Start temporary containers needed for migration
   migrate   Mirror data from MINIO to versitygw (idempotent)
   status    Check migration status and compare bucket contents
-  cleanup   Remove temporary migration containers
+  stop      Stop and remove temporary migration containers
   help      Show this help message
 
 Migration workflow:
@@ -101,15 +108,21 @@ Migration workflow:
   3. Final migration:
      $0 migrate
 
-  4. Cleanup and start COSMOS 7:
-     $0 cleanup
+  4. Stop the migration containers and start COSMOS 7:
+     $0 stop
      ./openc3.sh run
 
 Configuration (via environment variables):
-  OLD_VOLUME    Old MINIO volume name (default: openc3-bucket-v)
-  NEW_VOLUME    New versitygw volume name (default: openc3-object-v)
+  OLD_VOLUME    Full name of the old MINIO volume
+  NEW_VOLUME    Full name of the new versitygw volume
+                Set both or neither. If neither is set, they are detected as
+                [<prefix>_]openc3-bucket-v and [<prefix>_]openc3-object-v,
+                where <prefix> is the docker compose project name, if any.
   OPENC3_BUCKET_USERNAME  S3 credentials (default: openc3minio)
   OPENC3_BUCKET_PASSWORD  S3 credentials (default: openc3miniopassword)
+  MC_IMAGE      COSMOS 6 init image used to run mc
+                (default: ghcr.io/openc3/openc3-cosmos-init:6.10.4)
+                If offline, set this to an init image available locally.
 
 EOF
     exit 0
@@ -151,9 +164,35 @@ network_exists() {
     docker network ls --format '{{.Name}}' 2>/dev/null | grep -q "^$1$"
 }
 
+# Check if a Docker image exists locally
+image_exists() {
+    docker image inspect "$1" >/dev/null 2>&1
+}
+
+# Ensure the image used to run mc is available locally
+ensure_mc_image() {
+    log_info "Using mc image: $MC_IMAGE"
+    if ! image_exists "$MC_IMAGE"; then
+        log_info "Pulling mc image: $MC_IMAGE"
+        if ! docker pull "$MC_IMAGE"; then
+            log_error "Failed to pull mc image: $MC_IMAGE"
+            echo "If you are offline, set MC_IMAGE to a COSMOS 6 init image available locally, e.g.:"
+            echo "  MC_IMAGE=<registry>/<namespace>/openc3-cosmos-init:<tag> $0 ${COMMAND}"
+            return 1
+        fi
+    fi
+    return 0
+}
+
 # Find a running container by partial name match
 find_container() {
     docker ps --format '{{.Names}}' 2>/dev/null | grep -E "$1" | grep -v migration | head -1
+}
+
+# Get the name of the volume a container mounts at /data
+container_data_volume() {
+    local container="$1"
+    docker inspect --format '{{range .Mounts}}{{if eq .Destination "/data"}}{{.Name}}{{end}}{{end}}' "$container" 2>/dev/null
 }
 
 # Get the network a container is connected to
@@ -191,35 +230,115 @@ ensure_network() {
     return 0
 }
 
+# Require OLD_VOLUME and NEW_VOLUME to be set together, so a prefix is never
+# applied to a user-supplied name
+check_volume_env() {
+    if [[ -n "$OLD_VOLUME" ]] && [[ -n "$NEW_VOLUME" ]]; then
+        return 0
+    fi
+    if [[ -z "$OLD_VOLUME" ]] && [[ -z "$NEW_VOLUME" ]]; then
+        return 0
+    fi
+    log_error "OLD_VOLUME and NEW_VOLUME must be set together, as full volume names, e.g.:"
+    echo "  OLD_VOLUME=cosmos_${OLD_VOLUME_BASE} NEW_VOLUME=cosmos_${NEW_VOLUME_BASE} $0 ${COMMAND}"
+    echo "Leave both unset to detect them automatically."
+    return 1
+}
+
+# Set OLD_VOLUME and NEW_VOLUME. If the user set them, use them as given.
+# Otherwise find OLD_VOLUME_BASE with or without a docker compose project
+# prefix, asking the user which to use if more than one matches, and give
+# NEW_VOLUME_BASE the same prefix.
+# Returns 0 if resolved, 1 if no volume matches, 2 if no volume was selected.
+resolve_volumes() {
+    if [[ -n "$OLD_VOLUME" ]]; then
+        volume_exists "$OLD_VOLUME" || return 1
+        return 0
+    fi
+
+    local candidates=()
+    local name
+    while IFS= read -r name; do
+        [[ -n "$name" ]] && candidates+=("$name")
+    done < <(docker volume ls --format '{{.Name}}' 2>/dev/null | grep -E "^(.+_)?${OLD_VOLUME_BASE}$")
+
+    if [[ ${#candidates[@]} -eq 0 ]]; then
+        return 1
+    fi
+
+    local selected="${candidates[0]}"
+    if [[ ${#candidates[@]} -gt 1 ]]; then
+        if [[ ! -t 0 ]]; then
+            log_error "Multiple volumes match '$OLD_VOLUME_BASE':"
+            printf '  %s\n' "${candidates[@]}"
+            echo "Set OLD_VOLUME and NEW_VOLUME for the volume you want to use:"
+            local candidate
+            for candidate in "${candidates[@]}"; do
+                echo "  OLD_VOLUME=${candidate} NEW_VOLUME=${candidate%"${OLD_VOLUME_BASE}"}${NEW_VOLUME_BASE} $0 ${COMMAND}"
+            done
+            return 2
+        fi
+        log_warn "Multiple volumes match '$OLD_VOLUME_BASE':"
+        local i
+        for i in "${!candidates[@]}"; do
+            echo "  $((i + 1))) ${candidates[$i]}"
+        done
+        local choice
+        while true; do
+            if ! read -r -p "Select the volume to use [1-${#candidates[@]}]: " choice; then
+                echo ""
+                log_error "No volume selected"
+                return 2
+            fi
+            if [[ "$choice" =~ ^[0-9]+$ ]] && [[ $choice -ge 1 ]] && [[ $choice -le ${#candidates[@]} ]]; then
+                break
+            fi
+            echo "Invalid selection: $choice"
+        done
+        selected="${candidates[$((choice - 1))]}"
+    fi
+
+    OLD_VOLUME="$selected"
+    NEW_VOLUME="${selected%"${OLD_VOLUME_BASE}"}${NEW_VOLUME_BASE}"
+    return 0
+}
+
+# Fail if a container exists but mounts a different volume at /data
+check_container_volume() {
+    local container="$1"
+    local expected="$2"
+    if [[ -z "$container" ]]; then
+        return 0
+    fi
+    local actual
+    actual=$(container_data_volume "$container")
+    if [[ "$actual" == "$expected" ]]; then
+        return 0
+    fi
+    log_error "Container '$container' uses volume '${actual:-none}', not '$expected'"
+    if [[ "$container" == "$MINIO_MIGRATION_CONTAINER" ]] || [[ "$container" == "$VERSITY_MIGRATION_CONTAINER" ]]; then
+        echo "Run '$0 stop' to remove the temporary containers, then try again."
+    else
+        echo "Set OLD_VOLUME and NEW_VOLUME to the volumes the running COSMOS uses, or stop it."
+    fi
+    return 1
+}
+
 # Detect the current environment and set up source/destination
 detect_environment() {
     log_step "Detecting environment..."
 
-    # Check for old volume
-    local volume_prefix=""
-    if ! volume_exists "$OLD_VOLUME"; then
-        # Check with common prefixes (docker compose adds project name)
-        local prefixed_old
-        prefixed_old=$(docker volume ls --format '{{.Name}}' 2>/dev/null | grep -E "^.+_${OLD_VOLUME}$" | head -1)
-        if [[ -n "$prefixed_old" ]]; then
-            volume_prefix="${prefixed_old%"${OLD_VOLUME}"}"
-            OLD_VOLUME="$prefixed_old"
-            log_info "Found old volume with prefix: $OLD_VOLUME"
-        else
-            log_error "Old MINIO volume '$OLD_VOLUME' not found"
-            echo "This volume should exist from your COSMOS 6 installation."
-            echo "If you haven't run COSMOS 6 before, there's nothing to migrate."
-            return 1
-        fi
-    else
-        log_info "Found old MINIO volume: $OLD_VOLUME"
+    local rc=0
+    resolve_volumes || rc=$?
+    if [[ $rc -eq 1 ]]; then
+        log_error "Old MINIO volume '${OLD_VOLUME:-$OLD_VOLUME_BASE}' not found"
+        echo "This volume should exist from your COSMOS 6 installation."
+        echo "If you haven't run COSMOS 6 before, there's nothing to migrate."
+        return 1
+    elif [[ $rc -ne 0 ]]; then
+        return 1
     fi
-
-    # Apply the same prefix to new volume if one was detected
-    if [[ -n "$volume_prefix" ]]; then
-        NEW_VOLUME="${volume_prefix}${NEW_VOLUME}"
-        log_info "Using matching prefix for new volume: $NEW_VOLUME"
-    fi
+    log_info "Using old MINIO volume: $OLD_VOLUME"
 
     # Check for new volume (may not exist yet)
     if ! volume_exists "$NEW_VOLUME"; then
@@ -259,6 +378,19 @@ detect_environment() {
         VERSITY_DEST=""
         log_info "No versitygw running - will start temp container"
     fi
+
+    # Existing containers keep the volume they were created with, so make sure
+    # the ones we will use (live, or temp ones that get restarted) match
+    local minio_check="$MINIO_SOURCE"
+    if [[ -z "$minio_check" ]] && container_exists "$MINIO_MIGRATION_CONTAINER"; then
+        minio_check="$MINIO_MIGRATION_CONTAINER"
+    fi
+    local versity_check="$VERSITY_DEST"
+    if [[ -z "$versity_check" ]] && container_exists "$VERSITY_MIGRATION_CONTAINER"; then
+        versity_check="$VERSITY_MIGRATION_CONTAINER"
+    fi
+    check_container_volume "$minio_check" "$OLD_VOLUME" || return 1
+    check_container_volume "$versity_check" "$NEW_VOLUME" || return 1
 
     ensure_network
     return $?
@@ -515,19 +647,15 @@ cmd_status() {
     return 0
 }
 
-# Cleanup command - remove temporary containers
-cmd_cleanup() {
-    # Resolve volume names with prefix detection for display
-    if ! volume_exists "$OLD_VOLUME"; then
-        local prefixed_old
-        prefixed_old=$(docker volume ls --format '{{.Name}}' 2>/dev/null | grep -E "^.+_${OLD_VOLUME}$" | head -1)
-        if [[ -n "$prefixed_old" ]]; then
-            NEW_VOLUME="${prefixed_old%"${OLD_VOLUME}"}${NEW_VOLUME}"
-            OLD_VOLUME="$prefixed_old"
-        fi
+# Stop command - stop and remove temporary containers
+cmd_stop() {
+    # Read the destination volume from the temp versitygw container before removing it
+    local dest_volume=""
+    if container_exists "$VERSITY_MIGRATION_CONTAINER"; then
+        dest_volume=$(container_data_volume "$VERSITY_MIGRATION_CONTAINER" || true)
     fi
 
-    log_step "Cleaning up migration containers..."
+    log_step "Stopping migration containers..."
 
     if container_exists "$MINIO_MIGRATION_CONTAINER"; then
         docker stop "$MINIO_MIGRATION_CONTAINER" 2>/dev/null || true
@@ -547,32 +675,45 @@ cmd_cleanup() {
     fi
 
     echo ""
-    log_info "Cleanup complete"
+    log_info "Migration containers stopped"
     echo ""
-    echo "Your data has been migrated to volume '$NEW_VOLUME'."
-    echo ""
-    echo "After verifying COSMOS 7 works correctly, you can remove the old volume:"
-    echo "  docker volume rm $OLD_VOLUME"
+    # Only name the new volume when a temp versitygw container recorded it
+    if [[ -z "$dest_volume" ]]; then
+        return 0
+    fi
+    echo "Your data has been migrated to volume '$dest_volume'."
     echo ""
     return 0
 }
 
 # Main
-case "${1:-help}" in
+COMMAND="${1:-help}"
+case "$COMMAND" in
+    start|migrate|status|stop)
+        check_volume_env || exit 1
+        ;;
+    *)
+        # help and unknown commands are handled below
+        ;;
+esac
+case "$COMMAND" in
     start)
+        ensure_mc_image || exit 1
         cmd_start
         exit $?
         ;;
     migrate)
+        ensure_mc_image || exit 1
         cmd_migrate
         exit $?
         ;;
     status)
+        ensure_mc_image || exit 1
         cmd_status
         exit $?
         ;;
-    cleanup)
-        cmd_cleanup
+    stop)
+        cmd_stop
         exit $?
         ;;
     help|--help|-h|*)

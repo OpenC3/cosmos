@@ -20,7 +20,16 @@ Gem::Specification.new do |s|
     time = Time.now.strftime("%Y%m%d%H%M%S")
     s.version = '0.0.0' + ".#{time}"
   end
-  s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt)
+<% if @@language == 'py' -%>
+  # pyproject.toml and uv.lock must be in the gem for COSMOS to install the
+  # plugin's python dependencies: install only sees files the gem contains.
+  # Globbed rather than listed so the gem still builds before `uv lock` is run.
+<% end -%>
+  s.files = Dir.glob("{targets,lib,public,tools,microservices}/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt)<% if @@language == 'py' %> + Dir.glob("{pyproject.toml,uv.lock}")<% end %>
+<% if @@language == 'py' -%>
+  # Running tests or scripts locally writes bytecode next to the source; keep it out of the gem.
+  s.files = s.files.reject { |file| file.include?('__pycache__') }
+<% end -%>
 
   s.metadata = {
     # These fields are used when you submit your plugin to the OpenC3 Store at store.openc3.com

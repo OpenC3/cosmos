@@ -109,6 +109,7 @@ class LoggedStreamingThread < StreamingThread
 
   def tsdb_thread_body(objects)
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
+    @tsdb_table_names = {} # Refresh the known tables once per pass
     done = false
 
     unless item_objects_by_topic.empty?
@@ -194,89 +195,19 @@ class LoggedStreamingThread < StreamingThread
     end
   end
 
-  def redis_thread_body
-    if @last_tsdb_times.length > 0
-      # Override parent to filter overlap during TSDB→STREAM transition
-      topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
-      results = []
-      if topics.length > 0
-        db_shard_groups = build_db_shard_groups(topics, offsets, item_objects_by_topic, packet_objects_by_topic)
+  # Override parent to also filter overlap during TSDB→STREAM transition
+  def skip_message?(topic, msg_hash)
+    return true if super
 
-        timeout_per_db_shard = [500 / [db_shard_groups.length, 1].max, 100].max
-        any_result = false
-        db_shard_groups.each do |db_shard, group|
-          break if @cancel_thread
-          xread_result = OpenC3::Topic.read_topics(group[:topics], group[:offsets], timeout_per_db_shard, db_shard: db_shard) do |topic, msg_id, msg_hash, _|
-            stored = OpenC3::ConfigParser.handle_true_false(msg_hash["stored"])
-            next if stored
-
-            break if @cancel_thread
-
-            # Check per-topic overlap filter
-            last_time = @last_tsdb_times[topic]
-            if last_time
-              time = msg_hash['time'].to_i
-              if time <= last_time
-                # Skip messages already delivered from TSDB, but advance offsets
-                objects = item_objects_by_topic[topic]
-                objects.each { |object| object.offset = msg_id } if objects
-                objects = packet_objects_by_topic[topic]
-                objects.each { |object| object.offset = msg_id } if objects
-                next
-              end
-              # Past the overlap for this topic - clear its filter
-              @last_tsdb_times.delete(topic)
-            end
-
-            break if @cancel_thread
-
-            objects = item_objects_by_topic[topic]
-            break if @cancel_thread
-            if objects and objects.length > 0
-              objects.each do |object|
-                object.offset = msg_id
-              end
-              result_entry = handle_message(msg_hash, objects)
-              results << result_entry if result_entry
-            end
-            break if @cancel_thread
-
-            if results.length >= @max_batch_size
-              @streaming_api.transmit_results(results)
-              results.clear
-            end
-
-            objects = packet_objects_by_topic[topic]
-            if objects
-              objects.each do |object|
-                object.offset = msg_id
-              end
-              objects.each do |object|
-                break if @cancel_thread
-                result_entry = handle_message(msg_hash, [object])
-                results << result_entry if result_entry
-                if results.length >= @max_batch_size
-                  @streaming_api.transmit_results(results)
-                  results.clear
-                end
-              end
-            end
-
-            break if @cancel_thread
-          end
-          any_result = true if xread_result and xread_result.length > 0
-        end
-
-        @streaming_api.transmit_results(results)
-        results.clear
-
-        check_for_completed_objects() unless any_result
-      else
-        @cancel_thread = true
-      end
-    else
-      super
+    # Check per-topic overlap filter
+    last_time = @last_tsdb_times[topic]
+    if last_time
+      # Skip messages already delivered from TSDB
+      return true if msg_hash['time'].to_i <= last_time
+      # Past the overlap for this topic - clear its filter
+      @last_tsdb_times.delete(topic)
     end
+    false
   end
 
   def stream_items(objects_by_topic, topics, offsets)
@@ -428,6 +359,7 @@ class LoggedStreamingThread < StreamingThread
     end
 
     # Filter to tables that exist and have data in the queried range
+    per_table.select! { |table_name, meta| tsdb_table_exists?(table_name, meta[:db_shard]) }
     if per_table.size > 1
       per_table.select! do |table_name, meta|
         db_shard = meta[:db_shard]
@@ -578,6 +510,13 @@ class LoggedStreamingThread < StreamingThread
     end
 
     return end_time ? true : false if objects_by_table_and_mode.empty?
+
+    # Skip tables that don't exist (yet). The TSDB microservice creates them at startup,
+    # which can take a while for targets with thousands of packets; dynamically added
+    # packets and tables dropped via Admin also have no table until the next write.
+    # Querying a missing table raises QuestDBError and kills this thread.
+    objects_by_table_and_mode.select! { |(table_name, _stream_mode), group_info| tsdb_table_exists?(table_name, group_info[:db_shard]) }
+    return past_end_time?(end_time) ? true : false if objects_by_table_and_mode.empty?
 
     done = false
 
@@ -773,6 +712,13 @@ class LoggedStreamingThread < StreamingThread
       objects_by_table[table_name][:objects] << object
     end
 
+    # Skip tables that don't exist (yet). The TSDB microservice creates them at startup,
+    # which can take a while for targets with thousands of packets; dynamically added
+    # packets and tables dropped via Admin also have no table until the next write.
+    # Querying a missing table raises QuestDBError and kills this thread.
+    objects_by_table.select! { |table_name, group_info| tsdb_table_exists?(table_name, group_info[:db_shard]) }
+    return past_end_time?(end_time) ? true : false if objects_by_table.empty?
+
     done = false
 
     objects_by_table.each do |table_name, group_info|
@@ -835,6 +781,13 @@ class LoggedStreamingThread < StreamingThread
       objects_by_table_and_mode[key][:objects] << object
     end
 
+    # Skip tables that don't exist (yet). The TSDB microservice creates them at startup,
+    # which can take a while for targets with thousands of packets; dynamically added
+    # packets and tables dropped via Admin also have no table until the next write.
+    # Querying a missing table raises QuestDBError and kills this thread.
+    objects_by_table_and_mode.select! { |(table_name, _stream_mode), group_info| tsdb_table_exists?(table_name, group_info[:db_shard]) }
+    return past_end_time?(end_time) ? true : false if objects_by_table_and_mode.empty?
+
     done = false
 
     objects_by_table_and_mode.each do |(table_name, stream_mode), group_info|
@@ -893,6 +846,18 @@ class LoggedStreamingThread < StreamingThread
       end
     end
     [start_time, end_time]
+  end
+
+  # Returns true if the TSDB table exists. All table names for a db_shard are fetched
+  # with a single query per pass so streams covering thousands of packets don't query
+  # (and error on) a table per packet. If the names can't be fetched assume it exists.
+  def tsdb_table_exists?(table_name, db_shard)
+    @tsdb_table_names ||= {}
+    unless @tsdb_table_names.key?(db_shard)
+      @tsdb_table_names[db_shard] = OpenC3::QuestDBClient.table_names(db_shard: db_shard)
+    end
+    table_names = @tsdb_table_names[db_shard]
+    table_names.nil? or table_names.include?(table_name.upcase)
   end
 
   # Updates @last_tsdb_times for the given topic if time_ns is newer.

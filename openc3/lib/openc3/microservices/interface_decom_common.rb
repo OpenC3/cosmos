@@ -27,7 +27,16 @@ module OpenC3
       type = inject_tlm_hash['type'].to_s.intern
       packet = System.telemetry.packet(target_name, packet_name)
       if item_hash
+        # Writing a VARIABLE_BIT_SIZE item sets its length item to match. Writing the
+        # length item directly would make it disagree with the bytes in the buffer, so
+        # skip it when its variable sized item is also given.
+        given_names = item_hash.keys.map { |name| name.to_s.upcase }
+        length_names = packet.sorted_items.filter_map do |item|
+          item.variable_bit_size['length_item_name'] if item.variable_bit_size and given_names.include?(item.name)
+        end
         item_hash.each do |name, value|
+          next if length_names.include?(name.to_s.upcase)
+
           packet.write(name.to_s, value, type)
         end
       end
@@ -42,6 +51,8 @@ module OpenC3
     def handle_inject_tlm_with_ack(inject_tlm_json, msg_id)
       inject_tlm_hash = JSON.parse(inject_tlm_json, allow_nan: true, create_additions: true)
       target_name = inject_tlm_hash['target_name']
+      # Ack on the db_shard of the target where DecomInterfaceTopic.inject_tlm waits for it
+      db_shard = Store.db_shard_for_target(target_name, scope: @scope)
       ack_topic = "{#{@scope}__ACKCMD}TARGET__#{target_name}"
       begin
         handle_inject_tlm(inject_tlm_json)
@@ -56,7 +67,7 @@ module OpenC3
           result: error.message
         }
       end
-      Topic.write_topic(ack_topic, msg_hash)
+      Topic.write_topic(ack_topic, msg_hash, db_shard: db_shard)
     end
 
     def handle_build_cmd(build_cmd_json, msg_id)

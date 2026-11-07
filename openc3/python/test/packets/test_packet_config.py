@@ -60,6 +60,40 @@ class TestPacketConfig(unittest.TestCase):
 
         os.unlink(tf.name)
 
+    def test_drops_descriptions_when_descriptions_is_false(self):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY TGT PKT BIG_ENDIAN "Tlm packet"\n')
+            tf.write('  APPEND_ITEM ITEM 16 UINT "Tlm item"\n')
+            tf.write("  APPEND_ITEM ITEM2 16 UINT\n")
+            tf.write('    DESCRIPTION "Tlm item 2"\n')
+            tf.write('COMMAND TGT CMD BIG_ENDIAN "Cmd packet"\n')
+            tf.write('  APPEND_PARAMETER PARAM 16 UINT MIN MAX 0 "Cmd param"\n')
+            tf.write("SELECT_TELEMETRY TGT PKT\n")
+            tf.write("  SELECT_ITEM ITEM\n")
+            tf.write('    DESCRIPTION "Selected item"\n')
+            tf.seek(0)
+
+            pc = PacketConfig(descriptions=False)
+            pc.process_file(tf.name, "TGT")
+            tlm = pc.telemetry["TGT"]["PKT"]
+            cmd = pc.commands["TGT"]["CMD"]
+            self.assertIsNone(tlm.description)
+            self.assertIsNone(tlm.get_item("ITEM").description)
+            self.assertIsNone(tlm.get_item("ITEM2").description)
+            self.assertIsNone(tlm.get_item("PACKET_TIMESECONDS").description)
+            self.assertIsNone(tlm.get_item("RECEIVED_COUNT").description)
+            self.assertIsNone(cmd.description)
+            self.assertIsNone(cmd.get_item("PARAM").description)
+            self.assertIsNone(cmd.get_item("RECEIVED_TIMEFORMATTED").description)
+
+            self.pc.process_file(tf.name, "TGT")
+            tlm = self.pc.telemetry["TGT"]["PKT"]
+            self.assertEqual(tlm.description, "Tlm packet")
+            self.assertEqual(tlm.get_item("ITEM").description, "Selected item")
+            self.assertEqual(tlm.get_item("ITEM2").description, "Tlm item 2")
+            self.assertEqual(tlm.get_item("RECEIVED_COUNT").description, "OpenC3 packet received count")
+            self.assertEqual(self.pc.commands["TGT"]["CMD"].get_item("PARAM").description, "Cmd param")
+
     def test_creates_unknown_cmd_tlm_packets(self):
         # Only one target called "UNKNOWN"
         self.assertEqual(list(self.pc.commands.keys()), ["UNKNOWN"])
@@ -495,7 +529,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.seek(0)
             self.assertEqual(len(self.pc.limits_groups), 0)
             self.pc.process_file(tf.name, "TGT1")
-            self.assertEqual(["TVAC", "VIBE"], list(self.pc.limits_groups.keys()))
+            self.assertEqual(list(self.pc.limits_groups.keys()), ["TVAC", "VIBE"])
 
     def test_adds_a_new_limits_item_to_the_group(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
@@ -703,7 +737,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("RESPONSE TGT2 PKT2\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "SYSTEM")
-            self.assertEqual(["TGT2", "PKT2"], self.pc.commands["TGT1"]["PKT1"].response)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].response, ["TGT2", "PKT2"])
             self.assertIsNone(self.pc.commands["TGT1"]["PKT1"].error_response)
 
     def test_error_response_only_applies_to_commands(self):
@@ -721,7 +755,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("ERROR_RESPONSE TGT2 PKT2\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
-            self.assertEqual(["TGT2", "PKT2"], self.pc.commands["TGT1"]["PKT1"].error_response)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].error_response, ["TGT2", "PKT2"])
             self.assertIsNone(self.pc.commands["TGT1"]["PKT1"].response)
 
     def test_screen_only_applies_to_commands(self):
@@ -756,7 +790,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("SCREEN TGT2 SCREEN\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
-            self.assertEqual(["TGT2", "SCREEN"], self.pc.commands["TGT1"]["PKT1"].screen)
+            self.assertEqual(self.pc.commands["TGT1"]["PKT1"].screen, ["TGT2", "SCREEN"])
 
     def test_related_item_only_applies_to_commands(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
@@ -800,8 +834,8 @@ class TestPacketConfig(unittest.TestCase):
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
             self.assertEqual(
-                [["TGT1", "PKT1", "ITEM1"], ["TGT1", "PKT1", "ITEM2"]],
                 self.pc.commands["TGT1"]["PKT1"].related_items,
+                [["TGT1", "PKT1", "ITEM1"], ["TGT1", "PKT1", "ITEM2"]],
             )
 
     def test_sets_the_template(self):
@@ -1273,7 +1307,7 @@ class TestPacketConfig(unittest.TestCase):
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
             overlap_warnings = [w for w in self.pc.warnings if "overlap" in w]
-            self.assertEqual(0, len(overlap_warnings))
+            self.assertEqual(len(overlap_warnings), 0)
 
         with tempfile.NamedTemporaryFile(mode="w") as tf:
             tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
@@ -1739,6 +1773,55 @@ class TestPacketConfig(unittest.TestCase):
                 self.assertIn("LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1", content)
                 self.assertIn("LIMITS_GROUP GROUP2", content)
                 self.assertIn("LIMITS_GROUP_ITEM TGT2 PKT2 ITEM2", content)
+
+        os.unlink(tf.name)
+
+    def test_to_config_output_parses_back_to_the_same_classes(self):
+        """Test that keywords naming a class are written as a filename the parser can load"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as tf:
+            tf.write('TELEMETRY TGT1 PKT1 BIG_ENDIAN "Packet"\n')
+            tf.write("  SUBPACKETIZER openc3/subpacketizers/subpacketizer.py\n")
+            tf.write("  PROCESSOR WATER openc3/processors/watermark_processor.py ITEM1\n")
+            tf.write("  PROCESSOR STATS openc3/processors/statistics_processor.py ITEM1 10\n")
+            tf.write("  ITEM ITEM1 0 16 UINT\n")
+            tf.write("    READ_CONVERSION openc3/conversions/received_count_conversion.py\n")
+            tf.write("  ITEM ITEM2 16 16 UINT\n")
+            tf.write("    READ_CONVERSION openc3/conversions/unix_time_conversion.py ITEM1\n")
+            tf.write("  ITEM ITEM3 32 16 UINT\n")
+            tf.write("    READ_CONVERSION openc3/conversions/processor_conversion.py WATER HIGH_WATER UINT 16\n")
+            tf.write("    LIMITS DEFAULT 1 ENABLED 1 2 6 7\n")
+            tf.write("    LIMITS_RESPONSE openc3/packets/limits_response.py\n")
+            tf.write('TELEMETRY TGT1 PKT2 BIG_ENDIAN "Packet"\n')
+            tf.write("  ACCESSOR openc3/accessors/json_accessor.py\n")
+            tf.write("  ITEM ITEM1 0 0 UINT\n")
+            tf.write("    KEY $.item1\n")
+            tf.write('COMMAND TGT1 CMD1 BIG_ENDIAN "Command"\n')
+            tf.write("  VALIDATOR openc3/packets/command_validator.py\n")
+            tf.write('  PARAMETER PARAM1 0 32 STRING "1.2.3.4"\n')
+            tf.write("    WRITE_CONVERSION openc3/conversions/ip_write_conversion.py\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+
+        with tempfile.TemporaryDirectory() as output_dir:
+            self.pc.to_config(output_dir)
+            pc = PacketConfig()
+            pc.process_file(os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1_tlm.txt"), "TGT1")
+            pc.process_file(os.path.join(output_dir, "TGT1", "cmd_tlm", "tgt1_cmd.txt"), "TGT1")
+
+        def classes(packets):
+            pkt1 = packets.telemetry["TGT1"]["PKT1"]
+            cmd1 = packets.commands["TGT1"]["CMD1"]
+            return {
+                "subpacketizer": pkt1.subpacketizer.as_json(),
+                "processors": [processor.as_json() for processor in pkt1.processors.values()],
+                "conversions": [pkt1.get_item(name).read_conversion.as_json() for name in ["ITEM1", "ITEM2", "ITEM3"]],
+                "limits_response": pkt1.get_item("ITEM3").limits.response.as_json(),
+                "accessor": packets.telemetry["TGT1"]["PKT2"].accessor.__class__.__name__,
+                "validator": cmd1.validator.__class__.__name__,
+                "write_conversion": cmd1.get_item("PARAM1").write_conversion.as_json(),
+            }
+
+        self.assertEqual(classes(pc), classes(self.pc))
 
         os.unlink(tf.name)
 

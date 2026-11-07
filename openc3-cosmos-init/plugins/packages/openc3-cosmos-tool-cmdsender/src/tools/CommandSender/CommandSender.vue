@@ -132,15 +132,17 @@
           <v-spacer />
         </v-toolbar>
         <v-card-text class="mt-6">
-          Warning: Command {{ hazardousCommand }} is Hazardous. Send?
-          <div class="mt-1">Description: {{ commandDescription }}</div>
+          Warning: {{ hazardousMessage }}. Send?
+          <div v-if="hazardousDialogDescription" class="mt-1">
+            Description: {{ hazardousDialogDescription }}
+          </div>
           <div
-            v-if="hazardousDescription"
+            v-if="hazardousDialogHazardousDescription"
             class="openc3-yellow font-weight-bold mt-2"
             data-test="hazardous-description"
           >
             <v-icon class="mr-1">mdi-alert</v-icon>
-            Hazardous: {{ hazardousDescription }}
+            Hazardous: {{ hazardousDialogHazardousDescription }}
           </div>
         </v-card-text>
         <v-card-actions class="px-2">
@@ -253,6 +255,9 @@ export default {
       status: '',
       history: '',
       hazardousCommand: '',
+      commandIsHazardous: false,
+      hazardousDialogDescription: '',
+      hazardousDialogHazardousDescription: '',
       displaySendHazardous: false,
       displayErrorDialog: false,
       displaySendRaw: false,
@@ -270,6 +275,27 @@ export default {
     }
   },
   computed: {
+    // Modes that make every command hazardous, e.g. 'range checks are ignored'
+    hazardousModes() {
+      const modes = []
+      if (this.ignoreRangeChecks) {
+        modes.push('range checks are ignored')
+      }
+      if (this.cmdRaw) {
+        modes.push('parameter conversions are disabled')
+      }
+      return modes.join(' and ')
+    },
+    hazardousMessage() {
+      const command = `Command ${this.hazardousCommand}`
+      if (!this.hazardousModes) {
+        return `${command} is Hazardous`
+      } else if (this.commandIsHazardous) {
+        return `${command} is Hazardous and ${this.hazardousModes}`
+      } else {
+        return `${command} is considered Hazardous because ${this.hazardousModes}`
+      }
+    },
     readOnlyUser: function () {
       const roles = OpenC3Auth.userroles() || []
       return roles.length > 0 && roles.every((role) => role === 'viewer')
@@ -555,17 +581,33 @@ export default {
       this.sendDisabled = true
       this.api.get_cmd_hazardous(targetName, commandName, paramList).then(
         (hazardous) => {
-          if (hazardous) {
-            // If it was sent from history it's all in targetName
+          // Ignoring range checks allows arbitrary values (e.g. manually
+          // entered states) and disabling conversions bypasses any that make
+          // a command safe so treat every command as hazardous
+          if (hazardous || this.hazardousModes) {
+            this.commandIsHazardous = hazardous
+            // If it was sent from history it's all in targetName and may
+            // differ from the selected command so look up its descriptions
             if (commandName === undefined) {
               this.hazardousCommand = targetName
                 .split(' ')
                 .slice(0, 2)
                 .join(' ')
+              this.api.get_cmd(...this.hazardousCommand.split(' ')).then(
+                (command) => {
+                  this.showHazardousDialog(command)
+                },
+                () => {
+                  this.showHazardousDialog(null)
+                },
+              )
             } else {
               this.hazardousCommand = `${targetName} ${commandName}`
+              this.showHazardousDialog({
+                description: this.commandDescription,
+                hazardous_description: this.hazardousDescription,
+              })
             }
-            this.displaySendHazardous = true
           } else {
             this.executeCmd(cmdInfo, false)
           }
@@ -574,6 +616,13 @@ export default {
           this.processCmdError(targetName, commandName, error)
         },
       )
+    },
+
+    showHazardousDialog(command) {
+      this.hazardousDialogDescription = command?.description || ''
+      this.hazardousDialogHazardousDescription =
+        command?.hazardous_description || ''
+      this.displaySendHazardous = true
     },
 
     sendHazardousCmd() {

@@ -21,10 +21,25 @@ on:
   release:
     types: [published]
 
-# Workaround for https://github.com/aquasecurity/trivy-action/issues/389
 env:
-  TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
-  TRIVY_JAVA_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-java-db:1
+  # Workaround for https://github.com/aquasecurity/trivy-action/issues/389
+  # Trivy tries each comma-separated repository in order, so a rate limit on one
+  # (e.g. public.ecr.aws "TOOMANYREQUESTS: Data limit exceeded") falls through.
+  TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
+  TRIVY_JAVA_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-java-db:1,public.ecr.aws/aquasecurity/trivy-java-db:1,ghcr.io/aquasecurity/trivy-java-db:1
+  # The release report lists every vulnerability and never fails the job, so
+  # these settings must not depend on whether a trivy.yaml is in the working
+  # directory. The root trivy.yaml (for CI) sets exit-code 1, fixed
+  # CRITICAL/HIGH only, and the vuln scanner, which also adds vulnerabilities
+  # to the CycloneDX SBOMs. TRIVY_CONFIG=/dev/null keeps any trivy.yaml from
+  # loading, and the rest are set here rather than as trivy-action inputs
+  # because the action drops inputs equal to its defaults (e.g.
+  # ignore-unfixed: false). Environment variables take precedence over a config.
+  TRIVY_CONFIG: /dev/null
+  TRIVY_EXIT_CODE: "0"
+  TRIVY_SEVERITY: UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL
+  TRIVY_IGNORE_UNFIXED: "false"
+  TRIVY_PKG_TYPES: os,library
 
 permissions:
   contents: read
@@ -34,13 +49,14 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # Need write permission to upload release asset
+      id-token: write # required for Docker Hub OIDC login
     env:
       # workflow_dispatch passes a bare version (6.10.0), the release event
       # passes a tag (v6.10.0). Normalized to a bare version by the step below.
       RAW_VERSION: ${{ github.event.inputs.version || github.event.release.tag_name }}
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
@@ -68,11 +84,21 @@ jobs:
               tag
             });
             console.log("found release for tag", tag);
+      # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
+      # Fork PRs get no id-token, so let them fall back to anonymous pulls.
+      - name: Docker login
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
+        env:
+          DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
+          DOCKERHUB_OIDC_EXPIREIN: 3600 # token defaults to 5 min; long builds pull from Docker Hub later
+        with:
+          username: openc3inc
       - name: Manual Trivy Setup
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
           cache: true
-          version: v0.74.0
+          version: v0.76.1
       - name: Create trivy output folder
         run: mkdir trivy_results
       - name: Create sbom folder
@@ -92,7 +118,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-ruby:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-ruby.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image ruby in SBOM mode
@@ -108,7 +133,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-node:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-node.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image node in SBOM mode
@@ -124,7 +148,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-base:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-base.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image base in SBOM mode
@@ -140,7 +163,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-cosmos-init.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image cosmos-init in SBOM mode
@@ -156,7 +178,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-redis:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-redis.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image redis in SBOM mode
@@ -172,7 +193,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-buckets:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-buckets.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image bucket in SBOM mode
@@ -188,7 +208,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-tsdb:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-tsdb.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image tsdb in SBOM mode
@@ -204,7 +223,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-operator:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-operator.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image operator in SBOM mode
@@ -220,7 +238,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-cosmos-cmd-tlm-api.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image cosmos-cmd-tlm-api in SBOM mode
@@ -236,7 +253,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-cosmos-script-runner-api.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image cosmos-script-runner-api in SBOM mode
@@ -252,7 +268,6 @@ jobs:
           image-ref: "docker.io/openc3inc/openc3-traefik:${{ env.VERSION }}"
           format: "json"
           output: "trivy_results/openc3-traefik.json"
-          vuln-type: "os,library"
           scanners: "vuln"
           skip-setup-trivy: true
       - name: Run Trivy on image traefik in SBOM mode
@@ -291,11 +306,10 @@ jobs:
           for image in $UBI_IMAGES; do
             ref="docker.io/openc3inc/${image}:${VERSION}"
             echo "::group::trivy ${image}"
-            trivy image --image-src remote --exit-code 0 \
-              --pkg-types os,library --scanners vuln \
+            trivy image --image-src remote --scanners vuln \
               --format json --output "trivy_results_ubi/${image}.json" \
               "$ref" || status=1
-            trivy image --image-src remote --exit-code 0 \
+            trivy image --image-src remote \
               --format cyclonedx --output "sbom_ubi/${image}.sbom.json" \
               "$ref" || status=1
             echo "::endgroup::"

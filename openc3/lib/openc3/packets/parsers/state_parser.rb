@@ -26,7 +26,7 @@ module OpenC3
     # @param warnings [Array<String>] Array of string warnings which will be
     #   appended with any warnings found when parsing the limits
     def self.parse(parser, packet, cmd_or_tlm, item, warnings)
-      raise parser.error("Items with LIMITS can't define STATE") if item.limits.values
+      raise parser.error("Items with LIMITS can't define STATE") if item.limits_values
       raise parser.error("Items with UNITS can't define STATE") if item.units
 
       parser = StateParser.new(parser)

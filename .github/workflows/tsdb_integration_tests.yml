@@ -44,39 +44,57 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
-    services:
-      questdb:
-        image: questdb/questdb:9.3.5
-        ports:
-          - 9000:9000
-          - 8812:8812
-        env:
-          QDB_PG_USER: admin
-          QDB_PG_PASSWORD: admin
-          QDB_HTTP_USER: admin
-          QDB_HTTP_PASSWORD: admin
-        # Note: QuestDB image doesn't include curl, so we can't use --health-cmd with curl.
-        # Instead we rely on the "Wait for QuestDB" step below which uses curl from the host.
-        options: >-
-          --ulimit nofile=262144:262144
+      id-token: write # required for Docker Hub OIDC login
 
     env:
       OPENC3_TSDB_HOSTNAME: localhost
       OPENC3_TSDB_INGEST_PORT: "9000"
       OPENC3_TSDB_QUERY_PORT: "8812"
+      # Second QuestDB acting as db_shard 1 for the cross-db_shard tests
+      OPENC3_TSDB_SHARD1_INGEST_PORT: "9010"
+      OPENC3_TSDB_SHARD1_QUERY_PORT: "8822"
       OPENC3_TSDB_USERNAME: admin
       OPENC3_TSDB_PASSWORD: admin
       OPENC3_SCOPE: DEFAULT
 
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
           egress-policy: audit
 
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
+      # Fork PRs get no id-token, so let them fall back to anonymous pulls.
+      - name: Docker login
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
+        env:
+          DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
+          DOCKERHUB_OIDC_EXPIREIN: 3600 # token defaults to 5 min; long builds pull from Docker Hub later
+        with:
+          username: openc3inc
+
+      # Started here rather than as a job service container: services start
+      # before any step runs, so they can't use the Docker Hub login above.
+      # QuestDB image doesn't include curl, so readiness is checked from the
+      # host by the "Wait for QuestDB" step below.
+      - name: Start QuestDB
+        run: |
+          docker run -d --name questdb \
+            -p 9000:9000 -p 8812:8812 \
+            -e QDB_PG_USER=admin -e QDB_PG_PASSWORD=admin \
+            -e QDB_HTTP_USER=admin -e QDB_HTTP_PASSWORD=admin \
+            --ulimit nofile=262144:262144 \
+            questdb/questdb:9.3.5
+          docker run -d --name questdb-shard1 \
+            -p 9010:9000 -p 8822:8812 \
+            -e QDB_PG_USER=admin -e QDB_PG_PASSWORD=admin \
+            -e QDB_HTTP_USER=admin -e QDB_HTTP_PASSWORD=admin \
+            --ulimit nofile=262144:262144 \
+            questdb/questdb:9.3.5
 
       # sync: false -- the dependency sync has to happen after the gem build
       # below, so it stays as its own step further down
@@ -86,7 +104,7 @@ jobs:
           sync: "false"
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@984c0c890880bbf811283d6f09c4607c62d210a4 # v1.323.0
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f # v1.335.0
         with:
           ruby-version: "3.4"
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
@@ -110,7 +128,7 @@ jobs:
         run: |
           echo "Waiting for QuestDB to be ready..."
           for i in {1..30}; do
-            if curl -s http://localhost:9000/ > /dev/null; then
+            if curl -s http://localhost:9000/ > /dev/null && curl -s http://localhost:9010/ > /dev/null; then
               echo "QuestDB is ready!"
               exit 0
             fi
@@ -134,3 +152,13 @@ jobs:
         working-directory: openc3/test/integration/tsdb/ruby
         run: |
           bundle exec rspec logged_streaming_thread_tsdb_spec.rb -fd
+
+      - name: Run Ruby db_shard integration tests
+        working-directory: openc3/test/integration/tsdb/ruby
+        run: |
+          bundle exec rspec tsdb_lookup_db_shards_spec.rb -fd
+
+      - name: Run Ruby QuestDB db_shard integration tests
+        working-directory: openc3/test/integration/tsdb/ruby
+        run: |
+          bundle exec rspec questdb_db_shards_spec.rb -fd

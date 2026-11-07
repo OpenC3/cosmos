@@ -319,8 +319,10 @@ module OpenC3
     # primitive. All other values are simply returned.
     #
     # @param value [Object]
+    # @param default [Object] Returned if value is nil
     # @return [true|false|Object]
-    def self.handle_true_false(value)
+    def self.handle_true_false(value, default: nil)
+      return default if value.nil?
       if String === value
         case value.upcase
         when 'TRUE'

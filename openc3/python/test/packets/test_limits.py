@@ -202,6 +202,16 @@ class TestLimits(unittest.TestCase):
             ["DEFAULT", 1, True, 1.0, 2.0, 5.0, 6.0, 3.0, 4.0],
         )
 
+    def test_handles_zero_green_limits(self):
+        self.assertEqual(
+            self.limits.set("TGT1", "PKT1", "ITEM1", -4, -3, 2, 3, 0, 1, None),
+            ["DEFAULT", 1, True, -4.0, -3.0, 2.0, 3.0, 0.0, 1.0],
+        )
+        self.assertEqual(
+            self.limits.set("TGT1", "PKT1", "ITEM1", -4, -3, 2, 3, -1, 0, None),
+            ["DEFAULT", 1, True, -4.0, -3.0, 2.0, 3.0, -1.0, 0.0],
+        )
+
     def test_set_state_color_changes_the_color_of_a_state(self):
         item = self.tlm.packet("TGT1", "PKT1").get_item("STATE1")
         self.assertEqual(item.state_colors["CONNECTED"], "GREEN")

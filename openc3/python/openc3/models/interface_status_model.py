@@ -49,6 +49,14 @@ class InterfaceStatusModel(DbShardedModel, Model):
     def get(cls, name: str, scope: str):
         return cls._db_sharded_get(f"{scope}__{cls._get_key()}", name, scope)
 
+    # Like get but returns default instead of None when no status exists
+    @classmethod
+    def get_or_default(cls, name: str, scope: str, default: dict | None = None):
+        status = cls.get(name=name, scope=scope)
+        if status is not None:
+            return status
+        return default if default is not None else {"state": "UNKNOWN"}
+
     @classmethod
     def names(cls, scope: str):
         return cls._db_sharded_names(f"{scope}__{cls._get_key()}", scope)

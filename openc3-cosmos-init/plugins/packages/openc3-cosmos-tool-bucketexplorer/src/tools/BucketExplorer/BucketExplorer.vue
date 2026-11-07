@@ -615,28 +615,25 @@ export default {
       })
     },
     downloadFile(filename) {
-      const api = this.mode === 'volume' ? 'download_file' : 'download'
+      // Buckets return a presigned URL and volumes return a single use stream URL.
+      // Either way the browser downloads the file directly so large files work.
+      const api = this.mode === 'volume' ? 'volume_download' : 'download'
       Api.get(
         `/openc3-api/storage/${api}/${encodeURIComponent(
           this.path,
         )}${filename}${storageQueryString(this.mode, this.root)}`,
       )
         .then((response) => {
-          if (this.mode === 'bucket') {
-            // For buckets, use the presigned URL
-            const link = document.createElement('a')
-            link.href = response.data.url
-            link.setAttribute('download', filename)
-            link.click()
-          } else {
-            // For volumes, use the helper to download base64 data
-            downloadBase64File(response.data.contents, filename)
-          }
+          const link = document.createElement('a')
+          link.href = response.data.url
+          link.setAttribute('download', filename)
+          link.click()
         })
-
-        .catch(() => {
+        .catch((error) => {
+          const message = error?.response?.data?.message
           this.$notify.caution({
-            title: `Unable to download file ${this.path}${filename} from bucket ${this.root}`,
+            title: `Unable to download file ${this.path}${filename} from ${this.mode} ${this.root}`,
+            body: message,
           })
         })
     },

@@ -114,6 +114,8 @@ module OpenC3
         expect(File.exist?(local_path)).to be true
         expect(File.read(local_path)).to eql 'contents'
         client.delete_object(bucket: @bucket, key: 'test')
+      ensure
+        FileUtils.rm_f(local_path)
       end
 
       it "internal presigned_request" do

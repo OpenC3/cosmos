@@ -1,4 +1,4 @@
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -8,6 +8,9 @@
 
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
+
+
+from openc3.utilities.string import class_to_filename
 
 
 class Conversion:
@@ -47,7 +50,7 @@ class Conversion:
     # self.param read_or_write [String] Either 'READ' or 'WRITE'
     # self.return [String] Config fragment for this conversion
     def to_config(self, read_or_write):
-        return f"    {read_or_write}_CONVERSION {self.__class__.__name__}\n"
+        return f"    {read_or_write}_CONVERSION {class_to_filename(self.__class__)}\n"
 
     def as_json(self):
         result = {}

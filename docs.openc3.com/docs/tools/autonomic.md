@@ -31,6 +31,10 @@ Once you've chosen the "left operand" you need to choose the operator.
 
 ![CreateTrigger2](/img/autonomic/create_trigger2.png)
 
+A telemetry item can be compared with `==`, `!=`, `>`, `<`, `>=` and `<=`, or checked with `CHANGES` and `DOES NOT CHANGE`, which need no right operand. An existing trigger can be combined with another trigger using `AND` and `OR`.
+
+`CHANGES` and `DOES NOT CHANGE` compare the item's value in the latest packet with its value in the packet used the last time the trigger was evaluated. A trigger needs two evaluations before it can detect a change, so it stays false until the second packet arrives.
+
 Finally you choose the "right operand" which in this case is a simple value.
 
 ![CreateTrigger3](/img/autonomic/create_trigger3.png)
@@ -44,6 +48,16 @@ Triggers can also be manually disabled and enabled by clicking the plug icon.
 ![CreateTrigger3](/img/autonomic/disable_trigger.png)
 
 Note in the above screenshot the Events which track everything about the trigger.
+
+#### Evaluation Under Load
+
+Each trigger group evaluates its triggers whenever a packet they use arrives. If packets arrive faster than the trigger group can evaluate them, it skips the packets that were superseded before it got to them and evaluates against the latest packet instead. This keeps trigger states current rather than letting them fall further and further behind the telemetry.
+
+When packets are skipped, a condition that only appeared in the skipped packets is not seen. For `CHANGES` and `DOES NOT CHANGE` this means only the net change between evaluations is detected. For example, if an item goes from 5 to 6 and stays at 6, the change is detected. If it goes from 5 to 6 and back to 5 before the next evaluation, it is not.
+
+:::note[Skipped Packets]
+The trigger group microservice logs a warning when it skips packets, at most once every 10 seconds, and reports the total in the `trigger_group_skipped_packets_total` metric. If you see these warnings, move some triggers into another trigger group so they are evaluated in parallel.
+:::
 
 ### Reactions
 

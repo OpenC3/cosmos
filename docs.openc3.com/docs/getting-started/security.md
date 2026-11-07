@@ -41,7 +41,7 @@ The host computer should ideally be dedicated to running COSMOS and have limited
 
 By default, COSMOS only listens on localhost (127.0.0.1). This configuration keeps COSMOS completely off the network and is only vulnerable to local users of the host computer.
 
-For production use, it is recommended to configure COSMOS to listen on a network interface (not just localhost) so that users can access the web interface from their own workstations rather than directly on the host computer. This means users connect via their web browsers over the local network instead of needing access to the host machine itself, which reduces exposure of the host and allows it to be more tightly secured. See [SSL/TLS](../configuration/ssl-tls) for configuring HTTPS.
+For production use, it is recommended to configure COSMOS to listen on a network interface (not just localhost) so that users can access the web interface from their own workstations rather than directly on the host computer. This means users connect via their web browsers over the local network instead of needing access to the host machine itself, which reduces exposure of the host and allows it to be more tightly secured. See [Network Configuration](../guides/network-configuration) for opening COSMOS to the network and [SSL/TLS](../configuration/ssl-tls) for configuring HTTPS.
 
 ### Content Security Policy
 
@@ -208,7 +208,7 @@ This prevents user scripts from accessing or destroying other COSMOS data.
 
 **admin**: Has `@admin` permissions which includes the `ACL` command. This user is optional and can be disabled by changing `on` to `off` or removing the line entirely.
 
-**healthcheck**: Used during container startup to verify Redis is available. Has no password and can only run `cluster info` and `ping` commands.
+**healthcheck**: Used during container startup to verify Redis is available. Has no password and can only run the `ping` command (Enterprise also allows `info`).
 
 ### Relationship Between .env and users.acl
 

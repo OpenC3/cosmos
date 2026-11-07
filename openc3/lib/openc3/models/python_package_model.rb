@@ -235,29 +235,19 @@ module OpenC3
       end
       package_filename = File.basename(package_file_path)
       begin
-        pypi_url = get_setting('pypi_url', scope: scope)
-        if pypi_url
-          pypi_url += '/simple'
-        end
+        pypi_url = PypiUrl.index_url(get_setting('pypi_url', scope: scope))
       rescue => e
         Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
       ensure
         if pypi_url.nil?
           # If Redis isn't running try the ENV, then simply pypi.org/simple
-          pypi_url = ENV.fetch('PYPI_URL', nil)
-          if pypi_url
-            pypi_url += '/simple'
-          end
+          pypi_url = PypiUrl.index_url(ENV.fetch('PYPI_URL', nil))
           pypi_url ||= PypiUrl::DEFAULT
         end
       end
       pypi_url = PypiUrl.validate(pypi_url)
       Logger.info "Installing python package: #{name_or_path}"
-      if ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-        pip_args = ["-i", pypi_url, package_file_path]
-      else
-        pip_args = ["-i", pypi_url, "--trusted-host", URI.parse(pypi_url).host, package_file_path]
-      end
+      pip_args = PypiUrl.build_args(pypi_url) + [package_file_path]
       spawn_env = {}
       if plugin
         venv_path = "#{PLUGIN_VENVS_DIR}/#{plugin}/.venv"

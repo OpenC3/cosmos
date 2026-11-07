@@ -100,9 +100,12 @@ export default {
           'image/gif': [0x47, 0x49, 0x46, 0x38],
           'image/webp': [0x52, 0x49, 0x46, 0x46],
         }
-        const fileHead = new TextEncoder()
-          .encode(globalThis.atob(this.imageContents.slice(0, 6))) // only atob as much as we need
-          .slice(1) // second call to slice on the decoded data because base64 bytes aren't 1:1
+        // Decode only the first 8 base64 chars (6 bytes) and read the raw byte
+        // values; TextEncoder would UTF-8 encode bytes >= 0x80 into two bytes
+        const fileHead = Array.from(
+          globalThis.atob(this.imageContents.slice(0, 8)),
+          (char) => char.charCodeAt(0),
+        )
         const found = Object.entries(magicNumbers).find(([_, magicNumber]) => {
           return magicNumber.every((byte, i) => byte === fileHead[i])
         })

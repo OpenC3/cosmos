@@ -31,34 +31,38 @@
       </v-btn>
     </v-card-title>
     <v-card-text class="overflow-y-auto flex-grow-1 pa-0">
-      <div class="details-table">
-        <v-row>
-          <v-col cols="4">
-            <v-data-table
-              v-if="shownDetails"
-              :headers="headers"
-              :items="detailsItems"
-              :items-per-page="-1"
-              hide-default-footer
-              density="compact"
-              class="details-table"
-            >
-              <template #item.value="{ item }">
-                <span class="text-wrap">{{ item.value }}</span>
-              </template>
-            </v-data-table>
-            <div v-else class="d-flex justify-center align-center pa-4">
-              <v-progress-circular indeterminate color="primary" />
-            </div>
-          </v-col>
-          <v-col cols="8">
-            <div>{{ upperData.label }}: {{ upperData.time }}</div>
-            <raw-buffer v-model="upperData.data" />
-            <div>{{ lowerData.label }}: {{ lowerData.time }}</div>
-            <raw-buffer v-model="lowerData.data" />
-          </v-col>
-        </v-row>
+      <div class="details-table d-flex">
+        <div class="details-properties">
+          <v-data-table
+            v-if="shownDetails"
+            :headers="headers"
+            :items="detailsItems"
+            :items-per-page="-1"
+            hide-default-footer
+            density="compact"
+            class="details-table"
+          >
+            <template #item.value="{ item }">
+              <span class="text-wrap">{{ item.value }}</span>
+            </template>
+          </v-data-table>
+          <div v-else class="d-flex justify-center align-center pa-4">
+            <v-progress-circular indeterminate color="primary" />
+          </div>
+        </div>
+        <div class="details-raw pa-3">
+          <div>{{ upperData.label }}: {{ upperData.time }}</div>
+          <raw-buffer v-model="upperData.data" />
+          <div>{{ lowerData.label }}: {{ lowerData.time }}</div>
+          <raw-buffer v-model="lowerData.data" />
+        </div>
       </div>
+      <FlowMetricsPanel
+        v-if="
+          health && readProtocolIndex === null && writeProtocolIndex === null
+        "
+        :health="paused ? pausedHealth : health"
+      />
     </v-card-text>
   </v-card>
 </template>
@@ -66,14 +70,20 @@
 <script>
 import Updater from '../Updater'
 import RawBuffer from '../RawBuffer.vue'
+import FlowMetricsPanel from './FlowMetricsPanel.vue'
 
 export default {
   name: 'DetailsTable',
   components: {
     RawBuffer,
+    FlowMetricsPanel,
   },
   mixins: [Updater],
   props: {
+    health: {
+      type: Object,
+      default: null,
+    },
     mode: {
       type: String,
       default: 'Interface',
@@ -100,6 +110,7 @@ export default {
         { title: 'Value', key: 'value', width: '70%' },
       ],
       paused: false,
+      pausedHealth: null,
       updatedDetails: null,
     }
   },
@@ -199,6 +210,7 @@ export default {
   },
   methods: {
     pause: function () {
+      this.pausedHealth = this.health
       this.paused = !this.paused
     },
     closeClick: function () {
@@ -241,5 +253,16 @@ export default {
   width: 100%;
   overflow-x: hidden;
   overflow-y: hidden;
+}
+/* Properties take whatever width the raw data leaves */
+.details-properties {
+  flex: 1 1 0;
+  min-width: 250px;
+}
+/* RawBuffer picks 16 bytes per line when its textarea is over 770px wide,
+   so hold the raw data at that width rather than stretching it */
+.details-raw {
+  flex: 0 1 820px;
+  min-width: 0;
 }
 </style>

@@ -43,13 +43,31 @@ openc3inc/openc3-ruby                       latest   aa158bbb9539   8 days ago  
 
 :::info[Offline Building]
 
-If you're building in a offline environment or want to use a private Rubygems, NPM or APK server (e.g. Nexus), you can update the following environment variables: RUBYGEMS_URL, NPM_URL, APK_URL, and more in the [.env](https://github.com/openc3/cosmos/blob/main/.env) file. Example values:
+If you're building in a offline environment or want to use a private Rubygems, PyPI, NPM or APK server (e.g. Nexus), you can update the following environment variables: RUBYGEMS_URL, PYPI_URL, NPM_URL, APK_URL, and more in the [.env](https://github.com/openc3/cosmos/blob/main/.env) file. Example values:
 
     ALPINE_VERSION=3.23<br/>
     ALPINE_BUILD=5<br/>
     RUBYGEMS_URL=https://rubygems.org<br/>
+    PYPI_URL=https://pypi.org<br/>
     NPM_URL=https://registry.npmjs.org<br/>
     APK_URL=http://dl-cdn.alpinelinux.org<br/>
+
+If your PyPI mirror is plain HTTP or uses a self-signed certificate, also set `OPENC3_PYPI_ALLOW_INSECURE=1` so the build trusts the PYPI_URL host.
+
+Do not put credentials in PYPI_URL, such as `https://user:token@nexus.example.com/repository/pypi`. The build bakes PYPI_URL, and the `UV_DEFAULT_INDEX` derived from it, into the environment of every COSMOS image, so the token is visible to anyone who can run `docker inspect` on an image or read a running container's environment, and it is recorded in the image history. Point PYPI_URL at a mirror that allows anonymous reads from the build network instead.
+
+PYPI_URL covers the Python dependencies, with one extra consideration. A `uv.lock` pins an absolute `https://files.pythonhosted.org/...` URL for every wheel, and `uv sync --frozen` fetches exactly those URLs - no index setting redirects them. So whenever PYPI_URL is not `https://pypi.org` the build re-resolves each lockfile against your mirror before installing. That has two consequences: your mirror must serve every Python dependency, including the `dev` dependency groups the images never install, and the resolved versions can differ from the committed `uv.lock` if your mirror carries a different set of releases. The relocked `uv.lock` also ships inside the built-in plugin gems. A locked install never consults the `pypi_url` Admin setting: it installs the mirror URLs recorded in the lock, from the package cache the build seeded. COSMOS falls back to an unlocked `uv pip install` against `pypi_url` only when a package is missing from that cache and its recorded mirror URL is unreachable, for example in a cluster that cannot reach the build-time mirror.
+
+To pin your source tree to the mirror instead - which you want if the mirror does not serve byte-identical artifacts, or if you need the build to resolve reproducibly - regenerate the lockfiles on the host before building:
+
+```bash
+% cd openc3/python
+% uv lock --no-config --no-sources --default-index https://nexus.example.com/repository/pypi/simple
+% cd ../../openc3-cosmos-init/plugins/packages/openc3-cosmos-demo
+% uv lock --no-config --no-sources --default-index https://nexus.example.com/repository/pypi/simple
+```
+
+The build skips the relock for any `uv.lock` whose packages all resolve against `<PYPI_URL>/simple` and installs it as committed, so pass `--default-index` exactly that URL. `--no-config --no-sources` match the build's own relock: without them, a project that declares its own `[tool.uv].index` or `[tool.uv].sources` locks some packages against that index, and the build relocks it anyway.
 
 :::
 

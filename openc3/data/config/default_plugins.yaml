@@ -1,0 +1,43 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+# Plugins that ship with COSMOS. These are hidden by default in the Admin
+# Plugins tab, skipped by plugin_list(default: false) and never written to
+# the local mode plugins folder.
+# This is the single source of truth: OpenC3::DefaultPlugins reads it and
+# GET /openc3-api/plugins/all flags each plugin with 'default' for the
+# frontend and script APIs.
+- openc3-cosmos-tool-admin
+- openc3-cosmos-tool-bucketexplorer
+- openc3-cosmos-tool-cmdsender
+- openc3-cosmos-tool-cmdqueue # Enterprise only
+- openc3-cosmos-tool-cmdhistory # Enterprise only
+- openc3-cosmos-tool-cmdtlmserver
+- openc3-cosmos-tool-dataextractor
+- openc3-cosmos-tool-dataviewer
+- openc3-cosmos-tool-docs
+- openc3-cosmos-tool-handbooks
+- openc3-cosmos-tool-iframe
+- openc3-cosmos-tool-limitsmonitor
+- openc3-cosmos-tool-packetviewer
+- openc3-cosmos-tool-scriptrunner
+- openc3-cosmos-tool-tablemanager
+- openc3-cosmos-tool-tlmgrapher
+- openc3-cosmos-tool-tlmviewer
+- openc3-cosmos-enterprise-tool-admin # Enterprise only
+- openc3-cosmos-tool-autonomic # Enterprise only
+- openc3-cosmos-tool-calendar # Enterprise only
+- openc3-cosmos-tool-grafana # Enterprise only
+- openc3-cosmos-tool-logexplorer # Enterprise only
+- openc3-cosmos-tool-notebooks # Enterprise only
+- openc3-cosmos-tool-systemhealth # Enterprise only
+- openc3-enterprise-tool-base # Enterprise only
+- openc3-tool-base

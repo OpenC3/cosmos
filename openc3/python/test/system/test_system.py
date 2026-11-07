@@ -313,6 +313,14 @@ class TestSystemIntegration(unittest.TestCase):
         self.assertIsInstance(packets, dict)
         self.assertGreater(len(packets), 0)
 
+    def test_system_drops_descriptions_when_descriptions_is_false(self):
+        target_config_dir = os.path.join(TEST_DIR, "install", "config", "targets")
+        System.instance(["INST"], target_config_dir, descriptions=False)
+
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        self.assertIsNone(packet.description)
+        self.assertIsNone(packet.get_item("TEMP1").description)
+
     def test_system_can_access_inst_target_commands(self):
         """Test that System can access INST target command packets"""
         target_config_dir = os.path.join(TEST_DIR, "install", "config", "targets")

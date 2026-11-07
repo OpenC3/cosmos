@@ -96,6 +96,10 @@ class FileInterface(Interface):
 
     def connect(self):
         super().connect()  # Reset the protocols
+        # Discard a disconnect marker left over from a previous connection. Entries only
+        # wake read_interface, which finds files by listing the folder, so none are lost.
+        while not self.queue.empty():
+            self.queue.get_nowait()
 
         if self.telemetry_read_folder:
             event_handler = NewFileEventHandler(self)
@@ -121,7 +125,10 @@ class FileInterface(Interface):
         if self.sleeper:
             self.sleeper.cancel()
         self.listener = None
-        self.queue.put(None)
+        # Only wake read_interface for the first disconnect of a connection, otherwise the
+        # unconsumed marker would immediately disconnect the next connection
+        if self._connected:
+            self.queue.put(None)
         super().disconnect()
         self._connected = False
 

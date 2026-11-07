@@ -31,8 +31,8 @@ inputs:
       uv release to install. The default is the version this repository
       standardizes on; override only to test a candidate.
     required: false
-    # Matches UV_VERSION in openc3-ruby/Dockerfile and Dockerfile-ubi.
-    default: "0.12.5"
+    # Matches OPENC3_UV_VERSION in openc3-ruby/Dockerfile and Dockerfile-ubi.
+    default: "0.13.5"
   working-directory:
     description: |
       Directory holding pyproject.toml and uv.lock. Also given to setup-uv so

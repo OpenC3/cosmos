@@ -78,7 +78,8 @@ module OpenC3
     end
 
     # target_version can also be the actual hash used in the target_archives folder
-    def self.setup_targets(target_names, base_dir, target_version: 'current', scope:)
+    # @param descriptions [Boolean] Whether to keep packet and item descriptions
+    def self.setup_targets(target_names, base_dir, target_version: 'current', scope:, descriptions: true)
       # Nothing to do if there are no targets
       return if target_names.nil? or target_names.length == 0
       if @@instance.nil?
@@ -118,7 +119,7 @@ module OpenC3
         end
 
         # Build System from targets
-        System.instance(target_names, targets_path)
+        System.instance(target_names, targets_path, descriptions: descriptions)
       end
     end
 
@@ -137,14 +138,15 @@ module OpenC3
     #
     # @param target_names [Array of target_names]
     # @param target_config_dir Directory where target config folders are
+    # @param descriptions [Boolean] Whether to keep packet and item descriptions
     # @return [System] The System singleton
-    def self.instance(target_names = nil, target_config_dir = nil)
+    def self.instance(target_names = nil, target_config_dir = nil, descriptions: true)
       return @@instance if @@instance
       raise "System.instance parameters are required on first call" unless target_names and target_config_dir
 
       @@instance_mutex.synchronize do
         return @@instance if @@instance
-        @@instance ||= self.new(target_names, target_config_dir)
+        @@instance ||= self.new(target_names, target_config_dir, descriptions: descriptions)
         @@post_instance_callbacks.each do |callback|
           callback.call
         end
@@ -171,10 +173,11 @@ module OpenC3
     #
     # @param target_names [Array of target names]
     # @param target_config_dir Directory where target config folders are
-    def initialize(target_names, target_config_dir)
+    # @param descriptions [Boolean] Whether to keep packet and item descriptions
+    def initialize(target_names, target_config_dir, descriptions: true)
       OpenC3.add_to_search_path(target_config_dir, true) if target_config_dir
       @targets = {}
-      @packet_config = PacketConfig.new
+      @packet_config = PacketConfig.new(descriptions: descriptions)
       @commands = Commands.new(@packet_config)
       @telemetry = Telemetry.new(@packet_config)
       @limits = Limits.new(@packet_config)

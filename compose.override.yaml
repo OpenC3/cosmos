@@ -61,8 +61,9 @@
 #       # Number of Puma workers (processes). compose.yaml ships a default;
 #       # set this to roughly the number of CPU cores you want the API to use.
 #       - WEB_CONCURRENCY=16
-#       # Enable a default queue for ALL commands. Commands can only opt out by
-#       # specifying a specific queue with the 'queue' parameter.
+#       # Enable a default queue for ALL commands. Commands opt out by passing
+#       # queue=False (Python) / queue: false (Ruby), or go to a different queue
+#       # by naming it with the 'queue' parameter.
 #       # Need here as well as in openc3-cosmos-init because init creates the queue
 #       - OPENC3_DEFAULT_QUEUE=DEFAULT
 #       # Rate limiting for authentication endpoints (defaults shown). Prevents
@@ -113,8 +114,9 @@
 #       # Disable install of the Demo. Unlike the OPENC3_NO_* flags below,
 #       # this one reads its value: false, 0 and empty are all off.
 #       - OPENC3_DEMO=false
-#       # Enable a default queue for ALL commands. Commands can only opt out by
-#       # specifying a specific queue with the 'queue' parameter.
+#       # Enable a default queue for ALL commands. Commands opt out by passing
+#       # queue=False (Python) / queue: false (Ruby), or go to a different queue
+#       # by naming it with the 'queue' parameter.
 #       # Need here as well as in openc3-cosmos-cmd-tlm-api because init creates the queue
 #       - OPENC3_DEFAULT_QUEUE=DEFAULT
 #       # Force the init container to reinstall all plugins even if the same
@@ -328,15 +330,37 @@
 # ---------------------------------------------------------------------------
 # COSMOS discovers additional buckets/volumes from OPENC3_<NAME>_BUCKET /
 # OPENC3_<NAME>_VOLUME variables, where <NAME> is the displayed name and the
-# value is the actual bucket name / root path. These must be visible to the
-# COSMOS services that use storage, and a volume also needs a top-level
-# "volumes:" entry plus a mount on each service. For example:
+# value is the actual bucket name / root path. Bucket names must be valid S3
+# names (lowercase letters, digits, '.' and '-'; no underscores).
+#
+# A bucket variable must be visible to every COSMOS service that uses
+# storage: openc3-cosmos-init creates the bucket at startup (local mode),
+# openc3-cosmos-cmd-tlm-api lists it in Bucket Explorer, and the operator and
+# script-runner-api access it from microservices and scripts.
+#
+# A volume is created by Docker from the top-level "volumes:" entry, not by
+# COSMOS. Only openc3-cosmos-cmd-tlm-api reads the volume variable (to show it
+# in Bucket Explorer); other services just need the mount if their scripts or
+# microservices read the files by path. For example:
 #
 # services:
+#   openc3-cosmos-init:
+#     environment:
+#       - OPENC3_TEST_BUCKET=test-bucket
+#   openc3-cosmos-cmd-tlm-api:
+#     environment:
+#       - OPENC3_TEST_BUCKET=test-bucket
+#       - OPENC3_TEST_VOLUME=/data/test
+#     volumes:
+#       - "openc3-test-v:/data/test"
 #   openc3-operator:
 #     environment:
-#       - OPENC3_TEST_BUCKET=test_bucket
-#       - OPENC3_TEST_VOLUME=/data/test
+#       - OPENC3_TEST_BUCKET=test-bucket
+#     volumes:
+#       - "openc3-test-v:/data/test"
+#   openc3-cosmos-script-runner-api:
+#     environment:
+#       - OPENC3_TEST_BUCKET=test-bucket
 #     volumes:
 #       - "openc3-test-v:/data/test"
 # volumes:

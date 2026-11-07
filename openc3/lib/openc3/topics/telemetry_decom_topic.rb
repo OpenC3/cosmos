@@ -45,7 +45,7 @@ module OpenC3
         }
         msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
         db_shard = Store.db_shard_for_target(packet.target_name, scope: scope)
-        Topic.write_topic("#{scope}__DECOM__{#{packet.target_name}}__#{packet.packet_name}", msg_hash, id, db_shard: db_shard)
+        Topic.write_topic("#{scope}__DECOM__{#{packet.target_name}}__#{packet.packet_name}", msg_hash, id, minid: Topic.stream_safety_minid(id), db_shard: db_shard)
 
         unless packet.stored
           # Also update the current value table with the latest decommutated data

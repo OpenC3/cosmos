@@ -169,6 +169,12 @@ class BinaryAccessor(Accessor):
         else:
             if item.variable_bit_size:
                 self.handle_read_variable_bit_size(item, buffer)
+                # A size of 0 normally means fill the rest of the buffer but here it means empty
+                if item.array_size is not None:
+                    if item.array_size == 0:
+                        return []
+                elif item.bit_size == 0:
+                    return "" if item.data_type == "STRING" else bytearray(b"")
             if self.packet.short_buffer_allowed and self.derived_size_negative(item, buffer):
                 return None
             return BinaryAccessor.class_read_item(item, buffer)

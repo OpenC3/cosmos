@@ -126,6 +126,175 @@ module OpenC3
           .to raise_error(SystemExit)
       end
 
+      # The template README used to hardcode a Python version, which went stale
+      # and differs between the Debian and UBI images. The generator now asks
+      # the interpreter COSMOS runs (OPENC3_PYTHON_BIN) instead.
+      context "with .python-version" do
+        before(:each) do
+          @original_python_bin = ENV['OPENC3_PYTHON_BIN']
+          @fake_python = File.join(@temp_dir, 'fake_python')
+          File.write(@fake_python, "#!/bin/sh\necho 3.13\n")
+          File.chmod(0o755, @fake_python)
+        end
+
+        after(:each) do
+          ENV['OPENC3_PYTHON_BIN'] = @original_python_bin
+        end
+
+        it "pins the COSMOS python version for a python plugin" do
+          ENV['OPENC3_PYTHON_BIN'] = @fake_python
+          run_gen(['plugin', 'test-plugin', '--python'])
+          expect(File.read('.python-version')).to eql "3.13\n"
+        end
+
+        it "does not write one for a ruby plugin" do
+          ENV['OPENC3_PYTHON_BIN'] = @fake_python
+          run_gen(['plugin', 'test-plugin', '--ruby'])
+          expect(File.exist?('.python-version')).to be false
+        end
+
+        # Outside a COSMOS image there is no COSMOS Python to match.
+        it "does not write one when OPENC3_PYTHON_BIN is unset" do
+          ENV.delete('OPENC3_PYTHON_BIN')
+          run_gen(['plugin', 'test-plugin', '--python'])
+          expect(File.exist?('.python-version')).to be false
+        end
+
+        it "does not write one when the interpreter prints something unexpected" do
+          File.write(@fake_python, "#!/bin/sh\necho oops\n")
+          ENV['OPENC3_PYTHON_BIN'] = @fake_python
+          run_gen(['plugin', 'test-plugin', '--python'])
+          expect(File.exist?('.python-version')).to be false
+        end
+      end
+
+      # PluginModel.install_phase2 takes the python dependency path (and builds a
+      # per-plugin venv) for any plugin whose gem contains a pyproject.toml, so a
+      # plugin with no python code must not ship one.
+      it "generates a pyproject.toml only for a python plugin" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        expect(File.exist?('pyproject.toml')).to be true
+      end
+
+      it "does NOT generate a pyproject.toml for a ruby plugin" do
+        run_gen(['plugin', 'test-plugin', '--ruby'])
+        expect(File.exist?('pyproject.toml')).to be false
+      end
+
+      it "does NOT generate a pyproject.toml when no language is specified" do
+        run_gen(['plugin', 'test-plugin'])
+        expect(File.exist?('pyproject.toml')).to be false
+      end
+
+      # A file has to be in the gemspec's file list to reach COSMOS at all, so
+      # the python dependency files are only useful if the gemspec ships them.
+      it "ships the python dependency files in a python plugin's gemspec" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        gemspec = File.read('openc3-cosmos-test-plugin.gemspec')
+        expect(gemspec).to include('Dir.glob("{pyproject.toml,uv.lock}")')
+      end
+
+      it "keeps python bytecode out of a python plugin's gem" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        FileUtils.mkdir_p('lib/openc3_cosmos_test_plugin/__pycache__')
+        FileUtils.touch('lib/openc3_cosmos_test_plugin/__pycache__/__init__.cpython-312.pyc')
+        spec = Gem::Specification.load('openc3-cosmos-test-plugin.gemspec')
+        expect(spec.files).to include('lib/openc3_cosmos_test_plugin/__init__.py')
+        expect(spec.files.grep(/__pycache__/)).to be_empty
+      end
+
+      it "does NOT reference the python dependency files in a ruby plugin's gemspec" do
+        run_gen(['plugin', 'test-plugin', '--ruby'])
+        gemspec = File.read('openc3-cosmos-test-plugin.gemspec')
+        expect(gemspec).to_not include('pyproject.toml')
+        expect(gemspec).to_not include('uv.lock')
+      end
+
+      # The generated file is the starting point for `uv lock`, so it has to be
+      # valid on its own: package = false stands in for a [build-system], since
+      # a plugin declares dependencies and is never built.
+      it "generates a pyproject.toml that names the plugin and declares itself unbuildable" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        pyproject = File.read('pyproject.toml')
+        expect(pyproject).to include('name = "openc3-cosmos-test-plugin"')
+        expect(pyproject).to include('package = false')
+        # COSMOS installs with --no-dev, so a plain `uv sync` matches it
+        expect(pyproject).to include('default-groups = []')
+        expect(pyproject).to_not include('<%')
+      end
+
+      # ty resolves the plugin's own modules through extra-paths and exits non
+      # zero if that path is missing, so lib/ has to exist from the start.
+      it "generates lib/ for a python plugin so ty's extra-paths resolves" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        expect(Dir.exist?('lib')).to be true
+        expect(File.read('pyproject.toml')).to include('extra-paths = ["lib"]')
+      end
+
+      # Every installed plugin's lib/ is on sys.path, so a module directly in
+      # lib/ collides with a same-named module in another plugin. The package
+      # is named after the plugin so its modules cannot.
+      it "generates a package named after the plugin under lib/ for a python plugin" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        expect(File.exist?('lib/openc3_cosmos_test_plugin/__init__.py')).to be true
+        expect(Dir.exist?('lib/PACKAGE')).to be false
+        expect(Dir.children('lib')).to eql(['openc3_cosmos_test_plugin'])
+        expect(File.read('README.md')).to include('from openc3_cosmos_test_plugin.helpers import Helper')
+      end
+
+      it "gives the package a valid python module name when the plugin name has other characters" do
+        run_gen(['plugin', 'my.test-plugin', '--python'])
+        expect(Dir.children('lib')).to eql(['openc3_cosmos_my_test_plugin'])
+      end
+
+      # Tests import the plugin's own modules the same way ty does, so pytest
+      # needs lib/ on its path too.
+      it "puts lib/ on pytest's path for a python plugin" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        expect(File.read('pyproject.toml')).to include('pythonpath = ["lib"]')
+      end
+
+      it "documents uv and ignores its local files only for a python plugin" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        expect(File.read('README.md')).to include('## Python dependencies with uv')
+        expect(File.read('.gitignore')).to include('.venv/')
+        expect(File.read('README.md')).to_not include('<%')
+        expect(File.read('.gitignore')).to_not include('<%')
+      end
+
+      it "does NOT document uv or ignore its local files for a ruby plugin" do
+        run_gen(['plugin', 'test-plugin', '--ruby'])
+        expect(File.read('README.md')).to_not include('uv')
+        expect(File.read('.gitignore')).to_not include('.venv/')
+      end
+
+      it "does NOT generate lib/ for a ruby plugin" do
+        run_gen(['plugin', 'test-plugin', '--ruby'])
+        expect(Dir.exist?('lib')).to be false
+      end
+
+      # ty exits non zero on a warning, so a rule left at "warn" fails the check
+      # exactly as an error does. These three fire on idiomatic plugin code
+      # (openc3.script's __all__-less star re-exports, Script Runner's start
+      # override), so they have to be off for a generated plugin to check clean.
+      it "turns off the ty rules that idiomatic COSMOS plugin code trips" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        pyproject = File.read('pyproject.toml')
+        expect(pyproject).to include('unresolved-reference = "ignore"')
+        expect(pyproject).to include('unresolved-import = "ignore"')
+        expect(pyproject).to include('unknown-argument = "ignore"')
+        expect(pyproject).to_not match(/^unresolved-reference = "warn"/)
+      end
+
+      # from openc3.script import * is the documented way to reach the COSMOS
+      # API, and ruff reports it as F403 with an F405 per name used.
+      it "ignores the ruff rules that star importing the COSMOS API trips" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        pyproject = File.read('pyproject.toml')
+        expect(pyproject).to include('"F403"')
+        expect(pyproject).to include('"F405"')
+      end
+
       include_examples 'standard help/arg behavior', 'plugin'
     end
 
@@ -177,6 +346,92 @@ module OpenC3
       it "writes LANGUAGE python to target.txt when --python is used" do
         run_gen(['target', 'EXAMPLE', '--python'])
         expect(File.read('targets/EXAMPLE/target.txt')).to include('LANGUAGE python')
+      end
+
+      it "ships pyproject.toml and uv.lock in the gemspec of a python target" do
+        run_gen(['target', 'EXAMPLE', '--python'])
+        # Absolute path: Gem::Specification.load caches by path, and other
+        # examples load a gemspec with the same relative name
+        gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
+        File.write('pyproject.toml', '')
+        File.write('uv.lock', '')
+        spec = Gem::Specification.load(gemspec_file)
+        expect(spec.files).to include('pyproject.toml', 'uv.lock')
+        expect(spec.files).to_not include('requirements.txt')
+        # The rewritten block keeps the 2-space indent of the gemspec body
+        lines = File.read(gemspec_file).lines
+        start = lines.index { |line| line.include?('python_dep_files = if') }
+        expect(lines[start..(start + 5)]).to all(start_with('  '))
+        expect(lines[start + 1]).to start_with("    ['pyproject.toml']")
+      end
+
+      it "falls back to requirements.txt in the gemspec of a python target without pyproject.toml" do
+        run_gen(['target', 'EXAMPLE', '--python'])
+        spec = Gem::Specification.load(File.expand_path('openc3-cosmos-test-plugin.gemspec'))
+        expect(spec.files).to include('requirements.txt')
+      end
+
+      it "rewrites the gemspec only once for several python targets" do
+        run_gen(['target', 'EXAMPLE', '--python'])
+        run_gen(['target', 'OTHER', '--python'])
+        gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
+        gemspec = File.read(gemspec_file)
+        expect(gemspec.scan('python_dep_files = if').length).to eql(1)
+        expect(gemspec.scan(/^ *s\.files = Dir\.glob/).length).to eql(1)
+        spec = Gem::Specification.load(gemspec_file)
+        expect(spec.files).to include('requirements.txt')
+      end
+
+      it "upgrades a legacy python_dep_file gemspec to ship uv.lock" do
+        gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
+        legacy_block = <<~RUBY
+          # Prefer pyproject.toml over requirements.txt
+            python_dep_file = if File.exist?('pyproject.toml')
+              'pyproject.toml'
+            else
+              'requirements.txt'
+            end
+        RUBY
+        # Two nested copies, as two python targets wrote them before this fix
+        gemspec = File.read(gemspec_file).sub(/^ *s\.files = Dir\.glob.*\n/) do
+          "  #{legacy_block}#{legacy_block}" \
+            "  s.files = Dir.glob(\"{targets,lib,public,tools,microservices}/**/*\") + %w(Rakefile README.md LICENSE.md plugin.txt) + [python_dep_file]\n"
+        end
+        File.write(gemspec_file, gemspec)
+        File.write('pyproject.toml', "[project]\nname = \"test\"\n")
+        File.write('uv.lock', "version = 1\n")
+
+        run_gen(['target', 'EXAMPLE', '--python'])
+        gemspec = File.read(gemspec_file)
+        expect(gemspec).not_to include('python_dep_file =')
+        expect(gemspec).not_to include('[python_dep_file]')
+        expect(gemspec.scan('python_dep_files = if').length).to eql(1)
+        spec = Gem::Specification.load(gemspec_file)
+        expect(spec.files).to include('pyproject.toml', 'uv.lock')
+      end
+
+      it "keeps a hand-edited legacy python_dep_file gemspec" do
+        gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
+        gemspec = File.read(gemspec_file).sub(/^ *s\.files = Dir\.glob.*\n/) do
+          "  python_dep_file = 'pyproject.toml'\n" \
+            "  s.files = Dir.glob(\"{targets,lib}/**/*\") + %w(plugin.txt) + [python_dep_file]\n"
+        end
+        File.write(gemspec_file, gemspec)
+
+        run_gen(['target', 'EXAMPLE', '--python'])
+        expect(File.read(gemspec_file)).to eql(gemspec)
+      end
+
+      it "keeps the python plugin template gemspec as generated" do
+        Dir.chdir(@temp_dir)
+        FileUtils.rm_rf('openc3-cosmos-test-plugin')
+        run_gen(['plugin', 'test-plugin', '--python'])
+        gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
+        before = File.read(gemspec_file)
+        run_gen(['target', 'EXAMPLE', '--python'])
+        expect(File.read(gemspec_file)).to eql(before)
+        spec = Gem::Specification.load(gemspec_file)
+        expect(spec.files).to include('pyproject.toml')
       end
 
       it "prevents duplicate target generation" do

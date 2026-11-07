@@ -51,7 +51,7 @@ class TestPacketItem(unittest.TestCase):
         c = Conversion()
         self.pi.read_conversion = c
         config = self.pi.to_config("TELEMETRY", "BIG_ENDIAN")
-        self.assertIn("READ_CONVERSION Conversion", config)
+        self.assertIn("READ_CONVERSION openc3/conversions/conversion.py\n", config)
 
     def test_sets_the_read_conversion_to_None(self):
         self.pi.read_conversion = None
@@ -68,7 +68,7 @@ class TestPacketItem(unittest.TestCase):
         c = Conversion()
         self.pi.write_conversion = c
         config = self.pi.to_config("TELEMETRY", "BIG_ENDIAN")
-        self.assertIn("WRITE_CONVERSION Conversion", config)
+        self.assertIn("WRITE_CONVERSION openc3/conversions/conversion.py\n", config)
 
     def test_sets_the_write_conversion_to_None(self):
         self.pi.write_conversion = None
@@ -145,6 +145,13 @@ class TestPacketItem(unittest.TestCase):
     def test_sets_the_states_to_None(self):
         self.pi.states = None
         self.assertIsNone(self.pi.states)
+
+    def test_does_not_create_state_colors_and_interns_state_names(self):
+        self.pi.states = {"true": 1, "false": 0}
+        self.assertIsNone(self.pi.state_colors)
+        other = PacketItem("other", 0, 8, "UINT", "BIG_ENDIAN", None)
+        other.states = {"true".upper(): 1}
+        self.assertIs(list(other.states.keys())[0], list(self.pi.states.keys())[0])
 
     def test_complains_about_states_that_arent_hashes(self):
         with self.assertRaisesRegex(TypeError, f"{self.pi.name}: states must be a dict but is a str"):
@@ -433,6 +440,35 @@ class TestPacketItem(unittest.TestCase):
         self.assertIn("STATE TRUE 1 GREEN", config)
         self.assertIn("STATE FALSE 0 RED", config)
 
+    def test_to_config_with_command_attributes_on_only_some_states(self):
+        self.pi.minimum = 0
+        self.pi.maximum = 2
+        self.pi.states = {"OFF": 0, "ON": 1, "FAULT": 2}
+        self.pi.hazardous = {"FAULT": ""}
+        self.pi.messages_disabled = {"ON": True}
+        self.pi.state_colors = {"ON": "GREEN"}
+        config = self.pi.to_config("COMMAND", "BIG_ENDIAN")
+        self.assertIn("    STATE OFF 0\n", config)
+        self.assertIn("    STATE ON 1 DISABLE_MESSAGES\n", config)
+        self.assertIn("    STATE FAULT 2 HAZARDOUS\n", config)
+
+    def test_to_config_with_telemetry_colors_on_only_some_states(self):
+        self.pi.minimum = 0
+        self.pi.maximum = 2
+        self.pi.states = {"OFF": 0, "ON": 1, "FAULT": 2}
+        self.pi.state_colors = {"ON": "GREEN"}
+        self.pi.hazardous = {"FAULT": ""}
+        self.pi.messages_disabled = {"ON": True}
+        config = self.pi.to_config("TELEMETRY", "BIG_ENDIAN")
+        self.assertIn("    STATE OFF 0\n", config)
+        self.assertIn("    STATE ON 1 GREEN\n", config)
+        self.assertIn("    STATE FAULT 2\n", config)
+
+    def test_to_config_writes_non_default_endianness(self):
+        pi = PacketItem("test", 0, 32, "UINT", "LITTLE_ENDIAN", None)
+        self.assertIn('ITEM TEST 0 32 UINT "" LITTLE_ENDIAN\n', pi.to_config("TELEMETRY", "BIG_ENDIAN"))
+        self.assertNotIn("ENDIAN", pi.to_config("TELEMETRY", "LITTLE_ENDIAN"))
+
     def test_sets_the_state_colors_to_None(self):
         self.pi.state_colors = None
         self.assertIsNone(self.pi.state_colors)
@@ -457,9 +493,24 @@ class TestPacketItem(unittest.TestCase):
         self.assertIn("LIMITS DEFAULT 3 ENABLED 10 20 80 90 40 50", config)
         self.assertIn("LIMITS TVAC 3 ENABLED 100 200 800 900", config)
 
-    def test_sets_the_limits_to_None(self):
+    def test_resets_to_default_limits_when_set_to_none(self):
+        limits = PacketItemLimits()
+        limits.values = {"DEFAULT": [10, 20, 80, 90]}
+        self.pi.limits = limits
         self.pi.limits = None
-        self.assertIsNone(self.pi.limits)
+        self.assertIsNone(self.pi.limits_values)
+        self.assertIsInstance(self.pi.limits, PacketItemLimits)
+        self.assertIsNone(self.pi.limits.values)
+
+    def test_only_creates_limits_when_accessed(self):
+        self.assertIsNone(self.pi._PacketItem__limits)
+        self.assertIsNone(self.pi.limits_state)
+        self.assertIsNone(self.pi.limits_values)
+        self.assertEqual(self.pi.as_json()["limits"], {"enabled": False})
+        self.pi.to_config("TELEMETRY", "BIG_ENDIAN")
+        self.assertIsNone(self.pi._PacketItem__limits)
+        self.pi.limits.state = "RED"
+        self.assertEqual(self.pi.limits_state, "RED")
 
     def test_complains_about_limits_that_arent_packetitemlimits(self):
         with self.assertRaisesRegex(

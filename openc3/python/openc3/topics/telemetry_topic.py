@@ -23,7 +23,7 @@ class TelemetryTopic(Topic):
         msg_hash = {
             "time": to_nsec_from_epoch(packet.packet_time),
             "received_time": to_nsec_from_epoch(packet.received_time),
-            "stored": str(packet.stored),
+            "stored": str(packet.stored).lower(),
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "received_count": packet.received_count,
@@ -32,14 +32,17 @@ class TelemetryTopic(Topic):
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
+        minid = Topic.log_stream_safety_minid(packet.target_name, "TLM", scope)
         if queued:
             EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(
                 f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",
                 msg_hash,
+                minid=minid,
             )
         else:
             Topic.write_topic(
                 f"{scope}__TELEMETRY__{{{packet.target_name}}}__{packet.packet_name}",
                 msg_hash,
                 db_shard=db_shard,
+                minid=minid,
             )

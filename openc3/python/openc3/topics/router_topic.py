@@ -77,8 +77,10 @@ class RouterTopic(Topic):
 
     @classmethod
     def route_command(cls, packet, target_names, scope=OPENC3_SCOPE):
+        # Write to the target's db_shard where its interface reads commands
         if packet.identified():
             topic = f"{{{scope}__CMD}}TARGET__{packet.target_name}"
+            db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
             Topic.write_topic(
                 topic,
                 {
@@ -88,21 +90,22 @@ class RouterTopic(Topic):
                 },
                 "*",
                 100,
+                db_shard=db_shard,
             )
         elif len(target_names) == 1:
             topic = f"{{{scope}__CMD}}TARGET__{target_names[0]}"
-            target_name = "UNKNOWN"
-            if packet.target_name is not None:
-                target_name = packet.target_name
+            db_shard = Store.db_shard_for_target(target_names[0], scope=scope)
+            # Name the routed target so the interface identifies against it (and sends it as UNKNOWN if that fails)
             Topic.write_topic(
                 topic,
                 {
-                    "target_name": target_name,
+                    "target_name": target_names[0],
                     "cmd_name": "UNKNOWN",
                     "cmd_buffer": bytes(packet.buffer_no_copy()),
                 },
                 "*",
                 100,
+                db_shard=db_shard,
             )
         else:
             target_name = "UNKNOWN"

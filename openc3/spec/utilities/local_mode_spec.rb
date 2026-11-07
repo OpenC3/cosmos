@@ -747,6 +747,55 @@ module OpenC3
       end
     end
 
+    describe "local only targets" do
+      after(:each) do
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = nil
+      end
+
+      it "parses OPENC3_LOCAL_ONLY_TARGETS" do
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = nil
+        expect(LocalMode.local_only_targets).to eql []
+        expect(LocalMode.local_only_target?('INST')).to be false
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = " inst, INST2 ,,"
+        expect(LocalMode.local_only_targets).to eql ['INST', 'INST2']
+        expect(LocalMode.local_only_target?('INST')).to be true
+        expect(LocalMode.local_only_target?('inst2')).to be true
+        expect(LocalMode.local_only_target?('EXAMPLE')).to be false
+        expect(LocalMode.local_only_target?(nil)).to be false
+      end
+
+      it "matches names and bucket keys" do
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = "INST"
+        expect(LocalMode.local_only_name?('INST/procedures/test.rb')).to be true
+        expect(LocalMode.local_only_name?('INST2/procedures/test.rb')).to be false
+        expect(LocalMode.local_only_key?('DEFAULT/targets_modified/INST/procedures/test.rb')).to be true
+        expect(LocalMode.local_only_key?('DEFAULT/targets/INST/screens/a.txt')).to be true
+        expect(LocalMode.local_only_key?('DEFAULT/targets/INST2/screens/a.txt')).to be false
+        expect(LocalMode.local_only_key?('DEFAULT/target_archives/INST/INST.zip')).to be false
+        expect(LocalMode.local_only_key?('DEFAULT/tmp/INST/a.txt')).to be false
+      end
+
+      it "does not sync local only targets with the bucket" do
+        ENV['OPENC3_LOCAL_MODE_SECONDARY'] = nil
+        ENV['OPENC3_LOCAL_MODE_FORCE_SYNC'] = nil
+        ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE'] = "1"
+        ENV['OPENC3_LOCAL_ONLY_TARGETS'] = "INST"
+        rubys3_client, resp = setup_sync_test()
+        expect(Aws::S3::Client).to receive(:new).and_return(rubys3_client)
+        expect(rubys3_client).to receive(:list_objects_v2).and_return(resp)
+        keys = []
+        allow(rubys3_client).to receive(:put_object) { |args| keys << args[:key] }
+        allow(rubys3_client).to receive(:get_object) { |args| keys << args[:key] }
+        allow(rubys3_client).to receive(:delete_object) { |args| keys << args[:key] }
+        LocalMode.sync_with_bucket(Bucket.getClient, scope: 'DEFAULT')
+        expect(keys).to_not be_empty
+        expect(keys.select { |key| key.include?('/INST/') }).to eql []
+        # Local only files are left where they are
+        expect(File.exist?("#{@tmp_dir}/DEFAULT/targets_modified/INST/procedures/mod0.rb")).to be true
+        ENV['OPENC3_LOCAL_MODE_SYNC_REMOVE'] = nil
+      end
+    end
+
     describe "sync_with_bucket" do
       it "should sync local and remote targets_modified files with local primary" do
         ENV['OPENC3_LOCAL_MODE_SECONDARY'] = nil

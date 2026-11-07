@@ -39,7 +39,7 @@ We've seen a number of issues deploying COSMOS via Docker in various types of in
 
 1. You've enabled certificates and you're getting networking errors
 
-   Make sure you've read both the [SSL-TLS](/docs/configuration/ssl-tls) docs and the [COSMOS Enterprise Project](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/NetworkConfiguration.md) instructions.
+   Make sure you've read both the [SSL-TLS](/docs/configuration/ssl-tls) docs and the [Network Configuration](/docs/guides/network-configuration) guide.
 
 1. You're getting 404 errors, missing icons, missing tools or functionality
 

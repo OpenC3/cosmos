@@ -1,7 +1,7 @@
 #!/bin/bash
 
 usage() {
-  echo "Usage: $1 [install-playwright, build-plugin, reset-storage-state, run-chromium, run-aws]" >&2
+  echo "Usage: $1 [install-playwright, build-plugin, reset-storage-state, run-chromium, run-enterprise, run-aws]" >&2
   echo "*  install-playwright [--no-clean]: installs playwright and its dependencies" >&2
   echo "*  build-plugin: builds the plugin to be used in the playwright tests" >&2
   echo "*  reset-storage-state: clear out cached data" >&2
@@ -94,7 +94,9 @@ case $1 in
             exit 1
         }
         ../../openc3.sh cli rake build VERSION=1.0.0
-        cp openc3-cosmos-pw-test-1.0.0.gem openc3-cosmos-pw-test-1.0.1.gem
+        # Build 1.0.1 rather than copying 1.0.0: the gem's internal version must
+        # match its filename or an upgrade installs 1.0.0 and uninstalling 1.0.1 fails
+        ../../openc3.sh cli rake build VERSION=1.0.1
         ../../openc3.sh cli validate openc3-cosmos-pw-test-1.0.0.gem
         cd - || exit 1
         ;;
@@ -187,5 +189,10 @@ case $1 in
         sed -i.bak 's#http://localhost:2900#https://aws.openc3.com#' playwright.config.ts && rm -f playwright.config.ts.bak
         KEYCLOAK_URL=https://aws.openc3.com/auth/admin/master/console REDIRECT_URL="https://aws.openc3.com/*" pnpm test:keycloak
         pnpm test:enterprise
+        ;;
+
+    * )
+        echo "Unknown command: $1" >&2
+        usage $0
         ;;
 esac

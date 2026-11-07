@@ -598,25 +598,24 @@ module OpenC3
     def self.resolve_pypi_url(scope:)
       pypi_url = nil
       begin
-        pypi_url = get_setting('pypi_url', scope: scope)
-        pypi_url += '/simple' if pypi_url
+        pypi_url = PypiUrl.index_url(get_setting('pypi_url', scope: scope))
       rescue => e
         Logger.error("Failed to retrieve pypi_url: #{e.formatted}")
       ensure
         if pypi_url.nil?
-          pypi_url = ENV.fetch('PYPI_URL', nil)
-          pypi_url += '/simple' if pypi_url
+          pypi_url = PypiUrl.index_url(ENV.fetch('PYPI_URL', nil))
           pypi_url ||= PypiUrl::DEFAULT
         end
       end
       PypiUrl.validate(pypi_url)
     end
 
-    # Build the argv array for pypi index and trusted-host arguments.
+    # Build the argv array of pypi index arguments. Kept as a delegate so
+    # callers that already reference PluginModel keep working; the logic lives
+    # in PypiUrl because PythonPackageModel needs it too and must not have to
+    # require this file.
     def self.build_pypi_args(pypi_url)
-      args = ["-i", pypi_url]
-      args += ["--trusted-host", URI.parse(pypi_url).host] unless ENV['PIP_ENABLE_TRUSTED_HOST'].nil?
-      args
+      PypiUrl.build_args(pypi_url)
     end
 
     # Build a sanitized venv directory name from scope and plugin name.

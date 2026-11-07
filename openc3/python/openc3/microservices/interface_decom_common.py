@@ -32,7 +32,18 @@ def handle_inject_tlm(inject_tlm_json, scope):
     data_type = str(inject_tlm_hash["type"])
     packet = System.telemetry.packet(target_name, packet_name)
     if item_hash:
+        # Writing a VARIABLE_BIT_SIZE item sets its length item to match. Writing the
+        # length item directly would make it disagree with the bytes in the buffer, so
+        # skip it when its variable sized item is also given.
+        given_names = [str(name).upper() for name in item_hash]
+        length_names = [
+            item.variable_bit_size["length_item_name"]
+            for item in packet.sorted_items
+            if item.variable_bit_size and item.name in given_names
+        ]
         for name, value in item_hash.items():
+            if str(name).upper() in length_names:
+                continue
             packet.write(str(name), value, data_type)
     stored = inject_tlm_hash.get("stored", False)
     packet.stored = str(stored).lower() == "true"
@@ -49,6 +60,8 @@ def handle_inject_tlm(inject_tlm_json, scope):
 def handle_inject_tlm_with_ack(inject_tlm_json, msg_id, scope, logger=None):
     inject_tlm_hash = json.loads(inject_tlm_json, cls=JsonDecoder)
     target_name = inject_tlm_hash["target_name"]
+    # Ack on the db_shard of the target where DecomInterfaceTopic.inject_tlm waits for it
+    db_shard = Store.db_shard_for_target(target_name, scope=scope)
     ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
     try:
         handle_inject_tlm(inject_tlm_json, scope)
@@ -57,7 +70,7 @@ def handle_inject_tlm_with_ack(inject_tlm_json, msg_id, scope, logger=None):
         if logger:
             logger.error(f"inject_tlm error due to {error}")
         msg_hash = {"id": msg_id, "result": str(error)}
-    Topic.write_topic(ack_topic, msg_hash)
+    Topic.write_topic(ack_topic, msg_hash, db_shard=db_shard)
 
 
 def handle_build_cmd(build_cmd_json, msg_id, scope):

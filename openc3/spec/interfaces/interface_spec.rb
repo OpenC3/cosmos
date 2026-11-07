@@ -429,7 +429,7 @@ module OpenC3
           def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, [nil, 0, :DISCONNECT, 0], :WRITE)
-        interface.write(packet)
+        expect { interface.write(packet) }.to raise_error(WriteRejectError, /write_packet requested disconnect/)
         expect(interface.write_count).to be 1
         expect(interface.bytes_written).to be 0
       end
@@ -473,7 +473,7 @@ module OpenC3
           def write_interface(data, extra = nil); write_interface_base(data, extra); end
         end
         interface.add_protocol(InterfaceTestProtocol, [:DISCONNECT, 0, nil, 0], :WRITE)
-        interface.write(packet)
+        expect { interface.write(packet) }.to raise_error(WriteRejectError, /write_data requested disconnect/)
         expect(interface.write_count).to be 1
         expect(interface.bytes_written).to be 0
       end
@@ -581,6 +581,50 @@ module OpenC3
         expect(i2.read_protocols).to_not be_empty
         expect(i2.write_protocols).to_not be_empty
         expect(i2.protocol_info).to eql [[Protocol, [], :READ_WRITE]]
+      end
+    end
+
+    describe "CONNECT_CMD and PERIODIC_CMD" do
+      let(:interface) do
+        i = Interface.new
+        class << i
+          def connect; super(); @is_connected = true; end
+          def connected?; @is_connected; end
+          def disconnect; @is_connected = false; super(); end
+        end
+        i
+      end
+
+      after(:each) do
+        interface.scheduler.shutdown(:kill) if interface.scheduler
+      end
+
+      it "sends connect commands after every connect" do
+        interface.set_option("CONNECT_CMD", ["LOG", "INST ABORT"])
+        interface.set_option("CONNECT_CMD", ["DONT_LOG", "INST CLEAR"])
+        expect(interface).to receive(:cmd).with("INST ABORT").twice
+        expect(interface).to receive(:cmd).with("INST CLEAR", log_message: false).twice
+        2.times do
+          interface.connect
+          interface.post_connect
+          interface.disconnect
+        end
+      end
+
+      it "sends periodic commands only while connected" do
+        interface.set_option("PERIODIC_CMD", ["LOG", "0.5", "INST ABORT"])
+        interface.set_option("PERIODIC_CMD", ["DONT_LOG", "0.5", "INST CLEAR"])
+        sent = []
+        allow(interface).to receive(:cmd) { |*args, **kwargs| sent << [args, kwargs] }
+        interface.connect
+        sleep 1.5
+        interface.disconnect
+        expect(sent).to include([["INST ABORT"], {}])
+        expect(sent).to include([["INST CLEAR"], { log_message: false }])
+        sleep 0.5 # Let any in-flight job finish
+        sent.clear
+        sleep 1
+        expect(sent).to be_empty
       end
     end
 

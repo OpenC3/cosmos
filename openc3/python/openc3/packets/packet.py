@@ -33,6 +33,7 @@ from openc3.conversions.received_time_seconds_conversion import (
 )
 from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
+    class_to_filename,
     quote_if_necessary,
     simple_formatted,
 )
@@ -780,7 +781,7 @@ class Packet(Structure):
         with self.synchronize_allow_reads(True):
             result = self.read_all(value_type, buffer, False)
             for item in result:
-                item.append(self.items[item[0]].limits.state)
+                item.append(self.items[item[0]].limits_state)
         return result
 
     # Create a string that shows the name and value of each item in the packet
@@ -938,7 +939,7 @@ class Packet(Structure):
     # This is an optimization so we don't have to iterate through all the items case
     # checking for limits.
     def update_limits_items_cache(self, item):
-        if (item.limits.values or item.state_colors) and not self.limits_items_hash.get(item.name):
+        if (item.limits_values or item.state_colors) and not self.limits_items_hash.get(item.name):
             self.limits_items.append(item)
             self.limits_items_hash[item.name] = True
 
@@ -1008,7 +1009,7 @@ class Packet(Structure):
         if not self.processors:
             return
 
-        for _, processor in self.processors:
+        for processor in self.processors.values():
             processor.reset()
 
     # Make a light weight clone of this packet. This only creates a new buffer
@@ -1051,13 +1052,13 @@ class Packet(Structure):
             config += f'COMMAND {quote_if_necessary(self.target_name)} {quote_if_necessary(self.packet_name)} {self.default_endianness} "{self.description}"\n'
         if self.subpacketizer:
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.subpacketizer.args])
-            config += f"  SUBPACKETIZER {self.subpacketizer.__class__.__name__} {args_str}\n"
+            config += f"  SUBPACKETIZER {class_to_filename(self.subpacketizer.__class__)} {args_str}\n"
         if self.accessor.__class__.__name__ != "BinaryAccessor":
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.accessor.args])
-            config += f"  ACCESSOR {self.accessor.__class__.__name__} {args_str}\n"
+            config += f"  ACCESSOR {class_to_filename(self.accessor.__class__)} {args_str}\n"
         if self.validator:
             args_str = " ".join([quote_if_necessary(str(a)) for a in self.validator.args])
-            config += f"  VALIDATOR {self.validator.__class__.__name__} {args_str}\n"
+            config += f"  VALIDATOR {class_to_filename(self.validator.__class__)} {args_str}\n"
         if self.template:
             config += f"  TEMPLATE_BASE64 {base64.b64encode(self.template).decode('ascii')}\n"
         if self.short_buffer_allowed:
@@ -1080,11 +1081,11 @@ class Packet(Structure):
             config += "  RESTRICTED\n"
 
         if self.processors:
-            for _, processor in self.processors:
-                config += processor.to_config
+            for processor in self.processors.values():
+                config += processor.to_config()
 
         if self.meta:
-            for key, values in self.meta:
+            for key, values in self.meta.items():
                 vals = " ".join([quote_if_necessary(a) for a in values])
                 config += f"  META {quote_if_necessary(key)} {vals}\n"
 
@@ -1151,7 +1152,7 @@ class Packet(Structure):
 
         if self.processors:
             processors = []
-            for _, processor in self.processors:
+            for processor in self.processors.values():
                 processors.append(processor.as_json())
             config["processors"] = processors
 
@@ -1214,7 +1215,7 @@ class Packet(Structure):
             if item.format_string or item.units:
                 json_hash[f"{item.name}__F"] = self.read_item(item, "FORMATTED", self.buffer, given_raw)
             if include_limits_states:
-                limits_state = item.limits.state
+                limits_state = item.limits_state
                 if limits_state:
                     json_hash[f"{item.name}__L"] = limits_state
 
@@ -1233,7 +1234,7 @@ class Packet(Structure):
 
     def handle_limits_states(self, item, value):
         # Retrieve limits state for the given value
-        limits_state = item.state_colors.get(value)
+        limits_state = item.state_colors.get(value) if item.state_colors else None
 
         if item.limits.state != limits_state:  # PacketItemLimits state has changed
             # Save old limits state
@@ -1275,7 +1276,7 @@ class Packet(Structure):
         # value of the item
         if value > yellow_low:
             if value < yellow_high:
-                if green_low:
+                if green_low is not None:
                     if value < green_high:
                         if value > green_low:
                             limits_state = "BLUE"
@@ -1346,6 +1347,13 @@ class Packet(Structure):
             return
         if not self.obfuscated_items or len(self.obfuscated_items) == 0:
             return
+
+        # Given values hold the plaintext the user sent, so drop them for obfuscated items
+        if self.given_values:
+            obfuscated_names = {item.name.upper() for item in self.obfuscated_items}
+            self.given_values = {
+                key: value for key, value in self.given_values.items() if str(key).upper() not in obfuscated_names
+            }
 
         for item in self.obfuscated_items:
             if item.data_type == "DERIVED":

@@ -377,3 +377,63 @@ test('pins items to the top of the list', async ({ page, utils }) => {
     'PACKET_TIMESECONDS *',
   )
 })
+
+//
+// Test the tokenized search over the item table. This is a different code
+// path from the chooser dropdowns (v-data-table-virtual's own filter), so it
+// is covered separately from tokenized-search.p.spec.ts.
+//
+test('searches items with tokens typed in any order', async ({ page }) => {
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await expect(
+    page.locator('tr:has(td div:text-is("TEMP1_MEGA"))'),
+  ).toBeVisible()
+
+  await page.locator('[data-test="search"] input').fill('temp mega')
+  await expect(
+    page.locator('tr:has(td div:text-is("TEMP1_MEGA"))'),
+  ).toBeVisible()
+  // Every token has to match, so the plain TEMP items drop out
+  await expect(page.locator('tr:has(td div:text-is("TEMP1"))')).toHaveCount(0)
+  await expect(
+    page.locator('tr:has(td div:text-is("TEMP1_MICRO"))'),
+  ).toHaveCount(0)
+
+  // Order does not matter
+  await page.locator('[data-test="search"] input').fill('mega temp')
+  await expect(
+    page.locator('tr:has(td div:text-is("TEMP1_MEGA"))'),
+  ).toBeVisible()
+})
+
+test('searches items despite typos', async ({ page }) => {
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await page.locator('[data-test="search"] input').fill('tmep mega')
+  await expect(
+    page.locator('tr:has(td div:text-is("TEMP1_MEGA"))'),
+  ).toBeVisible()
+  await expect(page.locator('tr:has(td div:text-is("TEMP1"))')).toHaveCount(0)
+})
+
+test('searches item names rather than values', async ({ page }) => {
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  const row = page.locator('tr:has(td div:text-is("GROUND1STATUS"))')
+  await expect(row).toBeVisible()
+
+  // Read whatever the item currently reads, then search for exactly that.
+  // The table filters on the name column only: searching values would make
+  // rows appear and disappear as telemetry changes.
+  await expect
+    .poll(async () => {
+      return await page.inputValue(
+        'tr:has(td div:text-is("GROUND1STATUS")) input',
+      )
+    })
+    .toMatch(/CONNECTED|UNAVAILABLE/)
+  const value = await page.inputValue(
+    'tr:has(td div:text-is("GROUND1STATUS")) input',
+  )
+
+  await page.locator('[data-test="search"] input').fill(value)
+  await expect(row).toHaveCount(0)
+})

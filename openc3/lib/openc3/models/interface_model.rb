@@ -291,7 +291,7 @@ module OpenC3
         elsif enabled == 'DISABLED'
           return false
         else
-          raise parser.error("MAP_TARGET enabled state must be ENABLED or DISABLED.", usage)
+          raise parser.error("#{parser.keyword} enabled state must be ENABLED or DISABLED.", "#{parser.keyword} <Target Name> <ENABLED/DISABLED>")
         end
       end
     end

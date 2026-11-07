@@ -133,7 +133,23 @@ module OpenC3
     def graceful_kill
     end
 
+    # Environment variable the operator sets on every microservice it spawns to
+    # say "I am already reporting process metrics for you". Without it an
+    # in-process generator and the operator would both be writing cpu/memory for
+    # the same microservice.
+    SUPERVISED_ENV_VAR = 'OPENC3_OPERATOR_PROCESS_METRICS'.freeze
+
+    # Whether something outside this process is already reporting its process
+    # level metrics.
+    def self.supervised?
+      !ENV[SUPERVISED_ENV_VAR].nil?
+    end
+
     def self.add_update_generator(object)
+      # Generators produce process level metrics (cpu, memory). Skip them
+      # entirely when the operator is already reporting those for us.
+      return if supervised?
+
       @@update_generators << object
     end
   end
