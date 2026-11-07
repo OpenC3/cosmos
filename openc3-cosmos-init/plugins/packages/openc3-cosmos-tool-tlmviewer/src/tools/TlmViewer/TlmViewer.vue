@@ -412,7 +412,7 @@ export default {
       if (mode === 'playback') {
         // Initialize playback date and time with current values
         // Create a new date 1 hr in the past as a default
-        let date = new Date() - 3600000
+        let date = Date.now() - 3600000
         this.playbackDate = this.formatDate(date, this.timeZone)
         this.playbackTime = this.formatTime(date, this.timeZone)
       } else {

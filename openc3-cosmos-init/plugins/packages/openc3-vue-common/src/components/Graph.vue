@@ -1479,7 +1479,7 @@ export default {
     // when we're embedded in a screen (LINEGRAPH), so also emit so the screen
     // can show it. See emitScreenError in Widget.js.
     addError: function (error) {
-      const entry = { time: new Date().getTime(), ...error }
+      const entry = { time: Date.now(), ...error }
       this.errors.push(entry)
       this.$emit('error', entry)
     },

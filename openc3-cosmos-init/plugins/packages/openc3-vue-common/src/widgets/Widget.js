@@ -221,7 +221,7 @@ export default {
         // it has to say what that was. Default to this widget so one graph
         // reconnecting doesn't clear another graph's disconnect.
         source: options.source || this.errorSource,
-        time: new Date().getTime(),
+        time: Date.now(),
       })
     },
     // The counterpart to a transient emitScreenError: the thing that failed is
