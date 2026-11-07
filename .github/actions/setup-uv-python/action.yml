@@ -90,11 +90,11 @@ runs:
       # exactly that. setup-uv has already exported UV_PYTHON in the latter case
       run: uv python install $PYTHON_VERSION
 
-    # --frozen is not optional: it is what makes the install reproducible, so
+    # --locked is not optional: it is what makes the install reproducible, so
     # it is passed literally on the uv sync line rather than accumulated into a
     # variable, where neither a reader nor a scanner can see that the lockfile
     # is honored. The optional flags are booleans rather than a caller-supplied
-    # argument string that could omit --frozen or add --upgrade, and they reach
+    # argument string that could omit --locked or add --upgrade, and they reach
     # bash through env so nothing interpolates into the shell.
     - name: Install dependencies
       if: ${{ inputs.sync == 'true' }}
@@ -118,5 +118,5 @@ runs:
           fi
           extra+=(--no-build)
         fi
-        echo "uv sync --frozen ${extra[*]}"
-        uv sync --frozen "${extra[@]}"
+        echo "uv sync --locked ${extra[*]}"
+        uv sync --locked "${extra[@]}"
