@@ -138,7 +138,7 @@ The **Runner** role allows users to execute commands and scripts but cannot crea
 ### Script Permissions
 
 - **script_view** - View script contents
-- **script_edit** - Create, edit, and delete scripts
+- **script_edit** - Create, edit, and delete scripts and other target files, including saving, generating, and deleting tables in Table Manager
 - **script_run** - Execute scripts
 
 ### Administrative Permissions
