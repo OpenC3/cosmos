@@ -170,27 +170,19 @@ export default {
         this.duplicateScreenAlert = false
       } else {
         this.newScreenName = value.toLowerCase()
-        if (
+        this.duplicateScreenAlert =
           this.screens[this.selectedTarget] &&
-          this.screens[this.selectedTarget].indexOf(
+          this.screens[this.selectedTarget].includes(
             this.newScreenName.toUpperCase(),
-          ) !== -1
-        ) {
-          this.duplicateScreenAlert = true
-        } else {
-          this.duplicateScreenAlert = false
-        }
+          )
       }
     },
     newScreenName: function (value) {
-      if (
+      this.duplicateScreenAlert =
         this.screens[this.selectedTarget] &&
-        this.screens[this.selectedTarget].indexOf(value.toUpperCase()) !== -1
-      ) {
-        this.duplicateScreenAlert = true
-      } else {
-        this.duplicateScreenAlert = false
-      }
+        this.screens[this.selectedTarget].includes(
+          this.newScreenName.toUpperCase(),
+        )
     },
   },
   created() {

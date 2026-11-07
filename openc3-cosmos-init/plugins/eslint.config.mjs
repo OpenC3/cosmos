@@ -45,6 +45,7 @@ export default defineConfig([
       'require-await': 'error',
 
       'unicorn/prefer-array-some': 'error',
+      'unicorn/prefer-includes': 'error',
 
       'vue/multi-word-component-names': 'off',
 

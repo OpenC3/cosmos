@@ -130,7 +130,7 @@ export default {
       required: true,
       validator: function (value) {
         // The value must match one of these strings
-        return ['open', 'save'].indexOf(value) !== -1
+        return ['open', 'save'].includes(value)
       },
     },
     apiUrl: {
