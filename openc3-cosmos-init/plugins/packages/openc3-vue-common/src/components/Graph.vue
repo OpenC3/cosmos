@@ -1138,7 +1138,7 @@ export default {
       })
     },
     rebuildChart: function () {
-      let clonedItems = JSON.parse(JSON.stringify(this.items))
+      let clonedItems = structuredClone(this.items)
       this.removeItems(clonedItems)
       this.graph.destroy()
       this.chartOpts.series[0].label = this.xAxisLabel
@@ -1318,7 +1318,7 @@ export default {
     },
     setXAxisScale: function (realtimeMax = null) {
       const xAxisData = this.data[0]
-      if (xAxisData && xAxisData.length) {
+      if (xAxisData?.length) {
         let max = realtimeMax === null ? xAxisData.at(-1) : realtimeMax
         // Do not show history from before the first received point. The right
         // edge can advance into empty space, but the left edge should only
@@ -1450,23 +1450,22 @@ export default {
     moveLegend: function (desired) {
       switch (desired) {
         case 'bottom':
-          this.graph.root.classList.remove('side-legend')
-          this.graph.root.classList.remove('left-legend')
-          this.graph.root.classList.remove('top-legend')
+          this.graph.root.classList.remove(
+            'side-legend',
+            'left-legend',
+            'top-legend',
+          )
           break
         case 'top':
-          this.graph.root.classList.remove('side-legend')
-          this.graph.root.classList.remove('left-legend')
+          this.graph.root.classList.remove('side-legend', 'left-legend')
           this.graph.root.classList.add('top-legend')
           break
         case 'left':
           this.graph.root.classList.remove('top-legend')
-          this.graph.root.classList.add('side-legend')
-          this.graph.root.classList.add('left-legend')
+          this.graph.root.classList.add('side-legend', 'left-legend')
           break
         case 'right':
-          this.graph.root.classList.remove('top-legend')
-          this.graph.root.classList.remove('left-legend')
+          this.graph.root.classList.remove('top-legend', 'left-legend')
           this.graph.root.classList.add('side-legend')
           break
       }
@@ -1480,7 +1479,7 @@ export default {
     // when we're embedded in a screen (LINEGRAPH), so also emit so the screen
     // can show it. See emitScreenError in Widget.js.
     addError: function (error) {
-      const entry = { time: new Date().getTime(), ...error }
+      const entry = { time: Date.now(), ...error }
       this.errors.push(entry)
       this.$emit('error', entry)
     },
@@ -1508,7 +1507,7 @@ export default {
             // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
             // fixed the issue to enforce ordering.
             // Clone the items first because removeItems modifies this.items
-            let clonedItems = JSON.parse(JSON.stringify(this.items))
+            let clonedItems = structuredClone(this.items)
             this.removeItems(clonedItems)
             setTimeout(() => {
               this.addItems(clonedItems)
@@ -1760,7 +1759,7 @@ export default {
             size: 80, // This size supports values up to 8 digits plus sign
             stroke: axisColor,
             grid: {
-              show: type === 'overview' ? false : true,
+              show: type !== 'overview',
               stroke: strokeColor,
               width: 2,
             },
@@ -1852,11 +1851,11 @@ export default {
             // Draw red limits
             ctx.fillStyle = 'rgba(255,0,0,0.15)'
             if (u.scales.y.min < this.limitsValues[0]) {
-              let start = redLow < yMax ? yMax : redLow
+              let start = Math.max(redLow, yMax)
               ctx.fillRect(bbox.left, redLow, bbox.width, yMin - start)
             }
             if (u.scales.y.max > this.limitsValues[3]) {
-              let end = yMin < redHigh ? yMin : redHigh
+              let end = Math.min(yMin, redHigh)
               ctx.fillRect(bbox.left, yMax, bbox.width, end - yMax)
             }
 
@@ -1866,15 +1865,15 @@ export default {
               u.scales.y.min < this.limitsValues[1] && // yellowLow
               u.scales.y.max > this.limitsValues[0] // redLow
             ) {
-              let start = yellowLow < yMax ? yMax : yellowLow
+              let start = Math.max(yellowLow, yMax)
               ctx.fillRect(bbox.left, start, bbox.width, redLow - start)
             }
             if (
               u.scales.y.max > this.limitsValues[2] && // yellowHigh
               u.scales.y.min < this.limitsValues[3] // redHigh
             ) {
-              let start = yMin < redHigh ? yMin : redHigh
-              let end = yMin < yellowHigh ? yMin : yellowHigh
+              let start = Math.min(yMin, redHigh)
+              let end = Math.min(yMin, yellowHigh)
               ctx.fillRect(bbox.left, start, bbox.width, end - start)
             }
 
@@ -1887,8 +1886,8 @@ export default {
                 u.scales.y.min < this.limitsValues[2] && // yellowHigh
                 u.scales.y.max > this.limitsValues[1] // yellowLow
               ) {
-                let start = yellowHigh < yMax ? yMax : yellowHigh
-                let end = yMin < yellowLow ? yMin : yellowLow
+                let start = Math.max(yellowHigh, yMax)
+                let end = Math.min(yMin, yellowLow)
                 ctx.fillRect(bbox.left, start, bbox.width, end - start)
               }
             } else {
@@ -1899,20 +1898,20 @@ export default {
                 u.scales.y.min < this.limitsValues[4] && // greenLow
                 u.scales.y.max > this.limitsValues[1] // yellowLow
               ) {
-                let start = greenLow < yMax ? yMax : greenLow
+                let start = Math.max(greenLow, yMax)
                 ctx.fillRect(bbox.left, start, bbox.width, yellowLow - start)
               }
               if (
                 u.scales.y.max > this.limitsValues[5] && // greenHigh
                 u.scales.y.min < this.limitsValues[2] // yellowHigh
               ) {
-                let start = yMin < yellowHigh ? yMin : yellowHigh
-                let end = yMin < greenHigh ? yMin : greenHigh
+                let start = Math.min(yMin, yellowHigh)
+                let end = Math.min(yMin, greenHigh)
                 ctx.fillRect(bbox.left, start, bbox.width, end - start)
               }
               ctx.fillStyle = 'rgba(0,0,255,0.15)'
-              let start = greenHigh < yMax ? yMax : greenHigh
-              let end = yMin < greenLow ? yMin : greenLow
+              let start = Math.max(greenHigh, yMax)
+              let end = Math.min(yMin, greenLow)
               ctx.fillRect(bbox.left, start, bbox.width, end - start)
             }
             ctx.stroke()

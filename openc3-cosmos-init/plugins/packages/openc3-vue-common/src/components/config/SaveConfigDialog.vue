@@ -200,15 +200,13 @@ export default {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
-        .then((dialog) => {
+        .then(() => new OpenC3Api().delete_config(this.configKey, item.config))
+        .then(() => {
           if (this.selectedItem?.config === item.config) {
             this.selectedRows = []
             this.configName = ''
           }
           this.configs.splice(this.configs.indexOf(item), 1)
-          new OpenC3Api()
-            .delete_config(this.configKey, item.config)
-            .catch(console.error)
         })
         .catch((error) => {
           if (error !== true) {

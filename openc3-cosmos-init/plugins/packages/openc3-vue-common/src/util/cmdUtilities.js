@@ -148,7 +148,7 @@ export default {
           returnValue = value.raw
         } else {
           // For other objects, use JSON.stringify as a fallback
-          returnValue = JSON.stringify(value).replace(/\\n/g, '')
+          returnValue = JSON.stringify(value).replaceAll(String.raw`\n`, '')
         }
       } else {
         returnValue = String(value)

@@ -231,7 +231,7 @@ export default {
       default: 'tlm',
       validator: function (value) {
         // The value must match one of these strings
-        return ['cmd', 'tlm'].indexOf(value) !== -1
+        return ['cmd', 'tlm'].includes(value)
       },
     },
     targetName: {

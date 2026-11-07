@@ -23,10 +23,10 @@ export default {
         return this.formatJsonString(value)
       }
       if (Array.isArray(value)) {
-        return JSON.stringify(value).replace(/\\n/g, '')
+        return JSON.stringify(value).replaceAll(String.raw`\n`, '')
       }
       if (this.isObject(value)) {
-        return JSON.stringify(value).replace(/\\n/g, '')
+        return JSON.stringify(value).replaceAll(String.raw`\n`, '')
       }
       if (formatString && value) {
         if (typeof value === 'bigint') {
@@ -90,9 +90,7 @@ export default {
       return value.toString()
     },
     isJsonString(value) {
-      return (
-        value && value['json_class'] === 'String' && value['raw'] !== undefined
-      )
+      return value?.['json_class'] === 'String' && value?.['raw'] !== undefined
     },
     formatJsonString(value) {
       let result = Array.from(value['raw'].slice(0, 32), (byte) =>

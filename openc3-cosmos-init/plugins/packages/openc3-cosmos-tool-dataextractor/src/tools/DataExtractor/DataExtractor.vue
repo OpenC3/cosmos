@@ -722,8 +722,8 @@ export default {
     setTimestamps: function () {
       this.startDateTimeFilename = this.startDate + '_' + this.startTime
       // Replace the colons, dashes and periods with underscores in the filename
-      this.startDateTimeFilename = this.startDateTimeFilename.replace(
-        /(:|-|\.)\s*/g,
+      this.startDateTimeFilename = this.startDateTimeFilename.replaceAll(
+        /[:\-.]\s*/,
         '_',
       )
       let startTemp
@@ -871,7 +871,7 @@ export default {
         let keys = new Set()
         for (let packet of data) {
           let packetKeys = Object.keys(packet)
-          packetKeys.forEach(keys.add, keys)
+          packetKeys.forEach(keys.add)
           // Don't count metadata keys (__type, __time, COSMOS_EXTRA)
           let metadataCount = packetKeys.filter(
             (k) => k.startsWith('__') || k === 'COSMOS_EXTRA',
@@ -902,9 +902,7 @@ export default {
     buildHeaders: function (itemKeys) {
       // Normal column mode has the target and packet listed for each item
       if (this.columnHeaders.length === 0 && this.columnMode === 'normal') {
-        this.columnHeaders.push('TIME')
-        this.columnHeaders.push('TARGET')
-        this.columnHeaders.push('PACKET')
+        this.columnHeaders.push('TIME', 'TARGET', 'PACKET')
         // Only add USERNAME and APPROVER columns for command data
         if (this.hasCommands) {
           this.columnHeaders.push('USERNAME')
@@ -1067,6 +1065,7 @@ export default {
         }
         count += 1
         if (count % 1000 == 0) {
+          // eslint-disable-next-line no-await-in-loop -- yield to the event loop every 1000 rows so the UI stays responsive
           await this.yieldToMain()
         }
       }

@@ -64,7 +64,7 @@ export default class ScreenCompleter {
     // If we found suggestions and the suggestions have params
     // then we do logic to substitute suggestions using the actual
     // target, packet, item data
-    if (suggestions && suggestions['params']) {
+    if (suggestions?.['params']) {
       // Check if this is the last autocomplete parameter
       if (suggestions['params'].length == parsedLine.length - 1) {
         more = false
@@ -76,17 +76,17 @@ export default class ScreenCompleter {
       // api calls to substitute actual values for suggestions
       if (current['Target name']) {
         let target_names = await this.api.get_target_names()
-        suggestions = target_names.reduce(
-          (acc, curr) => ((acc[curr] = 1), acc),
-          {},
-        )
+        suggestions = target_names.reduce((acc, curr) => {
+          acc[curr] = 1
+          return acc
+        }, {})
       } else if (current['Packet name']) {
         let target_name = parsedLine[parsedLine.length - 2]
         let packets = await this.api.get_all_tlm(target_name)
-        suggestions = packets.reduce(
-          (acc, pkt) => ((acc[pkt.packet_name] = pkt.description), acc),
-          {},
-        )
+        suggestions = packets.reduce((acc, pkt) => {
+          acc[pkt.packet_name] = pkt.description
+          return acc
+        }, {})
         suggestions['LATEST'] = 'LATEST values from all packets'
       } else if (current['Item name']) {
         let target_name = parsedLine[parsedLine.length - 3]
@@ -99,10 +99,10 @@ export default class ScreenCompleter {
           })
         } else {
           let packet = await this.api.get_tlm(target_name, packet_name)
-          suggestions = packet.items.reduce(
-            (acc, item) => ((acc[item.name] = item.description), acc),
-            {},
-          )
+          suggestions = packet.items.reduce((acc, item) => {
+            acc[item.name] = item.description
+            return acc
+          }, {})
         }
       } else {
         // Not a special case so just use the param as is

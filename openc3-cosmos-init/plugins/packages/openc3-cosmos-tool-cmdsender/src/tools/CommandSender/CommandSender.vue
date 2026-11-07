@@ -580,7 +580,7 @@ export default {
 
       this.sendDisabled = true
       this.api.get_cmd_hazardous(targetName, commandName, paramList).then(
-        (hazardous) => {
+        async (hazardous) => {
           // Ignoring range checks allows arbitrary values (e.g. manually
           // entered states) and disabling conversions bypasses any that make
           // a command safe so treat every command as hazardous
@@ -593,14 +593,15 @@ export default {
                 .split(' ')
                 .slice(0, 2)
                 .join(' ')
-              this.api.get_cmd(...this.hazardousCommand.split(' ')).then(
-                (command) => {
-                  this.showHazardousDialog(command)
-                },
-                () => {
-                  this.showHazardousDialog(null)
-                },
-              )
+              let command = null
+              try {
+                command = await this.api.get_cmd(
+                  ...this.hazardousCommand.split(' '),
+                )
+              } catch {
+                // fall through with no description
+              }
+              this.showHazardousDialog(command)
             } else {
               this.hazardousCommand = `${targetName} ${commandName}`
               this.showHazardousDialog({
@@ -712,8 +713,8 @@ export default {
           // If the response has unquoted string data we add quotes
           if (
             typeof response['cmd_params'][key] === 'string' &&
-            value.charAt(0) !== "'" &&
-            value.charAt(0) !== '"'
+            !value.startsWith("'") &&
+            !value.startsWith('"')
           ) {
             value = `'${value}'`
           }

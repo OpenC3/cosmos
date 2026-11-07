@@ -132,10 +132,7 @@ export default {
     },
     getClass() {
       let result = 'ledwidget mt-2'
-      if (
-        this.screenValues[this.valueId] &&
-        this.screenValues[this.valueId][1] === 'STALE'
-      ) {
+      if (this.screenValues[this.valueId]?.[1] === 'STALE') {
         result += ' stale'
       }
       return result
@@ -146,16 +143,13 @@ export default {
   // What this means practically is that future lifecycle hooks may not have valueId set.
   created() {
     this.appliedSettings.forEach((setting) => {
-      switch (setting[0]) {
-        case 'LED_COLOR':
-          this.colors[setting[1]] = setting[2]
-          break
+      if (setting[0] === 'LED_COLOR') {
+        this.colors[setting[1]] = setting[2]
       }
     })
     // Throw width and height into the appliedSettings so they are set
     // and we don't get the default flex value
-    this.appliedSettings.push(['WIDTH', this.width])
-    this.appliedSettings.push(['HEIGHT', this.height])
+    this.appliedSettings.push(['WIDTH', this.width], ['HEIGHT', this.height])
 
     if (!this.parameters[3]) {
       this.parameters[3] = 'CONVERTED'

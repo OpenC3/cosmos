@@ -817,7 +817,6 @@ const RUBY_END_REGEX = /^\s*end\s*$/
 // Each half below has one unambiguous quantifier and so is linear.
 // Python type annotations are defined like "def method(string: str):", so
 // requiring the line to end in ')' rather than ':' is what excludes them.
-const CLOSING_PAREN_REGEX = /\)$/
 const NAMED_PARAM_REGEX = /\w:\s/
 const PYTHON_IMPORT_REGEX = /^\s*(import|from) /
 const PYTHON_BLOCK_REGEX = /^\s*(if|def|while|else|elif|class).*:\s*$/
@@ -1823,14 +1822,12 @@ export default {
           await this.reloadFile(false)
         }
       }
-    } else {
-      if (this.body) {
-        this.editor.setValue(this.body)
-        this.editor.clearSelection()
-        // If initialFilename is provided, use it for path resolution
-        if (this.initialFilename) {
-          this.filename = this.initialFilename
-        }
+    } else if (this.body) {
+      this.editor.setValue(this.body)
+      this.editor.clearSelection()
+      // If initialFilename is provided, use it for path resolution
+      if (this.initialFilename) {
+        this.filename = this.initialFilename
       }
     }
     this.updateInterval = setInterval(() => {
@@ -2808,13 +2805,14 @@ export default {
             case 'clearallscreens':
               this.screens = []
               break
-            case 'downloadfile':
+            case 'downloadfile': {
               // Make a link and then 'click' on it to start the download
               const link = document.createElement('a')
               link.href = window.location.origin + data.url
               link.setAttribute('download', data.filename)
               link.click()
               break
+            }
             case 'opentab':
               window.open(data.url, '_blank')
               break
@@ -3073,10 +3071,7 @@ export default {
         case 'combo_box':
         case 'check_box':
           // check_box is always multiple choice, combo_box is single choice unless kwargs.multiple is set to true
-          if (
-            data.method === 'check_box' ||
-            (data.kwargs && data.kwargs.multiple)
-          ) {
+          if (data.method === 'check_box' || data.kwargs?.multiple) {
             this.prompt.multiple = true
           }
           this.prompt.message = data.args[0]
@@ -3115,9 +3110,8 @@ export default {
         case 'open_bucket_dialog':
           this.bucket.title = data.args[0]
           this.bucket.message = data.args[1]
-          this.bucket.defaultPath =
-            (data.kwargs && data.kwargs.default_path) || null
-          this.bucket.filter = (data.kwargs && data.kwargs.filter) || null
+          this.bucket.defaultPath = data.kwargs?.default_path || null
+          this.bucket.filter = data.kwargs?.filter || null
           this.bucket.show = true
           break
         // This is called continuously by the backend
@@ -3125,7 +3119,7 @@ export default {
         case 'open_files_dialog':
           this.file.title = data.args[0]
           this.file.message = data.args[1]
-          if (data.kwargs && data.kwargs.filter) {
+          if (data.kwargs?.filter) {
             this.file.filter = data.kwargs.filter
           }
           if (data.method == 'open_files_dialog') {
@@ -3428,7 +3422,7 @@ export default {
         this.showSuiteError = true
       }
       // Disable suite buttons if we didn't successfully parse the suite
-      this.disableSuiteButtons = file.success == false
+      this.disableSuiteButtons = !file.success
       this.fetchLifecycle(this.filename)
       this.doResize()
     },
@@ -3458,7 +3452,7 @@ export default {
           return 'python'
         }
         // Cheap end-anchored test first so most lines never run the second
-        if (CLOSING_PAREN_REGEX.test(line) && NAMED_PARAM_REGEX.test(line)) {
+        if (line.endsWith(')') && NAMED_PARAM_REGEX.test(line)) {
           return 'ruby'
         }
       }
@@ -3485,24 +3479,22 @@ export default {
             // Menu driven saves on a new file should prompt SaveAs
             this.saveAs()
             return
-          } else {
+          } else if (this.tempFilename === null) {
             // start or auto with NEW_FILENAME
-            if (this.tempFilename === null) {
-              let language = this.detectLanguage()
-              if (language === 'unknown') {
-                language = AceEditorUtils.getDefaultScriptingLanguage()
-              }
-              const ext = { ruby: 'rb', python: 'py' }[language]
-              if (!ext) {
-                // No autosave for unknown language
-                return
-              }
-              const uuid = crypto.randomUUID().split('-')[0]
-              const timestamp = format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')
-              this.tempFilename = `${TEMP_FOLDER}/${timestamp}_${uuid}_temp.${ext}`
-              this.filename = this.tempFilename
-              this.addToRecent(this.filename)
+            let language = this.detectLanguage()
+            if (language === 'unknown') {
+              language = AceEditorUtils.getDefaultScriptingLanguage()
             }
+            const ext = { ruby: 'rb', python: 'py' }[language]
+            if (!ext) {
+              // No autosave for unknown language
+              return
+            }
+            const uuid = crypto.randomUUID().split('-')[0]
+            const timestamp = format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')
+            this.tempFilename = `${TEMP_FOLDER}/${timestamp}_${uuid}_temp.${ext}`
+            this.filename = this.tempFilename
+            this.addToRecent(this.filename)
           }
         }
         this.showSave = true

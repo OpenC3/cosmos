@@ -386,7 +386,7 @@ export default {
           })
         })
         .catch((error) => {
-          if (error.response && error.response.data) {
+          if (error.response?.data) {
             this.metricsError = error.response.data.message
           } else {
             this.metricsError = error.message
@@ -399,60 +399,48 @@ export default {
     dropTable(tableName) {
       return execSql(`DROP TABLE '${tableName}';`, this.db_shard)
     },
-    deleteTable(tableName) {
+    async deleteTable(tableName) {
       let target = tableName.split('__')[2] || tableName
       let packet = tableName.split('__')[3] || tableName
-      this.$dialog
-        .confirm(
+      try {
+        await this.$dialog.confirm(
           `Are you sure you want to drop table: ${tableName}? This removes ALL decommutated data for ${target} ${packet}!`,
           {
             okText: 'Delete',
             cancelText: 'Cancel',
           },
         )
-        .then(() => {
-          this.dropTable(tableName)
-            .then(() => {
-              this.metricsRows = this.metricsRows.filter(
-                (row) => row.tableName !== tableName,
-              )
-            })
-            .catch((error) => {
-              if (error.response && error.response.data) {
-                this.metricsError = error.response.data.message
-              } else {
-                this.metricsError = error.message
-              }
-            })
-        })
+        await this.dropTable(tableName)
+        this.metricsRows = this.metricsRows.filter(
+          (row) => row.tableName !== tableName,
+        )
+      } catch (error) {
+        if (error !== true) {
+          this.metricsError = error.response?.data?.message || error.message
+        }
+      }
     },
-    deleteGroup(items) {
+    async deleteGroup(items) {
       const tableNames = items.map((item) => (item.raw || item).tableName)
       let target = tableNames[0].split('__')[2]
-      this.$dialog
-        .confirm(
+      try {
+        await this.$dialog.confirm(
           `Are you sure you want to drop ${tableNames.length} tables? This removes ALL decommutated data for ${target}!\n\n${tableNames.join('\n')}`,
           {
             okText: 'Delete',
             cancelText: 'Cancel',
           },
         )
-        .then(() => {
-          const nameSet = new Set(tableNames)
-          Promise.all(tableNames.map((name) => this.dropTable(name)))
-            .then(() => {
-              this.metricsRows = this.metricsRows.filter(
-                (row) => !nameSet.has(row.tableName),
-              )
-            })
-            .catch((error) => {
-              if (error.response && error.response.data) {
-                this.metricsError = error.response.data.message
-              } else {
-                this.metricsError = error.message
-              }
-            })
-        })
+        const nameSet = new Set(tableNames)
+        await Promise.all(tableNames.map((name) => this.dropTable(name)))
+        this.metricsRows = this.metricsRows.filter(
+          (row) => !nameSet.has(row.tableName),
+        )
+      } catch (error) {
+        if (error !== true) {
+          this.metricsError = error.response?.data?.message || error.message
+        }
+      }
     },
     formatDuration(ms) {
       const seconds = Math.floor(ms / 1000)
@@ -586,6 +574,7 @@ export default {
         for (let i = 0; i < tableNames.length; i++) {
           this.gapProgress = Math.round(((i + 1) / tableNames.length) * 100)
           try {
+            // eslint-disable-next-line no-await-in-loop -- sequential to avoid flooding QuestDB and to report progress
             const result = await this.fetchTableGaps(tableNames[i])
             if (result.gaps.length > 0) {
               const parts = tableNames[i].split('__')

@@ -43,7 +43,7 @@ class QueuesController < ApplicationController
       queues.sort_by! { |queue| queue['name'] }
       # If OPENC3_DEFAULT_QUEUE is set, move it to the front of the list
       default_queue = ENV['OPENC3_DEFAULT_QUEUE']
-      if default_queue
+      if default_queue and !default_queue.empty?
         default_index = queues.find_index { |queue| queue['name'] == default_queue }
         if default_index
           default_queue_obj = queues.delete_at(default_index)

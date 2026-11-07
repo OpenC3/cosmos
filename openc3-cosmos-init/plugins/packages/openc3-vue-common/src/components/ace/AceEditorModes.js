@@ -1,5 +1,5 @@
 /*
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -50,7 +50,7 @@ export default {
           'set_max_output',
           'get_max_output',
         ])
-      let regex = new RegExp(`(\\b${apis.join('\\b|\\b')}\\b)`)
+      let regex = new RegExp(String.raw`(\b${apis.join('\\b|\\b')}\b)`)
       let OpenC3HighlightRules = function () {
         HighlightRules.call(this)
         // add openc3 rules to the rules

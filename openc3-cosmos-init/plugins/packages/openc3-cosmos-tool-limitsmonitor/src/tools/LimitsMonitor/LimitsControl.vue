@@ -298,7 +298,7 @@ export default {
       }
     },
     ignoredFormatted() {
-      return this.ignored.map((x) => x.split('__').join(' '))
+      return this.ignored.map((x) => x.replaceAll('__', ' '))
     },
     astroStatus() {
       switch (this.overallState) {
@@ -388,7 +388,7 @@ export default {
     // Escape brackets in item names so VWidget doesn't interpret them as array indexes
     escapeBrackets(itemName) {
       if (itemName.includes('[')) {
-        return itemName.replace(/\[/g, '[[').replace(/\]/g, ']]')
+        return itemName.replaceAll(/\[/, '[[').replaceAll(/\]/, ']]')
       }
       return itemName
     },
@@ -405,7 +405,7 @@ export default {
         for (const item of items) {
           let itemName = item.join('__')
           // Skip ignored
-          if (this.ignored.find((ignored) => itemName.includes(ignored))) {
+          if (this.ignored.some((ignored) => itemName.includes(ignored))) {
             continue
           }
 
@@ -435,7 +435,7 @@ export default {
     calcOverallState() {
       let overall = 'GREEN'
       for (let item of this.itemList) {
-        if (this.ignored.find((ignored) => item.includes(ignored))) {
+        if (this.ignored.some((ignored) => item.includes(ignored))) {
           continue
         }
 
@@ -527,7 +527,7 @@ export default {
           continue
         }
         // Skip ignored items
-        if (this.ignored.find((ignored) => itemName.includes(ignored))) {
+        if (this.ignored.some((ignored) => itemName.includes(ignored))) {
           continue
         }
         // Only process items who have gone out of limits

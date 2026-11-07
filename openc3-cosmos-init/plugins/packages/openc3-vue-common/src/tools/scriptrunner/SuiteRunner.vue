@@ -393,10 +393,7 @@ watch(
 
 function updateSuiteMap() {
   suites.value = Object.keys(props.suiteMap)
-  if (
-    props.suiteMap[suite.value] == undefined ||
-    props.suiteMap[suite.value].groups[group.value] == undefined
-  ) {
+  if (props.suiteMap[suite.value]?.groups[group.value] == undefined) {
     initSuites()
   } else {
     groups.value = Object.keys(props.suiteMap[suite.value].groups)
@@ -422,11 +419,7 @@ function suiteChanged(event) {
 }
 
 function groupChanged(event) {
-  if (
-    !event ||
-    props.suiteMap[suite.value] == undefined ||
-    props.suiteMap[suite.value].groups[event] == undefined
-  ) {
+  if (!event || props.suiteMap[suite.value]?.groups[event] == undefined) {
     return
   }
   group.value = event

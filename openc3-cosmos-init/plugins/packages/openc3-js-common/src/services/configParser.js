@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -143,7 +143,8 @@ export class ConfigParserService {
           case '+': // String concatenation with newlines
             newline = true
           // Deliberate fall through
-          case '\\': // String concatenation
+          case '\\': {
+            // String concatenation
             // Trim off the concat character plus any spaces, e.g. "line" \
             let trim = line.substring(0, line.length - 1).trim()
             // Now trim off the last quote so it will flow into the next line
@@ -153,6 +154,7 @@ export class ConfigParserService {
             }
             string_concat = true
             continue
+          }
           case '&': // Line continuation
             this.line += line.substring(0, line.length - 1)
             continue
@@ -171,7 +173,7 @@ export class ConfigParserService {
         first_item = first_item + data[0]
       }
 
-      if (first_item.length === 0 || first_item.charAt(0) === '#') {
+      if (first_item.length === 0 || first_item.startsWith('#')) {
         this.keyword = null
       } else {
         this.keyword = first_item.toUpperCase()

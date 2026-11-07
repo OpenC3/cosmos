@@ -469,11 +469,9 @@ export default {
             clearInterval(this.updater)
             this.updater = null
           }
-        } else {
+        } else if (this.playbackMode === 'realtime') {
           // Resume updates when unfrozen
-          if (this.playbackMode === 'realtime') {
-            this.updateRefreshInterval()
-          }
+          this.updateRefreshInterval()
         }
       },
     },
@@ -574,7 +572,7 @@ export default {
       }
       // A widget that keeps failing (a reconnect loop, say) would otherwise
       // fill the list with the same message and push out everything else
-      const duplicate = this.errors.find(
+      const duplicate = this.errors.some(
         (existing) =>
           existing.message === error.message &&
           existing.lineNumber === error.lineNumber,
@@ -585,7 +583,7 @@ export default {
       this.errors.push({
         ...error,
         type: error.type || 'error',
-        time: error.time || new Date().getTime(),
+        time: error.time || Date.now(),
       })
     },
     updateRefreshInterval: function () {
@@ -650,7 +648,7 @@ export default {
         })
       }
       // This can happen if there is a typo in a layout widget with a corresponding END
-      if (typeof this.layoutStack[0] === 'undefined') {
+      if (this.layoutStack[0] === undefined) {
         // Warn about any of the Dynamic widgets we found .. they could be typos
         const names = this.dynamicWidgets.map(
           (widget) => `${widget.name} (line ${widget.lineNumber})`,
@@ -1103,10 +1101,7 @@ export default {
             widget.type.toLowerCase() ===
             setting[0].toLowerCase() + 'widget'
           ) {
-            const existingSetting = widget.settings.find(
-              (s) => s[0] === setting[1],
-            )
-            if (!existingSetting) {
+            if (!widget.settings.some((s) => s[0] === setting[1])) {
               widget.settings.push(setting.slice(1))
             }
           }
@@ -1325,7 +1320,7 @@ export default {
       delete this.unchangedCounts[valueId]
       // If frozen and we have a saved value for this item, use it
       // Otherwise initialize to null
-      if (this.frozen && this.frozenValues && this.frozenValues[valueId]) {
+      if (this.frozen && this.frozenValues?.[valueId]) {
         this.screenValues[valueId] = this.frozenValues[valueId]
       } else {
         this.screenValues[valueId] = [null, null, 0]
@@ -1340,7 +1335,7 @@ export default {
     // Get current screen values for saving (used by notebooks)
     getScreenValues: function () {
       // Return a copy of the current screen values
-      return JSON.parse(JSON.stringify(this.screenValues))
+      return structuredClone(this.screenValues)
     },
   },
 }

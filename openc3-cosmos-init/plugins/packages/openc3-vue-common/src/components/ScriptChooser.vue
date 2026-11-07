@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -61,7 +61,7 @@ export default {
   watch: {
     selected(newVal, oldVal) {
       if (newVal !== oldVal) {
-        if (newVal && newVal.slice(-1) === '*') {
+        if (newVal?.slice(-1) === '*') {
           // Remove the * before returning
           this.$emit('file', newVal.substring(0, newVal.length - 1))
         } else {
@@ -98,7 +98,7 @@ export default {
       // Simulated ajax query
       setTimeout(() => {
         this.items = this.scripts.filter((e) => {
-          return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
+          return (e || '').toLowerCase().includes((v || '').toLowerCase())
         })
         this.loading = false
       }, 500)

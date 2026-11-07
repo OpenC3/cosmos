@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -69,7 +69,9 @@ export default {
             if (this.currentConfig.showAscii) {
               line += '    '
               mappedBytes = lineBytes.map((byte) =>
-                byte.replaceAll(/\n/g, '\\n').replaceAll(/\r/g, '\\r'),
+                byte
+                  .replaceAll('\n', String.raw`\n`)
+                  .replaceAll('\r', String.raw`\r`),
               )
               line += mappedBytes.join('')
             }
@@ -85,7 +87,7 @@ export default {
           .join('\n') // end of one line
       } else {
         text += Object.keys(packet)
-          .filter((item) => item.slice(0, 2) != '__')
+          .filter((item) => item.startsWith('__'))
           .map((item) => `${item}: ${packet[item]}`)
           .join('\n')
       }
