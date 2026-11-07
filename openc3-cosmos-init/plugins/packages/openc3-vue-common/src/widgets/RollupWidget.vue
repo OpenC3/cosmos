@@ -99,7 +99,7 @@ export default {
           break
 
         // Create the list of rollup telemetry
-        case 'TLM':
+        case 'TLM': {
           let type = 'CONVERTED'
           if (setting[4]) {
             type = setting[4]
@@ -108,6 +108,7 @@ export default {
           this.items.push(item)
           this.$emit('addItem', item)
           break
+        }
       }
     })
   },
