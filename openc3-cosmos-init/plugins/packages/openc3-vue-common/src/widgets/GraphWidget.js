@@ -61,11 +61,12 @@ export default {
             reducedType: setting[6] || null,
           })
           break
-        case 'STARTTIME':
+        case 'STARTTIME': {
           let date = parse(setting[1], 'yyyy/MM/dd HH:mm:ss', new Date())
           this.startTime = date.getTime() * 1000000 // nanoseconds
           break
-        case 'HISTORY':
+        }
+        case 'HISTORY': {
           let amount = parseInt(setting[1].slice(0, setting[1].length - 1))
           let key = null
           let multiplier = 1
@@ -101,6 +102,7 @@ export default {
             this.pointsGraphed = amount * multiplier
           }
           break
+        }
         case 'SECONDSGRAPHED':
           this.secondsGraphed = parseInt(setting[1])
           break
