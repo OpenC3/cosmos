@@ -67,7 +67,7 @@ export default {
           break
         }
         case 'HISTORY': {
-          let amount = Number.parseInt(setting[1].slice(0, setting[1].length - 1))
+          let amount = Number.parseInt(setting[1].slice(0, -1))
           let key = null
           let multiplier = 1
           switch (setting[1][setting[1].length - 1]) {
