@@ -742,7 +742,7 @@ export default {
       }
       // In glob mode, skip API calls if the packet name is free text (not a known packet)
       if (this.globEnabled && typeof this.selectedPacketName === 'string') {
-        const knownPacket = this.packetNames.find(
+        const knownPacket = this.packetNames.some(
           (p) => this.selectedPacketName === p.value,
         )
         if (!knownPacket && this.selectedPacketName !== 'LATEST') {
@@ -849,7 +849,7 @@ export default {
       if (value !== null) {
         if (this.globEnabled && typeof value === 'string') {
           // In glob mode, only call the API if the value matches a known packet
-          const knownPacket = this.packetNames.find((p) => value === p.value)
+          const knownPacket = this.packetNames.some((p) => value === p.value)
           if (knownPacket) {
             this.updatePacketDetails(value)
           } else {

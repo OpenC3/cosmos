@@ -2,6 +2,7 @@ import prettierConfig from '@vue/eslint-config-prettier'
 import { defineConfig } from 'eslint/config'
 import pluginPromise from 'eslint-plugin-promise'
 import pluginVue from 'eslint-plugin-vue'
+import unicorn from 'eslint-plugin-unicorn'
 import vuetify from 'eslint-plugin-vuetify'
 import globals from 'globals'
 import parser from 'vue-eslint-parser'
@@ -12,6 +13,7 @@ export default defineConfig([
   {
     plugins: {
       promise: pluginPromise,
+      unicorn: unicorn,
     },
     languageOptions: {
       globals: {
@@ -40,6 +42,8 @@ export default defineConfig([
       'promise/no-nesting': 'error',
 
       'require-await': 'error',
+
+      'unicorn/prefer-array-some': 'error',
 
       'vue/multi-word-component-names': 'off',
 
