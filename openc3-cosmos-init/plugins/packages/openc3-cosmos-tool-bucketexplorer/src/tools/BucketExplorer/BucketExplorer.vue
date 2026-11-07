@@ -581,7 +581,7 @@ export default {
       // Nothing to do if we're at the root so return
       if (this.path === '') return
       let parts = this.path.split('/')
-      this.path = parts.slice(0, parts.length - 2).join('/')
+      this.path = parts.slice(0, -2).join('/')
       // Only append the last slash if we're not at the root
       // The root is 2 because it's the path before clicking back
       if (parts.length > 2) {
