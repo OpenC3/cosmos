@@ -48,6 +48,7 @@ export default defineConfig([
       'unicorn/prefer-array-some': 'error',
       'unicorn/prefer-includes': 'error',
       'unicorn/prefer-math-min-max': 'error',
+      'unicorn/prefer-single-call': 'error',
 
       'vue/multi-word-component-names': 'off',
 
