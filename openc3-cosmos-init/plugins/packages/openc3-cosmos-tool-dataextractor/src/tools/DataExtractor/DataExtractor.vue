@@ -902,9 +902,7 @@ export default {
     buildHeaders: function (itemKeys) {
       // Normal column mode has the target and packet listed for each item
       if (this.columnHeaders.length === 0 && this.columnMode === 'normal') {
-        this.columnHeaders.push('TIME')
-        this.columnHeaders.push('TARGET')
-        this.columnHeaders.push('PACKET')
+        this.columnHeaders.push('TIME', 'TARGET', 'PACKET')
         // Only add USERNAME and APPROVER columns for command data
         if (this.hasCommands) {
           this.columnHeaders.push('USERNAME')

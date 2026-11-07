@@ -1450,23 +1450,22 @@ export default {
     moveLegend: function (desired) {
       switch (desired) {
         case 'bottom':
-          this.graph.root.classList.remove('side-legend')
-          this.graph.root.classList.remove('left-legend')
-          this.graph.root.classList.remove('top-legend')
+          this.graph.root.classList.remove(
+            'side-legend',
+            'left-legend',
+            'top-legend',
+          )
           break
         case 'top':
-          this.graph.root.classList.remove('side-legend')
-          this.graph.root.classList.remove('left-legend')
+          this.graph.root.classList.remove('side-legend', 'left-legend')
           this.graph.root.classList.add('top-legend')
           break
         case 'left':
           this.graph.root.classList.remove('top-legend')
-          this.graph.root.classList.add('side-legend')
-          this.graph.root.classList.add('left-legend')
+          this.graph.root.classList.add('side-legend', 'left-legend')
           break
         case 'right':
-          this.graph.root.classList.remove('top-legend')
-          this.graph.root.classList.remove('left-legend')
+          this.graph.root.classList.remove('top-legend', 'left-legend')
           this.graph.root.classList.add('side-legend')
           break
       }

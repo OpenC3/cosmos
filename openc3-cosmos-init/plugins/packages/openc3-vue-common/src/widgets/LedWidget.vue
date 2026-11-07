@@ -151,8 +151,7 @@ export default {
     })
     // Throw width and height into the appliedSettings so they are set
     // and we don't get the default flex value
-    this.appliedSettings.push(['WIDTH', this.width])
-    this.appliedSettings.push(['HEIGHT', this.height])
+    this.appliedSettings.push(['WIDTH', this.width], ['HEIGHT', this.height])
 
     if (!this.parameters[3]) {
       this.parameters[3] = 'CONVERTED'
