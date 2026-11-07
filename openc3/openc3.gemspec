@@ -48,9 +48,7 @@ spec = Gem::Specification.new do |s|
   s.executables << 'openc3cli'
   s.executables << 'cstol_converter'
 
-  # OPENC3_PREBUILT_EXT is set by the Dockerfile, which compiles the extensions
-  # in an earlier layer and ships the .so files from lib/openc3/ext instead
-  if RUBY_ENGINE == 'ruby' && !ENV['OPENC3_PREBUILT_EXT']
+  if RUBY_ENGINE == 'ruby'
     # Ruby C Extensions - MRI Only
     s.extensions << 'ext/openc3/ext/array/extconf.rb'
     s.extensions << 'ext/openc3/ext/buffered_file/extconf.rb'
