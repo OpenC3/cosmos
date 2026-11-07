@@ -98,7 +98,7 @@ export default {
       // Simulated ajax query
       setTimeout(() => {
         this.items = this.scripts.filter((e) => {
-          return (e || '').toLowerCase().indexOf((v || '').toLowerCase()) > -1
+          return (e || '').toLowerCase().includes((v || '').toLowerCase())
         })
         this.loading = false
       }, 500)
