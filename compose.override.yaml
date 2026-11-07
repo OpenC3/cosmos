@@ -61,8 +61,9 @@
 #       # Number of Puma workers (processes). compose.yaml ships a default;
 #       # set this to roughly the number of CPU cores you want the API to use.
 #       - WEB_CONCURRENCY=16
-#       # Enable a default queue for ALL commands. Commands can only opt out by
-#       # specifying a specific queue with the 'queue' parameter.
+#       # Enable a default queue for ALL commands. Commands opt out by passing
+#       # queue=False (Python) / queue: false (Ruby), or go to a different queue
+#       # by naming it with the 'queue' parameter.
 #       # Need here as well as in openc3-cosmos-init because init creates the queue
 #       - OPENC3_DEFAULT_QUEUE=DEFAULT
 #       # Rate limiting for authentication endpoints (defaults shown). Prevents
@@ -113,8 +114,9 @@
 #       # Disable install of the Demo. Unlike the OPENC3_NO_* flags below,
 #       # this one reads its value: false, 0 and empty are all off.
 #       - OPENC3_DEMO=false
-#       # Enable a default queue for ALL commands. Commands can only opt out by
-#       # specifying a specific queue with the 'queue' parameter.
+#       # Enable a default queue for ALL commands. Commands opt out by passing
+#       # queue=False (Python) / queue: false (Ruby), or go to a different queue
+#       # by naming it with the 'queue' parameter.
 #       # Need here as well as in openc3-cosmos-cmd-tlm-api because init creates the queue
 #       - OPENC3_DEFAULT_QUEUE=DEFAULT
 #       # Force the init container to reinstall all plugins even if the same

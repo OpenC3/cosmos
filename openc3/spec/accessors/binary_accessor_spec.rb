@@ -290,6 +290,24 @@ module OpenC3
         expect(@packet.read("item1_length")).to be_nil
         expect { @packet.read("item1") }.to raise_error(/Length value item1_length for item ITEM1 is nil/)
       end
+
+      it "reads zero length variable sized items as empty rather than filling the buffer" do
+        @packet.append_item("string_length", 8, :UINT)
+        string = @packet.append_item("string", 0, :STRING)
+        string.variable_bit_size = {'length_item_name' => 'string_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        @packet.append_item("block_length", 8, :UINT)
+        block = @packet.append_item("block", 0, :BLOCK)
+        block.variable_bit_size = {'length_item_name' => 'block_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        @packet.append_item("array_length", 8, :UINT)
+        array = @packet.append_item("array", 8, :UINT, 0)
+        array.variable_bit_size = {'length_item_name' => 'array_length', 'length_value_bit_offset' => 0, 'length_bits_per_count' => 8}
+        @packet.append_item("trailer", 8, :UINT)
+        @packet.buffer = "\x00\x00\x00\x5A"
+        expect(@packet.read("string")).to eql ""
+        expect(@packet.read("block")).to eql ""
+        expect(@packet.read("array")).to eql []
+        expect(@packet.read("trailer")).to eql 0x5A
+      end
     end
 
     describe "read only" do
