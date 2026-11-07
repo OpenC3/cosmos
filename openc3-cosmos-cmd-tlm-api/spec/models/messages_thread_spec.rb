@@ -419,7 +419,7 @@ RSpec.describe MessagesThread, type: :model do
 
     it "sends stream complete marker with empty results" do
       logger_messages = []
-      allow(OpenC3::Logger).to receive(:info) do |msg|
+      allow(OpenC3::Logger).to receive(:debug) do |msg|
         logger_messages << msg
       end
 
