@@ -122,17 +122,24 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 # pyproject.toml and uv.lock were part of that layer's COPY, so the saved
 # lockfile always matches the source tree copied here.
 #
-# No --no-build here: uv refuses to install the editable openc3 project under
-# it. openc3 is the only distribution this sync can build: its dependencies
-# come from the same lockfile the --no-build sync above already installed from
-# wheels alone, so the only setup code it runs is openc3's own, through its
-# setuptools build backend.
+# --no-build is global, so on its own it also forbids building the local
+# first-party openc3 project that this step installs from source:
+#
+#   error: Distribution `openc3 @ editable+.` can't be installed because it is
+#   marked as `--no-build` but has no binary distribution
+#
+# --no-binary-package openc3 says the opposite for that one package - openc3
+# must come from source, never a wheel - and the per-package setting wins for
+# the package it names while --no-build stays in force for every third-party
+# dependency. Naming the project explicitly is the point: a dependency can only
+# become build-eligible by being added here. The only setup code this sync can
+# run is openc3's own, through its setuptools build backend.
 RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
       PYPI_HOST="${PYPI_URL#*://}"; PYPI_HOST="${PYPI_HOST%%/*}"; \
       export UV_INSECURE_HOST="${PYPI_HOST##*@}"; \
     fi && \
     cp /tmp/uv.lock.relocked uv.lock && rm /tmp/uv.lock.relocked && \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev # NOSONAR
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --no-build --no-binary-package openc3 --frozen --no-dev # NOSONAR
 
 WORKDIR /openc3/
 
