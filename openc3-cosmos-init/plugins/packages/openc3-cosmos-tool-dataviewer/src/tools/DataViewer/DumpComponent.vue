@@ -69,7 +69,9 @@ export default {
             if (this.currentConfig.showAscii) {
               line += '    '
               mappedBytes = lineBytes.map((byte) =>
-                byte.replaceAll('\n', '\\n').replaceAll('\r', '\\r'),
+                byte
+                  .replaceAll('\n', String.raw`\n`)
+                  .replaceAll('\r', String.raw`\r`),
               )
               line += mappedBytes.join('')
             }

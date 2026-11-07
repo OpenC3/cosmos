@@ -214,7 +214,7 @@ export default {
             },
             {
               token: 'keyword',
-              regex: list ? new RegExp(`^\\s*(${list})\\b`) : /(?!)/,
+              regex: list ? new RegExp(String.raw`^\s*(${list})\b`) : /(?!)/,
             },
           ],
         }
