@@ -54,7 +54,7 @@ export default {
         this.endTime = format(add(start, { minutes: 30 }), 'HH:mm:ss')
       } else {
         // Round up so the start is in the future
-        start = new Date(Math.ceil(new Date().getTime() / ms) * ms)
+        start = new Date(Math.ceil(Date.now() / ms) * ms)
         const end = add(start, { minutes: 30 })
         this.startTime = this.formatTimeHMS(start, this.timeZone)
         this.endTime = this.formatTimeHMS(end, this.timeZone)
