@@ -172,16 +172,15 @@
                            file as soon as it's chosen -->
                       <v-file-input
                         v-else-if="variable.type === 'FILE'"
+                        :model-value="fileSelection(name, variable)"
+                        :show-size="!!chosenFiles[name]"
                         :label="fieldLabel(name, variable)"
-                        :placeholder="uploadedFilename(variable)"
-                        :persistent-placeholder="!!uploadedFilename(variable)"
                         :hint="getHint(name, variable)"
                         :error-messages="
                           uploadErrors[name] || variableErrors[name]
                         "
                         :loading="uploading[name] || false"
                         persistent-hint
-                        show-size
                         prepend-icon=""
                         prepend-inner-icon="mdi-paperclip"
                         density="comfortable"
@@ -626,6 +625,8 @@ export default {
       // VARIABLE_FILE uploads in progress and their errors by variable name
       uploading: {},
       uploadErrors: {},
+      // The file chosen for each VARIABLE_FILE since the dialog opened
+      chosenFiles: {},
       previewEditor: null,
       previewLoading: false,
       previewError: null,
@@ -804,6 +805,7 @@ export default {
         // Handles both old format (string values) and new format (hash with value/description/options)
         const rawVariables = JSON.parse(JSON.stringify(this.variables))
         this.localVariables = {}
+        this.chosenFiles = {}
         for (const [name, variable] of Object.entries(rawVariables)) {
           if (typeof variable === 'string') {
             // Old format: convert to new format
@@ -1094,14 +1096,25 @@ export default {
       const value = variable.value || ''
       return value.includes('/') ? value.slice(value.indexOf('/') + 1) : ''
     },
+    // What a VARIABLE_FILE's file input shows: the file chosen in this dialog,
+    // or the file uploaded when the plugin was last installed. A file input
+    // can't show a placeholder, so the earlier file is shown by name like a
+    // chosen one (without a size, which isn't known here).
+    fileSelection(name, variable) {
+      if (this.chosenFiles[name]) return [this.chosenFiles[name]]
+      const filename = this.uploadedFilename(variable)
+      return filename ? [{ name: filename }] : []
+    },
     async uploadFile(name, files) {
       const file = Array.isArray(files) ? files[0] : files
       this.uploadErrors[name] = null
       if (!file) {
         // Cleared: install without a file
+        delete this.chosenFiles[name]
         this.localVariables[name].value = ''
         return
       }
+      this.chosenFiles[name] = file
       const formData = new FormData()
       formData.append('file', file, file.name)
       this.uploading[name] = true
