@@ -49,6 +49,7 @@ export default defineConfig([
       'unicorn/prefer-includes': 'error',
       'unicorn/prefer-math-min-max': 'error',
       'unicorn/prefer-string-replace-all': 'error',
+      'unicorn/prefer-structured-clone': 'error',
 
       'vue/multi-word-component-names': 'off',
 

@@ -249,7 +249,7 @@ export default {
       handler: function () {
         // Deep copy and normalize variables to new format
         // Handles both old format (string values) and new format (hash with value/description/options)
-        const rawVariables = JSON.parse(JSON.stringify(this.variables))
+        const rawVariables = structuredClone(this.variables)
         this.localVariables = {}
         for (const [name, variable] of Object.entries(rawVariables)) {
           if (typeof variable === 'string') {

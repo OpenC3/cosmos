@@ -1335,7 +1335,7 @@ export default {
     // Get current screen values for saving (used by notebooks)
     getScreenValues: function () {
       // Return a copy of the current screen values
-      return JSON.parse(JSON.stringify(this.screenValues))
+      return structuredClone(this.screenValues)
     },
   },
 }

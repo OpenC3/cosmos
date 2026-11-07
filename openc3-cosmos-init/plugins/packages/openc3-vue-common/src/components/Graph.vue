@@ -1138,7 +1138,7 @@ export default {
       })
     },
     rebuildChart: function () {
-      let clonedItems = JSON.parse(JSON.stringify(this.items))
+      let clonedItems = structuredClone(this.items)
       this.removeItems(clonedItems)
       this.graph.destroy()
       this.chartOpts.series[0].label = this.xAxisLabel
@@ -1508,7 +1508,7 @@ export default {
             // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
             // fixed the issue to enforce ordering.
             // Clone the items first because removeItems modifies this.items
-            let clonedItems = JSON.parse(JSON.stringify(this.items))
+            let clonedItems = structuredClone(this.items)
             this.removeItems(clonedItems)
             setTimeout(() => {
               this.addItems(clonedItems)
