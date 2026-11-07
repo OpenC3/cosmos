@@ -1,0 +1,65 @@
+# Example workflow: build a PR deck with the pr-deck skill and link it from the PR.
+# Not active. To enable, copy to .github/workflows/pr_deck.yml and add the
+# ANTHROPIC_API_KEY and PR_DECK_TOKEN secrets. Create the deck repo once
+# with create_deck_repo.sh. Fork PRs don't receive secrets, so this runs on
+# same-repo PRs, on the `pr-deck` label, or by hand.
+
+name: PR Deck
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, labeled]
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: PR number to present
+        required: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  actions: read
+  checks: read
+
+jobs:
+  deck:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.draft == false &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       (github.event.action != 'labeled' || github.event.label.name == 'pr-deck'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PR: ${{ inputs.pr_number || github.event.pull_request.number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build the deck
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: /pr-deck ${{ env.PR }} --out ${{ runner.temp }}/pr-deck/pr-${{ env.PR }}.html
+          claude_args: --allowedTools "Bash,Read,Write,Edit,Glob,Grep"
+
+      # Claude only writes the HTML; rendering and posting run as plain steps so the
+      # agent never needs push access. Chrome is preinstalled on ubuntu-latest.
+      - name: Render slide images
+        run: .claude/skills/pr-deck/render.sh "$RUNNER_TEMP/pr-deck/pr-$PR.html" "$RUNNER_TEMP/pr-deck/png"
+
+      - name: Post slides to the PR
+        env:
+          # github.token comments on the PR; PR_DECK_TOKEN (a fine-grained PAT or
+          # GitHub App token with contents:write on OpenC3/pr-decks) pushes the deck
+          PR_DECK_TOKEN: ${{ secrets.PR_DECK_TOKEN }}
+        run: .claude/skills/pr-deck/post_slides.sh "$PR" "$RUNNER_TEMP/pr-deck/pr-$PR.html" "$RUNNER_TEMP/pr-deck/png" --repo "$GITHUB_REPOSITORY"
+
+      - name: Upload the interactive deck
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-${{ env.PR }}-deck
+          path: ${{ runner.temp }}/pr-deck/pr-${{ env.PR }}.html
+          retention-days: 30
