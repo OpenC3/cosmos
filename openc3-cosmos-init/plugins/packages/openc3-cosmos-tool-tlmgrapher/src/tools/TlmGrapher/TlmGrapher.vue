@@ -650,6 +650,7 @@ export default {
 
       let graphs = config.graphs
       for (let _graph of graphs) {
+        // eslint-disable-next-line no-await-in-loop -- addGraph reads/increments this.counter across a tick, so calls must be sequential
         await this.addGraph(false) // Don't check existing graphs
       }
       await this.$nextTick()
