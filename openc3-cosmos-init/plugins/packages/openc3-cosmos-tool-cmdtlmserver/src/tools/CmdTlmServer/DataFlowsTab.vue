@@ -37,40 +37,47 @@ const api = new OpenC3Api()
 const interfaceDetails = ref(null)
 const routerDetails = ref(null)
 
+async function updateInterfaces() {
+  try {
+    const names = await api.get_interface_names()
+    const promises = [...names].map((name) => {
+      return api.interface_details(name)
+    })
+
+    const responses = await Promise.all(promises)
+    interfaceDetails.value = {}
+    let index = 0
+    names.forEach((name) => {
+      interfaceDetails.value[name] = responses[index]
+      index += 1
+    })
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+async function updateRouters() {
+  try {
+    const names = await api.get_router_names()
+    const promises = [...names].map((name) => {
+      return api.router_details(name)
+    })
+
+    const responses = await Promise.all(promises)
+    routerDetails.value = {}
+    let index = 0
+    names.forEach((name) => {
+      routerDetails.value[name] = responses[index]
+      index += 1
+    })
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 function update() {
-  api
-    .get_interface_names()
-    .then(async (names) => {
-      const promises = [...names].map((name) => {
-        return api.interface_details(name)
-      })
-
-      const responses = await Promise.all(promises)
-      interfaceDetails.value = {}
-      let index = 0
-      names.forEach((name) => {
-        interfaceDetails.value[name] = responses[index]
-        index += 1
-      })
-    })
-    .catch(console.error)
-
-  api
-    .get_router_names()
-    .then(async (names) => {
-      const promises = [...names].map((name) => {
-        return api.router_details(name)
-      })
-
-      const responses = await Promise.all(promises)
-      routerDetails.value = {}
-      let index = 0
-      names.forEach((name) => {
-        routerDetails.value[name] = responses[index]
-        index += 1
-      })
-    })
-    .catch(console.error)
+  updateInterfaces()
+  updateRouters()
 }
 
 // call the update function every refreshInterval milliseconds
