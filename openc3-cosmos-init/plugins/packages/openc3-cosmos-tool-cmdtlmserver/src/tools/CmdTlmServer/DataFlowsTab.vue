@@ -20,61 +20,67 @@
 </template>
 
 <script>
-import Updater from './Updater'
+import { useUpdater } from './useUpdater'
 import InterfaceFlowChart from './InterfaceComponents/InterfaceFlowChart.vue'
 import { OpenC3Api } from '@openc3/js-common/services'
+import { ref } from 'vue'
 
 export default {
   components: {
     InterfaceFlowChart,
   },
-  mixins: [Updater],
-  data() {
-    return {
-      api: new OpenC3Api(),
-      interfaceDetails: null,
-      routerDetails: null,
-    }
+  props: {
+    refreshInterval: {
+      type: Number,
+      default: 1000,
+    },
   },
-  created() {
-    this.update()
-  },
-  methods: {
-    update() {
-      this.api
+  setup(props) {
+    const api = new OpenC3Api()
+
+    const interfaceDetails = ref(null)
+    const routerDetails = ref(null)
+
+    function update() {
+      api
         .get_interface_names()
         .then(async (names) => {
           const promises = [...names].map((name) => {
-            return this.api.interface_details(name)
+            return api.interface_details(name)
           })
 
           const responses = await Promise.all(promises)
-          this.interfaceDetails = {}
+          interfaceDetails.value = {}
           let index = 0
           names.forEach((name) => {
-            this.interfaceDetails[name] = responses[index]
+            interfaceDetails.value[name] = responses[index]
             index += 1
           })
         })
         .catch(console.error)
 
-      this.api
+      api
         .get_router_names()
         .then(async (names) => {
           const promises = [...names].map((name) => {
-            return this.api.router_details(name)
+            return api.router_details(name)
           })
 
           const responses = await Promise.all(promises)
-          this.routerDetails = {}
+          routerDetails.value = {}
           let index = 0
           names.forEach((name) => {
-            this.routerDetails[name] = responses[index]
+            routerDetails.value[name] = responses[index]
             index += 1
           })
         })
         .catch(console.error)
-    },
+    }
+
+    // call the update function every refreshInterval milliseconds
+    useUpdater(update, () => props.refreshInterval)
+
+    return { interfaceDetails, routerDetails }
   },
 }
 </script>
