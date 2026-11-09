@@ -85,6 +85,7 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/js-common/services'
 import { format } from 'date-fns'
 
 import Updater from './Updater'
@@ -117,6 +118,7 @@ export default {
   emits: ['close', 'display', 'focus'],
   data() {
     return {
+      api: new OpenC3Api(),
       header: '',
       receivedTime: '',
       rawData: '',

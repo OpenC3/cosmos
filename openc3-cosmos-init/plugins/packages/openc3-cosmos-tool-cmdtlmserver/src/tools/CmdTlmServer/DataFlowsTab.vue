@@ -35,13 +35,12 @@ export default {
   mixins: [Updater],
   data() {
     return {
-      api: null,
+      api: new OpenC3Api(),
       interfaceDetails: null,
       routerDetails: null,
     }
   },
   created() {
-    this.api = new OpenC3Api()
     this.update()
   },
   methods: {
