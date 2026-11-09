@@ -1,6 +1,4 @@
 Dockerfile
-# Ignore the Gemfile.lock so it is generated during the container build
-Gemfile.lock
 .git
 .gitignore
 .claude/
