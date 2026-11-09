@@ -34,46 +34,75 @@ const props = defineProps({
 
 const api = new OpenC3Api()
 
-const interfaceDetails = ref(null)
-const routerDetails = ref(null)
+/**
+ * Keeps a { name: details } ref up to date, e.g. for all interfaces.
+ *
+ * Each item is refreshed independently. An interface or router whose
+ * microservice isn't running makes its details call wait for a 30s timeout
+ * and fail, which must neither delay the others nor stack up requests:
+ *  - results are applied as soon as they arrive
+ *  - a failed item keeps its last good details
+ *  - an item with a request outstanding is skipped until it finishes
+ */
+function useDetails(getNames, getDetails) {
+  const details = ref(null)
+  // Plain (non-reactive) bookkeeping
+  let currentNames = new Set()
+  let namesPending = false
+  const pending = new Set() // names with a details request outstanding
+  const failed = new Set() // names whose failure was already logged
 
-async function updateInterfaces() {
-  try {
-    const names = await api.get_interface_names()
-    const promises = [...names].map((name) => {
-      return api.interface_details(name)
-    })
-
-    const responses = await Promise.all(promises)
-    interfaceDetails.value = {}
-    let index = 0
-    names.forEach((name) => {
-      interfaceDetails.value[name] = responses[index]
-      index += 1
-    })
-  } catch (error) {
-    console.error(error)
+  async function refreshOne(name) {
+    if (pending.has(name)) return
+    pending.add(name)
+    try {
+      const result = await getDetails(name)
+      failed.delete(name)
+      // Ignore the result if the item was removed in the meantime
+      if (currentNames.has(name)) {
+        details.value = { ...details.value, [name]: result }
+      }
+    } catch (error) {
+      if (!failed.has(name)) {
+        failed.add(name)
+        console.error(`Unable to get details for ${name}`, error)
+      }
+    } finally {
+      pending.delete(name)
+    }
   }
+
+  async function update() {
+    if (namesPending) return
+    namesPending = true
+    try {
+      currentNames = new Set(await getNames())
+      // Drop items that no longer exist. Publishing right away means the
+      // chart renders without waiting for any details request.
+      details.value = Object.fromEntries(
+        Object.entries(details.value || {}).filter(([name]) =>
+          currentNames.has(name),
+        ),
+      )
+      currentNames.forEach(refreshOne)
+    } catch (error) {
+      console.error(error)
+    } finally {
+      namesPending = false
+    }
+  }
+
+  return { details, update }
 }
 
-async function updateRouters() {
-  try {
-    const names = await api.get_router_names()
-    const promises = [...names].map((name) => {
-      return api.router_details(name)
-    })
-
-    const responses = await Promise.all(promises)
-    routerDetails.value = {}
-    let index = 0
-    names.forEach((name) => {
-      routerDetails.value[name] = responses[index]
-      index += 1
-    })
-  } catch (error) {
-    console.error(error)
-  }
-}
+const { details: interfaceDetails, update: updateInterfaces } = useDetails(
+  () => api.get_interface_names(),
+  (name) => api.interface_details(name),
+)
+const { details: routerDetails, update: updateRouters } = useDetails(
+  () => api.get_router_names(),
+  (name) => api.router_details(name),
+)
 
 function update() {
   updateInterfaces()
