@@ -17,16 +17,21 @@ COPY --from=anycable --chmod=755 anycable-go-linux-${TARGETARCH} /usr/bin/anycab
 WORKDIR /src/
 
 RUN ["chown", "-R", "openc3:openc3", "/src/"]
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
 
 USER root
 
-ENV SKIP_DEV_GEMS=1
+# Install gems before copying the source so code changes don't reinstall them.
+# Gemfile.lock is committed and frozen, so the build fails if the Gemfile and
+# lock disagree instead of resolving new versions. openc3 comes from the
+# source in /openc3 (see the Gemfile). BUNDLE_FROZEN is set for this command
+# only, not saved with bundle config, because images built FROM this one
+# (COSMOS Enterprise) copy in their own Gemfile and re-resolve.
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} Gemfile Gemfile.lock ./
 RUN bundle config set --local without 'development test' && \
-    bundle install --quiet && \
+    BUNDLE_FROZEN=true bundle install --quiet && \
     rm -rf /usr/local/lib/ruby/gems/*/cache/* /var/lib/apt/lists/* /var/cache/apt/* /tmp/* /var/tmp/*
 
-RUN ["chown", "openc3:openc3", "/src/Gemfile.lock"]
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
 
 # Create a /tmp directory with global write permissions including the sticky bit (chmod -R 1777)
 # This is required for Ruby to be able to call Dir.mktmpdir and create temporary directories.

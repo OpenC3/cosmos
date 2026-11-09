@@ -18,10 +18,15 @@ USER root
 RUN mkdir -p lib/openc3/ext \
     && git config --global http.sslCAinfo /devel/cacert.pem \
     && bundle config set --local without 'development test' \
-    && bundle install --quiet \
+    && BUNDLE_FROZEN=true bundle install --quiet \
     && rm -f ./*.gem \
     && rake gems \
     && gem install --local ./openc3-*.gem \
+    # Compile the C extensions into lib/ as well. The API images load openc3 from
+    # this source tree as a Bundler path gem, and Bundler does not build
+    # extensions for path gems. This runs after 'rake gems' so the compiled
+    # files are not packed into the gem.
+    && rake build \
     && openc3_gem=$(dirname `gem which openc3`) \
     && ln -s "${openc3_gem}/openc3" "${openc3_gem}/cosmos" \
     && mkdir -p gems \
