@@ -78,14 +78,14 @@ test('navigate config bucket', async ({ page, utils }) => {
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
   )
-  await expect(page.locator('tbody > tr')).toHaveCount(9)
+  await expect(page.locator('tbody > tr')).toHaveCount(10)
 
   // Clicking a file should do nothing
   await page.getByRole('cell', { name: 'target.txt' }).click()
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
   )
-  await expect(page.locator('tbody > tr')).toHaveCount(9)
+  await expect(page.locator('tbody > tr')).toHaveCount(10)
   // Download the file
   await utils.download(
     page,
@@ -428,9 +428,9 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
   await page.getByText('tools').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/tools%2F/)
   if (process.env.ENTERPRISE === '1') {
-    await expect(page.locator('tbody > tr')).toHaveCount(24)
+    await expect(page.locator('tbody > tr')).toHaveCount(25)
   } else {
-    await expect(page.locator('tbody > tr')).toHaveCount(17)
+    await expect(page.locator('tbody > tr')).toHaveCount(18)
   }
 })
 
