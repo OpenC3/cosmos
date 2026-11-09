@@ -140,12 +140,15 @@ RUN mkdir -p lib/openc3/ext \
     && mv ./*.gem gems/. \
     && gem cleanup \
     && rm -rf /usr/local/lib/ruby/gems/*/cache/* /var/lib/apt/lists/* /var/cache/apt/* /tmp/* /var/tmp/* \
-    # Make root-created build output writable. Scoped to avoid copying the
-    # source tree into this layer.
+    # Root-created build output under lib must be owned by the openc3 user, as in
+    # the single-COPY layout. /openc3/gems stays root-owned. Scoped to avoid
+    # copying the rest of the source tree into this layer.
+    && chown -R ${IMAGE_USER}:${IMAGE_GROUP} /openc3/lib \
     && chmod -R 777 /openc3/lib /openc3/gems
 
-# [F5] Merge in the Python environment and seeded wheel cache. Ownership (root) is
-# preserved from python-build; /openc3/python itself is re-owned in [F6].
+# [F5] Merge in the Python environment and seeded wheel cache. Per-file ownership
+# is preserved from python-build: the source is openc3-owned, while the venv and
+# cache created by uv as root stay root-owned. /openc3/python itself is re-owned in [F6].
 COPY --from=python-build /openc3/python/ /openc3/python/
 COPY --from=python-build /openc3/uv_cache/ /openc3/uv_cache/
 
@@ -157,13 +160,13 @@ ENV UV_DEFAULT_INDEX=${PYPI_URL%/}/simple
 
 # [F6] Runtime directories: /gems and /plugins are volume mount points, writable by
 # the openc3 user. /openc3 and /openc3/python are world-writable like the rest
-# of the tree, and /openc3/python is owned by openc3 as it was when the whole
-# tree was copied in one COPY (not recursive: its contents stay root-owned).
+# of the tree, and /openc3/python is owned by openc3 (not recursive: the venv
+# stays root-owned).
 WORKDIR /openc3/
 
-RUN mkdir /gems && chown openc3:openc3 /gems \
-    && mkdir /plugins && chown openc3:openc3 /plugins \
-    && chown openc3:openc3 /openc3/python \
+RUN mkdir /gems && chown ${IMAGE_USER}:${IMAGE_GROUP} /gems \
+    && mkdir /plugins && chown ${IMAGE_USER}:${IMAGE_GROUP} /plugins \
+    && chown ${IMAGE_USER}:${IMAGE_GROUP} /openc3/python \
     && chmod 777 /gems /plugins /openc3 /openc3/python
 
 # [F6] Runtime environment and the unprivileged user the image runs as.
