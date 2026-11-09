@@ -101,6 +101,9 @@ module OpenC3
       prompt_for_critical_cmd metadata_input open_file_dialog open_files_dialog open_bucket_dialog]
     SCRIPT_METHODS.each do |method|
       define_method(method) do |*args, **kwargs|
+        if method == :metadata_input
+          OpenC3.deprecation_warning("`metadata_input` is deprecated. Please use the user input methods followed by `inject_tlm` instead.", uplevel: 1)
+        end
         while true
           if RunningScript.instance
             RunningScript.instance.scriptrunner_puts("#{method}(#{args.join(', ')})")
