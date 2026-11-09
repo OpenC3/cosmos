@@ -1261,7 +1261,7 @@ class PacketLimits(unittest.TestCase):
         self.assertFalse(p.get_item("TEST1").limits.enabled)
         self.assertFalse(p.get_item("TEST2").limits.enabled)
 
-    def test_calls_the_limits_change_callback_for_all_non_stale_items(self):
+    def test_calls_the_limits_change_callback_for_items_with_a_limits_state(self):
         p = Packet("tgt", "pkt")
         p.append_item("test1", 8, "UINT")
         i = p.get_item("TEST1")
@@ -1293,6 +1293,18 @@ class PacketLimits(unittest.TestCase):
         mock.assert_has_calls(calls)
         self.assertFalse(p.get_item("TEST1").limits.enabled)
         self.assertFalse(p.get_item("TEST2").limits.enabled)
+
+    def test_does_not_call_the_limits_change_callback_for_items_without_a_limits_state(self):
+        p = Packet("tgt", "pkt")
+        p.append_item("test1", 8, "UINT")
+        i = p.get_item("TEST1")
+        i.limits.values = {"DEFAULT": [1, 2, 4, 5]}
+        p.update_limits_items_cache(i)
+        mock = Mock()
+        p.limits_change_callback = mock
+        p.disable_limits("TEST1")  # Never checked so no state
+        self.assertFalse(i.limits.enabled)
+        self.assertEqual(mock.mock_calls, [])
 
     def test_returns_all_items_with_limits(self):
         p = Packet("tgt", "pkt")

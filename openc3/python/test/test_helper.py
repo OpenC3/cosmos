@@ -31,6 +31,7 @@ import fakeredis
 from openc3.models.cvt_model import CvtModel
 from openc3.models.target_model import TargetModel
 from openc3.system.system import System
+from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.utilities.logger import Logger
 from openc3.utilities.sleeper import Sleeper
 from openc3.utilities.store import EphemeralStore, Store
@@ -138,6 +139,8 @@ def setup_system(targets=None, db_shards=None):
             Store.hset("DEFAULT__limits_sets", mapping=sets)
         except Exception:
             pass
+        # Reload the limits set from the sets just written
+        System.clear_limits_set_cache()
 
 
 def set_target_db_shard(target_name, db_shard, scope="DEFAULT"):
@@ -149,6 +152,8 @@ def set_target_db_shard(target_name, db_shard, scope="DEFAULT"):
         json.dumps({"name": target_name, "folder_name": target_name, "db_shard": db_shard, "scope": scope}),
     )
     Store._db_shard_cache = {}
+    LimitsEventTopic.clear_active_db_shards_cache()
+    System.clear_limits_set_cache()
 
 
 def shard_redis(db_shard):
@@ -247,6 +252,8 @@ def mock_redis(self):
     EphemeralStore.my_instances = {}
     Store.my_instances = {}
     Store._db_shard_cache = {}
+    LimitsEventTopic.clear_active_db_shards_cache()
+    System.clear_limits_set_cache()
     EphemeralStoreQueued.my_instances = {}
     StoreQueued.my_instances = {}
     EphemeralStoreQueued.all_shards_update_interval = None
@@ -283,6 +290,8 @@ def mock_redis_db_shards(self):
     EphemeralStore.my_instances = {}
     Store.my_instances = {}
     Store._db_shard_cache = {}
+    LimitsEventTopic.clear_active_db_shards_cache()
+    System.clear_limits_set_cache()
     EphemeralStoreQueued.my_instances = {}
     StoreQueued.my_instances = {}
     return redises
@@ -295,6 +304,8 @@ def set_target_db_shard(target_name, db_shard, scope="DEFAULT"):
         f"{scope}__openc3_targets", target_name, json.dumps({"name": target_name, "db_shard": db_shard})
     )
     Store._db_shard_cache = {}
+    LimitsEventTopic.clear_active_db_shards_cache()
+    System.clear_limits_set_cache()
 
 
 import zlib
