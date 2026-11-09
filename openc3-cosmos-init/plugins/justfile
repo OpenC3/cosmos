@@ -116,6 +116,10 @@ dev-cmd-tlm-server *FLAGS:
 dev-data-extractor *FLAGS:
     just dev openc3-cosmos-tool-dataextractor {{ FLAGS }}
 
+# Dev server for Dashboards (port 2923)
+dev-dashboards *FLAGS:
+    just dev openc3-cosmos-tool-dashboards {{ FLAGS }}
+
 # Dev server for Data Viewer (port 2919)
 dev-data-viewer *FLAGS:
     just dev openc3-cosmos-tool-dataviewer {{ FLAGS }}

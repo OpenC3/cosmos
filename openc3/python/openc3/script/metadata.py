@@ -11,12 +11,18 @@
 
 import json
 import time
+import warnings
 
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.extract import *
 
 
+# The metadata methods are deprecated. Define a telemetry packet for metadata
+# and set it with inject_tlm instead. See https://docs.openc3.com/docs/guides/metadata
+
+
+# DEPRECATED
 def metadata_all(limit: int = 100, scope: str = OPENC3_SCOPE):
     """Gets all the metadata
 
@@ -26,7 +32,16 @@ def metadata_all(limit: int = 100, scope: str = OPENC3_SCOPE):
 
     Return:
         The json result of the method call
+
+    .. deprecated:: 7.5.0
+       metadata_all is deprecated. Use Data Extractor or Telemetry Grapher on a metadata packet instead.
+       See https://docs.openc3.com/docs/guides/metadata
     """
+    warnings.warn(
+        "metadata_all is deprecated, use Data Extractor or Telemetry Grapher on a metadata packet. See https://docs.openc3.com/docs/guides/metadata",
+        FutureWarning,
+        stacklevel=2,
+    )
     response = openc3.script.API_SERVER.request("get", "/openc3-api/metadata", query={"limit": limit}, scope=scope)
     # Non-existent just returns None
     if not response or response.status_code != 200:
@@ -34,6 +49,7 @@ def metadata_all(limit: int = 100, scope: str = OPENC3_SCOPE):
     return json.loads(response.text)
 
 
+# DEPRECATED
 def metadata_get(start: int | None = None, scope: str = OPENC3_SCOPE):
     """Gets metadata, default is latest if start is None
 
@@ -43,7 +59,20 @@ def metadata_get(start: int | None = None, scope: str = OPENC3_SCOPE):
 
     Return:
         The json result of the method call
+
+    .. deprecated:: 7.5.0
+       metadata_get is deprecated. Use tlm or get_tlm_packet on a metadata packet instead.
+       See https://docs.openc3.com/docs/guides/metadata
     """
+    warnings.warn(
+        "metadata_get is deprecated, use tlm or get_tlm_packet on a metadata packet. See https://docs.openc3.com/docs/guides/metadata",
+        FutureWarning,
+        stacklevel=2,
+    )
+    return _metadata_get(start, scope=scope)
+
+
+def _metadata_get(start: int | None = None, scope: str = OPENC3_SCOPE):
     start_str = f"{start}" if start else "latest"
     response = openc3.script.API_SERVER.request("get", f"/openc3-api/metadata/{start_str}", scope=scope)
 
@@ -53,6 +82,7 @@ def metadata_get(start: int | None = None, scope: str = OPENC3_SCOPE):
     return json.loads(response.text)
 
 
+# DEPRECATED
 def metadata_set(
     metadata: dict,
     start: int | None = None,
@@ -69,7 +99,16 @@ def metadata_set(
 
     Return:
         The json result of the method call
+
+    .. deprecated:: 7.5.0
+       metadata_set is deprecated. Use inject_tlm on a metadata packet instead.
+       See https://docs.openc3.com/docs/guides/metadata
     """
+    warnings.warn(
+        "metadata_set is deprecated, use inject_tlm on a metadata packet. See https://docs.openc3.com/docs/guides/metadata",
+        FutureWarning,
+        stacklevel=2,
+    )
     if not isinstance(metadata, dict):
         raise TypeError(f"metadata must be a dict: {metadata} is a {metadata.__class__.__name__}")
 
@@ -86,6 +125,7 @@ def metadata_set(
     return json.loads(response.text)
 
 
+# DEPRECATED
 def metadata_update(
     metadata: dict,
     start: int | None = None,
@@ -102,12 +142,21 @@ def metadata_update(
 
     Return:
         The json result of the method call
+
+    .. deprecated:: 7.5.0
+       metadata_update is deprecated. Use inject_tlm with only the changed items instead.
+       See https://docs.openc3.com/docs/guides/metadata
     """
+    warnings.warn(
+        "metadata_update is deprecated, use inject_tlm with only the changed items. See https://docs.openc3.com/docs/guides/metadata",
+        FutureWarning,
+        stacklevel=2,
+    )
     if not isinstance(metadata, dict):
         raise TypeError(f"metadata must be a Hash: {metadata} is a {metadata.__class__.__name__}")
 
     if start is None:  # No start so grab latest
-        existing = metadata_get()
+        existing = _metadata_get(scope=scope)
         start = existing["start"]
         if not color:
             color = existing["color"]
@@ -130,6 +179,17 @@ def metadata_update(
     return json.loads(response.text)
 
 
-# Requests the metadata from the user for a target
+# DEPRECATED
 def metadata_input(*args, **kwargs):
+    """Requests the metadata from the user for a target
+
+    .. deprecated:: 7.5.0
+       metadata_input is deprecated. Use the user input methods followed by inject_tlm instead.
+       See https://docs.openc3.com/docs/guides/metadata
+    """
+    warnings.warn(
+        "metadata_input is deprecated, use the user input methods followed by inject_tlm. See https://docs.openc3.com/docs/guides/metadata",
+        FutureWarning,
+        stacklevel=2,
+    )
     raise RuntimeError("can only be used in Script Runner")
