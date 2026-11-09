@@ -66,14 +66,27 @@ bundle exec rspec spec/path/to/spec.rb:42    # Run a file or a specific line
 
 ### Rails APIs
 
-The Rails APIs depend on the local `openc3` gem, which must be built first. Set
-`OPENC3_DEVEL` so Bundler resolves it from source instead of RubyGems.
+The Rails APIs load the `openc3` gem from `../openc3` as a Bundler path gem, so
+build its C extensions first (`bundle exec rake build` in `openc3/`).
 
 ```bash
-export OPENC3_DEVEL=../openc3
 cd openc3-cosmos-cmd-tlm-api && bundle install && bundle exec rspec
 cd openc3-cosmos-script-runner-api && bundle install && bundle exec rspec
 ```
+
+### Lockfiles
+
+`Gemfile.lock` (openc3 and both APIs), `uv.lock`, and `pnpm-lock.yaml` are
+committed, and the Docker builds install from them frozen. After changing a
+Gemfile, gemspec, `pyproject.toml`, or `package.json`, regenerate the locks
+without upgrading anything else:
+
+```bash
+just lock                                    # or lock-ruby / lock-uv / lock-pnpm
+```
+
+`lock-ruby` uses the Bundler version from the Docker images (`bundler_version`
+in the root `justfile`).
 
 ### Python
 
