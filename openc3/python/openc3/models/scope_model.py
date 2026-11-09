@@ -96,7 +96,7 @@ class ScopeModel(Model):
             approvers = approvers.strip()
         self.critical_cmd_approvers = None
         if (isinstance(approvers, int) and not isinstance(approvers, bool)) or (
-            isinstance(approvers, str) and re.fullmatch(r"[0-9]+", approvers)
+            isinstance(approvers, str) and re.fullmatch(r"\d+", approvers)
         ):
             self.critical_cmd_approvers = int(approvers)
         if (
