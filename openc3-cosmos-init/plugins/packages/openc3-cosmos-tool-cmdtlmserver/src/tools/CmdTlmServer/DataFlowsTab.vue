@@ -19,68 +19,60 @@
   />
 </template>
 
-<script>
-import { useUpdater } from './useUpdater'
-import InterfaceFlowChart from './InterfaceComponents/InterfaceFlowChart.vue'
+<script setup>
 import { OpenC3Api } from '@openc3/js-common/services'
 import { ref } from 'vue'
+import InterfaceFlowChart from './InterfaceComponents/InterfaceFlowChart.vue'
+import { useUpdater } from './useUpdater'
 
-export default {
-  components: {
-    InterfaceFlowChart,
+const props = defineProps({
+  refreshInterval: {
+    type: Number,
+    default: 1000,
   },
-  props: {
-    refreshInterval: {
-      type: Number,
-      default: 1000,
-    },
-  },
-  setup(props) {
-    const api = new OpenC3Api()
+})
 
-    const interfaceDetails = ref(null)
-    const routerDetails = ref(null)
+const api = new OpenC3Api()
 
-    function update() {
-      api
-        .get_interface_names()
-        .then(async (names) => {
-          const promises = [...names].map((name) => {
-            return api.interface_details(name)
-          })
+const interfaceDetails = ref(null)
+const routerDetails = ref(null)
 
-          const responses = await Promise.all(promises)
-          interfaceDetails.value = {}
-          let index = 0
-          names.forEach((name) => {
-            interfaceDetails.value[name] = responses[index]
-            index += 1
-          })
-        })
-        .catch(console.error)
+function update() {
+  api
+    .get_interface_names()
+    .then(async (names) => {
+      const promises = [...names].map((name) => {
+        return api.interface_details(name)
+      })
 
-      api
-        .get_router_names()
-        .then(async (names) => {
-          const promises = [...names].map((name) => {
-            return api.router_details(name)
-          })
+      const responses = await Promise.all(promises)
+      interfaceDetails.value = {}
+      let index = 0
+      names.forEach((name) => {
+        interfaceDetails.value[name] = responses[index]
+        index += 1
+      })
+    })
+    .catch(console.error)
 
-          const responses = await Promise.all(promises)
-          routerDetails.value = {}
-          let index = 0
-          names.forEach((name) => {
-            routerDetails.value[name] = responses[index]
-            index += 1
-          })
-        })
-        .catch(console.error)
-    }
+  api
+    .get_router_names()
+    .then(async (names) => {
+      const promises = [...names].map((name) => {
+        return api.router_details(name)
+      })
 
-    // call the update function every refreshInterval milliseconds
-    useUpdater(update, () => props.refreshInterval)
-
-    return { interfaceDetails, routerDetails }
-  },
+      const responses = await Promise.all(promises)
+      routerDetails.value = {}
+      let index = 0
+      names.forEach((name) => {
+        routerDetails.value[name] = responses[index]
+        index += 1
+      })
+    })
+    .catch(console.error)
 }
+
+// call the update function every refreshInterval milliseconds
+useUpdater(update, () => props.refreshInterval)
 </script>
