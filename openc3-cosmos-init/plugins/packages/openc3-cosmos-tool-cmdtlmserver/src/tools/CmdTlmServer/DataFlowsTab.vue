@@ -105,8 +105,11 @@ const { details: routerDetails, update: updateRouters } = useDetails(
 )
 
 function update() {
-  updateInterfaces()
-  updateRouters()
+  // Intentionally not awaited: interfaces and routers refresh independently so
+  // a slow one doesn't delay the other. Each update guards against overlapping
+  // runs and catches its own errors, so neither can reject or stack up.
+  void updateInterfaces()
+  void updateRouters()
 }
 
 // call the update function every refreshInterval milliseconds
