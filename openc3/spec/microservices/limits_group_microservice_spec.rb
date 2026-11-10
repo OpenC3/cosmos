@@ -241,6 +241,88 @@ module OpenC3
       expect(cvt['A__C']).to eql 'RED'
     end
 
+    it "parses each packet definition once until its target changes" do
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      # Members' definitions are read from their target's db_shard
+      store = Store.instance(db_shard: 1)
+      allow(Store).to receive(:instance).and_call_original
+      expect(Store).to receive(:instance).with(db_shard: 1).at_least(:once).and_call_original
+      expect(store).to receive(:hget).with("DEFAULT__openc3tlm__INST", "HEALTH_STATUS").twice.and_call_original
+      @microservice.reload
+      @microservice.reload
+      @microservice.reload(changed_targets: ['INST2'])
+      @microservice.reload(changed_targets: ['INST'])
+    end
+
+    it "rereads a target installed after a group which contains its items" do
+      warnings = []
+      allow_any_instance_of(Logger).to receive(:warn) { |_logger, message| warnings << message }
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST3 HEALTH_STATUS TEMP1)] })
+      @microservice.reload
+      expect(warnings.length).to eql 1
+
+      # INST3 is installed on db_shard 3 after we looked it up
+      TargetModel.new(name: 'INST3', scope: 'DEFAULT', db_shard: 3).create
+      Store.instance(db_shard: 3).hset("DEFAULT__openc3tlm__INST3", "HEALTH_STATUS",
+                                       Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__INST", "HEALTH_STATUS"))
+      Store.hset("DEFAULT__current_limits", "INST3__HEALTH_STATUS__TEMP1", "RED")
+      allow(Store).to receive(:instance).and_call_original
+      expect(Store).to receive(:instance).with(db_shard: 3).at_least(:once).and_call_original
+      @microservice.reload(changed_targets: ['INST3'])
+      @microservice.publish
+      expect(cvt['TEMPS__C']).to eql 'RED'
+    end
+
+    it "reloads when a target is installed or removed, not on a timer" do
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      stub_const("OpenC3::LimitsGroupMicroservice::READ_TIMEOUT_MS", 10)
+      reloads = []
+      allow(@microservice).to receive(:reload).and_wrap_original do |method, **kwargs|
+        reloads << kwargs
+        method.call(**kwargs)
+      end
+      thread = Thread.new { @microservice.run }
+      sleep 0.2
+      expect(reloads).to eql [{}]
+
+      # Other config changes are ignored
+      ConfigTopic.write({ kind: 'created', type: 'microservice', name: 'DEFAULT__USER__INST' }, scope: 'DEFAULT')
+      sleep 0.2
+      expect(reloads).to eql [{}]
+
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'POWER' => [%w(INST HEALTH_STATUS TEMP2)] })
+      ConfigTopic.write({ kind: 'created', type: 'target', name: 'INST' }, scope: 'DEFAULT')
+      sleep 0.2
+      @microservice.shutdown
+      thread.join(5)
+      expect(reloads).to eql [{}, { changed_targets: ['INST'] }]
+      expect(cvt).to have_key('POWER')
+      expect(publishes).to eql 2
+    end
+
+    it "reloads after an error in case events were missed" do
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      stub_const("OpenC3::LimitsGroupMicroservice::READ_TIMEOUT_MS", 10)
+      allow(@microservice).to receive(:sleep)
+      allow_any_instance_of(Logger).to receive(:error)
+      calls = 0
+      allow(Topic).to receive(:read_topics).and_wrap_original do |method, *args, &block|
+        calls += 1
+        if calls == 1
+          # A limits change whose event never arrives
+          Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "RED")
+          raise "lost connection"
+        end
+        method.call(*args, &block)
+      end
+      thread = Thread.new { @microservice.run }
+      sleep 0.2
+      @microservice.shutdown
+      thread.join(5)
+      expect(cvt['TEMPS__C']).to eql 'RED'
+      expect(publishes).to eql 2
+    end
+
     it "runs until shutdown" do
       store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
       stub_const("OpenC3::LimitsGroupMicroservice::READ_TIMEOUT_MS", 10)

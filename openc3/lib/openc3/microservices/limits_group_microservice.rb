@@ -13,6 +13,7 @@
 
 require 'openc3/microservices/microservice'
 require 'openc3/models/target_model'
+require 'openc3/topics/config_topic'
 require 'openc3/topics/limits_event_topic'
 require 'openc3/topics/telemetry_decom_topic'
 require 'openc3/utilities/limits_rollup'
@@ -23,13 +24,16 @@ module OpenC3
   # limits events, recomputes the groups an event affects, and publishes a
   # target's packet only when one of its groups' values changes.
   #
+  # Group and item definitions only change when a target is installed or
+  # removed, which writes a target event to the scope's config topic. Those
+  # events trigger a reload, as does an error in the event loop in case events
+  # were missed.
+  #
   # Runs as a thread in the scope's SCOPEMULTI microservice since groups can
   # contain items of any target. Group definitions, current limits states and
   # limits settings all live on db_shard 0 while write_packet writes each packet
   # to its target's db_shard.
   class LimitsGroupMicroservice < Microservice
-    # Reload group definitions and recompute every group this often
-    RELOAD_PERIOD_SECONDS = 10
     READ_TIMEOUT_MS = 1000
 
     def initialize(*args)
@@ -39,7 +43,7 @@ module OpenC3
       @order = []            # groups with children before their parents
       @item_groups = {}      # 'TGT__PKT__ITEM' => groups which directly contain the item
       @parents = {}          # child group => parent groups
-      @definitions = {}      # 'TGT__PKT' => { item => limits enabled in the definition }
+      @definitions = {}      # target => { packet => { item => limits enabled in the definition } }
       @current_limits = {}   # 'TGT__PKT__ITEM' => limits state
       @settings = {}         # 'TGT__PKT__ITEM' => { 'enabled' => ... }
       @values = {}           # group => [color, enabled] as last computed
@@ -47,41 +51,61 @@ module OpenC3
       @warned = Set.new
       @received_counts = Hash.new(0) # target => packets published
       @limits_events_topic = "#{@scope}__openc3_limits_events"
+      @config_topic = "#{@scope}#{ConfigTopic::PRIMARY_KEY}"
       @metric.set(name: 'limits_group_publish_total', value: @count, type: 'counter')
     end
 
     def run
       # Start reading events from now. Anything missed while we were down is
       # covered by recomputing every group from current_limits in reload.
-      Topic.update_topic_offsets([@limits_events_topic])
+      # Both topics are on db_shard 0 so one read covers them.
+      topics = [@limits_events_topic, @config_topic]
+      Topic.update_topic_offsets(topics)
       reload()
       publish(force: true)
-      next_reload = Time.now + RELOAD_PERIOD_SECONDS
       until @cancel_thread
         begin
-          Topic.read_topics([@limits_events_topic], nil, READ_TIMEOUT_MS) do |_topic, _msg_id, msg_hash, _redis|
+          changed_targets = Set.new
+          Topic.read_topics(topics, nil, READ_TIMEOUT_MS) do |topic, _msg_id, msg_hash, _redis|
             break if @cancel_thread
 
-            process_event(JSON.parse(msg_hash['event'], allow_nan: true, create_additions: true))
+            if topic == @config_topic
+              # Installing or removing a target writes its packet definitions and
+              # limits groups before the event so they're ready to reread
+              changed_targets << msg_hash['name'] if msg_hash['type'] == 'target'
+            else
+              process_event(JSON.parse(msg_hash['event'], allow_nan: true, create_additions: true))
+            end
           end
           break if @cancel_thread
 
-          if Time.now >= next_reload
-            reload()
+          # A plugin can install several targets at once so reload once per read
+          unless changed_targets.empty?
+            reload(changed_targets: changed_targets.to_a)
             publish()
-            next_reload = Time.now + RELOAD_PERIOD_SECONDS
           end
         rescue => e
           @error = e
           @logger.error("Limits group microservice error: #{e.formatted}")
           sleep(1) unless @cancel_thread
+          # Events may have been missed so recompute everything from the store
+          begin
+            reload(changed_targets: changed_targets.to_a) unless @cancel_thread
+            publish() unless @cancel_thread
+          rescue => e
+            @logger.error("Limits group microservice reload error: #{e.formatted}")
+          end
         end
       end
     end
 
-    # Reread the group definitions, item definitions, limits states and settings
-    # and recompute every group
-    def reload
+    # Reread the group definitions, limits states and settings and recompute
+    # every group. Item definitions are cached per packet and only reread for
+    # packets not yet cached and those of the changed targets.
+    #
+    # @param changed_targets [Array<String>] Targets installed or removed since the last reload
+    def reload(changed_targets: [])
+      changed_targets.each { |target_name| @definitions.delete(target_name) }
       @groups = TargetModel.limits_groups(scope: @scope)
       build_indexes()
       @current_limits = Store.hgetall("#{@scope}__current_limits")
@@ -211,29 +235,49 @@ module OpenC3
     end
 
     # Item definitions supply the limits enabled flag when no setting is stored
-    # and tell us which members are unknown or have no limits
+    # and tell us which members are unknown or have no limits. Only the enabled
+    # flags are kept, per packet, so each packet definition is parsed once until
+    # its target is installed or removed again.
     def load_definitions
-      @definitions = {}
       packets = Set.new
       @groups.each_value do |members|
         members.each do |target_name, packet_name, _item_name|
           packets << [target_name, packet_name] unless child_group?(packet_name)
         end
       end
+      # Drop packets no group references any more
+      @definitions.each do |target_name, target_packets|
+        target_packets.select! { |packet_name, _items| packets.include?([target_name, packet_name]) }
+      end
+      @definitions.reject! { |_target_name, target_packets| target_packets.empty? }
+
+      db_shards = {}
       packets.each do |target_name, packet_name|
-        begin
-          packet = TargetModel.packet(target_name, packet_name, scope: @scope)
-        rescue RuntimeError
-          next # Unknown packet so all its members are ignored
-        end
+        next if @definitions.dig(target_name, packet_name)
+
+        # Read the store rather than TargetModel.packet, and the target's
+        # db_shard rather than Store.db_shard_for_target, since both caches can
+        # hold what they saw before the target was just installed
+        db_shard = (db_shards[target_name] ||= target_db_shard(target_name))
+        next unless db_shard # Unknown target so all its members are ignored
+
+        json = Store.instance(db_shard: db_shard).hget("#{@scope}__openc3tlm__#{target_name}", packet_name)
+        next unless json # Unknown packet so all its members are ignored
+
         items = {}
-        packet['items'].each do |item|
+        JSON.parse(json, allow_nan: true, create_additions: true)['items'].each do |item|
           limits = item['limits']
           # Only items with limits (or state colors) have an enabled flag
           items[item['name']] = limits['enabled'] if limits and limits.key?('enabled')
         end
-        @definitions["#{target_name}__#{packet_name}"] = items
+        (@definitions[target_name] ||= {})[packet_name] = items
       end
+    end
+
+    # @return [Integer, nil] the target's db_shard or nil if it isn't installed
+    def target_db_shard(target_name)
+      json = Store.hget("#{@scope}__openc3_targets", target_name)
+      json ? JSON.parse(json, allow_nan: true, create_additions: true)['db_shard'].to_i : nil
     end
 
     # @return [Array<String>] the groups plus every group above them
@@ -270,7 +314,7 @@ module OpenC3
 
     # @return [Array(String|nil, Boolean), nil] [limits state, enabled] or nil if the item is unknown
     def item_member(target_name, packet_name, item_name, group)
-      definition = @definitions["#{target_name}__#{packet_name}"]
+      definition = @definitions.dig(target_name, packet_name)
       unless definition and definition.key?(item_name)
         warn_once("#{group} #{target_name} #{packet_name} #{item_name}",
                   "LIMITS_GROUP #{display(group)} member #{target_name} #{packet_name} #{item_name} does not exist or has no limits. Ignoring it.")
