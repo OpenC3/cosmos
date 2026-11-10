@@ -87,6 +87,26 @@
               variant="text"
               @click="showMicroserviceError(microservice.name)"
             />
+            <v-tooltip
+              v-if="microservice.shared_resource"
+              :text="sharedResourceTooltip(microservice)"
+              location="top"
+            >
+              <template #activator="{ props }">
+                <v-chip
+                  v-bind="props"
+                  :color="isDormant(microservice) ? 'grey' : 'primary'"
+                  size="small"
+                  label
+                  class="mr-2"
+                  prepend-icon="mdi-share-variant"
+                  data-test="shared-resource-chip"
+                >
+                  {{ microservice.shared_resource }}:
+                  {{ sharedResourceText(microservice) }}
+                </v-chip>
+              </template>
+            </v-tooltip>
             <v-chip
               v-if="microservice_status[microservice.name]"
               :color="getStateColor(microservice.name)"
@@ -96,6 +116,27 @@
               {{ getStateText(microservice.name) }}
             </v-chip>
             <v-tooltip
+              v-if="isDormant(microservice)"
+              :text="`Make ${microservice.shared_resource} active in this scope`"
+              location="top"
+            >
+              <template #activator="{ props }">
+                <v-btn
+                  v-bind="props"
+                  aria-label="Activate Shared Resource Here"
+                  icon="mdi-swap-horizontal"
+                  variant="text"
+                  :disabled="
+                    sharedResources[microservice.shared_resource]?.state ===
+                    'RELEASING'
+                  "
+                  data-test="activate-shared-resource"
+                  @click="activateSharedResource(microservice)"
+                />
+              </template>
+            </v-tooltip>
+            <v-tooltip
+              v-else
               :text="isEnabled(microservice.name) ? 'Restart' : 'Start'"
               location="top"
             >
@@ -176,6 +217,10 @@
 
 <script>
 import { Api, OpenC3Api } from '@openc3/js-common/services'
+import {
+  sharedResourceActive,
+  sharedResourceStatus,
+} from '@openc3/js-common/utils'
 import { OutputDialog, TextBoxDialog } from '@/components'
 import { TimeFilters } from '@/util'
 
@@ -208,6 +253,8 @@ export default {
       //   }
       // }
       microserviceOperations: {},
+      // Shared resource name => record from get_shared_resources
+      sharedResources: {},
     }
   },
   computed: {
@@ -273,7 +320,66 @@ export default {
     isStopping: function (name) {
       return this.microserviceOperations[name]?.operation === 'stopping'
     },
+    // Member of a shared resource which isn't active in this scope
+    isDormant: function (microservice) {
+      if (!microservice.shared_resource) return false
+      return !sharedResourceActive(
+        this.sharedResources[microservice.shared_resource],
+        window.openc3Scope,
+      )
+    },
+    sharedResourceText: function (microservice) {
+      const resource = this.sharedResources[microservice.shared_resource]
+      if (!resource) return 'Unknown'
+      return sharedResourceStatus(resource)
+    },
+    sharedResourceTooltip: function (microservice) {
+      const name = microservice.shared_resource
+      if (this.isDormant(microservice)) {
+        return `Shared resource ${name} is not active in this scope so this microservice is not running`
+      }
+      return `Shared resource ${name} is active in this scope`
+    },
+    activateSharedResource: async function (microservice) {
+      const name = microservice.shared_resource
+      const resource = this.sharedResources[name]
+      let message = `Make shared resource ${name} active in scope ${window.openc3Scope}?`
+      if (resource?.owner) {
+        message += ` Its microservices in scope ${resource.owner} will be stopped first.`
+      }
+      try {
+        await this.$dialog.confirm(message, {
+          okText: 'Activate',
+          cancelText: 'Cancel',
+        })
+      } catch {
+        return // User cancelled
+      }
+      try {
+        await new OpenC3Api().switch_shared_resource(name)
+        this.alert = `Switching shared resource ${name} to scope ${window.openc3Scope}`
+        this.alertType = 'success'
+      } catch (error) {
+        this.alert = `Failed to switch shared resource ${name}: ${error.message || error}`
+        this.alertType = 'error'
+      }
+      this.showAlert = true
+      setTimeout(() => {
+        this.showAlert = false
+      }, 5000)
+      this.update()
+    },
     update: function () {
+      new OpenC3Api()
+        .get_shared_resources()
+        .then((resources) => {
+          const byName = {}
+          for (const resource of resources || []) {
+            byName[resource.name] = resource
+          }
+          this.sharedResources = byName
+        })
+        .catch(console.error)
       Api.get('/openc3-api/microservice_status/all')
         .then((response) => {
           this.microservice_status = response.data
@@ -373,7 +479,10 @@ export default {
       }
     },
     bulkRestartServices: async function () {
-      const microserviceNames = this.filteredMicroservices.map((m) => m.name)
+      // Dormant shared resource members can't be started in this scope
+      const microserviceNames = this.filteredMicroservices
+        .filter((m) => !this.isDormant(m))
+        .map((m) => m.name)
       const microserviceList = microserviceNames.join(', ')
       const confirmMessage = `Are you sure you want to restart ${microserviceNames.length} microservice(s)? ${microserviceList}`
 
@@ -504,6 +613,7 @@ export default {
     getStateColor(microserviceName) {
       const status = this.microservice_status[microserviceName]
       if (!status) return 'grey'
+      if (this.isDormantName(microserviceName)) return 'grey'
       if (status.error) return 'red'
       // If not enabled, show as stopped even if state is "running"
       if (!this.isEnabled(microserviceName) || status.state === 'STOPPED')
@@ -511,7 +621,16 @@ export default {
       if (status.state === 'RUNNING') return 'green'
       return 'grey'
     },
+    isDormantName(microserviceName) {
+      const microservice = this.allMicroservices.find(
+        (ms) => ms.name === microserviceName,
+      )
+      return microservice ? this.isDormant(microservice) : false
+    },
     getStateText(microserviceName) {
+      if (this.isDormantName(microserviceName)) {
+        return 'DORMANT'
+      }
       if (!this.isEnabled(microserviceName)) {
         return 'STOPPED'
       }

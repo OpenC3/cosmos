@@ -13,6 +13,7 @@ from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.interface_model import InterfaceModel
 from openc3.models.interface_status_model import InterfaceStatusModel
+from openc3.models.shared_resource_model import SharedResourceModel
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
@@ -63,6 +64,7 @@ def get_interface_names(scope=OPENC3_SCOPE):
 # @param interface_params [Array] Optional parameters to pass to the interface
 def connect_interface(interface_name, *interface_params, scope=OPENC3_SCOPE):
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    SharedResourceModel.check_interface_active("INTERFACE", interface_name, scope=scope)
     InterfaceTopic.connect_interface(interface_name, *interface_params, scope=scope)
 
 
@@ -182,6 +184,7 @@ def unmap_target_from_interface(
 
 def interface_cmd(interface_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    SharedResourceModel.check_interface_active("INTERFACE", interface_name, scope=scope)
     InterfaceTopic.interface_cmd(interface_name, cmd_name, *cmd_params, scope=scope)
 
 
@@ -194,6 +197,7 @@ def interface_protocol_cmd(
     scope=OPENC3_SCOPE,
 ):
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
+    SharedResourceModel.check_interface_active("INTERFACE", interface_name, scope=scope)
     InterfaceTopic.protocol_cmd(
         interface_name,
         cmd_name,
@@ -250,4 +254,5 @@ def interface_target_disable(
 
 def interface_details(interface_name, scope=OPENC3_SCOPE):
     authorize(permission="system", interface_name=interface_name, scope=scope)
+    SharedResourceModel.check_interface_active("INTERFACE", interface_name, scope=scope)
     return InterfaceTopic.interface_details(interface_name, scope=scope)

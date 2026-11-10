@@ -446,6 +446,128 @@ module OpenC3
       # end
     end
 
+    describe "shared resources" do
+      before(:each) do
+        mock_redis()
+        allow(Logger).to receive(:info)
+        allow(Logger).to receive(:warn)
+        SharedResourceModel.clear_cache
+        @operator = MicroserviceOperator.new
+      end
+
+      def create_member(scope, name: 'INT', shard: 0)
+        model = MicroserviceModel.new(name: "#{scope}__INTERFACE__#{name}", cmd: %w(ruby interface_microservice.rb), shared_resource: 'CHAMBER', shard: shard, scope: scope)
+        model.create
+        model
+      end
+
+      def processes
+        @operator.instance_variable_get(:@processes)
+      end
+
+      def removed_processes
+        @operator.instance_variable_get(:@removed_processes)
+      end
+
+      # Simulate remove_old shutting down the removed processes
+      def shutdown_removed
+        @operator.instance_variable_set(:@removed_processes, {})
+      end
+
+      it "only spawns members in the active scope" do
+        create_member('DEFAULT')
+        create_member('OTHER')
+        @operator.update
+        expect(processes.keys).to eql ['DEFAULT__INTERFACE__INT']
+      end
+
+      it "doesn't spawn members of a missing shared resource" do
+        Store.hset('openc3_microservices', 'DEFAULT__INTERFACE__INT', JSON.generate({ 'cmd' => %w(ruby x.rb), 'shared_resource' => 'MISSING' }))
+        @operator.update
+        expect(processes).to be_empty
+      end
+
+      it "doesn't spawn a STOPPED member in the active scope" do
+        model = create_member('DEFAULT')
+        model.enabled = false
+        model.update
+        @operator.update
+        expect(processes).to be_empty
+      end
+
+      it "stops the old scope before starting the new scope" do
+        create_member('DEFAULT')
+        create_member('OTHER')
+        @operator.update
+        expect(processes.keys).to eql ['DEFAULT__INTERFACE__INT']
+
+        SharedResourceModel.switch('CHAMBER', to_scope: 'OTHER')
+        @operator.update
+        # Old scope removed but new scope not started yet
+        expect(processes).to be_empty
+        expect(removed_processes.keys).to eql ['DEFAULT__INTERFACE__INT']
+        expect(SharedResourceModel.get('CHAMBER')['state']).to eql 'RELEASING'
+
+        # Not acknowledged until remove_old has shut the process down
+        @operator.update
+        expect(SharedResourceModel.get('CHAMBER')['state']).to eql 'RELEASING'
+        expect(processes).to be_empty
+
+        shutdown_removed()
+        @operator.update
+        record = SharedResourceModel.get('CHAMBER')
+        expect(record['state']).to eql 'ACTIVE'
+        expect(record['owner']).to eql 'OTHER'
+        expect(processes.keys).to eql ['OTHER__INTERFACE__INT']
+      end
+
+      it "acknowledges members that were never running" do
+        model = create_member('DEFAULT')
+        model.enabled = false
+        model.update
+        create_member('OTHER')
+        @operator.update
+        SharedResourceModel.switch('CHAMBER', to_scope: 'OTHER')
+        @operator.update
+        expect(SharedResourceModel.get('CHAMBER')['owner']).to eql 'OTHER'
+        expect(processes.keys).to eql ['OTHER__INTERFACE__INT']
+      end
+
+      it "only acknowledges members on its own shard" do
+        create_member('DEFAULT', shard: 1)
+        create_member('OTHER')
+        SharedResourceModel.switch('CHAMBER', to_scope: 'OTHER')
+        # Shard 0 operator doesn't run DEFAULT__INTERFACE__INT so can't confirm it stopped
+        @operator.update
+        @operator.update
+        expect(SharedResourceModel.get('CHAMBER')['state']).to eql 'RELEASING'
+        expect(processes).to be_empty
+
+        shard1 = MicroserviceOperator.new
+        shard1.instance_variable_set(:@shard, 1)
+        shard1.update
+        expect(SharedResourceModel.get('CHAMBER')['owner']).to eql 'OTHER'
+        @operator.update
+        expect(processes.keys).to eql ['OTHER__INTERFACE__INT']
+      end
+
+      it "waits for a member removed during the handoff" do
+        default = create_member('DEFAULT')
+        create_member('OTHER')
+        @operator.update
+        SharedResourceModel.switch('CHAMBER', to_scope: 'OTHER')
+        default.destroy
+        expect(SharedResourceModel.get('CHAMBER')['state']).to eql 'RELEASING'
+        @operator.update
+        expect(removed_processes.keys).to eql ['DEFAULT__INTERFACE__INT']
+        expect(SharedResourceModel.get('CHAMBER')['state']).to eql 'RELEASING'
+        shutdown_removed()
+        @operator.update
+        expect(SharedResourceModel.get('CHAMBER')['owner']).to eql 'OTHER'
+        expect(processes.keys).to eql ['OTHER__INTERFACE__INT']
+      end
+    end
+
     describe "redis error resilience" do
       before(:each) do
         @redis = mock_redis()

@@ -46,14 +46,21 @@
         <v-btn
           block
           color="primary"
-          :disabled="buttonsDisabled"
-          @click="connectDisconnect(item)"
+          :disabled="buttonsDisabled || item.switching"
+          @click="item.dormant ? activate(item) : connectDisconnect(item)"
         >
           {{ item.connect }}
         </v-btn>
       </template>
       <template #item.details="{ item }">
-        <v-btn block color="primary" @click="details(item)"> Details </v-btn>
+        <v-btn
+          block
+          color="primary"
+          :disabled="item.dormant"
+          @click="details(item)"
+        >
+          Details
+        </v-btn>
       </template>
       <template #item.connected="{ item }">
         <span :class="item.connectedClass">
@@ -97,6 +104,7 @@
 
 <script>
 import Updater from './Updater'
+import { activateSharedResource, applySharedResources } from './sharedResources'
 import InterfaceFlowChart from './InterfaceComponents/InterfaceFlowChart.vue'
 
 export default {
@@ -190,6 +198,10 @@ export default {
       })
       return items
     },
+    async activate(item) {
+      // activateSharedResource reports its own errors
+      if (await activateSharedResource(this, this.api, item)) this.update()
+    },
     connectDisconnect(item) {
       this.buttonsDisabled = true
       if (item.connected === 'DISCONNECTED') {
@@ -216,37 +228,45 @@ export default {
     },
     update() {
       if (this.tabId != this.curTab) return
-      this.api.get_all_router_info().then((info) => {
-        this.data = [] // Clear the old data
-        for (let int of info) {
-          let connect = null
-          let connectedClass = null
-          if (int[1] == 'DISCONNECTED') {
-            connect = 'Connect'
-            connectedClass = 'openc3-white'
-          } else if (int[1] == 'CONNECTED') {
-            connect = 'Disconnect'
-            connectedClass = 'openc3-green'
-          } else {
-            connect = 'Cancel'
-            connectedClass = 'openc3-red'
+      Promise.all([
+        this.api.get_all_router_info(),
+        // Shared resources are optional so don't fail the update without them
+        this.api.get_shared_resources().catch(() => []),
+      ])
+        .then(([info, resources]) => {
+          const data = []
+          for (let int of info) {
+            let connect = null
+            let connectedClass = null
+            if (int[1] == 'DISCONNECTED') {
+              connect = 'Connect'
+              connectedClass = 'openc3-white'
+            } else if (int[1] == 'CONNECTED') {
+              connect = 'Disconnect'
+              connectedClass = 'openc3-green'
+            } else {
+              connect = 'Cancel'
+              connectedClass = 'openc3-red'
+            }
+            data.push({
+              name: int[0],
+              connect: connect,
+              connectedClass: connectedClass,
+              connected: int[1],
+              clients: int[2],
+              tx_q_size: int[3],
+              rx_q_size: int[4],
+              tx_bytes: int[5],
+              rx_bytes: int[6],
+              cmd_pkts: int[7],
+              tlm_pkts: int[8],
+            })
           }
-          this.data.push({
-            name: int[0],
-            connect: connect,
-            connectedClass: connectedClass,
-            connected: int[1],
-            clients: int[2],
-            tx_q_size: int[3],
-            rx_q_size: int[4],
-            tx_bytes: int[5],
-            rx_bytes: int[6],
-            cmd_pkts: int[7],
-            tlm_pkts: int[8],
-          })
-        }
-        this.buttonsDisabled = false
-      })
+          this.data = applySharedResources(data, resources, 'ROUTER')
+          this.buttonsDisabled = false
+        })
+        // The next update retries
+        .catch(console.error)
     },
   },
 }

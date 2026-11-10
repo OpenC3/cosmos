@@ -780,5 +780,62 @@ module OpenC3
         expect(model.tlm_target_enabled["UNKNOWN"]).to be false
       end
     end
+
+    describe "shared resource" do
+      before(:each) do
+        mock_redis()
+        local_s3()
+        allow(Logger).to receive(:info)
+        TargetModel.new(name: "INST", scope: "DEFAULT").create
+      end
+
+      after(:each) do
+        local_s3_unset()
+      end
+
+      def parse(model, *lines)
+        parser = ConfigParser.new
+        tf = nil
+        tf = Tempfile.new
+        lines.each { |line| tf.puts line }
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+      ensure
+        tf&.unlink
+      end
+
+      it "parses SHARED_RESOURCE for interfaces and routers" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parse(model, "SHARED_RESOURCE chamber")
+        expect(model.shared_resource).to eql "CHAMBER"
+        expect(model.as_json['shared_resource']).to eql "CHAMBER"
+        router = RouterModel.new(name: "TEST_ROUTER", scope: "DEFAULT")
+        parse(router, "SHARED_RESOURCE CHAMBER")
+        expect(router.shared_resource).to eql "CHAMBER"
+        expect { parse(model, "SHARED_RESOURCE bad-name") }.to raise_error(ConfigParser::Error, /Invalid shared resource name/)
+      end
+
+      it "can't be used with BRIDGE" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        expect { parse(model, "BRIDGE DEFAULT", "SHARED_RESOURCE CHAMBER") }.to raise_error(ConfigParser::Error, /SHARED_RESOURCE can not be used with BRIDGE/)
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        expect { parse(model, "SHARED_RESOURCE CHAMBER", "BRIDGE DEFAULT") }.to raise_error(ConfigParser::Error, /BRIDGE can not be used with SHARED_RESOURCE/)
+      end
+
+      it "deploys the microservice with the shared resource" do
+        model = InterfaceModel.new(name: "TEST_INT", target_names: ["INST"], shared_resource: "CHAMBER", plugin: "PLUG", scope: "DEFAULT")
+        model.create
+        model.deploy(Dir.pwd, {})
+        microservice = MicroserviceModel.get_model(name: "DEFAULT__INTERFACE__TEST_INT", scope: "DEFAULT")
+        expect(microservice.shared_resource).to eql "CHAMBER"
+        record = SharedResourceModel.get("CHAMBER")
+        expect(record['members']['DEFAULT']).to eql [{ 'type' => 'INTERFACE', 'name' => 'DEFAULT__INTERFACE__TEST_INT', 'shard' => 0 }]
+
+        model.undeploy
+        expect(SharedResourceModel.get("CHAMBER")).to be_nil
+      end
+    end
   end
 end

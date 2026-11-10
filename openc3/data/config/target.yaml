@@ -208,3 +208,18 @@ TARGET:
           values: ^(PROCESS|LOG|DISABLE)$
       example: |
         STORED_LIMITS_MODE DISABLE
+    SHARED_RESOURCE:
+      summary: Only accept commands to this target in the scope where its shared resource is active
+      description:
+        Commands sent to the target in a scope where the shared resource is not active are rejected.
+        The target's own microservices (decom, logging, cleanup) keep running in every scope so telemetry
+        screens, build_cmd, inject_tlm, and historical data still work.
+        See [Shared Resources](plugins#shared-resources).
+      since: _Coming Soon_
+      parameters:
+        - name: Shared Resource Name
+          required: true
+          description: Name of the shared resource. Must only contain letters, numbers, and single underscores.
+          values: .+
+      example: |
+        SHARED_RESOURCE THERMAL_VAC_CHAMBER

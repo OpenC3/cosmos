@@ -1678,5 +1678,48 @@ module OpenC3
         expect(@db_shard0.exists?("DEFAULT__openc3tlm__SYSTEM")).to be true
       end
     end
+
+    describe "shared resource" do
+      before(:each) do
+        allow(Logger).to receive(:info)
+      end
+
+      def parse(model, *lines)
+        parser = ConfigParser.new
+        tf = nil
+        tf = Tempfile.new
+        lines.each { |line| tf.puts line }
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+      ensure
+        tf&.unlink
+      end
+
+      it "parses SHARED_RESOURCE" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+        parse(model, "SHARED_RESOURCE chamber")
+        expect(model.shared_resource).to eql "CHAMBER"
+        expect(model.as_json['shared_resource']).to eql "CHAMBER"
+        expect { parse(model, "SHARED_RESOURCE bad name") }.to raise_error(ConfigParser::Error)
+      end
+
+      it "joins the shared resource when created" do
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", shared_resource: "CHAMBER", scope: "DEFAULT")
+        model.create
+        record = SharedResourceModel.get("CHAMBER")
+        expect(record['members']['DEFAULT']).to eql [{ 'type' => 'TARGET', 'name' => 'TEST' }]
+        expect(SharedResourceModel).not_to receive(:add_member)
+        model.update
+      end
+
+      it "leaves the shared resource if the create fails" do
+        TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT").create
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", shared_resource: "CHAMBER", scope: "DEFAULT")
+        expect { model.create }.to raise_error(/already exists/)
+        expect(SharedResourceModel.get("CHAMBER")).to be_nil
+      end
+    end
   end
 end

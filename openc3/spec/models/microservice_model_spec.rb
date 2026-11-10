@@ -335,5 +335,74 @@ module OpenC3
         expect(env['PYTHONUSERBASE']).to be_nil
       end
     end
+
+    describe "shared resource" do
+      before(:each) do
+        allow(Logger).to receive(:info)
+      end
+
+      def parse(model, *lines)
+        parser = ConfigParser.new
+        tf = nil
+        tf = Tempfile.new
+        lines.each { |line| tf.puts line }
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+      ensure
+        tf&.unlink
+      end
+
+      it "parses SHARED_RESOURCE" do
+        model = MicroserviceModel.new(name: "DEFAULT__USER__CTRL", scope: "DEFAULT")
+        parse(model, "SHARED_RESOURCE chamber")
+        expect(model.shared_resource).to eql "CHAMBER"
+        expect(model.as_json['shared_resource']).to eql "CHAMBER"
+        expect { parse(model, "SHARED_RESOURCE") }.to raise_error(ConfigParser::Error)
+        expect { parse(model, "SHARED_RESOURCE BAD__NAME") }.to raise_error(ConfigParser::Error, /Invalid shared resource name/)
+      end
+
+      it "joins the shared resource when created and leaves when destroyed" do
+        model = MicroserviceModel.new(name: "DEFAULT__USER__CTRL", shared_resource: "CHAMBER", shard: 2, scope: "DEFAULT")
+        model.create
+        record = SharedResourceModel.get("CHAMBER")
+        expect(record['owner']).to eql "DEFAULT"
+        expect(record['members']['DEFAULT']).to eql [{ 'type' => 'MICROSERVICE', 'name' => 'DEFAULT__USER__CTRL', 'shard' => 2 }]
+        # Updates (start / stop) don't touch the shared resource
+        expect(SharedResourceModel).not_to receive(:add_member)
+        model.enabled = false
+        model.update
+        MicroserviceModel.get_model(name: "DEFAULT__USER__CTRL", scope: "DEFAULT").destroy
+        expect(SharedResourceModel.get("CHAMBER")).to be_nil
+      end
+
+      it "leaves the shared resource if the create fails" do
+        MicroserviceModel.new(name: "DEFAULT__USER__CTRL", scope: "DEFAULT").create
+        model = MicroserviceModel.new(name: "DEFAULT__USER__CTRL", shared_resource: "CHAMBER", scope: "DEFAULT")
+        expect { model.create }.to raise_error(/already exists/)
+        expect(SharedResourceModel.get("CHAMBER")).to be_nil
+
+        # Membership from before the failed create is kept
+        SharedResourceModel.add_member("CHAMBER", scope: "DEFAULT", type: "MICROSERVICE", member_name: "DEFAULT__USER__CTRL")
+        expect { model.create }.to raise_error(/already exists/)
+        expect(SharedResourceModel.member?("CHAMBER", scope: "DEFAULT", type: "MICROSERVICE", member_name: "DEFAULT__USER__CTRL")).to be true
+      end
+
+      it "uses the interface and router member types" do
+        MicroserviceModel.new(name: "DEFAULT__INTERFACE__INT", shared_resource: "CHAMBER", scope: "DEFAULT").create
+        MicroserviceModel.new(name: "DEFAULT__ROUTER__ROUTE", shared_resource: "CHAMBER", scope: "DEFAULT").create
+        types = SharedResourceModel.get("CHAMBER")['members']['DEFAULT'].map { |member| member['type'] }
+        expect(types).to eql %w(INTERFACE ROUTER)
+      end
+
+      it "doesn't use the shared resource without the keyword" do
+        expect(SharedResourceModel).not_to receive(:add_member)
+        expect(SharedResourceModel).not_to receive(:remove_member)
+        model = MicroserviceModel.new(name: "DEFAULT__USER__CTRL", scope: "DEFAULT")
+        model.create
+        model.destroy
+      end
+    end
   end
 end

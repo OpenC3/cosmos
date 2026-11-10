@@ -324,6 +324,25 @@ export default class OpenC3Api {
     return this.exec('router_details', [router_name])
   }
 
+  // Shared resources: returns the shared resources with members in the current scope
+  get_shared_resources() {
+    return this.exec('get_shared_resources', [])
+  }
+
+  get_shared_resource(name) {
+    return this.exec('get_shared_resource', [name])
+  }
+
+  // to_scope defaults to the current scope
+  switch_shared_resource(name, to_scope = null, force = false) {
+    const params = to_scope ? [name, to_scope] : [name]
+    return this.exec('switch_shared_resource', params, { force: force })
+  }
+
+  release_shared_resource(name, force = false) {
+    return this.exec('release_shared_resource', [name], { force: force })
+  }
+
   get_target_interfaces() {
     return this.exec('get_target_interfaces', [])
   }
