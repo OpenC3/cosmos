@@ -88,10 +88,17 @@ test('renders healthy interfaces while another interface never responds', async 
   await page.route('**/openc3-api/api*', async (route) => {
     const body = route.request().postDataJSON()
     if (body?.method === 'get_interface_names') {
-      const response = await route.fetch()
-      const json = await response.json()
-      json.result = [...json.result, DEAD]
-      await route.fulfill({ response, json })
+      // The tab polls every second, so a request can still be in flight when
+      // the test finishes and the page closes. The response body is then
+      // disposed ("Response has been disposed"), which is safe to ignore.
+      try {
+        const response = await route.fetch()
+        const json = await response.json()
+        json.result = [...json.result, DEAD]
+        await route.fulfill({ response, json })
+      } catch {
+        // page closed mid-request
+      }
     } else if (
       body?.method === 'interface_details' &&
       body.params?.[0] === DEAD
@@ -103,15 +110,17 @@ test('renders healthy interfaces while another interface never responds', async 
     }
   })
 
-  // The healthy interfaces render without waiting for the dead one
+  // The healthy interfaces render without waiting for the dead one. The
+  // timeout is well under the 30s cmd ack timeout the dead one is stuck on, but
+  // leaves room for slow details responses when tests run in parallel.
   await expect(
     page.getByRole('button', { name: /^INST_INT: .*View processing metrics/ }),
-  ).toBeVisible({ timeout: 5000 })
+  ).toBeVisible({ timeout: 15000 })
   await expect(
     page.getByRole('button', {
       name: /^INST2_INT: .*View processing metrics/,
     }),
-  ).toBeVisible({ timeout: 5000 })
+  ).toBeVisible({ timeout: 15000 })
   // The unresponsive interface has no details so it isn't drawn
   await expect(page.getByText(DEAD)).toHaveCount(0)
 
@@ -119,4 +128,7 @@ test('renders healthy interfaces while another interface never responds', async 
   // the unanswered request wasn't repeated while it was still outstanding.
   await utils.sleep(3500)
   expect(deadDetailsRequests).toBe(1)
+
+  // Stop intercepting and let in-flight handlers finish before the page closes
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
 })
