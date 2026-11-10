@@ -78,14 +78,20 @@ test('navigate config bucket', async ({ page, utils }) => {
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
   )
-  await expect(page.locator('tbody > tr')).toHaveCount(10)
+  // Don't hard-code the row count: it changes whenever the demo target adds
+  // folders or files (e.g. dashboards)
+  await expect(
+    page.getByRole('cell', { name: 'dashboards', exact: true }),
+  ).toBeVisible()
+  await expect(page.locator('tbody > tr:has-text("target.txt")')).toHaveCount(1)
+  const rowCount = await page.locator('tbody > tr').count()
 
   // Clicking a file should do nothing
   await page.getByRole('cell', { name: 'target.txt' }).click()
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
   )
-  await expect(page.locator('tbody > tr')).toHaveCount(10)
+  await expect(page.locator('tbody > tr')).toHaveCount(rowCount)
   // Download the file
   await utils.download(
     page,
@@ -427,10 +433,18 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
 
   await page.getByText('tools').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/tools%2F/)
-  if (process.env.ENTERPRISE === '1') {
-    await expect(page.locator('tbody > tr')).toHaveCount(25)
-  } else {
-    await expect(page.locator('tbody > tr')).toHaveCount(18)
+  // Don't hard-code the tool count: it changes whenever a tool is added.
+  // Check a few tools that exist in both Core and Enterprise instead.
+  for (const tool of [
+    'cmdsender',
+    'cmdtlmserver',
+    'dashboards',
+    'scriptrunner',
+    'tlmviewer',
+  ]) {
+    await expect(
+      page.getByRole('cell', { name: tool, exact: true }),
+    ).toBeVisible()
   }
 })
 

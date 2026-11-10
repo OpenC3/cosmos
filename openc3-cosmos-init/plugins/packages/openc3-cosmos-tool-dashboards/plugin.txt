@@ -1,0 +1,4 @@
+TOOL dashboards "Dashboards (Beta)"
+  INLINE_URL main.js
+  ICON mdi-view-dashboard-outline
+  POSITION 7.5

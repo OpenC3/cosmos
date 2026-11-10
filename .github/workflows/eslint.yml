@@ -120,6 +120,24 @@ jobs:
           done
           exit $status
 
+      # Unit tests (e.g. Vitest) for the same changed packages, run even if
+      # linting failed so both are reported. Packages without a test script
+      # are skipped.
+      - name: Run unit tests on changed packages
+        if: ${{ !cancelled() && steps.targets.outputs.packages != '' }}
+        env:
+          PACKAGES: ${{ steps.targets.outputs.packages }}
+        run: |
+          set -euo pipefail
+          status=0
+          for dir in $PACKAGES; do
+            jq -e '.scripts.test' "$dir/package.json" > /dev/null || continue
+            echo "::group::test $dir"
+            pnpm --dir "$dir" run test || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+
       # Playwright is a separate workspace, so lint it even if the plugin
       # packages failed to lint
       - name: Install playwright dependencies

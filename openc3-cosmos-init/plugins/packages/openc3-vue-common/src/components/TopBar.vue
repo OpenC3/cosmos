@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2023, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -17,12 +17,18 @@
 
 <template>
   <teleport to="#openc3-menu">
+    <!-- Mobile: a smaller title that truncates, and menus that scroll
+         sideways -->
     <v-row no-gutters>
-      <v-col align-self="end">
-        <span class="app-title mr-2">{{ title }}</span>
+      <v-col align-self="end" :class="{ 'overflow-hidden': mobile }">
+        <span
+          :class="['app-title mr-2', { 'd-block text-truncate small': mobile }]"
+        >
+          {{ title }}
+        </span>
       </v-col>
     </v-row>
-    <v-row dense class="flex-nowrap">
+    <v-row dense :class="['flex-nowrap', { 'overflow-x-auto': mobile }]">
       <TopBarMenu
         v-for="(menu, i) in menus"
         :key="i + '-top-menu'"
@@ -54,6 +60,11 @@ export default {
       default: '',
     },
   },
+  computed: {
+    mobile() {
+      return this.$vuetify.display.xs
+    },
+  },
   mounted() {
     document.title = this.title
   },
@@ -69,6 +80,9 @@ export default {
 <style scoped>
 .app-title {
   font-size: 2rem;
+}
+.app-title.small {
+  font-size: 1.25rem;
 }
 /* The next three styles effectively style the button like a select drop down */
 .menu-button {
