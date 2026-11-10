@@ -58,9 +58,10 @@
                 color="primary"
                 :disabled="
                   buttonsDisabled ||
+                  item.switching ||
                   (item.disable_disconnect && item.connected === 'CONNECTED')
                 "
-                @click="connectDisconnect(item)"
+                @click="item.dormant ? activate(item) : connectDisconnect(item)"
               >
                 {{ item.connect }}
               </v-btn>
@@ -69,7 +70,14 @@
         </v-tooltip>
       </template>
       <template #item.details="{ item }">
-        <v-btn block color="primary" @click="details(item)"> Details </v-btn>
+        <v-btn
+          block
+          color="primary"
+          :disabled="item.dormant"
+          @click="details(item)"
+        >
+          Details
+        </v-btn>
       </template>
       <template #item.connected="{ item }">
         <span :class="item.connectedClass">
@@ -113,6 +121,7 @@
 
 <script>
 import Updater from './Updater'
+import { activateSharedResource, applySharedResources } from './sharedResources'
 import InterfaceFlowChart from './InterfaceComponents/InterfaceFlowChart.vue'
 
 export default {
@@ -206,6 +215,11 @@ export default {
       })
       return items
     },
+    activate(item) {
+      activateSharedResource(this, this.api, item).then((switched) => {
+        if (switched) this.update()
+      })
+    },
     connectDisconnect(item) {
       this.buttonsDisabled = true
       if (item.connected === 'DISCONNECTED') {
@@ -232,8 +246,12 @@ export default {
     },
     update() {
       if (this.tabId != this.curTab) return
-      this.api.get_all_interface_info().then((info) => {
-        this.data = [] // Clear the old data
+      Promise.all([
+        this.api.get_all_interface_info(),
+        // Shared resources are optional so don't fail the update without them
+        this.api.get_shared_resources().catch(() => []),
+      ]).then(([info, resources]) => {
+        const data = []
         for (let int of info) {
           let connect = null
           let connectedClass = null
@@ -247,7 +265,7 @@ export default {
             connect = 'Cancel'
             connectedClass = 'openc3-red'
           }
-          this.data.push({
+          data.push({
             name: int[0],
             connect: connect,
             connectedClass: connectedClass,
@@ -262,6 +280,7 @@ export default {
             disable_disconnect: int[9], // Add the disable_disconnect property from the backend
           })
         }
+        this.data = applySharedResources(data, resources, 'INTERFACE')
         this.buttonsDisabled = false
       })
     },
