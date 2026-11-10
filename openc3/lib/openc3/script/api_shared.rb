@@ -50,6 +50,7 @@ module OpenC3
 
     # @deprecated
     def check_with_units(*args, scope: $openc3_scope, token: $openc3_token)
+      OpenC3.deprecation_warning("`check_with_units` is deprecated. Please use `check_formatted` instead.", uplevel: 1)
       check(*args, type: :FORMATTED, scope: scope, token: token)
     end
 
