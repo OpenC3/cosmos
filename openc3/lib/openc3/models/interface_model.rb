@@ -58,6 +58,7 @@ module OpenC3
     attr_accessor :shard
     attr_accessor :db_shard
     attr_accessor :bridge_name
+    attr_accessor :shared_resource
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -137,6 +138,7 @@ module OpenC3
       shard: 0,
       db_shard: 0,
       bridge_name: nil,
+      shared_resource: nil,
       scope:
     )
       if self.class._get_type == 'INTERFACE'
@@ -197,6 +199,7 @@ module OpenC3
       @shard = shard.to_i # to_i to handle nil
       @db_shard = db_shard.to_i # to_i to handle nil
       @bridge_name = bridge_name&.to_s&.upcase
+      @shared_resource = shared_resource
       @secrets = secrets
     end
 
@@ -271,6 +274,7 @@ module OpenC3
         'shard' => @shard,
         'db_shard' => @db_shard,
         'bridge_name' => @bridge_name,
+        'shared_resource' => @shared_resource,
         'updated_at' => @updated_at
       }
     end
@@ -452,9 +456,19 @@ module OpenC3
       when 'BRIDGE'
         if type == 'INTERFACE'
           parser.verify_num_parameters(1, 1, "#{keyword} <Bridge Name>")
+          raise parser.error("BRIDGE can not be used with SHARED_RESOURCE") if @shared_resource
           @bridge_name = parameters[0].to_s.upcase
         else
           raise ConfigParser::Error.new(parser, "BRIDGE not supported for Router: #{keyword} #{parameters.join(" ")}")
+        end
+
+      when 'SHARED_RESOURCE'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Shared Resource Name>")
+        raise parser.error("SHARED_RESOURCE can not be used with BRIDGE") if @bridge_name
+        begin
+          @shared_resource = SharedResourceModel.validate_name(parameters[0])
+        rescue => e
+          raise parser.error(e.message)
         end
 
       else
@@ -488,6 +502,7 @@ module OpenC3
         prefix: @prefix,
         shard: @shard,
         db_shard: @db_shard,
+        shared_resource: @shared_resource,
         scope: @scope
       )
       unless validate_only

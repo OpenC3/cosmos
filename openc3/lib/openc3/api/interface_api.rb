@@ -17,6 +17,7 @@
 
 require 'openc3/models/interface_model'
 require 'openc3/models/interface_status_model'
+require 'openc3/models/shared_resource_model'
 require 'openc3/topics/interface_topic'
 
 module OpenC3
@@ -64,6 +65,7 @@ module OpenC3
     def connect_interface(interface_name, *interface_params, manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, manual: manual, scope: scope, token: token)
+      SharedResourceModel.check_interface_active('INTERFACE', interface_name, scope: scope)
       InterfaceTopic.connect_interface(interface_name, *interface_params, scope: scope)
     end
 
@@ -176,12 +178,14 @@ module OpenC3
     def interface_cmd(interface_name, cmd_name, *cmd_params, manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, manual: manual, scope: scope, token: token)
+      SharedResourceModel.check_interface_active('INTERFACE', interface_name, scope: scope)
       InterfaceTopic.interface_cmd(interface_name, cmd_name, *cmd_params, scope: scope)
     end
 
     def interface_protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, manual: manual, scope: scope, token: token)
+      SharedResourceModel.check_interface_active('INTERFACE', interface_name, scope: scope)
       InterfaceTopic.protocol_cmd(interface_name, cmd_name, *cmd_params, read_write: read_write, index: index, scope: scope)
     end
 
@@ -221,6 +225,7 @@ module OpenC3
 
     def interface_details(interface_name, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', interface_name: interface_name, manual: manual, scope: scope, token: token)
+      SharedResourceModel.check_interface_active('INTERFACE', interface_name, scope: scope)
       InterfaceTopic.interface_details(interface_name, scope: scope)
     end
   end

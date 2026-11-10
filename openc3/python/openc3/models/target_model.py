@@ -533,6 +533,7 @@ class TargetModel(Model):
         shard=0,
         db_shard=0,
         stored_limits_mode="PROCESS",
+        shared_resource: str | None = None,
         scope: str = OPENC3_SCOPE,
     ):
         if target_microservices is None:
@@ -551,6 +552,7 @@ class TargetModel(Model):
         self.db_shard = int(db_shard) if db_shard is not None else 0
         mode = str(stored_limits_mode).upper() if stored_limits_mode else "PROCESS"
         self.stored_limits_mode = mode if mode in ("PROCESS", "LOG", "DISABLE") else "PROCESS"
+        self.shared_resource = shared_resource
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,

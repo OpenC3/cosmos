@@ -198,3 +198,17 @@ MICROSERVICE:
       since: 6.2.0
       example: |
         STOPPED
+    SHARED_RESOURCE:
+      summary: Share this microservice's resource between scopes so it is only active in one scope at a time
+      description:
+        The microservice only runs in the scope where the shared resource is active. In other scopes it is
+        installed but not started until the resource is switched to their scope with switch_shared_resource.
+        See [Shared Resources](plugins#shared-resources).
+      since: _Coming Soon_
+      parameters:
+        - name: Shared Resource Name
+          required: true
+          description: Name of the shared resource. Must only contain letters, numbers, and single underscores.
+          values: .+
+      example: |
+        SHARED_RESOURCE THERMAL_VAC_CHAMBER

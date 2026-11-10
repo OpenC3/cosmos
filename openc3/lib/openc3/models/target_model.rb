@@ -25,6 +25,7 @@ require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/cvt_model'
 require 'openc3/models/microservice_model'
+require 'openc3/models/shared_resource_model'
 require 'openc3/topics/limits_event_topic'
 require 'openc3/topics/config_topic'
 require 'openc3/system'
@@ -86,6 +87,7 @@ module OpenC3
     attr_accessor :disable_erb
     attr_accessor :shard
     attr_accessor :db_shard
+    attr_accessor :shared_resource
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -534,6 +536,7 @@ module OpenC3
       disable_erb: nil,
       shard: 0,
       db_shard: 0,
+      shared_resource: nil,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
@@ -563,6 +566,7 @@ module OpenC3
       @disable_erb = disable_erb
       @shard = shard.to_i # to_i to handle nil
       @db_shard = db_shard.to_i # to_i to handle nil
+      @shared_resource = shared_resource
       @bucket = Bucket.getClient()
       @children = []
     end
@@ -597,7 +601,18 @@ module OpenC3
         'disable_erb' => @disable_erb,
         'shard' => @shard,
         'db_shard' => @db_shard,
+        'shared_resource' => @shared_resource,
       }
+    end
+
+    # Join the shared resource (if any) when first created. Targets are members
+    # without a process: their microservices keep running in every scope but
+    # commands are only accepted in the scope where the resource is active.
+    def create(update: false, force: false, queued: false)
+      if @shared_resource and not update
+        SharedResourceModel.add_member(@shared_resource, scope: @scope, type: 'TARGET', member_name: @name)
+      end
+      super(update: update, force: force, queued: queued)
     end
 
     # Handles Target specific configuration keywords
@@ -702,6 +717,14 @@ module OpenC3
           raise ConfigParser::Error.new(parser, "STORED_LIMITS_MODE must be one of PROCESS, LOG, or DISABLE")
         end
         @stored_limits_mode = mode
+
+      when 'SHARED_RESOURCE'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Shared Resource Name>")
+        begin
+          @shared_resource = SharedResourceModel.validate_name(parameters[0])
+        rescue => e
+          raise parser.error(e.message)
+        end
 
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Target: #{keyword} #{parameters.join(" ")}")
@@ -871,6 +894,13 @@ module OpenC3
     end
 
     def undeploy
+      if @shared_resource
+        begin
+          SharedResourceModel.remove_member(@shared_resource, scope: @scope, type: 'TARGET', member_name: @name)
+        rescue => error
+          Logger.error("Error removing target #{@name} from shared resource #{@shared_resource} in scope #{@scope} due to #{error}")
+        end
+      end
       prefix = "#{@scope}/targets/#{@name}/"
       objects = @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix)
       keys = objects.map(&:key)

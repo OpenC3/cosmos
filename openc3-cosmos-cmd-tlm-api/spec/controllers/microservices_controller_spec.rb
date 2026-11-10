@@ -35,6 +35,7 @@ RSpec.describe MicroservicesController, type: :controller do
         .with(name: "MICRO1", scope: "DEFAULT")
         .and_return(microservice_instance)
 
+      allow(microservice_instance).to receive(:shared_resource).and_return(nil)
       expect(microservice_instance).to receive(:enabled=).with(true)
       expect(microservice_instance).to receive(:update)
 
@@ -53,6 +54,32 @@ RSpec.describe MicroservicesController, type: :controller do
       post :start, params: {id: "MICRO1"}
 
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "POST start with a shared resource" do
+    before(:each) do
+      @shared = OpenC3::MicroserviceModel.new(name: "DEFAULT__USER__SHARED", shared_resource: "CHAMBER", scope: "DEFAULT")
+      @shared.create
+      @other = OpenC3::MicroserviceModel.new(name: "OTHER__USER__SHARED", shared_resource: "CHAMBER", scope: "OTHER")
+      @other.create
+    end
+
+    it "starts a member in the active scope" do
+      post :start, params: {id: "DEFAULT__USER__SHARED", scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(OpenC3::MicroserviceModel.get_model(name: "DEFAULT__USER__SHARED", scope: "DEFAULT").enabled).to be true
+    end
+
+    it "refuses to start a member in an inactive scope" do
+      other = OpenC3::MicroserviceModel.get_model(name: "OTHER__USER__SHARED", scope: "OTHER")
+      other.enabled = false
+      other.update
+      post :start, params: {id: "OTHER__USER__SHARED", scope: "OTHER"}
+      expect(response).to have_http_status(:bad_request)
+      json = JSON.parse(response.body)
+      expect(json["message"]).to include("shared resource CHAMBER which is active in scope DEFAULT")
+      expect(OpenC3::MicroserviceModel.get_model(name: "OTHER__USER__SHARED", scope: "OTHER").enabled).to be false
     end
   end
 

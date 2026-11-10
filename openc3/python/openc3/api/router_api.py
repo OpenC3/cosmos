@@ -13,6 +13,7 @@ from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.router_model import RouterModel
 from openc3.models.router_status_model import RouterStatusModel
+from openc3.models.shared_resource_model import SharedResourceModel
 from openc3.topics.router_topic import RouterTopic
 from openc3.utilities.authorization import authorize
 from openc3.utilities.logger import Logger
@@ -63,6 +64,7 @@ def get_router_names(scope=OPENC3_SCOPE):
 # @param router_params [Array] Optional parameters to pass to the router
 def connect_router(router_name, *router_params, scope=OPENC3_SCOPE):
     authorize(permission="system_set", router_name=router_name, scope=scope)
+    SharedResourceModel.check_interface_active("ROUTER", router_name, scope=scope)
     RouterTopic.connect_router(router_name, *router_params, scope=scope)
 
 
@@ -126,6 +128,7 @@ def get_all_router_info(scope=OPENC3_SCOPE):
 
 def router_cmd(router_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):
     authorize(permission="system_set", router_name=router_name, scope=scope)
+    SharedResourceModel.check_interface_active("ROUTER", router_name, scope=scope)
     RouterTopic.router_cmd(router_name, cmd_name, *cmd_params, scope=scope)
 
 
@@ -138,6 +141,7 @@ def router_protocol_cmd(
     scope=OPENC3_SCOPE,
 ):
     authorize(permission="system_set", router_name=router_name, scope=scope)
+    SharedResourceModel.check_interface_active("ROUTER", router_name, scope=scope)
     RouterTopic.protocol_cmd(
         router_name,
         cmd_name,
@@ -237,4 +241,5 @@ def router_target_disable(
 
 def router_details(router_name, scope=OPENC3_SCOPE):
     authorize(permission="system", router_name=router_name, scope=scope)
+    SharedResourceModel.check_interface_active("ROUTER", router_name, scope=scope)
     return RouterTopic.router_details(router_name, scope=scope)

@@ -112,6 +112,35 @@ Custom microservice files are extracted from the gem's `microservices/<FOLDER>/`
 
 When a plugin is uninstalled, COSMOS destroys all its components in dependency order: microservices are stopped first (with a wait period for graceful shutdown), then interfaces, routers, tools, widgets, targets, and script engines are removed. All associated files are deleted from both the configuration and tools buckets, and Redis state is cleaned up.
 
+## Shared Resources
+
+<span class="badge badge--secondary since-right">Since _Coming Soon_</span>
+
+A shared resource is something, typically expensive hardware, that is defined in several scopes but must only be used by one scope at a time. Add the `SHARED_RESOURCE <Name>` keyword to the interfaces, routers, microservices, and targets that use it. Everything with the same shared resource name, in any scope, belongs to the same shared resource.
+
+```cosmos
+TARGET CHAMBER CHAMBER
+  SHARED_RESOURCE THERMAL_VAC_CHAMBER
+INTERFACE CHAMBER_INT tcpip_client_interface.py chamber 8080 8080 10.0 None
+  MAP_TARGET CHAMBER
+  SHARED_RESOURCE THERMAL_VAC_CHAMBER
+MICROSERVICE CHAMBER_CTRL chamber_ctrl
+  TARGET_NAME CHAMBER
+  CMD python chamber_ctrl.py
+  SHARED_RESOURCE THERMAL_VAC_CHAMBER
+```
+
+The shared resource is active in one scope at a time:
+
+- The first scope to install the shared resource owns it and it becomes active there.
+- In every other scope the plugin installs normally, but the interface, router, and microservice processes are not started.
+- Commands to the resource's targets are rejected in scopes where it isn't active, as are `connect_interface`, `interface_cmd`, `send_raw`, and the router equivalents. The targets' own microservices (decom, logging, and cleanup) keep running in every scope, so telemetry screens, `build_cmd`, `inject_tlm`, and historical data still work.
+- Use [switch_shared_resource](../guides/scripting-api.md#switch_shared_resource) to move the resource to another scope. Its processes in the old scope are stopped, and only once they have exited are the processes in the new scope started, so the hardware is never used by two scopes at once. Switching requires admin permission in both scopes.
+- Use [release_shared_resource](../guides/scripting-api.md#release_shared_resource) to stop the resource in every scope.
+- Upgrading or reinstalling a plugin keeps the resource active in the same scope. Uninstalling the plugin from the active scope leaves the resource assigned to that scope until it is switched to another scope.
+
+`SHARED_RESOURCE` can't be used with `BRIDGE`.
+
 ## Plugin Directory Structure
 
 COSMOS plugins have a well-defined directory structure described in detail in the [Code Generator](/docs/getting-started/generators) documentation.

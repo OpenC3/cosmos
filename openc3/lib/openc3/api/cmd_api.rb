@@ -20,6 +20,7 @@
 
 require 'openc3/api/interface_api'
 require 'openc3/models/queue_model'
+require 'openc3/models/shared_resource_model'
 require 'openc3/models/target_model'
 require 'openc3/topics/command_topic'
 require 'openc3/topics/command_decom_topic'
@@ -170,6 +171,7 @@ module OpenC3
       interface['cmd_target_names'].each do |target_name|
         authorize(permission: 'cmd_raw', interface_name: interface_name, target_name: target_name, manual: manual, scope: scope, token: token)
       end
+      SharedResourceModel.check_interface_active('INTERFACE', interface_name, scope: scope)
       InterfaceTopic.write_raw(interface_name, data, scope: scope)
     end
 
@@ -479,6 +481,7 @@ module OpenC3
       cmd_name = cmd_name.upcase
       cmd_params = cmd_params.transform_keys(&:upcase)
       user = authorize(permission: 'cmd', target_name: target_name, packet_name: cmd_name, manual: manual, scope: scope, token: token)
+      SharedResourceModel.check_target_active(target_name, scope: scope)
       if user.nil?
         user = {}
         user['username'] = ENV.fetch('OPENC3_MICROSERVICE_NAME', nil)

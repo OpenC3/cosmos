@@ -7430,6 +7430,225 @@ router_details("INST_ROUTER")
 </TabItem>
 </Tabs>
 
+## Shared Resources
+
+These methods manage shared resources: interfaces, routers, microservices, and targets defined in several scopes with the same [SHARED_RESOURCE](../configuration/plugins.md#shared-resources) name, which may only be active in one scope at a time.
+
+A shared resource record is a hash with the following keys:
+
+| Key          | Description                                                                                                             |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| name         | Name of the shared resource                                                                                             |
+| owner        | Scope the shared resource is active in, or nil / None if it isn't active in any scope                                  |
+| state        | ACTIVE, or RELEASING while the owner's microservices are being stopped before switching to another scope                |
+| to           | Scope the shared resource is switching to while RELEASING, or nil / None if it is being released                        |
+| waiting      | Microservices (name and operator shard) that must stop before a RELEASING switch completes                              |
+| members      | Hash of scope to the members (type and name) in that scope                                                              |
+| requested_at | When the RELEASING switch was requested                                                                                 |
+| updated_at   | When the record was last updated                                                                                        |
+
+### get_shared_resources
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Returns an array of the shared resources which have members in the current scope.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+get_shared_resources()
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+get_shared_resources()
+```
+
+</TabItem>
+</Tabs>
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+resources = get_shared_resources()
+for resource in resources:
+    print(f"{resource['name']} is active in {resource['owner']}")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+resources = get_shared_resources()
+resources.each do |resource|
+  puts "#{resource['name']} is active in #{resource['owner']}"
+end
+```
+
+</TabItem>
+</Tabs>
+
+### get_shared_resource
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Returns the shared resource record or nil / None if it doesn't exist.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+get_shared_resource("<Shared Resource Name>")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+get_shared_resource("<Shared Resource Name>")
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter            | Description                 |
+| -------------------- | --------------------------- |
+| Shared Resource Name | Name of the shared resource |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+resource = get_shared_resource("THERMAL_VAC_CHAMBER")
+print(resource['owner'])  # 'DEFAULT'
+print(resource['state'])  # 'ACTIVE'
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+resource = get_shared_resource("THERMAL_VAC_CHAMBER")
+puts resource['owner'] # 'DEFAULT'
+puts resource['state'] # 'ACTIVE'
+```
+
+</TabItem>
+</Tabs>
+
+### switch_shared_resource
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Makes a shared resource active in a scope. The microservices of the resource's interfaces, routers, and microservices in the currently active scope are stopped first, then the ones in the new scope are started. Until the switch completes the resource is not active in either scope and the record's state is RELEASING. Requires admin permission in both the new scope and the currently active scope.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+switch_shared_resource("<Shared Resource Name>", "<To Scope (optional)>", force=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+switch_shared_resource("<Shared Resource Name>", "<To Scope (optional)>", force: false)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter            | Description                                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Shared Resource Name | Name of the shared resource                                                                                                                                                    |
+| To Scope             | Scope to make the resource active in. Defaults to the current scope.                                                                                                           |
+| force                | Complete the switch immediately without waiting for the currently active scope's microservices to stop. Only use this if the operator running them is down. Defaults to false. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+# Make the chamber active in the current scope
+switch_shared_resource("THERMAL_VAC_CHAMBER")
+# Wait for the switch to complete
+wait_expression("get_shared_resource('THERMAL_VAC_CHAMBER')['state'] == 'ACTIVE'", 60)
+# Make the chamber active in the TEST scope
+switch_shared_resource("THERMAL_VAC_CHAMBER", "TEST")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+# Make the chamber active in the current scope
+switch_shared_resource("THERMAL_VAC_CHAMBER")
+# Wait for the switch to complete
+wait_expression("get_shared_resource('THERMAL_VAC_CHAMBER')['state'] == 'ACTIVE'", 60)
+# Make the chamber active in the TEST scope
+switch_shared_resource("THERMAL_VAC_CHAMBER", "TEST")
+```
+
+</TabItem>
+</Tabs>
+
+### release_shared_resource
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Releases a shared resource so it is not active in any scope. Its microservices in the currently active scope are stopped. The resource stays inactive (even if a plugin is reinstalled) until it is switched to a scope with switch_shared_resource. Requires admin permission in the current scope and the currently active scope.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+release_shared_resource("<Shared Resource Name>", force=False)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+release_shared_resource("<Shared Resource Name>", force: false)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter            | Description                                                                                                    |
+| -------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Shared Resource Name | Name of the shared resource                                                                                    |
+| force                | Release immediately without waiting for the currently active scope's microservices to stop. Defaults to false. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+release_shared_resource("THERMAL_VAC_CHAMBER")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+release_shared_resource("THERMAL_VAC_CHAMBER")
+```
+
+</TabItem>
+</Tabs>
+
 ## Tables
 
 These methods allow the user to script Table Manager.
