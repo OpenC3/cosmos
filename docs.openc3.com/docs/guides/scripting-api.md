@@ -5044,7 +5044,20 @@ get_limits_groups("<Target Name (optional)>")
 
 ```python
 limits_groups = get_limits_groups()
+# INST and INST2 both define TEMPS, GROUND and PAYLOAD so each key includes the target
+print(limits_groups)  # =>
+# {'INST__TEMPS': [['INST', 'HEALTH_STATUS', 'TEMP1'], ['INST', 'HEALTH_STATUS', 'TEMP2'], ['INST', 'HEALTH_STATUS', 'TEMP3'], ['INST', 'HEALTH_STATUS', 'TEMP4']],
+#  'INST__GROUND': [['INST', 'HEALTH_STATUS', 'GROUND1STATUS'], ['INST', 'HEALTH_STATUS', 'GROUND2STATUS']],
+#  'INST__PAYLOAD': [['INST', 'LIMITS_GROUP', 'TEMPS'], ['INST', 'LIMITS_GROUP', 'GROUND']],
+#  'INST2__TEMPS': [['INST2', 'HEALTH_STATUS', 'TEMP1'], ['INST2', 'HEALTH_STATUS', 'TEMP2'], ['INST2', 'HEALTH_STATUS', 'TEMP3'], ['INST2', 'HEALTH_STATUS', 'TEMP4']],
+#  'INST2__GROUND': [['INST2', 'HEALTH_STATUS', 'GROUND1STATUS'], ['INST2', 'HEALTH_STATUS', 'GROUND2STATUS']],
+#  'INST2__PAYLOAD': [['INST2', 'LIMITS_GROUP', 'TEMPS'], ['INST2', 'LIMITS_GROUP', 'GROUND']]}
+
 inst_groups = get_limits_groups("INST")
+print(inst_groups)  # =>
+# {'TEMPS': [['INST', 'HEALTH_STATUS', 'TEMP1'], ['INST', 'HEALTH_STATUS', 'TEMP2'], ['INST', 'HEALTH_STATUS', 'TEMP3'], ['INST', 'HEALTH_STATUS', 'TEMP4']],
+#  'GROUND': [['INST', 'HEALTH_STATUS', 'GROUND1STATUS'], ['INST', 'HEALTH_STATUS', 'GROUND2STATUS']],
+#  'PAYLOAD': [['INST', 'LIMITS_GROUP', 'TEMPS'], ['INST', 'LIMITS_GROUP', 'GROUND']]}
 ```
 
 </TabItem>
@@ -5053,7 +5066,20 @@ inst_groups = get_limits_groups("INST")
 
 ```ruby
 limits_groups = get_limits_groups()
+# INST and INST2 both define TEMPS, GROUND and PAYLOAD so each key includes the target
+puts limits_groups  # =>
+# {"INST__TEMPS"=>[["INST", "HEALTH_STATUS", "TEMP1"], ["INST", "HEALTH_STATUS", "TEMP2"], ["INST", "HEALTH_STATUS", "TEMP3"], ["INST", "HEALTH_STATUS", "TEMP4"]],
+#  "INST__GROUND"=>[["INST", "HEALTH_STATUS", "GROUND1STATUS"], ["INST", "HEALTH_STATUS", "GROUND2STATUS"]],
+#  "INST__PAYLOAD"=>[["INST", "LIMITS_GROUP", "TEMPS"], ["INST", "LIMITS_GROUP", "GROUND"]],
+#  "INST2__TEMPS"=>[["INST2", "HEALTH_STATUS", "TEMP1"], ["INST2", "HEALTH_STATUS", "TEMP2"], ["INST2", "HEALTH_STATUS", "TEMP3"], ["INST2", "HEALTH_STATUS", "TEMP4"]],
+#  "INST2__GROUND"=>[["INST2", "HEALTH_STATUS", "GROUND1STATUS"], ["INST2", "HEALTH_STATUS", "GROUND2STATUS"]],
+#  "INST2__PAYLOAD"=>[["INST2", "LIMITS_GROUP", "TEMPS"], ["INST2", "LIMITS_GROUP", "GROUND"]]}
+
 inst_groups = get_limits_groups("INST")
+puts inst_groups  # =>
+# {"TEMPS"=>[["INST", "HEALTH_STATUS", "TEMP1"], ["INST", "HEALTH_STATUS", "TEMP2"], ["INST", "HEALTH_STATUS", "TEMP3"], ["INST", "HEALTH_STATUS", "TEMP4"]],
+#  "GROUND"=>[["INST", "HEALTH_STATUS", "GROUND1STATUS"], ["INST", "HEALTH_STATUS", "GROUND2STATUS"]],
+#  "PAYLOAD"=>[["INST", "LIMITS_GROUP", "TEMPS"], ["INST", "LIMITS_GROUP", "GROUND"]]}
 ```
 
 </TabItem>
