@@ -125,6 +125,20 @@ TARGET:
           required: true
           description: Number of seconds between flushing rows to the TSDB (default = 5.0)
           values: .+
+    DECOM_UPDATE_INTERVAL:
+      summary: Number of seconds the decom microservice waits before writing decommutated packets to Redis
+      description:
+        The decom microservice queues the decommutated packet stream and Current Value Table (CVT) writes
+        and flushes them to Redis in a single pipelined batch every update interval. Raising this value
+        reduces processor utilization for high rate data at the cost of slower updates. Lowering it gives
+        faster updates but increases processor utilization. Setting it to 0 disables queuing and writes
+        every packet to Redis immediately. This is the decom equivalent of the interface UPDATE_INTERVAL option.
+      since: _Coming Soon_
+      parameters:
+        - name: Interval
+          required: true
+          description: Number of seconds between writes to Redis (default = 0.1, 0 = write immediately)
+          values: .+
     LOG_RETAIN_TIME:
       summary: How long to keep all regular telemetry logs in seconds.
       parameters:
