@@ -113,6 +113,14 @@ module OpenC3
       end
     end
 
+    describe "get_client" do
+      it "is an alias for getClient" do
+        client = double("client")
+        expect(Secrets).to receive(:getClient).and_return(client)
+        expect(Secrets.get_client).to be client
+      end
+    end
+
     describe "setup" do
       it "requires at least 3 items" do
         expect { Secrets.new.setup([['ENV', 'KEY']]) }.to raise_error(ArgumentError, /at least 3 items/)

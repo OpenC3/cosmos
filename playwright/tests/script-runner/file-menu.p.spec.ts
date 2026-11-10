@@ -35,12 +35,14 @@ test('clears the editor on File->New', async ({ page, utils }) => {
 test('open a file', async ({ page, utils }) => {
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await expect(page.getByText('INST2', { exact: true })).toBeVisible()
+  await expect(
+    page.locator('.v-dialog').getByText('INST2', { exact: true }),
+  ).toBeVisible()
   await page
     .locator('[data-test=file-open-save-search] input')
     .fill('disconnect.rb')
-  await expect(page.locator('text=disconnect.rb')).toBeVisible()
-  await page.locator('text=disconnect.rb').click()
+  await expect(page.locator('.v-dialog >> text=disconnect.rb')).toBeVisible()
+  await page.locator('.v-dialog >> text=disconnect.rb').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
   await expect(page.locator('#sr-controls')).toContainText(
@@ -55,12 +57,14 @@ test('open a file', async ({ page, utils }) => {
   )
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await expect(page.getByText('INST2', { exact: true })).toBeVisible()
+  await expect(
+    page.locator('.v-dialog').getByText('INST2', { exact: true }),
+  ).toBeVisible()
   await page
     .locator('[data-test=file-open-save-search] input')
     .fill('metadata.py')
-  await expect(page.locator('text=metadata.py')).toBeVisible()
-  await page.locator('text=metadata.py').click()
+  await expect(page.locator('.v-dialog >> text=metadata.py')).toBeVisible()
+  await page.locator('.v-dialog >> text=metadata.py').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('.v-dialog')).not.toBeVisible()
   await expect(page.locator('#sr-controls')).toContainText(

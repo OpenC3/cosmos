@@ -273,6 +273,54 @@ class TestDecomMicroservice(unittest.TestCase):
                 stdout.getvalue(),
             )
 
+    def test_resyncs_limits_when_limits_events_are_trimmed_before_they_are_read(self):
+        def limits_change(i):
+            return {
+                "type": "LIMITS_CHANGE",
+                "target_name": "TGT1",
+                "packet_name": "PKT1",
+                "item_name": f"ITEM{i}",
+                "old_limits_state": "GREEN",
+                "new_limits_state": "RED_HIGH",
+                "message": "TEST",
+            }
+
+        # Decom only detects gaps after it has read a limits event so give it one first
+        LimitsEventTopic.write(limits_change(0), scope="DEFAULT")
+        wait_for(lambda: self.dm.limits_event_offset != "0-0")
+        self.assertNotEqual(self.dm.limits_event_offset, "0-0")
+
+        entered = threading.Event()
+        released = threading.Event()
+
+        def busy_decom_packet(*_args):
+            entered.set()
+            released.wait(5)
+
+        with patch.object(self.dm, "decom_packet", side_effect=busy_decom_packet):
+            packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+            packet.received_time = datetime.now(timezone.utc)
+            TelemetryTopic.write_packet(packet, scope="DEFAULT")
+            self.assertTrue(entered.wait(5))
+
+            # While decom is busy, disable the group and then flood the stream with
+            # enough LIMITS_CHANGE events to trim the group event before it is read
+            Store.hset("DEFAULT__limits_groups", "FIRST", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))
+            event = {"type": "LIMITS_GROUP_ENABLE_STATE", "group_name": "FIRST", "enabled": False, "message": "TEST"}
+            LimitsEventTopic.write(event, scope="DEFAULT")
+            for i in range(1500):
+                LimitsEventTopic.write(limits_change(i), scope="DEFAULT")
+            types = [event["type"] for _, event in LimitsEventTopic.read(0, scope="DEFAULT")]
+            self.assertNotIn("LIMITS_GROUP_ENABLE_STATE", types)
+
+            for stdout in capture_io():
+                released.set()
+                wait_for(lambda: not System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+                self.assertIn(
+                    "Limits events were trimmed before they could be read, resyncing limits", stdout.getvalue()
+                )
+        self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
     def test_handles_exceptions_in_the_thread(self):
         with patch.object(self.dm, "microservice_cmd") as mock_microservice_cmd:
             mock_microservice_cmd.side_effect = Exception("Bad command")

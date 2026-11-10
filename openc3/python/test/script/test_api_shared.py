@@ -22,6 +22,7 @@ from test.test_helper import *
 cancel = False
 count = True
 received_count = 0
+get_item_count = 0
 
 
 class Proxy:
@@ -62,6 +63,13 @@ class Proxy:
                     return None
             case _:
                 return None
+
+    def get_item(self, packet_name, item_name, scope="DEFAULT"):
+        global get_item_count
+        get_item_count += 1
+        if item_name == "CCSDSSHF":
+            return {"states": {"FALSE": {"value": 0}, "TRUE": {"value": 1}}}
+        return {}
 
 
 # sleep in a script - returns true if canceled mid sleep
@@ -118,7 +126,9 @@ class TestApiShared(unittest.TestCase):
         global received_count
         global cancel
         global count
+        global get_item_count
         received_count = 0
+        get_item_count = 0
         cancel = False
         count = True
 
@@ -168,18 +178,26 @@ class TestApiShared(unittest.TestCase):
             )
         openc3.script.DISCONNECT = False
 
-    def test_check_warns_when_checking_a_state_against_a_constant(self):
+    def test_looks_up_states_through_the_api_server_only_for_strings(self):
+        # https://github.com/OpenC3/cosmos/issues/4046
+        for _ in capture_io():
+            check("INST HEALTH_STATUS TEMP1 in [10, 11]")
+            wait_check("INST HEALTH_STATUS TEMP1 > 1", 0.01)
+            self.assertEqual(get_item_count, 0)
+            check("INST HEALTH_STATUS CCSDSSHF == false")
+            self.assertTrue(wait("INST HEALTH_STATUS CCSDSSHF == 'False'", 0.01))
+            self.assertEqual(get_item_count, 2)
+            with self.assertRaises(CheckError):
+                check_raw("INST HEALTH_STATUS CCSDSSHF == 'false'")
+            self.assertEqual(get_item_count, 2)
+
+    def test_check_a_state(self):
         for stdout in capture_io():
             check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'")
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'",
                 stdout.getvalue(),
             )
-        with self.assertRaisesRegex(
-            NameError,
-            "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?",
-        ):
-            check("INST HEALTH_STATUS CCSDSSHF == FALSE")
 
     def test_check_raises_with_an_invalid_operator(self):
         with self.assertRaisesRegex(RuntimeError, r"ERROR: Invalid operator: '==='"):
@@ -801,7 +819,7 @@ class TestApiShared(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "ERROR: Unable to parse operand"):
             wait_check(f"INST HEALTH_STATUS BLOCKTEST == '{data}'", 0.01)
 
-    def test_warns_when_checking_a_state_against_a_constant(self):
+    def test_wait_check_a_state(self):
         for stdout in capture_io():
             result = wait_check("INST HEALTH_STATUS CCSDSSHF == 'FALSE'", 0.01)
             self.assertTrue(isinstance(result, float))
@@ -809,11 +827,6 @@ class TestApiShared(unittest.TestCase):
                 "CHECK: INST HEALTH_STATUS CCSDSSHF == 'FALSE' success with value == 'FALSE'",
                 stdout.getvalue(),
             )
-        with self.assertRaisesRegex(
-            NameError,
-            "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?",
-        ):
-            wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
 
     # check(), wait() and wait_check() all parse the same comparison syntax
     # so they must all accept and reject exactly the same expressions
@@ -845,15 +858,6 @@ class TestApiShared(unittest.TestCase):
             wait("INST HEALTH_STATUS TEMP1 >", 0.01)
         with self.assertRaisesRegex(RuntimeError, "must specify an operand"):
             wait_check("INST HEALTH_STATUS TEMP1 >", 0.01)
-
-    def test_consistency_suggests_a_string_when_comparing_against_a_bare_word(self):
-        error = "Uninitialized constant FALSE. Did you mean 'FALSE' as a string?"
-        with self.assertRaisesRegex(NameError, re.escape(error)):
-            check("INST HEALTH_STATUS CCSDSSHF == FALSE")
-        with self.assertRaisesRegex(NameError, re.escape(error)):
-            wait("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
-        with self.assertRaisesRegex(NameError, re.escape(error)):
-            wait_check("INST HEALTH_STATUS CCSDSSHF == FALSE", 0.01)
 
     def test_consistency_accepts_hex_operands(self):
         for stdout in capture_io():

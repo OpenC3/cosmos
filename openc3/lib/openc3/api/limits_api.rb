@@ -26,6 +26,7 @@ module OpenC3
                        'get_out_of_limits',
                        'get_overall_limits_state',
                        'limits_enabled?',
+                       'limits_enabled', # Python scripts call this alias since Python method names can't end in ?
                        'enable_limits',
                        'disable_limits',
                        'get_limits',
@@ -399,45 +400,33 @@ module OpenC3
     def _limits_group(group_name, action:, manual:, scope:, token:)
       authorize(permission: 'tlm_set', manual: manual, scope: scope, token: token)
       group_name.upcase!
-      group = get_limits_groups(scope: scope, token: token)[group_name]
-      raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}" unless group
+      # Items grouped by target and packet so each packet is read and written once
+      items = LimitsEventTopic.limits_group_items(group_name, scope: scope)
+      raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}" unless items
 
-      Logger.info("#{action.to_s.capitalize} Limits Group: #{group_name}", scope: scope)
-      last_target_name = nil
-      last_packet_name = nil
-      packet = nil
-      group.sort.each do |target_name, packet_name, item_name|
-        if last_target_name != target_name || last_packet_name != packet_name
-          if last_target_name && last_packet_name
-            TargetModel.set_packet(last_target_name, last_packet_name, packet, scope: scope)
-          end
+      enabled = (action == :enable)
+      message = "#{enabled ? 'Enabling' : 'Disabling'} Limits Group: #{group_name}"
+      Logger.info(message, scope: scope)
+
+      items.each do |target_name, packets|
+        packets.each do |packet_name, item_names|
           packet = TargetModel.packet(target_name, packet_name, scope: scope)
-        end
-        packet['items'].each do |item|
-          if item['name'] == item_name
-            if action == :enable
-              enabled = true
-              item['limits']['enabled'] = true
-              message = "Enabling Limits for '#{target_name} #{packet_name} #{item_name}'"
-            elsif action == :disable
-              enabled = false
-              item['limits']['enabled'] = false
-              message = "Disabling Limits for '#{target_name} #{packet_name} #{item_name}'"
-            end
-            Logger.info(message, scope: scope)
-
-            event = { type: :LIMITS_ENABLE_STATE, target_name: target_name, packet_name: packet_name,
-                      item_name: item_name, enabled: enabled, time_nsec: Time.now.to_nsec_from_epoch, message: message }
-            LimitsEventTopic.write(event, scope: scope)
-            break
+          item_names_hash = item_names.to_h { |name| [name, true] }
+          packet['items'].each do |item|
+            item['limits']['enabled'] = enabled if item_names_hash[item['name']]
           end
+          TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
         end
-        last_target_name = target_name
-        last_packet_name = packet_name
       end
-      if last_target_name && last_packet_name
-        TargetModel.set_packet(last_target_name, last_packet_name, packet, scope: scope)
-      end
+
+      # Write a single event for the entire group. Writing one event per item
+      # floods the limits event stream, which is trimmed to ~1000 entries, so
+      # decom microservices could miss events and leave limits enabled.
+      # The event only names the group (readers look up the items) so it stays
+      # small no matter how many items the group contains.
+      event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: group_name,
+                enabled: enabled, time_nsec: Time.now.to_nsec_from_epoch, message: message }
+      LimitsEventTopic.write(event, scope: scope)
     end
 
     def _set_limits_enabled(target_name, packet_name, item_name, enabled, scope:)

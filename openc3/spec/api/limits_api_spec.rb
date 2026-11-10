@@ -18,6 +18,7 @@
 require 'spec_helper'
 require 'openc3/api/limits_api'
 require 'openc3/api/target_api'
+require 'openc3/io/json_drb'
 require 'openc3/script/extract'
 require 'openc3/utilities/authorization'
 require 'openc3/microservices/interface_microservice'
@@ -332,6 +333,28 @@ module OpenC3
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be false
       end
+
+      it "accepts a lowercase group name" do
+        @api.disable_limits_group("first")
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+      end
+
+      it "writes a single limits event for the whole group" do
+        # A large group must not flood the limits event stream (capped at ~1000 entries)
+        # with one event per item or decom microservices can miss events
+        @redis.del("DEFAULT__openc3_limits_events")
+        @api.disable_limits_group("FIRST")
+        events = LimitsEventTopic.read("0-0", scope: "DEFAULT")
+        expect(events.length).to eql 1
+        expect(events[0][1]["type"]).to eql "LIMITS_GROUP_ENABLE_STATE"
+        expect(events[0][1]["group_name"]).to eql "FIRST"
+        expect(events[0][1]["enabled"]).to eql false
+        expect(events[0][1]).not_to have_key("items")
+
+        settings = Store.hgetall("DEFAULT__current_limits_settings")
+        expect(JSON.parse(settings["INST__HEALTH_STATUS__TEMP1"])["enabled"]).to be false
+        expect(JSON.parse(settings["INST__HEALTH_STATUS__TEMP3"])["enabled"]).to be false
+      end
     end
 
     describe "get_limits_sets, get_limits_set, set_limits_set" do
@@ -544,6 +567,19 @@ module OpenC3
 
       it "returns whether limits are enable for an item" do
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+      end
+
+      # Python scripts call limits_enabled because Python method names can't end in ?
+      %w(limits_enabled? limits_enabled).each do |method_name|
+        it "can be called as #{method_name} over JSON-RPC" do
+          json_drb = JsonDRb.new(method_whitelist: Api::WHITELIST)
+          json_drb.object = @api
+          request = { 'jsonrpc' => '2.0', 'method' => method_name, 'params' => ["INST HEALTH_STATUS TEMP1"], 'keyword_params' => { 'scope' => 'DEFAULT' }, 'id' => 1 }
+          response_data = json_drb.process_request(request_data: JSON.generate(request), request_headers: {}, start_time: Time.now).first
+          response = JSON.parse(response_data)
+          expect(response['error']).to be_nil
+          expect(response['result']).to be true
+        end
       end
     end
 

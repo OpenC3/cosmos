@@ -265,6 +265,37 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(item2_length.bit_offset, 152)
         self.assertEqual(item2.bit_offset, 168)
 
+    def test_reads_zero_length_variable_sized_items_as_empty_rather_than_filling_the_buffer(self):
+        packet = Packet()
+        packet.append_item("string_length", 8, "UINT")
+        string = packet.append_item("string", 0, "STRING")
+        string.variable_bit_size = {
+            "length_item_name": "string_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        packet.append_item("block_length", 8, "UINT")
+        block = packet.append_item("block", 0, "BLOCK")
+        block.variable_bit_size = {
+            "length_item_name": "block_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        packet.append_item("array_length", 8, "UINT")
+        array = packet.append_item("array", 8, "UINT", 0)
+        array.variable_bit_size = {
+            "length_item_name": "array_length",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        packet.append_item("trailer", 8, "UINT")
+        packet.buffer = b"\x00\x00\x00\x5a"
+        self.assertEqual(packet.read("string"), "")
+        self.assertEqual(packet.read("block"), bytearray(b""))
+        self.assertIsInstance(packet.read("block"), bytearray)
+        self.assertEqual(packet.read("array"), [])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
     def test_can_handle_reading_and_writing_multiple_variable_sized_array_items(self):
         packet = Packet()
         item1_length = packet.append_item("item1_length", 32, "UINT")
@@ -312,6 +343,112 @@ class TestBinaryAccessorWrite(unittest.TestCase):
         self.assertEqual(packet.read("item1_length"), 1)
         self.assertEqual(packet.read("item1"), [17])
         self.assertEqual(item1.array_size, 8)
+
+    def test_can_handle_writing_variable_sized_arrays_of_32_bit_float_and_int_items(self):
+        packet = Packet()
+        packet.append_item("hdr", 8, "UINT")
+        packet.append_item("len", 8, "UINT")
+        floats = packet.append_item("floats", 32, "FLOAT", 0)
+        floats.variable_bit_size = {
+            "length_item_name": "len",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 32,
+        }
+        packet.append_item("ints_len", 8, "UINT")
+        ints = packet.append_item("ints", 16, "INT", 0)
+        ints.variable_bit_size = {
+            "length_item_name": "ints_len",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 16,
+        }
+        packet.append_item("trailer", 8, "UINT")
+        packet.buffer = b"\x00" * packet.defined_length
+
+        packet.write("hdr", 0xA5)
+        packet.write("floats", [-2.5, 5.0, 3.5])
+        packet.write("ints", [-1, 2])
+        packet.write("trailer", 0x5A)
+        self.assertEqual(packet.buffer, b"\xa5\x03" + struct.pack(">3f", -2.5, 5.0, 3.5) + b"\x02\xff\xff\x00\x02\x5a")
+        self.assertEqual(packet.read("len"), 3)
+        self.assertEqual(packet.read("floats"), [-2.5, 5.0, 3.5])
+        self.assertEqual(packet.read("ints_len"), 2)
+        self.assertEqual(packet.read("ints"), [-1, 2])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
+        # Grow and then shrink the float array and keep the trailing items
+        packet.write("floats", [1.5, 3.0, 4.5, 6.0, 7.5])
+        self.assertEqual(packet.read("len"), 5)
+        self.assertEqual(packet.read("floats"), [1.5, 3.0, 4.5, 6.0, 7.5])
+        self.assertEqual(packet.read("ints"), [-1, 2])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+        packet.write("floats", [1.5])
+        self.assertEqual(packet.buffer, b"\xa5\x01" + struct.pack(">f", 1.5) + b"\x02\xff\xff\x00\x02\x5a")
+        self.assertEqual(packet.read("len"), 1)
+        self.assertEqual(packet.read("floats"), [1.5])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
+    def test_complains_about_variable_sized_arrays_not_representable_by_the_length_item(self):
+        packet = Packet()
+        packet.append_item("len", 8, "UINT")
+        floats = packet.append_item("floats", 32, "FLOAT", 0)
+        floats.variable_bit_size = {
+            "length_item_name": "len",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 64,
+        }
+        packet.append_item("trailer", 8, "UINT")
+        packet.buffer = b"\x00" * packet.defined_length
+        packet.write("floats", [1.5, 3.0])
+        packet.write("trailer", 0x5A)
+        buffer = packet.buffer
+        array_size = floats.array_size
+
+        with self.assertRaisesRegex(ValueError, "Variable bit size 96 for item FLOATS is not representable"):
+            packet.write("floats", [1.5, 3.0, 4.5])
+        self.assertEqual(packet.buffer, buffer)
+        self.assertEqual(floats.array_size, array_size)
+        self.assertEqual(packet.read("floats"), [1.5, 3.0])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
+    def test_can_handle_writing_variable_sized_arrays_with_a_length_value_bit_offset(self):
+        packet = Packet()
+        packet.append_item("len", 8, "UINT")
+        floats = packet.append_item("floats", 32, "FLOAT", 0)
+        packet.append_item("trailer", 8, "UINT")
+        packet.buffer = b"\x00" * packet.defined_length
+        packet.write("len", 1)  # Lengths must be initialized to zero equivalent
+        # The length item holds the element count plus one
+        floats.variable_bit_size = {
+            "length_item_name": "len",
+            "length_value_bit_offset": -32,
+            "length_bits_per_count": 32,
+        }
+
+        packet.write("floats", [-2.5, 5.0, 3.5])
+        packet.write("trailer", 0x5A)
+        self.assertEqual(packet.buffer, b"\x04" + struct.pack(">3f", -2.5, 5.0, 3.5) + b"\x5a")
+        self.assertEqual(packet.read("len"), 4)
+        self.assertEqual(packet.read("floats"), [-2.5, 5.0, 3.5])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
+        packet.write("floats", [1.5, 3.0, 4.5, 6.0, 7.5])
+        self.assertEqual(packet.read("len"), 6)
+        self.assertEqual(packet.read("floats"), [1.5, 3.0, 4.5, 6.0, 7.5])
+        self.assertEqual(packet.read("trailer"), 0x5A)
+
+    def test_complains_about_writing_variable_sized_float_items_that_are_not_arrays(self):
+        packet = Packet()
+        packet.append_item("len", 8, "UINT")
+        item = packet.append_item("item", 32, "FLOAT")
+        item.variable_bit_size = {
+            "length_item_name": "len",
+            "length_value_bit_offset": 0,
+            "length_bits_per_count": 8,
+        }
+        packet.buffer = b"\x00" * packet.defined_length
+
+        with self.assertRaisesRegex(ValueError, "Variable bit size not currently supported for FLOAT data type"):
+            packet.write("item", 1.5)
 
     def test_complains_about_unknown_data_types(self):
         self.assertRaisesRegex(

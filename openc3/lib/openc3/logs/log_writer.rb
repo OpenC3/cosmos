@@ -80,14 +80,6 @@ module OpenC3
     # Sleeper used to delay cycle thread
     @@cycle_sleeper = nil
 
-    # Returns the Redis db_shard holding a target stream such as
-    # SCOPE__TELEMETRY__{TARGET}__PACKET, or 0 if no target can be determined
-    def self.db_shard_for_topic(redis_topic)
-      target_match = redis_topic.match(/\{([^{}]+)\}/)
-      return 0 unless target_match
-      Store.db_shard_for_target(target_match[1], scope: redis_topic.split('__')[0])
-    end
-
     # @param remote_log_directory [String] The path to store the log files
     # @param logging_enabled [Boolean] Whether to start with logging enabled
     # @param cycle_time [Integer] The amount of time in seconds before creating
@@ -220,6 +212,15 @@ module OpenC3
           return filename
         end
       end
+    end
+
+    # The db_shard of a target topic like DEFAULT__DECOM__{INST}__HEALTH_STATUS
+    # or db_shard 0 for a topic without a target
+    def self.db_shard_for_topic(redis_topic)
+      scope, _, rest = redis_topic.delete_prefix('{').partition('__')
+      # The target is a {TARGET} part between two others, e.g. DECOM__{INST}__HEALTH_STATUS
+      target = rest.split('__', -1)[1...-1]&.find { |part| part.length > 2 and part.start_with?('{') and part.end_with?('}') }
+      (!scope.empty? and target) ? Store.db_shard_for_target(target[1...-1], scope: scope) : 0
     end
 
     def cycle_thread_body
