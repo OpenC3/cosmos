@@ -106,10 +106,10 @@ export function formatValueBase(value, formatString) {
     return formatJsonString(value)
   }
   if (Array.isArray(value)) {
-    return JSON.stringify(value).replaceAll('\\n', '')
+    return JSON.stringify(value).replaceAll(String.raw`\n`, '')
   }
   if (isObject(value)) {
-    return JSON.stringify(value).replaceAll('\\n', '')
+    return JSON.stringify(value).replaceAll(String.raw`\n`, '')
   }
   if (formatString && value) {
     if (typeof value === 'bigint') {
