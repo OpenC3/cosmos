@@ -1246,22 +1246,6 @@ module OpenC3
         expect(db_shard1.hexists("DEFAULT__tlm__SYSTEM", "LIMITS_GROUP")).to be true
         expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")["FIRST"]).to eql ["LIMITS_GROUP"]
       end
-
-      it "adds the LIMITS_GROUP packet to a target installed before it existed" do
-        model = TargetModel.new(name: "INST", scope: "DEFAULT", db_shard: 1)
-        model.create
-        model.add_limits_group_packet(%w(TEMPS))
-        db_shard1 = Store.instance(db_shard: 1)
-        items = JSON.parse(db_shard1.hget("DEFAULT__openc3tlm__INST", "LIMITS_GROUP"))["items"].map { |item| item["name"] }
-        expect(items).to include("TEMPS", "TEMPS_ENABLED")
-        expect(CvtModel.get(target_name: "INST", packet_name: "LIMITS_GROUP", scope: "DEFAULT")).to include("TEMPS" => nil)
-        expect(db_shard1.zrange("DEFAULT__openc3tlm__INST__allitems", 0, -1)).to include("TEMPS", "TEMPS_ENABLED")
-
-        # Never overwrites values already published
-        CvtModel.set({ "TEMPS" => 2 }, target_name: "INST", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
-        model.add_limits_group_packet(%w(TEMPS))
-        expect(CvtModel.get(target_name: "INST", packet_name: "LIMITS_GROUP", scope: "DEFAULT")["TEMPS"]).to eql 2
-      end
     end
 
     describe "check_limits_groups" do

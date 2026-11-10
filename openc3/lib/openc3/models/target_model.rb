@@ -450,23 +450,6 @@ module OpenC3
       store_for_target(target_name, scope: scope).zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
     end
 
-    # Adds the <TARGET> LIMITS_GROUP packet definition to a target installed before
-    # limits groups were published as telemetry. Installing the target adds it like
-    # any other packet (see PacketConfig#build_limits_group_packet).
-    #
-    # @param group_names [Array<String>] Names of the limits groups the target defines
-    def add_limits_group_packet(group_names)
-      db_shard_store = Store.instance(db_shard: @db_shard)
-      packet = PacketConfig.limits_group_packet(@name, group_names)
-      db_shard_store.hset("#{@scope}__openc3tlm__#{@name}", packet.packet_name, JSON.generate(packet.as_json, allow_nan: true))
-      # Seed the CVT like update_store_telemetry so the packet can be read before
-      # the limits group microservice publishes it. HSETNX never overwrites values.
-      json_hash = packet.sorted_items.to_h { |item| [item.name, nil] }
-      db_shard_store.hsetnx("#{@scope}__tlm__#{@name}", packet.packet_name, JSON.generate(json_hash, allow_nan: true))
-      packet.sorted_items.each { |item| self.class.add_to_target_allitems_list(@name, item.name, scope: @scope) }
-      update_store_item_map()
-    end
-
     # @return [Hash{String => Array<Array<String, String, String>>}] Limits groups keyed
     #   by TARGET__GROUP (see LimitsEventTopic.limits_group_key)
     def self.limits_groups(scope:)

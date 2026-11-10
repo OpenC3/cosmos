@@ -49,6 +49,15 @@ module OpenC3
       expect(Store.hexists("DEFAULT__openc3tlm__INST", "LIMITS_GROUP")).to be false
     end
 
+    it "seeds the CVT, allitems and item map without overwriting published values" do
+      CvtModel.set({ "TEMPS" => 2 }, target_name: "SYSTEM", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
+      LimitsGroupBackfill.run
+      cvt = CvtModel.get(target_name: "SYSTEM", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
+      expect(cvt["TEMPS"]).to eql 2
+      expect(Store.instance(db_shard: 1).zrange("DEFAULT__openc3tlm__SYSTEM__allitems", 0, -1)).to include("TEMPS", "TEMPS_ENABLED", "POWER", "POWER_ENABLED")
+      expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")["TEMPS"]).to eql ["LIMITS_GROUP"]
+    end
+
     it "warns about a target with its own LIMITS_GROUP packet" do
       Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP", JSON.generate({ 'items' => [] }))
       expect(Logger).to receive(:warn).with(/Target SYSTEM in scope DEFAULT has its own LIMITS_GROUP packet/)

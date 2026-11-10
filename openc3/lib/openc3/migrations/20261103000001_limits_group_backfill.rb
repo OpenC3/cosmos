@@ -50,10 +50,23 @@ module OpenC3
         if store.hexists("#{scope}__openc3tlm__#{target_name}", PacketConfig::LIMITS_GROUP_PACKET)
           Logger.warn("Target #{target_name} in scope #{scope} has its own #{PacketConfig::LIMITS_GROUP_PACKET} packet so its limits groups won't be published. Rename the packet and reinstall the target.")
         else
-          model.add_limits_group_packet(group_names)
+          add_limits_group_packet(model, group_names)
         end
       end
       Store.hdel("#{scope}__limits_groups", *rekeyed.to_a) unless rekeyed.empty?
+    end
+
+    # Installing a target adds this packet like any other
+    # (see PacketConfig#build_limits_group_packet)
+    def self.add_limits_group_packet(model, group_names)
+      packet = PacketConfig.limits_group_packet(model.name, group_names)
+      TargetModel.set_packet(model.name, packet.packet_name, packet, scope: model.scope)
+      # Seed the CVT like TargetModel#update_store_telemetry so the packet can be read
+      # before the limits group microservice publishes it. HSETNX never overwrites values.
+      json_hash = packet.sorted_items.to_h { |item| [item.name, nil] }
+      Store.instance(db_shard: model.db_shard).hsetnx("#{model.scope}__tlm__#{model.name}", packet.packet_name, JSON.generate(json_hash, allow_nan: true))
+      packet.sorted_items.each { |item| TargetModel.add_to_target_allitems_list(model.name, item.name, scope: model.scope) }
+      model.update_store_item_map
     end
 
     def self.add_microservice(scope, scope_model)
