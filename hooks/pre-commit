@@ -77,7 +77,7 @@ staged_files.each do |file|
   next if file.start_with?('hooks/')
 
   # Skip template files for plugin generation
-  next if file.start_with('openc3/templates/')
+  next if file.start_with?('openc3/templates/')
 
   # Skip vendored/third-party JS files
   next if file.start_with?('openc3-cosmos-init/plugins/packages/openc3-tool-base/public/js/')
