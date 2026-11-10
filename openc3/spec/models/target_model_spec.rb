@@ -1686,6 +1686,7 @@ module OpenC3
 
       def parse(model, *lines)
         parser = ConfigParser.new
+        tf = nil
         tf = Tempfile.new
         lines.each { |line| tf.puts line }
         tf.close
@@ -1693,7 +1694,7 @@ module OpenC3
           model.handle_config(parser, keyword, params)
         end
       ensure
-        tf.unlink
+        tf&.unlink
       end
 
       it "parses SHARED_RESOURCE" do
@@ -1711,6 +1712,13 @@ module OpenC3
         expect(record['members']['DEFAULT']).to eql [{ 'type' => 'TARGET', 'name' => 'TEST' }]
         expect(SharedResourceModel).not_to receive(:add_member)
         model.update
+      end
+
+      it "leaves the shared resource if the create fails" do
+        TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT").create
+        model = TargetModel.new(folder_name: "TEST", name: "TEST", shared_resource: "CHAMBER", scope: "DEFAULT")
+        expect { model.create }.to raise_error(/already exists/)
+        expect(SharedResourceModel.get("CHAMBER")).to be_nil
       end
     end
   end

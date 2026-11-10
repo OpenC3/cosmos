@@ -138,6 +138,14 @@ module OpenC3
       end
     end
 
+    # @return [Boolean] Whether the member is part of the shared resource
+    def self.member?(name, scope:, type:, member_name:)
+      record = get(name.to_s.upcase)
+      return false unless record
+      type = type.to_s.upcase
+      (record['members'][scope] || []).any? { |member| member['type'] == type and member['name'] == member_name }
+    end
+
     # Remove a member from a shared resource. Ownership is kept even if the owning
     # scope has no members left (it may be mid plugin upgrade). The record is
     # deleted once no scope has any members. A pending handoff still waits for a

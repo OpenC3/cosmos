@@ -343,6 +343,7 @@ module OpenC3
 
       def parse(model, *lines)
         parser = ConfigParser.new
+        tf = nil
         tf = Tempfile.new
         lines.each { |line| tf.puts line }
         tf.close
@@ -350,7 +351,7 @@ module OpenC3
           model.handle_config(parser, keyword, params)
         end
       ensure
-        tf.unlink
+        tf&.unlink
       end
 
       it "parses SHARED_RESOURCE" do
@@ -374,6 +375,18 @@ module OpenC3
         model.update
         MicroserviceModel.get_model(name: "DEFAULT__USER__CTRL", scope: "DEFAULT").destroy
         expect(SharedResourceModel.get("CHAMBER")).to be_nil
+      end
+
+      it "leaves the shared resource if the create fails" do
+        MicroserviceModel.new(name: "DEFAULT__USER__CTRL", scope: "DEFAULT").create
+        model = MicroserviceModel.new(name: "DEFAULT__USER__CTRL", shared_resource: "CHAMBER", scope: "DEFAULT")
+        expect { model.create }.to raise_error(/already exists/)
+        expect(SharedResourceModel.get("CHAMBER")).to be_nil
+
+        # Membership from before the failed create is kept
+        SharedResourceModel.add_member("CHAMBER", scope: "DEFAULT", type: "MICROSERVICE", member_name: "DEFAULT__USER__CTRL")
+        expect { model.create }.to raise_error(/already exists/)
+        expect(SharedResourceModel.member?("CHAMBER", scope: "DEFAULT", type: "MICROSERVICE", member_name: "DEFAULT__USER__CTRL")).to be true
       end
 
       it "uses the interface and router member types" do

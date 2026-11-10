@@ -274,11 +274,21 @@ module OpenC3
 
     # Join the shared resource before the model is written so the operator never
     # sees the microservice without its shared resource record
+    # Join the shared resource before the operator can see the microservice so
+    # it is never started in a scope where the resource isn't active
     def create(update: false, force: false, queued: false)
+      added = false
       if @shared_resource and not update
-        SharedResourceModel.add_member(@shared_resource, scope: @scope, type: shared_resource_member_type(), member_name: @name, shard: @shard)
+        type = shared_resource_member_type()
+        existed = SharedResourceModel.member?(@shared_resource, scope: @scope, type: type, member_name: @name)
+        SharedResourceModel.add_member(@shared_resource, scope: @scope, type: type, member_name: @name, shard: @shard)
+        added = !existed
       end
       super(update: update, force: force, queued: queued)
+    rescue
+      # Don't leave a member behind for a microservice that wasn't created
+      SharedResourceModel.remove_member(@shared_resource, scope: @scope, type: shared_resource_member_type(), member_name: @name) if added
+      raise
     end
 
     # @return [String] INTERFACE, ROUTER, or MICROSERVICE

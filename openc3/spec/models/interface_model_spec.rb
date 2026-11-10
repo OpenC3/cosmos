@@ -795,6 +795,7 @@ module OpenC3
 
       def parse(model, *lines)
         parser = ConfigParser.new
+        tf = nil
         tf = Tempfile.new
         lines.each { |line| tf.puts line }
         tf.close
@@ -802,7 +803,7 @@ module OpenC3
           model.handle_config(parser, keyword, params)
         end
       ensure
-        tf.unlink
+        tf&.unlink
       end
 
       it "parses SHARED_RESOURCE for interfaces and routers" do

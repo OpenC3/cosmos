@@ -1,7 +1,12 @@
 /* Copyright 2026 OpenC3, Inc. All Rights Reserved. See LICENSE.md. */
 
 import assert from 'node:assert/strict'
+import { register } from 'node:module'
 import { test } from 'node:test'
+
+// Only the shared resource helpers are needed from js-common, load them from
+// source so the test doesn't depend on js-common being built
+register('./jsCommonSource.mjs', import.meta.url)
 
 globalThis.window = { openc3Scope: 'OTHER' }
 const { applySharedResources } =

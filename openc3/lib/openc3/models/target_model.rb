@@ -609,10 +609,17 @@ module OpenC3
     # without a process: their microservices keep running in every scope but
     # commands are only accepted in the scope where the resource is active.
     def create(update: false, force: false, queued: false)
+      added = false
       if @shared_resource and not update
+        existed = SharedResourceModel.member?(@shared_resource, scope: @scope, type: 'TARGET', member_name: @name)
         SharedResourceModel.add_member(@shared_resource, scope: @scope, type: 'TARGET', member_name: @name)
+        added = !existed
       end
       super(update: update, force: force, queued: queued)
+    rescue
+      # Don't leave a member behind for a target that wasn't created
+      SharedResourceModel.remove_member(@shared_resource, scope: @scope, type: 'TARGET', member_name: @name) if added
+      raise
     end
 
     # Handles Target specific configuration keywords

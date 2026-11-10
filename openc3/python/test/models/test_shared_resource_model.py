@@ -67,6 +67,14 @@ class TestSharedResourceModel(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Invalid shared resource member type"):
             SharedResourceModel.add_member("CHAMBER", scope="DEFAULT", type="TOOL", member_name="X")
 
+    def test_is_member(self):
+        name = "DEFAULT__INTERFACE__INT"
+        self.assertFalse(SharedResourceModel.is_member("CHAMBER", scope="DEFAULT", type="INTERFACE", member_name=name))
+        add_interface("DEFAULT")
+        self.assertTrue(SharedResourceModel.is_member("chamber", scope="DEFAULT", type="interface", member_name=name))
+        self.assertFalse(SharedResourceModel.is_member("CHAMBER", scope="OTHER", type="INTERFACE", member_name=name))
+        self.assertFalse(SharedResourceModel.is_member("CHAMBER", scope="DEFAULT", type="ROUTER", member_name=name))
+
     def test_remove_member_keeps_ownership(self):
         add_interface("DEFAULT")
         add_interface("OTHER")
@@ -112,15 +120,15 @@ class TestSharedResourceModel(unittest.TestCase):
             record["waiting"],
             [{"name": "DEFAULT__INTERFACE__INT", "shard": 0}, {"name": "DEFAULT__USER__CTRL", "shard": 1}],
         )
-        self.assertFalse(SharedResourceModel.active(record, "DEFAULT"))
-        self.assertFalse(SharedResourceModel.active(record, "OTHER"))
+        self.assertFalse(SharedResourceModel.is_active(record, "DEFAULT"))
+        self.assertFalse(SharedResourceModel.is_active(record, "OTHER"))
 
         record = SharedResourceModel.acknowledge("CHAMBER", ["DEFAULT__INTERFACE__INT"])
         self.assertEqual(record["state"], "RELEASING")
         record = SharedResourceModel.acknowledge("CHAMBER", ["DEFAULT__USER__CTRL"])
         self.assertEqual(record["state"], "ACTIVE")
         self.assertEqual(record["owner"], "OTHER")
-        self.assertTrue(SharedResourceModel.active(record, "OTHER"))
+        self.assertTrue(SharedResourceModel.is_active(record, "OTHER"))
 
     def test_changes_destination_while_releasing_and_force(self):
         add_interface("DEFAULT")

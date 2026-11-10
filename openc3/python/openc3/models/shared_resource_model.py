@@ -95,36 +95,45 @@ class SharedResourceModel:
         """Add a member to a shared resource. The first member to create the
         resource claims ownership for its scope."""
         name = cls.validate_name(name)
-        type = str(type).upper()
-        if type not in cls.MEMBER_TYPES:
-            raise RuntimeError(f"Invalid shared resource member type '{type}'")
+        member_type = str(type).upper()
+        if member_type not in cls.MEMBER_TYPES:
+            raise RuntimeError(f"Invalid shared resource member type '{member_type}'")
         with cls._lock():
             record = cls.get(name)
             if not record:
                 record = cls._new_record(name, owner=scope)
                 Logger.info(f"Shared resource {name} created and is active in scope {scope}", scope=scope)
             members = record["members"].setdefault(scope, [])
-            members[:] = [m for m in members if not (m["type"] == type and m["name"] == member_name)]
-            member = {"type": type, "name": member_name}
-            if type in cls.PROCESS_TYPES:
+            members[:] = [m for m in members if not (m["type"] == member_type and m["name"] == member_name)]
+            member = {"type": member_type, "name": member_name}
+            if member_type in cls.PROCESS_TYPES:
                 member["shard"] = int(shard or 0)
             members.append(member)
             cls._save(record)
             return record
 
     @classmethod
+    def is_member(cls, name, scope: str, type: str, member_name: str) -> bool:
+        """Return whether the member is part of the shared resource"""
+        record = cls.get(str(name).upper())
+        if not record:
+            return False
+        member_type = str(type).upper()
+        return any(m["type"] == member_type and m["name"] == member_name for m in record["members"].get(scope, []))
+
+    @classmethod
     def remove_member(cls, name, scope: str, type: str, member_name: str) -> dict | None:
         """Remove a member. Ownership is kept even if the owning scope has no
         members left. The record is deleted once no scope has any members."""
         name = str(name).upper()
-        type = str(type).upper()
+        member_type = str(type).upper()
         with cls._lock():
             record = cls.get(name)
             if not record:
                 return None
             members = record["members"].get(scope)
             if members is not None:
-                members[:] = [m for m in members if not (m["type"] == type and m["name"] == member_name)]
+                members[:] = [m for m in members if not (m["type"] == member_type and m["name"] == member_name)]
                 if not members:
                     del record["members"][scope]
             if not record["members"] and not record.get("waiting"):
@@ -188,7 +197,7 @@ class SharedResourceModel:
             return record
 
     @classmethod
-    def active(cls, record: dict | None, scope: str) -> bool:
+    def is_active(cls, record: dict | None, scope: str) -> bool:
         """Whether members of the resource in scope may be active"""
         if not record:
             return False
@@ -215,7 +224,7 @@ class SharedResourceModel:
     def check_active(cls, scope: str, type: str, member_name: str, description: str):
         """Raise if the member is part of a shared resource that isn't active in scope"""
         record = cls.find_by_member(scope=scope, type=type, member_name=member_name)
-        if record is None or cls.active(record, scope):
+        if record is None or cls.is_active(record, scope):
             return
         raise RuntimeError(cls.inactive_message(record, description))
 

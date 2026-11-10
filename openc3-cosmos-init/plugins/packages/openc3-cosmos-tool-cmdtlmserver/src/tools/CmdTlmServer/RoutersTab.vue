@@ -198,10 +198,9 @@ export default {
       })
       return items
     },
-    activate(item) {
-      activateSharedResource(this, this.api, item).then((switched) => {
-        if (switched) this.update()
-      })
+    async activate(item) {
+      // activateSharedResource reports its own errors
+      if (await activateSharedResource(this, this.api, item)) this.update()
     },
     connectDisconnect(item) {
       this.buttonsDisabled = true
@@ -233,38 +232,41 @@ export default {
         this.api.get_all_router_info(),
         // Shared resources are optional so don't fail the update without them
         this.api.get_shared_resources().catch(() => []),
-      ]).then(([info, resources]) => {
-        const data = []
-        for (let int of info) {
-          let connect = null
-          let connectedClass = null
-          if (int[1] == 'DISCONNECTED') {
-            connect = 'Connect'
-            connectedClass = 'openc3-white'
-          } else if (int[1] == 'CONNECTED') {
-            connect = 'Disconnect'
-            connectedClass = 'openc3-green'
-          } else {
-            connect = 'Cancel'
-            connectedClass = 'openc3-red'
+      ])
+        .then(([info, resources]) => {
+          const data = []
+          for (let int of info) {
+            let connect = null
+            let connectedClass = null
+            if (int[1] == 'DISCONNECTED') {
+              connect = 'Connect'
+              connectedClass = 'openc3-white'
+            } else if (int[1] == 'CONNECTED') {
+              connect = 'Disconnect'
+              connectedClass = 'openc3-green'
+            } else {
+              connect = 'Cancel'
+              connectedClass = 'openc3-red'
+            }
+            data.push({
+              name: int[0],
+              connect: connect,
+              connectedClass: connectedClass,
+              connected: int[1],
+              clients: int[2],
+              tx_q_size: int[3],
+              rx_q_size: int[4],
+              tx_bytes: int[5],
+              rx_bytes: int[6],
+              cmd_pkts: int[7],
+              tlm_pkts: int[8],
+            })
           }
-          data.push({
-            name: int[0],
-            connect: connect,
-            connectedClass: connectedClass,
-            connected: int[1],
-            clients: int[2],
-            tx_q_size: int[3],
-            rx_q_size: int[4],
-            tx_bytes: int[5],
-            rx_bytes: int[6],
-            cmd_pkts: int[7],
-            tlm_pkts: int[8],
-          })
-        }
-        this.data = applySharedResources(data, resources, 'ROUTER')
-        this.buttonsDisabled = false
-      })
+          this.data = applySharedResources(data, resources, 'ROUTER')
+          this.buttonsDisabled = false
+        })
+        // The next update retries
+        .catch(console.error)
     },
   },
 }

@@ -77,6 +77,16 @@ module OpenC3
       end
     end
 
+    describe "self.member?" do
+      it "checks the scope, type, and name" do
+        expect(SharedResourceModel.member?('CHAMBER', scope: 'DEFAULT', type: 'INTERFACE', member_name: 'DEFAULT__INTERFACE__INT')).to be false
+        add_interface('DEFAULT')
+        expect(SharedResourceModel.member?('chamber', scope: 'DEFAULT', type: 'interface', member_name: 'DEFAULT__INTERFACE__INT')).to be true
+        expect(SharedResourceModel.member?('CHAMBER', scope: 'OTHER', type: 'INTERFACE', member_name: 'DEFAULT__INTERFACE__INT')).to be false
+        expect(SharedResourceModel.member?('CHAMBER', scope: 'DEFAULT', type: 'ROUTER', member_name: 'DEFAULT__INTERFACE__INT')).to be false
+      end
+    end
+
     describe "self.remove_member" do
       it "keeps ownership when the owner's members are removed" do
         add_interface('DEFAULT')
