@@ -31,7 +31,7 @@ VARIABLE_LABEL:
   description: The VARIABLE_LABEL keyword sets the label shown for the previously defined VARIABLE in the plugin
     installation dialog instead of the variable name. The variable name is still used in ERB and is shown when
     hovering over the field. Must follow a VARIABLE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE port_tgt 8080
       VARIABLE_LABEL "Target Port"
@@ -53,7 +53,7 @@ VARIABLE_TYPE:
     Blank values are allowed unless the variable is required (see VARIABLE_REQUIRED and VARIABLE_STATE_REQUIRED).
     The plugin installation dialog won't install with invalid values. The value is still passed to ERB as a string.
     Must follow a VARIABLE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE port 8080
       VARIABLE_TYPE INTEGER
@@ -74,7 +74,7 @@ VARIABLE_GROUP:
     installation dialog, e.g. Connection or Authentication. Variables without a group are shown first, then each
     group in the order it is first used. VARIABLE_ADVANCED variables are shown in the collapsed Advanced section
     whatever their group. Must follow a VARIABLE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE hostname localhost
       VARIABLE_GROUP Connection
@@ -92,7 +92,7 @@ VARIABLE_REQUIRED:
   description: The VARIABLE_REQUIRED keyword marks the previously defined VARIABLE as required. The plugin installation
     dialog won't install while the variable is shown and blank. Required variables are marked with *.
     Use VARIABLE_STATE_REQUIRED to require a variable only while a state is selected. Must follow a VARIABLE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE hostname ""
       VARIABLE_REQUIRED
@@ -103,7 +103,7 @@ VARIABLE_PATTERN:
     The plugin installation dialog won't install while a shown variable doesn't match, and shows the error message.
     The pattern is checked in the browser so use regular expressions that JavaScript supports.
     Must follow a VARIABLE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE target_name INST
       VARIABLE_PATTERN "[A-Z][A-Z0-9_]*" "Use capital letters, numbers and underscores"
@@ -123,7 +123,7 @@ VARIABLE_HIDDEN:
     in ERB and as a VARIABLE_DISCOVERY parameter, for example to pass per state parameters to a discovery.
     Since it can't be edited, a hidden variable always takes the values set by the selected states of the installed
     plugin.txt, including when upgrading. Must follow a VARIABLE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE device shelly
       VARIABLE_STATE Shelly shelly
@@ -141,7 +141,7 @@ VARIABLE_ADVANCED:
     shown in a section of the plugin installation dialog that is collapsed by default, for settings that normally
     don't need to change. VARIABLE_STATE_SHOW still controls whether an advanced variable is shown.
     Must follow a VARIABLE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE host 127.0.0.1
     VARIABLE timeout 10
@@ -155,7 +155,7 @@ VARIABLE_BRIDGE:
     Use bridge_name in ERB like any other variable, for example with the BRIDGE interface modifier.
     VARIABLE_DESCRIPTION, VARIABLE_STATE and the other VARIABLE modifiers can follow it.
     Defining VARIABLE bridge_name in the same plugin.txt is an error.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE_BRIDGE
       VARIABLE_DESCRIPTION "Bridge to the computer the serial device is connected to"
@@ -178,7 +178,7 @@ VARIABLE_FILE:
     VARIABLE_DESCRIPTION, VARIABLE_LABEL, VARIABLE_REQUIRED and the other VARIABLE modifiers except VARIABLE_TYPE
     can follow it. A PRE_INSTALL_SCRIPT can read the file to generate the rest of the plugin.
     Files can be up to 100 MB.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE_FILE icd targets/INST/data/icd.csv
       VARIABLE_LABEL "Interface control document"
@@ -231,7 +231,7 @@ VARIABLE_DISCOVERY:
     discovering with the same class on the same bridge, and the dialog notes which plugin is using it.
     The claim is released when the plugin is uninstalled. Upgrading or editing the plugin still offers the values it holds.
     Must follow a VARIABLE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE serial_port /dev/ttyUSB0
       VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py
@@ -259,7 +259,7 @@ VARIABLE_DISCOVERY_SET:
     for example the controller model. If several discoveries find the same value, the first one's sets apply.
     The user can still change the value afterwards. Multiple VARIABLE_DISCOVERY_SET keywords can be used.
     Must follow a VARIABLE_DISCOVERY definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE dual_sense_version 5
       VARIABLE_STATE 5 5
@@ -312,7 +312,7 @@ VARIABLE_STATE_SHOW:
     Hidden variables keep their current values and are still passed to the plugin.
     Multiple VARIABLE_STATE_SHOW keywords can be used and each can list multiple variables.
     Must follow a VARIABLE_STATE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE interface_type tcp
     VARIABLE_STATE "TCP/IP Client" tcp
@@ -337,7 +337,7 @@ VARIABLE_STATE_SET:
     VARIABLE_STATE_SET keywords, those are applied as well. The VARIABLE_STATE_SET values of the initially selected state are
     applied when the dialog opens, except for variables that already have a value from a previous install.
     Often used together with VARIABLE_STATE_SHOW. Must follow a VARIABLE_STATE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE interface_type tcp
     VARIABLE_STATE "TCP/IP Client" tcp
@@ -363,7 +363,7 @@ VARIABLE_STATE_DESCRIPTION:
   description: The VARIABLE_STATE_DESCRIPTION keyword adds a line of text below the previously defined VARIABLE_STATE
     in the plugin installation dialog dropdown. The dropdown can be searched by it as well as the state's text.
     Must follow a VARIABLE_STATE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE interface_type tcp
       VARIABLE_STATE "TCP/IP" tcp
@@ -382,7 +382,7 @@ VARIABLE_STATE_ICON:
   description: The VARIABLE_STATE_ICON keyword shows an icon beside the previously defined VARIABLE_STATE in the plugin
     installation dialog dropdown. Use a [Material Design Icons](https://pictogrammers.com/library/mdi/) name like
     mdi-lan. Must follow a VARIABLE_STATE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE interface_type tcp
       VARIABLE_STATE "TCP/IP" tcp
@@ -398,7 +398,7 @@ VARIABLE_STATE_REQUIRED:
     While this state is selected (and its variable is shown) the listed variables are required in the plugin
     installation dialog, like VARIABLE_REQUIRED. Useful when a variable is shown by several states but only some need it.
     Multiple VARIABLE_STATE_REQUIRED keywords can be used. Must follow a VARIABLE_STATE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE interface_type tcp
     VARIABLE_STATE "TCP/IP Client" tcp
@@ -422,7 +422,7 @@ PLUGIN_TEXT_START:
     ERB is not evaluated in the text, but avoid ERB tags since the whole plugin.txt is still processed with ERB at install.
     Multiple PLUGIN_TEXT_START / PLUGIN_TEXT_END blocks are joined together. The text can be hidden in the dialog,
     which is remembered for the plugin.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     PLUGIN_TEXT_START
       # Power Supply Plugin
@@ -432,7 +432,7 @@ PLUGIN_TEXT_START:
     PLUGIN_TEXT_END
 PLUGIN_TEXT_END:
   summary: Complete a block of markdown text started by PLUGIN_TEXT_START
-  since: 7.5.0
+  since: _Coming Soon_
 VARIABLE_TEXT_START:
   summary: Start a block of markdown text shown when a VARIABLE_STATE is selected
   description: The VARIABLE_TEXT_START keyword begins a block of Markdown that belongs to the previous VARIABLE_STATE.
@@ -440,7 +440,7 @@ VARIABLE_TEXT_START:
     below the PLUGIN_TEXT (or beside the variables on wide screens), for directions specific to the choice made. The text of each variable's selected state is
     shown in the order the variables are defined. The lines up to VARIABLE_TEXT_END are taken as-is like PLUGIN_TEXT,
     and multiple blocks for the same state are joined together. Must follow a VARIABLE_STATE definition.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     VARIABLE interface_type tcp
       VARIABLE_STATE "TCP/IP" tcp
@@ -455,7 +455,7 @@ VARIABLE_TEXT_START:
         VARIABLE_TEXT_END
 VARIABLE_TEXT_END:
   summary: Complete a block of markdown text started by VARIABLE_TEXT_START
-  since: 7.5.0
+  since: _Coming Soon_
 NEEDS_DEPENDENCIES:
   summary: Indicates the plugin needs dependencies and sets the GEM_HOME environment variable
   description: If the plugin has a top level lib folder or lists runtime dependencies in the gemspec,
@@ -474,7 +474,7 @@ PRE_INSTALL_SCRIPT:
     also runs it, with OPENC3_PLUGIN_DRY_RUN set to true, so it should only change files in the plugin's folder
     then. Its output is logged, and the install fails if it exits with an error or runs longer than 10 minutes.
     Multiple PRE_INSTALL_SCRIPTs run in the order they appear, wherever they are in plugin.txt.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     PRE_INSTALL_SCRIPT scripts/generate_target.py <%%= icd %>
   parameters:
@@ -493,7 +493,7 @@ POST_INSTALL_SCRIPT:
     PRE_INSTALL_SCRIPT, with the same environment, but not when validating a plugin or checking an upgrade.
     The install fails if it exits with an error or runs longer than 10 minutes.
     Multiple POST_INSTALL_SCRIPTs run in the order they appear, wherever they are in plugin.txt.
-  since: 7.5.0
+  since: _Coming Soon_
   example: |
     POST_INSTALL_SCRIPT scripts/initialize.rb
   parameters:
