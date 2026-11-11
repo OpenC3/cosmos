@@ -11,13 +11,24 @@ From the `openc3` directory:
 ruby test/integration/cmd_tlm/generate_cmd_tlm.rb
 ```
 
-By default this writes `generated/targets/BIG/cmd_tlm/{tlm.txt,cmd.txt}`
-(about 125 MB, gitignored) containing:
+By default this writes `generated/targets/BIG/cmd_tlm/{tlm.txt,cmd.txt,limits_groups.txt}`
+(about 55 MB, gitignored) containing:
 
-- 2,000 telemetry packets with 500,000 items and 2,000,000 states
+- 500 telemetry packets with 125,000 items and 500,000 states
   (4 states per item). Packet and item descriptions are 50 to 250 characters.
-- 2,000 command packets with 500,000 parameters, also with 50 to 250
+- 500 command packets with 125,000 parameters, also with 50 to 250
   character packet and parameter descriptions.
+- 1,001 limits groups nested vehicle > payload > subsystem > box > board
+  containing 25,000 telemetry items, half with LIMITS and half with GREEN,
+  YELLOW and RED states.
+
+The defaults are sized so the installed plugin fits in a 16 GB Docker VM. Each
+of the target's microservices loads the whole definition (about 1.1 KB per
+telemetry item) and QuestDB keeps a writer open for 10 minutes after each write
+to a table, about 2.6 MB for a 250 item packet. The earlier 4x larger
+definition (`--tlm-packets 2000 --tlm-items 500000 --tlm-states 2000000
+--cmd-packets 2000 --cmd-params 500000 --limits-group-items 100000`) is fine
+for benchmarking `PacketConfig` but made QuestDB run out of memory when installed.
 
 Each packet starts with an ID item/parameter, which counts toward the totals.
 Output is deterministic for a given `--seed`. Run with `--help` to change any
