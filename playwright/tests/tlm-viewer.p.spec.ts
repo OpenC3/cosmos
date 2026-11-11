@@ -664,3 +664,50 @@ test('links array item to TlmGrapher', async ({ page, utils }) => {
     await graphPage.close()
   })
 })
+
+test('shows packet and received time in details', async ({ page, utils }) => {
+  const timeRegex = /\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}/
+  const detailsDialog = page.locator('.v-overlay--active.v-dialog')
+  await showScreen(page, utils, 'INST', 'HS', true, async function () {
+    await page
+      .locator('[data-test="label"]:has-text("TEMP1:")')
+      .locator('..')
+      .locator('[data-test="value"]')
+      .click({ button: 'right' })
+    await page.getByText('Details', { exact: true }).click()
+    await expect(detailsDialog).toContainText('INST HEALTH_STATUS TEMP1')
+    await expect(
+      detailsDialog.locator('[data-test="details-packet-time"]'),
+    ).toHaveText(timeRegex)
+    await expect(
+      detailsDialog.locator('[data-test="details-received-time"]'),
+    ).toHaveText(timeRegex)
+    // Only shown for LATEST items
+    await expect(
+      detailsDialog.locator('[data-test="details-latest-packet"]'),
+    ).not.toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(detailsDialog).not.toBeVisible()
+  })
+  await showScreen(page, utils, 'INST', 'LATEST', true, async function () {
+    await page
+      .locator('[data-test="label"]:has-text("CCSDSVER:")')
+      .locator('..')
+      .locator('[data-test="value"]')
+      .click({ button: 'right' })
+    await page.getByText('Details', { exact: true }).click()
+    await expect(detailsDialog).toContainText('INST LATEST CCSDSVER')
+    await expect(
+      detailsDialog.locator('[data-test="details-packet-time"]'),
+    ).toHaveText(timeRegex)
+    await expect(
+      detailsDialog.locator('[data-test="details-received-time"]'),
+    ).toHaveText(timeRegex)
+    // The packet the LATEST value came from, e.g. HEALTH_STATUS or ADCS
+    await expect(
+      detailsDialog.locator('[data-test="details-latest-packet"]'),
+    ).toHaveText(/^[A-Z_]+$/)
+    await page.keyboard.press('Escape')
+    await expect(detailsDialog).not.toBeVisible()
+  })
+})

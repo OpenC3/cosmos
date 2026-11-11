@@ -31,6 +31,7 @@ require 'openc3/models/router_model'
 require 'openc3/models/script_engine_model'
 require 'openc3/models/tool_model'
 require 'openc3/models/widget_model'
+require 'openc3/models/panel_model'
 require 'openc3/models/microservice_model'
 require 'openc3/api/api'
 require 'openc3/utilities/pypi_url'
@@ -738,9 +739,7 @@ module OpenC3
                 text_end = keyword.sub('_START', '_END')
               when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_GROUP', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'VARIABLE_FILE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
-              when *INSTALL_SCRIPT_KEYWORDS
-                # Run before and after the install
-              when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'SCRIPT_ENGINE'
+              when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'PANEL', 'SCRIPT_ENGINE'
                 begin
                   if current_model
                     current_model.create unless dry_run
@@ -1046,7 +1045,7 @@ module OpenC3
       sleep 15 if microservice_count > 0 # Cycle time 5s times 2 plus 5s wait for soft stop and then hard stop
       # Remove all the other models now that the processes have stopped
       # Save TargetModel for last as it has the most to cleanup
-      [InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel, ScriptEngineModel].each do |model|
+      [InterfaceModel, RouterModel, ToolModel, WidgetModel, PanelModel, TargetModel, ScriptEngineModel].each do |model|
         model.find_all_by_plugin(plugin: @name, scope: @scope).each do |_name, model_instance|
           begin
             model_instance.destroy
@@ -1089,7 +1088,7 @@ module OpenC3
     ensure
       # Double check everything is gone
       found = []
-      [MicroserviceModel, InterfaceModel, RouterModel, ToolModel, WidgetModel, TargetModel, ScriptEngineModel].each do |model|
+      [MicroserviceModel, InterfaceModel, RouterModel, ToolModel, WidgetModel, PanelModel, TargetModel, ScriptEngineModel].each do |model|
         model.find_all_by_plugin(plugin: @name, scope: @scope).each do |_name, model_instance|
           found << model_instance
         end

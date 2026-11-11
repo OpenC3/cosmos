@@ -387,3 +387,12 @@ TELEMETRY <%= target_name %> THROUGHPUT_STATUS BIG_ENDIAN "Throughput statistics
   ITEM PACKET_TIME 0 0 DERIVED "Ruby time based on TIMESEC and TIMEUS"
     READ_CONVERSION unix_time_conversion.rb TIMESEC TIMEUS
     CONVERTED_DATA 280 STRING
+
+TELEMETRY <%= target_name %> METADATA BIG_ENDIAN "Information about the <%= target_name %> unit under test"
+  # Use the CCSDS header so this packet has the same ID items (CCSDSAPID and PKTID)
+  # as the other <%= target_name %> packets. When every packet in a target uses the same
+  # ID items, COSMOS identifies packets with one hash lookup instead of checking
+  # each packet in turn. PKTID 999 is a value <%= target_name %> never sends.
+  <%= render "_ccsds_tlm.txt", locals: {apid: 1, pktid: 999} %>
+  APPEND_ITEM SERIAL_NUMBER 32 UINT "Serial number of the unit"
+  APPEND_ITEM FIRMWARE 256 STRING "Firmware version loaded on the unit"

@@ -78,7 +78,7 @@ jobs:
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
           cache: true
-          version: v0.76.0
+          version: v0.76.1
       # trivy-action's own cache (cache: false on each scan below) restores all
       # of .cache/trivy at every scan step, which would overwrite the VEX Hub
       # checkout with whatever was cached and save that back, so a VEX Hub pin
