@@ -388,17 +388,25 @@ module OpenC3
     def compute(groups)
       groups.each do |group|
         members = []
+        children_enabled = true
         @groups[group].each do |target_name, packet_name, item_name|
           if child_group?(packet_name)
             # A child which isn't defined (yet) is ignored like an unknown item
             child = @values[LimitsEventTopic.limits_group_key(target_name, item_name)]
-            members << child if child
+            next unless child
+
+            # A child's color already ignores its disabled members, so it always
+            # counts here. Its enabled flag only affects whether this group is enabled.
+            color, child_enabled = child
+            members << [color, true]
+            children_enabled &&= child_enabled
           else
             member = item_member(target_name, packet_name, item_name, group)
             members << member if member
           end
         end
-        @values[group] = LimitsRollup.rollup(members)
+        color, enabled = LimitsRollup.rollup(members)
+        @values[group] = [color, enabled && children_enabled]
       end
     end
 

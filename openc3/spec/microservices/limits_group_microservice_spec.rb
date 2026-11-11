@@ -243,6 +243,18 @@ module OpenC3
       expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'FALSE'
     end
 
+    it "keeps a partly disabled child's color in its parent" do
+      start({ 'SPACECRAFT' => [%w(INST LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
+              'THERMAL' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'RED')
+      limits_event({ type: :LIMITS_ENABLE_STATE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: 'TEMP2',
+                     enabled: false, time_nsec: 0, message: 'test' })
+      expect(cvt['THERMAL__C']).to eql 'RED'
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['SPACECRAFT__C']).to eql 'RED'
+      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'FALSE'
+    end
+
     it "counts a child installed after its parent" do
       start({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)] })
       change('TEMP1', 'RED')
