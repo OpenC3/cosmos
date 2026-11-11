@@ -1102,6 +1102,29 @@ class TestTlmApi(unittest.TestCase):
         ):
             override_tlm("GRP LIMITS_GROUP TEMPS = 0")
 
+    def test_limits_group_is_never_chosen_by_latest(self):
+        # Ruby's TargetModel stores the names of the limits groups the target defines
+        Store.hset("DEFAULT__openc3_targets", "GRP", json.dumps({"name": "GRP", "limits_groups": ["TEMPS", "TEMP1"]}))
+        # The TEMP1 group shares its name with the TEMP1 item in STATUS
+        for packet_name, items in {"STATUS": ["TEMP1"], "LIMITS_GROUP": ["TEMPS", "TEMP1"]}.items():
+            packet = {"target_name": "GRP", "packet_name": packet_name, "items": [{"name": name} for name in items]}
+            Store.hset("DEFAULT__openc3tlm__GRP", packet_name, json.dumps(packet))
+        # LIMITS_GROUP was received most recently
+        CvtModel.set({"TEMP1": 1, "PACKET_TIMESECONDS": 1.0}, target_name="GRP", packet_name="STATUS", scope="DEFAULT")
+        limits_group = {"TEMPS": 0, "TEMP1": 0, "PACKET_TIMESECONDS": 2.0}
+        CvtModel.set(dict(limits_group), target_name="GRP", packet_name="LIMITS_GROUP", scope="DEFAULT")
+
+        with self.assertRaisesRegex(RuntimeError, "Item 'GRP LATEST TEMPS' does not exist"):
+            set_tlm("GRP LATEST TEMPS = 2")
+        with self.assertRaisesRegex(RuntimeError, "Item 'GRP LATEST TEMPS' does not exist"):
+            override_tlm("GRP LATEST TEMPS = 2")
+        self.assertEqual(tlm("GRP LATEST TEMP1"), 1)
+        set_tlm("GRP LATEST TEMP1 = 5")
+        override_tlm("GRP LATEST TEMP1 = 6")
+        self.assertEqual(CvtModel.get("GRP", "STATUS", scope="DEFAULT")["TEMP1__C"], 5)
+        self.assertEqual({override["packet_name"] for override in CvtModel.overrides(scope="DEFAULT")}, {"STATUS"})
+        self.assertEqual(CvtModel.get("GRP", "LIMITS_GROUP", scope="DEFAULT"), limits_group)
+
     def test_limits_group_is_an_ordinary_packet_name_for_a_target_without_limits_groups(self):
         TargetModel(name="NOGRP", scope="DEFAULT").create()
         with self.assertRaisesRegex(RuntimeError, "does not exist"):

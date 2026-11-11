@@ -485,6 +485,10 @@ module OpenC3
       item_map = {}
       packets = packets(target_name, scope: scope)
       packets.each do |packet|
+        # LATEST never resolves to LIMITS_GROUP. Its items are limits groups which
+        # can share a name with an item in another packet.
+        next if packet['packet_name'] == PacketConfig::LIMITS_GROUP_PACKET
+
         items = packet['items']
         items.each do |item|
           item_name = item['name']

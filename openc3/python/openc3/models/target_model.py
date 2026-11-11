@@ -286,6 +286,10 @@ class TargetModel(Model):
     def build_item_to_packet_map(cls, target_name: str, scope: str = OPENC3_SCOPE):
         item_map = {}
         for packet in cls.packets(target_name, scope=scope):
+            # LATEST never resolves to LIMITS_GROUP. Its items are limits groups which
+            # can share a name with an item in another packet.
+            if packet["packet_name"] == "LIMITS_GROUP":
+                continue
             items = packet["items"]
             for item in items:
                 item_name = item["name"]

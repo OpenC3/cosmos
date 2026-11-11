@@ -1244,7 +1244,8 @@ module OpenC3
         expect(items).to include("FIRST", "FIRST_ENABLED", "SECOND", "SECOND_ENABLED")
         # The CVT is seeded like any packet so it can be read before it's published
         expect(db_shard1.hexists("DEFAULT__tlm__SYSTEM", "LIMITS_GROUP")).to be true
-        expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")["FIRST"]).to eql ["LIMITS_GROUP"]
+        # LATEST never resolves to LIMITS_GROUP
+        expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")).to_not have_key("FIRST")
       end
     end
 

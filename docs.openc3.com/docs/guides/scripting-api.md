@@ -4733,7 +4733,7 @@ elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HE
 
 These methods deal with handling telemetry limits.
 
-Each limits group is also published as telemetry in the LIMITS_GROUP packet of the target which defines the group. For a group named THERMAL defined by the INST target, `INST LIMITS_GROUP THERMAL` is the most severe limits state (GREEN, YELLOW or RED) of the group's members with limits enabled, and `INST LIMITS_GROUP THERMAL_ENABLED` is TRUE when limits are enabled on every member. Read them with `tlm` and wait on them with `wait_check` like any other item. The LIMITS_GROUP packet is computed by COSMOS, so `set_tlm`, `inject_tlm` and `override_tlm` reject it.
+Each limits group is also published as telemetry in the LIMITS_GROUP packet of the target which defines the group. For a group named THERMAL defined by the INST target, `INST LIMITS_GROUP THERMAL` is the most severe limits state (GREEN, YELLOW or RED) of the group's members with limits enabled, and `INST LIMITS_GROUP THERMAL_ENABLED` is TRUE when limits are enabled on every member. Read them with `tlm` and wait on them with `wait_check` like any other item. The LIMITS_GROUP packet is computed by COSMOS, so `set_tlm`, `inject_tlm` and `override_tlm` reject it. A packet name of LATEST never resolves to the LIMITS_GROUP packet, so always name the packet to read a group, as in `INST LIMITS_GROUP THERMAL`.
 
 Limits group names only need to be unique within the target which defines them, so two targets can each define a THERMAL group. The limits group methods take the target name and the group name. They also accept just the group name, as they always have, as long as only one target defines a group with that name.
 
