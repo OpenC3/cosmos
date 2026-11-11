@@ -27,17 +27,6 @@
     <v-card class="plugin-dialog">
       <v-card-title>{{ pluginName }}</v-card-title>
       <div class="px-6 flex-shrink-0">
-        <v-alert
-          v-if="existingPluginTxt !== null"
-          type="warning"
-          variant="tonal"
-          class="mb-3"
-        >
-          The existing plugin.txt is different from the {{ pluginName }}'s
-          plugin.txt. Navigate the diffs making whatever edits you want before
-          installing. You may want to update {{ pluginName }}'s plugin.txt going
-          forward.
-        </v-alert>
         <v-tabs v-model="tab" class="mb-3">
           <v-tab :key="0"> Variables </v-tab>
           <v-tab :key="1"> plugin.txt </v-tab>
@@ -446,6 +435,20 @@
             </v-menu>
           </v-window-item>
           <v-window-item v-else :value="1" eager="true" class="tab">
+            <!-- In the tab rather than above it so it doesn't take room from
+                 the diff in a short window -->
+            <v-alert
+              type="warning"
+              variant="tonal"
+              density="compact"
+              class="mt-3"
+              data-test="plugin-txt-differs"
+            >
+              The existing plugin.txt is different from the {{ pluginName }}'s
+              plugin.txt. Navigate the diffs making whatever edits you want
+              before installing. You may want to update {{ pluginName }}'s
+              plugin.txt going forward.
+            </v-alert>
             <v-row class="pa-3">
               <v-col>
                 Existing plugin.txt. This can be edited before installation.
@@ -1944,6 +1947,8 @@ export default {
 <style scoped>
 .editor {
   height: 50vh;
+  /* Enough lines to read and compare in a short window */
+  min-height: 320px;
   position: relative;
   font-size: 16px;
 }
@@ -1973,6 +1978,18 @@ export default {
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
+}
+/* A short window leaves the content too little room between the header and
+   footer, so the whole dialog scrolls instead. !important to override the
+   v-dialog scrollable layout, which scrolls only the card text. */
+@media (max-height: 760px) {
+  .plugin-dialog {
+    overflow-y: auto !important;
+  }
+  .plugin-dialog-body {
+    flex: 0 0 auto !important;
+    overflow-y: visible !important;
+  }
 }
 .side-panel {
   position: sticky;
