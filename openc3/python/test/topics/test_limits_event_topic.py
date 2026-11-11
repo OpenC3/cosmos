@@ -409,10 +409,94 @@ class TestLimitsEventTopic(unittest.TestCase):
         self.assertFalse(LimitsEventTopic.events_trimmed("0-0", "DEFAULT"))
         self.assertFalse(LimitsEventTopic.events_trimmed(None, "DEFAULT"))
 
+    def test_resync_system_reloads_the_limits_set_from_the_store(self):
+        Store.hset("DEFAULT__limits_sets", mapping={"DEFAULT": "true", "TVAC": "false"})
+        System.set_limits_set("TVAC", "DEFAULT")
+        LimitsEventTopic.resync_system("DEFAULT")
+        self.assertEqual(System.limits_set(), "DEFAULT")
+
+    def test_process_event_updates_the_limits_set(self):
+        self.assertEqual(System.limits_set(), "DEFAULT")
+        LimitsEventTopic.process_event({"type": "LIMITS_SET", "set": "TVAC"}, "DEFAULT")
+        self.assertEqual(System.limits_set(), "TVAC")
+
     def test_resync_system_reloads_item_settings_from_the_store(self):
         Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", json.dumps({"enabled": False}))
         LimitsEventTopic.resync_system("DEFAULT")
         self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_write_with_publish_false_updates_the_store_without_writing_to_the_stream(self):
+        event = {
+            "type": "LIMITS_CHANGE",
+            "target_name": "TGT",
+            "packet_name": "PKT",
+            "item_name": "ITEM",
+            "old_limits_state": "GREEN",
+            "new_limits_state": "RED_HIGH",
+            "time_nsec": 123456789,
+            "message": "test",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT", publish=False)
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "TGT__PKT__ITEM"), b"RED_HIGH")
+        self.assertEqual(LimitsEventTopic.read(0, scope="DEFAULT"), [])
+
+    def test_active_db_shards_caches_until_the_cache_times_out_or_is_cleared(self):
+        now = [1000.0]
+        target_reads = []
+
+        class CountingStore:
+            @staticmethod
+            def hgetall(key):
+                if key == "DEFAULT__openc3_targets":
+                    target_reads.append(key)
+                return Store.hgetall(key)
+
+        with (
+            patch("openc3.topics.limits_event_topic.time.monotonic", side_effect=lambda: now[0]),
+            patch("openc3.topics.limits_event_topic.Store", CountingStore),
+        ):
+            self.assertEqual(LimitsEventTopic._active_db_shards("DEFAULT"), {0})
+            set_target_db_shard("INST", 1)  # Clears the cache
+            self.assertEqual(LimitsEventTopic._active_db_shards("DEFAULT"), {0, 1})
+            Store.hset("DEFAULT__openc3_targets", "INST2", json.dumps({"name": "INST2", "db_shard": 2}))
+            now[0] += LimitsEventTopic.ACTIVE_DB_SHARDS_CACHE_TIMEOUT - 1
+            self.assertEqual(LimitsEventTopic._active_db_shards("DEFAULT"), {0, 1})  # Cached
+            now[0] += 2
+            self.assertEqual(LimitsEventTopic._active_db_shards("DEFAULT"), {0, 1, 2})
+            self.assertEqual(len(target_reads), 3)
+
+    def persist_disabled(self, *item_names):
+        for item_name in item_names:
+            Store.hset(
+                "DEFAULT__current_limits_settings",
+                f"INST__HEALTH_STATUS__{item_name}",
+                json.dumps({"enabled": False}),
+            )
+
+    def test_sync_system_only_calls_the_callback_for_items_with_a_limits_state_to_clear(self):
+        calls = []
+        System.telemetry.set_limits_change_callback(
+            lambda _packet, item, old_state, _value, _log: calls.append((item.name, old_state))
+        )
+        self.addCleanup(System.telemetry.set_limits_change_callback, None)
+        self.persist_disabled("TEMP1", "TEMP2")
+        System.telemetry.packet("INST", "HEALTH_STATUS").get_item("TEMP1").limits.state = "RED_LOW"
+
+        LimitsEventTopic.sync_system("DEFAULT")
+        self.assertEqual(calls, [("TEMP1", "RED_LOW")])
+        # Re-syncing items that are already disabled must not fire again
+        LimitsEventTopic.sync_system("DEFAULT")
+        self.assertEqual(calls, [("TEMP1", "RED_LOW")])
+
+    def test_sync_system_clears_the_current_limits_state_of_disabled_items(self):
+        self.persist_disabled("TEMP1", "TEMP2")
+        Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "RED_LOW")
+        Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP3", "RED_HIGH")
+        LimitsEventTopic.sync_system("DEFAULT")
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1"), b"")
+        self.assertFalse(Store.hexists("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP2"))
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP3"), b"RED_HIGH")
+        self.assertEqual(LimitsEventTopic.out_of_limits("DEFAULT"), [["INST", "HEALTH_STATUS", "TEMP3", "RED_HIGH"]])
 
     def test_sync_system_thread_body_applies_a_limits_group_enable_state_event(self):
         LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")  # Set the stream offset

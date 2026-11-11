@@ -140,20 +140,35 @@ class System(metaclass=SystemMeta):
     # Callbacks to call once instance_obj is created
     post_instance_callbacks = []
 
+    # Current limits set per scope. Loaded from Redis on first use and then kept
+    # current by LimitsEventTopic (LIMITS_SET events and resync), like Ruby. This is
+    # called for every decommutated packet so it must not query Redis each time.
+    _limits_sets = {}
+
     @classmethod
     def limits_set(cls, scope=OPENC3_SCOPE):
-        """This line is basically the same code as limits_event_topic.py,
-        but we can't import it because it imports system.py and that
-        creates a circular reference
+        """Return the current limits set, loading it from Redis on first use"""
+        limits_set = cls._limits_sets.get(scope)
+        if limits_set is None:
+            # Same lookup as LimitsEventTopic.current_set, which can't be imported
+            # here because it imports system.py (circular reference)
+            sets = Store.hgetall(f"{scope}__limits_sets")
+            try:
+                limits_set = list(sets.keys())[list(sets.values()).index(b"true")].decode()
+            except ValueError:
+                limits_set = "DEFAULT"
+            cls._limits_sets[scope] = limits_set
+        return limits_set
 
-        Return:
-            [Symbol] The current limits_set of the system returned from Redis
-        """
-        sets = Store.hgetall(f"{scope}__limits_sets")
-        try:
-            return list(sets.keys())[list(sets.values()).index(b"true")].decode()
-        except ValueError:
-            return "DEFAULT"
+    @classmethod
+    def set_limits_set(cls, limits_set, scope=OPENC3_SCOPE):
+        """Update the cached limits set (Ruby System.limits_set=)"""
+        cls._limits_sets[scope] = str(limits_set)
+
+    @classmethod
+    def clear_limits_set_cache(cls):
+        """Forget the cached limits sets so the next call reloads them from Redis"""
+        cls._limits_sets = {}
 
     @classmethod
     def add_post_instance_callback(cls, callback):

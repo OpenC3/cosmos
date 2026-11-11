@@ -25,6 +25,8 @@ class PacketItemLimits:
         "GREEN_HIGH",
         "GREEN_LOW",
         "BLUE",
+        # Never set on an item. Only returned by CvtModel.get_tlm_values for
+        # items whose packet hasn't been received recently.
         "STALE",
         None,
     ]

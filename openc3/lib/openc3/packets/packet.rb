@@ -984,8 +984,11 @@ module OpenC3
     def disable_limits(name)
       item = get_item(name)
       item.limits.enabled = false
-      unless item.limits.state == :STALE
-        old_limits_state = item.limits.state
+      old_limits_state = item.limits.state
+      # Only report an actual change. Disabling an item that is already disabled
+      # (nil) must not fire the callback, because sync_system re-disables every
+      # persisted-disabled item and each callback publishes a limits event.
+      unless old_limits_state.nil?
         item.limits.state = nil
         @limits_change_callback.call(self, item, old_limits_state, nil, false) if @limits_change_callback
       end

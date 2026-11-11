@@ -279,6 +279,7 @@ def mock_redis
   # targets it put on a db_shard aren't looked for there
   OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
   OpenC3::QuestDBClient.instance_variable_set(:@db_shard_cache, {}) if defined?(OpenC3::QuestDBClient)
+  OpenC3::LimitsEventTopic.clear_active_db_shards_cache if defined?(OpenC3::LimitsEventTopic)
   require 'openc3/models/auth_model'
   OpenC3::AuthModel.set($openc3_password, nil)
   $openc3_token = OpenC3::AuthModel.generate_session()
@@ -302,6 +303,7 @@ def mock_redis_db_shards
   OpenC3::StoreQueued.instance_variable_set(:@instances, [])
   OpenC3::EphemeralStoreQueued.instance_variable_set(:@instances, [])
   OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
+  OpenC3::LimitsEventTopic.clear_active_db_shards_cache if defined?(OpenC3::LimitsEventTopic)
   require 'openc3/models/auth_model'
   OpenC3::AuthModel.set($openc3_password, nil)
   $openc3_token = OpenC3::AuthModel.generate_session()
@@ -313,6 +315,7 @@ end
 def set_target_db_shard(target_name, db_shard, scope: 'DEFAULT')
   OpenC3::Store.instance(db_shard: 0).hset("#{scope}__openc3_targets", target_name, JSON.generate({ 'name' => target_name, 'db_shard' => db_shard }))
   OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
+  OpenC3::LimitsEventTopic.clear_active_db_shards_cache if defined?(OpenC3::LimitsEventTopic)
 end
 
 OpenC3.disable_warnings do

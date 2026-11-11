@@ -122,6 +122,7 @@ class DecomMicroservice(Microservice):
         # fire the callback synchronously for any persisted-disabled items.
         self.limits_response_queue = queue.Queue()
         self.limits_response_thread = None
+        self.resyncing_limits = False
         System.telemetry.set_limits_change_callback(self.limits_change_callback)
         LimitsEventTopic.sync_system(scope=self.scope)
         target_model = TargetModel.get_model(name=self.target_names[0], scope=self.scope)
@@ -190,7 +191,13 @@ class DecomMicroservice(Microservice):
     def resync_if_limits_events_trimmed(self):
         if LimitsEventTopic.events_trimmed(self.limits_event_offset, self.scope, db_shard=self.db_shard):
             self.logger.warn(f"{self.name}: Limits events were trimmed before they could be read, resyncing limits")
-            LimitsEventTopic.resync_system(self.scope)
+            # Don't publish the limits changes the resync makes. Otherwise a large
+            # resync can trim the stream again and cause another resync.
+            self.resyncing_limits = True
+            try:
+                LimitsEventTopic.resync_system(self.scope)
+            finally:
+                self.resyncing_limits = False
 
     def decom_packet(self, topic, msg_id, msg_hash, _redis):
         # OpenC3.in_span("decom_packet") do
@@ -376,7 +383,7 @@ class DecomMicroservice(Microservice):
         suppress_stored = packet.stored and self.stored_limits_mode != "PROCESS"
         if suppress_stored:
             event["suppress_stored"] = True
-        LimitsEventTopic.write(event, scope=self.scope)
+        LimitsEventTopic.write(event, scope=self.scope, publish=not self.resyncing_limits)
 
         if item.limits.response is not None and not suppress_stored:
             copied_packet = packet.deep_copy()
