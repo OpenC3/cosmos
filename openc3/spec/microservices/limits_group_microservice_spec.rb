@@ -91,6 +91,68 @@ module OpenC3
       expect(publishes).to eql 3
     end
 
+    it "publishes once for all the events in a read" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)], 'OTHER' => [%w(INST HEALTH_STATUS TEMP3)] })
+      expect(publishes).to eql 1
+      [%w(TEMP1 YELLOW), %w(TEMP2 RED), %w(TEMP3 YELLOW)].each do |item, state|
+        event = { type: :LIMITS_CHANGE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: item,
+                  old_limits_state: 'GREEN', new_limits_state: state, time_nsec: 0, message: 'test' }
+        LimitsEventTopic.write(event, scope: 'DEFAULT')
+        expect(@microservice.handle_event(JSON.parse(JSON.generate(event)))).to be true
+      end
+      setting = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: 'OTHER', enabled: false, time_nsec: 0, message: 'test' }
+      LimitsEventTopic.write(setting, scope: 'DEFAULT')
+      expect(@microservice.handle_event(JSON.parse(JSON.generate(setting)))).to be true
+      expect(publishes).to eql 1
+      @microservice.flush
+      expect(publishes).to eql 2
+      expect(cvt['TEMPS__C']).to eql 'RED'
+      # OTHER's only member was disabled by the group setting
+      expect(cvt['OTHER_ENABLED__C']).to eql 'FALSE'
+    end
+
+    it "only builds the LIMITS_GROUP packet again when the groups change" do
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      expect(PacketConfig).to receive(:limits_group_packet).once.and_call_original
+      @microservice.reload
+      @microservice.publish(force: true)
+      change('TEMP1', 'RED')
+      change('TEMP1', 'GREEN')
+      expect(publishes).to eql 3
+      expect(cvt['TEMPS__C']).to eql 'GREEN'
+
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'MORE' => [%w(INST HEALTH_STATUS TEMP2)] })
+      expect(PacketConfig).to receive(:limits_group_packet).once.and_call_original
+      @microservice.reload
+      @microservice.publish
+      expect(cvt['MORE__C']).to eql 'GREEN'
+    end
+
+    it "reloads every group when limits events were trimmed before they were read" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      # A LIMITS_CHANGE event this microservice never read
+      Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "RED")
+      @microservice.instance_variable_set(:@limits_event_offset, Topic.get_last_offset("DEFAULT__openc3_limits_events"))
+      @microservice.reload_if_events_trimmed
+      expect(cvt['TEMPS__C']).to eql 'GREEN'
+      # Events after the last one read were trimmed
+      @microservice.instance_variable_set(:@limits_event_offset, '1-0')
+      @microservice.reload_if_events_trimmed
+      expect(cvt['TEMPS__C']).to eql 'RED'
+    end
+
+    it "counts and times the limits events which affect a group" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      metric = @microservice.instance_variable_get(:@metric)
+      expect(metric.data['limits_group_event_total']['value']).to eql 0
+      change('TEMP1', 'RED')
+      change('TEMP3', 'RED') # Not in a group
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, group_name: 'TEMPS', enabled: true, time_nsec: 0, message: 'test' })
+      expect(metric.data['limits_group_event_total']['value']).to eql 2
+      expect(metric.data['limits_group_duration_seconds']['value']).to be > 0
+      expect(metric.data['limits_group_processing_seconds_total']['value']).to be >= metric.data['limits_group_duration_seconds']['value']
+    end
+
     it "doesn't publish for unrelated or unchanged events" do
       start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
       change('TEMP3', 'RED')
