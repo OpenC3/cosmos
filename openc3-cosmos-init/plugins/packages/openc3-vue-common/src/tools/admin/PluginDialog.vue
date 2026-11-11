@@ -251,6 +251,10 @@
                         :hint="getHint(name, variable)"
                         :error-messages="variableErrors[name]"
                         :loading="discoveryLoading[name] || false"
+                        :base-color="
+                          missingSecret(variable) ? 'warning' : undefined
+                        "
+                        :color="missingSecret(variable) ? 'warning' : undefined"
                         persistent-hint
                         density="comfortable"
                         variant="outlined"
@@ -284,13 +288,42 @@
                           />
                           <v-btn
                             v-if="variable.type === 'SECRET'"
-                            icon="mdi-plus"
+                            :icon="
+                              missingSecret(variable)
+                                ? 'mdi-key-plus'
+                                : 'mdi-plus'
+                            "
+                            :color="
+                              missingSecret(variable) ? 'warning' : undefined
+                            "
                             size="x-small"
-                            variant="text"
-                            title="Create a secret"
+                            :variant="
+                              missingSecret(variable) ? 'tonal' : 'text'
+                            "
+                            :title="
+                              missingSecret(variable)
+                                ? `Create secret ${variable.value}`
+                                : 'Create a secret'
+                            "
                             data-test="variable-secret-create"
                             @click.stop="openSecretDialog(name, variable)"
                           />
+                        </template>
+                        <!-- A secret that isn't set yet is a warning, not an
+                             error: it can also be set outside COSMOS -->
+                        <template v-if="missingSecret(variable)" #prepend-inner>
+                          <v-icon
+                            icon="mdi-alert"
+                            color="warning"
+                            size="small"
+                            data-test="variable-secret-missing"
+                          />
+                        </template>
+                        <template
+                          v-if="missingSecret(variable)"
+                          #message="{ message }"
+                        >
+                          <span class="text-warning">{{ message }}</span>
                         </template>
                         <template #item="{ item, props }">
                           <v-list-item
@@ -460,6 +493,24 @@
         </v-window>
       </v-card-text>
       <div class="px-6 pb-2 flex-shrink-0">
+        <v-alert
+          v-if="missingSecrets.length > 0"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="mt-3"
+          data-test="variable-secrets-missing"
+        >
+          {{ missingSecrets.length === 1 ? 'Secret' : 'Secrets' }}
+          {{ missingSecrets.join(', ') }}
+          {{ missingSecrets.length === 1 ? "isn't" : "aren't" }} set. Create
+          {{ missingSecrets.length === 1 ? 'it' : 'them' }} with the
+          <v-icon icon="mdi-key-plus" size="small" /> button beside
+          {{ missingSecrets.length === 1 ? 'its field' : 'their fields' }}, or
+          set {{ missingSecrets.length === 1 ? 'it' : 'them' }} outside COSMOS,
+          before the plugin needs
+          {{ missingSecrets.length === 1 ? 'it' : 'them' }}.
+        </v-alert>
         <v-alert
           v-if="showRequired && errorCount > 0"
           type="error"
@@ -682,6 +733,8 @@ export default {
       pluginTextPanel: this.loadPluginTextPanel(),
       // VARIABLE_TYPE SECRET: the scope's secret names and the create dialog
       secrets: [],
+      // Whether the scope's secrets were listed, so missing ones can be shown
+      secretsLoaded: false,
       secretDialog: false,
       secretVariable: null,
       secretName: '',
@@ -772,6 +825,15 @@ export default {
         }
       }
       return errors
+    },
+    // The names of the secrets chosen by shown SECRET variables that don't
+    // exist yet
+    missingSecrets() {
+      const names = new Set()
+      for (const [, variable] of this.visibleVariables) {
+        if (this.missingSecret(variable)) names.add(variable.value)
+      }
+      return [...names]
     },
     errorCount() {
       return Object.keys(this.variableErrors).length
@@ -1497,8 +1559,10 @@ export default {
       try {
         const { data } = await Api.get('/openc3-api/secrets')
         this.secrets = data || []
+        this.secretsLoaded = true
       } catch (error) {
-        // The dropdown just has no secrets to offer
+        // The dropdown just has no secrets to offer, and which secrets exist
+        // isn't known so none are reported missing
         this.secrets = []
       }
     },
@@ -1799,6 +1863,16 @@ export default {
         variable.type === 'SECRET'
       )
     },
+    // Whether a SECRET variable names a secret that doesn't exist yet. Unknown
+    // until the secrets have been listed.
+    missingSecret(variable) {
+      return (
+        this.secretsLoaded &&
+        variable.type === 'SECRET' &&
+        !!variable.value &&
+        !this.secrets.includes(variable.value)
+      )
+    },
     getDescription(variable) {
       return variable.description || ''
     },
@@ -1817,15 +1891,11 @@ export default {
           .join(', ')
       }
       let secret = ''
-      if (
-        variable.type === 'SECRET' &&
-        variable.value &&
-        !this.secrets.includes(variable.value)
-      ) {
+      if (this.missingSecret(variable)) {
         // Not an error: secrets can also be set outside COSMOS, e.g. in Kubernetes
-        secret = `No secret named ${variable.value} was found`
+        secret = `Secret ${variable.value} isn't set yet`
       }
-      return [description, discovery, secret].filter(Boolean).join(' - ')
+      return [secret, description, discovery].filter(Boolean).join(' - ')
     },
     // Values already chosen by this plugin's other variables that discover
     // with the same class, e.g. so two serial port variables can't both use
