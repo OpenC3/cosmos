@@ -215,6 +215,24 @@ module OpenC3
         expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
       end
 
+      it "queues the decom writes every 0.1s by default" do
+        expect(@dm.instance_variable_get(:@queued)).to be true
+        expect(EphemeralStoreQueued.instance(db_shard: 0).instance_variable_get(:@update_interval)).to eql 0.1
+        expect(StoreQueued.instance(db_shard: 0).instance_variable_get(:@update_interval)).to eql 0.1
+      end
+
+      it "uses the UPDATE_INTERVAL option and disables queuing with 0" do
+        @dm.instance_variable_set(:@config, { 'options' => [['UPDATE_INTERVAL', 0.5]] })
+        expect(EphemeralStoreQueued).to receive(:set_update_interval_all_shards).with(0.5)
+        expect(StoreQueued).to receive(:set_update_interval_all_shards).with(0.5)
+        @dm.setup_queued_writes
+        expect(@dm.instance_variable_get(:@queued)).to be true
+
+        @dm.instance_variable_set(:@config, { 'options' => [['UPDATE_INTERVAL', '0']] })
+        @dm.setup_queued_writes
+        expect(@dm.instance_variable_get(:@queued)).to be false
+      end
+
       it "handles exceptions in the thread" do
         expect(@dm).to receive(:microservice_cmd).and_raise("Bad command")
         capture_io do |stdout|

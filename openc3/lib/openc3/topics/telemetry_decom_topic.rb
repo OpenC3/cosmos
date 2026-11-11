@@ -16,11 +16,14 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/topics/topic'
+require 'openc3/utilities/store_queued'
 require 'openc3/utilities/open_telemetry'
 
 module OpenC3
   class TelemetryDecomTopic < Topic
-    def self.write_packet(packet, id: nil, include_limits_states: true, scope:)
+    # @param queued [Boolean] Queue the stream and CVT writes to be flushed in a pipelined
+    #   batch (EphemeralStoreQueued / StoreQueued) rather than writing them directly
+    def self.write_packet(packet, id: nil, include_limits_states: true, queued: false, scope:)
       OpenC3.in_span("write_packet") do
         # Need to build a JSON hash of the decommutated data
         # Support "downward typing"
@@ -45,12 +48,18 @@ module OpenC3
         }
         msg_hash[:extra] = JSON.generate(packet.extra.as_json, allow_nan: true) if packet.extra
         db_shard = Store.db_shard_for_target(packet.target_name, scope: scope)
-        Topic.write_topic("#{scope}__DECOM__{#{packet.target_name}}__#{packet.packet_name}", msg_hash, id, minid: Topic.stream_safety_minid(id), db_shard: db_shard)
+        topic = "#{scope}__DECOM__{#{packet.target_name}}__#{packet.packet_name}"
+        minid = Topic.stream_safety_minid(id)
+        if queued
+          EphemeralStoreQueued.instance(db_shard: db_shard).write_topic(topic, msg_hash, id, minid: minid)
+        else
+          Topic.write_topic(topic, msg_hash, id, minid: minid, db_shard: db_shard)
+        end
 
         unless packet.stored
           # Also update the current value table with the latest decommutated data
           # Pass pre-serialized JSON to avoid calling as_json twice
-          CvtModel.set_json(json_data, json_safe_hash, target_name: packet.target_name, packet_name: packet.packet_name, scope: scope)
+          CvtModel.set_json(json_data, json_safe_hash, target_name: packet.target_name, packet_name: packet.packet_name, queued: queued, scope: scope)
         end
       end
     end

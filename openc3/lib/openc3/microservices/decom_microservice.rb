@@ -83,6 +83,8 @@ module OpenC3
   class DecomMicroservice < Microservice
     include InterfaceDecomCommon
     LIMITS_STATE_INDEX = { RED_LOW: 0, YELLOW_LOW: 1, YELLOW_HIGH: 2, RED_HIGH: 3, GREEN_LOW: 4, GREEN_HIGH: 5 }
+    # Queue the decom stream and CVT writes and flush them every update interval (seconds)
+    DEFAULT_UPDATE_INTERVAL = 0.1
 
     # Decom never uses descriptions so don't keep them in memory
     def load_descriptions?
@@ -99,6 +101,7 @@ module OpenC3
       @limits_event_topic = "#{@scope}__openc3_limits_events"
       @topics << @limits_event_topic
       Topic.update_topic_offsets(@topics, db_shard: @db_shard)
+      setup_queued_writes()
       # Last limits event read, used to detect events trimmed before they were read.
       # Read from the stream rather than the thread's cached offsets. The run thread
       # starts reading at or after this point, so it can only cause an extra resync.
@@ -114,6 +117,22 @@ module OpenC3
       @error_count = 0
       @metric.set(name: 'decom_total', value: @count, type: 'counter')
       @metric.set(name: 'decom_error_total', value: @error_count, type: 'counter')
+    end
+
+    # Queue the decom stream and CVT writes like interfaces queue the raw stream writes.
+    # The UPDATE_INTERVAL option (TargetModel DECOM_UPDATE_INTERVAL) sets how often the
+    # queue is flushed in one pipelined batch. 0 (or less) writes directly to Redis.
+    def setup_queued_writes
+      update_interval = DEFAULT_UPDATE_INTERVAL
+      ((@config && @config['options']) || []).each do |option_name, option_value|
+        update_interval = option_value.to_f if option_name.to_s.upcase == 'UPDATE_INTERVAL'
+      end
+      @queued = update_interval > 0.0
+      if @queued
+        # Apply to every db_shard since writes are routed to the shard of each target
+        EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
+        StoreQueued.set_update_interval_all_shards(update_interval)
+      end
     end
 
     def run
@@ -212,6 +231,7 @@ module OpenC3
           name: @name,
           check_limits: true,
           stored_limits_mode: @stored_limits_mode,
+          queued: @queued,
           metric: @metric,
           error_callback: ->(e) {
             @error_count += 1

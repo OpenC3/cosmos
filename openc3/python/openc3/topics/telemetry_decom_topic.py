@@ -15,12 +15,15 @@ from openc3.models.cvt_model import CvtModel
 from openc3.topics.topic import Topic
 from openc3.utilities.json import JsonEncoder
 from openc3.utilities.store import Store
+from openc3.utilities.store_queued import EphemeralStoreQueued
 from openc3.utilities.time import to_nsec_from_epoch
 
 
 class TelemetryDecomTopic(Topic):
     @classmethod
-    def write_packet(cls, packet, id=None, include_limits_states=True, scope=None):
+    def write_packet(cls, packet, id=None, include_limits_states=True, scope=None, queued=False):
+        """queued: Queue the stream and CVT writes to be flushed in a pipelined batch
+        (EphemeralStoreQueued / StoreQueued) rather than writing them directly"""
         # OpenC3.in_span("write_packet") do
         # Need to build a JSON hash of the decommutated data
         # Support "downward typing"
@@ -45,13 +48,12 @@ class TelemetryDecomTopic(Topic):
         if packet.extra:
             msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
-        Topic.write_topic(
-            f"{scope}__DECOM__{{{packet.target_name}}}__{packet.packet_name}",
-            msg_hash,
-            id,
-            db_shard=db_shard,
-            minid=Topic.stream_safety_minid(id),
-        )
+        topic = f"{scope}__DECOM__{{{packet.target_name}}}__{packet.packet_name}"
+        minid = Topic.stream_safety_minid(id)
+        if queued:
+            EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash, id, minid=minid)
+        else:
+            Topic.write_topic(topic, msg_hash, id, db_shard=db_shard, minid=minid)
 
         if not packet.stored:
             # Also update the current value table with the latest decommutated data
@@ -61,5 +63,6 @@ class TelemetryDecomTopic(Topic):
                 json_hash,
                 packet.target_name,
                 packet.packet_name,
+                queued=queued,
                 scope=scope,
             )

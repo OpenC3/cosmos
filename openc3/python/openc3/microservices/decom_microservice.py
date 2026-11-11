@@ -32,6 +32,7 @@ from openc3.top_level import kill_thread
 from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.topic import Topic
+from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
 from openc3.utilities.thread_manager import ThreadManager
 from openc3.utilities.time import from_nsec_from_epoch, to_nsec_from_epoch
 
@@ -100,10 +101,26 @@ class DecomMicroservice(Microservice):
         "GREEN_LOW": 4,
         "GREEN_HIGH": 5,
     }
+    # Queue the decom stream and CVT writes and flush them every update interval (seconds)
+    DEFAULT_UPDATE_INTERVAL = 0.1
 
     # Decom never uses descriptions so don't keep them in memory
     def load_descriptions(self):
         return False
+
+    # Queue the decom stream and CVT writes like interfaces queue the raw stream writes.
+    # The UPDATE_INTERVAL option (TargetModel DECOM_UPDATE_INTERVAL) sets how often the
+    # queue is flushed in one pipelined batch. 0 (or less) writes directly to Redis.
+    def setup_queued_writes(self):
+        update_interval = DecomMicroservice.DEFAULT_UPDATE_INTERVAL
+        for option in (self.config or {}).get("options") or []:
+            if str(option[0]).upper() == "UPDATE_INTERVAL":
+                update_interval = float(option[1])
+        self.queued = update_interval > 0.0
+        if self.queued:
+            # Apply to every db_shard since writes are routed to the shard of each target
+            EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
+            StoreQueued.set_update_interval_all_shards(update_interval)
 
     def __init__(self, *args):
         super().__init__(*args)
@@ -114,6 +131,7 @@ class DecomMicroservice(Microservice):
         self.limits_event_topic = f"{self.scope}__openc3_limits_events"
         self.topics.append(self.limits_event_topic)
         Topic.update_topic_offsets(self.topics, db_shard=self.db_shard)
+        self.setup_queued_writes()
         # Last limits event read, used to detect events trimmed before they were read.
         # Read from the stream rather than the thread's cached offsets. The run thread
         # starts reading at or after this point, so it can only cause an extra resync.
@@ -253,6 +271,7 @@ class DecomMicroservice(Microservice):
                 packet_or_subpacket,
                 include_limits_states=not disable_stored_limits,
                 scope=self.scope,
+                queued=self.queued,
             )
         diff = time.time() - start  # seconds as a float
         self.metric.set(name="decom_duration_seconds", value=diff, type="gauge", unit="seconds")

@@ -99,6 +99,26 @@ class TestTelemetryDecomTopic(unittest.TestCase):
         TelemetryDecomTopic.write_packet(self._make_packet(stored=False), scope="DEFAULT")
         self.set_json_mock.assert_called_once()
 
+    def test_queues_the_stream_and_cvt_writes_when_queued(self):
+        queued_store = MagicMock()
+        with patch(
+            "openc3.topics.telemetry_decom_topic.EphemeralStoreQueued.instance", return_value=queued_store
+        ) as mock_instance:
+            TelemetryDecomTopic.write_packet(self._make_packet(), scope="DEFAULT", queued=True)
+        mock_instance.assert_called_once_with(db_shard=0)
+        self.assertEqual(self.captured, {})  # Not written directly
+        args, kwargs = queued_store.write_topic.call_args
+        self.assertEqual(args[0], "DEFAULT__DECOM__{TARGET}__PKT")
+        self.assertEqual(args[1]["target_name"], "TARGET")
+        self.assertIsNone(args[2])
+        self.assertIsNotNone(kwargs["minid"])
+        self.assertTrue(self.set_json_mock.call_args.kwargs["queued"])
+
+    def test_writes_directly_by_default(self):
+        TelemetryDecomTopic.write_packet(self._make_packet(), scope="DEFAULT")
+        self.assertEqual(self.captured["topic"], "DEFAULT__DECOM__{TARGET}__PKT")
+        self.assertFalse(self.set_json_mock.call_args.kwargs["queued"])
+
     def test_skips_cvt_when_stored(self):
         TelemetryDecomTopic.write_packet(self._make_packet(stored=True), scope="DEFAULT")
         self.set_json_mock.assert_not_called()
@@ -138,4 +158,16 @@ class TestTelemetryDecomTopicMultipleDbShards(unittest.TestCase):
         self.assertFalse(shard0.exists("DEFAULT__DECOM__{INST}__HEALTH_STATUS"))
         cvt = json.loads(shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))
         self.assertEqual(cvt["TEMP1__C"], packet.read("TEMP1"))
+
+    def test_queues_the_topic_and_current_values_on_the_target_db_shard(self):
+        # test_helper makes StoreQueued write through, so this checks the shard routing
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.datetime.now(datetime.timezone.utc)
+        TelemetryDecomTopic.write_packet(packet, scope="DEFAULT", queued=True)
+        shard0 = shard_redis(0)
+        shard1 = shard_redis(1)
+        self.assertEqual(shard1.xlen("DEFAULT__DECOM__{INST}__HEALTH_STATUS"), 1)
+        self.assertFalse(shard0.exists("DEFAULT__DECOM__{INST}__HEALTH_STATUS"))
+        self.assertIsNotNone(shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))
+        self.assertFalse(shard0.exists("DEFAULT__tlm__INST"))
         self.assertFalse(shard0.exists("DEFAULT__tlm__INST"))

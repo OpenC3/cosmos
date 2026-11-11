@@ -215,7 +215,7 @@ module OpenC3
           packet = build_packet
           packet.stored = true
           expect(TelemetryDecomTopic).to receive(:write_packet)
-            .with(packet, include_limits_states: false, scope: 'DEFAULT')
+            .with(packet, include_limits_states: false, queued: false, scope: 'DEFAULT')
 
           DecomCommon.decom_and_publish(
             packet,
@@ -232,7 +232,7 @@ module OpenC3
           packet = build_packet
           packet.stored = false
           expect(TelemetryDecomTopic).to receive(:write_packet)
-            .with(packet, include_limits_states: true, scope: 'DEFAULT')
+            .with(packet, include_limits_states: true, queued: false, scope: 'DEFAULT')
 
           DecomCommon.decom_and_publish(
             packet,
@@ -245,11 +245,26 @@ module OpenC3
           )
         end
 
+        it 'passes queued through to write_packet' do
+          packet = build_packet
+          expect(TelemetryDecomTopic).to receive(:write_packet)
+            .with(packet, include_limits_states: true, queued: true, scope: 'DEFAULT')
+
+          DecomCommon.decom_and_publish(
+            packet,
+            scope: 'DEFAULT',
+            target_names: ['INST'],
+            logger: Logger.new,
+            name: 'TEST',
+            queued: true,
+          )
+        end
+
         it 'passes include_limits_states: true to write_packet when mode is PROCESS' do
           packet = build_packet
           packet.stored = true
           expect(TelemetryDecomTopic).to receive(:write_packet)
-            .with(packet, include_limits_states: true, scope: 'DEFAULT')
+            .with(packet, include_limits_states: true, queued: false, scope: 'DEFAULT')
 
           DecomCommon.decom_and_publish(
             packet,

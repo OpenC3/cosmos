@@ -890,6 +890,7 @@ module OpenC3
         tf.puts "TLM_LOG_CYCLE_TIME 5"
         tf.puts "TLM_LOG_CYCLE_SIZE 6"
         tf.puts "STORED_LIMITS_MODE DISABLE"
+        tf.puts "DECOM_UPDATE_INTERVAL 0.25"
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
           model.handle_config(parser, keyword, params)
@@ -903,6 +904,7 @@ module OpenC3
         expect(json['tlm_decom_retain_time']).to eql '60d'
         expect(json['shard']).to eql 9
         expect(json['stored_limits_mode']).to eql 'DISABLE'
+        expect(json['decom_update_interval']).to eql 0.25
         tf.unlink
       end
 
@@ -1023,6 +1025,22 @@ module OpenC3
         @scope = "DEFAULT"
         @target = "INST"
         @target_dir = File.join(SPEC_DIR, "install", "config")
+      end
+
+      it "passes DECOM_UPDATE_INTERVAL to the decom microservice as UPDATE_INTERVAL" do
+        decom_kwargs = []
+        umodel = double(MicroserviceModel, create: nil, deploy: nil)
+        allow(MicroserviceModel).to receive(:new) do |**kwargs|
+          decom_kwargs << kwargs if kwargs[:name].include?("__DECOM__")
+          umodel
+        end
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
+        model.deploy_decom_microservice(double(language: 'ruby'), @target_dir, {}, [])
+        expect(decom_kwargs[-1][:options]).to eql []
+
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN', decom_update_interval: 0.5)
+        model.deploy_decom_microservice(double(language: 'ruby'), @target_dir, {}, [])
+        expect(decom_kwargs[-1][:options]).to eql [["UPDATE_INTERVAL", 0.5]]
       end
 
       it "raises if the target can't be found" do

@@ -31,6 +31,8 @@ from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.store import Store
+from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
+from openc3.utilities.time import to_nsec_from_epoch
 from test.test_helper import (
     capture_io,
     mock_redis,
@@ -320,6 +322,41 @@ class TestDecomMicroservice(unittest.TestCase):
                     "Limits events were trimmed before they could be read, resyncing limits", stdout.getvalue()
                 )
         self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_queues_the_decom_writes_every_tenth_of_a_second_by_default(self):
+        self.assertTrue(self.dm.queued)
+        self.assertEqual(EphemeralStoreQueued.all_shards_update_interval, 0.1)
+        self.assertEqual(StoreQueued.all_shards_update_interval, 0.1)
+
+    def test_uses_the_update_interval_option_and_disables_queuing_with_zero(self):
+        self.dm.config = {"options": [["UPDATE_INTERVAL", 0.5]]}
+        with (
+            patch.object(EphemeralStoreQueued, "set_update_interval_all_shards") as ephemeral_set,
+            patch.object(StoreQueued, "set_update_interval_all_shards") as store_set,
+        ):
+            self.dm.setup_queued_writes()
+        ephemeral_set.assert_called_once_with(0.5)
+        store_set.assert_called_once_with(0.5)
+        self.assertTrue(self.dm.queued)
+
+        self.dm.config = {"options": [["UPDATE_INTERVAL", "0"]]}
+        self.dm.setup_queued_writes()
+        self.assertFalse(self.dm.queued)
+
+    def test_passes_queued_to_write_packet(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.now(timezone.utc)
+        msg_hash = {
+            b"target_name": b"INST",
+            b"packet_name": b"HEALTH_STATUS",
+            b"stored": b"false",
+            b"received_time": str(to_nsec_from_epoch(packet.received_time)).encode(),
+            b"received_count": b"1",
+            b"buffer": bytes(packet.buffer),
+        }
+        with patch("openc3.microservices.decom_microservice.TelemetryDecomTopic.write_packet") as write_packet:
+            self.dm.decom_packet("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", "1-0", msg_hash, None)
+        self.assertTrue(write_packet.call_args.kwargs["queued"])
 
     def test_handles_exceptions_in_the_thread(self):
         with patch.object(self.dm, "microservice_cmd") as mock_microservice_cmd:
