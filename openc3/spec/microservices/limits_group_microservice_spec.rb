@@ -255,6 +255,22 @@ module OpenC3
       expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'FALSE'
     end
 
+    it "publishes a reinstalled target again even if its groups didn't change" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
+      expect(publishes('INST')).to eql 1
+      expect(publishes('INST2')).to eql 1
+      # Removing and installing INST again in one read: undeploy deletes the CVT
+      # and deploy writes nil for every item
+      CvtModel.del(target_name: 'INST', packet_name: 'LIMITS_GROUP', scope: 'DEFAULT')
+      CvtModel.set({ 'TEMPS' => nil }, target_name: 'INST', packet_name: 'LIMITS_GROUP', scope: 'DEFAULT')
+      @microservice.reload(changed_targets: ['INST'])
+      @microservice.flush
+      expect(publishes('INST')).to eql 2
+      expect(cvt['TEMPS__C']).to eql 'GREEN'
+      # Targets which weren't reinstalled aren't published again
+      expect(publishes('INST2')).to eql 1
+    end
+
     it "counts a child installed after its parent" do
       start({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)] })
       change('TEMP1', 'RED')

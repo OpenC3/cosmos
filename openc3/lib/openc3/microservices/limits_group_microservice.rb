@@ -131,7 +131,12 @@ module OpenC3
     #
     # @param changed_targets [Array<String>] Targets installed or removed since the last reload
     def reload(changed_targets: [])
-      changed_targets.each { |target_name| @definitions.delete(target_name) }
+      changed_targets.each do |target_name|
+        @definitions.delete(target_name)
+        # Installing a target clears its LIMITS_GROUP CVT so publish it again
+        # even if its groups' values didn't change
+        @published.delete(target_name)
+      end
       @groups = TargetModel.limits_groups(scope: @scope)
       build_indexes()
       @current_limits = Store.hgetall("#{@scope}__current_limits")
