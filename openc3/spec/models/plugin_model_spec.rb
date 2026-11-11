@@ -471,6 +471,89 @@ module OpenC3
         expect { phase1_with_plugin_txt(['VARIABLE x 1', 'VARIABLE_LABEL']) }.to raise_error(/Not enough parameters/)
       end
 
+      it "parses VARIABLE_MULTIPLE with its default states as an Array" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE sensors "TEMP1, PRESS"',
+          '  VARIABLE_MULTIPLE',
+          '  VARIABLE_STATE "Temperature 1" TEMP1',
+          '  VARIABLE_STATE "Temperature 2" TEMP2',
+          '  VARIABLE_STATE "Pressure" PRESS',
+          'VARIABLE none ""',
+          '  VARIABLE_MULTIPLE',
+          '  VARIABLE_STATE A',
+        ])
+        expect(model['variables']['sensors']['multiple']).to be true
+        expect(model['variables']['sensors']['value']).to eq %w(TEMP1 PRESS)
+        expect(model['variables']['none']['value']).to eq []
+        erb = PluginModel.erb_variables(model, scope: 'DEFAULT')
+        expect(erb['sensors']).to eq %w(TEMP1 PRESS)
+        expect(erb['none']).to eq []
+      end
+
+      it "applies the VARIABLE_STATE_SETs of every selected VARIABLE_MULTIPLE state" do
+        model = phase1_with_plugin_txt([
+          'VARIABLE sensors TEMP,PRESS',
+          '  VARIABLE_MULTIPLE',
+          '  VARIABLE_STATE Temperature TEMP',
+          '    VARIABLE_STATE_SET temp_rate 10',
+          '  VARIABLE_STATE Pressure PRESS',
+          '    VARIABLE_STATE_SET press_rate 5',
+          '  VARIABLE_STATE Humidity HUM',
+          '    VARIABLE_STATE_SET hum_rate 1',
+          'VARIABLE temp_rate 0',
+          'VARIABLE press_rate 0',
+          'VARIABLE hum_rate 0',
+          'VARIABLE preset basic',
+          '  VARIABLE_STATE Basic basic',
+          '    VARIABLE_STATE_SET extras "HUM, TEMP"',
+          'VARIABLE extras ""',
+          '  VARIABLE_MULTIPLE',
+          '  VARIABLE_STATE Temperature TEMP',
+          '  VARIABLE_STATE Humidity HUM',
+        ])
+        expect(model['variables']['temp_rate']['value']).to eq '10'
+        expect(model['variables']['press_rate']['value']).to eq '5'
+        expect(model['variables']['hum_rate']['value']).to eq '0'
+        # A VARIABLE_STATE_SET of a VARIABLE_MULTIPLE gives its values separated by commas
+        expect(model['variables']['extras']['value']).to eq %w(HUM TEMP)
+      end
+
+      it "keeps the existing values of a VARIABLE_MULTIPLE that are still states" do
+        lines = [
+          'VARIABLE sensors TEMP',
+          '  VARIABLE_MULTIPLE',
+          '  VARIABLE_STATE Temperature TEMP',
+          '  VARIABLE_STATE Pressure PRESS',
+          'VARIABLE single A',
+        ]
+        model = phase1_with_plugin_txt(lines, existing_variables: { 'sensors' => { 'value' => %w(PRESS REMOVED) }, 'single' => { 'value' => %w(A B) } })
+        expect(model['variables']['sensors']['value']).to eq %w(PRESS)
+        # No longer VARIABLE_MULTIPLE
+        expect(model['variables']['single']['value']).to eq 'A,B'
+        # Not VARIABLE_MULTIPLE before
+        model = phase1_with_plugin_txt(lines, existing_variables: { 'sensors' => 'PRESS' })
+        expect(model['variables']['sensors']['value']).to eq %w(PRESS)
+      end
+
+      it "raises error for VARIABLE_MULTIPLE problems" do
+        states = ['  VARIABLE_STATE A', '  VARIABLE_STATE B']
+        expect { phase1_with_plugin_txt(['VARIABLE_MULTIPLE']) }.to raise_error(/VARIABLE_MULTIPLE must follow a VARIABLE definition/)
+        expect { phase1_with_plugin_txt(['VARIABLE x A', 'VARIABLE_MULTIPLE yes'] + states) }.to raise_error(/Too many parameters/)
+        expect { phase1_with_plugin_txt(['VARIABLE x A', 'VARIABLE_MULTIPLE']) }.to raise_error(/VARIABLE_MULTIPLE 'x' requires VARIABLE_STATEs/)
+        expect { phase1_with_plugin_txt(['VARIABLE x A,C', 'VARIABLE_MULTIPLE'] + states) }.to raise_error(/default 'C' is not one of its VARIABLE_STATE values: A, B/)
+        expect { phase1_with_plugin_txt(['VARIABLE x A', 'VARIABLE_MULTIPLE', 'VARIABLE_TYPE TEXT'] + states) }.to raise_error(/cannot use VARIABLE_TYPE/)
+        expect { phase1_with_plugin_txt(['VARIABLE x A', 'VARIABLE_MULTIPLE', 'VARIABLE_PATTERN "[AB]"'] + states) }.to raise_error(/cannot use VARIABLE_PATTERN/)
+        expect { phase1_with_plugin_txt(['VARIABLE x A', 'VARIABLE_MULTIPLE', 'VARIABLE_DISCOVERY openc3.discovery.serial_discovery'] + states) }.to raise_error(/cannot use VARIABLE_DISCOVERY/)
+        expect { phase1_with_plugin_txt(['VARIABLE_BRIDGE', 'VARIABLE_MULTIPLE'] + states) }.to raise_error(/cannot be a VARIABLE_BRIDGE/)
+        expect { phase1_with_plugin_txt(['VARIABLE_FILE x data/x.csv', 'VARIABLE_MULTIPLE'] + states) }.to raise_error(/cannot be a VARIABLE_FILE/)
+        expect {
+          phase1_with_plugin_txt(['VARIABLE x A', 'VARIABLE_MULTIPLE', 'VARIABLE_STATE A', 'VARIABLE_STATE_SET y 1', 'VARIABLE_STATE B', 'VARIABLE_STATE_SET y 2', 'VARIABLE y 0'])
+        }.to raise_error(/states 'A' and 'B' both set VARIABLE 'y'/)
+        expect {
+          phase1_with_plugin_txt(['VARIABLE x A', 'VARIABLE_MULTIPLE'] + states + ['VARIABLE port ""', 'VARIABLE_DISCOVERY openc3.discovery.serial_discovery ${x}'])
+        }.to raise_error(/cannot use VARIABLE_MULTIPLE variable 'x' as a parameter/)
+      end
+
       it "parses VARIABLE_GROUP and VARIABLE_TYPE SECRET" do
         model = phase1_with_plugin_txt([
           'VARIABLE host ""',

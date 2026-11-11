@@ -147,6 +147,31 @@ VARIABLE_ADVANCED:
     VARIABLE timeout 10
       VARIABLE_DESCRIPTION Connection timeout in seconds
       VARIABLE_ADVANCED
+VARIABLE_MULTIPLE:
+  summary: Let the user select any number of a plugin variable's states
+  description: The VARIABLE_MULTIPLE keyword makes the previously defined VARIABLE a multi-select of its VARIABLE_STATEs,
+    which are the only values it can have. In ERB its value is an Array of the selected state values, in the order of
+    the states (e.g. `<%%= sensors.join(',') %>`), which is empty when none are selected. The VARIABLE default is the
+    initially selected state values separated by commas, and each must be a VARIABLE_STATE value. The VARIABLE_STATE_SHOW,
+    VARIABLE_STATE_REQUIRED and VARIABLE_TEXT_START of every selected state apply, and the VARIABLE_STATE_SET keywords of a
+    state are applied when it is selected, so two of its states can't set the same variable. A VARIABLE_STATE_SET or
+    VARIABLE_DISCOVERY_SET of another variable selects its states with values separated by commas. VARIABLE_REQUIRED
+    requires at least one state to be selected. It can't be used with VARIABLE_TYPE, VARIABLE_PATTERN,
+    VARIABLE_DISCOVERY, VARIABLE_FILE or VARIABLE_BRIDGE, or as a `${name}` parameter of a VARIABLE_DISCOVERY.
+    Must follow a VARIABLE definition.
+  since: _Coming Soon_
+  example: |
+    VARIABLE sensors TEMP,PRESS
+      VARIABLE_LABEL Sensors
+      VARIABLE_MULTIPLE
+      VARIABLE_STATE Temperature TEMP
+        VARIABLE_STATE_SHOW temp_rate
+      VARIABLE_STATE Pressure PRESS
+      VARIABLE_STATE Humidity HUM
+    VARIABLE temp_rate 10
+    <%% sensors.each do |sensor| %>
+    TARGET SENSOR <%%= sensor %>
+    <%% end %>
 VARIABLE_BRIDGE:
   summary: Let the user select which bridge the plugin uses
   description: The VARIABLE_BRIDGE keyword defines a variable named bridge_name whose value is selected from the

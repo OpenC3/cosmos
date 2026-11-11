@@ -326,6 +326,14 @@ module OpenC3
             end
             # Shown in a collapsed section of the plugin dialog
             variables[current_variable_name]['advanced'] = true
+          when 'VARIABLE_MULTIPLE'
+            parser.verify_num_parameters(0, 0, keyword)
+            unless current_variable_name
+              raise "VARIABLE_MULTIPLE must follow a VARIABLE definition"
+            end
+            # Any number of its VARIABLE_STATEs can be selected, and ERB gets
+            # their values as an Array. Checked once the variable is complete.
+            variables[current_variable_name]['multiple'] = true
           when 'VARIABLE_STATE'
             usage = "#{keyword} <Display Text> <Value>"
             parser.verify_num_parameters(1, 2, usage)
@@ -441,19 +449,35 @@ module OpenC3
             unless variables.key?(target_name)
               raise "VARIABLE '#{variable_name}' #{source} references undefined VARIABLE '#{target_name}'"
             end
+            if variables[target_name]['multiple'] and source.start_with?('discovery') and discovery_reference?(variable, target_name)
+              raise "VARIABLE '#{variable_name}' #{source} cannot use VARIABLE_MULTIPLE variable '#{target_name}' as a parameter"
+            end
           end
+        end
+
+        variables.each do |variable_name, variable|
+          existing = (existing_variables and existing_variables.key?(variable_name))
+          unless variable['multiple']
+            # No longer VARIABLE_MULTIPLE since the existing install
+            variable['value'] = variable['value'].join(',') if variable['value'].is_a?(Array)
+            next
+          end
+          # The plugin.txt default must be states, but an existing install's
+          # values that an upgrade removed from the states are dropped
+          validate_multiple(variable_name, variable, check_default: !existing)
+          variable['value'] = multiple_values(variable['value']) & variable['options'].map { |option| option['value'] }
         end
 
         # Apply the VARIABLE_STATE_SET values of each initially selected state (in file order so
         # a set can select the state of a later variable). Values from an existing install win,
         # except for hidden variables which always follow the state (they can't be edited).
         variables.each do |_variable_name, variable|
-          next unless variable['options']
-          selected = variable['options'].find { |option| option['value'] == variable['value'] }
-          next unless selected and selected['set']
-          selected['set'].each do |target_name, value|
-            next if existing_variables and existing_variables.key?(target_name) and not variables[target_name]['hidden']
-            variables[target_name]['value'] = value
+          selected_options(variable).each do |selected|
+            Hash(selected['set']).each do |target_name, value|
+              next if existing_variables and existing_variables.key?(target_name) and not variables[target_name]['hidden']
+              target = variables[target_name]
+              target['value'] = target['multiple'] ? multiple_values(value) & target['options'].map { |option| option['value'] } : value
+            end
           end
         end
 
@@ -487,6 +511,8 @@ module OpenC3
       erb_variables = {}
       (plugin_hash['variables'] || {}).each do |name, var|
         erb_variables[name] = var.is_a?(Hash) ? var['value'] : var
+        # A VARIABLE_MULTIPLE is the Array of the selected state values
+        erb_variables[name] = multiple_values(var['value']) if var.is_a?(Hash) and var['multiple']
         # A VARIABLE_FILE is the path its file is copied to in the plugin, or
         # blank without a file
         if var.is_a?(Hash) and var['type'] == FILE_VARIABLE_TYPE
@@ -737,7 +763,7 @@ module OpenC3
               when 'PLUGIN_TEXT_START', 'VARIABLE_TEXT_START'
                 parser.set_preserve_lines(true)
                 text_end = keyword.sub('_START', '_END')
-              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_GROUP', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'VARIABLE_FILE', 'NEEDS_DEPENDENCIES'
+              when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_GROUP', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_MULTIPLE', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'VARIABLE_FILE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
               when *INSTALL_SCRIPT_KEYWORDS
                 # Run before and after the install
@@ -1247,6 +1273,63 @@ module OpenC3
       return false if path.empty? or path.start_with?('/', '\\') or path.match?(/\A[A-Za-z]:/)
       parts = path.split(%r{[/\\]})
       !parts.include?('..') and !parts.reject { |part| part.empty? or part == '.' }.empty?
+    end
+
+    # The values of a VARIABLE_MULTIPLE variable as an Array. The value is an
+    # Array once parsed, but the plugin.txt default, VARIABLE_STATE_SET,
+    # VARIABLE_DISCOVERY_SET and the values of an install from before the
+    # variable was VARIABLE_MULTIPLE give them as a comma separated String.
+    def self.multiple_values(value)
+      values = value.is_a?(Array) ? value.map(&:to_s) : value.to_s.split(',')
+      values.map(&:strip).reject(&:empty?).uniq
+    end
+
+    # The selected VARIABLE_STATEs of a variable: the one matching its value,
+    # or each one a VARIABLE_MULTIPLE has selected
+    def self.selected_options(variable)
+      options = Array(variable['options'])
+      if variable['multiple']
+        values = multiple_values(variable['value'])
+        options.select { |option| values.include?(option['value']) }
+      else
+        selected = options.find { |option| option['value'] == variable['value'] }
+        selected ? [selected] : []
+      end
+    end
+
+    # Whether a variable's VARIABLE_DISCOVERY parameters use ${target_name}
+    def self.discovery_reference?(variable, target_name)
+      Array(variable['discovery']).any? do |discovery|
+        discovery['discovery'][1..].any? { |param| param.scan(DISCOVERY_REFERENCE).flatten.include?(target_name) }
+      end
+    end
+
+    # A VARIABLE_MULTIPLE selects any of its VARIABLE_STATEs, so it can't take
+    # other kinds of values, and two of its states setting the same variable
+    # would conflict when both are selected
+    def self.validate_multiple(variable_name, variable, check_default: true)
+      prefix = "VARIABLE_MULTIPLE '#{variable_name}'"
+      raise "#{prefix} requires VARIABLE_STATEs to select from" if Array(variable['options']).empty?
+      raise "#{prefix} cannot be a VARIABLE_FILE" if variable['type'] == FILE_VARIABLE_TYPE
+      raise "#{prefix} cannot be a VARIABLE_BRIDGE" if variable['bridge']
+      raise "#{prefix} cannot use VARIABLE_TYPE" if variable['type']
+      raise "#{prefix} cannot use VARIABLE_PATTERN" if variable['pattern']
+      raise "#{prefix} cannot use VARIABLE_DISCOVERY" if variable['discovery']
+      state_values = variable['options'].map { |option| option['value'] }
+      multiple_values(variable['value']).each do |value|
+        if check_default and !state_values.include?(value)
+          raise "#{prefix} default '#{value}' is not one of its VARIABLE_STATE values: #{state_values.join(', ')}"
+        end
+      end
+      setters = {}
+      variable['options'].each do |option|
+        Hash(option['set']).each_key do |target_name|
+          if setters[target_name]
+            raise "#{prefix} states '#{setters[target_name]}' and '#{option['text']}' both set VARIABLE '#{target_name}' with VARIABLE_STATE_SET, which conflict when both are selected"
+          end
+          setters[target_name] = option['text']
+        end
+      end
     end
 
     # The bucket key of an uploaded VARIABLE_FILE value, or nil if it isn't one

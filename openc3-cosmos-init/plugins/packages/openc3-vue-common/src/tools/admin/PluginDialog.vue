@@ -189,6 +189,45 @@
                         @update:model-value="uploadFile(name, $event)"
                       />
 
+                      <!-- Chips for VARIABLE_MULTIPLE, which selects any of its states -->
+                      <v-autocomplete
+                        v-else-if="variable.multiple"
+                        :model-value="variable.value"
+                        :items="getOptionItems(name, variable)"
+                        item-title="text"
+                        item-value="value"
+                        :label="fieldLabel(name, variable)"
+                        :hint="getHint(name, variable)"
+                        :error-messages="variableErrors[name]"
+                        multiple
+                        chips
+                        closable-chips
+                        persistent-hint
+                        density="comfortable"
+                        variant="outlined"
+                        data-test="variable-multiple"
+                        @update:model-value="chooseVariableValue(name, $event)"
+                      >
+                        <template #item="{ item, props }">
+                          <v-list-item
+                            v-bind="props"
+                            :subtitle="item.raw.description"
+                          >
+                            <template #prepend="{ isSelected }">
+                              <v-checkbox-btn
+                                :model-value="isSelected"
+                                density="compact"
+                                tabindex="-1"
+                              />
+                              <v-icon
+                                v-if="item.raw.icon"
+                                :icon="item.raw.icon"
+                              />
+                            </template>
+                          </v-list-item>
+                        </template>
+                      </v-autocomplete>
+
                       <!-- Searchable combobox for variables with states, discovery, bridges or secrets -->
                       <v-combobox
                         v-else-if="hasOptions(variable)"
@@ -671,10 +710,11 @@ export default {
     variableTextHtml() {
       const html = []
       for (const [, variable] of this.visibleVariables) {
-        const markdown = variable.options?.find(
-          (option) => option.value === variable.value,
-        )?.markdown
-        if (markdown) html.push(DOMPurify.sanitize(marked.parse(markdown)))
+        for (const option of this.selectedOptions(variable)) {
+          if (option.markdown) {
+            html.push(DOMPurify.sanitize(marked.parse(option.markdown)))
+          }
+        }
       }
       return html
     },
@@ -715,10 +755,9 @@ export default {
       for (const [name, variable] of Object.entries(this.localVariables)) {
         if (variable.required) required.add(name)
         if (!variable.hidden && !this.isVariableVisible(name)) continue
-        const selected = variable.options?.find(
-          (option) => option.value === variable.value,
-        )
-        for (const target of selected?.required || []) required.add(target)
+        for (const selected of this.selectedOptions(variable)) {
+          for (const target of selected.required || []) required.add(target)
+        }
       }
       return required
     },
@@ -813,6 +852,12 @@ export default {
           } else {
             // New format: use as-is
             this.localVariables[name] = variable
+          }
+          if (this.localVariables[name].multiple) {
+            this.localVariables[name].value = this.multipleValues(
+              this.localVariables[name],
+              this.localVariables[name].value,
+            )
           }
         }
         this.originalTargetNames = {}
@@ -962,6 +1007,7 @@ export default {
         'VARIABLE_PATTERN',
         'VARIABLE_HIDDEN',
         'VARIABLE_ADVANCED',
+        'VARIABLE_MULTIPLE',
         'VARIABLE_STATE',
         'VARIABLE_STATE_SHOW',
         'VARIABLE_STATE_SET',
@@ -1031,6 +1077,10 @@ export default {
       return false
     },
     validateVariable(name, variable) {
+      if (variable.multiple) {
+        const empty = !this.multipleValues(variable, variable.value).length
+        return empty && this.requiredVariables.has(name) ? 'Required' : null
+      }
       const value = String(variable.value ?? '').trim()
       if (!value) {
         return this.requiredVariables.has(name) ? 'Required' : null
@@ -1424,6 +1474,8 @@ export default {
     // Columns for a variable's field, narrower beside the directions panel
     fieldColumns(variable) {
       if (variable.type === 'JSON') return { cols: 12 }
+      // Room for the chips of several states
+      if (variable.multiple) return { cols: 12, md: 6 }
       return { cols: 12, sm: 6, md: this.sidePanel ? 4 : 3 }
     },
     pluginTextStorageKey() {
@@ -1481,6 +1533,22 @@ export default {
     // state's VARIABLE_STATE_SET values (cascading into other states)
     setVariableValue(name, value, visiting = new Set()) {
       const variable = this.localVariables[name]
+      if (variable.multiple) {
+        // Apply the VARIABLE_STATE_SETs of the states just selected
+        const values = this.multipleValues(variable, value)
+        const previous = this.multipleValues(variable, variable.value)
+        if (visiting.has(name)) return
+        if (values.join('\n') === previous.join('\n')) return
+        visiting.add(name)
+        variable.value = values
+        for (const option of this.selectedOptions(variable)) {
+          if (previous.includes(option.value)) continue
+          for (const [target, setValue] of Object.entries(option.set || {})) {
+            this.setVariableValue(target, setValue, visiting)
+          }
+        }
+        return
+      }
       if (variable.value === value || visiting.has(name)) return
       visiting.add(name)
       variable.value = value
@@ -1604,9 +1672,15 @@ export default {
             !this.isVariableVisible(controlName, visiting)
           )
             return false
-          const shows = states[controlName].get(
-            this.localVariables[controlName].value,
-          )
+          const control = this.localVariables[controlName]
+          if (control.multiple) {
+            // Shown while any selected state lists it
+            const selected = this.selectedOptions(control)
+            if (!selected.some((option) => option.show?.includes(name)))
+              return false
+            continue
+          }
+          const shows = states[controlName].get(control.value)
           // Custom values that don't match a state don't affect visibility
           if (!shows) continue
           if (!shows.has(name)) return false
@@ -1694,6 +1768,28 @@ export default {
       if (available.length > 0) {
         this.setVariableValue(name, available[0].value)
       }
+    },
+    // The values of a VARIABLE_MULTIPLE that are its states, in state order.
+    // A value can also be given as a comma separated string, e.g. by a
+    // VARIABLE_STATE_SET or VARIABLE_DISCOVERY_SET of another variable.
+    multipleValues(variable, value) {
+      const values = (
+        Array.isArray(value) ? value : String(value ?? '').split(',')
+      ).map((item) => String(item).trim())
+      return (variable.options || [])
+        .map((option) => option.value)
+        .filter((stateValue) => values.includes(stateValue))
+    },
+    // The selected VARIABLE_STATEs of a variable: the one matching its value,
+    // or each one a VARIABLE_MULTIPLE has selected
+    selectedOptions(variable) {
+      const options = variable.options || []
+      if (variable.multiple) {
+        const values = this.multipleValues(variable, variable.value)
+        return options.filter((option) => values.includes(option.value))
+      }
+      const selected = options.find((option) => option.value === variable.value)
+      return selected ? [selected] : []
     },
     hasOptions(variable) {
       return (
