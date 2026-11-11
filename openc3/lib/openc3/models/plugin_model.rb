@@ -739,6 +739,8 @@ module OpenC3
                 text_end = keyword.sub('_START', '_END')
               when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_GROUP', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'VARIABLE_FILE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
+              when *INSTALL_SCRIPT_KEYWORDS
+                # Run before and after the install
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'PANEL', 'SCRIPT_ENGINE'
                 begin
                   if current_model
