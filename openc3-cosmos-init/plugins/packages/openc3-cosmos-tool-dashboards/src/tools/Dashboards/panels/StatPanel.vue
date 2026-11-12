@@ -13,6 +13,7 @@
 
 <template>
   <div
+    ref="root"
     :class="[
       'stat d-flex flex-column flex-grow-1 min-h-0 overflow-hidden position-relative',
       { 'cursor-pointer': !!openDetails },
@@ -42,30 +43,29 @@
     </div>
     <!-- Only gets the space left over, so it never covers the rows around
          it; behind the value when the panel is too short (container query) -->
-    <div v-if="showGraph" class="stat-spark flex-1-1-0 min-h-0">
-      <!-- The graphs' tooltip, beside the crosshair -->
-      <div
-        v-if="tip"
-        class="db-tip position-absolute pointer-events-none text-no-wrap text-caption bg-surface-light rounded-lg border pa-2 elevation-4"
-        :style="{
-          left: `${tip.left}%`,
-          transform: tip.flip
-            ? 'translateX(calc(-100% - 12px))'
-            : 'translateX(12px)',
-        }"
+    <div v-if="showGraph" ref="spark" class="stat-spark flex-1-1-0 min-h-0">
+      <!-- The graphs' tooltip, above the sparkline so it doesn't cover it.
+           Compact panels show the hovered value in place of the live one
+           instead. -->
+      <hover-tip
+        v-if="tip && !compact"
+        :anchor="sparkEl"
+        :x="tip.left"
+        percent
+        placement="above"
         data-test="stat-hover"
       >
-        <div class="num font-weight-bold mb-1">{{ hovered.time }}</div>
+        <div class="font-weight-bold mb-1">{{ hovered.time }}</div>
         <div class="d-flex align-center justify-space-between ga-3">
           <span class="d-inline-flex align-center ga-2 text-medium-emphasis">
             <span class="db-swatch" :style="{ background: lineColor }" />
             {{ first.label }}
           </span>
           <span>
-            <b class="num">{{ hovered.value }}</b> {{ first.units }}
+            <b>{{ hovered.value }}</b> {{ first.units }}
           </span>
         </div>
-      </div>
+      </hover-tip>
       <sparkline
         class="h-100"
         area
@@ -87,7 +87,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, useTemplateRef } from 'vue'
 import { panelProps } from './panelBase'
 import { useTlmPanel } from './tlmPanel'
 import { hoverReach, nearestValue, useTlmSeries } from './tlmSeries'
@@ -95,6 +95,7 @@ import { itemOption, option } from './options'
 import LimitsBar from '../components/LimitsBar.vue'
 import PacketTime from '../components/PacketTime.vue'
 import Sparkline from '../components/Sparkline.vue'
+import HoverTip from '../components/HoverTip.vue'
 import { clock, compactNumber, formatTelemetry } from '../composables/format'
 import { dependOn } from '../composables/dependOn'
 
@@ -198,14 +199,27 @@ const hovered = computed(() => {
     time: clock(time * 1000, timeZone.value),
   }
 })
-// Where the tooltip goes: percent across the sparkline. Like the graphs',
-// it flips sides past 62% across and back under 38%, so it doesn't flicker
-// from side to side around one spot.
-const tip = computed((previous) => {
+const rootEl = useTemplateRef('root')
+const sparkEl = useTemplateRef('spark')
+// Short panels (the 120px container query below): the graph sits behind
+// the value and the hovered value replaces the live one, so no tooltip
+const compact = ref(false)
+let sizeObserver = null
+onMounted(() => {
+  sizeObserver = new ResizeObserver(() => {
+    compact.value = (rootEl.value?.clientHeight ?? 0) <= 120
+  })
+  sizeObserver.observe(rootEl.value)
+})
+onUnmounted(() => sizeObserver?.disconnect())
+
+// Where the tooltip goes: percent across the sparkline (HoverTip centers it
+// above there)
+const tip = computed(() => {
   if (!hovered.value) return null
   const left = ((hover.time - windowStart()) / duration.value) * 100
   if (left < 0 || left > 100) return null
-  return { left, flip: previous?.flip ? left > 38 : left > 62 }
+  return { left }
 })
 </script>
 
@@ -251,7 +265,6 @@ const tip = computed((previous) => {
   .stat-spark :deep(.spark-area) {
     display: inline;
   }
-  .db-tip,
   .stat[data-hovered] .hero:not(.hero-hover) {
     display: none;
   }

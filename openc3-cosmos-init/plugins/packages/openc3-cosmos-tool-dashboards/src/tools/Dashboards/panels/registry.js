@@ -38,6 +38,8 @@
 //                               the panel reads it with option(panel, NAME).
 //   title / subtitle            optional (panel) => string for the panel
 //                               header; defaults describe the panel's items
+//   subtitleLink                optional (panel) => URL the subtitle links
+//                               to (opens in a new tab), or null
 //   validate                    optional (panel) => message when the panel is
 //                               incomplete; panels with ITEM need one item
 //   hidden                      left out of the panel type picker
@@ -63,13 +65,17 @@ import GaugePanel from './GaugePanel.vue'
 import StatePanel from './StatePanel.vue'
 import CommandPanel from './CommandPanel.vue'
 import ScreenPanel from './ScreenPanel.vue'
+import AggregatePanel from './AggregatePanel.vue'
+import TextPanel from './TextPanel.vue'
 import UnknownPanel from './UnknownPanel.vue'
 import ItemsConfig from './config/ItemsConfig.vue'
 import LimitsConfig from './config/LimitsConfig.vue'
 import CommandConfig from './config/CommandConfig.vue'
 import ScreenConfig from './config/ScreenConfig.vue'
+import TextConfig from './config/TextConfig.vue'
 import { option } from './options'
 import { saveScreen } from './screens'
+import { DEFAULT_STATISTICS, STATISTICS } from './aggregate'
 
 // Shared by panel types whose items are drawn as lines
 const COLOR_OPTION = {
@@ -256,6 +262,47 @@ export const PANEL_TYPES = {
       },
     ],
   },
+  AGGREGATE: {
+    category: 'Telemetry',
+    label: 'Aggregate',
+    description:
+      'Min, max, average and other statistics over the time range picked in the header',
+    icon: 'mdi-sigma',
+    component: AggregatePanel,
+    content: ItemsConfig,
+    virtual: true,
+    defaults: { w: 4, h: 4 },
+    // A row of statistics and the range under the header
+    minSize: { w: 2, h: 3 },
+    keywords: ['ITEM', 'SETTING'],
+    maxItems: 8,
+    options: [
+      {
+        name: 'STATS',
+        type: 'list',
+        label: 'Statistics',
+        default: DEFAULT_STATISTICS,
+        items: STATISTICS.map(({ value, title }) => ({ title, value })),
+        span: 12,
+      },
+      {
+        name: 'LIMITS_BAR',
+        type: 'boolean',
+        label: 'Show limits bar',
+        default: true,
+        help: 'With one item that has limits: the current value, and the min to max bracket when shown',
+      },
+      {
+        name: 'PERCENTILE',
+        type: 'number',
+        label: 'Percentile',
+        default: 95,
+        min: 0,
+        max: 100,
+        when: (get) => get('STATS').includes('PERCENTILE'),
+      },
+    ],
+  },
   VALUES: {
     category: 'Telemetry',
     label: 'Values',
@@ -307,6 +354,11 @@ export const PANEL_TYPES = {
       panel.script ||
       (panel.command &&
         `${panel.command.targetName} ${panel.command.commandName}`),
+    // The script, opened in Script Runner
+    subtitleLink: (panel) =>
+      panel.script
+        ? `/tools/scriptrunner?file=${encodeURIComponent(panel.script)}`
+        : null,
     validate: (panel) =>
       panel.command || panel.script ? null : 'Pick a command or script',
     defaults: { w: 4, h: 6 },
@@ -372,6 +424,30 @@ export const PANEL_TYPES = {
     keywords: ['SCREEN', 'SETTING'],
     maxItems: 0,
     options: [],
+  },
+  TEXT: {
+    category: 'Other',
+    label: 'Text',
+    description: 'Notes, procedures and links written in markdown',
+    icon: 'mdi-text-box-outline',
+    component: TextPanel,
+    content: TextConfig,
+    validate: (panel) => (option(panel, 'TEXT') ? null : 'Write some text'),
+    virtual: true,
+    defaults: { w: 4, h: 4 },
+    keywords: ['SETTING'],
+    maxItems: 0,
+    options: [
+      // Edited in TextConfig, not the options form
+      {
+        name: 'TEXT',
+        type: 'text',
+        label: 'Markdown',
+        default: '',
+        multiline: true,
+        when: () => false,
+      },
+    ],
   },
 }
 

@@ -40,7 +40,11 @@
       :style="gridVars"
       :class="[
         'dashboard-grid',
-        { 'show-grid': canArrange, 'fit-content': breakpoint !== 'desktop' },
+        {
+          'show-grid': canArrange,
+          'fit-content': breakpoint !== 'desktop',
+          'no-move': fullscreenChanging,
+        },
       ]"
     >
       <div
@@ -50,21 +54,28 @@
         :data-uid="panel.uid"
         :class="[
           'grid-cell',
-          { 'panel-dragging': drag && drag.uid === panel.uid },
+          {
+            'panel-dragging': drag && drag.uid === panel.uid,
+            'panel-fullscreen': fullscreenUid === panel.uid,
+          },
         ]"
         :style="cellStyle(rectOf(panel))"
+        @pointerenter="hoveredUid = panel.uid"
+        @pointerleave="hoveredUid === panel.uid && (hoveredUid = null)"
       >
         <panel-frame
           :panel="panel"
           :level="levelOf(panel.uid)"
           :editing="canArrange"
           :dragging="!!drag && drag.uid === panel.uid"
+          :fullscreen="fullscreenUid === panel.uid"
           @configure="$emit('configure', panel)"
           @duplicate="$emit('duplicate', panel)"
           @delete="$emit('delete', panel)"
           @move-start="(event) => startDrag(panel, 'move', event)"
           @resize-start="(event) => startDrag(panel, 'resize', event)"
           @nudge="(change) => nudge(panel, change)"
+          @fullscreen="toggleFullscreen(panel.uid)"
         >
           <component
             :is="types[panel.type].component"
@@ -99,6 +110,7 @@
 import {
   computed,
   inject,
+  nextTick,
   onBeforeUnmount,
   onMounted,
   onUnmounted,
@@ -123,6 +135,7 @@ import {
   cellSize,
   clampRect,
   deriveLayout,
+  nudgeLayout,
   resolveLayout,
 } from './layout'
 
@@ -148,6 +161,17 @@ const gridRef = useTemplateRef('grid')
 // (usePanel), and leave its last value when they unmount.
 const levels = reactive({})
 provide('panelLevels', levels)
+// The panel under the mouse, for the V and E keys
+const hoveredUid = ref(null)
+// The panel shown full screen (V, or its header button), else null. Any
+// panel can be: the grid draws it over the dashboard, so panels need no
+// code of their own and keep their state (no remount).
+const fullscreenUid = ref(null)
+// For HoverTip: other panels' tooltips stay hidden behind a full screen one
+provide('fullscreenUid', fullscreenUid)
+// While full screen goes on or off: the grid's move animation is off, since
+// the panel's place changing isn't a move
+const fullscreenChanging = ref(false)
 // One store for every graph and sparkline: a single stream, backfill per
 // item and 1 s clock (useTlmSeries; LimitsPanel reads its clock)
 const seriesStore = poller
@@ -250,20 +274,29 @@ const attention = computed(() => {
 // re-render for their new size before the drop (usePanel `rect`)
 provide(
   'gridRects',
-  computed(() => preview.value || layout.value),
+  computed(() => {
+    const rects = preview.value || layout.value
+    const uid = fullscreenUid.value
+    if (uid === null || !rects[uid]) return rects
+    // Full screen is the whole grid wide, so narrow panels stop shortening
+    return { ...rects, [uid]: { ...rects[uid], x: 0, w: props.columns } }
+  }),
 )
 
 // Unmounted panels' items keep being polled for their limits state, so
 // the frame ring, health banner and attention bars stay right. A watcher
 // because the keys change with scrolling, editing and the panels, and the
 // poller registrations are outside Vue.
+watch(probeKeys, (keys, previous = []) => poller?.replace(previous, keys), {
+  immediate: true,
+})
+
+// The full screen panel was deleted (e.g. the dashboard changed)
 watch(
-  probeKeys,
-  (keys, previous = []) => {
-    poller?.unregister(previous)
-    poller?.register(keys)
+  () => props.panels.some((panel) => panel.uid === fullscreenUid.value),
+  (exists) => {
+    if (!exists) fullscreenUid.value = null
   },
-  { immediate: true },
 )
 
 onMounted(() => {
@@ -281,12 +314,19 @@ onMounted(() => {
     { rootMargin: '150% 0px' },
   )
   for (const el of cells.values()) nearby.observe(el)
-  // Visible means inside the window minus the app bar and footer (Vuetify
-  // publishes their heights to the page as layout variables)
+  // Visible means inside the window minus the app bar, the pinned health
+  // banner and the footer (measured by Dashboards.vue), else Vuetify's
+  // layout variables
   const style = getComputedStyle(wrapEl.value)
-  const top = Number.parseFloat(style.getPropertyValue('--v-layout-top')) || 0
-  const bottom =
-    Number.parseFloat(style.getPropertyValue('--v-layout-bottom')) || 0
+  const px = (...names) => {
+    for (const name of names) {
+      const value = Number.parseFloat(style.getPropertyValue(name))
+      if (Number.isFinite(value)) return value
+    }
+    return 0
+  }
+  const top = px('--sticky-top', '--v-layout-top')
+  const bottom = px('--chrome-bottom', '--v-layout-bottom')
   visibility = new IntersectionObserver(
     (entries) => {
       for (const entry of entries) {
@@ -303,6 +343,7 @@ onMounted(() => {
     { rootMargin: `-${top}px 0px -${bottom}px 0px` },
   )
   for (const el of cells.values()) visibility.observe(el)
+  window.addEventListener('keydown', panelKey)
 })
 // Before the panels unmount and release their keys, so they don't send
 // removes to a subscription that's closing
@@ -312,8 +353,86 @@ onUnmounted(() => {
   nearby?.disconnect()
   visibility?.disconnect()
   resizeObserver?.disconnect()
+  window.removeEventListener('keydown', panelKey)
   dragCancel()
 })
+
+// Single key shortcuts on the panel with keyboard focus, else the one under
+// the mouse: V shows it full screen (V or Esc goes back) and, while
+// editing, E configures it. Not while typing or with a dialog open.
+function panelKey(event) {
+  if (event.ctrlKey || event.metaKey || event.altKey || event.repeat) return
+  const key = event.key.toLowerCase()
+  if (!['v', 'e', 'escape'].includes(key)) return
+  const target = event.target
+  if (target?.closest?.('input, textarea, select, [contenteditable]')) return
+  if (
+    target?.closest?.('.v-overlay') ||
+    document.querySelector('.v-dialog.v-overlay--active')
+  ) {
+    return
+  }
+  if (fullscreenUid.value !== null && (key === 'v' || key === 'escape')) {
+    event.preventDefault()
+    toggleFullscreen(fullscreenUid.value)
+    return
+  }
+  if (key === 'escape') return
+  const uid = targetPanel()
+  if (uid === null) return
+  if (key === 'v' && !props.editing) {
+    event.preventDefault()
+    toggleFullscreen(uid)
+  } else if (key === 'e' && props.editing) {
+    const panel = props.panels.find((p) => p.uid === uid)
+    if (!panel) return
+    event.preventDefault()
+    emit('configure', panel)
+  }
+}
+// Full screen on or off. With view transitions, the panel grows out of its
+// place in the grid to fill the window (and shrinks back) while the
+// dashboard fades behind it; its content is cropped rather than stretched
+// as it grows (dashboards.scss). With reduced motion it switches at once.
+async function toggleFullscreen(uid) {
+  // One at a time: a second toggle mid-animation would lose its frame's
+  // transition name to the first one's cleanup
+  if (fullscreenChanging.value) return
+  const next = fullscreenUid.value === uid ? null : uid
+  // Panels go full screen to view them, not while arranging them
+  if (next !== null && props.editing) return
+  const frame = cells
+    .get(next ?? fullscreenUid.value)
+    ?.querySelector('.panel-frame')
+  const apply = async () => {
+    fullscreenUid.value = next
+    await nextTick()
+  }
+  fullscreenChanging.value = true
+  try {
+    const reduce = window.matchMedia?.(
+      '(prefers-reduced-motion: reduce)',
+    ).matches
+    if (!document.startViewTransition || reduce || !frame) {
+      await apply()
+      return
+    }
+    // Names the same element before and after, so it morphs between them
+    frame.style.viewTransitionName = 'db-fullscreen-panel'
+    try {
+      await document.startViewTransition(apply).finished
+    } finally {
+      frame.style.viewTransitionName = ''
+    }
+  } finally {
+    fullscreenChanging.value = false
+  }
+}
+function targetPanel() {
+  const cell = document.activeElement?.closest?.('.grid-cell')
+  if (cell && wrapEl.value?.contains(cell)) return Number(cell.dataset.uid)
+  return hoveredUid.value
+}
 
 // Function ref for each grid cell: watch it for scrolling out of view
 function observeCell(uid, el) {
@@ -336,6 +455,7 @@ function observeCell(uid, el) {
 // Whether to render a panel's content. Types opt in to virtualizing with
 // `virtual`; editing renders everything so panels can be arranged.
 function rendered(panel) {
+  if (panel.uid === fullscreenUid.value) return true
   if (props.editing || !types[panel.type]?.virtual) return true
   const isNear = near[panel.uid]
   if (isNear !== undefined) return isNear
@@ -428,24 +548,59 @@ function dragCancel() {
 function dragKey(event) {
   if (event.key === 'Escape') dragCancel()
 }
-function nudge(panel, { dx, dy, dw, dh }) {
-  const origin = { x: panel.x, y: panel.y, w: panel.w, h: panel.h }
-  const rect = clampRect(
-    {
-      type: panel.type,
-      x: panel.x + dx,
-      y: panel.y + dy,
-      w: panel.w + dw,
-      h: panel.h + dh,
-    },
-    props.columns,
+// Arrow key moves of one panel work like one long drag: each press is laid
+// out from the dashboard as it was before the first press, with the total
+// movement so far, so moving back restores whatever was pushed aside (one
+// press at a time, panels only ever get pushed further down). The run ends
+// when anything else changes the layout (a drag, undo, another panel).
+// Each press still saves, so undo steps back one press at a time.
+// { uid, snapshot, total: { dx, dy, dw, dh }, layout } or null
+let keyRun = null
+function nudge(panel, change) {
+  const continuing =
+    keyRun?.uid === panel.uid && sameLayout(props.panels, keyRun.layout)
+  if (!continuing) {
+    keyRun = {
+      uid: panel.uid,
+      snapshot: props.panels.map((p) => ({ ...p })),
+      total: { dx: 0, dy: 0, dw: 0, dh: 0 },
+      layout: null,
+    }
+  }
+  // Down swaps with the panel below as things are now (see nudgeLayout),
+  // then starts a new run from there
+  if (change.dy > 0 && !change.dw && !change.dh) {
+    const layout = nudgeLayout(props.panels, panel.uid, change, props.columns)
+    keyRun = null
+    if (layout) emit('layout', layout)
+    return
+  }
+  const total = Object.fromEntries(
+    Object.entries(keyRun.total).map(([key, value]) => [
+      key,
+      value + (change[key] || 0),
+    ]),
   )
-  const panels = props.panels.map((p) =>
-    p.uid === panel.uid ? { ...p, ...rect } : p,
-  )
-  emit(
-    'layout',
-    resolveLayout(panels, panel.uid, dw || dh ? null : origin, props.columns),
+  const layout = nudgeLayout(keyRun.snapshot, panel.uid, total, props.columns)
+  if (!layout) return
+  keyRun.total = total
+  keyRun.layout = layout
+  emit('layout', layout)
+}
+// Every panel where `layout` put it
+function sameLayout(panels, layout) {
+  return (
+    !!layout &&
+    panels.every((p) => {
+      const rect = layout[p.uid]
+      return (
+        rect &&
+        rect.x === p.x &&
+        rect.y === p.y &&
+        rect.w === p.w &&
+        rect.h === p.h
+      )
+    })
   )
 }
 
@@ -477,6 +632,17 @@ defineExpose({ health, scrollToPanel })
 .grid-cell {
   position: relative;
 }
+/* Over the whole dashboard, inside the app bar and footer (measured,
+   --chrome-top / --chrome-bottom from Dashboards.vue) and the nav drawer
+   (Vuetify's layout variables). Its place in the grid stays empty. */
+.grid-cell.panel-fullscreen {
+  position: fixed;
+  z-index: 5;
+  inset: var(--chrome-top, var(--v-layout-top, 0px)) var(--v-layout-right, 0px)
+    var(--chrome-bottom, var(--v-layout-bottom, 0px)) var(--v-layout-left, 0px);
+  padding: 16px;
+  background: rgb(var(--v-theme-background));
+}
 /* Phone and tablet: rows grow to fit content so nothing is clipped */
 .dashboard-grid.fit-content {
   grid-auto-rows: minmax(var(--grid-row), auto);
@@ -488,7 +654,10 @@ defineExpose({ health, scrollToPanel })
 .panel-dragging {
   z-index: 2;
 }
-.panel-dragging.panel-move {
+/* The dragged panel, and full screen going on or off (see
+   toggleFullscreen), aren't moves */
+.panel-dragging.panel-move,
+.no-move > .panel-move {
   transition: none;
 }
 /* Zero-height anchors that stick to the top and bottom of the visible area
@@ -502,10 +671,11 @@ defineExpose({ health, scrollToPanel })
   height: 0;
 }
 .attention-anchor.top {
-  top: var(--v-layout-top, 0px);
+  /* Under the app bar and the pinned health banner (Dashboards.vue) */
+  top: var(--sticky-top, var(--v-layout-top, 0px));
 }
 .attention-anchor.bottom {
-  bottom: var(--v-layout-bottom, 0px);
+  bottom: var(--chrome-bottom, var(--v-layout-bottom, 0px));
 }
 /* A 12px hit area with a 4px glowing bar on the outer edge */
 /* Its color is --status, from st-critical / st-caution (dashboards.scss) */

@@ -30,7 +30,7 @@
 //   help        caption under the control
 //   when        (get, panel) => boolean, hides the option when it doesn't
 //               apply; get(NAME) reads another option of the same panel
-//   items       select choices, [{ title, value }]
+//   items       select and list choices, [{ title, value }]
 //   min / max / unit   number limits and suffix
 //   multiline   text options edited in a text area
 //   span        width in the panel dialog, of 12 columns (default 4)
@@ -54,6 +54,20 @@ const BOOLEAN_WORDS = new Set([...TRUE_WORDS, 'FALSE', 'OFF', 'NO'])
 export function normalizeColor(value) {
   const match = /^#?([0-9a-f]{6})$/i.exec(String(value).trim())
   return match ? `#${match[1].toLowerCase()}` : null
+}
+
+// Text settings: \\, \" and \n in the file are \, " and a line break. Any
+// other backslash is kept as written.
+export function escapeText(value) {
+  return String(value)
+    .replaceAll('\\', '\\\\')
+    .replaceAll('"', '\\"')
+    .replace(/\r?\n/g, '\\n')
+}
+export function unescapeText(text) {
+  return String(text).replace(/\\([\\"n])/g, (match, char) =>
+    char === 'n' ? '\n' : char,
+  )
 }
 
 const OPTION_TYPES = {
@@ -94,10 +108,11 @@ const OPTION_TYPES = {
     },
   },
   // Free text, written quoted: SETTING DETAILS "Starts a collect". Line
-  // breaks are written as \n so the setting stays on one line.
+  // breaks are written as \n, and backslashes and double quotes escaped, so
+  // the setting stays on one line whatever the text (e.g. markdown).
   text: {
-    decode: (values) => values.join(' ').replaceAll(String.raw`\n`, '\n'),
-    encode: (value) => [String(value).replace(/\r?\n/g, String.raw`\n`)],
+    decode: (values) => unescapeText(values.join(' ')),
+    encode: (value) => [escapeText(value)],
     validate: (values) => (values.length ? null : 'expects some text'),
   },
   // rrggbb. A bare # starts a comment in dashboard files, so colors are
@@ -110,11 +125,22 @@ const OPTION_TYPES = {
         ? null
         : 'expects a color like 4dacff or "#4dacff" (a bare # starts a comment)',
   },
-  // Names, e.g. command parameters: SETTING HIDE DURATION TYPE
+  // Names, e.g. command parameters: SETTING HIDE DURATION TYPE. With
+  // `items`, only those choices are allowed.
   list: {
     decode: (values) => values.map((value) => String(value).toUpperCase()),
     encode: (value) => value,
-    validate: (values) => (values.length ? null : 'expects one or more names'),
+    validate: (values, def) => {
+      if (!values.length) return 'expects one or more names'
+      if (!def.items) return null
+      const allowed = def.items.map((item) => String(item.value).toUpperCase())
+      const unknown = values.filter(
+        (value) => !allowed.includes(String(value).toUpperCase()),
+      )
+      return unknown.length
+        ? `doesn't know ${unknown.join(', ')}. Expects any of ${allowed.join(', ')}`
+        : null
+    },
   },
   // A telemetry item: SETTING NAME <TARGET> <PACKET> <ITEM>
   item: {
@@ -153,6 +179,7 @@ function write(defs, settings, name, value) {
     value === null ||
     value === undefined ||
     value === '' ||
+    (Array.isArray(value) && !value.length) ||
     equal(value, def.default ?? null)
   if (isDefault) {
     delete result[name]

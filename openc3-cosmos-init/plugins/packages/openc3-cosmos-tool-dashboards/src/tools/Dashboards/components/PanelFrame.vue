@@ -13,10 +13,11 @@
 
 <template>
   <v-card
+    ref="frame"
     :class="[
       'panel-frame d-flex flex-column h-100 rounded-lg position-relative overflow-hidden',
       ring,
-      { 'elevation-12': dragging },
+      { 'elevation-12': dragging, 'is-arranging': editing },
     ]"
     flat
     :aria-label="title"
@@ -25,6 +26,7 @@
     tag="section"
     data-test="dashboard-panel"
     @keydown="keydown"
+    @pointerdown="focusFrame"
   >
     <div
       :class="[
@@ -48,13 +50,39 @@
       >
         {{ title }}
       </h3>
+      <!-- A link where the type gives one (e.g. a script to Script
+           Runner), not while arranging, when the header is a drag handle -->
+      <a
+        v-if="!titleOnly && subtitleLink && !editing"
+        :href="subtitleLink"
+        target="_blank"
+        rel="noopener"
+        class="panel-subtitle subtitle-link mono text-medium-emphasis text-decoration-underline cursor-pointer text-truncate min-w-0"
+        data-test="panel-subtitle-link"
+      >
+        {{ subtitle }}
+      </a>
       <span
-        v-if="!titleOnly"
+        v-else-if="!titleOnly"
         class="panel-subtitle mono text-medium-emphasis text-truncate min-w-0"
       >
         {{ subtitle }}
       </span>
       <v-spacer />
+      <v-btn
+        v-if="!editMode.on"
+        :icon="fullscreen ? 'mdi-fullscreen-exit' : 'mdi-fullscreen'"
+        size="small"
+        variant="text"
+        density="comfortable"
+        :class="['fullscreen-btn', { shown: fullscreen }]"
+        :aria-label="fullscreen ? 'Exit full screen' : 'Full screen'"
+        :aria-pressed="fullscreen"
+        aria-keyshortcuts="V"
+        :title="fullscreen ? 'Exit full screen (V or Esc)' : 'Full screen (V)'"
+        data-test="panel-fullscreen"
+        @click="$emit('fullscreen')"
+      />
       <status-symbol
         v-if="pill"
         :level="level"
@@ -114,7 +142,7 @@
 </template>
 
 <script setup>
-import { computed, inject, unref } from 'vue'
+import { computed, inject, provide, unref, useTemplateRef } from 'vue'
 import StatusSymbol from './StatusSymbol.vue'
 import { ringClass } from '../status'
 import { PANEL_TYPES, panelTitle } from '../panels/registry'
@@ -124,10 +152,14 @@ const props = defineProps({
   level: { type: String, default: null },
   editing: { type: Boolean, default: false },
   dragging: { type: Boolean, default: false },
+  // Shown over the whole dashboard (DashboardGrid)
+  fullscreen: { type: Boolean, default: false },
 })
 // move-start / resize-start carry the pointer event that began the drag,
-// nudge is { dx, dy, dw, dh } in grid units from the keyboard
+// nudge is { dx, dy, dw, dh } in grid units from the keyboard, fullscreen
+// toggles full screen
 const emit = defineEmits([
+  'fullscreen',
   'configure',
   'duplicate',
   'delete',
@@ -136,6 +168,13 @@ const emit = defineEmits([
   'nudge',
 ])
 
+const frameRef = useTemplateRef('frame')
+// Which panel the content belongs to, for things drawn outside the frame
+// (HoverTip)
+provide(
+  'panelUid',
+  computed(() => props.panel.uid),
+)
 const type = computed(() => PANEL_TYPES[props.panel.type])
 // The panel's own title, else its type's, else its single item's name
 const title = computed(() => panelTitle(props.panel))
@@ -150,7 +189,11 @@ const subtitle = computed(() => {
 })
 // Where the panel is drawn (following a resize mid-drag) and the grid's
 // COLUMNS, so "2 columns" means the same width on 12 and 24 column grids
+const subtitleLink = computed(() => type.value.subtitleLink?.(props.panel))
 const gridRects = inject('gridRects', null)
+// The dashboard is being edited, at any width (`editing` is only true where
+// panels can be arranged, the desktop layout)
+const editMode = inject('editing', () => ({ on: false }), true)
 const columns = inject('columns', 12)
 const titleOnly = computed(() => {
   if (!type.value.titleOnlyWhenNarrow) return false
@@ -173,9 +216,25 @@ function pointerdown(event) {
   emit('move-start', event)
 }
 
-// Arrow keys move the focused panel, Shift+arrows resize it
+// Fields inside a panel keep their arrow keys
+const OWN_ARROWS =
+  'input, textarea, select, [contenteditable], [role="combobox"], [role="listbox"], [role="slider"]'
+
+// Clicking a panel while editing selects it for the arrow keys. The header's
+// drag (pointerdown) prevents the default focus, so focus it here; a click
+// on something focusable inside still moves focus there, and its arrow keys
+// bubble up to keydown.
+function focusFrame(event) {
+  if (!props.editing || event.button !== 0) return
+  if (event.target.closest(OWN_ARROWS)) return
+  frameRef.value?.$el?.focus({ preventScroll: true })
+}
+
+// Arrow keys move the focused panel (or one with focus inside it),
+// Shift+arrows resize it
 function keydown(event) {
-  if (!props.editing || event.target !== event.currentTarget) return
+  if (!props.editing || event.altKey || event.ctrlKey || event.metaKey) return
+  if (event.target.closest(OWN_ARROWS)) return
   const step = {
     ArrowLeft: [-1, 0],
     ArrowRight: [1, 0],
@@ -221,6 +280,34 @@ function keydown(event) {
   .panel-subtitle {
     display: none;
   }
+}
+/* Only on hover or focus, so headers stay quiet; always while full screen
+   so there's a visible way back. Always on touch screens (no hover). */
+.fullscreen-btn:not(.shown) {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.panel-frame:hover .fullscreen-btn,
+.panel-frame:focus-within .fullscreen-btn {
+  opacity: 1;
+}
+@media (hover: none) {
+  .fullscreen-btn:not(.shown) {
+    opacity: 1;
+  }
+}
+/* The panel the arrow keys move, after a click or Tab */
+.panel-frame.is-arranging:focus-within {
+  outline: 2px solid rgb(var(--v-theme-primary));
+  outline-offset: 2px;
+}
+/* Underlined in the subtitle's own color; brighter on hover */
+.subtitle-link {
+  text-underline-offset: 2px;
+}
+.subtitle-link:hover {
+  color: rgb(var(--v-theme-on-surface)) !important;
+  text-decoration-thickness: 2px;
 }
 .move-handle {
   cursor: grab;

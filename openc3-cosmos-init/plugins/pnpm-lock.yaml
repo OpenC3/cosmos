@@ -244,6 +244,12 @@ importers:
       axios:
         specifier: 1.20.0
         version: 1.20.0(debug@4.4.3)
+      dompurify:
+        specifier: 3.4.17
+        version: 3.4.17
+      marked:
+        specifier: 14.0.0
+        version: 14.0.0
       single-spa-vue:
         specifier: 3.0.1
         version: 3.0.1
@@ -3067,7 +3073,7 @@ snapshots:
       debug: 4.4.3
       minimatch: 10.2.5
       semver: 7.8.5
-      tinyglobby: 0.2.16
+      tinyglobby: 0.2.17
       ts-api-utils: 2.5.0(typescript@6.0.3)
       typescript: 6.0.3
     transitivePeerDependencies:

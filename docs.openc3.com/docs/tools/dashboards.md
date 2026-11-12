@@ -19,7 +19,7 @@ Each dashboard is a plain text file saved in a target, so dashboards can be ship
 
 ## Selecting a Dashboard
 
-Click **Dashboards** in the header (or press **Ctrl+K**, **⌘K** on a Mac) to open the dashboard selector.
+Click **Dashboards** in the header (or press **Ctrl+O**, **⌘O** on a Mac) to open the dashboard selector.
 
 ![Dashboard Selector](/img/dashboards/dashboard_selector.png)
 
@@ -39,10 +39,16 @@ Dashboards remembers the last dashboard you opened and opens it the next time. T
 - **Version History** shows earlier saved versions of the dashboard and restores one (Enterprise)
 - **Delete Dashboard** deletes the open dashboard
 
+### Help Menu
+
+- **Keyboard Shortcuts** lists every shortcut in Dashboards
+- **Migrating from Telemetry Viewer** explains how to bring screens over and which panels replace which widgets
+
 ## Viewing a Dashboard
 
 - **Health banner**: the worst status of any panel. **Nominal** when everything is within limits, **Caution** or **Critical** with the number of panels affected and a button that scrolls to the worst one, or **Stale** when telemetry stops arriving. Each panel's border also takes its status color.
 - **Item details**: click a value to see it larger with its raw value, packet time, description and limits.
+- **Full screen**: press **V** with the mouse over a panel (or focus in it), or click the full screen button in its header, to show just that panel over the whole dashboard. **V** or **Esc** goes back.
 - **Off screen problems**: when a panel out of limits is scrolled out of view, a colored bar at the top or bottom of the grid points to it; click it to scroll there.
 
 ### Changing the Time Range
@@ -63,7 +69,7 @@ Click **Edit** to change the open dashboard. While editing, telemetry keeps upda
 
 - **Add panel** opens the panel dialog
 - Drag a panel's header to move it and its bottom right corner to resize it. Panels never overlap: others move out of the way.
-- Use the buttons in a panel's header to **Configure**, **Duplicate** or **Delete** it
+- Use the buttons in a panel's header to **Configure**, **Duplicate** or **Delete** it, or press **E** with the mouse over a panel to configure it
 - With a panel focused, the **arrow keys** move it and **Shift+arrows** resize it
 - **Undo** and **Redo** (**Ctrl+Z**, **Ctrl+Shift+Z**) step through your changes
 - Click the dashboard's icon to pick its icon and color, and edit its title next to it
@@ -88,16 +94,34 @@ Single value panels adapt to their size too. For example, a Stat panel only two 
 
 ## Panels
 
-| Panel   | Shows                                                                                                                   | Options                                                                                          |
-| ------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Stat    | One value, big, with a limits bar and a sparkline over the time range                                                   | Show packet time, graph, limits on the graph and limits bar; line color                          |
-| Gauge   | One value on a dial with its limits as colored zones                                                                    | Show packet time; item limits or custom red / yellow limits; scale minimum and maximum           |
-| State   | The current state of an item, such as `CONNECTED`, with its status color                                                | Show packet time                                                                                 |
-| Graph   | Up to 6 items over the time range, with limits drawn as bands and dashed lines                                          | Which item's limits to draw; line colors                                                         |
-| Values  | A table of items with their status, limits bars and units                                                               | Show limits bars                                                                                 |
-| Limits  | The items currently out of limits for the chosen targets, worst first, and how long they've been out                    |                                                                                                  |
-| Screen  | An existing [Telemetry Viewer screen](../configuration/telemetry-screens.md); edit the screen right in the panel dialog |                                                                                                  |
-| Command | A command with preset parameters, or a button that runs a script. Critical commands go through the usual approval.      | Hold or click to send; parameters to hide; details text; open Script Runner when a script starts |
+| Panel     | Shows                                                                                                                          | Options                                                                                          |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Stat      | One value, big, with a limits bar and a sparkline over the time range                                                          | Show packet time, graph, limits on the graph and limits bar; line color                          |
+| Gauge     | One value on a dial with its limits as colored zones                                                                           | Show packet time; item limits or custom red / yellow limits; scale minimum and maximum           |
+| State     | The current state of an item, such as `CONNECTED`, with its status color                                                       | Show packet time                                                                                 |
+| Graph     | Up to 6 items over the time range, with limits drawn as bands and dashed lines                                                 | Which item's limits to draw; line colors                                                         |
+| Values    | A table of items with their status, limits bars and units                                                                      | Show limits bars                                                                                 |
+| Aggregate | Statistics of each item over the time range: min, max, average, median, percentile, std dev, range, first, last, sum and count | Which statistics; percentile; limits bar                                                         |
+| Limits    | The items currently out of limits for the chosen targets, worst first, and how long they've been out                           |                                                                                                  |
+| Screen    | An existing [Telemetry Viewer screen](../configuration/telemetry-screens.md); edit the screen right in the panel dialog        |                                                                                                  |
+| Command   | A command with preset parameters, or a button that runs a script. Critical commands go through the usual approval.             | Hold or click to send; parameters to hide; details text; open Script Runner when a script starts |
+| Text      | Notes, procedures, links and tables written in markdown, with a preview in the panel dialog                                    |                                                                                                  |
+
+### Aggregate Panels
+
+An Aggregate panel computes statistics over the same history the graphs show: the time range picked in the header, or the range before the playback time during playback. It updates about once a second. With one item each statistic is a tile; with several, each item is a row. Values in the item's units (min, max, average and so on) take the item's limits color, so a maximum that went red during the range stands out. With one item that has limits, a limits bar across the top marks the current value and brackets the minimum to the maximum; turn it off with **Show limits bar**.
+
+```text
+PANEL AGGREGATE 0 0 4 4 "Temperature stats"
+  ITEM INST HEALTH_STATUS TEMP1
+  SETTING STATS MIN MAX AVG PERCENTILE
+  SETTING PERCENTILE 99
+END
+```
+
+### Text Panels
+
+A Text panel shows markdown: headings, bold and italic, code, lists and task lists, links (opened in a new tab), tables and quotes. HTML, scripts and styles are removed. In the file the markdown is one `SETTING TEXT` line, with line breaks written as `\n` and `"` and `\` escaped with a backslash; the panel dialog takes care of that.
 
 Items are shown as their converted values by default. Pick RAW, FORMATTED or WITH_UNITS per item in the panel dialog.
 

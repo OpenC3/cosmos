@@ -109,8 +109,8 @@ test('shows the demo dashboard with live values and health', async ({ page, util
 test('finds and opens dashboards from the navigator', async ({ page, utils }) => {
   await openDashboard(page, 'INST/OVERVIEW')
 
-  // Ctrl+K opens it on the dashboard that's open
-  await page.keyboard.press('Control+k')
+  // Ctrl+O opens it on the dashboard that's open
+  await page.keyboard.press('Control+o')
   const navigator = page.locator('[data-test="dashboard-navigator"]')
   await expect(navigator).toBeVisible()
   await expect(

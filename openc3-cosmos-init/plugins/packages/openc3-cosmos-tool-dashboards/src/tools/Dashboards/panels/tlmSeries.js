@@ -67,8 +67,11 @@ export function hoverReach(seconds) {
 // `seriesItems` (default: the panel's items), `seriesUpdated()` called about
 // once a second with points older than the range dropped, and
 // `seriesReset()` called when the panel's items change (default:
-// seriesUpdated). Returns `series` ([times in seconds, then one array of
-// values per item], oldest first) and `latest` (each item's newest value);
+// seriesUpdated), and `aligned` (default true; false skips building
+// `series`, for panels that only need `entries`). Returns `series` ([times
+// in seconds, then one array of values per item], oldest first), `entries`
+// (each item's own { times, values }, or null, without merging their times)
+// and `latest` (each item's newest value);
 // both are plain arrays updated in place, not reactive, and with one item
 // they're the store's own arrays, so treat them as read only.
 export function useTlmSeries(props, base, options = {}) {
@@ -100,6 +103,7 @@ export function useTlmSeries(props, base, options = {}) {
   )
 
   const series = [[]]
+  const entries = []
   const latest = []
   let keys = []
   let stopTicks = null
@@ -122,12 +126,16 @@ export function useTlmSeries(props, base, options = {}) {
 
   // Point series and latest at the store's arrays for the current keys
   function refresh() {
-    const entries = keys.map((key) => store.get(key))
-    series.splice(0, series.length, ...alignSeries(entries))
+    const found = keys.map((key) => store.get(key))
+    entries.splice(0, entries.length, ...found)
+    // Merging the items' times is the costly part; skipped when unused
+    if (options.aligned !== false) {
+      series.splice(0, series.length, ...alignSeries(found))
+    }
     latest.splice(
       0,
       latest.length,
-      ...entries.map((entry) => entry?.latest ?? null),
+      ...found.map((entry) => entry?.latest ?? null),
     )
   }
 
@@ -164,6 +172,7 @@ export function useTlmSeries(props, base, options = {}) {
     duration,
     seriesItems,
     series,
+    entries,
     latest,
     setHover,
     // Start the history over, e.g. after a gap
