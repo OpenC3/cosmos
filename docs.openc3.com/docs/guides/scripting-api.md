@@ -2054,11 +2054,59 @@ status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") # => WAITIN
 </TabItem>
 </Tabs>
 
+### critical_cmd_info
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Returns the status of the critical command along with the users who have approved it and the number of approvals required. The number of approvals required is set by the scope's Critical Cmd Approvers setting when the command is created. Each approval must come from a different user, and the user who sent the command can't approve it.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+critical_cmd_info(uuid)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+critical_cmd_info(uuid)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+info = critical_cmd_info("2fa14183-3148-4399-9a74-a130257118f9")
+# => {'status': 'WAITING', 'approvers': ['operator'], 'approvers_required': 2}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+info = critical_cmd_info("2fa14183-3148-4399-9a74-a130257118f9")
+# => {"status"=>"WAITING", "approvers"=>["operator"], "approvers_required"=>2}
+```
+
+</TabItem>
+</Tabs>
+
 ### critical_cmd_approve
 
 <span class="badge badge--secondary since-heading">Since 5.20.0</span>
 
-Approve the critical command as the current user.
+Approve the critical command as the current user. If the scope requires more than one approver, the command remains `WAITING` until enough different users have approved it. Use [critical_cmd_info](#critical_cmd_info) to see the current approvals.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">

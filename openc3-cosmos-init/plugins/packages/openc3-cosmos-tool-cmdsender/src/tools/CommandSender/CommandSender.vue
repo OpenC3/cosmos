@@ -265,6 +265,8 @@ export default {
       criticalCmdUuid: null,
       criticalCmdString: null,
       criticalCmdUser: null,
+      // uuid => interval watching a critical command waiting for approval
+      criticalCmdWatchers: {},
       sendDisabled: false,
       api: null,
       keywords: [],
@@ -449,6 +451,10 @@ export default {
     })
   },
   beforeUnmount() {
+    for (const watcher of Object.values(this.criticalCmdWatchers)) {
+      clearTimeout(watcher)
+    }
+    this.criticalCmdWatchers = {}
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -643,6 +649,13 @@ export default {
     // user has confirmed the hazardous command dialog.
     executeCmd(cmdInfo, skipHazardousCheck) {
       const { targetName, commandName, paramList, queueName } = cmdInfo
+      // Snapshot the settings used to send so the history entry matches even
+      // if they change before a critical command is approved
+      const sendOptions = {
+        queueName,
+        validateParameter: this.validateParameter,
+        disableCommandValidation: this.disableCommandValidation,
+      }
       let kwparams = {}
       if (this.validateParameter !== null) {
         kwparams.validate = this.validateParameter.toLowerCase() === 'true'
@@ -682,12 +695,95 @@ export default {
         kwparams,
       ).then(
         (response) => {
-          this.processCmdSuccess(cmd, response)
+          this.processCmdSuccess(cmd, response, sendOptions)
+          this.sendDisabled = false
         },
         (error) => {
           this.processCmdError(targetName, commandName, error)
+          if (error.message?.includes('CriticalCmdError')) {
+            this.watchCriticalCmd(
+              cmd,
+              error.object.data.instance_variables,
+              sendOptions,
+            )
+          }
         },
       )
+    },
+
+    // Critical commands aren't sent until enough users approve them, which can
+    // happen long after the approval dialog is closed. Watch for the final
+    // status so approved commands are added to the history like any other.
+    // Polling backs off from 1s to 30s and gives up after an hour.
+    watchCriticalCmd(cmd, criticalError, sendOptions) {
+      const uuid = criticalError['@uuid']
+      const command = criticalError['@command']
+      if (!uuid || !command || uuid in this.criticalCmdWatchers) return
+      const deadline = Date.now() + 60 * 60 * 1000
+      let delay = 1000
+      const stop = () => {
+        clearTimeout(this.criticalCmdWatchers[uuid])
+        delete this.criticalCmdWatchers[uuid]
+      }
+      const schedule = () => {
+        // Stopped while the request was in flight, e.g. the tool was closed
+        if (!(uuid in this.criticalCmdWatchers)) return
+        if (Date.now() + delay > deadline) {
+          stop()
+          return
+        }
+        this.criticalCmdWatchers[uuid] = setTimeout(poll, delay)
+        delay = Math.min(delay * 2, 30000)
+      }
+      const poll = () => {
+        // The approval dialog polls this command itself while it's open.
+        // Check again shortly so the result is picked up once it closes.
+        if (this.displayCriticalCmd && this.criticalCmdUuid === uuid) {
+          delay = 1000
+          schedule()
+          return
+        }
+        Api.get('/openc3-api/criticalcmd/status/' + uuid, {
+          // Keep failed polls out of the error banner, they're retried
+          headers: {
+            Accept: 'application/json',
+            'Ignore-Errors': '404 500 502 503 504',
+          },
+        })
+          .then((response) => {
+            // Stopped while the request was in flight, e.g. the tool was closed
+            if (!(uuid in this.criticalCmdWatchers)) return
+            if (response.data.status === 'APPROVED') {
+              stop()
+              // APPROVED only means the command was released to the interface,
+              // which can still fail to send it (e.g. disconnected), so don't
+              // claim it was sent
+              const msg = this.formatCmd(cmd, command, sendOptions)
+              this.insertHistory(msg)
+              const released = response.data.interface_name
+                ? ` and released to ${response.data.interface_name}`
+                : ''
+              this.status = `Critical command approved${released}: ${msg}`
+            } else if (response.data.status === 'REJECTED') {
+              stop()
+              this.status = `Critical command rejected: ${command.cmd_string}`
+            } else {
+              schedule()
+            }
+          })
+          .catch((error) => {
+            if (!(uuid in this.criticalCmdWatchers)) return
+            // The critical command no longer exists, e.g. critical commanding
+            // was turned off. Keep watching through transient errors.
+            if (error.response?.status === 404) {
+              stop()
+            } else {
+              schedule()
+            }
+          })
+      }
+      this.criticalCmdWatchers[uuid] = null
+      schedule()
     },
 
     cancelHazardousCmd() {
@@ -696,7 +792,29 @@ export default {
       this.sendDisabled = false
     },
 
-    processCmdSuccess(cmd_sent, response) {
+    processCmdSuccess(cmd_sent, response, sendOptions) {
+      let msg = this.formatCmd(cmd_sent, response, sendOptions)
+      this.addToHistory(msg)
+      msg += ' sent.'
+      // Add the number of commands sent to the status message
+      if (this.status.includes(msg)) {
+        let parts = this.status.split('sent.')
+        if (parts[1].includes('(')) {
+          let num = Number.parseInt(
+            parts[1].substr(2, parts[1].indexOf(')') - 2),
+          )
+          msg = parts[0] + 'sent. (' + (num + 1) + ')'
+        } else {
+          msg += ' (2)'
+        }
+      }
+      this.status = msg
+    },
+
+    // Format the sent command the way the user would script it
+    formatCmd(cmd_sent, response, sendOptions) {
+      const { queueName, validateParameter, disableCommandValidation } =
+        sendOptions
       let msg = `${cmd_sent}("${response['target_name']} ${response['cmd_name']}`
       let keys = Object.keys(response['cmd_params'])
       if (keys.length > 0) {
@@ -725,16 +843,13 @@ export default {
       }
       // Build the closing part with optional parameters
       const closingParams = []
-      if (this.lastQueueName !== null) {
-        const queue =
-          this.lastQueueName === false ? false : `"${this.lastQueueName}"`
+      if (queueName !== null) {
+        const queue = queueName === false ? false : `"${queueName}"`
         closingParams.push(this.formatKeyword('queue', queue))
       }
-      if (this.validateParameter !== null) {
-        closingParams.push(
-          this.formatKeyword('validate', this.validateParameter),
-        )
-      } else if (this.disableCommandValidation) {
+      if (validateParameter !== null) {
+        closingParams.push(this.formatKeyword('validate', validateParameter))
+      } else if (disableCommandValidation) {
         closingParams.push(this.formatKeyword('validate', false))
       }
 
@@ -743,6 +858,24 @@ export default {
       } else {
         msg += '")'
       }
+      return msg
+    },
+
+    // Add a command that completed in the background (e.g. an approved
+    // critical command) to the top of the history without disturbing the
+    // user's cursor, selection or edits. Ace shifts them down with the insert.
+    insertHistory(msg) {
+      const value = this.editor.getValue()
+      if (!value.includes(msg)) {
+        this.editor.session.insert(
+          { row: 0, column: 0 },
+          value.length !== 0 ? `${msg}\n` : msg,
+        )
+      }
+      this.saveHistory()
+    },
+
+    addToHistory(msg) {
       if (!this.history.includes(msg)) {
         let value = msg
         if (this.history.length !== 0) {
@@ -751,22 +884,7 @@ export default {
         this.editor.setValue(value)
         this.editor.moveCursorTo(0, 0)
       }
-      msg += ' sent.'
-      // Add the number of commands sent to the status message
-      if (this.status.includes(msg)) {
-        let parts = this.status.split('sent.')
-        if (parts[1].includes('(')) {
-          let num = Number.parseInt(
-            parts[1].substr(2, parts[1].indexOf(')') - 2),
-          )
-          msg = parts[0] + 'sent. (' + (num + 1) + ')'
-        } else {
-          msg += ' (2)'
-        }
-      }
-      this.status = msg
-
-      this.processCmdResponse()
+      this.saveHistory()
     },
 
     processCmdError(targetName, commandName, response) {
@@ -781,10 +899,14 @@ export default {
     },
 
     processCmdResponse() {
+      this.saveHistory()
+      this.sendDisabled = false
+    },
+
+    saveHistory() {
       // Make a copy of the history
       this.history = this.editor.getValue()
       localStorage['command_sender__history'] = this.editor.getValue()
-      this.sendDisabled = false
     },
 
     // Format a keyword parameter for the user's scripting language

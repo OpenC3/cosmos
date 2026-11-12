@@ -44,6 +44,7 @@ end
 module OpenC3
   class ScopeModel < Model
     PRIMARY_KEY = "openc3_scopes"
+    MAX_CRITICAL_CMD_APPROVERS = 10
 
     # Default thresholds used by the System Health tool and the metrics
     # microservices. Stored in the 'system_health' setting as a JSON string.
@@ -85,6 +86,7 @@ module OpenC3
     attr_accessor :cleanup_poll_time
     attr_accessor :command_authority
     attr_accessor :critical_commanding
+    attr_accessor :critical_cmd_approvers
     attr_accessor :shard
 
     # NOTE: The following three class methods are used by the ModelController
@@ -127,6 +129,7 @@ module OpenC3
       cleanup_poll_time: 3600,
       command_authority: false,
       critical_commanding: "OFF",
+      critical_cmd_approvers: 1,
       shard: 0,
       updated_at: nil)
       super(
@@ -147,6 +150,14 @@ module OpenC3
       @critical_commanding = "OFF" if @critical_commanding.length == 0
       unless ["OFF", "NORMAL", "ALL"].include?(@critical_commanding)
         raise "Invalid value for critical_commanding: #{@critical_commanding}"
+      end
+      # Number of distinct users (other than the sender) who must approve each critical command
+      # Only accept whole numbers so values like 1.9 or "2oops" aren't silently truncated
+      approvers = critical_cmd_approvers.nil? ? 1 : critical_cmd_approvers
+      approvers = approvers.strip if approvers.is_a?(String)
+      @critical_cmd_approvers = approvers.to_i if approvers.is_a?(Integer) or (approvers.is_a?(String) and /\A[0-9]+\z/.match?(approvers))
+      if @critical_cmd_approvers.nil? or @critical_cmd_approvers < 1 or @critical_cmd_approvers > MAX_CRITICAL_CMD_APPROVERS
+        raise "Invalid value for critical_cmd_approvers: #{critical_cmd_approvers} (must be 1 to #{MAX_CRITICAL_CMD_APPROVERS})"
       end
       @shard = shard.to_i # to_i to handle nil
       @children = []
@@ -213,6 +224,7 @@ module OpenC3
        "cleanup_poll_time" => @cleanup_poll_time,
        "command_authority" => @command_authority,
        "critical_commanding" => @critical_commanding,
+       "critical_cmd_approvers" => @critical_cmd_approvers,
        "shard" => @shard}
     end
 
