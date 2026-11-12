@@ -20,7 +20,7 @@ module OpenC3
   # Helpers for persisting durable child-script auth context for service-account
   # callers.
   module ServiceAccountScriptAuth
-    module_function
+    extend self
 
     def bearer_token_from_header(auth_header)
       return nil unless auth_header&.start_with?('Bearer ')
