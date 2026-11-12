@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
 
@@ -95,7 +95,7 @@ jobs:
         if: ${{ steps.targets.outputs.packages != '' || steps.filter.outputs.playwright == 'true' }}
         with:
           node-version: 24
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115
         if: ${{ steps.targets.outputs.packages != '' || steps.filter.outputs.playwright == 'true' }}
         with:
           version: 11
@@ -116,6 +116,24 @@ jobs:
           for dir in $PACKAGES; do
             echo "::group::eslint $dir"
             pnpm --dir "$dir" run lint --max-warnings 0 || status=1
+            echo "::endgroup::"
+          done
+          exit $status
+
+      # Unit tests (e.g. Vitest) for the same changed packages, run even if
+      # linting failed so both are reported. Packages without a test script
+      # are skipped.
+      - name: Run unit tests on changed packages
+        if: ${{ !cancelled() && steps.targets.outputs.packages != '' }}
+        env:
+          PACKAGES: ${{ steps.targets.outputs.packages }}
+        run: |
+          set -euo pipefail
+          status=0
+          for dir in $PACKAGES; do
+            jq -e '.scripts.test' "$dir/package.json" > /dev/null || continue
+            echo "::group::test $dir"
+            pnpm --dir "$dir" run test || status=1
             echo "::endgroup::"
           done
           exit $status

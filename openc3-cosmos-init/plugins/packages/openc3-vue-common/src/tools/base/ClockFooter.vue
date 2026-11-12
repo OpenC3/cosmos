@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2022, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license 
@@ -66,6 +66,10 @@
 import { format } from 'date-fns'
 
 export default {
+  props: {
+    // Time only, without the date (the mobile footer)
+    compact: Boolean,
+  },
   data: function () {
     return {
       localDate: new Date(),
@@ -105,7 +109,7 @@ export default {
         timeFormat = 'hh:mm:ss a'
       }
 
-      return `${dateFormat} ${timeFormat}`
+      return this.compact ? timeFormat : `${dateFormat} ${timeFormat}`
     },
   },
   watch: {

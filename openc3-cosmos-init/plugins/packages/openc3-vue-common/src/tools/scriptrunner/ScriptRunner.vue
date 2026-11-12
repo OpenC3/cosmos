@@ -101,376 +101,446 @@
         </div>
       </div>
     </div>
-    <v-card class="flex-shrink-0">
-      <v-card-text>
-        <suite-runner
-          v-if="suiteRunner"
-          class="suite-runner"
-          :suite-map="suiteMap"
-          :disable-buttons="disableSuiteButtons"
-          :filename="fullFilename"
-          @button="suiteRunnerButton"
-          @loaded="doResize"
+    <splitpanes
+      class="explorer-split flex-grow-1 overflow-hidden"
+      @resize="explorerResize"
+      @resized="persistExplorer"
+    >
+      <pane
+        v-if="showExplorer"
+        :size="explorerSize"
+        min-size="10"
+        max-size="50"
+      >
+        <script-file-explorer
+          ref="explorer"
+          :active-file="explorerActiveFile"
+          :executing-file="scriptActive ? currentFilename : null"
+          :running-files="runningFiles"
+          :loading-file="explorerLoadingFile"
+          :script-active="scriptActive"
+          :read-only="readOnlyUser"
+          @select="navigatorSelect"
+          @save-as="explorerSaveAs"
+          @hide="setShowExplorer(false)"
+          @error="setError"
         />
-        <div id="sr-controls">
-          <v-row no-gutters justify="space-between">
-            <v-icon v-if="showDisconnect" class="mt-2" color="red">
-              mdi-connection
-            </v-icon>
-            <div class="d-flex align-center mr-1">
-              <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-if="!scriptActive"
-                    v-bind="props"
-                    icon="mdi-cached"
-                    variant="text"
-                    density="compact"
-                    :disabled="filename === NEW_FILENAME"
-                    aria-label="Reload File"
-                    @click="reloadFile"
-                  />
-                  <v-btn
-                    v-else
-                    v-bind="props"
-                    icon="mdi-arrow-left"
-                    variant="text"
-                    density="compact"
-                    @click="backToNewScript"
-                  />
-                </template>
-                <span v-if="!scriptActive"> Reload File </span>
-                <span v-else> Back to New Script </span>
-              </v-tooltip>
-            </div>
-            <v-tooltip
-              location="bottom"
-              :text="filenameSelect"
-              :disabled="!filenameSelect || filenameSelect.length <= 45"
-            >
-              <template #activator="{ props }">
-                <div v-bind="props" style="width: 32rem">
-                  <v-select
-                    id="filename"
-                    v-model="filenameSelect"
-                    :items="fileList"
-                    :disabled="fileList.length <= 1"
-                    label="Filename"
-                    data-test="filename"
-                    density="compact"
-                    variant="outlined"
-                    hide-details
-                    @update:model-value="fileNameChanged"
-                  />
-                </div>
-              </template>
-            </v-tooltip>
-            <v-text-field
-              v-model="scriptId"
-              label="Script ID"
-              data-test="id"
-              class="shrink ml-2 script-state"
-              style="max-width: 100px"
-              density="compact"
-              variant="outlined"
-              readonly
-              hide-details
+      </pane>
+      <pane
+        :size="showExplorer ? 100 - explorerSize : 100"
+        class="d-flex flex-column overflow-hidden"
+      >
+        <v-card class="flex-shrink-0">
+          <v-card-text>
+            <suite-runner
+              v-if="suiteRunner"
+              class="suite-runner"
+              :suite-map="suiteMap"
+              :disable-buttons="disableSuiteButtons"
+              :filename="fullFilename"
+              @button="suiteRunnerButton"
+              @loaded="doResize"
             />
-            <v-text-field
-              v-model="stateTimer"
-              label="Script State"
-              data-test="state"
-              :class="['shrink', 'ml-2', 'script-state', stateColorClass]"
-              style="max-width: 120px"
-              density="compact"
-              variant="outlined"
-              readonly
-              hide-details
-            />
-            <v-chip
-              v-if="lifecycleVisible"
-              class="ml-4 align-self-center"
-              :color="lifecycleColor"
-              variant="flat"
-              data-test="lifecycle-chip"
-              @click="showLifecycle = true"
-            >
-              {{ lifecycleLabel }}
-            </v-chip>
-            <v-progress-circular
-              v-if="state === 'Connecting...'"
-              :size="40"
-              class="mx-2"
-              indeterminate
-              color="primary"
-            />
-            <div v-else style="width: 40px; height: 40px" class="mx-2"></div>
-
-            <v-spacer />
-            <v-tooltip
-              v-if="showPythonVenv && startOrGoButton === 'Start'"
-              :open-delay="600"
-              location="top"
-            >
-              <template #activator="{ props: tooltipProps }">
-                <div v-bind="tooltipProps">
-                  <v-select
-                    v-model="pythonVenv"
-                    :items="pythonVenvs"
-                    item-title="name"
-                    item-value="name"
-                    label="Python Venv"
-                    density="compact"
-                    variant="outlined"
-                    hide-details
-                    style="max-width: 200px; min-width: 160px"
-                    class="mr-2"
-                    data-test="python-venv-select"
+            <div id="sr-controls">
+              <v-row no-gutters justify="space-between">
+                <v-icon v-if="showDisconnect" class="mt-2" color="red">
+                  mdi-connection
+                </v-icon>
+                <div class="d-flex align-center mr-1">
+                  <v-tooltip
+                    v-if="!showExplorer"
+                    :open-delay="600"
+                    location="top"
+                    text="Show Explorer"
                   >
-                    <template #item="{ item, props: itemProps }">
-                      <v-list-item
-                        v-bind="itemProps"
-                        :subtitle="item.raw.venv"
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        icon="mdi-file-tree"
+                        variant="text"
+                        density="compact"
+                        class="mr-1"
+                        aria-label="Show Explorer"
+                        data-test="explorer-show"
+                        @click="setShowExplorer(true)"
                       />
                     </template>
-                  </v-select>
+                  </v-tooltip>
+                  <v-tooltip :open-delay="600" location="top">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-if="!scriptActive"
+                        v-bind="props"
+                        icon="mdi-cached"
+                        variant="text"
+                        density="compact"
+                        :disabled="filename === NEW_FILENAME"
+                        aria-label="Reload File"
+                        @click="reloadFile"
+                      />
+                      <v-btn
+                        v-else
+                        v-bind="props"
+                        icon="mdi-arrow-left"
+                        variant="text"
+                        density="compact"
+                        @click="backToNewScript"
+                      />
+                    </template>
+                    <span v-if="!scriptActive"> Reload File </span>
+                    <span v-else> Back to New Script </span>
+                  </v-tooltip>
                 </div>
-              </template>
-              <span>{{ selectedVenvPath }}</span>
-            </v-tooltip>
-            <v-tooltip :open-delay="600" location="top">
-              <template #activator="{ props }">
-                <v-btn
-                  v-bind="props"
-                  class="mr-2 align-self-center"
-                  icon
-                  :variant="showDebug ? 'tonal' : 'text'"
-                  :color="showDebug ? 'primary' : undefined"
-                  density="compact"
-                  data-test="debug-button"
-                  aria-label="Debug"
-                  :aria-pressed="showDebug"
-                  @click="toggleDebug"
+                <v-tooltip
+                  location="bottom"
+                  :text="filenameSelect"
+                  :disabled="!filenameSelect || filenameSelect.length <= 45"
                 >
-                  <v-icon icon="mdi-bug" />
-                </v-btn>
-              </template>
-              <span>
-                {{ showDebug ? 'Hide' : 'Show' }} Debug (Step, Goto, and debug
-                prompt)
-              </span>
-            </v-tooltip>
-            <div v-if="startOrGoButton === 'Start'" class="d-flex align-center">
-              <v-tooltip
-                v-if="overridesCount > 0"
-                :open-delay="600"
-                location="top"
-              >
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    class="mr-4"
-                    icon
-                    variant="text"
-                    density="compact"
-                    data-test="tlm-override-button"
-                    aria-label="TLM Overrides"
-                    @click="showOverrides = !showOverrides"
-                  >
-                    <v-badge
-                      :content="overridesCount > 99 ? '99+' : overridesCount"
-                      floating
-                      color="primary"
+                  <template #activator="{ props }">
+                    <div v-bind="props" style="width: 32rem">
+                      <v-select
+                        id="filename"
+                        v-model="filenameSelect"
+                        :items="fileList"
+                        :disabled="fileList.length <= 1"
+                        label="Filename"
+                        data-test="filename"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        @update:model-value="fileNameChanged"
+                      />
+                    </div>
+                  </template>
+                </v-tooltip>
+                <v-text-field
+                  v-model="scriptId"
+                  label="Script ID"
+                  data-test="id"
+                  class="shrink ml-2 script-state"
+                  style="max-width: 100px"
+                  density="compact"
+                  variant="outlined"
+                  readonly
+                  hide-details
+                />
+                <v-text-field
+                  v-model="stateTimer"
+                  label="Script State"
+                  data-test="state"
+                  :class="['shrink', 'ml-2', 'script-state', stateColorClass]"
+                  style="max-width: 120px"
+                  density="compact"
+                  variant="outlined"
+                  readonly
+                  hide-details
+                />
+                <v-chip
+                  v-if="lifecycleVisible"
+                  class="ml-4 align-self-center"
+                  :color="lifecycleColor"
+                  variant="flat"
+                  data-test="lifecycle-chip"
+                  @click="showLifecycle = true"
+                >
+                  {{ lifecycleLabel }}
+                </v-chip>
+                <v-progress-circular
+                  v-if="state === 'Connecting...'"
+                  :size="40"
+                  class="mx-2"
+                  indeterminate
+                  color="primary"
+                />
+                <div
+                  v-else
+                  style="width: 40px; height: 40px"
+                  class="mx-2"
+                ></div>
+
+                <v-spacer />
+                <v-tooltip
+                  v-if="showPythonVenv && startOrGoButton === 'Start'"
+                  :open-delay="600"
+                  location="top"
+                >
+                  <template #activator="{ props: tooltipProps }">
+                    <div v-bind="tooltipProps">
+                      <v-select
+                        v-model="pythonVenv"
+                        :items="pythonVenvs"
+                        item-title="name"
+                        item-value="name"
+                        label="Python Venv"
+                        density="compact"
+                        variant="outlined"
+                        hide-details
+                        style="max-width: 200px; min-width: 160px"
+                        class="mr-2"
+                        data-test="python-venv-select"
+                      >
+                        <template #item="{ item, props: itemProps }">
+                          <v-list-item
+                            v-bind="itemProps"
+                            :subtitle="item.raw.venv"
+                          />
+                        </template>
+                      </v-select>
+                    </div>
+                  </template>
+                  <span>{{ selectedVenvPath }}</span>
+                </v-tooltip>
+                <v-tooltip :open-delay="600" location="top">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      class="mr-2 align-self-center"
+                      icon
+                      :variant="showDebug ? 'tonal' : 'text'"
+                      :color="showDebug ? 'primary' : undefined"
+                      density="compact"
+                      data-test="debug-button"
+                      aria-label="Debug"
+                      :aria-pressed="showDebug"
+                      @click="toggleDebug"
                     >
-                      <v-icon icon="mdi-application-cog-outline" />
-                    </v-badge>
-                  </v-btn>
-                </template>
-                <span> TLM Overrides ({{ overridesCount }}) </span>
-              </v-tooltip>
-              <v-tooltip :open-delay="600" location="top">
-                <template #activator="{ props }">
-                  <v-btn
-                    v-bind="props"
-                    class="mr-2"
-                    icon
-                    variant="text"
-                    density="compact"
-                    :disabled="envDisabled"
-                    data-test="env-button"
-                    aria-label="Script Environment"
-                    @click="scriptEnvironment.show = !scriptEnvironment.show"
+                      <v-icon icon="mdi-bug" />
+                    </v-btn>
+                  </template>
+                  <span>
+                    {{ showDebug ? 'Hide' : 'Show' }} Debug (Step, Goto, and
+                    debug prompt)
+                  </span>
+                </v-tooltip>
+                <div
+                  v-if="startOrGoButton === 'Start'"
+                  class="d-flex align-center"
+                >
+                  <v-tooltip
+                    v-if="overridesCount > 0"
+                    :open-delay="600"
+                    location="top"
                   >
-                    <v-badge v-model="environmentModified" floating dot>
-                      <v-icon icon="mdi-application-variable" />
-                    </v-badge>
-                  </v-btn>
-                </template>
-                <span>
-                  Script Environment
-                  <template v-if="environmentModified"> (modified) </template>
-                </span>
-              </v-tooltip>
-              <v-btn
-                class="mx-1"
-                color="primary"
-                text="Start"
-                data-test="start-button"
-                :disabled="startOrGoDisabled || !executeUser || runBlocked"
-                :hidden="suiteRunner"
-                @click="startHandler"
-              />
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        class="mr-4"
+                        icon
+                        variant="text"
+                        density="compact"
+                        data-test="tlm-override-button"
+                        aria-label="TLM Overrides"
+                        @click="showOverrides = !showOverrides"
+                      >
+                        <v-badge
+                          :content="
+                            overridesCount > 99 ? '99+' : overridesCount
+                          "
+                          floating
+                          color="primary"
+                        >
+                          <v-icon icon="mdi-application-cog-outline" />
+                        </v-badge>
+                      </v-btn>
+                    </template>
+                    <span> TLM Overrides ({{ overridesCount }}) </span>
+                  </v-tooltip>
+                  <v-tooltip :open-delay="600" location="top">
+                    <template #activator="{ props }">
+                      <v-btn
+                        v-bind="props"
+                        class="mr-2"
+                        icon
+                        variant="text"
+                        density="compact"
+                        :disabled="envDisabled"
+                        data-test="env-button"
+                        aria-label="Script Environment"
+                        @click="
+                          scriptEnvironment.show = !scriptEnvironment.show
+                        "
+                      >
+                        <v-badge v-model="environmentModified" floating dot>
+                          <v-icon icon="mdi-application-variable" />
+                        </v-badge>
+                      </v-btn>
+                    </template>
+                    <span>
+                      Script Environment
+                      <template v-if="environmentModified">
+                        (modified)
+                      </template>
+                    </span>
+                  </v-tooltip>
+                  <v-btn
+                    class="mx-1"
+                    color="primary"
+                    text="Start"
+                    data-test="start-button"
+                    :disabled="startOrGoDisabled || !executeUser || runBlocked"
+                    :hidden="suiteRunner"
+                    @click="startHandler"
+                  />
+                </div>
+                <div v-else>
+                  <v-btn
+                    color="primary"
+                    class="mr-2"
+                    text="Go"
+                    :disabled="startOrGoDisabled"
+                    data-test="go-button"
+                    @click="go"
+                  />
+                  <v-btn
+                    color="primary"
+                    class="mr-2"
+                    :text="pauseOrRetryButton"
+                    :disabled="pauseOrRetryDisabled"
+                    data-test="pause-retry-button"
+                    @click="pauseOrRetry"
+                  />
+                  <v-btn
+                    color="primary"
+                    text="Stop"
+                    data-test="stop-button"
+                    :disabled="stopDisabled"
+                    @click="stop"
+                  />
+                </div>
+              </v-row>
             </div>
-            <div v-else>
-              <v-btn
-                color="primary"
-                class="mr-2"
-                text="Go"
-                :disabled="startOrGoDisabled"
-                data-test="go-button"
-                @click="go"
-              />
-              <v-btn
-                color="primary"
-                class="mr-2"
-                :text="pauseOrRetryButton"
-                :disabled="pauseOrRetryDisabled"
-                data-test="pause-retry-button"
-                @click="pauseOrRetry"
-              />
-              <v-btn
-                color="primary"
-                text="Stop"
-                data-test="stop-button"
-                :disabled="stopDisabled"
-                @click="stop"
-              />
-            </div>
-          </v-row>
-        </div>
-      </v-card-text>
-    </v-card>
-    <splitpanes
-      horizontal
-      class="flex-grow-1 overflow-hidden"
-      @resize="({ prevPane }) => (editorBoxSize = prevPane.size)"
-    >
-      <pane class="editorbox" :size="editorBoxSize">
-        <v-snackbar
-          v-model="showSave"
-          absolute
-          location="right"
-          :timeout="-1"
-          class="saving apply-top"
-          :style="classificationStyles"
+          </v-card-text>
+        </v-card>
+        <splitpanes
+          horizontal
+          class="flex-grow-1 overflow-hidden"
+          @resize="({ prevPane }) => (editorBoxSize = prevPane.size)"
         >
-          Saving...
-        </v-snackbar>
-        <pre
-          ref="editor"
-          class="editor"
-          @contextmenu.prevent="showExecuteSelectionMenu"
-        ></pre>
-        <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
-          <v-list>
-            <v-list-item
-              :title="currentLineHasCommand ? 'Edit Command' : 'Insert Command'"
-              @click="openCommandEditor"
+          <pane class="editorbox position-relative" :size="editorBoxSize">
+            <v-snackbar
+              v-model="showSave"
+              absolute
+              location="right"
+              :timeout="-1"
+              class="saving apply-top"
+              :style="classificationStyles"
+            >
+              Saving...
+            </v-snackbar>
+            <pre
+              ref="editor"
+              class="editor"
+              @contextmenu.prevent="showExecuteSelectionMenu"
+            ></pre>
+            <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
+              <v-list>
+                <v-list-item
+                  :title="
+                    currentLineHasCommand ? 'Edit Command' : 'Insert Command'
+                  "
+                  @click="openCommandEditor"
+                />
+                <v-divider />
+                <v-list-item
+                  title="Execute Selection"
+                  @click="executeSelection"
+                />
+                <v-list-item
+                  v-if="executionPhase !== 'finishing'"
+                  :title="scriptActive ? 'Goto Line' : 'Run From Line'"
+                  @click="runFromCursor"
+                />
+                <v-list-item
+                  v-if="!scriptActive && pendingStartLine !== null"
+                  title="Clear Goto Line"
+                  data-test="clear-goto-line"
+                  @click="clearPendingStartLine"
+                />
+                <v-list-item
+                  v-if="!scriptActive"
+                  title="Clear Local Breakpoints"
+                  @click="clearBreakpoints"
+                />
+                <v-divider />
+                <v-list-item
+                  title="Toggle Vim mode"
+                  prepend-icon="extras:vim"
+                  @click="toggleVimMode"
+                />
+              </v-list>
+            </v-menu>
+          </pane>
+          <pane id="messages" class="mt-2" :size="100 - editorBoxSize">
+            <div v-if="showDebug" id="debug" class="pa-0">
+              <v-row no-gutters class="flex-nowrap align-center pt-3 pb-2">
+                <v-tooltip :open-delay="600" location="top">
+                  <template #activator="{ props }">
+                    <div v-bind="props" class="mr-2">
+                      <v-btn
+                        color="primary"
+                        style="width: 100px"
+                        text="Step"
+                        append-icon="mdi-step-forward"
+                        :disabled="!liveScriptId"
+                        data-test="step-button"
+                        @click="step"
+                      />
+                    </div>
+                  </template>
+                  <span
+                    >Execute the current line and pause on the next line</span
+                  >
+                </v-tooltip>
+                <v-tooltip :open-delay="600" location="top">
+                  <template #activator="{ props }">
+                    <div v-bind="props" class="d-flex align-center mr-4">
+                      <v-btn
+                        color="primary"
+                        style="width: 100px"
+                        text="Goto"
+                        append-icon="mdi-debug-step-over"
+                        :disabled="gotoDisabled"
+                        data-test="goto-button"
+                        @click="gotoExecutionLine"
+                      />
+                      <v-text-field
+                        v-model="gotoLineNumber"
+                        class="ml-1"
+                        style="width: 80px"
+                        type="number"
+                        min="1"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        label="Line"
+                        data-test="goto-line"
+                        @keydown.enter="gotoExecutionLine"
+                      />
+                    </div>
+                  </template>
+                  <span>{{ gotoTooltip }}</span>
+                </v-tooltip>
+                <v-text-field
+                  ref="debug"
+                  v-model="debug"
+                  variant="outlined"
+                  density="compact"
+                  hide-details
+                  label="Debug"
+                  placeholder="GOTO 32, puts x / print(x), or any script code"
+                  persistent-placeholder
+                  data-test="debug-text"
+                  @keydown="debugKeydown"
+                />
+              </v-row>
+            </div>
+            <script-log-messages
+              id="log-messages"
+              v-model="messages"
+              @sort="messageSortOrder"
             />
-            <v-divider />
-            <v-list-item title="Execute Selection" @click="executeSelection" />
-            <v-list-item
-              v-if="executionPhase !== 'finishing'"
-              :title="scriptActive ? 'Goto Line' : 'Run From Line'"
-              @click="runFromCursor"
-            />
-            <v-list-item
-              v-if="!scriptActive && pendingStartLine !== null"
-              title="Clear Goto Line"
-              data-test="clear-goto-line"
-              @click="clearPendingStartLine"
-            />
-            <v-list-item
-              v-if="!scriptActive"
-              title="Clear Local Breakpoints"
-              @click="clearBreakpoints"
-            />
-            <v-divider />
-            <v-list-item
-              title="Toggle Vim mode"
-              prepend-icon="extras:vim"
-              @click="toggleVimMode"
-            />
-          </v-list>
-        </v-menu>
-      </pane>
-      <pane id="messages" class="mt-2" :size="100 - editorBoxSize">
-        <div v-if="showDebug" id="debug" class="pa-0">
-          <v-row no-gutters class="flex-nowrap align-center pt-3 pb-2">
-            <v-tooltip :open-delay="600" location="top">
-              <template #activator="{ props }">
-                <div v-bind="props" class="mr-2">
-                  <v-btn
-                    color="primary"
-                    style="width: 100px"
-                    text="Step"
-                    append-icon="mdi-step-forward"
-                    :disabled="!liveScriptId"
-                    data-test="step-button"
-                    @click="step"
-                  />
-                </div>
-              </template>
-              <span>Execute the current line and pause on the next line</span>
-            </v-tooltip>
-            <v-tooltip :open-delay="600" location="top">
-              <template #activator="{ props }">
-                <div v-bind="props" class="d-flex align-center mr-4">
-                  <v-btn
-                    color="primary"
-                    style="width: 100px"
-                    text="Goto"
-                    append-icon="mdi-debug-step-over"
-                    :disabled="gotoDisabled"
-                    data-test="goto-button"
-                    @click="gotoExecutionLine"
-                  />
-                  <v-text-field
-                    v-model="gotoLineNumber"
-                    class="ml-1"
-                    style="width: 80px"
-                    type="number"
-                    min="1"
-                    variant="outlined"
-                    density="compact"
-                    hide-details
-                    label="Line"
-                    data-test="goto-line"
-                    @keydown.enter="gotoExecutionLine"
-                  />
-                </div>
-              </template>
-              <span>{{ gotoTooltip }}</span>
-            </v-tooltip>
-            <v-text-field
-              ref="debug"
-              v-model="debug"
-              variant="outlined"
-              density="compact"
-              hide-details
-              label="Debug"
-              placeholder="GOTO 32, puts x / print(x), or any script code"
-              persistent-placeholder
-              data-test="debug-text"
-              @keydown="debugKeydown"
-            />
-          </v-row>
-        </div>
-        <script-log-messages
-          id="log-messages"
-          v-model="messages"
-          @sort="messageSortOrder"
-        />
+          </pane>
+        </splitpanes>
       </pane>
     </splitpanes>
   </div>
@@ -632,12 +702,19 @@
     type="save"
     api-url="/script-api/scripts"
     require-target-parent-dir
-    :input-filename="filenameOrBlank"
+    :input-filename="saveAsSource || filenameOrBlank"
     @filename="saveAsFilename($event)"
     @error="setError($event)"
     @clear-temp="clearTemp($event)"
   />
   <environment-dialog v-if="showEnvironment" v-model="showEnvironment" />
+  <script-runner-help-dialog
+    v-if="showHelp"
+    v-model="showHelp"
+    :topic="helpTopic"
+    :lifecycle-enabled="lifecycleEnabled"
+    :versions-enabled="scriptVersionsEnabled"
+  />
   <ask-dialog
     v-if="ask.show"
     v-model="ask.show"
@@ -831,9 +908,11 @@ import PromptDialog from '@/tools/scriptrunner/Dialogs/PromptDialog.vue'
 import ResultsDialog from '@/tools/scriptrunner/Dialogs/ResultsDialog.vue'
 import ScriptEnvironmentDialog from '@/tools/scriptrunner/Dialogs/ScriptEnvironmentDialog.vue'
 import ScriptLifecycleDialog from '@/tools/scriptrunner/Dialogs/ScriptLifecycleDialog.vue'
+import ScriptRunnerHelpDialog from '@/tools/scriptrunner/Dialogs/ScriptRunnerHelpDialog.vue'
 import CommandEditor from '@/components/CommandEditor.vue'
 import SuiteRunner from '@/tools/scriptrunner/SuiteRunner.vue'
 import ScriptLogMessages from '@/tools/scriptrunner/ScriptLogMessages.vue'
+import ScriptFileExplorer from '@/tools/scriptrunner/ScriptFileExplorer.vue'
 import {
   CmdCompleter,
   TlmCompleter,
@@ -995,6 +1074,8 @@ export default {
     SuiteRunner,
     RunningScripts,
     ScriptLogMessages,
+    ScriptFileExplorer,
+    ScriptRunnerHelpDialog,
     CriticalCmdDialog,
     CommandEditor,
     VersionHistoryDialog,
@@ -1106,6 +1187,9 @@ export default {
       lockedBy: null,
       showEditingToast: false,
       showSaveAs: false,
+      showHelp: false,
+      helpTopic: 'shortcuts',
+      saveAsSource: null, // File picked in the explorer to Save As, null for the editor
       areYouSure: false,
       subscription: null,
       cable: null,
@@ -1205,6 +1289,9 @@ export default {
       criticalCmdUser: null,
       displayCriticalCmd: false,
       editorBoxSize: 50,
+      showExplorer: false,
+      explorerSize: 20,
+      explorerLoadingFile: null, // File being opened from the explorer
       lockingEnabled: true,
       canApprove: false,
       // Enterprise-only Version History; enabled when the backend has
@@ -1299,6 +1386,21 @@ export default {
       const filenames = Object.keys(this.files)
       filenames.push(this.fullFilename) // Make sure the currently shown filename is last
       return [...new Set(filenames)] // ensure unique
+    },
+    // Filename shown in the editor without the ' *' modified marker,
+    // highlighted in the explorer
+    explorerActiveFile: function () {
+      if (!this.filenameSelect || this.filenameSelect === NEW_FILENAME) {
+        return null
+      }
+      const name = this.filenameSelect
+      return name.endsWith('*') ? name.slice(0, -1).trimEnd() : name
+    },
+    // Files seen by the running script whose contents are loaded
+    runningFiles: function () {
+      return Object.keys(this.files).filter(
+        (name) => this.files[name] && !this.files[name].pending,
+      )
     },
     environmentModified: function () {
       return this.scriptEnvironment.env.length > 0
@@ -1398,6 +1500,7 @@ export default {
             {
               label: 'Open File',
               icon: 'mdi-folder-open',
+              shortcut: 'Mod+O',
               disabled: this.scriptActive,
               command: () => {
                 this.openFileWithConfirm()
@@ -1415,6 +1518,7 @@ export default {
             {
               label: 'Save File',
               icon: 'mdi-content-save',
+              shortcut: 'Mod+S',
               disabled:
                 this.scriptActive || this.readOnlyUser || this.scriptApproved,
               tooltip: this.scriptApproved
@@ -1427,6 +1531,7 @@ export default {
             {
               label: 'Save As...',
               icon: 'mdi-content-save',
+              shortcut: 'Mod+Shift+S',
               disabled: this.scriptActive || this.readOnlyUser,
               command: () => {
                 this.saveAs()
@@ -1636,6 +1741,32 @@ export default {
                   },
                 ]
               : []),
+          ],
+        },
+        {
+          label: 'Help',
+          items: [
+            {
+              label: 'Shortcuts',
+              icon: 'mdi-keyboard',
+              command: () => this.openHelp('shortcuts'),
+            },
+            {
+              label: 'Goto / Execute Selection',
+              icon: 'mdi-cursor-text',
+              command: () => this.openHelp('selection'),
+            },
+            { divider: true },
+            {
+              label: 'Script Lifecycle',
+              icon: 'mdi-list-status',
+              command: () => this.openHelp('lifecycle'),
+            },
+            {
+              label: 'Script Versioning',
+              icon: 'mdi-history',
+              command: () => this.openHelp('versioning'),
+            },
           ],
         },
       ]
@@ -1894,7 +2025,10 @@ export default {
       }
     })
 
-    this.editor.container.addEventListener('resize', this.doResize)
+    // Ace doesn't track its container size so resize whenever the layout
+    // changes it (explorer toggle/drag animate the pane width)
+    this.editorResizeObserver = new ResizeObserver(this.doResize)
+    this.editorResizeObserver.observe(this.editor.container)
     // Listen on window (not editor.container) so Ctrl-S saves regardless of
     // where focus is — attaching to the editor only caught the key while the
     // cursor was in the editor, which made saving feel inconsistent after
@@ -1903,6 +2037,15 @@ export default {
 
     this.cable = new Cable('/script-api/cable')
 
+    if (!this.inline && localStorage['script_runner__explorer']) {
+      try {
+        const explorer = JSON.parse(localStorage['script_runner__explorer'])
+        this.showExplorer = explorer.show === true
+        if (explorer.size) this.explorerSize = explorer.size
+      } catch {
+        // Keep the defaults
+      }
+    }
     if (!this.inline && localStorage['script_runner__recent']) {
       // Rebuild the command since that doesn't get stringified
       this.recent = JSON.parse(localStorage['script_runner__recent']).map(
@@ -1943,6 +2086,7 @@ export default {
       sessionStorage.setItem('script_runner__script_id', this.scriptId)
     }
     window.removeEventListener('keydown', this.keydown)
+    this.editorResizeObserver.disconnect()
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -2036,6 +2180,68 @@ export default {
     },
     doResize() {
       this.editor.resize()
+    },
+    persistExplorer() {
+      localStorage['script_runner__explorer'] = JSON.stringify({
+        show: this.showExplorer,
+        size: this.explorerSize,
+      })
+    },
+    setShowExplorer(show) {
+      this.showExplorer = show
+      this.persistExplorer()
+    },
+    explorerResize({ panes }) {
+      if (this.showExplorer && panes.length > 1) {
+        this.explorerSize = panes[0].size
+      }
+    },
+    // Called when a file is picked in the explorer
+    async navigatorSelect(filename) {
+      if (this.scriptActive) {
+        // While running, the explorer works like the filename dropdown
+        // and only shows files the script has already loaded
+        if (this.files[filename] && !this.files[filename].pending) {
+          this.filenameSelect = filename
+          this.fileNameChanged(filename)
+        }
+        return
+      }
+      if (filename === this.filename) return
+      const confirmed = await this.confirmUnsavedChanges()
+      if (confirmed) {
+        await this.openScript(filename)
+      }
+    },
+    async openScript(filename) {
+      const epoch = ++this.sessionEpoch
+      // Suites can take a moment since the server parses them on open
+      this.explorerLoadingFile = filename
+      try {
+        const response = await Api.get(`/script-api/scripts/${filename}`)
+        if (epoch !== this.sessionEpoch) return
+        const file = { name: filename, contents: response.data.contents }
+        if (response.data.suites) {
+          file['suites'] = JSON.parse(response.data.suites)
+        }
+        if (response.data.error) {
+          file['error'] = response.data.error
+        }
+        if (response.data.success) {
+          file['success'] = response.data.success
+        }
+        const locked = response.data.locked
+        const breakpoints = response.data.breakpoints
+        this.setFile({ file, locked, breakpoints })
+      } catch (error) {
+        if (epoch !== this.sessionEpoch) return
+        this.setError(`Failed to open ${filename}. ${error}`)
+      } finally {
+        // A newer open owns the indicator if it started while we waited
+        if (this.explorerLoadingFile === filename) {
+          this.explorerLoadingFile = null
+        }
+      }
     },
     scriptDisconnect() {
       if (this.subscription) {
@@ -2315,6 +2521,15 @@ export default {
       }
     },
     async keydown(event) {
+      if (
+        !this.inline &&
+        (event.metaKey || event.ctrlKey) &&
+        event.key?.toLowerCase() === 'o'
+      ) {
+        event.preventDefault() // Don't open the browser's file picker
+        if (!this.scriptActive) this.openFileWithConfirm()
+        return
+      }
       // Don't ever save if running or readonly
       if (this.scriptActive || this.editor.getReadOnly() === true) {
         return
@@ -3683,6 +3898,7 @@ export default {
                 this.showSuiteError = true
               }
               this.fileModified = ''
+              this.$refs.explorer?.refreshFile(this.filename)
               setTimeout(() => {
                 this.showSave = false
               }, 2000)
@@ -3716,11 +3932,60 @@ export default {
         this.setError('Attempt to save file when not allowed')
       }
     },
+    openHelp(topic) {
+      this.helpTopic = topic
+      this.showHelp = true
+    },
     saveAs() {
+      this.saveAsSource = null
       this.showSaveAs = true
     },
+    // Save As from the explorer context menu. The open file goes through
+    // the normal Save As so unsaved edits are kept, any other file is copied.
+    explorerSaveAs(filename) {
+      if (filename === this.filename) {
+        this.saveAs()
+        return
+      }
+      this.saveAsSource = filename
+      this.showSaveAs = true
+    },
+    async copyScript(source, filename) {
+      try {
+        const response = await Api.get(`/script-api/scripts/${source}`)
+        // Reading a script locks it for us. We only wanted the contents so
+        // release the lock unless someone else already held it.
+        if (!response.data.locked) {
+          Api.post(`/script-api/scripts/${source}/unlock`).catch(console.error)
+        }
+        await Api.post(`/script-api/scripts/${filename}`, {
+          data: { text: response.data.contents, breakpoints: [] },
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'Ignore-Errors': '403',
+          },
+        })
+        this.$refs.explorer?.refreshFile(filename)
+        this.alertType = 'info'
+        this.alertText = `Saved ${source} as ${filename}`
+        this.showAlert = true
+      } catch (error) {
+        const message = error.response?.data?.message || error
+        this.setError(`Failed to save ${source} as ${filename}. ${message}`)
+      }
+    },
     async saveAsFilename(filename) {
-      this.filename = filename.replace(/\*$/, '')
+      filename = filename.replace(/\*$/, '')
+      if (this.saveAsSource) {
+        const source = this.saveAsSource
+        this.saveAsSource = null
+        await this.copyScript(source, filename)
+        return
+      }
+      // We're done editing the old file so release its lock
+      if (filename !== this.filename) this.unlockFile()
+      this.filename = filename
       this.currentFilename = null
       // The lifecycle state belongs to the file, not the editor contents,
       // so clear it before saving under the new name. The server still
@@ -3754,6 +4019,7 @@ export default {
         .then((response) => {
           this.removeFromRecent(filename)
           this.newFile()
+          this.$refs.explorer?.refresh(filename.split('/')[0])
         })
         .catch((error) => {
           if (error !== true) {
@@ -3964,6 +4230,12 @@ hr {
 
 #sr-controls {
   padding: 0px;
+}
+
+/* Splitpanes animates pane widths, which makes Ace stretch while the
+   explorer is shown or hidden, so snap instantly like VS Code */
+.explorer-split > .splitpanes__pane {
+  transition: none;
 }
 
 .editor {
