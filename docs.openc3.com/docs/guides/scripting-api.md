@@ -5137,7 +5137,7 @@ limits_sets = get_limits_sets()
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Returns hash / dict of all the limits settings for a telemetry point.
+Returns hash / dict of all the limits settings for a telemetry point. Items with SEQUENCE, CHANGE, or STATIC change limits have no numeric limits values so an empty hash / dict is returned. Use [get_item](#get_item) to see their change limits settings.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5191,7 +5191,7 @@ puts result['DEFAULT'] # => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
+The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime. Items with SEQUENCE, CHANGE, or STATIC change limits can't be changed with set_limits and raise an error.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">

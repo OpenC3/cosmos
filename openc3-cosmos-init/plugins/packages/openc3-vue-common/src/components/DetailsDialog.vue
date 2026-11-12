@@ -528,6 +528,8 @@ export default {
           ' GH/' +
           limit.green_high
         )
+      } else if (limit.hasOwnProperty('change_type')) {
+        return limit.change_type + ' ' + limit.change_color
       } else if (limit.hasOwnProperty('red_low')) {
         return (
           'RL/' +

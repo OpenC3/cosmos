@@ -298,6 +298,92 @@ module OpenC3
         expect(item.limits.values[:TVAC]).to_not be_nil
         tf.unlink
       end
+
+      context "with change limits" do
+        def parse_limits(item_def, *limits_lines)
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
+          tf.puts "  #{item_def}"
+          limits_lines.each { |line| tf.puts "    #{line}" }
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
+        ensure
+          tf.unlink
+        end
+
+        it "creates SEQUENCE, CHANGE, and STATIC limits" do
+          %w(SEQUENCE CHANGE STATIC).each do |type|
+            @pc = PacketConfig.new
+            item = parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 2 DISABLED #{type.downcase} yellow")
+            expect(item.limits.change_type).to eql type.to_sym
+            expect(item.limits.change_color).to eql :YELLOW
+            expect(item.limits.values).to be_nil
+            expect(item.limits.enabled).to be false
+            expect(item.limits.persistence_setting).to eql 2
+            expect(@pc.telemetry["TGT1"]["PKT1"].limits_items).to include(item)
+          end
+        end
+
+        it "keeps persistence above 1 without warning" do
+          %w(SEQUENCE CHANGE STATIC).each do |type|
+            @pc = PacketConfig.new
+            item = parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 3 ENABLED #{type} RED")
+            expect(item.limits.persistence_setting).to eql 3
+            expect(@pc.warnings).to_not include(/persistence/)
+          end
+        end
+
+        it "allows CHANGE and STATIC on STRING items" do
+          item = parse_limits('APPEND_ITEM item1 64 STRING "Item"', 'LIMITS DEFAULT 1 ENABLED STATIC RED')
+          expect(item.limits.change_type).to eql :STATIC
+        end
+
+        it "complains about SEQUENCE on non-numeric or array items" do
+          expect { parse_limits('APPEND_ITEM item1 64 STRING "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED') }.to \
+            raise_error(ConfigParser::Error, /SEQUENCE limits can only be applied to INT, UINT, FLOAT, or DERIVED items/)
+          expect { parse_limits('APPEND_ARRAY_ITEM item1 8 UINT 64 "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED') }.to \
+            raise_error(ConfigParser::Error, /SEQUENCE limits can't be applied to array items/)
+        end
+
+        it "complains about invalid colors" do
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE GREEN') }.to \
+            raise_error(ConfigParser::Error, /SEQUENCE limits color must be RED or YELLOW/)
+        end
+
+        it "complains about the wrong number of parameters" do
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE') }.to \
+            raise_error(ConfigParser::Error, /Not enough parameters for LIMITS/)
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED 5') }.to \
+            raise_error(ConfigParser::Error, /Too many parameters for LIMITS/)
+        end
+
+        it "complains if not in the DEFAULT limits set" do
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS TVAC 1 ENABLED SEQUENCE RED') }.to \
+            raise_error(ConfigParser::Error, /SEQUENCE limits can only be defined in the DEFAULT limits set/)
+        end
+
+        it "complains if combined with numeric limits" do
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED 1 2 6 7', 'LIMITS DEFAULT 1 ENABLED CHANGE RED') }.to \
+            raise_error(ConfigParser::Error, /already has LIMITS defined/)
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED CHANGE RED', 'LIMITS TVAC 1 ENABLED 1 2 6 7') }.to \
+            raise_error(ConfigParser::Error, /already has CHANGE limits and can't also define numeric LIMITS/)
+        end
+
+        it "complains if combined with STATE" do
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED CHANGE RED', 'STATE ON 1') }.to \
+            raise_error(ConfigParser::Error, /Items with LIMITS can't define STATE/)
+        end
+
+        it "round trips through to_config and as_json" do
+          item = parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 3 ENABLED CHANGE RED')
+          expect(item.to_config(:TELEMETRY, :BIG_ENDIAN)).to include("LIMITS DEFAULT 3 ENABLED CHANGE RED\n")
+          json = item.as_json
+          expect(json['limits']['enabled']).to be true
+          expect(json['limits']['persistence_setting']).to eql 3
+          expect(json['limits']['DEFAULT']).to eql({ 'change_type' => 'CHANGE', 'change_color' => 'RED' })
+        end
+      end
     end
   end
 end

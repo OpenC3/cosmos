@@ -41,12 +41,23 @@ module OpenC3
         raise @parser.error("LIMITS only applies to telemetry items")
       end
 
-      @usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <RED LOW LIMIT> <YELLOW LOW LIMIT> <YELLOW HIGH LIMIT> <RED HIGH LIMIT> <GREEN LOW LIMIT (Optional)> <GREEN HIGH LIMIT (Optional)>"
-      @parser.verify_num_parameters(7, 9, @usage)
+      if change_limits?
+        @usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <SEQUENCE/CHANGE/STATIC> <RED/YELLOW>"
+        @parser.verify_num_parameters(5, 5, @usage)
+      else
+        @usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <RED LOW LIMIT> <YELLOW LOW LIMIT> <YELLOW HIGH LIMIT> <RED HIGH LIMIT> <GREEN LOW LIMIT (Optional)> <GREEN HIGH LIMIT (Optional)>"
+        @parser.verify_num_parameters(7, 9, @usage)
+      end
     end
 
     # @param packet [Packet] The packet the item should be added to
     def create_limits(packet, item, warnings)
+      return create_change_limits(packet, item) if change_limits?
+
+      if item.limits.change_type
+        raise @parser.error("Item #{item.name} already has #{item.limits.change_type} limits and can't also define numeric LIMITS", @usage)
+      end
+
       limits_set = get_limits_set()
       initialize_limits_values(packet, item)
       ensure_consistency_with_default(packet, item, warnings)
@@ -61,6 +72,44 @@ module OpenC3
     end
 
     private
+
+    # @return [Boolean] Whether the LIMITS keyword defines change limits
+    #   (SEQUENCE, CHANGE, or STATIC) rather than numeric limits
+    def change_limits?
+      type = @parser.parameters[3]
+      type && PacketItemLimits::CHANGE_TYPES.include?(type.upcase.to_sym)
+    end
+
+    def create_change_limits(packet, item)
+      limits_set = get_limits_set()
+      if limits_set != :DEFAULT
+        raise @parser.error("#{@parser.parameters[3].upcase} limits can only be defined in the DEFAULT limits set", @usage)
+      end
+      if item.limits.values || item.limits.change_type
+        raise @parser.error("Item #{item.name} already has LIMITS defined", @usage)
+      end
+
+      change_type = @parser.parameters[3].upcase.to_sym
+      if change_type == :SEQUENCE && item.array_size
+        raise @parser.error("SEQUENCE limits can't be applied to array items", @usage)
+      end
+      if change_type == :SEQUENCE && ![:INT, :UINT, :FLOAT, :DERIVED].include?(item.data_type)
+        raise @parser.error("SEQUENCE limits can only be applied to INT, UINT, FLOAT, or DERIVED items", @usage)
+      end
+
+      change_color = @parser.parameters[4].upcase.to_sym
+      unless PacketItemLimits::CHANGE_COLORS.include?(change_color)
+        raise @parser.error("#{change_type} limits color must be RED or YELLOW", @usage)
+      end
+
+      item.limits.change_type = change_type
+      item.limits.change_color = change_color
+      item.limits.enabled = get_enabled()
+      item.limits.persistence_setting = get_persistence()
+
+      packet.update_limits_items_cache(item)
+      limits_set
+    end
 
     def initialize_limits_values(packet, item)
       limits_set = get_limits_set()

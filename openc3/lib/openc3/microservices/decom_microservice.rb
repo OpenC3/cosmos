@@ -258,6 +258,8 @@ module OpenC3
             # If we're blue we display the blue range (GREEN_LOW - GREEN_HIGH)
             message += " (#{values[4]} to #{values[5]})"
           end
+        elsif item.limits.change_type
+          message += " (#{item.limits.change_type})"
         end
       else
         message = "#{packet.target_name} #{packet.packet_name} #{item.name} is disabled"

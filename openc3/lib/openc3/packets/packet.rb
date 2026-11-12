@@ -984,6 +984,9 @@ module OpenC3
     def disable_limits(name)
       item = get_item(name)
       item.limits.enabled = false
+      # Forget the previous values so change limits restart cleanly when re-enabled
+      item.limits.last_value = nil
+      item.limits.last_stored_value = nil
       unless item.limits.state == :STALE
         old_limits_state = item.limits.state
         item.limits.state = nil
@@ -996,7 +999,7 @@ module OpenC3
     # This is an optimization so we don't have to iterate through all the items when
     # checking for limits.
     def update_limits_items_cache(item)
-      if item.limits_values || item.state_colors
+      if item.limits_values || item.limits_change_type || item.state_colors
         @limits_items ||= []
         @limits_items_hash ||= {}
         unless @limits_items_hash[item]
@@ -1060,6 +1063,8 @@ module OpenC3
           # Handle state monitoring and value monitoring differently
           if item.states
             handle_limits_states(item, value)
+          elsif item.limits.change_type
+            handle_limits_change(item, value, ignore_persistence)
           elsif item.limits.values
             handle_limits_values(item, value, limits_set, ignore_persistence)
           end
@@ -1512,6 +1517,57 @@ module OpenC3
         end
       end
 
+      update_limits_state(item, value, limits_state, ignore_persistence)
+    end
+
+    # Determine the limits state of an item with change limits (SEQUENCE,
+    # CHANGE, or STATIC) by comparing the value to the previous value.
+    # Stored packets are compared against the previous stored value so a
+    # stored telemetry dump doesn't interleave with realtime values.
+    def handle_limits_change(item, value, ignore_persistence)
+      if @stored
+        last_value = item.limits.last_stored_value
+        item.limits.last_stored_value = value
+      else
+        last_value = item.limits.last_value
+        item.limits.last_value = value
+      end
+
+      if last_value.nil?
+        # The first value has nothing to compare against so it is GREEN
+        ok = true
+      else
+        case item.limits.change_type
+        when :SEQUENCE
+          ok = (value.is_a?(Numeric) && last_value.is_a?(Numeric) && value == next_sequence_value(item, last_value))
+        when :CHANGE
+          ok = (value != last_value)
+        when :STATIC
+          ok = (value == last_value)
+        end
+      end
+      limits_state = ok ? :GREEN : item.limits.change_color
+
+      update_limits_state(item, value, limits_state, ignore_persistence)
+    end
+
+    # @return [Numeric] The value expected after last_value in a SEQUENCE.
+    #   Raw integer items roll over at the limit of their bit size.
+    def next_sequence_value(item, last_value)
+      if !item.read_conversion && item.bit_size > 0
+        case item.data_type
+        when :UINT
+          return (last_value + 1) % (2**item.bit_size)
+        when :INT
+          return -(2**(item.bit_size - 1)) if last_value >= (2**(item.bit_size - 1)) - 1
+        end
+      end
+      last_value + 1
+    end
+
+    # Update the item limits state, applying persistence, and call the
+    # limits_change_callback if the state changes
+    def update_limits_state(item, value, limits_state, ignore_persistence)
       if item.limits.state != limits_state # limits state has changed
         # Save old limits state for use in the callback
         old_limits_state = item.limits.state

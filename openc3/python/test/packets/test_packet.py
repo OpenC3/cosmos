@@ -1411,6 +1411,102 @@ class PacketCheckLimits(unittest.TestCase):
         mock.assert_called_with(self.p, test2, "RED", 2, False)
 
 
+class PacketCheckChangeLimits(unittest.TestCase):
+    def setUp(self):
+        self.p = Packet("tgt", "pkt")
+        self.p.append_item("test1", 8, "UINT")
+        self.p.append_item("test2", 16, "UINT")
+        self.p.append_item("test3", 32, "FLOAT")
+        self.states = []
+        self.p.limits_change_callback = lambda _packet, item, _old_state, _value, _log_change: self.states.append(
+            item.limits.state
+        )
+
+    def check_values(self, name, values):
+        for value in values:
+            self.p.write(name, value)
+            self.p.check_limits()
+        return self.p.get_item(name).limits.state
+
+    def set_change_limits(self, name, change_type, color="RED", persistence=1):
+        item = self.p.get_item(name)
+        item.limits.change_type = change_type
+        item.limits.change_color = color
+        item.limits.persistence_setting = persistence
+        item.limits.enabled = True
+        self.p.update_limits_items_cache(item)
+        return item
+
+    def test_detects_sequence_violations_and_recovers_on_the_next_increment(self):
+        self.set_change_limits("TEST2", "SEQUENCE")
+        self.assertEqual(self.check_values("TEST2", [0, 1, 2]), "GREEN")
+        self.assertEqual(self.check_values("TEST2", [4]), "RED")
+        self.assertEqual(self.check_values("TEST2", [5]), "GREEN")
+        self.assertEqual(self.check_values("TEST2", [5]), "RED")
+        self.assertEqual(self.states, ["GREEN", "RED", "GREEN", "RED"])
+
+    def test_rolls_over_raw_uint_and_int_sequence_values(self):
+        self.set_change_limits("TEST1", "SEQUENCE")
+        self.assertEqual(self.check_values("TEST1", [254, 255, 0, 1]), "GREEN")
+        self.p.append_item("test4", 8, "INT")
+        self.set_change_limits("TEST4", "SEQUENCE")
+        self.assertEqual(self.check_values("TEST4", [126, 127, -128, -127]), "GREEN")
+
+    def test_does_not_roll_over_items_with_a_read_conversion(self):
+        item = self.set_change_limits("TEST1", "SEQUENCE")
+        item.read_conversion = GenericConversion("value")
+        self.assertEqual(self.check_values("TEST1", [255, 0]), "RED")
+
+    def test_detects_change_violations_with_a_yellow_color(self):
+        self.set_change_limits("TEST3", "CHANGE", "YELLOW")
+        self.assertEqual(self.check_values("TEST3", [1.5, 2.5]), "GREEN")
+        self.assertEqual(self.check_values("TEST3", [2.5]), "YELLOW")
+        self.assertEqual(self.check_values("TEST3", [1.5]), "GREEN")
+
+    def test_detects_static_violations(self):
+        self.set_change_limits("TEST2", "STATIC")
+        self.assertEqual(self.check_values("TEST2", [10, 10]), "GREEN")
+        self.assertEqual(self.check_values("TEST2", [11]), "RED")
+        self.assertEqual(self.check_values("TEST2", [11]), "GREEN")
+
+    def test_applies_persistence(self):
+        self.set_change_limits("TEST2", "CHANGE", "RED", 2)
+        self.assertEqual(self.check_values("TEST2", [10, 11]), "GREEN")
+        self.assertEqual(self.check_values("TEST2", [11]), "GREEN")
+        self.assertEqual(self.check_values("TEST2", [11]), "RED")
+
+    def test_compares_stored_and_realtime_values_separately(self):
+        self.set_change_limits("TEST2", "SEQUENCE")
+        self.assertEqual(self.check_values("TEST2", [0, 1]), "GREEN")
+        self.p.stored = True
+        self.assertEqual(self.check_values("TEST2", [100, 101]), "GREEN")
+        self.p.stored = False
+        self.assertEqual(self.check_values("TEST2", [2]), "GREEN")
+        self.p.stored = True
+        self.assertEqual(self.check_values("TEST2", [102]), "GREEN")
+        self.assertEqual(self.check_values("TEST2", [104]), "RED")
+        self.p.stored = False
+        self.assertEqual(self.check_values("TEST2", [3]), "GREEN")
+
+    def test_forgets_the_previous_value_when_limits_are_disabled(self):
+        self.set_change_limits("TEST2", "SEQUENCE")
+        self.assertEqual(self.check_values("TEST2", [0, 1]), "GREEN")
+        self.p.stored = True
+        self.assertEqual(self.check_values("TEST2", [50]), "GREEN")
+        self.p.stored = False
+        self.p.disable_limits("TEST2")
+        self.p.enable_limits("TEST2")
+        self.assertEqual(self.check_values("TEST2", [10]), "GREEN")
+        self.assertEqual(self.check_values("TEST2", [11]), "GREEN")
+        self.p.stored = True
+        self.assertEqual(self.check_values("TEST2", [70]), "GREEN")
+
+    def test_reports_out_of_limits_items(self):
+        self.set_change_limits("TEST2", "STATIC")
+        self.check_values("TEST2", [1, 2])
+        self.assertEqual(self.p.out_of_limits(), [["TGT", "PKT", "TEST2", "RED"]])
+
+
 class PacketCheckLimitsValues(unittest.TestCase):
     def setUp(self):
         self.p = Packet("tgt", "pkt")

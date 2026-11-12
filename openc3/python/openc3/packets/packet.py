@@ -928,6 +928,9 @@ class Packet(Structure):
     def disable_limits(self, name):
         item = self.get_item(name)
         item.limits.enabled = False
+        # Forget the previous values so change limits restart cleanly when re-enabled
+        item.limits.last_value = None
+        item.limits.last_stored_value = None
         if item.limits.state != "STALE":
             old_limits_state = item.limits.state
             item.limits.state = None
@@ -939,7 +942,9 @@ class Packet(Structure):
     # This is an optimization so we don't have to iterate through all the items case
     # checking for limits.
     def update_limits_items_cache(self, item):
-        if (item.limits_values or item.state_colors) and not self.limits_items_hash.get(item.name):
+        if (item.limits_values or item.limits_change_type or item.state_colors) and not self.limits_items_hash.get(
+            item.name
+        ):
             self.limits_items.append(item)
             self.limits_items_hash[item.name] = True
 
@@ -990,6 +995,8 @@ class Packet(Structure):
                 # Handle state monitoring and value monitoring differently
                 if item.states is not None:
                     self.handle_limits_states(item, value)
+                elif item.limits.change_type:
+                    self.handle_limits_change(item, value, ignore_persistence)
                 elif item.limits.values is not None:
                     self.handle_limits_values(item, value, limits_set, ignore_persistence)
 
@@ -1296,6 +1303,54 @@ class Packet(Structure):
             else:
                 limits_state = "RED_LOW"
 
+        self.update_limits_state(item, value, limits_state, ignore_persistence)
+
+    # Determine the limits state of an item with change limits (SEQUENCE,
+    # CHANGE, or STATIC) by comparing the value to the previous value.
+    # Stored packets are compared against the previous stored value so a
+    # stored telemetry dump doesn't interleave with realtime values.
+    def handle_limits_change(self, item, value, ignore_persistence):
+        if self.stored:
+            last_value = item.limits.last_stored_value
+            item.limits.last_stored_value = value
+        else:
+            last_value = item.limits.last_value
+            item.limits.last_value = value
+
+        if last_value is None:
+            # The first value has nothing to compare against so it is GREEN
+            ok = True
+        else:
+            match item.limits.change_type:
+                case "SEQUENCE":
+                    ok = (
+                        isinstance(value, (int, float))
+                        and isinstance(last_value, (int, float))
+                        and value == self.next_sequence_value(item, last_value)
+                    )
+                case "CHANGE":
+                    ok = value != last_value
+                case _:  # STATIC
+                    ok = value == last_value
+        limits_state = "GREEN" if ok else item.limits.change_color
+
+        self.update_limits_state(item, value, limits_state, ignore_persistence)
+
+    # The value expected after last_value in a SEQUENCE.
+    # Raw integer items roll over at the limit of their bit size.
+    def next_sequence_value(self, item, last_value):
+        if not item.read_conversion and item.bit_size > 0:
+            match item.data_type:
+                case "UINT":
+                    return (last_value + 1) % (2**item.bit_size)
+                case "INT":
+                    if last_value >= (2 ** (item.bit_size - 1)) - 1:
+                        return -(2 ** (item.bit_size - 1))
+        return last_value + 1
+
+    # Update the item limits state, applying persistence, and call the
+    # limits_change_callback if the state changes
+    def update_limits_state(self, item, value, limits_state, ignore_persistence):
         if item.limits.state != limits_state:  # limits state has changed
             # Save old limits state for use in the callback
             old_limits_state = item.limits.state

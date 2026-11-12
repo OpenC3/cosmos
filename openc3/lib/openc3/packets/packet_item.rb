@@ -102,6 +102,11 @@ module OpenC3
       @limits ? @limits.values : nil
     end
 
+    # @return [Symbol, nil] The change limits type without creating PacketItemLimits
+    def limits_change_type
+      @limits ? @limits.change_type : nil
+    end
+
     # @return [Boolean] Whether the parameter must be obfuscated from logs or not
     attr_accessor :obfuscate
 
@@ -428,8 +433,10 @@ module OpenC3
             config << "\n"
           end
         end
-        config << @limits.response.to_config if @limits.response
+      elsif limits_change_type
+        config << "    LIMITS DEFAULT #{@limits.persistence_setting} #{@limits.enabled ? 'ENABLED' : 'DISABLED'} #{@limits.change_type} #{@limits.change_color}\n"
       end
+      config << @limits.response.to_config if (limits_values || limits_change_type) && @limits.response
 
       if @meta
         @meta.each do |key, values|
@@ -476,25 +483,29 @@ module OpenC3
       config['limits'] ||= {}
       if @limits && @limits.enabled
         config['limits']['enabled'] = true
-      elsif limits_values || (self.state_colors && self.state_colors.length > 0)
+      elsif limits_values || limits_change_type || (self.state_colors && self.state_colors.length > 0)
         # Only set to false if there are limits or state colors
         # to avoid items without limits acting like they can be enabled
         config['limits']['enabled'] = false
       end
-      if limits_values
-        # Only set these if there are limits.values because persistence_setting has a default
+      if limits_values || limits_change_type
+        # Only set these if there are limits because persistence_setting has a default
         # and we don't want keys on the 'limits' hash if there aren't any limits
         config['limits']['persistence_setting'] = @limits.persistence_setting if @limits.persistence_setting
         config['limits']['response'] = @limits.response.to_s if @limits.response
-        @limits.values.each do |limits_set, limits_values|
-          limits = {}
-          limits['red_low'] =  limits_values[0]
-          limits['yellow_low'] = limits_values[1]
-          limits['yellow_high'] = limits_values[2]
-          limits['red_high'] = limits_values[3]
-          limits['green_low'] = limits_values[4] if limits_values[4]
-          limits['green_high'] = limits_values[5] if limits_values[5]
-          config['limits'][limits_set] = limits
+        if limits_values
+          @limits.values.each do |limits_set, limits_values|
+            limits = {}
+            limits['red_low'] =  limits_values[0]
+            limits['yellow_low'] = limits_values[1]
+            limits['yellow_high'] = limits_values[2]
+            limits['red_high'] = limits_values[3]
+            limits['green_low'] = limits_values[4] if limits_values[4]
+            limits['green_high'] = limits_values[5] if limits_values[5]
+            config['limits'][limits_set] = limits
+          end
+        else
+          config['limits']['DEFAULT'] = { 'change_type' => @limits.change_type.to_s, 'change_color' => @limits.change_color.to_s }
         end
       end
 

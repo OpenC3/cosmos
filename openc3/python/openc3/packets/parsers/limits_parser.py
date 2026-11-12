@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from openc3.packets.packet_item_limits import PacketItemLimits
 from openc3.utilities.logger import Logger
 
 
@@ -36,11 +37,24 @@ class LimitsParser:
         if cmd_or_tlm == "Command":
             raise self.parser.error("LIMITS only applies to telemetry items")
 
-        self.usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <RED LOW LIMIT> <YELLOW LOW LIMIT> <YELLOW HIGH LIMIT> <RED HIGH LIMIT> <GREEN LOW LIMIT (Optional)> <GREEN HIGH LIMIT (Optional)>"
-        self.parser.verify_num_parameters(7, 9, self.usage)
+        if self._change_limits():
+            self.usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <SEQUENCE/CHANGE/STATIC> <RED/YELLOW>"
+            self.parser.verify_num_parameters(5, 5, self.usage)
+        else:
+            self.usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <RED LOW LIMIT> <YELLOW LOW LIMIT> <YELLOW HIGH LIMIT> <RED HIGH LIMIT> <GREEN LOW LIMIT (Optional)> <GREEN HIGH LIMIT (Optional)>"
+            self.parser.verify_num_parameters(7, 9, self.usage)
 
     # self.param packet [Packet] The packet the item should be added to
     def create_limits(self, packet, item, warnings):
+        if self._change_limits():
+            return self._create_change_limits(packet, item)
+
+        if item.limits.change_type:
+            raise self.parser.error(
+                f"Item {item.name} already has {item.limits.change_type} limits and can't also define numeric LIMITS",
+                self.usage,
+            )
+
         limits_set = self._get_limits_set()
         self._initialize_limits_values(packet, item)
         self._ensure_consistency_with_default(packet, item, warnings)
@@ -49,6 +63,39 @@ class LimitsParser:
         item.limits.enabled = self._get_enabled()
         item.limits.persistence_setting = self._get_persistence()
         item.limits.persistence_count = 0
+
+        packet.update_limits_items_cache(item)
+        return limits_set
+
+    # Whether the LIMITS keyword defines change limits (SEQUENCE, CHANGE, or STATIC)
+    # rather than numeric limits
+    def _change_limits(self):
+        params = self.parser.parameters
+        return len(params) > 3 and params[3].upper() in PacketItemLimits.CHANGE_TYPES
+
+    def _create_change_limits(self, packet, item):
+        limits_set = self._get_limits_set()
+        change_type = self.parser.parameters[3].upper()
+        if limits_set != "DEFAULT":
+            raise self.parser.error(f"{change_type} limits can only be defined in the DEFAULT limits set", self.usage)
+        if item.limits.values is not None or item.limits.change_type:
+            raise self.parser.error(f"Item {item.name} already has LIMITS defined", self.usage)
+
+        if change_type == "SEQUENCE" and item.array_size is not None:
+            raise self.parser.error("SEQUENCE limits can't be applied to array items", self.usage)
+        if change_type == "SEQUENCE" and item.data_type not in ["INT", "UINT", "FLOAT", "DERIVED"]:
+            raise self.parser.error(
+                "SEQUENCE limits can only be applied to INT, UINT, FLOAT, or DERIVED items", self.usage
+            )
+
+        change_color = self.parser.parameters[4].upper()
+        if change_color not in PacketItemLimits.CHANGE_COLORS:
+            raise self.parser.error(f"{change_type} limits color must be RED or YELLOW", self.usage)
+
+        item.limits.change_type = change_type
+        item.limits.change_color = change_color
+        item.limits.enabled = self._get_enabled()
+        item.limits.persistence_setting = self._get_persistence()
 
         packet.update_limits_items_cache(item)
         return limits_set

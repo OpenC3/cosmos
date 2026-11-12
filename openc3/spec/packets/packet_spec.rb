@@ -1599,6 +1599,109 @@ module OpenC3
           end
         end
       end
+
+      context "with change limits" do
+        before(:each) do
+          @states = []
+          @p.limits_change_callback = ->(_packet, item, _old_state, _value, _log_change) { @states << item.limits.state }
+        end
+
+        def check_values(name, values)
+          values.each do |value|
+            @p.write(name, value)
+            @p.check_limits
+          end
+          @p.get_item(name).limits.state
+        end
+
+        def set_change_limits(name, type, color = :RED, persistence = 1)
+          item = @p.get_item(name)
+          item.limits.change_type = type
+          item.limits.change_color = color
+          item.limits.persistence_setting = persistence
+          item.limits.enabled = true
+          @p.update_limits_items_cache(item)
+          item
+        end
+
+        it "detects SEQUENCE violations and recovers on the next increment" do
+          set_change_limits("TEST2", :SEQUENCE)
+          expect(check_values("TEST2", [0, 1, 2])).to eql :GREEN
+          expect(check_values("TEST2", [4])).to eql :RED
+          expect(check_values("TEST2", [5])).to eql :GREEN
+          expect(check_values("TEST2", [5])).to eql :RED
+          expect(@states).to eql [:GREEN, :RED, :GREEN, :RED]
+        end
+
+        it "rolls over raw UINT and INT SEQUENCE values" do
+          set_change_limits("TEST1", :SEQUENCE)
+          expect(check_values("TEST1", [254, 255, 0, 1])).to eql :GREEN
+          @p.append_item("test4", 8, :INT)
+          set_change_limits("TEST4", :SEQUENCE)
+          expect(check_values("TEST4", [126, 127, -128, -127])).to eql :GREEN
+        end
+
+        it "does not roll over items with a read conversion" do
+          item = set_change_limits("TEST1", :SEQUENCE)
+          item.read_conversion = GenericConversion.new("value")
+          expect(check_values("TEST1", [255, 0])).to eql :RED
+        end
+
+        it "detects CHANGE violations with a YELLOW color" do
+          set_change_limits("TEST3", :CHANGE, :YELLOW)
+          expect(check_values("TEST3", [1.5, 2.5])).to eql :GREEN
+          expect(check_values("TEST3", [2.5])).to eql :YELLOW
+          expect(check_values("TEST3", [1.5])).to eql :GREEN
+        end
+
+        it "detects STATIC violations" do
+          set_change_limits("TEST2", :STATIC)
+          expect(check_values("TEST2", [10, 10])).to eql :GREEN
+          expect(check_values("TEST2", [11])).to eql :RED
+          expect(check_values("TEST2", [11])).to eql :GREEN
+        end
+
+        it "applies persistence" do
+          set_change_limits("TEST2", :CHANGE, :RED, 2)
+          expect(check_values("TEST2", [10, 11])).to eql :GREEN
+          expect(check_values("TEST2", [11])).to eql :GREEN
+          expect(check_values("TEST2", [11])).to eql :RED
+        end
+
+        it "compares stored and realtime values separately" do
+          set_change_limits("TEST2", :SEQUENCE)
+          expect(check_values("TEST2", [0, 1])).to eql :GREEN
+          @p.stored = true
+          expect(check_values("TEST2", [100, 101])).to eql :GREEN
+          @p.stored = false
+          expect(check_values("TEST2", [2])).to eql :GREEN
+          @p.stored = true
+          expect(check_values("TEST2", [102])).to eql :GREEN
+          expect(check_values("TEST2", [104])).to eql :RED
+          @p.stored = false
+          expect(check_values("TEST2", [3])).to eql :GREEN
+        end
+
+        it "forgets the previous value when limits are disabled" do
+          set_change_limits("TEST2", :SEQUENCE)
+          expect(check_values("TEST2", [0, 1])).to eql :GREEN
+          @p.stored = true
+          expect(check_values("TEST2", [50])).to eql :GREEN
+          @p.stored = false
+          @p.disable_limits("TEST2")
+          @p.enable_limits("TEST2")
+          expect(check_values("TEST2", [10])).to eql :GREEN
+          expect(check_values("TEST2", [11])).to eql :GREEN
+          @p.stored = true
+          expect(check_values("TEST2", [70])).to eql :GREEN
+        end
+
+        it "reports out of limits items" do
+          set_change_limits("TEST2", :STATIC)
+          check_values("TEST2", [1, 2])
+          expect(@p.out_of_limits).to eql [["TGT", "PKT", "TEST2", :RED]]
+        end
+      end
     end
 
     describe "clone" do

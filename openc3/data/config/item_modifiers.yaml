@@ -129,9 +129,27 @@ LIMITS:
     RED_LOW at 1 and below, YELLOW_LOW at 2-3, GREEN_LOW at 4, BLUE at 5,
     GREEN_HIGH at 6, YELLOW_HIGH at 7-8 and RED_HIGH at 9 and above. Without
     the green limits, 4-6 would all be GREEN.
+
+    Instead of numeric limits, a telemetry item can be checked against its previous
+    value by passing a change type and a color in place of the limits values:
+    `LIMITS DEFAULT <Persistence> <Initial State> <SEQUENCE/CHANGE/STATIC> <RED/YELLOW>`.
+    SEQUENCE requires the value to increase by exactly one each sample. Raw INT and UINT
+    items (without a read conversion) roll over to their minimum value after their maximum
+    value. CHANGE requires the value to be different every sample. STATIC requires the
+    value to never change. When the check fails the item goes to the given color (RED or
+    YELLOW) and when it passes the item is GREEN. For example, a SEQUENCE item that goes
+    0, 1, 2, 4 goes RED at 4 and back to GREEN at 5. The first value received is always GREEN.
+    These change limits are reported like STATE colors so they appear in Limits Monitor
+    and notifications, but they have no numeric values so LIMITSBAR style widgets don't
+    display them. They can only be defined in the DEFAULT limits set, can't be combined
+    with numeric limits on the same item, and can't be changed with set_limits.
   example: |
     LIMITS DEFAULT 3 ENABLED -80.0 -70.0 60.0 80.0 -20.0 20.0
     LIMITS TVAC 3 ENABLED -80.0 -30.0 30.0 80.0
+    # Change limits examples (use only one LIMITS line per item)
+    LIMITS DEFAULT 1 ENABLED SEQUENCE RED
+    LIMITS DEFAULT 1 ENABLED CHANGE YELLOW
+    LIMITS DEFAULT 1 ENABLED STATIC RED
   parameters:
     - name: Limits Set
       required: true
@@ -153,7 +171,8 @@ LIMITS:
     - name: Red Low Limit
       required: true
       description: If the telemetry value is less than or equal to this value a
-        Red Low condition will be detected
+        Red Low condition will be detected. For change limits this is instead
+        SEQUENCE, CHANGE, or STATIC followed by RED or YELLOW and no other parameters.
       values: .+
     - name: Yellow Low Limit
       required: true

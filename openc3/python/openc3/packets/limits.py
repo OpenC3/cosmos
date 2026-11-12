@@ -129,6 +129,10 @@ class Limits:
         packet = self._get_packet(target_name, packet_name)
         item = packet.get_item(item_name)
         limits = item.limits
+        if limits.change_type:
+            raise RuntimeError(
+                f"Cannot set numeric limits on {target_name} {packet_name} {item_name} which has {limits.change_type} limits"
+            )
         if limits_set:
             limits_set = str(limits_set).upper()
         else:

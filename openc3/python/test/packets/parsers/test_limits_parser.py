@@ -330,3 +330,95 @@ class TestLimitsParser(unittest.TestCase):
         self.assertIsNotNone(item.limits.values.get("DEFAULT"))
         self.assertIsNotNone(item.limits.values.get("TVAC"))
         tf.close()
+
+
+class TestLimitsParserChangeLimits(unittest.TestCase):
+    def setUp(self):
+        self.pc = PacketConfig()
+
+    def parse_limits(self, item_def, *limits_lines):
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write('TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"\n')
+            tf.write(f"  {item_def}\n")
+            for line in limits_lines:
+                tf.write(f"    {line}\n")
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+        return self.pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
+
+    def test_creates_sequence_change_and_static_limits(self):
+        for change_type in ["SEQUENCE", "CHANGE", "STATIC"]:
+            self.pc = PacketConfig()
+            item = self.parse_limits(
+                'APPEND_ITEM item1 16 UINT "Item"', f"LIMITS DEFAULT 2 DISABLED {change_type.lower()} yellow"
+            )
+            self.assertEqual(item.limits.change_type, change_type)
+            self.assertEqual(item.limits.change_color, "YELLOW")
+            self.assertIsNone(item.limits.values)
+            self.assertFalse(item.limits.enabled)
+            self.assertEqual(item.limits.persistence_setting, 2)
+            self.assertIn(item, self.pc.telemetry["TGT1"]["PKT1"].limits_items)
+
+    def test_keeps_persistence_above_1_without_warning(self):
+        for change_type in ["SEQUENCE", "CHANGE", "STATIC"]:
+            self.pc = PacketConfig()
+            item = self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', f"LIMITS DEFAULT 3 ENABLED {change_type} RED")
+            self.assertEqual(item.limits.persistence_setting, 3)
+            self.assertFalse(any("persistence" in warning for warning in self.pc.warnings))
+
+    def test_allows_change_and_static_on_string_items(self):
+        item = self.parse_limits('APPEND_ITEM item1 64 STRING "Item"', "LIMITS DEFAULT 1 ENABLED STATIC RED")
+        self.assertEqual(item.limits.change_type, "STATIC")
+
+    def test_complains_about_sequence_on_non_numeric_or_array_items(self):
+        with self.assertRaisesRegex(
+            ConfigParser.Error, "SEQUENCE limits can only be applied to INT, UINT, FLOAT, or DERIVED items"
+        ):
+            self.parse_limits('APPEND_ITEM item1 64 STRING "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED")
+        with self.assertRaisesRegex(ConfigParser.Error, "SEQUENCE limits can't be applied to array items"):
+            self.parse_limits('APPEND_ARRAY_ITEM item1 8 UINT 64 "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED")
+
+    def test_complains_about_invalid_colors(self):
+        with self.assertRaisesRegex(ConfigParser.Error, "SEQUENCE limits color must be RED or YELLOW"):
+            self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE GREEN")
+
+    def test_complains_about_the_wrong_number_of_parameters(self):
+        with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for LIMITS"):
+            self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE")
+        with self.assertRaisesRegex(ConfigParser.Error, "Too many parameters for LIMITS"):
+            self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED 5")
+
+    def test_complains_if_not_in_the_default_limits_set(self):
+        with self.assertRaisesRegex(
+            ConfigParser.Error, "SEQUENCE limits can only be defined in the DEFAULT limits set"
+        ):
+            self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS TVAC 1 ENABLED SEQUENCE RED")
+
+    def test_complains_if_combined_with_numeric_limits(self):
+        with self.assertRaisesRegex(ConfigParser.Error, "already has LIMITS defined"):
+            self.parse_limits(
+                'APPEND_ITEM item1 16 UINT "Item"',
+                "LIMITS DEFAULT 1 ENABLED 1 2 6 7",
+                "LIMITS DEFAULT 1 ENABLED CHANGE RED",
+            )
+        self.pc = PacketConfig()
+        with self.assertRaisesRegex(
+            ConfigParser.Error, "already has CHANGE limits and can't also define numeric LIMITS"
+        ):
+            self.parse_limits(
+                'APPEND_ITEM item1 16 UINT "Item"',
+                "LIMITS DEFAULT 1 ENABLED CHANGE RED",
+                "LIMITS TVAC 1 ENABLED 1 2 6 7",
+            )
+
+    def test_complains_if_combined_with_state(self):
+        with self.assertRaisesRegex(ConfigParser.Error, "Items with LIMITS can't define STATE"):
+            self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED CHANGE RED", "STATE ON 1")
+
+    def test_round_trips_through_to_config_and_as_json(self):
+        item = self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 3 ENABLED CHANGE RED")
+        self.assertIn("LIMITS DEFAULT 3 ENABLED CHANGE RED\n", item.to_config("TELEMETRY", "BIG_ENDIAN"))
+        json = item.as_json()
+        self.assertTrue(json["limits"]["enabled"])
+        self.assertEqual(json["limits"]["persistence_setting"], 3)
+        self.assertEqual(json["limits"]["DEFAULT"], {"change_type": "CHANGE", "change_color": "RED"})
