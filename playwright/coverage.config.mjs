@@ -31,6 +31,7 @@ const TOOL_PACKAGES = {
   bucketexplorer: `${CORE_PACKAGES}/openc3-cosmos-tool-bucketexplorer`,
   cmdsender: `${CORE_PACKAGES}/openc3-cosmos-tool-cmdsender`,
   cmdtlmserver: `${CORE_PACKAGES}/openc3-cosmos-tool-cmdtlmserver`,
+  dashboards: `${CORE_PACKAGES}/openc3-cosmos-tool-dashboards`,
   dataextractor: `${CORE_PACKAGES}/openc3-cosmos-tool-dataextractor`,
   dataviewer: `${CORE_PACKAGES}/openc3-cosmos-tool-dataviewer`,
   handbooks: `${CORE_PACKAGES}/openc3-cosmos-tool-handbooks`,

@@ -88,6 +88,23 @@ module OpenC3
     $VERBOSE = saved_verbose
   end
 
+  # Writes a "[DEPRECATION] message" line to $stderr. Use this rather than
+  # Kernel#warn for deprecation notices: Script Runner evaluates scripts inside
+  # disable_warnings ($VERBOSE = nil), which turns Kernel#warn into a no-op.
+  # Warning.warn ignores $VERBOSE but still goes through any Warning.warn override.
+  #
+  # @param message [String] What is deprecated and what to use instead
+  # @param uplevel [Integer|nil] Like Kernel#warn, prefix the location this many
+  #   frames above the caller (1 = whoever called the deprecated method)
+  def self.deprecation_warning(message, uplevel: nil)
+    location = ''
+    if uplevel
+      frame = caller_locations(uplevel + 1, 1)&.first
+      location = "#{frame.path}:#{frame.lineno}: " if frame
+    end
+    Warning.warn("#{location}[DEPRECATION] #{message}\n")
+  end
+
   # Adds a path to the global Ruby search path
   #
   # @param path [String] Directory path

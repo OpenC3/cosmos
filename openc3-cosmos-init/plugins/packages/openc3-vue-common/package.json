@@ -1,7 +1,7 @@
 {
   "name": "@openc3/vue-common",
   "description": "Vue component library for COSMOS tool development",
-  "version": "7.5.0-beta0",
+  "version": "7.5.1-beta0",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://openc3.com",
   "repository": {
@@ -56,6 +56,10 @@
       "import": "./dist/tools/scriptrunner.js",
       "require": "./dist/tools/scriptrunner.cjs"
     },
+    "./tools/versionhistory": {
+      "import": "./dist/tools/versionhistory.js",
+      "require": "./dist/tools/versionhistory.cjs"
+    },
     "./util": {
       "import": "./dist/util.js",
       "require": "./dist/util.cjs"
@@ -93,6 +97,7 @@
     "sprintf-js": "1.1.3",
     "uplot": "1.6.32",
     "vue": "3.5.44",
+    "vue-router": "4.4.4",
     "vuetify": "3.13.7",
     "vuetify-sonner": "^0.4.2"
   },

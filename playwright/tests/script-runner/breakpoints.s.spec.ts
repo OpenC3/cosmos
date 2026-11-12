@@ -74,7 +74,7 @@ test('remembers breakpoints and clears all', async ({ page, utils }) => {
   await page
     .locator('[data-test=file-open-save-search] input')
     .fill('checks.rb')
-  await page.locator('text=checks >> nth=0').click() // nth=0 because INST, INST2
+  await page.locator('.v-dialog >> text=checks >> nth=0').click() // nth=0 because INST, INST2
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/checks.rb`,

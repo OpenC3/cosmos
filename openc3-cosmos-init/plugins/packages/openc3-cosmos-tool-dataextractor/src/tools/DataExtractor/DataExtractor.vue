@@ -955,7 +955,9 @@ export default {
       if (this.matlabHeader) {
         headers += '% '
       }
-      headers += columnHeaders.join(this.delimiter)
+      headers += columnHeaders
+        .map((h) => this.quoteField(h))
+        .join(this.delimiter)
       outputFile.push(headers)
 
       // Sort everything by time so we can output in order
@@ -994,7 +996,7 @@ export default {
             if (packet[key] === null) {
               row[columnIndex] = ''
             } else if (Array.isArray(packet[key])) {
-              row[columnIndex] = '"[' + packet[key] + ']"'
+              row[columnIndex] = '[' + packet[key] + ']'
             } else {
               let rawVal = packet[key]['raw']
               if (Array.isArray(rawVal)) {
@@ -1059,7 +1061,9 @@ export default {
               }
             }
           }
-          outputFile.push(row.join(this.delimiter))
+          outputFile.push(
+            row.map((v) => this.quoteField(v)).join(this.delimiter),
+          )
         }
         count += 1
         if (count % 1000 == 0) {
@@ -1096,6 +1100,28 @@ export default {
       return new Promise((resolve) => {
         setTimeout(resolve, 0)
       })
+    },
+    // Quote a single field for the active delimiter following RFC 4180:
+    // wrap in double quotes when the stringified value contains the
+    // delimiter, a double quote, CR, or LF, and double any embedded
+    // double quotes. Numbers, booleans, and BigInts cannot contain those
+    // characters, so we return them untouched and let Array.prototype.join
+    // stringify them at the join. Objects/arrays are stringified defensively
+    // and run through the same scan.
+    quoteField: function (value) {
+      if (value === null || value === undefined) return ''
+      const t = typeof value
+      if (t === 'number' || t === 'boolean' || t === 'bigint') return value
+      const s = t === 'string' ? value : String(value)
+      if (
+        s.includes(this.delimiter) ||
+        s.includes('"') ||
+        s.includes('\n') ||
+        s.includes('\r')
+      ) {
+        return '"' + s.replaceAll('"', '""') + '"'
+      }
+      return s
     },
     finished: async function () {
       this.progress = 95 // Indicate we're almost done

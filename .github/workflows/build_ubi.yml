@@ -54,7 +54,7 @@ jobs:
       id-token: write # required for Docker Hub OIDC login
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
 
@@ -65,7 +65,7 @@ jobs:
       # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
       # Fork PRs get no id-token, so let them fall back to anonymous pulls.
       - name: Docker login
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
         env:
           DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
@@ -123,7 +123,7 @@ jobs:
         uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
         with:
           cache: true
-          version: v0.76.0
+          version: v0.76.1
       - name: Fetch VEX Hub
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: ./.github/actions/fetch-vexhub
