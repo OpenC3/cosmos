@@ -633,10 +633,11 @@ RSpec.describe TablesController, type: :controller do
       end
     end
 
-    context "when the caller is non-admin (system but not admin)" do
+    context "when the caller is non-admin (system and script_edit but not admin)" do
       before do
         allow(controller).to receive(:authorization).with('system').and_return(true)
         allow(controller).to receive(:authorization).with('admin').and_return(false)
+        allow(controller).to receive(:authorization).with('script_edit').and_return(true)
       end
 
       it "blocks save into the cmd_tlm overlay" do
@@ -696,10 +697,11 @@ RSpec.describe TablesController, type: :controller do
       end
     end
 
-    # Destinations outside <TARGET>/tables/ (procedures, lib, ...) are loaded by
-    # Script Runner, so copying a file there must require script_edit, not just
-    # the 'system' permission every Table Manager operation needs.
-    context "when the caller has system but not script_edit" do
+    # 'system' is the read tier every role down to Viewer holds, so it must not
+    # be enough to write the overlay anywhere: procedures and lib are loaded by
+    # Script Runner, and tables/bin holds the binaries operators upload. Every
+    # Table writer requires script_edit, matching the presigned S3 upload.
+    context "when the caller has system but not script_edit (Viewer)" do
       before do
         allow(controller).to receive(:authorization).with('system').and_return(true)
         allow(controller).to receive(:authorization).with('admin').and_return(false)
@@ -717,10 +719,40 @@ RSpec.describe TablesController, type: :controller do
         expect(Table).not_to have_received(:save_as)
       end
 
-      it "still allows save_as within tables/bin" do
+      it "blocks save_as within tables/bin" do
         post :save_as, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", new_name: "INST/tables/bin/copy.bin"}
+        expect(Table).not_to have_received(:save_as)
+      end
+
+      it "blocks save of a tables/bin binary" do
+        allow(Table).to receive(:save)
+        post :save, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin", binary: "INST/tables/bin/table.bin", definition: "INST/tables/config/table_def.txt", tables: '{"tables": []}'}
+        expect(Table).not_to have_received(:save)
+      end
+
+      it "blocks destroy of a tables/bin binary" do
+        allow(Table).to receive(:destroy)
+        delete :destroy, params: {scope: "DEFAULT", name: "INST/tables/bin/table.bin"}
+        expect(Table).not_to have_received(:destroy)
+      end
+
+      it "blocks generate" do
+        allow(Table).to receive(:generate)
+        post :generate, params: {scope: "DEFAULT", definition: "INST/tables/config/table_def.txt"}
+        expect(Table).not_to have_received(:generate)
+      end
+
+      it "blocks a saved report next to a tables/bin binary" do
+        allow(Table).to receive(:report)
+        post :report, params: {scope: "DEFAULT", binary: "INST/tables/bin/table.bin", definition: "INST/tables/config/table_def.txt", save: true}
+        expect(Table).not_to have_received(:report)
+      end
+
+      it "still allows an unsaved report" do
+        allow(Table).to receive(:report).and_return(double(filename: "INST/tables/bin/table.csv", contents: ""))
+        post :report, params: {scope: "DEFAULT", binary: "INST/tables/bin/table.bin", definition: "INST/tables/config/table_def.txt"}
         expect(response).to have_http_status(:ok)
-        expect(Table).to have_received(:save_as)
+        expect(Table).to have_received(:report)
       end
     end
 
