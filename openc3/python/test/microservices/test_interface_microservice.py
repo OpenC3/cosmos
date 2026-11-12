@@ -33,6 +33,7 @@ from openc3.system.system import System
 from openc3.topics.interface_topic import InterfaceTopic
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
 from openc3.topics.topic import Topic
+from openc3.utilities.json import JsonEncoder
 from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
 from openc3.utilities.time import from_nsec_from_epoch
 from test.test_helper import *
@@ -756,6 +757,18 @@ class TestInterfaceMicroservice(unittest.TestCase):
             b"hazardous_check": b"TRUE",
             b"cmd_string": b"cmd('INST ABORT')",
             b"username": b"test_user",
+            b"extra": json.dumps(
+                {
+                    "flow_uuid": "1234-5678",
+                    "username": "untrusted",
+                    "queue_username": "untrusted",
+                    "approver": "untrusted",
+                    "cmd_success": False,
+                    "cmd_reason": "untrusted",
+                    "data": b"\xff",
+                },
+                cls=JsonEncoder,
+            ).encode(),
             b"queue_username": b"DEFAULT__MULTI__INST",
             b"validate": b"TRUE",
             b"manual": b"FALSE",
@@ -769,6 +782,17 @@ class TestInterfaceMicroservice(unittest.TestCase):
         command = mock_write.call_args[0][0]
         self.assertEqual(command.extra["username"], "test_user")
         self.assertEqual(command.extra.get("queue_username"), "DEFAULT__MULTI__INST")
+        # Caller metadata is kept under its own key, so caller values can't
+        # replace the COSMOS audit fields
+        self.assertNotIn("flow_uuid", command.extra)
+        self.assertNotIn("approver", command.extra)
+        self.assertNotIn("cmd_success", command.extra)
+        self.assertNotIn("cmd_reason", command.extra)
+        metadata = command.extra["metadata"]
+        self.assertEqual(metadata["flow_uuid"], "1234-5678")
+        self.assertEqual(metadata["username"], "untrusted")
+        self.assertEqual(metadata["approver"], "untrusted")
+        self.assertEqual(metadata["data"], b"\xff")
 
         # Minimal msg_hash — only required fields; optional fields use .get() defaults
         minimal_msg_hash = {
@@ -792,6 +816,94 @@ class TestInterfaceMicroservice(unittest.TestCase):
         handler.interface.cmd_target_enabled["INST"] = False
         result = handler.process_cmd(topic, msg_id, full_msg_hash, None)
         self.assertIsNone(result)
+
+    def test_process_cmd_decodes_ruby_encoded_special_floats_in_extra(self):
+        """A command queued from Ruby (or released by the Ruby queue microservice) has
+        its extra encoded by Ruby's Float#as_json, which writes non-finite floats as
+        {"json_class": "Float", "raw": "NaN"|"Infinity"|"-Infinity"}. Those must arrive
+        at a Python interface as floats, not as dicts."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        thread = threading.Thread(target=im.run)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(im.shutdown)
+        all_interfaces = self.wait_for_state("CONNECTED")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+
+        handler = im.handler_thread
+        # Byte for byte what Ruby's JSON.generate(extra.as_json, allow_nan: true) emits
+        ruby_extra = (
+            b'{"nan":{"json_class":"Float","raw":"NaN"},'
+            b'"inf":{"json_class":"Float","raw":"Infinity"},'
+            b'"ninf":{"json_class":"Float","raw":"-Infinity"},'
+            b'"normal":1.5}'
+        )
+        msg_hash = {
+            b"target_name": b"INST",
+            b"cmd_name": b"ABORT",
+            b"cmd_params": json.dumps({}).encode(),
+            b"cmd_string": b"cmd('INST ABORT')",
+            b"username": b"test_user",
+            b"extra": ruby_extra,
+        }
+        with patch("openc3.microservices.interface_microservice.CommandDecomTopic.write_packet") as mock_write:
+            result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", "1-0", msg_hash, None)
+        self.assertEqual(result, "SUCCESS")
+
+        command = mock_write.call_args[0][0]
+        self.assertTrue(math.isnan(command.extra["metadata"]["nan"]))
+        self.assertEqual(command.extra["metadata"]["inf"], float("inf"))
+        self.assertEqual(command.extra["metadata"]["ninf"], float("-inf"))
+        self.assertEqual(command.extra["metadata"]["normal"], 1.5)
+
+    def test_process_cmd_keeps_caller_metadata_separate_from_accessor_extra(self):
+        """Accessors write into packet.extra while build_cmd sets the command
+        parameters. HttpAccessor puts HTTP_PATH / HTTP_METHOD / HTTP_HEADERS /
+        HTTP_QUERIES there and HttpClientInterface builds the outgoing request from
+        them, so caller metadata must not be able to set or change these."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        thread = threading.Thread(target=im.run)
+        thread.start()
+        self.addCleanup(thread.join, 5)
+        self.addCleanup(im.shutdown)
+        all_interfaces = self.wait_for_state("CONNECTED")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
+
+        handler = im.handler_thread
+        original_build_cmd = System.commands.build_cmd
+        caller_extra = {
+            "HTTP_PATH": "/supplied",
+            "HTTP_METHOD": "delete",
+            "HTTP_HEADERS": {"authorization": "supplied"},
+            "flow_uuid": "1234-5678",
+        }
+
+        def build_cmd_with_accessor_extra(*args, **kwargs):
+            command = original_build_cmd(*args, **kwargs)
+            command.extra = {"HTTP_PATH": "/defined", "HTTP_METHOD": "get"}
+            return command
+
+        msg_hash = {
+            b"target_name": b"INST",
+            b"cmd_name": b"ABORT",
+            b"cmd_params": json.dumps({}).encode(),
+            b"cmd_string": b"cmd('INST ABORT')",
+            b"username": b"test_user",
+            b"extra": json.dumps(caller_extra).encode(),
+        }
+        with (
+            patch.object(System.commands, "build_cmd", side_effect=build_cmd_with_accessor_extra),
+            patch("openc3.microservices.interface_microservice.CommandDecomTopic.write_packet") as mock_write,
+        ):
+            result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", "1-0", msg_hash, None)
+        self.assertEqual(result, "SUCCESS")
+
+        command = mock_write.call_args[0][0]
+        self.assertEqual(command.extra["HTTP_PATH"], "/defined")
+        self.assertEqual(command.extra["HTTP_METHOD"], "get")
+        self.assertNotIn("HTTP_HEADERS", command.extra)
+        self.assertNotIn("flow_uuid", command.extra)
+        self.assertEqual(command.extra["metadata"], caller_extra)
 
     def test_process_cmd_rejects_malformed_connect_params(self):
         im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
@@ -1008,6 +1120,7 @@ class TestInterfaceMicroservice(unittest.TestCase):
 
         critical_model = Mock()
         critical_model.approver = "approver"
+        critical_model.claim_release.return_value = True
         critical_model.cmd_hash = {
             b"target_name": b"INST",
             b"cmd_name": b"ABORT",
@@ -1021,6 +1134,132 @@ class TestInterfaceMicroservice(unittest.TestCase):
                 "{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, {b"release_critical": b"abc-123"}, None
             )
         self.assertEqual(result, "Target INST is disabled")
+        critical_model.claim_release.assert_called_once()
+
+    def test_process_cmd_claims_released_critical_cmd_before_sending(self):
+        """CLEAR is hazardous, which a released critical command skips"""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        msg_id = f"{int(time.time() * 1000)}-0"
+        handler.interface.connected = Mock(return_value=True)
+        calls = []
+
+        def write(command):
+            calls.append("write")
+            self.assertEqual(command.packet_name, "CLEAR")
+            self.assertEqual(command.extra["approver"], "approver")
+
+        handler.interface.write = Mock(side_effect=write)
+        critical_model = Mock()
+        critical_model.approver = "approver"
+        critical_model.claim_release.side_effect = lambda: calls.append("claim") or True
+        critical_model.cmd_hash = {
+            b"target_name": b"INST",
+            b"cmd_name": b"CLEAR",
+            b"cmd_params": json.dumps({}).encode(),
+            b"cmd_string": b"cmd('INST CLEAR')",
+        }
+        with (
+            patch("openc3.microservices.interface_microservice.CriticalCmdModel", create=True) as model_class,
+            patch(
+                "openc3.microservices.interface_microservice.TargetModel.increment_command_count", return_value=1
+            ) as increment,
+        ):
+            model_class.get_model.return_value = critical_model
+            result = handler.process_cmd(
+                "{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, {b"release_critical": b"abc-123"}, None
+            )
+        self.assertEqual(result, "SUCCESS")
+        self.assertEqual(calls, ["claim", "write"])
+        # Counted once on release. It wasn't counted while held for approval.
+        increment.assert_called_once_with("INST", "CLEAR", 1, scope="DEFAULT")
+
+    def test_process_cmd_does_not_count_held_or_hazardous_cmds(self):
+        """A command held for critical approval or returned for hazardous
+        confirmation isn't sent so it isn't counted"""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        msg_id = f"{int(time.time() * 1000)}-0"
+        handler.interface.connected = Mock(return_value=True)
+        handler.interface.write = Mock()
+
+        def clear(hazardous_check):
+            return {
+                b"target_name": b"INST",
+                b"cmd_name": b"CLEAR",
+                b"cmd_params": json.dumps({}).encode(),
+                b"cmd_string": b"cmd('INST CLEAR')",
+                b"hazardous_check": hazardous_check,
+            }
+
+        with (
+            patch("openc3.microservices.interface_microservice.CriticalCmdModel", create=True) as model_class,
+            patch("openc3.microservices.interface_microservice.TargetModel.increment_command_count") as increment,
+        ):
+            model_class.return_value.name = "abc-123"
+            result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", msg_id, clear(b"TRUE"), None)
+            self.assertTrue(result.startswith("HazardousError"))
+
+            handler.critical_commanding = "NORMAL"
+            result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", msg_id, clear(b"FALSE"), None)
+            self.assertEqual(result, "CriticalCmdError\nabc-123")
+        increment.assert_not_called()
+        handler.interface.write.assert_not_called()
+
+    def test_process_cmd_does_not_send_unclaimed_critical_cmd(self):
+        """A duplicate release message, or one whose approval was undone, can't claim
+        the release so the command isn't sent again."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        msg_id = f"{int(time.time() * 1000)}-0"
+        handler.interface.write = Mock()
+
+        handler.logger = Mock()
+        critical_model = Mock()
+        # A duplicate release message is expected so it's only a warning. An approved
+        # command that won't be sent, e.g. its approval was undone, is an error.
+        for released, status, reason, level in [
+            (True, "APPROVED", "already released", "warn"),
+            (False, "WAITING", "WAITING", "error"),
+        ]:
+            critical_model.claim_release.return_value = False
+            critical_model.released = released
+            critical_model.status = status
+            with patch("openc3.microservices.interface_microservice.CriticalCmdModel", create=True) as model_class:
+                model_class.get_model.return_value = critical_model
+                result = handler.process_cmd(
+                    "{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, {b"release_critical": b"abc-123"}, None
+                )
+            self.assertEqual(result, f"Critical command 'abc-123' not released: {reason}")
+            getattr(handler.logger, level).assert_called_with(
+                f"INST_INT: Critical command 'abc-123' not released: {reason}", scope="DEFAULT"
+            )
+        handler.interface.write.assert_not_called()
+
+    def test_process_cmd_does_not_send_critical_cmd_if_claim_fails(self):
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        msg_id = f"{int(time.time() * 1000)}-0"
+        handler.interface.write = Mock()
+
+        handler.logger = Mock()
+        critical_model = Mock()
+        critical_model.claim_release.side_effect = RuntimeError("Timeout updating critical command 'abc-123'")
+        with patch("openc3.microservices.interface_microservice.CriticalCmdModel", create=True) as model_class:
+            model_class.get_model.return_value = critical_model
+            result = handler.process_cmd(
+                "{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, {b"release_critical": b"abc-123"}, None
+            )
+        self.assertEqual(result, "Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'")
+        handler.logger.error.assert_called_with(
+            "INST_INT: Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'",
+            scope="DEFAULT",
+        )
+        handler.interface.write.assert_not_called()
 
     def test_process_cmd_validator_results(self):
         """Only an explicit False from pre_check/post_check rejects a command (None

@@ -272,9 +272,9 @@ module OpenC3
       return timeout.to_f
     end
 
-    # generate the auth object
+    # Generate the authentication object from the standard environment variables.
     def generate_auth
-      OpenC3.authentication_from_environment()
+      OpenC3.authentication_from_environment
     end
 
     # Create a JsonDRbObject connection to the API server
@@ -334,9 +334,9 @@ module OpenC3
       return timeout.to_f
     end
 
-    # generate the auth object
+    # Generate the authentication object from the standard environment variables.
     def generate_auth
-      OpenC3.authentication_from_environment()
+      OpenC3.authentication_from_environment
     end
 
     # Create a JsonDRbObject connection to the API server

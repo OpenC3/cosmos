@@ -79,9 +79,9 @@ module OpenC3
       # JsonDRb.debug = true # Enable for debugging
     end
 
-    # generate the auth object
+    # Generate the authentication object from the standard environment variables.
     def generate_auth
-      OpenC3.authentication_from_environment()
+      OpenC3.authentication_from_environment
     end
 
     # Forwards all method calls to the remote service.

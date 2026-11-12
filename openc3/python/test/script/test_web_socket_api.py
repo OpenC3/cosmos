@@ -366,11 +366,13 @@ class TestWebSocketApiInit(unittest.TestCase):
         self.assertEqual(api.scope, "OTHER")
 
     def test_generates_authentication_when_none_is_passed(self):
-        expected_auth = object()
-        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth) as factory:
+        expected_auth = OpenC3KeycloakAuthentication("http://keycloak")
+        with patch(
+            "openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth
+        ) as factory:
             api = WebSocketApi(url="ws://test.com/cable")
-        self.assertIs(api.authentication, expected_auth)
-        factory.assert_called_once_with()
+            self.assertIs(api.authentication, expected_auth)
+            factory.assert_called_once_with()
 
     # Subclasses forward **options, which would otherwise silently swallow a
     # typo'd option name that explicit keyword arguments used to reject
@@ -694,9 +696,12 @@ class TestWebSocketApiGenerateAuth(unittest.TestCase):
         # Bypass __init__ so we test the auth selection alone
         self.api = WebSocketApi.__new__(WebSocketApi)
 
-    def test_delegates_to_the_shared_authentication_factory(self):
-        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value="core_auth") as factory:
-            self.assertEqual(self.api._generate_auth(), "core_auth")
+    def test_uses_shared_authentication_factory(self):
+        expected_auth = object()
+        with patch(
+            "openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth
+        ) as factory:
+            self.assertIs(self.api._generate_auth(), expected_auth)
             factory.assert_called_once_with()
 
     # Failing fast beats returning None, which would only surface later as an
@@ -708,9 +713,11 @@ class TestWebSocketApiGenerateAuth(unittest.TestCase):
         ):
             self.api._generate_auth()
 
-    def test_returns_keycloak_authentication_from_the_shared_factory(self):
+    def test_preserves_keycloak_authentication_from_the_shared_factory(self):
         expected_auth = OpenC3KeycloakAuthentication("http://keycloak:8080")
-        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth):
+        with patch(
+            "openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth
+        ):
             self.assertIs(self.api._generate_auth(), expected_auth)
 
 
@@ -980,8 +987,8 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
     def setUp(self):
         self.stream = FakeWebSocketStream()
         # read_all takes no authentication argument, so _generate_auth runs;
-        # patch only the network-touching constructor
-        auth_patcher = patch("openc3.script.web_socket_api.OpenC3Authentication")
+        # patch the shared factory to avoid environment-dependent authentication.
+        auth_patcher = patch("openc3.script.web_socket_api.authentication_from_environment")
         auth_patcher.start().return_value = mock_auth()
         self.addCleanup(auth_patcher.stop)
         stream_patcher = patch("openc3.script.web_socket_api.WebSocketClientStream")

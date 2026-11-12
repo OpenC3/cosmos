@@ -51,9 +51,9 @@ module OpenC3
       end
     end
 
-    # generate the auth object
+    # Generate the authentication object from the standard environment variables.
     def _generate_auth
-      OpenC3.authentication_from_environment()
+      OpenC3.authentication_from_environment
     end
 
     def _request(*method_params, **kw_params)

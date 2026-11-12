@@ -244,7 +244,7 @@ module OpenC3
       end
     end
 
-    # Generate the appropriate token for OpenC3
+    # Generate the appropriate token for OpenC3.
     def generate_auth
       OpenC3.authentication_from_environment(raise_if_missing: true)
     end
