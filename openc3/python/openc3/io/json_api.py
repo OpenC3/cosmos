@@ -11,18 +11,9 @@
 
 import os
 
-from openc3.environment import (
-    OPENC3_API_PASSWORD,
-    OPENC3_API_TOKEN,
-    OPENC3_API_USER,
-    OPENC3_KEYCLOAK_URL,
-    OPENC3_SCOPE,
-)
+from openc3.environment import OPENC3_SCOPE
 from openc3.io.json_api_object import JsonApiObject
-from openc3.utilities.authentication import (
-    OpenC3Authentication,
-    OpenC3KeycloakAuthentication,
-)
+from openc3.utilities.authentication import authentication_from_environment
 
 
 class JsonApi:
@@ -99,16 +90,15 @@ class JsonApi:
                     hostname = "openc3-operator"
                 return f"{schema}://{hostname}:{int(port)}{prefix}"
 
-    # generate the auth object
     @staticmethod
     def _generate_auth():
-        if OPENC3_API_TOKEN is None and OPENC3_API_USER is None:
-            if OPENC3_API_PASSWORD:
-                return OpenC3Authentication()
-            else:
-                return None
-        else:
-            return OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
+        """Build the standard OpenC3 authentication object from environment configuration.
+
+        Returns:
+            object | None: The configured authentication object, or ``None``
+            when no credentials are present.
+        """
+        return authentication_from_environment()
 
     def _request(self, *method_params, **kw_params):
         if not kw_params.get("scope"):

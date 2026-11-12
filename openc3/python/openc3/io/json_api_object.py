@@ -17,16 +17,10 @@ from threading import Lock
 from requests import Session
 from requests.exceptions import ReadTimeout
 
-from openc3.environment import (
-    OPENC3_API_PASSWORD,
-    OPENC3_API_READ_TIMEOUT,
-    OPENC3_API_TOKEN,
-    OPENC3_API_USER,
-    OPENC3_KEYCLOAK_URL,
-)
+from openc3.environment import OPENC3_API_READ_TIMEOUT
 from openc3.utilities.authentication import (
     OpenC3Authentication,
-    OpenC3KeycloakAuthentication,
+    authentication_from_environment,
 )
 from openc3.utilities.logger import Logger
 
@@ -94,11 +88,13 @@ class JsonApiObject:
 
     @staticmethod
     def generate_auth():
-        """generate the auth object"""
-        if OPENC3_API_TOKEN is None and OPENC3_API_USER is None:
-            return OpenC3Authentication() if OPENC3_API_PASSWORD else None
-        else:
-            return OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
+        """Build the standard OpenC3 authentication object from environment configuration.
+
+        Returns:
+            OpenC3Authentication | None: The configured authentication object,
+            or ``None`` when no credentials are present.
+        """
+        return authentication_from_environment()
 
     def request(self, *method_params, **keyword_params):
         """Forwards all method calls to the remote service.

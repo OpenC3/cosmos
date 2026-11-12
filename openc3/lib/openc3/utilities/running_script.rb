@@ -31,6 +31,8 @@ require 'openc3/utilities/bucket_require'
 require 'openc3/utilities/python_venv'
 require 'openc3/utilities/script_env'
 require 'openc3/models/offline_access_model'
+require 'openc3/models/service_account_script_auth_model'
+require 'openc3/utilities/secrets'
 require 'openc3/models/environment_model'
 require 'openc3/models/script_engine_model'
 require 'openc3/models/script_status_model'
@@ -437,6 +439,37 @@ class RunningScript
     self.class.message_log
   end
 
+  def self.service_account_username?(username)
+    username&.start_with?('service-account-')
+  end
+
+  def self.get_machine_auth_context(scope:, username:)
+    return nil if username == 'Anonymous'
+    return nil unless service_account_username?(username)
+
+    machine_auth_context = OpenC3::ServiceAccountScriptAuthModel.get_model(name: username, scope: scope)
+    unless machine_auth_context&.auth_kind == 'client_credentials'
+      raise "No durable machine authentication context available for service-account script #{username}"
+    end
+
+    machine_auth_context
+  end
+
+  def self.get_machine_client_secret!(scope:, machine_auth_context:)
+    client_secret_name = machine_auth_context.client_secret_name
+    secret_value = OpenC3::Secrets.getClient.get(
+      client_secret_name,
+      secret_store: machine_auth_context.secret_store,
+      scope: scope,
+    )
+    if secret_value.nil? || secret_value.empty?
+      missing_secret_name = client_secret_name.nil? ? 'nil' : client_secret_name
+      raise "Service-account client #{machine_auth_context.client_id} missing secret #{missing_secret_name}"
+    end
+
+    secret_value
+  end
+
   def self.spawn(scope, name, suite_runner = nil, disconnect = false, environment = nil, user_full_name = nil, username = nil, line_no = nil, end_line_no = nil, python_venv = nil)
     extension = File.extname(name).to_s.downcase
     script_engine = nil
@@ -480,7 +513,8 @@ class RunningScript
       FileUtils.mkdir_p(script_cwd)
       process.cwd = script_cwd
 
-      # Check for offline access token
+      # Check for stored script auth context
+      machine_auth_context = get_machine_auth_context(scope: scope, username: username)
       model = nil
       model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username != 'Anonymous'
 
@@ -535,8 +569,15 @@ class RunningScript
       process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
       process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
       process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
+      process.environment['OPENC3_API_TOKEN'] = nil
+      process.environment['OPENC3_API_USER'] = nil
+      process.environment['OPENC3_API_PASSWORD'] = nil
+      process.environment['OPENC3_API_CLIENT_SECRET'] = nil
       process.environment['OPENC3_API_CLIENT'] = ENV.fetch('OPENC3_API_CLIENT', nil)
-      if model and model.offline_access_token
+      if machine_auth_context
+        process.environment['OPENC3_API_CLIENT'] = machine_auth_context.client_id
+        process.environment['OPENC3_API_CLIENT_SECRET'] = get_machine_client_secret!(scope: scope, machine_auth_context: machine_auth_context)
+      elsif model and model.offline_access_token
         auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV.fetch('OPENC3_KEYCLOAK_URL', nil))
         valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
         if valid_token
@@ -555,6 +596,20 @@ class RunningScript
         end
       end
       process.environment['GEM_HOME'] = ENV.fetch('GEM_HOME', nil)
+      process.environment['PYTHONUSERBASE'] = ENV.fetch('PYTHONUSERBASE', nil)
+      # Child Python scripts must import the checked-out OpenC3 source tree first
+      # so child launches use this checkout's auth code instead of a stale
+      # installed copy. Preserve existing PYTHONPATH entries after /openc3/python
+      # so plugin venv setup can still prepend its own site-packages.
+      existing_pythonpath = process.environment['PYTHONPATH']
+      if existing_pythonpath.nil? || existing_pythonpath.empty?
+        existing_pythonpath = ENV.fetch('PYTHONPATH', nil)
+      end
+      process.environment['PYTHONPATH'] = if existing_pythonpath.nil? || existing_pythonpath.empty?
+        '/openc3/python'
+      else
+        "/openc3/python:#{existing_pythonpath}"
+      end
 
       python_venv_dir = OpenC3::PythonVenv.configure_for_script(
         process.environment, name: name, scope: scope, python_venv: python_venv
@@ -563,10 +618,6 @@ class RunningScript
         system_venv = File.dirname(ENV.fetch('OPENC3_PYTHON_BIN', '/openc3/python/.venv/bin/python')).chomp('/bin')
         process.environment['VIRTUAL_ENV'] = system_venv
         process.environment['PYTHONUSERBASE'] = ENV.fetch('PYTHONUSERBASE', OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE)
-        # Deliberately nil when PYTHONPATH is unset rather than defaulting to
-        # something like '.', which would put the script's own working directory
-        # on the import path and let a local file shadow a real module.
-        process.environment['PYTHONPATH'] = ENV.fetch('PYTHONPATH', nil)
       end
 
       # Spawned process should not be controlled by same Bundler constraints as spawning process

@@ -81,6 +81,7 @@ module OpenC3
       ENV.delete('OPENC3_API_TOKEN')
       ENV.delete('OPENC3_KEYCLOAK_REALM')
       ENV.delete('OPENC3_API_CLIENT')
+      ENV.delete('OPENC3_API_CLIENT_SECRET')
     end
 
     describe "initialize" do
@@ -221,6 +222,27 @@ module OpenC3
           expect(stdout.string).to match(/"refresh_token"\s*=>\s*"test_refresh_token"/)
         end
       end
+
+      context "with client credentials" do
+        let(:auth) { OpenC3KeycloakAuthentication.new(test_url) }
+
+        before(:each) do
+          ENV.delete('OPENC3_API_USER')
+          ENV.delete('OPENC3_API_PASSWORD')
+          ENV['OPENC3_API_CLIENT'] = 'cosmos-m2m'
+          ENV['OPENC3_API_CLIENT_SECRET'] = 'm2m-secret'
+          allow(JsonDRb).to receive(:debug?).and_return(false)
+        end
+
+        it "obfuscates client_secret in normal mode" do
+          expect {
+            auth.token
+          }.to raise_error(OpenC3AuthenticationError) do |error|
+            expect(error.message).to match(/"client_secret"\s*=>\s*"\*\*\*"/)
+            expect(error.message).not_to include('m2m-secret')
+          end
+        end
+      end
     end
 
     describe "successful authentication" do
@@ -252,6 +274,35 @@ module OpenC3
       it "returns token without Bearer prefix when requested" do
         token = auth.token(include_bearer: false)
         expect(token).to eq("access_token_123")
+      end
+
+      it "uses client_credentials when OPENC3_API_CLIENT_SECRET is set" do
+        ENV.delete('OPENC3_API_USER')
+        ENV.delete('OPENC3_API_PASSWORD')
+        ENV['OPENC3_API_CLIENT'] = 'cosmos-m2m'
+        ENV['OPENC3_API_CLIENT_SECRET'] = 'm2m-secret'
+
+        token = auth.token
+
+        expect(token).to eq("Bearer access_token_123")
+        expect(mock_http).to have_received(:post).with(
+          an_instance_of(URI::HTTP),
+          include('client_id=cosmos-m2m', 'client_secret=m2m-secret', 'grant_type=client_credentials', 'scope=openid'),
+          hash_including('Content-Type' => 'application/x-www-form-urlencoded')
+        )
+      end
+
+      it "treats an empty client secret as unset" do
+        ENV['OPENC3_API_CLIENT_SECRET'] = ''
+
+        token = auth.token
+
+        expect(token).to eq("Bearer access_token_123")
+        expect(mock_http).to have_received(:post).with(
+          an_instance_of(URI::HTTP),
+          include('username=testuser', 'password=testpassword', 'grant_type=password', 'scope=openid'),
+          hash_including('Content-Type' => 'application/x-www-form-urlencoded')
+        )
       end
     end
 

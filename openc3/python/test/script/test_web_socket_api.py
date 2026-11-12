@@ -366,9 +366,11 @@ class TestWebSocketApiInit(unittest.TestCase):
         self.assertEqual(api.scope, "OTHER")
 
     def test_generates_authentication_when_none_is_passed(self):
-        with patch.dict(os.environ, {"OPENC3_API_TOKEN": "token"}, clear=True):
+        expected_auth = object()
+        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth) as factory:
             api = WebSocketApi(url="ws://test.com/cable")
-            self.assertIsInstance(api.authentication, OpenC3KeycloakAuthentication)
+        self.assertIs(api.authentication, expected_auth)
+        factory.assert_called_once_with()
 
     # Subclasses forward **options, which would otherwise silently swallow a
     # typo'd option name that explicit keyword arguments used to reject
@@ -692,35 +694,24 @@ class TestWebSocketApiGenerateAuth(unittest.TestCase):
         # Bypass __init__ so we test the auth selection alone
         self.api = WebSocketApi.__new__(WebSocketApi)
 
-    def test_uses_password_authentication_when_only_the_password_is_set(self):
-        # The real OpenC3Authentication constructor performs an HTTP token request
-        with (
-            patch.dict(os.environ, {"OPENC3_API_PASSWORD": "password"}, clear=True),
-            patch("openc3.script.web_socket_api.OpenC3Authentication") as auth_class,
-        ):
-            auth_class.return_value = "core_auth"
+    def test_delegates_to_the_shared_authentication_factory(self):
+        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value="core_auth") as factory:
             self.assertEqual(self.api._generate_auth(), "core_auth")
+            factory.assert_called_once_with()
 
     # Failing fast beats returning None, which would only surface later as an
     # AttributeError inside subscribe(). Matches the Ruby client.
     def test_raises_when_no_authentication_environment_is_set(self):
         with (
-            patch.dict(os.environ, {}, clear=True),
+            patch("openc3.script.web_socket_api.authentication_from_environment", return_value=None),
             self.assertRaisesRegex(RuntimeError, "Environment Variables Not Set for Authentication"),
         ):
             self.api._generate_auth()
 
-    def test_uses_keycloak_authentication_when_the_api_token_is_set(self):
-        env = {"OPENC3_API_TOKEN": "token", "OPENC3_KEYCLOAK_URL": "http://keycloak:8080"}
-        with patch.dict(os.environ, env, clear=True):
-            auth = self.api._generate_auth()
-            self.assertIsInstance(auth, OpenC3KeycloakAuthentication)
-            self.assertEqual(auth.url, "http://keycloak:8080")
-
-    def test_uses_keycloak_authentication_when_the_api_user_is_set(self):
-        env = {"OPENC3_API_USER": "user", "OPENC3_KEYCLOAK_URL": "http://keycloak:8080"}
-        with patch.dict(os.environ, env, clear=True):
-            self.assertIsInstance(self.api._generate_auth(), OpenC3KeycloakAuthentication)
+    def test_returns_keycloak_authentication_from_the_shared_factory(self):
+        expected_auth = OpenC3KeycloakAuthentication("http://keycloak:8080")
+        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth):
+            self.assertIs(self.api._generate_auth(), expected_auth)
 
 
 class TestCmdTlmWebSocketApiGenerateUrl(unittest.TestCase):
