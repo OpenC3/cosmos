@@ -158,6 +158,15 @@ class Store(metaclass=StoreMeta):
 
         return db_shard_val
 
+    def ensure_pool_size(self, pool_size):
+        """Grow the connection pool to at least pool_size connections. A MULTI
+        microservice calls this before starting its children because each child
+        holds a connection while it reads its topics, and a thread waits for one
+        when they are all in use. Connections are still only opened as needed."""
+        with self.redis_pool.lock:
+            if self.redis_pool.pool_size < pool_size:
+                self.redis_pool.pool_size = pool_size
+
     # Delegate all unknown methods to redis through the @redis_pool
     def __getattr__(self, func):
         with self.redis_pool.get() as redis:

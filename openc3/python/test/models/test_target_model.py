@@ -101,6 +101,24 @@ class TestTargetModel(unittest.TestCase):
         retrieved = TargetModel.get_model(name="TEST", scope="DEFAULT")
         self.assertEqual(retrieved.stored_limits_mode, "DISABLE")
 
+    def test_microservice_group_and_language_round_trip_through_redis(self):
+        # Ruby stores these keys, so from_json must accept them
+        import json
+
+        json_data = {
+            "name": "TEST",
+            "folder_name": "TEST",
+            "updated_at": None,
+            "plugin": None,
+            "microservice_group": "HK",
+            "language": "python",
+        }
+        Store.hset("DEFAULT__openc3_targets", "TEST", json.dumps(json_data))
+        retrieved = TargetModel.get_model(name="TEST", scope="DEFAULT")
+        self.assertEqual(retrieved.microservice_group, "HK")
+        self.assertEqual(retrieved.language, "python")
+        self.assertIsNone(TargetModel(folder_name="TEST", name="TEST", scope="DEFAULT").microservice_group)
+
 
 class TestTargetModelPackets(unittest.TestCase):
     def setUp(self):

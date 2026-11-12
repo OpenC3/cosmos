@@ -107,8 +107,23 @@ module OpenC3
       # can fire the callback synchronously for any persisted-disabled items.
       @limits_response_queue = Queue.new
       @limits_response_thread = nil
-      System.telemetry.limits_change_callback = method(:limits_change_callback)
-      LimitsEventTopic.sync_system(scope: @scope)
+      # Only for this microservice's targets. Other decom microservices in the same
+      # process (a MULTI or MULTIGROUP) share System and handle their own targets.
+      callback = method(:limits_change_callback)
+      @target_names.each do |target_name|
+        System.telemetry.packets(target_name).each do |_packet_name, packet|
+          packet.limits_change_callback = callback
+        end
+      rescue RuntimeError
+        # Target has no telemetry
+      end
+      # Likewise only apply limits events to this microservice's targets. Disabling
+      # limits calls the target's limits change callback every time, so if every
+      # decom in the process applied every event, each disable would be reported
+      # (and its limits response run) once per decom. These are the live packet
+      # hashes so dynamically added packets are included.
+      @limits_telemetry = System.telemetry.all.select { |target_name, _packets| @target_names.include?(target_name) }
+      LimitsEventTopic.sync_system(scope: @scope, telemetry: @limits_telemetry)
       target_model = TargetModel.get_model(name: @target_names[0], scope: @scope)
       @stored_limits_mode = target_model ? (target_model.stored_limits_mode || 'PROCESS') : 'PROCESS'
       @error_count = 0
@@ -139,7 +154,7 @@ module OpenC3
                 end
                 @limits_event_offset = msg_id
                 event = JSON.parse(msg_hash['event'], allow_nan: true, create_additions: true)
-                LimitsEventTopic.process_event(event, scope: @scope)
+                LimitsEventTopic.process_event(event, scope: @scope, telemetry: @limits_telemetry)
               elsif topic =~ /__DECOMINTERFACE/
                 if msg_hash.key?('inject_tlm')
                   handle_inject_tlm_with_ack(msg_hash['inject_tlm'], msg_id)
@@ -179,7 +194,7 @@ module OpenC3
     def resync_if_limits_events_trimmed
       if LimitsEventTopic.events_trimmed?(@limits_event_offset, scope: @scope, db_shard: @db_shard)
         @logger.warn("#{@name}: Limits events were trimmed before they could be read, resyncing limits")
-        LimitsEventTopic.resync_system(scope: @scope)
+        LimitsEventTopic.resync_system(scope: @scope, telemetry: @limits_telemetry)
       end
     end
 

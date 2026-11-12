@@ -70,6 +70,31 @@ module OpenC3
       end
     end
 
+    describe "ensure_pool_size" do
+      before(:each) do
+        mock_redis()
+      end
+
+      it "grows the pool but never shrinks it" do
+        store = Store.new(10)
+        old_pool = store.instance_variable_get(:@redis_pool)
+        expect(old_pool).to receive(:reload)
+        store.ensure_pool_size(250)
+        expect(store.pool_size).to eql 250
+        expect(store.instance_variable_get(:@redis_pool).size).to eql 250
+        store.ensure_pool_size(20)
+        expect(store.pool_size).to eql 250
+        expect(store.instance_variable_get(:@redis_pool).size).to eql 250
+      end
+
+      it "keeps working through the new pool" do
+        store = EphemeralStore.new(10)
+        store.ensure_pool_size(50)
+        store.set('key', 'value')
+        expect(store.get('key')).to eql 'value'
+      end
+    end
+
     describe "read_topics" do
       before(:each) do
         mock_redis()

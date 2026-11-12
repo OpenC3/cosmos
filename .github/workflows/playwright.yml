@@ -114,8 +114,10 @@ jobs:
         id: pw_test_plugin
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: playwright/openc3-cosmos-pw-test
-          key: pw-test-plugin-${{ hashFiles('openc3/templates/plugin/**', 'openc3/templates/target/**', 'openc3/lib/openc3/utilities/cli_generator.rb', 'playwright/playwright.sh') }}
+          path: |
+            playwright/openc3-cosmos-pw-test
+            playwright/openc3-cosmos-pw-group
+          key: pw-test-plugin-${{ hashFiles('openc3/templates/plugin/**', 'openc3/templates/target/**', 'openc3/lib/openc3/utilities/cli_generator.rb', 'playwright/playwright.sh', 'playwright/fixtures/pw-group-plugin.txt') }}
       - name: Build plugin
         if: steps.pw_test_plugin.outputs.cache-hit != 'true'
         shell: 'script -q -e -c "bash {0}"'

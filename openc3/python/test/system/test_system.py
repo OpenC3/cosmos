@@ -292,6 +292,23 @@ class TestSystem(unittest.TestCase):
             self.assertIsNotNone(System.instance_obj)
 
 
+class TestSystemSetupTargets(unittest.TestCase):
+    def setUp(self):
+        System.instance_obj = None
+
+    def tearDown(self):
+        System.instance_obj = None
+
+    def test_does_nothing_without_targets(self):
+        # Matches Ruby. A MULTI microservice sets up System for its children's
+        # targets after its own (target-less) setup, so this must not build one.
+        with patch("openc3.system.system.Bucket") as bucket:
+            System.setup_targets([], "/tmp/unused", scope="DEFAULT")
+            System.setup_targets(None, "/tmp/unused", scope="DEFAULT")
+        self.assertIsNone(System.instance_obj)
+        bucket.get_client.assert_not_called()
+
+
 class TestSystemIntegration(unittest.TestCase):
     """Integration tests that verify the System class works with real targets"""
 

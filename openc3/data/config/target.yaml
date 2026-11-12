@@ -151,6 +151,28 @@ TARGET:
           required: true
           description: The target microservice type. Must be one of DECOM, COMMANDLOG, PACKETLOG, or CLEANUP
           values: .*
+    MICROSERVICE_GROUP:
+      summary: Runs the target's microservices in processes shared with other targets
+      description:
+        By default every target runs its decom, logging, and cleanup microservices in
+        its own process and its TSDB microservice in another. Targets that declare the
+        same group name keep their own microservices but run them as threads in two
+        processes shared by the whole group, one for Ruby and one for Python, which uses
+        much less memory when there are many targets. Targets from different plugins can
+        share a group. All targets in a group must use the same SHARD and DB_SHARD, and
+        Python targets in a group must come from one plugin. Adding or removing a target
+        restarts the group's processes. Cannot be combined with TARGET_MICROSERVICE.
+      since: _Coming Soon_
+      parameters:
+        - name: Group Name
+          required: true
+          description: Name of the microservice group
+          values: .+
+      example: |
+        TARGET THERMAL THERMAL
+          MICROSERVICE_GROUP HOUSEKEEPING
+        TARGET POWER POWER
+          MICROSERVICE_GROUP HOUSEKEEPING
     PACKET:
       summary: Packet Name to allocate to the current TARGET_MICROSERVICE.
       since: 5.2.0

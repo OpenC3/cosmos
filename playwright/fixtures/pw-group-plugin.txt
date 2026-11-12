@@ -1,0 +1,6 @@
+# Replaces the generated plugin.txt of the PW_GROUP test plugin so that a Ruby
+# and a Python target share one set of target microservices
+TARGET PW_GRP1 PW_GRP1
+  MICROSERVICE_GROUP PW_GROUP
+TARGET PW_GRP2 PW_GRP2
+  MICROSERVICE_GROUP PW_GROUP

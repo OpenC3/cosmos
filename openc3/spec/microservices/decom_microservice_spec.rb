@@ -474,4 +474,55 @@ module OpenC3
       expect(result['packet_name']).to eql 'HEALTH_STATUS'
     end
   end
+
+  describe DecomMicroservice, "sharing a process" do
+    # Decom microservices in one MULTI or MULTIGROUP process share System
+    before(:each) do
+      mock_redis()
+      setup_system()
+      %w(INST SYSTEM).each do |target_name|
+        TargetModel.new(folder_name: target_name, name: target_name, scope: "DEFAULT").create
+        MicroserviceModel.new(name: "DEFAULT__DECOM__#{target_name}", scope: "DEFAULT", target_names: [target_name],
+                              topics: ["DEFAULT__TELEMETRY__{#{target_name}}__HEALTH_STATUS"]).create
+      end
+    end
+
+    after(:each) do
+      @inst&.shutdown
+      @system&.shutdown
+    end
+
+    def start
+      @inst = DecomMicroservice.new("DEFAULT__DECOM__INST")
+      @system = DecomMicroservice.new("DEFAULT__DECOM__SYSTEM")
+    end
+
+    it "gets limits changes for its own target only" do
+      start()
+      System.telemetry.packets('INST').each do |_name, packet|
+        expect(packet.instance_variable_get(:@limits_change_callback).receiver).to be @inst
+      end
+      System.telemetry.packets('SYSTEM').each do |_name, packet|
+        expect(packet.instance_variable_get(:@limits_change_callback).receiver).to be @system
+      end
+    end
+
+    it "applies limits events to its own targets only" do
+      start()
+      expect(@inst.instance_variable_get(:@limits_telemetry).keys).to eql ['INST']
+      expect(@system.instance_variable_get(:@limits_telemetry).keys).to eql ['SYSTEM']
+    end
+
+    it "reports a persisted limits disable once, not once per decom" do
+      # Disabling limits calls the target's limits change callback every time,
+      # so each decom syncing every target would report it once per decom
+      Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", JSON.generate({ 'enabled' => false }))
+      capture_io { start() }
+      disabled = LimitsEventTopic.read(0, scope: "DEFAULT").select do |_id, event|
+        event['type'] == 'LIMITS_CHANGE' and event['target_name'] == 'INST' and event['item_name'] == 'TEMP1'
+      end
+      expect(disabled.length).to eql 1
+      expect(System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('TEMP1').limits.enabled).to be false
+    end
+  end
 end

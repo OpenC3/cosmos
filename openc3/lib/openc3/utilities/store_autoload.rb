@@ -130,7 +130,28 @@ module OpenC3
       @redis_key = ENV.fetch('OPENC3_REDIS_PASSWORD', nil)
       hostname = ENV['OPENC3_REDIS_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
       @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_PORT', 6379)}"
+      @pool_size = pool_size
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
+    end
+
+    attr_reader :pool_size
+
+    # Grow the connection pool to at least pool_size connections. A MULTI
+    # microservice calls this before starting its children because each child
+    # holds a connection while it reads its topics, and a thread that can't get
+    # one within the pool timeout dies. Connections are still only opened as
+    # they are needed.
+    def ensure_pool_size(pool_size)
+      @@instance_mutex.synchronize do
+        return if @pool_size >= pool_size
+
+        old_pool = @redis_pool
+        @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
+        @pool_size = pool_size
+        # Close the old pool's idle connections. It stays usable (reload, not
+        # shutdown) in case another thread was about to use it.
+        old_pool.reload { |redis| redis.close }
+      end
     end
 
     # cap/base for the equal-jitter reconnect backoff (seconds)
@@ -319,6 +340,7 @@ module OpenC3
       super(pool_size, db_shard: db_shard)
       hostname = ENV['OPENC3_REDIS_EPHEMERAL_HOSTNAME'].to_s.gsub("SHARDNUM", db_shard.to_s)
       @redis_url = "redis://#{hostname}:#{ENV.fetch('OPENC3_REDIS_EPHEMERAL_PORT', 6380)}"
+      @pool_size = pool_size
       @redis_pool = StoreConnectionPool.new(size: pool_size) { build_redis() }
     end
   end

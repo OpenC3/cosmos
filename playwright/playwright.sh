@@ -69,6 +69,7 @@ case $1 in
             echo "  - Generates a PW_TEST plugin using openc3cli"
             echo "  - Generates a PW_TEST target"
             echo "  - Builds plugin gems (version 1.0.0 and 1.0.1)"
+            echo "  - Generates a PW_GROUP plugin whose targets share microservices"
             echo "  - Validates the plugin gem"
             echo ""
             echo "Options:"
@@ -98,6 +99,16 @@ case $1 in
         # match its filename or an upgrade installs 1.0.0 and uninstalling 1.0.1 fails
         ../../openc3.sh cli rake build VERSION=1.0.1
         ../../openc3.sh cli validate openc3-cosmos-pw-test-1.0.0.gem
+        cd - || exit 1
+        # A Ruby and a Python target sharing microservices with MICROSERVICE_GROUP
+        rm -rf openc3-cosmos-pw-group
+        ../openc3.sh cli generate plugin PW_GROUP --ruby
+        cd openc3-cosmos-pw-group || exit 1
+        ../../openc3.sh cli generate target PW_GRP1 --ruby
+        ../../openc3.sh cli generate target PW_GRP2 --python
+        cp ../fixtures/pw-group-plugin.txt plugin.txt
+        ../../openc3.sh cli rake build VERSION=1.0.0
+        ../../openc3.sh cli validate openc3-cosmos-pw-group-1.0.0.gem
         cd - || exit 1
         ;;
 

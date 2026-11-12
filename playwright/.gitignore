@@ -8,3 +8,4 @@ coverage-raw
 *State.json
 # generated plugin for playwright tests
 openc3-cosmos-pw-test/
+openc3-cosmos-pw-group/

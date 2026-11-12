@@ -164,6 +164,11 @@ class System(metaclass=SystemMeta):
 
     @classmethod
     def setup_targets(cls, target_names, base_dir, scope=OPENC3_SCOPE, descriptions=True):
+        # Nothing to do if there are no targets (matches Ruby). Building an empty
+        # System here would keep a MULTI microservice from setting it up for its
+        # children's targets later.
+        if not target_names:
+            return
         if not System.instance_obj:  # type: ignore[has-type]
             targets_path = f"{base_dir}/_targets"
             os.makedirs(targets_path, exist_ok=True)
