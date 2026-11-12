@@ -573,6 +573,7 @@ class RunningScript
       process.environment['OPENC3_API_USER'] = nil
       process.environment['OPENC3_API_PASSWORD'] = nil
       process.environment['OPENC3_API_CLIENT_SECRET'] = nil
+      process.environment['OPENC3_KEYCLOAK_URL'] = ENV.fetch('OPENC3_KEYCLOAK_URL', nil)
       process.environment['OPENC3_API_CLIENT'] = ENV.fetch('OPENC3_API_CLIENT', nil)
       if machine_auth_context
         process.environment['OPENC3_API_CLIENT'] = machine_auth_context.client_id

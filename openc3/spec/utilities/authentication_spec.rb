@@ -59,25 +59,37 @@ module OpenC3
   end
 
   describe '.authentication_from_environment' do
+    def with_auth_env(overrides)
+      previous = overrides.keys.to_h { |key| [key, ENV.key?(key) ? ENV[key] : :__undefined__] }
+      overrides.each do |key, value|
+        value.nil? ? ENV.delete(key) : ENV[key] = value
+      end
+      yield
+    ensure
+      previous.each do |key, value|
+        value == :__undefined__ ? ENV.delete(key) : ENV[key] = value
+      end
+    end
+
     it 'selects core authentication for password-only configuration' do
-      OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
-                           'OPENC3_API_CLIENT_SECRET' => nil, 'OPENC3_API_PASSWORD' => 'password') do
+      with_auth_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                    'OPENC3_API_CLIENT_SECRET' => nil, 'OPENC3_API_PASSWORD' => 'password') do
         expect(OpenC3Authentication).to receive(:new).and_return(:core_auth)
         expect(OpenC3.authentication_from_environment).to eq(:core_auth)
       end
     end
 
     it 'selects Keycloak authentication for a client secret' do
-      OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
-                           'OPENC3_API_CLIENT_SECRET' => 'm2m_secret', 'OPENC3_KEYCLOAK_URL' => 'http://keycloak') do
+      with_auth_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                    'OPENC3_API_CLIENT_SECRET' => 'm2m_secret', 'OPENC3_KEYCLOAK_URL' => 'http://keycloak') do
         expect(OpenC3KeycloakAuthentication).to receive(:new).with('http://keycloak').and_return(:keycloak_auth)
         expect(OpenC3.authentication_from_environment).to eq(:keycloak_auth)
       end
     end
 
     it 'treats an empty client secret as unset' do
-      OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
-                           'OPENC3_API_CLIENT_SECRET' => '', 'OPENC3_API_PASSWORD' => 'password') do
+      with_auth_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                    'OPENC3_API_CLIENT_SECRET' => '', 'OPENC3_API_PASSWORD' => 'password') do
         expect(OpenC3Authentication).to receive(:new).and_return(:core_auth)
         expect(OpenC3KeycloakAuthentication).not_to receive(:new)
         expect(OpenC3.authentication_from_environment).to eq(:core_auth)
@@ -85,8 +97,8 @@ module OpenC3
     end
 
     it 'returns nil without authentication configuration' do
-      OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
-                           'OPENC3_API_CLIENT_SECRET' => nil, 'OPENC3_API_PASSWORD' => nil) do
+      with_auth_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                    'OPENC3_API_CLIENT_SECRET' => nil, 'OPENC3_API_PASSWORD' => nil) do
         expect(OpenC3.authentication_from_environment).to be_nil
       end
     end
