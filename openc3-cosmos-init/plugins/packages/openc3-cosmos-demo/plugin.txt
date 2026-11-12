@@ -38,6 +38,8 @@ VARIABLE templated_port 5025
   VARIABLE_DESCRIPTION "Port for TEMPLATED target connection"
 VARIABLE inst_router_port 7779
   VARIABLE_DESCRIPTION "Port for INST router"
+VARIABLE microservice_group DEMO
+  VARIABLE_DESCRIPTION "Microservice group whose shared processes run the microservices of the demo targets to save memory (leave blank to give each target its own processes)"
 VARIABLE log_retain_time 172800
   VARIABLE_DESCRIPTION "Raw log retention time in seconds (default: 48 hours)"
   VARIABLE_STATE "24 hours" 86400
@@ -77,9 +79,13 @@ VARIABLE inst2_throughput_port 7780
 <% include_templated_int = (templated_int_name.to_s.strip.length > 0) %>
 <% include_example_microservice = (example_microservice_name.to_s.strip.length > 0) %>
 <% include_templated_microservice = (templated_microservice_name.to_s.strip.length > 0) %>
+<% use_microservice_group = (microservice_group.to_s.strip.length > 0) %>
 
 <% if include_inst %>
   TARGET INST <%= inst_target_name %>
+    <% if use_microservice_group %>
+      MICROSERVICE_GROUP <%= microservice_group %>
+    <% end %>
     # If we're in the CI pipeline shorten the log file creation time
     <% if ENV["CI"] %>
       TLM_LOG_CYCLE_TIME 60
@@ -91,6 +97,9 @@ VARIABLE inst2_throughput_port 7780
 
 <% if include_inst2 %>
   TARGET INST2 <%= inst2_target_name %>
+    <% if use_microservice_group %>
+      MICROSERVICE_GROUP <%= microservice_group %>
+    <% end %>
     LOG_RETAIN_TIME <%= log_retain_time %>
     TLM_LOG_CYCLE_TIME 600
     STORED_LIMITS_MODE DISABLE
@@ -98,16 +107,25 @@ VARIABLE inst2_throughput_port 7780
 
 <% if include_example %>
   TARGET EXAMPLE <%= example_target_name %>
+    <% if use_microservice_group %>
+      MICROSERVICE_GROUP <%= microservice_group %>
+    <% end %>
     LOG_RETAIN_TIME <%= log_retain_time %>
 <% end %>
 
 <% if include_templated %>
   TARGET TEMPLATED <%= templated_target_name %>
+    <% if use_microservice_group %>
+      MICROSERVICE_GROUP <%= microservice_group %>
+    <% end %>
     LOG_RETAIN_TIME <%= log_retain_time %>
 <% end %>
 
 <% if include_system %>
   TARGET SYSTEM <%= system_target_name %>
+    <% if use_microservice_group %>
+      MICROSERVICE_GROUP <%= microservice_group %>
+    <% end %>
 <% end %>
 
 <% if include_inst and include_inst_int %>

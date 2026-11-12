@@ -19,6 +19,7 @@ require 'openc3/microservices/microservice'
 require 'openc3/topics/topic'
 require 'openc3/logs/buffered_packet_log_writer'
 require 'openc3/config/config_parser'
+require 'openc3/utilities/sleeper'
 
 module OpenC3
   class LogMicroservice < Microservice
@@ -60,18 +61,30 @@ module OpenC3
     def run
       setup_plws()
       setup_microservice_topic()
+      @sleeper = Sleeper.new
       while true
         break if @cancel_thread
 
-        Topic.read_topics(@topics, db_shard: @db_shard) do |topic, msg_id, msg_hash, redis|
-          break if @cancel_thread
-          if topic == @microservice_topic
-            microservice_cmd(topic, msg_id, msg_hash, redis)
-          else
-            log_data(topic, msg_id, msg_hash, redis)
+        begin
+          Topic.read_topics(@topics, db_shard: @db_shard) do |topic, msg_id, msg_hash, redis|
+            break if @cancel_thread
+            if topic == @microservice_topic
+              microservice_cmd(topic, msg_id, msg_hash, redis)
+            else
+              log_data(topic, msg_id, msg_hash, redis)
+            end
+            @count += 1
+            @metric.set(name: 'log_total', value: @count, type: 'counter')
           end
-          @count += 1
-          @metric.set(name: 'log_total', value: @count, type: 'counter')
+        rescue => e
+          # Keep logging after an error reading the topics (e.g. Redis briefly
+          # unavailable) like decom does. A dead thread would stop the process,
+          # which in a MULTI or MULTIGROUP stops every microservice in it.
+          @error = e
+          @error_count += 1
+          @metric.set(name: 'log_error_total', value: @error_count, type: 'counter')
+          @logger.error("#{@name} error reading topics: #{e.formatted}")
+          break if @sleeper.sleep(1) # Don't spin while the error persists
         end
       end
     end
@@ -121,6 +134,7 @@ module OpenC3
     end
 
     def shutdown
+      @sleeper&.cancel
       # Make sure all the existing logs are properly closed down
       threads = []
       @plws.each do |_target_name, plw_hash|

@@ -63,66 +63,104 @@
       </v-col>
     </v-row>
     <v-list class="list" data-test="microserviceList">
-      <div
-        v-for="microservice in filteredMicroservices"
-        :key="microservice.name"
-      >
-        <v-list-item>
-          <v-list-item-title>{{ microservice.name }}</v-list-item-title>
-          <v-list-item-subtitle v-if="microservice_status[microservice.name]">
+      <div v-for="row in rows" :key="row.key">
+        <v-list-item
+          v-if="row.type === 'group'"
+          data-test="microservice-group"
+          :style="indent(0)"
+        >
+          <template #prepend>
+            <v-btn
+              :icon="row.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down'"
+              :aria-label="
+                row.collapsed
+                  ? `Expand microservice group ${row.name}`
+                  : `Collapse microservice group ${row.name}`
+              "
+              variant="text"
+              size="small"
+              @click="toggleCollapsed(row.key)"
+            />
+          </template>
+          <v-list-item-title>
+            Microservice Group: {{ row.name }}
+          </v-list-item-title>
+          <v-list-item-subtitle>
+            Scope: {{ row.scope }}, {{ row.count }} microservices in the group's
+            shared processes
+          </v-list-item-subtitle>
+        </v-list-item>
+        <v-list-item v-else :style="indent(row.depth)">
+          <template v-if="row.childCount > 0" #prepend>
+            <v-btn
+              :icon="row.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down'"
+              :aria-label="
+                row.collapsed
+                  ? `Expand ${row.microservice.name}`
+                  : `Collapse ${row.microservice.name}`
+              "
+              variant="text"
+              size="small"
+              @click="toggleCollapsed(row.key)"
+            />
+          </template>
+          <v-list-item-title>{{ row.microservice.name }}</v-list-item-title>
+          <v-list-item-subtitle
+            v-if="microservice_status[row.microservice.name]"
+          >
             Updated:
             {{
               formatNanoseconds(
-                microservice_status[microservice.name].updated_at,
+                microservice_status[row.microservice.name].updated_at,
                 timeZone,
               )
-            }}, Enabled: {{ isEnabled(microservice.name) ? 'True' : 'False' }},
-            Count:
-            {{ microservice_status[microservice.name].count }}
+            }}, Enabled:
+            {{ isEnabled(row.microservice.name) ? 'True' : 'False' }}, Count:
+            {{ microservice_status[row.microservice.name].count }}
           </v-list-item-subtitle>
           <template #append>
             <v-btn
-              v-show="microservice_status[microservice.name]?.error"
+              v-show="microservice_status[row.microservice.name]?.error"
               icon="mdi-alert"
               variant="text"
-              @click="showMicroserviceError(microservice.name)"
+              @click="showMicroserviceError(row.microservice.name)"
             />
             <v-chip
-              v-if="microservice_status[microservice.name]"
-              :color="getStateColor(microservice.name)"
+              v-if="microservice_status[row.microservice.name]"
+              :color="getStateColor(row.microservice.name)"
               size="small"
               label
             >
-              {{ getStateText(microservice.name) }}
+              {{ getStateText(row.microservice.name) }}
             </v-chip>
             <v-tooltip
-              :text="isEnabled(microservice.name) ? 'Restart' : 'Start'"
+              :text="isEnabled(row.microservice.name) ? 'Restart' : 'Start'"
               location="top"
             >
               <template #activator="{ props }">
                 <v-btn
                   v-bind="props"
                   :aria-label="
-                    isEnabled(microservice.name)
+                    isEnabled(row.microservice.name)
                       ? 'Restart Microservice'
                       : 'Start Microservice'
                   "
                   :icon="
-                    isRestarting(microservice.name) ||
-                    isStarting(microservice.name)
+                    isRestarting(row.microservice.name) ||
+                    isStarting(row.microservice.name)
                       ? 'mdi-loading'
-                      : isEnabled(microservice.name)
+                      : isEnabled(row.microservice.name)
                         ? 'mdi-refresh'
                         : 'mdi-play'
                   "
                   :class="{
                     'rotating-icon':
-                      isRestarting(microservice.name) ||
-                      isStarting(microservice.name),
+                      isRestarting(row.microservice.name) ||
+                      isStarting(row.microservice.name),
                   }"
                   variant="text"
-                  :disabled="isOperationInProgress(microservice.name)"
-                  @click="restartMicroservice(microservice.name)"
+                  :disabled="isOperationInProgress(row.microservice.name)"
+                  @click="restartMicroservice(row.microservice.name)"
                 />
               </template>
             </v-tooltip>
@@ -132,12 +170,16 @@
                   v-bind="props"
                   aria-label="Stop Microservice"
                   :icon="
-                    isStopping(microservice.name) ? 'mdi-loading' : 'mdi-stop'
+                    isStopping(row.microservice.name)
+                      ? 'mdi-loading'
+                      : 'mdi-stop'
                   "
-                  :class="{ 'rotating-icon': isStopping(microservice.name) }"
+                  :class="{
+                    'rotating-icon': isStopping(row.microservice.name),
+                  }"
                   variant="text"
-                  :disabled="isOperationInProgress(microservice.name)"
-                  @click="stopMicroservice(microservice.name)"
+                  :disabled="isOperationInProgress(row.microservice.name)"
+                  @click="stopMicroservice(row.microservice.name)"
                 />
               </template>
             </v-tooltip>
@@ -148,7 +190,7 @@
                   aria-label="Show Microservice Details"
                   icon="mdi-eye"
                   variant="text"
-                  @click="showMicroservice(microservice.name)"
+                  @click="showMicroservice(row.microservice.name)"
                 />
               </template>
             </v-tooltip>
@@ -178,6 +220,7 @@
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { OutputDialog, TextBoxDialog } from '@/components'
 import { TimeFilters } from '@/util'
+import { microserviceRows } from './microserviceGroups.js'
 
 export default {
   components: {
@@ -208,6 +251,8 @@ export default {
       //   }
       // }
       microserviceOperations: {},
+      // Keys of collapsed parent microservices and microservice groups
+      collapsed: [],
     }
   },
   computed: {
@@ -227,6 +272,14 @@ export default {
     },
     filteredServiceCount() {
       return this.filteredMicroservices.length
+    },
+    // Microservices run by a parent (MULTI or MULTIGROUP) are shown under it,
+    // and the microservices of a microservice group under a header for it
+    rows() {
+      return microserviceRows(
+        this.filteredMicroservices,
+        new Set(this.collapsed),
+      )
     },
   },
   watch: {
@@ -257,6 +310,16 @@ export default {
     this.updater = null
   },
   methods: {
+    indent: function (depth) {
+      return { paddingInlineStart: `${16 + depth * 32}px` }
+    },
+    toggleCollapsed: function (key) {
+      if (this.collapsed.includes(key)) {
+        this.collapsed = this.collapsed.filter((k) => k !== key)
+      } else {
+        this.collapsed = [...this.collapsed, key]
+      }
+    },
     isOperationInProgress: function (name) {
       return !!this.microserviceOperations[name]
     },

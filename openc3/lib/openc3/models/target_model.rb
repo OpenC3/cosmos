@@ -25,6 +25,7 @@ require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/cvt_model'
 require 'openc3/models/microservice_model'
+require 'openc3/models/microservice_group'
 require 'openc3/topics/limits_event_topic'
 require 'openc3/topics/config_topic'
 require 'openc3/system'
@@ -58,6 +59,8 @@ module OpenC3
     @@sync_packet_count_data = {}
     @@sync_packet_count_time = nil
     @@sync_packet_count_delay_seconds = 1.0 # Sync packet counts every second
+    # Decom microservices sharing a process (a MULTI or MULTIGROUP) share these counts
+    @@sync_packet_count_mutex = Mutex.new
     @@stale_packet_keys_warned = Set.new # Track stale keys already warned about
 
     attr_accessor :folder_name
@@ -86,6 +89,8 @@ module OpenC3
     attr_accessor :disable_erb
     attr_accessor :shard
     attr_accessor :db_shard
+    attr_accessor :microservice_group
+    attr_accessor :language
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -534,6 +539,8 @@ module OpenC3
       disable_erb: nil,
       shard: 0,
       db_shard: 0,
+      microservice_group: nil,
+      language: nil,
       scope:
     )
       super("#{scope}__#{PRIMARY_KEY}", name: name, plugin: plugin, updated_at: updated_at, scope: scope)
@@ -563,6 +570,8 @@ module OpenC3
       @disable_erb = disable_erb
       @shard = shard.to_i # to_i to handle nil
       @db_shard = db_shard.to_i # to_i to handle nil
+      @microservice_group = microservice_group
+      @language = language
       @bucket = Bucket.getClient()
       @children = []
     end
@@ -597,6 +606,8 @@ module OpenC3
         'disable_erb' => @disable_erb,
         'shard' => @shard,
         'db_shard' => @db_shard,
+        'microservice_group' => @microservice_group,
+        'language' => @language,
       }
     end
 
@@ -695,6 +706,12 @@ module OpenC3
         parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")
         @db_shard = Integer(parameters[0])
 
+      when 'MICROSERVICE_GROUP'
+        usage = "#{keyword} <Group Name>"
+        parser.verify_num_parameters(1, 1, usage)
+        parser.verify_parameter_naming(1, usage)
+        @microservice_group = parameters[0].to_s.upcase
+
       when 'STORED_LIMITS_MODE'
         parser.verify_num_parameters(1, 1, "#{keyword} <PROCESS, LOG, or DISABLE>")
         mode = parameters[0].to_s.upcase
@@ -778,6 +795,8 @@ module OpenC3
         # Build a System for just this target
         system = System.new([@name], temp_dir)
         check_column_header_lengths(system)
+        @language = system.targets[@name].language
+        MicroserviceGroup.validate_member(self) if @microservice_group
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
           if variables['time_association_name'].to_s.empty?
@@ -790,7 +809,10 @@ module OpenC3
         unless validate_only
           build_target_archive(temp_dir, target_folder)
           system = update_store(system)
+          # Persist language so other members can be checked against it (see MicroserviceGroup.validate_member)
+          update(force: true) if @microservice_group
           deploy_microservices(gem_path, variables, system)
+          MicroserviceGroup.update(@microservice_group, scope: @scope) if @microservice_group
           ConfigTopic.write({ kind: 'created', type: 'target', name: @name, plugin: @plugin }, scope: @scope)
         end
       ensure
@@ -903,7 +925,7 @@ module OpenC3
       db_shard_store.del("#{@scope}__COMMANDCNTS__{#{@name}}")
 
       # Note: these match the names of the services in deploy_microservices
-      %w(MULTI DECOM COMMANDLOG PACKETLOG CLEANUP).each do |type|
+      %w(MULTI DECOM COMMANDLOG PACKETLOG CLEANUP TSDB).each do |type|
         target_microservices = @target_microservices[type]
         if target_microservices
           max_instances = target_microservices.length + 1
@@ -917,6 +939,8 @@ module OpenC3
           model.destroy if model
         end
       end
+      # Remove the group's parent microservices if this was their last child
+      MicroserviceGroup.update(@microservice_group, scope: @scope) if @microservice_group
       # Delete item_map
       item_map_key = "#{@scope}__#{@name}__item_to_packet_map"
       db_shard_store.del(item_map_key)
@@ -1258,7 +1282,8 @@ module OpenC3
       if target.language == 'python'
         filename = 'decom_microservice.py'
         work_dir.sub!('openc3/lib', 'openc3/python')
-        parent = nil
+        # Python can't run in a Ruby MULTI so runs standalone or in the group's Python MULTI
+        parent = @python_parent
         # Use venv Python to ensure editable packages are found
         language_cmd = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
       end
@@ -1296,7 +1321,7 @@ module OpenC3
         options: options,
         topics: topics,
         plugin: @plugin,
-        parent: nil,
+        parent: @python_parent, # Standalone unless in a microservice group
         needs_dependencies: @needs_dependencies,
         shard: @shard,
         db_shard: @db_shard,
@@ -1412,10 +1437,18 @@ module OpenC3
       end
 
       @parent = nil
-      %w(DECOM COMMANDLOG PACKETLOG CLEANUP).each do |type|
-        unless @target_microservices[type]
-          @parent = "#{@scope}__MULTI__#{@name}"
-          break
+      @python_parent = nil
+      if @microservice_group
+        # Run in the group's shared MULTI microservices instead of this target's own
+        # (TARGET_MICROSERVICE isn't allowed in a group, see MicroserviceGroup.validate_member)
+        @parent = MicroserviceGroup.microservice_name(MicroserviceGroup::RUBY_TYPE, @microservice_group, scope: @scope)
+        @python_parent = MicroserviceGroup.microservice_name(MicroserviceGroup::PYTHON_TYPE, @microservice_group, scope: @scope)
+      else
+        %w(DECOM COMMANDLOG PACKETLOG CLEANUP).each do |type|
+          unless @target_microservices[type]
+            @parent = "#{@scope}__MULTI__#{@name}"
+            break
+          end
         end
       end
 
@@ -1461,8 +1494,9 @@ module OpenC3
         end
       end
 
-      if @parent
+      if @parent and !@microservice_group
         # Multi Microservice to parent other target microservices
+        # (a microservice group's are created by MicroserviceGroup.update)
         deploy_multi_microservice(gem_path, variables)
       end
     end
@@ -1571,26 +1605,32 @@ module OpenC3
         # Only sync every period (default 1 second) to avoid hammering Redis
         # This is a trade off between speed and accuracy
         # The packet count is eventually consistent
-        @@sync_packet_count_data[packet.target_name] ||= {}
-        @@sync_packet_count_data[packet.target_name][packet.packet_name] ||= 0
-        @@sync_packet_count_data[packet.target_name][packet.packet_name] += 1
+        sync_data = nil
+        @@sync_packet_count_mutex.synchronize do
+          @@sync_packet_count_data[packet.target_name] ||= {}
+          @@sync_packet_count_data[packet.target_name][packet.packet_name] ||= 0
+          @@sync_packet_count_data[packet.target_name][packet.packet_name] += 1
 
-        # Ensures counters change between syncs
-        update_packet = System.telemetry.packet(packet.target_name, packet.packet_name)
-        update_packet.received_count += 1
-        packet.received_count = update_packet.received_count
+          # Ensures counters change between syncs
+          update_packet = System.telemetry.packet(packet.target_name, packet.packet_name)
+          update_packet.received_count += 1
+          packet.received_count = update_packet.received_count
 
-        # Check if we need to sync the packet counts
-        if @@sync_packet_count_time.nil? or (Time.now - @@sync_packet_count_time) > @@sync_packet_count_delay_seconds
-          @@sync_packet_count_time = Time.now
+          # Check if we need to sync the packet counts
+          if @@sync_packet_count_time.nil? or (Time.now - @@sync_packet_count_time) > @@sync_packet_count_delay_seconds
+            @@sync_packet_count_time = Time.now
+            sync_data = @@sync_packet_count_data
+            @@sync_packet_count_data = {}
+          end
+        end
 
+        if sync_data
           # Increment global counters for packets received
-          @@sync_packet_count_data.each do |target_name, packet_data|
+          sync_data.each do |target_name, packet_data|
             packet_data.each do |packet_name, count|
               increment_telemetry_count(target_name, packet_name, count, scope: scope)
             end
           end
-          @@sync_packet_count_data = {}
 
           # Get all the packet counts with the global counters
           tlm_target_names.each do |target_name|

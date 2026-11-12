@@ -92,6 +92,32 @@ Target deployment also automatically creates several microservices for each targ
 - **TSDB** — Writes decommutated data to the time series database
 - **MULTI** — Parent microservice that manages child processes for orderly startup and shutdown
 
+DECOM, COMMANDLOG, PACKETLOG, and CLEANUP run as threads in the target's MULTI process. TSDB, and DECOM for a target with `LANGUAGE python`, run as their own Python processes.
+
+#### Sharing Processes Between Targets
+
+Each process uses roughly 80 to 100 MB of memory before it does any work, so a plugin with many targets can use a lot of memory. Targets that set [MICROSERVICE_GROUP](#microservice_group) to the same name keep their own microservices but run them in two processes shared by the whole group:
+
+| Microservice                     | Runs as threads                                                     |
+| -------------------------------- | ------------------------------------------------------------------- |
+| `<SCOPE>__MULTIGROUP__<GROUP>`   | Every member's DECOM (Ruby targets), COMMANDLOG, PACKETLOG, CLEANUP |
+| `<SCOPE>__PYMULTIGROUP__<GROUP>` | Every member's TSDB, and DECOM for Python targets                   |
+
+```cosmos
+TARGET THERMAL THERMAL
+  MICROSERVICE_GROUP HOUSEKEEPING
+TARGET POWER POWER
+  MICROSERVICE_GROUP HOUSEKEEPING
+```
+
+Each target keeps its own microservices (for example `DEFAULT__DECOM__THERMAL`), settings, and status. The demo plugin puts its targets in the `DEMO` group (set its `microservice_group` variable to blank to give each target its own processes). Targets in different plugins can share a group. Some things to consider:
+
+- All targets in a group must use the same [SHARD](#shard-1) and [DB_SHARD](#db_shard-1).
+- A group can only have Python targets from one plugin, because its Python process uses that plugin's Python packages.
+- MICROSERVICE_GROUP can't be combined with [TARGET_MICROSERVICE](#target_microservice).
+- Installing, upgrading, or removing any target in the group restarts the group's processes, which briefly pauses processing for every target in it.
+- The targets in a group share each process's CPU. Python threads in particular share one interpreter lock, so a group's Python process can fall behind sooner than separate processes would. Groups suit stable, low-rate targets. Give high-rate targets their own processes.
+
 ### Interface and Router Deployment
 
 Interfaces and routers each create a corresponding microservice that the operator starts as a running process. The microservice handles the physical connection (TCP, UDP, serial, etc.) and routes commands and telemetry to the appropriate Valkey pub/sub topics.

@@ -268,15 +268,19 @@ module OpenC3
     end
 
     # Reload all limits state from the store, used to recover from missed limits events
-    def self.resync_system(scope:)
+    # @param telemetry [Hash] Packets by target to update, default all in System
+    def self.resync_system(scope:, telemetry: nil)
       System.limits_set = current_set(scope: scope)
-      sync_system(scope: scope)
+      sync_system(scope: scope, telemetry: telemetry)
     end
 
     # Update the local System based on overall state
-    def self.sync_system(scope:)
+    # @param telemetry [Hash] Packets by target to update, default all in System.
+    #   Decom microservices sharing a process pass just their own targets because
+    #   disabling limits calls the target's limits change callback every time.
+    def self.sync_system(scope:, telemetry: nil)
       all_limits_settings = Store.hgetall("#{scope}__current_limits_settings")
-      telemetry = System.telemetry.all
+      telemetry ||= System.telemetry.all
       all_limits_settings.each do |item, limits_settings|
         target_name, packet_name, item_name = item.split('__')
         target = telemetry[target_name]

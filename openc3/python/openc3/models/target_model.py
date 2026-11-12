@@ -48,6 +48,8 @@ class TargetModel(Model):
     packet_cache_lock = threading.Lock()
     sync_packet_count_data = {}
     sync_packet_count_time = None
+    # Decom microservices sharing a process (a MULTI or MULTIGROUP) share these counts
+    sync_packet_count_lock = threading.Lock()
     sync_packet_count_delay_seconds = 1.0  # Sync packet counts every second
     stale_packet_keys_warned = set()  # Track stale keys already warned about
 
@@ -389,32 +391,36 @@ class TargetModel(Model):
             # Only sync every period (default 1 second) to avoid hammering Redis
             # This is a trade off between speed and accuracy
             # The packet count is eventually consistent
-            if cls.sync_packet_count_data.get(packet.target_name) is None:
-                cls.sync_packet_count_data[packet.target_name] = {}
-            if cls.sync_packet_count_data[packet.target_name].get(packet.packet_name) is None:
-                cls.sync_packet_count_data[packet.target_name][packet.packet_name] = 0
-            cls.sync_packet_count_data[packet.target_name][packet.packet_name] += 1
+            sync_data = None
+            with cls.sync_packet_count_lock:
+                if cls.sync_packet_count_data.get(packet.target_name) is None:
+                    cls.sync_packet_count_data[packet.target_name] = {}
+                if cls.sync_packet_count_data[packet.target_name].get(packet.packet_name) is None:
+                    cls.sync_packet_count_data[packet.target_name][packet.packet_name] = 0
+                cls.sync_packet_count_data[packet.target_name][packet.packet_name] += 1
 
-            # Ensures counters change between syncs
-            update_packet = System.telemetry.packet(packet.target_name, packet.packet_name)
-            update_packet.received_count += 1
-            packet.received_count = update_packet.received_count
+                # Ensures counters change between syncs
+                update_packet = System.telemetry.packet(packet.target_name, packet.packet_name)
+                update_packet.received_count += 1
+                packet.received_count = update_packet.received_count
 
-            # Check if we need to sync the packet counts
-            if (
-                cls.sync_packet_count_time is None
-                or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds
-            ):
-                cls.sync_packet_count_time = time.time()
+                # Check if we need to sync the packet counts
+                if (
+                    cls.sync_packet_count_time is None
+                    or (time.time() - cls.sync_packet_count_time) > cls.sync_packet_count_delay_seconds
+                ):
+                    cls.sync_packet_count_time = time.time()
+                    sync_data = cls.sync_packet_count_data
+                    cls.sync_packet_count_data = {}
 
+            if sync_data is not None:
                 # Increment global counters for packets received
                 for (
                     target_name,
                     packet_data,
-                ) in cls.sync_packet_count_data.items():
+                ) in sync_data.items():
                     for packet_name, count in packet_data.items():
                         TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=scope)
-                cls.sync_packet_count_data = {}
 
                 # Get all the packet counts with the global counters
                 for target_name in tlm_target_names:
@@ -533,6 +539,8 @@ class TargetModel(Model):
         shard=0,
         db_shard=0,
         stored_limits_mode="PROCESS",
+        microservice_group=None,
+        language=None,
         scope: str = OPENC3_SCOPE,
     ):
         if target_microservices is None:
@@ -551,6 +559,8 @@ class TargetModel(Model):
         self.db_shard = int(db_shard) if db_shard is not None else 0
         mode = str(stored_limits_mode).upper() if stored_limits_mode else "PROCESS"
         self.stored_limits_mode = mode if mode in ("PROCESS", "LOG", "DISABLE") else "PROCESS"
+        self.microservice_group = microservice_group
+        self.language = language
         super().__init__(
             f"{scope}__{self.PRIMARY_KEY}",
             name=name,

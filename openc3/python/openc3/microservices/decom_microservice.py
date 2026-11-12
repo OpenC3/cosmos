@@ -122,8 +122,25 @@ class DecomMicroservice(Microservice):
         # fire the callback synchronously for any persisted-disabled items.
         self.limits_response_queue = queue.Queue()
         self.limits_response_thread = None
-        System.telemetry.set_limits_change_callback(self.limits_change_callback)
-        LimitsEventTopic.sync_system(scope=self.scope)
+        # Only for this microservice's targets. Other decom microservices in the same
+        # process (a PYMULTIGROUP) share System and handle their own targets.
+        for target_name in self.target_names:
+            try:
+                for packet in System.telemetry.packets(target_name).values():
+                    packet.limits_change_callback = self.limits_change_callback
+            except RuntimeError:
+                pass  # Target has no telemetry
+        # Likewise only apply limits events to this microservice's targets. Disabling
+        # limits calls the target's limits change callback every time, so if every
+        # decom in the process applied every event, each disable would be reported
+        # (and its limits response run) once per decom. These are the live packet
+        # dicts so dynamically added packets are included.
+        self.limits_telemetry = {
+            target_name: packets
+            for target_name, packets in System.telemetry.all().items()
+            if target_name in self.target_names
+        }
+        LimitsEventTopic.sync_system(scope=self.scope, telemetry=self.limits_telemetry)
         target_model = TargetModel.get_model(name=self.target_names[0], scope=self.scope)
         self.stored_limits_mode = target_model.stored_limits_mode if target_model else "PROCESS"
         self.error_count = 0
@@ -159,7 +176,7 @@ class DecomMicroservice(Microservice):
                             limits_events_checked = True
                         self.limits_event_offset = msg_id
                         event = json.loads(msg_hash[b"event"])
-                        LimitsEventTopic.process_event(event, self.scope)
+                        LimitsEventTopic.process_event(event, self.scope, telemetry=self.limits_telemetry)
                     elif "__DECOMINTERFACE__" in topic:
                         if msg_hash.get(b"inject_tlm"):
                             handle_inject_tlm_with_ack(msg_hash[b"inject_tlm"], msg_id, self.scope, self.logger)
@@ -190,7 +207,7 @@ class DecomMicroservice(Microservice):
     def resync_if_limits_events_trimmed(self):
         if LimitsEventTopic.events_trimmed(self.limits_event_offset, self.scope, db_shard=self.db_shard):
             self.logger.warn(f"{self.name}: Limits events were trimmed before they could be read, resyncing limits")
-            LimitsEventTopic.resync_system(self.scope)
+            LimitsEventTopic.resync_system(self.scope, telemetry=self.limits_telemetry)
 
     def decom_packet(self, topic, msg_id, msg_hash, _redis):
         # OpenC3.in_span("decom_packet") do

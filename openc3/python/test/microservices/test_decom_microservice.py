@@ -559,6 +559,56 @@ class TestDecomMicroserviceStoredLimitsMode(unittest.TestCase):
 
 # INST is installed on db_shard 1 and so is its decom microservice. Raw
 # telemetry, decom requests and their results all stay on db_shard 1.
+class TestDecomMicroserviceSharingAProcess(unittest.TestCase):
+    """Decom microservices in one PYMULTIGROUP process share System"""
+
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
+        self.decoms = {}
+        for target_name in ("INST", "SYSTEM"):
+            TargetModel(name=target_name, scope="DEFAULT").create()
+            MicroserviceModel(
+                f"DEFAULT__DECOM__{target_name}",
+                scope="DEFAULT",
+                topics=[f"DEFAULT__TELEMETRY__{{{target_name}}}__HEALTH_STATUS"],
+                target_names=[target_name],
+            ).create()
+
+    def start(self):
+        for target_name in ("INST", "SYSTEM"):
+            with patch("openc3.microservices.microservice.System"):
+                self.decoms[target_name] = DecomMicroservice(f"DEFAULT__DECOM__{target_name}")
+
+    def tearDown(self):
+        for decom in self.decoms.values():
+            decom.shutdown()
+
+    def test_gets_limits_changes_for_its_own_target_only(self):
+        self.start()
+        for target_name, decom in self.decoms.items():
+            for packet in System.telemetry.packets(target_name).values():
+                self.assertIs(packet.limits_change_callback.__self__, decom)
+
+    def test_applies_limits_events_to_its_own_targets_only(self):
+        self.start()
+        self.assertEqual(list(self.decoms["INST"].limits_telemetry.keys()), ["INST"])
+        self.assertEqual(list(self.decoms["SYSTEM"].limits_telemetry.keys()), ["SYSTEM"])
+
+    def test_reports_a_persisted_limits_disable_once_not_once_per_decom(self):
+        # Disabling limits calls the target's limits change callback every time,
+        # so each decom syncing every target would report it once per decom
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", json.dumps({"enabled": False}))
+        self.start()
+        disabled = [
+            event
+            for _, event in LimitsEventTopic.read(0, scope="DEFAULT")
+            if event["type"] == "LIMITS_CHANGE" and event["target_name"] == "INST" and event["item_name"] == "TEMP1"
+        ]
+        self.assertEqual(len(disabled), 1)
+        self.assertFalse(System.telemetry.packet("INST", "HEALTH_STATUS").get_item("TEMP1").limits.enabled)
+
+
 class TestDecomMicroserviceMultipleDbShards(unittest.TestCase):
     @patch("openc3.system.system.System.limits_set")
     @patch("openc3.microservices.microservice.System")

@@ -282,17 +282,22 @@ class LimitsEventTopic(Topic):
 
     # Reload all limits state from the store, used to recover from missed limits events.
     # System.limits_set() always queries Redis so only the item settings need syncing.
+    # telemetry is the packets by target to update, default all in System
     @classmethod
-    def resync_system(cls, scope):
-        cls.sync_system(scope)
+    def resync_system(cls, scope, telemetry=None):
+        cls.sync_system(scope, telemetry=telemetry)
 
     # Update the local System based on overall state
+    # telemetry is the packets by target to update, default all in System.
+    # Decom microservices sharing a process pass just their own targets because
+    # disabling limits calls the target's limits change callback every time.
     @classmethod
-    def sync_system(cls, scope):
+    def sync_system(cls, scope, telemetry=None):
         all_limits_settings = Store.hgetall(f"{scope}__current_limits_settings")
         # decode the binary string keys to strings
         all_limits_settings = {k.decode(): v for (k, v) in all_limits_settings.items()}
-        telemetry = System.telemetry.all()
+        if telemetry is None:
+            telemetry = System.telemetry.all()
         for item, limits_settings in all_limits_settings.items():
             target_name, packet_name, item_name = item.split("__")
             target = telemetry.get(target_name, None)
