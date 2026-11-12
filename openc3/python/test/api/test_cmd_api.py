@@ -112,9 +112,11 @@ class TestCmdApi(unittest.TestCase):
         # The handler thread starts reading from the newest message the first time it reads a topic.
         # Wait for it to record its offsets or a command written before then is never seen (and acked).
         offsets = EphemeralStore.instance().topic_offsets
-        cmd_topic = "{DEFAULT__CMD}TARGET__INST"
+        topics = [f"{{DEFAULT__CMD}}TARGET__{name}" for name in self.interface.cmd_target_names]
+        topics.append(f"{{DEFAULT__CMD}}INTERFACE__{self.interface.name}")
+        topics.append("OPENC3__SYSTEM__EVENTS")
         deadline = time.time() + 5
-        while cmd_topic not in offsets.get(self.thread.native_id, {}):
+        while not all(topic in offsets.get(self.thread.native_id, {}) for topic in topics):
             if time.time() > deadline:
                 self.fail("Interface cmd handler thread never started reading")
             time.sleep(0.001)
