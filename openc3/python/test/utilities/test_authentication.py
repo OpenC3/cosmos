@@ -588,6 +588,24 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
         self.assertNotIn("m2m_secret", error_msg)
 
     @patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", "m2m_secret")
+    @patch("openc3.utilities.authentication.OPENC3_DEVEL", "1")
+    def test_client_secret_obfuscated_in_logs_when_devel_enabled(self):
+        """Obfuscates the client secret in error messages when development logging is on."""
+        auth = OpenC3KeycloakAuthentication(self.test_url)
+        mock_response = Mock()
+        mock_response.status_code = 401
+        mock_response.headers = {}
+        mock_response.text = '{"error":"invalid_client"}'
+        auth.http.post = Mock(return_value=mock_response)
+
+        with self.assertRaises(OpenC3AuthenticationError) as context:
+            auth.token()
+
+        error_msg = str(context.exception)
+        self.assertIn("***", error_msg)
+        self.assertNotIn("m2m_secret", error_msg)
+
+    @patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", "m2m_secret")
     def test_client_credentials_reuses_valid_token(self):
         """Reuses a valid client_credentials token without re-minting."""
         auth = OpenC3KeycloakAuthentication(self.test_url)

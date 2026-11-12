@@ -221,20 +221,18 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
         realm = OPENC3_KEYCLOAK_REALM or "openc3"
         url = f"{self.url}/realms/{realm}/protocol/openid-connect/token"
 
-        # Obfuscate password, client secret, and refresh token in logs unless
-        # debug mode is enabled
-        if OPENC3_DEVEL:
-            log_data = str(data)
-        else:
-            # Create a copy of the dict with sensitive values obfuscated
-            log_data = data.copy()
+        # Obfuscate client_secret in all logs, and password/refresh token
+        # unless debug mode is enabled
+        log_data = data.copy()
+        if "client_secret" in log_data:
+            log_data["client_secret"] = "***"
+        if not OPENC3_DEVEL:
+            # Create a copy of the dict with the remaining sensitive values obfuscated
             if "password" in log_data:
                 log_data["password"] = "***"
-            if "client_secret" in log_data:
-                log_data["client_secret"] = "***"
             if "refresh_token" in log_data:
                 log_data["refresh_token"] = "***"
-            log_data = str(log_data)
+        log_data = str(log_data)
 
         self.log[0] = f"request uri: {url} header: {headers} body: {log_data}"
         # print(self.log[0])

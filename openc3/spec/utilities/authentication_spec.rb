@@ -242,6 +242,30 @@ module OpenC3
             expect(error.message).not_to include('m2m-secret')
           end
         end
+
+        it "obfuscates client_secret when debug is enabled" do
+          allow(JsonDRb).to receive(:debug?).and_return(true)
+          stdout = StringIO.new('', 'r+')
+          saved_stdout = $stdout
+          $stdout = stdout
+          saved_stdout_const = Object.const_get(:STDOUT)
+          OpenC3.disable_warnings { Object.const_set(:STDOUT, stdout) }
+
+          begin
+            expect {
+              auth.token
+            }.to raise_error(OpenC3AuthenticationError) do |error|
+              expect(error.message).to match(/"client_secret"\s*=>\s*"\*\*\*"/)
+              expect(error.message).not_to include('m2m-secret')
+            end
+          ensure
+            $stdout = saved_stdout
+            OpenC3.disable_warnings { Object.const_set(:STDOUT, saved_stdout_const) }
+          end
+
+          expect(stdout.string).to match(/"client_secret"\s*=>\s*"\*\*\*"/)
+          expect(stdout.string).not_to include('m2m-secret')
+        end
       end
     end
 
