@@ -24,7 +24,13 @@
   />
 
   <div class="tree-node">
-    <div v-if="showNode" class="node-content" @click="handleClick(node)">
+    <div
+      v-if="showNode"
+      class="node-content"
+      :class="{ 'bg-primary': !node.children && node.path === selected }"
+      :data-path="node.path"
+      @click="handleClick(node)"
+    >
       <div class="content-wrapper">
         <v-icon
           v-if="node.children"
@@ -81,6 +87,7 @@
         :node="child"
         :search="search"
         :type="type"
+        :selected="selected"
         @node-toggled="bubbleNodeToggled"
         @request="bubbleNodeRequest"
       ></tree-node>
@@ -103,6 +110,11 @@ const props = defineProps({
   type: {
     type: String,
     default: 'open',
+  },
+  // Path of the selected file, highlighted in the tree
+  selected: {
+    type: String,
+    default: null,
   },
 })
 

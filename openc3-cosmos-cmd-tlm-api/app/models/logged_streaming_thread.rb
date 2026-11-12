@@ -109,6 +109,7 @@ class LoggedStreamingThread < StreamingThread
 
   def tsdb_thread_body(objects)
     topics, offsets, item_objects_by_topic, packet_objects_by_topic = @collection.topics_offsets_and_objects
+    @tsdb_table_names = {} # Refresh the known tables once per pass
     done = false
 
     unless item_objects_by_topic.empty?
@@ -358,6 +359,7 @@ class LoggedStreamingThread < StreamingThread
     end
 
     # Filter to tables that exist and have data in the queried range
+    per_table.select! { |table_name, meta| tsdb_table_exists?(table_name, meta[:db_shard]) }
     if per_table.size > 1
       per_table.select! do |table_name, meta|
         db_shard = meta[:db_shard]
@@ -508,6 +510,13 @@ class LoggedStreamingThread < StreamingThread
     end
 
     return end_time ? true : false if objects_by_table_and_mode.empty?
+
+    # Skip tables that don't exist (yet). The TSDB microservice creates them at startup,
+    # which can take a while for targets with thousands of packets; dynamically added
+    # packets and tables dropped via Admin also have no table until the next write.
+    # Querying a missing table raises QuestDBError and kills this thread.
+    objects_by_table_and_mode.select! { |(table_name, _stream_mode), group_info| tsdb_table_exists?(table_name, group_info[:db_shard]) }
+    return past_end_time?(end_time) ? true : false if objects_by_table_and_mode.empty?
 
     done = false
 
@@ -703,6 +712,13 @@ class LoggedStreamingThread < StreamingThread
       objects_by_table[table_name][:objects] << object
     end
 
+    # Skip tables that don't exist (yet). The TSDB microservice creates them at startup,
+    # which can take a while for targets with thousands of packets; dynamically added
+    # packets and tables dropped via Admin also have no table until the next write.
+    # Querying a missing table raises QuestDBError and kills this thread.
+    objects_by_table.select! { |table_name, group_info| tsdb_table_exists?(table_name, group_info[:db_shard]) }
+    return past_end_time?(end_time) ? true : false if objects_by_table.empty?
+
     done = false
 
     objects_by_table.each do |table_name, group_info|
@@ -765,6 +781,13 @@ class LoggedStreamingThread < StreamingThread
       objects_by_table_and_mode[key][:objects] << object
     end
 
+    # Skip tables that don't exist (yet). The TSDB microservice creates them at startup,
+    # which can take a while for targets with thousands of packets; dynamically added
+    # packets and tables dropped via Admin also have no table until the next write.
+    # Querying a missing table raises QuestDBError and kills this thread.
+    objects_by_table_and_mode.select! { |(table_name, _stream_mode), group_info| tsdb_table_exists?(table_name, group_info[:db_shard]) }
+    return past_end_time?(end_time) ? true : false if objects_by_table_and_mode.empty?
+
     done = false
 
     objects_by_table_and_mode.each do |(table_name, stream_mode), group_info|
@@ -823,6 +846,18 @@ class LoggedStreamingThread < StreamingThread
       end
     end
     [start_time, end_time]
+  end
+
+  # Returns true if the TSDB table exists. All table names for a db_shard are fetched
+  # with a single query per pass so streams covering thousands of packets don't query
+  # (and error on) a table per packet. If the names can't be fetched assume it exists.
+  def tsdb_table_exists?(table_name, db_shard)
+    @tsdb_table_names ||= {}
+    unless @tsdb_table_names.key?(db_shard)
+      @tsdb_table_names[db_shard] = OpenC3::QuestDBClient.table_names(db_shard: db_shard)
+    end
+    table_names = @tsdb_table_names[db_shard]
+    table_names.nil? or table_names.include?(table_name.upcase)
   end
 
   # Updates @last_tsdb_times for the given topic if time_ns is newer.

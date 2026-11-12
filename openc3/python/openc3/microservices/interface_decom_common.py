@@ -24,6 +24,16 @@ from openc3.utilities.store import Store
 from openc3.utilities.time import from_nsec_from_epoch, to_nsec_from_epoch
 
 
+def _variable_length_item_names(packet, item_names):
+    """Names of the length items owned by the variable sized items in item_names"""
+    length_item_names = set()
+    for name in item_names:
+        item = packet.items.get(str(name).upper())
+        if item is not None and item.variable_bit_size:
+            length_item_names.add(item.variable_bit_size["length_item_name"].upper())
+    return length_item_names
+
+
 def handle_inject_tlm(inject_tlm_json, scope):
     inject_tlm_hash = json.loads(inject_tlm_json, cls=JsonDecoder)
     target_name = inject_tlm_hash["target_name"]
@@ -32,7 +42,12 @@ def handle_inject_tlm(inject_tlm_json, scope):
     data_type = str(inject_tlm_hash["type"])
     packet = System.telemetry.packet(target_name, packet_name)
     if item_hash:
+        length_item_names = _variable_length_item_names(packet, item_hash.keys())
         for name, value in item_hash.items():
+            # Writing the variable sized item sets its length item, and writing the
+            # length item first would make the item's current size disagree with the buffer
+            if str(name).upper() in length_item_names:
+                continue
             packet.write(str(name), value, data_type)
     stored = inject_tlm_hash.get("stored", False)
     packet.stored = str(stored).lower() == "true"
@@ -49,6 +64,8 @@ def handle_inject_tlm(inject_tlm_json, scope):
 def handle_inject_tlm_with_ack(inject_tlm_json, msg_id, scope, logger=None):
     inject_tlm_hash = json.loads(inject_tlm_json, cls=JsonDecoder)
     target_name = inject_tlm_hash["target_name"]
+    # Ack on the db_shard of the target where DecomInterfaceTopic.inject_tlm waits for it
+    db_shard = Store.db_shard_for_target(target_name, scope=scope)
     ack_topic = f"{{{scope}__ACKCMD}}TARGET__{target_name}"
     try:
         handle_inject_tlm(inject_tlm_json, scope)
@@ -57,7 +74,7 @@ def handle_inject_tlm_with_ack(inject_tlm_json, msg_id, scope, logger=None):
         if logger:
             logger.error(f"inject_tlm error due to {error}")
         msg_hash = {"id": msg_id, "result": str(error)}
-    Topic.write_topic(ack_topic, msg_hash)
+    Topic.write_topic(ack_topic, msg_hash, db_shard=db_shard)
 
 
 def handle_build_cmd(build_cmd_json, msg_id, scope):

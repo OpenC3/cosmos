@@ -16,13 +16,13 @@
 */
 
 import { OpenC3Api } from '@openc3/js-common/services'
-import { getKeywords, groupBy } from './utilities'
+import { getKeywords, groupBy, escapeRegExp } from './utilities'
 
 const toKeywordRegex = (word) => {
   // create regex to find the opening of a ruby method call
   const prefix = '(^|[{\\(\\s])' // Allowable characters before the method name: start of line or { or ( or a space
   const call = '((\\s.+)|(\\(.+\\)))' // A method call and its arguments
-  return new RegExp(`${prefix}${word}${call}`)
+  return new RegExp(`${prefix}${escapeRegExp(word)}${call}`)
 }
 const interpolatedStringRegex = /\{/
 const alternateSyntaxRegex = /['"],\s?['"]/

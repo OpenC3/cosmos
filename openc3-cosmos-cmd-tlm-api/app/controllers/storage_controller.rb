@@ -41,14 +41,23 @@ class StorageController < ApplicationController
   VOLUME_DOWNLOAD_KEY_PREFIX = 'openc3_volume_download__'
   VOLUME_DOWNLOAD_TOKEN_EXPIRE_SECONDS = 60
 
-  # Check if a bucket requires RBAC (config and logs do, tools does not)
+  # Buckets COSMOS itself manages. Writes to these are admin-only (apart from the
+  # config overlay, see non_admin_bucket_write?) because COSMOS loads their contents:
+  # tools holds the tool JavaScript, config the target definitions, logs the data.
+  STANDARD_BUCKETS = ['OPENC3_CONFIG_BUCKET', 'OPENC3_LOGS_BUCKET', 'OPENC3_TOOLS_BUCKET'].freeze
+
+  # Bucket parameters name an OPENC3_*_BUCKET environment variable. Anything else is
+  # rejected before ENV is read so the parameter can't read back other variables
+  # such as passwords (the bucket name is echoed in presigned URLs and errors).
+  BUCKET_PARAM_REGEX = /\AOPENC3_.+_BUCKET\z/
+  VOLUME_PARAM_REGEX = /\AOPENC3_.+_VOLUME\z/
+
+  # Check if a bucket requires RBAC (config and logs do, tools and user-defined buckets do not)
   def bucket_requires_rbac?(bucket_param)
-    # Tools bucket is accessible to all users with system permission
-    return false if bucket_param == 'OPENC3_TOOLS_BUCKET'
-    # Config and logs buckets require scope-based RBAC
-    return true if bucket_param == 'OPENC3_CONFIG_BUCKET' || bucket_param == 'OPENC3_LOGS_BUCKET'
-    # Default to requiring RBAC for unknown buckets
-    true
+    # Config and logs buckets require scope-based RBAC. The tools bucket and
+    # user-defined buckets have no path conventions and are accessible to all
+    # users with system permission.
+    config_bucket?(bucket_param) || logs_bucket?(bucket_param)
   end
 
   # Extract the scope from a bucket path (first component)
@@ -72,17 +81,15 @@ class StorageController < ApplicationController
     parts = path.split('/').reject(&:empty?)
     return nil if parts.length < 3 # Need at least scope/folder/target
 
-    if bucket_param == 'OPENC3_CONFIG_BUCKET'
+    if config_bucket?(bucket_param)
       # Config bucket: {SCOPE}/targets/{TARGET_NAME}/... or {SCOPE}/targets_modified/{TARGET_NAME}/... or {SCOPE}/target_archives/{TARGET_NAME}/...
       if CONFIG_TARGET_DIRECTORIES.include?(parts[1])
         return parts[2] if parts.length >= 3
       end
-    elsif bucket_param == 'OPENC3_LOGS_BUCKET'
+    elsif logs_bucket?(bucket_param) && parts.length >= 4 && parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
       # Logs bucket: {SCOPE}/{type}_logs/{tlm|cmd}/{TARGET_NAME}/...
       # Examples: DEFAULT/decom_logs/tlm/INST/..., DEFAULT/raw_logs/cmd/INST/...
-      if parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
-        return parts[3] if parts.length >= 4
-      end
+      return parts[3]
     end
     nil
   end
@@ -93,23 +100,21 @@ class StorageController < ApplicationController
     return nil if path.nil? || path.empty?
     parts = path.split('/').reject(&:empty?)
 
-    if bucket_param == 'OPENC3_CONFIG_BUCKET'
+    if config_bucket?(bucket_param)
       # Targets are listed at depth 2: {SCOPE}/targets/ or {SCOPE}/targets_modified/ or {SCOPE}/target_archives/
       if parts.length == 2 && CONFIG_TARGET_DIRECTORIES.include?(parts[1])
         return 2
       end
-    elsif bucket_param == 'OPENC3_LOGS_BUCKET'
+    elsif logs_bucket?(bucket_param) && parts.length == 3 && parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
       # Targets are listed at depth 3: {SCOPE}/{type}_logs/{tlm|cmd}/
-      if parts.length == 3 && parts[1] =~ /_logs$/ && (parts[2] == 'tlm' || parts[2] == 'cmd')
-        return 3
-      end
+      return 3
     end
     nil
   end
 
   # Authorize access to a bucket path based on scope and optionally target
   # Returns true if authorized, false otherwise
-  # For tools bucket: always authorized (with basic system permission)
+  # For tools and user-defined buckets: always authorized (with basic system permission)
   # For config/logs buckets: checks if user has access to the scope and target in the path
   # When a target is in the path, uses 'tlm' permission as the baseline for access
   def authorize_bucket_path(bucket_param, path, permission: 'system')
@@ -189,9 +194,12 @@ class StorageController < ApplicationController
 
   def files
     return unless authorization('system')
+    unless bucket_param?(params[:root]) || volume_param?(params[:root])
+      raise StorageError, "Unknown bucket / volume #{params[:root]}"
+    end
     root = ENV.fetch(params[:root]) { |name| raise StorageError, "Unknown bucket / volume #{name}" }
     results = []
-    if params[:root].include?('_BUCKET')
+    if bucket_param?(params[:root])
       bucket = OpenC3::Bucket.getClient()
       path = sanitize_path(params[:path])
       path = '/' if path.empty?
@@ -241,7 +249,7 @@ class StorageController < ApplicationController
           end
         end
       end
-    elsif params[:root].include?('_VOLUME')
+    else
       dirs = []
       files = []
       path = sanitize_path(params[:path])
@@ -256,8 +264,6 @@ class StorageController < ApplicationController
       end
       results << dirs
       results << files
-    else
-      raise StorageError, "Unknown root #{params[:root]}"
     end
     render json: results
   rescue OpenC3::Bucket::NotFound => e
@@ -272,7 +278,7 @@ class StorageController < ApplicationController
   def exists
     return unless authorization('system')
     params.require(:bucket)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
+    bucket_name = resolve_bucket(params[:bucket])
     path = sanitize_path(params[:object_id])
 
     # Check scope-based RBAC for config and logs buckets
@@ -374,7 +380,7 @@ class StorageController < ApplicationController
   def get_volume_download_token
     return unless authorization('system')
     params.require(:volume)
-    volume_name = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
+    volume_name = resolve_volume(params[:volume])
     object_id = sanitize_path(params[:object_id])
     if object_id.empty? || object_id == 'null'
       render json: { status: 'error', message: "Invalid object_id: #{params[:object_id]}" }, status: :not_found
@@ -462,7 +468,7 @@ class StorageController < ApplicationController
   def get_download_presigned_request
     return unless authorization('system')
     params.require(:bucket)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
+    bucket_name = resolve_bucket(params[:bucket])
     path = sanitize_path(params[:object_id])
 
     # Check scope-based RBAC for config and logs buckets
@@ -494,7 +500,7 @@ class StorageController < ApplicationController
   def get_upload_presigned_request
     return unless authorization('system_set')
     params.require(:bucket)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
+    bucket_name = resolve_bucket(params[:bucket])
     path = sanitize_path(params[:object_id])
 
     # Check scope-based RBAC for config and logs buckets
@@ -506,10 +512,11 @@ class StorageController < ApplicationController
       end
     end
 
-    # Non-admins may only write the user-writable overlay (config/SCOPE/targets_modified
-    # or config/SCOPE/tmp), and never the cmd_tlm or tables/config overlay, whose
-    # GENERIC_*_CONVERSION blocks are evaluated as code. Everything else is admin.
-    return if !non_admin_config_overlay_write?(params[:bucket], path) && !authorization('admin')
+    # Non-admins may write user-defined buckets and the user-writable config overlay
+    # (config/SCOPE/targets_modified or config/SCOPE/tmp), but never the cmd_tlm or
+    # tables/config overlay, whose GENERIC_*_CONVERSION blocks are evaluated as code.
+    # Everything else in the standard buckets is admin.
+    return if !non_admin_bucket_write?(params[:bucket], path) && !authorization('admin')
 
     if local_only_config_key?(params[:bucket], path)
       render_local_only_error(path)
@@ -537,7 +544,7 @@ class StorageController < ApplicationController
   def upload_file
     return unless authorization('system_set')
     params.require(:bucket)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
+    bucket_name = resolve_bucket(params[:bucket])
     path = sanitize_path(params[:object_id])
     raise StorageError, "Missing contents" unless params.key?(:contents)
 
@@ -548,14 +555,14 @@ class StorageController < ApplicationController
       return
     end
 
-    # Same rule as get_upload_presigned_request: non-admins may only write the
-    # user-writable overlay, and never the cmd_tlm overlay. Everything else is admin.
-    return if !non_admin_config_overlay_write?(params[:bucket], path) && !authorization('admin')
+    # Same rule as get_upload_presigned_request: non-admins may only write user-defined
+    # buckets and the user-writable overlay, never the cmd_tlm overlay. Everything else is admin.
+    return if !non_admin_bucket_write?(params[:bucket], path) && !authorization('admin')
 
     data = Base64.decode64(params[:contents].to_s)
     local_only = local_only_config_key?(params[:bucket], path)
     # Mirror targets_modified writes into the local mode volume like TargetFile.create
-    if local_only || (ENV['OPENC3_LOCAL_MODE'] && params[:bucket] == 'OPENC3_CONFIG_BUCKET' && path.split('/')[1] == 'targets_modified')
+    if local_only || (local_mode_config_bucket?(params[:bucket]) && path.split('/')[1] == 'targets_modified')
       raise StorageError, "Invalid path: #{path}" unless OpenC3::LocalMode.key_path(path)
       OpenC3::LocalMode.put_target_file(path, data, scope: path.split('/')[0])
     end
@@ -723,24 +730,110 @@ class StorageController < ApplicationController
 
   private
 
-  # True if the given config-bucket key is an overlay path a non-admin is allowed
-  # to write. Non-admins may write config/SCOPE/targets_modified/... and
-  # config/SCOPE/tmp/..., but NOT the code areas
-  # (config/SCOPE/targets_modified/TARGET/cmd_tlm/... and .../tables/config/...),
-  # whose GENERIC_*_CONVERSION blocks are evaluated as code.
+  def bucket_param?(bucket_param)
+    bucket_param.is_a?(String) && BUCKET_PARAM_REGEX.match?(bucket_param)
+  end
+
+  # Resolve a bucket parameter (the name of an OPENC3_*_BUCKET variable) to the bucket name
+  def resolve_bucket(bucket_param)
+    raise StorageError, "Unknown bucket #{bucket_param}" unless bucket_param?(bucket_param)
+    ENV.fetch(bucket_param) { |name| raise StorageError, "Unknown bucket #{name}" }
+  end
+
+  def volume_param?(volume_param)
+    volume_param.is_a?(String) && VOLUME_PARAM_REGEX.match?(volume_param)
+  end
+
+  # Resolve a volume parameter (the name of an OPENC3_*_VOLUME variable) to the volume path.
+  # Without the allow-list any environment variable could be named, disclosing its value
+  # in error messages or exposing files under any directory it points at.
+  def resolve_volume(volume_param)
+    raise StorageError, "Unknown volume #{volume_param}" unless volume_param?(volume_param)
+    ENV.fetch(volume_param) { |name| raise StorageError, "Unknown volume #{name}" }
+  end
+
+  # Buckets are classified by the bucket they resolve to rather than the parameter
+  # name, so another OPENC3_*_BUCKET variable pointing at a standard bucket gets
+  # that bucket's access controls.
+  def resolves_to_bucket?(bucket_param, standard_param)
+    return false unless bucket_param?(bucket_param)
+    bucket_name = ENV.fetch(bucket_param, '')
+    !bucket_name.empty? && bucket_name == ENV.fetch(standard_param, nil)
+  end
+
+  def config_bucket?(bucket_param)
+    resolves_to_bucket?(bucket_param, 'OPENC3_CONFIG_BUCKET')
+  end
+
+  def logs_bucket?(bucket_param)
+    resolves_to_bucket?(bucket_param, 'OPENC3_LOGS_BUCKET')
+  end
+
+  def standard_bucket?(bucket_param)
+    STANDARD_BUCKETS.any? { |standard_param| resolves_to_bucket?(bucket_param, standard_param) }
+  end
+
+  # True if a non-admin (system_set) user may write the given bucket key.
+  # User-defined buckets (any other OPENC3_*_BUCKET) are writable by non-admins
+  # anywhere, with no scope-based path requirements (see bucket_requires_rbac?).
+  # In the standard buckets only the config overlay is non-admin writable.
+  def non_admin_bucket_write?(bucket_param, path)
+    return true unless standard_bucket?(bucket_param)
+    non_admin_config_overlay_write?(bucket_param, path)
+  end
+
+  # True if the caller holds the permission tier required to write the given
+  # config-bucket key, short of admin (admin is checked by the caller as a
+  # fallback). The tiers are:
+  #   - config/SCOPE/targets_modified/TARGET/cmd_tlm/... and .../tables/config/...
+  #     are evaluated as code by the decom / table microservices -> admin
+  #     (returns false here so the caller's admin fallback applies).
+  #   - config/SCOPE/targets_modified/TARGET/... (procedures, lib, screens,
+  #     __TEMP__, ...) are executed by Script Runner (run directly, required, or
+  #     loaded via Script.body / bucket_load) -> script_edit. system_set alone is
+  #     not enough, otherwise a runner (system_set + script_run, no script_edit)
+  #     could upload code and then run it (GHSA-jjq7-m736-w977 follow-up).
+  #   - config/SCOPE/tmp/... scratch is not a loadable target path -> system_set.
   #
   # The canonical-key and code-area rules live in OpenC3::ConfigOverlay so every
   # writer that can reach the overlay (this presigned upload, tables_controller,
   # scripts_controller) enforces exactly the same thing.
   def non_admin_config_overlay_write?(bucket_param, path)
-    return false unless bucket_param == 'OPENC3_CONFIG_BUCKET'
-    OpenC3::ConfigOverlay.non_admin_writable_key?(path)
+    return false unless config_bucket?(bucket_param)
+    return false unless OpenC3::ConfigOverlay.non_admin_writable_key?(path)
+    return true unless OpenC3::ConfigOverlay.script_edit_overlay_key?(path)
+    authorize_for_path_scope('script_edit', path)
+  end
+
+  # Check a permission against the scope in the bucket key rather than
+  # params[:scope], so a caller with the permission in one scope can't write a
+  # key in another scope. Results are cached per request because
+  # delete_bucket_directory checks every listed key.
+  def authorize_for_path_scope(permission, path)
+    path_scope = extract_scope_from_path(path)
+    @path_scope_authorizations ||= {}
+    @path_scope_authorizations.fetch([permission, path_scope]) do |cache_key|
+      @path_scope_authorizations[cache_key] =
+        begin
+          authorize(permission: permission, scope: path_scope, token: request.headers['HTTP_AUTHORIZATION'])
+          true
+        rescue OpenC3::AuthError, OpenC3::ForbiddenError
+          false
+        end
+    end
   end
 
   # True if the config-bucket key belongs to a target in OPENC3_LOCAL_ONLY_TARGETS.
   # Those files only live in the local mode volume and never in the bucket.
   def local_only_config_key?(bucket_param, path)
-    bucket_param == 'OPENC3_CONFIG_BUCKET' && OpenC3::LocalMode.local_only_key?(path)
+    config_bucket?(bucket_param) && OpenC3::LocalMode.local_only_key?(path)
+  end
+
+  # True if local mode is enabled and the bucket is the config bucket, the only
+  # bucket mirrored into the local mode volume. Other buckets can share key names
+  # with config keys, so they must never touch the local mode volume.
+  def local_mode_config_bucket?(bucket_param)
+    ENV.fetch('OPENC3_LOCAL_MODE', false) && config_bucket?(bucket_param)
   end
 
   def render_local_only_error(path)
@@ -763,7 +856,7 @@ class StorageController < ApplicationController
 
   def delete_bucket_item(params)
     params.require(:bucket)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
+    bucket_name = resolve_bucket(params[:bucket])
     path = sanitize_path(params[:object_id])
 
     # Check scope-based RBAC for config and logs buckets
@@ -775,12 +868,14 @@ class StorageController < ApplicationController
       end
     end
 
-    # Non-admins may only touch the user-writable config overlay (targets_modified or
-    # tmp), never the cmd_tlm overlay which is evaluated as code. Everything else is admin.
-    authorized = non_admin_config_overlay_write?(params[:bucket], path) || authorization('admin')
+    # Non-admins may only touch user-defined buckets and the user-writable config overlay
+    # (targets_modified or tmp), never the cmd_tlm overlay which is evaluated as code.
+    # Everything else is admin.
+    authorized = non_admin_bucket_write?(params[:bucket], path) || authorization('admin')
 
     if authorized
-      if ENV.fetch('OPENC3_LOCAL_MODE', false) || local_only_config_key?(params[:bucket], path)
+      # The local mode volume only mirrors the config bucket
+      if local_mode_config_bucket?(params[:bucket]) || local_only_config_key?(params[:bucket], path)
         OpenC3::LocalMode.delete_local(path)
       end
 
@@ -796,7 +891,7 @@ class StorageController < ApplicationController
   def delete_volume_item(params)
     # Deleting requires admin
     if authorization('admin')
-      volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
+      volume = resolve_volume(params[:volume])
       filename = "/#{volume}/#{params[:object_id]}"
       filename = sanitize_path(filename)
       FileUtils.rm filename
@@ -808,12 +903,12 @@ class StorageController < ApplicationController
   end
 
   def delete_bucket_directory(params)
-    bucket_name = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
+    bucket_name = resolve_bucket(params[:bucket])
 
     path = sanitize_path(params[:object_id])
-    # Evaluate the overlay check on the canonical (un-slashed) path before appending
-    # the trailing slash, since the helper rejects trailing slashes.
-    overlay_write = non_admin_config_overlay_write?(params[:bucket], path)
+    # Evaluate the non-admin check on the canonical (un-slashed) path before appending
+    # the trailing slash, since the overlay helper rejects trailing slashes.
+    non_admin_write = non_admin_bucket_write?(params[:bucket], path)
     path = "#{path}/" unless path.end_with?('/')
 
     # Check scope-based RBAC
@@ -823,15 +918,16 @@ class StorageController < ApplicationController
       return false
     end
 
-    # Non-admins may only touch the user-writable config overlay (targets_modified or
-    # tmp), never the cmd_tlm overlay which is evaluated as code. Everything else is admin.
-    return false unless overlay_write || authorization('admin')
+    # Non-admins may only touch user-defined buckets and the user-writable config overlay
+    # (targets_modified or tmp), never the code areas (cmd_tlm, tables/config).
+    # Everything else is admin.
+    return false unless non_admin_write || authorization('admin')
 
     # List all objects under the prefix (same pattern as TargetModel#undeploy)
     bucket = OpenC3::Bucket.getClient()
     objects = bucket.list_objects(bucket: bucket_name, prefix: path)
     keys = objects.map(&:key).reject { |key| local_only_config_key?(params[:bucket], key) }
-    if params[:bucket] == 'OPENC3_CONFIG_BUCKET' && !OpenC3::LocalMode.local_only_targets.empty?
+    if config_bucket?(params[:bucket]) && !OpenC3::LocalMode.local_only_targets.empty?
       # Local only target files live only in the local mode volume. Only look at an
       # existing directory so this never creates directories for arbitrary paths.
       local_dir = OpenC3::LocalMode.key_path(path.chomp('/'))
@@ -842,6 +938,13 @@ class StorageController < ApplicationController
           keys << key if OpenC3::LocalMode.local_only_key?(key)
         end
       end
+    end
+
+    # The prefix check alone isn't enough for a non-admin: a prefix such as
+    # DEFAULT/targets_modified/INST/tables/ passes, yet contains the admin-only
+    # INST/tables/config/..., so every listed key must pass the same check.
+    if non_admin_write && !keys.all? { |key| non_admin_bucket_write?(params[:bucket], key) }
+      return false unless authorization('admin')
     end
 
     if keys.empty?
@@ -858,7 +961,7 @@ class StorageController < ApplicationController
 
       # Handle local mode
       key_batch.each do |key|
-        if ENV.fetch('OPENC3_LOCAL_MODE', false) || local_only_config_key?(params[:bucket], key)
+        if local_mode_config_bucket?(params[:bucket]) || local_only_config_key?(params[:bucket], key)
           OpenC3::LocalMode.delete_local(key)
         end
       end
@@ -873,7 +976,7 @@ class StorageController < ApplicationController
   def delete_volume_directory(params)
     return false unless authorization('admin')
 
-    volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
+    volume = resolve_volume(params[:volume])
 
     path = sanitize_path(params[:object_id])
     full_path = "/#{volume}/#{path}"
@@ -911,10 +1014,10 @@ class StorageController < ApplicationController
 
   def validate_storage_source
     if params[:volume]
-      volume = ENV.fetch(params[:volume]) { |name| raise StorageError, "Unknown volume #{name}" }
+      volume = resolve_volume(params[:volume])
       [:volume, volume]
     elsif params[:bucket]
-      bucket = ENV.fetch(params[:bucket]) { |name| raise StorageError, "Unknown bucket #{name}" }
+      bucket = resolve_bucket(params[:bucket])
       [:bucket, bucket]
     else
       raise StorageError, "No volume or bucket given"

@@ -78,14 +78,20 @@ test('navigate config bucket', async ({ page, utils }) => {
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
   )
-  await expect(page.locator('tbody > tr')).toHaveCount(9)
+  // Don't hard-code the row count: it changes whenever the demo target adds
+  // folders or files (e.g. dashboards)
+  await expect(
+    page.getByRole('cell', { name: 'dashboards', exact: true }),
+  ).toBeVisible()
+  await expect(page.locator('tbody > tr:has-text("target.txt")')).toHaveCount(1)
+  const rowCount = await page.locator('tbody > tr').count()
 
   // Clicking a file should do nothing
   await page.getByRole('cell', { name: 'target.txt' }).click()
   await expect(page).toHaveURL(
     /.*\/tools\/bucketexplorer\/config%2FDEFAULT%2Ftargets%2FINST%2F/,
   )
-  await expect(page.locator('tbody > tr')).toHaveCount(9)
+  await expect(page.locator('tbody > tr')).toHaveCount(rowCount)
   // Download the file
   await utils.download(
     page,
@@ -150,60 +156,76 @@ test('navigate gems volume', async ({ page, utils }) => {
 // Volume downloads used to be base64 encoded into JSON which fails for files
 // over ~2GB (Ruby memory / browser max string length). Create a sparse >2GB
 // file in the plugin_default volume via Script Runner (which shares /plugins
-// with the API) so it takes no real disk space.
-test('download large file from volume', async ({ page }) => {
-  test.setTimeout(5 * 60 * 1000)
-  const filename = `large_download_${Math.ceil(Math.random() * 1_000_000)}.bin`
-  const size = 2_200_000_000
+// with the API) so it takes no real disk space. Runs as admin because the
+// cleanup deletes from a volume, which is admin-only (core users are always
+// admin, Enterprise's default operator is not). The @admin tag makes the
+// fixture sign in as admin if the saved session has gone stale.
+test.describe(() => {
+  test.use({ storageState: 'adminStorageState.json' })
+  test(
+    'download large file from volume',
+    { tag: '@admin' },
+    async ({ page, utils }) => {
+      test.setTimeout(5 * 60 * 1000)
+      const filename = `large_download_${Math.ceil(Math.random() * 1_000_000)}.bin`
+      const size = 2_200_000_000
 
-  await page.goto('/tools/scriptrunner')
-  await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
-  await openScriptRunnerFileMenu(page)
-  await page.locator('text=New File').click()
-  await expect(page.locator('textarea')).toHaveText('')
-  // Leading puts forces Ruby language detection
-  await page
-    .locator('textarea')
-    .fill(
-      `puts "start"\nFile.open('/plugins/DEFAULT/${filename}', 'wb') { |f| f.truncate(${size}) }`,
-    )
-  await page.locator('[data-test=start-button]').click()
-  await expect(page.locator('[data-test=state] input')).toHaveValue(
-    'completed',
-    { timeout: 30000 },
+      await page.goto('/tools/scriptrunner')
+      await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
+      await openScriptRunnerFileMenu(page)
+      await page.locator('text=New File').click()
+      await expect(page.locator('textarea')).toHaveText('')
+      // Leading puts forces Ruby language detection
+      await page
+        .locator('textarea')
+        .fill(
+          `puts "start"\nFile.open('/plugins/DEFAULT/${filename}', 'wb') { |f| f.truncate(${size}) }`,
+        )
+      await page.locator('[data-test=start-button]').click()
+      await expect(page.locator('[data-test=state] input')).toHaveValue(
+        'completed',
+        { timeout: 30000 },
+      )
+
+      try {
+        await page.goto('/tools/bucketexplorer/%2Fplugin_default%2F')
+        await expect(page.locator('.v-app-bar')).toContainText(
+          'Bucket Explorer',
+        )
+        await page.locator('[data-test="search-input"] input').fill(filename)
+        await expect(page.getByRole('cell', { name: filename })).toBeVisible()
+
+        // Either the browser starts a download or we get the failure toast
+        const downloadPromise = page.waitForEvent('download', {
+          timeout: 120000,
+        })
+        const failurePromise = page
+          .getByText(`Unable to download file ${filename}`)
+          .waitFor({ timeout: 120000 })
+          .then(() => {
+            throw new Error(`Failed to download ${filename} from volume`)
+          })
+        failurePromise.catch(() => {}) // Ignore the loser of the race
+        await page
+          .locator(`tr:has-text("${filename}") [data-test="download-file"]`)
+          .click()
+        const download = await Promise.race([downloadPromise, failurePromise])
+        expect(download.suggestedFilename()).toBe(filename)
+        // Streaming started which is all we need, don't write 2GB to disk
+        await download.cancel()
+      } finally {
+        await page.goto('/tools/bucketexplorer/%2Fplugin_default%2F')
+        await page.locator('[data-test="search-input"] input').fill(filename)
+        await page
+          .locator(`tr:has-text("${filename}") [data-test="delete-file"]`)
+          .click()
+        await page.locator('[data-test="confirm-dialog-delete"]').click()
+        await expect(
+          page.getByRole('cell', { name: filename }),
+        ).not.toBeVisible()
+      }
+    },
   )
-
-  try {
-    await page.goto('/tools/bucketexplorer/%2Fplugin_default%2F')
-    await expect(page.locator('.v-app-bar')).toContainText('Bucket Explorer')
-    await page.locator('[data-test="search-input"] input').fill(filename)
-    await expect(page.getByRole('cell', { name: filename })).toBeVisible()
-
-    // Either the browser starts a download or we get the failure toast
-    const downloadPromise = page.waitForEvent('download', { timeout: 120000 })
-    const failurePromise = page
-      .getByText(`Unable to download file ${filename}`)
-      .waitFor({ timeout: 120000 })
-      .then(() => {
-        throw new Error(`Failed to download ${filename} from volume`)
-      })
-    failurePromise.catch(() => {}) // Ignore the loser of the race
-    await page
-      .locator(`tr:has-text("${filename}") [data-test="download-file"]`)
-      .click()
-    const download = await Promise.race([downloadPromise, failurePromise])
-    expect(download.suggestedFilename()).toBe(filename)
-    // Streaming started which is all we need, don't write 2GB to disk
-    await download.cancel()
-  } finally {
-    await page.goto('/tools/bucketexplorer/%2Fplugin_default%2F')
-    await page.locator('[data-test="search-input"] input').fill(filename)
-    await page
-      .locator(`tr:has-text("${filename}") [data-test="delete-file"]`)
-      .click()
-    await page.locator('[data-test="confirm-dialog-delete"]').click()
-    await expect(page.getByRole('cell', { name: filename })).not.toBeVisible()
-  }
 })
 
 test('direct URLs', async ({ page, utils }) => {
@@ -411,10 +433,18 @@ test('navigate logs and tools bucket', async ({ page, utils }) => {
 
   await page.getByText('tools').click()
   await expect(page).toHaveURL(/.*\/tools\/bucketexplorer\/tools%2F/)
-  if (process.env.ENTERPRISE === '1') {
-    await expect(page.locator('tbody > tr')).toHaveCount(24)
-  } else {
-    await expect(page.locator('tbody > tr')).toHaveCount(17)
+  // Don't hard-code the tool count: it changes whenever a tool is added.
+  // Check a few tools that exist in both Core and Enterprise instead.
+  for (const tool of [
+    'cmdsender',
+    'cmdtlmserver',
+    'dashboards',
+    'scriptrunner',
+    'tlmviewer',
+  ]) {
+    await expect(
+      page.getByRole('cell', { name: tool, exact: true }),
+    ).toBeVisible()
   }
 })
 

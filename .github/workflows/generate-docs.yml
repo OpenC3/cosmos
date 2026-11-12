@@ -9,57 +9,78 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-name: Auto Build Docs
+# Builds the Docusaurus site and publishes it to GitHub Pages as an artifact.
+# Requires Settings > Pages > Build and deployment > Source = "GitHub Actions".
+# The custom domain (docs.openc3.com) must be set in the Pages settings since
+# a CNAME file is ignored when deploying with a custom workflow.
+name: Build and Deploy Docs
 
 on:
   push:
     paths:
       - "docs.openc3.com/**"
+      - "openc3/data/config/**"
+      - ".github/workflows/generate-docs.yml"
     branches:
       - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: pages
   cancel-in-progress: true
 
 jobs:
-  build-and-commit:
+  build:
     if: ${{ github.actor != 'dependabot[bot]' }}
     runs-on: ubuntu-latest
-
-    permissions:
-      # Give the default GITHUB_TOKEN write permission to commit and push the
-      # added or changed files to the repository.
-      contents: write
-
-    # 'environment: Release' is required to access the secrets.QA_PAT
-    # See https://github.com/OpenC3/cosmos/settings/secrets/actions
-    environment: Release
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          token: ${{ secrets.QA_PAT }}
-          # Value already defaults to true, but `persist-credentials` is required to push new commits to the repository.
-          persist-credentials: true
+          persist-credentials: false
 
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
 
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 11
 
-      - name: Build docs
-        run: ./build.sh
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
         working-directory: docs.openc3.com
 
-      - uses: stefanzweifel/git-auto-commit-action@4a55954c782fc1ea30b9056cd3e7a2b40ca8887d # v7.2.0
+      - name: Generate docs from YAML
+        run: pnpm generate
+        working-directory: docs.openc3.com
+
+      - name: Build docs
+        run: pnpm build
+        working-directory: docs.openc3.com
+
+      # pnpm build writes the site to ../docs (repo root docs/, not tracked in git)
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
-          commit_message: Automated Doc Build Change
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

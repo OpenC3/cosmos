@@ -102,7 +102,10 @@
         <v-btn icon="mdi-close" variant="text" @click="detailsDialog = false" />
       </v-card-title>
       <v-card-text class="flex-grow-1 pa-4">
-        <InterfaceFlowChart :interface-details="interfaceDetails" />
+        <InterfaceFlowChart
+          v-if="detailsDialog"
+          :interface-details="interfaceDetails"
+        />
       </v-card-text>
     </v-card>
   </v-overlay>

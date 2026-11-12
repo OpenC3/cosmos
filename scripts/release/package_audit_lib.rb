@@ -840,6 +840,99 @@ def download_ubi_ruby(version, release)
   true
 end
 
+CACERT_BASE_URL = 'https://curl.se/ca'
+# Service directories whose Dockerfiles COPY their own cacert.pem. Must match
+# the copies made by scripts/linux/openc3_setup.sh and build_multi_arch.sh.
+CACERT_COPY_DIRS = %w(openc3-ruby openc3-redis openc3-traefik openc3-buckets openc3-tsdb)
+
+# cacert.pem is the Mozilla CA bundle published by curl. curl versions each
+# conversion by date (cacert-YYYY-MM-DD.pem) and publishes a sha256 alongside
+# it, so identify our copy by hashing it against those published sums rather
+# than trusting the "as of" date in the file header.
+def check_cacert(client, path: File.join(ROOT_DIR, 'cacert.pem'), copy_dirs: CACERT_COPY_DIRS.map { |d| File.join(ROOT_DIR, d) })
+  new_version = check_root_cacert(client, path)
+  sync_cacert_copies(path, copy_dirs)
+  new_version
+end
+
+# Copy the root cacert.pem into each service directory that differs. Runs even
+# when the root file is current so stale copies left by an earlier setup are fixed.
+def sync_cacert_copies(path, copy_dirs)
+  return unless File.exist?(path)
+  sha256 = Digest::SHA256.file(path).hexdigest
+  copy_dirs.each do |dir|
+    next puts("WARN: #{dir} does not exist") unless File.directory?(dir)
+    dest = File.join(dir, 'cacert.pem')
+    next if File.exist?(dest) && Digest::SHA256.file(dest).hexdigest == sha256
+    FileUtils.cp(path, dest)
+    puts "  Copied cacert.pem to #{dest.sub(ROOT_DIR + '/', '')}"
+  end
+end
+
+def check_root_cacert(client, path)
+  resp = client.get('https://curl.se/docs/caextract.html')
+  unless resp.status == 200
+    puts "WARN: Could not read https://curl.se/docs/caextract.html"
+    return nil
+  end
+  versions = resp.body.scan(%r{/ca/cacert-(\d{4}-\d{2}-\d{2})\.pem\b}).flatten.uniq.sort.reverse
+  if versions.empty?
+    puts "WARN: no cacert-YYYY-MM-DD.pem versions found in caextract.html"
+    return nil
+  end
+  latest = versions.first
+  latest_sha256 = cacert_sha256(client, latest)
+  return nil if latest_sha256.nil?
+
+  local_sha256 = File.exist?(path) ? Digest::SHA256.file(path).hexdigest : nil
+  if local_sha256 == latest_sha256
+    puts "cacert.pem is up to date with #{latest}"
+    return nil
+  end
+
+  # Only walk the older releases when we're behind, to report what we have.
+  current = if local_sha256.nil?
+    'missing'
+  else
+    versions.drop(1).find { |v| cacert_sha256(client, v) == local_sha256 } || 'unknown (sha256 matches no curl release)'
+  end
+  puts "NOTE: cacert.pem has a newer release: #{latest}, Current Version: #{current}"
+  return nil unless prompt_yes_no("Update cacert.pem from #{current} to #{latest}?")
+  download_cacert(client, latest, latest_sha256, path) ? latest : nil
+end
+
+def cacert_sha256(client, version)
+  url = "#{CACERT_BASE_URL}/cacert-#{version}.pem.sha256"
+  resp = client.get(url)
+  sha256 = resp.body.to_s[/\A\h{64}\b/] if resp.status == 200
+  puts "WARN: Could not read sha256 from #{url}" if sha256.nil?
+  sha256
+end
+
+# Download the dated (immutable) file rather than the floating cacert.pem so the
+# bytes we verify are the ones the sha256 was published for. The existing file
+# is only replaced after the sha256 matches.
+def download_cacert(client, version, sha256, path)
+  url = "#{CACERT_BASE_URL}/cacert-#{version}.pem"
+  puts "  Downloading #{url}"
+  resp = client.get(url)
+  unless resp.status == 200
+    puts "ERROR: failed to download #{url} (HTTP #{resp.status})"
+    return false
+  end
+  actual = Digest::SHA256.hexdigest(resp.body)
+  unless actual == sha256
+    puts "ERROR: sha256 mismatch for cacert-#{version}.pem"
+    puts "  expected #{sha256}"
+    puts "  actual   #{actual}"
+    return false
+  end
+  File.binwrite(path, resp.body)
+  puts "  Verified sha256 #{actual}"
+  puts "  Updated cacert.pem to #{version}"
+  true
+end
+
 # Sync the traefik/versitygw versions referenced from the build scripts with
 # whatever the canonical Dockerfile says (used as a safety check after the
 # per-image prompts above run, in case the user previously edited only one).
@@ -901,8 +994,11 @@ def validate_versions(versions, version, name)
     end
   end
 
-  patch_full = "#{prefix}#{major}.#{minor}.#{patch.to_i + 1}#{suffix}"
-  patch_candidate = versions.include?(patch_full) ? patch_full : nil
+  # Offer the newest patch on the current minor line, not just patch + 1, so a
+  # release that skipped an audit cycle doesn't need several runs to catch up.
+  patch_re = /\A#{Regexp.escape(prefix)}#{major}\.#{minor}\.(\d+)#{Regexp.escape(suffix)}\z/
+  newest_patch = versions.filter_map { |v| v[patch_re, 1]&.to_i }.select { |p| p > patch.to_i }.max
+  patch_candidate = newest_patch ? "#{prefix}#{major}.#{minor}.#{newest_patch}#{suffix}" : nil
 
   candidates = [major_candidate, minor_candidate, patch_candidate].compact
   if candidates.empty?
@@ -1006,6 +1102,80 @@ def docker_hub_candidate_tags(client, repo, version)
   candidates.uniq.select { |c| docker_tag_exists?(client, repo, c) }
 end
 
+# The UBI images pull their bases from Ironbank, which lags Docker Hub and pins
+# its own tags in the UBI Dockerfiles, build scripts and .env.
+def ironbank_tag_exists?(repo, tag)
+  # Ironbank's tag list APIs require authentication but manifests can be pulled
+  # anonymously, so probe each candidate tag with docker
+  _out, _err, status = Open3.capture3('docker', 'manifest', 'inspect', "registry1.dso.mil/ironbank/#{repo}:#{tag}")
+  status.success?
+end
+
+# Walk each version component upward from most to least significant, e.g.
+# 13.2.1 tries 13.3.0 / 13.3.1 then 13.2.2, 13.2.3, ... and returns the newest
+# tag that exists. Major versions are skipped unless allow_major since a new
+# major is often a different image (ubi10) or needs a migration (postgres).
+def newest_ironbank_tag(repo, current, allow_major: false)
+  newest = version_parts(current)
+  return current if newest.empty?
+  (allow_major ? 0 : 1).upto(newest.length - 1) do |i|
+    loop do
+      trailing = newest.length - i - 1
+      tries =
+        if trailing.zero?
+          # Ironbank doesn't publish every patch (13.2.1 -> 13.2.3) so step over gaps
+          (1..3).map { |step| newest[0...i] + [newest[i] + step] }
+        else
+          # A new minor can skip .0 so also try .1
+          base = newest[0...i] + [newest[i] + 1]
+          [base + [0] * trailing, base + [0] * (trailing - 1) + [1]]
+        end
+      found = tries.find { |candidate| ironbank_tag_exists?(repo, candidate.join('.')) }
+      break unless found
+      newest = found
+    end
+  end
+  newest.join('.')
+end
+
+# Replace KEY=current with KEY=new_version. Only exact matches are replaced so
+# lines like GRAFANA_VERSION='' or OPENC3_TAG=${OPENC3_TAG} are left alone.
+def update_ironbank_version(path, key, current, new_version)
+  content = File.read(path)
+  new_content = content.gsub(/\b#{Regexp.escape(key)}=#{Regexp.escape(current)}(?![\w.])/, "#{key}=#{new_version}")
+  if content == new_content
+    puts "WARN: #{key}=#{current} not found in #{path.sub(Dir.pwd + '/', '')}"
+  else
+    File.write(path, new_content)
+    puts "  Updated #{key}=#{new_version} in #{path.sub(Dir.pwd + '/', '')}"
+  end
+end
+
+def ironbank_current_version(key, path)
+  File.read(path)[/\b#{Regexp.escape(key)}=(\d[\w.]*)/, 1]
+end
+
+# Check the Ironbank image `repo` for a newer tag than KEY in files[0] and
+# prompt to update KEY in every file. Returns the resulting version, or nil if
+# the check was skipped.
+def check_ironbank(name, repo, key, files, allow_major: false)
+  current = ironbank_current_version(key, files[0])
+  return puts("WARN: #{key} not found in #{files[0].sub(Dir.pwd + '/', '')}") unless current
+  puts "Checking #{name} against version: #{current}"
+  unless ironbank_tag_exists?(repo, current)
+    return puts("WARN: Could not find registry1.dso.mil/ironbank/#{repo}:#{current}, skipping #{name}")
+  end
+  newest = newest_ironbank_tag(repo, current, allow_major: allow_major)
+  if newest == current
+    puts "#{name} is up to date with #{current}"
+    return current
+  end
+  puts "NOTE: #{name} has a new version: #{newest}, Current Version: #{current}"
+  return current unless prompt_update?("Update #{name} from #{current} to #{newest}?", current, newest)
+  files.each { |path| update_ironbank_version(path, key, current, newest) }
+  newest
+end
+
 def check_container_version(client, containers, image_name)
   container = containers.select { |val| val[:name].include?(image_name) }[0]
   name, version = container[:base_image].split(':')
@@ -1033,17 +1203,44 @@ def check_container_version(client, containers, image_name)
 end
 
 def check_anycable(client, container_names)
-  # Both API images install the same binary from openc3-anycable/, so audit the
-  # first and only warn if another image reports something different.
+  # Both API images install the same binary from openc3-anycable/, so report
+  # what each built image has, but audit the checked-in binary: that is what the
+  # next build ships, and it's what an earlier accepted update rewrote. Auditing
+  # the images instead re-offers the same update until they are rebuilt.
   versions = container_names.map do |name|
     [name, `docker run --rm #{name} /usr/bin/anycable-go --version`.strip]
   end
   versions.each { |name, version| puts "Raw anycable-go version (#{name}): #{version}" }
-  if versions.map(&:last).uniq.length > 1
-    puts "WARNING: anycable-go versions differ between images; rebuild stale images before auditing"
+  # Audit both checked-in binaries, not just the host's arch: a failed or partial
+  # update can leave them at different versions. They are static linux binaries,
+  # so run each in busybox under its own --platform (Docker Desktop emulates the
+  # foreign arch; a plain Linux Docker Engine needs qemu binfmt for it).
+  anycable_dir = File.join(ROOT_DIR, 'openc3-anycable')
+  local = %w[amd64 arm64].to_h do |arch|
+    out, _stderr, status = Open3.capture3('docker', 'run', '--rm', '--platform', "linux/#{arch}",
+                                          '-v', "#{anycable_dir}:/anycable:ro",
+                                          '--entrypoint', "/anycable/anycable-go-linux-#{arch}",
+                                          'busybox:1.37', '--version')
+    [arch, status.success? && !out.strip.empty? ? out.strip.lines.last.strip : nil]
   end
-  anycable = versions.first.last
-  any_cable_version = anycable.split('version:')[-1].split('-')[0].strip
+  local.each { |arch, raw| puts "Raw anycable-go version (openc3-anycable/ #{arch}): #{raw || 'FAILED to run'}" }
+  readable = local.values.compact
+  if readable.empty?
+    puts "ERROR: could not run either openc3-anycable/ binary; skipping anycable-go audit"
+    return nil
+  end
+  parse_version = ->(raw) { raw.split('version:')[-1].split('-')[0].strip }
+  if readable.length != local.length || readable.uniq.length != 1
+    # Audit against the oldest binary so any newer release is offered, and
+    # accepting it rewrites both. If the failure is the foreign arch not running
+    # at all, check qemu/binfmt before trusting this.
+    puts "ERROR: openc3-anycable/ binaries are not the same version; auditing against the oldest"
+  end
+  anycable = readable.min_by { |raw| Gem::Version.new(parse_version.(raw)) }
+  if (versions.map(&:last) - [anycable]).any?
+    puts "WARNING: built images don't match openc3-anycable/; rebuild them to pick up the binaries"
+  end
+  any_cable_version = parse_version.(anycable)
   # A fourth version component means this is one of our own anycable-go builds,
   # never an upstream release: every anycable/anycable release back to v0.5.0 is
   # three-part. 1.6.16.1 is built from anycable/anycable#334 while that PR is
@@ -1377,7 +1574,10 @@ end
 # local `openc3` gem via ENV['OPENC3_PATH'] (falling back to a rubygems version
 # that may not exist yet), so we point OPENC3_PATH at the openc3/ directory in
 # this repo for every bundle call.
-def update_outdated_gems(dir, extra_env = {})
+# Pass the same `approved` hash across calls to auto-approve gems already
+# accepted in an earlier directory (keyed by "name installed newest"), so overlapping
+# gems in cmd-tlm-api and script-runner-api are only prompted once.
+def update_outdated_gems(dir, extra_env = {}, approved: {})
   label = dir.sub(ROOT_DIR + '/', '')
   puts "\nChecking outdated gems in #{label}:"
   updated = 0
@@ -1391,7 +1591,13 @@ def update_outdated_gems(dir, extra_env = {})
       next unless m
       name, newest, installed = m.captures
       next if newest == installed
-      if prompt_update?("[#{label}] Update gem #{name} from #{installed} to #{newest}?", installed, newest)
+      key = "#{name} #{installed} #{newest}"
+      if approved[key]
+        puts "  [#{label}] Auto-approving gem #{name} #{installed} -> #{newest} (previously approved)"
+        system(env, "bundle update #{name}")
+        updated += 1
+      elsif prompt_update?("[#{label}] Update gem #{name} from #{installed} to #{newest}?", installed, newest)
+        approved[key] = true
         system(env, "bundle update #{name}")
         updated += 1
       end

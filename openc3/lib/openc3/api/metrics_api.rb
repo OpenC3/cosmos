@@ -14,6 +14,7 @@
 require 'openc3/models/metric_model'
 require 'openc3/utilities/authentication'
 require 'openc3/utilities/store'
+require 'openc3/utilities/topic_lag_monitor'
 
 module OpenC3
   module Api
@@ -53,8 +54,12 @@ module OpenC3
     SUM_METRICS['tsdb_ingest_total'] = 0
     SUM_METRICS['tsdb_ingest_error_total'] = 0
 
-    def get_metrics(manual: false, scope: $openc3_scope, token: $openc3_token)
+    # Metrics shown per service in Data Flows
+    FLOW_METRIC_SUFFIXES = %w(_topic_delta_seconds _duration_seconds _read_queue_bytes _total).freeze
+
+    def get_metrics(detailed: false, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', manual: manual, scope: scope, token: token)
+      return _flow_metrics(scope) if detailed
 
       sum_metrics = SUM_METRICS.dup
       duration_metrics = DURATION_METRICS.dup
@@ -92,6 +97,26 @@ module OpenC3
       end
 
       return result
+    end
+
+    # Per service metrics for Data Flows. Reads only what each microservice
+    # reported itself so updated_at shows when that service last published;
+    # the operator's process metrics would otherwise keep it fresh while the
+    # process is alive. Sends just the values Data Flows displays, plus the
+    # lag thresholds so its indicators match the falling behind notifications.
+    def _flow_metrics(scope)
+      services = {}
+      MetricModel.all_self_reported(scope: scope).each do |name, entry|
+        next unless entry and entry['values']
+        values = {}
+        entry['values'].each do |metric_name, data|
+          next unless data.is_a?(Hash) and metric_name.end_with?(*FLOW_METRIC_SUFFIXES)
+          values[metric_name] = { 'value' => data['value'] }
+        end
+        next if values.empty?
+        services[name] = { 'updated_at' => entry['updated_at'], 'values' => values }
+      end
+      { 'lag_thresholds' => TopicLagMonitor.thresholds, 'services' => services }
     end
   end
 end

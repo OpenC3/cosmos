@@ -81,6 +81,7 @@ module OpenC3
                        cleanup_poll_time: 5,
                        command_authority: true,
                        critical_commanding: "NORMAL",
+                       critical_cmd_approvers: 2,
                        updated_at: 6,
                       ).create()
         model = ScopeModel.get_model(name: "DEFAULT")
@@ -91,7 +92,42 @@ module OpenC3
         expect(model.cleanup_poll_time).to eql 5
         expect(model.command_authority).to eql true
         expect(model.critical_commanding).to eql "NORMAL"
+        expect(model.critical_cmd_approvers).to eql 2
         # model.updated_at is going to be time now
+      end
+    end
+
+    describe "initialize" do
+      it "defaults critical_cmd_approvers to 1" do
+        expect(ScopeModel.new(name: "DEFAULT").critical_cmd_approvers).to eql 1
+        expect(ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: nil).critical_cmd_approvers).to eql 1
+      end
+
+      it "converts critical_cmd_approvers to an integer" do
+        expect(ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: "3").critical_cmd_approvers).to eql 3
+      end
+
+      it "raises on non-integer critical_cmd_approvers" do
+        [1.9, 2.0, "2oops", "1.9", "", " ", "-1", true].each do |value|
+          expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: value) }.to raise_error(/Invalid value for critical_cmd_approvers/)
+        end
+      end
+
+      it "raises on critical_cmd_approvers less than 1" do
+        expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: 0) }.to raise_error(/Invalid value for critical_cmd_approvers: 0 \(must be 1 to 10\)/)
+      end
+
+      it "raises on non-integer critical_cmd_approvers" do
+        ['', 'abc', '2.5'].each do |value|
+          expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: value) }.to raise_error(RuntimeError, /Invalid value for critical_cmd_approvers: #{Regexp.escape(value)} \(must be 1 to 10\)/)
+        end
+        # Base 10, not octal
+        expect(ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: "010").critical_cmd_approvers).to eql 10
+      end
+
+      it "allows up to 10 critical_cmd_approvers" do
+        expect(ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: 10).critical_cmd_approvers).to eql 10
+        expect { ScopeModel.new(name: "DEFAULT", critical_cmd_approvers: 11) }.to raise_error(/Invalid value for critical_cmd_approvers: 11 \(must be 1 to 10\)/)
       end
     end
 
@@ -140,6 +176,7 @@ module OpenC3
         json = model.as_json()
         expect(json['name']).to eql "DEFAULT"
         expect(json['updated_at']).to eql 12345
+        expect(json['critical_cmd_approvers']).to eql 1
       end
     end
 
@@ -232,6 +269,27 @@ module OpenC3
         expect(topics).to eql([])
         topics = EphemeralStore.scan_each(match: "#{scope}*", type: 'stream', count: 100).to_a.uniq.sort
         expect(topics).to eql([])
+      end
+    end
+
+    describe "multiple db_shards" do
+      it "deletes the UNKNOWN target topics from its db_shard" do
+        s3 = instance_double("Aws::S3::Client")
+        allow(Aws::S3::Client).to receive(:new).and_return(s3)
+        objs = double("Object", :contents => [], is_truncated: false)
+        allow(s3).to receive(:list_objects_v2).and_return(objs)
+
+        model = ScopeModel.new(name: "TEST", updated_at: 12345)
+        model.create
+        model.deploy(File.join(SPEC_DIR, "install"), {})
+        # Move the UNKNOWN target to db_shard 1
+        TargetModel.new(name: "UNKNOWN", scope: "TEST", db_shard: 1).update
+        ephemeral1 = EphemeralStore.instance(db_shard: 1)
+        ephemeral1.write_topic("TEST__COMMAND__{UNKNOWN}__UNKNOWN", { 'data' => 1 })
+        ephemeral1.write_topic("TEST__TELEMETRY__{UNKNOWN}__UNKNOWN", { 'data' => 1 })
+        model.destroy
+        expect(ephemeral1.exists?("TEST__COMMAND__{UNKNOWN}__UNKNOWN")).to be false
+        expect(ephemeral1.exists?("TEST__TELEMETRY__{UNKNOWN}__UNKNOWN")).to be false
       end
     end
   end

@@ -17,6 +17,8 @@ import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { ControlButton, Controls } from '@vue-flow/controls'
 import { Background } from '@vue-flow/background'
 import DetailsTable from './DetailsTable.vue'
+import TargetProcessingDetails from './TargetProcessingDetails.vue'
+import { useFlowMetrics } from './useFlowMetrics'
 import InterfaceNode from './InterfaceNode.vue'
 import RouterNode from './RouterNode.vue'
 import CosmosNode from './CosmosNode.vue'
@@ -44,9 +46,10 @@ const dialog = inject('dialog')
 const api = new OpenC3Api()
 
 const props = defineProps({
-  interfaceDetails: { type: Array, default: () => [] },
-  routerDetails: { type: Array, default: () => [] },
+  interfaceDetails: { type: Object, default: () => ({}) },
+  routerDetails: { type: Object, default: () => ({}) },
 })
+const nodeHealth = useFlowMetrics(api)
 const nodes = ref([])
 const edges = ref([])
 
@@ -430,6 +433,7 @@ const PROTOCOL_CHROME = 40 // Icon, padding and border of a protocol node
 const PROTOCOL_MIN_WIDTH = 60
 const PROTOCOL_WRITE_Y = 98 // Upper row
 const PROTOCOL_READ_Y = 148 // Lower row
+const NODE_HEIGHT = 212 // Leave space between the lower row and metrics button
 
 // Position a row of protocols, returning the label, width, relative x position
 // and original protocol index of each. Nodes are laid out in the direction the
@@ -514,9 +518,14 @@ const selectedMode = ref(null)
 const selectedDetails = ref(null)
 const selectedWriteProtocolIndex = ref(null)
 const selectedReadProtocolIndex = ref(null)
+const processingDialog = ref(false)
+const selectedTarget = ref('')
 
 function onNodeClick(event) {
-  if (event.node.type === 'interface') {
+  if (event.node.type === 'cosmos') {
+    selectedTarget.value = event.node.data.label
+    processingDialog.value = true
+  } else if (event.node.type === 'interface') {
     selectedMode.value = 'Interface'
     selectedDetails.value = props.interfaceDetails[event.node.data.label]
     selectedWriteProtocolIndex.value = null
@@ -775,7 +784,7 @@ function updateFlowChart() {
     let x, y
     // Single target: place to the right
     x = 0
-    y = index * (200 + 50)
+    y = index * (NODE_HEIGHT + 50)
 
     // Create cosmos node
     const cosmosNode = {
@@ -799,7 +808,7 @@ function updateFlowChart() {
     if (protocols.width > maxInterfaceOrRouterWidth) {
       maxInterfaceOrRouterWidth = protocols.width
     }
-    const interfaceHeight = 200 // Fixed height for two protocol rows
+    const interfaceHeight = NODE_HEIGHT
 
     // Create interface node (center) with dynamic size
     const interfaceNode = {
@@ -826,7 +835,7 @@ function updateFlowChart() {
     if (protocols.width > maxInterfaceOrRouterWidth) {
       maxInterfaceOrRouterWidth = protocols.width
     }
-    const routerHeight = 200 // Fixed height for two protocol rows
+    const routerHeight = NODE_HEIGHT
 
     // Create router node (center) with dynamic size
     const routerNode = {
@@ -851,7 +860,7 @@ function updateFlowChart() {
     let x, y
     // Single target: place to the right
     x = 200 + 200 + maxInterfaceOrRouterWidth + 200
-    y = index * (200 + 50)
+    y = index * (NODE_HEIGHT + 50)
 
     // Create target node
     const targetNode = {
@@ -950,11 +959,19 @@ watch(
       </Controls>
 
       <template #node-interface="{ data }">
-        <InterfaceNode :data="data" />
+        <InterfaceNode
+          :data="data"
+          :health="nodeHealth('interface', data.label)"
+          @details="onNodeClick({ node: { type: 'interface', data } })"
+        />
       </template>
 
       <template #node-router="{ data }">
-        <RouterNode :data="data" />
+        <RouterNode
+          :data="data"
+          :health="nodeHealth('router', data.label)"
+          @details="onNodeClick({ node: { type: 'router', data } })"
+        />
       </template>
 
       <template #node-target="{ data }">
@@ -962,7 +979,15 @@ watch(
       </template>
 
       <template #node-cosmos="cosmosNodeProps">
-        <CosmosNode v-bind="cosmosNodeProps" />
+        <CosmosNode
+          v-bind="cosmosNodeProps"
+          :health="nodeHealth('target', cosmosNodeProps.data.label)"
+          @details="
+            onNodeClick({
+              node: { type: 'cosmos', data: cosmosNodeProps.data },
+            })
+          "
+        />
       </template>
 
       <template #node-write-protocol="{ data }">
@@ -982,11 +1007,21 @@ watch(
     <!-- Details Dialog -->
     <v-dialog v-model="detailsDialog" max-width="80vw" max-height="80vh">
       <DetailsTable
+        v-if="detailsDialog && selectedDetails"
         :mode="selectedMode"
         :details="selectedDetails"
+        :health="nodeHealth(selectedMode.toLowerCase(), selectedDetails.name)"
         :read-protocol-index="selectedReadProtocolIndex"
         :write-protocol-index="selectedWriteProtocolIndex"
         @close="detailsDialog = false"
+      />
+    </v-dialog>
+    <v-dialog v-model="processingDialog" max-width="1100" max-height="80vh">
+      <TargetProcessingDetails
+        v-if="processingDialog"
+        :name="selectedTarget"
+        :health="nodeHealth('target', selectedTarget)"
+        @close="processingDialog = false"
       />
     </v-dialog>
   </div>
@@ -1028,6 +1063,18 @@ watch(
 
 .vue-flow__node {
   background-color: rgb(23, 38, 53);
+}
+
+.interface-flow-chart .flow-node--warning,
+.interface-flow-chart .flow-node--stale,
+.interface-flow-chart .flow-node--unavailable {
+  border-color: #b45309;
+  box-shadow: 0 0 0 2px #fbbf24;
+}
+
+.interface-flow-chart .flow-node--critical {
+  border-color: #b91c1c;
+  box-shadow: 0 0 0 2px #f87171;
 }
 
 .vue-flow__edges path {

@@ -200,11 +200,16 @@ class TablesController < ApplicationController
   # holds). This mirrors storage_controller#non_admin_config_overlay_write?,
   # which gates the other writer (the presigned S3 upload). `name` is the
   # overlay-relative path written under targets_modified/ (e.g.
-  # "<TARGET>/tables/config/..."). Returns true if allowed; otherwise renders
-  # the 401/403 and returns false.
+  # "<TARGET>/tables/config/..."). Destinations outside <TARGET>/tables/ (e.g.
+  # procedures or lib) are loadable by Script Runner, so writing them requires
+  # script_edit, matching the storage_controller presigned upload. Returns true
+  # if allowed; otherwise renders the 401/403 and returns false.
   def authorize_overlay_write(name)
-    return true unless code_overlay?(name)
-    return false unless authorization('admin')
+    if code_overlay?(name)
+      return false unless authorization('admin')
+    elsif !OpenC3::ConfigOverlay.table_data?(name)
+      return false unless authorization('script_edit')
+    end
     true
   end
 

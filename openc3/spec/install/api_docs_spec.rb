@@ -17,6 +17,7 @@ require 'find'
 module OpenC3
   describe OpenC3 do
     DEPRECATED_APIS = %w(require_utility save_setting check_with_units tlm_with_units)
+    DEPRECATED_APIS.concat(%w(metadata_all metadata_get metadata_set metadata_update metadata_input))
     # These are only internal APIs
     IGNORED_APIS = %w(method_missing self.included write puts openc3_script_sleep)
     IGNORED_APIS.concat(%w(running_script_backtrace running_script_debug running_script_prompt update_news update_plugin_store))
@@ -59,14 +60,14 @@ module OpenC3
     def ruby_api
       ruby_api = {}
       Dir[File.join(SPEC_DIR,'../lib/openc3/script/*.rb')].each do |filename|
-        next if filename.include?('extract')
-        next if filename.include?('web_socket_api')
-        next if filename.include?('suite_results')
-        next if filename.include?('suite_runner')
+        next if File.basename(filename).include?('extract')
+        next if File.basename(filename).include?('web_socket_api')
+        next if File.basename(filename).include?('suite_results')
+        next if File.basename(filename).include?('suite_runner')
         parse_file(filename, ruby_api)
       end
       Dir[File.join(SPEC_DIR,'../lib/openc3/api/*.rb')].each do |filename|
-        next if filename.include?('metrics_api') # TODO: document and implement Python equivalent
+        next if File.basename(filename).include?('metrics_api') # TODO: document and implement Python equivalent
         parse_file(filename, ruby_api)
       end
       return ruby_api
@@ -75,13 +76,13 @@ module OpenC3
     def python_api
       python_api = {}
       Dir[File.join(SPEC_DIR,'../python/openc3/script/*.py')].each do |filename|
-        next if filename.include?('authorization')
-        next if filename.include?('decorators')
-        next if filename.include?('server_proxy')
-        next if filename.include?('stream')
-        next if filename.include?('web_socket_api')
-        next if filename.include?('suite_results')
-        next if filename.include?('suite_runner')
+        next if File.basename(filename).include?('authorization')
+        next if File.basename(filename).include?('decorators')
+        next if File.basename(filename).include?('server_proxy')
+        next if File.basename(filename).include?('stream')
+        next if File.basename(filename).include?('web_socket_api')
+        next if File.basename(filename).include?('suite_results')
+        next if File.basename(filename).include?('suite_runner')
         parse_file(filename, python_api)
       end
       Dir[File.join(SPEC_DIR,'../python/openc3/api/*.py')].each do |filename|

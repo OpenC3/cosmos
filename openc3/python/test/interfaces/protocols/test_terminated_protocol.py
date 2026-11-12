@@ -47,6 +47,14 @@ class TestTerminatedProtocol(unittest.TestCase):
         TestTerminatedProtocol.buffer = b""
         self.interface = TestTerminatedProtocol.MyInterface()
 
+        # The stub streams below return data forever so cap the read queue
+        # rather than letting the read thread buffer the full default budget
+        self.interface.set_option("READ_QUEUE_MAX_SIZE", ["65536"])
+
+    def tearDown(self):
+        # Stop the StreamInterface read thread started by reading
+        self.interface.stop_read_queue_thread()
+
     @patch.dict(os.environ, {"OPENC3_PROTOCOL_MAX_BUFFER_SIZE": "1000"})
     def test_raises_rather_than_buffering_forever_without_a_terminator(self):
         self.interface.stream = TestTerminatedProtocol.TerminatedStream()

@@ -166,6 +166,55 @@ module OpenC3
         System.limits_set = :DEFAULT
       end
 
+      it "resyncs limits when limits events are trimmed before they are read" do
+        limits_change = lambda do |i|
+          { type: :LIMITS_CHANGE, target_name: "TGT1", packet_name: "PKT1", item_name: "ITEM#{i}",
+            old_limits_state: "GREEN", new_limits_state: "RED_HIGH", time_nsec: Time.now.to_nsec_from_epoch, message: "TEST" }
+        end
+        # Decom only detects gaps after it has read a limits event so give it one first
+        LimitsEventTopic.write(limits_change.call(0), scope: "DEFAULT")
+        50.times do
+          break if @dm.instance_variable_get(:@limits_event_offset) != '0-0'
+          sleep 0.01
+        end
+        expect(@dm.instance_variable_get(:@limits_event_offset)).not_to eql '0-0'
+
+        entered = Queue.new
+        released = false
+        allow(@dm).to receive(:decom_packet) do
+          entered << true
+          sleep 0.001 until released
+        end
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        packet.received_time = Time.now.sys
+        # Retry until the run thread has started reading and picks up the packet
+        busy = nil
+        50.times do
+          TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
+          busy = entered.pop(timeout: 0.1)
+          break if busy
+        end
+        expect(busy).to be true
+
+        # While decom is busy, disable the group and then flood the stream with
+        # enough LIMITS_CHANGE events to trim the group event before it is read
+        Store.hset("DEFAULT__limits_groups", "FIRST", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+        LimitsEventTopic.write({ type: :LIMITS_GROUP_ENABLE_STATE, group_name: "FIRST", enabled: false,
+            time_nsec: Time.now.to_nsec_from_epoch, message: "TEST" }, scope: "DEFAULT")
+        1500.times { |i| LimitsEventTopic.write(limits_change.call(i), scope: "DEFAULT") }
+        expect(LimitsEventTopic.read(0, scope: "DEFAULT").map { |_, event| event['type'] }).not_to include("LIMITS_GROUP_ENABLE_STATE")
+
+        capture_io do |stdout|
+          released = true
+          50.times do
+            break unless System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")
+            sleep 0.01
+          end
+          expect(stdout.string).to include("Limits events were trimmed before they could be read, resyncing limits")
+        end
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+      end
+
       it "handles exceptions in the thread" do
         expect(@dm).to receive(:microservice_cmd).and_raise("Bad command")
         capture_io do |stdout|
@@ -368,6 +417,61 @@ module OpenC3
         out = LimitsEventTopic.out_of_limits(scope: "DEFAULT")
         expect(out.length).to eql 0
       end
+    end
+  end
+
+  describe DecomMicroservice, "multiple db_shards" do
+    # INST lives on db_shard 1 so its decom microservice reads its topics from
+    # db_shard 1 and everything it writes back must land there too
+    before(:each) do
+      mock_redis()
+      setup_system()
+      setup_target_db_shards({ 'INST' => 1, 'SYSTEM' => 0 })
+      model = MicroserviceModel.new(name: "DEFAULT__DECOM__INST", scope: "DEFAULT", topics: ["DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"], target_names: ["INST"], db_shard: 1)
+      model.create
+      @dm = DecomMicroservice.new("DEFAULT__DECOM__INST")
+      @dm_thread = Thread.new { @dm.run }
+      sleep 0.01 # Allow the thread to start
+    end
+
+    after(:each) do
+      @dm.shutdown()
+      @dm_thread.join()
+    end
+
+    it "decommutates telemetry on the target's db_shard" do
+      packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+      packet.write('TEMP1', 10.0)
+      packet.received_time = Time.now.sys
+      capture_io do |_stdout|
+        TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
+        sleep 0.1
+      end
+      _, msg_hash = EphemeralStore.instance(db_shard: 1).get_newest_message("DEFAULT__DECOM__{INST}__HEALTH_STATUS")
+      expect(JSON.parse(msg_hash['json_data'])['TEMP1__C']).to be_within(0.1).of(10.0)
+      cvt = JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))
+      expect(cvt['TEMP1__C']).to be_within(0.1).of(10.0)
+    end
+
+    it "acks inject_tlm on the target's db_shard" do
+      capture_io do |_stdout|
+        expect { DecomInterfaceTopic.inject_tlm("INST", "HEALTH_STATUS", { 'TEMP1' => 10.0 }, timeout: 1, scope: 'DEFAULT') }.to_not raise_error
+      end
+      _, msg_hash = EphemeralStore.instance(db_shard: 1).get_newest_message("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS")
+      expect(msg_hash['packet_name']).to eql 'HEALTH_STATUS'
+    end
+
+    it "acks build_cmd on the target's db_shard" do
+      result = DecomInterfaceTopic.build_cmd("INST", "ABORT", {}, true, false, timeout: 1, scope: 'DEFAULT')
+      expect(result['result']).to eql 'SUCCESS'
+      expect(result['packet_name']).to eql 'ABORT'
+    end
+
+    it "acks get_tlm_buffer on the target's db_shard" do
+      System.telemetry.packet('INST', 'HEALTH_STATUS').received_time = Time.now.sys
+      result = DecomInterfaceTopic.get_tlm_buffer("INST", "HEALTH_STATUS", timeout: 1, scope: 'DEFAULT')
+      expect(result['result']).to eql 'SUCCESS'
+      expect(result['packet_name']).to eql 'HEALTH_STATUS'
     end
   end
 end

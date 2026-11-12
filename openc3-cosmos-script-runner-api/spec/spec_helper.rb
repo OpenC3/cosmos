@@ -91,13 +91,19 @@ OpenC3::OpenC3Authentication.class_eval do
   end
 end
 
+# Each db_shard gets its own MockRedis so a read or write against the wrong
+# shard misses instead of silently hitting the same data. Store and
+# EphemeralStore share the mock for a given shard. Returns the shard 0 mock.
 def mock_redis
   require 'redis'
   require 'mock_redis'
-  redis = MockRedis.new
+  redis_shards = Hash.new { |hash, db_shard| hash[db_shard] = MockRedis.new }
+  redis = redis_shards[0]
   allow(Redis).to receive(:new).and_return(redis)
+  allow_any_instance_of(OpenC3::Store).to receive(:build_redis) { |store| redis_shards[store.db_shard] }
   OpenC3::Store.instance_variable_set(:@instances, [])
   OpenC3::EphemeralStore.instance_variable_set(:@instances, [])
+  OpenC3::Store.class_variable_set(:@@db_shard_cache, {})
   redis
 end
 

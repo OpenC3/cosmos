@@ -64,6 +64,7 @@ check_container_version(client, containers, 'traefik')
 check_container_version(client, containers, 'redis') # valkey base image
 new_versitygw = check_versitygw(client, versitygw_version)
 check_tsdb(client, tsdb_version)
+check_cacert(client)
 # Re-read RUBY_VERSION rather than using the local captured at startup:
 # check_debian above may have accepted a Ruby minor bump, and update_debian_files
 # writes the new value back into ENV. Using the stale local would audit
@@ -79,12 +80,36 @@ check_build_files(
   get_docker_version('openc3-traefik/Dockerfile')
 )
 
+# The UBI images build on Ironbank's ubi9-minimal at OPENC3_UBI_TAG from .env.
+# The Dockerfile-ubi defaults are only used when building directly but keep them
+# in sync so they don't fall behind.
+ubi_tag = check_ironbank('ubi9-minimal', 'redhat/ubi/ubi9-minimal', 'OPENC3_UBI_TAG', [File.join(ROOT_DIR, '.env')])
+if ubi_tag
+  %w(openc3-buckets openc3-redis openc3-ruby).each do |dir|
+    dockerfile = File.join(ROOT_DIR, dir, 'Dockerfile-ubi')
+    current = ironbank_current_version('OPENC3_UBI_TAG', dockerfile)
+    next if current.nil? || current == ubi_tag
+    if prompt_yes_no("#{dir}/Dockerfile-ubi: OPENC3_UBI_TAG is #{current} but .env is #{ubi_tag}. Sync?")
+      update_ironbank_version(dockerfile, 'OPENC3_UBI_TAG', current, ubi_tag)
+    end
+  end
+  # openc3-traefik-ubi builds the Docker Hub OPENC3_TRAEFIK_RELEASE from Ironbank
+  traefik_release = get_docker_version('openc3-traefik/Dockerfile', arg: 'OPENC3_TRAEFIK_RELEASE')
+  unless ironbank_tag_exists?('opensource/traefik/traefik', traefik_release)
+    puts "WARN: traefik #{traefik_release} is not on Ironbank yet so openc3-traefik-ubi will fail to build"
+  end
+else
+  puts "WARN: Unable to access registry1.dso.mil, skipping Ironbank (UBI) version checks"
+end
+
 puts "\n*** If you update a container version re-run to ensure there aren't additional updates! ***\n\n"
 
 # Per-language outdated dependency prompts. Each helper enumerates outdated
 # packages and asks the user yes/no before updating that single package.
+# Gems approved in one directory are auto-approved in the following ones.
+approved_gems = {}
 %w(openc3 openc3-cosmos-cmd-tlm-api openc3-cosmos-script-runner-api).each do |dir|
-  update_outdated_gems(File.join(__dir__, '..', '..', dir))
+  update_outdated_gems(File.join(__dir__, '..', '..', dir), approved: approved_gems)
 end
 
 update_outdated_wheels(File.join(__dir__, '..', '..', 'openc3', 'python'))

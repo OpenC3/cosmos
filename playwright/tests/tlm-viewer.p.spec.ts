@@ -266,7 +266,31 @@ test('displays INST LAUNCHER', async ({ page, utils }) => {
 })
 
 test('displays INST LIMITS', async ({ page, utils }) => {
-  await showScreen(page, utils, 'INST', 'LIMITS')
+  await showScreen(page, utils, 'INST', 'LIMITS', true, async function () {
+    // The second limits bar is LIMITSBAR INST LATEST TEMP1. Its limits come
+    // from get_limits, which renders 'undefined' in the tooltip if it fails.
+    await page.locator('.limitsbar').nth(1).hover()
+    await expect(
+      page.locator('.v-tooltip .v-overlay__content').filter({ visible: true }),
+    ).toHaveText('RL/-80 YL/-70 YH/60 RH/80 GL/-20 GH/20')
+  })
+})
+
+test('displays INST MEMDUMP', async ({ page, utils }) => {
+  await showScreen(page, utils, 'INST', 'MEMDUMP', true, async function () {
+    const value = (item: string) =>
+      page
+        .locator(`[data-test="label"]:text-is("${item}:")`)
+        .locator('..')
+        .locator('[data-test="value"] input')
+    // Dump with the screen defaults of OFFSET 0 and SIZE 256
+    await page.getByRole('button', { name: 'Dump Memory' }).click()
+    await expect(value('SIZE')).toHaveValue(/^256/)
+    // The ground calculated CRC should match the CRC sent by the target
+    await expect(value('CRC')).toHaveValue(/^0x[0-9A-F]{8}$/)
+    const crc = await value('CRC').inputValue()
+    await expect(value('CALC_CRC')).toHaveValue(crc)
+  })
 })
 
 test('displays INST OTHER', async ({ page, utils }) => {
@@ -638,5 +662,52 @@ test('links array item to TlmGrapher', async ({ page, utils }) => {
       ),
     )
     await graphPage.close()
+  })
+})
+
+test('shows packet and received time in details', async ({ page, utils }) => {
+  const timeRegex = /\d{4}\/\d{2}\/\d{2} \d{2}:\d{2}:\d{2}/
+  const detailsDialog = page.locator('.v-overlay--active.v-dialog')
+  await showScreen(page, utils, 'INST', 'HS', true, async function () {
+    await page
+      .locator('[data-test="label"]:has-text("TEMP1:")')
+      .locator('..')
+      .locator('[data-test="value"]')
+      .click({ button: 'right' })
+    await page.getByText('Details', { exact: true }).click()
+    await expect(detailsDialog).toContainText('INST HEALTH_STATUS TEMP1')
+    await expect(
+      detailsDialog.locator('[data-test="details-packet-time"]'),
+    ).toHaveText(timeRegex)
+    await expect(
+      detailsDialog.locator('[data-test="details-received-time"]'),
+    ).toHaveText(timeRegex)
+    // Only shown for LATEST items
+    await expect(
+      detailsDialog.locator('[data-test="details-latest-packet"]'),
+    ).not.toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(detailsDialog).not.toBeVisible()
+  })
+  await showScreen(page, utils, 'INST', 'LATEST', true, async function () {
+    await page
+      .locator('[data-test="label"]:has-text("CCSDSVER:")')
+      .locator('..')
+      .locator('[data-test="value"]')
+      .click({ button: 'right' })
+    await page.getByText('Details', { exact: true }).click()
+    await expect(detailsDialog).toContainText('INST LATEST CCSDSVER')
+    await expect(
+      detailsDialog.locator('[data-test="details-packet-time"]'),
+    ).toHaveText(timeRegex)
+    await expect(
+      detailsDialog.locator('[data-test="details-received-time"]'),
+    ).toHaveText(timeRegex)
+    // The packet the LATEST value came from, e.g. HEALTH_STATUS or ADCS
+    await expect(
+      detailsDialog.locator('[data-test="details-latest-packet"]'),
+    ).toHaveText(/^[A-Z_]+$/)
+    await page.keyboard.press('Escape')
+    await expect(detailsDialog).not.toBeVisible()
   })
 })

@@ -235,6 +235,29 @@ module OpenC3
       end
     end
 
+    describe "connect directive" do
+      it "acks malformed params with an error and keeps the handler running" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        interface = im.instance_variable_get(:@interface)
+        tlm = double("tlm").as_null_object
+        allow(tlm).to receive(:attempting).and_return(interface)
+        handler = InterfaceCmdHandlerThread.new(interface, tlm, scope: "DEFAULT")
+        results = []
+        allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
+          msg_id = "#{(Time.now.to_f * 1000).to_i}-0"
+          results << block.call("{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, { 'connect' => 'true', 'params' => '{not json' }, nil)
+          results << block.call("{DEFAULT__CMD}INTERFACE__INST_INT", msg_id, { 'connect' => 'true', 'params' => '["host", 1]' }, nil)
+        end
+        handler.run
+        expect(results[0]).to be_a(String)
+        expect(results[0]).not_to eql 'SUCCESS'
+        expect(results[1]).to eql 'SUCCESS'
+        expect(tlm).to have_received(:attempting).with("host", 1).once
+        im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+    end
+
     describe "interface_details directive" do
       # Drive the command handler block directly. receive_commands is stubbed so
       # the block runs once with a crafted message and its return value (which
@@ -271,6 +294,153 @@ module OpenC3
       end
     end
 
+    describe "command message handling" do
+      # Drive the command handler block directly with one crafted message and
+      # return the block's result, which becomes the ack (nil means no ack)
+      def handle(msg_hash, topic: "{DEFAULT__CMD}TARGET__INST", critical_commanding: nil)
+        handler = InterfaceCmdHandlerThread.new(@interface, double("tlm").as_null_object, scope: "DEFAULT")
+        handler.instance_variable_set(:@critical_commanding, critical_commanding) if critical_commanding
+        result = :not_run
+        mutex = Mutex.new
+        allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
+          # The microservice's own handler thread may also land here, so only run the message once
+          mutex.synchronize do
+            result = block.call(topic, "#{(Time.now.to_f * 1000).to_i}-0", msg_hash, nil) if result == :not_run
+          end
+        end
+        handler.run
+        result
+      end
+
+      before(:each) do
+        @im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+        @interface = @im.instance_variable_get(:@interface)
+        allow(@interface).to receive(:connected?).and_return(true)
+        allow(@interface).to receive(:write)
+      end
+
+      after(:each) do
+        @im.shutdown
+        sleep 0.1 # Allow threads to exit
+      end
+
+      it "acks malformed interface_cmd and protocol_cmd JSON with an error" do
+        %w(interface_cmd protocol_cmd).each do |directive|
+          result = handle({ directive => '{not json' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+          expect(result).to be_a(String)
+          expect(result).to_not eql 'SUCCESS'
+        end
+      end
+
+      it "acks malformed cmd_params JSON with an error" do
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{not json' })
+        expect(result).to match(/Invalid cmd_params/)
+      end
+
+      it "does not ack a command for a disabled target" do
+        @interface.cmd_target_enabled['INST'] = false
+        expect(handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}' })).to be_nil
+      end
+
+      it "acks a released critical command whose target is now disabled" do
+        critical_model = double("CriticalCmdModel", approver: 'approver', claim_release: true,
+          cmd_hash: { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")' })
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        @interface.cmd_target_enabled['INST'] = false
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Target INST is disabled"
+        expect(critical_model).to have_received(:claim_release)
+      end
+
+      it "claims a released critical command before sending it" do
+        # CLEAR is hazardous, which a released critical command skips
+        critical_model = double("CriticalCmdModel", approver: 'approver',
+          cmd_hash: { 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")' })
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(critical_model).to receive(:claim_release).ordered.and_return(true)
+        # Counted once on release. It wasn't counted while held for approval.
+        expect(TargetModel).to receive(:increment_command_count).with('INST', 'CLEAR', 1, scope: 'DEFAULT').once.and_call_original
+        expect(@interface).to receive(:write).ordered do |command|
+          expect(command.packet_name).to eql 'CLEAR'
+          expect(command.extra['approver']).to eql 'approver'
+        end
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql 'SUCCESS'
+      end
+
+      it "doesn't count a command held for critical approval" do
+        critical_model = double("CriticalCmdModel", create: nil, name: 'abc-123')
+        stub_const("OpenC3::CriticalCmdModel", double(new: critical_model))
+        expect(TargetModel).to_not receive(:increment_command_count)
+        expect(@interface).to_not receive(:write)
+        msg_hash = { 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")', 'hazardous_check' => 'false' }
+        result = handle(msg_hash, critical_commanding: 'NORMAL')
+        expect(result).to eql "CriticalCmdError\nabc-123"
+      end
+
+      it "doesn't count a command returned for hazardous confirmation" do
+        expect(TargetModel).to_not receive(:increment_command_count)
+        expect(@interface).to_not receive(:write)
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")', 'hazardous_check' => 'true' })
+        expect(result).to start_with("HazardousError")
+      end
+
+      it "doesn't send a released critical command it can't claim" do
+        # A duplicate release message is expected so it's only a warning
+        critical_model = double("CriticalCmdModel", claim_release: false, released: true, status: 'APPROVED')
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(@interface).to_not receive(:write)
+        expect(Logger).to receive(:warn).with("INST_INT: Critical command 'abc-123' not released: already released", scope: 'DEFAULT')
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Critical command 'abc-123' not released: already released"
+
+        # An approved command that won't be sent, e.g. its approval was undone, is an error
+        critical_model = double("CriticalCmdModel", claim_release: false, released: false, status: 'WAITING')
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(Logger).to receive(:error).with("INST_INT: Critical command 'abc-123' not released: WAITING", scope: 'DEFAULT')
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Critical command 'abc-123' not released: WAITING"
+      end
+
+      it "doesn't send a released critical command if the claim fails" do
+        critical_model = double("CriticalCmdModel")
+        allow(critical_model).to receive(:claim_release).and_raise("Timeout updating critical command 'abc-123'")
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(@interface).to_not receive(:write)
+        expect(Logger).to receive(:error).with("INST_INT: Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'", scope: 'DEFAULT')
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'"
+      end
+
+      it "range checks a command that omits range_check" do
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'COLLECT', 'cmd_params' => JSON.generate({ 'TYPE' => 'NORMAL', 'DURATION' => 100 }) })
+        expect(result).to match(/DURATION/)
+      end
+
+      it "hazardous checks a command that omits hazardous_check" do
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")' })
+        expect(result).to start_with("HazardousError")
+      end
+
+      it "validates and logs a command that omits validate and log_message" do
+        validator = double("validator")
+        allow_any_instance_of(Packet).to receive(:validator).and_return(validator)
+        expect(validator).to receive(:pre_check).and_return([true, nil])
+        expect(validator).to receive(:post_check).and_return([true, nil])
+        expect(Logger).to receive(:info).with('cmd("INST ABORT")', anything).at_least(:once)
+        allow(Logger).to receive(:info)
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")' })
+        expect(result).to eql 'SUCCESS'
+      end
+
+      it "does not log a command with log_message false" do
+        expect(Logger).to_not receive(:info).with('cmd("INST ABORT")', anything)
+        allow(Logger).to receive(:info)
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")', 'log_message' => 'false' })
+        expect(result).to eql 'SUCCESS'
+      end
+    end
+
     describe "handle_packet" do
       it "does not write the status model after cancel_thread is set" do
         # A packet already buffered can be returned from read() after stop()
@@ -289,6 +459,71 @@ module OpenC3
 
         im.shutdown
         sleep 0.1 # Allow threads to exit
+      end
+
+      context "identification" do
+        def health_status_buffer
+          packet = System.telemetry.packet('INST', 'HEALTH_STATUS').clone
+          packet.id_items.each { |item| packet.write_item(item, item.id_value, :RAW) }
+          packet.buffer
+        end
+
+        def handle(im, buffer, target_name: nil, packet_name: nil, stored: false)
+          packet = Packet.new(target_name, packet_name)
+          packet.buffer = buffer
+          packet.stored = stored
+          im.send(:handle_packet, packet)
+        end
+
+        before(:each) do
+          @im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+          @warnings = []
+          allow(@im.instance_variable_get(:@logger)).to receive(:warn) { |msg| @warnings << msg }
+          @written = []
+          allow(TelemetryTopic).to receive(:write_packet) { |packet, **_| @written << packet }
+        end
+
+        after(:each) do
+          @im.shutdown
+          sleep 0.1 # Allow threads to exit
+        end
+
+        it "drops a packet pre-identified with a target not mapped to the interface and warns once" do
+          expect(System.telemetry).to_not receive(:identify!)
+          expect(System.telemetry).to_not receive(:identify_and_define_packet)
+          2.times { handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE') }
+          handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: 'LIMITS_CHANGE', stored: true)
+          expect(@warnings.grep(/unmapped target/)).to eql ["INST_INT: Dropping telemetry for unmapped target: SYSTEM LIMITS_CHANGE"]
+          expect(@written).to be_empty
+        end
+
+        it "bounds the unmapped warnings it remembers by evicting the oldest" do
+          stub_const("OpenC3::InterfaceMicroservice::UNMAPPED_TLM_WARNED_MAX", 2)
+          %w(A B C A).each { |name| handle(@im, health_status_buffer, target_name: 'SYSTEM', packet_name: name) }
+          # C evicted A so A warns again, and every new name warned
+          expect(@warnings.grep(/unmapped target/).map { |w| w.split(' ').last }).to eql %w(A B C A)
+          expect(@im.instance_variable_get(:@unmapped_tlm_warned).length).to eql 2
+        end
+
+        it "falls back to identifying a stored packet pre-identified with an unknown packet" do
+          handle(@im, health_status_buffer, target_name: 'INST', packet_name: 'NOPE', stored: true)
+          expect(@warnings).to include("INST_INT: Received unknown identified telemetry: INST NOPE")
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'INST'
+          expect(@written[0].packet_name).to eql 'HEALTH_STATUS'
+          expect(@written[0].stored).to be true
+        end
+
+        it "publishes an unidentified stored packet as UNKNOWN without updating the CVT" do
+          expect(CvtModel).to_not receive(:set)
+          expect(System.telemetry).to_not receive(:update!)
+          handle(@im, "\xAB\xCD", stored: true)
+          expect(@written.length).to eql 1
+          expect(@written[0].target_name).to eql 'UNKNOWN'
+          expect(@written[0].packet_name).to eql 'UNKNOWN'
+          expect(@written[0].stored).to be true
+          expect(@warnings).to include("INST_INT UNKNOWN packet length: 2 starting with: ABCD")
+        end
       end
     end
 
