@@ -240,6 +240,16 @@ class TestPreidentifiedProtocol(unittest.TestCase):
             self.assertTrue(pkt2.identified())
             self.assertTrue(pkt2.defined())
 
+    def test_read_decodes_binary_extra(self):
+        # write_packet encodes extra with JsonEncoder, so read must use JsonDecoder
+        # or binary values come back as {"json_class": "String", "raw": [...]}
+        _, pkt = self.setup_stream_pkt()
+        pkt.stored = False
+        pkt.extra = {"data": b"\xff", "name": "test"}
+        self.interface.write(pkt)
+        packet = self.interface.read()
+        self.assertEqual(packet.extra, {"data": b"\xff", "name": "test"})
+
     def test_read_returns_a_packet(self):
         for args in [[], [None, None, 2]]:
             _, pkt = self.setup_stream_pkt(args=args)

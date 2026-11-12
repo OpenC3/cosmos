@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from openc3.config.config_parser import ConfigParser
 from openc3.interfaces.protocols.burst_protocol import BurstProtocol
 from openc3.utilities.extract import convert_to_value
-from openc3.utilities.json import JsonEncoder
+from openc3.utilities.json import JsonDecoder, JsonEncoder
 
 
 # Delineates packets using the OpenC3 preidentification system
@@ -172,7 +172,7 @@ class PreidentifiedProtocol(BurstProtocol):
             if self.read_extra == "STOP":
                 return ("STOP", self.extra)
 
-            self.read_extra = json.loads(self.read_extra)
+            self.read_extra = json.loads(self.read_extra, cls=JsonDecoder)
             self.reduction_state = "FLAGS_REMOVED"
 
         if self.reduction_state == "FLAGS_REMOVED":

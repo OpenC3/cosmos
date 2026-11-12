@@ -153,10 +153,11 @@ module OpenC3
       # doesn't supply its own. Editing a queued command shouldn't silently drop it.
       extra = JSON.parse(existing[0])['extra'] if extra.nil?
 
-      Store.zremrangebyscore("#{@scope}:#{@name}", id, id)
+      # Serialize before removing so bad replacement metadata can't drop the queued command
       command_data = self.class.build_command_data(username: username, command: command, target_name: target_name,
-                                                   cmd_name: cmd_name, cmd_params: cmd_params, extra: extra, validate: validate, timeout: timeout)
-      Store.zadd("#{@scope}:#{@name}", id, command_data.to_json)
+                                                   cmd_name: cmd_name, cmd_params: cmd_params, extra: extra, validate: validate, timeout: timeout).to_json
+      Store.zremrangebyscore("#{@scope}:#{@name}", id, id)
+      Store.zadd("#{@scope}:#{@name}", id, command_data)
       notify(kind: 'command')
     end
 

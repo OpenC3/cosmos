@@ -827,7 +827,8 @@ class TestInterfaceMicroservice(unittest.TestCase):
         thread.start()
         self.addCleanup(thread.join, 5)
         self.addCleanup(im.shutdown)
-        time.sleep(0.1)
+        all_interfaces = self.wait_for_state("CONNECTED")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
         handler = im.handler_thread
         # Byte for byte what Ruby's JSON.generate(extra.as_json, allow_nan: true) emits
@@ -865,7 +866,8 @@ class TestInterfaceMicroservice(unittest.TestCase):
         thread.start()
         self.addCleanup(thread.join, 5)
         self.addCleanup(im.shutdown)
-        time.sleep(0.1)
+        all_interfaces = self.wait_for_state("CONNECTED")
+        self.assertEqual(all_interfaces["INST_INT"]["state"], "CONNECTED")
 
         handler = im.handler_thread
         original_build_cmd = System.commands.build_cmd

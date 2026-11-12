@@ -55,7 +55,7 @@ class QueueModel(Model):
         username: str,
         scope: str,
         validate: bool = True,
-        timeout: float = None,
+        timeout: float | None = None,
         extra: dict | None = None,
     ):
         model = cls.get_model(name=name, scope=scope)

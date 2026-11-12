@@ -516,6 +516,19 @@ module OpenC3
         expect(JSON.parse(commands[0]["extra"], allow_nan: true, create_additions: true)).to eql(extra)
       end
 
+      it "keeps the existing command when the replacement fails to serialize" do
+        allow(QueueTopic).to receive(:write_notification)
+        model = QueueModel.new(name: "TEST", scope: "DEFAULT")
+
+        model.insert_command(id: 1.0, username: "user1", command: "TGT CMD1")
+        allow(QueueModel).to receive(:build_command_data).and_raise(JSON::GeneratorError, "bad extra")
+        expect { model.update_command(id: 1.0, command: "TGT CMD2", username: "user2") }.to raise_error(JSON::GeneratorError)
+
+        commands = Store.zrange("DEFAULT:TEST", 0, -1).map { |cmd| JSON.parse(cmd) }
+        expect(commands.length).to eq(1)
+        expect(commands[0]["value"]).to eq("TGT CMD1")
+      end
+
       it "replaces existing extra when the update supplies it" do
         allow(QueueTopic).to receive(:write_notification)
         model = QueueModel.new(name: "TEST", scope: "DEFAULT")

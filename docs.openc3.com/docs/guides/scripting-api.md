@@ -926,6 +926,7 @@ cmd_no_range_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param 
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -982,6 +983,7 @@ cmd_no_hazardous_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Pa
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1038,6 +1040,7 @@ cmd_no_checks("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Va
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1094,6 +1097,7 @@ cmd_raw("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1150,6 +1154,7 @@ cmd_raw_no_range_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1206,6 +1211,7 @@ cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", "<Param #1 Name>" 
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1262,6 +1268,7 @@ cmd_raw_no_checks("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
