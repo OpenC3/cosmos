@@ -42,7 +42,13 @@ permissions:
 
 jobs:
   openc3-build-ubi:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    # Fork PRs (like dependabot's) get no secrets, and Registry1 has no
+    # anonymous pulls, so the UBI base images cannot be fetched. Their changes
+    # are still built by the push to main after merge.
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
