@@ -81,15 +81,7 @@ module OpenC3
 
     # generate the auth object
     def generate_auth
-      if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
-        if ENV['OPENC3_API_PASSWORD']
-          return OpenC3Authentication.new()
-        else
-          return nil
-        end
-      else
-        return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
-      end
+      OpenC3.authentication_from_environment()
     end
 
     # Forwards all method calls to the remote service.

@@ -38,23 +38,16 @@ module OpenC3
       client_id = extract_service_account_client_id(token)
       secret_reference = service_account_secret_reference(scope: scope, client_id: client_id)
 
-      model = ServiceAccountScriptAuthModel.get_model(name: username, scope: scope)
-      if model
-        model.auth_kind = 'client_credentials'
-        model.client_id = client_id
-        model.client_secret_name = secret_reference[:client_secret_name]
-        model.secret_store = secret_reference[:secret_store]
-        model.update
-      else
-        ServiceAccountScriptAuthModel.new(
+      ServiceAccountScriptAuthModel.set(
+        {
           name: username,
           auth_kind: 'client_credentials',
           client_id: client_id,
           client_secret_name: secret_reference[:client_secret_name],
           secret_store: secret_reference[:secret_store],
-          scope: scope,
-        ).create
-      end
+        },
+        scope: scope,
+      )
     end
 
     def service_account_secret_reference(scope:, client_id:)

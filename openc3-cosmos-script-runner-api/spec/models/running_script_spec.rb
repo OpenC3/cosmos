@@ -392,7 +392,7 @@ RSpec.describe RunningScript, type: :model do
         RunningScript.spawn("DEFAULT", "INST/script.py")
 
         env = @process_double.environment
-        expect(env['PYTHONPATH']).to eq('/custom/python/path')
+        expect(env['PYTHONPATH']).to eq('/openc3/python:/custom/python/path')
       end
 
       it "uses python_venv directly for venv resolution on temp scripts" do

@@ -273,4 +273,15 @@ module OpenC3
       end
     end
   end
+
+  def self.authentication_from_environment(raise_if_missing: false)
+    client_secret = ENV.fetch('OPENC3_API_CLIENT_SECRET', nil)
+    if !ENV['OPENC3_API_TOKEN'].nil? || !ENV['OPENC3_API_USER'].nil? || !(client_secret.nil? || client_secret.empty?)
+      return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
+    end
+    return OpenC3Authentication.new() if ENV['OPENC3_API_PASSWORD']
+    raise "Environment Variables Not Set for Authentication" if raise_if_missing
+
+    nil
+  end
 end

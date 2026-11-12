@@ -613,23 +613,35 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
     def test_client_credentials_re_mints_on_expiry(self):
         """Re-mints the token when it expires because no refresh token exists."""
         auth = OpenC3KeycloakAuthentication(self.test_url)
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.text = json.dumps(
+        first_response = Mock()
+        first_response.status_code = 200
+        first_response.headers = {}
+        first_response.text = json.dumps(
             {
-                "access_token": "m2m_access_token",
+                "access_token": "m2m_access_token_1",
                 "expires_in": 1,
                 "token_type": "bearer",
             }
         )
-        auth.http.post = Mock(return_value=mock_response)
+        second_response = Mock()
+        second_response.status_code = 200
+        second_response.headers = {}
+        second_response.text = json.dumps(
+            {
+                "access_token": "m2m_access_token_2",
+                "expires_in": 600,
+                "token_type": "bearer",
+            }
+        )
+        auth.http.post = Mock(side_effect=[first_response, second_response])
 
         token1 = auth.token()
         time.sleep(2)
         token2 = auth.token()
 
-        self.assertEqual(token1, token2)
+        self.assertEqual(token1, "Bearer m2m_access_token_1")
+        self.assertEqual(token2, "Bearer m2m_access_token_2")
+        self.assertNotEqual(token1, token2)
         self.assertEqual(auth.http.post.call_count, 2)
 
     def test_json_api_object_generate_auth_uses_client_credentials(self):

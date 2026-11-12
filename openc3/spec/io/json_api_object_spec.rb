@@ -114,5 +114,41 @@ module OpenC3
         expect { api_object.request('post', '/openc3-api/timeline', scope: 'DEFAULT') }.to raise_error(/Api Exception/)
       end
     end
+
+    describe "client-credentials authentication" do
+      it "adds an authorization header when only OPENC3_API_CLIENT_SECRET is set" do
+        ENV['OPENC3_API_TOKEN'] = nil
+        ENV['OPENC3_API_USER'] = nil
+        ENV['OPENC3_API_PASSWORD'] = nil
+        ENV['OPENC3_API_CLIENT_SECRET'] = 'm2m-secret'
+        ENV['OPENC3_KEYCLOAK_URL'] = 'http://keycloak:8080'
+
+        auth = instance_double(OpenC3KeycloakAuthentication, token: 'Bearer child-token')
+        response = instance_double(Faraday::Response, status: 200, headers: {}, body: '{}')
+        http = double('faraday_http')
+        captured_headers = nil
+
+        allow(OpenC3KeycloakAuthentication).to receive(:new).with('http://keycloak:8080').and_return(auth)
+        allow(http).to receive(:post) do |_uri, &block|
+          request = Struct.new(:params, :headers, :body).new
+          block.call(request)
+          captured_headers = request.headers
+          response
+        end
+
+        api_object = JsonApiObject.new(url: 'http://openc3-cosmos-cmd-tlm-api:2901', timeout: 1.0)
+        api_object.instance_variable_set(:@http, http)
+
+        api_object.request('post', '/openc3-api/test', scope: 'DEFAULT')
+
+        expect(captured_headers['Authorization']).to eq('Bearer child-token')
+      ensure
+        ENV.delete('OPENC3_API_TOKEN')
+        ENV.delete('OPENC3_API_USER')
+        ENV.delete('OPENC3_API_PASSWORD')
+        ENV.delete('OPENC3_API_CLIENT_SECRET')
+        ENV.delete('OPENC3_KEYCLOAK_URL')
+      end
+    end
   end
 end

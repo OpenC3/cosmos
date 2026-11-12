@@ -352,22 +352,22 @@ RSpec.describe ScriptsController, type: :controller do
 
     it "stores a durable client-credentials context for service-account callers" do
       secret_client = double('secrets_client')
-      model_double = double('service_account_script_auth_model', create: nil)
 
       request.headers['HTTP_AUTHORIZATION'] = "Bearer #{service_account_bearer_token}"
       allow(controller).to receive(:username).and_return('service-account-cosmos-m2m')
       allow(controller).to receive(:user_full_name).and_return('Cosmos M2M')
       allow(OpenC3::Secrets).to receive(:getClient).and_return(secret_client)
       expect(secret_client).to receive(:get).with('cosmos-m2m', scope: 'DEFAULT').and_return('stored-m2m-secret')
-      expect(OpenC3::ServiceAccountScriptAuthModel).to receive(:get_model).with(name: 'service-account-cosmos-m2m', scope: 'DEFAULT').and_return(nil)
-      expect(OpenC3::ServiceAccountScriptAuthModel).to receive(:new).with(
-        name: 'service-account-cosmos-m2m',
-        auth_kind: 'client_credentials',
-        client_id: 'cosmos-m2m',
-        client_secret_name: 'cosmos-m2m',
-        secret_store: nil,
+      expect(OpenC3::ServiceAccountScriptAuthModel).to receive(:set).with(
+        {
+          name: 'service-account-cosmos-m2m',
+          auth_kind: 'client_credentials',
+          client_id: 'cosmos-m2m',
+          client_secret_name: 'cosmos-m2m',
+          secret_store: nil,
+        },
         scope: 'DEFAULT',
-      ).and_return(model_double)
+      )
       expect(Script).to receive(:run).with('DEFAULT', 'INST/procedures/test.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m', 1, nil, nil).and_return(1)
 
       post :run, params: {scope: 'DEFAULT', name: 'INST/procedures/test.rb'}
@@ -375,20 +375,24 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
 
-    it "updates an existing durable client-credentials context for service-account callers" do
+    it "upserts the durable client-credentials context for repeat service-account callers" do
       secret_client = double('secrets_client')
-      model_double = double('service_account_script_auth_model', update: nil)
 
       request.headers['HTTP_AUTHORIZATION'] = "Bearer #{service_account_bearer_token}"
       allow(controller).to receive(:username).and_return('service-account-cosmos-m2m')
       allow(controller).to receive(:user_full_name).and_return('Cosmos M2M')
       allow(OpenC3::Secrets).to receive(:getClient).and_return(secret_client)
       expect(secret_client).to receive(:get).with('cosmos-m2m', scope: 'DEFAULT').and_return('stored-m2m-secret')
-      expect(OpenC3::ServiceAccountScriptAuthModel).to receive(:get_model).with(name: 'service-account-cosmos-m2m', scope: 'DEFAULT').and_return(model_double)
-      expect(model_double).to receive(:auth_kind=).with('client_credentials')
-      expect(model_double).to receive(:client_id=).with('cosmos-m2m')
-      expect(model_double).to receive(:client_secret_name=).with('cosmos-m2m')
-      expect(model_double).to receive(:secret_store=).with(nil)
+      expect(OpenC3::ServiceAccountScriptAuthModel).to receive(:set).with(
+        {
+          name: 'service-account-cosmos-m2m',
+          auth_kind: 'client_credentials',
+          client_id: 'cosmos-m2m',
+          client_secret_name: 'cosmos-m2m',
+          secret_store: nil,
+        },
+        scope: 'DEFAULT',
+      )
       expect(Script).to receive(:run).with('DEFAULT', 'INST/procedures/test.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m', 1, nil, nil).and_return(1)
 
       post :run, params: {scope: 'DEFAULT', name: 'INST/procedures/test.rb'}

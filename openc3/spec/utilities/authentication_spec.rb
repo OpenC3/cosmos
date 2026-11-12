@@ -358,4 +358,55 @@ module OpenC3
       end
     end
   end
+
+  describe '.authentication_from_environment' do
+    around do |example|
+      saved_env = {
+        'OPENC3_API_TOKEN' => ENV.fetch('OPENC3_API_TOKEN', nil),
+        'OPENC3_API_USER' => ENV.fetch('OPENC3_API_USER', nil),
+        'OPENC3_API_PASSWORD' => ENV.fetch('OPENC3_API_PASSWORD', nil),
+        'OPENC3_API_CLIENT_SECRET' => ENV.fetch('OPENC3_API_CLIENT_SECRET', nil),
+        'OPENC3_KEYCLOAK_URL' => ENV.fetch('OPENC3_KEYCLOAK_URL', nil),
+      }
+      example.run
+    ensure
+      saved_env.each do |key, value|
+        if value.nil?
+          ENV.delete(key)
+        else
+          ENV[key] = value
+        end
+      end
+    end
+
+    it 'uses keycloak authentication for a nonempty client secret' do
+      ENV['OPENC3_API_TOKEN'] = nil
+      ENV['OPENC3_API_USER'] = nil
+      ENV['OPENC3_API_PASSWORD'] = 'password'
+      ENV['OPENC3_API_CLIENT_SECRET'] = 'm2m-secret'
+      ENV['OPENC3_KEYCLOAK_URL'] = 'http://keycloak:8080'
+
+      expect(OpenC3KeycloakAuthentication).to receive(:new).with('http://keycloak:8080').and_return(:keycloak_auth)
+      expect(OpenC3.authentication_from_environment).to eq(:keycloak_auth)
+    end
+
+    it 'uses core authentication for an empty client secret with a password' do
+      ENV['OPENC3_API_TOKEN'] = nil
+      ENV['OPENC3_API_USER'] = nil
+      ENV['OPENC3_API_PASSWORD'] = 'password'
+      ENV['OPENC3_API_CLIENT_SECRET'] = ''
+
+      expect(OpenC3Authentication).to receive(:new).and_return(:core_auth)
+      expect(OpenC3.authentication_from_environment).to eq(:core_auth)
+    end
+
+    it 'returns nil when no credentials are configured' do
+      ENV['OPENC3_API_TOKEN'] = nil
+      ENV['OPENC3_API_USER'] = nil
+      ENV['OPENC3_API_PASSWORD'] = nil
+      ENV['OPENC3_API_CLIENT_SECRET'] = nil
+
+      expect(OpenC3.authentication_from_environment).to be_nil
+    end
+  end
 end
