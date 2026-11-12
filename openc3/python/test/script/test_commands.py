@@ -149,6 +149,18 @@ class TestCommands(unittest.TestCase):
             )
         self.assertEqual(gArgs, ("INST ABORT",))
 
+    def test_sends_extra_metadata(self):
+        extra = {"flow_uuid": "1234-5678", "hv_id": 42}
+        for _stdout in capture_io():
+            cmd("INST ABORT", extra=extra)
+        self.assertEqual(gKwargs["extra"], extra)
+
+    def test_does_not_send_extra_when_not_given(self):
+        # Older servers reject an unknown extra keyword, even when None
+        for _stdout in capture_io():
+            cmd("INST ABORT")
+        self.assertNotIn("extra", gKwargs)
+
     def test_sends_a_cmd_raw(self):
         global gArgs
         global gKwargs

@@ -281,6 +281,7 @@ RSpec.describe QueuesController, type: :controller do
         id: nil,
         username: "anonymous",
         command: "TEST COMMAND",
+        extra: nil,
         validate: nil,
         timeout: nil
       )
@@ -301,9 +302,40 @@ RSpec.describe QueuesController, type: :controller do
         id: id.to_f,
         username: "anonymous",
         command: "TEST COMMAND",
+        extra: nil,
         validate: nil,
         timeout: nil
       )
+    end
+
+    it "passes extra metadata through to the model" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:insert_command)
+
+      post :insert_command, params: {name: "QUEUE1", command: "TEST COMMAND", extra: {flow_uuid: "1234-5678"}, scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(queue_model).to have_received(:insert_command).with(
+        id: nil,
+        username: "anonymous",
+        command: "TEST COMMAND",
+        extra: {"flow_uuid" => "1234-5678"},
+        validate: nil,
+        timeout: nil
+      )
+    end
+
+    it "returns 400 when extra is not a Hash" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:insert_command)
+
+      post :insert_command, params: {name: "QUEUE1", command: "TEST COMMAND", extra: "invalid", scope: "DEFAULT"}
+      expect(response).to have_http_status(400)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("Invalid extra parameter: invalid. Must be a Hash.")
+      expect(queue_model).to_not have_received(:insert_command)
     end
 
     it "returns 404 when the queue is not found" do
@@ -440,9 +472,41 @@ RSpec.describe QueuesController, type: :controller do
         id: id,
         username: "anonymous",
         command: "UPDATED COMMAND",
+        extra: nil,
         validate: true, # Even when not provided, validate should default to true
         timeout: nil
       )
+    end
+
+    it "passes extra metadata through to the model" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:update_command)
+
+      post :update_command, params: {name: "QUEUE1", command: "UPDATED COMMAND", id: "1.0",
+                                     extra: {flow_uuid: "1234-5678"}, scope: "DEFAULT"}
+      expect(response).to have_http_status(:ok)
+      expect(queue_model).to have_received(:update_command).with(
+        id: "1.0",
+        username: "anonymous",
+        command: "UPDATED COMMAND",
+        extra: {"flow_uuid" => "1234-5678"},
+        validate: true,
+        timeout: nil
+      )
+    end
+
+    it "returns 400 when extra is not a Hash" do
+      queue_model = double("QueueModel")
+      allow(OpenC3::QueueModel).to receive(:get_model).and_return(queue_model)
+      allow(queue_model).to receive(:update_command)
+
+      post :update_command, params: {name: "QUEUE1", command: "UPDATED COMMAND", id: "1.0", extra: "invalid", scope: "DEFAULT"}
+      expect(response).to have_http_status(400)
+      json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      expect(json["status"]).to eql("error")
+      expect(json["message"]).to eql("Invalid extra parameter: invalid. Must be a Hash.")
+      expect(queue_model).to_not have_received(:update_command)
     end
 
     it "returns 404 when the queue is not found" do
@@ -550,6 +614,7 @@ RSpec.describe QueuesController, type: :controller do
       command_data = {
         "username" => "user1",
         "value" => "TEST COMMAND",
+        "extra" => JSON.generate({ "flow_uuid" => "1234-5678", "data" => "\xFF".b }.as_json, allow_nan: true),
         "timestamp" => 1000,
         "id" => 1.0
       }
@@ -561,6 +626,7 @@ RSpec.describe QueuesController, type: :controller do
           validate: true,
           timeout: nil,
           queue_username: "user1",
+          extra: { "flow_uuid" => "1234-5678", "data" => "\xFF".b },
           scope: "DEFAULT",
           token: anything
         }
@@ -591,6 +657,7 @@ RSpec.describe QueuesController, type: :controller do
           validate: true,
           timeout: nil,
           queue_username: "user2",
+          extra: nil,
           scope: "DEFAULT",
           token: anything
         }
@@ -658,6 +725,7 @@ RSpec.describe QueuesController, type: :controller do
           validate: true,
           timeout: nil,
           queue_username: "user3",
+          extra: nil,
           scope: "DEFAULT",
           token: anything
         }
@@ -687,6 +755,7 @@ RSpec.describe QueuesController, type: :controller do
           validate: true,
           timeout: 0,
           queue_username: "user4",
+          extra: nil,
           scope: "DEFAULT",
           token: anything
         }
