@@ -53,7 +53,6 @@ module OpenC3
       @packets = {}          # target => [group names, its LIMITS_GROUP packet]
       @settings_changed = false # settings must be reread before the next publish
       @warned = Set.new
-      @received_counts = Hash.new(0) # target => packets published
       @event_count = 0             # limits events which changed a group's inputs
       @processing_seconds = 0.0    # time spent computing and publishing for them
       @limits_events_topic = "#{@scope}__openc3_limits_events"
@@ -272,9 +271,9 @@ module OpenC3
         enabled_item = packet.get_item("#{group}#{PacketConfig::LIMITS_GROUP_ENABLED_SUFFIX}")
         packet.write_item(enabled_item, PacketConfig::LIMITS_GROUP_ENABLED_STATES[enabled ? 'TRUE' : 'FALSE'], :RAW)
       end
-      @received_counts[target_name] += 1
       packet.received_time = Time.now.sys
-      packet.received_count = @received_counts[target_name]
+      # Count it like an interface does so the packet counts show it and it survives restarts
+      packet.received_count = TargetModel.increment_telemetry_count(target_name, PacketConfig::LIMITS_GROUP_PACKET, 1, scope: @scope)
       packet.stored = false
       # write_packet updates the DECOM topic and the CVT but (unlike inject_tlm)
       # doesn't check limits so the rollup never raises limits events of its own

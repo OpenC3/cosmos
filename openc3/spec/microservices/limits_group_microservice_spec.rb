@@ -187,6 +187,28 @@ module OpenC3
       expect(cvt('INST2')['RECEIVED_COUNT']).to eql 2
     end
 
+    it "counts each publish in the target's telemetry counts on its db_shard" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP2', 'YELLOW_LOW')
+      expect(TargetModel.get_telemetry_count('INST', 'LIMITS_GROUP', scope: 'DEFAULT')).to eql 1
+      expect(TargetModel.get_telemetry_count('INST2', 'LIMITS_GROUP', scope: 'DEFAULT')).to eql 2
+      expect(cvt('INST2')['RECEIVED_COUNT']).to eql 2
+      expect(Store.instance(db_shard: 2).hget("DEFAULT__TELEMETRYCNTS__{INST2}", "LIMITS_GROUP")).to eql "2"
+      expect(Store.instance(db_shard: 0).hexists("DEFAULT__TELEMETRYCNTS__{INST2}", "LIMITS_GROUP")).to be false
+    end
+
+    it "continues the telemetry count after a restart" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      change('TEMP1', 'RED')
+      expect(cvt['RECEIVED_COUNT']).to eql 2
+      @microservice.shutdown
+      @microservice = LimitsGroupMicroservice.new("DEFAULT__LIMITSGROUP__DEFAULT")
+      @microservice.reload
+      @microservice.publish(force: true)
+      expect(cvt['RECEIVED_COUNT']).to eql 3
+      expect(TargetModel.get_telemetry_count('INST', 'LIMITS_GROUP', scope: 'DEFAULT')).to eql 3
+    end
+
     it "never raises limits events or changes the overall limits state" do
       start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
       change('TEMP1', 'YELLOW')
