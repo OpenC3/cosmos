@@ -107,24 +107,6 @@ Single value panels adapt to their size too. For example, a Stat panel only two 
 | Command   | A command with preset parameters, or a button that runs a script. Critical commands go through the usual approval.             | Hold or click to send; parameters to hide; details text; open Script Runner when a script starts |
 | Text      | Notes, procedures, links and tables written in markdown, with a preview in the panel dialog                                    |                                                                                                  |
 
-### Aggregate Panels
-
-An Aggregate panel computes statistics over the same history the graphs show: the time range picked in the header, or the range before the playback time during playback. It updates about once a second. With one item each statistic is a tile; with several, each item is a row. Values in the item's units (min, max, average and so on) take the item's limits color, so a maximum that went red during the range stands out. With one item that has limits, a limits bar across the top marks the current value and brackets the minimum to the maximum; turn it off with **Show limits bar**.
-
-```text
-PANEL AGGREGATE 0 0 4 4 "Temperature stats"
-  ITEM INST HEALTH_STATUS TEMP1
-  SETTING STATS MIN MAX AVG PERCENTILE
-  SETTING PERCENTILE 99
-END
-```
-
-### Text Panels
-
-A Text panel shows markdown: headings, bold and italic, code, lists and task lists, links (opened in a new tab), tables and quotes. HTML, scripts and styles are removed. In the file the markdown is one `SETTING TEXT` line, with line breaks written as `\n` and `"` and `\` escaped with a backslash; the panel dialog takes care of that.
-
-Items are shown as their converted values by default. Pick RAW, FORMATTED or WITH_UNITS per item in the panel dialog.
-
 ## The Dashboard File
 
 Click **Code** to see the dashboard as text. You can edit it there, and problems are reported with their line numbers. The same text is what's saved to `TARGET/dashboards/NAME.txt`, so dashboards can also be written by hand and shipped in a plugin's targets like screens are.
