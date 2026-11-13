@@ -209,7 +209,7 @@ class MessagesThread < TopicsThread
   end
 
   def thread_teardown
-    OpenC3::Logger.info "MessagesThread - Sending stream complete marker"
+    OpenC3::Logger.debug "MessagesThread - Sending stream complete marker"
     transmit_results([], force: true)
   end
 end

@@ -338,7 +338,7 @@ class StreamingApi
       end
       @logged_threads.delete(thread)
       if @logged_threads.length == 0 and not @realtime_thread
-        OpenC3::Logger.info "Sending stream complete marker"
+        OpenC3::Logger.debug "Sending stream complete marker"
         transmit_results([], force: true)
       end
     end
