@@ -63,6 +63,16 @@ module OpenC3
       EphemeralStore.instance(db_shard: DB_SHARDS[target_name]).xrevrange("DEFAULT__DECOM__{#{target_name}}__LIMITS_GROUP", count: 100).length
     end
 
+    # Poll rather than sleep a fixed time so a slow runner can't fail the thread tests
+    def wait_until(timeout = 5)
+      deadline = Time.now + timeout
+      until yield
+        raise "Timed out waiting for the microservice" if Time.now > deadline
+
+        sleep(0.01)
+      end
+    end
+
     def start(groups)
       store_groups(groups)
       %w(TEMP1 TEMP2 TEMP3 TEMP4).each { |item| change(item, 'GREEN') }
@@ -427,17 +437,15 @@ module OpenC3
         method.call(**kwargs)
       end
       thread = Thread.new { @microservice.run }
-      sleep 0.2
+      wait_until { publishes == 1 }
       expect(reloads).to eql [{}]
 
-      # Other config changes are ignored
+      # Other config changes are ignored. The target event written after it
+      # is read in the same or a later read so only it causes a reload.
       ConfigTopic.write({ kind: 'created', type: 'microservice', name: 'DEFAULT__USER__INST' }, scope: 'DEFAULT')
-      sleep 0.2
-      expect(reloads).to eql [{}]
-
       store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'POWER' => [%w(INST HEALTH_STATUS TEMP2)] })
       ConfigTopic.write({ kind: 'created', type: 'target', name: 'INST' }, scope: 'DEFAULT')
-      sleep 0.2
+      wait_until { publishes == 2 }
       @microservice.shutdown
       thread.join(5)
       expect(reloads).to eql [{}, { changed_targets: ['INST'] }]
@@ -461,7 +469,7 @@ module OpenC3
         method.call(*args, &block)
       end
       thread = Thread.new { @microservice.run }
-      sleep 0.2
+      wait_until { publishes == 2 }
       @microservice.shutdown
       thread.join(5)
       expect(cvt['TEMPS__C']).to eql 'RED'
@@ -472,7 +480,7 @@ module OpenC3
       store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
       stub_const("OpenC3::LimitsGroupMicroservice::READ_TIMEOUT_MS", 10)
       thread = Thread.new { @microservice.run }
-      sleep 0.2
+      wait_until { publishes == 1 }
       @microservice.shutdown
       thread.join(5)
       expect(thread.alive?).to be false
