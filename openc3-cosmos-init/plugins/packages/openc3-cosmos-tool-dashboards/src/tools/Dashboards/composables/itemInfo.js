@@ -106,7 +106,7 @@ export class ItemInfo {
     if (!info.limits) return null
     const limits = info.limits[this.state.limitsSet] || info.limits.DEFAULT
     // Change limits (SEQUENCE, CHANGE, STATIC) have no numeric values
-    if (!limits || limits.red_low === undefined) return null
+    if (limits?.red_low === undefined) return null
     return limits
   }
 }
