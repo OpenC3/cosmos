@@ -325,7 +325,7 @@ module OpenC3
         raise "Telemetry packet #{target_name} #{LIMITS_GROUP_PACKET} is reserved for the limits groups the target defines. Rename the packet or move the limits groups to another target."
       end
 
-      target_packets[LIMITS_GROUP_PACKET] = self.class.limits_group_packet(target_name, groups.keys)
+      target_packets[LIMITS_GROUP_PACKET] = self.class.generate_limits_group_packet(target_name, groups.keys)
     end
 
     # @param target_name [String] The target name
@@ -343,7 +343,7 @@ module OpenC3
     # @param target_name [String] Target which defines the groups
     # @param group_names [Array<String>] Limits group names
     # @return [Packet]
-    def self.limits_group_packet(target_name, group_names)
+    def self.generate_limits_group_packet(target_name, group_names)
       packet = Packet.new(target_name, LIMITS_GROUP_PACKET, :BIG_ENDIAN, "Rolled-up limits state of each limits group defined by #{target_name}")
       packet.virtual = true
       packet.hidden = false

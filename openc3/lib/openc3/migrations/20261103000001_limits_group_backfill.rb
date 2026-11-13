@@ -59,7 +59,7 @@ module OpenC3
     # Installing a target adds this packet like any other
     # (see PacketConfig#build_limits_group_packet)
     def self.add_limits_group_packet(model, group_names)
-      packet = PacketConfig.limits_group_packet(model.name, group_names)
+      packet = PacketConfig.generate_limits_group_packet(model.name, group_names)
       TargetModel.set_packet(model.name, packet.packet_name, packet, scope: model.scope)
       # Seed the CVT like TargetModel#update_store_telemetry so the packet can be read
       # before the limits group microservice publishes it. HSETNX never overwrites values.

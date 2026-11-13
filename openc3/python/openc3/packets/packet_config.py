@@ -1104,7 +1104,7 @@ class PacketConfig:
                 f"Telemetry packet {target_name} {self.LIMITS_GROUP_PACKET} is reserved for the limits groups the target defines. "
                 "Rename the packet or move the limits groups to another target."
             )
-        target_packets[self.LIMITS_GROUP_PACKET] = PacketConfig.limits_group_packet(target_name, groups.keys())
+        target_packets[self.LIMITS_GROUP_PACKET] = PacketConfig.generate_limits_group_packet(target_name, groups.keys())
 
     # Whether the packet is the generated limits group packet
     def limits_group_packet_p(self, target_name, packet_name):
@@ -1115,7 +1115,7 @@ class PacketConfig:
     # used to identify received data (the limits group microservice publishes it)
     # but unlike a VIRTUAL packet it stays visible and enabled in the tools.
     @classmethod
-    def limits_group_packet(cls, target_name, group_names):
+    def generate_limits_group_packet(cls, target_name, group_names):
         packet = Packet(
             target_name,
             cls.LIMITS_GROUP_PACKET,

@@ -259,7 +259,7 @@ module OpenC3
       # it when the target's groups change. Every item is written below.
       groups, packet = @packets[target_name]
       unless groups == values.keys
-        packet = PacketConfig.limits_group_packet(target_name, values.keys)
+        packet = PacketConfig.generate_limits_group_packet(target_name, values.keys)
         @packets[target_name] = [values.keys, packet]
       end
       values.each do |group, (color, enabled)|

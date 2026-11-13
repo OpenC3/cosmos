@@ -113,7 +113,7 @@ module OpenC3
 
     it "only builds the LIMITS_GROUP packet again when the groups change" do
       store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
-      expect(PacketConfig).to receive(:limits_group_packet).once.and_call_original
+      expect(PacketConfig).to receive(:generate_limits_group_packet).once.and_call_original
       @microservice.reload
       @microservice.publish(force: true)
       change('TEMP1', 'RED')
@@ -122,7 +122,7 @@ module OpenC3
       expect(cvt['TEMPS__C']).to eql 'GREEN'
 
       store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'MORE' => [%w(INST HEALTH_STATUS TEMP2)] })
-      expect(PacketConfig).to receive(:limits_group_packet).once.and_call_original
+      expect(PacketConfig).to receive(:generate_limits_group_packet).once.and_call_original
       @microservice.reload
       @microservice.publish
       expect(cvt['MORE__C']).to eql 'GREEN'
