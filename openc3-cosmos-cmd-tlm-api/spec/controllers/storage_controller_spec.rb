@@ -1892,6 +1892,19 @@ RSpec.describe StorageController, type: :controller do
         expect(response).to have_http_status(:bad_request)
       end
 
+      # validate_storage_source reads the volume when both are given, so the check must use the volume too
+      it "refuses download_file of a protected volume when a bucket is also given" do
+        stub_bucket_download
+        get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", volume: "OPENC3_TEMP_VOLUME", object_id: "x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses download_multiple_files of a protected volume when a bucket is also given" do
+        stub_bucket_client
+        post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", volume: "OPENC3_TEMP_VOLUME", path: "", files: ["x"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
       it "hides a protected volume from the volume list" do
         get :volumes
         expect(JSON.parse(response.body)).to eq(["/data"])

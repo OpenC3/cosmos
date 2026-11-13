@@ -340,7 +340,7 @@ class StorageController < ApplicationController
         return
       end
 
-      return if deny_protected_storage?(root: params[:bucket] || params[:volume], key: object_id)
+      return if deny_protected_storage?(root: storage_root(storage_type), key: object_id)
 
       # Check scope-based RBAC for bucket downloads
       if storage_type == :bucket && params[:bucket] && bucket_requires_rbac?(params[:bucket])
@@ -449,7 +449,7 @@ class StorageController < ApplicationController
 
       path = sanitize_path(params[:path] || '')
       storage_type, storage_name = validate_storage_source
-      return if files.any? { |filename| deny_protected_storage?(root: params[:bucket] || params[:volume], key: sanitize_path("#{path}#{filename}")) }
+      return if files.any? { |filename| deny_protected_storage?(root: storage_root(storage_type), key: sanitize_path("#{path}#{filename}")) }
 
       # Check scope-based RBAC for bucket downloads
       if storage_type == :bucket && params[:bucket] && bucket_requires_rbac?(params[:bucket])
@@ -1080,6 +1080,12 @@ class StorageController < ApplicationController
     else
       raise StorageError, "No volume or bucket given"
     end
+  end
+
+  # The bucket or volume parameter validate_storage_source read, so a protection check looks at
+  # the same storage that is then accessed (it prefers the volume when both are given)
+  def storage_root(storage_type)
+    storage_type == :volume ? params[:volume] : params[:bucket]
   end
 
   # Adds files from a volume to the zip archive
