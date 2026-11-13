@@ -16,6 +16,7 @@ import ModifiedPluginDialog from './ModifiedPluginDialog.vue'
 import OpenC3Admin from './OpenC3Admin.vue'
 import PluginDialog from './PluginDialog.vue'
 import { TabsList } from './tabs'
+import TsdbTab from './tabs/TsdbTab.vue'
 
 export {
   DownloadDialog,
@@ -23,4 +24,5 @@ export {
   OpenC3Admin,
   PluginDialog,
   TabsList,
+  TsdbTab,
 }
