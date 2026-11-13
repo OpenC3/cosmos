@@ -9,9 +9,9 @@ sidebar_custom_props:
 
 Notebooks is an interactive procedure tool that allows operators to create, execute, and track multi-step workflows. Each notebook consists of a series of steps that can include formatted documentation (Markdown), telemetry displays (Screens), and executable code (Scripts). Notebooks provide a structured way to guide operators through complex procedures while maintaining a complete audit trail of execution.
 
-Notebooks are stored within COSMOS targets and can be created, edited, and executed through the Notebooks tool interface. When a notebook is started, it creates a unique execution instance that tracks the completion status of each step.
+Notebooks are stored within COSMOS targets and can be created, edited, and executed through the Notebooks tool interface. Like screens and procedures, notebook definition files can be shipped in a plugin. See [Notebooks in Plugins](#notebooks-in-plugins). When a notebook is started, it creates a unique execution instance that tracks the completion status of each step.
 
-Notebooks are similar to various e-procedure systems and Juypter notebooks.
+Notebooks are similar to various e-procedure systems and Jupyter notebooks.
 
 ![Notebooks](/img/notebooks/notebooks.png)
 
@@ -223,25 +223,99 @@ STEP_START SCRIPT
 puts "Hello from script"
 wait 1
 STEP_END
+
+STEP SCRIPT INST/procedures/collect.rb
 ```
+
+Steps can define their content inline between `STEP_START` and `STEP_END`, or reference an existing file with a single-line `STEP`:
+
+| Step Type | Inline (`STEP_START <type>` ... `STEP_END`)                              | Reference (`STEP <type> <args>`)                                 |
+| --------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------- |
+| MARKDOWN  | Markdown text                                                            | Not supported                                                    |
+| SCREEN    | Screen definition (see [Screens](/docs/configuration/telemetry-screens)) | `STEP SCREEN <TARGET> <SCREEN>` (e.g. `STEP SCREEN INST HS`)     |
+| SCRIPT    | Ruby or Python script code                                               | `STEP SCRIPT <TARGET>/procedures/<file>` (path to a script file) |
 
 ### Keywords
 
-| Keyword              | Description                                                  |
-| -------------------- | ------------------------------------------------------------ |
-| `STEP_START <type>`  | Begins a step block with inline content (MARKDOWN or SCRIPT) |
-| `STEP_END`           | Ends a step block                                            |
-| `STEP <type> <args>` | Single-line step definition (SCREEN target screen_name)      |
-| `NO_COMPLETE`        | Marks the preceding step as non-completable                  |
-| `NOTEBOOK_START`     | Automatically added when execution begins                    |
-| `NOTEBOOK_COMPLETE`  | Automatically added when execution completes                 |
-| `STEP_COMPLETE`      | Automatically added when a step is checked complete          |
-| `STEP_UNCOMPLETE`    | Automatically added when a step is unchecked complete        |
-| `REDLINE_STEP_START` | Marks an edited version of a step during execution           |
-| `REDLINE_STEP_END`   | Ends a redline block                                         |
-| `DATA`               | Single-line step data storage (DATA SCRIPT_ID 1)             |
-| `DATA_START`         | Begins a data block (DATA_START data_name)                   |
-| `DATA_END`           | Ends a data block                                            |
+| Keyword              | Description                                                                |
+| -------------------- | -------------------------------------------------------------------------- |
+| `STEP_START <type>`  | Begins a step block with inline content (MARKDOWN, SCREEN, or SCRIPT)      |
+| `STEP_END`           | Ends a step block                                                          |
+| `STEP <type> <args>` | Single-line step referencing a screen or script file                       |
+| `NO_COMPLETE`        | Marks the preceding step as non-completable                                |
+| `STEP_UUID <uuid>`   | Stable step identifier used to merge concurrent edits. Added automatically |
+| `VERSION <n>`        | Edit counter used to detect conflicting saves. Managed automatically       |
+| `NOTEBOOK_START`     | Automatically added when execution begins                                  |
+| `NOTEBOOK_COMPLETE`  | Automatically added when execution completes                               |
+| `STEP_COMPLETE`      | Automatically added when a step is checked complete                        |
+| `STEP_UNCOMPLETE`    | Automatically added when a step is unchecked complete                      |
+| `REDLINE_STEP_START` | Marks an edited version of a step during execution                         |
+| `REDLINE_STEP_END`   | Ends a redline block                                                       |
+| `DATA`               | Single-line step data storage (DATA SCRIPT_ID 1)                           |
+| `DATA_START`         | Begins a data block (DATA_START data_name)                                 |
+| `DATA_END`           | Ends a data block                                                          |
+
+## Notebooks in Plugins
+
+Notebook definition files can be packaged in a plugin, the same way [screens](/docs/configuration/telemetry-screens) live in a target's `screens` folder and scripts live in its `procedures` folder. Put each notebook in the target's `notebooks` folder:
+
+```
+openc3-cosmos-gse/
+  plugin.txt
+  targets/
+    GSE/
+      notebooks/
+        power_on.txt
+        checkout.txt
+      procedures/
+        power_on.rb
+      screens/
+        status.txt
+```
+
+When the plugin is installed, the notebooks appear in the Notebooks tool under the specified target. The notebook name is the filename without the `.txt` extension.
+
+### Creating a Plugin Notebook
+
+Writing a notebook definition by hand is error prone, so build the notebook in the Notebooks tool first and then copy its definition into your plugin:
+
+1. In the Notebooks tool, select a target and use **New Notebook** to create the notebook.
+2. Add, edit, and reorder steps until the notebook works the way you want. Run it to verify the functionality.
+3. Get the saved definition using either method:
+   - Open **Edit Notebook** from the Notebook menu and copy the full text from the dialog.
+   - In [Bucket Explorer](/docs/tools/bucket-explorer), open the config bucket and download `<SCOPE>/targets_modified/<TARGET>/notebooks/<name>.txt`.
+4. Save the text as `targets/<TARGET>/notebooks/<name>.txt` in your plugin.
+
+Copy the template, not a running or completed notebook. The definition of an executed notebook includes execution records (`NOTEBOOK_START`, `STEP_COMPLETE`, `DATA`, etc.) that should not be shipped in a plugin. Click **Show Template** first if needed.
+
+The copied file includes `STEP_UUID` and `VERSION` lines. Leave them in place; the tool uses them to track edits.
+
+### Plugin Notebook Rules
+
+- Filenames must be lowercase and end in `.txt`. Other files in the folder are ignored.
+- Files whose names start with an underscore (e.g. `_draft.txt`) are not listed in the tool.
+- Notebook files are processed with [ERB](/docs/configuration/format#erb) at install time, like screens and other target `.txt` files. After copying a notebook from the tool, replace hardcoded target names with `<%= target_name %>` so the notebook still works if the target is renamed at install.
+
+For example, a notebook copied from the tool and updated to use the installed target name:
+
+```
+VERSION 4
+STEP_START MARKDOWN
+# GSE Power On
+
+Verify the GSE is connected before starting.
+STEP_END
+STEP_UUID 0f6d2a4e-6c1b-4f7e-9a51-3c2d7e8b9a10
+NO_COMPLETE
+
+STEP SCREEN <%= target_name %> STATUS
+STEP_UUID 5b8e1c3a-2d4f-4a6b-8c9d-1e2f3a4b5c6d
+
+STEP SCRIPT <%= target_name %>/procedures/power_on.rb
+STEP_UUID 9a7b6c5d-4e3f-4210-8f9e-8d7c6b5a4f3e
+```
+
+If a user edits a plugin-provided notebook through the tool, the change is saved as a modified copy of the target file, so it survives plugin upgrades just like edited screens and procedures. See [Target Deployment](/docs/configuration/plugins#target-deployment). Executed notebooks are stored separately in the logs bucket, so upgrading or uninstalling the plugin does not delete execution records.
 
 ## Best Practices
 
