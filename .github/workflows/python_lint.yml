@@ -53,7 +53,7 @@ jobs:
       # ruff parses files and never imports them, so this job has no use for
       # openc3 being installed. Skipping that editable install lets the sync
       # run --no-build, so no third-party build backend executes here. The run
-      # steps below then need --no-sync: with --frozen, uv re-evaluates whether
+      # steps below then need --no-sync: with --locked, uv re-evaluates whether
       # the skipped project could be installed and rejects it under --no-build.
       # --no-sync keeps --no-build meaningful on them -- ruff comes from the
       # venv this step built, and nothing is resolved or built at run time.
@@ -72,7 +72,7 @@ jobs:
         run: |
           audit_status=0
           uv audit \
-            --frozen \
+            --locked \
             --output-format sarif \
             --preview-features audit-command \
             > uv-audit.sarif || audit_status=$?
