@@ -75,7 +75,7 @@ class TestLimits(unittest.TestCase):
         self.assertEqual(sets, ["DEFAULT", "TVAC"])
 
     def test_returns_the_limits_groups(self):
-        self.assertEqual(list(self.limits.groups().keys()), ["GROUP1", "GROUP2"])
+        self.assertEqual(list(self.limits.groups()["SYSTEM"].keys()), ["GROUP1", "GROUP2"])
 
     def test_sets_the_underlying_configuration(self):
         tf = tempfile.NamedTemporaryFile(mode="w")
@@ -84,7 +84,7 @@ class TestLimits(unittest.TestCase):
         pc = PacketConfig()
         pc.process_file(tf.name, "SYSTEM")
         self.assertIn("TVAC", self.limits.sets())
-        self.assertEqual(list(self.limits.groups().keys()), ["GROUP1", "GROUP2"])
+        self.assertEqual(list(self.limits.groups()["SYSTEM"].keys()), ["GROUP1", "GROUP2"])
         self.limits.config = pc
         self.assertEqual(self.limits.sets(), ["DEFAULT"])
         self.assertEqual(self.limits.groups(), ({}))

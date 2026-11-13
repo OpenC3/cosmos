@@ -87,6 +87,19 @@ HORIZONTAL
     END
   END
 
+  # Rolled up limits state of the groups in cmd_tlm/limits_groups.txt.
+  # PAYLOAD nests TEMPS and GROUND.
+  VERTICALBOX "Limits Groups"
+    MATRIXBYCOLUMNS 2
+      LIMITSCOLOR <%= target_name %> LIMITS_GROUP PAYLOAD
+      VALUE <%= target_name %> LIMITS_GROUP PAYLOAD_ENABLED
+      LIMITSCOLOR <%= target_name %> LIMITS_GROUP TEMPS
+      VALUE <%= target_name %> LIMITS_GROUP TEMPS_ENABLED
+      LIMITSCOLOR <%= target_name %> LIMITS_GROUP GROUND
+      VALUE <%= target_name %> LIMITS_GROUP GROUND_ENABLED
+    END
+  END
+
   # TODO: Not yet implemented
   #VERTICALBOX "Range Columns 0-100"
   #  HORIZONTAL

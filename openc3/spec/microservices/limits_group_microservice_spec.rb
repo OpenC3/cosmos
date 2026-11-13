@@ -1,0 +1,490 @@
+# encoding: ascii-8bit
+
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+require 'spec_helper'
+require 'openc3/microservices/limits_group_microservice'
+require 'openc3/api/limits_api'
+
+module OpenC3
+  describe LimitsGroupMicroservice do
+    before(:each) do
+      mock_redis()
+      setup_system()
+      # Members and INST LIMITS_GROUP on db_shard 1 and INST2 LIMITS_GROUP on db_shard 2
+      setup_target_db_shards({ 'INST' => 1 })
+      TargetModel.new(name: 'INST2', scope: 'DEFAULT', db_shard: 2).create
+      Store.del("DEFAULT__limits_groups")
+      allow_any_instance_of(OpenC3::Microservice).to receive(:at_exit)
+      @microservice = LimitsGroupMicroservice.new("DEFAULT__LIMITSGROUP__DEFAULT")
+    end
+
+    after(:each) do
+      @microservice.shutdown
+    end
+
+    # @param groups [Hash] Groups keyed by TARGET__GROUP or by GROUP for INST groups
+    def store_groups(groups)
+      Store.del("DEFAULT__limits_groups")
+      groups.each do |group, items|
+        group = "INST__#{group}" unless group.include?('__')
+        Store.hset("DEFAULT__limits_groups", group, JSON.generate(items))
+      end
+    end
+
+    # Write the event like a decom microservice does then hand it to the microservice
+    def limits_event(event)
+      LimitsEventTopic.write(event, scope: 'DEFAULT')
+      @microservice.process_event(JSON.parse(JSON.generate(event)))
+    end
+
+    def change(item, state)
+      limits_event({ type: :LIMITS_CHANGE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: item,
+                     old_limits_state: 'GREEN', new_limits_state: state, time_nsec: 0, message: 'test' })
+    end
+
+    DB_SHARDS = { 'INST' => 1, 'INST2' => 2 }
+
+    def cvt(target_name = 'INST')
+      json = Store.instance(db_shard: DB_SHARDS[target_name]).hget("DEFAULT__tlm__#{target_name}", "LIMITS_GROUP")
+      json ? JSON.parse(json) : nil
+    end
+
+    def publishes(target_name = 'INST')
+      EphemeralStore.instance(db_shard: DB_SHARDS[target_name]).xrevrange("DEFAULT__DECOM__{#{target_name}}__LIMITS_GROUP", count: 100).length
+    end
+
+    # Poll rather than sleep a fixed time so a slow runner can't fail the thread tests
+    def wait_until(timeout = 5)
+      deadline = Time.now + timeout
+      until yield
+        raise "Timed out waiting for the microservice" if Time.now > deadline
+
+        sleep(0.01)
+      end
+    end
+
+    def start(groups)
+      store_groups(groups)
+      %w(TEMP1 TEMP2 TEMP3 TEMP4).each { |item| change(item, 'GREEN') }
+      @microservice.reload
+      @microservice.publish(force: true)
+    end
+
+    it "publishes nothing with no groups" do
+      @microservice.reload
+      @microservice.publish(force: true)
+      expect(publishes).to eql 0
+      expect(cvt).to be_nil
+    end
+
+    it "rolls up a member going RED" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      expect(cvt['TEMPS__C']).to eql 'GREEN'
+      expect(cvt['TEMPS__L']).to eql 'GREEN'
+      expect(cvt['TEMPS_ENABLED__C']).to eql 'TRUE'
+      change('TEMP2', 'YELLOW_HIGH')
+      expect(cvt['TEMPS']).to eql 1
+      expect(cvt['TEMPS__C']).to eql 'YELLOW'
+      change('TEMP1', 'RED_LOW')
+      expect(cvt['TEMPS__C']).to eql 'RED'
+      expect(cvt['TEMPS__L']).to eql 'RED'
+      expect(publishes).to eql 3
+    end
+
+    it "publishes once for all the events in a read" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)], 'OTHER' => [%w(INST HEALTH_STATUS TEMP3)] })
+      expect(publishes).to eql 1
+      [%w(TEMP1 YELLOW), %w(TEMP2 RED), %w(TEMP3 YELLOW)].each do |item, state|
+        event = { type: :LIMITS_CHANGE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: item,
+                  old_limits_state: 'GREEN', new_limits_state: state, time_nsec: 0, message: 'test' }
+        LimitsEventTopic.write(event, scope: 'DEFAULT')
+        expect(@microservice.handle_event(JSON.parse(JSON.generate(event)))).to be true
+      end
+      setting = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: 'OTHER', enabled: false, time_nsec: 0, message: 'test' }
+      LimitsEventTopic.write(setting, scope: 'DEFAULT')
+      expect(@microservice.handle_event(JSON.parse(JSON.generate(setting)))).to be true
+      expect(publishes).to eql 1
+      @microservice.flush
+      expect(publishes).to eql 2
+      expect(cvt['TEMPS__C']).to eql 'RED'
+      # OTHER's only member was disabled by the group setting
+      expect(cvt['OTHER_ENABLED__C']).to eql 'FALSE'
+    end
+
+    it "only builds the LIMITS_GROUP packet again when the groups change" do
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      expect(PacketConfig).to receive(:generate_limits_group_packet).once.and_call_original
+      @microservice.reload
+      @microservice.publish(force: true)
+      change('TEMP1', 'RED')
+      change('TEMP1', 'GREEN')
+      expect(publishes).to eql 3
+      expect(cvt['TEMPS__C']).to eql 'GREEN'
+
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'MORE' => [%w(INST HEALTH_STATUS TEMP2)] })
+      expect(PacketConfig).to receive(:generate_limits_group_packet).once.and_call_original
+      @microservice.reload
+      @microservice.publish
+      expect(cvt['MORE__C']).to eql 'GREEN'
+    end
+
+    it "reloads every group when limits events were trimmed before they were read" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      # A LIMITS_CHANGE event this microservice never read
+      Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "RED")
+      @microservice.instance_variable_set(:@limits_event_offset, Topic.get_last_offset("DEFAULT__openc3_limits_events"))
+      @microservice.reload_if_events_trimmed
+      expect(cvt['TEMPS__C']).to eql 'GREEN'
+      # Events after the last one read were trimmed
+      @microservice.instance_variable_set(:@limits_event_offset, '1-0')
+      @microservice.reload_if_events_trimmed
+      expect(cvt['TEMPS__C']).to eql 'RED'
+    end
+
+    it "counts and times the limits events which affect a group" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      metric = @microservice.instance_variable_get(:@metric)
+      expect(metric.data['limits_group_event_total']['value']).to eql 0
+      change('TEMP1', 'RED')
+      change('TEMP3', 'RED') # Not in a group
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, group_name: 'TEMPS', enabled: true, time_nsec: 0, message: 'test' })
+      expect(metric.data['limits_group_event_total']['value']).to eql 2
+      expect(metric.data['limits_group_duration_seconds']['value']).to be > 0
+      expect(metric.data['limits_group_processing_seconds_total']['value']).to be >= metric.data['limits_group_duration_seconds']['value']
+    end
+
+    it "doesn't publish for unrelated or unchanged events" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      change('TEMP3', 'RED')
+      change('TEMP1', 'GREEN_HIGH')
+      @microservice.reload
+      @microservice.publish
+      expect(publishes).to eql 1
+    end
+
+    it "reads limits on db_shard 0 and writes each packet on its target's db_shard" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
+      expect(Store).to receive(:hget).with("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1").and_call_original
+      expect(Store).to receive(:hget).with("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1").and_call_original
+      change('TEMP1', 'RED')
+      expect(cvt['TEMPS__C']).to eql 'RED'
+      expect(cvt('INST2')['TEMPS__C']).to eql 'GREEN'
+      expect(Store.instance(db_shard: 0).hexists("DEFAULT__tlm__INST", "LIMITS_GROUP")).to be false
+      expect(Store.instance(db_shard: 0).hexists("DEFAULT__tlm__INST2", "LIMITS_GROUP")).to be false
+      expect(EphemeralStore.instance(db_shard: 0).exists("DEFAULT__DECOM__{INST}__LIMITS_GROUP")).to eql 0
+      expect(EphemeralStore.instance(db_shard: 0).exists("DEFAULT__DECOM__{INST2}__LIMITS_GROUP")).to eql 0
+    end
+
+    it "keeps groups with the same name in different targets apart and only publishes the target that changed" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
+      expect(publishes('INST')).to eql 1
+      expect(publishes('INST2')).to eql 1
+      change('TEMP2', 'YELLOW_LOW')
+      expect(cvt('INST2')['TEMPS__C']).to eql 'YELLOW'
+      expect(cvt('INST')['TEMPS__C']).to eql 'GREEN'
+      expect(publishes('INST')).to eql 1
+      expect(publishes('INST2')).to eql 2
+      expect(cvt('INST2')['RECEIVED_COUNT']).to eql 2
+    end
+
+    it "counts each publish in the target's telemetry counts on its db_shard" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP2', 'YELLOW_LOW')
+      expect(TargetModel.get_telemetry_count('INST', 'LIMITS_GROUP', scope: 'DEFAULT')).to eql 1
+      expect(TargetModel.get_telemetry_count('INST2', 'LIMITS_GROUP', scope: 'DEFAULT')).to eql 2
+      expect(cvt('INST2')['RECEIVED_COUNT']).to eql 2
+      expect(Store.instance(db_shard: 2).hget("DEFAULT__TELEMETRYCNTS__{INST2}", "LIMITS_GROUP")).to eql "2"
+      expect(Store.instance(db_shard: 0).hexists("DEFAULT__TELEMETRYCNTS__{INST2}", "LIMITS_GROUP")).to be false
+    end
+
+    it "continues the telemetry count after a restart" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      change('TEMP1', 'RED')
+      expect(cvt['RECEIVED_COUNT']).to eql 2
+      @microservice.shutdown
+      @microservice = LimitsGroupMicroservice.new("DEFAULT__LIMITSGROUP__DEFAULT")
+      @microservice.reload
+      @microservice.publish(force: true)
+      expect(cvt['RECEIVED_COUNT']).to eql 3
+      expect(TargetModel.get_telemetry_count('INST', 'LIMITS_GROUP', scope: 'DEFAULT')).to eql 3
+    end
+
+    it "never raises limits events or changes the overall limits state" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      change('TEMP1', 'YELLOW')
+      expect(Store.hkeys("DEFAULT__current_limits")).to_not include(a_string_including("LIMITS_GROUP"))
+      api = Object.new.extend(Api)
+      allow(api).to receive(:authorize)
+      expect(api.get_out_of_limits(scope: 'DEFAULT')).to eql [%w(INST HEALTH_STATUS TEMP1 YELLOW)]
+      expect(api.get_overall_limits_state(scope: 'DEFAULT')).to eql 'YELLOW'
+    end
+
+    it "ignores disabled members and reports the group not enabled" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'RED')
+      limits_event({ type: :LIMITS_ENABLE_STATE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: 'TEMP1',
+                     enabled: false, time_nsec: 0, message: 'test' })
+      expect(cvt['TEMPS__C']).to eql 'GREEN'
+      expect(cvt['TEMPS_ENABLED__C']).to eql 'FALSE'
+    end
+
+    it "reports GREEN with no limits state when no member is enabled" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, group_name: 'TEMPS', enabled: false, time_nsec: 0, message: 'test' })
+      expect(cvt['TEMPS__C']).to eql 'GREEN'
+      expect(cvt).to_not have_key('TEMPS__L')
+      expect(cvt['TEMPS_ENABLED__C']).to eql 'FALSE'
+    end
+
+    it "ignores unknown members and warns once" do
+      warnings = []
+      allow_any_instance_of(Logger).to receive(:warn) { |_logger, message| warnings << message }
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS NOPE), %w(NOPE PKT ITEM)] })
+      change('TEMP1', 'RED')
+      @microservice.reload
+      expect(cvt['TEMPS__C']).to eql 'RED'
+      expect(cvt['TEMPS_ENABLED__C']).to eql 'TRUE'
+      expect(warnings).to eql [
+        "LIMITS_GROUP INST TEMPS member INST HEALTH_STATUS NOPE does not exist or has no limits. Ignoring it.",
+        "LIMITS_GROUP INST TEMPS member NOPE PKT ITEM does not exist or has no limits. Ignoring it.",
+      ]
+    end
+
+    it "rolls nested groups up to the top in one publish" do
+      start({ 'SPACECRAFT' => [%w(INST LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
+              'THERMAL' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'RED')
+      expect(cvt['THERMAL__C']).to eql 'RED'
+      expect(cvt['SPACECRAFT__C']).to eql 'RED'
+      expect(publishes).to eql 2
+
+      # A disabled item below a child shows up at the top
+      limits_event({ type: :LIMITS_ENABLE_STATE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: 'TEMP2',
+                     enabled: false, time_nsec: 0, message: 'test' })
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'FALSE'
+    end
+
+    it "keeps a partly disabled child's color in its parent" do
+      start({ 'SPACECRAFT' => [%w(INST LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
+              'THERMAL' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'RED')
+      limits_event({ type: :LIMITS_ENABLE_STATE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: 'TEMP2',
+                     enabled: false, time_nsec: 0, message: 'test' })
+      expect(cvt['THERMAL__C']).to eql 'RED'
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['SPACECRAFT__C']).to eql 'RED'
+      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'FALSE'
+    end
+
+    it "publishes a reinstalled target again even if its groups didn't change" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
+      expect(publishes('INST')).to eql 1
+      expect(publishes('INST2')).to eql 1
+      # Removing and installing INST again in one read: undeploy deletes the CVT
+      # and deploy writes nil for every item
+      CvtModel.del(target_name: 'INST', packet_name: 'LIMITS_GROUP', scope: 'DEFAULT')
+      CvtModel.set({ 'TEMPS' => nil }, target_name: 'INST', packet_name: 'LIMITS_GROUP', scope: 'DEFAULT')
+      @microservice.reload(changed_targets: ['INST'])
+      @microservice.flush
+      expect(publishes('INST')).to eql 2
+      expect(cvt['TEMPS__C']).to eql 'GREEN'
+      # Targets which weren't reinstalled aren't published again
+      expect(publishes('INST2')).to eql 1
+    end
+
+    it "warns once about a nested group which isn't defined" do
+      warnings = []
+      allow_any_instance_of(Logger).to receive(:warn) { |_logger, message| warnings << message }
+      start({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)] })
+      change('TEMP3', 'RED')
+      expect(cvt['SPACECRAFT__C']).to eql 'RED'
+      expect(warnings).to eql ["LIMITS_GROUP INST SPACECRAFT member INST2 LIMITS_GROUP THERMAL is not a defined limits group. Ignoring it until it is."]
+    end
+
+    it "never writes over a target's own LIMITS_GROUP packet" do
+      warnings = []
+      allow_any_instance_of(Logger).to receive(:warn) { |_logger, message| warnings << message }
+      # Kept by the LimitsGroupBackfill migration when INST was upgraded
+      own = Packet.new('INST', 'LIMITS_GROUP')
+      own.append_item('VALUE', 8, :UINT)
+      Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__INST", "LIMITS_GROUP", JSON.generate(own.as_json))
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'RED')
+      expect(publishes('INST')).to eql 0
+      expect(cvt).to be_nil
+      expect(warnings).to eql ["INST LIMITS_GROUP is a packet of the target's own so its limits groups aren't published. Rename the packet and reinstall the target."]
+      # Other targets still publish
+      expect(publishes('INST2')).to eql 1
+
+      # Renamed and reinstalled
+      packet = PacketConfig.generate_limits_group_packet('INST', ['TEMPS'])
+      Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__INST", "LIMITS_GROUP", JSON.generate(packet.as_json))
+      @microservice.reload(changed_targets: ['INST'])
+      @microservice.flush
+      expect(publishes('INST')).to eql 1
+      expect(cvt['TEMPS__C']).to eql 'RED'
+    end
+
+    it "counts a child installed after its parent" do
+      start({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)] })
+      change('TEMP1', 'RED')
+      expect(cvt['SPACECRAFT__C']).to eql 'GREEN'
+      store_groups({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
+                     'INST2__THERMAL' => [%w(INST HEALTH_STATUS TEMP1)] })
+      @microservice.reload
+      @microservice.publish
+      expect(cvt('INST2')['THERMAL__C']).to eql 'RED'
+      expect(cvt['SPACECRAFT__C']).to eql 'RED'
+    end
+
+    it "rolls up a nested group of another target, not one with the same name" do
+      start({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL)],
+              'THERMAL' => [%w(INST HEALTH_STATUS TEMP1)],
+              'INST2__THERMAL' => [%w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'RED')
+      expect(cvt['SPACECRAFT__C']).to eql 'GREEN'
+      change('TEMP2', 'YELLOW')
+      expect(cvt['SPACECRAFT__C']).to eql 'YELLOW'
+    end
+
+    it "publishes the first group within one reload and drops removed groups" do
+      @microservice.reload
+      @microservice.publish(force: true)
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'POWER' => [%w(INST HEALTH_STATUS TEMP2)] })
+      @microservice.reload
+      @microservice.publish
+      expect(publishes).to eql 1
+      expect(cvt).to have_key('TEMPS')
+
+      # A member target uninstalled clears current_limits and the group keeps publishing
+      Store.hdel("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1")
+      store_groups({ 'POWER' => [%w(INST HEALTH_STATUS TEMP2)] })
+      @microservice.reload
+      @microservice.publish
+      expect(publishes).to eql 2
+      expect(cvt).to_not have_key('TEMPS')
+
+      # A target with no groups left has no packet to publish
+      store_groups({})
+      @microservice.reload
+      @microservice.publish
+      expect(publishes).to eql 2
+    end
+
+    it "skips groups stored before groups were owned by a target" do
+      Store.hset("DEFAULT__limits_groups", "LEGACY", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+      @microservice.reload
+      @microservice.publish(force: true)
+      expect(@microservice.values).to have_key("LEGACY")
+      expect(cvt).to be_nil
+    end
+
+    it "survives a stored cycle" do
+      start({ 'A' => [%w(INST LIMITS_GROUP B), %w(INST HEALTH_STATUS TEMP1)], 'B' => [%w(INST LIMITS_GROUP A)] })
+      change('TEMP1', 'RED')
+      expect(cvt['A__C']).to eql 'RED'
+    end
+
+    it "parses each packet definition once until its target changes" do
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      # Members' definitions are read from their target's db_shard
+      store = Store.instance(db_shard: 1)
+      allow(Store).to receive(:instance).and_call_original
+      expect(Store).to receive(:instance).with(db_shard: 1).at_least(:once).and_call_original
+      expect(store).to receive(:hget).with("DEFAULT__openc3tlm__INST", "HEALTH_STATUS").twice.and_call_original
+      @microservice.reload
+      @microservice.reload
+      @microservice.reload(changed_targets: ['INST2'])
+      @microservice.reload(changed_targets: ['INST'])
+    end
+
+    it "rereads a target installed after a group which contains its items" do
+      warnings = []
+      allow_any_instance_of(Logger).to receive(:warn) { |_logger, message| warnings << message }
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST3 HEALTH_STATUS TEMP1)] })
+      @microservice.reload
+      expect(warnings.length).to eql 1
+
+      # INST3 is installed on db_shard 3 after we looked it up
+      TargetModel.new(name: 'INST3', scope: 'DEFAULT', db_shard: 3).create
+      Store.instance(db_shard: 3).hset("DEFAULT__openc3tlm__INST3", "HEALTH_STATUS",
+                                       Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__INST", "HEALTH_STATUS"))
+      Store.hset("DEFAULT__current_limits", "INST3__HEALTH_STATUS__TEMP1", "RED")
+      allow(Store).to receive(:instance).and_call_original
+      expect(Store).to receive(:instance).with(db_shard: 3).at_least(:once).and_call_original
+      @microservice.reload(changed_targets: ['INST3'])
+      @microservice.publish
+      expect(cvt['TEMPS__C']).to eql 'RED'
+    end
+
+    it "reloads when a target is installed or removed, not on a timer" do
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      stub_const("OpenC3::LimitsGroupMicroservice::READ_TIMEOUT_MS", 10)
+      reloads = []
+      allow(@microservice).to receive(:reload).and_wrap_original do |method, **kwargs|
+        reloads << kwargs
+        method.call(**kwargs)
+      end
+      thread = Thread.new { @microservice.run }
+      wait_until { publishes == 1 }
+      expect(reloads).to eql [{}]
+
+      # Other config changes are ignored. The target event written after it
+      # is read in the same or a later read so only it causes a reload.
+      ConfigTopic.write({ kind: 'created', type: 'microservice', name: 'DEFAULT__USER__INST' }, scope: 'DEFAULT')
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'POWER' => [%w(INST HEALTH_STATUS TEMP2)] })
+      ConfigTopic.write({ kind: 'created', type: 'target', name: 'INST' }, scope: 'DEFAULT')
+      wait_until { publishes == 2 }
+      @microservice.shutdown
+      thread.join(5)
+      expect(reloads).to eql [{}, { changed_targets: ['INST'] }]
+      expect(cvt).to have_key('POWER')
+      expect(publishes).to eql 2
+    end
+
+    it "reloads after an error in case events were missed" do
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      stub_const("OpenC3::LimitsGroupMicroservice::READ_TIMEOUT_MS", 10)
+      allow(@microservice).to receive(:sleep)
+      allow_any_instance_of(Logger).to receive(:error)
+      calls = 0
+      allow(Topic).to receive(:read_topics).and_wrap_original do |method, *args, &block|
+        calls += 1
+        if calls == 1
+          # A limits change whose event never arrives
+          Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "RED")
+          raise "lost connection"
+        end
+        method.call(*args, &block)
+      end
+      thread = Thread.new { @microservice.run }
+      wait_until { publishes == 2 }
+      @microservice.shutdown
+      thread.join(5)
+      expect(cvt['TEMPS__C']).to eql 'RED'
+      expect(publishes).to eql 2
+    end
+
+    it "runs until shutdown" do
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      stub_const("OpenC3::LimitsGroupMicroservice::READ_TIMEOUT_MS", 10)
+      thread = Thread.new { @microservice.run }
+      wait_until { publishes == 1 }
+      @microservice.shutdown
+      thread.join(5)
+      expect(thread.alive?).to be false
+      expect(publishes).to eql 1
+    end
+  end
+end

@@ -172,7 +172,8 @@ test('cancels a process', async ({ page, utils }) => {
 
 test('adds an entire target', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST')
-  await expect(page.getByText('1-20 of 334')).toBeVisible()
+  // Includes INST LIMITS_GROUP: 3 groups with an _ENABLED item each plus 5 reserved items
+  await expect(page.getByText('1-20 of 345')).toBeVisible()
 })
 
 test('adds an entire packet', async ({ page, utils }) => {

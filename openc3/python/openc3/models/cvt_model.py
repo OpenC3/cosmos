@@ -221,6 +221,7 @@ class CvtModel(Model):
         results = []
         lookups = []
         packet_lookup = {}
+        generated_lookup = {}  # target_name => whether its LIMITS_GROUP packet is generated
         overrides = {}
 
         # If a start_time is passed we're doing a QuestDB lookup and directly return the results
@@ -256,7 +257,16 @@ class CvtModel(Model):
                         break  # We want the first value
                 # If we were able to find a value, try to get the limits state
                 if len(item_result) > 0 and item_result[0] is not None:
-                    if now - pkt_hash["RECEIVED_TIMESECONDS"] > stale_time:
+                    # Generated LIMITS_GROUP packets are only published when a value changes so
+                    # their age says nothing about whether they are current. Never mark them stale.
+                    generated = False
+                    if packet_name == "LIMITS_GROUP":
+                        if target_name not in generated_lookup:
+                            generated_lookup[target_name] = TargetModel.generated_limits_group_packet(
+                                target_name, packet_name, scope=scope
+                            )
+                        generated = generated_lookup[target_name]
+                    if not generated and now - pkt_hash["RECEIVED_TIMESECONDS"] > stale_time:
                         item_result.insert(1, "STALE")
                     else:
                         # The last key is simply the name (RAW) so we can append __L

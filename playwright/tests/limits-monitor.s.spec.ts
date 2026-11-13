@@ -62,13 +62,13 @@ for (const { language, filename, target, group } of [
     language: 'Ruby',
     filename: 'limits_resync.rb',
     target: 'INST',
-    group: 'INST_TEMP2',
+    group: 'INST TEMPS',
   },
   {
     language: 'Python',
     filename: 'limits_resync.py',
     target: 'INST2',
-    group: 'INST2_TEMP2',
+    group: 'INST2 TEMPS',
   },
 ]) {
   test(`${language} decom resyncs limits after limits events are trimmed`, async ({

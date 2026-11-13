@@ -36,10 +36,14 @@ end
 
 puts "INST HEALTH_STATUS TEMP1 Limits Enabled: #{limits_enabled?("INST HEALTH_STATUS TEMP1")}"
 
-limits_groups = get_limits_groups()
-check_expression("['INST2_GROUND', 'INST2_TEMP2'] == limits_groups.keys.sort", binding())
-check_expression("[['INST2', 'HEALTH_STATUS', 'GROUND1STATUS'], ['INST2', 'HEALTH_STATUS', 'GROUND2STATUS']] == limits_groups['INST2_GROUND']", binding())
-check_expression("[['INST2', 'HEALTH_STATUS', 'TEMP2']] == limits_groups['INST2_TEMP2']", binding())
+# INST and INST2 both define TEMPS, GROUND and PAYLOAD so ask for INST2's groups
+limits_groups = get_limits_groups('INST2')
+check_expression("['GROUND', 'PAYLOAD', 'TEMPS'] == limits_groups.keys.sort", binding())
+check_expression("[['INST2', 'HEALTH_STATUS', 'GROUND1STATUS'], ['INST2', 'HEALTH_STATUS', 'GROUND2STATUS']] == limits_groups['GROUND']", binding())
+check_expression("[['INST2', 'LIMITS_GROUP', 'TEMPS'], ['INST2', 'LIMITS_GROUP', 'GROUND']] == limits_groups['PAYLOAD']", binding())
+# Without a target a group name several targets define is keyed TARGET__GROUP
+all_limits_groups = get_limits_groups()
+check_expression("all_limits_groups.key?('INST__GROUND') && all_limits_groups.key?('INST2__GROUND')", binding())
 limits_groups.each do |group_name, group_items_array|
   puts "Limits Group: #{group_name}"
   group_items_array.each do |target_name, packet_name, item_name|
@@ -54,12 +58,16 @@ check_expression("limits_enabled?('INST HEALTH_STATUS TEMP1') == true")
 
 puts "INST2 HEALTH_STATUS GROUND1STATUS Limits Enabled: #{limits_enabled?('INST2 HEALTH_STATUS GROUND1STATUS')}"
 puts "INST2 HEALTH_STATUS GROUND2STATUS Limits Enabled: #{limits_enabled?('INST2 HEALTH_STATUS GROUND2STATUS')}"
-disable_limits_group("INST2_GROUND")
+disable_limits_group("INST2", "GROUND")
 check_expression("limits_enabled?('INST2 HEALTH_STATUS GROUND1STATUS') == false")
 check_expression("limits_enabled?('INST2 HEALTH_STATUS GROUND2STATUS') == false")
-enable_limits_group("INST2_GROUND")
+# The group's rollup is telemetry in the LIMITS_GROUP packet of the target which defines it
+wait_check("INST2 LIMITS_GROUP GROUND_ENABLED == 'FALSE'", 5)
+wait_check("INST2 LIMITS_GROUP PAYLOAD_ENABLED == 'FALSE'", 5)
+enable_limits_group("INST2", "GROUND")
 check_expression("limits_enabled?('INST2 HEALTH_STATUS GROUND1STATUS') == true")
 check_expression("limits_enabled?('INST2 HEALTH_STATUS GROUND2STATUS') == true")
+wait_check("INST2 LIMITS_GROUP GROUND_ENABLED == 'TRUE'", 5)
 
 puts "Current Limits Set: #{get_limits_set()}"
 set_limits_set('TVAC')

@@ -26,3 +26,4 @@ IGNORE_ITEM CCSDSLENGTH
 COMMANDS inst_cmds.txt
 TELEMETRY inst_tlm.txt
 TELEMETRY inst_tlm_override.txt
+TELEMETRY limits_groups.txt

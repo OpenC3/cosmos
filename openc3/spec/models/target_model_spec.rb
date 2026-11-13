@@ -1224,6 +1224,93 @@ module OpenC3
       end
     end
 
+    describe "limits groups" do
+      before(:each) do
+        @target_dir = File.join(SPEC_DIR, "install", "config", "targets")
+      end
+
+      it "stores the groups and the LIMITS_GROUP packet of the target which defines them" do
+        model = TargetModel.new(folder_name: "SYSTEM", name: "SYSTEM", scope: "DEFAULT", db_shard: 1)
+        model.create
+        model.update_store(System.new(["SYSTEM"], @target_dir))
+        expect(TargetModel.get(name: "SYSTEM", scope: "DEFAULT")["limits_groups"]).to eql %w(FIRST SECOND)
+        expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__FIRST SYSTEM__SECOND)
+
+        db_shard1 = Store.instance(db_shard: 1)
+        packet = JSON.parse(db_shard1.hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))
+        expect(packet["virtual"]).to be true
+        expect(packet["hidden"]).to be_falsey
+        items = packet["items"].map { |item| item["name"] }
+        expect(items).to include("FIRST", "FIRST_ENABLED", "SECOND", "SECOND_ENABLED")
+        # The CVT is seeded like any packet so it can be read before it's published
+        expect(db_shard1.hexists("DEFAULT__tlm__SYSTEM", "LIMITS_GROUP")).to be true
+        # LATEST never resolves to LIMITS_GROUP
+        expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")).to_not have_key("FIRST")
+      end
+    end
+
+    describe "check_limits_groups" do
+      def build_system(groups, name = "INST")
+        double("System", limits: double("Limits", groups: { name => groups }))
+      end
+
+      def model(name = "INST")
+        TargetModel.new(folder_name: name, name: name, scope: "DEFAULT", plugin: 'PLUGIN')
+      end
+
+      def install_groups(target_name, groups)
+        TargetModel.new(folder_name: target_name, name: target_name, scope: "DEFAULT", plugin: 'OTHER', limits_groups: groups.keys).create
+        groups.each { |group, items| Store.hset("DEFAULT__limits_groups", "#{target_name}__#{group}", JSON.generate(items)) }
+      end
+
+      it "allows the same group name in different targets" do
+        install_groups("INST2", { "TEMPS" => [%w(INST2 HEALTH_STATUS TEMP1)] })
+        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] })) }.to_not raise_error
+      end
+
+      it "refuses groups of the target which share a QuestDB column" do
+        expect { model.check_limits_groups(build_system({ "TEMP_A" => [], "TEMP.A" => [] })) }.to raise_error(/TEMP.A and LIMITS_GROUP TEMP_A would share the column TEMP_A in INST LIMITS_GROUP/)
+        expect { model.check_limits_groups(build_system({ "POWER" => [], "POWER.ENABLED" => [] })) }.to raise_error(/POWER.ENABLED and LIMITS_GROUP POWER would share the column POWER_ENABLED/)
+      end
+
+      it "refuses a group which shares a QuestDB column with a reserved item" do
+        expect { model.check_limits_groups(build_system({ "PACKET.TIMESECONDS" => [] })) }.to \
+          raise_error(/LIMITS_GROUP PACKET.TIMESECONDS would share the column PACKET_TIMESECONDS with the reserved item PACKET_TIMESECONDS in INST LIMITS_GROUP/)
+        expect { model.check_limits_groups(build_system({ "COSMOS-EXTRA" => [] })) }.to raise_error(/reserved item COSMOS_EXTRA/)
+      end
+
+      it "ignores collisions with groups of other targets" do
+        install_groups("INST2", { "TEMP_A" => [] })
+        expect { model.check_limits_groups(build_system({ "TEMP.A" => [] })) }.to_not raise_error
+      end
+
+      it "refuses a group which contains itself" do
+        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(INST LIMITS_GROUP TEMPS)] })) }.to \
+          raise_error(/LIMITS_GROUP INST TEMPS contains itself: INST TEMPS -> INST TEMPS/)
+      end
+
+      it "refuses a loop through groups of other targets" do
+        install_groups("INST2", { "B" => [%w(INST2 LIMITS_GROUP C)], "C" => [%w(INST LIMITS_GROUP A)] })
+        expect { model.check_limits_groups(build_system({ "A" => [%w(INST2 LIMITS_GROUP B)] })) }.to \
+          raise_error(/LIMITS_GROUP INST A contains itself: INST A -> INST2 B -> INST2 C -> INST A/)
+      end
+
+      it "replaces the target's own installed groups" do
+        # The old definition loops but the new one doesn't
+        install_groups("INST", { "A" => [%w(INST LIMITS_GROUP A)] })
+        expect { model.check_limits_groups(build_system({ "A" => [%w(INST HEALTH_STATUS TEMP1)] })) }.to_not raise_error
+      end
+
+      it "allows nesting, shared children and children which aren't installed yet" do
+        install_groups("INST2", { "THERMAL" => [%w(INST2 HEALTH_STATUS TEMP1)] })
+        groups = {
+          "SPACECRAFT" => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST LIMITS_GROUP POWER), %w(INST LIMITS_GROUP LATER)],
+          "POWER" => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS VOLTS)],
+        }
+        expect { model.check_limits_groups(build_system(groups)) }.to_not raise_error
+      end
+    end
+
     describe "destroy" do
       before(:each) do
         @target_dir = File.join(SPEC_DIR, "install", "config")
@@ -1570,7 +1657,7 @@ module OpenC3
         expect(TargetModel.packet_names("INST", type: :CMD, scope: "DEFAULT")).to include("ABORT")
         expect(TargetModel.packet_names("INST", type: :CMD, scope: "DEFAULT")).to_not include("STALE")
         # SYSTEM is still read from db_shard 0
-        expect(TargetModel.packet_names("SYSTEM", scope: "DEFAULT")).to eql %w(LIMITS_CHANGE META)
+        expect(TargetModel.packet_names("SYSTEM", scope: "DEFAULT")).to eql %w(LIMITS_CHANGE LIMITS_GROUP META)
       end
 
       it "set_packet writes to the target's db_shard" do

@@ -1088,6 +1088,56 @@ class TestTlmApi(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, r"LATEST is not supported by inject_tlm\(\)"):
             inject_tlm("INST", "latest", {"TEMP1": 10})
 
+    def test_limits_group_cannot_be_written_for_a_target_which_defines_limits_groups(self):
+        # Ruby's TargetModel stores the names of the limits groups the target defines
+        Store.hset("DEFAULT__openc3_targets", "GRP", json.dumps({"name": "GRP", "limits_groups": ["TEMPS"]}))
+        with self.assertRaisesRegex(
+            RuntimeError, r"GRP LIMITS_GROUP is read-only and is not supported by inject_tlm\(\)"
+        ):
+            inject_tlm("grp", "limits_group", {"TEMPS": 0})
+        with self.assertRaisesRegex(RuntimeError, r"GRP LIMITS_GROUP is read-only and is not supported by set_tlm\(\)"):
+            set_tlm("GRP LIMITS_GROUP TEMPS = 0")
+        with self.assertRaisesRegex(
+            RuntimeError, r"GRP LIMITS_GROUP is read-only and is not supported by override_tlm\(\)"
+        ):
+            override_tlm("GRP LIMITS_GROUP TEMPS = 0")
+
+    def test_limits_group_is_never_chosen_by_latest(self):
+        # Ruby's TargetModel stores the names of the limits groups the target defines
+        Store.hset("DEFAULT__openc3_targets", "GRP", json.dumps({"name": "GRP", "limits_groups": ["TEMPS", "TEMP1"]}))
+        # The TEMP1 group shares its name with the TEMP1 item in STATUS
+        for packet_name, items in {"STATUS": ["TEMP1"], "LIMITS_GROUP": ["TEMPS", "TEMP1"]}.items():
+            packet = {"target_name": "GRP", "packet_name": packet_name, "items": [{"name": name} for name in items]}
+            Store.hset("DEFAULT__openc3tlm__GRP", packet_name, json.dumps(packet))
+        # LIMITS_GROUP was received most recently
+        CvtModel.set({"TEMP1": 1, "PACKET_TIMESECONDS": 1.0}, target_name="GRP", packet_name="STATUS", scope="DEFAULT")
+        limits_group = {"TEMPS": 0, "TEMP1": 0, "PACKET_TIMESECONDS": 2.0}
+        CvtModel.set(dict(limits_group), target_name="GRP", packet_name="LIMITS_GROUP", scope="DEFAULT")
+
+        with self.assertRaisesRegex(RuntimeError, "Item 'GRP LATEST TEMPS' does not exist"):
+            set_tlm("GRP LATEST TEMPS = 2")
+        with self.assertRaisesRegex(RuntimeError, "Item 'GRP LATEST TEMPS' does not exist"):
+            override_tlm("GRP LATEST TEMPS = 2")
+        self.assertEqual(tlm("GRP LATEST TEMP1"), 1)
+        set_tlm("GRP LATEST TEMP1 = 5")
+        override_tlm("GRP LATEST TEMP1 = 6")
+        self.assertEqual(CvtModel.get("GRP", "STATUS", scope="DEFAULT")["TEMP1__C"], 5)
+        self.assertEqual({override["packet_name"] for override in CvtModel.overrides(scope="DEFAULT")}, {"STATUS"})
+        self.assertEqual(CvtModel.get("GRP", "LIMITS_GROUP", scope="DEFAULT"), limits_group)
+
+    def test_limits_group_is_an_ordinary_packet_name_for_a_target_without_limits_groups(self):
+        TargetModel(name="NOGRP", scope="DEFAULT").create()
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            inject_tlm("NOGRP", "LIMITS_GROUP", {"TEMPS": 0})
+
+        # Its items are found by LATEST like any other packet's
+        packet = {"target_name": "NOGRP", "packet_name": "LIMITS_GROUP", "items": [{"name": "VALUE"}]}
+        Store.hset("DEFAULT__openc3tlm__NOGRP", "LIMITS_GROUP", json.dumps(packet))
+        CvtModel.set(
+            {"VALUE": 3, "PACKET_TIMESECONDS": 1.0}, target_name="NOGRP", packet_name="LIMITS_GROUP", scope="DEFAULT"
+        )
+        self.assertEqual(tlm("NOGRP LATEST VALUE"), 3)
+
     def test_get_tlm_values_accepts_the_limits_suffix_from_the_cvt(self):
         vals = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])
         self.assertEqual(vals[0][0], (-100.0))

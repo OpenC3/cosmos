@@ -26,17 +26,110 @@ from openc3.utilities.store import Store
 # While this isn't a clean separation of topics (streams) and models (key-value)
 # it helps maintain consistency as the topic and model are linked.
 class LimitsEventTopic(Topic):
+    LIMITS_GROUP_PACKET = "LIMITS_GROUP"
+
+    # Limits groups are stored in <SCOPE>__limits_groups under <TARGET>__<GROUP>.
+    # Group names can't contain a double underscore so the key is unambiguous.
+    @classmethod
+    def limits_group_key(cls, target_name, group_name):
+        return f"{target_name}__{group_name}"
+
+    # Returns the target name and group name of a store key. Groups stored before
+    # they were owned by a target have no target name.
+    @classmethod
+    def split_limits_group_key(cls, key):
+        parts = key.split("__", 1)
+        if len(parts) == 1:
+            return None, key
+        return parts[0], parts[1]
+
+    @classmethod
+    def _limits_groups(cls, scope):
+        groups = Store.hgetall(f"{scope}__limits_groups") or {}
+        return {(k.decode() if isinstance(k, bytes) else k): v for k, v in groups.items()}
+
+    # Finds the store key of a limits group from the arguments passed to the
+    # limits group APIs: either a target name and group name or just a group name.
+    # A group name alone must only be defined by one target. It can also be the
+    # TARGET__GROUP key returned by get_limits_groups for a name several targets share.
+    @classmethod
+    def find_limits_group(cls, target_name, group_name, scope):
+        group_name = str(group_name).upper()
+        keys = list(cls._limits_groups(scope).keys())
+        # Like Ruby an empty target name is a target name, not an omitted one
+        if target_name is not None:
+            target_name = str(target_name).upper()
+            key = cls.limits_group_key(target_name, group_name)
+            if key in keys:
+                return key
+            raise RuntimeError(
+                f"LIMITS_GROUP {target_name} {group_name} undefined. Ensure target {target_name} contains the line: LIMITS_GROUP {group_name}"
+            )
+
+        # An exact match is a TARGET__GROUP key or a group stored before groups were owned by a target
+        if group_name in keys:
+            return group_name
+
+        matches = [key for key in keys if cls.split_limits_group_key(key)[1] == group_name]
+        if len(matches) == 0:
+            raise RuntimeError(
+                f"LIMITS_GROUP {group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP {group_name}"
+            )
+        if len(matches) == 1:
+            return matches[0]
+        targets = sorted(cls.split_limits_group_key(key)[0] for key in matches)
+        raise RuntimeError(
+            f"LIMITS_GROUP {group_name} is defined by targets {', '.join(targets)}. "
+            f"Specify the target name and the group name, e.g. ('{targets[0]}', '{group_name}')."
+        )
+
+    # Returns the store key of the group named by a limits group event. Events without
+    # a target name (written before groups were owned by a target) name a group defined
+    # by only one target.
+    @classmethod
+    def limits_group_event_key(cls, event, scope):
+        target_name = event.get("target_name")
+        group_name = event.get("group_name")
+        if target_name:
+            return cls.limits_group_key(target_name, group_name)
+        try:
+            return cls.find_limits_group(None, group_name, scope)
+        except RuntimeError:
+            return None
+
     # Returns the items in a limits group grouped by target and packet, or None if the
     # group is undefined. Reads the store directly to avoid a circular reference to TargetModel.
+    # key is the store key of the group (see limits_group_key).
     @classmethod
-    def limits_group_items(cls, group_name, scope):
-        group = Store.hget(f"{scope}__limits_groups", group_name)
-        if group is None:
+    def limits_group_items(cls, key, scope):
+        if key is None:
+            return None
+        groups = cls._limits_groups(scope)
+        if key not in groups:
             return None
         items = {}
-        for target_name, packet_name, item_name in json.loads(group):
-            items.setdefault(target_name, {}).setdefault(packet_name, []).append(item_name)
+        cls._expand_limits_group(key, groups, items, set())
         return items
+
+    # Nested groups are members named <TARGET> LIMITS_GROUP <GROUP>. They have no limits
+    # of their own so expand them into the items of the child group. Children which
+    # aren't defined (yet) are ignored and each group is only expanded once which
+    # also guards against cycles.
+    @classmethod
+    def _expand_limits_group(cls, key, groups, items, visited):
+        if key in visited:
+            return
+        visited.add(key)
+        group = groups.get(key)
+        if group is None:
+            return
+        for target_name, packet_name, item_name in json.loads(group):
+            if packet_name == cls.LIMITS_GROUP_PACKET:
+                cls._expand_limits_group(cls.limits_group_key(target_name, item_name), groups, items, visited)
+            else:
+                item_names = items.setdefault(target_name, {}).setdefault(packet_name, [])
+                if item_name not in item_names:
+                    item_names.append(item_name)
 
     @classmethod
     def _active_db_shards(cls, scope):
@@ -108,7 +201,9 @@ class LimitsEventTopic(Topic):
             case "LIMITS_GROUP_ENABLE_STATE":
                 # Groups can contain many thousands of items so read and write the settings in bulk
                 fields = []
-                for target_name, packets in (cls.limits_group_items(event["group_name"], scope) or {}).items():
+                for target_name, packets in (
+                    cls.limits_group_items(cls.limits_group_event_key(event, scope), scope) or {}
+                ).items():
                     for packet_name, item_names in packets.items():
                         for item_name in item_names:
                             fields.append(f"{target_name}__{packet_name}__{item_name}")
@@ -379,7 +474,9 @@ class LimitsEventTopic(Topic):
 
             case "LIMITS_GROUP_ENABLE_STATE":
                 enabled = event.get("enabled", False)
-                for target_name, packets in (cls.limits_group_items(event["group_name"], scope) or {}).items():
+                for target_name, packets in (
+                    cls.limits_group_items(cls.limits_group_event_key(event, scope), scope) or {}
+                ).items():
                     target = telemetry.get(target_name)
                     if not target:
                         continue

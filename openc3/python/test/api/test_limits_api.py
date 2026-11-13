@@ -51,9 +51,10 @@ class TestLimitsApi(unittest.TestCase):
         redis.xread = Mock()
         redis.xread.side_effect = xread_side_effect
 
-        # Store Limits Groups
-        for group, items in System.limits.groups().items():
-            Store.hset("DEFAULT__limits_groups", group, json.dumps(items))
+        # Store Limits Groups under the target which defines them like TargetModel does
+        for target_name, groups in System.limits.groups().items():
+            for group, items in groups.items():
+                Store.hset("DEFAULT__limits_groups", f"{target_name}__{group}", json.dumps(items))
 
         model = TargetModel(name="INST", scope="DEFAULT")
         model.create()
@@ -342,6 +343,62 @@ class TestLimitsApi(unittest.TestCase):
             },
         )
 
+    def test_get_limits_groups_returns_the_limits_groups_of_a_target(self):
+        Store.hset("DEFAULT__limits_groups", "INST__THIRD", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))
+        self.assertEqual(list(get_limits_groups("system").keys()), ["FIRST", "SECOND"])
+        self.assertEqual(get_limits_groups("INST"), {"THIRD": [["INST", "HEALTH_STATUS", "TEMP1"]]})
+        self.assertEqual(get_limits_groups("INST2"), {})
+        # An empty target name is a target with no groups, not an omitted one
+        self.assertEqual(get_limits_groups(""), {})
+
+    def test_get_limits_groups_keys_a_group_name_several_targets_define_by_target(self):
+        Store.hset("DEFAULT__limits_groups", "INST__FIRST", json.dumps([["INST", "HEALTH_STATUS", "TEMP2"]]))
+        groups = get_limits_groups()
+        self.assertEqual(sorted(groups.keys()), ["INST__FIRST", "SECOND", "SYSTEM__FIRST"])
+        self.assertEqual(groups["INST__FIRST"], [["INST", "HEALTH_STATUS", "TEMP2"]])
+
+    def test_enable_limits_group_takes_the_target_name_and_group_name(self):
+        disable_limits("INST", "HEALTH_STATUS", "TEMP1")
+        enable_limits_group("system", "first")
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+        with self.assertRaisesRegex(
+            RuntimeError, "LIMITS_GROUP INST FIRST undefined. Ensure target INST contains the line: LIMITS_GROUP FIRST"
+        ):
+            enable_limits_group("INST", "FIRST")
+        # An empty target name is not an omitted one
+        with self.assertRaisesRegex(RuntimeError, "LIMITS_GROUP  FIRST undefined"):
+            disable_limits_group("", "FIRST")
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_enable_limits_group_complains_about_the_wrong_number_of_arguments(self):
+        with self.assertRaisesRegex(
+            RuntimeError, r"Invalid number of arguments \(0\) passed to enable_limits_group\(\)"
+        ):
+            enable_limits_group()
+        with self.assertRaisesRegex(
+            RuntimeError, r"Invalid number of arguments \(3\) passed to enable_limits_group\(\)"
+        ):
+            enable_limits_group("A", "B", "C")
+
+    def test_enable_limits_group_requires_the_target_name_for_a_group_name_several_targets_define(self):
+        Store.hset("DEFAULT__limits_groups", "INST__FIRST", json.dumps([["INST", "HEALTH_STATUS", "TEMP2"]]))
+        with self.assertRaisesRegex(RuntimeError, r"LIMITS_GROUP FIRST is defined by targets INST, SYSTEM"):
+            enable_limits_group("FIRST")
+        disable_limits("INST", "HEALTH_STATUS", "TEMP2")
+        disable_limits("INST", "HEALTH_STATUS", "TEMP1")
+        enable_limits_group("INST", "FIRST")
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP2"))
+        self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+        # The key get_limits_groups returns also works
+        enable_limits_group("SYSTEM__FIRST")
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_enable_limits_group_enables_a_group_stored_before_groups_were_owned_by_a_target(self):
+        Store.hset("DEFAULT__limits_groups", "LEGACY", json.dumps([["INST", "HEALTH_STATUS", "TEMP2"]]))
+        disable_limits("INST", "HEALTH_STATUS", "TEMP2")
+        enable_limits_group("LEGACY")
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP2"))
+
     def test_enable_limits_groups_complains_about_undefined_limits_groups(self):
         with self.assertRaisesRegex(
             RuntimeError,
@@ -374,6 +431,20 @@ class TestLimitsApi(unittest.TestCase):
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP3"))
 
+    def test_disable_limits_groups_disables_every_item_below_a_nested_group(self):
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "INST__SPACECRAFT",
+            json.dumps([["SYSTEM", "LIMITS_GROUP", "FIRST"], ["INST", "HEALTH_STATUS", "TEMP2"]]),
+        )
+        enable_limits_group("SPACECRAFT")
+        for item in ["TEMP1", "TEMP2", "TEMP3"]:
+            self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", item))
+        disable_limits_group("SPACECRAFT")
+        for item in ["TEMP1", "TEMP2", "TEMP3"]:
+            self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", item))
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP4"))
+
     def test_disable_limits_groups_accepts_a_lowercase_group_name(self):
         disable_limits_group("first")
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
@@ -390,6 +461,7 @@ class TestLimitsApi(unittest.TestCase):
         ]
         self.assertEqual(len(events), 1)
         self.assertEqual(events[0][1]["type"], "LIMITS_GROUP_ENABLE_STATE")
+        self.assertEqual(events[0][1]["target_name"], "SYSTEM")
         self.assertEqual(events[0][1]["group_name"], "FIRST")
         self.assertFalse(events[0][1]["enabled"])
         self.assertNotIn("items", events[0][1])

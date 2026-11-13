@@ -18,7 +18,7 @@
 # disable. It must detect the gap and reload the limits settings from the store.
 #
 # 1. Stall the INST2 decom microservice by injecting the DECOM_STALL packet
-# 2. Disable the INST2_TEMP2 limits group while decom is stalled
+# 2. Disable the INST2 TEMPS limits group while decom is stalled
 # 3. Flood the stream with LIMITS_CHANGE events from INST until the group
 #    event is trimmed
 # 4. After decom resumes, verify it stopped checking limits on INST2 TEMP2
@@ -34,7 +34,7 @@ import openc3.script
 STALL_SECONDS = 30  # Long enough to flood the stream (max 300)
 TARGET = "INST2"
 FLOOD_TARGET = "INST"  # Must have its own decom microservice
-GROUP = "INST2_TEMP2"
+GROUP = "TEMPS"  # Contains TEMP2
 FLOOD_ITEMS = ["TEMP2", "TEMP3", "TEMP4"]  # TEMP1 has a limits response which sends commands
 
 
@@ -50,7 +50,7 @@ def newest_limits_event_id():
 def is_group_event(event):
     # Older versions send a LIMITS_ENABLE_STATE event per item instead of a group event
     if event["type"] == "LIMITS_GROUP_ENABLE_STATE":
-        return event["group_name"] == GROUP
+        return event.get("target_name") == TARGET and event["group_name"] == GROUP
     return event["type"] == "LIMITS_ENABLE_STATE" and event["target_name"] == TARGET and event["item_name"] == "TEMP2"
 
 
@@ -65,7 +65,7 @@ def is_temp2_change(event):
 
 
 try:
-    enable_limits_group(GROUP)
+    enable_limits_group(TARGET, GROUP)
     for item in FLOOD_ITEMS:
         enable_limits(f"{FLOOD_TARGET} HEALTH_STATUS {item}")
     wait(2)  # Let decom apply the enables
@@ -84,13 +84,13 @@ try:
 
     # 2. Disable the group while decom can't read the event
     offset = newest_limits_event_id()
-    disable_limits_group(GROUP)
+    disable_limits_group(TARGET, GROUP)
     group_events = [id for id, event in get_limits_events(offset, count=1000) if is_group_event(event)]
     if not group_events:
         raise RuntimeError("Limits group event not found")
     group_event_id = group_events[0]
     print(
-        f"Disabled {GROUP} with event {group_event_id}, "
+        f"Disabled {TARGET} {GROUP} with event {group_event_id}, "
         f"limits_enabled reports {limits_enabled(f'{TARGET} HEALTH_STATUS TEMP2')}"
     )
 
@@ -139,4 +139,4 @@ try:
         )
     print(f"PASS: {TARGET} decom microservice resynced and stopped checking limits on TEMP2")
 finally:
-    enable_limits_group(GROUP)
+    enable_limits_group(TARGET, GROUP)

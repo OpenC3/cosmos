@@ -153,6 +153,7 @@ module OpenC3
       results = []
       lookups = []
       packet_lookup = {}
+      generated_lookup = {} # target_name => whether its LIMITS_GROUP packet is generated
       overrides = {}
 
       # If a start_time is passed we're doing a QuestDB lookup and directly return the results
@@ -184,7 +185,12 @@ module OpenC3
           end
           # If we were able to find a value, try to get the limits state
           if item_result[0]
-            if now - hash['RECEIVED_TIMESECONDS'] > stale_time
+            # Generated LIMITS_GROUP packets are only published when a value changes so
+            # their age says nothing about whether they are current. Never mark them stale.
+            generated = packet_name == 'LIMITS_GROUP' && generated_lookup.fetch(target_name) do
+              generated_lookup[target_name] = TargetModel.generated_limits_group_packet?(target_name, packet_name, scope: scope)
+            end
+            if !generated and now - hash['RECEIVED_TIMESECONDS'] > stale_time
               item_result[1] = :STALE
             else
               # The last key is simply the name (RAW) so we can append __L

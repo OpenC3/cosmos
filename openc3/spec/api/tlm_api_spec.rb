@@ -573,6 +573,49 @@ module OpenC3
       end
     end
 
+    describe "LIMITS_GROUP" do
+      it "can't be written for a target which defines limits groups" do
+        TargetModel.new(name: "GRP", scope: "DEFAULT", limits_groups: ["TEMPS"]).create
+        expect { @api.inject_tlm("grp", "limits_group", { TEMPS: 0 }) }.to raise_error(RuntimeError, "ERROR: GRP LIMITS_GROUP is read-only and is not supported by inject_tlm()")
+        expect { @api.set_tlm("GRP LIMITS_GROUP TEMPS = 0") }.to raise_error(RuntimeError, "ERROR: GRP LIMITS_GROUP is read-only and is not supported by set_tlm()")
+        expect { @api.override_tlm("GRP LIMITS_GROUP TEMPS = 0") }.to raise_error(RuntimeError, "ERROR: GRP LIMITS_GROUP is read-only and is not supported by override_tlm()")
+      end
+
+      it "is never chosen by LATEST" do
+        TargetModel.new(name: "GRP", scope: "DEFAULT", limits_groups: ["TEMPS", "TEMP1"]).create
+        # The TEMP1 group shares its name with the TEMP1 item in STATUS
+        { "STATUS" => ["TEMP1"], "LIMITS_GROUP" => ["TEMPS", "TEMP1"] }.each do |packet_name, items|
+          packet = { "target_name" => "GRP", "packet_name" => packet_name, "items" => items.map { |name| { "name" => name } } }
+          Store.hset("DEFAULT__openc3tlm__GRP", packet_name, JSON.generate(packet))
+        end
+        TargetModel.class_variable_get(:@@item_map_cache)["DEFAULT__GRP__item_to_packet_map"] = nil
+        # LIMITS_GROUP was received most recently
+        CvtModel.set({ "TEMP1" => 1, "PACKET_TIMESECONDS" => 1.0 }, target_name: "GRP", packet_name: "STATUS", scope: "DEFAULT")
+        CvtModel.set({ "TEMPS" => 0, "TEMP1" => 0, "PACKET_TIMESECONDS" => 2.0 }, target_name: "GRP", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
+
+        expect { @api.set_tlm("GRP LATEST TEMPS = 2") }.to raise_error(RuntimeError, "Item 'GRP LATEST TEMPS' does not exist for scope: DEFAULT")
+        expect { @api.override_tlm("GRP LATEST TEMPS = 2") }.to raise_error(RuntimeError, "Item 'GRP LATEST TEMPS' does not exist for scope: DEFAULT")
+        expect(@api.tlm("GRP LATEST TEMP1")).to eql 1
+        @api.set_tlm("GRP LATEST TEMP1 = 5")
+        @api.override_tlm("GRP LATEST TEMP1 = 6")
+        expect(CvtModel.get(target_name: "GRP", packet_name: "STATUS", scope: "DEFAULT")["TEMP1__C"]).to eql 5
+        expect(CvtModel.overrides(scope: "DEFAULT").map { |override| override["packet_name"] }.uniq).to eql ["STATUS"]
+        expect(CvtModel.get(target_name: "GRP", packet_name: "LIMITS_GROUP", scope: "DEFAULT")).to eql({ "TEMPS" => 0, "TEMP1" => 0, "PACKET_TIMESECONDS" => 2.0 })
+      end
+
+      it "is an ordinary packet name for a target without limits groups" do
+        TargetModel.new(name: "NOGRP", scope: "DEFAULT").create
+        expect { @api.inject_tlm("NOGRP", "LIMITS_GROUP", { TEMPS: 0 }) }.to raise_error(RuntimeError, /does not exist/)
+
+        # Its items are found by LATEST like any other packet's
+        packet = { "target_name" => "NOGRP", "packet_name" => "LIMITS_GROUP", "items" => [{ "name" => "VALUE" }] }
+        Store.hset("DEFAULT__openc3tlm__NOGRP", "LIMITS_GROUP", JSON.generate(packet))
+        TargetModel.class_variable_get(:@@item_map_cache)["DEFAULT__NOGRP__item_to_packet_map"] = nil
+        CvtModel.set({ "VALUE" => 3, "PACKET_TIMESECONDS" => 1.0 }, target_name: "NOGRP", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
+        expect(@api.tlm("NOGRP LATEST VALUE")).to eql 3
+      end
+    end
+
     describe "get_tlm_packet" do
       it "complains about non-existent targets" do
         expect { @api.get_tlm_packet("BLAH", "HEALTH_STATUS") }.to raise_error(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist")

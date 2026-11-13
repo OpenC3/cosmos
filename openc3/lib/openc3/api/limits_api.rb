@@ -18,6 +18,7 @@
 require 'openc3/api/target_api'
 require 'openc3/models/cvt_model'
 require 'openc3/packets/packet_item'
+require 'openc3/utilities/limits_rollup'
 
 module OpenC3
   module Api
@@ -61,7 +62,6 @@ module OpenC3
     def get_overall_limits_state(ignored_items = nil, manual: false, scope: $openc3_scope, token: $openc3_token)
       # We only need to check out of limits items so call get_out_of_limits() which authorizes
       out_of_limits = get_out_of_limits(scope: scope, token: token)
-      overall = 'GREEN'
 
       # Build easily matchable ignore list
       if ignored_items
@@ -74,27 +74,15 @@ module OpenC3
         ignored_items = []
       end
 
+      states = []
       out_of_limits.each do |target_name, packet_name, item_name, limits_state|
         # Ignore this item if we match one of the ignored items. Checking against /^#{item}/
         # allows us to detect matches against a TGT__PKT__ with no item defined.
         next if ignored_items.detect { |item| "#{target_name}__#{packet_name}__#{item_name}" =~ /^#{item}/ }
 
-        if limits_state == 'RED' || limits_state == 'RED_HIGH' || limits_state == 'RED_LOW'
-          overall = limits_state
-          break # Red is as high as we go so no need to look for more
-        end
-
-        case overall
-          # If our overall state is currently blue or green we can go to any state
-        when 'BLUE', 'GREEN', 'GREEN_HIGH', 'GREEN_LOW'
-          overall = limits_state
-        # else YELLOW - Stay at YELLOW until we find a red
-        end
+        states << limits_state
       end
-      overall = 'GREEN' if overall == 'GREEN_HIGH' || overall == 'GREEN_LOW' || overall == 'BLUE'
-      overall = 'YELLOW' if overall == 'YELLOW_HIGH' || overall == 'YELLOW_LOW'
-      overall = 'RED' if overall == 'RED_HIGH' || overall == 'RED_LOW'
-      return overall
+      return LimitsRollup.worst(states) || 'GREEN'
     end
 
     # Whether the limits are enabled for the given item
@@ -305,26 +293,52 @@ module OpenC3
       end
     end
 
-    # Returns all limits_groups and their members
+    # Returns limits groups and their members. A nested group is the member
+    # <TARGET> LIMITS_GROUP <GROUP>.
+    #
+    # With no target name the groups of every target are keyed by group name. A
+    # group name defined by more than one target is keyed TARGET__GROUP instead
+    # since the name alone doesn't identify the group.
+    #
     # @since 5.0.0 Returns hash with values
+    # @param target_name [String, nil] Only return the groups defined by this target
     # @return [Hash{String => Array<Array<String, String, String>>]
-    def get_limits_groups(manual: false, scope: $openc3_scope, token: $openc3_token)
-      authorize(permission: 'tlm', manual: manual, scope: scope, token: token)
-      TargetModel.limits_groups(scope: scope)
+    def get_limits_groups(target_name = nil, manual: false, scope: $openc3_scope, token: $openc3_token)
+      target_name = target_name.to_s.upcase if target_name
+      authorize(permission: 'tlm', target_name: target_name, manual: manual, scope: scope, token: token)
+      groups = TargetModel.limits_groups(scope: scope).map do |key, items|
+        group_target_name, group_name = LimitsEventTopic.split_limits_group_key(key)
+        [key, group_target_name, group_name, items]
+      end
+      if target_name
+        groups.select { |_key, group_target_name, _group_name, _items| group_target_name == target_name }
+              .to_h { |_key, _group_target_name, group_name, items| [group_name, items] }
+      else
+        counts = groups.map { |group| group[2] }.tally
+        groups.to_h { |key, _group_target_name, group_name, items| [counts[group_name] > 1 ? key : group_name, items] }
+      end
     end
 
     # Enables limits for all the items in the group
     #
-    # @param group_name [String] Name of the group to enable
-    def enable_limits_group(group_name, manual: false, scope: $openc3_scope, token: $openc3_token)
-      _limits_group(group_name, action: :enable, manual: manual, scope: scope, token: token)
+    # Usage:
+    #   enable_limits_group(group_name)
+    #   enable_limits_group(target_name, group_name)
+    #
+    # A group name alone must only be defined by one target
+    def enable_limits_group(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
+      _limits_group(args, 'enable_limits_group', action: :enable, manual: manual, scope: scope, token: token)
     end
 
     # Disables limits for all the items in the group
     #
-    # @param group_name [String] Name of the group to disable
-    def disable_limits_group(group_name, manual: false, scope: $openc3_scope, token: $openc3_token)
-      _limits_group(group_name, action: :disable, manual: manual, scope: scope, token: token)
+    # Usage:
+    #   disable_limits_group(group_name)
+    #   disable_limits_group(target_name, group_name)
+    #
+    # A group name alone must only be defined by one target
+    def disable_limits_group(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
+      _limits_group(args, 'disable_limits_group', action: :disable, manual: manual, scope: scope, token: token)
     end
 
     # Returns all defined limits sets
@@ -397,25 +411,35 @@ module OpenC3
     ###########################################################################
 
     # Enables or disables a limits group
-    def _limits_group(group_name, action:, manual:, scope:, token:)
-      authorize(permission: 'tlm_set', manual: manual, scope: scope, token: token)
-      group_name.upcase!
+    def _limits_group(args, method_name, action:, manual:, scope:, token:)
+      case args.length
+      when 1
+        target_name = nil
+        group_name = args[0]
+      when 2
+        target_name, group_name = args
+      else
+        # Invalid number of arguments
+        raise "ERROR: Invalid number of arguments (#{args.length}) passed to #{method_name}()"
+      end
+      authorize(permission: 'tlm_set', target_name: target_name&.to_s&.upcase, manual: manual, scope: scope, token: token)
+      key = LimitsEventTopic.find_limits_group(target_name, group_name, scope: scope)
+      target_name, group_name = LimitsEventTopic.split_limits_group_key(key)
       # Items grouped by target and packet so each packet is read and written once
-      items = LimitsEventTopic.limits_group_items(group_name, scope: scope)
-      raise "LIMITS_GROUP #{group_name} undefined. Ensure your telemetry definition contains the line: LIMITS_GROUP #{group_name}" unless items
+      items = LimitsEventTopic.limits_group_items(key, scope: scope)
 
       enabled = (action == :enable)
-      message = "#{enabled ? 'Enabling' : 'Disabling'} Limits Group: #{group_name}"
+      message = "#{enabled ? 'Enabling' : 'Disabling'} Limits Group: #{[target_name, group_name].compact.join(' ')}"
       Logger.info(message, scope: scope)
 
-      items.each do |target_name, packets|
+      items.each do |item_target_name, packets|
         packets.each do |packet_name, item_names|
-          packet = TargetModel.packet(target_name, packet_name, scope: scope)
+          packet = TargetModel.packet(item_target_name, packet_name, scope: scope)
           item_names_hash = item_names.to_h { |name| [name, true] }
           packet['items'].each do |item|
             item['limits']['enabled'] = enabled if item_names_hash[item['name']]
           end
-          TargetModel.set_packet(target_name, packet_name, packet, scope: scope)
+          TargetModel.set_packet(item_target_name, packet_name, packet, scope: scope)
         end
       end
 
@@ -426,6 +450,8 @@ module OpenC3
       # small no matter how many items the group contains.
       event = { type: :LIMITS_GROUP_ENABLE_STATE, group_name: group_name,
                 enabled: enabled, time_nsec: Time.now.to_nsec_from_epoch, message: message }
+      # Groups stored before they were owned by a target have no target name
+      event[:target_name] = target_name if target_name
       LimitsEventTopic.write(event, scope: scope)
     end
 
