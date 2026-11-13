@@ -1,7 +1,7 @@
 
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
 ARG OPENC3_TSDB_IMAGE=questdb/questdb
-ARG OPENC3_TSDB_VERSION=9.4.3
+ARG OPENC3_TSDB_VERSION=10.2.0
 
 FROM ${OPENC3_DEPENDENCY_REGISTRY}/${OPENC3_TSDB_IMAGE}:${OPENC3_TSDB_VERSION}
 
@@ -24,7 +24,7 @@ ENV QDB_CAIRO_WRITER_DATA_INDEX_VALUE_APPEND_PAGE_SIZE=4K
 ENV QDB_SHARED_WORKER_COUNT=1
 ENV QDB_SHARED_WORKER_YIELD_THRESHOLD=1
 ENV QDB_SHARED_WORKER_SLEEP_THRESHOLD=1
-# Disable all line TCP workers since we're using the Ingress API
+# Disable all line TCP workers since we ingest over HTTP (QWP WebSocket)
 ENV QDB_LINE_TCP_ENABLED=false
 ENV QDB_LINE_TCP_WRITER_WORKER_COUNT=0
 ENV QDB_LINE_TCP_WRITER_WORKER_YIELD_THRESHOLD=1
@@ -37,6 +37,13 @@ ENV QDB_LINE_TCP_IO_WORKER_SLEEP_THRESHOLD=1
 ENV QDB_HTTP_NET_CONNECTION_LIMIT=1024
 ENV QDB_PG_NET_CONNECTION_LIMIT=1024
 ENV QDB_LINE_TCP_NET_ACTIVE_CONNECTION_LIMIT=1024
+
+# Durable commits: each commit to a WAL table flushes its WAL files before it
+# is acknowledged and the table files are flushed at periodic save points, so a
+# power loss can't corrupt tables or lose more than the last group-commit window
+# (cairo.adaptive.commit.group.window, 50ms). QuestDB's default (nosync) leaves
+# flushing to the OS. See https://questdb.com/docs/concepts/durability
+ENV QDB_CAIRO_COMMIT_MODE=adaptive
 
 # enables :9003/metrics
 ENV QDB_METRICS_ENABLED=true

@@ -29,7 +29,7 @@ from typing import NamedTuple
 import numpy
 import psycopg
 from psycopg.rows import dict_row
-from questdb.ingress import Protocol, Sender, TimestampNanos
+from questdb import Protocol, QuestDBError, Sender, TimestampNanos
 
 
 # Sentinel values for storing float special values (inf, -inf, nan) in QuestDB.
@@ -330,9 +330,40 @@ class QuestDBClient:
         # Return as-is (STRING type or unknown)
         return value
 
-    DEFAULT_BATCH_SIZE = 500
+    # Rows buffered before write_row flushes. Each commit has a fixed cost
+    # (adaptive commit mode flushes every WAL file of the commit to disk), so
+    # fewer, larger commits ingest faster.
+    DEFAULT_BATCH_SIZE = 5000
+    # Values (columns) buffered before write_row flushes, whatever the row count.
+    # Pending rows are kept in memory for replay, so this bounds memory for wide
+    # packets (e.g. 250 rows of a 2000 item packet).
+    DEFAULT_MAX_PENDING_VALUES = 500_000
 
-    def __init__(self, logger=None, name=None, batch_size=None, db_shard=0, ingest_port=None, query_port=None):
+    # Ingest protocols selectable with OPENC3_TSDB_INGEST_PROTOCOL. QWP over
+    # WebSocket (ws/wss) is the default; ILP over HTTP (http/https) is kept as a
+    # fallback. All of them use the HTTP port (OPENC3_TSDB_INGEST_PORT).
+    INGEST_PROTOCOLS = {
+        "ws": Protocol.Ws,
+        "wss": Protocol.Wss,
+        "http": Protocol.Http,
+        "https": Protocol.Https,
+    }
+    QWP_PROTOCOLS = ("ws", "wss")
+    DEFAULT_INGEST_PROTOCOL = "ws"
+    # How long flush waits for QWP acknowledgements without any progress before
+    # treating the server as unresponsive. ILP/HTTP has its own request timeouts.
+    QWP_ACK_TIMEOUT_MS = 30_000
+
+    def __init__(
+        self,
+        logger=None,
+        name=None,
+        batch_size=None,
+        db_shard=0,
+        ingest_port=None,
+        query_port=None,
+        max_pending_values=None,
+    ):
         """
         Initialize QuestDB client.
 
@@ -340,16 +371,20 @@ class QuestDBClient:
             logger: Optional logger instance. If not provided, uses print.
             name: Optional name for error messages (e.g., microservice name)
             batch_size: Number of rows to buffer before auto-flushing (default: DEFAULT_BATCH_SIZE)
+            max_pending_values: Number of values (columns across all buffered rows) to buffer
+                before auto-flushing (default: DEFAULT_MAX_PENDING_VALUES)
             db_shard: DB_Shard number (default 0). Used to resolve hostname via SHARDNUM replacement.
             ingest_port: ILP ingest port (default OPENC3_TSDB_INGEST_PORT)
             query_port: PostgreSQL query port (default OPENC3_TSDB_QUERY_PORT)
         """
         self.batch_size = batch_size or self.DEFAULT_BATCH_SIZE
+        self.max_pending_values = max_pending_values or self.DEFAULT_MAX_PENDING_VALUES
         self.logger = logger
         self.name = name or "QuestDBClient"
         self.db_shard = db_shard
         self.ingest_port = ingest_port
         self.query_port = query_port
+        self.ingest_protocol = self.ingest_protocol_from_env()
         self.ingest = None
         self.query = None
         # Track columns that need JSON serialization due to type conflicts or DERIVED type
@@ -362,9 +397,18 @@ class QuestDBClient:
         # Track FLOAT column bit sizes for proper inf/nan sentinel encoding
         # Key is "table__column", value is bit_size (32 or 64)
         self.float_bit_sizes = {}
+        # Declared column types per table from create_table, used to send every
+        # value of a column as the same type. QWP senders fix a column's type the
+        # first time they see it and reject a value of another type afterwards.
+        # Key is table_name, value is a dict of column_name -> canonical type (e.g. "DOUBLE")
+        self.column_types = {}
+        # Columns already warned about having non-integer values truncated
+        self.truncation_warned = set()
         # Track pending rows for error recovery (cleared on successful flush)
         # Each entry is (table_name, columns_dict, timestamp_ns)
         self.pending_rows = []
+        # Number of values in pending_rows, for max_pending_values
+        self.pending_values = 0
 
     def _log_info(self, msg):
         if self.logger:
@@ -413,9 +457,30 @@ class QuestDBClient:
 
         return host, int(port), username, password
 
+    @classmethod
+    def ingest_protocol_from_env(cls):
+        """Ingest protocol name from OPENC3_TSDB_INGEST_PROTOCOL (default ws).
+
+        Raises:
+            RuntimeError: If the protocol is not one of INGEST_PROTOCOLS
+        """
+        protocol = os.environ.get("OPENC3_TSDB_INGEST_PROTOCOL") or cls.DEFAULT_INGEST_PROTOCOL
+        protocol = protocol.strip().lower()
+        if protocol not in cls.INGEST_PROTOCOLS:
+            raise RuntimeError(
+                f"Invalid OPENC3_TSDB_INGEST_PROTOCOL '{protocol}', must be one of {', '.join(cls.INGEST_PROTOCOLS)}"
+            )
+        return protocol
+
+    @property
+    def is_qwp(self):
+        """True when ingesting over QWP (QuestDB Wire Protocol) rather than ILP."""
+        return self.ingest_protocol in self.QWP_PROTOCOLS
+
     def connect_ingest(self):
         """
-        Establish HTTP ILP connection for data ingestion.
+        Establish the ingest connection (QWP over WebSocket by default, see
+        OPENC3_TSDB_INGEST_PROTOCOL).
 
         Raises:
             RuntimeError: If required environment variables are missing
@@ -424,14 +489,43 @@ class QuestDBClient:
         host, port, username, password = self._get_connection_env("OPENC3_TSDB_INGEST_PORT", self.ingest_port)
 
         try:
-            if self.ingest:
-                self.ingest.close()
+            self._close_ingest()
+            # Flushing is driven by write_row (batch_size) and the caller's flush
+            # period, so turn off the sender's row and time based auto flush (QWP
+            # would otherwise flush every 600 rows). QWP keeps its byte based auto
+            # flush: a QWP frame is capped by the server (about 2 MB by default)
+            # and a larger flush is refused, which wide packets can exceed. flush()
+            # still waits for every frame, and pending_rows covers them all.
+            if self.is_qwp:
+                auto_flush = {"auto_flush_rows": False, "auto_flush_interval": False}
+            else:
+                auto_flush = {"auto_flush": False}
             self.ingest = Sender(
-                Protocol.Http, host, port, username=username, password=password, auto_flush_interval="off"
+                self.INGEST_PROTOCOLS[self.ingest_protocol],
+                host,
+                port,
+                username=username,
+                password=password,
+                **auto_flush,
             )
             self.ingest.establish()
         except Exception as e:
             raise ConnectionError(f"Failed to connect to QuestDB: {e}") from e
+
+    def _close_ingest(self):
+        """Close the ingest sender, if any, sending anything still buffered.
+
+        A sender that hit a server rejection refuses to flush (QWP refuses
+        every later call), so fall back to closing without flushing. The
+        rejected rows are still in pending_rows for the caller to replay.
+        """
+        if self.ingest:
+            try:
+                self.ingest.close()
+            except Exception:
+                with contextlib.suppress(Exception):
+                    self.ingest.close(flush=False)
+            self.ingest = None
 
     def connect_query(self):
         """
@@ -451,6 +545,7 @@ class QuestDBClient:
     def close(self):
         """Close all connections."""
         if self.ingest:
+            # Normal shutdown: send whatever is still buffered
             with contextlib.suppress(Exception):
                 self.ingest.close()
             self.ingest = None
@@ -1416,6 +1511,8 @@ class QuestDBClient:
                 if item.get("format_string") or item.get("units"):
                     desired_columns[f"{item_name}__F"] = "varchar"
 
+        self.column_types[table_name] = {col: self._canonical_type(t) for col, t in desired_columns.items()}
+
         # Check if table already exists and reconcile column types
         existing_columns = self._get_existing_columns(table_name)
 
@@ -1684,21 +1781,38 @@ class QuestDBClient:
         if is_varchar and not isinstance(value, str):
             return str(value), False
 
-        # Handle various data types for non-DERIVED columns
+        # Handle various data types for non-DERIVED columns.
+        # Numbers are sent as their column's declared type (column_types) so a
+        # column always gets the same type: QWP rejects a column changing type,
+        # e.g. 3 then 3.5. This runs for every value ingested so keep it cheap.
         match value:
-            case int():
+            case int():  # Includes bool
+                table_types = self.column_types.get(table_name)
+                column_type = table_types.get(item_name) if table_types else None
+                if column_type in self.FLOAT_COLUMN_TYPES:
+                    value = float(value)
+                elif type(value) is bool:
+                    if column_type in self.INTEGER_COLUMN_RANGES:
+                        value = int(value)
                 # QuestDB Python client uses C long internally (signed 64-bit).
                 # Values outside signed 64-bit range must be sent as strings.
-                if value > 9223372036854775807 or value < -9223372036854775808:
+                elif value > 9223372036854775807 or value < -9223372036854775808:
                     value = str(value)
 
             case float():
                 # Encode inf/nan as sentinel values (QuestDB stores these as NULL)
+                bit_size = 64
                 if table_name:
                     float_key = f"{table_name}__{item_name}"
-                    bit_size = self.float_bit_sizes.get(float_key, 64)
-                else:
-                    bit_size = 64
+                    float_bit_size = self.float_bit_sizes.get(float_key)
+                    if float_bit_size:
+                        bit_size = float_bit_size
+                    else:
+                        # Not a float column, check for an integer column
+                        table_types = self.column_types.get(table_name)
+                        column_type = table_types.get(item_name) if table_types else None
+                        if column_type in self.INTEGER_COLUMN_RANGES:
+                            return self._float_to_integer_column(value, table_name, item_name, column_type), False
                 value = encode_float_special_values(value, bit_size)
 
             case str() | None:
@@ -1733,6 +1847,32 @@ class QuestDBClient:
                 return None, True  # Skip unsupported types
 
         return value, False
+
+    FLOAT_COLUMN_TYPES = ("FLOAT", "DOUBLE")
+
+    def _float_to_integer_column(self, value, table_name, item_name, column_type):
+        """Convert a float destined for an integer column to an int.
+
+        Non-integer values are truncated (the same result as the cast applied
+        when QuestDB rejects the value) and logged once per column, since they
+        mean the item definition doesn't match the data. inf, nan and values
+        out of the column's range become NULL.
+        """
+        if not math.isfinite(value):
+            return None
+        integer = int(value)
+        low, high = self.INTEGER_COLUMN_RANGES[column_type]
+        if not low <= integer <= high:
+            return None
+        if integer != value:
+            key = f"{table_name}__{item_name}"
+            if key not in self.truncation_warned:
+                self.truncation_warned.add(key)
+                self._log_warn(
+                    f"QuestDB: Column {item_name} in table {table_name} is {column_type} "
+                    f"but received non-integer value {value}. Truncating to {integer}."
+                )
+        return integer
 
     # Items that are derived from or stored in the PACKET_TIMESECONDS/RECEIVED_TIMESECONDS
     # timestamp columns and should not be stored as separate columns from json_data.
@@ -1792,19 +1932,38 @@ class QuestDBClient:
         if rx_timestamp_ns is not None:
             # Convert nanoseconds to datetime for QuestDB timestamp column
             columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=timezone.utc)
+        # pending_rows is also cleared by callers recovering from errors
+        if not self.pending_rows:
+            self.pending_values = 0
         self.pending_rows.append((table_name, columns.copy(), timestamp_ns))
-        self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
-        # Flush in batches to avoid overwhelming QuestDB's HTTP endpoint
-        if len(self.pending_rows) >= self.batch_size:
+        self.pending_values += len(columns)
+        self._send_row(table_name, columns, timestamp_ns)
+        # Flush in batches, bounded by rows and by values (memory for wide packets)
+        if len(self.pending_rows) >= self.batch_size or self.pending_values >= self.max_pending_values:
             self.flush()
             return True
         return False
 
     def flush(self):
-        """Flush pending writes to QuestDB."""
+        """Flush pending writes to QuestDB.
+
+        Raises:
+            QuestDBError: If QuestDB rejected the rows (see handle_ingress_error)
+            ConnectionError: If QWP acknowledgements stopped arriving
+        """
         if self.ingest:
             self.ingest.flush()
+            if self.is_qwp:
+                # A QWP flush only queues the frame. Wait for the server to
+                # acknowledge it so rejections surface here like they do with
+                # ILP/HTTP, and pending_rows are only cleared once they're written.
+                fsn = self.ingest.published_fsn()
+                if fsn is not None and not self.ingest.await_acked_fsn(fsn, self.QWP_ACK_TIMEOUT_MS):
+                    raise ConnectionError(
+                        f"QuestDB: No QWP acknowledgement within {self.QWP_ACK_TIMEOUT_MS / 1000:.0f}s"
+                    )
             self.pending_rows.clear()
+            self.pending_values = 0
 
     def _convert_column_to_json(self, table_name, column_name, columns):
         """Mark a column for JSON serialization and convert its current value."""
@@ -1816,11 +1975,47 @@ class QuestDBClient:
             else:
                 columns[column_name] = json.dumps(value)
 
-    def _reconnect_and_retry_pending(self):
-        """Reconnect the ILP sender and replay all pending rows."""
-        self.connect_ingest()
-        for table_name, columns, timestamp_ns in self.pending_rows:
+    # Raised by a QWP sender (client side) when a column gets a value of a
+    # different type than the first value it saw for that column
+    QWP_TYPE_CHANGE_RE = re.compile(r'column "(.+)" changes type')
+
+    def _send_row(self, table_name, columns, timestamp_ns):
+        """Add a row to the sender. The row must already be last in pending_rows.
+
+        A QWP sender fixes each column's type the first time it sees it, so a
+        value of another type (e.g. a float after an int) is rejected before it
+        reaches QuestDB. convert_value prevents this for declared columns. For
+        anything else, flush the earlier rows and send this one on a new sender,
+        letting QuestDB cast or reject it like it does with ILP.
+        """
+        try:
             self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
+        except QuestDBError as error:
+            if not (self.is_qwp and self.QWP_TYPE_CHANGE_RE.search(str(error))):
+                raise
+            self._log_warn(f"QuestDB: {error} in table {table_name}, starting a new QWP batch")
+            row = self.pending_rows.pop()
+            try:
+                self.flush()
+            finally:
+                self.pending_rows.append(row)
+                self.pending_values = sum(len(pending[1]) for pending in self.pending_rows)
+            self.connect_ingest()
+            self.ingest.row(table_name, columns=columns, at=TimestampNanos(timestamp_ns))
+
+    def _reconnect_and_retry_pending(self):
+        """Reconnect the ingest sender and replay all pending rows."""
+        rows = self.pending_rows
+        self.pending_rows = []
+        self.connect_ingest()
+        for index, (table_name, columns, timestamp_ns) in enumerate(rows):
+            self.pending_rows.append((table_name, columns, timestamp_ns))
+            try:
+                self._send_row(table_name, columns, timestamp_ns)
+            except Exception:
+                # Keep the rows that weren't replayed so a later recovery can retry them
+                self.pending_rows.extend(rows[index + 1 :])
+                raise
 
     # Map QuestDB column types to Python casting functions for value conversion.
     # Used by handle_ingress_error to cast mismatched values to fit the column type.
@@ -1838,6 +2033,23 @@ class QuestDBClient:
         "DECIMAL": str,
     }
 
+    # Valid range of each integer column type. QuestDB uses the minimum value as
+    # NULL, so it isn't included.
+    INTEGER_COLUMN_RANGES = {
+        "BYTE": (-(2**7), 2**7 - 1),
+        "SHORT": (-(2**15), 2**15 - 1),
+        "INT": (-(2**31) + 1, 2**31 - 1),
+        "LONG": (-(2**63) + 1, 2**63 - 1),
+    }
+
+    # QWP (QuestDB Wire Protocol) schema mismatch messages name the column but
+    # not the table, since one QWP frame can hold rows for many tables, e.g.
+    #   double value 1.5 loses precision when converted to LONG [column=TEMP1]
+    #   cannot parse LONG from string [value=abc, column=TEMP1]
+    #   integer value 4294967296 out of range for INT [column=TEMP1, min=..., max=...]
+    #   cannot write DOUBLE_ARRAY to column [column=TEMP1, type=DOUBLE]
+    QWP_COLUMN_RE = re.compile(r"[\[ ,]column=([^,\]\n]+)[,\]]")
+
     def _cast_value_to_column_type(self, value, column_type):
         """Attempt to cast a value to match the expected column type.
 
@@ -1846,40 +2058,120 @@ class QuestDBClient:
             column_type: QuestDB column type name (e.g., "LONG", "DOUBLE", "VARCHAR")
 
         Returns:
-            The casted value, or None if casting fails.
+            The casted value, or None if casting fails or the value doesn't fit
+            the column type.
         """
         caster = self.COLUMN_TYPE_CASTERS.get(column_type)
         if caster is None:
             return None
         try:
-            return caster(value)
+            casted = caster(value)
         except (ValueError, TypeError, OverflowError):
             return None
+        int_range = self.INTEGER_COLUMN_RANGES.get(column_type)
+        if int_range and not (int_range[0] <= casted <= int_range[1]):
+            return None
+        return casted
+
+    def _fix_pending_column(self, table_name, column_name, column_type, is_array, arrays_only=False):
+        """Make the pending rows for table_name fit column_name's column type.
+
+        For array errors the values are serialized to JSON (only the values that
+        are arrays if arrays_only). Scalars are cast to the column type, or
+        removed from the row (stored as NULL) if they can't be cast.
+
+        Returns:
+            True if any pending row was changed
+        """
+        fixed = False
+        for row_table, columns, _row_ts in self.pending_rows:
+            if row_table != table_name or column_name not in columns:
+                continue
+            if is_array:
+                if not arrays_only or isinstance(columns[column_name], (list, tuple, numpy.ndarray)):
+                    self._convert_column_to_json(table_name, column_name, columns)
+                    fixed = True
+                continue
+            casted = self._cast_value_to_column_type(columns[column_name], column_type)
+            if casted is not None:
+                columns[column_name] = casted
+            else:
+                del columns[column_name]
+            fixed = True
+        if fixed and not is_array and column_type in ("VARCHAR", "STRING", "DECIMAL"):
+            self.varchar_columns[f"{table_name}__{column_name}"] = True
+        return fixed
+
+    def _parse_ilp_type_error(self, error_message):
+        """Parse an ILP cast error into [(table, column, column_type)], is_array
+        and a description of the value received.
+
+        ILP errors name the table, column and type, e.g.
+          table: INST__HEALTH_STATUS, column: TEMP1; cast error from protocol type: DOUBLE to column type: LONG
+        """
+        table_match = re.search(r"table:\s+(\S[^,\n]*),", error_message)
+        column_match = re.search(r"column:\s+(\S[^;\n]*);", error_message)
+        if not (table_match and column_match):
+            return None, False, None
+        to_type_match = re.search(r"column type:\s+([A-Z]+)", error_message)
+        column_type = to_type_match.group(1) if to_type_match else ""
+        # "cast error from protocol type" includes the protocol type;
+        # "cannot be converted to column type" does not
+        type_match = re.search(r"protocol type:\s+([A-Z]+(?:\[\])?)\s", error_message)
+        protocol_type = type_match.group(1) if type_match else None
+        is_array = protocol_type is not None and (protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY")
+        return [(table_match.group(1), column_match.group(1), column_type)], is_array, protocol_type
+
+    def _parse_qwp_type_error(self, error_message):
+        """Parse a QWP schema mismatch into [(table, column, column_type)], is_array
+        and a description of the value received.
+
+        QWP errors don't name the table, so every pending table with the column
+        is a candidate, using its actual column type from QuestDB. Casting a
+        value that already fits its column is harmless, but only types we can
+        cast are candidates so values in other tables are never removed. Tables
+        without the column aren't candidates either: QWP adds missing columns.
+        """
+        column_match = self.QWP_COLUMN_RE.search(error_message)
+        if not column_match:
+            return None, False, None
+        column_name = column_match.group(1)
+        is_array = "ARRAY to column" in error_message
+        targets = []
+        for table_name in dict.fromkeys(row[0] for row in self.pending_rows if column_name in row[1]):
+            existing = self._get_existing_columns(table_name) or {}
+            column_type = str(existing.get(column_name, "")).upper()
+            if column_type in self.COLUMN_TYPE_CASTERS or (is_array and column_type):
+                targets.append((table_name, column_name, column_type))
+        # QWP doesn't report the received type separately, the message describes it
+        return targets, is_array, f"a value that doesn't fit ({error_message})"
 
     def handle_ingress_error(self, error):
         """
-        Handle an IngressError by casting the value to fit the column type.
+        Handle a rejected write (QuestDBError) by casting the value to fit the column type.
 
         Since create_table proactively reconciles column types on startup,
-        IngressErrors indicate the data doesn't match the user's definitions.
+        type errors indicate the data doesn't match the user's definitions.
         We cast the value to fit the column type rather than altering the schema.
 
         Uses self.pending_rows (populated by write_row) to find and fix the
         affected row data, then replays all pending rows.
 
         Args:
-            error: The IngressError
+            error: The QuestDBError from flush
 
         Returns:
             True if error was handled and retry succeeded, False otherwise
         """
-        self._log_warn(f"QuestDB: IngressError: {error}\n")
+        self._log_warn(f"QuestDB: Ingest error: {error}\n")
 
         error_message = str(error)
-        is_cast_error = "cast error from protocol type" in error_message
-        is_value_error = "cannot be converted to column type" in error_message
+        is_ilp_type_error = (
+            "cast error from protocol type" in error_message or "cannot be converted to column type" in error_message
+        )
+        is_qwp_type_error = not is_ilp_type_error and self.QWP_COLUMN_RE.search(error_message) is not None
 
-        if not is_cast_error and not is_value_error:
+        if not is_ilp_type_error and not is_qwp_type_error:
             self._log_error(f"QuestDB: Error writing to QuestDB: {error}\n")
             self.pending_rows.clear()
             try:
@@ -1891,74 +2183,47 @@ class QuestDBClient:
             return False
 
         try:
-            table_match = re.search(r"table:\s+(\S[^,\n]*),", error_message)
-            column_match = re.search(r"column:\s+(\S[^;\n]*);", error_message)
-            to_type_match = re.search(r"column type:\s+([A-Z]+)", error_message)
+            if is_ilp_type_error:
+                targets, is_array, received = self._parse_ilp_type_error(error_message)
+            else:
+                targets, is_array, received = self._parse_qwp_type_error(error_message)
 
-            # "cast error from protocol type" includes the protocol type;
-            # "cannot be converted to column type" does not
-            type_match = re.search(r"protocol type:\s+([A-Z]+(?:\[\])?)\s", error_message)
-            protocol_type = type_match.group(1) if type_match else None
-
-            if not (table_match and column_match):
+            if targets is None:
                 self._log_error("QuestDB: Could not parse table or column from error message")
                 return False
 
-            err_table_name = table_match.group(1)
-            column_name = column_match.group(1)
-            column_type = to_type_match.group(1) if to_type_match else ""
+            fixed_tables = []
+            for table_name, column_name, column_type in targets:
+                # QWP errors don't name the table, so only fix values that are arrays
+                if self._fix_pending_column(
+                    table_name, column_name, column_type, is_array, arrays_only=is_qwp_type_error
+                ):
+                    fixed_tables.append((table_name, column_name, column_type))
 
-            is_array_protocol = protocol_type is not None and (
-                protocol_type.endswith("[]") or protocol_type.upper() == "ARRAY"
-            )
-
-            # Apply the fix to all pending rows for the affected table
-            fixed = False
-            for _row_table, columns, _row_ts in self.pending_rows:
-                if _row_table != err_table_name:
-                    continue
-
-                # Handle array type mismatches — convert to JSON string
-                if is_array_protocol:
-                    self._convert_column_to_json(err_table_name, column_name, columns)
-                    fixed = True
-                    continue
-
-                # For scalar type mismatches, cast the value to fit the column type
-                if column_name not in columns:
-                    continue
-
-                value = columns[column_name]
-                casted = self._cast_value_to_column_type(value, column_type)
-                if casted is not None:
-                    columns[column_name] = casted
-                    fixed = True
+            if not fixed_tables:
+                if targets:
+                    table_names = ", ".join(dict.fromkeys(target[0] for target in targets))
+                    column_name = targets[0][1]
                 else:
-                    # Can't cast — remove from row (will be NULL in QuestDB)
-                    del columns[column_name]
-                    fixed = True
-
-            if not fixed:
-                self._log_error(
-                    f"QuestDB: Could not find column {column_name} in pending rows for table {err_table_name}"
-                )
+                    table_names = "any table"
+                    column_name = self.QWP_COLUMN_RE.search(error_message).group(1)
+                self._log_error(f"QuestDB: Could not find column {column_name} in pending rows for table {table_names}")
                 return False
 
-            # Log and persist tracking for future rows
-            if is_array_protocol:
-                self._log_warn(
-                    f"QuestDB: Column {column_name} in table {err_table_name} "
-                    f"received array data but column type is {column_type}. "
-                    f"Serializing as JSON string."
-                )
-            else:
-                if column_type in ("VARCHAR", "STRING", "DECIMAL"):
-                    self.varchar_columns[f"{err_table_name}__{column_name}"] = True
-                self._log_warn(
-                    f"QuestDB: Column {column_name} in table {err_table_name} "
-                    f"expected {column_type} but received {protocol_type}. "
-                    f"Value cast applied."
-                )
+            # Log the fix so the definition can be corrected
+            for table_name, column_name, column_type in fixed_tables:
+                if is_array:
+                    self._log_warn(
+                        f"QuestDB: Column {column_name} in table {table_name} "
+                        f"received array data but column type is {column_type}. "
+                        f"Serializing as JSON string."
+                    )
+                else:
+                    self._log_warn(
+                        f"QuestDB: Column {column_name} in table {table_name} "
+                        f"expected {column_type} but received {received}. "
+                        f"Value cast applied."
+                    )
 
             self._reconnect_and_retry_pending()
             return True

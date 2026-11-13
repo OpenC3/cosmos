@@ -14,8 +14,9 @@ from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import psycopg
+from questdb import Protocol, QuestDBError, QuestDBErrorCode
 
-from openc3.utilities.questdb_client import QuestDBClient
+from openc3.utilities.questdb_client import FLOAT32_POS_INF_SENTINEL, QuestDBClient
 from test.test_helper import mock_redis, set_target_db_shard
 
 
@@ -515,3 +516,326 @@ class TestHandleIngressError(unittest.TestCase):
         client = self._client()
         client.connect_ingest = lambda: None
         self.assertFalse(client.handle_ingress_error(self._error("connection reset by peer")))
+
+
+class TestHandleQwpIngressError(unittest.TestCase):
+    """QWP schema mismatch messages name the column but not the table, so
+    handle_ingress_error fixes the column in every pending table that has it,
+    using each table's own column type."""
+
+    def _client(self, pending_rows, column_types):
+        client = QuestDBClient.__new__(QuestDBClient)
+        client.pending_rows = pending_rows
+        client.varchar_columns = {}
+        client.json_columns = {}
+        self.logs = []
+        client._log_warn = lambda msg: self.logs.append(msg)
+        client._log_error = lambda msg: self.logs.append(msg)
+        client._log_info = lambda msg: self.logs.append(msg)
+        client._reconnect_and_retry_pending = lambda: self.logs.append("retried")
+        client._get_existing_columns = lambda table_name: column_types.get(table_name)
+        return client
+
+    @staticmethod
+    def _error(message):
+        return type("QuestDBServerRejectionError", (Exception,), {"__str__": lambda self: message})()
+
+    def test_casts_using_each_tables_own_column_type(self):
+        health = {"TEMP1": 1.5}
+        adcs = {"TEMP1": 2.5}
+        client = self._client(
+            [("INST__HEALTH_STATUS", health, 0), ("INST__ADCS", adcs, 0)],
+            {"INST__HEALTH_STATUS": {"TEMP1": "LONG"}, "INST__ADCS": {"TEMP1": "DOUBLE"}},
+        )
+        error = self._error(
+            "QWP schema mismatch: double value 1.5 loses precision when converted to LONG [column=TEMP1]"
+        )
+        self.assertTrue(client.handle_ingress_error(error))
+        self.assertEqual(health["TEMP1"], 1)
+        # The DOUBLE column's value already fit, so it's unchanged
+        self.assertEqual(adcs["TEMP1"], 2.5)
+        self.assertIn("retried", self.logs)
+
+    def test_parses_a_column_followed_by_other_fields(self):
+        columns = {"TEMP1": "abc"}
+        client = self._client([("INST__HEALTH_STATUS", columns, 0)], {"INST__HEALTH_STATUS": {"TEMP1": "LONG"}})
+        error = self._error("QWP schema mismatch: cannot parse LONG from string [value=abc, column=TEMP1]")
+        self.assertTrue(client.handle_ingress_error(error))
+        # Can't be cast so it's removed and stored as NULL
+        self.assertNotIn("TEMP1", columns)
+
+    def test_removes_values_out_of_range_for_the_column(self):
+        columns = {"COUNT": 2**40}
+        client = self._client([("INST__HEALTH_STATUS", columns, 0)], {"INST__HEALTH_STATUS": {"COUNT": "INT"}})
+        error = self._error(
+            "QWP schema mismatch: integer value 1099511627776 out of range for INT "
+            "[column=COUNT, min=-2147483648, max=2147483647]"
+        )
+        self.assertTrue(client.handle_ingress_error(error))
+        self.assertNotIn("COUNT", columns)
+
+    def test_serializes_arrays_to_json(self):
+        columns = {"VALUES": [1.0, 2.0]}
+        client = self._client([("INST__HEALTH_STATUS", columns, 0)], {"INST__HEALTH_STATUS": {"VALUES": "VARCHAR"}})
+        error = self._error("QWP schema mismatch: cannot write DOUBLE_ARRAY to column [column=VALUES, type=VARCHAR]")
+        self.assertTrue(client.handle_ingress_error(error))
+        self.assertEqual(columns["VALUES"], "[1.0, 2.0]")
+        self.assertIn("INST__HEALTH_STATUS__VALUES", client.json_columns)
+
+    def test_leaves_columns_it_cannot_cast_in_other_tables_alone(self):
+        health = {"FLAG": "abc"}
+        timestamps = {"FLAG": True}
+        missing = {"FLAG": 7}
+        client = self._client(
+            [("INST__HEALTH_STATUS", health, 0), ("INST__ADCS", timestamps, 0), ("INST__NEW", missing, 0)],
+            # INST__NEW doesn't have the column yet (QWP adds it)
+            {"INST__HEALTH_STATUS": {"FLAG": "LONG"}, "INST__ADCS": {"FLAG": "BOOLEAN"}, "INST__NEW": {}},
+        )
+        error = self._error("QWP schema mismatch: cannot parse LONG from string [value=abc, column=FLAG]")
+        self.assertTrue(client.handle_ingress_error(error))
+        self.assertNotIn("FLAG", health)
+        self.assertEqual(timestamps, {"FLAG": True})
+        self.assertEqual(missing, {"FLAG": 7})
+
+    def test_only_serializes_array_values(self):
+        arrays = {"VALUES": [1.0, 2.0]}
+        scalars = {"VALUES": 1.5}
+        client = self._client(
+            [("INST__HEALTH_STATUS", arrays, 0), ("INST__ADCS", scalars, 0)],
+            {"INST__HEALTH_STATUS": {"VALUES": "VARCHAR"}, "INST__ADCS": {"VALUES": "DOUBLE"}},
+        )
+        error = self._error("QWP schema mismatch: cannot write DOUBLE_ARRAY to column [column=VALUES, type=VARCHAR]")
+        self.assertTrue(client.handle_ingress_error(error))
+        self.assertEqual(arrays["VALUES"], "[1.0, 2.0]")
+        self.assertEqual(scalars["VALUES"], 1.5)
+        self.assertNotIn("INST__ADCS__VALUES", client.json_columns)
+
+    def test_gives_up_when_no_pending_row_has_the_column(self):
+        client = self._client([("INST__HEALTH_STATUS", {"TEMP2": 1}, 0)], {})
+        error = self._error("QWP schema mismatch: cannot parse LONG from string [value=abc, column=TEMP1]")
+        self.assertFalse(client.handle_ingress_error(error))
+        self.assertIn("Could not find column TEMP1 in pending rows", "\n".join(self.logs))
+
+
+class TestIngestProtocol(unittest.TestCase):
+    def setUp(self):
+        self.env = patch.dict(
+            "os.environ",
+            {
+                "OPENC3_TSDB_HOSTNAME": "127.0.0.1",
+                "OPENC3_TSDB_INGEST_PORT": "9000",
+                "OPENC3_TSDB_USERNAME": "user",
+                "OPENC3_TSDB_PASSWORD": "pass",
+            },
+        )
+        self.env.start()
+        self.addCleanup(self.env.stop)
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    def test_defaults_to_qwp_over_websocket(self, sender):
+        client = QuestDBClient()
+        client.connect_ingest()
+        args, kwargs = sender.call_args
+        self.assertEqual(args[0], Protocol.Ws)
+        self.assertEqual(args[1:], ("127.0.0.1", 9000))
+        # Only the byte based auto flush stays on, to keep frames under the server's cap
+        self.assertEqual(kwargs["auto_flush_rows"], False)
+        self.assertEqual(kwargs["auto_flush_interval"], False)
+        self.assertNotIn("auto_flush", kwargs)
+        self.assertTrue(client.is_qwp)
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    def test_selects_ilp_over_http_from_the_environment(self, sender):
+        with patch.dict("os.environ", {"OPENC3_TSDB_INGEST_PROTOCOL": "HTTP"}):
+            client = QuestDBClient()
+        client.connect_ingest()
+        self.assertEqual(sender.call_args[0][0], Protocol.Http)
+        self.assertEqual(sender.call_args.kwargs["auto_flush"], False)
+        self.assertFalse(client.is_qwp)
+
+    def test_rejects_an_unknown_protocol(self):
+        with (
+            patch.dict("os.environ", {"OPENC3_TSDB_INGEST_PROTOCOL": "tcp"}),
+            self.assertRaisesRegex(RuntimeError, "Invalid OPENC3_TSDB_INGEST_PROTOCOL 'tcp'"),
+        ):
+            QuestDBClient()
+
+    @patch("openc3.utilities.questdb_client.Sender")
+    def test_reconnecting_closes_a_rejected_qwp_sender_without_flushing(self, sender):
+        client = QuestDBClient()
+        client.connect_ingest()
+        old = client.ingest
+        # A QWP sender refuses every call after a server rejection, including a flushing close
+        old.close.side_effect = [QuestDBError(QuestDBErrorCode.ServerRejection, "rejected"), None]
+        client.connect_ingest()
+        self.assertEqual(old.close.call_args_list[-1].kwargs, {"flush": False})
+
+
+class TestQwpFlush(unittest.TestCase):
+    def _client(self, protocol="ws"):
+        client = QuestDBClient.__new__(QuestDBClient)
+        client.ingest_protocol = protocol
+        client.ingest = MagicMock()
+        client.pending_rows = [("TABLE", {"VALUE": 1}, 0)]
+        client.pending_values = 1
+        client.batch_size = 500
+        client.max_pending_values = 500_000
+        client._log_warn = lambda msg: None
+        return client
+
+    def test_waits_for_the_server_to_acknowledge_the_flush(self):
+        client = self._client()
+        client.ingest.published_fsn.return_value = 7
+        client.ingest.await_acked_fsn.return_value = True
+        client.flush()
+        client.ingest.await_acked_fsn.assert_called_once_with(7, QuestDBClient.QWP_ACK_TIMEOUT_MS)
+        self.assertEqual(client.pending_rows, [])
+
+    def test_keeps_pending_rows_when_the_acknowledgement_times_out(self):
+        client = self._client()
+        client.ingest.published_fsn.return_value = 7
+        client.ingest.await_acked_fsn.return_value = False
+        with self.assertRaisesRegex(ConnectionError, "No QWP acknowledgement"):
+            client.flush()
+        self.assertEqual(len(client.pending_rows), 1)
+
+    def test_does_not_wait_when_nothing_was_ever_published(self):
+        client = self._client()
+        client.ingest.published_fsn.return_value = None
+        client.flush()
+        client.ingest.await_acked_fsn.assert_not_called()
+
+    def test_ilp_flush_does_not_wait(self):
+        client = self._client("http")
+        client.flush()
+        client.ingest.published_fsn.assert_not_called()
+        client.ingest.await_acked_fsn.assert_not_called()
+
+    def test_starts_a_new_sender_when_a_column_changes_type(self):
+        client = self._client()
+        client.ingest.published_fsn.return_value = 1
+        client.ingest.await_acked_fsn.return_value = True
+        old = client.ingest
+        old.row.side_effect = QuestDBError(
+            QuestDBErrorCode.InvalidApiCall, 'QWP/WebSocket column "VALUE" changes type within a batched table'
+        )
+        new = MagicMock()
+
+        def connect_ingest():
+            client.ingest = new
+
+        client.connect_ingest = connect_ingest
+        client.write_row("TABLE", {"VALUE": 2.5}, 1)
+        # The earlier row was flushed on the old sender and the new row went to the new one
+        old.flush.assert_called_once()
+        new.row.assert_called_once()
+        self.assertEqual(new.row.call_args.kwargs["columns"], {"VALUE": 2.5})
+        self.assertEqual(client.pending_rows, [("TABLE", {"VALUE": 2.5}, 1)])
+
+    def test_other_row_errors_are_raised(self):
+        client = self._client()
+        client.ingest.row.side_effect = QuestDBError(QuestDBErrorCode.InvalidApiCall, "something else")
+        with self.assertRaises(QuestDBError):
+            client.write_row("TABLE", {"VALUE": 2.5}, 1)
+
+
+class TestConvertValueToColumnType(unittest.TestCase):
+    """Values are sent as their column's declared type so a QWP sender, which
+    fixes each column's type the first time it sees it, never sees a change."""
+
+    def _client(self, column_types):
+        client = QuestDBClient.__new__(QuestDBClient)
+        client.json_columns = {}
+        client.varchar_columns = {}
+        client.float_bit_sizes = {}
+        client.column_types = {"TABLE": column_types}
+        client.truncation_warned = set()
+        self.logs = []
+        client._log_warn = lambda msg: self.logs.append(msg)
+        return client
+
+    def test_sends_ints_and_bools_as_floats_for_float_columns(self):
+        client = self._client({"VALUE": "DOUBLE"})
+        for value, expected in ((3, 3.0), (True, 1.0)):
+            converted, skip = client.convert_value(value, "VALUE", "TABLE")
+            self.assertFalse(skip)
+            self.assertIs(type(converted), float)
+            self.assertEqual(converted, expected)
+
+    def test_sends_bools_and_whole_floats_as_ints_for_integer_columns(self):
+        client = self._client({"VALUE": "LONG"})
+        self.assertIs(type(client.convert_value(True, "VALUE", "TABLE")[0]), int)
+        converted, _ = client.convert_value(3.0, "VALUE", "TABLE")
+        self.assertIs(type(converted), int)
+        self.assertEqual(converted, 3)
+        self.assertEqual(self.logs, [])
+
+    def test_truncates_non_integer_floats_for_integer_columns_and_warns_once(self):
+        client = self._client({"VALUE": "INT"})
+        self.assertEqual(client.convert_value(3.7, "VALUE", "TABLE")[0], 3)
+        self.assertEqual(client.convert_value(4.2, "VALUE", "TABLE")[0], 4)
+        self.assertEqual(len(self.logs), 1)
+        self.assertIn("Column VALUE in table TABLE is INT but received non-integer value 3.7", self.logs[0])
+
+    def test_stores_non_finite_floats_in_integer_columns_as_null(self):
+        client = self._client({"VALUE": "LONG"})
+        self.assertIsNone(client.convert_value(float("nan"), "VALUE", "TABLE")[0])
+
+    def test_stores_floats_out_of_the_integer_column_range_as_null(self):
+        client = self._client({"VALUE": "INT"})
+        self.assertIsNone(client.convert_value(1e30, "VALUE", "TABLE")[0])
+        self.assertIsNone(client.convert_value(float(2**31), "VALUE", "TABLE")[0])
+        self.assertEqual(client.convert_value(float(2**31 - 1), "VALUE", "TABLE")[0], 2**31 - 1)
+
+    def test_still_encodes_special_values_for_float_columns(self):
+        client = self._client({"VALUE": "FLOAT"})
+        client.float_bit_sizes = {"TABLE__VALUE": 32}
+        self.assertEqual(client.convert_value(float("inf"), "VALUE", "TABLE")[0], FLOAT32_POS_INF_SENTINEL)
+
+    def test_leaves_undeclared_columns_alone(self):
+        client = self._client({})
+        converted, _ = client.convert_value(3, "OTHER", "TABLE")
+        self.assertIs(type(converted), int)
+
+
+class TestWriteRowBatching(unittest.TestCase):
+    """write_row flushes after batch_size rows or max_pending_values values,
+    whichever comes first, so wide packets don't buffer unbounded memory."""
+
+    def _client(self, batch_size, max_pending_values):
+        client = QuestDBClient.__new__(QuestDBClient)
+        client.ingest_protocol = "http"
+        client.ingest = MagicMock()
+        client.pending_rows = []
+        client.pending_values = 0
+        client.batch_size = batch_size
+        client.max_pending_values = max_pending_values
+        return client
+
+    def test_defaults(self):
+        client = QuestDBClient()
+        self.assertEqual(client.batch_size, 5000)
+        self.assertEqual(client.max_pending_values, 500_000)
+
+    def test_flushes_after_batch_size_rows(self):
+        client = self._client(batch_size=3, max_pending_values=1000)
+        flushed = [client.write_row("TABLE", {"A": n}, n) for n in range(3)]
+        self.assertEqual(flushed, [False, False, True])
+        client.ingest.flush.assert_called_once()
+        self.assertEqual((client.pending_rows, client.pending_values), ([], 0))
+
+    def test_flushes_after_max_pending_values(self):
+        client = self._client(batch_size=1000, max_pending_values=10)
+        wide = {f"ITEM{i}": i for i in range(4)}
+        flushed = [client.write_row("TABLE", dict(wide), n) for n in range(3)]
+        # 4, 8, then 12 values >= 10
+        self.assertEqual(flushed, [False, False, True])
+        client.ingest.flush.assert_called_once()
+
+    def test_restarts_the_count_when_pending_rows_are_cleared_elsewhere(self):
+        client = self._client(batch_size=1000, max_pending_values=10)
+        client.write_row("TABLE", {f"ITEM{i}": i for i in range(8)}, 0)
+        # Error recovery in TsdbMicroservice drops the pending rows directly
+        client.pending_rows.clear()
+        self.assertFalse(client.write_row("TABLE", {f"ITEM{i}": i for i in range(8)}, 1))
+        self.assertEqual(client.pending_values, 8)

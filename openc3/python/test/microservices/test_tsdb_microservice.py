@@ -18,7 +18,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import Mock, patch
 
-from questdb.ingress import IngressError
+from questdb import QuestDBError
 
 from openc3.microservices.tsdb_microservice import TsdbMicroservice
 from openc3.models.microservice_model import MicroserviceModel
@@ -503,10 +503,11 @@ class TestTsdbMicroservice(unittest.TestCase):
         tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
 
         # Write test data with special float values
+        # Converted values (POLY_READ_CONVERSION) are double columns
         json_data = {
-            "TEMP1": 3.14,
-            "TEMP2": {"json_class": "Float", "raw": "NaN"},
-            "TEMP3": {"json_class": "Float", "raw": "Infinity"},
+            "TEMP1__C": 3.14,
+            "TEMP2__C": {"json_class": "Float", "raw": "NaN"},
+            "TEMP3__C": {"json_class": "Float", "raw": "Infinity"},
         }
         Topic.write_topic(
             "DEFAULT__DECOM__{INST}__HEALTH_STATUS",
@@ -525,10 +526,10 @@ class TestTsdbMicroservice(unittest.TestCase):
         # Verify float values were handled
         mock_ingest.row.assert_called_once()
         call_args = mock_ingest.row.call_args
-        self.assertEqual(call_args[1]["columns"]["TEMP1"], 3.14)
+        self.assertEqual(call_args[1]["columns"]["TEMP1__C"], 3.14)
         # NaN and Infinity are encoded as sentinel values because QuestDB stores them as NULL
-        self.assertEqual(call_args[1]["columns"]["TEMP2"], FLOAT64_NAN_SENTINEL)
-        self.assertEqual(call_args[1]["columns"]["TEMP3"], FLOAT64_POS_INF_SENTINEL)
+        self.assertEqual(call_args[1]["columns"]["TEMP2__C"], FLOAT64_NAN_SENTINEL)
+        self.assertEqual(call_args[1]["columns"]["TEMP3__C"], FLOAT64_POS_INF_SENTINEL)
 
     @patch("openc3.utilities.questdb_client.Sender")
     @patch("openc3.utilities.questdb_client.psycopg.connect")
@@ -858,12 +859,12 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
 
-        # Setup mock to raise IngressError on first call, succeed on second
+        # Setup mock to raise QuestDBError on first call, succeed on second
         error_msg = (
             "error in line 1: table: DEFAULT__TLM__INST__HEALTH_STATUS, column: TEMP1; "
             'cast error from protocol type: FLOAT to column type: LONG","line":1'
         )
-        mock_ingest.row.side_effect = [IngressError(1, error_msg), None]
+        mock_ingest.row.side_effect = [QuestDBError(1, error_msg), None]
 
         # Write test data
         json_data = {"TEMP1": 3.14}
@@ -919,15 +920,15 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
 
-        # Setup mock to raise IngressError for array-to-scalar conversion on first call,
+        # Setup mock to raise QuestDBError for array-to-scalar conversion on first call,
         # then succeed on retry after JSON serialization
         error_msg = (
             "error in line 1: table: DEFAULT__TLM__INST__HEALTH_STATUS, column: JSON_ITEM; "
             'cast error from protocol type: DOUBLE[] to column type: INT","line":1'
         )
         # First call fails (triggers JSON serialization), second call (retry) succeeds
-        mock_ingest.row.side_effect = [IngressError(1, error_msg), None]
-        mock_ingest.flush.side_effect = IngressError(1, error_msg)
+        mock_ingest.row.side_effect = [QuestDBError(1, error_msg), None]
+        mock_ingest.flush.side_effect = QuestDBError(1, error_msg)
 
         # Write test data with array
         json_data = {"JSON_ITEM": [1.0, 2.0, 3.0]}
@@ -986,15 +987,15 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
 
-        # Setup mock to raise IngressError for ARRAY (no brackets) to VARCHAR conversion
+        # Setup mock to raise QuestDBError for ARRAY (no brackets) to VARCHAR conversion
         # This matches the error format from QuestDB when sending array to varchar column
         error_msg = (
             "error in line 1: table: DEFAULT__TLM__INST__HEALTH_STATUS, column: ITEM7; "
             'cast error from protocol type: ARRAY to column type: VARCHAR","line":1'
         )
         # First call fails (triggers JSON serialization), second call (retry) succeeds
-        mock_ingest.row.side_effect = [IngressError(1, error_msg), None]
-        mock_ingest.flush.side_effect = IngressError(1, error_msg)
+        mock_ingest.row.side_effect = [QuestDBError(1, error_msg), None]
+        mock_ingest.flush.side_effect = QuestDBError(1, error_msg)
 
         # Write test data with numeric array (will be converted to numpy array, triggering ARRAY type)
         json_data = {"ITEM7": [1.0, 2.0, 3.0]}
@@ -1310,7 +1311,7 @@ class TestTsdbMicroservice(unittest.TestCase):
     @patch("openc3.utilities.questdb_client.psycopg.connect")
     @patch("openc3.microservices.microservice.System")
     def test_read_topics_handles_ingress_error(self, mock_system, mock_psycopg, mock_sender):
-        """Test read_topics handles non-recoverable IngressError"""
+        """Test read_topics handles non-recoverable QuestDBError"""
         mock_ingest = Mock()
         mock_sender.return_value = mock_ingest
         mock_query = Mock()
@@ -1338,8 +1339,8 @@ class TestTsdbMicroservice(unittest.TestCase):
 
         tsdb = TsdbMicroservice("DEFAULT__TSDB__TEST")
 
-        # Setup mock to raise IngressError
-        mock_ingest.row.side_effect = IngressError(1, "Unknown error")
+        # Setup mock to raise QuestDBError
+        mock_ingest.row.side_effect = QuestDBError(1, "Unknown error")
 
         # Write test data
         json_data = {"TEMP1": 100}
@@ -1360,7 +1361,7 @@ class TestTsdbMicroservice(unittest.TestCase):
             # Should have logged error
             self.assertIn("Error writing to QuestDB", stdout.getvalue())
 
-        # Note: With the refactored code, IngressError is handled gracefully by handle_ingress_error()
+        # Note: With the refactored code, QuestDBError is handled gracefully by handle_ingress_error()
         # and doesn't set self.error. Only unhandled exceptions in run() set self.error.
 
     @patch("openc3.utilities.questdb_client.Sender")
@@ -1857,7 +1858,7 @@ class TestTsdbMicroservice(unittest.TestCase):
             "error in line 1: table: DEFAULT__TLM__INST__HEALTH_STATUS, column: ITEM__C; "
             'cast error from protocol type: INTEGER to column type: VARCHAR","line":1'
         )
-        mock_ingest.row.side_effect = [IngressError(1, error_msg), None]
+        mock_ingest.row.side_effect = [QuestDBError(1, error_msg), None]
 
         json_data = {"ITEM__C": 42}
         Topic.write_topic(
@@ -2011,3 +2012,38 @@ class TestTsdbMicroserviceMultipleDbShards(unittest.TestCase):
         tsdb.read_topics()
         mock_ingest.row.assert_called_once()
         self.assertEqual(mock_ingest.row.call_args.kwargs["columns"]["TEMP1"], 42)
+
+
+class TestTsdbMicroserviceMissingTableErrors(unittest.TestCase):
+    """The missing table error differs between ILP and QWP. Both must be
+    recognized and give the table name so the table can be recreated."""
+
+    QWP_ERROR = (
+        "QWP/WebSocket protocol violation: QWP/WebSocket: 7 frame rejections without ACK progress "
+        "(latest: fsn 0); last server error: failed to create table update details for: "
+        "DEFAULT__TLM__INST__HEALTH_STATUS"
+    )
+    ILP_ERROR = (
+        'Could not flush buffer: {"code":"invalid","message":"failed to parse line protocol:errors encountered '
+        "on line(s):\\nerror in line 1: table: DEFAULT__TLM__INST__HEALTH_STATUS; table does not exist, "
+        'creating new tables is disabled","line":1,"errorId":"1c4d01552282-1"}'
+    )
+
+    def _table_name(self, message):
+        match = TsdbMicroservice.QWP_ERROR_TABLE_NAME_RE.search(message) or TsdbMicroservice.ERROR_TABLE_NAME_RE.search(
+            message
+        )
+        return match.group(1)
+
+    def test_recognizes_the_qwp_missing_table_error(self):
+        self.assertIsNotNone(TsdbMicroservice.MISSING_TABLE_RE.search(self.QWP_ERROR))
+        # The generic pattern alone would pick up "update" from "table update details"
+        self.assertEqual(self._table_name(self.QWP_ERROR), "DEFAULT__TLM__INST__HEALTH_STATUS")
+
+    def test_recognizes_the_ilp_missing_table_error(self):
+        self.assertIsNotNone(TsdbMicroservice.MISSING_TABLE_RE.search(self.ILP_ERROR))
+        self.assertEqual(self._table_name(self.ILP_ERROR), "DEFAULT__TLM__INST__HEALTH_STATUS")
+
+    def test_does_not_treat_type_errors_as_missing_tables(self):
+        message = "QWP schema mismatch: cannot parse LONG from string [value=abc, column=TEMP1]"
+        self.assertIsNone(TsdbMicroservice.MISSING_TABLE_RE.search(message))

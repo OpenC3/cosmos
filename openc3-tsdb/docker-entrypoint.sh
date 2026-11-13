@@ -9,6 +9,11 @@ IGNORE_DATA_ROOT_MOUNT_CHECK=${IGNORE_DATA_ROOT_MOUNT_CHECK:-"false"}
 QUESTDB_UID="${QUESTDB_UID:-"$(id -u questdb)"}"
 QUESTDB_GID="${QUESTDB_GID:-"$(id -g questdb)"}"
 JAVA_COMMAND="/app/bin/java"
+QUESTDB_LIBS_DIR_PROP="-Dquestdb.libs.dir=/app/lib/"
+# JVM flags from the upstream questdb/questdb image entrypoint. Keep these in
+# sync with it when upgrading QuestDB: 10.x fails to start without the
+# jdk.internal.vm export (its worker pools run on fibers).
+QUESTDB_JVM_FLAGS="--sun-misc-unsafe-memory-access=allow --enable-native-access=io.questdb --add-opens=java.base/java.lang=io.questdb --add-opens=java.base/java.lang.reflect=io.questdb --add-opens=java.base/java.nio=io.questdb --add-opens=java.base/java.time.zone=io.questdb --add-exports=java.base/jdk.internal.vm=io.questdb"
 
 # backwards compatibility with previous versions
 # if [ ${IGNORE_FIND_AND_OWN_DIR+x} ]
@@ -40,14 +45,17 @@ fi
 # Check if arguments are provided in the configuration file
 if [[ $# -eq 0 ]]; then
     echo "No arguments found in the configuration, start with default arguments"
-    set -- $JAVA_COMMAND -ea -Dnoebug -XX:+UseParallelGC -XX:ErrorFile=${QUESTDB_DATA_DIR}/db/hs_err_pid+%p.log -Dout=${QUESTDB_DATA_DIR}/conf/log.conf -m io.questdb/io.questdb.ServerMain -d ${QUESTDB_DATA_DIR} -f
+    set -- $JAVA_COMMAND $QUESTDB_LIBS_DIR_PROP -ea -Dnoebug -XX:+UseParallelGC $QUESTDB_JVM_FLAGS -XX:ErrorFile=${QUESTDB_DATA_DIR}/db/hs_err_pid+%p.log -Dout=${QUESTDB_DATA_DIR}/conf/log.conf -m io.questdb/io.questdb.ServerMain -d ${QUESTDB_DATA_DIR} -f
 else
     if [[ "${1:0:1}" == '-' ]]; then
         echo "Found config arguments $*"
-        set -- $JAVA_COMMAND "$@"
+        set -- $JAVA_COMMAND $QUESTDB_LIBS_DIR_PROP "$@"
     elif [[ "$1" == "/app/bin/java" ]]; then
         echo "Java binary argument found in command, ignoring on-demand JVM arguments, start with fully-customized arguments"
-        set -- "$@"
+        # Still set the libs dir so the Java code can find the native libraries
+        java_bin=$1
+        shift
+        set -- "$java_bin" $QUESTDB_LIBS_DIR_PROP "$@"
     fi
 fi
 

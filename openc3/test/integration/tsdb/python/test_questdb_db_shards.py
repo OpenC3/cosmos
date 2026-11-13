@@ -33,7 +33,7 @@ from unittest.mock import patch
 
 import psycopg
 import pytest
-from questdb.ingress import Sender
+from questdb import Sender
 
 
 # Add openc3 python path for imports
