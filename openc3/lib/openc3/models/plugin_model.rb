@@ -715,13 +715,10 @@ module OpenC3
         # since what they generate may be needed. POST_INSTALL_SCRIPTs run
         # after everything is installed, and not in dry runs.
         erb_variables = self.erb_variables(plugin_hash, scope: scope)
-        scripts_tf = Tempfile.new(PLUGIN_TXT)
-        begin
+        scripts = Tempfile.create(PLUGIN_TXT) do |scripts_tf|
           scripts_tf.write(plugin_hash['plugin_txt_lines'].join("\n"))
           scripts_tf.close
-          scripts = install_scripts(scripts_tf.path, erb_variables)
-        ensure
-          scripts_tf.unlink
+          install_scripts(scripts_tf.path, erb_variables)
         end
         script_options = { gem_path: gem_path, plugin_name: plugin_model.name, erb_variables: erb_variables, dry_run: dry_run, scope: scope }
         gem_lib_dirs = -> { Dir.glob("#{gem_path}/**/lib").select { |dir| File.directory?(dir) } }

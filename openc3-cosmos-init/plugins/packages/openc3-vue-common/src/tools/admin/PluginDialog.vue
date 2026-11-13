@@ -249,7 +249,7 @@
                         variant="outlined"
                         data-test="variable-combobox"
                         @update:model-value="
-                          comboboxModelChanged(name, variable, $event)
+                          comboboxModelChanged(name, variable, $event ?? '')
                         "
                         @update:search="searches[name] = $event"
                         @focus="comboboxFocused(name, $event)"
@@ -1476,8 +1476,8 @@ export default {
           option.show || option.set || option.required || option.markdown,
       )
     },
-    comboboxModelChanged(name, variable, value) {
-      const text = value ?? ''
+    // text is '' when the combobox is cleared (Vuetify emits null)
+    comboboxModelChanged(name, variable, text) {
       if (this.comboboxTyping[name]) {
         // Typing, or Vuetify selecting the first match on Enter or Tab, which
         // is applied by commitTyped() or when focus leaves
@@ -1989,15 +1989,19 @@ export default {
   overflow-y: auto;
 }
 /* A short window leaves the content too little room between the header and
-   footer, so the whole dialog scrolls instead. !important to override the
-   v-dialog scrollable layout, which scrolls only the card text. */
+   footer, so the whole dialog scrolls instead. The selectors are more
+   specific than the v-dialog scrollable layout's, which scrolls only the
+   card text. */
 @media (max-height: 760px) {
-  .plugin-dialog {
-    overflow-y: auto !important;
+  .v-dialog--scrollable > .v-overlay__content > .plugin-dialog {
+    overflow-y: auto;
   }
-  .plugin-dialog-body {
-    flex: 0 0 auto !important;
-    overflow-y: visible !important;
+  .v-dialog--scrollable
+    > .v-overlay__content
+    > .plugin-dialog
+    > .plugin-dialog-body {
+    flex: 0 0 auto;
+    overflow-y: visible;
   }
 }
 .side-panel {

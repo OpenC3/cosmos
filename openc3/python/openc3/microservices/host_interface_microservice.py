@@ -511,7 +511,8 @@ class HostInterfaceMicroservice:
                 }
                 # Also break out promptly if COSMOS requests a disconnect.
                 disconnect_event = self._disconnect_event
-                assert disconnect_event is not None  # created by run() before this loop
+                if disconnect_event is None:  # created by run() before this loop
+                    raise RuntimeError("disconnect event not created")
                 tasks = pumps | {asyncio.create_task(disconnect_event.wait())}
                 done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
                 for task in done & pumps:
