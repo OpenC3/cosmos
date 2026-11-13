@@ -227,6 +227,7 @@ Rails.application.routes.draw do
     post "/tsdb/partitions/restore", to: "tsdb_partitions#restore"
     post "/tsdb/partitions/release", to: "tsdb_partitions#release"
     post "/tsdb/partitions/rescan", to: "tsdb_partitions#rescan"
+    post "/tsdb/partitions/unblock", to: "tsdb_partitions#unblock"
     get "/tsdb/partitions/jobs/:id", to: "tsdb_partitions#job"
     post "/tsdb/partitions/jobs/:id/cancel", to: "tsdb_partitions#cancel"
 

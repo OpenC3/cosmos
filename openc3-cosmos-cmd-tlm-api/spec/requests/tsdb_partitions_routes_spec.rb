@@ -34,6 +34,7 @@ RSpec.describe 'TSDB partition routes', type: :routing do
     [:post, '/tsdb/partitions/restore'] => 'restore',
     [:post, '/tsdb/partitions/release'] => 'release',
     [:post, '/tsdb/partitions/rescan'] => 'rescan',
+    [:post, '/tsdb/partitions/unblock'] => 'unblock',
   }.each do |(verb, path), action|
     it "routes #{verb.upcase} #{path} to tsdb_partitions##{action}" do
       expect(recognize(verb, path)).to eq(controller: 'tsdb_partitions', action: action)
