@@ -36,7 +36,7 @@ class CommandTopic(Topic):
             "buffer": bytes(packet.buffer_no_copy()),
         }
         if packet.extra:
-            msg_hash["extra"] = json.dumps(packet.extra)
+            msg_hash["extra"] = json.dumps(packet.extra, cls=JsonEncoder)
         db_shard = Store.db_shard_for_target(packet.target_name, scope=scope)
         minid = Topic.log_stream_safety_minid(packet.target_name, "CMD", scope)
         EphemeralStoreQueued.instance(db_shard=db_shard).write_topic(topic, msg_hash, minid=minid)
@@ -58,6 +58,9 @@ class CommandTopic(Topic):
         # Save the existing cmd_params Hash and JSON generate before writing to the topic
         cmd_params = command["cmd_params"]
         command["cmd_params"] = json.dumps(command["cmd_params"], cls=JsonEncoder)
+        extra = command.get("extra")
+        if extra is not None:
+            command["extra"] = json.dumps(extra, cls=JsonEncoder)
 
         db_shard = Store.db_shard_for_target(command["target_name"], scope=scope)
 
@@ -71,6 +74,8 @@ class CommandTopic(Topic):
                 db_shard=db_shard,
             )
             command["cmd_params"] = cmd_params  # Restore the original cmd_params dict
+            if extra is not None:
+                command["extra"] = extra
             return command
 
         ack_topic = f"{{{scope}__ACKCMD}}TARGET__{command['target_name']}"
@@ -83,6 +88,8 @@ class CommandTopic(Topic):
             db_shard=db_shard,
         )
         command["cmd_params"] = cmd_params  # Restore the original cmd_params dict
+        if extra is not None:
+            command["extra"] = extra
         start_time = time.time()
         while (time.time() - start_time) < timeout:
             for _, _, msg_hash, _ in Topic.read_topics([ack_topic], db_shard=db_shard):

@@ -22,6 +22,7 @@ style={{"float": 'left', "margin-right": 50 + 'px', "height": 90 + 'px'}} />
 - Open a saved configuration
 - Save the current configuration
 - Reset the configuration (default settings)
+- Convert the open screens to a dashboard
 
 #### Open Configuration
 
@@ -30,6 +31,10 @@ The Open Configuration dialog displays a list of all saved configurations. You s
 #### Save Configuration
 
 The Save Configuration dialog also displays a list of all saved configurations. You click the Configuration Name text field, enter the name of your new configuration, and click Ok to save. You can delete existing configurations by clicking the Trash icon next to a configuration name.
+
+#### Convert to Dashboard
+
+Saves the open screens as a new [dashboard](dashboards.md), one Screen panel per screen (6 columns by 10 rows each, two per row), then opens it in Dashboards. Choose the target to save it in and a name. Resize and rearrange the panels, or add others, in the dashboard editor.
 
 ## Selecting Screens
 

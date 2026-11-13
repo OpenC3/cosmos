@@ -14,7 +14,27 @@
 export * as AstroStatus from './AstroStatus'
 export { fileIcon } from './fileIcon'
 export { default as TimeFilters } from './timeFilters'
+export {
+  formatDate,
+  formatDateTime,
+  formatDateTimeHMS,
+  formatNanoseconds,
+  formatSeconds,
+  formatTime,
+  formatTimeHMS,
+  formatTimestamp,
+  formatUtcToLocal,
+  parseDateTime,
+} from './timeFilters'
 export { default as CmdUtilities } from './cmdUtilities'
+export {
+  convertToString,
+  convertToValue,
+  isArray,
+  isFloat,
+  isInt,
+  removeQuotes,
+} from './cmdUtilities'
 export {
   getCachedSetting,
   invalidateCachedSetting,

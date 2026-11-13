@@ -1,5 +1,5 @@
 version = 1
-revision = 5
+revision = 3
 requires-python = ">=3.10, <4.0"
 resolution-markers = [
     "python_full_version >= '3.12'",
@@ -1095,7 +1095,7 @@ wheels = [
 
 [[package]]
 name = "openc3"
-version = "7.5.0b0"
+version = "7.5.1b0"
 source = { editable = "." }
 dependencies = [
     { name = "boto3" },
@@ -1687,7 +1687,7 @@ resolution-markers = [
     "python_full_version < '3.11'",
 ]
 dependencies = [
-    { name = "async-timeout", marker = "python_full_version < '3.11'" },
+    { name = "async-timeout" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/c3/ee/7fd930fc712275084722ddd464a0ea296abdb997d2da396320507968daeb/valkey-6.1.1.tar.gz", hash = "sha256:5880792990c6c2b5eb604a5ed5f98f300880b6dd92d123819b66ed54bb259731", size = 4601372, upload-time = "2025-08-11T06:41:10.63Z" }
 wheels = [
@@ -1696,7 +1696,7 @@ wheels = [
 
 [package.optional-dependencies]
 libvalkey = [
-    { name = "libvalkey", version = "4.1.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "libvalkey", version = "4.1.0", source = { registry = "https://pypi.org/simple" } },
 ]
 
 [[package]]
@@ -1708,7 +1708,7 @@ resolution-markers = [
     "python_full_version == '3.11.*'",
 ]
 dependencies = [
-    { name = "async-timeout", marker = "python_full_version >= '3.11' and python_full_version < '3.11.3'" },
+    { name = "async-timeout", marker = "python_full_version < '3.11.3'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/90/c7/38b3ae24672abcc19e668858c4c8c4f7b7d0dda06973f46d755190452fdc/valkey-6.2.0.tar.gz", hash = "sha256:7337c493ce55d7fe58ab44c93c37f56552dad75f9512e97c5808374ab5af4939", size = 4596658, upload-time = "2026-10-12T10:24:28.403Z" }
 wheels = [
@@ -1717,7 +1717,7 @@ wheels = [
 
 [package.optional-dependencies]
 libvalkey = [
-    { name = "libvalkey", version = "4.2.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "libvalkey", version = "4.2.1", source = { registry = "https://pypi.org/simple" } },
 ]
 
 [[package]]

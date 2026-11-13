@@ -1,0 +1,142 @@
+# Dashboards is a beta feature: this file format can change in any release
+DASHBOARD "<%= target_name %> Map and Orbit"
+  SETTING ICON mdi-rocket-launch-outline
+  SETTING COLOR "#00c7cb"
+
+PANEL STAT 0 0 3 4 "Temperature 1"
+  ITEM <%= target_name %> HEALTH_STATUS TEMP1
+END
+
+PANEL STAT 3 0 3 4 "Collects"
+  ITEM <%= target_name %> HEALTH_STATUS COLLECTS
+END
+
+PANEL STATE 6 0 3 2 "Ground station 1"
+  ITEM <%= target_name %> HEALTH_STATUS GROUND1STATUS
+END
+
+PANEL GRAPH 9 0 3 4 "ADCS Bias"
+  ITEM <%= target_name %> ADCS BIASX
+  ITEM <%= target_name %> ADCS BIASY
+  ITEM <%= target_name %> ADCS BIASZ
+END
+
+PANEL STATE 6 2 3 2 "Ground station 2"
+  ITEM <%= target_name %> HEALTH_STATUS GROUND2STATUS
+END
+
+PANEL MAP 0 4 8 7
+  ITEM <%= target_name %> ADCS POSX
+  ITEM <%= target_name %> ADCS POSY
+  ITEM <%= target_name %> ADCS POSZ
+  SETTING COORDINATES ECEF
+  SETTING LOCATION_1 Wallops
+  SETTING LOCATION_1_LAT 37.94
+  SETTING LOCATION_1_LON -75.46
+  SETTING LOCATION_2 Svalbard
+  SETTING LOCATION_2_LAT 78.23
+  SETTING LOCATION_2_LON 15.41
+  SETTING LOCATION_3 McMurdo
+  SETTING LOCATION_3_LAT -77.84
+  SETTING LOCATION_3_LON 166.67
+  SETTING LOCATION_4 Hartebeesthoek
+  SETTING LOCATION_4_LAT -25.89
+  SETTING LOCATION_4_LON 27.69
+  SETTING LOCATION_5 Dongara
+  SETTING LOCATION_5_LAT -29.05
+  SETTING LOCATION_5_LON 115.35
+  SETTING LOCATION_6 "South Point"
+  SETTING LOCATION_6_LAT 19.01
+  SETTING LOCATION_6_LON -155.66
+END
+
+PANEL VALUES 8 4 4 7 "Health"
+  ITEM <%= target_name %> HEALTH_STATUS TEMP1
+  ITEM <%= target_name %> HEALTH_STATUS TEMP2
+  ITEM <%= target_name %> HEALTH_STATUS TEMP3
+  ITEM <%= target_name %> HEALTH_STATUS TEMP4
+  ITEM INST2 HEALTH_STATUS TEMP1
+  ITEM <%= target_name %> HEALTH_STATUS COLLECT_TYPE
+  ITEM <%= target_name %> HEALTH_STATUS DURATION
+END
+
+PANEL GRAPH 0 11 8 7 "Temperatures"
+  ITEM <%= target_name %> HEALTH_STATUS TEMP1
+  ITEM <%= target_name %> HEALTH_STATUS TEMP2
+  ITEM INST2 HEALTH_STATUS TEMP1
+  SETTING THRESHOLDS <%= target_name %> HEALTH_STATUS TEMP1
+END
+
+PANEL ORBIT 8 11 4 7
+  ITEM <%= target_name %> ADCS POSX
+  ITEM <%= target_name %> ADCS POSY
+  ITEM <%= target_name %> ADCS POSZ
+  SETTING LOCATION_1 Wallops
+  SETTING LOCATION_1_LAT 37.94
+  SETTING LOCATION_1_LON -75.46
+  SETTING LOCATION_2 Svalbard
+  SETTING LOCATION_2_LAT 78.23
+  SETTING LOCATION_2_LON 15.41
+  SETTING LOCATION_3 McMurdo
+  SETTING LOCATION_3_LAT -77.84
+  SETTING LOCATION_3_LON 166.67
+  SETTING LOCATION_4 Hartebeesthoek
+  SETTING LOCATION_4_LAT -25.89
+  SETTING LOCATION_4_LON 27.69
+  SETTING LOCATION_5 Dongara
+  SETTING LOCATION_5_LAT -29.05
+  SETTING LOCATION_5_LON 115.35
+  SETTING LOCATION_6 "South Point"
+  SETTING LOCATION_6_LAT 19.01
+  SETTING LOCATION_6_LON -155.66
+END
+
+PANEL LIMITS 0 18 4 6 "Limits"
+  TARGET <%= target_name %>
+  TARGET INST2
+END
+
+PANEL COMMAND 4 18 4 6 "Collect"
+  COMMAND <%= target_name %> COLLECT
+  PARAMETER TYPE NORMAL
+  PARAMETER DURATION 1
+  SETTING CONFIRM HOLD
+END
+
+PANEL VALUES 8 18 4 6 "ADCS"
+  ITEM <%= target_name %> ADCS POSX
+  ITEM <%= target_name %> ADCS POSY
+  ITEM <%= target_name %> ADCS POSZ
+  ITEM <%= target_name %> ADCS Q1
+  ITEM <%= target_name %> ADCS Q2
+  ITEM <%= target_name %> ADCS Q3
+  ITEM <%= target_name %> ADCS Q4
+END
+
+PANEL STATE 0 24 4 2 "Collect type"
+  ITEM <%= target_name %> HEALTH_STATUS COLLECT_TYPE
+END
+
+PANEL GRAPH 4 24 8 6 "Attitude"
+  ITEM <%= target_name %> ADCS Q1
+  ITEM <%= target_name %> ADCS Q2
+  ITEM <%= target_name %> ADCS Q3
+  ITEM <%= target_name %> ADCS Q4
+END
+
+PANEL COMMAND 0 26 4 2 "Collect procedure"
+  SCRIPT <%= target_name %>/procedures/collect.rb
+  SETTING DETAILS "Runs a NORMAL then a SPECIAL collect and clears the counters."
+  SETTING CONFIRM CLICK
+  SETTING OPEN_SCRIPT TRUE
+END
+
+PANEL COMMAND 0 28 2 2 "Quiet FALSE"
+  COMMAND <%= target_name %> QUIET
+  PARAMETER STATE FALSE
+END
+
+PANEL COMMAND 2 28 2 2 "Quiet TRUE"
+  COMMAND <%= target_name %> QUIET
+  PARAMETER STATE TRUE
+END

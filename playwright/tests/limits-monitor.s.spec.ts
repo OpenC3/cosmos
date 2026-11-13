@@ -42,7 +42,7 @@ async function runProcedure(page: Page, filename: string) {
   await scriptRunner
     .locator('[data-test=file-open-save-search] input')
     .fill(filename)
-  await scriptRunner.locator(`text=${filename}`).click()
+  await scriptRunner.locator(`.v-dialog >> text=${filename}`).click()
   await scriptRunner.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(scriptRunner.locator('.v-dialog')).not.toBeVisible()
   // Check for potential "<User> is editing this script" from a retry

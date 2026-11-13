@@ -203,7 +203,8 @@ class BinaryAccessor(Accessor):
             adjustment = self._write_variable_int(item, value, buffer)
         # Probably not possible to get this condition because we don't allow 0 sized floats
         # but check for it just to cover all the possible data_types
-        elif item.data_type == "FLOAT":
+        # (variable sized FLOAT arrays are handled by _write_variable_other)
+        elif item.data_type == "FLOAT" and item.original_array_size is None:
             raise ValueError("Variable bit size not currently supported for FLOAT data type")
         else:
             # STRING, BLOCK, or array types
@@ -300,24 +301,35 @@ class BinaryAccessor(Accessor):
         return adjustment
 
     def _write_variable_other(self, item, value, buffer):
+        length_bits_per_count = item.variable_bit_size["length_bits_per_count"]
+        length_value_bit_offset = item.variable_bit_size["length_value_bit_offset"]
+
         # Calculate current bit size so we can preserve bytes after the item
         length_item_value = self.packet.read(item.variable_bit_size["length_item_name"], "CONVERTED")
-        current_bit_size = (
-            length_item_value * item.variable_bit_size["length_bits_per_count"]
-        ) + item.variable_bit_size["length_value_bit_offset"]
+        current_bit_size = (length_item_value * length_bits_per_count) + length_value_bit_offset
 
         # Calculate bits after this item
         bits_with_item = item.bit_offset + current_bit_size
         bits_after_item = (len(buffer) * 8) - bits_with_item
+
+        # Arrays are sized in elements, STRING and BLOCK in bytes
+        value_unit_bit_size = item.bit_size if item.original_array_size is not None else 8
+        new_bit_size = len(value) * value_unit_bit_size
+        # Reject sizes the length item can't represent exactly or the reader would decode the wrong size
+        length_bits = new_bit_size - length_value_bit_offset
+        if length_bits % length_bits_per_count != 0:
+            raise ValueError(
+                f"Variable bit size {new_bit_size} for item {item.name} is not representable with "
+                f"length_bits_per_count {length_bits_per_count} and "
+                f"length_value_bit_offset {length_value_bit_offset}"
+            )
+
         if item.original_array_size is not None:
             item.array_size = -bits_after_item
         else:
             item.bit_size = -bits_after_item
 
-        new_bit_size = len(value) * 8
-        length_value = (new_bit_size - item.variable_bit_size["length_value_bit_offset"]) / item.variable_bit_size[
-            "length_bits_per_count"
-        ]
+        length_value = length_bits // length_bits_per_count
         self.packet.write(item.variable_bit_size["length_item_name"], length_value)
 
         # Later items need their bit_offset adjusted by the change in this item

@@ -12,16 +12,17 @@
 # if purchased from OpenC3, Inc.
 
 require 'open3'
+require 'json'
 
 module OpenC3
   class CliGenerator
-    GENERATORS = %w(plugin target microservice widget conversion processor limits_response tool tool_vue tool_angular tool_react tool_svelte command_validator)
+    GENERATORS = %w(plugin target microservice widget panel conversion processor limits_response tool tool_vue tool_angular tool_react tool_svelte command_validator)
     TEMPLATES_DIR = "#{File.dirname(__FILE__)}/../../../templates"
 
     # Generators that derive language from the target's target.txt
     TARGET_DERIVED_GENERATORS = %w(conversion processor limits_response command_validator).freeze
     # Generators that are JavaScript-only and ignore language flags
-    JS_ONLY_GENERATORS = %w(widget tool tool_vue tool_angular tool_react tool_svelte).freeze
+    JS_ONLY_GENERATORS = %w(widget panel tool tool_vue tool_angular tool_react tool_svelte).freeze
     # Generators that require an explicit language (or env/plugin default)
     LANGUAGE_REQUIRED_GENERATORS = %w(target microservice).freeze
 
@@ -37,6 +38,7 @@ module OpenC3
         puts "  target                Create a new target within a plugin (--ruby/--python required or inherited)"
         puts "  microservice          Create a new microservice within a plugin (--ruby/--python required or inherited)"
         puts "  widget                Create a new custom widget (JavaScript only)"
+        puts "  panel                 Create a new custom Dashboards panel (JavaScript only)"
         puts "  conversion            Create a new conversion class for a target (language inherited from target)"
         puts "  processor             Create a new processor for a target (language inherited from target)"
         puts "  limits_response       Create a new limits response for a target (language inherited from target)"
@@ -63,6 +65,7 @@ module OpenC3
         puts "  cli generate plugin MyPlugin --ruby     # Plugin defaults future generators to Ruby"
         puts "  cli generate target EXAMPLE --python    # Or inherit from plugin's stored default"
         puts "  cli generate widget SuperdataWidget     # No language flag needed"
+        puts "  cli generate panel BatteryPanel         # Dashboards panel type BATTERY"
         puts "  cli generate conversion EXAMPLE STATUS  # Language read from targets/EXAMPLE/target.txt"
         puts ""
         puts "Documentation:"
@@ -652,6 +655,87 @@ module OpenC3
       puts "Widget #{widget_name} successfully generated!"
       puts "Please be sure #{widget_name} does not overlap an existing widget: https://docs.openc3.com/docs/configuration/telemetry-screens"
       return widget_name
+    end
+
+    def self.generate_panel(args)
+      if args[1].nil? || args[1] == '--help' || args[1] == '-h'
+        print_help(
+          usage: 'cli generate panel NAME',
+          description: 'Generate a new custom Dashboards panel type within an existing plugin',
+          arguments: [
+            'NAME              Name of the panel (required)',
+            "                  Must be CapitalCase ending with 'Panel'",
+            '                  The panel type is NAME without Panel, uppercased',
+            '                  Example: BatteryPanel (panel type BATTERY)',
+          ],
+          notes: 'Note: Panels are JavaScript only. --ruby/--python flags are ignored.',
+          example: [
+            'cli generate panel BatteryPanel',
+            'Creates: src/BatteryPanel.js, src/BatteryPanel.vue, vite-BatteryPanel.config.js',
+          ],
+          docs: 'https://docs.openc3.com/docs/guides/custom-panels',
+          exit_code: (args[1].nil? ? 1 : 0),
+        )
+      end
+      if args.length != 2
+        abort("Usage: cli generate #{args[0]} <BatteryPanel>")
+      end
+      if args[1] !~ /.+Panel$/ or args[1][0...-5] != args[1][0...-5].capitalize
+        abort("Panel name should be Uppercase followed by Panel, e.g. BatteryPanel. Found '#{args[1]}'.")
+      end
+
+      # Create the local variables, used in binding for the templates
+      panel_name = args[1]
+      panel_type = panel_name[0...-5].upcase
+      panel_label = panel_name[0...-5]
+      panel_label.inspect # Remove unused variable warning
+      vite_config = "vite-#{panel_name}.config.js"
+      ["src/#{panel_name}.js", "src/#{panel_name}.vue", vite_config].each do |path|
+        abort("Panel #{path} already exists!") if File.exist?(path)
+      end
+      if File.exist?('plugin.txt') && File.read('plugin.txt') =~ /^PANEL\s+#{Regexp.escape(panel_type)}\b/
+        abort("plugin.txt already declares PANEL #{panel_type}. Remove that entry before regenerating.")
+      end
+      # A plugin with JavaScript already has its package.json and Rakefile, so
+      # only the build step is added
+      existing_package = File.exist?('package.json')
+
+      process_template("#{TEMPLATES_DIR}/panel", binding) do |filename|
+        if existing_package && ['package.json', 'Rakefile', 'pnpm-workspace.yaml', '.prettierrc.cjs', 'LICENSE.md'].include?(filename)
+          true # causes the block to skip processing this file
+        elsif filename == 'src/panelSdk.js' && File.exist?(filename)
+          true # shared by every panel in the plugin
+        else
+          filename.sub!("src/Panel.", "src/#{panel_name}.")
+          filename.sub!("vite-Panel.config.js", vite_config)
+          false
+        end
+      end
+
+      if existing_package
+        package = JSON.parse(File.read('package.json'))
+        package['scripts'] ||= {}
+        build = "vite build -c #{vite_config}"
+        package['scripts']['build'] = [package['scripts']['build'], build].compact.reject(&:empty?).join(' && ')
+        package['devDependencies'] ||= {}
+        { '@vitejs/plugin-vue' => '^6.0.1', 'vite' => '^7.2.1', 'vite-plugin-style-inject' => '^0.0.1', 'vue' => '^3.5.13' }.each do |name, version|
+          package['devDependencies'][name] ||= version unless package.dig('dependencies', name)
+        end
+        File.write('package.json', JSON.pretty_generate(package) + "\n")
+        puts "Added '#{build}' to the build script in package.json."
+      end
+
+      # Add this panel to plugin.txt
+      File.open("plugin.txt", 'a') do |file|
+        file.puts <<~DOC
+
+          PANEL #{panel_type}
+        DOC
+      end
+
+      puts "Panel #{panel_name} successfully generated!"
+      puts "Use it in a dashboard as PANEL #{panel_type}. Be sure #{panel_type} does not overlap a built-in panel type: https://docs.openc3.com/docs/guides/custom-panels"
+      return panel_name
     end
 
     def self.generate_tool(args)

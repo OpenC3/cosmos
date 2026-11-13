@@ -22,6 +22,8 @@
     width="800"
     @keydown.enter="disableButtons ? null : success()"
     @keydown.esc="disableButtons ? null : (show = false)"
+    @keydown.up="moveSelection($event, -1)"
+    @keydown.down="moveSelection($event, 1)"
   >
     <v-card class="file-open-save-card d-flex flex-column">
       <form class="d-flex flex-column" @submit.prevent="success">
@@ -52,13 +54,14 @@
                 data-test="file-open-save-search"
               />
             </v-row>
-            <div class="overflow-y-auto tree-container">
+            <div ref="treeContainer" class="overflow-y-auto tree-container">
               <tree-node
                 v-for="node in items"
                 :key="`${node.id}`"
                 :node="node"
                 :search="search"
                 :type="type"
+                :selected="type === 'open' ? selectedFile : null"
                 @request="activeFile"
                 @delete="deleteTemp"
               ></tree-node>
@@ -185,7 +188,7 @@ export default {
         return this.customHelpText
       }
       if (this.type === 'open') {
-        return 'Click on folders to open them and then click a file to select it before clicking Open. Use the search box to filter the results. You can also Tab to the files and Enter to select.'
+        return 'Click on folders to open them and then click a file to select it before clicking Open. Use the search box to filter the results. Use the Up and Down arrow keys to select a file and Enter to open it.'
       } else {
         return 'Click on the folder to save into. Then complete the filename path with the desired name. Use the search box to filter the results.'
       }
@@ -294,6 +297,45 @@ export default {
           this.$refs.submitBtn.$el.focus()
         }, 100)
       }
+    },
+    // Files currently shown in the tree, in display order. While searching
+    // every file whose path matches is shown, otherwise only the files in
+    // open folders.
+    visibleFiles: function () {
+      const search = this.search?.toLowerCase()
+      const result = []
+      const walk = (nodes) => {
+        for (const node of nodes) {
+          if (node.children) {
+            if (search || node.isOpen) walk(node.children)
+          } else if (!search || node.path.toLowerCase().includes(search)) {
+            result.push(node.path)
+          }
+        }
+      }
+      walk(this.items)
+      return result
+    },
+    // Up / Down move the selection through the visible files so the
+    // dialog can be driven from the search box. Enter then opens it.
+    moveSelection: function (event, delta) {
+      if (this.type !== 'open' || this.disableButtons) return
+      const files = this.visibleFiles()
+      if (files.length === 0) return
+      event.preventDefault()
+      const index = files.indexOf(this.selectedFile)
+      let next
+      if (index === -1) {
+        next = delta > 0 ? 0 : files.length - 1
+      } else {
+        next = (index + delta + files.length) % files.length
+      }
+      this.selectedFile = files[next]
+      this.$nextTick(() => {
+        this.$refs.treeContainer
+          ?.querySelector(`[data-path="${CSS.escape(this.selectedFile)}"]`)
+          ?.scrollIntoView({ block: 'nearest' })
+      })
     },
     findItem: function (items, id) {
       for (let item of items) {

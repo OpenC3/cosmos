@@ -119,6 +119,14 @@
                 >
                   {{ option.label }}
                 </v-list-item-title>
+                <template v-if="option.shortcut" #append>
+                  <span
+                    class="menu-shortcut text-medium-emphasis"
+                    :class="{ 'opacity-50': option.disabled }"
+                  >
+                    {{ formatShortcut(option.shortcut) }}
+                  </span>
+                </template>
               </v-list-item>
             </div>
           </template>
@@ -130,6 +138,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { formatShortcut } from '@/util/formatShortcut'
 
 defineProps({
   menu: { type: Object, required: true },
@@ -157,3 +166,12 @@ function formatDT(string) {
   return string.replaceAll(' ', '-').toLowerCase()
 }
 </script>
+
+<style scoped>
+.menu-shortcut {
+  font-size: 0.8125rem;
+  margin-left: 24px;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+</style>

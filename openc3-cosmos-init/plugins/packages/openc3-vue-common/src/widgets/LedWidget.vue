@@ -132,10 +132,7 @@ export default {
     },
     getClass() {
       let result = 'ledwidget mt-2'
-      if (
-        this.screenValues[this.valueId] &&
-        this.screenValues[this.valueId][1] === 'STALE'
-      ) {
+      if (this.screenValues[this.valueId]?.[1] === 'STALE') {
         result += ' stale'
       }
       return result

@@ -51,7 +51,7 @@
               class="pa-6 text-center text-medium-emphasis"
               data-test="version-list-empty"
             >
-              No version history available for this script.
+              No version history available for this {{ noun }}.
             </div>
             <v-list v-else density="compact" data-test="version-list">
               <v-list-item
@@ -78,6 +78,13 @@
                 <v-list-item-subtitle>
                   {{ formatTimestamp(v.last_modified) }}
                   <span v-if="v.username"> — {{ v.username }}</span>
+                  <div
+                    v-if="describe && (describing || changes[v.version_id])"
+                    class="version-change text-truncate"
+                    data-test="version-change"
+                  >
+                    {{ changes[v.version_id] ?? '…' }}
+                  </div>
                   <v-tooltip
                     v-if="v.source === 'plugin-upgrade'"
                     :open-delay="600"
@@ -239,12 +246,23 @@ if (globalThis.self !== undefined && !globalThis.self.MonacoEnvironment) {
   }
 }
 
+// Versions summarized with `describe`
+const DESCRIBE_LIMIT = 50
+
 export default {
   name: 'VersionHistoryDialog',
   props: {
     modelValue: { type: Boolean, default: false },
     filename: { type: String, required: true },
     currentBody: { type: String, default: '' },
+    // Base of the versions / version / restore endpoints. Defaults to Script
+    // Runner's; other tools (Dashboards) pass their own.
+    url: { type: String, default: null },
+    // What the file is, for messages: "script", "dashboard"
+    noun: { type: String, default: 'script' },
+    // Optional (previousText, text) => short summary of what a version
+    // changed, shown under each version. previousText is null for the first.
+    describe: { type: Function, default: null },
   },
   emits: ['update:modelValue', 'restored'],
   data() {
@@ -258,6 +276,11 @@ export default {
       diffLoading: false,
       differ: null,
       restoringVersionId: null,
+      // version_id => describe() summary, filled in while `describing`
+      changes: {},
+      describing: false,
+      // Bumped by each describeVersions run, which drops stale results
+      describeToken: 0,
       // Bumped by every render request. renderView and renderDiff both await
       // network fetches, so a newer request can complete while an older one is
       // still in flight -- the older one then creates its editor in the shared
@@ -268,6 +291,9 @@ export default {
     }
   },
   computed: {
+    baseUrl() {
+      return this.url || `/script-api/scripts/${this.filename}`
+    },
     monacoLanguage() {
       const ext = (this.filename || '').toLowerCase().split('.').pop()
       if (ext === 'py') return 'python'
@@ -320,6 +346,7 @@ export default {
       if (v.plugin) label += ` — ${v.plugin}`
       label += `\n${this.formatTimestamp(v.last_modified)}`
       if (v.username) label += ` — ${v.username}`
+      if (this.changes[v.version_id]) label += `\n${this.changes[v.version_id]}`
       if (v.source === 'plugin-upgrade') {
         label += '\n(Installed by plugin upgrade)'
       }
@@ -329,10 +356,9 @@ export default {
       this.loading = true
       this.loadError = null
       try {
-        const response = await Api.get(
-          `/script-api/scripts/${this.filename}/versions`,
-        )
+        const response = await Api.get(`${this.baseUrl}/versions`)
         this.versions = response.data?.versions || []
+        this.describeVersions()
       } catch ({ response }) {
         this.loadError =
           response?.data?.message || response?.statusText || 'unknown'
@@ -347,6 +373,53 @@ export default {
       } else if (this.versions.length) {
         await this.selectVersion(this.versions[0].version_id)
       }
+    },
+    // With `describe`: summarize what each version changed from the one
+    // before it, for the audit trail. Bodies load a few at a time, newest
+    // first, capped so a long history doesn't fetch everything.
+    async describeVersions() {
+      // A reload (reopen, restore) starts a new run; an older one still
+      // fetching must not overwrite its results
+      const token = ++this.describeToken
+      this.changes = {}
+      if (!this.describe) return
+      this.describing = true
+      // One past the limit, so the last one described has its previous body
+      const versions = this.versions.slice(0, DESCRIBE_LIMIT + 1)
+      const bodies = new Array(versions.length).fill(null)
+      let next = 0
+      const worker = async () => {
+        while (next < versions.length && token === this.describeToken) {
+          const index = next++
+          try {
+            bodies[index] = await this.fetchVersionBody(
+              versions[index].version_id,
+            )
+          } catch {
+            // Left null: no summary for it or the version after it
+          }
+        }
+      }
+      await Promise.all([worker(), worker(), worker(), worker()])
+      if (token !== this.describeToken) return
+      const changes = {}
+      for (let i = 0; i < Math.min(versions.length, DESCRIBE_LIMIT); i++) {
+        // The oldest version has nothing before it (previous stays null)
+        const hasPrevious = i + 1 < versions.length
+        if (bodies[i] === null || (hasPrevious && bodies[i + 1] === null)) {
+          continue
+        }
+        try {
+          changes[versions[i].version_id] = this.describe(
+            hasPrevious ? bodies[i + 1] : null,
+            bodies[i],
+          )
+        } catch {
+          // A version the describer can't read just shows no summary
+        }
+      }
+      this.changes = changes
+      this.describing = false
     },
     labelFor(versionId) {
       if (!versionId) return ''
@@ -404,10 +477,9 @@ export default {
       if (versionId === this.versions[0]?.version_id) {
         return this.currentBody
       }
-      const response = await Api.get(
-        `/script-api/scripts/${this.filename}/version`,
-        { params: { version_id: versionId } },
-      )
+      const response = await Api.get(`${this.baseUrl}/version`, {
+        params: { version_id: versionId },
+      })
       return typeof response.data === 'string'
         ? response.data
         : String(response.data ?? '')
@@ -549,10 +621,9 @@ export default {
     async doRestore(versionId) {
       this.restoringVersionId = versionId
       try {
-        const response = await Api.post(
-          `/script-api/scripts/${this.filename}/restore`,
-          { data: { version_id: versionId } },
-        )
+        const response = await Api.post(`${this.baseUrl}/restore`, {
+          data: { version_id: versionId },
+        })
         this.$notify.normal({
           title: 'Restored',
           body: `New version ${response.data?.version_id} created from ${versionId}.`,
@@ -573,6 +644,10 @@ export default {
 </script>
 
 <style scoped>
+.version-change {
+  font-size: 12px;
+  opacity: 0.85;
+}
 .version-list-pane {
   border-right: 1px solid var(--v-theme-outline);
 }

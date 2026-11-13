@@ -59,6 +59,11 @@ The following API methods have been removed from COSMOS v7. Since WITH_UNITS wer
 | wait_check_raw           | api_shared | Removed, use [wait_check](#wait_check) and pass type                     |
 | wait_tolerance_raw       | api_shared | Removed, use [wait_tolerance](#wait_tolerance) and pass type             |
 | wait_check_tolerance_raw | api_shared | Removed, use [wait_check_tolerance](#wait_check_tolerance) and pass type |
+| metadata_all             | metadata   | Deprecated, see the [Metadata Guide](metadata.md)                        |
+| metadata_get             | metadata   | Deprecated, see the [Metadata Guide](metadata.md)                        |
+| metadata_set             | metadata   | Deprecated, see the [Metadata Guide](metadata.md)                        |
+| metadata_update          | metadata   | Deprecated, see the [Metadata Guide](metadata.md)                        |
+| metadata_input           | metadata   | Deprecated, see the [Metadata Guide](metadata.md)                        |
 
 The following API methods now use `COSMOS__CANCEL` instead of `Cancel` as the answer recorded when the Cancel button is pushed in Script Runner: `ask`, `ask_string`, `message_box`, `vertical_message_box`, `combo_box`, `check_box`, `prompt`, `prompt_for_hazardous`, `prompt_for_critical_cmd`, `metadata_input`, `open_file_dialog`, `open_files_dialog`, `open_bucket_dialog`. The script is paused at the prompt line and nothing is returned to it, so no changes are required. `COSMOS__CANCEL` only appears in the script output and the Script Runner internals.
 
@@ -847,6 +852,14 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 | log_message    | Optional named parameter to prevent logging of the command                                                                                                                          |
 | validate       | Optional named parameter to enable/disable validation (default is True)                                                                                                             |
 | queue          | Optional named parameter to send the command to a queue. If not given, `OPENC3_DEFAULT_QUEUE` is used when set. Pass `False` to never queue. See [Command Queues](#command-queues). |
+| extra          | Optional metadata Hash/dict carried with the command packet to the interface                                                                                                        |
+
+The interface receives `extra` as `packet.extra['metadata']`. It is kept under its own key so it
+can't change the values COSMOS adds to `packet.extra`, such as `cmd_string`, `username` and
+`approver`, or the `HTTP_*` values an accessor sets from the command definition.
+
+`extra` is written to the command log, the command topics and the queue exactly as given.
+It is not obfuscated, so don't put secrets in it.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -855,6 +868,7 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", { "DURATION": 10, "TYPE": "NORMAL" })
 cmd("INST ABORT", timeout=10, log_message=False, validate=False)
+cmd("INST ABORT", extra={ "request_id": "1234-5678" })
 cmd("INST ABORT", queue="TEST")  # Add to the TEST queue
 cmd("INST ABORT", queue=False)  # Bypass OPENC3_DEFAULT_QUEUE
 ```
@@ -869,6 +883,7 @@ cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", "DURATION" => 10, "TYPE" => "NORMAL")
 cmd("INST", "COLLECT", { "DURATION" => 10, "TYPE" => "NORMAL" })
 cmd("INST ABORT", timeout: 10, log_message: false, validate: false)
+cmd("INST ABORT", extra: { "request_id" => "1234-5678" })
 cmd("INST ABORT", queue: "TEST") # Add to the TEST queue
 cmd("INST ABORT", queue: false) # Bypass OPENC3_DEFAULT_QUEUE
 ```
@@ -911,6 +926,7 @@ cmd_no_range_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param 
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -967,6 +983,7 @@ cmd_no_hazardous_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Pa
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1023,6 +1040,7 @@ cmd_no_checks("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Va
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1079,6 +1097,7 @@ cmd_raw("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1135,6 +1154,7 @@ cmd_raw_no_range_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1191,6 +1211,7 @@ cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", "<Param #1 Name>" 
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1247,6 +1268,7 @@ cmd_raw_no_checks("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -2049,11 +2071,59 @@ status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") # => WAITIN
 </TabItem>
 </Tabs>
 
+### critical_cmd_info
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Returns the status of the critical command along with the users who have approved it and the number of approvals required. The number of approvals required is set by the scope's Critical Cmd Approvers setting when the command is created. Each approval must come from a different user, and the user who sent the command can't approve it.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+critical_cmd_info(uuid)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+critical_cmd_info(uuid)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+info = critical_cmd_info("2fa14183-3148-4399-9a74-a130257118f9")
+# => {'status': 'WAITING', 'approvers': ['operator'], 'approvers_required': 2}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+info = critical_cmd_info("2fa14183-3148-4399-9a74-a130257118f9")
+# => {"status"=>"WAITING", "approvers"=>["operator"], "approvers_required"=>2}
+```
+
+</TabItem>
+</Tabs>
+
 ### critical_cmd_approve
 
 <span class="badge badge--secondary since-heading">Since 5.20.0</span>
 
-Approve the critical command as the current user.
+Approve the critical command as the current user. If the scope requires more than one approver, the command remains `WAITING` until enough different users have approved it. Use [critical_cmd_info](#critical_cmd_info) to see the current approvals.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -10160,224 +10230,6 @@ delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a3
 
 ```ruby
 delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782")
-```
-
-</TabItem>
-</Tabs>
-
-## Metadata
-
-Metadata allows you to mark the regular target / packet data logged in COSMOS with your own fields. This metadata can then be searched and used to filter data when using other COSMOS tools.
-
-### metadata_all
-
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
-
-Returns all the metadata that was previously set
-
-<Tabs groupId="script-language">
-<TabItem value="python" label="Python Syntax">
-
-```python
-metadata_all()
-```
-
-</TabItem>
-
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-metadata_all()
-```
-
-</TabItem>
-</Tabs>
-
-| Parameter | Description                                         |
-| --------- | --------------------------------------------------- |
-| limit     | Amount of metadata items to return. Default is 100. |
-
-<Tabs groupId="script-language">
-<TabItem value="python" label="Python Example">
-
-```python
-metadata_all(limit='500')
-```
-
-</TabItem>
-
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-metadata_all(limit: 500)
-```
-
-</TabItem>
-</Tabs>
-
-### metadata_get
-
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
-
-Returns metadata that was previously set
-
-<Tabs groupId="script-language">
-<TabItem value="python" label="Python Syntax">
-
-```python
-metadata_get(start)
-```
-
-</TabItem>
-
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-metadata_get(start)
-```
-
-</TabItem>
-</Tabs>
-
-| Parameter | Description                                                                       |
-| --------- | --------------------------------------------------------------------------------- |
-| start     | Named parameter, time at which to retrieve metadata as integer seconds from epoch |
-
-<Tabs groupId="script-language">
-<TabItem value="python" label="Python Example">
-
-```python
-metadata_get(start='500')
-```
-
-</TabItem>
-
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-metadata_get(start: 500)
-```
-
-</TabItem>
-</Tabs>
-
-### metadata_set
-
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
-
-Sets metadata which appears on the Calendar and can be retried by metadata_get.
-
-<Tabs groupId="script-language">
-<TabItem value="python" label="Python Syntax">
-
-```python
-metadata_set(<Metadata>, start, color)
-```
-
-</TabItem>
-
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-metadata_set(<Metadata>, start, color)
-```
-
-</TabItem>
-</Tabs>
-
-| Parameter | Description                                                                     |
-| --------- | ------------------------------------------------------------------------------- |
-| Metadata  | Hash or dict of key value pairs to store as metadata.                           |
-| start     | Named parameter, time at which to store metadata. Default is now.               |
-| color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
-
-<Tabs groupId="script-language">
-<TabItem value="python" label="Python Example">
-
-```python
-metadata_set({ 'key': 'value' })
-metadata_set({ 'key': 'value' }, color='ff5252')
-```
-
-</TabItem>
-
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-metadata_set({ 'key' => 'value' })
-metadata_set({ 'key' => 'value' }, color: '#ff5252')
-```
-
-</TabItem>
-</Tabs>
-
-### metadata_update
-
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
-
-Updates metadata that was previously set
-
-<Tabs groupId="script-language">
-<TabItem value="python" label="Python Syntax">
-
-```python
-metadata_update(<Metadata>, start, color)
-```
-
-</TabItem>
-
-<TabItem value="ruby" label="Ruby Syntax">
-
-```ruby
-metadata_update(<Metadata>, start, color)
-```
-
-</TabItem>
-</Tabs>
-
-| Parameter | Description                                                                     |
-| --------- | ------------------------------------------------------------------------------- |
-| Metadata  | Hash or dict of key value pairs to update as metadata.                          |
-| start     | Named parameter, time at which to update metadata. Default is latest metadata.  |
-| color     | Named parameter, color to display metadata in the calendar. Default is #003784. |
-
-<Tabs groupId="script-language">
-<TabItem value="python" label="Python Example">
-
-```python
-metadata_update({ 'key': 'value' })
-```
-
-</TabItem>
-
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-metadata_update({ 'key' => 'value' })
-```
-
-</TabItem>
-</Tabs>
-
-### metadata_input
-
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
-
-Prompts the user to set existing metadata values or create a new one. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
-
-<Tabs groupId="script-language">
-<TabItem value="python" label="Python Example">
-
-```python
-metadata_input()
-```
-
-</TabItem>
-
-<TabItem value="ruby" label="Ruby Example">
-
-```ruby
-metadata_input()
 ```
 
 </TabItem>

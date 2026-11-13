@@ -282,26 +282,38 @@ module OpenC3
         end
       # Probably not possible to get this condition because we don't allow 0 sized floats
       # but check for it just to cover all the possible data_types
-      elsif item.data_type == :FLOAT
+      # (variable sized FLOAT arrays are handled below)
+      elsif item.data_type == :FLOAT and not item.original_array_size
         raise "Variable bit size not currently supported for FLOAT data type"
       else
         # STRING, BLOCK, or array types
+        length_bits_per_count = item.variable_bit_size['length_bits_per_count']
+        length_value_bit_offset = item.variable_bit_size['length_value_bit_offset']
 
         # Calculate current bit size so we can preserve bytes after the item
         length_item_value = @packet.read(item.variable_bit_size['length_item_name'], :CONVERTED)
-        current_bit_size = (length_item_value * item.variable_bit_size['length_bits_per_count']) + item.variable_bit_size['length_value_bit_offset']
+        current_bit_size = (length_item_value * length_bits_per_count) + length_value_bit_offset
 
         # Calculate bits after this item
         bits_with_item = item.bit_offset + current_bit_size
         bits_after_item = (buffer.length * 8) - bits_with_item
+
+        # Arrays are sized in elements, STRING and BLOCK in bytes
+        value_unit_bit_size = item.original_array_size ? item.bit_size : 8
+        new_bit_size = value.length * value_unit_bit_size
+        # Reject sizes the length item can't represent exactly or the reader would decode the wrong size
+        length_bits = new_bit_size - length_value_bit_offset
+        if length_bits % length_bits_per_count != 0
+          raise ArgumentError, "Variable bit size #{new_bit_size} for item #{item.name} is not representable with length_bits_per_count #{length_bits_per_count} and length_value_bit_offset #{length_value_bit_offset}"
+        end
+
         if item.original_array_size
           item.array_size = -bits_after_item
         else
           item.bit_size = -bits_after_item
         end
 
-        new_bit_size = value.length * 8
-        length_value = (new_bit_size - item.variable_bit_size['length_value_bit_offset']) / item.variable_bit_size['length_bits_per_count']
+        length_value = length_bits / length_bits_per_count
         @packet.write(item.variable_bit_size['length_item_name'], length_value)
 
         # Later items need their bit_offset adjusted by the change in this item

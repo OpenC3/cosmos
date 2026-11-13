@@ -12,9 +12,10 @@
 -->
 
 <template>
-  <div class="screen-editor-container">
-    <v-row no-gutters align="center" class="mb-2">
+  <div :class="['screen-editor-container', { fill }]">
+    <v-row no-gutters align="center" class="mb-2 flex-grow-0">
       <v-btn
+        v-if="fileControls"
         :disabled="!file"
         color="primary"
         size="small"
@@ -25,6 +26,7 @@
         Load
       </v-btn>
       <v-file-input
+        v-if="fileControls"
         v-model="file"
         truncate-length="15"
         accept=".txt"
@@ -43,11 +45,11 @@
         @click="downloadContent"
       />
     </v-row>
-    <v-row no-gutters class="mb-2">
+    <v-row no-gutters class="editor-row mb-2">
       <pre
         ref="editor"
         class="screen-editor"
-        :style="{ height: height, width: '100%' }"
+        :style="{ height: fill ? '100%' : height, width: '100%' }"
         @contextmenu.prevent="showContextMenu"
       ></pre>
       <v-menu v-model="contextMenu" :target="[menuX, menuY]">
@@ -66,7 +68,7 @@
         </v-list>
       </v-menu>
     </v-row>
-    <v-row no-gutters>
+    <v-row no-gutters class="flex-grow-0">
       <span class="text-caption text-grey">
         Ctrl-space brings up autocomplete. Right click keywords for
         documentation.
@@ -102,6 +104,16 @@ export default {
     filename: {
       type: String,
       default: 'screen.txt',
+    },
+    // Load a .txt file from disk into the editor
+    fileControls: {
+      type: Boolean,
+      default: true,
+    },
+    // Fill the parent's height instead of using `height`
+    fill: {
+      type: Boolean,
+      default: false,
     },
   },
   emits: ['update:modelValue'],
@@ -283,6 +295,16 @@ export default {
 <style scoped>
 .screen-editor-container {
   width: 100%;
+}
+.screen-editor-container.fill {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.fill .editor-row {
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .screen-editor {

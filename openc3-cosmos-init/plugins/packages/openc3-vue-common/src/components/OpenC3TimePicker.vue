@@ -242,9 +242,7 @@ export default {
           // Convert to 24-hour format
           if (period === 'AM') {
             if (hours === 12) hours = 0
-          } else {
-            if (hours !== 12) hours += 12
-          }
+          } else if (hours !== 12) hours += 12
           return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
         }
       }

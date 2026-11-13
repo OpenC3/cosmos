@@ -56,6 +56,7 @@ export default defineConfig(({ mode }) => {
           'tools/base': './src/tools/base/index.js',
           'tools/calendar': './src/tools/calendar/index.js',
           'tools/scriptrunner': './src/tools/scriptrunner/index.js',
+          'tools/versionhistory': './src/tools/scriptrunner/versionHistory.js',
           util: './src/util/index.js',
           widgets: './src/widgets/index.js',
         },

@@ -79,6 +79,8 @@ import VerticalboxWidget from './VerticalboxWidget.vue'
 import Widget from './Widget'
 import WidgetComponents from './WidgetComponents'
 
+export { formatValueBase } from './FormatValueBase'
+
 export {
   ArrayplotWidget,
   ArrayWidget,

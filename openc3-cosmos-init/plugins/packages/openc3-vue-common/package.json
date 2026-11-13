@@ -56,6 +56,10 @@
       "import": "./dist/tools/scriptrunner.js",
       "require": "./dist/tools/scriptrunner.cjs"
     },
+    "./tools/versionhistory": {
+      "import": "./dist/tools/versionhistory.js",
+      "require": "./dist/tools/versionhistory.cjs"
+    },
     "./util": {
       "import": "./dist/util.js",
       "require": "./dist/util.cjs"
