@@ -62,7 +62,7 @@ export function escapeText(value) {
   return String(value)
     .replaceAll('\\', String.raw`\\`)
     .replaceAll('"', String.raw`\"`)
-    .replace(/\r?\n/g, '\\n')
+    .replace(/\r?\n/g, String.raw`\n`)
 }
 export function unescapeText(text) {
   return String(text).replace(/\\([\\"n])/g, (match, char) =>
