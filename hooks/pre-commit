@@ -116,9 +116,14 @@ def utf8(data)
   data.valid_encoding? ? data : nil
 end
 
+# File mode recorded in the index (e.g. 100644, 100755, 120000 for a symlink)
+def index_mode(file)
+  `git ls-files -s -- #{Shellwords.escape(file)}`.split.first
+end
+
 # Write new content into the index only, leaving the working tree alone
 def stage_content(file, content)
-  mode = `git ls-files -s -- #{Shellwords.escape(file)}`.split.first
+  mode = index_mode(file)
   hash, status = Open3.capture2('git', 'hash-object', '-w', '--stdin', stdin_data: content)
   return false unless status.success? && mode
 
@@ -143,6 +148,10 @@ staged_files.each do |file|
 
   # Skip vendored/third-party JS files
   next if file.start_with?('openc3-cosmos-init/plugins/packages/openc3-tool-base/public/js/')
+
+  # Skip symlinks. Check both the index mode (120000) and the working tree,
+  # since a staged symlink may be a regular file on disk or vice versa.
+  next if index_mode(file) == '120000' || File.symlink?(file)
 
   added = added_files.include?(file)
 
