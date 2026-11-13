@@ -231,10 +231,15 @@ push() {
 clean_files() {
   find . -type d -name "node_modules" -exec sh -c 'echo "Removing $1"; rm -rf -- "$1"' sh {} \;
   find . -type d -name "coverage" -exec sh -c 'echo "Removing $1"; rm -rf -- "$1"' sh {} \;
-  # Prompt for removing pnpm-lock.yaml files
-  find . -type f -name "pnpm-lock.yaml" -exec rm -i {} \;
-  # Prompt for removing Gemfile.lock files
-  find . -type f -name "Gemfile.lock" -exec rm -i {} \;
+  # Prompt for removing pnpm-lock.yaml and Gemfile.lock files, skipping ones committed to git
+  find . -type f \( -name "pnpm-lock.yaml" -o -name "Gemfile.lock" \) -exec sh -c '
+    for f do
+      if git ls-files --error-unmatch -- "$f" >/dev/null 2>&1; then
+        echo "Skipping committed $f"
+      else
+        rm -i -- "$f"
+      fi
+    done' sh {} +
   return 0
 }
 
@@ -425,8 +430,7 @@ case $1 in
       echo "This command removes:"
       echo "  - All node_modules directories"
       echo "  - All coverage directories"
-      echo "  - pnpm-lock.yaml files (with prompt)"
-      echo "  - Gemfile.lock files (with prompt)"
+      echo "  - pnpm-lock.yaml and Gemfile.lock files not committed to git (with prompt)"
       echo ""
       echo "Options:"
       echo "  -h, --help    Show this help message"
