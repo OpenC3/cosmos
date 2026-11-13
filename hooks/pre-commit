@@ -4,6 +4,14 @@
 
 require 'time'
 
+# Skip when the staged diff is not the author's own work: merges, cherry-picks,
+# reverts and rebases stage files that came from other commits, so touching
+# their headers would pollute the result.
+['MERGE_HEAD', 'CHERRY_PICK_HEAD', 'REVERT_HEAD', 'rebase-merge', 'rebase-apply'].each do |marker|
+  path = `git rev-parse --git-path #{marker}`.strip
+  exit 0 if !path.empty? && File.exist?(path)
+end
+
 # Get current year
 current_year = Time.now.year
 
