@@ -26,3 +26,10 @@ allowBuilds:
   '@parcel/watcher': false
   esbuild: false
   vue-demi: false
+
+# Force patched versions of transitive dependencies flagged by Dependabot.
+# Remove an entry once the parent package (shown in the comment) ships a fixed
+# version on its own.
+overrides:
+  dompurify@<3.4.17: 3.4.17 # monaco-editor pins 3.4.15
+  follow-redirects@<1.16.2: ^1.16.2 # axios

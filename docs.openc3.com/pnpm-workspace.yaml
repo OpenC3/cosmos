@@ -15,3 +15,11 @@ allowBuilds:
 # newly published versions are held back on purpose (matches
 # openc3-cosmos-init/plugins/pnpm-workspace.yaml).
 minimumReleaseAge: 1440
+
+# Force patched versions of transitive dependencies flagged by Dependabot that
+# their parents (shown in the comments) still pin to vulnerable majors. Remove an
+# entry once the parent ships a fixed version on its own.
+overrides:
+  tinypool@<2.1.2: ^2.1.2 # @docusaurus/core
+  serialize-javascript@<7.1.3: ^7.1.3 # copy-webpack-plugin, css-minimizer-webpack-plugin
+  uuid@<11.1.1: ^11.1.1 # sockjs (webpack-dev-server)
