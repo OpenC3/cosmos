@@ -450,6 +450,18 @@ module OpenC3
       store_for_target(target_name, scope: scope).zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
     end
 
+    # <TARGET> LIMITS_GROUP is generated from the limits groups of a target which
+    # defines them. A target without limits groups can still have a telemetry
+    # packet of its own named LIMITS_GROUP which behaves like any other packet.
+    #
+    # @return [Boolean] Whether the packet is the generated limits group packet
+    def self.generated_limits_group_packet?(target_name, packet_name, scope:)
+      return false unless packet_name == PacketConfig::LIMITS_GROUP_PACKET
+
+      target = get(name: target_name, scope: scope)
+      (target and !(target['limits_groups'] || []).empty?) ? true : false
+    end
+
     # @return [Hash{String => Array<Array<String, String, String>>}] Limits groups keyed
     #   by TARGET__GROUP (see LimitsEventTopic.limits_group_key)
     def self.limits_groups(scope:)
@@ -484,10 +496,11 @@ module OpenC3
     def self.build_item_to_packet_map(target_name, scope:)
       item_map = {}
       packets = packets(target_name, scope: scope)
+      # LATEST never resolves to the generated LIMITS_GROUP packet. Its items are
+      # limits groups which can share a name with an item in another packet.
+      skip_limits_group = generated_limits_group_packet?(target_name, PacketConfig::LIMITS_GROUP_PACKET, scope: scope)
       packets.each do |packet|
-        # LATEST never resolves to LIMITS_GROUP. Its items are limits groups which
-        # can share a name with an item in another packet.
-        next if packet['packet_name'] == PacketConfig::LIMITS_GROUP_PACKET
+        next if skip_limits_group and packet['packet_name'] == PacketConfig::LIMITS_GROUP_PACKET
 
         items = packet['items']
         items.each do |item|

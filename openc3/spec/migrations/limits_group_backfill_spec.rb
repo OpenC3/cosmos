@@ -55,7 +55,8 @@ module OpenC3
       cvt = CvtModel.get(target_name: "SYSTEM", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
       expect(cvt["TEMPS"]).to eql 2
       expect(Store.instance(db_shard: 1).zrange("DEFAULT__openc3tlm__SYSTEM__allitems", 0, -1)).to include("TEMPS", "TEMPS_ENABLED", "POWER", "POWER_ENABLED")
-      expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")["TEMPS"]).to eql ["LIMITS_GROUP"]
+      # LATEST never resolves to LIMITS_GROUP so its items stay out of the item map
+      expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")).not_to have_key("TEMPS")
     end
 
     it "warns about a target with its own LIMITS_GROUP packet" do

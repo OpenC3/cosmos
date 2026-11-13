@@ -573,10 +573,7 @@ module OpenC3
     # the limits group microservice so it can't be written. A target without limits
     # groups can still have a packet of its own named LIMITS_GROUP.
     def _tlm_reject_read_only(target_name, packet_name, method_name, scope:)
-      return unless packet_name == PacketConfig::LIMITS_GROUP_PACKET
-
-      target = TargetModel.get(name: target_name, scope: scope)
-      if target and !(target['limits_groups'] || []).empty?
+      if TargetModel.generated_limits_group_packet?(target_name, packet_name, scope: scope)
         raise "ERROR: #{target_name} #{packet_name} is read-only and is not supported by #{method_name}()"
       end
     end

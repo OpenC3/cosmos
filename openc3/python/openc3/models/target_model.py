@@ -252,6 +252,16 @@ class TargetModel(Model):
         # https://redis.io/docs/latest/develop/data-types/sorted-sets/#lexicographical-scores
         cls._store_for_target(target_name, scope).zadd(f"{scope}__openc3tlm__{target_name}__allitems", {item_name: 0})
 
+    # <TARGET> LIMITS_GROUP is generated from the limits groups of a target which
+    # defines them. A target without limits groups can still have a telemetry
+    # packet of its own named LIMITS_GROUP which behaves like any other packet.
+    @classmethod
+    def generated_limits_group_packet(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE) -> bool:
+        if packet_name != "LIMITS_GROUP":
+            return False
+        target = cls.get(name=target_name, scope=scope)
+        return bool(target and target.get("limits_groups"))
+
     # @return [Hash{String => Array<Array<String, String, String>>}]
     @classmethod
     def limits_groups(cls, scope: str = OPENC3_SCOPE):
@@ -285,10 +295,11 @@ class TargetModel(Model):
     @classmethod
     def build_item_to_packet_map(cls, target_name: str, scope: str = OPENC3_SCOPE):
         item_map = {}
+        # LATEST never resolves to the generated LIMITS_GROUP packet. Its items are
+        # limits groups which can share a name with an item in another packet.
+        skip_limits_group = cls.generated_limits_group_packet(target_name, "LIMITS_GROUP", scope=scope)
         for packet in cls.packets(target_name, scope=scope):
-            # LATEST never resolves to LIMITS_GROUP. Its items are limits groups which
-            # can share a name with an item in another packet.
-            if packet["packet_name"] == "LIMITS_GROUP":
+            if skip_limits_group and packet["packet_name"] == "LIMITS_GROUP":
                 continue
             items = packet["items"]
             for item in items:

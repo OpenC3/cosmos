@@ -606,6 +606,13 @@ module OpenC3
       it "is an ordinary packet name for a target without limits groups" do
         TargetModel.new(name: "NOGRP", scope: "DEFAULT").create
         expect { @api.inject_tlm("NOGRP", "LIMITS_GROUP", { TEMPS: 0 }) }.to raise_error(RuntimeError, /does not exist/)
+
+        # Its items are found by LATEST like any other packet's
+        packet = { "target_name" => "NOGRP", "packet_name" => "LIMITS_GROUP", "items" => [{ "name" => "VALUE" }] }
+        Store.hset("DEFAULT__openc3tlm__NOGRP", "LIMITS_GROUP", JSON.generate(packet))
+        TargetModel.class_variable_get(:@@item_map_cache)["DEFAULT__NOGRP__item_to_packet_map"] = nil
+        CvtModel.set({ "VALUE" => 3, "PACKET_TIMESECONDS" => 1.0 }, target_name: "NOGRP", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
+        expect(@api.tlm("NOGRP LATEST VALUE")).to eql 3
       end
     end
 

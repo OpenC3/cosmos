@@ -1130,6 +1130,14 @@ class TestTlmApi(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "does not exist"):
             inject_tlm("NOGRP", "LIMITS_GROUP", {"TEMPS": 0})
 
+        # Its items are found by LATEST like any other packet's
+        packet = {"target_name": "NOGRP", "packet_name": "LIMITS_GROUP", "items": [{"name": "VALUE"}]}
+        Store.hset("DEFAULT__openc3tlm__NOGRP", "LIMITS_GROUP", json.dumps(packet))
+        CvtModel.set(
+            {"VALUE": 3, "PACKET_TIMESECONDS": 1.0}, target_name="NOGRP", packet_name="LIMITS_GROUP", scope="DEFAULT"
+        )
+        self.assertEqual(tlm("NOGRP LATEST VALUE"), 3)
+
     def test_get_tlm_values_accepts_the_limits_suffix_from_the_cvt(self):
         vals = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])
         self.assertEqual(vals[0][0], (-100.0))
