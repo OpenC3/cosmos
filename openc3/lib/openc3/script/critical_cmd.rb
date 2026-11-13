@@ -29,6 +29,26 @@ module OpenC3
       end
     end
 
+    # Returns a Hash with 'status', 'approvers' (users who have approved so far)
+    # and 'approvers_required' (number of approvals needed to send the command)
+    def critical_cmd_info(uuid, scope: $openc3_scope)
+      begin
+        endpoint = "/openc3-api/criticalcmd/status/#{uuid}"
+        response = $api_server.request('get', endpoint, scope: scope)
+        if response.nil? || response.status != 200
+          raise "Unexpected response to critical_cmd_info: #{response.inspect}"
+        end
+        result = JSON.parse(response.body)
+        return {
+          'status' => result['status'],
+          'approvers' => result['approvers'] || [],
+          'approvers_required' => result['approvers_required'] || 1,
+        }
+      rescue => error
+        raise "critical_cmd_info failed due to #{error.formatted}"
+      end
+    end
+
     def critical_cmd_approve(uuid, scope: $openc3_scope)
       begin
         endpoint = "/openc3-api/criticalcmd/approve/#{uuid}"
@@ -36,7 +56,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "critical_cmd_approve error: #{parsed['error']}"
+            raise "critical_cmd_approve error: #{parsed['message'] || parsed['error']}"
           else
             raise "critical_cmd_approve failed"
           end
@@ -54,7 +74,7 @@ module OpenC3
         if response.nil? || response.status != 200
           if response
             parsed = JSON.parse(response.body)
-            raise "critical_cmd_reject error: #{parsed['error']}"
+            raise "critical_cmd_reject error: #{parsed['message'] || parsed['error']}"
           else
             raise "critical_cmd_reject failed"
           end
