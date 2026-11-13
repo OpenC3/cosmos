@@ -1339,14 +1339,15 @@ class Packet(Structure):
     # The value expected after last_value in a SEQUENCE.
     # Raw integer items roll over at the limit of their bit size.
     def next_sequence_value(self, item, last_value):
+        next_value = last_value + item.limits.sequence_step
         if not item.read_conversion and item.bit_size > 0:
             match item.data_type:
                 case "UINT":
-                    return (last_value + 1) % (2**item.bit_size)
+                    return next_value % (2**item.bit_size)
                 case "INT":
-                    if last_value >= (2 ** (item.bit_size - 1)) - 1:
-                        return -(2 ** (item.bit_size - 1))
-        return last_value + 1
+                    half = 2 ** (item.bit_size - 1)
+                    return ((next_value + half) % (2**item.bit_size)) - half
+        return next_value
 
     # Update the item limits state, applying persistence, and call the
     # limits_change_callback if the state changes

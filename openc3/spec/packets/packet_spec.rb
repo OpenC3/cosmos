@@ -1614,10 +1614,11 @@ module OpenC3
           @p.get_item(name).limits.state
         end
 
-        def set_change_limits(name, type, color = :RED, persistence = 1)
+        def set_change_limits(name, type, color = :RED, persistence = 1, step = 1)
           item = @p.get_item(name)
           item.limits.change_type = type
           item.limits.change_color = color
+          item.limits.sequence_step = step
           item.limits.persistence_setting = persistence
           item.limits.enabled = true
           @p.update_limits_items_cache(item)
@@ -1639,6 +1640,31 @@ module OpenC3
           @p.append_item("test4", 8, :INT)
           set_change_limits("TEST4", :SEQUENCE)
           expect(check_values("TEST4", [126, 127, -128, -127])).to eql :GREEN
+        end
+
+        it "detects SEQUENCE violations with a step" do
+          set_change_limits("TEST2", :SEQUENCE, :RED, 1, 2)
+          expect(check_values("TEST2", [2, 4, 6, 8])).to eql :GREEN
+          expect(check_values("TEST2", [9])).to eql :RED
+          expect(check_values("TEST2", [11])).to eql :GREEN
+        end
+
+        it "detects SEQUENCE violations with a negative step" do
+          set_change_limits("TEST2", :SEQUENCE, :RED, 1, -1)
+          expect(check_values("TEST2", [3, 2, 1])).to eql :GREEN
+          expect(check_values("TEST2", [2])).to eql :RED
+        end
+
+        it "rolls over raw UINT and INT SEQUENCE values with a step" do
+          set_change_limits("TEST1", :SEQUENCE, :RED, 1, 3)
+          expect(check_values("TEST1", [252, 255, 2])).to eql :GREEN
+          @p.append_item("test4", 8, :INT)
+          set_change_limits("TEST4", :SEQUENCE, :RED, 1, 3)
+          expect(check_values("TEST4", [125, -128, -125])).to eql :GREEN
+          set_change_limits("TEST4", :SEQUENCE, :RED, 1, -2)
+          expect(check_values("TEST4", [-127, 127])).to eql :GREEN
+          set_change_limits("TEST1", :SEQUENCE, :RED, 1, -1)
+          expect(check_values("TEST1", [0, 255])).to eql :GREEN
         end
 
         it "does not roll over items with a read conversion" do

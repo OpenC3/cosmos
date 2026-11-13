@@ -38,7 +38,7 @@ class PacketItemLimits:
         "YELLOW_LOW",
     ]
     # Array of change limits types. SEQUENCE means the value must increment by
-    # one each sample, CHANGE means the value must change each sample, and
+    # the sequence step (default 1) each sample, CHANGE means the value must change each sample, and
     # STATIC means the value must not change.
     CHANGE_TYPES = ["SEQUENCE", "CHANGE", "STATIC"]
     # Array of limits states a change limit can go to when violated
@@ -53,6 +53,8 @@ class PacketItemLimits:
         self.persistence_count = 0
         self.change_type = None
         self.change_color = None
+        # Amount a SEQUENCE value must change by each sample. Negative values count down.
+        self.sequence_step = 1
         # Previous value used to evaluate change limits
         self.last_value = None
         # Previous stored (non-realtime) value used to evaluate change limits. Kept separate
@@ -117,6 +119,16 @@ class PacketItemLimits:
             raise ValueError(f"change_color must be one of {PacketItemLimits.CHANGE_COLORS} but is {change_color}")
         self.__change_color = change_color
 
+    @property
+    def sequence_step(self):
+        return self.__sequence_step
+
+    @sequence_step.setter
+    def sequence_step(self, sequence_step):
+        if type(sequence_step) is not int or sequence_step == 0:
+            raise ValueError(f"sequence_step must be a non-zero integer but is {sequence_step}")
+        self.__sequence_step = sequence_step
+
     def as_json(self):
         limits = {}
         limits["values"] = self.__values
@@ -131,4 +143,6 @@ class PacketItemLimits:
         if self.__change_type:
             limits["change_type"] = self.__change_type
             limits["change_color"] = self.__change_color
+            if self.__change_type == "SEQUENCE":
+                limits["sequence_step"] = self.__sequence_step
         return limits

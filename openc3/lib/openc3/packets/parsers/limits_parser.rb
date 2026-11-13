@@ -42,8 +42,8 @@ module OpenC3
       end
 
       if change_limits?
-        @usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <SEQUENCE/CHANGE/STATIC> <RED/YELLOW>"
-        @parser.verify_num_parameters(5, 5, @usage)
+        @usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <SEQUENCE/CHANGE/STATIC> <RED/YELLOW> <SEQUENCE STEP (Optional)>"
+        @parser.verify_num_parameters(5, 6, @usage)
       else
         @usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <RED LOW LIMIT> <YELLOW LOW LIMIT> <YELLOW HIGH LIMIT> <RED HIGH LIMIT> <GREEN LOW LIMIT (Optional)> <GREEN HIGH LIMIT (Optional)>"
         @parser.verify_num_parameters(7, 9, @usage)
@@ -102,13 +102,31 @@ module OpenC3
         raise @parser.error("#{change_type} limits color must be RED or YELLOW", @usage)
       end
 
+      sequence_step = get_sequence_step(change_type)
+
       item.limits.change_type = change_type
       item.limits.change_color = change_color
+      item.limits.sequence_step = sequence_step
       item.limits.enabled = get_enabled()
       item.limits.persistence_setting = get_persistence()
 
       packet.update_limits_items_cache(item)
       limits_set
+    end
+
+    def get_sequence_step(change_type)
+      step = @parser.parameters[5]
+      return 1 unless step
+      raise @parser.error("Only SEQUENCE limits take a step parameter", @usage) unless change_type == :SEQUENCE
+
+      begin
+        step = Integer(step)
+      rescue ArgumentError, TypeError
+        raise @parser.error("SEQUENCE step must be an integer", @usage)
+      end
+      raise @parser.error("SEQUENCE step can't be zero", @usage) if step == 0
+
+      step
     end
 
     def initialize_limits_values(packet, item)

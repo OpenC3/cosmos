@@ -38,8 +38,8 @@ class LimitsParser:
             raise self.parser.error("LIMITS only applies to telemetry items")
 
         if self._change_limits():
-            self.usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <SEQUENCE/CHANGE/STATIC> <RED/YELLOW>"
-            self.parser.verify_num_parameters(5, 5, self.usage)
+            self.usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <SEQUENCE/CHANGE/STATIC> <RED/YELLOW> <SEQUENCE STEP (Optional)>"
+            self.parser.verify_num_parameters(5, 6, self.usage)
         else:
             self.usage = "LIMITS <LIMITS SET> <PERSISTENCE> <ENABLED/DISABLED> <RED LOW LIMIT> <YELLOW LOW LIMIT> <YELLOW HIGH LIMIT> <RED HIGH LIMIT> <GREEN LOW LIMIT (Optional)> <GREEN HIGH LIMIT (Optional)>"
             self.parser.verify_num_parameters(7, 9, self.usage)
@@ -92,13 +92,31 @@ class LimitsParser:
         if change_color not in PacketItemLimits.CHANGE_COLORS:
             raise self.parser.error(f"{change_type} limits color must be RED or YELLOW", self.usage)
 
+        sequence_step = self._get_sequence_step(change_type)
+
         item.limits.change_type = change_type
         item.limits.change_color = change_color
+        item.limits.sequence_step = sequence_step
         item.limits.enabled = self._get_enabled()
         item.limits.persistence_setting = self._get_persistence()
 
         packet.update_limits_items_cache(item)
         return limits_set
+
+    def _get_sequence_step(self, change_type):
+        params = self.parser.parameters
+        if len(params) < 6:
+            return 1
+        if change_type != "SEQUENCE":
+            raise self.parser.error("Only SEQUENCE limits take a step parameter", self.usage)
+
+        try:
+            step = int(params[5])
+        except ValueError as error:
+            raise self.parser.error("SEQUENCE step must be an integer", self.usage) from error
+        if step == 0:
+            raise self.parser.error("SEQUENCE step can't be zero", self.usage)
+        return step
 
     def _initialize_limits_values(self, packet, item):
         limits_set = self._get_limits_set()

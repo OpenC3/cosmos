@@ -529,7 +529,11 @@ export default {
           limit.green_high
         )
       } else if (limit.hasOwnProperty('change_type')) {
-        return limit.change_type + ' ' + limit.change_color
+        let text = limit.change_type + ' ' + limit.change_color
+        if (limit.sequence_step && limit.sequence_step !== 1) {
+          text += ' STEP ' + limit.sequence_step
+        }
+        return text
       } else if (limit.hasOwnProperty('red_low')) {
         return (
           'RL/' +

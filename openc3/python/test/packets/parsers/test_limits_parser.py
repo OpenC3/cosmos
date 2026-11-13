@@ -386,7 +386,34 @@ class TestLimitsParserChangeLimits(unittest.TestCase):
         with self.assertRaisesRegex(ConfigParser.Error, "Not enough parameters for LIMITS"):
             self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE")
         with self.assertRaisesRegex(ConfigParser.Error, "Too many parameters for LIMITS"):
-            self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED 5")
+            self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED 5 6")
+
+    def test_defaults_the_sequence_step_to_1(self):
+        item = self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED")
+        self.assertEqual(item.limits.sequence_step, 1)
+        self.assertIn("LIMITS DEFAULT 1 ENABLED SEQUENCE RED\n", item.to_config("TELEMETRY", "BIG_ENDIAN"))
+        self.assertEqual(
+            item.as_json()["limits"]["DEFAULT"],
+            {"change_type": "SEQUENCE", "change_color": "RED", "sequence_step": 1},
+        )
+
+    def test_creates_sequence_limits_with_a_step(self):
+        item = self.parse_limits('APPEND_ITEM item1 16 INT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED -2")
+        self.assertEqual(item.limits.sequence_step, -2)
+        self.assertIn("LIMITS DEFAULT 1 ENABLED SEQUENCE RED -2\n", item.to_config("TELEMETRY", "BIG_ENDIAN"))
+        self.assertEqual(item.as_json()["limits"]["DEFAULT"]["sequence_step"], -2)
+        self.assertEqual(item.limits.as_json()["sequence_step"], -2)
+
+    def test_complains_about_invalid_sequence_steps(self):
+        with self.assertRaisesRegex(ConfigParser.Error, "SEQUENCE step must be an integer"):
+            self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED 1.5")
+        with self.assertRaisesRegex(ConfigParser.Error, "SEQUENCE step can't be zero"):
+            self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED 0")
+
+    def test_complains_about_a_step_on_change_and_static(self):
+        for change_type in ["CHANGE", "STATIC"]:
+            with self.assertRaisesRegex(ConfigParser.Error, "Only SEQUENCE limits take a step parameter"):
+                self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', f"LIMITS DEFAULT 1 ENABLED {change_type} RED 2")
 
     def test_complains_if_not_in_the_default_limits_set(self):
         with self.assertRaisesRegex(

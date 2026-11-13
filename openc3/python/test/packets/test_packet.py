@@ -1428,10 +1428,11 @@ class PacketCheckChangeLimits(unittest.TestCase):
             self.p.check_limits()
         return self.p.get_item(name).limits.state
 
-    def set_change_limits(self, name, change_type, color="RED", persistence=1):
+    def set_change_limits(self, name, change_type, color="RED", persistence=1, step=1):
         item = self.p.get_item(name)
         item.limits.change_type = change_type
         item.limits.change_color = color
+        item.limits.sequence_step = step
         item.limits.persistence_setting = persistence
         item.limits.enabled = True
         self.p.update_limits_items_cache(item)
@@ -1451,6 +1452,28 @@ class PacketCheckChangeLimits(unittest.TestCase):
         self.p.append_item("test4", 8, "INT")
         self.set_change_limits("TEST4", "SEQUENCE")
         self.assertEqual(self.check_values("TEST4", [126, 127, -128, -127]), "GREEN")
+
+    def test_detects_sequence_violations_with_a_step(self):
+        self.set_change_limits("TEST2", "SEQUENCE", "RED", 1, 2)
+        self.assertEqual(self.check_values("TEST2", [2, 4, 6, 8]), "GREEN")
+        self.assertEqual(self.check_values("TEST2", [9]), "RED")
+        self.assertEqual(self.check_values("TEST2", [11]), "GREEN")
+
+    def test_detects_sequence_violations_with_a_negative_step(self):
+        self.set_change_limits("TEST2", "SEQUENCE", "RED", 1, -1)
+        self.assertEqual(self.check_values("TEST2", [3, 2, 1]), "GREEN")
+        self.assertEqual(self.check_values("TEST2", [2]), "RED")
+
+    def test_rolls_over_raw_uint_and_int_sequence_values_with_a_step(self):
+        self.set_change_limits("TEST1", "SEQUENCE", "RED", 1, 3)
+        self.assertEqual(self.check_values("TEST1", [252, 255, 2]), "GREEN")
+        self.p.append_item("test4", 8, "INT")
+        self.set_change_limits("TEST4", "SEQUENCE", "RED", 1, 3)
+        self.assertEqual(self.check_values("TEST4", [125, -128, -125]), "GREEN")
+        self.set_change_limits("TEST4", "SEQUENCE", "RED", 1, -2)
+        self.assertEqual(self.check_values("TEST4", [-127, 127]), "GREEN")
+        self.set_change_limits("TEST1", "SEQUENCE", "RED", 1, -1)
+        self.assertEqual(self.check_values("TEST1", [0, 255]), "GREEN")
 
     def test_does_not_roll_over_items_with_a_read_conversion(self):
         item = self.set_change_limits("TEST1", "SEQUENCE")

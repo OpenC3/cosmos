@@ -1554,15 +1554,17 @@ module OpenC3
     # @return [Numeric] The value expected after last_value in a SEQUENCE.
     #   Raw integer items roll over at the limit of their bit size.
     def next_sequence_value(item, last_value)
+      next_value = last_value + item.limits.sequence_step
       if !item.read_conversion && item.bit_size > 0
         case item.data_type
         when :UINT
-          return (last_value + 1) % (2**item.bit_size)
+          return next_value % (2**item.bit_size)
         when :INT
-          return -(2**(item.bit_size - 1)) if last_value >= (2**(item.bit_size - 1)) - 1
+          half = 2**(item.bit_size - 1)
+          return ((next_value + half) % (2**item.bit_size)) - half
         end
       end
-      last_value + 1
+      next_value
     end
 
     # Update the item limits state, applying persistence, and call the

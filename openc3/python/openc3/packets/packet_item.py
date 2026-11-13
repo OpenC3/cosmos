@@ -448,7 +448,10 @@ class PacketItem(StructureItem):
                     else:
                         config += "\n"
             elif limits.change_type:
-                config += f"    LIMITS DEFAULT {limits.persistence_setting} {'ENABLED' if limits.enabled else 'DISABLED'} {limits.change_type} {limits.change_color}\n"
+                config += f"    LIMITS DEFAULT {limits.persistence_setting} {'ENABLED' if limits.enabled else 'DISABLED'} {limits.change_type} {limits.change_color}"
+                if limits.change_type == "SEQUENCE" and limits.sequence_step != 1:
+                    config += f" {limits.sequence_step}"
+                config += "\n"
             if limits.response:
                 config += limits.response.to_config()
 
@@ -521,6 +524,8 @@ class PacketItem(StructureItem):
                     "change_type": item_limits.change_type,
                     "change_color": item_limits.change_color,
                 }
+                if item_limits.change_type == "SEQUENCE":
+                    config["limits"]["DEFAULT"]["sequence_step"] = item_limits.sequence_step
             if item_limits.response:
                 config["limits_response"] = item_limits.response.as_json()
 

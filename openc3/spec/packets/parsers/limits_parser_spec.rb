@@ -354,8 +354,37 @@ module OpenC3
         it "complains about the wrong number of parameters" do
           expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE') }.to \
             raise_error(ConfigParser::Error, /Not enough parameters for LIMITS/)
-          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED 5') }.to \
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED 5 6') }.to \
             raise_error(ConfigParser::Error, /Too many parameters for LIMITS/)
+        end
+
+        it "defaults the SEQUENCE step to 1" do
+          item = parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED')
+          expect(item.limits.sequence_step).to eql 1
+          expect(item.to_config(:TELEMETRY, :BIG_ENDIAN)).to include("LIMITS DEFAULT 1 ENABLED SEQUENCE RED\n")
+          expect(item.as_json['limits']['DEFAULT']).to eql({ 'change_type' => 'SEQUENCE', 'change_color' => 'RED', 'sequence_step' => 1 })
+        end
+
+        it "creates SEQUENCE limits with a step" do
+          item = parse_limits('APPEND_ITEM item1 16 INT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED -2')
+          expect(item.limits.sequence_step).to eql(-2)
+          expect(item.to_config(:TELEMETRY, :BIG_ENDIAN)).to include("LIMITS DEFAULT 1 ENABLED SEQUENCE RED -2\n")
+          expect(item.as_json['limits']['DEFAULT']['sequence_step']).to eql(-2)
+          expect(PacketItemLimits.from_json(item.limits.as_json).sequence_step).to eql(-2)
+        end
+
+        it "complains about invalid SEQUENCE steps" do
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED 1.5') }.to \
+            raise_error(ConfigParser::Error, /SEQUENCE step must be an integer/)
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED 0') }.to \
+            raise_error(ConfigParser::Error, /SEQUENCE step can't be zero/)
+        end
+
+        it "complains about a step on CHANGE and STATIC" do
+          %w(CHANGE STATIC).each do |type|
+            expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED #{type} RED 2") }.to \
+              raise_error(ConfigParser::Error, /Only SEQUENCE limits take a step parameter/)
+          end
         end
 
         it "complains if not in the DEFAULT limits set" do

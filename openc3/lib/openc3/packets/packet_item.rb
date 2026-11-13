@@ -434,7 +434,9 @@ module OpenC3
           end
         end
       elsif limits_change_type
-        config << "    LIMITS DEFAULT #{@limits.persistence_setting} #{@limits.enabled ? 'ENABLED' : 'DISABLED'} #{@limits.change_type} #{@limits.change_color}\n"
+        config << "    LIMITS DEFAULT #{@limits.persistence_setting} #{@limits.enabled ? 'ENABLED' : 'DISABLED'} #{@limits.change_type} #{@limits.change_color}"
+        config << " #{@limits.sequence_step}" if @limits.change_type == :SEQUENCE && @limits.sequence_step != 1
+        config << "\n"
       end
       config << @limits.response.to_config if (limits_values || limits_change_type) && @limits.response
 
@@ -506,6 +508,7 @@ module OpenC3
           end
         else
           config['limits']['DEFAULT'] = { 'change_type' => @limits.change_type.to_s, 'change_color' => @limits.change_color.to_s }
+          config['limits']['DEFAULT']['sequence_step'] = @limits.sequence_step if @limits.change_type == :SEQUENCE
         end
       end
 

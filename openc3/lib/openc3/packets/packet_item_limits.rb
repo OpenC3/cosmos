@@ -26,7 +26,7 @@ module OpenC3
     # Array of all limit states which should be considered in error
     OUT_OF_LIMITS_STATES = [:RED, :RED_HIGH, :RED_LOW, :YELLOW, :YELLOW_HIGH, :YELLOW_LOW]
     # Array of change limits types. SEQUENCE means the value must increment by
-    # one each sample, CHANGE means the value must change each sample, and
+    # the sequence step (default 1) each sample, CHANGE means the value must change each sample, and
     # STATIC means the value must not change.
     CHANGE_TYPES = [:SEQUENCE, :CHANGE, :STATIC]
     # Array of limits states a change limit can go to when violated
@@ -78,6 +78,10 @@ module OpenC3
     # @return [Symbol, nil] Limits state (:RED or :YELLOW) when a change limit is violated
     attr_reader :change_color
 
+    # @return [Integer] Amount a SEQUENCE value must change by each sample.
+    #   Negative values count down.
+    attr_reader :sequence_step
+
     # @return [Object, nil] Previous value used to evaluate change limits
     attr_accessor :last_value
 
@@ -96,6 +100,7 @@ module OpenC3
       @persistence_count = 0
       @change_type = nil
       @change_color = nil
+      @sequence_step = 1
       @last_value = nil
       @last_stored_value = nil
     end
@@ -161,6 +166,12 @@ module OpenC3
       @change_color = change_color
     end
 
+    def sequence_step=(sequence_step)
+      raise ArgumentError, "sequence_step must be a non-zero Integer but is #{sequence_step}" unless Integer === sequence_step && sequence_step != 0
+
+      @sequence_step = sequence_step
+    end
+
     # Make a light weight clone of this limits
     def clone
       limits = super()
@@ -185,6 +196,7 @@ module OpenC3
       if self.change_type
         hash['change_type'] = self.change_type.to_s
         hash['change_color'] = self.change_color.to_s
+        hash['sequence_step'] = self.sequence_step if self.change_type == :SEQUENCE
       end
       hash
     end
@@ -200,6 +212,7 @@ module OpenC3
       limits.persistence_count = hash['persistence_count'] if hash['persistence_count']
       limits.change_type = hash['change_type'].to_sym if hash['change_type']
       limits.change_color = hash['change_color'].to_sym if hash['change_color']
+      limits.sequence_step = hash['sequence_step'] if hash['sequence_step']
       limits
     end
   end
