@@ -113,6 +113,74 @@ The `runScript` function starts a script in Script Runner:
 runScript("INST/procedures/collect.rb", true, { TYPE: "NORMAL" });
 ```
 
+## Layout and Alignment
+
+Widgets are positioned by the layout widgets that contain them, not by coordinates (except inside a [CANVAS](#canvas)). [VERTICAL](#vertical) stacks widgets top to bottom, [HORIZONTAL](#horizontal) places them left to right, and [MATRIXBYCOLUMNS](#matrixbycolumns) arranges them in a table. By default widgets are aligned to the left.
+
+To change alignment, apply a [SETTING](#setting) to the layout widget. A SETTING applies to the widget defined immediately before it, so put it either directly after the layout keyword (before any widgets inside it) or directly after the layout's `END`. The [RAW](#raw) setting applies any CSS property, which lets you use standard [flexbox](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_flexible_box_layout/Basic_concepts_of_flexbox) alignment because HORIZONTAL is a flexbox row.
+
+### Centering a Button
+
+Wrap the button in a HORIZONTAL and center its contents with `justify-content`:
+
+```cosmos
+SCREEN AUTO AUTO 1.0
+VERTICAL
+  TITLE "Centered Button"
+  LABELVALUE INST HEALTH_STATUS COLLECTS
+  HORIZONTAL
+    SETTING RAW justify-content center # Applies to the HORIZONTAL
+    BUTTON 'Start Collect' "api.cmd('INST COLLECT with TYPE NORMAL')"
+  END
+END
+```
+
+The same approach centers a group of widgets, e.g. several buttons in a row:
+
+```cosmos
+HORIZONTAL
+  SETTING RAW justify-content center
+  BUTTON 'Collect' "api.cmd('INST COLLECT with TYPE NORMAL')"
+  BUTTON 'Abort' "api.cmd('INST ABORT')"
+END
+```
+
+Other `justify-content` values include `flex-end` (align right), `space-between` (spread out with the first and last widgets at the edges), and `space-evenly` (equal gaps between the widgets and at both edges). Some widgets, such as LABEL, grow to fill the available width by default, which leaves no space to distribute. Give them a fixed size with [WIDTH](#width) if they don't line up as expected.
+
+### Centering Everything in a Column
+
+[TEXTALIGN](#textalign) on a VERTICAL or VERTICALBOX centers the text of its labels and also centers buttons and other inline widgets inside it:
+
+```cosmos
+VERTICALBOX "Commands"
+  SETTING TEXTALIGN CENTER # Applies to the VERTICALBOX
+  LABEL "Choose a command"
+  BUTTON 'Collect' "api.cmd('INST COLLECT with TYPE NORMAL')"
+  BUTTON 'Abort' "api.cmd('INST ABORT')"
+END
+```
+
+### Vertical Alignment
+
+Widgets in a HORIZONTAL stretch to the height of the tallest widget and their contents sit at the top. Use `align-items` to center them vertically instead, for example to line a button up with a taller widget next to it:
+
+```cosmos
+HORIZONTAL
+  SETTING RAW align-items center
+  LABEL "Collect:"
+  BUTTON 'Start' "api.cmd('INST COLLECT with TYPE NORMAL')"
+  SPARKLINE INST HEALTH_STATUS TEMP1
+END
+```
+
+### Sizing and Spacing
+
+- [WIDTH](#width) and [HEIGHT](#height) give a widget a fixed size, e.g. `SETTING WIDTH 200` to make a button 200 pixels wide.
+- [MARGIN](#margin) and [PADDING](#padding) add space around and inside a widget.
+- [SPACER](#spacer) inserts a fixed amount of empty space between widgets.
+- VERTICAL and HORIZONTAL accept an optional margin parameter that is applied to every widget inside them, e.g. `HORIZONTAL 10`.
+- Use [GLOBAL_SETTING](#global_setting) to apply the same setting to every widget of a type, e.g. `GLOBAL_SETTING BUTTON WIDTH 150` to make all buttons the same width.
+
 # Screen Keywords
 
 COSMOS_META

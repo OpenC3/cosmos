@@ -83,6 +83,8 @@ services:
       - "/path/on/host/dropbox:/dropbox"
 ```
 
+To run a service from your own image with extra OS packages or tools installed, add a `build:` and `image:` to the service here instead of editing the COSMOS Dockerfiles. See [Extending COSMOS Containers](/docs/guides/container-extension).
+
 ## Install and runtime flags
 
 Several variables are flags rather than values. Most are enabled *by presence*: an empty value (`VAR=`) turns the flag off and any non-empty value turns it on.

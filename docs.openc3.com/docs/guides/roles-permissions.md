@@ -46,6 +46,8 @@ The **Admin** role provides administrative access within a scope. Admins can als
 - `tlm` - View telemetry data
 - `cmd_info` - View command information
 - `script_view` - View scripts
+- `script_approver` - Approve scripts. Moving a script to or from `approved` also needs `script_edit`, which Admin lacks, so the Admin role alone cannot change a script's state.
+- `notebook_view` - View notebooks
 - `admin` - Administrative functions (manage plugins, targets, interfaces, etc.)
 
 **Special Cases:**
@@ -57,7 +59,7 @@ The **Admin** role provides administrative access within a scope. Admins can als
 
 ### Operator
 
-The **Operator** role has full access except for administrative functions and approval rights.
+The **Operator** role has full access except for administrative functions and command approval rights.
 
 **Permissions:**
 
@@ -71,6 +73,10 @@ The **Operator** role has full access except for administrative functions and ap
 - `script_view` - View scripts
 - `script_edit` - Create and edit scripts
 - `script_run` - Run scripts
+- `script_approver` - Approve scripts
+- `notebook_view` - View notebooks
+- `notebook_edit` - Create and edit notebooks
+- `notebook_run` - Run notebooks
 
 **Use Case:** Power users who need full operational control but not administrative access.
 
@@ -84,6 +90,7 @@ The **Viewer** role provides read-only access to the system.
 - `tlm` - View telemetry data
 - `cmd_info` - View command information
 - `script_view` - View scripts
+- `notebook_view` - View notebooks
 
 **Use Case:** Users who need to monitor telemetry and system status without making changes.
 
@@ -114,6 +121,8 @@ The **Runner** role allows users to execute commands and scripts but cannot crea
 - `cmd` - Send commands
 - `script_view` - View scripts
 - `script_run` - Run scripts
+- `notebook_view` - View notebooks
+- `notebook_run` - Run notebooks
 
 **Use Case:** Operators who execute procedures and send commands but don't modify configurations or scripts.
 
@@ -140,6 +149,13 @@ The **Runner** role allows users to execute commands and scripts but cannot crea
 - **script_view** - View script contents
 - **script_edit** - Create, edit, and delete scripts and other target files, including saving, generating, and deleting tables in Table Manager
 - **script_run** - Execute scripts
+- **script_approver** - Allow a script's state to be changed to or from `approved` when [Script Lifecycle](/docs/tools/script-runner#script-lifecycle) is enabled. All lifecycle changes also require **script_edit**.
+
+### Notebook Permissions
+
+- **notebook_view** - View notebooks
+- **notebook_edit** - Create, edit, and delete notebooks
+- **notebook_run** - Start, save, and complete notebook runs. Script cells also require **script_run** and command cells require **cmd**.
 
 ### Administrative Permissions
 
@@ -164,6 +180,7 @@ When command authority is enabled for a scope, an additional layer of authorizat
   - `cmd_raw`
   - `cmd`
   - `script_run`
+  - `notebook_run`
 
 ## Custom Roles
 
@@ -248,11 +265,11 @@ ACCESS_TOKEN=$(curl -s -H "Content-Type: application/x-www-form-urlencoded" \
   -X POST http://localhost:2900/auth/realms/openc3/protocol/openid-connect/token | jq -r .access_token)
 ```
 
-List all roles:
+List all roles. Only custom roles are stored in COSMOS, so the built-in roles (admin, operator, viewer, approver, runner) are not returned:
 
 ```bash
 curl -H "Authorization: $ACCESS_TOKEN" "http://localhost:2900/openc3-api/roles?scope=DEFAULT"
-# => ["admin","approver","inst_commander","operator","runner","viewer"]
+# => ["inst_commander"]
 ```
 
 Create a role:
@@ -285,6 +302,16 @@ curl -H "Authorization: $ACCESS_TOKEN" \
   -X DELETE "http://localhost:2900/openc3-api/roles/inst_commander?scope=DEFAULT"
 ```
 
+### Responses
+
+- Successful create, update, and delete requests return HTTP 200 with an empty body.
+- Getting a role that does not exist returns HTTP 200 with a `null` body, so check the body rather than the status code to see if a role exists.
+- Creating a role that already exists, or updating a role that does not exist, fails with HTTP 500. Use GET first to decide between POST and PUT (see [Example Automation Workflow](#example-automation-workflow)).
+- Unlike create (see the note above), updating a role with an empty `permissions` list leaves it with no permissions.
+- A missing or invalid token returns 401, and a token without the required permission returns 403.
+- Roles are global, so the `scope` query parameter only determines which `{SCOPE}__` roles the caller's own permissions are checked against. Creating, updating, and deleting roles requires the `superadmin` permission, which normally comes from `ALLSCOPES__admin`, so any scope works for those. If `superadmin` comes from a custom role instead, the scope must match the scope that role is assigned in. Listing roles requires `admin` in the given scope.
+- Don't give a custom role the same name as a built-in role (admin, operator, viewer, approver, runner). The built-in permissions are checked first, so the custom definition is ignored.
+
 ### Assigning Roles via the Keycloak Admin REST API
 
 The COSMOS role defines the permission set, but users receive roles through Keycloak. To complete the automation workflow, create a matching Keycloak realm role named `{SCOPE}__{ROLE_NAME}` and assign it to users using the Keycloak Admin REST API:
@@ -310,7 +337,97 @@ curl -H "Authorization: Bearer $KC_TOKEN" -H "Content-Type: application/json" \
   -X POST "http://localhost:2900/auth/admin/realms/openc3/users/$USER_ID/role-mappings/realm"
 ```
 
+The Keycloak admin account lives in the `master` realm, while COSMOS users and roles live in the `openc3` realm. The admin account is created from `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` in `.env` (or `.env.local`), but only the first time Keycloak initializes its database. Changing them later doesn't change the existing account, so use the current Keycloak admin credentials. Creating a realm role that already exists returns HTTP 409.
+
+To remove a role from a user, send the same role array with `-X DELETE` to the `role-mappings/realm` endpoint. To delete the realm role entirely, use `DELETE /auth/admin/realms/openc3/roles/DEFAULT__inst_commander`.
+
 For full details on the available endpoints, authentication options, and payloads, see the [Keycloak Admin REST API documentation](https://www.keycloak.org/docs-api/latest/rest-api/index.html) and the [Keycloak Server Administration Guide](https://www.keycloak.org/docs/latest/server_admin/index.html#assigning-permissions-using-roles-and-groups).
+
+### Example Automation Workflow
+
+The following script provisions a custom role end to end and can be rerun safely, which makes it suitable for a CI/CD pipeline. It creates or updates the COSMOS role definition, creates the Keycloak realm role if it is missing, and assigns it to a list of users. It requires `curl` and `jq`, and reads credentials from environment variables so they aren't stored in the script:
+
+- `COSMOS_USER` / `COSMOS_PASSWORD` - a COSMOS user with `ALLSCOPES__admin`
+- `KC_ADMIN` / `KC_ADMIN_PASSWORD` - the Keycloak admin account in the `master` realm
+- `COSMOS_URL` - optional, defaults to `http://localhost:2900`
+
+Replace `ROLE`, `PERMISSIONS`, and the example `USERS` with your own values.
+
+```bash
+#!/bin/bash
+set -euo pipefail
+
+COSMOS_URL="${COSMOS_URL:-http://localhost:2900}"
+SCOPE="DEFAULT"
+ROLE="inst_commander"
+USERS="operator operator2"
+# Permissions for the COSMOS role definition
+PERMISSIONS='[{"permission":"tlm"},{"permission":"cmd_info"},{"permission":"cmd","target_name":"INST"}]'
+
+# 1. COSMOS token for a user with ALLSCOPES__admin (COSMOS_USER / COSMOS_PASSWORD)
+ACCESS_TOKEN=$(curl -sf -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "username=${COSMOS_USER}" --data-urlencode "password=${COSMOS_PASSWORD}" \
+  -d 'client_id=api&grant_type=password' \
+  -X POST "${COSMOS_URL}/auth/realms/openc3/protocol/openid-connect/token" | jq -r .access_token)
+
+# 2. Create or update the COSMOS role definition
+BODY=$(jq -n --arg name "$ROLE" --argjson perms "$PERMISSIONS" \
+  '{json: ({name: $name, permissions: $perms} | tojson)}')
+EXISTING=$(curl -sf -H "Authorization: ${ACCESS_TOKEN}" \
+  "${COSMOS_URL}/openc3-api/roles/${ROLE}?scope=${SCOPE}")
+if [ "$EXISTING" = "null" ]; then
+  curl -sf -H "Authorization: ${ACCESS_TOKEN}" -H "Content-Type: application/json" \
+    -d "$BODY" -X POST "${COSMOS_URL}/openc3-api/roles?scope=${SCOPE}"
+  echo "Created COSMOS role ${ROLE}"
+else
+  curl -sf -H "Authorization: ${ACCESS_TOKEN}" -H "Content-Type: application/json" \
+    -d "$BODY" -X PUT "${COSMOS_URL}/openc3-api/roles/${ROLE}?scope=${SCOPE}"
+  echo "Updated COSMOS role ${ROLE}"
+fi
+
+# 3. Keycloak admin token from the master realm (KC_ADMIN / KC_ADMIN_PASSWORD)
+KC_TOKEN=$(curl -sf -H "Content-Type: application/x-www-form-urlencoded" \
+  --data-urlencode "username=${KC_ADMIN}" --data-urlencode "password=${KC_ADMIN_PASSWORD}" \
+  -d 'client_id=admin-cli&grant_type=password' \
+  -X POST "${COSMOS_URL}/auth/realms/master/protocol/openid-connect/token" | jq -r .access_token)
+KC_API="${COSMOS_URL}/auth/admin/realms/openc3"
+
+# 4. Create the {SCOPE}__{ROLE} realm role if it doesn't exist (409 means it already does)
+KC_ROLE="${SCOPE}__${ROLE}"
+STATUS=$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer ${KC_TOKEN}" \
+  -H "Content-Type: application/json" -d "{\"name\": \"${KC_ROLE}\"}" -X POST "${KC_API}/roles")
+case "$STATUS" in
+  201) echo "Created Keycloak role ${KC_ROLE}" ;;
+  409) echo "Keycloak role ${KC_ROLE} already exists" ;;
+  *) echo "Failed to create Keycloak role: HTTP ${STATUS}" >&2; exit 1 ;;
+esac
+ROLE_JSON=$(curl -sf -H "Authorization: Bearer ${KC_TOKEN}" "${KC_API}/roles/${KC_ROLE}")
+
+# 5. Assign the realm role to each user (assigning an existing mapping is a no-op)
+for USERNAME in $USERS; do
+  USER_ID=$(curl -sf -H "Authorization: Bearer ${KC_TOKEN}" \
+    "${KC_API}/users?username=${USERNAME}&exact=true" | jq -r '.[0].id')
+  if [ "$USER_ID" = "null" ]; then
+    echo "Keycloak user ${USERNAME} not found" >&2
+    exit 1
+  fi
+  curl -sf -H "Authorization: Bearer ${KC_TOKEN}" -H "Content-Type: application/json" \
+    -d "[${ROLE_JSON}]" -X POST "${KC_API}/users/${USER_ID}/role-mappings/realm"
+  echo "Assigned ${KC_ROLE} to ${USERNAME}"
+done
+```
+
+Users pick up a newly assigned role the next time their access token is issued, which happens within a few minutes as the browser refreshes it, or immediately after logging out and back in.
+
+To retire a role, reverse the order: remove the Keycloak role mappings (or delete the realm role) first so newly issued tokens no longer carry the role, then delete the COSMOS role definition. Access tokens that were already issued keep the role until they expire (5 minutes by default). Running services cache role definitions and are only notified when a role is created or updated, not deleted, so a deleted definition can keep granting its permissions until the services restart. To revoke the permissions immediately, first update the role with an empty permissions list, then delete it:
+
+```bash
+curl -H "Authorization: $ACCESS_TOKEN" -H "Content-Type: application/json" \
+  -d '{"json": "{\"name\":\"inst_commander\",\"permissions\":[]}"}' \
+  -X PUT "http://localhost:2900/openc3-api/roles/inst_commander?scope=DEFAULT"
+curl -H "Authorization: $ACCESS_TOKEN" \
+  -X DELETE "http://localhost:2900/openc3-api/roles/inst_commander?scope=DEFAULT"
+```
 
 ## Authorization Flow
 

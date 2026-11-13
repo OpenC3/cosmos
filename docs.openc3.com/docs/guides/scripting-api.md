@@ -7495,6 +7495,82 @@ router_details("INST_ROUTER")
 </TabItem>
 </Tabs>
 
+## Microservices
+
+There is no dedicated scripting API method for microservices like there is for [interfaces](#get_all_interface_info) and [routers](#get_all_router_info). Instead, a script can call the same REST endpoints the Admin Tool's Microservices tab uses, through the script's existing connection to the COSMOS API. The request is authenticated as the user running the script, so no extra login is needed.
+
+| Method | Endpoint                                   | Required Permission | Returns                                                                                                                                                       |
+| ------ | ------------------------------------------ | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/openc3-api/microservices`                | `system`            | Array of microservice names in the scope                                                                                                                      |
+| GET    | `/openc3-api/microservices/all`            | `system`            | Hash of microservice name to its configuration (`plugin`, `target_names`, `enabled`, `cmd`, `env`, and more)                                                  |
+| GET    | `/openc3-api/microservices/<Name>`         | `system`            | Configuration of one microservice, or HTTP 404 if it does not exist                                                                                           |
+| GET    | `/openc3-api/microservice_status/all`      | `system`            | Hash of microservice name to its status                                                                                                                       |
+| GET    | `/openc3-api/microservice_status/<Name>`   | `system`            | Status of one microservice, or `null` if it has not reported a status                                                                                         |
+| POST   | `/openc3-api/microservices/<Name>/start`   | `admin`             | Enables the microservice so the operator starts it                                                                                                            |
+| POST   | `/openc3-api/microservices/<Name>/stop`    | `admin`             | Disables the microservice so the operator stops it                                                                                                            |
+
+Microservice names have the form `<SCOPE>__<TYPE>__<NAME>`, for example `DEFAULT__DECOM__INST`. Microservices defined with the plugin [MICROSERVICE](/docs/configuration/plugins#microservice-1) keyword have the type `USER` and the uppercased name from that keyword, so the demo's `MICROSERVICE EXAMPLE openc3-example` becomes `DEFAULT__USER__OPENC3-EXAMPLE`.
+
+The start and stop endpoints return HTTP 200 even if the microservice does not exist, so check the name against `/openc3-api/microservices` first. Statuses are not deleted when a microservice is removed, so `/openc3-api/microservice_status/all` can include microservices that no longer exist, and `/openc3-api/microservice_status/<Name>` returns `null` (not 404) for an unknown name. Requests made this way are not skipped in Script Runner's disconnect mode, so start and stop take effect even while disconnected.
+
+Each status contains:
+
+| Key        | Description                                                                                                                                                                             |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| name       | Microservice name                                                                                                                                                                       |
+| state      | Current state reported by the microservice, e.g. `INITIALIZED`, `RUNNING`, `STOPPED`, `DIED_ERROR`. Microservices can also report their own states.                                     |
+| count      | Number of work cycles the microservice has completed (packets processed for most built-in microservices)                                                                               |
+| error      | Last error, or `null`. Ruby microservices report the exception as a hash with `class`, `message`, and `backtrace` keys. Python microservices report it as a string.                     |
+| custom     | Extra status data set by the microservice, or `null`                                                                                                                                    |
+| plugin     | Plugin that installed the microservice                                                                                                                                                  |
+| updated_at | Time of the last status update in nanoseconds since the epoch. A value that stops changing means the microservice is no longer reporting.                                               |
+
+The `error` and `custom` keys are not present for some microservices, so read them with a default as in the examples below.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+import json
+import time
+import openc3.script
+
+response = openc3.script.API_SERVER.request("get", "/openc3-api/microservice_status/all")
+if response.status_code != 200:
+    raise RuntimeError(f"Failed to get microservice status: {response.status_code} {response.text}")
+statuses = json.loads(response.text)
+for name, status in sorted(statuses.items()):
+    age = time.time() - status["updated_at"] / 1_000_000_000
+    print(f"{name}: {status['state']} count:{status['count']} updated:{age:.0f}s ago")
+    error = status.get("error")
+    if isinstance(error, dict):  # Ruby microservices report a hash
+        error = error.get("message")
+    if error:
+        print(f"  ERROR: {error}")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+response = $api_server.request('get', '/openc3-api/microservice_status/all')
+raise "Failed to get microservice status: #{response.status} #{response.body}" unless response.status == 200
+statuses = JSON.parse(response.body)
+statuses.sort.each do |name, status|
+  age = Time.now.to_f - (status['updated_at'] / 1_000_000_000.0)
+  puts "#{name}: #{status['state']} count:#{status['count']} updated:#{age.round}s ago"
+  error = status['error']
+  error = error['message'] if error.is_a?(Hash) # Ruby microservices report a hash
+  puts "  ERROR: #{error}" if error
+end
+```
+
+</TabItem>
+</Tabs>
+
+To check a single microservice, request `/openc3-api/microservice_status/<Name>` instead, e.g. `/openc3-api/microservice_status/DEFAULT__DECOM__INST`. To see whether a microservice is enabled, which plugin installed it, or which targets it handles, request `/openc3-api/microservices/<Name>` (or `/openc3-api/microservices/all` for every microservice) and read the `enabled`, `plugin`, and `target_names` keys.
+
 ## Tables
 
 These methods allow the user to script Table Manager.

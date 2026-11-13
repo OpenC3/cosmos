@@ -128,6 +128,23 @@ BORDERCOLOR:
       LABEL "Label 2"
     END
     SETTING BORDERCOLOR 155 50 155
+TEXTALIGN:
+  summary: Aligns the text within a widget
+  description: Sets the CSS text-align property. When applied to a layout
+    widget like VERTICAL it is inherited by the widgets inside it, which also
+    aligns buttons and other inline widgets.
+  parameters:
+    - name: Alignment
+      required: true
+      description: How to align the text
+      values: ["LEFT", "CENTER", "RIGHT"]
+  example: |
+    LABEL "Centered Text"
+      SETTING TEXTALIGN CENTER
+    VERTICAL
+      SETTING TEXTALIGN CENTER
+      BUTTON 'Centered' "api.cmd('INST ABORT')"
+    END
 RAW:
   summary: Apply a raw CSS stylesheet key and value
   parameters:
