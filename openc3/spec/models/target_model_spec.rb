@@ -1273,6 +1273,12 @@ module OpenC3
         expect { model.check_limits_groups(build_system({ "POWER" => [], "POWER.ENABLED" => [] })) }.to raise_error(/POWER.ENABLED and LIMITS_GROUP POWER would share the column POWER_ENABLED/)
       end
 
+      it "refuses a group which shares a QuestDB column with a reserved item" do
+        expect { model.check_limits_groups(build_system({ "PACKET.TIMESECONDS" => [] })) }.to \
+          raise_error(/LIMITS_GROUP PACKET.TIMESECONDS would share the column PACKET_TIMESECONDS with the reserved item PACKET_TIMESECONDS in INST LIMITS_GROUP/)
+        expect { model.check_limits_groups(build_system({ "COSMOS-EXTRA" => [] })) }.to raise_error(/reserved item COSMOS_EXTRA/)
+      end
+
       it "ignores collisions with groups of other targets" do
         install_groups("INST2", { "TEMP_A" => [] })
         expect { model.check_limits_groups(build_system({ "TEMP.A" => [] })) }.to_not raise_error

@@ -575,6 +575,28 @@ class TestPacketConfig(unittest.TestCase):
                 [["TGT1", "LIMITS_GROUP", "THERMAL"], ["TGT2", "LIMITS_GROUP", "POWER"]],
             )
 
+    def test_complains_about_a_nested_group_name_limits_group_does_not_accept(self):
+        for member in [
+            '"CHILD GROUP"',
+            'TGT2 LIMITS_GROUP "CHILD GROUP"',
+            "CHILD__GROUP",
+            "TGT2 LIMITS_GROUP CHILD_ENABLED",
+            "RECEIVED_COUNT",
+        ]:
+            with self.subTest(member=member), tempfile.NamedTemporaryFile(mode="w") as tf:
+                tf.write("LIMITS_GROUP SPACECRAFT\n")
+                tf.write(f"LIMITS_GROUP_ITEM {member}\n")
+                tf.seek(0)
+                with self.assertRaises(ConfigParser.Error):
+                    self.pc.process_file(tf.name, "TGT1")
+        # Items of other packets aren't group names
+        with tempfile.NamedTemporaryFile(mode="w") as tf:
+            tf.write("LIMITS_GROUP SPACECRAFT\n")
+            tf.write('LIMITS_GROUP_ITEM TGT2 PKT "ITEM NAME"\n')
+            tf.seek(0)
+            self.pc.process_file(tf.name, "TGT1")
+            self.assertEqual(self.pc.limits_groups["TGT1"]["SPACECRAFT"], [["TGT2", "PKT", "ITEM NAME"]])
+
     def test_build_limits_group_packet_adds_nothing_without_limits_groups(self):
         self.pc.build_limits_group_packet("TGT1")
         self.assertNotIn("TGT1", self.pc.telemetry)
@@ -1935,7 +1957,7 @@ class TestPacketConfig(unittest.TestCase):
             # Group names can't contain spaces but their members can
             tf.write("LIMITS_GROUP GROUP\n")
             tf.write('  LIMITS_GROUP_ITEM "TARGET NAME" "PACKET NAME" "ITEM NAME"\n')
-            tf.write('  LIMITS_GROUP_ITEM "CHILD GROUP"\n')
+            tf.write("  LIMITS_GROUP_ITEM CHILD_GROUP\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "SYSTEM")
 
@@ -1947,7 +1969,7 @@ class TestPacketConfig(unittest.TestCase):
             limits_file = os.path.join(output_dir, "SYSTEM", "cmd_tlm", "limits_groups.txt")
             with open(limits_file) as f:
                 content = f.read()
-                self.assertIn('  LIMITS_GROUP_ITEM "CHILD GROUP"\n', content)
+                self.assertIn("  LIMITS_GROUP_ITEM CHILD_GROUP\n", content)
                 self.assertIn('"TARGET NAME"', content)
                 self.assertIn('"PACKET NAME"', content)
                 self.assertIn('"ITEM NAME"', content)

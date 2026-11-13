@@ -237,6 +237,11 @@ class PacketConfig:
                                 item = [process_target_name, self.LIMITS_GROUP_PACKET, params[0].upper()]
                             else:
                                 item = [params[0].upper(), params[1].upper(), params[2].upper()]
+                            # A member in a LIMITS_GROUP packet is always a nested group so its
+                            # name must be one LIMITS_GROUP accepts (the child can be installed later)
+                            if item[1] == self.LIMITS_GROUP_PACKET:
+                                parser.verify_parameter_naming(len(params), usage)
+                                self._verify_limits_group_name(parser, item[2], usage)
                             self.limits_groups[process_target_name][self.current_limits_group].append(item)
 
                     #######################################################################

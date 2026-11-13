@@ -269,6 +269,12 @@ module OpenC3
               else
                 item = [params[0].to_s.upcase, params[1].to_s.upcase, params[2].to_s.upcase]
               end
+              # A member in a LIMITS_GROUP packet is always a nested group so its
+              # name must be one LIMITS_GROUP accepts (the child can be installed later)
+              if item[1] == LIMITS_GROUP_PACKET
+                parser.verify_parameter_naming(params.length, usage)
+                verify_limits_group_name(parser, item[2], usage)
+              end
               @limits_groups[process_target_name][@current_limits_group] << item
             end
 

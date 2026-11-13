@@ -554,6 +554,25 @@ module OpenC3
           tf.unlink
         end
 
+        it "complains about a nested group name LIMITS_GROUP doesn't accept" do
+          ['"CHILD GROUP"', 'TGT2 LIMITS_GROUP "CHILD GROUP"', 'CHILD__GROUP', 'TGT2 LIMITS_GROUP CHILD_ENABLED', 'RECEIVED_COUNT'].each do |member|
+            tf = Tempfile.new('unittest')
+            tf.puts 'LIMITS_GROUP SPACECRAFT'
+            tf.puts "LIMITS_GROUP_ITEM #{member}"
+            tf.close
+            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error)
+            tf.unlink
+          end
+          # Items of other packets aren't group names
+          tf = Tempfile.new('unittest')
+          tf.puts 'LIMITS_GROUP SPACECRAFT'
+          tf.puts 'LIMITS_GROUP_ITEM TGT2 PKT "ITEM NAME"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.limits_groups["TGT1"]["SPACECRAFT"]).to eql [["TGT2", "PKT", "ITEM NAME"]]
+          tf.unlink
+        end
+
         it "complains about two parameters" do
           tf = Tempfile.new('unittest')
           tf.puts 'LIMITS_GROUP TVAC'

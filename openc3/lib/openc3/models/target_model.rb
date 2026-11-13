@@ -900,10 +900,16 @@ module OpenC3
       new_groups = system.limits.groups[@name] || {}
       return if new_groups.empty?
 
-      # QuestDB replaces characters it doesn't allow with '_' so TEMP.A and TEMP_A share a column
+      # QuestDB replaces characters it doesn't allow with '_' so TEMP.A and TEMP_A share a column.
+      # The parser rejects the reserved item names but not ones which only match once sanitized.
+      reserved = Packet::RESERVED_ITEM_NAMES.to_h { |name| [QuestDBClient.sanitize_column_name(name), name] }
       columns = {}
       new_groups.each_key do |group|
         limits_group_columns(group).each do |column|
+          if reserved[column]
+            raise "LIMITS_GROUP #{group} would share the column #{column} with the reserved item #{reserved[column]} in #{@name} #{PacketConfig::LIMITS_GROUP_PACKET}. Rename it."
+          end
+
           other = columns[column]
           if other and other != group
             raise "LIMITS_GROUP #{group} and LIMITS_GROUP #{other} would share the column #{column} in #{@name} #{PacketConfig::LIMITS_GROUP_PACKET}. Rename one of them."
