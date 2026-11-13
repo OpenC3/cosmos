@@ -15,8 +15,6 @@
 # if purchased from OpenC3, Inc.
 */
 
-import { OpenC3Api } from '@openc3/js-common/services'
-
 export default {
   props: {
     refreshInterval: {
@@ -27,11 +25,7 @@ export default {
   data() {
     return {
       updater: null,
-      api: null,
     }
-  },
-  created() {
-    this.api = new OpenC3Api()
   },
   mounted() {
     this.changeUpdater()

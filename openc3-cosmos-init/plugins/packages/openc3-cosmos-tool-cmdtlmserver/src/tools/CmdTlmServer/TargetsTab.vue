@@ -133,7 +133,7 @@
 </template>
 
 <script>
-import { Api, Cable } from '@openc3/js-common/services'
+import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import { UpgradeToEnterpriseDialog } from '@openc3/vue-common/components'
 import Updater from './Updater'
 
@@ -148,6 +148,7 @@ export default {
   },
   data() {
     return {
+      api: new OpenC3Api(),
       search: '',
       data: [],
       cable: new Cable(),

@@ -87,6 +87,7 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/js-common/services'
 import Updater from './Updater'
 import RawDialog from './RawDialog'
 
@@ -107,6 +108,7 @@ export default {
   },
   data() {
     return {
+      api: new OpenC3Api(),
       search: '',
       data: [],
       headers: [

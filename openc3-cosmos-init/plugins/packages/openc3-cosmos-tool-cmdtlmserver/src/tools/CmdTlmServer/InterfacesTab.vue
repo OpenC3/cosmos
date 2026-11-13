@@ -112,6 +112,7 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/js-common/services'
 import Updater from './Updater'
 import InterfaceFlowChart from './InterfaceComponents/InterfaceFlowChart.vue'
 
@@ -126,6 +127,7 @@ export default {
   },
   data() {
     return {
+      api: new OpenC3Api(),
       search: '',
       data: [],
       buttonsDisabled: false,

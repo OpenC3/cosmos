@@ -68,6 +68,7 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/js-common/services'
 import Updater from '../Updater'
 import RawBuffer from '../RawBuffer.vue'
 import FlowMetricsPanel from './FlowMetricsPanel.vue'
@@ -104,7 +105,7 @@ export default {
   emits: ['close'],
   data() {
     return {
-      api: null,
+      api: new OpenC3Api(),
       headers: [
         { title: 'Property', key: 'key', width: '30%' },
         { title: 'Value', key: 'value', width: '70%' },
