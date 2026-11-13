@@ -966,9 +966,13 @@ const PYTHON_IMPORT_REGEX = /^\s*(import|from) /
 const PYTHON_BLOCK_REGEX = /^\s*(if|def|while|else|elif|class).*:\s*$/
 const PYTHON_FSTRING_REGEX = /\(f"/ // f strings
 
-// Lines that never execute so a breakpoint on them would never be hit:
-// blank, comment only, or a bare Ruby 'end' (optionally with a trailing comment)
-const NON_EXECUTABLE_LINE_REGEX = /^\s*(end\s*)?(#.*)?$/
+// Lines that never execute so a breakpoint on them would never be hit: blank,
+// comment only, or a line that only closes or continues a block, optionally
+// with a trailing comment. Ruby: end, else, ensure, rescue (with or without an
+// exception list). Python: else:, try:, finally:, except ...:. Either: a line
+// of only closing brackets.
+const NON_EXECUTABLE_LINE_REGEX =
+  /^\s*(end|else|ensure|rescue\b[^#]*|else:|try:|finally:|except\b[^#]*:|[)\]}]+)?\s*(#.*)?$/
 
 const RUBY_SUITE_TEMPLATE = `require 'openc3/script/suite.rb'
 
@@ -1327,16 +1331,29 @@ export default {
       return !this.liveScriptId
     },
     gotoDisabled: function () {
+      return this.gotoDisabledReason !== null
+    },
+    // Why Goto can't run right now, or null if it can
+    gotoDisabledReason: function () {
       const line = Number.parseInt(this.gotoLineNumber, 10)
       if (Number.isNaN(line) || line < 1) {
-        return true
+        return 'Enter a line number of 1 or more'
       }
       if (!this.scriptActive) {
         // Before start Goto sets the line Start runs from. Suites have no Start.
-        return this.suiteRunner || this.startOrGoDisabled
+        if (this.suiteRunner) {
+          return 'Suites run from the suite buttons, so Goto cannot set a start line'
+        }
+        if (this.startOrGoDisabled) {
+          return 'Start is not available right now'
+        }
+        return null
       }
       // Goto repositions execution without running, so only while stopped on a line
-      return !this.stoppedOnLine
+      if (!this.stoppedOnLine) {
+        return 'Pause the script before using Goto'
+      }
+      return null
     },
     // A live script stopped on a line, the only time the backend accepts
     // goto and execute selection
@@ -2454,9 +2471,12 @@ export default {
       if (session.getBreakpoints(row, 0)[row]) {
         // Always allow clearing, even if the line has since become blank
         session.clearBreakpoint(row)
-      } else if (!NON_EXECUTABLE_LINE_REGEX.test(session.getLine(row))) {
+      } else if (this.canBreakOnRow(row, session)) {
         session.setBreakpoint(row)
       }
+    },
+    canBreakOnRow: function (row, session = this.editor.session) {
+      return !NON_EXECUTABLE_LINE_REGEX.test(session.getLine(row))
     },
     updateBreakpoints: function ($event, session) {
       if ($event.lines.length <= 1) {
@@ -2496,9 +2516,13 @@ export default {
     },
     restoreBreakpoints: function (filename) {
       this.clearBreakpoints()
-      this.breakpoints[filename]?.forEach((breakpoint) => {
-        this.editor.session.setBreakpoint(breakpoint)
-      })
+      // Skip saved breakpoints on lines that can no longer be hit, for
+      // example after the file was edited elsewhere
+      this.breakpoints[filename]
+        ?.filter((breakpoint) => this.canBreakOnRow(breakpoint))
+        .forEach((breakpoint) => {
+          this.editor.session.setBreakpoint(breakpoint)
+        })
     },
     deleteAllBreakpoints: function () {
       this.$dialog
@@ -2865,6 +2889,15 @@ export default {
       }
       const line = Number.parseInt(this.gotoLineNumber, 10)
       if (this.scriptActive) {
+        // The backend errors on a line past the end of the file, so check here
+        const lastLine = this.editor.session.getLength()
+        if (line > lastLine) {
+          this.$notify.caution({
+            title: `Cannot goto line ${line}`,
+            body: `${this.currentFilename || 'The script'} has ${lastLine} lines`,
+          })
+          return
+        }
         this.executeRange(line)
       } else {
         this.setPendingStartLine(line)
@@ -4092,17 +4125,39 @@ export default {
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect
     },
-    // Returns the line of a debug prompt GOTO 32 or goto(32), otherwise null
-    parseDebugGotoLine(text) {
+    // Parses a debug prompt goto. Returns null if the text is not a goto,
+    // otherwise { line } where line is null unless the goto is a bare line
+    // number such as GOTO 32 or goto(32)
+    parseDebugGoto(text) {
       let args = text.trim()
-      if (!/^goto[\s(]/i.test(args)) {
+      if (!/^goto(?=[\s(]|$)/i.test(args)) {
         return null
       }
       args = args.slice(4).trim()
       if (args.startsWith('(') && args.endsWith(')')) {
         args = args.slice(1, -1).trim()
       }
-      return /^\d+$/.test(args) ? Number.parseInt(args, 10) : null
+      return { line: /^\d+$/.test(args) ? Number.parseInt(args, 10) : null }
+    },
+    // Before start, GOTO <line> sets the line Start runs from. Anything else
+    // can't run yet, so say why rather than silently ignoring it.
+    setStartLineFromDebugGoto(gotoTarget) {
+      if (gotoTarget.line === null) {
+        this.$notify.caution({
+          title: 'Goto not set',
+          body: 'Before Start, GOTO only takes a line number in this file, for example GOTO 12',
+        })
+        return
+      }
+      this.gotoLineNumber = gotoTarget.line
+      if (this.gotoDisabled) {
+        this.$notify.caution({
+          title: 'Goto not set',
+          body: this.gotoDisabledReason,
+        })
+        return
+      }
+      this.setPendingStartLine(this.gotoLineNumber)
     },
     debugKeydown(event) {
       if (event.key === 'Escape') {
@@ -4111,13 +4166,9 @@ export default {
       } else if (event.key === 'Enter') {
         this.debugHistory.push(this.debug)
         this.debugHistoryIndex = this.debugHistory.length
-        // Before start, GOTO <line> sets the line Start runs from
-        const gotoLine = this.parseDebugGotoLine(this.debug)
-        if (!this.scriptActive && gotoLine !== null) {
-          this.gotoLineNumber = gotoLine
-          if (!this.gotoDisabled) {
-            this.setPendingStartLine(this.gotoLineNumber)
-          }
+        const gotoTarget = this.parseDebugGoto(this.debug)
+        if (!this.scriptActive && gotoTarget !== null) {
+          this.setStartLineFromDebugGoto(gotoTarget)
         }
         // Post the code to /debug, output is processed by receive()
         if (this.liveScriptId) {

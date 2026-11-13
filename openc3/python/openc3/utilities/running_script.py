@@ -271,8 +271,9 @@ else:
 
 
 class RunningScript:
-    class InvalidStartLineError(Exception):
-        """Goto, Run From Line, or Execute Selection would start or end inside a method or block"""
+    class InvalidStartLineError(RuntimeError):
+        """Goto, Run From Line, or Execute Selection can't start at the requested line,
+        for example a line past the end of the file or inside a method or block"""
 
     @staticmethod
     def validate_partial_script(text, partial_text, filename, line_no, end_line_no):
@@ -375,6 +376,7 @@ class RunningScript:
         self.line_offset = 0
         self.output_io = StringIO("")
         self.capturing_output = False
+        self.executing_selection = False
         self.output_io_mutex = Lock()
         self.continue_after_error = True
         self.debug_text = None
@@ -556,6 +558,7 @@ class RunningScript:
         self.script_status.line_no = 0
         self.current_file = None
         self.execute_while_paused_info = None
+        self.executing_selection = False
 
     def unique_filename(self):
         if self.script_status.filename and self.script_status.filename != "":
@@ -693,45 +696,33 @@ class RunningScript:
         self.handle_output_io(filename, line_number)
         self.wait_for_go_or_stop()
 
-    # Matches the arguments of a debug prompt goto: an optional filename (quoted
-    # or not, followed by spaces and/or a comma) and then a line number
-    DEBUG_GOTO_ARGS_REGEX = re.compile(
-        r"""(?:(?P<quote>["']?)(?P<filename>[^\s"',()]+)(?P=quote)[\s,]+)?(?P<line_no>\d+)"""
-    )
-
     @staticmethod
-    def parse_debug_goto(debug_text):
-        """Parse a debug prompt goto with or without parens and an optional filename:
-        GOTO 32, goto(32), goto INST/procedures/other.py 12, goto("other.py", 12)
-        Returns (filename or None, line_no) or None if the text is not a goto."""
+    def normalize_debug_goto(debug_text):
+        """The debug prompt accepts goto in any case and without parentheses:
+        GOTO 32, Goto(32), goto "other.py", 12. Returns the text as a call to the
+        goto script API, or None if the text is not a goto."""
         text = debug_text.strip()
-        if not re.match(r"goto[\s(]", text, re.IGNORECASE):
+        match = re.match(r"goto(?=[\s(]|$)", text, re.IGNORECASE)
+        if not match:
             return None
         args = text[4:].strip()
         if args.startswith("(") and args.endswith(")"):
-            args = args[1:-1].strip()
-        match = RunningScript.DEBUG_GOTO_ARGS_REGEX.fullmatch(args)
-        if not match:
-            return None
-        filename = match.group("filename")
-        # A filename needs an extension so "goto 5 6" isn't read as file "5"
-        if filename and "." not in filename:
-            return None
-        return filename, int(match.group("line_no"))
+            return "goto" + args
+        return f"goto({args})"
 
     def debug(self, debug_text):
         try:
             self.handle_output_io()
 
-            goto_target = RunningScript.parse_debug_goto(debug_text)
-            if goto_target:
-                filename, line_no = goto_target
-                self.execute_while_paused(filename or self.current_filename(), line_no, bind_variables=True)
-                return
+            # GOTO 32 and Goto(32) call the goto script API, which hands off to
+            # execute_while_paused because debug doesn't run on the run thread
+            goto_text = RunningScript.normalize_debug_goto(debug_text)
+            if goto_text:
+                debug_text = goto_text
 
             use_script_engine = False
             extension = str(os.path.splitext(self.current_filename())[1]).lower()
-            if self.script_engine and extension != ".py":
+            if self.script_engine and extension != ".py" and not goto_text:
                 use_script_engine = True
 
             if not use_script_engine:
@@ -790,8 +781,14 @@ class RunningScript:
     # bind_variables of None binds only when filename is the currently running file
     def execute_while_paused(self, filename, line_no=1, end_line_no=None, bind_variables=None):
         state = self.script_status.state
+        if end_line_no is None and self.executing_selection:
+            # A goto inside Execute Selection would end the whole script when it completes
+            self.scriptrunner_puts("Cannot goto while Execute Selection is running")
+        elif end_line_no is None and state == "running" and not self.use_instrumentation:
+            # The goto would wait for the next instrumented line, which may be far away
+            self.scriptrunner_puts("Cannot goto while instrumentation is disabled")
         # Goto while running jumps at the start of the next line (see pre_line_instrumentation)
-        if state in ("paused", "error", "breakpoint") or (state == "running" and end_line_no is None):
+        elif state in ("paused", "error", "breakpoint") or (state == "running" and end_line_no is None):
             self.execute_while_paused_info = {
                 "filename": filename,
                 "line_no": line_no,
@@ -894,7 +891,10 @@ class RunningScript:
         if prompt:
             self.prompt_id = prompt["id"]
         while not self.go and not self.stop:
-            self.check_execute_while_paused()
+            if prompt:
+                self.discard_goto_during_prompt()
+            else:
+                self.check_execute_while_paused()
             _time.sleep(0.01)
             count += 1
             if count % 100 == 0:  # Approximately Every Second
@@ -966,12 +966,18 @@ class RunningScript:
                     state = self.script_status.state
                     current_filename = self.script_status.current_filename
                     line_no = self.script_status.line_no
-                    start(
-                        self.execute_while_paused_info.get("filename"),
-                        line_no=self.execute_while_paused_info.get("line_no"),
-                        end_line_no=self.execute_while_paused_info.get("end_line_no"),
-                        bind_variables=bind_variables,
-                    )
+                    # Restore rather than clear because a selection can pause and run another
+                    previous_executing_selection = self.executing_selection
+                    self.executing_selection = True
+                    try:
+                        start(
+                            self.execute_while_paused_info.get("filename"),
+                            line_no=self.execute_while_paused_info.get("line_no"),
+                            end_line_no=self.execute_while_paused_info.get("end_line_no"),
+                            bind_variables=bind_variables,
+                        )
+                    finally:
+                        self.executing_selection = previous_executing_selection
                     # Need to restore state after returning so that the correct line will be shown in ScriptRunner
                     self.script_status.state = state
                     self.script_status.current_filename = current_filename
@@ -1004,6 +1010,20 @@ class RunningScript:
                         self.scriptrunner_puts(str(error), "RED")
         finally:
             self.execute_while_paused_info = None
+
+    def discard_goto_during_prompt(self):
+        """A goto accepted while the script was running can still be queued when the
+        script stops on a prompt. Running it there would leave the prompt open, so
+        drop it and tell the user."""
+        info = self.execute_while_paused_info
+        if info is None:
+            return
+        self.execute_while_paused_info = None
+        self.scriptrunner_puts(
+            f"Goto to line {info.get('line_no')} canceled because the script is waiting on a prompt. "
+            "Answer the prompt and try again.",
+            "RED",
+        )
 
     def mark_running(self):
         self.update_running_script_store("running")
@@ -1451,7 +1471,9 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
         # Retrieve file
         text = TargetFile.body(RunningScript.instance.scope(), procedure_name)
         if not text:
-            raise RuntimeError(f"Unable to retrieve: {procedure_name} in scope {RunningScript.instance.scope()}")
+            raise RunningScript.InvalidStartLineError(
+                f"Unable to retrieve: {procedure_name} in scope {RunningScript.instance.scope()}"
+            )
         else:
             text = text.decode()
         running_script_anycable_publish(
@@ -1482,13 +1504,17 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
                     end_line_no = len(text_lines)
 
                 if line_no < 1 or line_no > len(text_lines):
-                    raise RuntimeError(f"Invalid start line number: {line_no} for {procedure_name}")
+                    raise RunningScript.InvalidStartLineError(
+                        f"Invalid start line number: {line_no} for {procedure_name}"
+                    )
 
                 if end_line_no < 1 or end_line_no > len(text_lines):
-                    raise RuntimeError(f"Invalid end line number: {end_line_no} for {procedure_name}")
+                    raise RunningScript.InvalidStartLineError(
+                        f"Invalid end line number: {end_line_no} for {procedure_name}"
+                    )
 
                 if line_no > end_line_no:
-                    raise RuntimeError(
+                    raise RunningScript.InvalidStartLineError(
                         f"Start line number {line_no} is greater than end line number {end_line_no} for {procedure_name}"
                     )
 
