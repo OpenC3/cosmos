@@ -48,3 +48,16 @@ class TestJson(unittest.TestCase):
     def test_leaves_unknown_float_raw_as_dict(self):
         string = '{"json_class": "Float", "raw": "bogus"}'
         self.assertEqual(json.loads(string, cls=JsonDecoder), {"json_class": "Float", "raw": "bogus"})
+
+    def test_decodes_python_special_floats(self):
+        # Python's json module writes bare NaN/Infinity literals and reads them back
+        # natively, so both forms have to decode to the same values
+        string = json.dumps({"nan": float("nan"), "inf": float("inf"), "ninf": float("-inf")}, cls=JsonEncoder)
+        decoded = json.loads(string, cls=JsonDecoder)
+        self.assertTrue(math.isnan(decoded["nan"]))
+        self.assertEqual(decoded["inf"], float("inf"))
+        self.assertEqual(decoded["ninf"], float("-inf"))
+
+    def test_leaves_unknown_json_class_as_dict(self):
+        string = '{"json_class": "Object", "raw": [1, 2]}'
+        self.assertEqual(json.loads(string, cls=JsonDecoder), {"json_class": "Object", "raw": [1, 2]})

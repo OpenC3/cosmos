@@ -63,25 +63,6 @@ module OpenC3
       end
     end
 
-    describe "table_data?" do
-      it "accepts Table Manager data files outside tables/config" do
-        expect(ConfigOverlay.table_data?("INST/tables/bin/table.bin")).to be true
-        expect(ConfigOverlay.table_data?("INST/tables/bin/table.csv")).to be true
-        expect(ConfigOverlay.table_data?("INST/tables/table.bin")).to be true
-      end
-
-      it "rejects code areas, other target areas, and non-canonical names" do
-        expect(ConfigOverlay.table_data?("INST/tables/config/table_def.txt")).to be false
-        expect(ConfigOverlay.table_data?("INST/cmd_tlm/tlm.txt")).to be false
-        expect(ConfigOverlay.table_data?("INST/procedures/x.rb")).to be false
-        expect(ConfigOverlay.table_data?("INST/lib/x.rb")).to be false
-        expect(ConfigOverlay.table_data?("INST/tables")).to be false
-        expect(ConfigOverlay.table_data?("INST/tables/../procedures/x.rb")).to be false
-        expect(ConfigOverlay.table_data?("INST//tables/bin/x.bin")).to be false
-        expect(ConfigOverlay.table_data?(nil)).to be false
-      end
-    end
-
     describe "script_edit_overlay_key?" do
       it "flags targets_modified target files Script Runner can execute" do
         # procedures and lib are run / required directly

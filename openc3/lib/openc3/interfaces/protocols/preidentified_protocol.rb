@@ -65,7 +65,9 @@ module OpenC3
       @write_extra = nil
       if packet.extra
         @write_flags |= COSMOS4_EXTRA_FLAG_MASK
-        @write_extra = packet.extra.as_json().to_json(allow_nan: true)
+        # Force binary so appending it can't promote data_to_send to UTF-8, which
+        # then raises Encoding::CompatibilityError on the binary fields that follow
+        @write_extra = packet.extra.as_json().to_json(allow_nan: true).b
       end
       return packet
     end
@@ -76,7 +78,9 @@ module OpenC3
       data_to_send << @sync_pattern if @sync_pattern
       data_to_send << @write_flags
       if @write_extra
-        data_to_send << [@write_extra.length].pack('N')
+        # Length field must count bytes, not characters, or a non-ASCII value in
+        # extra desyncs the receiver
+        data_to_send << [@write_extra.bytesize].pack('N')
         data_to_send << @write_extra
       end
       data_to_send << @write_time_seconds

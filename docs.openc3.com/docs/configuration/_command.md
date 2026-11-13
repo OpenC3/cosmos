@@ -49,6 +49,8 @@ Command Authority can be enabled in the Admin Console under the Scopes tab and i
 
 Critical Commanding can be enabled in the Admin Console under the Scopes tab and is enabled scope wide. Critical commanding requires a different user to approve critical commands. When Critical Commanding mode is set to NORMAL, HAZARDOUS and RESTRICTED commands need approval. When Critical Commanding mode is set to ALL, all manual commands will require approval. OFF is the default, and disables Critical Commanding.
 
+When Critical Commanding is enabled, the Critical Cmd Approvers setting on the Scopes tab sets how many different users must approve each critical command before it is sent, from 1 to 10. The default is 1. The user who sent the command can't approve it, and each approver must be a different user. The approval dialog shows the number of approvals so far (for example 1/2) and stays open until enough users have approved or anyone rejects the command. Command History lists all approvers as a comma separated list. The setting applies to every critical command in the scope, and changing it doesn't affect commands that are already waiting for approval.
+
 Here is an example of sending a HAZARDOUS command in Command Sender when Critical Command Mode is set to NORMAL.
 
 ![Critical Command](/img/cmd_tlm_server/critical_cmd_sender.png)

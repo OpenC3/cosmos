@@ -376,6 +376,23 @@ class TestPacketLogWriter(unittest.TestCase):
         self.assertEqual(pkt._received_time_nsec, received_time_nsec)
         reader.close()
 
+    def test_write_with_binary_extra_metadata(self):
+        """writes and reads back binary values in JSON extra metadata"""
+        time_nsec = int(time.time() * 1e9)
+        extra = {"data": b"\xff\x00", "name": "test"}
+
+        plw = PacketLogWriter(self.temp_dir, "test")
+        plw.write("RAW_PACKET", "TLM", "TGT1", "PKT1", time_nsec, False, b"\x01\x02", None, "0-0", extra=extra)
+        filename = plw.filename
+        plw.shutdown()
+
+        reader = PacketLogReader()
+        reader.open(filename)
+        pkt = reader.read()
+        self.assertEqual(pkt.extra.get("data"), b"\xff\x00")
+        self.assertEqual(pkt.extra.get("name"), "test")
+        reader.close()
+
     def test_write_with_extra_metadata(self):
         """writes packets with extra metadata"""
         time_nsec = int(time.time() * 1e9)

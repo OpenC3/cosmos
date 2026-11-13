@@ -78,7 +78,7 @@ export default {
     },
     tooltipDelay: function () {
       const setting = this.appliedSettings.find((s) => s[0] === 'TOOLTIP')
-      return setting && setting[2] ? parseInt(setting[2]) : 600
+      return setting?.[2] ? parseInt(setting[2]) : 600
     },
     computedStyle: function () {
       // Take all the COSMOS settings and create appliedStyle with actual css values
@@ -329,14 +329,12 @@ export default {
       )
       if (foundSetting) {
         return foundSetting['WIDTH']
+      } else if (width) {
+        this.appliedSettings.push(['WIDTH', `${width}${units}`])
+        return parseInt(width)
       } else {
-        if (width) {
-          this.appliedSettings.push(['WIDTH', `${width}${units}`])
-          return parseInt(width)
-        } else {
-          this.appliedSettings.push(['WIDTH', `${defaultWidth}${units}`])
-          return parseInt(defaultWidth)
-        }
+        this.appliedSettings.push(['WIDTH', `${defaultWidth}${units}`])
+        return parseInt(defaultWidth)
       }
     },
     setHeight(height, units = 'px', defaultHeight = '20') {
@@ -347,14 +345,12 @@ export default {
       )
       if (foundSetting) {
         return foundSetting['HEIGHT']
+      } else if (height) {
+        this.appliedSettings.push(['HEIGHT', `${height}${units}`])
+        return parseInt(height)
       } else {
-        if (height) {
-          this.appliedSettings.push(['HEIGHT', `${height}${units}`])
-          return parseInt(height)
-        } else {
-          this.appliedSettings.push(['HEIGHT', `${defaultHeight}${units}`])
-          return parseInt(defaultHeight)
-        }
+        this.appliedSettings.push(['HEIGHT', `${defaultHeight}${units}`])
+        return parseInt(defaultHeight)
       }
     },
     // Expects an array, can either be a single color or 3 rgb values

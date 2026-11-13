@@ -196,10 +196,7 @@ export default {
     update: function () {
       Api.get('/openc3-api/bridges/all')
         .then((response) => {
-          let bridges = []
-          for (const [_name, bridge] of Object.entries(response.data)) {
-            bridges.push(bridge)
-          }
+          let bridges = Object.values(response.data)
           bridges.sort((a, b) => a.name.localeCompare(b.name))
           this.bridges = bridges
         })

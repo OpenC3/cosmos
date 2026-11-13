@@ -12,7 +12,7 @@
 */
 
 const fileIcon = function (filename) {
-  if (filename && filename.includes('.')) {
+  if (filename?.includes('.')) {
     let ext = filename.split('.').pop()
     if (ext === 'py') {
       return 'mdi-language-python'

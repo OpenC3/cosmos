@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -31,7 +31,7 @@ export default {
     },
     getTooltipDelay(widget) {
       const setting = widget.settings?.find((s) => s[0] === 'TOOLTIP')
-      return setting && setting[2] ? parseInt(setting[2]) : 600
+      return setting?.[2] ? parseInt(setting[2]) : 600
     },
     getTooltipActivatorProps(widget) {
       // Check if widget has explicit width set - if so, don't apply flex grow
