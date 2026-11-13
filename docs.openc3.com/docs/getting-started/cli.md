@@ -18,7 +18,7 @@ Usage:
   cli irb                           # Runs irb in the local directory
   cli script                        # Interact with scripts. Run with --help for more info.
   cli validate /PATH/FILENAME.gem SCOPE variables.json  # Validate a COSMOS plugin gem file
-  cli load /PATH/FILENAME.gem SCOPE plugin_hash.json    # Loads a COSMOS plugin gem file
+  cli load /PATH/FILENAME.gem SCOPE plugin_hash.json [force] [enforce_dependencies]  # Loads a COSMOS plugin gem file
     OPTIONS: --variables lets you pass a path to a JSON file containing your plugin\'s variables
   cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given
   cli unload PLUGIN_NAME [SCOPE]    # Unload an installed COSMOS plugin
@@ -316,6 +316,8 @@ Updating local plugin files: /plugins/DEFAULT/openc3-cosmos-cfdp
 ```
 
 You can optionally pass it the scope to install the plugin in (for Enterprise) and the path to a JSON file containing the entire `plugin_hash` for your plugin. This lets you manually set things like the installed name, `updated_at` timestamp, and other properties. Use this carefully.
+
+For manual installs, you can append `enforce_dependencies` to make the plugin install fail and roll back if Python dependency installation fails. Without that flag, pip dependency failures log a warning and the install continues.
 
 There is also a `--variables` option, which allows you to pass the path to a JSON file containing your plugin variables. This is the same as the optional variables file mentioned above for `cli validate`.
 
