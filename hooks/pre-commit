@@ -45,6 +45,24 @@ def build_copyright_header(file, year)
   end
 end
 
+# New files are often copied from existing ones, which drags along the Ball
+# Aerospace copyright. Return the content without its leading comment block if
+# that block mentions Ball Aerospace, otherwise nil.
+def strip_ball_header(file, content)
+  block =
+    case File.extname(file).downcase
+    when *JS_COMMENT_EXTENSIONS
+      content[/\A\s*\/\*.*?\*\/[ \t]*\n*/m]
+    when *HTML_COMMENT_EXTENSIONS
+      content[/\A\s*<!--.*?-->[ \t]*\n*/m]
+    else
+      content[/\A(?:[ \t]*#.*\n|[ \t]*\n)+/]
+    end
+  return nil unless block&.match?(/Ball Aerospace/i)
+
+  content.delete_prefix(block)
+end
+
 # Track if any files were modified
 files_modified = false
 
@@ -58,6 +76,9 @@ staged_files.each do |file|
   # Skip files in the hooks directory
   next if file.start_with?('hooks/')
 
+  # Skip template files for plugin generation
+  next if file.start_with?('openc3/templates/')
+
   # Skip vendored/third-party JS files
   next if file.start_with?('openc3-cosmos-init/plugins/packages/openc3-tool-base/public/js/')
 
@@ -70,6 +91,12 @@ staged_files.each do |file|
   end
 
   original_content = content.dup
+
+  # A new file must only carry the OpenC3 header, so replace a copied Ball one
+  if added_files.include?(file) && (stripped = strip_ball_header(file, content))
+    content = stripped
+    puts "Replaced Ball Aerospace header in: #{file}"
+  end
 
   # Check if file has an OpenC3 copyright header
   has_copyright = content.match?(/^[#\/\*\s]*Copyright\s+\d{4}\s+OpenC3,\s+Inc\./i) ||
