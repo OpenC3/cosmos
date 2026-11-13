@@ -583,6 +583,14 @@ module OpenC3
         end
       end
 
+      it "uses keycloak authentication when only OPENC3_API_CLIENT_SECRET is set" do
+        OpenC3.spec_with_env('OPENC3_API_TOKEN' => nil, 'OPENC3_API_USER' => nil,
+                             'OPENC3_API_PASSWORD' => nil, 'OPENC3_API_CLIENT_SECRET' => 'm2m-secret',
+                             'OPENC3_KEYCLOAK_URL' => 'http://keycloak:8080') do
+          expect(api.generate_auth).to be_a(OpenC3KeycloakAuthentication)
+        end
+      end
+
       it "is used automatically when no authentication is passed" do
         OpenC3.spec_with_env('OPENC3_API_TOKEN' => 'token', 'OPENC3_API_USER' => nil,
                              'OPENC3_KEYCLOAK_URL' => 'http://keycloak:8080') do

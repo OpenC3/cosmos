@@ -100,6 +100,15 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
 
     # Load the token from the environment
     def token(self, include_bearer=True, openid_scope="openid"):
+        """Return the current Keycloak bearer token.
+
+        Args:
+            include_bearer: When True, prefix the returned token with ``Bearer``.
+            openid_scope: Scope to request when minting a new token.
+
+        Returns:
+            str: The access token, optionally prefixed with ``Bearer``.
+        """
         with self.auth_mutex:
             self.log = [None, None]
             current_time = time.time()
@@ -137,6 +146,15 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
 
     # Make the token and save token to instance
     def _make_token(self, current_time, openid_scope="openid"):
+        """Mint a new Keycloak access token.
+
+        Args:
+            current_time: Current UNIX timestamp used for cache bookkeeping.
+            openid_scope: Scope to request from Keycloak.
+
+        Returns:
+            None: The minted token is stored on the instance.
+        """
         client_id = OPENC3_API_CLIENT or "api"
         if OPENC3_API_CLIENT_SECRET:
             # Machine-to-machine client_credentials grant (no user, no refresh
@@ -202,6 +220,19 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
 
     # Make the post request to keycloak
     def _make_request(self, headers, data):
+        """Send a token request to Keycloak.
+
+        Args:
+            headers: HTTP headers for the token request.
+            data: URL-encoded form fields to send.
+
+        Returns:
+            dict[str, object]: Parsed JSON token response.
+
+        Raises:
+            OpenC3AuthenticationRetryableError: If Keycloak returns a 5xx response.
+            OpenC3AuthenticationError: If Keycloak returns any non-success response.
+        """
         realm = OPENC3_KEYCLOAK_REALM or "openc3"
         url = f"{self.url}/realms/{realm}/protocol/openid-connect/token"
 
@@ -227,12 +258,12 @@ class OpenC3KeycloakAuthentication(OpenC3Authentication):
 
 
 def authentication_from_environment():
-    """Build the authentication object selected by standard environment configuration.
+    """Build the standard OpenC3 authentication object from environment variables.
 
     Returns:
-        OpenC3Authentication | None: Keycloak authentication for an API token,
-        API user, or nonempty client secret; core authentication for a password;
-        otherwise ``None``.
+        OpenC3Authentication | OpenC3KeycloakAuthentication | None: A Keycloak
+        authentication object for API tokens, API users, or nonempty client
+        secrets; a core authentication object for passwords; otherwise ``None``.
     """
     if OPENC3_API_TOKEN is not None or OPENC3_API_USER is not None or OPENC3_API_CLIENT_SECRET:
         return OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)

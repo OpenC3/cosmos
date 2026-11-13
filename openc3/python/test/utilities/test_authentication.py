@@ -15,6 +15,7 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
+from openc3.io.json_api import JsonApi
 from openc3.io.json_api_object import JsonApiObject
 from openc3.script.server_proxy import ApiServerProxy
 from openc3.utilities.authentication import (
@@ -515,7 +516,6 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
         call_args = auth.http.post.call_args
         self.assertIn("client_id=custom_client", call_args.kwargs["data"])
 
-
     @patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", "m2m_secret")
     @patch("openc3.utilities.authentication.OPENC3_API_CLIENT", "cosmos-m2m")
     @patch("openc3.utilities.authentication.OPENC3_API_USER", None)
@@ -538,6 +538,7 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
         auth.http.post = Mock(return_value=mock_response)
 
         token = auth.token()
+
         self.assertEqual(token, "Bearer m2m_access_token")
         data = auth.http.post.call_args.kwargs["data"]
         self.assertIn("grant_type=client_credentials", data)
@@ -564,6 +565,7 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
         auth.http.post = Mock(return_value=mock_response)
 
         auth.token()
+
         data = auth.http.post.call_args.kwargs["data"]
         self.assertIn("grant_type=client_credentials", data)
         self.assertNotIn("password", data)
@@ -587,9 +589,9 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
         self.assertNotIn("m2m_secret", error_msg)
 
     @patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", "m2m_secret")
-    @patch("openc3.utilities.authentication.OPENC3_DEVEL", "true")
-    def test_client_secret_redacted_in_logs_when_debug_enabled(self):
-        """Redacts the client secret in error messages even when debug is enabled."""
+    @patch("openc3.utilities.authentication.OPENC3_DEVEL", "1")
+    def test_client_secret_obfuscated_in_logs_when_devel_enabled(self):
+        """Obfuscates the client secret in error messages when development logging is on."""
         auth = OpenC3KeycloakAuthentication(self.test_url)
         mock_response = Mock()
         mock_response.status_code = 401
@@ -622,32 +624,55 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
 
         token1 = auth.token()
         token2 = auth.token()
+
         self.assertEqual(token1, token2)
         self.assertEqual(auth.http.post.call_count, 1)
 
     @patch("openc3.utilities.authentication.OPENC3_API_CLIENT_SECRET", "m2m_secret")
     def test_client_credentials_re_mints_on_expiry(self):
-        """Re-mints the token when it expires with no refresh token available."""
+        """Re-mints the token when it expires because no refresh token exists."""
         auth = OpenC3KeycloakAuthentication(self.test_url)
-        mock_response = Mock()
-        mock_response.status_code = 200
-        mock_response.headers = {}
-        mock_response.text = json.dumps(
+        first_response = Mock()
+        first_response.status_code = 200
+        first_response.headers = {}
+        first_response.text = json.dumps(
             {
-                "access_token": "m2m_access_token",
+                "access_token": "m2m_access_token_1",
                 "expires_in": 1,
                 "token_type": "bearer",
             }
         )
-        auth.http.post = Mock(return_value=mock_response)
+        second_response = Mock()
+        second_response.status_code = 200
+        second_response.headers = {}
+        second_response.text = json.dumps(
+            {
+                "access_token": "m2m_access_token_2",
+                "expires_in": 600,
+                "token_type": "bearer",
+            }
+        )
+        auth.http.post = Mock(side_effect=[first_response, second_response])
 
         token1 = auth.token()
         time.sleep(2)
         token2 = auth.token()
-        self.assertEqual(token1, token2)
+
+        self.assertEqual(token1, "Bearer m2m_access_token_1")
+        self.assertEqual(token2, "Bearer m2m_access_token_2")
+        self.assertNotEqual(token1, token2)
         self.assertEqual(auth.http.post.call_count, 2)
 
-    def test_authentication_factory_selects_keycloak_for_client_secret(self):
+    def test_json_api_object_generate_auth_uses_client_credentials(self):
+        """JsonApiObject.generate_auth preserves client-credential auth from the shared factory."""
+        expected_auth = OpenC3KeycloakAuthentication("http://keycloak:8080/auth")
+        with patch(
+            "openc3.io.json_api_object.authentication_from_environment", return_value=expected_auth
+        ) as factory:
+            self.assertIs(JsonApiObject.generate_auth(), expected_auth)
+            factory.assert_called_once_with()
+
+    def test_authentication_factory_uses_keycloak_for_client_secret(self):
         """Selects Keycloak authentication for a nonempty M2M client secret."""
         with (
             patch("openc3.utilities.authentication.OPENC3_API_TOKEN", None),
@@ -690,6 +715,15 @@ class TestOpenC3KeycloakAuthentication(unittest.TestCase):
             "openc3.io.json_api_object.authentication_from_environment", return_value=expected_auth
         ) as factory:
             self.assertIs(JsonApiObject.generate_auth(), expected_auth)
+            factory.assert_called_once_with()
+
+    def test_json_api_generate_auth_delegates_to_shared_factory(self):
+        """Delegates authentication selection to the shared factory."""
+        expected_auth = Mock()
+        with patch(
+            "openc3.io.json_api.authentication_from_environment", return_value=expected_auth
+        ) as factory:
+            self.assertIs(JsonApi._generate_auth(), expected_auth)
             factory.assert_called_once_with()
 
     def test_api_server_proxy_generate_auth_delegates_to_shared_factory(self):

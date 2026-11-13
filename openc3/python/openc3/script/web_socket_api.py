@@ -267,7 +267,14 @@ class WebSocketApi:
             self.subscribed = False
 
     def _generate_auth(self):
-        """Build the appropriate token for OpenC3."""
+        """Build the appropriate authentication object for OpenC3.
+
+        Returns:
+            object: The configured authentication object.
+
+        Raises:
+            RuntimeError: If no supported authentication environment is set.
+        """
         authentication = authentication_from_environment()
         if authentication is None:
             raise RuntimeError("Environment Variables Not Set for Authentication")

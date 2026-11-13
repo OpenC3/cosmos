@@ -43,15 +43,52 @@ RSpec.describe RunningScript, type: :model do
   end
 
   describe "self.spawn" do
-    before do
-      # Only mock the process spawning parts to avoid actual process creation
+    around do |example|
+      previous_client = ENV['OPENC3_API_CLIENT']
+      previous_secret = ENV['OPENC3_API_CLIENT_SECRET']
+      previous_keycloak_url = ENV['OPENC3_KEYCLOAK_URL']
+      previous_pythonpath = ENV['PYTHONPATH']
+      example.run
+    ensure
+      ENV['OPENC3_API_CLIENT'] = previous_client
+      ENV['OPENC3_API_CLIENT_SECRET'] = previous_secret
+      ENV['OPENC3_KEYCLOAK_URL'] = previous_keycloak_url
+      ENV['PYTHONPATH'] = previous_pythonpath
+    end
+
+    def stub_child_process(environment = {})
       process_double = double("process")
       allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
       allow(process_double).to receive(:cwd=)
-      allow(process_double).to receive(:environment).and_return({})
+      allow(process_double).to receive(:environment).and_return(environment)
       allow(process_double).to receive(:detach=)
       allow(process_double).to receive(:start)
       allow(ChildProcess).to receive(:build).and_return(process_double)
+      environment
+    end
+
+    def stub_service_account_context(username: 'service-account-cosmos-m2m', client_id: 'cosmos-m2m', client_secret_name: 'cosmos-m2m', secret_store: nil)
+      auth_context_double = double(
+        'service_account_script_auth_model',
+        auth_kind: 'client_credentials',
+        client_id: client_id,
+        client_secret_name: client_secret_name,
+        secret_store: secret_store,
+      )
+      allow(OpenC3::ServiceAccountScriptAuthModel).to receive(:get_model).with(name: username, scope: 'DEFAULT').and_return(auth_context_double)
+      allow(OpenC3::OfflineAccessModel).to receive(:get_model).with(name: username, scope: 'DEFAULT').and_return(nil)
+      auth_context_double
+    end
+
+    def stub_secret_lookup(secret_name:, secret_store: nil, value:)
+      secret_client = double('secrets_client')
+      allow(OpenC3::Secrets).to receive(:getClient).and_return(secret_client)
+      allow(secret_client).to receive(:get).with(secret_name, secret_store: secret_store, scope: 'DEFAULT').and_return(value)
+      secret_client
+    end
+
+    before do
+      stub_child_process
     end
 
     it "spawns a ruby script process" do
@@ -66,6 +103,15 @@ RSpec.describe RunningScript, type: :model do
 
       result = RunningScript.spawn("DEFAULT", "script.py")
       expect(result).to eq(1)
+    end
+
+    it "prepends the checked-out OpenC3 Python source to PYTHONPATH" do
+      ENV['PYTHONPATH'] = '/custom/python/path'
+      process_env = stub_child_process
+
+      RunningScript.spawn('DEFAULT', 'script.py')
+
+      expect(process_env['PYTHONPATH']).to eq('/openc3/python:/custom/python/path')
     end
 
     it "creates a script status model with appropriate parameters" do
@@ -103,26 +149,74 @@ RSpec.describe RunningScript, type: :model do
       RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
     end
 
-    it "handles offline access token when username is provided" do
-      # We need to mock the offline access model and auth parts
+    it "passes a durable service-account client id and secret to child scripts" do
+      ENV['OPENC3_KEYCLOAK_URL'] = 'https://trusted-keycloak'
+      stub_service_account_context
+      stub_secret_lookup(secret_name: 'cosmos-m2m', value: 'stored-m2m-secret')
+      process_env = stub_child_process('OPENC3_KEYCLOAK_URL' => 'https://evil-keycloak')
+
+      RunningScript.spawn('DEFAULT', 'script.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m')
+
+      expect(process_env['OPENC3_API_CLIENT']).to eq('cosmos-m2m')
+      expect(process_env['OPENC3_API_CLIENT_SECRET']).to eq('stored-m2m-secret')
+      expect(process_env['OPENC3_KEYCLOAK_URL']).to eq('https://trusted-keycloak')
+      expect(process_env['OPENC3_API_TOKEN']).to be_nil
+      expect(process_env['OPENC3_API_PASSWORD']).to be_nil
+    end
+
+    it "rejects service-account scripts whose durable secret lookup is missing" do
+      stub_service_account_context(client_secret_name: nil)
+      stub_secret_lookup(secret_name: nil, value: nil)
+
+      expect {
+        RunningScript.spawn('DEFAULT', 'script.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m')
+      }.to raise_error('Service-account client cosmos-m2m missing secret nil')
+    end
+
+    it "rejects service-account scripts whose configured secret reference is missing" do
+      stub_service_account_context
+      stub_secret_lookup(secret_name: 'cosmos-m2m', value: nil)
+
+      expect {
+        RunningScript.spawn('DEFAULT', 'script.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m')
+      }.to raise_error('Service-account client cosmos-m2m missing secret cosmos-m2m')
+    end
+
+    it "rejects service-account scripts without a durable client-credentials context" do
+      allow(OpenC3::ServiceAccountScriptAuthModel).to receive(:get_model).with(name: 'service-account-cosmos-m2m', scope: 'DEFAULT').and_return(nil)
+      allow(OpenC3::OfflineAccessModel).to receive(:get_model).with(name: 'service-account-cosmos-m2m', scope: 'DEFAULT').and_return(nil)
+
+      expect {
+        RunningScript.spawn('DEFAULT', 'script.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m')
+      }.to raise_error('No durable machine authentication context available for service-account script service-account-cosmos-m2m')
+    end
+
+    it "ignores machine auth context lookup for non-service-account users" do
       model_double = double("model", offline_access_token: "valid_token", update: nil)
       auth_double = double("auth")
+      process_env = stub_child_process
+      allow(auth_double).to receive(:get_token_from_refresh_token).and_return(true)
+      allow(OpenC3::OpenC3KeycloakAuthentication).to receive(:new).and_return(auth_double)
+      expect(OpenC3::ServiceAccountScriptAuthModel).not_to receive(:get_model)
+      allow(OpenC3::OfflineAccessModel).to receive(:get_model).with(name: "testuser", scope: "DEFAULT").and_return(model_double)
+
+      RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
+
+      expect(process_env["OPENC3_API_TOKEN"]).to eq("valid_token")
+      expect(process_env["OPENC3_API_CLIENT_SECRET"]).to be_nil
+    end
+
+    it "handles offline access token when username is provided" do
+      model_double = double("model", offline_access_token: "valid_token", update: nil)
+      auth_double = double("auth")
+      process_env = stub_child_process
       allow(auth_double).to receive(:get_token_from_refresh_token).and_return(true)
       allow(OpenC3::OpenC3KeycloakAuthentication).to receive(:new).and_return(auth_double)
       allow(OpenC3::OfflineAccessModel).to receive(:get_model).with(name: "testuser", scope: "DEFAULT").and_return(model_double)
 
-      process_env_double = {}
-      process_double = double("process")
-      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
-      allow(process_double).to receive(:cwd=)
-      allow(process_double).to receive(:environment).and_return(process_env_double)
-      allow(process_double).to receive(:detach=)
-      allow(process_double).to receive(:start)
-      allow(ChildProcess).to receive(:build).and_return(process_double)
-
       RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
 
-      expect(process_env_double["OPENC3_API_TOKEN"]).to eq("valid_token")
+      expect(process_env["OPENC3_API_TOKEN"]).to eq("valid_token")
     end
 
     it "raises an error and cleans up script status if offline token is invalid" do
@@ -263,7 +357,7 @@ RSpec.describe RunningScript, type: :model do
         RunningScript.spawn("DEFAULT", "INST/script.py")
 
         env = @process_double.environment
-        expect(env['PYTHONPATH']).to eq('/custom/python/path')
+        expect(env['PYTHONPATH']).to eq('/openc3/python:/custom/python/path')
       end
 
       it "uses python_venv directly for venv resolution on temp scripts" do

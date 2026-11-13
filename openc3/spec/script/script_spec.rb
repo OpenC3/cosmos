@@ -74,5 +74,17 @@ module OpenC3
         expect(@methods).to eql %i(tlm limits_enabled? get_cmd stash_get list_configs)
       end
     end
+
+    describe '#generate_auth' do
+      it 'delegates server-proxy auth selection to the shared factory' do
+        expect(OpenC3).to receive(:authentication_from_environment).and_return(:auth)
+        expect(ServerProxy.allocate.send(:generate_auth)).to eq(:auth)
+      end
+
+      it 'delegates script-server-proxy auth selection to the shared factory' do
+        expect(OpenC3).to receive(:authentication_from_environment).and_return(:auth)
+        expect(ScriptServerProxy.allocate.send(:generate_auth)).to eq(:auth)
+      end
+    end
   end
 end
