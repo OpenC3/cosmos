@@ -374,7 +374,7 @@ function panelKey(event) {
   }
   if (fullscreenUid.value !== null && (key === 'v' || key === 'escape')) {
     event.preventDefault()
-    toggleFullscreen(fullscreenUid.value)
+    void toggleFullscreen(fullscreenUid.value)
     return
   }
   if (key === 'escape') return
@@ -382,7 +382,7 @@ function panelKey(event) {
   if (uid === null) return
   if (key === 'v' && !props.editing) {
     event.preventDefault()
-    toggleFullscreen(uid)
+    void toggleFullscreen(uid)
   } else if (key === 'e' && props.editing) {
     const panel = props.panels.find((p) => p.uid === uid)
     if (!panel) return
@@ -583,6 +583,11 @@ function nudge(panel, change) {
   )
   const layout = nudgeLayout(keyRun.snapshot, panel.uid, total, props.columns)
   if (!layout) return
+  // Clamped at an edge or size limit: don't count the press, or the next
+  // ones the other way would first have to undo it
+  const rect = layout[panel.uid]
+  const current = props.panels.find((p) => p.uid === panel.uid) ?? panel
+  if (['x', 'y', 'w', 'h'].every((key) => rect[key] === current[key])) return
   keyRun.total = total
   keyRun.layout = layout
   emit('layout', layout)

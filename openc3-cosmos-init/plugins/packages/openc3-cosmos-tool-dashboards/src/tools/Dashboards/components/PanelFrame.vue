@@ -57,7 +57,7 @@
         :href="subtitleLink"
         target="_blank"
         rel="noopener"
-        class="panel-subtitle subtitle-link mono text-medium-emphasis text-decoration-underline cursor-pointer text-truncate min-w-0"
+        class="panel-subtitle subtitle-link mono text-decoration-underline cursor-pointer text-truncate min-w-0"
         data-test="panel-subtitle-link"
       >
         {{ subtitle }}
@@ -234,6 +234,8 @@ function focusFrame(event) {
 // Shift+arrows resize it
 function keydown(event) {
   if (!props.editing || event.altKey || event.ctrlKey || event.metaKey) return
+  // Already handled by a control inside (e.g. a menu button opening its menu)
+  if (event.defaultPrevented) return
   if (event.target.closest(OWN_ARROWS)) return
   const step = {
     ArrowLeft: [-1, 0],
@@ -303,10 +305,11 @@ function keydown(event) {
 }
 /* Underlined in the subtitle's own color; brighter on hover */
 .subtitle-link {
+  color: rgba(var(--v-theme-on-surface), var(--v-medium-emphasis-opacity));
   text-underline-offset: 2px;
 }
 .subtitle-link:hover {
-  color: rgb(var(--v-theme-on-surface)) !important;
+  color: rgb(var(--v-theme-on-surface));
   text-decoration-thickness: 2px;
 }
 .move-handle {

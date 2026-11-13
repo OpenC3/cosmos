@@ -84,8 +84,8 @@
           <v-table density="compact" class="widget-map mb-4">
             <thead>
               <tr>
-                <th style="width: 50%">Telemetry Viewer widgets</th>
-                <th>Dashboard panel</th>
+                <th scope="col" style="width: 50%">Telemetry Viewer widgets</th>
+                <th scope="col">Dashboard panel</th>
               </tr>
             </thead>
             <tbody>
@@ -160,7 +160,8 @@ defineProps({
 })
 const show = defineModel({ type: Boolean, required: true })
 
-const keys = (...shortcuts) => shortcuts.map(formatShortcut)
+const keys = (...shortcuts) =>
+  shortcuts.map((shortcut) => formatShortcut(shortcut))
 
 const shortcutGroups = [
   {

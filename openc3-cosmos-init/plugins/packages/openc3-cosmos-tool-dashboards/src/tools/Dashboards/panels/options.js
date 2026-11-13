@@ -60,8 +60,8 @@ export function normalizeColor(value) {
 // other backslash is kept as written.
 export function escapeText(value) {
   return String(value)
-    .replaceAll('\\', '\\\\')
-    .replaceAll('"', '\\"')
+    .replaceAll('\\', String.raw`\\`)
+    .replaceAll('"', String.raw`\"`)
     .replace(/\r?\n/g, '\\n')
 }
 export function unescapeText(text) {
