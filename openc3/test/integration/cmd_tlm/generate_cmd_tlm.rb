@@ -298,6 +298,18 @@ File.write(File.join(plugin_dir, "#{plugin_name}.gemspec"), <<~GEMSPEC)
     s.files = Dir.glob("targets/**/*") + %w(Rakefile README.md LICENSE.md plugin.txt#{extra_files})
   end
 GEMSPEC
+# The benchmark procedure is only generated with limits groups
+limits_group_readme = "\n"
+if num_limits_groups > 0
+  limits_group_readme = <<~LIMITS_GROUPS
+    #{num_limits_groups} limits groups nested #{LIMITS_GROUP_LEVELS.map(&:first).reverse.join(' > ').downcase}
+    contain #{limits_group_items.length} telemetry items.
+
+    Run `targets/#{target}/procedures/limits_group_benchmark.rb` in Script Runner
+    to benchmark the limits group microservice.
+
+  LIMITS_GROUPS
+end
 File.write(File.join(plugin_dir, 'README.md'), <<~README)
   # #{plugin_name}
 
@@ -305,13 +317,7 @@ File.write(File.join(plugin_dir, 'README.md'), <<~README)
   Contains the #{options[:language]} target #{target} with #{options[:tlm_packets]} telemetry
   packets (#{options[:tlm_items]} items, #{options[:tlm_states]} states) and
   #{options[:cmd_packets]} command packets (#{options[:cmd_params]} parameters).
-  #{num_limits_groups} limits groups nested #{LIMITS_GROUP_LEVELS.map(&:first).reverse.join(' > ').downcase}
-  contain #{limits_group_items.length} telemetry items.
-
-  Run `targets/#{target}/procedures/limits_group_benchmark.rb` in Script Runner
-  to benchmark the limits group microservice.
-
-  Build from this directory with `rake build VERSION=1.0.0` (or
+  #{limits_group_readme}Build from this directory with `rake build VERSION=1.0.0` (or
   `gem build #{plugin_name}.gemspec`) and install the resulting gem in COSMOS.
 README
 

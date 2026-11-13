@@ -36,7 +36,7 @@ of the counts, e.g. for a quick smoke test:
 
 ```bash
 ruby test/integration/cmd_tlm/generate_cmd_tlm.rb --tlm-packets 20 --tlm-items 5000 \
-  --tlm-states 20000 --cmd-packets 20 --cmd-params 1500
+  --tlm-states 20000 --cmd-packets 20 --cmd-params 1500 --limits-group-items 1000
 ```
 
 ## Install as a plugin
