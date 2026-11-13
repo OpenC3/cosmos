@@ -23,6 +23,7 @@ export async function execSql(sql, db_shard, retries = 3) {
       if (db_shard && db_shard !== 0) {
         url += `?db_shard=${db_shard}`
       }
+      // eslint-disable-next-line no-await-in-loop -- retries must be sequential
       return await Api.post(url, {
         data: sql,
         headers: {
@@ -36,6 +37,7 @@ export async function execSql(sql, db_shard, retries = 3) {
         msg.includes('PQconsumeInput') ||
         msg.includes('server closed the connection')
       if (isConnectionError && attempt < retries) {
+        // eslint-disable-next-line no-await-in-loop -- backoff between retries
         await new Promise((r) => setTimeout(r, 1000 * attempt))
         continue
       }
