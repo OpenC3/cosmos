@@ -111,8 +111,10 @@ USER root
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 ext/ ext/
 
 # [F2] Ruby dependencies: only the files that pick the gems, so code edits
-# don't reinstall them. The RUN below installs them.
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 Gemfile Gemfile.lock openc3.gemspec ./
+# don't reinstall them. The RUN below installs them. 644, not 777 like the
+# rest of the tree: these are only read after the build (the API images load
+# openc3.gemspec through their Bundler path gem), and the lockfile is frozen.
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=644 Gemfile Gemfile.lock openc3.gemspec ./
 
 RUN git config --global http.sslCAinfo /devel/cacert.pem \
     && bundle config set --local without 'development test' \
