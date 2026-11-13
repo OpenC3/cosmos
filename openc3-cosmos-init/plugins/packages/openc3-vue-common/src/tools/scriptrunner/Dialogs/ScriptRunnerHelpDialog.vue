@@ -212,7 +212,8 @@ const states = Object.entries(LIFECYCLE_STATE_LABELS).map(([value, text]) => ({
   text,
 }))
 
-const keys = (...shortcuts) => shortcuts.map(formatShortcut)
+const keys = (...shortcuts) =>
+  shortcuts.map((shortcut) => formatShortcut(shortcut))
 
 const selectionSections = [
   {

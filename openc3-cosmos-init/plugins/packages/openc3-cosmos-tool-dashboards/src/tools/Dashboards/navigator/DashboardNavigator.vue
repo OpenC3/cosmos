@@ -265,7 +265,7 @@ const matches = computed(() => {
         return words.every((word) => haystack.includes(word))
       })
     : props.dashboards
-  return [...keys].sort()
+  return [...keys].sort((a, b) => a.localeCompare(b))
 })
 // Keeps starred in the order they were starred
 const starred = computed(() => {
@@ -280,7 +280,7 @@ const folders = computed(() => {
   for (const key of props.dashboards) counts[key.split('/')[0]] = 0
   for (const key of matches.value) counts[key.split('/')[0]]++
   return Object.keys(counts)
-    .sort()
+    .sort((a, b) => a.localeCompare(b))
     .map((target) => ({ target, count: counts[target] }))
 })
 // Starred, else the current dashboard's folder, else the first folder
