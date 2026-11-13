@@ -39,4 +39,13 @@ plugin :tmp_restart
 before_worker_boot do
   # Re-open appenders after forking the process
   SemanticLogger.reopen
+
+  begin
+    require 'openc3-enterprise/utilities/enterprise_scheduler'
+    OpenC3::EnterpriseScheduler.start
+  rescue LoadError
+    # Core has no enterprise gem
+  rescue StandardError => e
+    SemanticLogger['puma'].warn("Enterprise scheduler failed to start: #{e.class}: #{e.message}")
+  end
 end
