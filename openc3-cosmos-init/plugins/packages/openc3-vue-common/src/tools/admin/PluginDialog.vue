@@ -720,6 +720,8 @@ export default {
       uploadErrors: {},
       // The file chosen for each VARIABLE_FILE since the dialog opened
       chosenFiles: {},
+      // Counts the uploads of each VARIABLE_FILE so only the newest is applied
+      uploadRuns: {},
       previewEditor: null,
       previewLoading: false,
       previewError: null,
@@ -1222,11 +1224,16 @@ export default {
     },
     async uploadFile(name, files) {
       const file = Array.isArray(files) ? files[0] : files
+      // Ignore the response of an earlier upload if another file is chosen
+      // (or the input cleared) before it finishes
+      const run = (this.uploadRuns[name] || 0) + 1
+      this.uploadRuns[name] = run
       this.uploadErrors[name] = null
       if (!file) {
         // Cleared: install without a file
         delete this.chosenFiles[name]
         this.localVariables[name].value = ''
+        this.uploading[name] = false
         return
       }
       this.chosenFiles[name] = file
@@ -1238,13 +1245,15 @@ export default {
           data: formData,
           headers: { 'Content-Type': 'multipart/form-data' },
         })
+        if (this.uploadRuns[name] !== run) return
         this.localVariables[name].value = data.value
       } catch (error) {
+        if (this.uploadRuns[name] !== run) return
         this.localVariables[name].value = ''
         this.uploadErrors[name] =
           `Upload failed: ${error.response?.data?.message || error.message}`
       } finally {
-        this.uploading[name] = false
+        if (this.uploadRuns[name] === run) this.uploading[name] = false
       }
     },
     fieldLabel(name, variable) {
@@ -1702,7 +1711,8 @@ export default {
             ? bridge.name
             : `${bridge.name} (not paired with openc3-cosmos-app)`,
         }))
-      } catch (error) {
+      } catch {
+        // No bridges to choose from, so discovery runs on DEFAULT
         this.bridges = []
       }
     },
@@ -1716,7 +1726,8 @@ export default {
     runAllDiscovery() {
       for (const [name, variable] of Object.entries(this.localVariables)) {
         if (variable.discovery) {
-          this.runDiscovery(name)
+          // runDiscovery reports its own errors
+          void this.runDiscovery(name)
         }
       }
     },

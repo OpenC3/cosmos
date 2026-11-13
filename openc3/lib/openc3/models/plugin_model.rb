@@ -719,13 +719,13 @@ module OpenC3
         begin
           scripts_tf.write(plugin_hash['plugin_txt_lines'].join("\n"))
           scripts_tf.close
-          install_scripts = install_scripts(scripts_tf.path, erb_variables)
+          scripts = install_scripts(scripts_tf.path, erb_variables)
         ensure
           scripts_tf.unlink
         end
         script_options = { gem_path: gem_path, plugin_name: plugin_model.name, erb_variables: erb_variables, dry_run: dry_run, scope: scope }
         gem_lib_dirs = -> { Dir.glob("#{gem_path}/**/lib").select { |dir| File.directory?(dir) } }
-        install_scripts['PRE_INSTALL_SCRIPT'].each do |script, args|
+        scripts['PRE_INSTALL_SCRIPT'].each do |script, args|
           run_install_script('PRE_INSTALL_SCRIPT', script, args, load_dirs: gem_lib_dirs.call, **script_options)
         end
 
@@ -765,7 +765,7 @@ module OpenC3
                 text_end = keyword.sub('_START', '_END')
               when 'VARIABLE', 'VARIABLE_DESCRIPTION', 'VARIABLE_LABEL', 'VARIABLE_TYPE', 'VARIABLE_GROUP', 'VARIABLE_REQUIRED', 'VARIABLE_PATTERN', 'VARIABLE_HIDDEN', 'VARIABLE_ADVANCED', 'VARIABLE_MULTIPLE', 'VARIABLE_STATE', 'VARIABLE_STATE_SHOW', 'VARIABLE_STATE_SET', 'VARIABLE_STATE_REQUIRED', 'VARIABLE_STATE_DESCRIPTION', 'VARIABLE_STATE_ICON', 'VARIABLE_DISCOVERY', 'VARIABLE_DISCOVERY_SET', 'VARIABLE_BRIDGE', 'VARIABLE_FILE', 'NEEDS_DEPENDENCIES'
                 # Ignore during phase 2
-              when *INSTALL_SCRIPT_KEYWORDS
+              when 'PRE_INSTALL_SCRIPT', 'POST_INSTALL_SCRIPT'
                 # Run before and after the install
               when 'TARGET', 'INTERFACE', 'ROUTER', 'MICROSERVICE', 'TOOL', 'WIDGET', 'PANEL', 'SCRIPT_ENGINE'
                 begin
@@ -804,7 +804,7 @@ module OpenC3
             end
           end
           unless dry_run
-            install_scripts['POST_INSTALL_SCRIPT'].each do |script, args|
+            scripts['POST_INSTALL_SCRIPT'].each do |script, args|
               run_install_script('POST_INSTALL_SCRIPT', script, args, load_dirs: load_dirs, **script_options)
             end
           end
@@ -1221,6 +1221,10 @@ module OpenC3
           return true
         end
 
+        # Use the dependency files as rendered at install, since they may use ERB
+        File.write(pyproject_path, @python_pyproject) if File.exist?(pyproject_path) && @python_pyproject
+        File.write(requirements_path, @python_requirements) if File.exist?(requirements_path) && @python_requirements
+
         pypi_url = self.class.resolve_pypi_url(scope: scope)
         pypi_args = self.class.build_pypi_args(pypi_url)
 
@@ -1437,13 +1441,13 @@ module OpenC3
         'OPENC3_PLUGIN_DRY_RUN' => dry_run ? 'true' : 'false',
       }
       if File.extname(path).downcase == '.py'
-        command = [ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python', path, *args]
-        environment['PYTHONPATH'] = (load_dirs + [ENV['PYTHONPATH']]).compact.reject(&:empty?).join(':')
+        command = [ENV.fetch('OPENC3_PYTHON_BIN', '/openc3/python/.venv/bin/python'), path, *args]
+        environment['PYTHONPATH'] = (load_dirs + [ENV.fetch('PYTHONPATH', nil)]).compact.reject(&:empty?).join(':')
         venv_dir = PythonVenv.plugin_venv_path(scope: scope, plugin_name: plugin_name)
         PythonVenv.configure_environment(environment, venv_dir) if venv_dir
       else
         command = ['ruby', path, *args]
-        environment['RUBYLIB'] = (load_dirs + [ENV['RUBYLIB']]).compact.reject(&:empty?).join(':')
+        environment['RUBYLIB'] = (load_dirs + [ENV.fetch('RUBYLIB', nil)]).compact.reject(&:empty?).join(':')
       end
       Logger.info("Running #{keyword} #{([script] + args).join(' ')}", scope: scope)
       status = nil

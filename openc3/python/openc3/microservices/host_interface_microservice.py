@@ -510,7 +510,9 @@ class HostInterfaceMicroservice:
                     asyncio.create_task(self._bridge_to_device(loop, interface, recv)),
                 }
                 # Also break out promptly if COSMOS requests a disconnect.
-                tasks = pumps | {asyncio.create_task(self._disconnect_event.wait())}
+                disconnect_event = self._disconnect_event
+                assert disconnect_event is not None  # created by run() before this loop
+                tasks = pumps | {asyncio.create_task(disconnect_event.wait())}
                 done, _ = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)
                 for task in done & pumps:
                     if not task.cancelled() and task.exception() is not None and not self.shutdown:

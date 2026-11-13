@@ -93,7 +93,7 @@ class UsbDiscovery(Discovery):
 
     def scan(self):
         try:
-            import usb.core
+            import usb.core  # ty: ignore[unresolved-import]
         except ImportError as error:
             raise RuntimeError("The pyusb Python package is not installed on the host") from error
 
@@ -134,7 +134,7 @@ class UsbDiscovery(Discovery):
         # libusb-package bundles libusb for every platform, otherwise pyusb finds
         # libusb installed on the host
         try:
-            import libusb_package
+            import libusb_package  # ty: ignore[unresolved-import]
         except ImportError:
             return None
         return libusb_package.get_libusb1_backend()
@@ -177,7 +177,7 @@ class UsbDiscovery(Discovery):
     @staticmethod
     def _get_string(usb_device, index):
         try:
-            import usb.util
+            import usb.util  # ty: ignore[unresolved-import]
 
             return (usb.util.get_string(usb_device, index) or "").strip()
         except Exception:

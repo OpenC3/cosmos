@@ -44,6 +44,7 @@ import importlib
 import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 from openc3.discovery.discovery_runner import load_discovery_class
 
@@ -90,10 +91,10 @@ def scan_class(name, matchers):
 
     # A value can be found more than once, e.g. a host advertising several mDNS
     # services, so it's one device that matches if any of its records does
-    devices = {}
+    devices: dict[str, dict[str, Any]] = {}
     for record in discovery_class().scan():
         value = str(record["value"])
-        device = devices.get(value)
+        device: dict[str, Any] | None = devices.get(value)
         if device is None:
             details = {key: item for key, item in record.items() if key not in ("value", "text")}
             device = devices[value] = {

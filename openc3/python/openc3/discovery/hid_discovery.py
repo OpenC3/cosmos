@@ -33,7 +33,7 @@ class HidDiscovery(Discovery):
 
     def scan(self):
         try:
-            import hid
+            import hid  # ty: ignore[unresolved-import]
         except ImportError as error:
             raise RuntimeError("The hidapi Python package is not installed on the host") from error
 

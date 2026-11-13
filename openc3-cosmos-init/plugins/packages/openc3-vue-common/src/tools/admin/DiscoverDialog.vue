@@ -321,8 +321,9 @@ export default {
         this.bridges = Object.values(response.data || {})
           .filter((bridge) => bridge.app_public_key)
           .map((bridge) => bridge.name)
-          .sort()
-      } catch (error) {
+          .sort((a, b) => a.localeCompare(b))
+      } catch {
+        // No paired bridges, so only ALL is offered
         this.bridges = []
       }
       this.bridge = this.bridgeItems[0]?.value || 'ALL'

@@ -144,6 +144,7 @@ module OpenC3
     def self.store_matchers(plugin)
       discovery = plugin['discovery']
       return [] unless discovery.is_a?(Hash) and discovery['format'] == PluginModel::DISCOVERY_MATCHERS_FORMAT
+
       Array(discovery['matchers']).select { |matcher| matcher.is_a?(Hash) and matcher['class'].is_a?(String) and matcher['variable'].is_a?(String) }
     end
 

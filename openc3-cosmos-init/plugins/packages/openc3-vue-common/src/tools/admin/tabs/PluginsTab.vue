@@ -150,7 +150,7 @@
       :plugin-txt="pluginTxt"
       :plugin-text="pluginText"
       :exclude-plugin="currentPlugin || pluginName"
-      :installed="currentPlugin !== null"
+      :installed="currentPlugin !== null || editingInstalled"
       :existing-plugin-txt="existingPluginTxt"
       :store-plugin-id="storePluginId"
       :store-version-id="storeVersionId"
@@ -225,6 +225,8 @@ export default {
       pluginText: null,
       file: null,
       currentPlugin: null,
+      // Editing an installed plugin's variables (which doesn't set currentPlugin)
+      editingInstalled: false,
       pluginHashTmp: null,
       existingPluginTxt: null,
       progress: 0,
@@ -254,6 +256,7 @@ export default {
     // watcher to reset the file input when the dialog is closed
     showPluginDialog: function (newValue, oldValue) {
       if (newValue === false) {
+        this.editingInstalled = false
         this.file = null
         this.$refs.fileInput.value = null
         // Presets are only for the install hardware discovery started
@@ -311,6 +314,7 @@ export default {
       this.pluginText = null
       this.file = null
       this.currentPlugin = null
+      this.editingInstalled = false
       this.pluginHashTmp = null
       this.existingPluginTxt = null
       this.progress = 0
@@ -510,6 +514,7 @@ export default {
           this.pluginTxt = response.data.plugin_txt_lines.join('\n')
           this.pluginText = response.data.plugin_text
           this.existingPluginTxt = existingPluginTxt
+          this.editingInstalled = true
           this.showPluginDialog = true
         })
         .catch(console.error)

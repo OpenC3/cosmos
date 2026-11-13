@@ -1012,9 +1012,9 @@ module OpenC3
         bucket = double("bucket")
         allow(Bucket).to receive(:getClient).and_return(bucket)
         stored = {}
-        allow(bucket).to receive(:put_object) { |bucket:, key:, body:| stored[key] = body.read }
-        allow(bucket).to receive(:get_object) { |bucket:, key:, path:| File.write(path, stored.fetch(key)) if stored.key?(key) }
-        allow(bucket).to receive(:delete_object) { |bucket:, key:| stored.delete(key) }
+        allow(bucket).to receive(:put_object) { |key:, body:, **| stored[key] = body.read }
+        allow(bucket).to receive(:get_object) { |key:, path:, **| File.write(path, stored.fetch(key)) if stored.key?(key) }
+        allow(bucket).to receive(:delete_object) { |key:, **| stored.delete(key) }
 
         Tempfile.create('upload') do |file|
           file.write('a,b')
@@ -1142,8 +1142,8 @@ module OpenC3
       it "runs Python scripts" do
         python = `which python3`.strip
         skip "python3 not found" if python.empty?
-        allow(ENV).to receive(:[]).and_call_original
-        allow(ENV).to receive(:[]).with('OPENC3_PYTHON_BIN').and_return(python)
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('OPENC3_PYTHON_BIN', anything).and_return(python)
         Dir.mktmpdir do |dir|
           out = File.join(dir, 'out')
           script = "import json, os, sys\nopen(#{out.inspect}, 'w').write(json.loads(os.environ['OPENC3_PLUGIN_VARIABLES'])['folder'] + sys.argv[1])\n"

@@ -134,7 +134,6 @@ VARIABLE_HIDDEN:
       VARIABLE_HIDDEN
     VARIABLE host ""
       VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}
-      values: .+
 VARIABLE_ADVANCED:
   summary: Show a plugin variable in the advanced section of the plugin installation dialog
   description: The VARIABLE_ADVANCED keyword marks the previously defined VARIABLE as advanced. Advanced variables are

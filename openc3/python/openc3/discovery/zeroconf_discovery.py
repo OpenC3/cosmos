@@ -66,7 +66,7 @@ class ZeroconfDiscovery(Discovery):
 
     def scan(self):
         try:
-            from zeroconf import IPVersion, ServiceBrowser, Zeroconf
+            from zeroconf import IPVersion, ServiceBrowser, Zeroconf  # ty: ignore[unresolved-import]
         except ImportError as error:
             raise RuntimeError("The zeroconf Python package is not installed on the host") from error
 
@@ -81,7 +81,7 @@ class ZeroconfDiscovery(Discovery):
                 service_types = sorted({type for type, _ in self.matchers})
             else:
                 # Every type of service advertised on the network
-                from zeroconf import ZeroconfServiceTypes
+                from zeroconf import ZeroconfServiceTypes  # ty: ignore[unresolved-import]
 
                 service_types = sorted(ZeroconfServiceTypes.find(zc=zeroconf, timeout=self.BROWSE_SECONDS))
             if not service_types:

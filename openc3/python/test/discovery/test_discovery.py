@@ -155,8 +155,9 @@ class TestZeroconfDiscovery(unittest.TestCase):
 
     def test_no_matchers_or_package(self):
         self.assertEqual(ZeroconfDiscovery().discover(), [])
+        discovery = ZeroconfDiscovery("_hue._tcp.local.")
         with patch.dict(sys.modules, {"zeroconf": None}), self.assertRaisesRegex(RuntimeError, "zeroconf"):
-            ZeroconfDiscovery("_hue._tcp.local.").discover()
+            discovery.discover()
 
 
 class TestBluetoothDiscovery(unittest.TestCase):

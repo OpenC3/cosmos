@@ -44,7 +44,7 @@ A variable configured for discovery shows a dropdown of the devices found, with 
 
 - **Choosing the computer.** Discovery runs on the bridge the plugin's bridge variable selects, or on `DEFAULT` if the plugin doesn't have one. Changing the bridge runs discovery again.
 - **New installs.** The first device found is selected automatically, unless a value was already chosen.
-- **Devices in use.** A device another installed plugin is using on the same computer is shown as in use and isn't offered. This keeps two plugins from opening the same serial port, for example. Uninstalling the plugin frees the device. Upgrading or editing a plugin still offers the devices it already uses.
+- **Devices in use.** A device another installed plugin is using on the same computer is shown as in use and isn't offered, which helps avoid two plugins opening the same serial port, for example. This only filters the dropdown: it doesn't reserve the device, so a value you type yourself, or a variable's default, can still name a device in use. Uninstalling the plugin frees the device. Upgrading or editing a plugin still offers the devices it already uses.
 - **Typing a value.** You can always type a value instead, for example when the device isn't connected yet.
 
 ### Discover Hardware
@@ -84,7 +84,7 @@ VARIABLE serial_port /dev/ttyUSB0
   # A Silicon Labs CP210x USB serial adapter
   VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py 10C4:EA60
 TARGET PSU PSU
-INTERFACE PSU_INT serial_interface.py <%= serial_port %> <%= serial_port %> 115200 NONE 1 10.0 nil
+INTERFACE PSU_INT openc3/interfaces/serial_interface.py <%= serial_port %> <%= serial_port %> 115200 NONE 1 10.0 None
   MAP_TARGET PSU
   BRIDGE <%= bridge_name %>
 ```
