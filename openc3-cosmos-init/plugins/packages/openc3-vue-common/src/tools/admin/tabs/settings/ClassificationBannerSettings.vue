@@ -267,12 +267,12 @@ export default {
       this.bottomHeight = val ? this.bottomHeight || 20 : 0
     },
     customFontColor: function (val) {
-      if (val && val.length && !val.startsWith('#')) {
+      if (val?.length && !val.startsWith('#')) {
         this.customFontColor = `#${val}`
       }
     },
     customBackgroundColor: function (val) {
-      if (val && val.length && !val.startsWith('#')) {
+      if (val?.length && !val.startsWith('#')) {
         this.customBackgroundColor = `#${val}`
       }
     },
@@ -307,13 +307,13 @@ export default {
         this.bottomHeight = parsed.bottomHeight || 0
         this.displayTopBanner = this.topHeight !== 0
         this.displayBottomBanner = this.bottomHeight !== 0
-        if (parsed.backgroundColor && parsed.backgroundColor.startsWith('#')) {
+        if (parsed.backgroundColor?.startsWith('#')) {
           this.customBackgroundColor = parsed.backgroundColor
           this.selectedBackgroundColor = false
         } else {
           this.selectedBackgroundColor = parsed.backgroundColor || 'red'
         }
-        if (parsed.fontColor && parsed.fontColor.startsWith('#')) {
+        if (parsed.fontColor?.startsWith('#')) {
           this.customFontColor = parsed.fontColor
           this.selectedFontColor = false
         } else {
