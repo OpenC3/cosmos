@@ -95,7 +95,9 @@ LIMITS_GROUP_ITEM:
     nested group is stored as the item which carries the child's state, so in the
     INST target LIMITS_GROUP_ITEM THERMAL is the same as
     LIMITS_GROUP_ITEM INST LIMITS_GROUP THERMAL. Use that full form to nest a group
-    defined by another target. A child group can be installed after its parent.
+    defined by another target. A member in a packet named LIMITS_GROUP is always a
+    nested group, never an item of a target's own packet with that name. A child
+    group can be installed after its parent and is ignored until it is.
     Nested groups can't form a loop, so a group can't contain itself directly or
     through other groups.
   parameters:

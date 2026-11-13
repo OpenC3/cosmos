@@ -51,6 +51,7 @@ module OpenC3
       @values = {}           # group => [color, enabled] as last computed
       @published = {}        # target => its groups' @values as last published
       @packets = {}          # target => [group names, its LIMITS_GROUP packet]
+      @own_packet = {}       # target => whether its stored LIMITS_GROUP packet is the generated one
       @settings_changed = false # settings must be reread before the next publish
       @warned = Set.new
       @event_count = 0             # limits events which changed a group's inputs
@@ -135,6 +136,7 @@ module OpenC3
         # Installing a target clears its LIMITS_GROUP CVT so publish it again
         # even if its groups' values didn't change
         @published.delete(target_name)
+        @own_packet.delete(target_name)
       end
       @groups = TargetModel.limits_groups(scope: @scope)
       build_indexes()
@@ -225,9 +227,11 @@ module OpenC3
       # A target whose groups are all gone has no packet any more
       @published.select! { |target_name, _values| by_target.key?(target_name) }
       @packets.select! { |target_name, _packet| by_target.key?(target_name) }
+      @own_packet.select! { |target_name, _own| by_target.key?(target_name) }
 
       by_target.each do |target_name, values|
         next if !force and values == @published[target_name]
+        next unless own_packet?(target_name, values.keys)
 
         publish_target(target_name, values)
         @published[target_name] = values
@@ -280,6 +284,28 @@ module OpenC3
       TelemetryDecomTopic.write_packet(packet, scope: @scope)
       @count += 1
       @metric.set(name: 'limits_group_publish_total', value: @count, type: 'counter')
+    end
+
+    # A target upgraded with a telemetry packet of its own named LIMITS_GROUP
+    # keeps it (see LimitsGroupBackfill) so never write the rollup over it.
+    # The generated packet defines <GROUP> and <GROUP>_ENABLED for every group.
+    # With no stored packet there is nothing to overwrite.
+    #
+    # @return [Boolean] Whether the target's LIMITS_GROUP packet can be published
+    def own_packet?(target_name, group_names)
+      return @own_packet[target_name] if @own_packet.key?(target_name)
+
+      own = true
+      db_shard = target_db_shard(target_name)
+      json = Store.instance(db_shard: db_shard).hget("#{@scope}__openc3tlm__#{target_name}", PacketConfig::LIMITS_GROUP_PACKET) if db_shard
+      if json
+        item_names = JSON.parse(json, allow_nan: true, create_additions: true)['items'].to_set { |item| item['name'] }
+        own = group_names.all? { |group| item_names.include?(group) and item_names.include?("#{group}#{PacketConfig::LIMITS_GROUP_ENABLED_SUFFIX}") }
+        unless own
+          warn_once("packet #{target_name}", "#{target_name} #{PacketConfig::LIMITS_GROUP_PACKET} is a packet of the target's own so its limits groups aren't published. Rename the packet and reinstall the target.")
+        end
+      end
+      @own_packet[target_name] = own
     end
 
     def build_indexes
@@ -397,7 +423,11 @@ module OpenC3
           if child_group?(packet_name)
             # A child which isn't defined (yet) is ignored like an unknown item
             child = @values[LimitsEventTopic.limits_group_key(target_name, item_name)]
-            next unless child
+            unless child
+              warn_once("#{group} child #{target_name} #{item_name}",
+                        "LIMITS_GROUP #{display(group)} member #{target_name} #{PacketConfig::LIMITS_GROUP_PACKET} #{item_name} is not a defined limits group. Ignoring it until it is.")
+              next
+            end
 
             # A child's color already ignores its disabled members, so it always
             # counts here. Its enabled flag only affects whether this group is enabled.
