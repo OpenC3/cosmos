@@ -3,6 +3,8 @@
 # and add copyright headers to newly created files
 
 require 'time'
+require 'open3'
+require 'shellwords'
 
 # Skip when the staged diff is not the author's own work: merges, cherry-picks,
 # reverts and rebases stage files that came from other commits, so touching
@@ -71,6 +73,58 @@ def strip_ball_header(file, content)
   content.delete_prefix(block)
 end
 
+# Return [new_content, message] if the header in content needs fixing, else nil.
+def fix_header(file, content, added, year)
+  new_content = content.dup
+  message = nil
+
+  # A new file must only carry the OpenC3 header, so replace a copied Ball one
+  if added && (stripped = strip_ball_header(file, new_content))
+    new_content = stripped
+    message = "Replaced Ball Aerospace header in: #{file}"
+  end
+
+  # Check if file has an OpenC3 copyright header
+  has_copyright = new_content.match?(/^[#\/\*\s]*Copyright\s+\d{4}\s+OpenC3,\s+Inc\./i) ||
+                  new_content.match?(/^[#\/\*\s]*All changes Copyright\s+\d{4},\s+OpenC3,\s+Inc\./i)
+
+  # If no copyright and file is newly added, prepend a header
+  unless has_copyright
+    if added && (header = build_copyright_header(file, year))
+      new_content = header + new_content
+      message = "Added copyright header to: #{file}"
+    end
+    return new_content == content ? nil : [new_content, message]
+  end
+
+  # Pattern 1: Single OpenC3 copyright header
+  # Pattern 2: Dual copyright with Ball Aerospace + OpenC3 ("All changes ...")
+  [
+    /^([#\/\*\s]*Copyright\s+)(\d{4})(\s+OpenC3,\s+Inc\.)$/i,
+    /^([#\/\*\s]*All changes Copyright\s+)(\d{4})(,\s+OpenC3,\s+Inc\.)$/i
+  ].each do |regex|
+    new_content.gsub!(regex) { "#{$1}#{year}#{$3}" }
+  end
+
+  return nil if new_content == content
+
+  [new_content, message || "Updated copyright year in: #{file}"]
+end
+
+def utf8(data)
+  data.force_encoding('UTF-8')
+  data.valid_encoding? ? data : nil
+end
+
+# Write new content into the index only, leaving the working tree alone
+def stage_content(file, content)
+  mode = `git ls-files -s -- #{Shellwords.escape(file)}`.split.first
+  hash, status = Open3.capture2('git', 'hash-object', '-w', '--stdin', stdin_data: content)
+  return false unless status.success? && mode
+
+  system('git', 'update-index', '--cacheinfo', "#{mode},#{hash.strip},#{file}")
+end
+
 # Track if any files were modified
 files_modified = false
 
@@ -90,79 +144,30 @@ staged_files.each do |file|
   # Skip vendored/third-party JS files
   next if file.start_with?('openc3-cosmos-init/plugins/packages/openc3-tool-base/public/js/')
 
-  # Read file content with encoding handling
-  begin
-    content = File.read(file, encoding: 'UTF-8')
-  rescue ArgumentError, Encoding::InvalidByteSequenceError, Encoding::UndefinedConversionError
-    # Skip binary files or files with invalid encoding
-    next
-  end
+  added = added_files.include?(file)
 
-  original_content = content.dup
+  # Fix the staged (index) version so only staged content is committed.
+  # Skip binary files or files with invalid encoding.
+  staged = utf8(`git show :#{Shellwords.escape(file)}`)
+  next unless staged
 
-  # A new file must only carry the OpenC3 header, so replace a copied Ball one
-  if added_files.include?(file) && (stripped = strip_ball_header(file, content))
-    content = stripped
-    puts "Replaced Ball Aerospace header in: #{file}"
-  end
+  if (result = fix_header(file, staged, added, current_year))
+    next unless stage_content(file, result[0])
 
-  # Check if file has an OpenC3 copyright header
-  has_copyright = content.match?(/^[#\/\*\s]*Copyright\s+\d{4}\s+OpenC3,\s+Inc\./i) ||
-                  content.match?(/^[#\/\*\s]*All changes Copyright\s+\d{4},\s+OpenC3,\s+Inc\./i)
-
-  # If no copyright and file is newly added, prepend a header
-  unless has_copyright
-    if added_files.include?(file)
-      header = build_copyright_header(file, current_year)
-      if header
-        File.write(file, header + content)
-        system("git add #{file}")
-        files_modified = true
-        puts "Added copyright header to: #{file}"
-      end
-    end
-    next
-  end
-
-  # Pattern 1: Single OpenC3 copyright header
-  # Match "Copyright YYYY OpenC3, Inc." and update year
-  content.gsub!(/^([#\/\*\s]*Copyright\s+)(\d{4})(\s+OpenC3,\s+Inc\.)$/i) do |match|
-    prefix = $1
-    year = $2
-    suffix = $3
-
-    if year.to_i != current_year
-      "#{prefix}#{current_year}#{suffix}"
-    else
-      match
-    end
-  end
-
-  # Pattern 2: Dual copyright with Ball Aerospace + OpenC3
-  # Match "All changes Copyright YYYY, OpenC3, Inc." and update year
-  content.gsub!(/^([#\/\*\s]*All changes Copyright\s+)(\d{4})(,\s+OpenC3,\s+Inc\.)$/i) do |match|
-    prefix = $1
-    year = $2
-    suffix = $3
-
-    if year.to_i != current_year
-      "#{prefix}#{current_year}#{suffix}"
-    else
-      match
-    end
-  end
-
-  # If content changed, write it back and re-stage the file
-  if content != original_content
-    File.write(file, content)
-    system("git add #{file}")
     files_modified = true
-    puts "Updated copyright year in: #{file}"
+    puts result[1]
+  end
+
+  # Apply the same header fix to the working tree, which may hold unstaged edits
+  worktree = utf8(File.binread(file))
+  if worktree && (result = fix_header(file, worktree, added, current_year))
+    File.write(file, result[0])
   end
 end
 
+
 if files_modified
-  puts "\nCopyright headers updated to #{current_year}. Changes have been staged."
+  puts "\nCopyright headers updated to #{current_year}. Staged content was updated; unstaged edits are preserved."
 end
 
 # Always allow commit to proceed
