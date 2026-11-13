@@ -414,6 +414,30 @@ class TestLimitsEventTopic(unittest.TestCase):
         LimitsEventTopic.resync_system("DEFAULT")
         self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
+    def test_resync_system_ignores_saved_numeric_settings_for_items_with_change_limits(self):
+        limits = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("TEMP1").limits
+        limits.change_type = "SEQUENCE"
+        try:
+            numeric = {"red_low": -50.0, "yellow_low": -40.0, "yellow_high": 40.0, "red_high": 50.0}
+            Store.hset(
+                "DEFAULT__current_limits_settings",
+                "INST__HEALTH_STATUS__TEMP1",
+                json.dumps({"DEFAULT": numeric, "persistence_setting": 1, "enabled": False}),
+            )
+            Store.hset(
+                "DEFAULT__current_limits_settings",
+                "INST__HEALTH_STATUS__TEMP3",
+                json.dumps({"DEFAULT": numeric, "persistence_setting": 2, "enabled": True}),
+            )
+            LimitsEventTopic.resync_system("DEFAULT")
+            # Enabled state is still applied and other items still sync
+            self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+            self.assertEqual(
+                list(System.limits.get("INST", "HEALTH_STATUS", "TEMP3")[1:7]), [2, True, -50.0, -40.0, 40.0, 50.0]
+            )
+        finally:
+            limits.change_type = None
+
     def test_sync_system_thread_body_applies_a_limits_group_enable_state_event(self):
         LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")  # Set the stream offset
         Store.hset("DEFAULT__limits_groups", "FIRST", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))

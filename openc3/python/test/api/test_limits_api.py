@@ -90,6 +90,27 @@ class TestLimitsApi(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(TargetModel\)"):
             get_limits("INST", "HEALTH_STATUS", "BLAH")
 
+    def set_change_limits(self, item_name):
+        packet = TargetModel.packet("INST", "HEALTH_STATUS", scope="DEFAULT")
+        item = next(packet_item for packet_item in packet["items"] if packet_item["name"] == item_name)
+        item["limits"] = {
+            "enabled": True,
+            "persistence_setting": 1,
+            "DEFAULT": {"change_type": "SEQUENCE", "change_color": "RED"},
+        }
+        TargetModel.set_packet("INST", "HEALTH_STATUS", packet, scope="DEFAULT")
+
+    def test_skips_change_limits_which_have_no_numeric_values(self):
+        self.set_change_limits("TEMP1")
+        self.assertEqual(get_limits("INST", "HEALTH_STATUS", "TEMP1"), {})
+
+    def test_set_limits_complains_about_items_with_change_limits(self):
+        self.set_change_limits("TEMP1")
+        with self.assertRaisesRegex(
+            RuntimeError, "Cannot set_limits on item 'INST HEALTH_STATUS TEMP1' with SEQUENCE limits"
+        ):
+            set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0)
+
     def test_gets_limits_for_an_item(self):
         self.assertEqual(
             get_limits("INST", "HEALTH_STATUS", "TEMP1"),

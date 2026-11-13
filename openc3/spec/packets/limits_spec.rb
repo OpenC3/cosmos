@@ -201,6 +201,11 @@ module OpenC3
         expect(@limits.set("TGT1", "PKT1", "ITEM5", 1, 2, 3, 4, nil, nil, :DEFAULT)).to eql [:DEFAULT, 1, true, 1.0, 2.0, 3.0, 4.0, nil, nil]
       end
 
+      it "complains about items with change limits" do
+        @tlm.packet("TGT1", "PKT1").get_item("ITEM5").limits.change_type = :SEQUENCE
+        expect { @limits.set("TGT1", "PKT1", "ITEM5", 1, 2, 3, 4, nil, nil, :DEFAULT) }.to raise_error(RuntimeError, "Cannot set numeric limits on TGT1 PKT1 ITEM5 which has SEQUENCE limits")
+      end
+
       it "enforces setting DEFAULT limits first" do
         expect { @limits.set("TGT1", "PKT1", "ITEM5", 1, 2, 3, 4) }.to raise_error(RuntimeError, "DEFAULT limits must be defined for TGT1 PKT1 ITEM5 before setting limits set CUSTOM")
         expect(@limits.set("TGT1", "PKT1", "ITEM5", 5, 6, 7, 8, nil, nil, :DEFAULT)).to eql [:DEFAULT, 1, true, 5.0, 6.0, 7.0, 8.0, nil, nil]

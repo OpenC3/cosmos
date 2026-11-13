@@ -176,7 +176,8 @@ def get_limits(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
     limits = {}
     item = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
     for key, vals in item["limits"].items():
-        if not isinstance(vals, dict):
+        # Skip non-numeric limits such as SEQUENCE, CHANGE, or STATIC change limits
+        if not isinstance(vals, dict) or "red_low" not in vals:
             continue
 
         limits[key] = [
@@ -232,6 +233,11 @@ def set_limits(
             raise RuntimeError(f"Item '{target_name} {name} {item_name}' does not exist while setting limits")
         if not item["limits"]:
             raise RuntimeError("Cannot set_limits on item without any limits")
+        default = item["limits"].get("DEFAULT")
+        if isinstance(default, dict) and default.get("change_type"):
+            raise RuntimeError(
+                f"Cannot set_limits on item '{target_name} {name} {item_name}' with {default['change_type']} limits"
+            )
         items.append((name, packet, item))
     for name, packet, item in items:
         if persistence:

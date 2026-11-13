@@ -62,6 +62,13 @@ module OpenC3
       @dm_thread.join if @dm_thread
     end
 
+    def add_change_limits(item_name)
+      packet = TargetModel.packet("INST", "HEALTH_STATUS", scope: "DEFAULT")
+      item = packet['items'].find { |packet_item| packet_item['name'] == item_name }
+      item['limits'] = { 'enabled' => true, 'persistence_setting' => 1, 'DEFAULT' => { 'change_type' => 'SEQUENCE', 'change_color' => 'RED' } }
+      TargetModel.set_packet("INST", "HEALTH_STATUS", packet, scope: "DEFAULT")
+    end
+
     describe "get_limits" do
       it "complains about non-existent targets" do
         expect { @api.get_limits("BLAH", "HEALTH_STATUS", "TEMP1") }.to raise_error(RuntimeError, "Packet definition 'BLAH HEALTH_STATUS' does not exist")
@@ -78,6 +85,11 @@ module OpenC3
       it "gets limits for an item" do
         expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1")).to \
           eql({ 'DEFAULT' => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0], 'TVAC' => [-80.0, -30.0, 30.0, 80.0] })
+      end
+
+      it "skips change limits which have no numeric values" do
+        add_change_limits("TEMP1")
+        expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1")).to eql({})
       end
 
       it "gets limits for a LATEST item" do
@@ -143,6 +155,12 @@ module OpenC3
       it "creates a CUSTOM limits set" do
         @api.set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0)
         expect(@api.get_limits("INST", "HEALTH_STATUS", "TEMP1")['CUSTOM']).to eql([0.0, 10.0, 20.0, 30.0])
+      end
+
+      it "complains about items with change limits" do
+        add_change_limits("TEMP1")
+        expect { @api.set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0) }.to \
+          raise_error(RuntimeError, "Cannot set_limits on item 'INST HEALTH_STATUS TEMP1' with SEQUENCE limits")
       end
 
       it "complains about invalid limits" do

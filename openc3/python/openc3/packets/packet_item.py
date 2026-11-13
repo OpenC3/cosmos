@@ -321,6 +321,11 @@ class PacketItem(StructureItem):
     def limits_values(self):
         return self.__limits.values if self.__limits is not None else None
 
+    # The change limits type without creating PacketItemLimits
+    @property
+    def limits_change_type(self):
+        return self.__limits.change_type if self.__limits is not None else None
+
     @limits.setter
     def limits(self, limits):
         if limits is not None:
@@ -442,6 +447,11 @@ class PacketItem(StructureItem):
                         config += f" {limits_values[4]} {limits_values[5]}\n"
                     else:
                         config += "\n"
+            elif limits.change_type:
+                config += f"    LIMITS DEFAULT {limits.persistence_setting} {'ENABLED' if limits.enabled else 'DISABLED'} {limits.change_type} {limits.change_color}"
+                if limits.change_type == "SEQUENCE" and limits.sequence_step != 1:
+                    config += f" {limits.sequence_step}"
+                config += "\n"
             if limits.response:
                 config += limits.response.to_config()
 
@@ -494,10 +504,11 @@ class PacketItem(StructureItem):
         else:
             config["limits"]["enabled"] = False
         if item_limits:
-            if item_limits.values:
+            if item_limits.values or item_limits.change_type:
                 config["limits"]["persistence_setting"] = item_limits.persistence_setting
                 if item_limits.response:
                     config["limits"]["response"] = item_limits.response
+            if item_limits.values:
                 for limits_set, limits_values in item_limits.values.items():
                     limits = {}
                     limits["red_low"] = limits_values[0]
@@ -508,6 +519,13 @@ class PacketItem(StructureItem):
                         limits["green_low"] = limits_values[4]
                         limits["green_high"] = limits_values[5]
                     config["limits"][limits_set] = limits
+            elif item_limits.change_type:
+                config["limits"]["DEFAULT"] = {
+                    "change_type": item_limits.change_type,
+                    "change_color": item_limits.change_color,
+                }
+                if item_limits.change_type == "SEQUENCE":
+                    config["limits"]["DEFAULT"]["sequence_step"] = item_limits.sequence_step
             if item_limits.response:
                 config["limits_response"] = item_limits.response.as_json()
 
