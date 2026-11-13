@@ -34,6 +34,9 @@ module OpenC3
     def self.backfill_targets(scope)
       groups = Store.hgetall("#{scope}__limits_groups")
       rekeyed = Set.new
+      # Names couldn't contain '__' until groups were owned by a target, so a
+      # legacy name can be a key written here (e.g. INST's group SYSTEM__TEMPS)
+      written = Set.new
       TargetModel.get_all_models(scope: scope).each do |target_name, model|
         group_names = model.limits_groups || []
         next if group_names.empty?
@@ -42,7 +45,9 @@ module OpenC3
           # Before groups were owned by a target they were stored by name alone
           next unless groups[group]
 
-          Store.hset("#{scope}__limits_groups", LimitsEventTopic.limits_group_key(target_name, group), groups[group])
+          key = LimitsEventTopic.limits_group_key(target_name, group)
+          Store.hset("#{scope}__limits_groups", key, groups[group])
+          written << key
           rekeyed << group
         end
 
@@ -53,7 +58,8 @@ module OpenC3
           add_limits_group_packet(model, group_names)
         end
       end
-      Store.hdel("#{scope}__limits_groups", *rekeyed.to_a) unless rekeyed.empty?
+      legacy = rekeyed - written
+      Store.hdel("#{scope}__limits_groups", *legacy.to_a) unless legacy.empty?
     end
 
     # Installing a target adds this packet like any other
@@ -72,17 +78,21 @@ module OpenC3
     def self.add_microservice(scope, scope_model)
       parent = "#{scope}__SCOPEMULTI__#{scope}"
       options = ScopeModel.limits_group_microservice_options(scope, scope_model.shard, parent)
-      return if MicroserviceModel.get_model(name: options[:name], scope: scope)
-
-      MicroserviceModel.new(**options).create
-      # SCOPEMULTI starts its children from its command line so add this one.
-      # Updating the model makes the operator restart SCOPEMULTI.
-      multi = MicroserviceModel.get_model(name: parent, scope: scope)
-      if multi
-        multi.cmd << options[:name] unless multi.cmd.include?(options[:name])
-        multi.update
+      created = false
+      unless MicroserviceModel.get_model(name: options[:name], scope: scope)
+        MicroserviceModel.new(**options).create
+        created = true
       end
-      Logger.info("Added limits group microservice to scope #{scope}")
+      # SCOPEMULTI starts its children from its command line so add this one.
+      # Updating the model makes the operator restart SCOPEMULTI. Checked even
+      # when the child exists in case a previous run stopped before this.
+      multi = MicroserviceModel.get_model(name: parent, scope: scope)
+      if multi and !multi.cmd.include?(options[:name])
+        multi.cmd << options[:name]
+        multi.update
+        created = true
+      end
+      Logger.info("Added limits group microservice to scope #{scope}") if created
     end
   end
 end

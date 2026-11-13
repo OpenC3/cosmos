@@ -66,6 +66,30 @@ module OpenC3
       expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__POWER SYSTEM__TEMPS)
     end
 
+    it "keeps a group whose new key is also a legacy group name" do
+      # Before groups were owned by a target a name could contain '__'
+      model = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')
+      model.limits_groups = %w(SYSTEM__TEMPS)
+      model.update
+      Store.hset("DEFAULT__limits_groups", "SYSTEM__TEMPS", JSON.generate([%w(INST HEALTH_STATUS TEMP2)]))
+      LimitsGroupBackfill.run
+      expected = {
+        "SYSTEM__TEMPS" => JSON.generate([%w(INST HEALTH_STATUS TEMP1)]),
+        "SYSTEM__POWER" => JSON.generate([%w(INST HEALTH_STATUS VOLTS)]),
+        "INST__SYSTEM__TEMPS" => JSON.generate([%w(INST HEALTH_STATUS TEMP2)]),
+      }
+      expect(Store.hgetall("DEFAULT__limits_groups")).to eql expected
+    end
+
+    it "adds the microservice to SCOPEMULTI when a previous run stopped after creating it" do
+      parent = "DEFAULT__SCOPEMULTI__DEFAULT"
+      options = ScopeModel.limits_group_microservice_options('DEFAULT', nil, parent)
+      MicroserviceModel.new(**options).create
+      LimitsGroupBackfill.run
+      multi = MicroserviceModel.get_model(name: parent, scope: "DEFAULT")
+      expect(multi.cmd).to include("DEFAULT__LIMITSGROUP__DEFAULT")
+    end
+
     it "does nothing the second time" do
       LimitsGroupBackfill.run
       LimitsGroupBackfill.run
