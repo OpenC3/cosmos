@@ -25,16 +25,20 @@
 #   uv run python ../test/integration/tsdb/helpers/compare_perf.py
 set -euo pipefail
 
-if [ $# -lt 3 ]; then
+if [[ $# -lt 3 ]]; then
   echo "Usage: $0 <label> <questdb_version> <commit_mode> [runs] [pytest args...]" >&2
   exit 1
 fi
 LABEL=$1
 VERSION=$2
 COMMIT_MODE=$3
-RUNS=${4:-1}
-# Anything after the runs is passed to pytest, e.g. -k back_orbit
-shift $(($# < 4 ? $# : 4))
+shift 3
+# The run count is optional, anything after it is passed to pytest, e.g. -k back_orbit
+RUNS=1
+if [[ $# -gt 0 && $1 =~ ^[0-9]+$ ]]; then
+  RUNS=$1
+  shift
+fi
 
 TSDB_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 PYTHON_DIR="$(cd "$TSDB_DIR/../../../python" && pwd)"
@@ -50,7 +54,7 @@ trap 'rm -f "$OVERRIDE"' EXIT
   echo "    environment:"
   echo "      QDB_CAIRO_COMMIT_MODE: \"$COMMIT_MODE\""
   while IFS='=' read -r name value; do
-    [ "$name" = "QDB_CAIRO_COMMIT_MODE" ] && continue
+    [[ "$name" == "QDB_CAIRO_COMMIT_MODE" ]] && continue
     echo "      $name: \"$value\""
   done < <(env | grep '^QDB_' || true)
 } > "$OVERRIDE"

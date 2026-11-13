@@ -40,7 +40,12 @@ METRICS = {
         ("count_ms", False),
     ],
 }
-FLUSH_METRICS = [("flush_p50_ms", False), ("flush_p95_ms", False), ("flush_p99_ms", False), ("rows_per_s", True)]
+FLUSH_METRICS = [
+    ("flush_p50_ms", False),
+    ("flush_p95_ms", False),
+    ("flush_p99_ms", False),
+    ("flush_rows_per_s", True),
+]
 
 
 def main():
@@ -90,8 +95,11 @@ def main():
                 cell = f"{value:,.1f}" if value < 1000 else f"{value:,.0f}"
                 if label != baseline and base:
                     change = (value - base) / base * 100.0
-                    better = (change > 0) == bigger_better
-                    cell += f" ({change:+.0f}%{'+' if better else '-'})"
+                    if change == 0:
+                        marker = ""
+                    else:
+                        marker = "+" if (change > 0) == bigger_better else "-"
+                    cell += f" ({change:+.0f}%{marker})"
                 row += f"{cell:>{width}}"
             print(row)
     print(f"\nChanges are relative to {baseline}; a trailing + means better, - means worse.")

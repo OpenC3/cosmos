@@ -24,7 +24,7 @@ import threading
 import time
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 import numpy
 import psycopg
@@ -496,6 +496,7 @@ class QuestDBClient:
             # flush: a QWP frame is capped by the server (about 2 MB by default)
             # and a larger flush is refused, which wide packets can exceed. flush()
             # still waits for every frame, and pending_rows covers them all.
+            auto_flush: dict[str, Any]
             if self.is_qwp:
                 auto_flush = {"auto_flush_rows": False, "auto_flush_interval": False}
             else:
@@ -2005,9 +2006,10 @@ class QuestDBClient:
 
     def _reconnect_and_retry_pending(self):
         """Reconnect the ingest sender and replay all pending rows."""
+        # Reconnect first so the rows stay pending if it fails
+        self.connect_ingest()
         rows = self.pending_rows
         self.pending_rows = []
-        self.connect_ingest()
         for index, (table_name, columns, timestamp_ns) in enumerate(rows):
             self.pending_rows.append((table_name, columns, timestamp_ns))
             try:
@@ -2069,7 +2071,7 @@ class QuestDBClient:
         except (ValueError, TypeError, OverflowError):
             return None
         int_range = self.INTEGER_COLUMN_RANGES.get(column_type)
-        if int_range and not (int_range[0] <= casted <= int_range[1]):
+        if int_range and isinstance(casted, int) and not (int_range[0] <= casted <= int_range[1]):
             return None
         return casted
 
@@ -2091,6 +2093,9 @@ class QuestDBClient:
                 if not arrays_only or isinstance(columns[column_name], (list, tuple, numpy.ndarray)):
                     self._convert_column_to_json(table_name, column_name, columns)
                     fixed = True
+                continue
+            if columns[column_name] is None:
+                # NULL fits any column (and str() would make it the string "None")
                 continue
             casted = self._cast_value_to_column_type(columns[column_name], column_type)
             if casted is not None:
@@ -2206,7 +2211,8 @@ class QuestDBClient:
                     column_name = targets[0][1]
                 else:
                     table_names = "any table"
-                    column_name = self.QWP_COLUMN_RE.search(error_message).group(1)
+                    column_match = self.QWP_COLUMN_RE.search(error_message)
+                    column_name = column_match.group(1) if column_match else "unknown"
                 self._log_error(f"QuestDB: Could not find column {column_name} in pending rows for table {table_names}")
                 return False
 

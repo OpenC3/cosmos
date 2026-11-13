@@ -26,9 +26,10 @@ ENV QDB_LINE_TCP_NET_ACTIVE_CONNECTION_LIMIT=1024
 
 # Durable commits: each commit to a WAL table flushes its WAL files before it
 # is acknowledged and the table files are flushed at periodic save points, so a
-# power loss can't corrupt tables or lose more than the last group-commit window
-# (cairo.adaptive.commit.group.window, 50ms). QuestDB's default (nosync) leaves
-# flushing to the OS. See https://questdb.com/docs/concepts/durability
+# power loss can't corrupt tables. It can still lose acknowledged commits that
+# the sequencer hasn't flushed yet, which it aims to do within the group-commit
+# window (cairo.adaptive.commit.group.window, 50ms) but can take longer on busy
+# workers or slow disks. QuestDB's default (nosync) leaves flushing to the OS. See https://questdb.com/docs/concepts/durability
 ENV QDB_CAIRO_COMMIT_MODE=adaptive
 
 # enables :9003/metrics

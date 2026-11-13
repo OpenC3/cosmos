@@ -610,6 +610,20 @@ class TestHandleQwpIngressError(unittest.TestCase):
         self.assertEqual(scalars["VALUES"], 1.5)
         self.assertNotIn("INST__ADCS__VALUES", client.json_columns)
 
+    def test_leaves_null_values_in_other_tables_alone(self):
+        health = {"VALUE": "bad"}
+        events = {"VALUE": None}
+        client = self._client(
+            [("INST__HEALTH_STATUS", health, 0), ("INST__EVENTS", events, 0)],
+            {"INST__HEALTH_STATUS": {"VALUE": "INT"}, "INST__EVENTS": {"VALUE": "VARCHAR"}},
+        )
+        error = self._error("QWP schema mismatch: cannot parse INT from string [value=bad, column=VALUE]")
+        self.assertTrue(client.handle_ingress_error(error))
+        self.assertNotIn("VALUE", health)
+        # Not cast to the string "None", and the column isn't marked for coercion
+        self.assertEqual(events, {"VALUE": None})
+        self.assertNotIn("INST__EVENTS__VALUE", client.varchar_columns)
+
     def test_gives_up_when_no_pending_row_has_the_column(self):
         client = self._client([("INST__HEALTH_STATUS", {"TEMP2": 1}, 0)], {})
         error = self._error("QWP schema mismatch: cannot parse LONG from string [value=abc, column=TEMP1]")
@@ -639,8 +653,9 @@ class TestIngestProtocol(unittest.TestCase):
         self.assertEqual(args[0], Protocol.Ws)
         self.assertEqual(args[1:], ("127.0.0.1", 9000))
         # Only the byte based auto flush stays on, to keep frames under the server's cap
-        self.assertEqual(kwargs["auto_flush_rows"], False)
-        self.assertEqual(kwargs["auto_flush_interval"], False)
+        # Must be False, not just falsy: None means the client's default (on)
+        self.assertIs(kwargs["auto_flush_rows"], False)
+        self.assertIs(kwargs["auto_flush_interval"], False)
         self.assertNotIn("auto_flush", kwargs)
         self.assertTrue(client.is_qwp)
 
@@ -650,7 +665,7 @@ class TestIngestProtocol(unittest.TestCase):
             client = QuestDBClient()
         client.connect_ingest()
         self.assertEqual(sender.call_args[0][0], Protocol.Http)
-        self.assertEqual(sender.call_args.kwargs["auto_flush"], False)
+        self.assertIs(sender.call_args.kwargs["auto_flush"], False)
         self.assertFalse(client.is_qwp)
 
     def test_rejects_an_unknown_protocol(self):
@@ -731,6 +746,14 @@ class TestQwpFlush(unittest.TestCase):
         new.row.assert_called_once()
         self.assertEqual(new.row.call_args.kwargs["columns"], {"VALUE": 2.5})
         self.assertEqual(client.pending_rows, [("TABLE", {"VALUE": 2.5}, 1)])
+
+    def test_keeps_pending_rows_when_reconnecting_for_a_replay_fails(self):
+        client = self._client()
+        rows = list(client.pending_rows)
+        client.connect_ingest = MagicMock(side_effect=ConnectionError("Failed to connect to QuestDB"))
+        with self.assertRaises(ConnectionError):
+            client._reconnect_and_retry_pending()
+        self.assertEqual(client.pending_rows, rows)
 
     def test_other_row_errors_are_raised(self):
         client = self._client()

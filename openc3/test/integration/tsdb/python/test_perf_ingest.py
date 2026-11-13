@@ -188,9 +188,11 @@ def _wait_for_rows(client, table_name, expected, timeout=120.0):
             if _query_one(client, f'SELECT count() FROM "{table_name}"')[0] >= expected:
                 return time.perf_counter() - start
         except Exception:
+            # The table can briefly fail to query while it's created or WAL is
+            # applied, so keep polling until the timeout
             pass
         time.sleep(0.05)
-    pytest.fail(f"Timed out waiting for {expected} rows in {table_name}")
+    raise AssertionError(f"Timed out waiting for {expected} rows in {table_name}")
 
 
 def _server_info(client):
@@ -209,8 +211,9 @@ def _server_info(client):
         for key, path in SERVER_PARAMETERS.items():
             if path in parameters:
                 info[key] = parameters[path]
-    except Exception:
-        pass
+    except Exception as exc:
+        # Keep the "not reported" defaults, the benchmark doesn't depend on them
+        info["parameters_error"] = str(exc)
     return info
 
 
@@ -339,8 +342,12 @@ class TestPerfIngest:
             _drop(client, table_name)
 
     @pytest.mark.parametrize("rows_per_flush", [1, 10, 100])
-    def test_flush_latency(self, perf_client, rows_per_flush):
+    def test_flush_latency(self, perf_client, rows_per_flush, monkeypatch):
         client = perf_client
+        # Only flush explicitly, so a small OPENC3_TSDB_PERF_BATCH_SIZE can't flush
+        # the rows before the timed flush (monkeypatch restores the shared client)
+        monkeypatch.setattr(client, "batch_size", rows_per_flush + 1)
+        monkeypatch.setattr(client, "max_pending_values", 2**62)
         packet_def = _wide_packet_def()
         table_name = f"DEFAULT__TLM__PERF__FLUSH_{rows_per_flush}"
         _drop(client, table_name)
@@ -369,7 +376,8 @@ class TestPerfIngest:
                 "flush_p95_ms": round(_percentile(latencies_ms, 95), 3),
                 "flush_p99_ms": round(_percentile(latencies_ms, 99), 3),
                 "flush_max_ms": round(max(latencies_ms), 3),
-                "rows_per_s": round(n / (sum(latencies_ms) / 1000.0)),
+                # Rows per second of flush time (bulk_wide and interleaved measure ingest)
+                "flush_rows_per_s": round(n / (sum(latencies_ms) / 1000.0)),
             },
             client,
         )
