@@ -260,6 +260,11 @@ class StorageController < ApplicationController
       files = []
       path = sanitize_path(params[:path])
       return if deny_protected_storage?(root: params[:root], key: path)
+      # The path goes into a glob below, so metacharacters could match (and list) protected directories
+      if path.match?(/[*?\[\]{}]/)
+        render json: { status: 'error', message: "Invalid path: #{path}" }, status: :bad_request
+        return
+      end
       list = Dir["/#{root}/#{path}/*"] # Ok for path to be blank
       list.each do |file|
         if File.directory?(file)
@@ -444,7 +449,7 @@ class StorageController < ApplicationController
 
       path = sanitize_path(params[:path] || '')
       storage_type, storage_name = validate_storage_source
-      return if files.any? { |filename| deny_protected_storage?(root: params[:bucket] || params[:volume], key: "#{path}/#{filename}") }
+      return if files.any? { |filename| deny_protected_storage?(root: params[:bucket] || params[:volume], key: sanitize_path("#{path}#{filename}")) }
 
       # Check scope-based RBAC for bucket downloads
       if storage_type == :bucket && params[:bucket] && bucket_requires_rbac?(params[:bucket])

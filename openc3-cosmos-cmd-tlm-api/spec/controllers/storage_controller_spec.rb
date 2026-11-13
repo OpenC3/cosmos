@@ -1866,6 +1866,32 @@ RSpec.describe StorageController, type: :controller do
         expect(response).to have_http_status(:ok)
       end
 
+      it "refuses download_multiple_files when the path and filename split inside a segment" do
+        stub_bucket_client
+        post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", path: "protected_di", files: ["r/shard0/x"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses a split-segment download_multiple_files for a prefix-protected volume" do
+        OpenC3::ProtectedStorageModel.add(root: "OPENC3_DATA_VOLUME", prefix: "protected_dir")
+        post :download_multiple_files, params: {volume: "OPENC3_DATA_VOLUME", path: "protected_di", files: ["r/shard0/x"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses a split-segment download_multiple_files for a local only key" do
+        allow(controller).to receive(:local_only_config_key?).and_return(true)
+        stub_bucket_client
+        post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", path: "protected_di", files: ["r/x"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "rejects glob characters in a volume listing path" do
+        OpenC3::ProtectedStorageModel.add(root: "OPENC3_DATA_VOLUME", prefix: "protected_dir")
+        expect(Dir).not_to receive(:[])
+        get :files, params: {root: "OPENC3_DATA_VOLUME", path: "protected_di*", scope: "DEFAULT"}
+        expect(response).to have_http_status(:bad_request)
+      end
+
       it "hides a protected volume from the volume list" do
         get :volumes
         expect(JSON.parse(response.body)).to eq(["/data"])
