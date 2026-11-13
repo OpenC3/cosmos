@@ -345,14 +345,15 @@ def set_state_color(target_name, packet_name, item_name, state_name, color, scop
 # @param target_name [String, None] Only return the groups defined by this target
 # @return [Hash{String => Array<Array<String, String, String>>]
 def get_limits_groups(target_name=None, scope=OPENC3_SCOPE):
-    if target_name:
+    # Like Ruby an empty target name is a target name, not an omitted one
+    if target_name is not None:
         target_name = str(target_name).upper()
     authorize(permission="tlm", target_name=target_name, scope=scope)
     groups = []
     for key, items in TargetModel.limits_groups(scope=scope).items():
         group_target_name, group_name = LimitsEventTopic.split_limits_group_key(key)
         groups.append((key, group_target_name, group_name, items))
-    if target_name:
+    if target_name is not None:
         return {
             group_name: items
             for _key, group_target_name, group_name, items in groups
@@ -471,7 +472,9 @@ def _limits_group(args, method_name, action, scope):
         case _:
             # Invalid number of arguments
             raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to {method_name}()")
-    authorize(permission="tlm_set", target_name=str(target_name).upper() if target_name else None, scope=scope)
+    authorize(
+        permission="tlm_set", target_name=str(target_name).upper() if target_name is not None else None, scope=scope
+    )
     key = LimitsEventTopic.find_limits_group(target_name, group_name, scope)
     target_name, group_name = LimitsEventTopic.split_limits_group_key(key)
     # Items grouped by target and packet so each packet is read and written once

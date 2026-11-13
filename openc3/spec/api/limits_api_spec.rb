@@ -307,6 +307,8 @@ module OpenC3
         expect(@api.get_limits_groups("system").keys).to eql %w(FIRST SECOND)
         expect(@api.get_limits_groups("INST")).to eql({ "THIRD" => [%w(INST HEALTH_STATUS TEMP1)] })
         expect(@api.get_limits_groups("INST2")).to eql({})
+        # An empty target name is a target with no groups, not an omitted one
+        expect(@api.get_limits_groups("")).to eql({})
       end
 
       it "keys a group name several targets define by target" do
@@ -337,6 +339,9 @@ module OpenC3
         @api.enable_limits_group("system", "first")
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
         expect { @api.enable_limits_group("INST", "FIRST") }.to raise_error(RuntimeError, "LIMITS_GROUP INST FIRST undefined. Ensure target INST contains the line: LIMITS_GROUP FIRST")
+        # An empty target name is not an omitted one
+        expect { @api.disable_limits_group("", "FIRST") }.to raise_error(RuntimeError, /LIMITS_GROUP  FIRST undefined/)
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
       end
 
       it "complains about the wrong number of arguments" do

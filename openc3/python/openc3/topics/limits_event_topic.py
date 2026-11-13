@@ -56,7 +56,8 @@ class LimitsEventTopic(Topic):
     def find_limits_group(cls, target_name, group_name, scope):
         group_name = str(group_name).upper()
         keys = list(cls._limits_groups(scope).keys())
-        if target_name:
+        # Like Ruby an empty target name is a target name, not an omitted one
+        if target_name is not None:
             target_name = str(target_name).upper()
             key = cls.limits_group_key(target_name, group_name)
             if key in keys:

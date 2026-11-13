@@ -348,6 +348,8 @@ class TestLimitsApi(unittest.TestCase):
         self.assertEqual(list(get_limits_groups("system").keys()), ["FIRST", "SECOND"])
         self.assertEqual(get_limits_groups("INST"), {"THIRD": [["INST", "HEALTH_STATUS", "TEMP1"]]})
         self.assertEqual(get_limits_groups("INST2"), {})
+        # An empty target name is a target with no groups, not an omitted one
+        self.assertEqual(get_limits_groups(""), {})
 
     def test_get_limits_groups_keys_a_group_name_several_targets_define_by_target(self):
         Store.hset("DEFAULT__limits_groups", "INST__FIRST", json.dumps([["INST", "HEALTH_STATUS", "TEMP2"]]))
@@ -363,6 +365,10 @@ class TestLimitsApi(unittest.TestCase):
             RuntimeError, "LIMITS_GROUP INST FIRST undefined. Ensure target INST contains the line: LIMITS_GROUP FIRST"
         ):
             enable_limits_group("INST", "FIRST")
+        # An empty target name is not an omitted one
+        with self.assertRaisesRegex(RuntimeError, "LIMITS_GROUP  FIRST undefined"):
+            disable_limits_group("", "FIRST")
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
     def test_enable_limits_group_complains_about_the_wrong_number_of_arguments(self):
         with self.assertRaisesRegex(
