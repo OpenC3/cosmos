@@ -16,6 +16,9 @@ import { OpenC3Api } from '@openc3/js-common/services'
 import { equal } from './equal'
 
 const MAX_PERIOD = 3600 // seconds
+// Newly registered keys are polled right away (so a panel doesn't wait a
+// period for its first values), but no more often than this
+const MIN_GAP_MS = 250
 
 // TGT__PKT__ITEM, the identity of an item regardless of value type
 export function baseKey(item) {
@@ -58,6 +61,8 @@ export class TlmPoller {
     this.pending = false
     // Resolved once a poll and any queued behind it finish (nextPoll)
     this.waiters = []
+    // When the last poll started (ms), for MIN_GAP_MS
+    this.lastPoll = 0
   }
 
   // Resolves after the next poll completes, e.g. so a dashboard that just
@@ -68,11 +73,38 @@ export class TlmPoller {
     return new Promise((resolve) => this.waiters.push(resolve))
   }
 
+  // A panel showing these keys appeared. Keys nobody polled yet bring the
+  // next poll forward, so it doesn't wait a period for its first values.
   register(keys) {
-    for (const key of keys) {
-      this.counts.set(key, (this.counts.get(key) || 0) + 1)
+    if (this.count(keys)) this.schedule()
+  }
+
+  // A shown panel's keys changed from oldKeys to newKeys (new items, the
+  // Limits panel's list as items go in and out of limits). They join the
+  // regular poll rather than polling early, so changes can't add requests:
+  // a Limits panel changes on every limits event. New keys are counted
+  // before old ones are released, so keys in both keep their values.
+  replace(oldKeys = [], newKeys = []) {
+    if (
+      oldKeys.length === newKeys.length &&
+      oldKeys.every((key, index) => key === newKeys[index])
+    ) {
+      return
     }
-    this.schedule()
+    // Playback only polls when its time moves, so new keys can't wait
+    if (this.count(newKeys) && this.playbackTime) this.schedule()
+    this.unregister(oldKeys)
+  }
+
+  // Adds a panel's keys; true when any wasn't polled yet
+  count(keys) {
+    let added = false
+    for (const key of keys) {
+      const count = this.counts.get(key) || 0
+      if (!count) added = true
+      this.counts.set(key, count + 1)
+    }
+    return added
   }
 
   unregister(keys) {
@@ -87,13 +119,20 @@ export class TlmPoller {
     }
   }
 
-  // Panels mount one after another; batch their registrations into one poll
+  // Panels mount one after another; batch their registrations into one
+  // poll, at least MIN_GAP_MS after the last
   schedule() {
     if (this.scheduled) return
     this.scheduled = true
     queueMicrotask(() => {
-      this.scheduled = false
-      void this.poll()
+      const wait = this.lastPoll + MIN_GAP_MS - Date.now()
+      setTimeout(
+        () => {
+          this.scheduled = false
+          void this.poll()
+        },
+        Math.max(0, wait),
+      )
     })
   }
 
@@ -147,6 +186,7 @@ export class TlmPoller {
       return
     }
     this.busy = true
+    this.lastPoll = Date.now()
     this.clock.loading++
     try {
       const requested = [...this.counts.keys()]

@@ -185,7 +185,7 @@
 import { computed, inject, unref } from 'vue'
 import OptionsEditor from './OptionsEditor.vue'
 import { PANEL_TYPES } from '../panels/registry'
-import { optionDefs, settingsForType } from '../panels/options'
+import { settingsForType, visibleOptionDefs } from '../panels/options'
 import { MAX_H, minSize } from '../layout'
 import { clearedFieldsFor } from '../dashboardParser'
 
@@ -250,7 +250,8 @@ const typeItems = computed(() => {
     ...items,
   ])
 })
-const hasOptions = computed(() => optionDefs(props.panel.type).length > 0)
+// Options the panel shows, after their `when` (TEXT edits its one in TextConfig)
+const hasOptions = computed(() => visibleOptionDefs(props.panel).length > 0)
 
 function itemProps(item) {
   return item.header ? { disabled: true } : {}

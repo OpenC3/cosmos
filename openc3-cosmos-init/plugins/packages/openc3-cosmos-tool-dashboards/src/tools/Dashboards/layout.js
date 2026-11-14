@@ -113,6 +113,57 @@ export function resolveLayout(
   )
 }
 
+// Layout after a keyboard nudge of panel `uid` by { dx, dy, dw, dh } grid
+// units (arrows move, Shift+arrows resize), or null when it can't move that
+// way. Moving down one row would just float back up (panels always float
+// up), so Down instead swaps the panel with the next one below it, the way
+// Up swaps it with the one above.
+export function nudgeLayout(panels, uid, change, columns = GRID_COLUMNS) {
+  const panel = panels.find((p) => p.uid === uid)
+  if (!panel) return null
+  const { dx = 0, dy = 0, dw = 0, dh = 0 } = change
+  const origin = { x: panel.x, y: panel.y, w: panel.w, h: panel.h }
+  const resolve = (rect) => {
+    const moved = clampRect({ type: panel.type, ...rect }, columns)
+    return resolveLayout(
+      panels.map((p) => (p.uid === uid ? { ...p, ...moved } : p)),
+      uid,
+      dw || dh ? null : origin,
+      columns,
+    )
+  }
+  if (dy > 0 && !dw && !dh) {
+    // The nearest panel below that shares a column with this one
+    const next = panels
+      .filter(
+        (p) =>
+          p.uid !== uid &&
+          p.y >= panel.y + panel.h &&
+          p.x < panel.x + panel.w &&
+          panel.x < p.x + p.w,
+      )
+      .sort((a, b) => a.y - b.y)[0]
+    // At the bottom of its columns: nothing to move past
+    if (!next) return null
+    // Bottoms lined up (a swap), else entirely below it
+    for (const y of [next.y + next.h - panel.h, next.y + next.h]) {
+      const layout = resolve({
+        ...origin,
+        x: panel.x + dx,
+        y: Math.max(y, panel.y + 1),
+      })
+      if (layout[uid].y > panel.y) return layout
+    }
+    return null
+  }
+  return resolve({
+    x: panel.x + dx,
+    y: panel.y + dy,
+    w: panel.w + dw,
+    h: panel.h + dh,
+  })
+}
+
 // First empty row below every rect
 export function bottomRow(rects) {
   return rects.reduce((max, rect) => Math.max(max, rect.y + rect.h), 0)

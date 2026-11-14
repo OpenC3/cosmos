@@ -226,8 +226,9 @@ const grapherUrl = computed(() => {
 watch(
   keys,
   (newKeys, oldKeys) => {
-    if (oldKeys) poller.unregister(Object.values(oldKeys))
-    poller.register(Object.values(newKeys))
+    // Opening polls right away; switching items joins the next poll
+    if (oldKeys) poller.replace(Object.values(oldKeys), Object.values(newKeys))
+    else poller.register(Object.values(newKeys))
   },
   { immediate: true },
 )

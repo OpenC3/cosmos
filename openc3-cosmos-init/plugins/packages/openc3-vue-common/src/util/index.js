@@ -13,6 +13,7 @@
 
 export * as AstroStatus from './AstroStatus'
 export { fileIcon } from './fileIcon'
+export { formatShortcut, isMac } from './formatShortcut'
 export { default as TimeFilters } from './timeFilters'
 export {
   formatDate,

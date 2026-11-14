@@ -20,6 +20,7 @@ import {
   deriveLayout,
   firstFit,
   resolveLayout,
+  nudgeLayout,
 } from '../layout'
 
 const panel = (uid, x, y, w, h, type = 'VALUES') => ({ uid, type, x, y, w, h })
@@ -120,5 +121,73 @@ describe('breakpoints', () => {
     expect(layout[1]).toEqual({ x: 0, y: 0, w: 6, h: 4 })
     expect(layout[2]).toEqual({ x: 6, y: 0, w: 6, h: 4 })
     expect(layout[3].w).toBe(12)
+  })
+})
+
+describe('nudgeLayout', () => {
+  const panel = (uid, x, y, w, h) => ({ uid, type: 'VALUES', x, y, w, h })
+  // A over B in the left half, C alone on the right
+  const panels = [
+    panel(1, 0, 0, 6, 3),
+    panel(2, 0, 3, 6, 4),
+    panel(3, 6, 0, 6, 5),
+  ]
+
+  it('moves down past the panel below, swapping them', () => {
+    const layout = nudgeLayout(panels, 1, { dy: 1 })
+    expect(layout[2]).toMatchObject({ x: 0, y: 0 })
+    expect(layout[1]).toMatchObject({ x: 0, y: 4 })
+  })
+
+  it('moves back up the same way', () => {
+    const down = nudgeLayout(panels, 1, { dy: 1 })
+    const moved = panels.map((p) => ({ ...p, ...down[p.uid] }))
+    const up = nudgeLayout(moved, 1, { dy: -1 })
+    expect(up[1]).toMatchObject({ y: 0 })
+    expect(up[2]).toMatchObject({ y: 3 })
+  })
+
+  it("doesn't move down with nothing below", () => {
+    expect(nudgeLayout(panels, 2, { dy: 1 })).toBeNull()
+    expect(nudgeLayout(panels, 3, { dy: 1 })).toBeNull()
+  })
+
+  it('still moves sideways and resizes', () => {
+    expect(nudgeLayout(panels, 3, { dx: -1 })[3]).toMatchObject({ x: 5 })
+    expect(nudgeLayout(panels, 1, { dh: 1 })[1]).toMatchObject({ h: 4 })
+    expect(nudgeLayout(panels, 1, { dh: 1 })[2]).toMatchObject({ y: 4 })
+  })
+})
+
+describe('arrow key runs', () => {
+  const panel = (uid, x, y, w, h) => ({ uid, type: 'VALUES', x, y, w, h })
+  // Found by a random search: B and C stacked in one column
+  const panels = [
+    panel(1, 6, 0, 2, 2),
+    panel(2, 6, 2, 2, 3),
+    panel(3, 6, 5, 2, 3),
+    panel(4, 4, 0, 2, 3),
+    panel(5, 2, 0, 2, 4),
+  ]
+  const positions = (layout) =>
+    Object.fromEntries(
+      Object.entries(layout).map(([uid, { x, y }]) => [uid, [x, y]]),
+    )
+  const start = positions(Object.fromEntries(panels.map((p) => [p.uid, p])))
+
+  it('one press at a time, there and back reorders panels', () => {
+    let current = panels
+    for (const dx of [-1, -1, -1, 1, 1, 1]) {
+      const layout = nudgeLayout(current, 3, { dx })
+      current = current.map((p) => ({ ...p, ...layout[p.uid] }))
+    }
+    const end = positions(Object.fromEntries(current.map((p) => [p.uid, p])))
+    expect(end).not.toEqual(start)
+  })
+
+  it('as a run from where it started, there and back restores them', () => {
+    // The total after three lefts and three rights
+    expect(positions(nudgeLayout(panels, 3, { dx: -3 }))).not.toEqual(start)
+    expect(positions(nudgeLayout(panels, 3, { dx: 0 }))).toEqual(start)
   })
 })

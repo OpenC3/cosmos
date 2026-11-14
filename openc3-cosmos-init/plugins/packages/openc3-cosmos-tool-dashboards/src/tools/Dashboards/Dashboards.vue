@@ -13,10 +13,13 @@
 
 <template>
   <top-bar :title="title" :menus="menus" />
-  <div class="dashboards-root">
+  <div class="dashboards-root" :style="rootVars">
     <!-- Same header viewing and editing; the Code button is shared -->
     <header
-      class="dashboard-header d-flex flex-wrap align-center ga-3 px-4 py-2 border-b"
+      :class="[
+        'dashboard-header d-flex flex-wrap align-center ga-3 px-4 py-2',
+        { 'border-b': !healthUnderHeader },
+      ]"
       :data-test="editing ? 'editor-header' : undefined"
     >
       <template v-if="!editing">
@@ -178,7 +181,7 @@
             variant="text"
             size="small"
             aria-label="Undo"
-            title="Undo (Ctrl+Z)"
+            :title="`Undo (${UNDO_KEY})`"
             :disabled="!canUndo"
             data-test="editor-undo"
             @click="undo"
@@ -188,7 +191,7 @@
             variant="text"
             size="small"
             aria-label="Redo"
-            title="Redo (Ctrl+Shift+Z)"
+            :title="`Redo (${REDO_KEY})`"
             :disabled="!canRedo"
             data-test="editor-redo"
             @click="redo"
@@ -227,12 +230,16 @@
     </header>
 
     <v-alert
+      v-if="showBeta"
       type="warning"
       variant="tonal"
       density="compact"
       icon="mdi-flask-outline"
       class="rounded-0"
+      closable
+      close-label="Dismiss beta notice"
       data-test="dashboards-beta-banner"
+      @click:close="showBeta = false"
     >
       <span class="font-weight-bold">Dashboards is in beta.</span>
       Panels, the editor and the dashboard file format can change in any release
@@ -244,7 +251,12 @@
          to it. -->
     <output
       v-if="current && !editing && healthBanner"
-      :class="['health-banner', `st-${health.level}`]"
+      ref="healthStrip"
+      :class="[
+        'health-banner',
+        `st-${health.level}`,
+        { 'under-header': healthUnderHeader },
+      ]"
       aria-live="polite"
       data-test="dashboard-health"
     >
@@ -442,6 +454,7 @@
     :describe="describeDashboardChange"
     @restored="open(currentKey)"
   />
+  <help-dialog v-if="helpOpen" v-model="helpOpen" :topic="helpTopic" />
   <item-details
     v-if="detailsItem"
     :model-value="detailsOpen"
@@ -474,6 +487,7 @@ import {
   PlaybackControls,
   TopBar,
 } from '@openc3/vue-common/components'
+import { formatShortcut, isMac } from '@openc3/vue-common/util'
 import '@fontsource/ibm-plex-sans/400.css'
 import '@fontsource/ibm-plex-sans/500.css'
 import '@fontsource/ibm-plex-sans/600.css'
@@ -488,11 +502,13 @@ import ItemDetails from './components/ItemDetails.vue'
 import TimeRangePicker from './components/TimeRangePicker.vue'
 import StatusSymbol from './components/StatusSymbol.vue'
 import { loadTimeRange, saveTimeRange } from './composables/timeRange'
+import { useChromeInsets } from './composables/chromeInsets'
 import DashboardDialog from './dialogs/DashboardDialog.vue'
 import DashboardNavigator from './navigator/DashboardNavigator.vue'
 import { dashboardUrl, isStarred, toggleStar } from './navigator/navigatorStore'
 import PanelDialog from './dialogs/PanelDialog.vue'
 import CodeDialog from './dialogs/CodeDialog.vue'
+import HelpDialog from './dialogs/HelpDialog.vue'
 import { useDashboardHistory } from './composables/useDashboardHistory'
 import { routeKey, useDashboardFile } from './composables/useDashboardFile'
 import { usePlayback } from './composables/usePlayback'
@@ -522,6 +538,7 @@ const display = useDisplay()
 const notify = inject('notify')
 const dialog = inject('dialog')
 const gridRef = useTemplateRef('grid')
+const healthStripRef = useTemplateRef('healthStrip')
 
 const title = 'Dashboards (Beta)'
 // Services: markRaw keeps Vue from proxying their internals; the parts
@@ -558,6 +575,41 @@ const codeDialog = ref(false)
 // Item details sheet
 const detailsItem = ref(null)
 const detailsOpen = ref(false)
+// The beta notice, until dismissed. Not remembered: it's back on reload.
+const showBeta = ref(true)
+// The visible page between the COSMOS app bar and footer, and the pinned
+// health banner's height, as CSS variables for everything that sticks to
+// the top or covers the page: the health banner, the grid's attention bars
+// and full screen panels
+const chrome = useChromeInsets()
+const healthHeight = ref(0)
+const rootVars = computed(() => ({
+  '--chrome-top': `${chrome.top}px`,
+  '--chrome-bottom': `${chrome.bottom}px`,
+  '--sticky-top': `${chrome.top + healthHeight.value}px`,
+}))
+let healthObserver = null
+watch(healthStripRef, (el) => {
+  healthObserver?.disconnect()
+  healthHeight.value = el?.offsetHeight ?? 0
+  if (!el) return
+  healthObserver = new ResizeObserver(() => {
+    healthHeight.value = el.offsetHeight
+  })
+  healthObserver.observe(el)
+})
+// The health banner right under the header (beta notice dismissed): it
+// draws the line between them in its own color, not the header's grey
+const healthUnderHeader = computed(
+  () =>
+    !showBeta.value &&
+    !!current.value &&
+    !editing.value &&
+    !!healthBanner.value,
+)
+// Help menu dialogs: 'shortcuts' or 'migrate'
+const helpOpen = ref(false)
+const helpTopic = ref('shortcuts')
 
 // Undo / redo and unsaved changes, over snapshots taken after each edit
 const history = useDashboardHistory(model, { apply: replaceModel })
@@ -610,10 +662,14 @@ const columns = computed(() => model.value.columns || GRID_COLUMNS)
 const breakpoint = computed(() => breakpointFor(display.width.value))
 const isPhone = computed(() => breakpoint.value === 'phone')
 // The navigator's shortcut (onKeydown takes either modifier), as Macs and
-// everything else write it
-const SHORTCUT = /Mac|iPhone|iPad/.test(window.navigator.platform)
-  ? { label: '⌘K', aria: 'Meta+K' }
-  : { label: 'Ctrl+K', aria: 'Control+K' }
+// everything else write it. Like Open File in Script Runner.
+const SHORTCUT = {
+  label: formatShortcut('Mod+O'),
+  aria: isMac ? 'Meta+O' : 'Control+O',
+}
+// Undo / redo as this platform writes them (onKeydown takes any of these)
+const UNDO_KEY = formatShortcut('Mod+Z')
+const REDO_KEY = formatShortcut(isMac ? 'Mod+Shift+Z' : 'Mod+Y')
 const isDesktop = computed(() => breakpoint.value === 'desktop')
 // A copy starts in the same target as its source, named NAME_COPY
 const dashboardDialogTarget = computed(() => {
@@ -686,8 +742,23 @@ const starHelp = computed(() => {
 })
 // Everything else has a button on the page
 const menus = computed(() => {
+  const help = {
+    label: 'Help',
+    items: [
+      {
+        label: 'Keyboard Shortcuts',
+        icon: 'mdi-keyboard-outline',
+        command: () => openHelp('shortcuts'),
+      },
+      {
+        label: 'Migrating from Telemetry Viewer',
+        icon: 'mdi-swap-horizontal',
+        command: () => openHelp('migrate'),
+      },
+    ],
+  }
   // Phones only view dashboards
-  if (isPhone.value) return []
+  if (isPhone.value) return [help]
   return [
     {
       label: 'File',
@@ -716,6 +787,7 @@ const menus = computed(() => {
         },
       ],
     },
+    help,
   ]
 })
 
@@ -783,12 +855,21 @@ async function init() {
   loading.value = false
 }
 
+// The tool base mounts tools in #openc3-tool, which has overflow: auto
+// but never scrolls itself (the window does). That makes it the sticky
+// container, so nothing could stay pinned while the page scrolls: let it
+// overflow while Dashboards is open.
+const toolHost = document.getElementById('openc3-tool')
+const toolHostOverflow = toolHost?.style.overflow
 onMounted(() => {
+  if (toolHost) toolHost.style.overflow = 'visible'
   init()
   window.addEventListener('beforeunload', beforeUnload)
   window.addEventListener('keydown', onKeydown)
 })
 onUnmounted(() => {
+  if (toolHost) toolHost.style.overflow = toolHostOverflow ?? ''
+  healthObserver?.disconnect()
   window.removeEventListener('beforeunload', beforeUnload)
   window.removeEventListener('keydown', onKeydown)
   poller.stop()
@@ -818,13 +899,15 @@ function setDetailsOpen(open) {
 function beforeUnload(event) {
   if (dirty.value) event.preventDefault()
 }
-// Ctrl/Cmd+K opens the navigator. While editing, Ctrl/Cmd+Z undoes and
-// Ctrl/Cmd+Shift+Z or Ctrl+Y redoes, outside text fields.
+// Ctrl/Cmd+O opens the navigator (not while editing, but it never opens
+// the browser's Open File either). While editing, Ctrl/Cmd+Z undoes and
+// Ctrl/Cmd+Shift+Z or Ctrl+Y redoes, outside text fields. The single key
+// panel shortcuts (V, E) are in DashboardGrid.
 function onKeydown(event) {
   if (!(event.ctrlKey || event.metaKey)) return
-  if (event.key.toLowerCase() === 'k' && !editing.value) {
+  if (event.key.toLowerCase() === 'o' && !event.shiftKey && !event.altKey) {
     event.preventDefault()
-    navigatorOpen.value = true
+    if (!editing.value) navigatorOpen.value = true
     return
   }
   if (!editing.value) return
@@ -854,6 +937,10 @@ function confirmDiscard() {
     cancelText: 'Keep editing',
     okClass: 'error',
   })
+}
+function openHelp(topic) {
+  helpTopic.value = topic
+  helpOpen.value = true
 }
 function openDashboardDialog(mode, key = null) {
   dashboardDialogMode.value = mode
@@ -994,6 +1081,11 @@ function deletePanel(panel) {
 .health-banner {
   /* --status comes from st-<level> (dashboards.scss) */
   --health: var(--status, rgb(var(--v-theme-on-surface)));
+  /* Pinned under the app bar while the dashboard scrolls (--chrome-top,
+     see rootVars), over the panels: opaque, with the tint on top */
+  position: sticky;
+  top: var(--chrome-top, 0px);
+  z-index: 4;
   display: grid;
   /* Equal side columns keep the text centered on the whole banner */
   grid-template-columns: 1fr minmax(0, auto) 1fr;
@@ -1001,15 +1093,24 @@ function deletePanel(panel) {
   gap: 12px;
   min-height: 40px;
   padding: 4px 16px;
-  background: color-mix(in srgb, var(--health) 10%, transparent);
+  --tint: color-mix(
+    in srgb,
+    var(--health) var(--tint-amount, 10%),
+    transparent
+  );
+  background: linear-gradient(var(--tint), var(--tint))
+    rgb(var(--v-theme-background));
   border-bottom: 1px solid color-mix(in srgb, var(--health) 35%, transparent);
   box-shadow: inset 4px 0 0 var(--health);
 }
+.health-banner.under-header {
+  border-top: 1px solid color-mix(in srgb, var(--health) 35%, transparent);
+}
 .health-banner.st-caution {
-  background: color-mix(in srgb, var(--health) 18%, transparent);
+  --tint-amount: 18%;
 }
 .health-banner.st-critical {
-  background: color-mix(in srgb, var(--health) 26%, transparent);
+  --tint-amount: 26%;
   box-shadow: inset 6px 0 0 var(--health);
 }
 .health-center {

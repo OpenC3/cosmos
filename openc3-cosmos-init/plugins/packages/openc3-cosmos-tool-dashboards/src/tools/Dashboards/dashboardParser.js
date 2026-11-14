@@ -386,10 +386,20 @@ export function parseDashboard(text) {
 // they read as text, even single words
 function quote(value, always = false) {
   const string = String(value)
-  if (always || string === '' || /[\s#]/.test(string)) {
-    return string.includes('"') ? `'${string}'` : `"${string}"`
+  if (always || string === '' || /[\s#"']/.test(string)) {
+    return hasBareQuote(string) ? `'${string}'` : `"${string}"`
   }
   return string
+}
+
+// A " not escaped with a backslash. Text settings escape theirs
+// (options.js), so they can always be written in double quotes.
+function hasBareQuote(string) {
+  for (let i = 0; i < string.length; i++) {
+    if (string[i] === '\\') i++
+    else if (string[i] === '"') return true
+  }
+  return false
 }
 
 // SETTING / ITEM_SETTING lines, one per setting

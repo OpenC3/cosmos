@@ -129,3 +129,20 @@ PANEL COMMAND 9 35 3 4 "Turn OFF Quiet mode"
   COMMAND <%= target_name %> QUIET
   PARAMETER STATE FALSE
 END
+
+PANEL TEXT 0 39 4 8 "About this dashboard"
+  SETTING TEXT "## <%= target_name %> at a glance\n\n- Press **V** over a panel to show it full screen, **V** or **Esc** to go back\n- Click a value for its details and limits\n- **Playback** replays the dashboard from an earlier time\n\n| Ground station | Item |\n| --- | --- |\n| Station 1 | `GROUND1STATUS` |\n| Station 2 | `GROUND2STATUS` |\n\n> The statistics panels cover the time range picked in the header.\n\nSee the [Dashboards documentation](/tools/staticdocs/docs/tools/dashboards)."
+END
+
+PANEL AGGREGATE 4 39 4 8 "Temperature 1 statistics"
+  ITEM <%= target_name %> HEALTH_STATUS TEMP1
+  SETTING STATS MIN MAX AVG MEDIAN PERCENTILE STDDEV RANGE COUNT
+END
+
+PANEL AGGREGATE 8 39 4 8 "Temperature statistics"
+  ITEM <%= target_name %> HEALTH_STATUS TEMP1
+  ITEM <%= target_name %> HEALTH_STATUS TEMP2
+  ITEM <%= target_name %> HEALTH_STATUS TEMP3
+  ITEM <%= target_name %> HEALTH_STATUS TEMP4
+  SETTING STATS MIN MAX AVG
+END

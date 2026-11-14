@@ -39,15 +39,12 @@
       class="flex-grow-1 min-h-0 position-relative mx-2 mb-2 mt-2"
       data-test="graph-plot"
     >
-      <div
+      <hover-tip
         v-if="tip"
-        class="db-tip position-absolute pointer-events-none text-caption bg-surface-light rounded-lg border pa-2 elevation-4"
-        :style="{
-          left: `${tip.left}px`,
-          transform: tip.flip
-            ? 'translateX(calc(-100% - 12px))'
-            : 'translateX(12px)',
-        }"
+        :anchor="plotEl"
+        :x="tip.left"
+        :flip="tip.flip"
+        data-test="graph-hover"
       >
         <div class="num font-weight-bold mb-1">{{ tip.time }}</div>
         <div
@@ -60,10 +57,10 @@
             {{ row.label }}
           </span>
           <span>
-            <b class="num">{{ row.value }}</b> {{ row.units }}
+            <b>{{ row.value }}</b> {{ row.units }}
           </span>
         </div>
-      </div>
+      </hover-tip>
     </div>
   </div>
 </template>
@@ -89,6 +86,7 @@ import { itemKey } from '../composables/tlmPoller'
 import { clock, formatTelemetry } from '../composables/format'
 import { limitLines } from '../limits'
 import { equal } from '../composables/equal'
+import HoverTip from '../components/HoverTip.vue'
 
 function withAlpha(color, alpha) {
   const hex = color.trim().replace('#', '')

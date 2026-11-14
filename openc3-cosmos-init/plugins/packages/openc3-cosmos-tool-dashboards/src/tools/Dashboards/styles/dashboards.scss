@@ -25,9 +25,6 @@
   @media (max-width: 600px) {
     font-size: 12px;
   }
-  .mono {
-    font-family: 'IBM Plex Mono', ui-monospace, monospace;
-  }
 
   // Status symbols, one shape per level (see status.js)
   .sym {
@@ -79,20 +76,6 @@
     .st-#{$level} {
       --status: var(--color-status-#{$level});
     }
-  }
-
-  // Hover tooltip on graphs and sparklines (GraphPanel, StatPanel)
-  .db-tip {
-    top: 4px;
-    min-width: 220px;
-    z-index: 2;
-  }
-  // A series' line color, in legends and tooltips
-  .db-swatch {
-    display: inline-block;
-    width: 14px;
-    height: 2px;
-    border-radius: 1px;
   }
 
   // Limits zones (LimitsBar, GaugePanel): each sets --zone, and the
@@ -163,3 +146,151 @@
     opacity: 0;
   }
 }
+
+// Rendered markdown (Text panels and their preview in the panel dialog).
+// Outside .dashboards-root because the dialog is teleported.
+.db-markdown {
+  font-size: 14px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  > :first-child {
+    margin-top: 0;
+  }
+  > :last-child {
+    margin-bottom: 0;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    margin: 0.9em 0 0.4em;
+    font-weight: 600;
+    line-height: 1.25;
+  }
+  h1 {
+    font-size: 1.6em;
+  }
+  h2 {
+    font-size: 1.35em;
+  }
+  h3 {
+    font-size: 1.15em;
+  }
+  h4,
+  h5,
+  h6 {
+    font-size: 1em;
+  }
+  p,
+  ul,
+  ol,
+  blockquote,
+  pre,
+  table {
+    margin: 0 0 0.75em;
+  }
+  ul,
+  ol {
+    padding-left: 1.5em;
+  }
+  li:has(> input[type='checkbox']) {
+    list-style: none;
+    margin-left: -1.3em;
+  }
+  // Astro's interactive text color, as COSMOS's outlined buttons and tabs
+  // use: readable on every theme (the primary color is too dark on dark)
+  a {
+    color: var(--color-text-interactive-default, rgb(var(--v-theme-secondary)));
+    text-underline-offset: 2px;
+  }
+  a:hover {
+    color: var(--color-text-interactive-hover, rgb(var(--v-theme-secondary)));
+  }
+  code {
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    background: rgba(var(--v-theme-on-surface), 0.08);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.9em;
+  }
+  pre {
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: rgba(var(--v-theme-on-surface), 0.06);
+    overflow-x: auto;
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+  blockquote {
+    padding-left: 12px;
+    border-left: 3px solid rgba(var(--v-theme-on-surface), 0.25);
+    color: rgba(var(--v-theme-on-surface), 0.75);
+  }
+  hr {
+    margin: 1em 0;
+    border: 0;
+    border-top: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+  }
+  table {
+    border-collapse: collapse;
+  }
+  th,
+  td {
+    padding: 4px 10px;
+    border: 1px solid rgba(var(--v-border-color), var(--v-border-opacity));
+    text-align: left;
+  }
+  th {
+    font-weight: 600;
+  }
+  img {
+    max-width: 100%;
+  }
+}
+
+// A panel going full screen and back (DashboardGrid toggleFullscreen): it
+// grows from its place in the grid while the dashboard behind fades. Both
+// snapshots keep their size, pinned top left and cropped by the growing
+// frame, so headers and text never stretch; the old one fades out early
+// so the content reads as the new layout.
+::view-transition-group(db-fullscreen-panel) {
+  animation-duration: 260ms;
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+  border-radius: 8px;
+  overflow: clip;
+}
+::view-transition-old(db-fullscreen-panel),
+::view-transition-new(db-fullscreen-panel) {
+  width: 100%;
+  height: 100%;
+  object-fit: none;
+  object-position: left top;
+}
+::view-transition-old(db-fullscreen-panel) {
+  animation-duration: 120ms;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+}
+
+// Monospace text (item names, file paths). Outside .dashboards-root, like
+// the rules below, because dialogs and tooltips are teleported.
+.mono {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+// A series' line color, in legends and tooltips. Outside .dashboards-root:
+// tooltips are teleported (HoverTip).
+.db-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  vertical-align: middle;
+}
+
