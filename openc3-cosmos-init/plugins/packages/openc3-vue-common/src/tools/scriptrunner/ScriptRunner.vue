@@ -970,9 +970,24 @@ const PYTHON_FSTRING_REGEX = /\(f"/ // f strings
 // comment only, or a line that only closes or continues a block, optionally
 // with a trailing comment. Ruby: end, else, ensure, rescue (with or without an
 // exception list). Python: else:, try:, finally:, except ...:. Either: a line
-// of only closing brackets.
-const NON_EXECUTABLE_LINE_REGEX =
-  /^\s*(end|else|ensure|rescue\b[^#]*|else:|try:|finally:|except\b[^#]*:|[)\]}]+)?\s*(#.*)?$/
+// of only closing brackets. These match the line with its comment and
+// surrounding whitespace already removed (see isNonExecutableLine).
+const BLOCK_ONLY_LINE_REGEX =
+  /^(?:end|else|ensure|else:|try:|finally:|[)\]}]*)$/
+const RESCUE_LINE_REGEX = /^rescue\b/
+const EXCEPT_LINE_REGEX = /^except\b/
+
+function isNonExecutableLine(line) {
+  // Cutting at the first # can also cut a string, but what's left then isn't
+  // one of the lines above, so the line still counts as executable
+  const hashIndex = line.indexOf('#')
+  const code = (hashIndex === -1 ? line : line.slice(0, hashIndex)).trim()
+  return (
+    BLOCK_ONLY_LINE_REGEX.test(code) ||
+    RESCUE_LINE_REGEX.test(code) ||
+    (EXCEPT_LINE_REGEX.test(code) && code.endsWith(':'))
+  )
+}
 
 const RUBY_SUITE_TEMPLATE = `require 'openc3/script/suite.rb'
 
@@ -2084,14 +2099,12 @@ export default {
           await this.reloadFile(false)
         }
       }
-    } else {
-      if (this.body) {
-        this.editor.setValue(this.body)
-        this.editor.clearSelection()
-        // If initialFilename is provided, use it for path resolution
-        if (this.initialFilename) {
-          this.filename = this.initialFilename
-        }
+    } else if (this.body) {
+      this.editor.setValue(this.body)
+      this.editor.clearSelection()
+      // If initialFilename is provided, use it for path resolution
+      if (this.initialFilename) {
+        this.filename = this.initialFilename
       }
     }
     this.updateInterval = setInterval(() => {
@@ -2476,7 +2489,7 @@ export default {
       }
     },
     canBreakOnRow: function (row, session = this.editor.session) {
-      return !NON_EXECUTABLE_LINE_REGEX.test(session.getLine(row))
+      return !isNonExecutableLine(session.getLine(row))
     },
     updateBreakpoints: function ($event, session) {
       if ($event.lines.length <= 1) {
@@ -2792,10 +2805,10 @@ export default {
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
     },
-    startHandler: function () {
+    startHandler: async function () {
       const startLine = this.pendingStartLine
       this.pendingStartLine = null
-      this.start(null, null, startLine)
+      await this.start(null, null, startLine)
     },
     async start(
       event = null,
@@ -3465,10 +3478,7 @@ export default {
         case 'combo_box':
         case 'check_box':
           // check_box is always multiple choice, combo_box is single choice unless kwargs.multiple is set to true
-          if (
-            data.method === 'check_box' ||
-            (data.kwargs && data.kwargs.multiple)
-          ) {
+          if (data.method === 'check_box' || data.kwargs?.multiple) {
             this.prompt.multiple = true
           }
           this.prompt.message = data.args[0]
@@ -3507,9 +3517,8 @@ export default {
         case 'open_bucket_dialog':
           this.bucket.title = data.args[0]
           this.bucket.message = data.args[1]
-          this.bucket.defaultPath =
-            (data.kwargs && data.kwargs.default_path) || null
-          this.bucket.filter = (data.kwargs && data.kwargs.filter) || null
+          this.bucket.defaultPath = data.kwargs?.default_path || null
+          this.bucket.filter = data.kwargs?.filter || null
           this.bucket.show = true
           break
         // This is called continuously by the backend
@@ -3517,7 +3526,7 @@ export default {
         case 'open_files_dialog':
           this.file.title = data.args[0]
           this.file.message = data.args[1]
-          if (data.kwargs && data.kwargs.filter) {
+          if (data.kwargs?.filter) {
             this.file.filter = data.kwargs.filter
           }
           if (data.method == 'open_files_dialog') {
@@ -3877,24 +3886,22 @@ export default {
             // Menu driven saves on a new file should prompt SaveAs
             this.saveAs()
             return
-          } else {
+          } else if (this.tempFilename === null) {
             // start or auto with NEW_FILENAME
-            if (this.tempFilename === null) {
-              let language = this.detectLanguage()
-              if (language === 'unknown') {
-                language = AceEditorUtils.getDefaultScriptingLanguage()
-              }
-              const ext = { ruby: 'rb', python: 'py' }[language]
-              if (!ext) {
-                // No autosave for unknown language
-                return
-              }
-              const uuid = crypto.randomUUID().split('-')[0]
-              const timestamp = format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')
-              this.tempFilename = `${TEMP_FOLDER}/${timestamp}_${uuid}_temp.${ext}`
-              this.filename = this.tempFilename
-              this.addToRecent(this.filename)
+            let language = this.detectLanguage()
+            if (language === 'unknown') {
+              language = AceEditorUtils.getDefaultScriptingLanguage()
             }
+            const ext = { ruby: 'rb', python: 'py' }[language]
+            if (!ext) {
+              // No autosave for unknown language
+              return
+            }
+            const uuid = crypto.randomUUID().split('-')[0]
+            const timestamp = format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')
+            this.tempFilename = `${TEMP_FOLDER}/${timestamp}_${uuid}_temp.${ext}`
+            this.filename = this.tempFilename
+            this.addToRecent(this.filename)
           }
         }
         this.showSave = true
