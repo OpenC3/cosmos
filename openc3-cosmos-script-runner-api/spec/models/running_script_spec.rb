@@ -603,6 +603,13 @@ RSpec.describe RunningScript, type: :model do
               script_api.send(:start, "collect.rb", line_no: 999, bind_variables: true, complete: true)
             }.to raise_error(RunningScript::InvalidStartLineError, /Invalid start line number: 999/)
           end
+
+          it "raises InvalidStartLineError for line 0 rather than running the whole file" do
+            expect(RunningScript).not_to receive(:instrument_script)
+            expect {
+              script_api.send(:start, "collect.rb", line_no: 0, bind_variables: true, complete: true)
+            }.to raise_error(RunningScript::InvalidStartLineError, /Invalid start line number: 0/)
+          end
         end
       end
 

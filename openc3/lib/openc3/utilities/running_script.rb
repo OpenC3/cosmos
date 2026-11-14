@@ -197,7 +197,9 @@ module OpenC3
             end
             RunningScript.instrumented_cache[path] = [instrumented_script, text]
           else
-            if line_no > 1 or not end_line_no.nil?
+            # != rather than > so line 0 or below reaches the range check instead of
+            # running the whole file with a negative line offset
+            if line_no != 1 or not end_line_no.nil?
               text_lines = text.lines
 
               # Instrument only the specified lines

@@ -297,8 +297,8 @@ class RunningScript:
                 "a method or block (def, if, for, try...). Select complete statements instead and right-click Execute Selection."
             )
         raise RunningScript.InvalidStartLineError(
-            f"Cannot start at line {line_no} of {filename}: it is inside a method or block (def, if, for, try...) "
-            "that starts above it. Goto can only move to a line outside any method or block. "
+            f"Cannot start at line {line_no} of {filename}: it is inside a method or block (def, for, try...) "
+            "that starts above it, and the script can't run on its own from there. "
             "Use Step to move through a method or right-click Execute Selection."
         )
 
@@ -1495,7 +1495,9 @@ def start(procedure_name, line_no=1, end_line_no=None, bind_variables=False, com
                 instrumented_script = RunningScript.instrument_script(text, path)
             RunningScript.instrumented_cache[path] = [instrumented_script, text]
         else:
-            if line_no > 1 or end_line_no is not None:
+            # != rather than > so line 0 or below reaches the range check instead of
+            # running the whole file with a negative line offset
+            if line_no != 1 or end_line_no is not None:
                 text_lines = text.splitlines()
 
                 # Instrument only the specified lines

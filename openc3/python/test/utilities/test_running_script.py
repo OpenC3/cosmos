@@ -270,6 +270,13 @@ class TestGoto(unittest.TestCase):
         with self.assertRaisesRegex(RunningScript.InvalidStartLineError, r"Cannot run lines 3-3 of collect.py"):
             RunningScript.validate_partial_script(self.COLLECT_PY, partial, "collect.py", 3, 3)
 
+    def test_validate_partial_script_allows_start_inside_if_block(self):
+        # start dedents the slice, so a goto into an if body runs from there
+        # (see "Allow goto with various indentation")
+        text = "if ready:\n    cmd('INST ABORT')\nprint('done')\n"
+        partial = "cmd('INST ABORT')\nprint('done')\n"
+        RunningScript.validate_partial_script(text, partial, "if.py", 2, None)
+
     def test_validate_partial_script_allows_complete_code(self):
         partial = "print('done')\n"
         RunningScript.validate_partial_script(self.COLLECT_PY, partial, "collect.py", 7, None)
@@ -395,6 +402,14 @@ class TestStartLineValidation(unittest.TestCase):
     def test_goto_past_end_of_file(self):
         with self.assertRaisesRegex(RunningScript.InvalidStartLineError, r"Invalid start line number: 999"):
             running_script.start("collect.py", line_no=999, bind_variables=True, complete=True)
+
+    def test_goto_line_zero_does_not_run_whole_file(self):
+        with (
+            patch.object(RunningScript, "instrument_script") as mock_instrument,
+            self.assertRaisesRegex(RunningScript.InvalidStartLineError, r"Invalid start line number: 0"),
+        ):
+            running_script.start("collect.py", line_no=0, bind_variables=True, complete=True)
+        mock_instrument.assert_not_called()
 
 
 class TestScriptrunnerPuts(unittest.TestCase):
