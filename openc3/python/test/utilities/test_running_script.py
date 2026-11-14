@@ -89,6 +89,8 @@ class TestGoto(unittest.TestCase):
         self.running_script.script_status = MagicMock(state="breakpoint", current_filename="test_script.py")
         self.running_script.execute_while_paused_info = None
         self.running_script.pause = False
+        self.running_script.executing_selection = False
+        self.running_script.use_instrumentation = True
         RunningScript.instance = self.running_script
         start_patcher = patch.object(running_script, "start")
         self.mock_start = start_patcher.start()
@@ -188,31 +190,42 @@ class TestGoto(unittest.TestCase):
         self.mock_start.assert_called_with("test_script.py", line_no=7, bind_variables=True, complete=True)
 
     def test_debug_prompt_goto_forms(self):
+        cases = [
+            ("GOTO 32", "goto(32)"),
+            ("goto 32", "goto(32)"),
+            ("  Goto   32  ", "goto(32)"),
+            ("GOTO(32)", "goto(32)"),
+            ("GOTO 'other.py', 12", "goto('other.py', 12)"),
+            ('goto("other.py", 12)', 'goto("other.py", 12)'),
+            ("goto_line = 5", None),
+            ("gotox(5)", None),
+        ]
+        for text, normalized in cases:
+            with self.subTest(text=text):
+                self.assertEqual(RunningScript.normalize_debug_goto(text), normalized)
+
+    def test_debug_prompt_goto_calls_goto_api(self):
         rs = self.running_script
         rs.script_status.state = "paused"
         rs.script_engine = None
-        rs.script_binding = [{}, {}]
+        rs.script_binding = [{"goto": running_script.goto}, {}]
         rs.handle_output_io = MagicMock()
         rs.current_filename = MagicMock(return_value="test_script.py")
-        cases = [
-            ("GOTO 32", "test_script.py", 32),
-            ("goto 32", "test_script.py", 32),
-            ("  Goto   32  ", "test_script.py", 32),
-            ("goto(32)", "test_script.py", 32),
-            ("goto INST/procedures/other.py 12", "INST/procedures/other.py", 12),
-            ("GOTO 'other.py', 12", "other.py", 12),
-            ('goto("other.py", 12)', "other.py", 12),
-        ]
-        for text, filename, line_no in cases:
-            with self.subTest(text=text):
-                rs.execute_while_paused_info = None
-                with patch("builtins.exec") as mock_exec:
-                    rs.debug(text)
-                mock_exec.assert_not_called()
-                self.assertEqual(
-                    rs.execute_while_paused_info,
-                    {"filename": filename, "line_no": line_no, "end_line_no": None, "bind_variables": True},
-                )
+        patcher = patch.object(RunningScript, "run_thread", threading.Thread(target=lambda: None))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+        rs.debug("GOTO 'other.py', 12")
+        self.assertEqual(
+            rs.execute_while_paused_info,
+            {"filename": "other.py", "line_no": 12, "end_line_no": None, "bind_variables": True},
+        )
+        rs.execute_while_paused_info = None
+        rs.debug("Goto 32")
+        self.assertEqual(
+            rs.execute_while_paused_info,
+            {"filename": "test_script.py", "line_no": 32, "end_line_no": None, "bind_variables": True},
+        )
 
     def test_debug_prompt_other_goto_text_is_executed(self):
         rs = self.running_script
@@ -278,6 +291,64 @@ class TestGoto(unittest.TestCase):
         self.assertFalse(self.running_script.pause)
         self.assertIsNone(self.running_script.execute_while_paused_info)
 
+    def test_goto_past_end_of_file_stays_paused(self):
+        self.running_script.script_status.state = "paused"
+        self.running_script.pause = False
+        self.running_script.scriptrunner_puts = MagicMock()
+        self.running_script.execute_while_paused("test_script.py", 999)
+        self.mock_start.side_effect = RunningScript.InvalidStartLineError("Invalid start line number: 999")
+
+        self.running_script.check_execute_while_paused()
+        self.running_script.scriptrunner_puts.assert_called_with("Invalid start line number: 999", "RED")
+        self.assertFalse(self.running_script.pause)
+
+    def test_goto_rejected_during_execute_selection(self):
+        rs = self.running_script
+        rs.script_status.state = "paused"
+        rs.scriptrunner_puts = MagicMock()
+        rs.execute_while_paused("test_script.py", 7, 9)
+        rejected = []
+
+        def selection(*args, **kwargs):
+            # Like the real start, which clears the request it was called for
+            rs.execute_while_paused_info = None
+            # Lines in the selection set the state to running
+            rs.script_status.state = "running"
+            rs.execute_while_paused("test_script.py", 3)
+            rejected.append(rs.execute_while_paused_info is None)
+
+        self.mock_start.side_effect = selection
+        with patch.object(running_script, "running_script_anycable_publish"):
+            rs.check_execute_while_paused()
+        self.assertEqual(rejected, [True])
+        self.assertFalse(rs.executing_selection)
+
+    def test_goto_rejected_while_instrumentation_disabled(self):
+        self.running_script.script_status.state = "running"
+        self.running_script.use_instrumentation = False
+        self.running_script.scriptrunner_puts = MagicMock()
+        self.running_script.execute_while_paused("test_script.py", 7)
+        self.assertIsNone(self.running_script.execute_while_paused_info)
+
+    def test_goto_queued_while_running_dropped_at_prompt(self):
+        rs = self.running_script
+        rs.script_status.state = "running"
+        rs.stop = False
+        rs.execute_while_paused("test_script.py", 7)
+
+        def puts(*args):
+            rs.go = True
+
+        rs.scriptrunner_puts = MagicMock(side_effect=puts)
+        rs.clear_prompt = MagicMock()
+        rs.mark_running = MagicMock()
+        rs.continue_after_error = True
+        with patch.object(running_script, "running_script_anycable_publish"):
+            rs.wait_for_go_or_stop(prompt={"id": "1", "method": "ask", "args": [], "kwargs": {}})
+        self.mock_start.assert_not_called()
+        self.assertIn("Goto to line 7 canceled", rs.scriptrunner_puts.call_args[0][0])
+        self.assertIsNone(rs.execute_while_paused_info)
+
     def test_goto_on_run_thread_starts_directly(self):
         mock_start = self.mock_start
         patcher = patch.object(RunningScript, "run_thread", threading.current_thread())
@@ -290,6 +361,40 @@ class TestGoto(unittest.TestCase):
         running_script.goto("other.py", 3)
         mock_start.assert_called_with("other.py", line_no=3, bind_variables=True, complete=True)
         self.assertIsNone(self.running_script.execute_while_paused_info)
+
+
+class TestStartLineValidation(unittest.TestCase):
+    COLLECT_PY = "def collect(type, duration):\n    collects = 1\n    return collects\nprint('done')\n"
+
+    def setUp(self):
+        self.running_script = RunningScript.__new__(RunningScript)
+        self.running_script.script_engine = None
+        self.running_script.execute_while_paused_info = None
+        self.running_script.id = MagicMock(return_value=1)
+        self.running_script.scope = MagicMock(return_value="DEFAULT")
+        RunningScript.instance = self.running_script
+        for target, attribute, value in (
+            (running_script.TargetFile, "body", MagicMock(return_value=self.COLLECT_PY.encode())),
+            (running_script, "running_script_anycable_publish", MagicMock()),
+        ):
+            patcher = patch.object(target, attribute, value)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def tearDown(self):
+        RunningScript.instance = None
+
+    def test_goto_inside_method_explains_goto(self):
+        with self.assertRaisesRegex(RunningScript.InvalidStartLineError, r"Cannot start at line 2 of collect.py"):
+            running_script.start("collect.py", line_no=2, bind_variables=True, complete=True)
+
+    def test_partial_selection_explains_selection(self):
+        with self.assertRaisesRegex(RunningScript.InvalidStartLineError, r"Cannot run lines 2-3 of collect.py"):
+            running_script.start("collect.py", line_no=2, end_line_no=3)
+
+    def test_goto_past_end_of_file(self):
+        with self.assertRaisesRegex(RunningScript.InvalidStartLineError, r"Invalid start line number: 999"):
+            running_script.start("collect.py", line_no=999, bind_variables=True, complete=True)
 
 
 class TestScriptrunnerPuts(unittest.TestCase):

@@ -577,6 +577,80 @@ RSpec.describe RunningScript, type: :model do
           partial = broken.lines[3..].join
           expect { RunningScript.validate_partial_script(broken, partial, "collect.rb", 4, nil) }.not_to raise_error
         end
+
+        describe "through start" do
+          let(:script_api) { Object.new.extend(OpenC3::Script) }
+
+          before do
+            RunningScript.new(script_status)
+            allow(::Script).to receive(:body).and_return(collect_rb)
+          end
+
+          it "explains a goto inside a method rather than an Execute Selection" do
+            expect {
+              script_api.send(:start, "collect.rb", line_no: 4, bind_variables: true, complete: true)
+            }.to raise_error(RunningScript::InvalidStartLineError, /Cannot start at line 4 of collect.rb/)
+          end
+
+          it "explains a partial Execute Selection" do
+            expect {
+              script_api.send(:start, "collect.rb", line_no: 3, end_line_no: 4)
+            }.to raise_error(RunningScript::InvalidStartLineError, /Cannot run lines 3-4 of collect.rb/)
+          end
+
+          it "raises InvalidStartLineError for a line past the end of the file" do
+            expect {
+              script_api.send(:start, "collect.rb", line_no: 999, bind_variables: true, complete: true)
+            }.to raise_error(RunningScript::InvalidStartLineError, /Invalid start line number: 999/)
+          end
+        end
+      end
+
+      it "stays paused on the current line when a goto line is past the end of the file" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "paused"
+        allow(::Script).to receive(:body).and_return("puts 1\nputs 2\n")
+        running_script.execute_while_paused("test_script.rb", 999)
+        expect(running_script).to receive(:scriptrunner_puts).with(/Invalid start line number: 999/, "RED")
+
+        expect { running_script.check_execute_while_paused }.not_to raise_error
+        expect(running_script.pause?).to be false
+      end
+
+      it "rejects goto while Execute Selection is running" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "paused"
+        running_script.execute_while_paused("test_script.rb", 7, 9)
+        expect(running_script).to receive(:start).with("test_script.rb", line_no: 7, end_line_no: 9, bind_variables: true) do
+          # Like the real start, which clears the request it was called for
+          running_script.execute_while_paused_info = nil
+          # Lines in the selection set the state to running
+          script_status.state = "running"
+          running_script.execute_while_paused("test_script.rb", 3)
+          expect(running_script.execute_while_paused_info).to be_nil
+        end
+        running_script.check_execute_while_paused
+      end
+
+      it "rejects goto while running with instrumentation disabled" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "running"
+        running_script.use_instrumentation = false
+        running_script.execute_while_paused("test_script.rb", 7)
+        expect(running_script.execute_while_paused_info).to be_nil
+      end
+
+      it "drops a goto queued while running when the script stops on a prompt" do
+        running_script = RunningScript.new(script_status)
+        script_status.state = "running"
+        running_script.execute_while_paused("test_script.rb", 7)
+        expect(running_script).not_to receive(:start)
+        expect(running_script).to receive(:scriptrunner_puts).with(/Goto to line 7 canceled/, "RED") do
+          running_script.go
+        end
+
+        running_script.wait_for_go_or_stop(prompt: { "id" => "1", "method" => "ask", "args" => [], "kwargs" => {} })
+        expect(running_script.execute_while_paused_info).to be_nil
       end
 
       it "stays paused on the current line when a goto target is invalid" do
@@ -936,23 +1010,32 @@ RSpec.describe RunningScript, type: :model do
         end
 
         [
-          ["GOTO 32", "test_script.rb", 32],
-          ["goto 32", "test_script.rb", 32],
-          ["  Goto   32  ", "test_script.rb", 32],
-          ["goto(32)", "test_script.rb", 32],
-          ["goto INST/procedures/other.rb 12", "INST/procedures/other.rb", 12],
-          ["GOTO 'other.rb', 12", "other.rb", 12],
-          ["goto(\"other.rb\", 12)", "other.rb", 12],
-        ].each do |text, filename, line_no|
-          it "treats '#{text}' as a goto without evaluating it" do
+          ["GOTO 32", "goto 32"],
+          ["goto 32", "goto 32"],
+          ["  Goto   32  ", "goto   32"],
+          ["GOTO(32)", "goto(32)"],
+          ["GOTO 'other.rb', 12", "goto 'other.rb', 12"],
+          ["goto(\"other.rb\", 12)", "goto(\"other.rb\", 12)"],
+        ].each do |text, normalized|
+          it "evaluates '#{text}' as the goto script API" do
             running_script = RunningScript.new(script_status)
-            script_status.state = "paused"
-            running_script.script_binding = binding
-            expect(running_script).not_to receive(:eval)
+            running_script.script_binding = nil
+            expect(Object).to receive(:class_eval).with(normalized, "debug", 1)
 
             running_script.debug(text)
-            expect(running_script.execute_while_paused_info).to eq({ filename: filename, line_no: line_no, end_line_no: nil, bind_variables: true })
           end
+        end
+
+        it "queues the goto through the goto script API" do
+          running_script = RunningScript.new(script_status)
+          script_status.state = "paused"
+          running_script.script_binding = nil
+          RunningScript.class_variable_set(:@@run_thread, Thread.new {})
+
+          running_script.debug("GOTO 'other.rb', 12")
+          expect(running_script.execute_while_paused_info).to eq({ filename: "other.rb", line_no: 12, end_line_no: nil, bind_variables: true })
+        ensure
+          RunningScript.class_variable_set(:@@run_thread, nil)
         end
 
         it "does not treat other text starting with goto as a goto" do
