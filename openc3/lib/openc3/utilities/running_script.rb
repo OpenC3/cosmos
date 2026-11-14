@@ -35,6 +35,7 @@ require 'openc3/models/environment_model'
 require 'openc3/models/script_engine_model'
 require 'openc3/models/script_status_model'
 require 'fileutils'
+require 'prism'
 
 if not defined? RAILS_ROOT
   if ENV['RAILS_ROOT']
@@ -183,7 +184,7 @@ module OpenC3
         else
           # Retrieve file
           text = ::Script.body(RunningScript.instance.scope, procedure_name)
-          raise "Unable to retrieve: #{procedure_name}" unless text
+          raise RunningScript::InvalidStartLineError, "Unable to retrieve: #{procedure_name}" unless text
           running_script_anycable_publish("running-script-channel:#{RunningScript.instance.id}", { type: :file, filename: procedure_name, text: text.to_utf8, breakpoints: breakpoints })
 
           # Cache instrumentation into RAM
@@ -196,28 +197,33 @@ module OpenC3
             end
             RunningScript.instrumented_cache[path] = [instrumented_script, text]
           else
-            if line_no > 1 or not end_line_no.nil?
+            # != rather than > so line 0 or below reaches the range check instead of
+            # running the whole file with a negative line offset
+            if line_no != 1 or not end_line_no.nil?
               text_lines = text.lines
 
               # Instrument only the specified lines
+              requested_end_line_no = end_line_no # nil means goto / run from line
               if end_line_no.nil?
                 end_line_no = text_lines.length
               end
 
               if line_no < 1 or line_no > text_lines.length
-                raise "Invalid start line number: #{line_no} for #{procedure_name}"
+                raise RunningScript::InvalidStartLineError, "Invalid start line number: #{line_no} for #{procedure_name}"
               end
 
               if end_line_no < 1 or end_line_no > text_lines.length
-                raise "Invalid end line number: #{end_line_no} for #{procedure_name}"
+                raise RunningScript::InvalidStartLineError, "Invalid end line number: #{end_line_no} for #{procedure_name}"
               end
 
               if line_no > end_line_no
-                raise "Start line number #{line_no} is greater than end line number #{end_line_no} for #{procedure_name}"
+                raise RunningScript::InvalidStartLineError, "Start line number #{line_no} is greater than end line number #{end_line_no} for #{procedure_name}"
               end
 
               if not use_script_engine
-                text = text_lines[(line_no - 1)...end_line_no].join
+                partial_text = text_lines[(line_no - 1)...end_line_no].join
+                RunningScript.validate_partial_script(text, partial_text, procedure_name, line_no, requested_end_line_no)
+                text = partial_text
               end
             end
 
@@ -368,6 +374,25 @@ module OpenC3
 end
 
 class RunningScript
+  # Raised when Goto, Run From Line, or Execute Selection would start or end
+  # inside a method or block, so the lines can't run on their own
+  class InvalidStartLineError < StandardError; end
+
+  # Goto and Execute Selection run a slice of the file as its own code. A slice
+  # that starts inside a method or block leaves a dangling `end`, which used to
+  # surface as a confusing SyntaxError. Explain it instead. A whole file that
+  # doesn't parse is left to the normal SyntaxError.
+  def self.validate_partial_script(text, partial_text, filename, line_no, end_line_no)
+    return if Prism.parse(partial_text).success?
+    return unless Prism.parse(text).success?
+
+    if end_line_no
+      raise InvalidStartLineError, "Cannot run lines #{line_no}-#{end_line_no} of #{filename}: the selection starts or ends inside a method or block (def, if, do...end). Select complete statements instead and right-click Execute Selection."
+    else
+      raise InvalidStartLineError, "Cannot start at line #{line_no} of #{filename}: it is inside a method or block (def, if, do...end) that starts above it. Goto can only move to a line outside any method or block. Use Step to move through a method or right-click Execute Selection."
+    end
+  end
+
   def id
     return @script_status.id
   end
@@ -414,6 +439,8 @@ class RunningScript
   @@file_cache = {}
   @@output_thread = nil
   @@pause_on_error = true
+  # Guards @execute_while_paused_info, which the debug thread sets and the run thread takes
+  @@execute_while_paused_mutex = Mutex.new
   @@error = nil
   @@output_sleeper = OpenC3::Sleeper.new
   @@cancel_output = false
@@ -609,6 +636,8 @@ class RunningScript
     @prompt_id = nil
     @line_offset = 0
     @output_io = StringIO.new('', 'r+')
+    @capturing_output = false
+    @executing_selection = false
     @output_io_mutex = Mutex.new
     @continue_after_error = true
     @debug_text = nil
@@ -771,6 +800,7 @@ class RunningScript
     @script_status.line_no = 0
     @current_file = nil
     @execute_while_paused_info = nil
+    @executing_selection = false
   end
 
   def unique_filename
@@ -993,6 +1023,9 @@ class RunningScript
       # Handle stopping mid-script if necessary
       raise OpenC3::StopScript if @stop
 
+      # Handle a goto requested while running
+      check_execute_while_paused(pause: false)
+
       handle_potential_tab_change(filename)
 
       # Adjust line number for offset in main script
@@ -1046,9 +1079,14 @@ class RunningScript
   def debug(debug_text)
     handle_output_io()
 
+    # GOTO 32 and Goto(32) call the goto script API, which hands off to
+    # execute_while_paused because debug doesn't run on the run thread
+    goto_text = RunningScript.normalize_debug_goto(debug_text)
+    debug_text = goto_text if goto_text
+
     use_script_engine = false
     extension = File.extname(current_filename()).to_s.downcase
-    if @script_engine and extension != ".py"
+    if @script_engine and extension != ".py" and !goto_text
       use_script_engine = true
     end
 
@@ -1114,16 +1152,40 @@ class RunningScript
 
   # bind_variables of nil binds only when filename is the currently running file
   def execute_while_paused(filename, line_no = 1, end_line_no = nil, bind_variables = nil)
-    if @script_status.state == 'paused' or @script_status.state == 'error' or @script_status.state == 'breakpoint'
-      @execute_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no, bind_variables: bind_variables }
+    state = @script_status.state
+    if end_line_no.nil? and @executing_selection
+      # A goto inside Execute Selection would end the whole script when it completes
+      scriptrunner_puts("Cannot goto while Execute Selection is running")
+    elsif end_line_no.nil? and state == 'running' and !@use_instrumentation
+      # The goto would wait for the next instrumented line, which may be far away
+      scriptrunner_puts("Cannot goto while instrumentation is disabled")
+    # Goto while running jumps at the start of the next line (see pre_line_instrumentation)
+    elsif ['paused', 'error', 'breakpoint'].include?(state) or (state == 'running' and end_line_no.nil?)
+      @@execute_while_paused_mutex.synchronize do
+        @execute_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no, bind_variables: bind_variables }
+      end
     else
-      scriptrunner_puts("Cannot execute selection or goto unless script is paused, breakpoint, or in error state")
+      scriptrunner_puts("Cannot execute selection unless script is paused, breakpoint, or in error state. Cannot goto unless script is running, paused, breakpoint, or in error state.")
     end
+  end
+
+  # The debug prompt accepts goto in any case: GOTO 32, Goto(32), goto "other.rb", 12
+  # Returns the text with goto lowercased so it calls the goto script API, or
+  # nil if the text is not a goto
+  def self.normalize_debug_goto(debug_text)
+    text = debug_text.strip
+    return nil unless /\Agoto(?=[\s(]|\z)/i.match?(text)
+
+    'goto' + text[4..]
   end
 
   def scriptrunner_puts(string, color = 'BLACK')
     line_to_write = Time.now.sys.formatted + " (SCRIPTRUNNER): " + string
-    $stdout.puts line_to_write
+    # Write to STDOUT rather than $stdout. While a script runs $stdout also
+    # feeds @output_io, so handle_output_io would publish this line a second
+    # time. Log it directly instead so the message log still has it.
+    STDOUT.puts line_to_write
+    message_log.write(line_to_write + "\n") if @capturing_output
     running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :output, line: line_to_write, color: color })
   end
 
@@ -1192,7 +1254,11 @@ class RunningScript
     @go = false
     @prompt_id = prompt['id'] if prompt
     until (@go or @stop)
-      check_execute_while_paused()
+      if prompt
+        discard_goto_during_prompt()
+      else
+        check_execute_while_paused()
+      end
       sleep(0.01)
       count += 1
       if count % 100 == 0 # Approximately Every Second
@@ -1225,18 +1291,28 @@ class RunningScript
     raise error if error and !@continue_after_error
   end
 
-  def check_execute_while_paused
-    if @execute_while_paused_info
-      bind_variables = @execute_while_paused_info[:bind_variables]
+  # pause: true (the default) lands a goto paused on its line so the user can inspect
+  # it before Step or Go. pre_line_instrumentation passes false to jump while running.
+  def check_execute_while_paused(pause: true)
+    info = take_execute_while_paused_info()
+    if info
+      bind_variables = info[:bind_variables]
       if bind_variables.nil?
-        bind_variables = (@script_status.current_filename == @execute_while_paused_info[:filename])
+        bind_variables = (@script_status.current_filename == info[:filename])
       end
-      if @execute_while_paused_info[:end_line_no]
+      if info[:end_line_no]
         # Execute Selection While Paused
         state = @script_status.state
         current_filename = @script_status.current_filename
         line_no = @script_status.line_no
-        start(@execute_while_paused_info[:filename], line_no: @execute_while_paused_info[:line_no], end_line_no: @execute_while_paused_info[:end_line_no], bind_variables: bind_variables)
+        # Restore rather than clear because a selection can pause and run another
+        previous_executing_selection = @executing_selection
+        @executing_selection = true
+        begin
+          start(info[:filename], line_no: info[:line_no], end_line_no: info[:end_line_no], bind_variables: bind_variables)
+        ensure
+          @executing_selection = previous_executing_selection
+        end
         # Need to restore state after returning so that the correct line will be shown in ScriptRunner
         @script_status.state = state
         @script_status.current_filename = current_filename
@@ -1244,12 +1320,38 @@ class RunningScript
         @script_status.update(queued: true)
         running_script_anycable_publish("running-script-channel:#{@script_status.id}", { type: :line, filename: @script_status.current_filename, line_no: @script_status.line_no, state: @script_status.state })
       else
-        # Goto While Paused
-        start(@execute_while_paused_info[:filename], line_no: @execute_while_paused_info[:line_no], bind_variables: bind_variables, complete: true)
+        # Goto: pause before executing the first line at the new location
+        previous_pause = @pause
+        @pause = true if pause
+        begin
+          start(info[:filename], line_no: info[:line_no], bind_variables: bind_variables, complete: true)
+        rescue InvalidStartLineError => e
+          # Nothing ran, so stay where we are rather than entering the error state
+          @pause = previous_pause
+          scriptrunner_puts(e.message, 'RED')
+        end
       end
     end
-  ensure
-    @execute_while_paused_info = nil
+  end
+
+  # Return the queued goto or execute selection and clear it in one step. Reading
+  # and clearing separately could drop one the debug thread queues in between.
+  def take_execute_while_paused_info
+    @@execute_while_paused_mutex.synchronize do
+      info = @execute_while_paused_info
+      @execute_while_paused_info = nil
+      info
+    end
+  end
+
+  # A goto accepted while the script was running can still be queued when the
+  # script stops on a prompt. Running it there would leave the prompt open, so
+  # drop it and tell the user.
+  def discard_goto_during_prompt
+    info = take_execute_while_paused_info()
+    return unless info
+
+    scriptrunner_puts("Goto to line #{info[:line_no]} canceled because the script is waiting on a prompt. Answer the prompt and try again.", 'RED')
   end
 
   def mark_running
@@ -1346,6 +1448,7 @@ class RunningScript
         # Capture STDOUT and STDERR
         $stdout.add_stream(@output_io)
         $stderr.add_stream(@output_io)
+        @capturing_output = true
 
         output = "Starting script: #{File.basename(@script_status.filename)}"
         output += " in DISCONNECT mode" if $disconnect
@@ -1406,6 +1509,7 @@ class RunningScript
         # $stderr to the IO constant
         $stdout.remove_stream(@output_io) if $stdout.respond_to? :remove_stream
         $stderr.remove_stream(@output_io) if $stderr.respond_to? :remove_stream
+        @capturing_output = false
 
         # Clear run thread and instance to indicate we are no longer running
         @@instance = saved_instance

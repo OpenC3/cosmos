@@ -478,7 +478,7 @@ Make sure that the code will not raise any exceptions or have any check failures
 
 Script Runner has built in debugging capabilities that can be useful in determining why your script is behaving in a certain way. Of primary importance is the ability to inspect and set script variables.
 
-To use the debugging functionality, first select the “Toggle Debug” option from the Script Menu. This will add a small Debug: prompt to the bottom of the tool. Any code entered in this prompt will be executed when Enter is pressed. To inspect variables in a running script, pause the script and then type the variable name to print out the value of the variable in the debug prompt.
+To use the debugging functionality, first click the bug icon in the Script Runner toolbar. This will add a Debug bar with Step and Goto buttons and a Debug prompt to the bottom of the tool. Any code entered in this prompt will be executed when Enter is pressed. To inspect variables in a running script, pause the script and then type the variable name to print out the value of the variable in the debug prompt.
 
 ```ruby
 variable_name
@@ -842,7 +842,7 @@ Once something has failed, and your script has stopped with a pink highlighted l
 
 1. Use the Debug Prompt
 
-   By selecting Script -> Toggle Debug, you can perform arbitrary actions that may be needed to correct the situation without stopping the running script. You can also inspect variables to help determine why something failed.
+   By clicking the bug icon in the toolbar, you can perform arbitrary actions that may be needed to correct the situation without stopping the running script. You can also inspect variables to help determine why something failed.
 
 1. Execute Selection
 
