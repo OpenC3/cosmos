@@ -613,6 +613,20 @@ RSpec.describe RunningScript, type: :model do
         end
       end
 
+      it "keeps a goto queued while start runs the previous one" do
+        # The debug thread can queue a goto while the run thread is still in start
+        # for the previous one. It must stay queued rather than be cleared afterward.
+        running_script = RunningScript.new(script_status)
+        script_status.state = "paused"
+        running_script.execute_while_paused("test_script.rb", 5)
+        expect(running_script).to receive(:start).once.with("test_script.rb", line_no: 5, bind_variables: anything, complete: true) do
+          running_script.execute_while_paused("test_script.rb", 9)
+        end
+
+        running_script.check_execute_while_paused
+        expect(running_script.execute_while_paused_info[:line_no]).to eq(9)
+      end
+
       it "stays paused on the current line when a goto line is past the end of the file" do
         running_script = RunningScript.new(script_status)
         script_status.state = "paused"

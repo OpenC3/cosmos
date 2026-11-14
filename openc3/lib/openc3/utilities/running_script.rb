@@ -439,6 +439,8 @@ class RunningScript
   @@file_cache = {}
   @@output_thread = nil
   @@pause_on_error = true
+  # Guards @execute_while_paused_info, which the debug thread sets and the run thread takes
+  @@execute_while_paused_mutex = Mutex.new
   @@error = nil
   @@output_sleeper = OpenC3::Sleeper.new
   @@cancel_output = false
@@ -1159,7 +1161,9 @@ class RunningScript
       scriptrunner_puts("Cannot goto while instrumentation is disabled")
     # Goto while running jumps at the start of the next line (see pre_line_instrumentation)
     elsif ['paused', 'error', 'breakpoint'].include?(state) or (state == 'running' and end_line_no.nil?)
-      @execute_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no, bind_variables: bind_variables }
+      @@execute_while_paused_mutex.synchronize do
+        @execute_while_paused_info = { filename: filename, line_no: line_no, end_line_no: end_line_no, bind_variables: bind_variables }
+      end
     else
       scriptrunner_puts("Cannot execute selection unless script is paused, breakpoint, or in error state. Cannot goto unless script is running, paused, breakpoint, or in error state.")
     end
@@ -1290,12 +1294,13 @@ class RunningScript
   # pause: true (the default) lands a goto paused on its line so the user can inspect
   # it before Step or Go. pre_line_instrumentation passes false to jump while running.
   def check_execute_while_paused(pause: true)
-    if @execute_while_paused_info
-      bind_variables = @execute_while_paused_info[:bind_variables]
+    info = take_execute_while_paused_info()
+    if info
+      bind_variables = info[:bind_variables]
       if bind_variables.nil?
-        bind_variables = (@script_status.current_filename == @execute_while_paused_info[:filename])
+        bind_variables = (@script_status.current_filename == info[:filename])
       end
-      if @execute_while_paused_info[:end_line_no]
+      if info[:end_line_no]
         # Execute Selection While Paused
         state = @script_status.state
         current_filename = @script_status.current_filename
@@ -1304,7 +1309,7 @@ class RunningScript
         previous_executing_selection = @executing_selection
         @executing_selection = true
         begin
-          start(@execute_while_paused_info[:filename], line_no: @execute_while_paused_info[:line_no], end_line_no: @execute_while_paused_info[:end_line_no], bind_variables: bind_variables)
+          start(info[:filename], line_no: info[:line_no], end_line_no: info[:end_line_no], bind_variables: bind_variables)
         ensure
           @executing_selection = previous_executing_selection
         end
@@ -1319,7 +1324,7 @@ class RunningScript
         previous_pause = @pause
         @pause = true if pause
         begin
-          start(@execute_while_paused_info[:filename], line_no: @execute_while_paused_info[:line_no], bind_variables: bind_variables, complete: true)
+          start(info[:filename], line_no: info[:line_no], bind_variables: bind_variables, complete: true)
         rescue InvalidStartLineError => e
           # Nothing ran, so stay where we are rather than entering the error state
           @pause = previous_pause
@@ -1327,18 +1332,25 @@ class RunningScript
         end
       end
     end
-  ensure
-    @execute_while_paused_info = nil
+  end
+
+  # Return the queued goto or execute selection and clear it in one step. Reading
+  # and clearing separately could drop one the debug thread queues in between.
+  def take_execute_while_paused_info
+    @@execute_while_paused_mutex.synchronize do
+      info = @execute_while_paused_info
+      @execute_while_paused_info = nil
+      info
+    end
   end
 
   # A goto accepted while the script was running can still be queued when the
   # script stops on a prompt. Running it there would leave the prompt open, so
   # drop it and tell the user.
   def discard_goto_during_prompt
-    info = @execute_while_paused_info
+    info = take_execute_while_paused_info()
     return unless info
 
-    @execute_while_paused_info = nil
     scriptrunner_puts("Goto to line #{info[:line_no]} canceled because the script is waiting on a prompt. Answer the prompt and try again.", 'RED')
   end
 

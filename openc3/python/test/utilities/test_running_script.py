@@ -285,6 +285,19 @@ class TestGoto(unittest.TestCase):
         broken = self.COLLECT_PY + "    else:\n"
         RunningScript.validate_partial_script(broken, "    else:\n", "collect.py", 8, None)
 
+    def test_goto_queued_while_start_runs_is_kept(self):
+        # The debug thread can queue a goto while the run thread is still in start
+        # for the previous one. It must stay queued rather than be cleared afterward.
+        self.running_script.script_status.state = "paused"
+        self.running_script.execute_while_paused("test_script.py", 5)
+        self.mock_start.side_effect = lambda *args, **kwargs: self.running_script.execute_while_paused(
+            "test_script.py", 9
+        )
+
+        self.running_script.check_execute_while_paused()
+        self.mock_start.assert_called_once_with("test_script.py", line_no=5, bind_variables=True, complete=True)
+        self.assertEqual(self.running_script.execute_while_paused_info["line_no"], 9)
+
     def test_invalid_goto_target_stays_paused(self):
         self.running_script.script_status.state = "paused"
         self.running_script.pause = False

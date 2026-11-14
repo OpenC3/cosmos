@@ -336,6 +336,8 @@ class RunningScript:
     file_cache = {}
     output_thread = None
     pause_on_error = True
+    # Guards execute_while_paused_info, which the debug thread sets and the run thread takes
+    execute_while_paused_lock = Lock()
     error = None
     output_sleeper = Sleeper()
     cancel_output = False
@@ -789,12 +791,13 @@ class RunningScript:
             self.scriptrunner_puts("Cannot goto while instrumentation is disabled")
         # Goto while running jumps at the start of the next line (see pre_line_instrumentation)
         elif state in ("paused", "error", "breakpoint") or (state == "running" and end_line_no is None):
-            self.execute_while_paused_info = {
-                "filename": filename,
-                "line_no": line_no,
-                "end_line_no": end_line_no,
-                "bind_variables": bind_variables,
-            }
+            with RunningScript.execute_while_paused_lock:
+                self.execute_while_paused_info = {
+                    "filename": filename,
+                    "line_no": line_no,
+                    "end_line_no": end_line_no,
+                    "bind_variables": bind_variables,
+                }
         else:
             self.scriptrunner_puts(
                 "Cannot execute selection unless script is paused, breakpoint, or in error state. "
@@ -955,70 +958,75 @@ class RunningScript:
     # pause=True (the default) lands a goto paused on its line so the user can inspect
     # it before Step or Go. pre_line_instrumentation passes False to jump while running.
     def check_execute_while_paused(self, pause=True):
-        try:
-            if self.execute_while_paused_info is not None:
-                filename = self.execute_while_paused_info.get("filename")
-                bind_variables = self.execute_while_paused_info.get("bind_variables")
-                if bind_variables is None:
-                    bind_variables = self.script_status.current_filename == filename
-                if self.execute_while_paused_info.get("end_line_no"):
-                    # Execute Selection While Paused
-                    state = self.script_status.state
-                    current_filename = self.script_status.current_filename
-                    line_no = self.script_status.line_no
-                    # Restore rather than clear because a selection can pause and run another
-                    previous_executing_selection = self.executing_selection
-                    self.executing_selection = True
-                    try:
-                        start(
-                            self.execute_while_paused_info.get("filename"),
-                            line_no=self.execute_while_paused_info.get("line_no"),
-                            end_line_no=self.execute_while_paused_info.get("end_line_no"),
-                            bind_variables=bind_variables,
-                        )
-                    finally:
-                        self.executing_selection = previous_executing_selection
-                    # Need to restore state after returning so that the correct line will be shown in ScriptRunner
-                    self.script_status.state = state
-                    self.script_status.current_filename = current_filename
-                    self.script_status.line_no = line_no
-                    self.script_status.update(queued=True)
-                    running_script_anycable_publish(
-                        f"running-script-channel:{self.script_status.id}",
-                        {
-                            "type": "line",
-                            "filename": self.script_status.current_filename,
-                            "line_no": self.script_status.line_no,
-                            "state": self.script_status.state,
-                        },
+        info = self.take_execute_while_paused_info()
+        if info is not None:
+            filename = info.get("filename")
+            bind_variables = info.get("bind_variables")
+            if bind_variables is None:
+                bind_variables = self.script_status.current_filename == filename
+            if info.get("end_line_no"):
+                # Execute Selection While Paused
+                state = self.script_status.state
+                current_filename = self.script_status.current_filename
+                line_no = self.script_status.line_no
+                # Restore rather than clear because a selection can pause and run another
+                previous_executing_selection = self.executing_selection
+                self.executing_selection = True
+                try:
+                    start(
+                        info.get("filename"),
+                        line_no=info.get("line_no"),
+                        end_line_no=info.get("end_line_no"),
+                        bind_variables=bind_variables,
                     )
-                else:
-                    # Goto: pause before executing the first line at the new location
-                    previous_pause = self.pause
-                    if pause:
-                        self.pause = True
-                    try:
-                        start(
-                            self.execute_while_paused_info.get("filename"),
-                            line_no=self.execute_while_paused_info.get("line_no"),
-                            bind_variables=bind_variables,
-                            complete=True,
-                        )
-                    except RunningScript.InvalidStartLineError as error:
-                        # Nothing ran, so stay where we are rather than entering the error state
-                        self.pause = previous_pause
-                        self.scriptrunner_puts(str(error), "RED")
-        finally:
+                finally:
+                    self.executing_selection = previous_executing_selection
+                # Need to restore state after returning so that the correct line will be shown in ScriptRunner
+                self.script_status.state = state
+                self.script_status.current_filename = current_filename
+                self.script_status.line_no = line_no
+                self.script_status.update(queued=True)
+                running_script_anycable_publish(
+                    f"running-script-channel:{self.script_status.id}",
+                    {
+                        "type": "line",
+                        "filename": self.script_status.current_filename,
+                        "line_no": self.script_status.line_no,
+                        "state": self.script_status.state,
+                    },
+                )
+            else:
+                # Goto: pause before executing the first line at the new location
+                previous_pause = self.pause
+                if pause:
+                    self.pause = True
+                try:
+                    start(
+                        info.get("filename"),
+                        line_no=info.get("line_no"),
+                        bind_variables=bind_variables,
+                        complete=True,
+                    )
+                except RunningScript.InvalidStartLineError as error:
+                    # Nothing ran, so stay where we are rather than entering the error state
+                    self.pause = previous_pause
+                    self.scriptrunner_puts(str(error), "RED")
+
+    def take_execute_while_paused_info(self):
+        """Return the queued goto or execute selection and clear it in one step. Reading
+        and clearing separately could drop one the debug thread queues in between."""
+        with RunningScript.execute_while_paused_lock:
+            info = self.execute_while_paused_info
             self.execute_while_paused_info = None
+            return info
 
     def discard_goto_during_prompt(self):
         """A goto accepted while the script was running can still be queued when the
         script stops on a prompt. Running it there would leave the prompt open, so
         drop it and tell the user."""
-        info = self.execute_while_paused_info
+        info = self.take_execute_while_paused_info()
         if info is None:
             return
-        self.execute_while_paused_info = None
         self.scriptrunner_puts(
             f"Goto to line {info.get('line_no')} canceled because the script is waiting on a prompt. "
             "Answer the prompt and try again.",
