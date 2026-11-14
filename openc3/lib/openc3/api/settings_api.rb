@@ -77,7 +77,10 @@ module OpenC3
       Logger.info("User #{username} saved setting '#{name}': #{data}", scope: scope, user: username)
     end
     # save_setting is DEPRECATED
-    alias save_setting set_setting
+    def save_setting(name, data, manual: false, scope: $openc3_scope, token: $openc3_token)
+      OpenC3.deprecation_warning("`save_setting` is deprecated. Please use `set_setting` instead.", uplevel: 1)
+      set_setting(name, data, manual: manual, scope: scope, token: token)
+    end
 
     # Update the news feed on demand to respond to frontend setting changes
     def update_news(manual: false, scope: $openc3_scope, token: $openc3_token)
