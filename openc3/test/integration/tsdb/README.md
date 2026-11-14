@@ -5,7 +5,7 @@ End-to-end integration tests for QuestDB (TSDB) functionality. These tests verif
 ## Prerequisites
 
 - Docker and Docker Compose
-- Python 3.11+ with Poetry
+- Python 3.10+ with uv
 - Ruby 3.1+ with Bundler
 
 ## Quick Start
@@ -18,7 +18,10 @@ End-to-end integration tests for QuestDB (TSDB) functionality. These tests verif
 
    This starts two QuestDB containers. `questdb-shard1` (ports 9010 and 8822)
    acts as db_shard 1 for the cross-db_shard tests, which are skipped if it isn't
-   running.
+   running. Both use the same settings as the production `openc3-tsdb` image
+   (see `openc3-tsdb/Dockerfile`), including `cairo.commit.mode=adaptive`.
+   `QUESTDB_VERSION` and `QDB_CAIRO_COMMIT_MODE` override the image version and
+   commit mode.
 
 2. Wait for QuestDB to be ready (check http://localhost:9000)
 
@@ -26,7 +29,7 @@ End-to-end integration tests for QuestDB (TSDB) functionality. These tests verif
 
    ```bash
    cd openc3/python
-   poetry run pytest ../test/integration/tsdb/python/ -v
+   uv run pytest ../test/integration/tsdb/python/ -v
    ```
 
 4. Run Ruby tests:
@@ -101,11 +104,52 @@ Locally both run on 127.0.0.1 so the tests select db_shard 1 by the
 - Multiple items from same packet
 - Completion detection (end_time behavior)
 
+### Ingest Protocol
+
+`QuestDBClient` ingests over QWP (QuestDB Wire Protocol, WebSocket) by default.
+Set `OPENC3_TSDB_INGEST_PROTOCOL=http` to run the tests over ILP/HTTP instead.
+
+### Benchmarks (`python/test_perf_ingest.py`)
+
+Ingest and query benchmarks for comparing QuestDB versions, ingest protocols
+and commit modes. They're skipped unless `OPENC3_TSDB_PERF=1`. `helpers/run_perf.sh`
+starts a fresh QuestDB for each run and labels the results, which are appended to
+`perf_results.jsonl` (gitignored). `helpers/compare_perf.py` tabulates them:
+
+```bash
+cd openc3/test/integration/tsdb
+helpers/run_perf.sh 10.2.0-ws-nosync 10.2.0 nosync 3
+helpers/run_perf.sh 10.2.0-ws-adaptive 10.2.0 adaptive 3
+OPENC3_TSDB_INGEST_PROTOCOL=http helpers/run_perf.sh 10.2.0-http-adaptive 10.2.0 adaptive 3
+cd ../../../python
+uv run python ../test/integration/tsdb/helpers/compare_perf.py
+```
+
+Run them on hardware like the deployment's: adaptive commit mode flushes to disk
+on every commit, so its cost depends heavily on the disk (and is much higher
+under Docker Desktop on macOS than on Linux).
+
+`QDB_*` variables are passed to the server and `OPENC3_TSDB_PERF_BATCH_SIZE` sets
+the client batch size, e.g.
+`QDB_CAIRO_ADAPTIVE_COMMIT_GROUP_WINDOW=500ms helpers/run_perf.sh w500 10.2.0 adaptive 3`.
+Adaptive mode's cost is a WAL file flush per column file of each commit, so it
+scales with the number of commits. Measured with QuestDB 10.2.0 (Docker Desktop on
+macOS):
+
+- `cairo.adaptive.commit.group.window` (0, 50ms, 500ms) and
+  `cairo.wal.commit.writeback.drain` made no difference: the window only batches
+  the sequencer flush, which isn't on the acknowledgement path when nonzero.
+- Fewer, larger commits made the difference: 5000 row batches instead of 500
+  doubled adaptive throughput, matching nosync for a single wide table. So
+  `QuestDBClient` flushes every 5000 rows, or 500k values for wide packets.
+- Raising the QWP frame cap (`QDB_HTTP_RECV_BUFFER_SIZE`, 2 MB) didn't help
+  further; batches over the cap are sent as several frames.
+
 ## CI/CD
 
 These tests run in the `tsdb_integration_tests.yml` GitHub Action workflow which:
 
-1. Starts a QuestDB service container
+1. Starts QuestDB with `docker-compose.test.yml`
 2. Runs Python tests
 3. Runs Ruby tests
 4. Reports results

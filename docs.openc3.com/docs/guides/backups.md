@@ -126,6 +126,8 @@ The QuestDB data is stored in the `openc3-tsdb-v` Docker volume mounted at `/var
 
 :::info[Version Compatibility]
 QuestDB backups are compatible across patch versions within the same major version (e.g., 9.0.0 and 9.1.0 are compatible).
+
+QuestDB 10.2 and later migrate internal metadata the first time they start on an existing database, so the database can't be moved back to an older QuestDB release afterwards. Take a backup before upgrading to a COSMOS release that moves QuestDB to a new major version.
 :::
 
 #### Removing and Restoring Partitions

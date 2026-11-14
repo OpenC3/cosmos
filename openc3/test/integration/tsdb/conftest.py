@@ -14,7 +14,7 @@ Pytest fixtures for QuestDB integration tests.
 
 Usage:
     1. Start QuestDB: docker compose -f docker-compose.test.yml up -d
-    2. Run tests: poetry run pytest python/ -v
+    2. Run tests (from openc3/python): uv run pytest ../test/integration/tsdb/python/ -v
     3. Stop QuestDB: docker compose -f docker-compose.test.yml down
 """
 

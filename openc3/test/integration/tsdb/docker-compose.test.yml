@@ -5,21 +5,44 @@
 # Usage: docker compose -f docker-compose.test.yml up -d
 #        Run tests (see README)
 #        docker compose -f docker-compose.test.yml down
+#
+# QUESTDB_VERSION and QDB_CAIRO_COMMIT_MODE select the server version and
+# commit mode, e.g. to benchmark against an older release (see
+# python/test_perf_ingest.py):
+#   QUESTDB_VERSION=9.4.3 QDB_CAIRO_COMMIT_MODE=nosync \
+#     docker compose -f docker-compose.test.yml up -d --force-recreate
+
+# Match the production openc3-tsdb image (openc3-tsdb/Dockerfile) so tests and
+# benchmarks run against the same tuning. Keep these in sync with it.
+x-questdb-env: &questdb-env
+  QDB_PG_USER: admin
+  QDB_PG_PASSWORD: admin
+  QDB_HTTP_USER: admin
+  QDB_HTTP_PASSWORD: admin
+  # Reject ILP/QWP writes to missing tables
+  QDB_LINE_AUTO_CREATE_NEW_TABLES: "false"
+  QDB_CAIRO_COMMIT_MODE: "${QDB_CAIRO_COMMIT_MODE:-adaptive}"
+  QDB_CAIRO_SYSTEM_WRITER_DATA_APPEND_PAGE_SIZE: 4K
+  QDB_CAIRO_WRITER_DATA_APPEND_PAGE_SIZE: 4K
+  QDB_CAIRO_WAL_WRITER_DATA_APPEND_PAGE_SIZE: 4K
+  QDB_CAIRO_SYSTEM_WAL_WRITER_DATA_APPEND_PAGE_SIZE: 4K
+  QDB_CAIRO_WRITER_DATA_INDEX_KEY_APPEND_PAGE_SIZE: 4K
+  QDB_CAIRO_WRITER_DATA_INDEX_VALUE_APPEND_PAGE_SIZE: 4K
+  QDB_SHARED_WORKER_COUNT: "1"
+  QDB_SHARED_WORKER_YIELD_THRESHOLD: "1"
+  QDB_SHARED_WORKER_SLEEP_THRESHOLD: "1"
+  QDB_LINE_TCP_ENABLED: "false"
 
 services:
   questdb:
-    image: questdb/questdb:9.3.5
+    image: questdb/questdb:${QUESTDB_VERSION:-10.2.0}
     ports:
-      - "127.0.0.1:9000:9000" # HTTP ILP ingest + Console
+      - "127.0.0.1:9000:9000" # HTTP: QWP/ILP ingest + Console
       - "127.0.0.1:8812:8812" # PostgreSQL wire protocol
       - "127.0.0.1:9003:9003" # Monitoring and alerting (min server)
-    environment:
-      QDB_PG_USER: admin
-      QDB_PG_PASSWORD: admin
-      QDB_HTTP_USER: admin
-      QDB_HTTP_PASSWORD: admin
-      # Match production openc3-tsdb config: reject ILP writes to missing tables.
-      QDB_LINE_AUTO_CREATE_NEW_TABLES: "false"
+    environment: *questdb-env
+    ulimits:
+      nofile: 262144
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9000'"]
       interval: 5s
@@ -30,16 +53,13 @@ services:
   # resolves each db_shard by hostname (SHARDNUM) but locally both run on
   # 127.0.0.1 so the tests select this one by its ports instead.
   questdb-shard1:
-    image: questdb/questdb:9.3.5
+    image: questdb/questdb:${QUESTDB_VERSION:-10.2.0}
     ports:
-      - "127.0.0.1:9010:9000" # HTTP ILP ingest + Console
+      - "127.0.0.1:9010:9000" # HTTP: QWP/ILP ingest + Console
       - "127.0.0.1:8822:8812" # PostgreSQL wire protocol
-    environment:
-      QDB_PG_USER: admin
-      QDB_PG_PASSWORD: admin
-      QDB_HTTP_USER: admin
-      QDB_HTTP_PASSWORD: admin
-      QDB_LINE_AUTO_CREATE_NEW_TABLES: "false"
+    environment: *questdb-env
+    ulimits:
+      nofile: 262144
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/9000'"]
       interval: 5s

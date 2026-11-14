@@ -13,6 +13,8 @@ on:
       - main
     paths:
       - "openc3/python/openc3/utilities/questdb_client.py"
+      - "openc3/python/openc3/microservices/tsdb_microservice.py"
+      - "openc3/python/pyproject.toml"
       - "openc3/python/openc3/models/cvt_model.py"
       - "openc3/lib/openc3/models/cvt_model.rb"
       - "openc3/lib/openc3/utilities/questdb_client.rb"
@@ -24,6 +26,8 @@ on:
       - main
     paths:
       - "openc3/python/openc3/utilities/questdb_client.py"
+      - "openc3/python/openc3/microservices/tsdb_microservice.py"
+      - "openc3/python/pyproject.toml"
       - "openc3/python/openc3/models/cvt_model.py"
       - "openc3/lib/openc3/models/cvt_model.rb"
       - "openc3/lib/openc3/utilities/questdb_client.rb"
@@ -79,22 +83,12 @@ jobs:
 
       # Started here rather than as a job service container: services start
       # before any step runs, so they can't use the Docker Hub login above.
-      # QuestDB image doesn't include curl, so readiness is checked from the
-      # host by the "Wait for QuestDB" step below.
+      # Uses the same compose file (and production openc3-tsdb settings) as
+      # local runs. QuestDB image doesn't include curl, so readiness is checked
+      # from the host by the "Wait for QuestDB" step below.
       - name: Start QuestDB
-        run: |
-          docker run -d --name questdb \
-            -p 9000:9000 -p 8812:8812 \
-            -e QDB_PG_USER=admin -e QDB_PG_PASSWORD=admin \
-            -e QDB_HTTP_USER=admin -e QDB_HTTP_PASSWORD=admin \
-            --ulimit nofile=262144:262144 \
-            questdb/questdb:9.3.5
-          docker run -d --name questdb-shard1 \
-            -p 9010:9000 -p 8822:8812 \
-            -e QDB_PG_USER=admin -e QDB_PG_PASSWORD=admin \
-            -e QDB_HTTP_USER=admin -e QDB_HTTP_PASSWORD=admin \
-            --ulimit nofile=262144:262144 \
-            questdb/questdb:9.3.5
+        working-directory: openc3/test/integration/tsdb
+        run: docker compose -f docker-compose.test.yml up -d
 
       # sync: false -- the dependency sync has to happen after the gem build
       # below, so it stays as its own step further down
