@@ -216,6 +216,21 @@ Rails.application.routes.draw do
     get "/dashboard/:target/:dashboard/version", to: "dashboard_version#version_body"
     post "/dashboard/:target/:dashboard/restore", to: "dashboard_version#restore"
 
+    # Enterprise TSDB partition management (TsdbPartitionsController)
+    get "/tsdb/partitions/destinations", to: "tsdb_partitions#destinations"
+    get "/tsdb/partitions/settings", to: "tsdb_partitions#settings"
+    put "/tsdb/partitions/settings", to: "tsdb_partitions#update_settings"
+    get "/tsdb/partitions/schedule/preview", to: "tsdb_partitions#preview"
+    get "/tsdb/partitions/status", to: "tsdb_partitions#status"
+    get "/tsdb/partitions/archived", to: "tsdb_partitions#archived"
+    post "/tsdb/partitions/run", to: "tsdb_partitions#run"
+    post "/tsdb/partitions/restore", to: "tsdb_partitions#restore"
+    post "/tsdb/partitions/release", to: "tsdb_partitions#release"
+    post "/tsdb/partitions/rescan", to: "tsdb_partitions#rescan"
+    post "/tsdb/partitions/unblock", to: "tsdb_partitions#unblock"
+    get "/tsdb/partitions/jobs/:id", to: "tsdb_partitions#job"
+    post "/tsdb/partitions/jobs/:id/cancel", to: "tsdb_partitions#cancel"
+
     get "/notebooks", to: "notebooks#index"
     get "/notebooks/running", to: "notebooks#running"
     get "/notebooks/completed", to: "notebooks#completed"

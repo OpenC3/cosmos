@@ -1771,4 +1771,175 @@ RSpec.describe StorageController, type: :controller do
       end
     end
   end
+
+  describe "protected storage locations" do
+    before(:each) do
+      OpenC3::ProtectedStorageModel.add(root: "OPENC3_CONFIG_BUCKET", prefix: "protected_dir")
+      OpenC3::ProtectedStorageModel.add(root: "OPENC3_TEMP_VOLUME")
+    end
+
+    def stub_superadmin(superadmin)
+      stub_authorize
+      allow(controller).to receive(:authorize) do |args|
+        raise OpenC3::ForbiddenError.new("superadmin required") if !superadmin && args[:permission] == "superadmin"
+        "authorized_user"
+      end
+    end
+
+    context "as a non-superadmin" do
+      before(:each) { stub_superadmin(false) }
+
+      it "omits the protected directory from the bucket root listing" do
+        bucket_client = stub_bucket_client
+        allow(bucket_client).to receive(:list_files).and_return([["DEFAULT", "protected_dir", "other"], []])
+        get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)[0]).to eq(["DEFAULT", "other"])
+      end
+
+      it "refuses to list inside the protected directory" do
+        bucket_client = stub_bucket_client
+        expect(bucket_client).not_to receive(:list_files)
+        get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "protected_dir/shard0", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses exists" do
+        stub_bucket_client
+        get :exists, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "protected_dir/shard0/x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses download_file" do
+        bucket_client = stub_bucket_download
+        expect(bucket_client).not_to receive(:get_object)
+        get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "protected_dir/shard0/x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses a dot segment path to the protected directory" do
+        stub_bucket_download
+        get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "./protected_dir//shard0/x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses download_multiple_files" do
+        stub_bucket_client
+        post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", path: "protected_dir/shard0/", files: ["x"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses presigned get and put requests" do
+        bucket_client = stub_bucket_client
+        expect(bucket_client).not_to receive(:presigned_request)
+        get :get_download_presigned_request, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "protected_dir/shard0/x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+        get :get_upload_presigned_request, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "protected_dir/shard0/x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses upload_file" do
+        bucket_client = stub_bucket_client
+        expect(bucket_client).not_to receive(:put_object)
+        put :upload_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "protected_dir/shard0/x", contents: Base64.encode64("hi"), scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses delete" do
+        bucket_client = stub_bucket_client
+        expect(bucket_client).not_to receive(:delete_object)
+        delete :delete, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "protected_dir/shard0/x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses delete_directory of the protected directory and of a parent" do
+        bucket_client = stub_bucket_client
+        expect(bucket_client).not_to receive(:delete_objects)
+        delete :delete_directory, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "protected_dir/shard0", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "allows an unprotected path in the same bucket" do
+        bucket_client = stub_bucket_client
+        allow(bucket_client).to receive(:delete_object)
+        delete :delete, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "protected_dir_other/x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "refuses download_multiple_files when the path and filename split inside a segment" do
+        stub_bucket_client
+        post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", path: "protected_di", files: ["r/shard0/x"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses a split-segment download_multiple_files for a prefix-protected volume" do
+        OpenC3::ProtectedStorageModel.add(root: "OPENC3_DATA_VOLUME", prefix: "protected_dir")
+        post :download_multiple_files, params: {volume: "OPENC3_DATA_VOLUME", path: "protected_di", files: ["r/shard0/x"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses a split-segment download_multiple_files for a local only key" do
+        allow(controller).to receive(:local_only_config_key?).and_return(true)
+        stub_bucket_client
+        post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", path: "protected_di", files: ["r/x"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "rejects glob characters in a volume listing path" do
+        OpenC3::ProtectedStorageModel.add(root: "OPENC3_DATA_VOLUME", prefix: "protected_dir")
+        expect(Dir).not_to receive(:[])
+        get :files, params: {root: "OPENC3_DATA_VOLUME", path: "protected_di*", scope: "DEFAULT"}
+        expect(response).to have_http_status(:bad_request)
+      end
+
+      # validate_storage_source reads the volume when both are given, so the check must use the volume too
+      it "refuses download_file of a protected volume when a bucket is also given" do
+        stub_bucket_download
+        get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", volume: "OPENC3_TEMP_VOLUME", object_id: "x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "refuses download_multiple_files of a protected volume when a bucket is also given" do
+        stub_bucket_client
+        post :download_multiple_files, params: {bucket: "OPENC3_CONFIG_BUCKET", volume: "OPENC3_TEMP_VOLUME", path: "", files: ["x"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+
+      it "hides a protected volume from the volume list" do
+        get :volumes
+        expect(JSON.parse(response.body)).to eq(["/data"])
+      end
+
+      it "refuses volume listing, download token, streaming source, and delete" do
+        get :files, params: {root: "OPENC3_TEMP_VOLUME", path: "", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+        get :get_volume_download_token, params: {volume: "OPENC3_TEMP_VOLUME", object_id: "x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+        post :download_multiple_files, params: {volume: "OPENC3_TEMP_VOLUME", path: "", files: ["x"], scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+        delete :delete, params: {volume: "OPENC3_TEMP_VOLUME", object_id: "x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:forbidden)
+      end
+    end
+
+    context "as a superadmin" do
+      before(:each) { stub_superadmin(true) }
+
+      it "lists and downloads protected files" do
+        bucket_client = stub_bucket_client
+        allow(bucket_client).to receive(:list_files).and_return([["DEFAULT", "protected_dir"], []])
+        get :files, params: {root: "OPENC3_CONFIG_BUCKET", path: "", scope: "DEFAULT"}
+        expect(JSON.parse(response.body)[0]).to eq(["DEFAULT", "protected_dir"])
+
+        stub_bucket_download
+        get :download_file, params: {bucket: "OPENC3_CONFIG_BUCKET", object_id: "protected_dir/shard0/x", scope: "DEFAULT"}
+        expect(response).to have_http_status(:ok)
+      end
+
+      it "sees the protected volume" do
+        get :volumes
+        expect(JSON.parse(response.body)).to include("/temp")
+      end
+    end
+  end
 end

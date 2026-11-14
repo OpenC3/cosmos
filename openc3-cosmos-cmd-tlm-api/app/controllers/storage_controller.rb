@@ -24,6 +24,7 @@ require 'openc3/utilities/process_manager'
 require 'openc3/utilities/questdb_client'
 require 'openc3/logs/packet_log_reader'
 require 'openc3/models/reingest_job_model'
+require 'openc3/models/protected_storage_model'
 require 'openc3/topics/telemetry_topic'
 require 'fileutils'
 require 'securerandom'
@@ -40,6 +41,7 @@ class StorageController < ApplicationController
 
   VOLUME_DOWNLOAD_KEY_PREFIX = 'openc3_volume_download__'
   VOLUME_DOWNLOAD_TOKEN_EXPIRE_SECONDS = 60
+  PROTECTED_FORBIDDEN = 'This storage location is only accessible to system administrators'
 
   # Buckets COSMOS itself manages. Writes to these are admin-only (apart from the
   # config overlay, see non_admin_bucket_write?) because COSMOS loads their contents:
@@ -186,6 +188,8 @@ class StorageController < ApplicationController
     matches = ENV.map { |key, _value| key.match(/^OPENC3_(.+)_VOLUME$/) }.compact
     # MatchData [0] is the full text, [1] is the captured group
     # downcase to make it look nicer, BucketExplorer.vue calls toUpperCase on the API requests
+    # Protected volumes are only listed for system administrators
+    matches = matches.reject { |match| protected_storage?(root: match[0], key: '') && !protected_storage_admin? }
     volumes = matches.map { |match| match[1].downcase }.sort
     # Add a slash prefix to identify volumes separately from buckets
     volumes.map! {|volume| "/#{volume}" }
@@ -203,6 +207,7 @@ class StorageController < ApplicationController
       bucket = OpenC3::Bucket.getClient()
       path = sanitize_path(params[:path])
       path = '/' if path.empty?
+      return if deny_protected_storage?(root: params[:root], key: path)
 
       # Check scope-based RBAC for config and logs buckets
       if bucket_requires_rbac?(params[:root])
@@ -220,6 +225,7 @@ class StorageController < ApplicationController
       # if user wants metadata returned
       metadata = params[:metadata].present? ? true : false
       results = bucket.list_files(bucket: root, path: path, metadata: metadata)
+      results[0] = hide_protected_dirs(params[:root], path, results[0]) if results[0].is_a?(Array)
 
       # Filter results based on RBAC
       if bucket_requires_rbac?(params[:root])
@@ -253,6 +259,12 @@ class StorageController < ApplicationController
       dirs = []
       files = []
       path = sanitize_path(params[:path])
+      return if deny_protected_storage?(root: params[:root], key: path)
+      # The path goes into a glob below, so metacharacters could match (and list) protected directories
+      if path.match?(/[*?\[\]{}]/)
+        render json: { status: 'error', message: "Invalid path: #{path}" }, status: :bad_request
+        return
+      end
       list = Dir["/#{root}/#{path}/*"] # Ok for path to be blank
       list.each do |file|
         if File.directory?(file)
@@ -262,6 +274,7 @@ class StorageController < ApplicationController
           files << { name: File.basename(file), size: stat.size, modified: stat.mtime }
         end
       end
+      dirs = hide_protected_dirs(params[:root], path, dirs)
       results << dirs
       results << files
     end
@@ -280,6 +293,7 @@ class StorageController < ApplicationController
     params.require(:bucket)
     bucket_name = resolve_bucket(params[:bucket])
     path = sanitize_path(params[:object_id])
+    return if deny_protected_storage?(root: params[:bucket], key: path)
 
     # Check scope-based RBAC for config and logs buckets
     if bucket_requires_rbac?(params[:bucket])
@@ -325,6 +339,8 @@ class StorageController < ApplicationController
         render json: { status: 'error', message: "Invalid object_id: #{params[:object_id]}" }, status: :not_found
         return
       end
+
+      return if deny_protected_storage?(root: storage_root(storage_type), key: object_id)
 
       # Check scope-based RBAC for bucket downloads
       if storage_type == :bucket && params[:bucket] && bucket_requires_rbac?(params[:bucket])
@@ -386,6 +402,7 @@ class StorageController < ApplicationController
       render json: { status: 'error', message: "Invalid object_id: #{params[:object_id]}" }, status: :not_found
       return
     end
+    return if deny_protected_storage?(root: params[:volume], key: object_id)
 
     filename = sanitize_path("/#{volume_name}/#{object_id}")
     unless File.file?(filename)
@@ -432,6 +449,7 @@ class StorageController < ApplicationController
 
       path = sanitize_path(params[:path] || '')
       storage_type, storage_name = validate_storage_source
+      return if files.any? { |filename| deny_protected_storage?(root: storage_root(storage_type), key: sanitize_path("#{path}#{filename}")) }
 
       # Check scope-based RBAC for bucket downloads
       if storage_type == :bucket && params[:bucket] && bucket_requires_rbac?(params[:bucket])
@@ -470,6 +488,7 @@ class StorageController < ApplicationController
     params.require(:bucket)
     bucket_name = resolve_bucket(params[:bucket])
     path = sanitize_path(params[:object_id])
+    return if deny_protected_storage?(root: params[:bucket], key: path)
 
     # Check scope-based RBAC for config and logs buckets
     if bucket_requires_rbac?(params[:bucket])
@@ -502,6 +521,7 @@ class StorageController < ApplicationController
     params.require(:bucket)
     bucket_name = resolve_bucket(params[:bucket])
     path = sanitize_path(params[:object_id])
+    return if deny_protected_storage?(root: params[:bucket], key: path)
 
     # Check scope-based RBAC for config and logs buckets
     if bucket_requires_rbac?(params[:bucket])
@@ -547,6 +567,7 @@ class StorageController < ApplicationController
     bucket_name = resolve_bucket(params[:bucket])
     path = sanitize_path(params[:object_id])
     raise StorageError, "Missing contents" unless params.key?(:contents)
+    return if deny_protected_storage?(root: params[:bucket], key: path)
 
     # Check scope-based RBAC for config and logs buckets
     if bucket_requires_rbac?(params[:bucket]) && !authorize_bucket_path(params[:bucket], path, permission: 'system_set')
@@ -840,6 +861,38 @@ class StorageController < ApplicationController
     render json: { status: 'error', message: "#{path} belongs to a local only target (OPENC3_LOCAL_ONLY_TARGETS) and is not stored in the bucket" }, status: :bad_request
   end
 
+  # True for a system administrator, who may see protected storage. Checked once per request.
+  def protected_storage_admin?
+    @protected_storage_admin = !!authorization('superadmin', perform_render: false) if @protected_storage_admin.nil?
+    @protected_storage_admin
+  end
+
+  # root is the OPENC3_*_BUCKET / OPENC3_*_VOLUME parameter. Parameters that aren't a
+  # bucket or volume name can't be protected and are rejected later by resolve_*.
+  def protected_storage?(root:, key:, contains: false)
+    return false unless bucket_param?(root) || volume_param?(root)
+    OpenC3::ProtectedStorageModel.protected?(root: root, key: key, contains: contains)
+  end
+
+  # Renders 403 and returns true if the key is in protected storage and the user
+  # is not a system administrator
+  def deny_protected_storage?(root:, key:, contains: false)
+    return false unless protected_storage?(root: root, key: key, contains: contains)
+    return false if protected_storage_admin?
+    render json: { status: 'error', message: PROTECTED_FORBIDDEN }, status: :forbidden
+    true
+  end
+
+  # Removes protected directories from a listing unless the user is a system administrator
+  def hide_protected_dirs(root, path, dirs)
+    return dirs unless bucket_param?(root) || volume_param?(root)
+    return dirs unless OpenC3::ProtectedStorageModel.any?(root: root)
+    return dirs if protected_storage_admin?
+    parent = OpenC3::ProtectedStorageModel.normalize_key(path)
+    parent = "#{parent}/" unless parent.empty?
+    dirs.reject { |dir| OpenC3::ProtectedStorageModel.protected?(root: root, key: "#{parent}#{dir}") }
+  end
+
   def sanitize_path(path)
     return '' if path.nil?
     # path is passed as a parameter thus we have to sanitize it or the code scanner detects:
@@ -858,6 +911,7 @@ class StorageController < ApplicationController
     params.require(:bucket)
     bucket_name = resolve_bucket(params[:bucket])
     path = sanitize_path(params[:object_id])
+    return false if deny_protected_storage?(root: params[:bucket], key: path)
 
     # Check scope-based RBAC for config and logs buckets
     if bucket_requires_rbac?(params[:bucket])
@@ -889,6 +943,7 @@ class StorageController < ApplicationController
   end
 
   def delete_volume_item(params)
+    return false if deny_protected_storage?(root: params[:volume], key: sanitize_path(params[:object_id]))
     # Deleting requires admin
     if authorization('admin')
       volume = resolve_volume(params[:volume])
@@ -910,6 +965,8 @@ class StorageController < ApplicationController
     # the trailing slash, since the overlay helper rejects trailing slashes.
     non_admin_write = non_admin_bucket_write?(params[:bucket], path)
     path = "#{path}/" unless path.end_with?('/')
+    # Deleting a parent of a protected location would delete it too
+    return false if deny_protected_storage?(root: params[:bucket], key: path, contains: true)
 
     # Check scope-based RBAC
     if bucket_requires_rbac?(params[:bucket]) && !authorize_bucket_path(params[:bucket], path, permission: 'system_set')
@@ -979,6 +1036,7 @@ class StorageController < ApplicationController
     volume = resolve_volume(params[:volume])
 
     path = sanitize_path(params[:object_id])
+    return false if deny_protected_storage?(root: params[:volume], key: path, contains: true)
     full_path = "/#{volume}/#{path}"
 
     unless File.directory?(full_path)
@@ -1022,6 +1080,12 @@ class StorageController < ApplicationController
     else
       raise StorageError, "No volume or bucket given"
     end
+  end
+
+  # The bucket or volume parameter validate_storage_source read, so a protection check looks at
+  # the same storage that is then accessed (it prefers the volume when both are given)
+  def storage_root(storage_type)
+    storage_type == :volume ? params[:volume] : params[:bucket]
   end
 
   # Adds files from a volume to the zip archive
