@@ -1,0 +1,17 @@
+# Discoveries with fixed parameters. VARIABLE_DISCOVERY_SET picks the
+# controller model, which titles the matcher.
+VARIABLE_BRIDGE
+VARIABLE dual_sense_target_name DUALSENSE
+VARIABLE dual_sense_version 5
+  VARIABLE_STATE "DualSense (PS5)" 5
+  VARIABLE_STATE "DualSense Edge (PS5)" 5edge
+  VARIABLE_STATE "DualShock 4 v1 (PS4)" 4
+VARIABLE dual_sense_serial_num None
+  VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x05C4
+    VARIABLE_DISCOVERY_SET dual_sense_version 4
+  VARIABLE_DISCOVERY openc3/discovery/hid_discovery.py 0x054C 0x0CE6
+    VARIABLE_DISCOVERY_SET dual_sense_version 5
+  VARIABLE_DISCOVERY openc3.discovery.hid_discovery 0x054C 0x0DF2
+    VARIABLE_DISCOVERY_SET dual_sense_version 5edge
+
+TARGET DUALSENSE <%= dual_sense_target_name %>

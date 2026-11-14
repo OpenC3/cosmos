@@ -1,0 +1,11 @@
+# References no state sets keep their default values. A discovery without
+# parameters (or whose parameters are all blank) finds any device of its kind,
+# so it doesn't identify hardware and isn't a matcher.
+VARIABLE usb_id 2341:*
+VARIABLE unused_id ""
+VARIABLE port ""
+  VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py ${usb_id} 1A86:7523
+VARIABLE any_port ""
+  VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py
+VARIABLE blank_port ""
+  VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py ${unused_id}

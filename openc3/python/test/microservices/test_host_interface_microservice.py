@@ -34,6 +34,81 @@ class TestHostInterfaceMicroservice(unittest.IsolatedAsyncioTestCase):
         await timer
         self.assertTrue(timer_fired)
 
+    def _control_service(self):
+        service = HostInterfaceMicroservice.__new__(HostInterfaceMicroservice)
+        service.name = "HOST"
+        service.channel = "HOST"
+        service.shutdown = False
+        service._interface = None
+        service._desired_connected = False
+        service._status_ping = asyncio.Event()
+        return service
+
+    @staticmethod
+    def _endpoint(read):
+        class Recv:
+            reads = 0
+
+            async def read(self, size):
+                self.reads += 1
+                if self.reads == 1:
+                    return b"\0"  # the hub's prime
+                return await read()
+
+        class Send:
+            async def write_all(self, data):
+                pass
+
+        class Bi:
+            def send(self):
+                return Send()
+
+            def recv(self):
+                return Recv()
+
+        class Connection:
+            async def accept_bi(self):
+                return Bi()
+
+            def close(self):
+                pass
+
+        class Endpoint:
+            async def connect(self, addr, alpn):
+                return Connection()
+
+        return Endpoint()
+
+    async def test_control_channel_dropped_at_shutdown_is_not_an_error(self):
+        service = self._control_service()
+
+        async def read():
+            # Shutting down closes the connection under the pending read
+            service.shutdown = True
+            raise RuntimeError("ConnectionLost(LocallyClosed)")
+
+        with patch("openc3.microservices.host_interface_microservice.Logger") as logger:
+            await asyncio.wait_for(service._control_loop(self._endpoint(read), "addr"), 2)
+        logger.warn.assert_not_called()
+        self.assertEqual(asyncio.all_tasks(), {asyncio.current_task()})
+
+    async def test_cancelled_control_channel_leaves_no_tasks_running(self):
+        service = self._control_service()
+        reading = asyncio.Event()
+
+        async def read():
+            reading.set()
+            await asyncio.Event().wait()
+
+        control = asyncio.create_task(service._control_loop(self._endpoint(read), "addr"))
+        await asyncio.wait_for(reading.wait(), 2)
+        control.cancel()
+        with self.assertRaises(asyncio.CancelledError):
+            await control
+        # The reader and status writer are stopped with it, rather than left to
+        # fail unobserved when the connection closes
+        self.assertEqual(asyncio.all_tasks(), {asyncio.current_task()})
+
 
 class TestStdinLifeline(unittest.TestCase):
     def test_eof_requests_stop_and_arms_exit_backstop(self):

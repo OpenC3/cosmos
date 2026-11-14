@@ -1,0 +1,20 @@
+# plugin.txt syntax the matchers have to survive: comments, quoting and
+# PLUGIN_TEXT / VARIABLE_TEXT blocks whose lines look like keywords. Values used
+# as discovery parameters are split on spaces, as the plugin dialog does.
+PLUGIN_TEXT_START
+  # Not a comment, a markdown heading
+  VARIABLE_DISCOVERY openc3/discovery/serial_discovery.py 0000:0000
+PLUGIN_TEXT_END
+VARIABLE model 'basic' # Single quotes and a trailing comment
+  VARIABLE_DESCRIPTION 'Which model, e.g. "basic"'
+  VARIABLE_STATE "Basic model" basic
+    VARIABLE_TEXT_START
+    VARIABLE_STATE_SET mdns_types _fake._tcp.local.
+    VARIABLE_TEXT_END
+    VARIABLE_STATE_SET mdns_types "_basic._tcp.local.|name=Basic Unit*"
+  VARIABLE_STATE 'Pro model' pro
+    VARIABLE_STATE_SET mdns_types '_pro._tcp.local.'
+VARIABLE mdns_types ""
+  VARIABLE_HIDDEN
+VARIABLE host ""
+  VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}

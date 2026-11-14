@@ -11,6 +11,7 @@
 # if purchased from OpenC3, Inc.
 */
 
+import DiscoverDialog from './DiscoverDialog.vue'
 import DownloadDialog from './DownloadDialog.vue'
 import ModifiedPluginDialog from './ModifiedPluginDialog.vue'
 import OpenC3Admin from './OpenC3Admin.vue'
@@ -18,6 +19,7 @@ import PluginDialog from './PluginDialog.vue'
 import { TabsList } from './tabs'
 
 export {
+  DiscoverDialog,
   DownloadDialog,
   ModifiedPluginDialog,
   OpenC3Admin,

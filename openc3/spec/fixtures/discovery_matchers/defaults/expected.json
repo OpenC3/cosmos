@@ -1,0 +1,11 @@
+{
+  "format": 1,
+  "matchers": [
+    {
+      "class": "openc3.discovery.serial_discovery",
+      "params": ["2341:*", "1A86:7523"],
+      "variable": "port",
+      "set": {}
+    }
+  ]
+}

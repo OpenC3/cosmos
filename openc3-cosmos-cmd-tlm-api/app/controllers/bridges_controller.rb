@@ -22,7 +22,7 @@ require 'openc3/utilities/secrets'
 # token generation. A bridge is a `bridge_microservice` (the Iroh hub) whose
 # identity/ticket the running hub records in a BridgeModel; this controller
 # creates/removes that microservice (and its identity) and mints one-time
-# enrollment tokens for pairing a remote openc3-app.
+# enrollment tokens for pairing a remote openc3-cosmos-app.
 class BridgesController < ModelController
   before_action :canonicalize_id, only: [:show, :destroy, :token]
 
@@ -118,7 +118,7 @@ class BridgesController < ModelController
   end
 
   # POST /bridges/:id/token — generate a one-time manual-enrollment token for
-  # the named bridge (used to pair a remote openc3-app that can't auto-enroll
+  # the named bridge (used to pair a remote openc3-cosmos-app that can't auto-enroll
   # over the local Docker control plane).
   def token
     return unless authorization('admin')

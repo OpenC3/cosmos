@@ -17,7 +17,7 @@ class HostInterfaceMicroserviceModel(Model):
 
     Written by the Ruby InterfaceModel#deploy for bridged interfaces (the BRIDGE
     keyword) and read here by the bridge_microservice, which serves the list to
-    openc3-app over the ``api/host_microservices`` ALPN. openc3-app spawns each
+    openc3-cosmos-app over the ``api/host_microservices`` ALPN. openc3-cosmos-app spawns each
     host microservice; it performs raw data transfer plus any BRIDGE_PROTOCOLs
     (which run on the host next to the device), while target definitions and
     regular PROTOCOLs stay on the Docker side of COSMOS. It speaks Iroh back to

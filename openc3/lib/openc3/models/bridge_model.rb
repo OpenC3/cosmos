@@ -20,9 +20,9 @@ require 'securerandom'
 module OpenC3
   # Stores the identity of a named Iroh bridge (the bridge_microservice hub).
   #
-  # A bridge is the COSMOS-side Iroh server that openc3-app and host interfaces
+  # A bridge is the COSMOS-side Iroh server that openc3-cosmos-app and host interfaces
   # connect to. This model stores the bridge's Iroh public key (its EndpointId)
-  # and most recent connection ticket, plus the authorized openc3-app control
+  # and most recent connection ticket, plus the authorized openc3-cosmos-app control
   # identity (app_public_key) recorded during enrollment. The bridge's own
   # private key lives in the secrets store, never here.
   #
@@ -118,7 +118,7 @@ module OpenC3
 
     # Generate a one-time manual-enrollment code, store it on this bridge, and
     # return a token (base64 JSON of bridge name + hub ticket + code) that a
-    # remote openc3-app pastes to enroll. Requires the bridge to be up (ticket
+    # remote openc3-cosmos-app pastes to enroll. Requires the bridge to be up (ticket
     # present). The code is redeemed once over the api/enroll ALPN.
     def generate_enrollment_token
       raise "Bridge '#{@name}' has no ticket yet; is its bridge_microservice running?" if @ticket.nil? || @ticket.empty?
