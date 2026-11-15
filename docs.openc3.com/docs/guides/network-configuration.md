@@ -31,31 +31,22 @@ Each service can only appear once in `compose.override.yaml`. If this guide and 
 
 COSMOS Core needs no changes in this step. Skip to [Choose a Configuration](#choose-a-configuration).
 
-COSMOS Enterprise needs the external URL users will browse to (the correct scheme, domain or IP address, and port) in several places. The examples below use `https://mydomain.com`.
+COSMOS Enterprise needs the external URL users will browse to: the correct scheme, domain or IP address, and port. The example below uses `https://mydomain.com`.
 
-1. In `.env.local`, set the COSMOS and Keycloak external URLs:
+In `.env.local`, set the COSMOS and Keycloak external URLs:
 
-   ```sh
-   OPENC3_EXTERNAL_URL=https://mydomain.com
-   OPENC3_KEYCLOAK_EXTERNAL_URL=https://mydomain.com/auth
-   ```
+```sh
+OPENC3_EXTERNAL_URL=https://mydomain.com
+OPENC3_KEYCLOAK_EXTERNAL_URL=https://mydomain.com/auth
+```
 
-   Leave `OPENC3_KEYCLOAK_URL` set to the internal service URL `http://openc3-keycloak:8080/auth`. COSMOS containers use it to talk to Keycloak directly.
+That is the only change needed. `compose.yaml` passes these values to Keycloak (its `KC_HOSTNAME`) and to Grafana, whose `grafana.ini` and COSMOS data source read them from the environment, so you don't edit any Keycloak or Grafana files.
 
-2. In `compose.override.yaml`, set the Keycloak hostname to the same URL as `OPENC3_KEYCLOAK_EXTERNAL_URL`:
+Leave `OPENC3_KEYCLOAK_URL` set to the internal service URL `http://openc3-keycloak:8080/auth`. COSMOS containers use it to talk to Keycloak directly.
 
-   ```yaml
-   services:
-     openc3-keycloak:
-       environment:
-         KC_HOSTNAME: "https://mydomain.com/auth"
-   ```
-
-3. Edit `openc3-enterprise-grafana/cosmos.yaml` and change the `cosmosUrl` and `keycloakUrl` settings to the correct scheme, domain, and port. Keep `/auth` if present.
-
-4. Edit `openc3-enterprise-grafana/grafana.ini` and change the `root_url`, `auth_url`, `token_url`, and `api_url` settings to the correct scheme, domain, and port. Leave any additional path information.
-
-The Grafana files are tracked in the project, so check these edits again after upgrading COSMOS.
+:::note[Upgrading from 7.5.1 or earlier]
+Earlier releases had you set `KC_HOSTNAME` in `compose.override.yaml` and edit `openc3-enterprise-grafana/cosmos.yaml` and `grafana.ini` directly. Once you upgrade and have the two URLs in `.env.local`, remove the `KC_HOSTNAME` entry from your `compose.override.yaml`. The upgrade replaces the Grafana files with versions that read the environment, so there is nothing to carry over from them.
+:::
 
 ## Choose a Configuration
 

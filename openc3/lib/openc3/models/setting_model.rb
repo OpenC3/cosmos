@@ -352,7 +352,7 @@ module OpenC3
     # and overwriting it is the silent clobber this mechanism exists to
     # prevent. The cost is that a deployment upgrading into this feature needs
     # one run with OVERWRITE_ENV_VAR before env changes take effect again. That
-    # cost is documented for operators too - compose.override.yaml under
+    # cost is documented for operators too - compose.override.example.yaml under
     # OPENC3_SETTINGS_OVERWRITE and `cli initsettings --help` both say it -
     # so keep those in sync with this behavior.
     def self.seeded_value?(name, current)
@@ -505,7 +505,7 @@ module OpenC3
 
     # One "KEY=value" env entry, quoted when YAML would otherwise mangle it.
     # JSON always contains '":', which YAML reads as a mapping, so those always
-    # need quoting - the exact trap the compose.override.yaml comments warn about.
+    # need quoting - the exact trap the compose.override.example.yaml comments warn about.
     def self.yaml_env_item(name, data)
       value = data.is_a?(String) ? data : JSON.generate(data)
       entry = "#{SETTING_ENV_PREFIX}#{name.upcase}=#{value}"
