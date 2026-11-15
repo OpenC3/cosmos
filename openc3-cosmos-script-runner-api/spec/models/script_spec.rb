@@ -338,8 +338,7 @@ RSpec.describe Script, type: :model do
 
       Script.instrumented("script.py", "print(1)")
 
-      %w[SECRET_KEY_BASE OPENC3_REDIS_USERNAME OPENC3_REDIS_PASSWORD OPENC3_BUCKET_USERNAME
-         OPENC3_BUCKET_PASSWORD ANYCABLE_REDIS_URL OPENC3_API_TOKEN KEYCLOAK_ADMIN_PASSWORD].each do |k|
+      OpenC3::ScriptEnv::SPAWN_SCRUBBED_VARS.each do |k|
         expect(env).to have_key(k)
         expect(env[k]).to be_nil
       end
@@ -489,7 +488,36 @@ RSpec.describe Script, type: :model do
         Script.process_suite("suite.py", "suite content", username: "u", scope: "DEFAULT")
 
         expect(mocks[:process_env]["OPENC3_API_PASSWORD"]).to be_nil
-        expect(mocks[:stdin]).to have_received(:puts).with('{"auth":{"user":"svc-user","password":"svc-pass"}}')
+        expect(mocks[:stdin]).to have_received(:puts).with(satisfy { |line|
+          JSON.parse(line)["auth"] == { "user" => "svc-user", "password" => "svc-pass" }
+        })
+      end
+
+      it "delivers the Redis and bucket credentials over stdin, not env" do
+        allow(OpenC3::OfflineAccessModel).to receive(:get_model).and_return(nil)
+        mocks = setup_process_suite_mocks(language: "ruby")
+        sr_secrets = { 'OPENC3_SR_REDIS_USERNAME' => 'sr_user', 'OPENC3_SR_REDIS_PASSWORD' => 'sr_pw',
+                       'OPENC3_SR_BUCKET_USERNAME' => 'sr_bucket', 'OPENC3_SR_BUCKET_PASSWORD' => 'sr_bucket_pw' }
+        saved = (sr_secrets.keys + ['OPENC3_SERVICE_PASSWORD']).to_h { |k| [k, ENV[k]] }
+        begin
+          sr_secrets.each { |k, v| ENV[k] = v }
+          ENV['OPENC3_SERVICE_PASSWORD'] = 'svc-pass'
+
+          Script.process_suite("suite.rb", "suite content", username: "u", scope: "DEFAULT")
+
+          OpenC3::ScriptEnv::STDIN_SECRET_VARS.to_a.flatten.each do |k|
+            expect(mocks[:process_env]).to have_key(k)
+            expect(mocks[:process_env][k]).to be_nil
+          end
+          expect(mocks[:stdin]).to have_received(:puts).with(satisfy { |line|
+            JSON.parse(line)["env"] == {
+              'OPENC3_REDIS_USERNAME' => 'sr_user', 'OPENC3_REDIS_PASSWORD' => 'sr_pw',
+              'OPENC3_BUCKET_USERNAME' => 'sr_bucket', 'OPENC3_BUCKET_PASSWORD' => 'sr_bucket_pw'
+            }
+          })
+        ensure
+          saved.each { |k, v| v.nil? ? ENV.delete(k) : ENV[k] = v }
+        end
       end
     end
 
@@ -518,7 +546,7 @@ RSpec.describe Script, type: :model do
           expect(env).to have_key(k)
           expect(env[k]).to be_nil
         end
-        expect(mocks[:stdin]).to have_received(:puts).with('{"auth":{"token":"valid_token"}}')
+        expect(mocks[:stdin]).to have_received(:puts).with(satisfy { |line| JSON.parse(line)["auth"] == { "token" => "valid_token" } })
         expect(mocks[:stdin]).to have_received(:close)
         expect(stdout_result).to eq '{"suite":"data"}'
         expect(stderr_result).to eq ""

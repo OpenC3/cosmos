@@ -127,7 +127,7 @@ class RunningScriptController < ApplicationController
       end
 
       # Free the per-script signing key now that the run is gone
-      OpenC3::Store.del("script-signing-key:#{params[:id]}")
+      OpenC3::Store.hdel(OpenC3::ScriptMessageSigning.keys_hash(params[:scope]), params[:id].to_s)
 
       OpenC3::Logger.info("Script deleted: #{running_script.filename}", scope: params[:scope], user: username())
       head :ok
@@ -230,17 +230,12 @@ class RunningScriptController < ApplicationController
   private
 
   # Signs and publishes a control message to the running script. The caller has
-  # already authorized the user and resolved the script. If the per-script
-  # signing key is gone the run is gone, so there is nothing to publish to.
-  def publish_signed_command(id, _scope, payload)
-    key_name = "script-signing-key:#{id}"
-    ttl = ENV.fetch('OPENC3_SCRIPT_SIGNING_KEY_TTL', 2592000).to_i
-    # get + expire rather than GETEX: the mock_redis used in specs has no getex,
-    # and the refresh does not need to be atomic.
-    key = OpenC3::Store.get(key_name)
+  # already authorized the user and resolved the script. Signing keys don't
+  # expire; one is only removed once its script is no longer running, so a
+  # missing key means there is nothing to publish to.
+  def publish_signed_command(id, scope, payload)
+    key = OpenC3::Store.hget(OpenC3::ScriptMessageSigning.keys_hash(scope), id.to_s)
     return if key.nil?
-
-    OpenC3::Store.expire(key_name, ttl)
 
     envelope = OpenC3::ScriptMessageSigning.sign(key, payload)
     OpenC3::Store.publish("script-api:cmd-running-script-channel:#{id}", JSON.generate(envelope, allow_nan: true))

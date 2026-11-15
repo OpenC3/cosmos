@@ -19,8 +19,8 @@ $openc3_scope = ARGV[0]
 
 require 'json'
 
-# Read the one-line auth JSON the parent wrote to stdin right after spawn.
-# Applied at runtime so the secret is never in the process environment.
+# Read the one-line credentials JSON the parent wrote to stdin right after spawn.
+# Applied at runtime so the secrets are never in /proc/<pid>/environ.
 begin
   stdin_creds = JSON.parse($stdin.gets.to_s)
   auth = stdin_creds['auth']
@@ -42,12 +42,18 @@ else
   end
 end
 
+# Redis and bucket credentials, sent over stdin rather than the environment
+stdin_env = stdin_creds['env']
+if stdin_env.is_a?(Hash)
+  stdin_env.each { |key, value| ENV[key] = value if value.is_a?(String) }
+end
+
 require 'openc3'
 require 'openc3/script/suite_runner'
 require 'openc3/utilities/running_script'
 require 'openc3/utilities/script_env'
 
-# The API client has authenticated during the requires above; clear secrets
+# The API client captured its credentials during the requires above; clear secrets
 # (including the API passwords) before loading user code so it can't read them.
 OpenC3::ScriptEnv.clear_credentials
 

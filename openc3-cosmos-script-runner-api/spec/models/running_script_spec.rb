@@ -207,13 +207,53 @@ RSpec.describe RunningScript, type: :model do
 
       before { allow(ChildProcess).to receive(:build).and_return(process_double) }
 
-      it "stores a signing key with a TTL and keeps it off the environment" do
+      it "stores the signing key in the scope's hash and keeps it off the environment" do
         id = RunningScript.spawn("DEFAULT", "script.rb")
-        key = OpenC3::Store.get("script-signing-key:#{id}")
+        key = OpenC3::Store.hget("script-signing-keys__DEFAULT", id.to_s)
         expect(key).to match(/\A\h{64}\z/)
-        expect(OpenC3::Store.ttl("script-signing-key:#{id}")).to be > 0
         expect(env.values).not_to include(key)
         expect(JSON.parse(written.first)["signing_key"]).to eq(key)
+      end
+
+      it "stores the signing key only after the running status exists" do
+        status_exists = nil
+        # Store forwards hset via method_missing
+        without_partial_double_verification do
+          allow(OpenC3::Store).to receive(:hset).and_wrap_original do |original, hash_key, field, value|
+            if hash_key == "script-signing-keys__DEFAULT"
+              status_exists = !OpenC3::ScriptStatusModel.get(name: field, scope: "DEFAULT").nil?
+            end
+            original.call(hash_key, field, value)
+          end
+        end
+        RunningScript.spawn("DEFAULT", "script.rb")
+        expect(status_exists).to be true
+      end
+
+      it "removes signing keys of scripts that are no longer running" do
+        first = RunningScript.spawn("DEFAULT", "script.rb")
+        OpenC3::Store.hset("script-signing-keys__DEFAULT", "999", "d" * 64) # no status (ended)
+        OpenC3::Store.hset("script-signing-keys__OTHER", "998", "e" * 64) # other scope untouched
+        second = RunningScript.spawn("DEFAULT", "script.rb")
+        keys = OpenC3::Store.hkeys("script-signing-keys__DEFAULT")
+        expect(keys).to contain_exactly(first.to_s, second.to_s)
+        expect(OpenC3::Store.hget("script-signing-keys__OTHER", "998")).to eq("e" * 64)
+
+        status = OpenC3::ScriptStatusModel.get_model(name: first.to_s, scope: "DEFAULT")
+        status.state = "completed"
+        status.update
+        third = RunningScript.spawn("DEFAULT", "script.rb")
+        keys = OpenC3::Store.hkeys("script-signing-keys__DEFAULT")
+        expect(keys).to contain_exactly(second.to_s, third.to_s)
+      end
+
+      it "still spawns if removing old signing keys fails" do
+        without_partial_double_verification do
+          allow(OpenC3::Store).to receive(:hkeys).and_raise(Redis::CannotConnectError)
+        end
+        expect(OpenC3::Logger).to receive(:error).with(/Failed to prune script signing keys/)
+        id = RunningScript.spawn("DEFAULT", "script.rb")
+        expect(OpenC3::Store.hget("script-signing-keys__DEFAULT", id.to_s)).to match(/\A\h{64}\z/)
       end
 
       it "enables duplex stdin and writes one JSON line then closes stdin (Core)" do
@@ -243,21 +283,24 @@ RSpec.describe RunningScript, type: :model do
       end
 
       it "scrubs inherited secrets from the child environment but keeps needed ones" do
-        scrub = %w[ANYCABLE_REDIS_URL OPENC3_SERVICE_PASSWORD OPENC3_API_PASSWORD OPENC3_API_TOKEN
-                   OPENC3_TSDB_USERNAME OPENC3_TSDB_PASSWORD KC_DB_USERNAME KC_DB_PASSWORD
-                   KEYCLOAK_ADMIN KEYCLOAK_ADMIN_PASSWORD]
-        keep = { 'OPENC3_SR_REDIS_USERNAME' => 'sr_user', 'OPENC3_SR_BUCKET_USERNAME' => 'sr_bucket',
-                 'OPENC3_API_USER' => 'apiuser' }
-        saved = (scrub + keep.keys).to_h { |k| [k, ENV[k]] }
+        scrub = OpenC3::ScriptEnv::SPAWN_SCRUBBED_VARS
+        sr_secrets = { 'OPENC3_SR_REDIS_USERNAME' => 'sr_user', 'OPENC3_SR_REDIS_PASSWORD' => 'sr_pw',
+                       'OPENC3_SR_BUCKET_USERNAME' => 'sr_bucket', 'OPENC3_SR_BUCKET_PASSWORD' => 'sr_bucket_pw' }
+        saved = (scrub + ['OPENC3_API_USER']).to_h { |k| [k, ENV[k]] }
         begin
           scrub.each { |k| ENV[k] = "secret-#{k}" }
-          keep.each { |k, v| ENV[k] = v }
+          sr_secrets.each { |k, v| ENV[k] = v }
+          ENV['OPENC3_API_USER'] = 'apiuser'
           RunningScript.spawn("DEFAULT", "script.rb")
-          scrub.each { |k| expect(env.key?(k) ? env[k] : nil).to be_nil, "#{k} leaked" }
-          expect(env['OPENC3_REDIS_USERNAME']).to eq('sr_user')
-          expect(env['OPENC3_BUCKET_USERNAME']).to eq('sr_bucket')
+          scrub.each do |k|
+            expect(env).to have_key(k) # explicitly nil'd so the child does not inherit it
+            expect(env[k]).to be_nil, "#{k} leaked"
+          end
           expect(env['OPENC3_API_USER']).to eq('apiuser')
-          expect(env.key?('ANYCABLE_REDIS_URL')).to be true # explicitly nil'd so the child does not inherit it
+          # The Redis and bucket credentials go over stdin (not /proc/<pid>/environ)
+          expected = { 'OPENC3_REDIS_USERNAME' => 'sr_user', 'OPENC3_REDIS_PASSWORD' => 'sr_pw',
+                       'OPENC3_BUCKET_USERNAME' => 'sr_bucket', 'OPENC3_BUCKET_PASSWORD' => 'sr_bucket_pw' }
+          expect(JSON.parse(written.first)["env"]).to eq(expected)
         ensure
           saved.each { |k, v| v.nil? ? ENV.delete(k) : ENV[k] = v }
         end
@@ -267,13 +310,13 @@ RSpec.describe RunningScript, type: :model do
         allow(process_double.io.stdin).to receive(:puts).and_raise(Errno::EPIPE)
         expect(process_double).to receive(:stop)
         expect { RunningScript.spawn("DEFAULT", "script.rb") }.to raise_error(Errno::EPIPE)
-        expect(OpenC3::Store.get("script-signing-key:1")).to be_nil
+        expect(OpenC3::Store.hkeys("script-signing-keys__DEFAULT")).to be_empty
       end
 
       it "deletes the signing key when spawn fails after it is stored" do
         allow(process_double).to receive(:start).and_raise(RuntimeError.new("boom"))
         expect { RunningScript.spawn("DEFAULT", "script.rb") }.to raise_error("boom")
-        expect(OpenC3::Store.get("script-signing-key:1")).to be_nil
+        expect(OpenC3::Store.hkeys("script-signing-keys__DEFAULT")).to be_empty
       end
 
       it "does not pass unused credentials to the script process" do

@@ -39,6 +39,13 @@ module OpenC3
   #   nonce = 32 lowercase hex chars (16 random bytes)
   # Envelope: { "payload" => ..., "nonce" => ..., "sig" => ... }
   module ScriptMessageSigning
+    # Redis hash holding each running script's signing key, indexed by script id.
+    # The name must not start with "running-script": the scriptrunner Redis ACL
+    # grants ~running-script* and scripts must never read these keys.
+    def self.keys_hash(scope)
+      "script-signing-keys__#{scope}"
+    end
+
     def self.canonical(payload)
       JSON.generate(sort_keys(payload))
     end

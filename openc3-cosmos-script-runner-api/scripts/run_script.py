@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 working_dir = os.getcwd()
 
 # Read the one-line credentials JSON the parent wrote to stdin right after spawn,
-# and apply the API credentials to os.environ BEFORE importing openc3. openc3
+# and apply the API, Redis, and bucket credentials to os.environ BEFORE importing openc3. openc3
 # freezes OPENC3_API_* as module constants at import and ApiServerProxy() picks its
 # auth strategy at construction (which runs when openc3.script is imported);
 # applying the credentials afterward leaves the API client with no token and every
@@ -51,6 +51,13 @@ if isinstance(auth, dict):
             # flag by comparing OPENC3_API_PASSWORD to OPENC3_SERVICE_PASSWORD, so
             # restore it (runtime-only, so not exposed via /proc/<pid>/environ).
             os.environ["OPENC3_SERVICE_PASSWORD"] = auth["password"]
+
+# Redis and bucket credentials, sent over stdin rather than the environment
+stdin_env = stdin_creds.get("env")
+if isinstance(stdin_env, dict):
+    for key, value in stdin_env.items():
+        if isinstance(value, str):
+            os.environ[key] = value
 
 from openc3.environment import OPENC3_CONFIG_BUCKET  # noqa: E402
 from openc3.models.script_status_model import ScriptStatusModel  # noqa: E402

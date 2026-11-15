@@ -19,7 +19,7 @@ start_time = Time.now
 require 'json'
 
 # Read the one-line credentials JSON the parent wrote to stdin right after spawn,
-# and apply the API credentials to ENV BEFORE requiring openc3. The openc3 script
+# and apply the API, Redis, and bucket credentials to ENV BEFORE requiring openc3. The openc3 script
 # support builds the API client (via "include OpenC3::Script") when it is required
 # and reads ENV at that point to choose its authentication strategy; applying the
 # credentials afterward leaves the client with no token and every API call fails
@@ -52,6 +52,12 @@ if auth.is_a?(Hash)
   end
 end
 
+# Redis and bucket credentials, sent over stdin rather than the environment
+stdin_env = stdin_creds['env']
+if stdin_env.is_a?(Hash)
+  stdin_env.each { |key, value| ENV[key] = value if value.is_a?(String) }
+end
+
 require 'openc3'
 require 'openc3/config/config_parser'
 require 'openc3/utilities/store'
@@ -63,8 +69,8 @@ require 'openc3/utilities/script_env'
 working_dir = Dir.pwd
 
 # Clear secrets (including the stdin-applied API passwords; the API client
-# built by "include OpenC3::Script" during the requires has already
-# authenticated with them) before any user code runs.
+# built by "include OpenC3::Script" during the requires has already captured
+# them) before any user code runs.
 OpenC3::ScriptEnv.clear_credentials
 
 RunningScript.signing_key = signing_key

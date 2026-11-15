@@ -237,13 +237,14 @@ RSpec.describe RunningScriptController, type: :controller do
       it "deletes the per-script signing key" do
         allow(Process).to receive(:getpgid).and_raise(Errno::ESRCH)
         allow_any_instance_of(RunningScriptController).to receive(:publish_signed_command)
-        OpenC3::Store.set("script-signing-key:1", "k" * 64)
-        expect(OpenC3::Store.get("script-signing-key:1")).to eq("k" * 64)
+        OpenC3::Store.hset("script-signing-keys__DEFAULT", "1", "k" * 64)
+        OpenC3::Store.hset("script-signing-keys__DEFAULT", "2", "j" * 64)
 
         delete :delete, params: {id: "1", scope: "DEFAULT"}
 
         expect(response.status).to eq(200)
-        expect(OpenC3::Store.get("script-signing-key:1")).to be_nil
+        expect(OpenC3::Store.hget("script-signing-keys__DEFAULT", "1")).to be_nil
+        expect(OpenC3::Store.hget("script-signing-keys__DEFAULT", "2")).to eq("j" * 64)
       end
 
       it "moves the script to completed if the process died without cleaning up" do
@@ -491,7 +492,7 @@ RSpec.describe RunningScriptController, type: :controller do
     end
 
     it "publishes a verifiable signed envelope for stop" do
-      OpenC3::Store.set("script-signing-key:1", signing_key)
+      OpenC3::Store.hset("script-signing-keys__DEFAULT", "1", signing_key)
       messages = published
       post :stop, params: {id: "1", scope: "DEFAULT"}
       expect(response.status).to eq(200)
@@ -503,11 +504,11 @@ RSpec.describe RunningScriptController, type: :controller do
       expect(OpenC3::ScriptMessageSigning.verify("b" * 64, env)).to be false
     end
 
-    it "refreshes the signing key TTL" do
-      OpenC3::Store.set("script-signing-key:1", signing_key)
-      published
+    it "reads the signing key from the script's scope" do
+      OpenC3::Store.hset("script-signing-keys__OTHER", "1", "b" * 64)
+      messages = published
       post :stop, params: {id: "1", scope: "DEFAULT"}
-      expect(OpenC3::Store.ttl("script-signing-key:1")).to be > 0
+      expect(messages).to be_empty
     end
 
     it "does not publish or raise when the signing key is absent" do
@@ -518,7 +519,7 @@ RSpec.describe RunningScriptController, type: :controller do
     end
 
     it "signs the password prompt payload" do
-      OpenC3::Store.set("script-signing-key:1", signing_key)
+      OpenC3::Store.hset("script-signing-keys__DEFAULT", "1", signing_key)
       messages = published
       post :prompt, params: {id: "1", scope: "DEFAULT", method: "ask", password: "secret", prompt_id: "abc123"}
       env = JSON.parse(messages[0][1])
@@ -527,7 +528,7 @@ RSpec.describe RunningScriptController, type: :controller do
     end
 
     it "signs the multiple prompt payload" do
-      OpenC3::Store.set("script-signing-key:1", signing_key)
+      OpenC3::Store.hset("script-signing-keys__DEFAULT", "1", signing_key)
       messages = published
       post :prompt, params: {id: "1", scope: "DEFAULT", method: "combo_box", multiple: true, answer: ["a", "b"], prompt_id: "abc123"}
       env = JSON.parse(messages[0][1])
@@ -536,7 +537,7 @@ RSpec.describe RunningScriptController, type: :controller do
     end
 
     it "signs the answer prompt payload" do
-      OpenC3::Store.set("script-signing-key:1", signing_key)
+      OpenC3::Store.hset("script-signing-keys__DEFAULT", "1", signing_key)
       messages = published
       post :prompt, params: {id: "1", scope: "DEFAULT", method: "ask", answer: "yes", prompt_id: "abc123"}
       env = JSON.parse(messages[0][1])
@@ -548,7 +549,7 @@ RSpec.describe RunningScriptController, type: :controller do
       # The signer rejects Floats (non-deterministic text form across languages). A
       # numeric ask reply like 1.5 must be stringified so the prompt is not blocked
       # by a 500; the runners convert the string back to a value.
-      OpenC3::Store.set("script-signing-key:1", signing_key)
+      OpenC3::Store.hset("script-signing-keys__DEFAULT", "1", signing_key)
       messages = published
       post :prompt, params: {id: "1", scope: "DEFAULT", method: "ask", answer: 1.5, prompt_id: "abc123"}, as: :json
       expect(response.status).to eq(200)
@@ -558,7 +559,7 @@ RSpec.describe RunningScriptController, type: :controller do
     end
 
     it "signs the method payload" do
-      OpenC3::Store.set("script-signing-key:1", signing_key)
+      OpenC3::Store.hset("script-signing-keys__DEFAULT", "1", signing_key)
       messages = published
       post :method, params: {id: "1", scope: "DEFAULT", method: "some_method", args: ["arg1"], prompt_id: "abc123"}
       env = JSON.parse(messages[0][1])

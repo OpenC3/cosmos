@@ -55,6 +55,26 @@ RSpec.describe 'runner script credential/import ordering' do
     end
   end
 
+  # The Redis and bucket credentials also arrive over stdin and are read when
+  # openc3 loads (Python freezes them as module constants at import).
+  RUBY_ENV_APPLY = /stdin_env\.each \{ \|key, value\| ENV\[key\] = value/
+  PY_ENV_APPLY = /^\s*os\.environ\[key\] = value/
+  {
+    'run_script.rb'          => [RUBY_ENV_APPLY, RUBY_LOAD],
+    'run_suite_analysis.rb'  => [RUBY_ENV_APPLY, RUBY_LOAD],
+    'run_script.py'          => [PY_ENV_APPLY, PY_LOAD],
+    'run_suite_analysis.py'  => [PY_ENV_APPLY, PY_LOAD],
+  }.each do |filename, (apply_re, load_re)|
+    it "#{filename} applies the stdin Redis and bucket credentials before loading openc3" do
+      lines = File.read(File.join(SCRIPTS_DIR, filename)).lines
+      apply_line = lines.index { |l| l =~ apply_re }
+      load_line = lines.index { |l| l =~ load_re }
+      expect(apply_line).not_to be_nil, "#{filename}: stdin env credentials are never applied"
+      expect(apply_line).to be < load_line,
+        "#{filename}: stdin env credentials applied after openc3 loads; Redis and bucket auth will fail"
+    end
+  end
+
   # C1 regression: a null username must stay unset. Coercing it to "" makes it
   # non-nil, so ServerProxy / ApiServerProxy.generate_auth selects Keycloak auth
   # and breaks Core (which authenticates by password).
