@@ -119,6 +119,27 @@ test('displays state parameters with drop downs', async ({ page, utils }) => {
   await checkValue(page, 'TYPE', '0')
 })
 
+test('searches state parameter drop downs', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  const row = page.locator('tr:has(td:text-is("TYPE"))')
+  const input = row.locator('[data-test=cmd-param-select] input')
+  // Typing filters the states and Enter picks the first match
+  await input.click()
+  await input.fill('spec')
+  await expect(page.getByRole('option', { name: 'SPECIAL' })).toBeVisible()
+  await expect(page.getByRole('option', { name: 'NORMAL' })).not.toBeVisible()
+  await input.press('Enter')
+  await checkValue(page, 'TYPE', '1')
+  // Clearing the text keeps the selected state
+  await input.click()
+  await input.fill('')
+  await input.press('Tab')
+  await checkValue(page, 'TYPE', '1')
+  await expect(row.locator('.v-autocomplete__selection-text')).toHaveText(
+    'SPECIAL',
+  )
+})
+
 test('displays parameter units, ranges and description', async ({
   page,
   utils,
@@ -210,7 +231,7 @@ test('warns for hazardous parameters', async ({ page, utils }) => {
   await expect(
     page
       .locator('tr:has(td:text-is("TYPE"))')
-      .locator('.v-select__selection-text'),
+      .locator('.v-autocomplete__selection-text'),
   ).toHaveCSS('color', 'rgb(255, 220, 0)')
   // The hazardous indicator is shown even without a hazardous description
   await expect(page.locator('[data-test="hazardous-description"]')).toHaveText(
@@ -809,7 +830,7 @@ test('sends manually entered state values', async ({ page, utils }) => {
   await row.locator('[data-test=cmd-param-select]').click({ force: true })
   await page.getByRole('option', { name: 'MANUALLY_ENTERED' }).click()
   // Manual entry is hazardous so it's highlighted in yellow
-  await expect(row.locator('.v-select__selection-text')).toHaveCSS(
+  await expect(row.locator('.v-autocomplete__selection-text')).toHaveCSS(
     'color',
     'rgb(255, 220, 0)',
   )

@@ -70,6 +70,27 @@
               {{ formattedValue }}
             </v-col>
           </v-row>
+          <template v-if="type === 'tlm'">
+            <v-row no-gutters>
+              <v-col cols="1"></v-col>
+              <v-col cols="4" class="label">Packet Time</v-col>
+              <v-col data-test="details-packet-time">{{ packetTime }}</v-col>
+            </v-row>
+            <v-row no-gutters>
+              <v-col cols="1"></v-col>
+              <v-col cols="4" class="label">Received Time</v-col>
+              <v-col data-test="details-received-time">
+                {{ receivedTime }}
+              </v-col>
+            </v-row>
+            <v-row v-if="packetName === 'LATEST'" no-gutters>
+              <v-col cols="1"></v-col>
+              <v-col cols="4" class="label">Latest Packet</v-col>
+              <v-col data-test="details-latest-packet">
+                {{ latestPacketName }}
+              </v-col>
+            </v-row>
+          </template>
           <v-row no-gutters>
             <v-col cols="5" class="label">Bit Offset</v-col>
             <v-col>{{ details.bit_offset }}</v-col>
@@ -222,6 +243,12 @@ import { OpenC3Api } from '@openc3/js-common/services'
 import LimitsBar from './LimitsBar.vue'
 import { limitsColor, astroStatus } from '../widgets/LimitsColor'
 
+const TIME_ITEMS = [
+  'PACKET_TIMESECONDS',
+  'PACKET_TIMEFORMATTED',
+  'RECEIVED_TIMEFORMATTED',
+]
+
 export default {
   components: {
     LimitsBar,
@@ -258,6 +285,12 @@ export default {
       convertedValue: null,
       formattedValue: null,
       currentLimitsState: null,
+      // Packets whose time items are polled. One packet normally, but a
+      // LATEST item can come from any packet containing it.
+      timePackets: [],
+      packetTime: null,
+      receivedTime: null,
+      latestPacketName: null,
     }
   },
   computed: {
@@ -292,7 +325,11 @@ export default {
         if (this.type === 'tlm') {
           this.updater = setInterval(() => {
             if (this.available && this.details) {
-              this.api.get_tlm_values(this.available).then((values) => {
+              const itemCount = this.available.length
+              const items = this.available.concat(this.timeItems())
+              this.api.get_tlm_values(items).then((values) => {
+                this.updateTimes(values.slice(itemCount))
+                values = values.slice(0, itemCount)
                 for (let value of values) {
                   let rawString = null
                   // Check for raw encoded strings (non-ascii)
@@ -356,6 +393,10 @@ export default {
       } else {
         clearInterval(this.updater)
         this.updater = null
+        this.timePackets = []
+        this.packetTime = null
+        this.receivedTime = null
+        this.latestPacketName = null
       }
     },
   },
@@ -385,8 +426,49 @@ export default {
       }
       return result
     },
+    // Time items requested along with the item values. For each packet in
+    // timePackets: PACKET_TIMESECONDS, PACKET_TIMEFORMATTED, RECEIVED_TIMEFORMATTED
+    timeItems() {
+      return this.timePackets.flatMap((packet) =>
+        TIME_ITEMS.map(
+          (item) => `${this.targetName}__${packet}__${item}__CONVERTED`,
+        ),
+      )
+    },
+    updateTimes(values) {
+      // Pick the packet with the newest packet time. That's the packet a
+      // LATEST item comes from (see CvtModel.determine_latest_packet_for_item).
+      // With a single packet it's simply that packet.
+      let latest = null
+      this.timePackets.forEach((packet, index) => {
+        const [seconds, packetTime, receivedTime] = values
+          .slice(index * TIME_ITEMS.length, (index + 1) * TIME_ITEMS.length)
+          .map((value) => value?.[0])
+        if (latest === null || (seconds ?? -1) > latest.seconds) {
+          latest = { packet, seconds: seconds ?? -1, packetTime, receivedTime }
+        }
+      })
+      if (latest) {
+        this.packetTime = latest.packetTime ?? null
+        this.receivedTime = latest.receivedTime ?? null
+        this.latestPacketName = latest.packet
+      }
+    },
+    async requestTimePackets() {
+      if (this.packetName !== 'LATEST') {
+        this.timePackets = [this.packetName]
+        return
+      }
+      const packets = await this.api.get_all_tlm(this.targetName)
+      this.timePackets = packets
+        .filter((packet) =>
+          packet.items.some((item) => item.name === this.itemName),
+        )
+        .map((packet) => packet.packet_name)
+    },
     async requestDetails() {
       if (this.type === 'tlm') {
+        await this.requestTimePackets()
         const available = await this.api.get_tlm_available([
           `${this.targetName}__${this.packetName}__${this.itemName}__RAW`,
           `${this.targetName}__${this.packetName}__${this.itemName}__CONVERTED`,

@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 490" width="960" height="490" role="img" aria-labelledby="title desc">
+  <title id="title">COSMOS in a test environment</title>
+  <desc id="desc">Context diagram showing COSMOS at the center, used by test engineers through a web browser, controlling a Keysight power supply over SCPI, exchanging commands and telemetry with custom ground support equipment, and commanding and receiving telemetry from the unit under test. The power supply powers the unit under test and the GSE provides stimulus and simulation to it.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #1e293b; }
+      .box { fill: #ffffff; stroke: #475569; stroke-width: 2; }
+      .cosmos { fill: #1d4ed8; stroke: #1e3a8a; stroke-width: 2; }
+      .actor { fill: #f1f5f9; stroke: #475569; stroke-width: 2; stroke-dasharray: 6 4; }
+      .title { font-size: 18px; font-weight: 600; text-anchor: middle; }
+      .sub { font-size: 13px; text-anchor: middle; fill: #475569; }
+      .cosmos-title { font-size: 24px; font-weight: 700; text-anchor: middle; fill: #ffffff; }
+      .cosmos-sub { font-size: 13px; text-anchor: middle; fill: #dbeafe; }
+      .link { fill: none; stroke: #475569; stroke-width: 2; }
+      .power { fill: none; stroke: #b45309; stroke-width: 2.5; stroke-dasharray: 8 5; }
+      .label { font-size: 13px; fill: #334155; }
+      .power-label { font-size: 13px; fill: #b45309; font-weight: 600; }
+    </style>
+  </defs>
+
+  <rect width="960" height="490" rx="12" fill="#ffffff"/>
+
+  <!-- Links -->
+  <line class="link" x1="480" y1="72" x2="480" y2="148" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="label" x="490" y="115">Web UI / Scripts</text>
+
+  <line class="link" x1="222" y1="200" x2="368" y2="200" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="label" x="295" y="190" text-anchor="middle">SCPI over LAN</text>
+  <text class="label" x="295" y="222" text-anchor="middle">Set / Measure</text>
+
+  <line class="link" x1="592" y1="200" x2="738" y2="200" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="label" x="665" y="190" text-anchor="middle">TCP / UDP</text>
+  <text class="label" x="665" y="222" text-anchor="middle">Cmd / Tlm</text>
+
+  <line class="link" x1="480" y1="252" x2="480" y2="388" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="label" x="490" y="315">Commands / Telemetry</text>
+  <text class="label" x="490" y="333">(Serial, Ethernet, etc.)</text>
+
+  <path class="power" d="M120,242 L120,430 L358,430" marker-end="url(#arrow)"/>
+  <text class="power-label" x="135" y="420">Power</text>
+
+  <path class="link" d="M840,242 L840,430 L602,430" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="label" x="825" y="412" text-anchor="end">Stimulus / Simulation</text>
+
+  <!-- Nodes -->
+  <rect class="actor" x="390" y="16" width="180" height="56" rx="28"/>
+  <text class="title" x="480" y="41">Test Engineers</text>
+  <text class="sub" x="480" y="60">Web browser</text>
+
+  <rect class="cosmos" x="370" y="148" width="220" height="104" rx="10"/>
+  <text class="cosmos-title" x="480" y="195">COSMOS</text>
+  <text class="cosmos-sub" x="480" y="220">Command &amp; Control</text>
+
+  <rect class="box" x="20" y="160" width="200" height="82" rx="8"/>
+  <text class="title" x="120" y="196">Keysight</text>
+  <text class="title" x="120" y="220">Power Supply</text>
+
+  <rect class="box" x="740" y="160" width="200" height="82" rx="8"/>
+  <text class="title" x="840" y="196">Custom GSE</text>
+  <text class="sub" x="840" y="220">Ground Support Equipment</text>
+
+  <rect class="box" x="360" y="390" width="240" height="82" rx="8"/>
+  <text class="title" x="480" y="426">Unit Under Test</text>
+  <text class="sub" x="480" y="450">(UUT)</text>
+</svg>

@@ -34,8 +34,8 @@
           v-bind="props"
           class="rux-icon"
           :icon="notificationVsAlert"
-          label="Notifications"
-          :sublabel="activeScripts"
+          :label="compact ? '' : 'Notifications'"
+          :sublabel="compact ? '' : activeScripts"
           :status="iconStatus"
           :notifications="unreadNotifications.length"
         ></rux-monitoring-icon>
@@ -92,6 +92,7 @@
           v-else
           lines="two"
           width="520"
+          max-width="calc(100vw - 24px)"
           max-height="80vh"
           class="overflow-y-auto"
           data-test="notification-list"
@@ -232,6 +233,8 @@ export default {
       type: [String, Number],
       default: 26,
     },
+    // Icon only, without the labels under it (the mobile app bar)
+    compact: Boolean,
   },
   emits: ['ephemeral'],
   data: function () {

@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 570" width="960" height="570" role="img" aria-labelledby="title desc">
+  <title id="title">COSMOS in satellite mission operations</title>
+  <desc id="desc">Context diagram of an operational satellite mission. The satellite communicates over RF with the ground antenna network. The downlink splits after the antenna network: telemetry goes to COSMOS and images go to mission data processing. Mission planning sends a schedule to COSMOS, which translates it into commands sent to the antenna network. COSMOS sends satellite ephemeris such as GPS data to flight dynamics, which sends orbit and contact predictions to mission planning. Mission data processing sends collection status to mission planning. Operators use COSMOS through a web browser.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrow-tlm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#047857"/>
+    </marker>
+    <marker id="arrow-img" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7c3aed"/>
+    </marker>
+    <marker id="arrow-cmd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1d4ed8"/>
+    </marker>
+    <style>
+      text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; fill: #1e293b; }
+      .box { fill: #ffffff; stroke: #475569; stroke-width: 2; }
+      .space { fill: #f1f5f9; stroke: #475569; stroke-width: 2; }
+      .cosmos { fill: #1d4ed8; stroke: #1e3a8a; stroke-width: 2; }
+      .actor { fill: #f1f5f9; stroke: #475569; stroke-width: 2; stroke-dasharray: 6 4; }
+      .title { font-size: 17px; font-weight: 600; text-anchor: middle; }
+      .sub { font-size: 13px; text-anchor: middle; fill: #475569; }
+      .cosmos-title { font-size: 24px; font-weight: 700; text-anchor: middle; fill: #ffffff; }
+      .cosmos-sub { font-size: 13px; text-anchor: middle; fill: #dbeafe; }
+      .link { fill: none; stroke: #475569; stroke-width: 2; }
+      .rf { fill: none; stroke: #475569; stroke-width: 2; stroke-dasharray: 3 4; }
+      .downlink { fill: none; stroke: #334155; stroke-width: 3; }
+      .tlm { fill: none; stroke: #047857; stroke-width: 2.5; }
+      .img { fill: none; stroke: #7c3aed; stroke-width: 2.5; }
+      .cmd { fill: none; stroke: #1d4ed8; stroke-width: 2.5; }
+      .label { font-size: 13px; fill: #334155; }
+      .tlm-label { font-size: 13px; fill: #047857; font-weight: 600; }
+      .img-label { font-size: 13px; fill: #7c3aed; font-weight: 600; }
+      .cmd-label { font-size: 13px; fill: #1d4ed8; font-weight: 600; }
+    </style>
+  </defs>
+
+  <rect width="960" height="570" rx="12" fill="#ffffff"/>
+
+  <!-- Satellite <-> Ground Antenna Network -->
+  <line class="rf" x1="146" y1="200" x2="214" y2="200" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+  <text class="label" x="180" y="190" text-anchor="middle">RF</text>
+
+  <!-- COSMOS -> Ground Antenna Network (commands) -->
+  <line class="cmd" x1="518" y1="168" x2="398" y2="168" marker-end="url(#arrow-cmd)"/>
+  <text class="cmd-label" x="458" y="158" text-anchor="middle">Commands</text>
+
+  <!-- Downlink: Ground Antenna Network -> split -->
+  <line class="downlink" x1="396" y1="232" x2="440" y2="232"/>
+  <circle cx="440" cy="232" r="6" fill="#334155"/>
+
+  <!-- Split -> COSMOS (telemetry) -->
+  <line class="tlm" x1="440" y1="232" x2="518" y2="232" marker-end="url(#arrow-tlm)"/>
+  <text class="tlm-label" x="482" y="252" text-anchor="middle">Telemetry</text>
+
+  <!-- Split -> Mission Data Processing (images) -->
+  <line class="img" x1="440" y1="232" x2="440" y2="398" marker-end="url(#arrow-img)"/>
+  <text class="img-label" x="450" y="320">Images /</text>
+  <text class="img-label" x="450" y="338">Payload data</text>
+
+  <!-- Operators <-> COSMOS -->
+  <line class="link" x1="620" y1="82" x2="620" y2="138" marker-start="url(#arrow)" marker-end="url(#arrow)"/>
+
+  <!-- Mission Planning -> COSMOS (schedule) -->
+  <line class="link" x1="808" y1="200" x2="722" y2="200" marker-end="url(#arrow)"/>
+  <text class="label" x="765" y="190" text-anchor="middle">Schedule</text>
+
+  <!-- COSMOS -> Flight Dynamics (ephemeris) -->
+  <path class="link" d="M660,262 L660,430 L698,430" marker-end="url(#arrow)"/>
+  <text class="label" x="650" y="320" text-anchor="end">Ephemeris</text>
+  <text class="label" x="650" y="338" text-anchor="end">(GPS)</text>
+
+  <!-- Flight Dynamics -> Mission Planning -->
+  <line class="link" x1="860" y1="388" x2="860" y2="244" marker-end="url(#arrow)"/>
+  <text class="label" x="852" y="310" text-anchor="end">Orbit / Contact</text>
+  <text class="label" x="852" y="328" text-anchor="end">predictions</text>
+
+  <!-- Mission Data Processing -> Mission Planning -->
+  <path class="link" d="M440,482 L440,535 L925,535 L925,244" marker-end="url(#arrow)"/>
+  <text class="label" x="660" y="555" text-anchor="middle">Collection status</text>
+
+  <!-- Nodes -->
+  <rect class="space" x="16" y="160" width="130" height="80" rx="8"/>
+  <text class="title" x="81" y="196">Satellite</text>
+  <text class="sub" x="81" y="216">Bus + payload</text>
+
+  <rect class="box" x="216" y="150" width="180" height="100" rx="8"/>
+  <text class="title" x="306" y="196">Ground Antenna</text>
+  <text class="title" x="306" y="218">Network</text>
+
+  <rect class="actor" x="550" y="30" width="140" height="52" rx="26"/>
+  <text class="title" x="620" y="54">Operators</text>
+  <text class="sub" x="620" y="72">Web browser</text>
+
+  <rect class="cosmos" x="520" y="140" width="200" height="122" rx="10"/>
+  <text class="cosmos-title" x="620" y="198">COSMOS</text>
+  <text class="cosmos-sub" x="620" y="222">Command &amp; Control</text>
+
+  <rect class="box" x="810" y="160" width="136" height="84" rx="8"/>
+  <text class="title" x="878" y="197">Mission</text>
+  <text class="title" x="878" y="219">Planning</text>
+
+  <rect class="box" x="700" y="390" width="190" height="82" rx="8"/>
+  <text class="title" x="795" y="426">Flight</text>
+  <text class="title" x="795" y="448">Dynamics</text>
+
+  <rect class="box" x="340" y="400" width="200" height="82" rx="8"/>
+  <text class="title" x="440" y="436">Mission Data</text>
+  <text class="title" x="440" y="458">Processing</text>
+</svg>

@@ -355,6 +355,24 @@ module OpenC3
       expect(reloaded.dedup_disabled_tables).to include('DEFAULT__TLM__INST__HEALTH_STATUS')
     end
 
+    it 'sanitizes table names read from the log file before building ALTER TABLE' do
+      # Names in a log file come from the file bytes, not from validated config
+      packet = Packet.new('INST', "EVIL'; DROP TABLE X; --")
+      packet.received_time = Time.now.sys
+      allow_any_instance_of(PacketLogReader).to receive(:each) do |_reader, _file, _identify, &block|
+        block.call(packet)
+      end
+
+      run_job
+
+      alters = @alter_sql.grep(/ALTER TABLE/)
+      expect(alters).not_to be_empty
+      alters.each do |sql|
+        expect(sql).to start_with("ALTER TABLE 'DEFAULT__TLM__INST__EVIL_; DROP TABLE X; --' DEDUP")
+        expect(sql.count("'")).to eql(2)
+      end
+    end
+
     it 'warns but continues when DEDUP disable fails' do
       allow(@conn).to receive(:exec) do |sql|
         @alter_sql << sql

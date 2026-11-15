@@ -28,19 +28,26 @@
       @update:model-value="handleChange"
     />
     <div v-else class="d-flex align-center">
-      <v-select
-        :items="stateOptions"
+      <v-autocomplete
+        ref="stateAutocomplete"
+        :items="rankedStateOptions"
         :model-value="selectValue"
         :disabled="disabled"
         item-title="label"
+        item-value="value"
+        :custom-filter="tokenizedFilter"
+        :filter-keys="['title']"
         :class="stateClass"
+        auto-select-first
         hide-details
         density="compact"
         variant="outlined"
         placeholder="Select..."
         min-width="120px"
         data-test="cmd-param-select"
+        @update:search="search = $event"
         @update:model-value="handleStateSelect"
+        @focus="resetSearchAndFocus"
       />
       <v-text-field
         v-if="manuallyEntered"
@@ -76,6 +83,7 @@
 </template>
 
 <script>
+import { tokenizedFilter, tokenizedSort } from '@openc3/js-common/utils'
 import { CmdUtilities } from '../util'
 export default {
   name: 'CommandParameterEditor',
@@ -106,6 +114,7 @@ export default {
   data() {
     return {
       manuallyEntered: false,
+      search: '',
     }
   },
   computed: {
@@ -141,6 +150,13 @@ export default {
       }
       return options
     },
+    // Closest matches first so auto-select-first picks the best one on Enter
+    rankedStateOptions() {
+      if (!this.stateOptions) {
+        return null
+      }
+      return tokenizedSort(this.stateOptions, this.search, 'label')
+    },
     hazardous() {
       if (!this.states) {
         return false
@@ -173,10 +189,24 @@ export default {
     },
   },
   methods: {
+    tokenizedFilter,
+    // Start each search from scratch and select the current text so typing
+    // replaces it
+    resetSearchAndFocus() {
+      this.search = ''
+      this.$nextTick(() => {
+        this.$refs.stateAutocomplete?.$el.querySelector('input')?.select()
+      })
+    },
     handleChange(value) {
       this.$emit('update:modelValue', value)
     },
     handleStateSelect(value) {
+      // Deleting all the search text clears the autocomplete. A state
+      // parameter always needs a state so keep the current value.
+      if (value === null || value === undefined) {
+        return
+      }
       if (value === '__manual__') {
         this.manuallyEntered = true
         this.$emit('update:modelValue', '')
@@ -199,8 +229,9 @@ export default {
 .container {
   padding: 0px;
 }
-/* Extra .v-select specificity beats the themed override in _overrides.scss */
-.v-select.hazardous :deep(.v-select__selection-text) {
+/* Extra .v-autocomplete specificity beats the themed override in _overrides.scss */
+.v-autocomplete.hazardous :deep(.v-autocomplete__selection-text),
+.v-autocomplete.hazardous :deep(input) {
   color: rgb(255, 220, 0) !important;
 }
 </style>

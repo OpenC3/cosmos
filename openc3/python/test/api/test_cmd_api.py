@@ -50,6 +50,7 @@ from openc3.models.interface_status_model import InterfaceStatusModel
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.packets.packet import Packet
 from openc3.top_level import HazardousError
+from openc3.utilities.store import EphemeralStore
 from test.test_helper import capture_io, mock_redis, setup_system, shard_redis
 
 
@@ -108,7 +109,17 @@ class TestCmdApi(unittest.TestCase):
 
         self.icht = InterfaceCmdHandlerThread(self.interface, None, scope="DEFAULT")
         self.thread = self.icht.start()
-        time.sleep(0.001)
+        # The handler thread starts reading from the newest message the first time it reads a topic.
+        # Wait for it to record its offsets or a command written before then is never seen (and acked).
+        offsets = EphemeralStore.instance().topic_offsets
+        topics = [f"{{DEFAULT__CMD}}TARGET__{name}" for name in self.interface.cmd_target_names]
+        topics.append(f"{{DEFAULT__CMD}}INTERFACE__{self.interface.name}")
+        topics.append("OPENC3__SYSTEM__EVENTS")
+        deadline = time.time() + 5
+        while not all(topic in offsets.get(self.thread.native_id, {}) for topic in topics):
+            if time.time() > deadline:
+                self.fail("Interface cmd handler thread never started reading")
+            time.sleep(0.001)
 
     def tearDown(self):
         self.icht.graceful_kill()
@@ -246,6 +257,25 @@ class TestCmdApi(unittest.TestCase):
             self.assertEqual(command["queue_username"], "original_author")
             # username is the executing user/process, not the author
             self.assertNotEqual(command["username"], "original_author")
+
+    def test_cmd_carries_extra_metadata(self):
+        extra = {"flow_uuid": "1234-5678", "hv_id": 42}
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            command = globals()[name]("INST", "ABORT", extra=extra)
+            self.assertEqual(command["extra"], extra)
+
+    def test_cmd_rejects_invalid_extra_metadata(self):
+        with self.assertRaisesRegex(RuntimeError, "Invalid extra parameter: invalid. Must be a dict"):
+            cmd("INST", "ABORT", extra="invalid")
 
     def test_cmd_warns_about_required_parameters(self):
         for name in [

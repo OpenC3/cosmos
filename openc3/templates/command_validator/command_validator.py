@@ -1,4 +1,4 @@
-from openc3.packets.command_validator import CommandValidator
+from openc3.packets.command_validator import CommandValidator, CommandValidatorResult
 # Using the OpenC3 API requires the following imports:
 from openc3.api import tlm, wait_check
 
@@ -7,8 +7,8 @@ from openc3.api import tlm, wait_check
 class <%= validator_class %>(CommandValidator):
     # Called before a command is sent
     # @param command [Packet] The command object containing all the command details
-    # @return [list] First element is True/False/None for success/failure/unknown,
-    #   second element is an optional message string
+    # @return [CommandValidatorResult] (result, message) where result is True/False/None
+    #   for success/failure/unknown and message is an optional string
     def pre_check(self, command):
         # Add your pre-command validation logic here
         # Example:
@@ -20,16 +20,16 @@ class <%= validator_class %>(CommandValidator):
         # self.count = tlm("TARGET PACKET COUNT")
         #
         # if some_condition:
-        #     return [False, "Command validation failed: reason"]
+        #     return CommandValidatorResult(False, "Command validation failed: reason")
 
         # Return True to indicate Success, False to indicate Failure,
         # and None to indicate Unknown. The second value is the optional message.
-        return [True, None]
+        return CommandValidatorResult(True, None)
 
     # Called after a command is sent
     # @param command [Packet] The command object containing all the command details
-    # @return [list] First element is True/False/None for success/failure/unknown,
-    #   second element is an optional message string
+    # @return [CommandValidatorResult] (result, message) where result is True/False/None
+    #   for success/failure/unknown and message is an optional string
     def post_check(self, command):
         # Add your post-command validation logic here
         # Example:
@@ -38,10 +38,10 @@ class <%= validator_class %>(CommandValidator):
         # wait_check(f"TARGET PACKET COUNT > {self.count}", 5) # Wait up to 5 seconds
         #
         # if some_condition:
-        #     return [False, "Post-command validation failed: reason"]
+        #     return CommandValidatorResult(False, "Post-command validation failed: reason")
         #
         # Wait for telemetry
 
         # Return True to indicate Success, False to indicate Failure,
         # and None to indicate Unknown. The second value is the optional message.
-        return [True, None]
+        return CommandValidatorResult(True, None)
