@@ -102,6 +102,11 @@ module-root = ""
 # its docstring.
 module-name = ["openc3", "openc3pycli"]
 source-include = ["examples/**"]
+# uv_build packs every file under the module directories, untracked and
+# gitignored ones included, and has no include-only list. Drop the usual local
+# junk (.DS_Store, editor and tool dotfiles, logs) from the sdist and wheel;
+# anything else stray still ships, so publish only from a clean checkout.
+source-exclude = ["**/.*", "**/*.log"]
 
 [tool.ruff]
 # Line length to match Black

@@ -156,7 +156,10 @@ jobs:
       #   https://pypi.org/manage/project/openc3/settings/publishing/
       # This references our Release environment: https://github.com/OpenC3/cosmos/settings/environments
       # If the publish fails for some reason you can manually build and publish by running
-      #   cd openc3/python
+      # the commands below. Build from a fresh clone, not a working tree: uv build
+      # ships every file under openc3/, including untracked and gitignored ones.
+      #   git clone --depth 1 --branch v<version> https://github.com/OpenC3/cosmos.git
+      #   cd cosmos/openc3/python
       #   uv build
       #   uv publish
       - name: Publish python package
