@@ -4,7 +4,7 @@
 
 ## The ACL file
 
-Valkey reads in the user configuration from an ACL file: [users.acl](./config/users.acl). Each line has the syntax `user <username> [on/off] <password> [keyspace] [commands]`
+Valkey reads in the user configuration from an ACL file: [users.acl](./users.acl). Each line has the syntax `user <username> [on/off] <password> [keyspace] [commands]`
 
 Passwords can be set in the ACL file as either the SHA-256 hash or plaintext. To use the hash, prefix it with a # symbol (example: `user bob on #3ff698674f294ba598e719e3bfef82d88836d363b9e6f74d4b684415542919da`). To use plaintext, prefix it with a > symbol (example: `user bob on >bobspassword`). Note that this file gets physically stored on the Valkey server, so storing the passwords in plaintext is not recommended.
 
@@ -21,9 +21,9 @@ Passwords can be set in the ACL file as either the SHA-256 hash or plaintext. To
   - This user is required to use Script Runner. Script Runner needs Valkey to keep track of the scripts it's running, but it has a user with limited access to prevent scripts from being able to destroy or access data they shouldn't be able to.
 
 - admin
-  - Default password: admin
+  - Disabled (`off`) by default. Its shipped password hash is for `adminpassword`, so set a new password before enabling it.
 
-  - This user is optional, but it's provided so that you can make changes to Valkey while it's running. This won't be needed for normal operation of OpenC3. You can remove this user by deleting its line from the ACL file, or disable it by changing "on" to "off". Doing so would require a restart of Valkey (with an amended ACL file that adds this user back) if configuration changes are needed.
+  - This user is optional, but it's provided so that you can make changes to Valkey while it's running. This won't be needed for normal operation of OpenC3. To enable it, change "off" to "on" and replace the hash with the hash of your own password, then restart Valkey. Leave it disabled unless you need it.
 
   - It should be noted that the only commands this user has access to are those in the `@admin` category. However, that category includes the `ACL` command and all its subcommands, meaning that the user could grant themselves any other permission in Valkey.
 
@@ -43,8 +43,12 @@ A utility script has been provided to calculate the SHA-256 hash of a string.
         OPENC3> openc3.bat util hash yourpasswordhere
 
 1.  Pick a new password for the 'openc3' user.
-    - Set that value in plaintext to the `OPENC3_REDIS_PASSWORD` variable in .env
+    - Set that value in plaintext to the `OPENC3_REDIS_PASSWORD` variable in .env.local (see the security docs; do not edit .env)
     - Set it as either plaintext or its SHA-256 hash in the ACL file, as described above (with > or #)
 
-1.  Pick a new password for the 'admin' user, or disable the user by changing "on" to "off", or delete the line if you do not want an admin user.
-    - If you choose to keep the user enabled, the only place you need to put its password is in the ACL file.
+1.  Pick a new password for the 'scriptrunner' user.
+    - Set that value in plaintext to the `OPENC3_SR_REDIS_PASSWORD` variable in .env.local (see the security docs; do not edit .env)
+    - Set its SHA-256 hash in the ACL file
+
+1.  If you enable the 'admin' user, pick a new password for it first.
+    - The only place you need to put its password is in the ACL file.

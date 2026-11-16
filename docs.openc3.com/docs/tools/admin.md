@@ -89,6 +89,8 @@ You can also add links to existing tools in the navigation bar by using the Add 
 
 The Redis tab allows you to interact directly with the underlying Redis database, making it easy to modify or delete data. THIS IS DANGEROUS, and should only be performed by COSMOS developers.
 
+Commands run as the `openc3` Redis user which does not have full admin permissions and thus some commands are not allowed. For example, use `SCAN` instead of `KEYS`.
+
 ![Redis](/img/admin/redis.png)
 
 ### Secrets
