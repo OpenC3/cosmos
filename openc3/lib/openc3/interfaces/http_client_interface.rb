@@ -35,6 +35,7 @@ module OpenC3
       else
         @url = "#{@protocol}://#{@hostname}:#{@port}"
       end
+      @base_uri = URI(@url)
       @write_timeout = ConfigParser.handle_nil(write_timeout)
       @write_timeout = Float(@write_timeout) if @write_timeout
       @read_timeout = ConfigParser.handle_nil(read_timeout)
@@ -108,7 +109,7 @@ module OpenC3
       extra = packet.extra
       extra ||= {}
       data = packet.buffer(true) # Copy buffer so logged command isn't modified
-      extra['HTTP_URI'] = URI("#{@url}#{packet.read('HTTP_PATH')}").to_s
+      extra['HTTP_URI'] = build_uri(packet.read('HTTP_PATH'))
       # Store the target name for use in identifying the response
       extra['HTTP_REQUEST_TARGET_NAME'] = packet.target_name
       return data, extra
@@ -123,33 +124,42 @@ module OpenC3
       headers ||= {}
       uri = extra['HTTP_URI']
       method = extra['HTTP_METHOD']
+      # HTTP_URI normally comes from convert_packet_to_data, but write_raw passes
+      # extra straight through, so check the destination here as well
+      validate_uri(uri)
 
       resp = nil
-      case method
-      when 'get'
-        resp = @http.get(uri) do |req|
-          req.params = queries
-          req.headers = headers
+      begin
+        case method
+        when 'get'
+          resp = @http.get(uri) do |req|
+            req.params = queries
+            req.headers = headers
+          end
+        when 'put'
+          resp = @http.put(uri) do |req|
+            req.params = queries
+            req.headers = headers
+            req.body = data
+          end
+        when 'delete'
+          resp = @http.delete(uri) do |req|
+            req.params = queries
+            req.headers = headers
+          end
+        when 'post'
+          resp = @http.post(uri) do |req|
+            req.params = queries
+            req.headers = headers
+            req.body = data
+          end
+        else
+          raise "Unsupported HTTP Method: #{method}"
         end
-      when 'put'
-        resp = @http.put(uri) do |req|
-          req.params = queries
-          req.headers = headers
-          req.body = data
-        end
-      when 'delete'
-        resp = @http.delete(uri) do |req|
-          req.params = queries
-          req.headers = headers
-        end
-      when 'post'
-        resp = @http.post(uri) do |req|
-          req.params = queries
-          req.headers = headers
-          req.body = data
-        end
-      else
-        raise "Unsupported HTTP Method: #{method}"
+      rescue Faraday::Error => e
+        # Log the details but don't return the raw error to the command sender
+        Logger.error("#{@name}: HTTP #{method.to_s.upcase} #{uri} failed: #{e.class}: #{e.message}")
+        raise "HTTP #{method.to_s.upcase} request to #{@url} failed (#{e.class.name.split('::').last})"
       end
 
       # Normalize Response into simple hash
@@ -247,6 +257,44 @@ module OpenC3
       result['include_request_in_response'] = @include_request_in_response
       result['response_queue_length'] = @response_queue.length
       return result
+    end
+
+    protected
+
+    # Builds the request URI from the configured URL and the HTTP_PATH parameter.
+    # The request always goes to the configured scheme, host and port.
+    #
+    # @param path [String] Request path, which must start with a single '/'
+    # @return [String] Full request URI
+    def build_uri(path)
+      path = path.to_s
+      unless path.empty?
+        if !path.start_with?('/') or path.start_with?('//')
+          raise WriteRejectError, "HTTP_PATH must start with a single '/': #{path.inspect}"
+        end
+        if path.match?(/[\\\s[:cntrl:]]/)
+          raise WriteRejectError, "HTTP_PATH contains invalid characters: #{path.inspect}"
+        end
+      end
+      uri = "#{@url}#{path}"
+      validate_uri(uri)
+      return uri
+    end
+
+    # Raises WriteRejectError unless the URI goes to the configured scheme, host and port.
+    # WriteRejectError rejects the command without disconnecting the interface.
+    def validate_uri(uri)
+      begin
+        parsed = URI(uri.to_s)
+      rescue URI::InvalidURIError
+        raise WriteRejectError, "Invalid HTTP URI: #{uri.inspect}"
+      end
+      unless parsed.scheme.to_s.casecmp?(@base_uri.scheme) and
+             parsed.host.to_s.casecmp?(@base_uri.host) and
+             parsed.port == @base_uri.port and
+             parsed.userinfo.nil?
+        raise WriteRejectError, "HTTP URI #{uri.inspect} does not match interface URL #{@url}"
+      end
     end
   end
 end

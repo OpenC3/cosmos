@@ -10,8 +10,12 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+from unittest.mock import Mock, patch
+
+import requests
 
 from openc3.interfaces.http_client_interface import HttpClientInterface
+from openc3.interfaces.interface import WriteRejectError
 from test.test_helper import mock_redis, setup_system
 
 
@@ -163,3 +167,72 @@ class TestHttpClientInterface(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestHttpClientInterfaceUri(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
+        self.interface = HttpClientInterface("example.com", 8080, "https")
+
+    def packet_with_path(self, path):
+        packet = Mock()
+        packet.buffer = b"packet data"
+        packet.read.return_value = path
+        packet.target_name = "TARGET"
+        packet.extra = None
+        return packet
+
+    def test_allows_empty_paths_and_paths_with_queries_or_at(self):
+        _, extra = self.interface.convert_packet_to_data(self.packet_with_path(""))
+        self.assertEqual(extra["HTTP_URI"], "https://example.com:8080")
+        _, extra = self.interface.convert_packet_to_data(self.packet_with_path(None))
+        self.assertEqual(extra["HTTP_URI"], "https://example.com:8080")
+        _, extra = self.interface.convert_packet_to_data(self.packet_with_path("/users/@me?x=1"))
+        self.assertEqual(extra["HTTP_URI"], "https://example.com:8080/users/@me?x=1")
+
+    def test_rejects_invalid_paths(self):
+        for path in [
+            "@evil.com:80/x",
+            "@evil.com",
+            ":9999/x",
+            ".evil.com/x",
+            "//evil.com/x",
+            "x/y",
+            "/a\\b",
+            "/a b",
+            "/a\r\nHost: evil.com",
+            "/a\tb",
+        ]:
+            with self.subTest(path=path), self.assertRaises(WriteRejectError):
+                self.interface.convert_packet_to_data(self.packet_with_path(path))
+
+    def test_write_interface_rejects_uri_for_a_different_host_without_sending(self):
+        self.interface.connect()
+        self.interface.http = Mock()
+        for uri in [
+            "http://evil.com/x",
+            "https://example.com:8080@evil.com/x",
+            "https://user@example.com:8080/x",
+            "https://example.com:9999/x",
+            "http://example.com:8080/x",
+            "https://example.com:notaport/x",
+            None,
+        ]:
+            with self.subTest(uri=uri), self.assertRaises(WriteRejectError):
+                self.interface.write_interface(b"", {"HTTP_URI": uri, "HTTP_METHOD": "get"})
+        self.interface.http.request.assert_not_called()
+
+    @patch("openc3.interfaces.http_client_interface.Logger")
+    def test_write_interface_does_not_return_the_raw_connection_error(self, mock_logger):
+        self.interface.connect()
+        self.interface.http = Mock()
+        self.interface.http.request.side_effect = requests.exceptions.ConnectionError(
+            "HTTPConnectionPool(host='10.0.0.1', port=22): Connection refused"
+        )
+        with self.assertRaises(RuntimeError) as context:
+            self.interface.write_interface(b"", {"HTTP_URI": "https://example.com:8080/x", "HTTP_METHOD": "get"})
+        self.assertEqual(
+            str(context.exception), "HTTP GET request to https://example.com:8080 failed (ConnectionError)"
+        )
+        self.assertIn("Connection refused", mock_logger.error.call_args[0][0])

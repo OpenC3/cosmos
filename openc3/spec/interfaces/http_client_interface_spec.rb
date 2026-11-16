@@ -149,7 +149,7 @@ module OpenC3
         data = ""
         extra = {
           'HTTP_METHOD' => 'delete',
-          'HTTP_URI' => '/api/resource/1',
+          'HTTP_URI' => 'https://example.com:8080/api/resource/1',
           'HTTP_QUERIES' => { 'confirm' => 'true' },
           'HTTP_HEADERS' => { 'Authorization' => 'Bearer token' }
         }
@@ -159,7 +159,7 @@ module OpenC3
         allow(mock_response).to receive(:status).and_return(204)
         allow(mock_response).to receive(:body).and_return('')
         expect(@interface.instance_variable_get(:@http)).to receive(:delete) do |args, &block|
-          expect(args).to eql "#{@api_resource}/1"
+          expect(args).to eql "https://example.com:8080#{@api_resource}/1"
           # Not sure how to test block here
         end.and_return(mock_response)
 
@@ -172,15 +172,15 @@ module OpenC3
 
       it "handles GET requests" do
         expect(@mock_http).to receive(:get).and_return(double('response', headers: {}, status: 200, body: 'response'))
-        @interface.write_interface('', { 'HTTP_METHOD' => 'get', 'HTTP_URI' => '/test' })
-        expect(@interface.instance_variable_get(:@response_queue).pop).to eq(['response', { 'HTTP_REQUEST' => ['', { 'HTTP_METHOD' => 'get', 'HTTP_URI' => '/test' }], 'HTTP_STATUS' => 200 }])
+        @interface.write_interface('', { 'HTTP_METHOD' => 'get', 'HTTP_URI' => 'https://example.com:8080/test' })
+        expect(@interface.instance_variable_get(:@response_queue).pop).to eq(['response', { 'HTTP_REQUEST' => ['', { 'HTTP_METHOD' => 'get', 'HTTP_URI' => 'https://example.com:8080/test' }], 'HTTP_STATUS' => 200 }])
       end
 
       it "handles POST requests" do
         data = '{"post": "data"}'
         extra = {
           'HTTP_METHOD' => 'post',
-          'HTTP_URI' => @api_resource,
+          'HTTP_URI' => "https://example.com:8080#{@api_resource}",
           'HTTP_QUERIES' => { 'param' => 'value' },
           'HTTP_HEADERS' => { @content_type => 'application/json' }
         }
@@ -206,7 +206,7 @@ module OpenC3
         data = '{"put": "data"}'
         extra = {
           'HTTP_METHOD' => 'put',
-          'HTTP_URI' => "#{@api_resource}/1",
+          'HTTP_URI' => "https://example.com:8080#{@api_resource}/1",
           'HTTP_QUERIES' => { 'param' => 'value' },
           'HTTP_HEADERS' => { @content_type => @application_json }
         }
@@ -283,6 +283,54 @@ module OpenC3
 
         expect(uri_str).to eq("https://example.com:8080#{@api_resource}")
         expect(extra['HTTP_REQUEST_TARGET_NAME']).to eq('TARGET')
+      end
+
+      def packet_with_path(path)
+        packet = double('packet')
+        allow(packet).to receive(:buffer).and_return(@packet_data)
+        allow(packet).to receive(:read).with('HTTP_PATH').and_return(path)
+        allow(packet).to receive(:target_name).and_return('TARGET')
+        allow(packet).to receive(:extra).and_return(nil)
+        packet
+      end
+
+      it "allows an empty path and paths with queries or @" do
+        _, extra = @interface.convert_packet_to_data(packet_with_path(''))
+        expect(extra['HTTP_URI']).to eq('https://example.com:8080')
+        _, extra = @interface.convert_packet_to_data(packet_with_path(nil))
+        expect(extra['HTTP_URI']).to eq('https://example.com:8080')
+        _, extra = @interface.convert_packet_to_data(packet_with_path('/users/@me?x=1'))
+        expect(extra['HTTP_URI']).to eq('https://example.com:8080/users/@me?x=1')
+      end
+
+      it "rejects invalid paths" do
+        ['@evil.com:80/x', '@evil.com', ':9999/x', '.evil.com/x', '//evil.com/x', 'x/y',
+         "/a\\b", '/a b', "/a\r\nHost: evil.com", "/a\tb"].each do |path|
+          expect { @interface.convert_packet_to_data(packet_with_path(path)) }.to raise_error(WriteRejectError), path.inspect
+        end
+      end
+    end
+
+    describe "#write_interface" do
+      it "rejects an HTTP_URI for a different host without sending" do
+        @interface.connect
+        http = @interface.instance_variable_get(:@http)
+        expect(http).not_to receive(:get)
+        ['http://evil.com/x', 'https://example.com:8080@evil.com/x', 'https://user@example.com:8080/x',
+         'https://example.com:9999/x', 'http://example.com:8080/x', nil].each do |uri|
+          expect { @interface.write_interface('', { 'HTTP_URI' => uri, 'HTTP_METHOD' => 'get' }) }.to raise_error(WriteRejectError), uri.inspect
+        end
+        @interface.disconnect
+      end
+
+      it "does not return the raw connection error" do
+        @interface.connect
+        http = @interface.instance_variable_get(:@http)
+        allow(http).to receive(:get).and_raise(Faraday::ConnectionFailed.new('Failed to open TCP connection to 10.0.0.1:22 (Connection refused)'))
+        expect(Logger).to receive(:error).with(/Connection refused/)
+        expect { @interface.write_interface('', { 'HTTP_URI' => 'https://example.com:8080/x', 'HTTP_METHOD' => 'get' }) }.to \
+          raise_error(RuntimeError, 'HTTP GET request to https://example.com:8080 failed (ConnectionFailed)')
+        @interface.disconnect
       end
     end
 
