@@ -96,6 +96,10 @@ py-modules = ["openc3pycli"]
 [tool.setuptools.packages.find]
 include = ["openc3*"]
 
+[tool.setuptools.package-data]
+# PEP 561 marker so type checkers use the inline type hints
+openc3 = ["py.typed"]
+
 [tool.ruff]
 # Line length to match Black
 line-length = 120
@@ -138,7 +142,9 @@ exclude = [
 # W: pycodestyle warnings
 # C4: flake8-comprehensions (better list/dict/set comprehensions)
 # SIM: flake8-simplify (simplification suggestions)
-select = ["E", "F", "I", "N", "UP", "B", "W", "C4", "SIM"]
+# D: pydocstyle (docstrings) and ANN: flake8-annotations (type hints), only
+#    enforced on the public API, see per-file-ignores below
+select = ["E", "F", "I", "N", "UP", "B", "W", "C4", "SIM", "D", "ANN"]
 ignore = [
     "E402",   # Module level import not at top of file
     "E501",   # Line too long (handled by formatter)
@@ -152,6 +158,17 @@ ignore = [
 # Allow auto-fixing for safe rules
 fixable = ["ALL"]
 unfixable = []
+
+[tool.ruff.lint.per-file-ignores]
+# Docstrings and type hints are only enforced on the public API. Add a package
+# here (and to the negated pattern) once it has been converted.
+"!openc3/api/**" = ["D", "ANN"]
+"openc3/api/**" = [
+    "D100",   # Module docstring
+    "D104",   # Package docstring
+    "ANN202", # Return type of private functions
+    "ANN401", # Any is the honest type for telemetry values and JSON results
+]
 
 [tool.ruff.lint.pycodestyle]
 max-line-length = 120
