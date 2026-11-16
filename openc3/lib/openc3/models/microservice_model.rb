@@ -29,6 +29,34 @@ module OpenC3
 
     PRIMARY_KEY = 'openc3_microservices'
 
+    # A ROUTE_PREFIX becomes a traefik rule on the COSMOS web port. Limit it to
+    # plain path segments so it is always a valid traefik rule, and keep it off the
+    # paths used by the built in traefik routers and the COSMOS front end.
+    ROUTE_PREFIX_REGEX = /\A(\/[A-Za-z0-9_\-]+)+\z/
+    # First path segments a ROUTE_PREFIX may not use (compared case-insensitively).
+    # Includes the Enterprise routes (auth, metrics, grafana, mcp) and the
+    # directories served from tools/base (js, css, fonts, icons, img, assets).
+    RESERVED_ROUTE_PREFIXES = %w(openc3-api script-api tools files login js css fonts icons img assets auth metrics grafana mcp)
+
+    # Validate a ROUTE_PREFIX and return it with a leading and no trailing slash
+    # @param prefix [String] Route prefix, e.g. '/mymicroservice' or 'mymicroservice'
+    # @return [String] Normalized prefix, e.g. '/mymicroservice'
+    def self.validate_route_prefix(prefix)
+      normalized = prefix.to_s.strip
+      normalized = "/#{normalized}" unless normalized.start_with?('/')
+      normalized = normalized.chomp('/')
+      unless ROUTE_PREFIX_REGEX.match?(normalized)
+        raise "Invalid ROUTE_PREFIX '#{prefix}': must be one or more path segments containing only letters, numbers, '_' or '-' (e.g. /mymicroservice)"
+      end
+
+      first_segment = normalized.split('/')[1].downcase
+      if RESERVED_ROUTE_PREFIXES.include?(first_segment)
+        raise "Invalid ROUTE_PREFIX '#{prefix}': '/#{first_segment}' is reserved by COSMOS"
+      end
+
+      normalized
+    end
+
     attr_accessor :cmd
     attr_accessor :container
     attr_accessor :env
@@ -144,6 +172,13 @@ module OpenC3
       @bucket = Bucket.getClient()
     end
 
+    # Validate the route prefix on every write, including microservices created
+    # directly through the API rather than from a plugin.txt
+    def create(update: false, force: false, queued: false)
+      @prefix = self.class.validate_route_prefix(@prefix) if @prefix
+      super(update: update, force: force, queued: queued)
+    end
+
     # Resolve the Python environment variables that will be used at runtime.
     # This mirrors the logic in MicroserviceOperator#convert_microservice_to_process_definition.
     def runtime_python_env
@@ -237,8 +272,13 @@ module OpenC3
           @secrets << parameters[0..2]
         end
       when 'ROUTE_PREFIX'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Route Prefix>")
-        @prefix = parameters[0]
+        usage = "#{keyword} <Route Prefix>"
+        parser.verify_num_parameters(1, 1, usage)
+        begin
+          @prefix = MicroserviceModel.validate_route_prefix(parameters[0])
+        rescue RuntimeError => error
+          raise ConfigParser::Error.new(parser, error.message, usage)
+        end
       when 'DISABLE_ERB'
         # 0 to unlimited parameters
         @disable_erb ||= []

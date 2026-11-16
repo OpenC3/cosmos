@@ -21,6 +21,74 @@ class TestMicroserviceModel(unittest.TestCase):
     def setUp(self):
         self.redis = mock_redis(self)
 
+    def test_validate_route_prefix_normalizes_valid_prefixes(self):
+        self.assertEqual(MicroserviceModel.validate_route_prefix("/myapi"), "/myapi")
+        self.assertEqual(MicroserviceModel.validate_route_prefix("myapi"), "/myapi")
+        self.assertEqual(MicroserviceModel.validate_route_prefix("/myapi/"), "/myapi")
+        self.assertEqual(MicroserviceModel.validate_route_prefix("/My_Api-2/v1"), "/My_Api-2/v1")
+        # Only the first segment is reserved
+        self.assertEqual(MicroserviceModel.validate_route_prefix("/myapi/files"), "/myapi/files")
+        self.assertEqual(MicroserviceModel.validate_route_prefix("/filesystem"), "/filesystem")
+
+    def test_validate_route_prefix_rejects_non_path_segments(self):
+        for prefix in [
+            "",
+            "/",
+            "//",
+            "/a//b",
+            "/my.api",
+            "/sandbox.html",
+            "/.well-known",
+            "/a b",
+            "/my`api",
+            "/%2e%2e",
+            "/a?b",
+            "/a#b",
+            "/../openc3-api",
+            "/my\napi",
+        ]:
+            with self.subTest(prefix=prefix), self.assertRaisesRegex(RuntimeError, "Invalid ROUTE_PREFIX"):
+                MicroserviceModel.validate_route_prefix(prefix)
+
+    def test_validate_route_prefix_rejects_reserved_prefixes(self):
+        for prefix in [
+            "/openc3-api",
+            "/openc3-api/cable",
+            "/script-api",
+            "/tools",
+            "/tools/base",
+            "/files",
+            "/files/myapi",
+            "/login",
+            "/js",
+            "/css",
+            "/fonts",
+            "/icons",
+            "/img",
+            "/assets",
+            "/auth",
+            "/metrics",
+            "/grafana",
+            "/mcp",
+            "/OPENC3-API",
+            "Files",
+        ]:
+            with self.subTest(prefix=prefix), self.assertRaisesRegex(RuntimeError, "is reserved by COSMOS"):
+                MicroserviceModel.validate_route_prefix(prefix)
+
+    def test_create_rejects_invalid_prefix(self):
+        model = MicroserviceModel(
+            "DEFAULT__USER__FILES_API", prefix="files/myapi", ports=[[7791, "TCP"]], scope="DEFAULT"
+        )
+        with self.assertRaisesRegex(RuntimeError, "is reserved by COSMOS"):
+            model.create()
+        self.assertIsNone(MicroserviceModel.get("DEFAULT__USER__FILES_API"))
+
+    def test_create_stores_normalized_prefix(self):
+        model = MicroserviceModel("DEFAULT__USER__MYAPI", prefix="myapi/", ports=[[7791, "TCP"]], scope="DEFAULT")
+        model.create()
+        self.assertEqual(MicroserviceModel.get("DEFAULT__USER__MYAPI")["prefix"], "/myapi")
+
     def test_returns_the_specified_model_with_or_without_scope(self):
         model = MicroserviceModel(
             "DEFAULT__TYPE__TEST",

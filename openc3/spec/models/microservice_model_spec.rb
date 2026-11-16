@@ -113,6 +113,46 @@ module OpenC3
       end
     end
 
+    describe "self.validate_route_prefix" do
+      it "normalizes valid prefixes" do
+        expect(MicroserviceModel.validate_route_prefix("/myapi")).to eql "/myapi"
+        expect(MicroserviceModel.validate_route_prefix("myapi")).to eql "/myapi"
+        expect(MicroserviceModel.validate_route_prefix("/myapi/")).to eql "/myapi"
+        expect(MicroserviceModel.validate_route_prefix("/My_Api-2/v1")).to eql "/My_Api-2/v1"
+        # Only the first segment is reserved
+        expect(MicroserviceModel.validate_route_prefix("/myapi/files")).to eql "/myapi/files"
+        expect(MicroserviceModel.validate_route_prefix("/filesystem")).to eql "/filesystem"
+      end
+
+      it "rejects prefixes that aren't plain path segments" do
+        ["", "/", "//", "/a//b", "/my.api", "/sandbox.html", "/.well-known", "/a b",
+         "/my`api", "/%2e%2e", "/a?b", "/a#b", "/../openc3-api", "/my\napi"].each do |prefix|
+          expect { MicroserviceModel.validate_route_prefix(prefix) }.to raise_error(RuntimeError, /Invalid ROUTE_PREFIX/), "accepted #{prefix.inspect}"
+        end
+      end
+
+      it "rejects reserved prefixes regardless of case" do
+        %w(/openc3-api /openc3-api/cable /script-api /tools /tools/base /files /files/myapi
+           /login /js /css /fonts /icons /img /assets /auth /metrics /grafana /mcp /OPENC3-API Files).each do |prefix|
+          expect { MicroserviceModel.validate_route_prefix(prefix) }.to raise_error(RuntimeError, /is reserved by COSMOS/), "accepted #{prefix.inspect}"
+        end
+      end
+    end
+
+    describe "create" do
+      it "rejects an invalid prefix" do
+        model = MicroserviceModel.new(name: "DEFAULT__USER__FILES_API", prefix: "files/myapi", ports: [[7791, 'TCP']], scope: "DEFAULT")
+        expect { model.create }.to raise_error(RuntimeError, /is reserved by COSMOS/)
+        expect(MicroserviceModel.get(name: "DEFAULT__USER__FILES_API")).to be_nil
+      end
+
+      it "stores the normalized prefix" do
+        model = MicroserviceModel.new(name: "DEFAULT__USER__MYAPI", prefix: "myapi/", ports: [[7791, 'TCP']], scope: "DEFAULT")
+        model.create
+        expect(MicroserviceModel.get(name: "DEFAULT__USER__MYAPI")['prefix']).to eql "/myapi"
+      end
+    end
+
     describe "initialize" do
       it "requires name to be formatted SCOPE__TYPE__NAME" do
         expect { MicroserviceModel.new(name: "SCOPE", folder_name: "FOLDER", scope: "DEFAULT") }.to raise_error("name 'SCOPE' must be formatted as SCOPE__TYPE__NAME")
@@ -198,6 +238,29 @@ module OpenC3
         end
         expected_bin = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
         expect(model.as_json()['cmd']).to eql [expected_bin, "start.py"]
+        tf.unlink
+      end
+
+      it "validates ROUTE_PREFIX" do
+        model = MicroserviceModel.new(folder_name: "TEST", name: "DEFAULT__TYPE__NAME", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "ROUTE_PREFIX myapi"
+        tf.close
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+        end
+        expect(model.prefix).to eql "/myapi"
+        tf.unlink
+
+        tf = Tempfile.new
+        tf.puts "ROUTE_PREFIX /openc3-api"
+        tf.close
+        expect {
+          parser.parse_file(tf.path) do |keyword, params|
+            model.handle_config(parser, keyword, params)
+          end
+        }.to raise_error(ConfigParser::Error, /is reserved by COSMOS/)
         tf.unlink
       end
 

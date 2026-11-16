@@ -157,7 +157,7 @@ MICROSERVICE:
       parameters:
         - name: Route Prefix
           required: true
-          description: Route prefix. Must be unique across all scopes. Something like /myprefix
+          description: Route prefix. Must be unique across all scopes. Something like /myprefix. Made of one or more path segments containing only letters, numbers, underscore and dash. The first segment can't be openc3-api, script-api, tools, files, login, js, css, fonts, icons, img, assets, auth, metrics, grafana or mcp which are used by COSMOS
           values: .*
       example: |
         MICROSERVICE CFDP CFDP
