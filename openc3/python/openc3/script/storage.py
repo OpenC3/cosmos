@@ -267,21 +267,19 @@ def _get_storage_file(path: str, bucket: str = "OPENC3_CONFIG_BUCKET", scope: st
     return file
 
 
-def _get_uri(url: str):
-    if openc3.script.OPENC3_IN_CLUSTER:
-        match OPENC3_CLOUD:
-            case "local":
-                bucket_url = os.environ.get("OPENC3_BUCKET_URL", "http://openc3-buckets:9000")
-                return f"{bucket_url}{url}"
-            case "aws":
-                return f"https://s3.{os.getenv('AWS_REGION')}.amazonaws.com{url}"
-            case "gcp":
-                return f"https://storage.googleapis.com{url}"
-            # when 'azure'
-            case _:
-                raise Exception(f"Unknown cloud {OPENC3_CLOUD}")
-    else:
+def _get_uri(url: str) -> str:
+    if not openc3.script.OPENC3_IN_CLUSTER:
         return f"{openc3.script.API_SERVER.generate_url()}{url}"
+    match OPENC3_CLOUD:
+        case "local":
+            bucket_url = os.environ.get("OPENC3_BUCKET_URL", "http://openc3-buckets:9000")
+            return f"{bucket_url}{url}"
+        case "aws":
+            return f"https://s3.{os.getenv('AWS_REGION')}.amazonaws.com{url}"
+        case "gcp":
+            return f"https://storage.googleapis.com{url}"
+    # when 'azure'
+    raise Exception(f"Unknown cloud {OPENC3_CLOUD}")
 
 
 def _get_presigned_request(

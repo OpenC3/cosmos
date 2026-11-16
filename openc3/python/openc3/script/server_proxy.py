@@ -102,22 +102,22 @@ class ApiServerProxy:
                     return self.json_drb.shutdown()
                 case "request":
                     return self.json_drb.request(*args, **kwargs)
-                case _:
-                    disconnect = kwargs.pop("disconnect", None)
-                    if openc3.script.DISCONNECT:
-                        if disconnect:
-                            return disconnect
-                        else:
-                            # The only commands allowed through in disconnect mode are read-only
-                            # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
-                            if re.compile(
-                                r"\w*_get$|^get_\w*|\w*_list$|^list_\w*|^tlm|^limits_enabled$|^subscribe$"
-                            ).match(func):
-                                return getattr(self.json_drb, func)(*args, **kwargs)
-                            else:
-                                return None
-                    else:
+
+            disconnect = kwargs.pop("disconnect", None)
+            if openc3.script.DISCONNECT:
+                if disconnect:
+                    return disconnect
+                else:
+                    # The only commands allowed through in disconnect mode are read-only
+                    # Thus we allow the get, list, tlm and limits_enabled and subscribe methods
+                    if re.compile(r"\w*_get$|^get_\w*|\w*_list$|^list_\w*|^tlm|^limits_enabled$|^subscribe$").match(
+                        func
+                    ):
                         return getattr(self.json_drb, func)(*args, **kwargs)
+                    else:
+                        return None
+            else:
+                return getattr(self.json_drb, func)(*args, **kwargs)
 
         return method
 

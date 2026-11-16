@@ -324,9 +324,9 @@ def wait(*args: Any, type: ValueType = "CONVERTED", quiet: bool = False, scope: 
                 quiet,
                 scope,
             )
-        case _:
-            # Invalid number of arguments
-            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to wait()")
+
+    # Invalid number of arguments
+    raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to wait()")
 
 
 def wait_tolerance(*args: Any, type: ValueType = "CONVERTED", quiet: bool = False, scope: str = OPENC3_SCOPE) -> bool:
@@ -781,6 +781,7 @@ def get_line_delay() -> float | None:
     """
     if openc3.script.RUNNING_SCRIPT:
         return openc3.script.RUNNING_SCRIPT.line_delay
+    return None
 
 
 def set_max_output(characters: int | str) -> None:
@@ -803,6 +804,7 @@ def get_max_output() -> int | None:
     """
     if openc3.script.RUNNING_SCRIPT:
         return openc3.script.RUNNING_SCRIPT.max_output_characters
+    return None
 
 
 ###########################################################################

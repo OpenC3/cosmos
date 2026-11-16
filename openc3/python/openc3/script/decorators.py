@@ -50,6 +50,7 @@ def request_wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
             err = f"Error response {exc.response.status_code} while requesting {exc.request.url!r}."
             if exc.response.status_code <= 400:
                 raise RuntimeError(err) from exc
+            return None
         except requests.RequestException as exc:
             err = f"An error occurred while requesting {exc.request.url!r}."
             raise RuntimeError(err) from exc
