@@ -89,8 +89,9 @@ uv = ["uv==0.13.5"]
 
 [build-system]
 # uv builds the project itself, with no build environment or download, so the
-# image build and the release need nothing from the index for openc3. Move the
-# range with the uv group above; uv warns on every build when it falls outside.
+# image build and the release need nothing from the index for openc3. The range
+# follows the uv group above (uv warns on every build when it falls outside);
+# .github/scripts/check_tool_versions.py flags and rewrites it when it lags.
 requires = ["uv_build>=0.13,<0.14"]
 build-backend = "uv_build"
 
