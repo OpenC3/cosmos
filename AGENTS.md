@@ -257,6 +257,16 @@ Removed or deprecated methods go in the migration table near the top of the
 file. See `docs.openc3.com/CLAUDE.md` for the docs build and
 `check_doc_code_examples.py` for checking the examples.
 
+## Release Notes
+
+When a change needs an upgrade step, changes a file users keep a copy of in
+their project (`compose.yaml`, `.env`, `openc3-redis/users.acl`), changes
+behavior that custom plugins, tools, or scripts depend on, or removes a feature,
+write the user-facing note under "Release notes" in the PR description (see
+`.github/pull_request_template.md`) and add the `release-notes` label. Release
+notes are written from these at release time, so a missing note means users
+don't learn about the change.
+
 ## Commit Messages
 
 [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
