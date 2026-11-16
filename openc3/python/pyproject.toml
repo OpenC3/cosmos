@@ -156,8 +156,8 @@ unfixable = []
 [tool.ruff.lint.per-file-ignores]
 # Docstrings and type hints are only enforced on the public API. Add a package
 # here (and to the negated pattern) once it has been converted.
-"!openc3/api/**" = ["D", "ANN"]
-"openc3/api/**" = [
+"!openc3/{api,script}/**" = ["D", "ANN"]
+"openc3/{api,script}/**" = [
     "D100",   # Module docstring
     "D104",   # Package docstring
     "ANN202", # Return type of private functions

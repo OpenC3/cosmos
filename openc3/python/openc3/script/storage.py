@@ -14,6 +14,7 @@ import json
 import os
 import tempfile
 import traceback
+from typing import IO, Any
 
 import requests
 
@@ -26,12 +27,18 @@ from openc3.utilities.local_mode import LocalMode
 OPENC3_CLOUD = os.environ.get("OPENC3_CLOUD") or "local"
 
 
-def delete_target_file(path: str, scope: str = OPENC3_SCOPE):
-    """Delete a file on a target
+def delete_target_file(path: str, scope: str = OPENC3_SCOPE) -> None:
+    """Delete a modified target file.
+
+    Only files in targets_modified are deleted. The original file installed
+    by the plugin is kept.
 
     Args:
-        path (str) Path to a file in a target directory
-        scope (str) Optional, defaults to env.OPENC3_SCOPE
+        path: Path to a file in a target directory, e.g. "INST/procedures/test.py".
+        scope: COSMOS scope.
+
+    Raises:
+        Exception: If the delete fails.
     """
     try:
         # Only delete from the targets_modified
@@ -49,13 +56,23 @@ def delete_target_file(path: str, scope: str = OPENC3_SCOPE):
     return None
 
 
-def put_target_file(path: str, io_or_string: io.IOBase | str, scope: str = OPENC3_SCOPE):
-    """Get a handle to write a target file
+def put_target_file(path: str, io_or_string: io.IOBase | str | bytes, scope: str = OPENC3_SCOPE) -> bytes | None:
+    """Write a target file.
+
+    The file is written to targets_modified so the original plugin file is
+    kept.
 
     Args:
-        path (str) Path to a file in a target directory
-        io_or_string (io | str) IO object or str object
-        scope (str) Optional, defaults to env.OPENC3_SCOPE
+        path: Path to a file in a target directory, e.g. "INST/procedures/test.py".
+        io_or_string: File contents as a file-like object, str or bytes.
+        scope: COSMOS scope.
+
+    Returns:
+        The body of the storage upload response, or None when the file is
+        written to a local only target.
+
+    Raises:
+        Exception: If path contains "..", or the upload fails.
     """
     if ".." in path:
         raise Exception(f"Disallowed path modifier '..' found in {path}")
@@ -102,16 +119,20 @@ def put_target_file(path: str, io_or_string: io.IOBase | str, scope: str = OPENC
         raise Exception(f"Failed to write {upload_path} due to {traceback.format_exc()}") from error
 
 
-def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE):
-    """Get a handle to access a target file
+def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE) -> IO[bytes] | None:
+    """Return a target file.
+
+    By default the modified file is returned, falling back to the original
+    file installed by the plugin.
 
     Args:
-        path (str): Path to a file in a target directory, e.g. "INST/procedures/test.rb"
-        original (bool): Whether to get the original or modified file; defaults to False
-        scope (str): Optional, defaults to env.OPENC3_SCOPE
+        path: Path to a file in a target directory, e.g. "INST/procedures/test.py".
+        original: Return the original file instead of the modified file.
+        scope: COSMOS scope.
 
-    Return:
-        (File | None)
+    Returns:
+        A binary temporary file rewound to the start, or None if the file is
+        not found. The file is deleted when closed.
     """
     # Local only targets only exist in the local mode volume so original doesn't apply
     if LocalMode.local_only_name(path):
@@ -143,8 +164,8 @@ def get_target_file(path: str, original: bool = False, scope: str = OPENC3_SCOPE
 # These are helper methods ... should not be used directly
 
 
-def _upload_api_file(path, io_or_string, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
-    """Write a file through the API instead of a presigned URL"""
+def _upload_api_file(path: str, io_or_string: Any, bucket: str = "OPENC3_CONFIG_BUCKET", scope: str = OPENC3_SCOPE):
+    """Write a file through the API instead of a presigned URL."""
     data = io_or_string.read() if hasattr(io_or_string, "read") else io_or_string
     if isinstance(data, str):
         data = data.encode("utf-8")
@@ -163,8 +184,8 @@ def _upload_api_file(path, io_or_string, bucket="OPENC3_CONFIG_BUCKET", scope=OP
     return None
 
 
-def _get_api_file(path, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
-    """Read a file through the API instead of a presigned URL. Returns None if the file doesn't exist"""
+def _get_api_file(path: str, bucket: str = "OPENC3_CONFIG_BUCKET", scope: str = OPENC3_SCOPE):
+    """Read a file through the API instead of a presigned URL. Returns None if the file doesn't exist."""
     endpoint = f"/openc3-api/storage/download_file/{scope}/{path}"
     response = openc3.script.API_SERVER.request("get", endpoint, query={"bucket": bucket}, scope=scope)
     if response is not None and response.status_code == 404:
@@ -178,7 +199,7 @@ def _get_api_file(path, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
     return file
 
 
-def _get_local_file(path, scope=OPENC3_SCOPE):
+def _get_local_file(path: str, scope: str = OPENC3_SCOPE):
     local_file = LocalMode.open_local_file(path, scope=scope)
     if not local_file:
         return None
@@ -193,11 +214,11 @@ def _get_local_file(path, scope=OPENC3_SCOPE):
 
 
 def _get_download_url(path: str, scope: str = OPENC3_SCOPE):
-    """Get a download url for object in block storage
+    """Get a download url for object in block storage.
 
     Args:
-        path (str) Path to a file in a target directory, e.g. "INST/procedures/test.rb"
-        scope (str) Optional, defaults to env.OPENC3_SCOPE
+        path: Path to a file in a target directory, e.g. "INST/procedures/test.rb".
+        scope: COSMOS scope.
     """
     if LocalMode.local_only_name(path):
         raise RuntimeError(
@@ -228,7 +249,7 @@ def _get_download_url(path: str, scope: str = OPENC3_SCOPE):
     return result["url"]
 
 
-def _get_storage_file(path, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
+def _get_storage_file(path: str, bucket: str = "OPENC3_CONFIG_BUCKET", scope: str = OPENC3_SCOPE):
     # Create Tempfile to store data
     file = tempfile.NamedTemporaryFile(mode="w+b")  # noqa: SIM115 - returned to caller
 
@@ -246,7 +267,7 @@ def _get_storage_file(path, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
     return file
 
 
-def _get_uri(url):
+def _get_uri(url: str):
     if openc3.script.OPENC3_IN_CLUSTER:
         match OPENC3_CLOUD:
             case "local":
@@ -263,7 +284,9 @@ def _get_uri(url):
         return f"{openc3.script.API_SERVER.generate_url()}{url}"
 
 
-def _get_presigned_request(endpoint, external=None, bucket="OPENC3_CONFIG_BUCKET", scope=OPENC3_SCOPE):
+def _get_presigned_request(
+    endpoint: str, external: bool | None = None, bucket: str = "OPENC3_CONFIG_BUCKET", scope: str = OPENC3_SCOPE
+):
     if external or not openc3.script.OPENC3_IN_CLUSTER:
         response = openc3.script.API_SERVER.request("get", endpoint, query={"bucket": bucket}, scope=scope)
     else:
