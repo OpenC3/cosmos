@@ -299,6 +299,62 @@ RSpec.describe RunningScript, type: :model do
         expect(env['PYTHONUSERBASE']).to eq(ENV.fetch('PYTHONUSERBASE', OpenC3::PythonVenv::DEFAULT_PYTHONUSERBASE))
       end
     end
+
+    context "user environment variables" do
+      before do
+        # Reuse the process double from the outer before, capturing its environment
+        @process_env = {}
+        allow(ChildProcess).to receive(:build).and_wrap_original do |original, *args|
+          process = original.call(*args)
+          allow(process).to receive(:environment).and_return(@process_env)
+          process
+        end
+        allow(OpenC3::Logger).to receive(:warn)
+      end
+
+      def create_global(key, value)
+        OpenC3::EnvironmentModel.new(name: "#{key}_#{value}", key: key, value: value, scope: "DEFAULT").create
+      end
+
+      it "applies global and script entries, with script entries winning" do
+        create_global("MYVAR", "global")
+        create_global("OTHER", "global")
+        id = RunningScript.spawn("DEFAULT", "script.rb", nil, false, [{ "key" => "MYVAR", "value" => "script" }])
+
+        expect(@process_env["MYVAR"]).to eql("script")
+        expect(@process_env["OTHER"]).to eql("global")
+        status = OpenC3::ScriptStatusModel.get(name: id.to_s, scope: "DEFAULT")
+        expect(status["environment"]).to eql({ "MYVAR" => "script", "OTHER" => "global" })
+      end
+
+      it "ignores reserved global entries stored before they were rejected" do
+        create_global("OPENC3_API_HOSTNAME", "other.example.com")
+        create_global("OPENC3_API_PORT", "1")
+        create_global("OPENC3_KEYCLOAK_URL", "http://other.example.com")
+        create_global("https_proxy", "http://other.example.com:8080")
+        create_global("LD_PRELOAD", "/tmp/other.so")
+        create_global("MYVAR", "foo")
+        id = RunningScript.spawn("DEFAULT", "script.rb")
+
+        %w[OPENC3_API_HOSTNAME OPENC3_API_PORT OPENC3_KEYCLOAK_URL https_proxy LD_PRELOAD].each do |key|
+          expect(@process_env).not_to have_key(key)
+        end
+        expect(@process_env["MYVAR"]).to eql("foo")
+        status = OpenC3::ScriptStatusModel.get(name: id.to_s, scope: "DEFAULT")
+        expect(status["environment"]).to eql({ "MYVAR" => "foo" })
+        expect(OpenC3::Logger).to have_received(:warn).with(/OPENC3_API_HOSTNAME/, scope: "DEFAULT")
+      end
+
+      it "ignores reserved script entries" do
+        RunningScript.spawn("DEFAULT", "script.rb", nil, false, [
+          { "key" => "OPENC3_API_SCHEMA", "value" => "https" },
+          { "key" => "RUBYOPT", "value" => "-r/tmp/other" },
+        ])
+        expect(@process_env).not_to have_key("OPENC3_API_SCHEMA")
+        # RUBYOPT is always cleared for the child, never set to the user's value
+        expect(@process_env["RUBYOPT"]).to be_nil
+      end
+    end
   end
 
   describe "#run with suite_runner" do

@@ -12,6 +12,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/logger'
 OpenC3.require_file 'openc3/utilities/store'
 
 module OpenC3
@@ -38,6 +39,63 @@ module OpenC3
       'OPENC3_API_PASSWORD',
       'OPENC3_SERVICE_PASSWORD',
     ] + UNUSED_VARS
+
+    # Variables users may not set through the global Environment or the
+    # per-script environment because COSMOS configures them for the script
+    # process (connection settings, interpreter and library paths, proxies,
+    # name resolution). Matched case-insensitively.
+    RESERVED_PREFIXES = %w[
+      OPENC3_ ANYCABLE_ KC_ KEYCLOAK RAILS_ SECRET_
+      LD_ DYLD_ GCONV_ GLIBC_ MALLOC_ BASH_FUNC_
+      RUBY GEM_ BUNDLE PYTHON UV_ VIRTUAL_ENV PIP_ NODE_
+      AWS_ GOOGLE_ AZURE_ SSL_ OPENSSL_
+      RES_ GIT_
+    ].freeze
+    RESERVED_NAMES = %w[
+      PATH HOME USER SHELL TMPDIR TMP TEMP IFS ENV BASH_ENV
+      HOSTALIASES LOCALDOMAIN
+      HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY FTP_PROXY
+      REQUESTS_CA_BUNDLE CURL_CA_BUNDLE
+    ].freeze
+    VALID_NAME = /\A[A-Za-z_][A-Za-z0-9_]*\z/
+
+    # Returns an error message if key can't be set by users, nil if it can
+    def self.key_error(key)
+      return "Environment variable name must be a String" unless key.is_a?(String)
+      unless VALID_NAME.match?(key)
+        return "Environment variable name '#{key}' must contain only letters, digits and underscores and not start with a digit"
+      end
+
+      upcased = key.upcase
+      if RESERVED_NAMES.include?(upcased) or RESERVED_PREFIXES.any? { |prefix| upcased.start_with?(prefix) }
+        return "Environment variable '#{key}' is reserved by COSMOS and can not be set for scripts"
+      end
+
+      return nil
+    end
+
+    def self.allowed_key?(key)
+      return key_error(key).nil?
+    end
+
+    # Copy user environment entries ([{ 'key' => , 'value' => }, ...]) into a
+    # ChildProcess environment, skipping reserved names. Returns the hash of
+    # entries applied.
+    def self.apply_user_entries(environment, entries, source:, scope: nil)
+      applied = {}
+      (entries || []).each do |entry|
+        key = entry.respond_to?(:key?) ? entry['key'] : nil
+        error = key_error(key)
+        if error
+          Logger.warn("Ignoring #{source} environment variable: #{error}", scope: scope)
+          next
+        end
+        value = entry['value'].to_s
+        environment[key] = value
+        applied[key] = value
+      end
+      return applied
+    end
 
     # Remove UNUSED_VARS from a ChildProcess environment (nil unsets the variable)
     def self.remove_unused(environment)
