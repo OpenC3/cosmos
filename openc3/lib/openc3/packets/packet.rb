@@ -1544,6 +1544,8 @@ module OpenC3
           ok = (value != last_value)
         when :STATIC
           ok = (value == last_value)
+        else
+          raise "Unknown change_type #{item.limits.change_type} for item #{item.name}"
         end
       end
       limits_state = ok ? :GREEN : item.limits.change_color
@@ -1562,6 +1564,8 @@ module OpenC3
         when :INT
           half = 2**(item.bit_size - 1)
           return ((next_value + half) % (2**item.bit_size)) - half
+        else
+          raise "Cannot determine next sequence value for item #{item.name} with data_type #{item.data_type}"
         end
       end
       next_value
