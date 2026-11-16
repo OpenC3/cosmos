@@ -84,12 +84,15 @@ MYPY = "pypi:mypy"
 REQUESTS = "pypi:requests"
 TRIVY = "gh:aquasecurity/trivy"
 
+# Holds the uv and ruff pins that repo: sources read, and the uv_build range
+PYPROJECT = "openc3/python/pyproject.toml"
+
 # repo: sources, as (file, regex whose first group captures the version).
 # Dependabot raises these in pyproject.toml; the copies follow, so the images
 # run CI's uv and the stub generator formats with the ruff that checks it.
 REPO_PINS = {
-    "uv": ("openc3/python/pyproject.toml", r'uv = \["uv==([\d.]+)"\]'),
-    "ruff": ("openc3/python/pyproject.toml", r'"ruff==([\d.]+)"'),
+    "uv": (PYPROJECT, r'uv = \["uv==([\d.]+)"\]'),
+    "ruff": (PYPROJECT, r'"ruff==([\d.]+)"'),
 }
 
 
@@ -156,7 +159,7 @@ SURFACES = [
     # '>=0.13,<0.14' as (0, 13, 0, 14), which orders by the lower bound first.
     Surface(
         "uv_build range (openc3 build backend)",
-        "openc3/python/pyproject.toml",
+        PYPROJECT,
         r'"uv_build(>=[\d.]+,<[\d.]+)"',
         PYPROJECT_UV,
         derive=uv_build_range,
