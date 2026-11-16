@@ -297,8 +297,9 @@ module OpenC3
     describe "command message handling" do
       # Drive the command handler block directly with one crafted message and
       # return the block's result, which becomes the ack (nil means no ack)
-      def handle(msg_hash, topic: "{DEFAULT__CMD}TARGET__INST")
+      def handle(msg_hash, topic: "{DEFAULT__CMD}TARGET__INST", critical_commanding: nil)
         handler = InterfaceCmdHandlerThread.new(@interface, double("tlm").as_null_object, scope: "DEFAULT")
+        handler.instance_variable_set(:@critical_commanding, critical_commanding) if critical_commanding
         result = :not_run
         mutex = Mutex.new
         allow(InterfaceTopic).to receive(:receive_commands) do |*_args, **_kwargs, &block|
@@ -342,12 +343,73 @@ module OpenC3
       end
 
       it "acks a released critical command whose target is now disabled" do
-        critical_model = double("CriticalCmdModel", approver: 'approver',
+        critical_model = double("CriticalCmdModel", approver: 'approver', claim_release: true,
           cmd_hash: { 'target_name' => 'INST', 'cmd_name' => 'ABORT', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST ABORT")' })
         stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
         @interface.cmd_target_enabled['INST'] = false
         result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
         expect(result).to eql "Target INST is disabled"
+        expect(critical_model).to have_received(:claim_release)
+      end
+
+      it "claims a released critical command before sending it" do
+        # CLEAR is hazardous, which a released critical command skips
+        critical_model = double("CriticalCmdModel", approver: 'approver',
+          cmd_hash: { 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")' })
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(critical_model).to receive(:claim_release).ordered.and_return(true)
+        # Counted once on release. It wasn't counted while held for approval.
+        expect(TargetModel).to receive(:increment_command_count).with('INST', 'CLEAR', 1, scope: 'DEFAULT').once.and_call_original
+        expect(@interface).to receive(:write).ordered do |command|
+          expect(command.packet_name).to eql 'CLEAR'
+          expect(command.extra['approver']).to eql 'approver'
+        end
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql 'SUCCESS'
+      end
+
+      it "doesn't count a command held for critical approval" do
+        critical_model = double("CriticalCmdModel", create: nil, name: 'abc-123')
+        stub_const("OpenC3::CriticalCmdModel", double(new: critical_model))
+        expect(TargetModel).to_not receive(:increment_command_count)
+        expect(@interface).to_not receive(:write)
+        msg_hash = { 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")', 'hazardous_check' => 'false' }
+        result = handle(msg_hash, critical_commanding: 'NORMAL')
+        expect(result).to eql "CriticalCmdError\nabc-123"
+      end
+
+      it "doesn't count a command returned for hazardous confirmation" do
+        expect(TargetModel).to_not receive(:increment_command_count)
+        expect(@interface).to_not receive(:write)
+        result = handle({ 'target_name' => 'INST', 'cmd_name' => 'CLEAR', 'cmd_params' => '{}', 'cmd_string' => 'cmd("INST CLEAR")', 'hazardous_check' => 'true' })
+        expect(result).to start_with("HazardousError")
+      end
+
+      it "doesn't send a released critical command it can't claim" do
+        # A duplicate release message is expected so it's only a warning
+        critical_model = double("CriticalCmdModel", claim_release: false, released: true, status: 'APPROVED')
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(@interface).to_not receive(:write)
+        expect(Logger).to receive(:warn).with("INST_INT: Critical command 'abc-123' not released: already released", scope: 'DEFAULT')
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Critical command 'abc-123' not released: already released"
+
+        # An approved command that won't be sent, e.g. its approval was undone, is an error
+        critical_model = double("CriticalCmdModel", claim_release: false, released: false, status: 'WAITING')
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(Logger).to receive(:error).with("INST_INT: Critical command 'abc-123' not released: WAITING", scope: 'DEFAULT')
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Critical command 'abc-123' not released: WAITING"
+      end
+
+      it "doesn't send a released critical command if the claim fails" do
+        critical_model = double("CriticalCmdModel")
+        allow(critical_model).to receive(:claim_release).and_raise("Timeout updating critical command 'abc-123'")
+        stub_const("OpenC3::CriticalCmdModel", double(get_model: critical_model))
+        expect(@interface).to_not receive(:write)
+        expect(Logger).to receive(:error).with("INST_INT: Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'", scope: 'DEFAULT')
+        result = handle({ 'release_critical' => 'abc-123' }, topic: "{DEFAULT__CMD}INTERFACE__INST_INT")
+        expect(result).to eql "Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'"
       end
 
       it "range checks a command that omits range_check" do
@@ -629,14 +691,67 @@ module OpenC3
 
         # queue_username is the original author (shown as "Queued By"), passed
         # by the queue microservice when a command is released from a queue
-        @api.cmd("INST", "ABORT", queue_username: "DEFAULT__MULTI__INST")
+        @api.cmd("INST", "ABORT", queue_username: "DEFAULT__MULTI__INST",
+          extra: {
+            'flow_uuid' => '1234-5678', 'username' => 'untrusted',
+            'queue_username' => 'untrusted', 'approver' => 'untrusted',
+            'cmd_success' => false, 'cmd_reason' => 'untrusted'
+          })
         sleep 0.01
         im.shutdown
 
         expect(captured).to_not be_nil
         expect(captured.target_name).to eql("INST")
         expect(captured.packet_name).to eql("ABORT")
+        # Caller metadata is kept under its own key, so caller values can't
+        # replace the COSMOS audit fields
+        expect(captured.extra['metadata']).to eql({
+          'flow_uuid' => '1234-5678', 'username' => 'untrusted',
+          'queue_username' => 'untrusted', 'approver' => 'untrusted',
+          'cmd_success' => false, 'cmd_reason' => 'untrusted'
+        })
+        expect(captured.extra['username']).to_not eql('untrusted')
         expect(captured.extra['queue_username']).to eql("DEFAULT__MULTI__INST")
+        expect(captured.extra).not_to have_key('flow_uuid')
+        expect(captured.extra).not_to have_key('approver')
+        expect(captured.extra).not_to have_key('cmd_success')
+        expect(captured.extra).not_to have_key('cmd_reason')
+      end
+
+      it "keeps caller metadata separate from accessor populated extra" do
+        im = InterfaceMicroservice.new("DEFAULT__INTERFACE__INST_INT")
+
+        # Accessors write into packet.extra while build_cmd sets the command
+        # parameters. HttpAccessor puts HTTP_PATH / HTTP_METHOD / HTTP_HEADERS /
+        # HTTP_QUERIES there and HttpClientInterface builds the outgoing request
+        # from them, so caller metadata must not be able to set or change these.
+        allow(System.commands).to receive(:build_cmd).and_wrap_original do |original, *args|
+          command = original.call(*args)
+          command.extra = { 'HTTP_PATH' => '/defined', 'HTTP_METHOD' => 'get' }
+          command
+        end
+
+        captured = nil
+        allow(CommandDecomTopic).to receive(:write_packet) do |command, _scope|
+          captured = command
+        end
+        Thread.new { im.run }
+        sleep 0.01
+
+        caller_extra = {
+          'HTTP_PATH' => '/supplied', 'HTTP_METHOD' => 'delete',
+          'HTTP_HEADERS' => { 'authorization' => 'supplied' }, 'flow_uuid' => '1234-5678'
+        }
+        @api.cmd("INST", "ABORT", extra: caller_extra)
+        sleep 0.01
+        im.shutdown
+
+        expect(captured).to_not be_nil
+        expect(captured.extra['HTTP_PATH']).to eql('/defined')
+        expect(captured.extra['HTTP_METHOD']).to eql('get')
+        expect(captured.extra).not_to have_key('HTTP_HEADERS')
+        expect(captured.extra).not_to have_key('flow_uuid')
+        expect(captured.extra['metadata']).to eql(caller_extra)
       end
 
       it "acks SUCCESS for a write protocol STOP but rejects a DISCONNECT" do

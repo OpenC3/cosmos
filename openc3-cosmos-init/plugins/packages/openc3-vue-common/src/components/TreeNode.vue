@@ -146,9 +146,7 @@ watch(
   (newSearch) => {
     if (newSearch) {
       if (!props.node.isOpen) toggle()
-    } else {
-      if (props.node.isOpen) toggle()
-    }
+    } else if (props.node.isOpen) toggle()
   },
 )
 

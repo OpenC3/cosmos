@@ -20,10 +20,7 @@ from datetime import datetime
 from openc3.environment import OPENC3_SCOPE
 from openc3.script.exceptions import StopScriptError
 from openc3.streams.web_socket_client_stream import WebSocketClientStream
-from openc3.utilities.authentication import (
-    OpenC3Authentication,
-    OpenC3KeycloakAuthentication,
-)
+from openc3.utilities.authentication import authentication_from_environment
 from openc3.utilities.time import to_nsec_from_epoch
 
 
@@ -270,14 +267,11 @@ class WebSocketApi:
             self.subscribed = False
 
     def _generate_auth(self):
-        """Generate the appropriate token for OpenC3"""
-        if os.environ.get("OPENC3_API_TOKEN") is None and os.environ.get("OPENC3_API_USER") is None:
-            if os.environ.get("OPENC3_API_PASSWORD"):
-                return OpenC3Authentication()
-            else:
-                raise RuntimeError("Environment Variables Not Set for Authentication")
-        else:
-            return OpenC3KeycloakAuthentication(os.environ.get("OPENC3_KEYCLOAK_URL"))
+        """Build the appropriate token for OpenC3."""
+        authentication = authentication_from_environment()
+        if authentication is None:
+            raise RuntimeError("Environment Variables Not Set for Authentication")
+        return authentication
 
 
 class HistoryCountIdentifier:

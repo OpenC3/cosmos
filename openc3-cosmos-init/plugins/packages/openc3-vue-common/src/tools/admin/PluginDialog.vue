@@ -421,29 +421,27 @@ export default {
     submit: function () {
       if (this.existingPluginTxt === null) {
         this.emitSubmit(this.editor.getValue().split('\n'))
-      } else {
+      } else if (this.differ.diffs.length === 0) {
         // Existing plugin.txt with all diffs resolved
-        if (this.differ.diffs.length === 0) {
-          this.emitSubmit(this.differ.getEditors().left.getValue().split('\n'))
-        } else {
-          // Existing plugin.txt with unresolved diffs
-          this.$dialog
-            .confirm(
-              `Diffs still detected! Install using 'Existing plugin.txt' (left) and ignore additional changes in the new plugin.txt (right)?`,
-              {
-                okText: 'Install',
-                cancelText: 'Cancel',
-              },
+        this.emitSubmit(this.differ.getEditors().left.getValue().split('\n'))
+      } else {
+        // Existing plugin.txt with unresolved diffs
+        this.$dialog
+          .confirm(
+            `Diffs still detected! Install using 'Existing plugin.txt' (left) and ignore additional changes in the new plugin.txt (right)?`,
+            {
+              okText: 'Install',
+              cancelText: 'Cancel',
+            },
+          )
+          .then((dialog) => {
+            this.emitSubmit(
+              this.differ.getEditors().left.getValue().split('\n'),
             )
-            .then((dialog) => {
-              this.emitSubmit(
-                this.differ.getEditors().left.getValue().split('\n'),
-              )
-            })
-            .catch((error) => {
-              // Cancelled, do nothing
-            })
-        }
+          })
+          .catch((error) => {
+            // Cancelled, do nothing
+          })
       }
     },
     emitSubmit(lines) {
