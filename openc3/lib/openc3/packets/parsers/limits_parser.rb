@@ -120,7 +120,7 @@ module OpenC3
       raise @parser.error("Only SEQUENCE limits take a step parameter", @usage) unless change_type == :SEQUENCE
 
       begin
-        step = Integer(step)
+        step = Integer(step, 10)
       rescue ArgumentError, TypeError
         raise @parser.error("SEQUENCE step must be an integer", @usage)
       end

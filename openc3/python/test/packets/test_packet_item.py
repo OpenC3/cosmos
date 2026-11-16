@@ -440,6 +440,16 @@ class TestPacketItem(unittest.TestCase):
         self.assertIn("STATE TRUE 1 GREEN", config)
         self.assertIn("STATE FALSE 0 RED", config)
 
+    def test_to_config_writes_the_limits_response_for_an_item_with_only_state_colors(self):
+        self.pi.minimum = 0
+        self.pi.maximum = 1
+        self.pi.states = {"TRUE": 1, "FALSE": 0}
+        self.pi.state_colors = {"TRUE": "GREEN", "FALSE": "RED"}
+        self.pi.limits.response = LimitsResponse()
+        self.assertIn(
+            "    LIMITS_RESPONSE openc3/packets/limits_response.py\n", self.pi.to_config("TELEMETRY", "BIG_ENDIAN")
+        )
+
     def test_to_config_with_command_attributes_on_only_some_states(self):
         self.pi.minimum = 0
         self.pi.maximum = 2

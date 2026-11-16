@@ -1475,6 +1475,11 @@ class PacketCheckChangeLimits(unittest.TestCase):
         self.set_change_limits("TEST1", "SEQUENCE", "RED", 1, -1)
         self.assertEqual(self.check_values("TEST1", [0, 255]), "GREEN")
 
+    def test_detects_sequence_violations_on_raw_float_values(self):
+        self.set_change_limits("TEST3", "SEQUENCE")
+        self.assertEqual(self.check_values("TEST3", [1.5, 2.5]), "GREEN")
+        self.assertEqual(self.check_values("TEST3", [4.5]), "RED")
+
     def test_does_not_roll_over_items_with_a_read_conversion(self):
         item = self.set_change_limits("TEST1", "SEQUENCE")
         item.read_conversion = GenericConversion("value")

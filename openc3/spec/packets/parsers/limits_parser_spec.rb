@@ -378,6 +378,13 @@ module OpenC3
             raise_error(ConfigParser::Error, /SEQUENCE step must be an integer/)
           expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED 0') }.to \
             raise_error(ConfigParser::Error, /SEQUENCE step can't be zero/)
+          expect { parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED 0x10') }.to \
+            raise_error(ConfigParser::Error, /SEQUENCE step must be an integer/)
+        end
+
+        it "parses a zero-prefixed SEQUENCE step as decimal" do
+          item = parse_limits('APPEND_ITEM item1 16 UINT "Item"', 'LIMITS DEFAULT 1 ENABLED SEQUENCE RED 010')
+          expect(item.limits.sequence_step).to eql 10
         end
 
         it "complains about a step on CHANGE and STATIC" do

@@ -1667,6 +1667,12 @@ module OpenC3
           expect(check_values("TEST1", [0, 255])).to eql :GREEN
         end
 
+        it "detects SEQUENCE violations on raw FLOAT values" do
+          set_change_limits("TEST3", :SEQUENCE)
+          expect(check_values("TEST3", [1.5, 2.5])).to eql :GREEN
+          expect(check_values("TEST3", [4.5])).to eql :RED
+        end
+
         it "does not roll over items with a read conversion" do
           item = set_change_limits("TEST1", :SEQUENCE)
           item.read_conversion = GenericConversion.new("value")

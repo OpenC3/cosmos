@@ -1565,7 +1565,8 @@ module OpenC3
           half = 2**(item.bit_size - 1)
           return ((next_value + half) % (2**item.bit_size)) - half
         else
-          raise "Cannot determine next sequence value for item #{item.name} with data_type #{item.data_type}"
+          # FLOAT and DERIVED values don't roll over
+          return next_value
         end
       end
       next_value

@@ -438,7 +438,7 @@ module OpenC3
         config << " #{@limits.sequence_step}" if @limits.change_type == :SEQUENCE && @limits.sequence_step != 1
         config << "\n"
       end
-      config << @limits.response.to_config if (limits_values || limits_change_type) && @limits.response
+      config << @limits.response.to_config if @limits && @limits.response
 
       if @meta
         @meta.each do |key, values|

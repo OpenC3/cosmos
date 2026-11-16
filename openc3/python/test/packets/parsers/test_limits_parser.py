@@ -409,6 +409,12 @@ class TestLimitsParserChangeLimits(unittest.TestCase):
             self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED 1.5")
         with self.assertRaisesRegex(ConfigParser.Error, "SEQUENCE step can't be zero"):
             self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED 0")
+        with self.assertRaisesRegex(ConfigParser.Error, "SEQUENCE step must be an integer"):
+            self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED 0x10")
+
+    def test_parses_a_zero_prefixed_sequence_step_as_decimal(self):
+        item = self.parse_limits('APPEND_ITEM item1 16 UINT "Item"', "LIMITS DEFAULT 1 ENABLED SEQUENCE RED 010")
+        self.assertEqual(item.limits.sequence_step, 10)
 
     def test_complains_about_a_step_on_change_and_static(self):
         for change_type in ["CHANGE", "STATIC"]:
