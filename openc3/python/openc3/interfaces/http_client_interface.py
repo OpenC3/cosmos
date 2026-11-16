@@ -22,8 +22,9 @@ from openc3.packets.packet import Packet
 from openc3.utilities.logger import Logger
 
 
-# Backslash, whitespace and control characters are never valid in HTTP_PATH
-INVALID_PATH_CHARS = re.compile(r"[\\\s\x00-\x1f\x7f]")
+# Backslash, whitespace and control characters are never valid in HTTP_PATH.
+# \s already covers the control characters 0x09-0x0d and 0x1c-0x1f.
+INVALID_PATH_CHARS = re.compile(r"[\\\s\x00-\x08\x0e-\x1b\x7f]")
 
 
 class HttpClientInterface(Interface):

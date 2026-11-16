@@ -204,8 +204,9 @@ class TestHttpClientInterfaceUri(unittest.TestCase):
             "/a\r\nHost: other.com",
             "/a\tb",
         ]:
+            packet = self.packet_with_path(path)
             with self.subTest(path=path), self.assertRaises(WriteRejectError):
-                self.interface.convert_packet_to_data(self.packet_with_path(path))
+                self.interface.convert_packet_to_data(packet)
 
     def test_write_interface_rejects_uri_for_a_different_host_without_sending(self):
         self.interface.connect()

@@ -272,7 +272,7 @@ module OpenC3
         if !path.start_with?('/') or path.start_with?('//')
           raise WriteRejectError, "HTTP_PATH must start with a single '/': #{path.inspect}"
         end
-        if path.match?(/[\\\s[:cntrl:]]/)
+        if path.match?(/[\\ [:cntrl:]]/)
           raise WriteRejectError, "HTTP_PATH contains invalid characters: #{path.inspect}"
         end
       end
