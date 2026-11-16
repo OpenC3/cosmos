@@ -11,6 +11,7 @@
 
 import re
 from datetime import date, datetime, timedelta, timezone
+from typing import Any
 
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.activity_model import ActivityModel
@@ -42,8 +43,15 @@ __all__ = [
 # their own authorization.
 
 
-def list_timelines(scope=OPENC3_SCOPE):
-    """Returns a list of all timelines for the given scope."""
+def list_timelines(scope: str = OPENC3_SCOPE) -> list[dict[str, Any]]:
+    """Return all timelines in a scope.
+
+    Args:
+        scope: COSMOS scope.
+
+    Returns:
+        One dict per timeline.
+    """
     ret = []
     for timeline, value in TimelineModel.all().items():
         if scope == timeline.split("__")[0]:
@@ -51,10 +59,16 @@ def list_timelines(scope=OPENC3_SCOPE):
     return ret
 
 
-def create_timeline(name, color=None, scope=OPENC3_SCOPE):
-    """Creates a new timeline and deploys its microservice.
+def create_timeline(name: str, color: str | None = None, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
+    """Create a new timeline and deploy its microservice.
 
-    Returns the created timeline as a dict.
+    Args:
+        name: Timeline name.
+        color: Display color, e.g. "#FF0000". Defaults to a random color.
+        scope: COSMOS scope.
+
+    Returns:
+        The created timeline.
     """
     model = TimelineModel(name=name, color=color, scope=scope)
     model.create()
@@ -62,18 +76,32 @@ def create_timeline(name, color=None, scope=OPENC3_SCOPE):
     return model.as_json()
 
 
-def get_timeline(name, scope=OPENC3_SCOPE):
-    """Returns the timeline as a dict, or None if not found."""
+def get_timeline(name: str, scope: str = OPENC3_SCOPE) -> dict[str, Any] | None:
+    """Return a timeline.
+
+    Args:
+        name: Timeline name.
+        scope: COSMOS scope.
+
+    Returns:
+        The timeline, or None if not found.
+    """
     model = TimelineModel.get(name=name, scope=scope)
     if model is None:
         return None
     return model.as_json()
 
 
-def set_timeline_color(name, color, scope=OPENC3_SCOPE):
-    """Updates the color of an existing timeline.
+def set_timeline_color(name: str, color: str, scope: str = OPENC3_SCOPE) -> dict[str, Any] | None:
+    """Set the color of an existing timeline.
 
-    Returns the updated timeline as a dict, or None if not found.
+    Args:
+        name: Timeline name.
+        color: Display color, e.g. "#FF0000".
+        scope: COSMOS scope.
+
+    Returns:
+        The updated timeline, or None if not found.
     """
     model = TimelineModel.get(name=name, scope=scope)
     if model is None:
@@ -84,10 +112,16 @@ def set_timeline_color(name, color, scope=OPENC3_SCOPE):
     return model.as_json()
 
 
-def set_timeline_execute(name, enable, scope=OPENC3_SCOPE):
-    """Updates the execute flag of an existing timeline.
+def set_timeline_execute(name: str, enable: bool, scope: str = OPENC3_SCOPE) -> dict[str, Any] | None:
+    """Set whether an existing timeline executes its activities.
 
-    Returns the updated timeline as a dict, or None if not found.
+    Args:
+        name: Timeline name.
+        enable: Whether the timeline executes its activities.
+        scope: COSMOS scope.
+
+    Returns:
+        The updated timeline, or None if not found.
     """
     model = TimelineModel.get(name=name, scope=scope)
     if model is None:
@@ -98,10 +132,17 @@ def set_timeline_execute(name, enable, scope=OPENC3_SCOPE):
     return model.as_json()
 
 
-def delete_timeline(name, force=False, scope=OPENC3_SCOPE):
-    """Deletes a timeline (and optionally all of its activities when force is True).
+def delete_timeline(name: str, force: bool = False, scope: str = OPENC3_SCOPE) -> dict[str, str] | None:
+    """Delete a timeline and undeploy its microservice.
 
-    Returns {"name": name}, or None if not found.
+    Args:
+        name: Timeline name.
+        force: Also delete the timeline's activities. Deleting a timeline
+            which has activities fails without this.
+        scope: COSMOS scope.
+
+    Returns:
+        {"name": name}, or None if not found.
     """
     model = TimelineModel.get(name=name, scope=scope)
     if model is None:
@@ -112,11 +153,33 @@ def delete_timeline(name, force=False, scope=OPENC3_SCOPE):
     return {"name": name}
 
 
-def create_timeline_activity(name, kind, start, stop, data=None, recurring=None, scope=OPENC3_SCOPE):
-    """Creates a new activity on the specified timeline.
+def create_timeline_activity(
+    name: str,
+    kind: str,
+    start: int | float | str | date,
+    stop: int | float | str | date,
+    data: dict[str, Any] | None = None,
+    recurring: dict[str, Any] | None = None,
+    scope: str = OPENC3_SCOPE,
+) -> dict[str, Any]:
+    """Create a new activity on a timeline.
 
-    username is read from data['username'] if present and is used for the audit event.
-    Returns the created activity as a dict.
+    Times may be epoch seconds, numeric strings, ISO 8601 strings, or
+    datetime/date objects. Naive times are treated as UTC.
+
+    Args:
+        name: Timeline name.
+        kind: Activity kind: command, script or reserve.
+        start: Activity start time.
+        stop: Activity stop time.
+        data: Activity data. A "username" key, if present, is used for the
+            audit event.
+        recurring: Recurrence settings. An "end" key is converted to epoch
+            seconds like start and stop.
+        scope: COSMOS scope.
+
+    Returns:
+        The created activity.
     """
     if data is None:
         data = {}
@@ -136,10 +199,31 @@ def create_timeline_activity(name, kind, start, stop, data=None, recurring=None,
     return model.as_json()
 
 
-def update_timeline_activity(name, id, kind, start, stop, uuid, data=None, scope=OPENC3_SCOPE):
-    """Updates an existing activity on the specified timeline.
+def update_timeline_activity(
+    name: str,
+    id: int | str,
+    kind: str,
+    start: int | float | str | date,
+    stop: int | float | str | date,
+    uuid: str,
+    data: dict[str, Any] | None = None,
+    scope: str = OPENC3_SCOPE,
+) -> dict[str, Any] | None:
+    """Update an existing activity on a timeline.
 
-    Returns the updated activity as a dict, or None if not found.
+    Args:
+        name: Timeline name.
+        id: Current start time of the activity in epoch seconds.
+        kind: Activity kind: command, script or reserve.
+        start: New start time. See `create_timeline_activity` for the formats.
+        stop: New stop time. See `create_timeline_activity` for the formats.
+        uuid: Activity UUID.
+        data: Activity data. A "username" key, if present, is used for the
+            audit event.
+        scope: COSMOS scope.
+
+    Returns:
+        The updated activity, or None if not found.
     """
     if data is None:
         data = {}
@@ -156,20 +240,45 @@ def update_timeline_activity(name, id, kind, start, stop, uuid, data=None, scope
     return model.as_json()
 
 
-def get_timeline_activity(name, start, uuid, scope=OPENC3_SCOPE):
-    """Returns the activity as a dict, or None if not found."""
+def get_timeline_activity(name: str, start: int | str, uuid: str, scope: str = OPENC3_SCOPE) -> dict[str, Any] | None:
+    """Return an activity on a timeline.
+
+    Args:
+        name: Timeline name.
+        start: Start time of the activity in epoch seconds.
+        uuid: Activity UUID.
+        scope: COSMOS scope.
+
+    Returns:
+        The activity, or None if not found.
+    """
     model = ActivityModel.score(name=name, score=int(start), uuid=uuid, scope=scope)
     if model is None:
         return None
     return model.as_json()
 
 
-def get_timeline_activities(name, start=None, stop=None, limit=None, scope=OPENC3_SCOPE):
-    """Returns activities on the timeline in the given window.
+def get_timeline_activities(
+    name: str,
+    start: int | float | str | date | None = None,
+    stop: int | float | str | date | None = None,
+    limit: int | None = None,
+    scope: str = OPENC3_SCOPE,
+) -> list[dict[str, Any]]:
+    """Return the activities on a timeline within a time window.
 
-    When start/stop are None, defaults to a window of [now - 7 days, now + 7 days].
-    When limit is None, defaults to one event per minute over the window.
-    Returns a list of matching activities.
+    Args:
+        name: Timeline name.
+        start: Window start. Defaults to 7 days ago. See
+            `create_timeline_activity` for the formats.
+        stop: Window stop. Defaults to 7 days from now. See
+            `create_timeline_activity` for the formats.
+        limit: Maximum number of activities to return. Defaults to one per
+            minute over the window.
+        scope: COSMOS scope.
+
+    Returns:
+        The matching activities.
     """
     now = datetime.now(timezone.utc)
     start_score = int((now - timedelta(days=7)).timestamp()) if start is None else _cal_to_epoch(start)
@@ -179,23 +288,53 @@ def get_timeline_activities(name, start=None, stop=None, limit=None, scope=OPENC
     return ActivityModel.get(name=name, scope=scope, start=start_score, stop=stop_score, limit=limit)
 
 
-def delete_timeline_activity(name, start, uuid, recurring=None, scope=OPENC3_SCOPE):
-    """Removes an activity (or all members of its recurring group when recurring is truthy).
+def delete_timeline_activity(
+    name: str, start: int | str, uuid: str, recurring: Any = None, scope: str = OPENC3_SCOPE
+) -> int:
+    """Delete an activity from a timeline.
 
-    Returns the number of activities removed (0 indicates not found).
+    Args:
+        name: Timeline name.
+        start: Start time of the activity in epoch seconds.
+        uuid: Activity UUID.
+        recurring: When truthy, also delete every activity in the same
+            recurring group.
+        scope: COSMOS scope.
+
+    Returns:
+        The number of activities removed (0 indicates not found).
     """
     return ActivityModel.destroy(name=name, scope=scope, score=int(start), uuid=uuid, recurring=recurring)
 
 
-def count_timeline_activities(name, scope=OPENC3_SCOPE):
-    """Returns the count of activities on the timeline."""
+def count_timeline_activities(name: str, scope: str = OPENC3_SCOPE) -> int:
+    """Return the number of activities on a timeline.
+
+    Args:
+        name: Timeline name.
+        scope: COSMOS scope.
+
+    Returns:
+        The activity count.
+    """
     return ActivityModel.count(name=name, scope=scope)
 
 
-def commit_timeline_activity(name, start, uuid, status, message=None, scope=OPENC3_SCOPE):
-    """Commits an event to an existing activity.
+def commit_timeline_activity(
+    name: str, start: int | str, uuid: str, status: str, message: str | None = None, scope: str = OPENC3_SCOPE
+) -> dict[str, Any] | None:
+    """Record an event on an existing activity.
 
-    Returns the activity as a dict, or None if not found.
+    Args:
+        name: Timeline name.
+        start: Start time of the activity in epoch seconds.
+        uuid: Activity UUID.
+        status: Event status.
+        message: Optional event message.
+        scope: COSMOS scope.
+
+    Returns:
+        The activity, or None if not found.
     """
     model = ActivityModel.score(name=name, score=int(start), uuid=uuid, scope=scope)
     if model is None:
@@ -207,7 +346,7 @@ def commit_timeline_activity(name, start, uuid, status, message=None, scope=OPEN
 _EPOCH_INT_RE = re.compile(r"\A-?\d+\Z")
 
 
-def _cal_to_epoch(value):
+def _cal_to_epoch(value: Any):
     """Convert a value to an epoch integer.
 
     Accepts int/float (treated as already-epoch), numeric strings, and
