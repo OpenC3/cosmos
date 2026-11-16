@@ -325,7 +325,7 @@ export default {
           if (this.pendingPreselect) {
             const target = this.pendingPreselect
             this.pendingPreselect = null
-            const hit = this.files.find(
+            const hit = this.files.some(
               (f) => f.name === target && f.icon === 'mdi-file',
             )
             if (hit) {

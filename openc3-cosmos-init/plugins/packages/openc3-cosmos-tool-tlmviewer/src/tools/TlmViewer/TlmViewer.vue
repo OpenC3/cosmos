@@ -406,10 +406,10 @@ export default {
       })
     },
     showScreen(target, screen) {
-      const def = this.definitions.find(
+      const isDefined = this.definitions.some(
         (def) => def.target == target && def.screen == screen,
       )
-      if (!def) {
+      if (!isDefined) {
         this.loadScreen(target, screen).then((response) => {
           if (!response || !response.data) return
           this.pushScreen({
