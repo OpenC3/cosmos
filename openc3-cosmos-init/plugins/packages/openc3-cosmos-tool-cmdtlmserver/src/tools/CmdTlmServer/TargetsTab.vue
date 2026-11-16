@@ -189,24 +189,27 @@ export default {
     if (this.enterprise) {
       // Check user permissions for cmd authority
       let roles = OpenC3Auth.userroles()
-      for (let role of roles) {
-        if (role == 'operator' || role == 'runner') {
+      if (roles.some((role) => role == 'operator' || role == 'runner')) {
+        this.cmdUser = true
+      } else {
+        // Custom roles - check permissions from backend in parallel
+        const customRoles = roles.filter(
+          (role) => role != 'viewer' && role != 'admin' && role != 'approver',
+        )
+        // allSettled so one failed lookup doesn't discard a cmd grant from another role
+        const results = await Promise.allSettled(
+          customRoles.map((role) => Api.get(`/openc3-api/roles/${role}`)),
+        )
+        if (
+          results.some(
+            (result) =>
+              result.status === 'fulfilled' &&
+              result.value.data?.permissions?.some(
+                (i) => i.permission == 'cmd',
+              ),
+          )
+        ) {
           this.cmdUser = true
-          break
-        } else if (role != 'viewer' && role != 'admin' && role != 'approver') {
-          // Custom role - check permissions from backend
-          await Api.get(`/openc3-api/roles/${role}`).then((response) => {
-            if (
-              response.data !== null &&
-              response.data.permissions !== undefined
-            ) {
-              if (
-                response.data.permissions.some((i) => i.permission == 'cmd')
-              ) {
-                this.cmdUser = true
-              }
-            }
-          })
         }
       }
       // Get the initial scope setting

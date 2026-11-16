@@ -187,25 +187,24 @@ shell_scripts.each do |rel_path|
   puts "Updated: #{full_path}"
 end
 
-gemfiles = [
-  'openc3-cosmos-cmd-tlm-api/Gemfile',
-  'openc3-cosmos-script-runner-api/Gemfile',
+# openc3 and both APIs resolve openc3 as a path gem, so each Gemfile.lock
+# records its version. Bundler's frozen install fails when that no longer
+# matches openc3.gemspec, so update the locks along with the gemspec.
+lockfiles = [
+  'openc3/Gemfile.lock',
+  'openc3-cosmos-cmd-tlm-api/Gemfile.lock',
+  'openc3-cosmos-script-runner-api/Gemfile.lock',
 ]
 
-gemfiles.each do |rel_path|
+lockfiles.each do |rel_path|
   full_path = File.join(base_path, rel_path)
   data = nil
   File.open(full_path, 'rb') do |file|
     data = file.read
   end
-  mod_data = ''
-  data.each_line do |line|
-    if line =~ /gem 'openc3'/ and line !~ /:path/
-      mod_data << "  gem 'openc3', '#{gem_version}'\n"
-    else
-      mod_data << line
-    end
-  end
+  raise "No openc3 path gem entry found in #{full_path}" unless data =~ /^    openc3 \(/
+
+  mod_data = data.gsub(/^    openc3 \([^)]*\)$/, "    openc3 (#{gem_version})")
   File.open(full_path, 'wb') do |file|
     file.write(mod_data)
   end

@@ -29,8 +29,11 @@ options = {
   tlm_packets: 2_000,
   tlm_items: 500_000,
   tlm_states: 2_000_000,
+  tlm_item1_states: 1000,
   cmd_packets: 2_000,
   cmd_params: 500_000,
+  cmd_states: 2_000_000,
+  cmd_param1_states: 1000,
   desc_min: 50,
   desc_max: 250,
   seed: 1234,
@@ -44,8 +47,11 @@ OptionParser.new do |opts|
   opts.on('--tlm-packets N', Integer, "Telemetry packets (default: #{options[:tlm_packets]})") { |v| options[:tlm_packets] = v }
   opts.on('--tlm-items N', Integer, "Total telemetry items (default: #{options[:tlm_items]})") { |v| options[:tlm_items] = v }
   opts.on('--tlm-states N', Integer, "Total telemetry states (default: #{options[:tlm_states]})") { |v| options[:tlm_states] = v }
+  opts.on('--tlm-item1-states N', Integer, "States on the first packet's ITEM1, replacing its share of --tlm-states (default: #{options[:tlm_item1_states]})") { |v| options[:tlm_item1_states] = v }
   opts.on('--cmd-packets N', Integer, "Command packets (default: #{options[:cmd_packets]})") { |v| options[:cmd_packets] = v }
   opts.on('--cmd-params N', Integer, "Total command parameters (default: #{options[:cmd_params]})") { |v| options[:cmd_params] = v }
+  opts.on('--cmd-states N', Integer, "Total command states (default: #{options[:cmd_states]})") { |v| options[:cmd_states] = v }
+  opts.on('--cmd-param1-states N', Integer, "States on the first command's PARAM1, replacing its share of --cmd-states (default: #{options[:cmd_param1_states]})") { |v| options[:cmd_param1_states] = v }
   opts.on('--desc-min N', Integer, "Min description length (default: #{options[:desc_min]})") { |v| options[:desc_min] = v }
   opts.on('--desc-max N', Integer, "Max description length (default: #{options[:desc_max]})") { |v| options[:desc_max] = v }
   opts.on('--seed N', Integer, "Random seed (default: #{options[:seed]})") { |v| options[:seed] = v }
@@ -96,10 +102,16 @@ File.write(File.join(target_dir, 'target.txt'), "LANGUAGE #{options[:language]}\
 start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
 # Telemetry: every packet starts with an ID item. States are spread evenly
-# over every item (ID items included) so the totals are exact.
+# over every item (ID items included), except the first packet's ITEM1 which
+# gets exactly --tlm-item1-states states. tlm_total_states is the real total.
 tlm_file = File.join(cmd_tlm_dir, 'tlm.txt')
 items_per_packet = distribute(options[:tlm_items], options[:tlm_packets])
 states_per_item = distribute(options[:tlm_states], options[:tlm_items])
+if items_per_packet[0] > 1
+  # Item index 1 is PKT0 ITEM1 (index 0 is PKT0's PKT_ID)
+  states_per_item[1] = options[:tlm_item1_states]
+end
+tlm_total_states = states_per_item.sum
 item_index = 0
 File.open(tlm_file, 'w') do |file|
   items_per_packet.each_with_index do |num_items, packet_index|
@@ -125,16 +137,38 @@ File.open(tlm_file, 'w') do |file|
   end
 end
 
-# Commands: every packet starts with an ID parameter. Packets and parameters
-# get the same random descriptions as telemetry.
+# Commands: every packet starts with an ID parameter. States are spread evenly
+# over every parameter (ID parameters included), except the first command's
+# PARAM1 which gets exactly --cmd-param1-states states. cmd_total_states is the
+# real total.
 cmd_file = File.join(cmd_tlm_dir, 'cmd.txt')
 params_per_packet = distribute(options[:cmd_params], options[:cmd_packets])
+states_per_param = distribute(options[:cmd_states], options[:cmd_params])
+if params_per_packet[0] > 1
+  # Parameter index 1 is CMD0 PARAM1 (index 0 is CMD0's OPCODE)
+  states_per_param[1] = options[:cmd_param1_states]
+end
+cmd_total_states = states_per_param.sum
+param_index = 0
 File.open(cmd_file, 'w') do |file|
   params_per_packet.each_with_index do |num_params, packet_index|
     file.puts "COMMAND #{target} CMD#{packet_index} BIG_ENDIAN \"#{description(options[:desc_min], options[:desc_max])}\""
-    file.puts "  APPEND_ID_PARAMETER OPCODE 16 UINT MIN MAX #{packet_index} \"#{description(options[:desc_min], options[:desc_max])}\""
-    (1...num_params).each do |i|
-      file.puts "  APPEND_PARAMETER PARAM#{i} 32 UINT MIN MAX 0 \"#{description(options[:desc_min], options[:desc_max])}\""
+    num_params.times do |i|
+      num_states = states_per_param[param_index]
+      param_index += 1
+      # Enough bits to hold a unique value for every state (and the opcode)
+      max_value = [num_states - 1, i == 0 ? packet_index : 0, 1].max
+      bit_size = [16, max_value.bit_length].max
+      bit_size = ((bit_size + 7) / 8) * 8
+      desc = description(options[:desc_min], options[:desc_max])
+      if i == 0
+        file.puts "  APPEND_ID_PARAMETER OPCODE #{bit_size} UINT MIN MAX #{packet_index} \"#{desc}\""
+      else
+        file.puts "  APPEND_PARAMETER PARAM#{i} #{bit_size} UINT MIN MAX 0 \"#{desc}\""
+      end
+      num_states.times do |state|
+        file.puts "    STATE S#{state} #{state}"
+      end
     end
     file.puts
   end
@@ -199,8 +233,10 @@ File.write(File.join(plugin_dir, 'README.md'), <<~README)
 
   Generated by `openc3/test/integration/cmd_tlm/#{File.basename(__FILE__)}`.
   Contains the #{options[:language]} target #{target} with #{options[:tlm_packets]} telemetry
-  packets (#{options[:tlm_items]} items, #{options[:tlm_states]} states) and
-  #{options[:cmd_packets]} command packets (#{options[:cmd_params]} parameters).
+  packets (#{options[:tlm_items]} items, #{tlm_total_states} states,
+  #{states_per_item[1]} on the first packet's ITEM1) and
+  #{options[:cmd_packets]} command packets (#{options[:cmd_params]} parameters, #{cmd_total_states} states,
+  #{states_per_param[1]} on the first command's PARAM1).
 
   Build from this directory with `rake build VERSION=1.0.0` (or
   `gem build #{plugin_name}.gemspec`) and install the resulting gem in COSMOS.
@@ -209,6 +245,8 @@ README
 elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
 puts "Generated #{options[:language]} plugin #{plugin_name} in #{elapsed.round(2)}s"
 puts "  #{tlm_file} (#{(File.size(tlm_file) / 1_048_576.0).round(1)} MB): " \
-     "#{options[:tlm_packets]} packets, #{options[:tlm_items]} items, #{options[:tlm_states]} states"
+     "#{options[:tlm_packets]} packets, #{options[:tlm_items]} items, #{tlm_total_states} states " \
+     "(#{states_per_item[1]} on PKT0 ITEM1)"
 puts "  #{cmd_file} (#{(File.size(cmd_file) / 1_048_576.0).round(1)} MB): " \
-     "#{options[:cmd_packets]} packets, #{options[:cmd_params]} parameters"
+     "#{options[:cmd_packets]} packets, #{options[:cmd_params]} parameters, #{cmd_total_states} states " \
+     "(#{states_per_param[1]} on CMD0 PARAM1)"

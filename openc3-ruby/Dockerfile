@@ -26,7 +26,7 @@ ARG PYPI_URL=https://pypi.org
 # plain-HTTP or self-signed mirror. Same switch the runtime uses for uv's
 # --allow-insecure-host. Build-time only: compose.yaml sets the runtime value.
 ARG OPENC3_PYPI_ALLOW_INSECURE=
-# Update Dockerfile-ubi and the python .github/workflow actions to match this version
+# Keep in step with Dockerfile-ubi and the uv group in openc3/python/pyproject.toml
 ARG OPENC3_UV_VERSION=0.13.5
 
 ENV APT_URL=${APT_URL}
@@ -120,9 +120,8 @@ RUN apt-get update && \
       unzip \
       vim && \
     gem update --system 3.7.2 && \
-    gem install rake && \
-    gem install google-protobuf && \
-    gem install grpc && \
+    # rake, grpc and google-protobuf come from each image's Gemfile.lock
+    # through bundle install, not from global installs here.
     # resolv 0.7.2 fixes CVE-2026-80212. Ruby ships resolv as a default gem
     # (0.7.1 in 3.4.10) and a default gem cannot be uninstalled,
     # so install the patched gem and then delete the default gemspec along with
