@@ -88,7 +88,7 @@ def inject_tlm(
     openc3.script.API_SERVER.inject_tlm(target_name, packet_name, item_hash, **kwargs)
 
 
-def set_tlm(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:
+def set_tlm(*args: Any, type: OverrideValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:
     """Set a telemetry item in the current value table.
 
     If COSMOS is receiving telemetry for the packet, the next packet can
@@ -104,7 +104,8 @@ def set_tlm(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE
     Args:
         *args: A single "TGT PKT ITEM = value" string, or the target, packet
             and item names followed by the value.
-        type: Value type to set: RAW, CONVERTED (default) or FORMATTED.
+        type: Value type to set: RAW, CONVERTED (default), FORMATTED, or ALL
+            to set every value type.
         scope: COSMOS scope.
     """
     if len(args) == 1:
