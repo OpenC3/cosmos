@@ -87,6 +87,14 @@ RSpec.describe RunningScript, type: :model do
       secret_client
     end
 
+    def spawn_service_account_script
+      RunningScript.spawn('DEFAULT', 'script.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m')
+    end
+
+    def spawn_named_script(username: 'testuser', user_full_name: 'Test User')
+      RunningScript.spawn('DEFAULT', 'script.rb', nil, false, nil, user_full_name, username)
+    end
+
     before do
       stub_child_process
     end
@@ -155,7 +163,7 @@ RSpec.describe RunningScript, type: :model do
       stub_secret_lookup(secret_name: 'cosmos-m2m', value: 'stored-m2m-secret')
       process_env = stub_child_process('OPENC3_KEYCLOAK_URL' => 'https://evil-keycloak')
 
-      RunningScript.spawn('DEFAULT', 'script.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m')
+      spawn_service_account_script
 
       expect(process_env['OPENC3_API_CLIENT']).to eq('cosmos-m2m')
       expect(process_env['OPENC3_API_CLIENT_SECRET']).to eq('stored-m2m-secret')
@@ -169,7 +177,7 @@ RSpec.describe RunningScript, type: :model do
       stub_secret_lookup(secret_name: nil, value: nil)
 
       expect {
-        RunningScript.spawn('DEFAULT', 'script.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m')
+        spawn_service_account_script
       }.to raise_error('Service-account client cosmos-m2m missing secret nil')
     end
 
@@ -178,7 +186,7 @@ RSpec.describe RunningScript, type: :model do
       stub_secret_lookup(secret_name: 'cosmos-m2m', value: nil)
 
       expect {
-        RunningScript.spawn('DEFAULT', 'script.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m')
+        spawn_service_account_script
       }.to raise_error('Service-account client cosmos-m2m missing secret cosmos-m2m')
     end
 
@@ -187,7 +195,7 @@ RSpec.describe RunningScript, type: :model do
       allow(OpenC3::OfflineAccessModel).to receive(:get_model).with(name: 'service-account-cosmos-m2m', scope: 'DEFAULT').and_return(nil)
 
       expect {
-        RunningScript.spawn('DEFAULT', 'script.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m')
+        spawn_service_account_script
       }.to raise_error('No durable machine authentication context available for service-account script service-account-cosmos-m2m')
     end
 
@@ -200,7 +208,7 @@ RSpec.describe RunningScript, type: :model do
       expect(OpenC3::ServiceAccountScriptAuthModel).not_to receive(:get_model)
       allow(OpenC3::OfflineAccessModel).to receive(:get_model).with(name: "testuser", scope: "DEFAULT").and_return(model_double)
 
-      RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
+      spawn_named_script
 
       expect(process_env["OPENC3_API_TOKEN"]).to eq("valid_token")
       expect(process_env["OPENC3_API_CLIENT_SECRET"]).to be_nil
@@ -214,7 +222,7 @@ RSpec.describe RunningScript, type: :model do
       allow(OpenC3::OpenC3KeycloakAuthentication).to receive(:new).and_return(auth_double)
       allow(OpenC3::OfflineAccessModel).to receive(:get_model).with(name: "testuser", scope: "DEFAULT").and_return(model_double)
 
-      RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
+      spawn_named_script
 
       expect(process_env["OPENC3_API_TOKEN"]).to eq("valid_token")
     end
