@@ -29,6 +29,7 @@ require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
 require 'openc3/utilities/python_venv'
+require 'openc3/utilities/script_env'
 require 'openc3/models/offline_access_model'
 require 'openc3/models/environment_model'
 require 'openc3/models/script_engine_model'
@@ -100,6 +101,9 @@ module OpenC3
       prompt_for_critical_cmd metadata_input open_file_dialog open_files_dialog open_bucket_dialog]
     SCRIPT_METHODS.each do |method|
       define_method(method) do |*args, **kwargs|
+        if method == :metadata_input
+          OpenC3.deprecation_warning("`metadata_input` is deprecated. Please use the user input methods followed by `inject_tlm` instead.", uplevel: 1)
+        end
         while true
           if RunningScript.instance
             RunningScript.instance.scriptrunner_puts("#{method}(#{args.join(', ')})")
@@ -522,6 +526,7 @@ class RunningScript
 
       # Set proper secrets for running script
       process.environment['SECRET_KEY_BASE'] = nil
+      OpenC3::ScriptEnv.remove_unused(process.environment)
       process.environment['OPENC3_REDIS_USERNAME'] = ENV.fetch('OPENC3_SR_REDIS_USERNAME', nil)
       process.environment['OPENC3_REDIS_PASSWORD'] = ENV.fetch('OPENC3_SR_REDIS_PASSWORD', nil)
       process.environment['OPENC3_BUCKET_USERNAME'] = ENV.fetch('OPENC3_SR_BUCKET_USERNAME', nil)

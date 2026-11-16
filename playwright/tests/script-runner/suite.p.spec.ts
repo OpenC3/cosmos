@@ -143,12 +143,14 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
   // Open the file
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await expect(page.getByText('INST2', { exact: true })).toBeVisible()
+  await expect(
+    page.locator('.v-dialog').getByText('INST2', { exact: true }),
+  ).toBeVisible()
   await page
     .locator('[data-test=file-open-save-search] input')
     .fill('my_script_suite.rb')
-  await expect(page.locator('text=my_script_suite')).toBeVisible()
-  await page.locator('text=my_script_suite').click()
+  await expect(page.locator('.v-dialog >> text=my_script_suite')).toBeVisible()
+  await page.locator('.v-dialog >> text=my_script_suite').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/my_script_suite.rb`,
@@ -181,12 +183,14 @@ test('loads Suite controls when opening a suite', async ({ page, utils }) => {
   // Verify Suite controls go away when loading a normal script
   await page.locator('[data-test=script-runner-file]').click()
   await page.locator('text=Open File').click()
-  await expect(page.getByText('INST2', { exact: true })).toBeVisible()
+  await expect(
+    page.locator('.v-dialog').getByText('INST2', { exact: true }),
+  ).toBeVisible()
   await page
     .locator('[data-test=file-open-save-search] input')
     .fill('disconnect.rb')
-  await expect(page.locator('text=disconnect')).toBeVisible()
-  await page.locator('text=disconnect').click()
+  await expect(page.locator('.v-dialog >> text=disconnect')).toBeVisible()
+  await page.locator('.v-dialog >> text=disconnect').click()
   await page.locator('[data-test=file-open-save-submit-btn]').click()
   await expect(page.locator('#sr-controls')).toContainText(
     `INST/procedures/disconnect.rb`,

@@ -60,6 +60,33 @@ module OpenC3
     end
   end
 
+  describe "self.deprecation_warning" do
+    it "writes a prefixed message to stderr" do
+      expect { OpenC3.deprecation_warning("`foo` is deprecated.") }.to output("[DEPRECATION] `foo` is deprecated.\n").to_stderr
+    end
+
+    # Script Runner evaluates scripts inside disable_warnings, which turns Kernel#warn into a no-op
+    it "writes even when Ruby warnings are disabled" do
+      OpenC3.disable_warnings do
+        expect { OpenC3.deprecation_warning("`foo` is deprecated.") }.to output(/\[DEPRECATION\] `foo` is deprecated/).to_stderr
+      end
+    end
+
+    it "writes even when the :deprecated warning category is disabled" do
+      orig_deprecated = Warning[:deprecated]
+      Warning[:deprecated] = false
+      expect { OpenC3.deprecation_warning("`foo` is deprecated.") }.to output(/\[DEPRECATION\] `foo` is deprecated/).to_stderr
+    ensure
+      Warning[:deprecated] = orig_deprecated
+    end
+
+    it "prefixes the caller's location with uplevel" do
+      deprecated_method = -> { OpenC3.deprecation_warning("`foo` is deprecated.", uplevel: 1) }
+      line = __LINE__ + 1
+      expect { deprecated_method.call }.to output("#{__FILE__}:#{line}: [DEPRECATION] `foo` is deprecated.\n").to_stderr
+    end
+  end
+
   describe "self.add_to_search_path" do
     it "adds a directory to the Ruby search path" do
       if Kernel.is_windows?

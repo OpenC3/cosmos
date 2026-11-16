@@ -17,12 +17,15 @@
 
 <template>
   <div>
-    <v-overlay :model-value="showUserMenu" class="overlay" />
+    <!-- The scrim belongs to the menu, as in Notifications.vue: a separate
+         v-overlay is a second entry in Vuetify's overlay stack, and when it
+         is on top, taps outside the menu go to it and nothing closes -->
     <v-menu
       v-model="showUserMenu"
       transition="slide-y-transition"
       :close-on-content-click="false"
       :offset="20"
+      scrim
     >
       <template #activator="{ props }">
         <rux-monitoring-icon
@@ -30,8 +33,8 @@
           class="rux-icon"
           icon="person"
           status="off"
-          :label="name"
-          :sublabel="roles()"
+          :label="compact ? '' : name"
+          :sublabel="compact ? '' : roles()"
           :notifications="unreadNews.length"
         ></rux-monitoring-icon>
       </template>
@@ -89,6 +92,7 @@
           <v-list
             lines="two"
             width="420"
+            max-width="calc(100vw - 24px)"
             max-height="75vh"
             class="overflow-y-auto"
             data-test="news-list"
@@ -133,6 +137,8 @@ export default {
       type: [String, Number],
       default: 26,
     },
+    // Icon only, without the labels under it (the mobile app bar)
+    compact: Boolean,
   },
   data: function () {
     let user = OpenC3Auth.user()
@@ -280,10 +286,6 @@ export default {
 }
 .link {
   cursor: pointer;
-}
-.overlay {
-  height: 100vh;
-  width: 100vw;
 }
 .user-title {
   font-weight: bold;

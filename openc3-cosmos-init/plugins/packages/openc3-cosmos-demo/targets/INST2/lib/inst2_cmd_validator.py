@@ -9,7 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-from openc3.packets.command_validator import CommandValidator
+from openc3.packets.command_validator import CommandValidator, CommandValidatorResult
 from openc3.api import *
 
 
@@ -17,23 +17,23 @@ class Inst2CmdValidator(CommandValidator):
     def pre_check(self, command):
         # Record the current value of CMD_ACPT_CNT for comparison in post_check
         self.cmd_acpt_cnt = tlm("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT")
-        return [True, None]
+        return CommandValidatorResult(True, None)
 
     def post_check(self, command):
         if command.packet_name == "TIME_OFFSET":
             # Return Failure with a message
-            return [False, "TIME_OFFSET failure description"]
+            return CommandValidatorResult(False, "TIME_OFFSET failure description")
         if command.packet_name == "MEMLOAD":
             # Return Unknown with a message
-            return [None, "MEMLOAD validation unknown"]
+            return CommandValidatorResult(None, "MEMLOAD validation unknown")
         if command.packet_name == "CLEAR":
             wait_check("<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT == 0", 10)
             # Return Success with a message
-            return [True, "CMD_ACPT_CNT cleared"]
+            return CommandValidatorResult(True, "CMD_ACPT_CNT cleared")
         else:
             wait_check(
                 f"<%= target_name %> HEALTH_STATUS CMD_ACPT_CNT > {self.cmd_acpt_cnt}",
                 10,
             )
             # Return Success without a message
-            return [True, None]
+            return CommandValidatorResult(True, None)

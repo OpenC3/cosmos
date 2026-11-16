@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -87,25 +87,8 @@ export default {
     this.label = this.parameters[1]
     this.subLabel = this.parameters[2]
 
-    // This was an attempt at dynamically importing the rux icon they requested.
-    // However, webpack looks at the import line and tries to process all the files.
-    // Good discussion here: https://github.com/webpack/webpack/issues/6680
-    // and here: https://github.com/webpack/webpack/issues/4175
-    // Perhaps there's a way to ignore stuff but we'd still be importing ALL
-    // the files which is a LOT. Instead we just import all the icons we need in
-    // openc3-cosmos-init/plugins/openc3-tool-base/src/plugins/vuetify.js
-
-    // import(
-    //   `@astrouxds/astro-web-components/dist/components/rux-icon-${this.icon}`
-    // ).then((module) => {
-    //   // First key of the module is the name of the class
-    //   let name = Object.keys(module)[0]
-    //   try {
-    //     customElements.define(`rux-icon-${this.icon}`, module[name])
-    //   } catch (e) {
-    //     // Catch the fact that the icon probably already exists and move on
-    //   }
-    // })
+    // Supported icons are imported in openc3-cosmos-init/plugins/openc3-vue-common/src/plugins/vuetify.js
+    // Dynamic importing as requested was attempted, but this caused webpack to process too many files
 
     this.appliedSettings.forEach((setting) => {
       switch (setting[0].toUpperCase()) {

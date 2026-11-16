@@ -54,6 +54,7 @@ _openc3_log_stderr = "OPENC3_LOG_STDERR"
 # The following variables are only used with COSMOS Enterprise
 _openc3_api_user = "OPENC3_API_USER"
 _openc3_api_client = "OPENC3_API_CLIENT"
+_openc3_api_client_secret = "OPENC3_API_CLIENT_SECRET"
 _openc3_api_token = "OPENC3_API_TOKEN"
 _openc3_keycloak_realm = "OPENC3_KEYCLOAK_REALM"
 _openc3_keycloak_url = "OPENC3_KEYCLOAK_URL"
@@ -161,6 +162,7 @@ OPENC3_LOG_LEVEL = os.environ.get(_openc3_log_level, "INFO")
 OPENC3_NO_STORE = os.environ.get(_openc3_no_store)
 OPENC3_API_USER = os.environ.get(_openc3_api_user)
 OPENC3_API_CLIENT = os.environ.get(_openc3_api_client, "api")
+OPENC3_API_CLIENT_SECRET = os.environ.get(_openc3_api_client_secret)
 OPENC3_API_TOKEN = os.environ.get(_openc3_api_token)
 OPENC3_KEYCLOAK_REALM = os.environ.get(_openc3_keycloak_realm, "openc3")
 OPENC3_KEYCLOAK_URL = os.environ.get(_openc3_keycloak_url, "http://openc3-keycloak/auth")

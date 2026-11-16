@@ -26,6 +26,7 @@ export default defineConfig([
 
     rules: {
       '@typescript-eslint/no-floating-promises': 'error',
+      '@typescript-eslint/prefer-optional-chain': 'error',
     },
   },
 ])

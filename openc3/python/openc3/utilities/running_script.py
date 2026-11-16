@@ -11,6 +11,7 @@
 
 import glob
 import os
+import warnings
 
 from openc3.models.script_status_model import ScriptStatusModel
 from openc3.script.storage import (
@@ -179,6 +180,14 @@ SCRIPT_METHODS = [
 
 
 def running_script_method(method, *args, **kwargs):
+    if method == "metadata_input":
+        # stacklevel=3 skips this function and the generated wrapper to point at the script
+        warnings.warn(
+            "metadata_input is deprecated, use the user input methods followed by inject_tlm. "
+            "See https://docs.openc3.com/docs/guides/metadata",
+            FutureWarning,
+            stacklevel=3,
+        )
     while True:
         if RunningScript.instance:
             str_args = []

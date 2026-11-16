@@ -18,6 +18,7 @@
 require 'tempfile'
 require 'openc3/utilities/target_file'
 require 'openc3/utilities/python_venv'
+require 'openc3/utilities/script_env'
 require 'openc3/utilities/running_script'
 require 'openc3/script/suite'
 require 'openc3/script/suite_runner'
@@ -118,6 +119,7 @@ class Script < OpenC3::TargetFile
 
       # Set proper secrets for running script
       process.environment['SECRET_KEY_BASE'] = nil
+      OpenC3::ScriptEnv.remove_unused(process.environment)
       process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME'] || 'OPENC3_SR_REDIS_USERNAME not set'
       process.environment['OPENC3_REDIS_PASSWORD'] = ENV['OPENC3_SR_REDIS_PASSWORD'] || 'OPENC3_SR_REDIS_PASSWORD not set'
       process.environment['OPENC3_BUCKET_USERNAME'] = ENV['OPENC3_SR_BUCKET_USERNAME'] || 'OPENC3_SR_BUCKET_USERNAME not set'

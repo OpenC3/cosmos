@@ -561,6 +561,71 @@ module OpenC3
       include_examples 'standard help/arg behavior', 'widget'
     end
 
+    describe "generate panel" do
+      before(:each) do
+        run_gen(['plugin', 'panel-test', '--ruby'])
+      end
+
+      it "generates a panel without a language flag" do
+        result = run_gen(['panel', 'BatteryPanel'])
+        expect(result).to eql('BatteryPanel')
+        expect(File.exist?('src/BatteryPanel.js')).to be true
+        expect(File.exist?('src/BatteryPanel.vue')).to be true
+        expect(File.exist?('src/panelSdk.js')).to be true
+        expect(File.exist?('vite-BatteryPanel.config.js')).to be true
+        expect(File.read('vite-BatteryPanel.config.js')).to include("outDir: 'tools/panels/BATTERY'")
+        package = JSON.parse(File.read('package.json'))
+        expect(package['scripts']['build']).to eql('vite build -c vite-BatteryPanel.config.js')
+
+        plugin_txt = File.read('plugin.txt')
+        expect(plugin_txt).to include('PANEL BATTERY')
+      end
+
+      it "adds a second panel to the existing build" do
+        run_gen(['panel', 'BatteryPanel'])
+        sdk = File.read('src/panelSdk.js')
+        run_gen(['panel', 'SolarPanel'])
+        expect(File.read('src/panelSdk.js')).to eql(sdk)
+        package = JSON.parse(File.read('package.json'))
+        expect(package['scripts']['build']).to eql('vite build -c vite-BatteryPanel.config.js && vite build -c vite-SolarPanel.config.js')
+        expect(package['devDependencies']).to include('vite', 'vue', '@vitejs/plugin-vue')
+
+        plugin_txt = File.read('plugin.txt')
+        expect(plugin_txt).to include('PANEL BATTERY')
+        expect(plugin_txt).to include('PANEL SOLAR')
+      end
+
+      include_examples 'ignores language flag with warning',
+                       ['panel', 'BatteryPanel', '--python'],
+                       %r{--ruby/--python is ignored for the panel generator}
+
+      it "rejects panel names without Panel suffix" do
+        expect { run_gen(['panel', 'Battery']) }
+          .to raise_error(SystemExit)
+      end
+
+      it "rejects panel names that don't start with uppercase" do
+        expect { run_gen(['panel', 'batteryPanel']) }
+          .to raise_error(SystemExit)
+      end
+
+      it "prevents duplicate panel generation" do
+        run_gen(['panel', 'BatteryPanel'])
+        expect { run_gen(['panel', 'BatteryPanel']) }
+          .to raise_error(SystemExit)
+      end
+
+      it "rejects regeneration when plugin.txt already lists the panel" do
+        run_gen(['panel', 'BatteryPanel'])
+        FileUtils.rm_f(['src/BatteryPanel.js', 'src/BatteryPanel.vue', 'vite-BatteryPanel.config.js'])
+        expect { run_gen(['panel', 'BatteryPanel']) }
+          .to raise_error(SystemExit)
+        expect(File.read('plugin.txt').scan(/^PANEL\s+BATTERY\b/).size).to eq(1)
+      end
+
+      include_examples 'standard help/arg behavior', 'panel'
+    end
+
     describe "generate tool" do
       before(:each) do
         run_gen(['plugin', 'tool-test', '--ruby'])
