@@ -692,8 +692,10 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
     ) -> list[Any]:
         """Read all data until the end marker is received.
 
-        Omitting end_time streams realtime and endlessly: no end marker is ever
-        sent, so a timeout is the only way the collection ends on its own.
+        Omitting end_time streams realtime with no end marker. The collection
+        then ends only when ``timeout`` passes, the server closes the
+        connection, or the stream's ``read_timeout`` expires with no frame of
+        any kind.
 
         Warning: DATA IS STORED IN RAM. Do not use this with large queries.
 
@@ -713,8 +715,8 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             The data entries from every batch received.
 
         Raises:
-            RuntimeError: If end_time is given and the socket closes before the
-                end marker.
+            RuntimeError: If end_time is given and the socket closes, or the
+                stream's ``read_timeout`` expires, before the end marker.
         """
         read_all_start_time = time.time()
         data = []
