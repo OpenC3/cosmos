@@ -111,15 +111,33 @@ async function clearOverrides() {
       ]),
     ).values(),
   ]
+  // normalize_tlm read-modify-writes the whole override hash for a packet with
+  // no lock, so overlapping calls for the same packet can restore each other's
+  // removals. Serialize per target/packet and run different packets in parallel.
+  const byPacket = new Map()
+  for (const item of items) {
+    const key = `${item.target_name}__${item.packet_name}`
+    if (!byPacket.has(key)) byPacket.set(key, [])
+    byPacket.get(key).push(item)
+  }
   await Promise.allSettled(
-    items.map((item) =>
-      api.normalize_tlm(
-        item.target_name,
-        item.packet_name,
-        item.item_name,
-        'ALL',
-      ),
-    ),
+    [...byPacket.values()].map(async (packetItems) => {
+      for (const item of packetItems) {
+        try {
+          // Sequential on purpose, see above
+          // eslint-disable-next-line no-await-in-loop
+          await api.normalize_tlm(
+            item.target_name,
+            item.packet_name,
+            item.item_name,
+            'ALL',
+          )
+        } catch {
+          // Keep going so one failure doesn't skip the rest; the reload below
+          // shows whatever is still overridden
+        }
+      }
+    }),
   )
   // Reload from backend so failed requests still show
   await getOverrides()
@@ -132,8 +150,18 @@ async function deleteOverride(item) {
     item.item_name,
     item.value_type,
   )
-  const index = overrides.value.indexOf(item)
-  overrides.value.splice(index, 1)
+  // The list may have been reloaded while waiting, so find the current row by
+  // key instead of object identity
+  const index = overrides.value.findIndex(
+    (row) =>
+      row.target_name === item.target_name &&
+      row.packet_name === item.packet_name &&
+      row.item_name === item.item_name &&
+      row.value_type === item.value_type,
+  )
+  if (index >= 0) {
+    overrides.value.splice(index, 1)
+  }
 }
 
 onMounted(async () => {
