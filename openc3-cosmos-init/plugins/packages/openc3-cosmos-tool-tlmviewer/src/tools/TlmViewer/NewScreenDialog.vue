@@ -171,18 +171,15 @@ export default {
       } else {
         this.newScreenName = value.toLowerCase()
         this.duplicateScreenAlert =
-          this.screens[this.selectedTarget] &&
-          this.screens[this.selectedTarget].includes(
+          this.screens[this.selectedTarget]?.includes(
             this.newScreenName.toUpperCase(),
-          )
+          ) ?? false
       }
     },
     newScreenName: function (value) {
       this.duplicateScreenAlert =
-        this.screens[this.selectedTarget] &&
-        this.screens[this.selectedTarget].includes(
-          this.newScreenName.toUpperCase(),
-        )
+        this.screens[this.selectedTarget]?.includes(value.toUpperCase()) ??
+        false
     },
   },
   created() {
