@@ -307,6 +307,7 @@ module OpenC3
       end
 
       it "ignores saved numeric settings for items with change limits" do
+        limits = nil
         limits = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("TEMP1").limits
         limits.change_type = :SEQUENCE
         numeric = { 'red_low' => -50.0, 'yellow_low' => -40.0, 'yellow_high' => 40.0, 'red_high' => 50.0 }
@@ -319,7 +320,7 @@ module OpenC3
         expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
         expect(System.limits.get("INST", "HEALTH_STATUS", "TEMP3")[1..6]).to eql [2, true, -50.0, -40.0, 40.0, 50.0]
       ensure
-        limits.change_type = nil
+        limits&.change_type = nil
       end
     end
 
