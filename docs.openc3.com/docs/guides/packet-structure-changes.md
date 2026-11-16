@@ -44,7 +44,7 @@ For each packet, COSMOS builds the set of desired columns from the current defin
 | Column exists with the expected type  | Nothing                                 |
 | Column exists but item no longer does | Nothing -- the column is left in place  |
 
-A failure on one column is logged and reconciliation continues with the remaining columns, so a single problematic item does not block the rest of the packet. If any change was applied, COSMOS waits briefly for QuestDB to apply the (asynchronous) `ALTER` and reconnects the ILP ingest sender so it drops its cached schema.
+A failure on one column is logged and reconciliation continues with the remaining columns, so a single problematic item does not block the rest of the packet. If any change was applied, COSMOS waits briefly for QuestDB to apply the (asynchronous) `ALTER` and reconnects the ingest sender so it drops its cached schema.
 
 ## Adding an Item
 
@@ -116,7 +116,7 @@ A warning is logged when a table name is changed this way. Two item names that d
 
 ## Recovering a Dropped Table
 
-If a table is dropped out from under a running system, the next ILP write fails. COSMOS detects the "table does not exist" error, recreates the table from the current packet definition with the correct designated timestamp and partitioning, and replays the buffered rows. ILP auto-creation is deliberately disabled so QuestDB cannot create a schema-less table with the wrong timestamp column.
+If a table is dropped out from under a running system, the next write to it fails. COSMOS detects the missing table error, recreates the table from the current packet definition with the correct designated timestamp and partitioning, and replays the buffered rows. Table auto-creation is deliberately disabled so QuestDB cannot create a schema-less table with the wrong timestamp column. Over QWP, QuestDB retries the write for several seconds before reporting the missing table, so recovery takes about 5 seconds.
 
 The recreated table only has the rows that were still buffered. Everything the dropped table held is gone unless you restore it from a [backup](/docs/guides/backups) or reingest it from the binary log files.
 
