@@ -218,7 +218,9 @@ export default {
       const reserved = new Set(['cached', 'shared'])
       // Cached first, then plugin venvs sorted, then shared last
       const cached = names.filter((k) => k === 'cached')
-      const plugins = names.filter((k) => !reserved.has(k)).sort()
+      const plugins = names
+        .filter((k) => !reserved.has(k))
+        .sort((a, b) => a.localeCompare(b))
       const shared = names.filter((k) => k === 'shared')
       return [...cached, ...plugins, ...shared]
     },

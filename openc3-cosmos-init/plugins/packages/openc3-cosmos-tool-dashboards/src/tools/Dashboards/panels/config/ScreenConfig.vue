@@ -322,7 +322,7 @@ async function create() {
     screens.value[newTarget] = [
       ...(screens.value[newTarget] || []),
       screenName,
-    ].sort()
+    ].sort((a, b) => a.localeCompare(b))
     target.value = newTarget
     emit('update', {
       screen: { targetName: newTarget, screenName },

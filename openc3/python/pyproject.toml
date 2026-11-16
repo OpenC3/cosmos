@@ -79,6 +79,12 @@ dev = [
     "ruff==0.16.8",
     "ty==0.0.81",
 ]
+# The uv release CI runs. It is never installed: the group is not in uv's
+# default-groups, so plain `uv sync` skips it. It exists so the pin sits where
+# dependabot's uv ecosystem raises it, and setup-uv reads it from here through
+# .github/actions/setup-uv-python's version-file. Keep OPENC3_UV_VERSION in
+# openc3-ruby/Dockerfile and Dockerfile-ubi in step.
+uv = ["uv==0.13.5"]
 
 [build-system]
 requires = ["setuptools>=61.0.0", "wheel"]

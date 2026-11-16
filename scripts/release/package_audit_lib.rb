@@ -1570,10 +1570,6 @@ end
 # Gemfile constraint blocks the bump, so `bundle update <gem>` becomes a no-op
 # and the user thinks acceptance did nothing.
 #
-# The openc3-cosmos-cmd-tlm-api / -script-runner-api Gemfiles depend on the
-# local `openc3` gem via ENV['OPENC3_PATH'] (falling back to a rubygems version
-# that may not exist yet), so we point OPENC3_PATH at the openc3/ directory in
-# this repo for every bundle call.
 # Pass the same `approved` hash across calls to auto-approve gems already
 # accepted in an earlier directory (keyed by "name installed newest"), so overlapping
 # gems in cmd-tlm-api and script-runner-api are only prompted once.
@@ -1581,7 +1577,7 @@ def update_outdated_gems(dir, extra_env = {}, approved: {})
   label = dir.sub(ROOT_DIR + '/', '')
   puts "\nChecking outdated gems in #{label}:"
   updated = 0
-  env = { 'OPENC3_PATH' => File.join(ROOT_DIR, 'openc3') }.merge(extra_env)
+  env = extra_env
   Dir.chdir(dir) do
     system(env, 'bundle install') unless File.exist?('Gemfile.lock')
 

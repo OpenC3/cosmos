@@ -1067,6 +1067,7 @@ export default {
         }
         count += 1
         if (count % 1000 == 0) {
+          // eslint-disable-next-line no-await-in-loop -- yield to the event loop every 1000 rows so the UI stays responsive
           await this.yieldToMain()
         }
       }

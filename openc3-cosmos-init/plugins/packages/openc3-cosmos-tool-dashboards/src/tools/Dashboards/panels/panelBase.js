@@ -84,10 +84,7 @@ export function usePanel(props, options = {}) {
     poller.register(pollKeys.value)
     // The poller is outside Vue, so keep its registrations in step by hand.
     // A new panel config (items) comes in as a new prop, with no event.
-    watch(pollKeys, (newKeys, oldKeys) => {
-      poller.unregister(oldKeys)
-      poller.register(newKeys)
-    })
+    watch(pollKeys, (newKeys, oldKeys) => poller.replace(oldKeys, newKeys))
     // The grid reads the computed itself, so it stays current
     if (panelLevels) panelLevels[props.panel.uid] = panelLevel
   })
