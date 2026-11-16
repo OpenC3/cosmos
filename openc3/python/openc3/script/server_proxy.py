@@ -41,7 +41,12 @@ class ApiServerProxy:
         return float(OPENC3_API_TIMEOUT)
 
     def generate_auth(self):
-        """Build the standard OpenC3 authentication object from environment configuration."""
+        """Build the standard OpenC3 authentication object from environment configuration.
+
+        Returns:
+            object | None: The configured authentication object, or ``None``
+            when no credentials are present.
+        """
         return authentication_from_environment()
 
     def __init__(self):

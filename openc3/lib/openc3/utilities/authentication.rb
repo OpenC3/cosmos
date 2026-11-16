@@ -184,7 +184,6 @@ module OpenC3
       end
       log_data.inspect
     end
-
     # Make the token and save token to instance
     def _make_token(current_time, openid_scope: 'openid')
       client_id = ENV['OPENC3_API_CLIENT'] || 'api'
@@ -275,12 +274,14 @@ module OpenC3
   end
 
   # Build the appropriate authentication object from standard environment variables.
-  def self.authentication_from_environment
+  def self.authentication_from_environment(raise_if_missing: false)
     client_secret = ENV.fetch('OPENC3_API_CLIENT_SECRET', nil)
     if ENV['OPENC3_API_TOKEN'] || ENV['OPENC3_API_USER'] || (client_secret && !client_secret.empty?)
-      OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
-    elsif ENV['OPENC3_API_PASSWORD']
-      OpenC3Authentication.new()
+      return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
     end
+    return OpenC3Authentication.new() if ENV['OPENC3_API_PASSWORD']
+    raise "Environment Variables Not Set for Authentication" if raise_if_missing
+
+    nil
   end
 end

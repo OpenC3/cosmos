@@ -92,7 +92,12 @@ class JsonApi:
 
     @staticmethod
     def _generate_auth():
-        """Build the standard OpenC3 authentication object from environment configuration."""
+        """Build the standard OpenC3 authentication object from environment configuration.
+
+        Returns:
+            object | None: The configured authentication object, or ``None``
+            when no credentials are present.
+        """
         return authentication_from_environment()
 
     def _request(self, *method_params, **kw_params):

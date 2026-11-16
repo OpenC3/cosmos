@@ -18,7 +18,10 @@ from requests import Session
 from requests.exceptions import ReadTimeout
 
 from openc3.environment import OPENC3_API_READ_TIMEOUT
-from openc3.utilities.authentication import OpenC3Authentication, authentication_from_environment
+from openc3.utilities.authentication import (
+    OpenC3Authentication,
+    authentication_from_environment,
+)
 from openc3.utilities.logger import Logger
 
 
@@ -85,7 +88,12 @@ class JsonApiObject:
 
     @staticmethod
     def generate_auth():
-        """Build the standard OpenC3 authentication object from environment configuration."""
+        """Build the standard OpenC3 authentication object from environment configuration.
+
+        Returns:
+            OpenC3Authentication | None: The configured authentication object,
+            or ``None`` when no credentials are present.
+        """
         return authentication_from_environment()
 
     def request(self, *method_params, **keyword_params):

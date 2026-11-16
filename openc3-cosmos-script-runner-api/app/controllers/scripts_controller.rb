@@ -20,6 +20,7 @@ require 'openc3/utilities/script'
 require 'openc3/utilities/config_overlay'
 require 'openc3/models/setting_model'
 require 'openc3/models/target_model'
+require 'openc3/utilities/service_account_script_auth'
 
 class ScriptsController < ApplicationController
   # This REGEX is also found in running_script.rb
@@ -247,7 +248,11 @@ class ScriptsController < ApplicationController
     disconnect = params[:disconnect] == 'disconnect'
     environment = params[:environment]
     python_venv = params[:pythonVenv]
-    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), username(), line_no, end_line_no, python_venv)
+    current_username = username()
+    if OpenC3::ServiceAccountScriptAuth.service_account_username?(current_username)
+      persist_service_account_script_auth_context(scope: scope, current_username: current_username)
+    end
+    running_script_id = Script.run(scope, name, suite_runner, disconnect, environment, user_full_name(), current_username, line_no, end_line_no, python_venv)
     if running_script_id
       OpenC3::Logger.info("Script started: #{name}", scope: scope, user: username())
       render plain: running_script_id.to_s
@@ -398,6 +403,17 @@ class ScriptsController < ApplicationController
       return "Invalid method: #{method.inspect}"
     end
     nil
+  end
+
+  def persist_service_account_script_auth_context(scope:, current_username:)
+    token = OpenC3::ServiceAccountScriptAuth.bearer_token_from_header(request.headers['HTTP_AUTHORIZATION'])
+    return unless token
+
+    OpenC3::ServiceAccountScriptAuth.persist_service_account_script_auth_context(
+      scope: scope,
+      username: current_username,
+      token: token,
+    )
   end
 
   # Whether the Script Lifecycle feature is active: the Admin/Settings flag is

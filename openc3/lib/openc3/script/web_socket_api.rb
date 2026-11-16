@@ -246,10 +246,7 @@ module OpenC3
 
     # Generate the appropriate token for OpenC3.
     def generate_auth
-      authentication = OpenC3.authentication_from_environment
-      raise "Environment Variables Not Set for Authentication" unless authentication
-
-      authentication
+      OpenC3.authentication_from_environment(raise_if_missing: true)
     end
   end
 
