@@ -92,7 +92,7 @@ spec = Gem::Specification.new do |s|
   s.add_runtime_dependency 'argon2',    '~> 2.3'
   # faraday includes faraday-net_http as the default adapter
   s.add_runtime_dependency 'aws-sdk-s3', '< 2'
-  s.add_runtime_dependency 'cbor', '~> 0.5.10'
+  s.add_runtime_dependency 'cbor', '>= 0.5.10', '< 0.7.0'
   s.add_runtime_dependency 'childprocess', '~> 5.0'
   s.add_runtime_dependency 'connection_pool', '~> 3.0'
   s.add_runtime_dependency 'faraday',   '~> 2.7'
