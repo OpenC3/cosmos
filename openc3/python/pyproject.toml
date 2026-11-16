@@ -83,16 +83,24 @@ dev = [
 # default-groups, so plain `uv sync` skips it. It exists so the pin sits where
 # dependabot's uv ecosystem raises it, and setup-uv reads it from here through
 # .github/actions/setup-uv-python's version-file. Keep OPENC3_UV_VERSION in
-# openc3-ruby/Dockerfile and Dockerfile-ubi in step.
+# openc3-ruby/Dockerfile and Dockerfile-ubi, and the uv_build range in
+# [build-system] below, in step.
 uv = ["uv==0.13.5"]
 
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
+# uv builds the project itself, with no build environment or download, so the
+# image build and the release need nothing from the index for openc3. Move the
+# range with the uv group above; uv warns on every build when it falls outside.
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
 
-[tool.setuptools.packages.find]
-# Matches the openc3pycli package too
-include = ["openc3*"]
+[tool.uv.build-backend]
+# Flat layout: the packages sit next to pyproject.toml rather than under src/.
+module-root = ""
+# openc3pycli stays outside openc3 so it runs before openc3/__init__.py; see
+# its docstring.
+module-name = ["openc3", "openc3pycli"]
+source-include = ["examples/**"]
 
 [tool.ruff]
 # Line length to match Black
