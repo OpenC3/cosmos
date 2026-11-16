@@ -259,13 +259,13 @@ file. See `docs.openc3.com/CLAUDE.md` for the docs build and
 
 ## Release Notes
 
-When a change needs an upgrade step, changes a file users keep a copy of in
-their project (`compose.yaml`, `.env`, `openc3-redis/users.acl`), changes
-behavior that custom plugins, tools, or scripts depend on, or removes a feature,
-write the user-facing note under "Release notes" in the PR description (see
-`.github/pull_request_template.md`) and add the `release-notes` label. Release
-notes are written from these at release time, so a missing note means users
-don't learn about the change.
+Fill in the "Release notes" section of the PR description
+(`.github/pull_request_template.md`): one or two plain-language sentences for
+users, or "None" for changes users won't notice. When users must act on
+upgrade (a migration, a change to a file they keep a copy of such as
+`compose.yaml`, `.env`, or `openc3-redis/users.acl`, a behavior change that
+custom plugins, tools, or scripts depend on, or a removal), say exactly what
+to do. The `release-notes` skill builds the release notes from these sections.
 
 ## Commit Messages
 
