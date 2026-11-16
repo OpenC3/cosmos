@@ -301,6 +301,7 @@ module OpenC3
 
       context "with change limits" do
         def parse_limits(item_def, *limits_lines)
+          tf = nil
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY tgt1 pkt1 LITTLE_ENDIAN "Packet"'
           tf.puts "  #{item_def}"
@@ -309,7 +310,7 @@ module OpenC3
           @pc.process_file(tf.path, "TGT1")
           @pc.telemetry["TGT1"]["PKT1"].items["ITEM1"]
         ensure
-          tf.unlink
+          tf&.unlink
         end
 
         it "creates SEQUENCE, CHANGE, and STATIC limits" do
