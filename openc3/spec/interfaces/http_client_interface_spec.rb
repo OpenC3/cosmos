@@ -304,8 +304,8 @@ module OpenC3
       end
 
       it "rejects invalid paths" do
-        ['@evil.com:80/x', '@evil.com', ':9999/x', '.evil.com/x', '//evil.com/x', 'x/y',
-         "/a\\b", '/a b', "/a\r\nHost: evil.com", "/a\tb"].each do |path|
+        ['@other.com:80/x', '@other.com', ':9999/x', '.other.com/x', '//other.com/x', 'x/y',
+         "/a\\b", '/a b', "/a\r\nHost: other.com", "/a\tb"].each do |path|
           expect { @interface.convert_packet_to_data(packet_with_path(path)) }.to raise_error(WriteRejectError), path.inspect
         end
       end
@@ -316,7 +316,7 @@ module OpenC3
         @interface.connect
         http = @interface.instance_variable_get(:@http)
         expect(http).not_to receive(:get)
-        ['http://evil.com/x', 'https://example.com:8080@evil.com/x', 'https://user@example.com:8080/x',
+        ['http://other.com/x', 'https://example.com:8080@other.com/x', 'https://user@example.com:8080/x',
          'https://example.com:9999/x', 'http://example.com:8080/x', nil].each do |uri|
           expect { @interface.write_interface('', { 'HTTP_URI' => uri, 'HTTP_METHOD' => 'get' }) }.to raise_error(WriteRejectError), uri.inspect
         end

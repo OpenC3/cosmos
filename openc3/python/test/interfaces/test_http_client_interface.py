@@ -193,15 +193,15 @@ class TestHttpClientInterfaceUri(unittest.TestCase):
 
     def test_rejects_invalid_paths(self):
         for path in [
-            "@evil.com:80/x",
-            "@evil.com",
+            "@other.com:80/x",
+            "@other.com",
             ":9999/x",
-            ".evil.com/x",
-            "//evil.com/x",
+            ".other.com/x",
+            "//other.com/x",
             "x/y",
             "/a\\b",
             "/a b",
-            "/a\r\nHost: evil.com",
+            "/a\r\nHost: other.com",
             "/a\tb",
         ]:
             with self.subTest(path=path), self.assertRaises(WriteRejectError):
@@ -211,8 +211,8 @@ class TestHttpClientInterfaceUri(unittest.TestCase):
         self.interface.connect()
         self.interface.http = Mock()
         for uri in [
-            "http://evil.com/x",
-            "https://example.com:8080@evil.com/x",
+            "http://other.com/x",
+            "https://example.com:8080@other.com/x",
             "https://user@example.com:8080/x",
             "https://example.com:9999/x",
             "http://example.com:8080/x",
