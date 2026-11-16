@@ -228,8 +228,8 @@ def get_timeline_activity(name: str, start: int | str, uuid: str, scope: str = O
 
 def get_timeline_activities(
     name: str,
-    start: int | float | str | None = None,
-    stop: int | float | str | None = None,
+    start: int | str | None = None,
+    stop: int | str | None = None,
     limit: int | None = None,
     scope: str = OPENC3_SCOPE,
 ) -> list[dict[str, Any]] | None:

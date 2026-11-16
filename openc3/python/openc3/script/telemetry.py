@@ -170,9 +170,6 @@ def normalize_tlm(*args: str, type: OverrideValueType = "ALL", scope: str = OPEN
     if len(args) == 1:
         print(f'normalize_tlm("{args[0]}", type="{type}")')
     else:
-        if isinstance(args[3], str):
-            value = f'"{args[3]}"'
-        else:
-            value = args[3]
-        print(f'normalize_tlm("{args[0]}", "{args[1]}", "{args[2]}", {value}, type="{type}")')
+        joined = '", "'.join(args)
+        print(f'normalize_tlm("{joined}", type="{type}")')
     openc3.script.API_SERVER.normalize_tlm(*args, type=type, scope=scope)

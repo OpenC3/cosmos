@@ -57,7 +57,7 @@ class CosmosAuthorization(requests.auth.AuthBase):
         """
         return OPENC3_API_PASSWORD
 
-    def __call__(self, r: requests.Request) -> requests.Request:
+    def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the Authorization header to a request.
 
         Args:
@@ -128,7 +128,7 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
         self._time_logic()
         return f"Bearer {self.token}"
 
-    def __call__(self, r: requests.Request) -> requests.Request:
+    def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
         """Add the Authorization header to a request, requesting or refreshing the token if needed.
 
         Args:

@@ -155,15 +155,22 @@ class WebSocketApi:
         Args:
             ignore_protocol_messages: If True, ignore protocol messages like ping,
                 welcome, confirm_subscription, reject_subscription, and disconnect.
-            timeout: If set, raise TimeoutError if no data is received within
-                this many seconds. None waits forever.
+            timeout: If set, raise TimeoutError once this many seconds pass
+                without a data frame. Elapsed time is checked only when a
+                protocol message (such as a ping) arrives, so this is not a
+                hard deadline. None disables the check. Separately, the
+                stream's ``read_timeout`` (10 seconds by default) returns None
+                when no frame of any kind arrives in that time.
 
         Returns:
             The parsed "message" value of the next data frame (its shape
-            depends on the channel), or None at end of stream.
+            depends on the channel), or None if the server closed the
+            connection or the stream's ``read_timeout`` expired. The
+            connection can still be open after a ``read_timeout``.
 
         Raises:
-            TimeoutError: If no data arrives within ``timeout`` seconds.
+            TimeoutError: If a protocol message arrives after ``timeout``
+                seconds have passed without a data frame.
             StopScriptError: If the running Script Runner script is being stopped.
             RuntimeError: If the subscription is rejected or unauthorized.
         """
@@ -447,11 +454,18 @@ class RunningScriptWebSocketApi(ScriptWebSocketApi):
         Args:
             ignore_protocol_messages: If True, ignore protocol messages like ping,
                 welcome, confirm_subscription, reject_subscription, and disconnect.
-            timeout: If set, raise TimeoutError if no data is received within
-                this many seconds. None waits forever.
+            timeout: If set, raise TimeoutError once this many seconds pass
+                without a data frame. See `WebSocketApi.read` for how this
+                differs from the stream's ``read_timeout``.
 
         Returns:
-            The next script event, or None at end of stream.
+            The next script event, or None if the server closed the
+            connection or the stream's ``read_timeout`` expired. The
+            connection can still be open after a ``read_timeout``.
+
+        Raises:
+            TimeoutError: If a protocol message arrives after ``timeout``
+                seconds have passed without a data frame.
         """
         if self.pending_events:
             return self.pending_events.popleft()
@@ -691,7 +705,9 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             end_time: datetime or 64-bit nanoseconds from the unix epoch.
                 Streams forever when not given.
             scope: Scope name. Defaults to OPENC3_SCOPE.
-            timeout: Stop after this many seconds. None waits for the end marker.
+            timeout: Stop once this many seconds have passed. Elapsed time is
+                checked only after each non-empty data batch, so this is not a
+                hard deadline. None waits for the end marker.
 
         Returns:
             The data entries from every batch received.
