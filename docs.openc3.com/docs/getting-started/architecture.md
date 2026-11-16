@@ -119,7 +119,7 @@ The COSMOS frontend is fully browser native and is implemented in the Vue.js fra
 
 ### Single-Spa
 
-While COSMOS itself is written in Vue.js, we utilize a technology called [single-spa](https://single-spa.js.org/) to allow COSMOS developers to create applications in any javascript framework they choose. Single-spa is a micro frontend framework and acts as a top level router to render the application being requested. COSMOS provides sample applications ready to plug into single-spa in Angular, React, Svelte, and Vue.
+While COSMOS itself is written in Vue.js, we utilize a technology called [single-spa](https://single-spa.js.org/) to allow COSMOS developers to create applications in any javascript framework they choose. Single-spa is a micro frontend framework and acts as a top level router to render the application being requested. COSMOS provides a Vue.js tool generator ready to plug into single-spa. Older Angular, React, and Svelte templates are archived in the [tool_templates](https://github.com/OpenC3/tool_templates) repo.
 
 ### Astro UX
 
