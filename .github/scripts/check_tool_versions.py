@@ -20,12 +20,18 @@
 Dependabot covers most of this repository, but three kinds of pin are invisible
 to it, and those are exactly the ones this script watches:
 
-  * versions inside a GitHub Actions input (setup-uv's and setup-trivy's
-    `version`) or a Dockerfile ARG consumed by `pip install` -- dependabot
-    parses neither
-  * major releases, because every group in .github/dependabot.yml is limited to
-    `update-types: [minor, patch]`
-  * PEP 723 script lockfiles (openc3/python/tools/*.py.lock)
+  * versions inside a GitHub Actions input (setup-trivy's `version`) --
+    dependabot bumps the action's SHA but never reads its inputs
+  * Dockerfile ARGs consumed by `pip install` (OPENC3_UV_VERSION), which follow
+    the uv pin in openc3/python/pyproject.toml rather than upstream, so the
+    images run the uv that CI does
+  * PEP 723 script headers and their lockfiles (*.py.lock). The stub
+    generator's ruff follows pyproject.toml's, like the Dockerfile ARGs
+
+Everything else used to be watched here too and moved to dependabot: the
+setup-uv action (including majors, through the github-actions-major group),
+CI's uv (the `uv` dependency group, read by setup-uv's version-file), and ruff
+and ty in pyproject.toml.
 
 Prints a markdown report on stdout and exits 1 when anything is behind, so a
 scheduled workflow can turn that into a pull request.
@@ -63,14 +69,22 @@ BASES = {
 }
 
 # Upstream sources. "pypi:<name>" looks up the newest release on PyPI;
-# "gh:<owner>/<repo>" uses the latest GitHub release tag.
-SETUP_UV = "gh:astral-sh/setup-uv"
-UV = "pypi:uv"
-RUFF = "pypi:ruff"
-TY = "pypi:ty"
+# "gh:<owner>/<repo>" uses the latest GitHub release tag; "repo:<name>" is a
+# pin elsewhere in this repository, from REPO_PINS, for a copy that has to
+# track it.
+PYPROJECT_UV = "repo:uv"
+PYPROJECT_RUFF = "repo:ruff"
 MYPY = "pypi:mypy"
 REQUESTS = "pypi:requests"
 TRIVY = "gh:aquasecurity/trivy"
+
+# repo: sources, as (file, regex whose first group captures the version).
+# Dependabot raises these in pyproject.toml; the copies follow, so the images
+# run CI's uv and the stub generator formats with the ruff that checks it.
+REPO_PINS = {
+    "uv": ("openc3/python/pyproject.toml", r'uv = \["uv==([\d.]+)"\]'),
+    "ruff": ("openc3/python/pyproject.toml", r'"ruff==([\d.]+)"'),
+}
 
 
 class Surface(NamedTuple):
@@ -80,75 +94,30 @@ class Surface(NamedTuple):
     path: str  # repository-relative file holding the pin
     pattern: str  # regex whose first group captures the pinned version
     source: str  # upstream to compare against
-    # An Actions pin carries the immutable commit SHA and the human-readable
-    # tag on the same line. Bumping one without the other leaves a pin whose
-    # comment lies about what it runs, so --fix rewrites both. The regex's
-    # first group captures the SHA.
-    sha_pattern: str | None = None
 
 
 SURFACES = [
     Surface(
-        "setup-uv action",
-        ".github/actions/setup-uv-python/action.yml",
-        r"astral-sh/setup-uv@[0-9a-f]{40} # v(\S+)",
-        SETUP_UV,
-        sha_pattern=r"astral-sh/setup-uv@([0-9a-f]{40})",
-    ),
-    Surface(
-        "uv (all CI workflows)",
-        ".github/actions/setup-uv-python/action.yml",
-        # Anchored to the uv-version input: --fix writes through this pattern,
-        # and a bare `default:` would match whichever input came first.
-        r'(?s)uv-version:.*?default:\s*"([\d.]+)"',
-        UV,
-    ),
-    Surface(
         "uv (openc3-ruby image)",
         "openc3-ruby/Dockerfile",
         r"ARG OPENC3_UV_VERSION=([\d.]+)",
-        UV,
+        PYPROJECT_UV,
     ),
     Surface(
         "uv (openc3-ruby ubi image)",
         "openc3-ruby/Dockerfile-ubi",
         r"ARG OPENC3_UV_VERSION=([\d.]+)",
-        UV,
+        PYPROJECT_UV,
     ),
-    # The trivy release the scan workflows install through setup-trivy, which
-    # they pass skip-setup-trivy: true to use. Dependabot bumps the action's
-    # commit SHA but never looks inside its inputs, so a stale binary here
-    # means the scans run against an old vulnerability scanner. Anchored to
-    # the setup-trivy step so it cannot match some other `version:` input.
+    # The trivy release every image scan installs. It sits in a composite
+    # action rather than the three scan workflows because GITHUB_TOKEN cannot
+    # push a change under .github/workflows/, which the bump pull request would
+    # otherwise have to do.
     Surface(
-        "trivy (image scan)",
-        ".github/workflows/trivy.yml",
-        r"(?s)aquasecurity/setup-trivy@.*?version:\s*(v[\d.]+)",
+        "trivy (image scans)",
+        ".github/actions/setup-trivy/action.yml",
+        r'(?s)trivy-version:.*?default:\s*"(v[\d.]+)"',
         TRIVY,
-    ),
-    Surface(
-        "trivy (post release scan)",
-        ".github/workflows/post_release_trivy.yml",
-        r"(?s)aquasecurity/setup-trivy@.*?version:\s*(v[\d.]+)",
-        TRIVY,
-    ),
-    Surface(
-        "trivy (ubi image scan)",
-        ".github/workflows/build_ubi.yml",
-        r"(?s)aquasecurity/setup-trivy@.*?version:\s*(v[\d.]+)",
-        TRIVY,
-    ),
-    Surface(
-        "ruff (python dev dependency)",
-        "openc3/python/pyproject.toml",
-        r'"ruff==([\d.]+)"',
-        RUFF,
-    ),
-    Surface(
-        "ty (python dev dependency)",
-        "openc3/python/pyproject.toml",
-        r'"ty==([\d.]+)"',
-        TY,
     ),
     Surface(
         "mypy (stub generator script)",
@@ -166,7 +135,7 @@ SURFACES = [
         "ruff (stub generator script)",
         "openc3/python/tools/generate_singleton_stubs.py",
         r'"ruff==([\d.]+)"',
-        RUFF,
+        PYPROJECT_RUFF,
     ),
 ]
 
@@ -194,6 +163,14 @@ def latest_version(source: str, cache: dict) -> str | None:
     if source in cache:
         return cache[source]
     kind, name = source.split(":", 1)
+    if kind == "repo":
+        path, pattern = REPO_PINS[name]
+        match = re.search(pattern, (REPO_ROOT / path).read_text())
+        version = match.group(1) if match else None
+        if version is None:
+            print(f"warning: no {name} pin matched in {path}", file=sys.stderr)
+        cache[source] = version
+        return version
     try:
         if kind == "pypi":
             version = fetch_json(kind, f"pypi/{name}/json")["info"]["version"]
@@ -204,25 +181,6 @@ def latest_version(source: str, cache: dict) -> str | None:
         version = None
     cache[source] = version
     return version
-
-
-def latest_commit_sha(source: str, tag: str, cache: dict) -> str | None:
-    """Commit SHA a GitHub release tag points at, for rewriting an Actions pin."""
-    key = f"{source}@{tag}"
-    if key in cache:
-        return cache[key]
-    kind, name = source.split(":", 1)
-    sha = None
-    try:
-        ref = fetch_json(kind, f"repos/{name}/git/ref/tags/{tag}")["object"]
-        # An annotated tag points at a tag object, not the commit; deref it.
-        if ref["type"] == "tag":
-            ref = fetch_json(kind, f"repos/{name}/git/tags/{ref['sha']}")["object"]
-        sha = ref["sha"]
-    except (requests.RequestException, KeyError, ValueError) as error:
-        print(f"warning: could not resolve {tag} of {source} to a commit: {error}", file=sys.stderr)
-    cache[key] = sha
-    return sha
 
 
 def as_tuple(version: str) -> tuple[int, ...]:
@@ -254,7 +212,7 @@ class Result(NamedTuple):
         return "behind" if self.stale else "ok"
 
 
-def apply_fix(result: Result, cache: dict) -> str | None:
+def apply_fix(result: Result) -> str | None:
     """Rewrite one stale pin in place. Returns a description, or None if skipped."""
     surface = result.surface
     path = REPO_ROOT / surface.path
@@ -272,21 +230,16 @@ def apply_fix(result: Result, cache: dict) -> str | None:
     text = text[: match.start(1)] + latest + text[match.end(1) :]
     detail = f"{surface.label}: {result.pinned} -> {latest}"
 
-    if surface.sha_pattern:
-        sha = latest_commit_sha(surface.source, result.latest, cache)
-        if sha is None:
-            # Writing the tag without the SHA it names would leave the pin
-            # running the old commit under a new label, which is worse than
-            # leaving the whole pin alone.
-            return None
-        sha_match = re.search(surface.sha_pattern, text)
-        if sha_match is None:  # pragma: no cover
-            return None
-        text = text[: sha_match.start(1)] + sha + text[sha_match.end(1) :]
-        detail += f" ({sha[:7]})"
-
     path.write_text(text)
     return detail
+
+
+def latest_cell(source: str, latest: str) -> str:
+    """The report's latest column: a link upstream, or the file for a repo pin."""
+    kind, name = source.split(":", 1)
+    if kind == "repo":
+        return f"`{latest}` (`{REPO_PINS[name][0]}`)"
+    return f"[`{latest}`]({source_url(source)})"
 
 
 def source_url(source: str) -> str:
@@ -328,7 +281,7 @@ def main() -> int:
         for result in results:
             if not result.stale:
                 continue
-            detail = apply_fix(result, cache)
+            detail = apply_fix(result)
             if detail:
                 fixed.append(detail)
             else:
@@ -340,7 +293,7 @@ def main() -> int:
         print("| --- | --- | --- | --- | --- |")
         for result in results:
             surface = result.surface
-            latest = f"[`{result.latest}`]({source_url(surface.source)})"
+            latest = latest_cell(surface.source, result.latest)
             print(f"| {surface.label} | `{result.pinned}` | {latest} | `{surface.path}` | {result.status} |")
         if unresolved:
             print("\n### Could not check\n")
