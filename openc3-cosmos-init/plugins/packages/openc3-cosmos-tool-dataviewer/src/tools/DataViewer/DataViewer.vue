@@ -446,11 +446,21 @@ export default {
             found: widget.match(/DATAVIEWER([A-Z]+)/),
           }))
           .filter(({ found }) => found)
-        // Promise.all keeps the original widget order
-        const details = await Promise.all(
+        // allSettled keeps the original widget order and lets one failed
+        // widget request not discard the others
+        const results = await Promise.allSettled(
           matches.map(({ widget }) => Api.get(`/openc3-api/widgets/${widget}`)),
         )
-        details.forEach((response, index) => {
+        results.forEach((result, index) => {
+          if (result.status !== 'fulfilled') {
+            console.error(
+              'Unable to load widget',
+              matches[index].widget,
+              result.reason,
+            )
+            return
+          }
+          const response = result.value
           let label = response.data.label
           if (label === null) {
             label = response.data.name.slice(10)

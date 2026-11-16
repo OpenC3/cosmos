@@ -60,6 +60,7 @@
                   icon="mdi-delete"
                   variant="text"
                   data-test="item-delete"
+                  :disabled="deleting"
                   @click="deleteConfig(item)"
                 />
               </template>
@@ -86,7 +87,7 @@
             variant="flat"
             type="submit"
             data-test="save-config-submit-btn"
-            :disabled="!!error"
+            :disabled="!!error || deleting"
             @click.prevent="success"
           >
             Ok
@@ -113,6 +114,7 @@ export default {
     return {
       configName: '',
       configs: [],
+      deleting: false,
       headers: [
         {
           title: 'Configuration',
@@ -182,6 +184,7 @@ export default {
       this.selectedRows = [row.item.configId]
     },
     success: function () {
+      if (this.deleting) return
       this.$emit('success', this.configName)
       this.show = false
       this.search = null
@@ -200,13 +203,19 @@ export default {
           okText: 'Delete',
           cancelText: 'Cancel',
         })
-        .then(() => new OpenC3Api().delete_config(this.configKey, item.config))
+        .then(() => {
+          this.deleting = true
+          return new OpenC3Api().delete_config(this.configKey, item.config)
+        })
         .then(() => {
           if (this.selectedItem?.config === item.config) {
             this.selectedRows = []
             this.configName = ''
           }
-          this.configs.splice(this.configs.indexOf(item), 1)
+          const index = this.configs.indexOf(item)
+          if (index >= 0) {
+            this.configs.splice(index, 1)
+          }
         })
         .catch((error) => {
           if (error !== true) {
@@ -215,6 +224,9 @@ export default {
               `Failed to delete config ${item.config} Error: ${error}`,
             )
           }
+        })
+        .finally(() => {
+          this.deleting = false
         })
     },
   },
