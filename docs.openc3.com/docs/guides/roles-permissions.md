@@ -46,7 +46,7 @@ The **Admin** role provides administrative access within a scope. Admins can als
 - `tlm` - View telemetry data
 - `cmd_info` - View command information
 - `script_view` - View scripts
-- `script_approver` - Approve scripts. Moving a script to or from `approved` also needs `script_edit`, which Admin lacks, so the Admin role alone cannot change a script's state.
+- `script_approver` - Approve scripts 
 - `notebook_view` - View notebooks
 - `admin` - Administrative functions (manage plugins, targets, interfaces, etc.)
 
@@ -304,12 +304,8 @@ curl -H "Authorization: $ACCESS_TOKEN" \
 
 ### Responses
 
-- Successful create, update, and delete requests return HTTP 200 with an empty body.
-- Getting a role that does not exist returns HTTP 200 with a `null` body, so check the body rather than the status code to see if a role exists.
 - Creating a role that already exists, or updating a role that does not exist, fails with HTTP 500. Use GET first to decide between POST and PUT (see [Example Automation Workflow](#example-automation-workflow)).
 - Unlike create (see the note above), updating a role with an empty `permissions` list leaves it with no permissions.
-- A missing or invalid token returns 401, and a token without the required permission returns 403.
-- Roles are global, so the `scope` query parameter only determines which `{SCOPE}__` roles the caller's own permissions are checked against. Creating, updating, and deleting roles requires the `superadmin` permission, which normally comes from `ALLSCOPES__admin`, so any scope works for those. If `superadmin` comes from a custom role instead, the scope must match the scope that role is assigned in. Listing roles requires `admin` in the given scope.
 - Don't give a custom role the same name as a built-in role (admin, operator, viewer, approver, runner). The built-in permissions are checked first, so the custom definition is ignored.
 
 ### Assigning Roles via the Keycloak Admin REST API
@@ -337,7 +333,7 @@ curl -H "Authorization: Bearer $KC_TOKEN" -H "Content-Type: application/json" \
   -X POST "http://localhost:2900/auth/admin/realms/openc3/users/$USER_ID/role-mappings/realm"
 ```
 
-The Keycloak admin account lives in the `master` realm, while COSMOS users and roles live in the `openc3` realm. The admin account is created from `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` in `.env` (or `.env.local`), but only the first time Keycloak initializes its database. Changing them later doesn't change the existing account, so use the current Keycloak admin credentials. Creating a realm role that already exists returns HTTP 409.
+The Keycloak admin account lives in the `master` realm, while COSMOS users and roles live in the `openc3` realm. The admin account is created from `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` in `.env` (or `.env.local`), but only the first time Keycloak initializes its database. Changing them later doesn't change the existing account. Creating a realm role that already exists returns HTTP 409.
 
 To remove a role from a user, send the same role array with `-X DELETE` to the `role-mappings/realm` endpoint. To delete the realm role entirely, use `DELETE /auth/admin/realms/openc3/roles/DEFAULT__inst_commander`.
 

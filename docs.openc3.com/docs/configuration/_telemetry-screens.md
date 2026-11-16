@@ -115,7 +115,7 @@ runScript("INST/procedures/collect.rb", true, { TYPE: "NORMAL" });
 
 ## Layout and Alignment
 
-Widgets are positioned by the layout widgets that contain them, not by coordinates (except inside a [CANVAS](#canvas)). [VERTICAL](#vertical) stacks widgets top to bottom, [HORIZONTAL](#horizontal) places them left to right, and [MATRIXBYCOLUMNS](#matrixbycolumns) arranges them in a table. By default widgets are aligned to the left.
+Widgets are positioned by the layout widgets that contain them. [VERTICAL](#vertical) stacks widgets top to bottom, [HORIZONTAL](#horizontal) places them left to right, and [MATRIXBYCOLUMNS](#matrixbycolumns) arranges them in a table. By default widgets are aligned to the left.
 
 To change alignment, apply a [SETTING](#setting) to the layout widget. A SETTING applies to the widget defined immediately before it, so put it either directly after the layout keyword (before any widgets inside it) or directly after the layout's `END`. The [RAW](#raw) setting applies any CSS property, which lets you use standard [flexbox](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_flexible_box_layout/Basic_concepts_of_flexbox) alignment because HORIZONTAL is a flexbox row.
 

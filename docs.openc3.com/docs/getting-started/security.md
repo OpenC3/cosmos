@@ -354,22 +354,9 @@ It's important to understand the distinction:
 
 The frontend password you set when first accessing COSMOS at `http://localhost:2900` is stored in Redis and is completely separate from the backend service credentials documented here.
 
-## Session Length and Automatic Logout
+## Session Length and Automatic Logout in COSMOS Enterprise
 
-### COSMOS Core
-
-COSMOS Core sessions do not expire, so there is no automatic logout to disable or extend. When you log in, COSMOS issues a session token that is stored in Redis with no expiration and saved in the browser's local storage, so it also survives closing the browser. There is no idle timeout and no setting to add one.
-
-A Core session only ends when:
-
-- The user clicks **Logout**, which ends the session for that browser only.
-- The password is changed, which ends every session in every browser and also clears the session tokens used by running scripts and other API clients. The browser that changed the password is given a new session automatically.
-
-If you need sessions that expire after a period of inactivity, use COSMOS Enterprise, where session length is controlled by Keycloak.
-
-### COSMOS Enterprise
-
-In COSMOS Enterprise, session length is controlled entirely by the `openc3` realm in Keycloak. COSMOS has no session timeout setting or environment variable of its own. The defaults are:
+In COSMOS Enterprise, session length is controlled entirely by the `openc3` realm in Keycloak. The defaults are:
 
 | Keycloak Setting      | Default    | Effect                                                                                                                 |
 | --------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
@@ -385,36 +372,11 @@ While a COSMOS tab is open, the browser refreshes the access token every few min
 
 Change the session settings in the Keycloak Admin Console:
 
-1. Browse to `http://localhost:2900/auth/` (or your `OPENC3_KEYCLOAK_EXTERNAL_URL`) and log in with the Keycloak admin account. Its initial username and password are `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD` from `.env` (or `.env.local` if you [override them there](#overriding-secrets-with-envlocal)). These are only applied the first time Keycloak initializes its database, so if the admin password was changed later in Keycloak, use the current one.
+1. Browse to `http://localhost:2900/auth/` (or your `OPENC3_KEYCLOAK_EXTERNAL_URL`) and log in with the Keycloak admin account.
 2. Select the **openc3** realm from the realm dropdown. Don't change the `master` realm, which only holds the Keycloak admin account.
-3. Go to **Realm settings** > **Sessions** and change **SSO Session Idle** and **SSO Session Max**. For example, set SSO Session Idle to 8 hours and SSO Session Max to 24 hours so operators aren't logged out during a shift.
+3. Go to **Realm settings** > **Sessions** and change **SSO Session Idle** and **SSO Session Max**.
 4. Click **Save**.
 5. Log out of COSMOS and log back in to start a session with the new settings.
-
-You can also script the change with `kcadm.sh` inside the Keycloak container. Open a shell in the container, replacing `cosmos-enterprise-openc3-keycloak-1` with the name of your Keycloak container (see `docker ps`):
-
-```bash
-docker exec -it cosmos-enterprise-openc3-keycloak-1 sh
-```
-
-Then log in and update the realm. The values are in seconds:
-
-```bash
-K=/opt/keycloak/bin/kcadm.sh
-C="--config /tmp/kcadm.config"
-$K config credentials $C --server http://localhost:8080/auth --realm master \
-  --user "$KC_BOOTSTRAP_ADMIN_USERNAME" --password "$KC_BOOTSTRAP_ADMIN_PASSWORD"
-$K update realms/openc3 $C -s ssoSessionIdleTimeout=28800 -s ssoSessionMaxLifespan=86400
-rm /tmp/kcadm.config
-```
-
-The `--config` file is written to `/tmp` because the container's filesystem is read only. It holds admin tokens and `/tmp` is a persistent volume, so the last command deletes it. `KC_BOOTSTRAP_ADMIN_USERNAME` and `KC_BOOTSTRAP_ADMIN_PASSWORD` are set from `KEYCLOAK_ADMIN` and `KEYCLOAK_ADMIN_PASSWORD` in `.env` (or `.env.local`). If the admin username or password has since been changed in Keycloak, use the current values instead.
-
-COSMOS imports its default realm only the first time Keycloak starts and does not overwrite an existing realm, so settings you change in Keycloak persist across COSMOS upgrades. For the same reason, editing a realm export file does not change a realm that already exists.
-
-:::note[Session expiry cannot be fully disabled]
-Keycloak always enforces session expiry and has no "never expire" option, so to keep users logged in for a long time, set a long duration. Choose values that fit your operations; longer sessions also give a stolen or unattended session more time to be misused. To let individual users opt into longer sessions instead, enable **Remember me** under **Realm settings** > **Login** and set **SSO Session Idle Remember Me** and **SSO Session Max Remember Me** under **Sessions**.
-:::
 
 #### Scripts and Background Tasks
 
