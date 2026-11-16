@@ -290,6 +290,8 @@ openc3-operator:
 | Protocol Type      | See Protocols.                                                                        | No       |
 | Protocol Arguments | See Protocols for the arguments each stream protocol takes.                           | No       |
 
+Each client connected to the write port has its own queue and thread, so a client which reads slowly (or not at all) doesn't delay the other clients or new connections. A client is disconnected if a write to it doesn't complete within the Write Timeout, or if it falls more than the Write Timeout behind the data being sent. A Write Timeout of nil / None uses 10 seconds.
+
 #### LISTEN_ADDRESS
 
 IP address to accept connections on. Default: `0.0.0.0`.

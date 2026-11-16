@@ -27,18 +27,32 @@ module OpenC3
   # connections. For each connection to the read port, a thread is spawned that
   # calls the read method from the interface. This data is then
   # available by calling the TcpipServer read method. For each connection to the
-  # write port, a thread is spawned that calls the write method from the
-  # interface when data is send to the TcpipServer via the write method.
+  # write port, a thread is spawned with its own queue which calls the write
+  # method from the interface when data is sent to the TcpipServer via the
+  # write method. Each client is written independently so a client which stops
+  # reading can't delay the other clients or accepting new connections.
   class TcpipServerInterface < StreamInterface
+    # Write timeout used when none is given, matching TcpipSocketStream
+    DEFAULT_WRITE_TIMEOUT = 10.0
+
     # Data class which stores the interface and associated information
     class InterfaceInfo
-      attr_reader :interface, :hostname, :host_ip, :port
+      attr_reader :interface, :host_ip, :port
+      # Queue of [method, packet_or_data, queued_at] waiting to be written to the client
+      attr_accessor :write_queue
+      # Thread which services the write_queue
+      attr_accessor :write_thread
 
-      def initialize(interface, hostname, host_ip, port)
+      def initialize(interface, host_ip, port)
         @interface = interface
-        @hostname = hostname
         @host_ip = host_ip
         @port = port
+        @write_queue = nil
+        @write_thread = nil
+      end
+
+      def to_s
+        "#{@host_ip}:#{@port}"
       end
     end
 
@@ -104,6 +118,8 @@ module OpenC3
       @stream_log_pair = nil
       @raw_logging_enabled = false
       @connection_mutex = Mutex.new
+      # Client write threads update the write statistics concurrently
+      @write_stats_mutex = Mutex.new
       @listen_address = "0.0.0.0"
 
       @read_allowed = false unless ConfigParser.handle_nil(read_port)
@@ -142,7 +158,7 @@ module OpenC3
             break if @cancel_threads
           end
         rescue Exception => e
-          shutdown_interfaces(@write_interface_infos)
+          shutdown_write_clients()
           Logger.error("#{@name}: Tcpip server write thread unexpectedly died")
           Logger.error(e.formatted)
         end
@@ -152,7 +168,7 @@ module OpenC3
             break if @cancel_threads
           end
         rescue Exception => e
-          shutdown_interfaces(@write_interface_infos)
+          shutdown_write_clients()
           Logger.error("#{@name}: Tcpip server write raw thread unexpectedly died")
           Logger.error(e.formatted)
         end
@@ -207,7 +223,7 @@ module OpenC3
         @write_raw_thread = nil
       end
 
-      shutdown_interfaces(@write_interface_infos)
+      shutdown_write_clients()
       @connected = false
       super()
     end
@@ -306,11 +322,34 @@ module OpenC3
     def shutdown_interfaces(interface_infos)
       @connection_mutex.synchronize do
         interface_infos.each do |interface_info|
-          interface_info.interface.disconnect
-          interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
+          disconnect_client(interface_info)
         end
         interface_infos.clear
       end
+    end
+
+    # Stop every client write thread and disconnect the clients
+    def shutdown_write_clients
+      interface_infos = @connection_mutex.synchronize do
+        infos = @write_interface_infos.dup
+        @write_interface_infos.clear
+        infos
+      end
+      # Stop and join outside the mutex because the client write threads
+      # take it to remove themselves as they exit
+      interface_infos.each do |interface_info|
+        stop_client_write_queue(interface_info)
+        disconnect_client(interface_info)
+      end
+      interface_infos.each do |interface_info|
+        thread = interface_info.write_thread
+        OpenC3.kill_thread(self, thread) if thread and thread != Thread.current
+      end
+    end
+
+    def disconnect_client(interface_info)
+      interface_info.interface.disconnect
+      interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
     end
 
     def change_raw_logging(method)
@@ -380,18 +419,8 @@ module OpenC3
         end
       end
 
+      # No reverse DNS lookup because it blocks accepting further connections
       port, host_ip = Socket.unpack_sockaddr_in(address)
-      hostname = ''
-      hostname = Socket.lookup_hostname_from_ip(host_ip)
-      # if System.instance.acl
-      #   addr = ["AF_INET", 10, "lc630", host_ip.to_s]
-      #   if not System.instance.acl.allow_addr?(addr)
-      #     # Reject connection
-      #     OpenC3.close_socket(socket)
-      #     Logger.info "#{@name}: Tcpip server rejected connection from #{hostname}(#{host_ip}):#{port}"
-      #     return
-      #   end
-      # end
 
       # Configure TCP_NODELAY option
       socket.setsockopt(Socket::IPPROTO_TCP, Socket::TCP_NODELAY, 1)
@@ -426,25 +455,124 @@ module OpenC3
       interface.stream = stream
       interface.connect
 
+      interface_info = InterfaceInfo.new(interface, host_ip, port)
       if listen_write
         @write_connection_callback.call(interface) if @write_connection_callback
-        @connection_mutex.synchronize do
-          @write_interface_infos << InterfaceInfo.new(interface, hostname, host_ip, port)
-        end
+        add_write_client(interface_info)
       end
       if listen_read
         @read_connection_callback.call(interface) if @read_connection_callback
         @connection_mutex.synchronize do
-          @read_interface_infos << InterfaceInfo.new(interface, hostname, host_ip, port)
+          @read_interface_infos << interface_info
         end
-        start_read_thread(@read_interface_infos[-1])
+        start_read_thread(interface_info)
       end
-      Logger.info "#{@name}: Tcpip server accepted connection from #{hostname}(#{host_ip}):#{port}"
+      Logger.info "#{@name}: Tcpip server accepted connection from #{interface_info}"
+    end
+
+    # Register a client connected to the write port and start the thread
+    # which writes its queued packets
+    def add_write_client(interface_info)
+      interface_info.write_queue = Queue.new
+      # Register before starting the thread so the thread can always remove it
+      @connection_mutex.synchronize do
+        @write_interface_infos << interface_info
+      end
+      interface_info.write_thread = Thread.new do
+        client_write_thread_body(interface_info)
+      rescue Exception => e
+        Logger.error "#{@name}: Tcpip server client write thread unexpectedly died"
+        Logger.error e.formatted
+      ensure
+        remove_write_client(interface_info)
+      end
+    end
+
+    # Writes everything queued for one client until the client disconnects,
+    # stops keeping up, or the queue is stopped
+    def client_write_thread_body(interface_info)
+      interface = interface_info.interface
+      write_queue = interface_info.write_queue
+      max_lag = @write_timeout || DEFAULT_WRITE_TIMEOUT
+      loop do
+        item = write_queue.pop(timeout: 0.1)
+        unless item
+          # Closed means the client is being removed
+          return if write_queue.closed?
+          # Detect disconnected clients even when packets aren't flowing
+          return unless client_write_connected?(interface_info)
+
+          next
+        end
+
+        method, packet_or_data, queued_at = item
+        # A client which is reading too slowly to keep up would otherwise
+        # queue data forever so drop it once it falls write_timeout behind
+        lag = Process.clock_gettime(Process::CLOCK_MONOTONIC) - queued_at
+        if lag > max_lag
+          Logger.error "#{@name}: Tcpip server dropping client #{interface_info} which fell #{lag.round(1)}s behind (write timeout #{max_lag}s)"
+          return
+        end
+
+        interface_bytes_written = interface.bytes_written
+        interface.public_send(method, packet_or_data)
+        diff = interface.bytes_written - interface_bytes_written
+        @write_stats_mutex.synchronize do
+          @written_raw_data_time = interface.written_raw_data_time
+          @written_raw_data = interface.written_raw_data
+          @bytes_written += diff
+        end
+      end
+    rescue Errno::EPIPE, Errno::ECONNABORTED, IOError, Errno::ECONNRESET
+      # Client has normally disconnected
+    rescue Timeout::Error
+      Logger.error "#{@name}: Tcpip server dropping client #{interface_info} which did not accept data within the write timeout"
+    rescue Exception => e
+      if e.message != "Stream not connected for write_raw"
+        Logger.error "#{@name}: Error sending to client #{interface_info}: #{e.class} #{e.message}"
+      end
+    end
+
+    # @return [Boolean] Whether the client on the write port still appears connected
+    def client_write_connected?(interface_info)
+      write_socket = interface_info.interface.stream.write_socket
+      if @write_port != @read_port
+        # Socket should return EWOULDBLOCK if it is still cleanly connected
+        write_socket.recvfrom_nonblock(10)
+        # Client has disconnected (or is invalidly sending data on the socket)
+        return false
+      else
+        # The read thread detects the disconnect and closes the socket
+        return !write_socket.closed?
+      end
+    rescue Errno::EWOULDBLOCK
+      # Client is still cleanly connected as far as we can tell without writing to the socket
+      return true
+    rescue Errno::ECONNRESET, Errno::ECONNABORTED, IOError
+      return false
+    end
+
+    # Called by the client write thread as it exits
+    def remove_write_client(interface_info)
+      stop_client_write_queue(interface_info)
+      removed = @connection_mutex.synchronize { @write_interface_infos.delete(interface_info) }
+      # Not found means shutdown_write_clients already removed it
+      return unless removed
+
+      Logger.info "#{@name}: Tcpip server lost write connection to #{interface_info}"
+      disconnect_client(interface_info)
+    end
+
+    def stop_client_write_queue(interface_info)
+      write_queue = interface_info.write_queue
+      return unless write_queue
+
+      write_queue.clear
+      write_queue.close
     end
 
     def start_read_thread(interface_info)
       @read_threads << Thread.new do
-        index_to_delete = nil
         begin
           begin
             read_thread_body(interface_info.interface)
@@ -452,24 +580,12 @@ module OpenC3
             Logger.error "#{@name}: Tcpip server read thread unexpectedly died"
             Logger.error e.formatted
           end
-          Logger.info "#{@name}: Tcpip server lost read connection to #{interface_info.hostname}(#{interface_info.host_ip}):#{interface_info.port}"
+          Logger.info "#{@name}: Tcpip server lost read connection to #{interface_info}"
           @read_threads.delete(Thread.current)
 
-          index_to_delete = nil
           @connection_mutex.synchronize do
-            index = 0
-            @read_interface_infos.each do |read_interface_info|
-              if interface_info.interface == read_interface_info.interface
-                index_to_delete = index
-                read_interface_info.interface.disconnect
-                read_interface_info.interface.stream_log_pair.stop if read_interface_info.interface.stream_log_pair
-                break
-              end
-              index += 1
-            end
-          ensure
-            if index_to_delete
-              @read_interface_infos.delete_at(index_to_delete)
+            if @read_interface_infos.delete(interface_info)
+              disconnect_client(interface_info)
             end
           end
         rescue Exception => e
@@ -481,7 +597,6 @@ module OpenC3
 
     def write_thread_body
       # Retrieve the next packet to be sent out to clients
-      # Handles disconnected clients even when packets aren't flowing
       packet = nil
 
       loop do
@@ -491,7 +606,10 @@ module OpenC3
           packet = @write_queue.pop(true) # non_block to raise ThreadError
           break
         rescue ThreadError
-          check_for_dead_clients()
+          # Sleep until we receive a packet or for 100ms
+          @write_mutex.synchronize do
+            @write_condition_variable.wait(@write_mutex, 0.1)
+          end
         end
       end
 
@@ -553,86 +671,22 @@ module OpenC3
       packet
     end
 
-    def check_for_dead_clients
-      indexes_to_delete = []
-      index = 0
-
-      @connection_mutex.synchronize do
-        @write_interface_infos.each do |interface_info|
-          if @write_port != @read_port
-            # Socket should return EWOULDBLOCK if it is still cleanly connected
-            interface_info.interface.stream.write_socket.recvfrom_nonblock(10)
-          elsif !interface_info.interface.stream.write_socket.closed?
-            # Let read thread detect disconnect
-            next
-          end
-          # Client has disconnected (or is invalidly sending data on the socket)
-          Logger.info "#{@name}: Tcpip server lost write connection to #{interface_info.hostname}(#{interface_info.host_ip}):#{interface_info.port}"
-          interface_info.interface.disconnect
-          interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
-          indexes_to_delete.unshift(index) # Put later indexes at front of array
-        rescue Errno::ECONNRESET, Errno::ECONNABORTED, IOError
-          # Client has disconnected
-          Logger.info "#{@name}: Tcpip server lost write connection to #{interface_info.hostname}(#{interface_info.host_ip}):#{interface_info.port}"
-          interface_info.interface.disconnect
-          interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
-          indexes_to_delete.unshift(index) # Put later indexes at front of array
-        rescue Errno::EWOULDBLOCK
-          # Client is still cleanly connected as far as we can tell without writing to the socket
-        ensure
-          index += 1
-        end
-
-        # Delete any dead sockets
-        indexes_to_delete.each do |index_to_delete|
-          @write_interface_infos.delete_at(index_to_delete)
-        end
-      end # connection_mutex.synchronize
-
-      # Sleep until we receive a packet or for 100ms
-      @write_mutex.synchronize do
-        @write_condition_variable.wait(@write_mutex, 0.1)
-      end
-    end
-
+    # Queue the packet or data for every connected client. Never blocks on a
+    # socket. The mutex is only held to copy the client list so a client which
+    # stops reading can't delay the other clients or accepting new connections.
     def write_to_clients(method, packet_or_data)
-      @connection_mutex.synchronize do
-        # Send data to each client - On error drop the client
-        indexes_to_delete = []
-        index = 0
-        @write_interface_infos.each do |interface_info|
-          need_disconnect = false
-          begin
-            interface_bytes_written = interface_info.interface.bytes_written
-            interface_info.interface.public_send(method, packet_or_data)
-            diff = interface_info.interface.bytes_written - interface_bytes_written
-            @written_raw_data_time = interface_info.interface.written_raw_data_time
-            @written_raw_data = interface_info.interface.written_raw_data
-            @bytes_written += diff
-          rescue Errno::EPIPE, Errno::ECONNABORTED, IOError, Errno::ECONNRESET
-            # Client has normally disconnected
-            need_disconnect = true
-          rescue Exception => e
-            if e.message != "Stream not connected for write_raw"
-              Logger.error "#{@name}: Error sending to client: #{e.class} #{e.message}"
-            end
-            need_disconnect = true
-          end
-
-          if need_disconnect
-            Logger.info "#{@name}: Tcpip server lost write connection to #{interface_info.hostname}(#{interface_info.host_ip}):#{interface_info.port}"
-            interface_info.interface.disconnect
-            interface_info.interface.stream_log_pair.stop if interface_info.interface.stream_log_pair
-            indexes_to_delete.unshift(index) # Put later indexes at front of array
-          end
-          index += 1
-        end
-
-        # Delete any dead sockets
-        indexes_to_delete.each do |index_to_delete|
-          @write_interface_infos.delete_at(index_to_delete)
-        end
-      end # connection_mutex.synchronize
+      interface_infos = @connection_mutex.synchronize { @write_interface_infos.dup }
+      queued_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      last_index = interface_infos.length - 1
+      interface_infos.each_with_index do |interface_info, index|
+        item = packet_or_data
+        # Each client's protocols run concurrently and may modify the packet
+        # so every client but the last gets its own copy
+        item = packet_or_data.clone if method == :write and index != last_index
+        interface_info.write_queue << [method, item, queued_at]
+      rescue ClosedQueueError
+        # Client is being removed
+      end
     end
 
     def details
