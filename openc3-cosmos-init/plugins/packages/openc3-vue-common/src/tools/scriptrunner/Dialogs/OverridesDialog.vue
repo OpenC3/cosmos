@@ -111,7 +111,7 @@ async function clearOverrides() {
       ]),
     ).values(),
   ]
-  await Promise.all(
+  await Promise.allSettled(
     items.map((item) =>
       api.normalize_tlm(
         item.target_name,
@@ -121,7 +121,8 @@ async function clearOverrides() {
       ),
     ),
   )
-  overrides.value = []
+  // Reload from backend so failed requests still show
+  await getOverrides()
 }
 
 async function deleteOverride(item) {

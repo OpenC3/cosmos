@@ -196,12 +196,17 @@ export default {
         const customRoles = roles.filter(
           (role) => role != 'viewer' && role != 'admin' && role != 'approver',
         )
-        const responses = await Promise.all(
+        // allSettled so one failed lookup doesn't discard a cmd grant from another role
+        const results = await Promise.allSettled(
           customRoles.map((role) => Api.get(`/openc3-api/roles/${role}`)),
         )
         if (
-          responses.some((response) =>
-            response.data?.permissions?.some((i) => i.permission == 'cmd'),
+          results.some(
+            (result) =>
+              result.status === 'fulfilled' &&
+              result.value.data?.permissions?.some(
+                (i) => i.permission == 'cmd',
+              ),
           )
         ) {
           this.cmdUser = true

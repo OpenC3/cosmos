@@ -609,22 +609,26 @@ export default {
     // Returns the Ruby or Python script at the given path, or null if neither
     // exists. Used to decide whether to offer the upload / download actions.
     findScript: async function (path) {
-      const extensions = ['rb', 'py']
-      // Check both in parallel; a rejection just means that script doesn't exist
-      const results = await Promise.allSettled(
-        extensions.map((extension) =>
-          Api.get(`/openc3-api/tables/${path}.${extension}`, {
+      // Check Ruby first and request Python only if Ruby is missing. A GET on an
+      // existing script takes a lock, so a parallel request could leave a stale
+      // lock on the unused script.
+      for (const extension of ['rb', 'py']) {
+        try {
+          // Sequential on purpose, see above
+          // eslint-disable-next-line no-await-in-loop
+          await Api.get(`/openc3-api/tables/${path}.${extension}`, {
             headers: {
               Accept: 'application/json',
               // Since we're just checking for existence, 404 is possible so ignore it
               'Ignore-Errors': '404',
             },
-          }),
-        ),
-      )
-      // Results keep extension order so Ruby is still preferred over Python
-      const index = results.findIndex((r) => r.status === 'fulfilled')
-      return index === -1 ? null : `${path}.${extensions[index]}`
+          })
+          return `${path}.${extension}`
+        } catch {
+          // This script does not exist; try the next extension
+        }
+      }
+      return null
     },
     runScript: async function (script) {
       const response = await Api.post(`/script-api/scripts/${script}/run`, {
