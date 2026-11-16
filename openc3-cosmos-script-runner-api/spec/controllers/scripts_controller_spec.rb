@@ -333,6 +333,22 @@ RSpec.describe ScriptsController, type: :controller do
       payload = Base64.urlsafe_encode64({"azp" => "cosmos-m2m"}.to_json).delete("=")
       "header.#{payload}.signature"
     end
+    let(:service_account_username) { 'service-account-cosmos-m2m' }
+    let(:service_account_full_name) { 'Cosmos M2M' }
+    let(:service_account_client_id) { 'cosmos-m2m' }
+    let(:run_params) { { scope: 'DEFAULT', name: 'INST/procedures/test.rb' } }
+    let(:service_account_auth_context) do
+      {
+        name: service_account_username,
+        auth_kind: 'client_credentials',
+        client_id: service_account_client_id,
+        client_secret_name: service_account_client_id,
+        secret_store: nil,
+      }
+    end
+    let(:service_account_run_args) do
+      ['DEFAULT', run_params[:name], nil, false, nil, service_account_full_name, service_account_username, 1, nil, nil]
+    end
 
     around do |example|
       previous_client = ENV['OPENC3_API_CLIENT']
@@ -343,6 +359,18 @@ RSpec.describe ScriptsController, type: :controller do
       ENV['OPENC3_API_CLIENT_SECRET'] = previous_secret
     end
 
+    def prepare_service_account_request(secret_value: 'stored-m2m-secret')
+      secret_client = double('secrets_client')
+      request.headers['HTTP_AUTHORIZATION'] = "Bearer #{service_account_bearer_token}"
+      allow(controller).to receive_messages(
+        username: service_account_username,
+        user_full_name: service_account_full_name,
+      )
+      allow(OpenC3::Secrets).to receive(:getClient).and_return(secret_client)
+      allow(secret_client).to receive(:get).with(service_account_client_id, scope: 'DEFAULT').and_return(secret_value)
+      secret_client
+    end
+
     it "returns an ok response" do
       expect(OpenC3::ServiceAccountScriptAuthModel).not_to receive(:get_model)
       expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", nil, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(1)
@@ -351,66 +379,37 @@ RSpec.describe ScriptsController, type: :controller do
     end
 
     it "stores a durable client-credentials context for service-account callers" do
-      secret_client = double('secrets_client')
-
-      request.headers['HTTP_AUTHORIZATION'] = "Bearer #{service_account_bearer_token}"
-      allow(controller).to receive(:username).and_return('service-account-cosmos-m2m')
-      allow(controller).to receive(:user_full_name).and_return('Cosmos M2M')
-      allow(OpenC3::Secrets).to receive(:getClient).and_return(secret_client)
-      expect(secret_client).to receive(:get).with('cosmos-m2m', scope: 'DEFAULT').and_return('stored-m2m-secret')
+      prepare_service_account_request
       expect(OpenC3::ServiceAccountScriptAuthModel).to receive(:set).with(
-        {
-          name: 'service-account-cosmos-m2m',
-          auth_kind: 'client_credentials',
-          client_id: 'cosmos-m2m',
-          client_secret_name: 'cosmos-m2m',
-          secret_store: nil,
-        },
+        service_account_auth_context,
         scope: 'DEFAULT',
       )
-      expect(Script).to receive(:run).with('DEFAULT', 'INST/procedures/test.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m', 1, nil, nil).and_return(1)
+      expect(Script).to receive(:run).with(*service_account_run_args).and_return(1)
 
-      post :run, params: {scope: 'DEFAULT', name: 'INST/procedures/test.rb'}
+      post :run, params: run_params
 
       expect(response).to have_http_status(:ok)
     end
 
     it "upserts the durable client-credentials context for repeat service-account callers" do
-      secret_client = double('secrets_client')
-
-      request.headers['HTTP_AUTHORIZATION'] = "Bearer #{service_account_bearer_token}"
-      allow(controller).to receive(:username).and_return('service-account-cosmos-m2m')
-      allow(controller).to receive(:user_full_name).and_return('Cosmos M2M')
-      allow(OpenC3::Secrets).to receive(:getClient).and_return(secret_client)
-      expect(secret_client).to receive(:get).with('cosmos-m2m', scope: 'DEFAULT').and_return('stored-m2m-secret')
+      prepare_service_account_request
       expect(OpenC3::ServiceAccountScriptAuthModel).to receive(:set).with(
-        {
-          name: 'service-account-cosmos-m2m',
-          auth_kind: 'client_credentials',
-          client_id: 'cosmos-m2m',
-          client_secret_name: 'cosmos-m2m',
-          secret_store: nil,
-        },
+        service_account_auth_context,
         scope: 'DEFAULT',
-      )
-      expect(Script).to receive(:run).with('DEFAULT', 'INST/procedures/test.rb', nil, false, nil, 'Cosmos M2M', 'service-account-cosmos-m2m', 1, nil, nil).and_return(1)
+      ).twice
+      allow(Script).to receive(:run).with(*service_account_run_args).and_return(1)
 
-      post :run, params: {scope: 'DEFAULT', name: 'INST/procedures/test.rb'}
-
-      expect(response).to have_http_status(:ok)
+      2.times do
+        post :run, params: run_params
+        expect(response).to have_http_status(:ok)
+      end
     end
 
     it "returns an error response for service-account callers without a durable client secret lookup" do
-      secret_client = double('secrets_client')
-
-      request.headers['HTTP_AUTHORIZATION'] = "Bearer #{service_account_bearer_token}"
-      allow(controller).to receive(:username).and_return('service-account-cosmos-m2m')
-      allow(controller).to receive(:user_full_name).and_return('Cosmos M2M')
-      allow(OpenC3::Secrets).to receive(:getClient).and_return(secret_client)
-      allow(secret_client).to receive(:get).with('cosmos-m2m', scope: 'DEFAULT').and_return(nil)
+      prepare_service_account_request(secret_value: nil)
       expect(Script).not_to receive(:run)
 
-      post :run, params: {scope: 'DEFAULT', name: 'INST/procedures/test.rb'}
+      post :run, params: run_params
 
       expect(response).to have_http_status(:internal_server_error)
       json = JSON.parse(response.body)
