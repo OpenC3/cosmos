@@ -78,8 +78,8 @@ def tlm(*args: str, type: ValueType = "CONVERTED", cache_timeout: float = 0.1, s
         tlm("TGT PKT ITEM")
         tlm("TGT", "PKT", "ITEM")
 
-    A packet name of LATEST reads the item from the most recently received
-    packet which contains it.
+    A packet name of LATEST reads the item from the packet with the latest
+    packet time which contains it.
 
     Args:
         *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
@@ -139,7 +139,9 @@ def tlm_with_units(*args: str, cache_timeout: float = 0.1, scope: str = OPENC3_S
     return tlm(*args, type="FORMATTED", cache_timeout=cache_timeout, scope=scope)
 
 
-def set_tlm(*args: Any, type: ValueType = "CONVERTED", cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE) -> None:
+def set_tlm(
+    *args: Any, type: OverrideValueType = "CONVERTED", cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE
+) -> None:
     """Set a telemetry item in the current value table.
 
     If COSMOS is receiving telemetry for the packet, the next packet can
@@ -154,7 +156,8 @@ def set_tlm(*args: Any, type: ValueType = "CONVERTED", cache_timeout: float = 0.
     Args:
         *args: A single "TGT PKT ITEM = value" string, or the target, packet
             and item names followed by the value.
-        type: Value type to set: RAW, CONVERTED (default) or FORMATTED.
+        type: Value type to set: RAW, CONVERTED (default), FORMATTED, or ALL
+            to set every value type.
         cache_timeout: Seconds a cached current value table read stays valid.
         scope: COSMOS scope.
     """
@@ -469,8 +472,8 @@ def get_tlm_values(
     """Return the values, along with their limits state, of items from any packets.
 
     Items must be fully qualified with their target and packet names. A packet
-    name of LATEST reads the item from the most recently received packet which
-    contains it.
+    name of LATEST reads the item from the packet with the latest packet time
+    which contains it.
 
     Args:
         items: Items formatted as TGT__PKT__ITEM__TYPE, optionally suffixed with
@@ -589,7 +592,7 @@ def get_all_tlm_names(target_name: str, hidden: bool = False, scope: str = OPENC
     return names
 
 
-def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE) -> list[str]:
+def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE) -> list[bytes]:
     """Return the names of all the telemetry items in every packet of a target.
 
     Args:
@@ -598,7 +601,8 @@ def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = 
         scope: COSMOS scope.
 
     Returns:
-        The unique item names, or an empty list if the target does not exist.
+        The unique item names as bytes (unlike Ruby, which returns strings),
+        or an empty list if the target does not exist.
     """
     authorize(permission="tlm", target_name=target_name, scope=scope)
     try:
@@ -644,8 +648,8 @@ def get_item(*args: str, scope: str = OPENC3_SCOPE, cache_timeout: float = 0.1) 
         get_item("TGT PKT ITEM")
         get_item("TGT", "PKT", "ITEM")
 
-    A packet name of LATEST returns the item from the most recently received
-    packet which contains it.
+    A packet name of LATEST returns the item from the packet with the latest
+    packet time which contains it.
 
     Args:
         *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
@@ -935,7 +939,7 @@ def _set_tlm_extract_args(args: tuple[Any, ...], method_name: str):
     return target_name.upper(), packet_name.upper(), item_name.upper(), value
 
 
-# Resolve LATEST to the most recently received packet containing the item
+# Resolve LATEST to the packet with the latest packet time containing the item
 def _tlm_resolve_packet_name(
     target_name: str, packet_name: str, item_name: str, cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE
 ):

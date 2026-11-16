@@ -79,8 +79,9 @@ def connect_router(router_name: str, *router_params: Any, scope: str = OPENC3_SC
 
     Args:
         router_name: Router name.
-        *router_params: Optional parameters which replace the router's
-            configured parameters when it is rebuilt.
+        *router_params: Optional parameters which should replace the router's
+            configured parameters. Currently never sent to the router
+            (GitHub issue #4322).
         scope: COSMOS scope.
     """
     authorize(permission="system_set", router_name=router_name, scope=scope)

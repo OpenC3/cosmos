@@ -164,7 +164,7 @@ def create_timeline_activity(
 ) -> dict[str, Any]:
     """Create a new activity on a timeline.
 
-    Times may be epoch seconds, numeric strings, ISO 8601 strings, or
+    Times may be epoch seconds, integer epoch strings, ISO 8601 strings, or
     datetime/date objects. Naive times are treated as UTC.
 
     Args:
@@ -349,7 +349,7 @@ _EPOCH_INT_RE = re.compile(r"\A-?\d+\Z")
 def _cal_to_epoch(value: Any):
     """Convert a value to an epoch integer.
 
-    Accepts int/float (treated as already-epoch), numeric strings, and
+    Accepts int/float (treated as already-epoch), integer strings, and
     ISO-style date/time strings or datetime/date objects.
     """
     # bool is a subclass of int in Python; treat it as int

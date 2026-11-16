@@ -241,8 +241,8 @@ def set_limits(
     """Change the limits settings for a telemetry item.
 
     By default a new limits set called CUSTOM is created to avoid overriding
-    existing limits. Every packet is validated before any is changed, so an
-    error does not leave a partial update.
+    existing limits. Every packet is validated before any is changed, so a
+    validation error does not leave a partial update.
 
     Args:
         target_name: Target name.

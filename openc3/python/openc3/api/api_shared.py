@@ -734,7 +734,7 @@ def _check(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE)
     target_name, packet_name, item_name, comparison_to_eval = _check_process_args(args, "check")
     value = tlm(target_name, packet_name, item_name, type=type, scope=scope)
     if comparison_to_eval:
-        return _check_comparison(target_name, packet_name, item_name, type, comparison_to_eval, value, scope)
+        _check_comparison(target_name, packet_name, item_name, type, comparison_to_eval, value, scope)
     else:
         print(f"CHECK: {_upcase(target_name, packet_name, item_name)} == {value}")
 
