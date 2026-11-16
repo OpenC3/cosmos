@@ -1138,6 +1138,20 @@ class TestTlmApi(unittest.TestCase):
         )
         self.assertEqual(tlm("NOGRP LATEST VALUE"), 3)
 
+    def test_limits_group_is_an_ordinary_packet_for_a_target_which_kept_its_own(self):
+        # Ruby's TargetModel stores the flag set by the LimitsGroupBackfill migration
+        target = {"name": "OWN", "limits_groups": ["TEMPS"], "own_limits_group_packet": True}
+        Store.hset("DEFAULT__openc3_targets", "OWN", json.dumps(target))
+        with self.assertRaisesRegex(RuntimeError, "does not exist"):
+            inject_tlm("OWN", "LIMITS_GROUP", {"VALUE": 0})
+
+        packet = {"target_name": "OWN", "packet_name": "LIMITS_GROUP", "items": [{"name": "VALUE"}]}
+        Store.hset("DEFAULT__openc3tlm__OWN", "LIMITS_GROUP", json.dumps(packet))
+        CvtModel.set(
+            {"VALUE": 3, "PACKET_TIMESECONDS": 1.0}, target_name="OWN", packet_name="LIMITS_GROUP", scope="DEFAULT"
+        )
+        self.assertEqual(tlm("OWN LATEST VALUE"), 3)
+
     def test_get_tlm_values_accepts_the_limits_suffix_from_the_cvt(self):
         vals = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED__LIMITS"])
         self.assertEqual(vals[0][0], (-100.0))

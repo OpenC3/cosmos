@@ -31,41 +31,65 @@ module OpenC3
       end
     end
 
+    # Every step can run again: the migration is only recorded once every scope
+    # is done so a failure (e.g. in add_microservice) reruns the whole thing.
     def self.backfill_targets(scope)
-      groups = Store.hgetall("#{scope}__limits_groups")
-      rekeyed = Set.new
-      # Names couldn't contain '__' until groups were owned by a target, so a
-      # legacy name can be a key written here (e.g. INST's group SYSTEM__TEMPS)
-      written = Set.new
-      TargetModel.get_all_models(scope: scope).each do |target_name, model|
+      models = TargetModel.get_all_models(scope: scope)
+      rekey_groups(scope, models)
+      models.each do |target_name, model|
         group_names = model.limits_groups || []
         next if group_names.empty?
 
-        group_names.each do |group|
+        packet = PacketConfig.generate_limits_group_packet(target_name, group_names)
+        json = Store.instance(db_shard: model.db_shard).hget("#{scope}__openc3tlm__#{target_name}", PacketConfig::LIMITS_GROUP_PACKET)
+        # A previous run already stored the generated packet so finish adding it.
+        # config_name hashes the name, layout and states of every item.
+        if json.nil? or JSON.parse(json, allow_nan: true, create_additions: true)['config_name'] == packet.config_name
+          add_limits_group_packet(model, packet)
+        else
+          Logger.warn("Target #{target_name} in scope #{scope} has its own #{PacketConfig::LIMITS_GROUP_PACKET} packet so its limits groups won't be published. Rename the packet and reinstall the target.")
+          # Keeps the packet writable and in LATEST and stops the limits group
+          # microservice publishing over it (see TargetModel.generated_limits_group_packet?)
+          unless model.own_limits_group_packet
+            model.own_limits_group_packet = true
+            model.update
+          end
+        end
+      end
+    end
+
+    # Store each group under the target which defines it. Names could contain
+    # '__' before groups were owned by a target so a legacy name can be a key
+    # written here (e.g. INST's group SYSTEM__TEMPS and SYSTEM's group TEMPS).
+    # The two can't be told apart afterwards so the new keys, the deletes and a
+    # marker are written together and a rerun skips a scope already done.
+    def self.rekey_groups(scope, models)
+      done_key = "#{scope}__limits_groups_rekeyed"
+      return if Store.get(done_key)
+
+      groups = Store.hgetall("#{scope}__limits_groups")
+      rekeyed = {}
+      legacy = Set.new
+      models.each do |target_name, model|
+        (model.limits_groups || []).each do |group|
           # Before groups were owned by a target they were stored by name alone
           next unless groups[group]
 
-          key = LimitsEventTopic.limits_group_key(target_name, group)
-          Store.hset("#{scope}__limits_groups", key, groups[group])
-          written << key
-          rekeyed << group
-        end
-
-        store = Store.instance(db_shard: model.db_shard)
-        if store.hexists("#{scope}__openc3tlm__#{target_name}", PacketConfig::LIMITS_GROUP_PACKET)
-          Logger.warn("Target #{target_name} in scope #{scope} has its own #{PacketConfig::LIMITS_GROUP_PACKET} packet so its limits groups won't be published. Rename the packet and reinstall the target.")
-        else
-          add_limits_group_packet(model, group_names)
+          rekeyed[LimitsEventTopic.limits_group_key(target_name, group)] = groups[group]
+          legacy << group
         end
       end
-      legacy = rekeyed - written
-      Store.hdel("#{scope}__limits_groups", *legacy.to_a) unless legacy.empty?
+      legacy.subtract(rekeyed.keys)
+      Store.multi do |multi|
+        rekeyed.each { |key, items| multi.hset("#{scope}__limits_groups", key, items) }
+        multi.hdel("#{scope}__limits_groups", *legacy.to_a) unless legacy.empty?
+        multi.set(done_key, 'true')
+      end
     end
 
     # Installing a target adds this packet like any other
     # (see PacketConfig#build_limits_group_packet)
-    def self.add_limits_group_packet(model, group_names)
-      packet = PacketConfig.generate_limits_group_packet(model.name, group_names)
+    def self.add_limits_group_packet(model, packet)
       TargetModel.set_packet(model.name, packet.packet_name, packet, scope: model.scope)
       # Seed the CVT like TargetModel#update_store_telemetry so the packet can be read
       # before the limits group microservice publishes it. HSETNX never overwrites values.

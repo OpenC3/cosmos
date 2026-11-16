@@ -254,13 +254,14 @@ class TargetModel(Model):
 
     # <TARGET> LIMITS_GROUP is generated from the limits groups of a target which
     # defines them. A target without limits groups can still have a telemetry
-    # packet of its own named LIMITS_GROUP which behaves like any other packet.
+    # packet of its own named LIMITS_GROUP which behaves like any other packet,
+    # as does one kept by LimitsGroupBackfill (see own_limits_group_packet).
     @classmethod
     def generated_limits_group_packet(cls, target_name: str, packet_name: str, scope: str = OPENC3_SCOPE) -> bool:
         if packet_name != "LIMITS_GROUP":
             return False
         target = cls.get(name=target_name, scope=scope)
-        return bool(target and target.get("limits_groups"))
+        return bool(target and target.get("limits_groups") and not target.get("own_limits_group_packet"))
 
     # @return [Hash{String => Array<Array<String, String, String>>}]
     @classmethod
@@ -526,6 +527,7 @@ class TargetModel(Model):
         ignored_parameters=None,
         ignored_items=None,
         limits_groups=None,
+        own_limits_group_packet=False,
         cmd_tlm_files=None,
         id=None,
         updated_at=None,

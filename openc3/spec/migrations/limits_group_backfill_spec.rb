@@ -59,12 +59,16 @@ module OpenC3
       expect(TargetModel.get_item_to_packet_map("SYSTEM", scope: "DEFAULT")).not_to have_key("TEMPS")
     end
 
-    it "warns about a target with its own LIMITS_GROUP packet" do
+    it "keeps and marks a target's own LIMITS_GROUP packet" do
       Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP", JSON.generate({ 'items' => [] }))
+      expect(TargetModel.generated_limits_group_packet?("SYSTEM", "LIMITS_GROUP", scope: "DEFAULT")).to be true
       expect(Logger).to receive(:warn).with(/Target SYSTEM in scope DEFAULT has its own LIMITS_GROUP packet/)
       LimitsGroupBackfill.run
       expect(JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))).to eql({ 'items' => [] })
       expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__POWER SYSTEM__TEMPS)
+      # So it stays writable, in LATEST and isn't published over
+      expect(TargetModel.get_model(name: "SYSTEM", scope: "DEFAULT").own_limits_group_packet).to be true
+      expect(TargetModel.generated_limits_group_packet?("SYSTEM", "LIMITS_GROUP", scope: "DEFAULT")).to be false
     end
 
     it "keeps a group whose new key is also a legacy group name" do
@@ -73,6 +77,9 @@ module OpenC3
       model.limits_groups = %w(SYSTEM__TEMPS)
       model.update
       Store.hset("DEFAULT__limits_groups", "SYSTEM__TEMPS", JSON.generate([%w(INST HEALTH_STATUS TEMP2)]))
+      LimitsGroupBackfill.run
+      # A rerun (e.g. after add_microservice failed) can't tell SYSTEM's new key
+      # from INST's legacy group so it must not rekey again
       LimitsGroupBackfill.run
       expected = {
         "SYSTEM__TEMPS" => JSON.generate([%w(INST HEALTH_STATUS TEMP1)]),
@@ -93,8 +100,13 @@ module OpenC3
 
     it "does nothing the second time" do
       LimitsGroupBackfill.run
+      config_name = JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))['config_name']
+      # The packet stored by the first run is recognized as the generated one
+      expect(Logger).not_to receive(:warn)
       LimitsGroupBackfill.run
       expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__POWER SYSTEM__TEMPS)
+      expect(JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))['config_name']).to eql config_name
+      expect(TargetModel.get_model(name: "SYSTEM", scope: "DEFAULT").own_limits_group_packet).to be false
       multi = MicroserviceModel.get_model(name: "DEFAULT__SCOPEMULTI__DEFAULT", scope: "DEFAULT")
       expect(multi.cmd.count("DEFAULT__LIMITSGROUP__DEFAULT")).to eql 1
     end

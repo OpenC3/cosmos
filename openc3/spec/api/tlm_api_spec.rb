@@ -614,6 +614,18 @@ module OpenC3
         CvtModel.set({ "VALUE" => 3, "PACKET_TIMESECONDS" => 1.0 }, target_name: "NOGRP", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
         expect(@api.tlm("NOGRP LATEST VALUE")).to eql 3
       end
+
+      it "is an ordinary packet for a target which kept its own LIMITS_GROUP packet" do
+        # Marked by the LimitsGroupBackfill migration
+        TargetModel.new(name: "OWN", scope: "DEFAULT", limits_groups: ["TEMPS"], own_limits_group_packet: true).create
+        expect { @api.inject_tlm("OWN", "LIMITS_GROUP", { VALUE: 0 }) }.to raise_error(RuntimeError, /does not exist/)
+
+        packet = { "target_name" => "OWN", "packet_name" => "LIMITS_GROUP", "items" => [{ "name" => "VALUE" }] }
+        Store.hset("DEFAULT__openc3tlm__OWN", "LIMITS_GROUP", JSON.generate(packet))
+        TargetModel.class_variable_get(:@@item_map_cache)["DEFAULT__OWN__item_to_packet_map"] = nil
+        CvtModel.set({ "VALUE" => 3, "PACKET_TIMESECONDS" => 1.0 }, target_name: "OWN", packet_name: "LIMITS_GROUP", scope: "DEFAULT")
+        expect(@api.tlm("OWN LATEST VALUE")).to eql 3
+      end
     end
 
     describe "get_tlm_packet" do

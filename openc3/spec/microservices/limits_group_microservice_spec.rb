@@ -315,10 +315,13 @@ module OpenC3
     it "never writes over a target's own LIMITS_GROUP packet" do
       warnings = []
       allow_any_instance_of(Logger).to receive(:warn) { |_logger, message| warnings << message }
-      # Kept by the LimitsGroupBackfill migration when INST was upgraded
-      own = Packet.new('INST', 'LIMITS_GROUP')
-      own.append_item('VALUE', 8, :UINT)
+      # Kept by the LimitsGroupBackfill migration when INST was upgraded. Its
+      # items happen to match the generated packet's but only the flag counts.
+      own = PacketConfig.generate_limits_group_packet('INST', ['TEMPS'])
       Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__INST", "LIMITS_GROUP", JSON.generate(own.as_json))
+      model = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')
+      model.own_limits_group_packet = true
+      model.update
       start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)], 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP2)] })
       change('TEMP1', 'RED')
       expect(publishes('INST')).to eql 0
@@ -327,9 +330,9 @@ module OpenC3
       # Other targets still publish
       expect(publishes('INST2')).to eql 1
 
-      # Renamed and reinstalled
-      packet = PacketConfig.generate_limits_group_packet('INST', ['TEMPS'])
-      Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__INST", "LIMITS_GROUP", JSON.generate(packet.as_json))
+      # Renamed and reinstalled which recreates the target model
+      model.own_limits_group_packet = false
+      model.update
       @microservice.reload(changed_targets: ['INST'])
       @microservice.flush
       expect(publishes('INST')).to eql 1

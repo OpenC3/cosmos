@@ -68,6 +68,10 @@ module OpenC3
     attr_accessor :ignored_parameters
     attr_accessor :ignored_items
     attr_accessor :limits_groups
+    # Set by LimitsGroupBackfill when a target upgraded with limits groups also has
+    # a telemetry packet of its own named LIMITS_GROUP. Installing never sets it
+    # since a target can't define both.
+    attr_accessor :own_limits_group_packet
     attr_accessor :stored_limits_mode
     attr_accessor :cmd_tlm_files
     attr_accessor :id
@@ -452,14 +456,15 @@ module OpenC3
 
     # <TARGET> LIMITS_GROUP is generated from the limits groups of a target which
     # defines them. A target without limits groups can still have a telemetry
-    # packet of its own named LIMITS_GROUP which behaves like any other packet.
+    # packet of its own named LIMITS_GROUP which behaves like any other packet,
+    # as does one kept by LimitsGroupBackfill (see own_limits_group_packet).
     #
     # @return [Boolean] Whether the packet is the generated limits group packet
     def self.generated_limits_group_packet?(target_name, packet_name, scope:)
       return false unless packet_name == PacketConfig::LIMITS_GROUP_PACKET
 
       target = get(name: target_name, scope: scope)
-      (target and !(target['limits_groups'] || []).empty?) ? true : false
+      (target and !(target['limits_groups'] || []).empty? and !target['own_limits_group_packet']) ? true : false
     end
 
     # @return [Hash{String => Array<Array<String, String, String>>}] Limits groups keyed
@@ -534,6 +539,7 @@ module OpenC3
       ignored_parameters: [],
       ignored_items: [],
       limits_groups: [],
+      own_limits_group_packet: false,
       stored_limits_mode: 'PROCESS',
       cmd_tlm_files: [],
       id: nil,
@@ -564,6 +570,7 @@ module OpenC3
       @ignored_parameters = ignored_parameters
       @ignored_items = ignored_items
       @limits_groups = limits_groups
+      @own_limits_group_packet = own_limits_group_packet ? true : false
       @stored_limits_mode = stored_limits_mode.to_s.upcase
       @stored_limits_mode = 'PROCESS' unless %w(PROCESS LOG DISABLE).include?(@stored_limits_mode)
       @cmd_tlm_files = cmd_tlm_files
@@ -597,6 +604,7 @@ module OpenC3
         'ignored_parameters' => @ignored_parameters,
         'ignored_items' => @ignored_items,
         'limits_groups' => @limits_groups,
+        'own_limits_group_packet' => @own_limits_group_packet,
         'stored_limits_mode' => @stored_limits_mode,
         'cmd_tlm_files' => @cmd_tlm_files,
         'id' => @id,
