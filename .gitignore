@@ -5,7 +5,10 @@ playwright/openc3-cosmos-pw-test/
 *.bundle
 *.gem
 Makefile
-*Gemfile.lock
+# Gemfile.lock is committed for openc3 and the APIs. These are not:
+/Gemfile.lock
+.ruby-lsp/Gemfile.lock
+openc3/test/integration/tsdb/ruby/Gemfile.lock
 package-lock.json
 .yardoc
 .DS_Store
