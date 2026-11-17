@@ -425,6 +425,7 @@
               ref="aceEditor"
               autofocus
               :mode="languageMode"
+              :read-only="editorReadOnly"
               class="editor"
               @contextmenu.prevent="showExecuteSelectionMenu"
             />
@@ -617,6 +618,7 @@
               ref="aceEditor"
               autofocus
               :mode="languageMode"
+              :read-only="editorReadOnly"
               class="editor"
               style="height: 200px"
               @contextmenu.prevent="showExecuteSelectionMenu"
@@ -1326,6 +1328,17 @@ export default {
     }
   },
   computed: {
+    // Editing is blocked while the script runs, when another user holds the
+    // lock, when the script is approved, and for read-only/inline instances
+    editorReadOnly() {
+      return (
+        this.readOnlyUser ||
+        this.inline ||
+        this.isLocked ||
+        this.scriptApproved ||
+        this.scriptActive
+      )
+    },
     languageMode() {
       return this.editorLanguage === 'python' ? this.pythonMode : this.rubyMode
     },
@@ -1820,26 +1833,6 @@ export default {
       if (!this.suiteRunner) {
         this.startOrGoDisabled = val
       }
-      if (!this.readOnlyUser && !val && !this.inline && !this.scriptApproved) {
-        this.editor.setReadOnly(val)
-      } else {
-        this.editor.setReadOnly(true)
-      }
-    },
-    scriptApproved: function (val) {
-      if (!this.editor) {
-        return
-      }
-      if (val) {
-        this.editor.setReadOnly(true)
-      } else if (
-        !this.readOnlyUser &&
-        !this.isLocked &&
-        !this.inline &&
-        !this.scriptActive
-      ) {
-        this.editor.setReadOnly(false)
-      }
     },
     fullFilename: function (filename) {
       this.filenameSelect = filename
@@ -1853,15 +1846,9 @@ export default {
     },
     readOnlyUser: function (val) {
       if (this.editor) {
-        if (val) {
-          this.editor.setReadOnly(true)
-          this.editor.renderer.$cursorLayer.element.style.display = 'none'
-        } else {
-          if (!this.inline) {
-            this.editor.setReadOnly(false)
-          }
-          this.editor.renderer.$cursorLayer.element.style.display = null
-        }
+        this.editor.renderer.$cursorLayer.element.style.display = val
+          ? 'none'
+          : null
       }
     },
     showOverrides: function (newVal, oldVal) {
@@ -2041,7 +2028,6 @@ export default {
     // while change fires immediately before the UndoManager is updated.
     this.editor.session.on('tokenizerUpdate', this.onChange)
     if (this.readOnlyUser || this.inline) {
-      this.editor.setReadOnly(true)
       this.editor.renderer.$cursorLayer.element.style.display = 'none'
     }
 
@@ -2659,7 +2645,6 @@ export default {
       this.envDisabled = true
       this.state = 'Connecting...'
       this.startOrGoButton = GO
-      this.editor.setReadOnly(true)
     },
     async scriptStart(id) {
       this.$emit('script-id', id)
@@ -2796,9 +2781,6 @@ export default {
       // We may have changed the contents (if there were sub-scripts)
       // so don't let the undo manager think this is a change
       this.editor.session.getUndoManager().reset()
-      if (!this.readOnlyUser && !this.inline && !this.scriptApproved) {
-        this.editor.setReadOnly(false)
-      }
 
       this.scriptId = null // No current scriptId
       sessionStorage.removeItem('script_runner__script_id')

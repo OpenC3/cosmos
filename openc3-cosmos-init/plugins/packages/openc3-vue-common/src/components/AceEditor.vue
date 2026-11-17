@@ -36,6 +36,10 @@ const props = defineProps({
     type: [String, Object],
     default: null,
   },
+  readOnly: {
+    type: Boolean,
+    default: false,
+  },
   // Focus the editor once mounted
   autofocus: {
     type: Boolean,
@@ -54,6 +58,10 @@ function applyMode() {
 }
 
 watch(() => props.mode, applyMode)
+watch(
+  () => props.readOnly,
+  (value) => editor.value?.setReadOnly(value),
+)
 
 onMounted(() => {
   editor.value = ace.edit(editorRef.value)
@@ -62,6 +70,7 @@ onMounted(() => {
   editor.value.session.setTabSize(2)
   editor.value.session.setUseWrapMode(true)
   applyMode()
+  editor.value.setReadOnly(props.readOnly)
   if (props.autofocus) {
     editor.value.focus()
   }

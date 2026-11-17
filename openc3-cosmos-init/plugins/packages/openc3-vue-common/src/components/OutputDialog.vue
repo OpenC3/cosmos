@@ -37,6 +37,7 @@
           ref="aceEditor"
           :mode="languageMode"
           autofocus
+          read-only
           class="editor"
         />
       </v-card-text>
@@ -127,7 +128,6 @@ export default {
     }
     this.editor.setValue(this.content)
     this.editor.clearSelection()
-    this.editor.setReadOnly(true)
   },
   methods: {
     close: function () {

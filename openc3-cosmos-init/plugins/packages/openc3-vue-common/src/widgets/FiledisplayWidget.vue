@@ -28,7 +28,12 @@
     </v-card-title>
     <v-divider />
     <v-card-text class="pa-0">
-      <AceEditor ref="aceEditor" :mode="aceMode" :style="contentStyle" />
+      <AceEditor
+        ref="aceEditor"
+        :mode="aceMode"
+        read-only
+        :style="contentStyle"
+      />
     </v-card-text>
   </v-card>
 </template>
@@ -89,7 +94,6 @@ export default {
   },
   mounted() {
     this.editor = this.$refs.aceEditor.editor
-    this.editor.setReadOnly(true)
     this.editor.setShowPrintMargin(false)
     this.editor.renderer.setShowGutter(false)
     this.editor.renderer.setScrollMargin(8, 8, 0, 0)
