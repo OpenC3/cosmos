@@ -424,6 +424,7 @@
             <AceEditor
               ref="aceEditor"
               autofocus
+              :completers="completers"
               vim
               :vim-save-fn="saveFile"
               :mode="languageMode"
@@ -619,6 +620,7 @@
             <AceEditor
               ref="aceEditor"
               autofocus
+              :completers="completers"
               vim
               :vim-save-fn="saveFile"
               :mode="languageMode"
@@ -1867,6 +1869,7 @@ export default {
     const PythonMode = this.buildPythonMode()
     this.rubyMode = new RubyMode()
     this.pythonMode = new PythonMode()
+    this.completers = [new CmdCompleter(), new TlmCompleter()]
     // Websocket event queue drained by the processReceived interval.
     // Deliberately NOT in data(): nothing renders from it, and reactive
     // proxying would tax the hottest data path (per line event)
@@ -2015,9 +2018,6 @@ export default {
   },
   mounted: async function () {
     this.editor = this.$refs.aceEditor.editor
-    this.editor.setOption('enableBasicAutocompletion', true)
-    this.editor.setOption('enableLiveAutocompletion', true)
-    this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
 
     this.editor.on('guttermousedown', this.toggleBreakpoint)
     // Clicking a line fills in the Goto line number. Only user clicks count:

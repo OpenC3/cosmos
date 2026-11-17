@@ -18,6 +18,7 @@
 <script setup>
 import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/theme-twilight'
+import 'ace-builds/src-min-noconflict/ext-language_tools'
 import { AceEditorUtils } from './ace'
 import {
   onBeforeUnmount,
@@ -64,6 +65,12 @@ const props = defineProps({
     default: 'end',
     validator: (value) => ['start', 'end'].includes(value),
   },
+  // Autocomplete providers. When given, basic and live autocompletion are
+  // turned on and these replace Ace's default completers.
+  completers: {
+    type: Array,
+    default: null,
+  },
   // Focus the editor once mounted
   autofocus: {
     type: Boolean,
@@ -84,6 +91,17 @@ function applyMode() {
 }
 
 watch(() => props.mode, applyMode)
+
+// toRaw for the same reason as the mode: parents may hold reactive proxies
+function applyCompleters() {
+  if (editor.value && props.completers) {
+    editor.value.setOption('enableBasicAutocompletion', true)
+    editor.value.setOption('enableLiveAutocompletion', true)
+    editor.value.completers = props.completers.map((c) => toRaw(c))
+  }
+}
+
+watch(() => props.completers, applyCompleters)
 
 function setText(value) {
   editor.value.setValue(value, props.cursor === 'start' ? -1 : 1)
@@ -113,6 +131,7 @@ onMounted(() => {
   editor.value.session.setTabSize(2)
   editor.value.session.setUseWrapMode(!props.noWrap)
   applyMode()
+  applyCompleters()
   if (props.vim) {
     AceEditorUtils.applyVimModeIfEnabled(editor.value, {
       saveFn: props.vimSaveFn,

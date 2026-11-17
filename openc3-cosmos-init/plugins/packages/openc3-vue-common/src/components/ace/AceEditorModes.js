@@ -1,5 +1,5 @@
 /*
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -17,7 +17,6 @@ import 'ace-builds/src-min-noconflict/mode-python'
 import 'ace-builds/src-min-noconflict/mode-json'
 import 'ace-builds/src-min-noconflict/mode-markdown'
 import 'ace-builds/src-min-noconflict/theme-twilight'
-import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { OpenC3Api } from '@openc3/js-common/services'
 

@@ -49,6 +49,7 @@
       <AceEditor
         ref="aceEditor"
         autofocus
+        :completers="completers"
         :model-value="modelValue"
         vim
         :mode="screenMode"
@@ -87,7 +88,6 @@ import * as ace from 'ace-builds'
 import AceEditor from './AceEditor.vue'
 import 'ace-builds/src-min-noconflict/mode-text'
 import 'ace-builds/src-min-noconflict/theme-twilight'
-import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { ScreenCompleter } from './autocomplete'
 import { Api } from '@openc3/js-common/services'
@@ -145,6 +145,8 @@ export default {
     },
   },
   created() {
+    // Plain instance property (not in data) so Vue doesn't proxy the completer
+    this.completers = [new ScreenCompleter()]
     // Load keywords from API if not provided via prop
     if (this.keywords.length === 0) {
       this.loadKeywords()
@@ -166,9 +168,6 @@ export default {
     },
     initEditor() {
       this.editor = this.$refs.aceEditor.editor
-      this.editor.setOption('enableBasicAutocompletion', true)
-      this.editor.setOption('enableLiveAutocompletion', true)
-      this.editor.completers = [new ScreenCompleter()]
     },
     getValue() {
       return this.editor ? this.editor.getValue() : this.modelValue

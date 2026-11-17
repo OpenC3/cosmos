@@ -32,6 +32,7 @@
       <AceEditor
         ref="aceEditor"
         autofocus
+        :completers="completers"
         :model-value="modelValue"
         vim
         :mode="languageMode"
@@ -63,7 +64,6 @@ import AceEditor from './AceEditor.vue'
 import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/mode-python'
 import 'ace-builds/src-min-noconflict/theme-twilight'
-import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { AceEditorModes, AceEditorUtils } from './ace'
 import { CmdCompleter, TlmCompleter } from '../tools/scriptrunner/autocomplete'
@@ -106,6 +106,7 @@ export default {
     const PythonMode = this.buildPythonMode()
     this.rubyMode = new RubyMode()
     this.pythonMode = new PythonMode()
+    this.completers = [new CmdCompleter(), new TlmCompleter()]
   },
   mounted() {
     this.initEditor()
@@ -113,10 +114,6 @@ export default {
   methods: {
     initEditor() {
       this.editor = this.$refs.aceEditor.editor
-
-      this.editor.setOption('enableBasicAutocompletion', true)
-      this.editor.setOption('enableLiveAutocompletion', true)
-      this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
     },
     getValue() {
       return this.editor ? this.editor.getValue() : this.modelValue
