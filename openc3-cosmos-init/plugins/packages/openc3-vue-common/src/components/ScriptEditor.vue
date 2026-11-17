@@ -63,7 +63,6 @@
 import AceEditor from './AceEditor.vue'
 import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/mode-python'
-import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { AceEditorModes, AceEditorUtils } from './ace'
 import { CmdCompleter, TlmCompleter } from '../tools/scriptrunner/autocomplete'
 

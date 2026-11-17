@@ -19,6 +19,7 @@
 import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
+import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { AceEditorUtils } from './ace'
 import {
   onBeforeUnmount,
