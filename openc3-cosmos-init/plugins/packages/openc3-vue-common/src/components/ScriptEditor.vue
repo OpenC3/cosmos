@@ -107,12 +107,9 @@ export default {
     this.completers = [new CmdCompleter(), new TlmCompleter()]
   },
   mounted() {
-    this.initEditor()
+    this.editor = this.$refs.aceEditor.editor
   },
   methods: {
-    initEditor() {
-      this.editor = this.$refs.aceEditor.editor
-    },
     getValue() {
       return this.editor ? this.editor.getValue() : this.modelValue
     },

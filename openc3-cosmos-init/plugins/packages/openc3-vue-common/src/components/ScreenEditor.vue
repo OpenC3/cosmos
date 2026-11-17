@@ -151,7 +151,7 @@ export default {
     }
   },
   mounted() {
-    this.initEditor()
+    this.editor = this.$refs.aceEditor.editor
   },
   methods: {
     async loadKeywords() {
@@ -163,9 +163,6 @@ export default {
       } catch (error) {
         console.error('Error loading screen keywords:', error)
       }
-    },
-    initEditor() {
-      this.editor = this.$refs.aceEditor.editor
     },
     getValue() {
       return this.editor ? this.editor.getValue() : this.modelValue
