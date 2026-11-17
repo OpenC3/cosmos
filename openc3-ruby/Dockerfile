@@ -207,8 +207,8 @@ WORKDIR /opt
 RUN unzip libcsp-2.1.zip && \
     cd libcsp-2.1 && \
     # Patches to fix compilation issues
-    sed -i '1s/^/#include <sys\/select.h>/' src/drivers/can/can_socketcan.c && \
-    sed -i '2s/^/#include <endian.h>/' src/drivers/eth/eth_linux.c && \
+    sed -i '1i #include <sys/select.h>' src/drivers/can/can_socketcan.c && \
+    sed -i '1i #include <endian.h>' src/drivers/eth/eth_linux.c && \
     mkdir build && \
     cd build && \
     cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USE_RTABLE=ON && \
