@@ -195,7 +195,7 @@ RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip && \
     sed -i '2s/^/#include <endian.h>/' \
       libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632/src/drivers/eth/eth_linux.c
 WORKDIR /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632/build
-RUN cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USR_RTABLE=ON -DCMAKE_INSTALL_LIBDIR=/usr/lib64 && \
+RUN cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USE_RTABLE=ON -DCMAKE_INSTALL_LIBDIR=/usr/lib64 && \
     make && \
     make install && \
     cp libcsp_py3* /lib64/python3.12/lib-dynload/. && \

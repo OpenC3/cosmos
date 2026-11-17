@@ -211,7 +211,7 @@ RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip && \
     sed -i '2s/^/#include <endian.h>/' src/drivers/eth/eth_linux.c && \
     mkdir build && \
     cd build && \
-    cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USR_RTABLE=ON && \
+    cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USE_RTABLE=ON && \
     make && \
     make install && \
     ldconfig && \
