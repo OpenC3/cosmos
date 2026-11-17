@@ -107,6 +107,7 @@
               </v-row>
               <AceEditor
                 ref="aceEditor"
+                autofocus
                 :mode="editorMode"
                 class="editor"
                 @contextmenu.prevent="showContextMenu"
@@ -289,7 +290,6 @@ export default {
       this.editor.clearSelection()
       AceEditorUtils.applyVimModeIfEnabled(this.editor)
       this.editor.session.$undoManager.markClean() // because setting the initial content made it "dirty"
-      this.editor.focus()
     } else {
       this.tab = 1 // Show the diff right off the bat
       this.differ = new AceDiff({

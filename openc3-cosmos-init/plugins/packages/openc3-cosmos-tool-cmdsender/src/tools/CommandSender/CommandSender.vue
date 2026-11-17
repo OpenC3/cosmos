@@ -64,6 +64,7 @@
             <v-col>
               <AceEditor
                 ref="aceEditor"
+                autofocus
                 mode="ace/mode/ruby"
                 class="editor"
                 data-test="sender-history"
@@ -389,7 +390,6 @@ export default {
     this.editor.setValue(localStorage['command_sender__history'])
     this.history = this.editor.getValue().trim()
     this.editor.clearSelection()
-    this.editor.focus()
     this.editor.setAutoScrollEditorIntoView(true)
     // This only limits the displayed lines, history can grow in a scrollable window
     this.editor.setOption('maxLines', 30)

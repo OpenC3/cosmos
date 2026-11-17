@@ -36,6 +36,11 @@ const props = defineProps({
     type: [String, Object],
     default: null,
   },
+  // Focus the editor once mounted
+  autofocus: {
+    type: Boolean,
+    default: false,
+  },
 })
 const emit = defineEmits(['ready'])
 const editorRef = useTemplateRef('editor')
@@ -57,6 +62,9 @@ onMounted(() => {
   editor.value.session.setTabSize(2)
   editor.value.session.setUseWrapMode(true)
   applyMode()
+  if (props.autofocus) {
+    editor.value.focus()
+  }
   emit('ready', editor.value)
 })
 

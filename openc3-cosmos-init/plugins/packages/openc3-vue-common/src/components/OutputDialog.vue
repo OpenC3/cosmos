@@ -33,7 +33,12 @@
         </div>
       </v-toolbar>
       <v-card-text>
-        <AceEditor ref="aceEditor" :mode="languageMode" class="editor" />
+        <AceEditor
+          ref="aceEditor"
+          :mode="languageMode"
+          autofocus
+          class="editor"
+        />
       </v-card-text>
       <v-card-actions class="pr-6 pb-4 pt-0">
         <v-spacer />
@@ -122,7 +127,6 @@ export default {
     }
     this.editor.setValue(this.content)
     this.editor.clearSelection()
-    this.editor.focus()
     this.editor.setReadOnly(true)
   },
   methods: {

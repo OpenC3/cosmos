@@ -48,6 +48,7 @@
     <v-row no-gutters class="editor-row mb-2">
       <AceEditor
         ref="aceEditor"
+        autofocus
         :mode="screenMode"
         class="screen-editor"
         :style="{ height: fill ? '100%' : height, width: '100%' }"
@@ -177,7 +178,6 @@ export default {
       this.editor.setValue(this.modelValue)
       this.editor.clearSelection()
       AceEditorUtils.applyVimModeIfEnabled(this.editor)
-      this.editor.focus()
 
       this.editor.session.on('change', () => {
         this.$emit('update:modelValue', this.editor.getValue())

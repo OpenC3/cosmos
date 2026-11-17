@@ -423,6 +423,7 @@
             </v-snackbar>
             <AceEditor
               ref="aceEditor"
+              autofocus
               :mode="languageMode"
               class="editor"
               @contextmenu.prevent="showExecuteSelectionMenu"
@@ -614,6 +615,7 @@
           >
             <AceEditor
               ref="aceEditor"
+              autofocus
               :mode="languageMode"
               class="editor"
               style="height: 200px"
@@ -2026,7 +2028,6 @@ export default {
     this.editor.setOption('enableLiveAutocompletion', true)
     this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
     AceEditorUtils.applyVimModeIfEnabled(this.editor, { saveFn: this.saveFile })
-    this.editor.focus()
 
     this.editor.on('guttermousedown', this.toggleBreakpoint)
     // Clicking a line fills in the Goto line number. Only user clicks count:
