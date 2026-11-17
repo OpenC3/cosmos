@@ -283,7 +283,6 @@ export default {
       this.editor.session.setMode(new pluginMode())
       this.editor.session.setTabSize(2)
       this.editor.session.setUseWrapMode(true)
-      this.editor.$blockScrolling = Infinity
       this.editor.setHighlightActiveLine(false)
       this.editor.setValue(this.localPluginTxt)
       this.editor.clearSelection()

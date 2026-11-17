@@ -176,7 +176,6 @@ export default {
       this.editor.session.setMode(new screenMode())
       this.editor.session.setTabSize(2)
       this.editor.session.setUseWrapMode(true)
-      this.editor.$blockScrolling = Infinity
       this.editor.setOption('enableBasicAutocompletion', true)
       this.editor.setOption('enableLiveAutocompletion', true)
       this.editor.completers = [new ScreenCompleter()]
