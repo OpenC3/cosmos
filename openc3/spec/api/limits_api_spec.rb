@@ -398,6 +398,15 @@ module OpenC3
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP4")).to be true
       end
 
+      it "authorizes every target the group's members belong to" do
+        # SYSTEM's group FIRST contains INST items so tlm_set on SYSTEM alone isn't enough
+        allow(@api).to receive(:authorize) do |**kwargs|
+          raise AuthError.new("denied #{kwargs[:target_name]}") if kwargs[:permission] == 'tlm_set' and kwargs[:target_name] == 'INST'
+        end
+        expect { @api.disable_limits_group("SYSTEM", "FIRST") }.to raise_error(AuthError, "denied INST")
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+      end
+
       it "accepts a lowercase group name" do
         @api.disable_limits_group("first")
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false

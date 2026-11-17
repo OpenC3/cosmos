@@ -427,6 +427,11 @@ module OpenC3
       target_name, group_name = LimitsEventTopic.split_limits_group_key(key)
       # Items grouped by target and packet so each packet is read and written once
       items = LimitsEventTopic.limits_group_items(key, scope: scope)
+      # Members can be items of other targets, directly or through nested groups,
+      # so check every target before changing any of them
+      items.each_key do |item_target_name|
+        authorize(permission: 'tlm_set', target_name: item_target_name, manual: manual, scope: scope, token: token)
+      end
 
       enabled = (action == :enable)
       message = "#{enabled ? 'Enabling' : 'Disabling'} Limits Group: #{[target_name, group_name].compact.join(' ')}"

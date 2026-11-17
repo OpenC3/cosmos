@@ -598,6 +598,10 @@ def _limits_group(args: tuple[str, ...], method_name: str, action: str, scope: s
     target_name, group_name = LimitsEventTopic.split_limits_group_key(key)
     # Items grouped by target and packet so each packet is read and written once
     items = LimitsEventTopic.limits_group_items(key, scope)
+    # Members can be items of other targets, directly or through nested groups,
+    # so check every target before changing any of them
+    for item_target_name in items:
+        authorize(permission="tlm_set", target_name=item_target_name, scope=scope)
 
     enabled = action == "enable"
     message = f"{'Enabling' if enabled else 'Disabling'} Limits Group: {' '.join(name for name in (target_name, group_name) if name)}"

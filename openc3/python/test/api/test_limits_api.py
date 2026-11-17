@@ -21,6 +21,7 @@ from openc3.api.tlm_api import *
 from openc3.microservices.decom_microservice import DecomMicroservice
 from openc3.models.microservice_model import MicroserviceModel
 from openc3.topics.telemetry_decom_topic import TelemetryDecomTopic
+from openc3.utilities.authorization import AuthError
 from openc3.utilities.time import formatted
 from test.test_helper import *
 
@@ -398,6 +399,17 @@ class TestLimitsApi(unittest.TestCase):
         disable_limits("INST", "HEALTH_STATUS", "TEMP2")
         enable_limits_group("LEGACY")
         self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP2"))
+
+    def test_disable_limits_group_authorizes_every_target_the_groups_members_belong_to(self):
+        # SYSTEM's group FIRST contains INST items so tlm_set on SYSTEM alone isn't enough
+        def deny_inst(**kwargs):
+            if kwargs.get("permission") == "tlm_set" and kwargs.get("target_name") == "INST":
+                raise AuthError("denied INST")
+
+        with patch("openc3.api.limits_api.authorize", side_effect=deny_inst):
+            with self.assertRaisesRegex(AuthError, "denied INST"):
+                disable_limits_group("SYSTEM", "FIRST")
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
     def test_enable_limits_groups_complains_about_undefined_limits_groups(self):
         with self.assertRaisesRegex(
