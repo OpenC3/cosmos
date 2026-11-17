@@ -1,5 +1,5 @@
 <!--
-# Copyright 2025 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -29,12 +29,12 @@
       />
     </v-row>
     <v-row no-gutters class="mb-2">
-      <pre
-        ref="editor"
+      <AceEditor
+        ref="aceEditor"
         class="script-editor"
         :style="{ height: height, width: '100%' }"
         @contextmenu.prevent="showContextMenu"
-      ></pre>
+      />
       <v-menu v-model="contextMenu" :target="[menuX, menuY]">
         <v-list>
           <v-list-item
@@ -54,7 +54,7 @@
 </template>
 
 <script>
-import * as ace from 'ace-builds'
+import AceEditor from './AceEditor.vue'
 import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/mode-python'
 import 'ace-builds/src-min-noconflict/theme-twilight'
@@ -64,6 +64,7 @@ import { AceEditorModes, AceEditorUtils } from './ace'
 import { CmdCompleter, TlmCompleter } from '../tools/scriptrunner/autocomplete'
 
 export default {
+  components: { AceEditor },
   mixins: [AceEditorModes],
   props: {
     modelValue: {
@@ -111,16 +112,9 @@ export default {
   mounted() {
     this.initEditor()
   },
-  beforeUnmount() {
-    if (this.editor) {
-      this.editor.destroy()
-      this.editor.container.remove()
-    }
-  },
   methods: {
     initEditor() {
-      this.editor = ace.edit(this.$refs.editor)
-      this.editor.setTheme('ace/theme/twilight')
+      this.editor = this.$refs.aceEditor.editor
 
       // Build modes using the mixin methods
       const RubyMode = this.buildRubyMode()

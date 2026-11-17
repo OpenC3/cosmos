@@ -62,7 +62,11 @@
           </v-card-subtitle>
           <v-row no-gutters class="mt-2 mb-2">
             <v-col>
-              <pre ref="editor" class="editor" data-test="sender-history"></pre>
+              <AceEditor
+                ref="aceEditor"
+                class="editor"
+                data-test="sender-history"
+              />
             </v-col>
           </v-row>
         </v-card>
@@ -208,11 +212,11 @@
 </template>
 
 <script>
-import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import {
+  AceEditor,
   CriticalCmdDialog,
   CommandEditor,
   AceEditorUtils,
@@ -223,6 +227,7 @@ import { CmdUtilities } from '@openc3/vue-common/util'
 
 export default {
   components: {
+    AceEditor,
     CriticalCmdDialog,
     CommandEditor,
     TopBar,
@@ -379,8 +384,7 @@ export default {
     })
   },
   mounted() {
-    this.editor = ace.edit(this.$refs.editor)
-    this.editor.setTheme('ace/theme/twilight')
+    this.editor = this.$refs.aceEditor.editor
     this.editor.session.setMode('ace/mode/ruby')
     this.editor.session.setTabSize(2)
     this.editor.session.setUseWrapMode(true)
@@ -455,8 +459,6 @@ export default {
       clearTimeout(watcher)
     }
     this.criticalCmdWatchers = {}
-    this.editor.destroy()
-    this.editor.container.remove()
   },
   methods: {
     commandChanged(event) {

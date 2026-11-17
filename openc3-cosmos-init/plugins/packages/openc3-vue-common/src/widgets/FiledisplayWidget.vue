@@ -28,13 +28,13 @@
     </v-card-title>
     <v-divider />
     <v-card-text class="pa-0">
-      <div ref="editor" :style="contentStyle"></div>
+      <AceEditor ref="aceEditor" :style="contentStyle" />
     </v-card-text>
   </v-card>
 </template>
 
 <script>
-import * as ace from 'ace-builds'
+import AceEditor from '../components/AceEditor.vue'
 import 'ace-builds/src-min-noconflict/mode-json'
 import 'ace-builds/src-min-noconflict/mode-ruby'
 import 'ace-builds/src-min-noconflict/mode-python'
@@ -43,6 +43,7 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import Widget from './Widget'
 
 export default {
+  components: { AceEditor },
   mixins: [Widget],
   data() {
     return {
@@ -87,8 +88,7 @@ export default {
     }
   },
   mounted() {
-    this.editor = ace.edit(this.$refs.editor)
-    this.editor.setTheme('ace/theme/twilight')
+    this.editor = this.$refs.aceEditor.editor
     this.editor.setReadOnly(true)
     this.editor.setShowPrintMargin(false)
     this.editor.setHighlightActiveLine(false)
@@ -99,12 +99,6 @@ export default {
 
     if (this.filePath) {
       this.fetchFile()
-    }
-  },
-  beforeUnmount() {
-    if (this.editor) {
-      this.editor.destroy()
-      this.editor.container.remove()
     }
   },
   methods: {

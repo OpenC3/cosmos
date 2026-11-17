@@ -33,7 +33,7 @@
         </div>
       </v-toolbar>
       <v-card-text>
-        <pre ref="editor" class="editor"></pre>
+        <AceEditor ref="aceEditor" class="editor" />
       </v-card-text>
       <v-card-actions class="pr-6 pb-4 pt-0">
         <v-spacer />
@@ -44,11 +44,11 @@
 </template>
 
 <script>
-import * as ace from 'ace-builds'
-import 'ace-builds/src-min-noconflict/theme-twilight'
 import { AceEditorModes } from './ace'
+import AceEditor from './AceEditor.vue'
 
 export default {
+  components: { AceEditor },
   mixins: [AceEditorModes],
   props: {
     content: {
@@ -90,8 +90,7 @@ export default {
     },
   },
   mounted() {
-    this.editor = ace.edit(this.$refs.editor)
-    this.editor.setTheme('ace/theme/twilight')
+    this.editor = this.$refs.aceEditor.editor
     let languageMode = null
     const fileExtension = this.filename ? this.filename.split('.').pop() : 'txt'
     switch (fileExtension) {
@@ -130,11 +129,6 @@ export default {
     this.editor.clearSelection()
     this.editor.focus()
     this.editor.setReadOnly(true)
-  },
-  beforeUnmount() {
-    if (this.editor) {
-      this.editor.destroy()
-    }
   },
   methods: {
     close: function () {

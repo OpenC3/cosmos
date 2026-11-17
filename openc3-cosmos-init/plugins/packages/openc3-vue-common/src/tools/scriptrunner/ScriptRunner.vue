@@ -421,11 +421,11 @@
             >
               Saving...
             </v-snackbar>
-            <pre
-              ref="editor"
+            <AceEditor
+              ref="aceEditor"
               class="editor"
               @contextmenu.prevent="showExecuteSelectionMenu"
-            ></pre>
+            />
             <v-menu v-model="executeSelectionMenu" :target="[menuX, menuY]">
               <v-list>
                 <v-list-item
@@ -611,12 +611,12 @@
             class="v-col-10"
             style="margin: 15px 0px 0px 0px; padding: 0px"
           >
-            <pre
-              ref="editor"
+            <AceEditor
+              ref="aceEditor"
               class="editor"
               style="height: 200px"
               @contextmenu.prevent="showExecuteSelectionMenu"
-            ></pre>
+            />
           </v-col>
           <v-col
             class="v-col-2"
@@ -881,6 +881,7 @@ import 'splitpanes/dist/splitpanes.css'
 import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import { useContainerHeight } from '@/composables/useContainerHeight'
 import {
+  AceEditor,
   AceEditorModes,
   AceEditorUtils,
   CriticalCmdDialog,
@@ -1070,6 +1071,7 @@ class TestSuite(Suite):
 
 export default {
   components: {
+    AceEditor,
     FileOpenSaveDialog,
     Openc3Screen,
     EnvironmentDialog,
@@ -2008,8 +2010,7 @@ export default {
     }
   },
   mounted: async function () {
-    this.editor = ace.edit(this.$refs.editor)
-    this.editor.setTheme('ace/theme/twilight')
+    this.editor = this.$refs.aceEditor.editor
     const RubyMode = this.buildRubyMode()
     const PythonMode = this.buildPythonMode()
     this.rubyMode = new RubyMode()
@@ -2124,8 +2125,6 @@ export default {
     window.removeEventListener('keydown', this.keydown)
     this.editorResizeObserver.disconnect()
     this.explorerSplitObserver.disconnect()
-    this.editor.destroy()
-    this.editor.container.remove()
   },
   unmounted() {
     this.unlockFile()

@@ -46,12 +46,12 @@
       />
     </v-row>
     <v-row no-gutters class="editor-row mb-2">
-      <pre
-        ref="editor"
+      <AceEditor
+        ref="aceEditor"
         class="screen-editor"
         :style="{ height: fill ? '100%' : height, width: '100%' }"
         @contextmenu.prevent="showContextMenu"
-      ></pre>
+      />
       <v-menu v-model="contextMenu" :target="[menuX, menuY]">
         <v-list>
           <v-list-item link @click="openDocumentation">
@@ -79,6 +79,7 @@
 
 <script>
 import * as ace from 'ace-builds'
+import AceEditor from './AceEditor.vue'
 import 'ace-builds/src-min-noconflict/mode-text'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
@@ -88,6 +89,7 @@ import { AceEditorUtils } from './ace'
 import { Api } from '@openc3/js-common/services'
 
 export default {
+  components: { AceEditor },
   props: {
     modelValue: {
       type: String,
@@ -157,12 +159,6 @@ export default {
   mounted() {
     this.initEditor()
   },
-  beforeUnmount() {
-    if (this.editor) {
-      this.editor.destroy()
-      this.editor.container.remove()
-    }
-  },
   methods: {
     async loadKeywords() {
       try {
@@ -175,8 +171,7 @@ export default {
       }
     },
     initEditor() {
-      this.editor = ace.edit(this.$refs.editor)
-      this.editor.setTheme('ace/theme/twilight')
+      this.editor = this.$refs.aceEditor.editor
       const screenMode = this.buildScreenMode()
       this.editor.session.setMode(new screenMode())
       this.editor.session.setTabSize(2)

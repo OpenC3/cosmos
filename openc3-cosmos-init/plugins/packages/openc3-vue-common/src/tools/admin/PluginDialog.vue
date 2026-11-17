@@ -105,11 +105,11 @@
               <v-row class="pa-3">
                 <v-col> This can be edited before installation. </v-col>
               </v-row>
-              <pre
-                ref="editor"
+              <AceEditor
+                ref="aceEditor"
                 class="editor"
                 @contextmenu.prevent="showContextMenu"
-              ></pre>
+              />
               <v-menu v-model="contextMenu" :target="[menuX, menuY]">
                 <v-list>
                   <v-list-item link>
@@ -181,8 +181,10 @@ import { Api } from '@openc3/js-common/services'
 import { toRaw } from 'vue'
 import * as semver from 'semver'
 import { AceEditorUtils } from '../../components/ace'
+import AceEditor from '../../components/AceEditor.vue'
 
 export default {
+  components: { AceEditor },
   props: {
     pluginName: {
       type: String,
@@ -277,8 +279,7 @@ export default {
   mounted() {
     const pluginMode = this.buildPluginMode()
     if (this.existingPluginTxt === null) {
-      this.editor = ace.edit(this.$refs.editor)
-      this.editor.setTheme('ace/theme/twilight')
+      this.editor = this.$refs.aceEditor.editor
       this.editor.session.setMode(new pluginMode())
       this.editor.session.setTabSize(2)
       this.editor.session.setUseWrapMode(true)
@@ -316,9 +317,6 @@ export default {
     }
   },
   beforeUnmount() {
-    if (this.editor) {
-      this.editor.destroy()
-    }
     if (this.differ) {
       this.differ.destroy()
     }
