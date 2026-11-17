@@ -132,8 +132,10 @@ def inject(changes)
 end
 
 # Limits events are processed in order so once the sentinel's group changes
-# every event injected before it has been processed. The sentinel's group only
-# contains items no other test changes so it ends GREEN.
+# every limits event written before the sentinel's has been processed. Decom
+# reads each packet from its own stream so call wait_for_decom first when
+# other packets were just injected. The sentinel's group only contains items
+# no other test changes so it ends GREEN.
 # @return [Array(Float, Float)] when the microservice published the sentinel's
 #   change and when it had processed everything including the sentinel
 def wait_for_microservice(timeout: TIMEOUT)
@@ -142,6 +144,26 @@ def wait_for_microservice(timeout: TIMEOUT)
   inject([@sentinel.merge(value: @sentinel[:values]['GREEN'])])
   done, _published = wait_for_group(@sentinel[:group], 'GREEN')
   [received, done]
+end
+
+# @return [Array<Integer>] the RECEIVED_COUNT of each packet in the CVT
+def received_counts(packets)
+  names = packets.map { |packet| "#{TARGET}__#{packet}__RECEIVED_COUNT__RAW" }
+  with_retry('get_tlm_values') { get_tlm_values(names) }.map { |count, _limits| count.to_i }
+end
+
+# Decom reads each packet from its own stream so it can decom the sentinel's
+# packet before packets injected earlier. It writes a packet's limits events
+# before its CVT, so once every packet's RECEIVED_COUNT has increased their
+# events are all ahead of the sentinel's.
+def wait_for_decom(packets, counts, timeout: TIMEOUT)
+  deadline = now + timeout
+  loop do
+    return if received_counts(packets).zip(counts).all? { |after, before| after > before }
+    raise "Timed out waiting for decom of #{packets.length} #{TARGET} packets" if now > deadline
+
+    sleep MAX_POLL_SECONDS
+  end
 end
 
 # Waits until every one of the target's microservices (decom, logs, TSDB) has
@@ -208,9 +230,12 @@ end
 def burst(name, changes, item_colors)
   wait_for_quiet()
   before = wait_for_metrics(now)
+  packets = changes.map { |change| change[:packet] }.uniq
+  counts = received_counts(packets)
   start = now
   inject(changes)
   injected = now
+  wait_for_decom(packets, counts)
   received, done = wait_for_microservice()
   after = wait_for_metrics(done)
   # Less the sentinel's two events
