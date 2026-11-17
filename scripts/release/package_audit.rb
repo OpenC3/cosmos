@@ -146,6 +146,3 @@ end
 # puts "\n\nYou can run the following, but check that the templates still work if you do:"
 # puts "cd openc3/templates/widget; pnpm install; pnpm update --interactive --latest; cd ../../.."
 # puts "cd openc3/templates/tool_vue; pnpm install; pnpm update --interactive --latest; cd ../../.."
-# puts "cd openc3/templates/tool_react; pnpm install; pnpm update --interactive --latest; cd ../../.."
-# puts "cd openc3/templates/tool_angular; pnpm install; pnpm update --interactive --latest; cd ../../.."
-# puts "cd openc3/templates/tool_svelte; pnpm install; pnpm update --interactive --latest; cd ../../.."

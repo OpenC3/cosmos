@@ -263,8 +263,9 @@ Python API methods carry a Google-style docstring and full type hints, and the
 same change that edits a method's parameters, return value, or behavior updates
 its `Args:`, `Returns:`, `Raises:`, and annotations. Ruff's `D` and `ANN` rules
 check that they exist for the packages listed in `per-file-ignores` in
-`openc3/python/pyproject.toml` (currently `openc3/api`). When you convert
-another package, add it there. Ruff can't check that they're accurate, so:
+`openc3/python/pyproject.toml` (currently `openc3/api` and `openc3/script`).
+When you convert another package, add it there. Ruff can't check that they're
+accurate, so:
 
 - Make return types truthful: read what the method returns (often a model
   method) and use `Any` when the shape varies, rather than a guess. COSMOS

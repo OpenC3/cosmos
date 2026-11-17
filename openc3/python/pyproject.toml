@@ -83,18 +83,30 @@ dev = [
 # default-groups, so plain `uv sync` skips it. It exists so the pin sits where
 # dependabot's uv ecosystem raises it, and setup-uv reads it from here through
 # .github/actions/setup-uv-python's version-file. Keep OPENC3_UV_VERSION in
-# openc3-ruby/Dockerfile and Dockerfile-ubi in step.
+# openc3-ruby/Dockerfile and Dockerfile-ubi, and the uv_build range in
+# [build-system] below, in step.
 uv = ["uv==0.13.5"]
 
 [build-system]
-requires = ["setuptools>=61.0.0", "wheel"]
-build-backend = "setuptools.build_meta"
+# uv builds the project itself, with no build environment or download, so the
+# image build and the release need nothing from the index for openc3. The range
+# follows the uv group above (uv warns on every build when it falls outside);
+# .github/scripts/check_tool_versions.py flags and rewrites it when it lags.
+requires = ["uv_build>=0.13,<0.14"]
+build-backend = "uv_build"
 
-[tool.setuptools]
-py-modules = ["openc3pycli"]
-
-[tool.setuptools.packages.find]
-include = ["openc3*"]
+[tool.uv.build-backend]
+# Flat layout: the packages sit next to pyproject.toml rather than under src/.
+module-root = ""
+# openc3pycli stays outside openc3 so it runs before openc3/__init__.py; see
+# its docstring.
+module-name = ["openc3", "openc3pycli"]
+source-include = ["examples/**"]
+# uv_build packs every file under the module directories, untracked and
+# gitignored ones included, and has no include-only list. Drop the usual local
+# junk (.DS_Store, editor and tool dotfiles, logs) from the sdist and wheel;
+# anything else stray still ships, so publish only from a clean checkout.
+source-exclude = ["**/.*", "**/*.log"]
 
 [tool.setuptools.package-data]
 # PEP 561 marker so type checkers use the inline type hints
@@ -162,8 +174,8 @@ unfixable = []
 [tool.ruff.lint.per-file-ignores]
 # Docstrings and type hints are only enforced on the public API. Add a package
 # here (and to the negated pattern) once it has been converted.
-"!openc3/api/**" = ["D", "ANN"]
-"openc3/api/**" = [
+"!openc3/{api,script}/**" = ["D", "ANN"]
+"openc3/{api,script}/**" = [
     "D100",   # Module docstring
     "D104",   # Package docstring
     "ANN202", # Return type of private functions

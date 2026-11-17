@@ -116,9 +116,6 @@ package_dot_json_files = [
   'openc3/templates/widget/package.json',
   'openc3/templates/panel/package.json',
   'openc3/templates/tool_vue/package.json',
-  'openc3/templates/tool_react/package.json',
-  'openc3/templates/tool_angular/package.json',
-  'openc3/templates/tool_svelte/package.json',
 ]
 
 package_dot_json_files.each do |rel_path|
