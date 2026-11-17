@@ -178,7 +178,7 @@ ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
 
 # rbspy - https://github.com/rbspy/rbspy
 # Not packaged for Debian, so ship the prebuilt release binary per architecture.
-ARG RBSPY_VERSION=0.49.0
+ARG RBSPY_VERSION=0.55.0
 ARG TARGETARCH
 COPY rbspy-*-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz /tmp/
 RUN RB_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "aarch64" || echo "x86_64") && \
@@ -202,10 +202,10 @@ RUN tar -xzf libsocketcan-0.0.12.tar.gz && \
     rm libsocketcan-0.0.12.tar.gz
 
 # libcsp - https://github.com/libcsp/libcsp
-COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+COPY libcsp-2.1.zip /opt/libcsp-2.1.zip
 WORKDIR /opt
-RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip && \
-    cd libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 && \
+RUN unzip libcsp-2.1.zip && \
+    cd libcsp-2.1 && \
     # Patches to fix compilation issues
     sed -i '1s/^/#include <sys\/select.h>/' src/drivers/can/can_socketcan.c && \
     sed -i '2s/^/#include <endian.h>/' src/drivers/eth/eth_linux.c && \
@@ -217,8 +217,8 @@ RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip && \
     ldconfig && \
     cp libcsp_py3* "/usr/lib/python${PYTHON_VERSION}/lib-dynload/." && \
     cd /opt && \
-    rm -rf libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 && \
-    rm libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+    rm -rf libcsp-2.1 && \
+    rm libcsp-2.1.zip
 
 # Set user and group
 ENV IMAGE_USER=openc3

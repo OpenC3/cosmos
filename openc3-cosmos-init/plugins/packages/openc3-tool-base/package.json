@@ -9,7 +9,7 @@
     "format": "prettier --write \"./**\""
   },
   "dependencies": {
-    "@astrouxds/astro-web-components": "8.0.0",
+    "@astrouxds/astro-web-components": "8.0.1",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
     "import-map-overrides": "6.1.0",
