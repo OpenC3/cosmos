@@ -16,6 +16,7 @@ import os
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from cbor2 import dump, loads
 
@@ -543,7 +544,7 @@ class TestPacketConfig(unittest.TestCase):
                 {"TGT1": {"TEMPS": [["TGT1", "PKT1", "ITEM1"]]}, "TGT2": {"TEMPS": [["TGT1", "PKT1", "ITEM1"]]}},
             )
 
-    def test_rejects_group_names_which_cant_be_limits_group_items(self):
+    def test_skips_with_a_warning_group_names_which_cant_be_limits_group_items(self):
         bad_names = {
             "TEMP__A": "cannot contain a double underscore",
             "TEMP_": "cannot end with an underscore",
@@ -553,11 +554,21 @@ class TestPacketConfig(unittest.TestCase):
             "A" * 120: "must be 119 characters or less",
         }
         for name, error in bad_names.items():
-            with tempfile.NamedTemporaryFile(mode="w") as tf:
+            with (
+                self.subTest(name=name),
+                tempfile.NamedTemporaryFile(mode="w") as tf,
+                patch("openc3.packets.packet_config.Logger") as logger,
+            ):
                 tf.write(f"LIMITS_GROUP {name}\n")
+                # The group's members are skipped too
+                tf.write("  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n")
                 tf.seek(0)
-                with self.assertRaisesRegex(ConfigParser.Error, error):
-                    self.pc.process_file(tf.name, "TGT1")
+                self.pc.process_file(tf.name, "TGT1")
+                message = logger.warn.call_args[0][0]
+                self.assertRegex(message, error)
+                self.assertIn(f"Skipping the group. ({tf.name}:1)", message)
+                self.assertEqual(self.pc.warnings[-1], message)
+                self.assertNotIn("TGT1", self.pc.limits_groups)
         with tempfile.NamedTemporaryFile(mode="w") as tf:
             tf.write(f"LIMITS_GROUP {'A' * 119}\n")
             tf.seek(0)
@@ -576,7 +587,7 @@ class TestPacketConfig(unittest.TestCase):
                 [["TGT1", "LIMITS_GROUP", "THERMAL"], ["TGT2", "LIMITS_GROUP", "POWER"]],
             )
 
-    def test_complains_about_a_nested_group_name_limits_group_does_not_accept(self):
+    def test_skips_with_a_warning_a_nested_group_name_limits_group_does_not_accept(self):
         for member in [
             '"CHILD GROUP"',
             'TGT2 LIMITS_GROUP "CHILD GROUP"',
@@ -584,12 +595,19 @@ class TestPacketConfig(unittest.TestCase):
             "TGT2 LIMITS_GROUP CHILD_ENABLED",
             "RECEIVED_COUNT",
         ]:
-            with self.subTest(member=member), tempfile.NamedTemporaryFile(mode="w") as tf:
+            pc = PacketConfig()
+            with (
+                self.subTest(member=member),
+                tempfile.NamedTemporaryFile(mode="w") as tf,
+                patch("openc3.packets.packet_config.Logger") as logger,
+            ):
                 tf.write("LIMITS_GROUP SPACECRAFT\n")
                 tf.write(f"LIMITS_GROUP_ITEM {member}\n")
+                tf.write("LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n")
                 tf.seek(0)
-                with self.assertRaises(ConfigParser.Error):
-                    self.pc.process_file(tf.name, "TGT1")
+                pc.process_file(tf.name, "TGT1")
+                self.assertRegex(logger.warn.call_args[0][0], "LIMITS_GROUP SPACECRAFT member .* Skipping the member")
+                self.assertEqual(pc.limits_groups["TGT1"]["SPACECRAFT"], [["TGT1", "PKT1", "ITEM1"]])
         # Items of other packets aren't group names
         with tempfile.NamedTemporaryFile(mode="w") as tf:
             tf.write("LIMITS_GROUP SPACECRAFT\n")
@@ -623,15 +641,23 @@ class TestPacketConfig(unittest.TestCase):
         self.assertEqual(packet.get_item("TVAC").states, {"GREEN": 0, "YELLOW": 1, "RED": 2})
         self.assertEqual(packet.get_item("TVAC_ENABLED").states, {"FALSE": 0, "TRUE": 1})
 
-    def test_build_limits_group_packet_refuses_a_target_with_its_own_limits_group_packet(self):
+    def test_build_limits_group_packet_keeps_a_targets_own_limits_group_packet_with_a_warning(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:
             tf.write('TELEMETRY TGT1 LIMITS_GROUP BIG_ENDIAN "Packet"\n')
             tf.write("  ITEM ITEM1 0 8 UINT\n")
             tf.write("LIMITS_GROUP TVAC\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
-        with self.assertRaisesRegex(RuntimeError, "TGT1 LIMITS_GROUP is reserved"):
+        with patch("openc3.packets.packet_config.Logger") as logger:
             self.pc.build_limits_group_packet("TGT1")
+        self.assertRegex(
+            logger.warn.call_args[0][0], "TGT1 LIMITS_GROUP is reserved .* Rename the packet and reinstall the target"
+        )
+        self.assertIsNotNone(self.pc.telemetry["TGT1"]["LIMITS_GROUP"].get_item("ITEM1"))
+        self.assertTrue(self.pc.own_limits_group_packet("TGT1"))
+        self.assertFalse(self.pc.limits_group_packet_p("TGT1", "LIMITS_GROUP"))
+        # Its groups still work
+        self.assertEqual(self.pc.limits_groups["TGT1"], {"TVAC": []})
 
     def test_limits_group_item_complains_about_two_parameters(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:

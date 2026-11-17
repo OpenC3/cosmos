@@ -33,6 +33,7 @@ from openc3.packets.parsers.processor_parser import ProcessorParser
 from openc3.packets.parsers.state_parser import StateParser
 from openc3.top_level import get_class_from_module
 from openc3.utilities.extract import convert_to_value
+from openc3.utilities.logger import Logger
 from openc3.utilities.string import (
     class_name_to_filename,
     filename_to_class_name,
@@ -78,6 +79,7 @@ class PacketConfig:
         # the group name. Each member is [target_name, packet_name, item_name] and a
         # nested group is the member [<TARGET>, "LIMITS_GROUP", <GROUP>].
         self.limits_groups = {}
+        self.own_limits_group_packets = set()
         self.limits_sets = ["DEFAULT"]
         self.converted_type = None
         self.converted_bit_size = None
@@ -219,10 +221,19 @@ class PacketConfig:
                     case "LIMITS_GROUP":
                         usage = "LIMITS_GROUP <GROUP NAME>"
                         parser.verify_num_parameters(1, 1, usage)
-                        parser.verify_parameter_naming(1, usage)
                         self.current_limits_group = params[0].upper()
-                        self._verify_limits_group_name(parser, self.current_limits_group, usage)
-                        self.limits_groups.setdefault(process_target_name, {}).setdefault(self.current_limits_group, [])
+                        # The group becomes items in <TARGET> LIMITS_GROUP so a name which can't
+                        # is skipped, along with its LIMITS_GROUP_ITEM lines
+                        error = PacketConfig.limits_group_name_error(self.current_limits_group)
+                        if error:
+                            self._limits_group_warning(
+                                parser, f"LIMITS_GROUP {self.current_limits_group} {error}. Skipping the group."
+                            )
+                            self.current_limits_group = None
+                        else:
+                            self.limits_groups.setdefault(process_target_name, {}).setdefault(
+                                self.current_limits_group, []
+                            )
 
                     # Add a telemetry item to the limits group
                     case "LIMITS_GROUP_ITEM":
@@ -239,10 +250,16 @@ class PacketConfig:
                                 item = [params[0].upper(), params[1].upper(), params[2].upper()]
                             # A member in a LIMITS_GROUP packet is always a nested group so its
                             # name must be one LIMITS_GROUP accepts (the child can be installed later)
+                            error = None
                             if item[1] == self.LIMITS_GROUP_PACKET:
-                                parser.verify_parameter_naming(len(params), usage)
-                                self._verify_limits_group_name(parser, item[2], usage)
-                            self.limits_groups[process_target_name][self.current_limits_group].append(item)
+                                error = PacketConfig.limits_group_name_error(item[2])
+                            if error:
+                                self._limits_group_warning(
+                                    parser,
+                                    f"LIMITS_GROUP {self.current_limits_group} member {' '.join(item)}: LIMITS_GROUP {item[2]} {error}. Skipping the member.",
+                                )
+                            else:
+                                self.limits_groups[process_target_name][self.current_limits_group].append(item)
 
                     #######################################################################
                     # All the following keywords must have a current packet defined
@@ -1104,16 +1121,59 @@ class PacketConfig:
         if not groups:
             return
         target_packets = self.telemetry.setdefault(target_name, {})
+        # Keep a packet of the target's own. Its groups still work but aren't
+        # published as telemetry (see TargetModel own_limits_group_packet).
         if self.LIMITS_GROUP_PACKET in target_packets:
-            raise RuntimeError(
-                f"Telemetry packet {target_name} {self.LIMITS_GROUP_PACKET} is reserved for the limits groups the target defines. "
-                "Rename the packet or move the limits groups to another target."
+            self.own_limits_group_packets.add(target_name)
+            message = (
+                f"Telemetry packet {target_name} {self.LIMITS_GROUP_PACKET} is reserved for the limits groups the target "
+                "defines so they won't be published as telemetry. Rename the packet and reinstall the target."
             )
+            self.warnings.append(message)
+            Logger.warn(message)
+            return
         target_packets[self.LIMITS_GROUP_PACKET] = PacketConfig.generate_limits_group_packet(target_name, groups.keys())
+
+    # Whether the target defines limits groups but has a LIMITS_GROUP packet of its own
+    def own_limits_group_packet(self, target_name):
+        return target_name in self.own_limits_group_packets
 
     # Whether the packet is the generated limits group packet
     def limits_group_packet_p(self, target_name, packet_name):
-        return packet_name == self.LIMITS_GROUP_PACKET and bool(self.limits_groups.get(target_name))
+        return (
+            packet_name == self.LIMITS_GROUP_PACKET
+            and bool(self.limits_groups.get(target_name))
+            and not self.own_limits_group_packet(target_name)
+        )
+
+    # Group names become item names and QuestDB column names in <TARGET> LIMITS_GROUP.
+    # They follow the naming rules of LIMITS_GROUP parameters (see
+    # ConfigParser.verify_parameter_naming) plus the rules of the generated items.
+    # Returns why the upper case name can't be a limits group, None if it can.
+    @classmethod
+    def limits_group_name_error(cls, group_name):
+        if group_name.endswith("_"):
+            return "cannot end with an underscore ('_')"
+        if "__" in group_name:
+            return "cannot contain a double underscore ('__')"
+        if "[[" in group_name or "]]" in group_name:
+            return "cannot contain double brackets ('[[' or ']]')"
+        if " " in group_name:
+            return "cannot contain a space (' ')"
+        if '"' in group_name or "'" in group_name:
+            return "cannot contain a quote (' or \")"
+        if "{" in group_name or "}" in group_name:
+            return "cannot contain a curly bracket ('{' or '}')"
+        if len(group_name) > cls.MAX_LIMITS_GROUP_NAME_LENGTH:
+            return f"must be {cls.MAX_LIMITS_GROUP_NAME_LENGTH} characters or less"
+        if group_name.endswith(cls.LIMITS_GROUP_ENABLED_SUFFIX):
+            return f"cannot end with {cls.LIMITS_GROUP_ENABLED_SUFFIX}"
+        if group_name in Packet.RESERVED_ITEM_NAMES:
+            return "is a reserved item name"
+        # Packet.packet_time reads an item named PACKET_TIME instead of the received time
+        if group_name == "PACKET_TIME":
+            return f"would replace the packet time of {cls.LIMITS_GROUP_PACKET}"
+        return None
 
     # Builds the <TARGET> LIMITS_GROUP packet with a <GROUP> and <GROUP>_ENABLED
     # item for each group, sorted by group name. The packet is virtual so it's never
@@ -1140,21 +1200,11 @@ class PacketConfig:
             item.description = f"Whether limits are enabled on every member of limits group {group}"
         return packet
 
-    # Group names become item names and QuestDB column names in <TARGET> LIMITS_GROUP
-    def _verify_limits_group_name(self, parser, group_name, usage):
-        if len(group_name) > self.MAX_LIMITS_GROUP_NAME_LENGTH:
-            raise parser.error(
-                f"LIMITS_GROUP {group_name} must be {self.MAX_LIMITS_GROUP_NAME_LENGTH} characters or less.", usage
-            )
-        if group_name.endswith(self.LIMITS_GROUP_ENABLED_SUFFIX):
-            raise parser.error(f"LIMITS_GROUP {group_name} cannot end with {self.LIMITS_GROUP_ENABLED_SUFFIX}.", usage)
-        if group_name in Packet.RESERVED_ITEM_NAMES:
-            raise parser.error(f"LIMITS_GROUP {group_name} is a reserved item name.", usage)
-        # Packet.packet_time reads an item named PACKET_TIME instead of the received time
-        if group_name == "PACKET_TIME":
-            raise parser.error(
-                f"LIMITS_GROUP {group_name} would replace the packet time of {self.LIMITS_GROUP_PACKET}.", usage
-            )
+    # Skipping a limits group isn't fatal, but log it since parser warnings aren't shown on install
+    def _limits_group_warning(self, parser, message):
+        message = f"{message} ({parser.filename}:{parser.line_number})"
+        self.warnings.append(message)
+        Logger.warn(message)
 
     def finish_item(self):
         if self.current_item:

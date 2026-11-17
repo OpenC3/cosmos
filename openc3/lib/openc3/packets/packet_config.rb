@@ -27,6 +27,7 @@ require 'openc3/packets/parsers/processor_parser'
 require 'openc3/packets/parsers/xtce_parser'
 require 'openc3/packets/parsers/xtce_converter'
 require 'openc3/utilities/python_proxy'
+require 'openc3/utilities/logger'
 require 'openc3/conversions'
 require 'openc3/processors'
 require 'openc3/accessors'
@@ -119,6 +120,7 @@ module OpenC3
       @telemetry = {}
       @commands = {}
       @limits_groups = {}
+      @own_limits_group_packets = Set.new
       @limits_sets = [:DEFAULT]
       # Hash of Hashes. First index by target name and then item name.
       # Returns an array of packets with that target and item.
@@ -248,10 +250,15 @@ module OpenC3
           when 'LIMITS_GROUP'
             usage = "LIMITS_GROUP <GROUP NAME>"
             parser.verify_num_parameters(1, 1, usage)
-            parser.verify_parameter_naming(1, usage)
             @current_limits_group = params[0].to_s.upcase
-            verify_limits_group_name(parser, @current_limits_group, usage)
-            (@limits_groups[process_target_name] ||= {})[@current_limits_group] ||= []
+            # The group becomes items in <TARGET> LIMITS_GROUP so a name which can't
+            # is skipped, along with its LIMITS_GROUP_ITEM lines
+            if (error = self.class.limits_group_name_error(@current_limits_group))
+              limits_group_warning(parser, "LIMITS_GROUP #{@current_limits_group} #{error}. Skipping the group.")
+              @current_limits_group = nil
+            else
+              (@limits_groups[process_target_name] ||= {})[@current_limits_group] ||= []
+            end
 
           # Add a telemetry item to the limits group
           when 'LIMITS_GROUP_ITEM'
@@ -271,11 +278,11 @@ module OpenC3
               end
               # A member in a LIMITS_GROUP packet is always a nested group so its
               # name must be one LIMITS_GROUP accepts (the child can be installed later)
-              if item[1] == LIMITS_GROUP_PACKET
-                parser.verify_parameter_naming(params.length, usage)
-                verify_limits_group_name(parser, item[2], usage)
+              if item[1] == LIMITS_GROUP_PACKET and (error = self.class.limits_group_name_error(item[2]))
+                limits_group_warning(parser, "LIMITS_GROUP #{@current_limits_group} member #{item.join(' ')}: LIMITS_GROUP #{item[2]} #{error}. Skipping the member.")
+              else
+                @limits_groups[process_target_name][@current_limits_group] << item
               end
-              @limits_groups[process_target_name][@current_limits_group] << item
             end
 
           #######################################################################
@@ -327,18 +334,52 @@ module OpenC3
       return if groups.nil? or groups.empty?
 
       target_packets = (@telemetry[target_name] ||= {})
+      # Keep a packet of the target's own. Its groups still work but aren't
+      # published as telemetry (see TargetModel#own_limits_group_packet).
       if target_packets[LIMITS_GROUP_PACKET]
-        raise "Telemetry packet #{target_name} #{LIMITS_GROUP_PACKET} is reserved for the limits groups the target defines. Rename the packet or move the limits groups to another target."
+        @own_limits_group_packets << target_name
+        message = "Telemetry packet #{target_name} #{LIMITS_GROUP_PACKET} is reserved for the limits groups the target defines so they won't be published as telemetry. Rename the packet and reinstall the target."
+        @warnings << message
+        Logger.warn(message)
+        return
       end
 
       target_packets[LIMITS_GROUP_PACKET] = self.class.generate_limits_group_packet(target_name, groups.keys)
     end
 
     # @param target_name [String] The target name
+    # @return [Boolean] Whether the target defines limits groups but has a LIMITS_GROUP packet of its own
+    def own_limits_group_packet?(target_name)
+      @own_limits_group_packets.include?(target_name)
+    end
+
+    # @param target_name [String] The target name
     # @param packet_name [String] The packet name
     # @return [Boolean] Whether the packet is the generated limits group packet
     def limits_group_packet?(target_name, packet_name)
-      packet_name == LIMITS_GROUP_PACKET and @limits_groups[target_name] and !@limits_groups[target_name].empty?
+      packet_name == LIMITS_GROUP_PACKET and @limits_groups[target_name] and !@limits_groups[target_name].empty? and !own_limits_group_packet?(target_name)
+    end
+
+    # Group names become item names and QuestDB column names in <TARGET> LIMITS_GROUP.
+    # They follow the naming rules of LIMITS_GROUP parameters (see
+    # ConfigParser#verify_parameter_naming) plus the rules of the generated items.
+    #
+    # @param group_name [String] Upper case group name
+    # @return [String, nil] Why the name can't be a limits group, nil if it can
+    def self.limits_group_name_error(group_name)
+      return "cannot end with an underscore ('_')" if group_name.end_with?('_')
+      return "cannot contain a double underscore ('__')" if group_name.include?('__')
+      return "cannot contain double brackets ('[[' or ']]')" if group_name.include?('[[') or group_name.include?(']]')
+      return "cannot contain a space (' ')" if group_name.include?(' ')
+      return "cannot contain a quote (' or \")" if group_name.include?('"') or group_name.include?("'")
+      return "cannot contain a curly bracket ('{' or '}')" if group_name.include?('{') or group_name.include?('}')
+      return "must be #{MAX_LIMITS_GROUP_NAME_LENGTH} characters or less" if group_name.length > MAX_LIMITS_GROUP_NAME_LENGTH
+      return "cannot end with #{LIMITS_GROUP_ENABLED_SUFFIX}" if group_name.end_with?(LIMITS_GROUP_ENABLED_SUFFIX)
+      return "is a reserved item name" if Packet::RESERVED_ITEM_NAMES.include?(group_name)
+      # Packet#packet_time reads an item named PACKET_TIME instead of the received time
+      return "would replace the packet time of #{LIMITS_GROUP_PACKET}" if group_name == 'PACKET_TIME'
+
+      nil
     end
 
     # Builds the <TARGET> LIMITS_GROUP packet with a <GROUP> and <GROUP>_ENABLED
@@ -1038,21 +1079,11 @@ module OpenC3
       end
     end
 
-    # Group names become item names and QuestDB column names in <TARGET> LIMITS_GROUP
-    def verify_limits_group_name(parser, group_name, usage)
-      if group_name.length > MAX_LIMITS_GROUP_NAME_LENGTH
-        raise parser.error("LIMITS_GROUP #{group_name} must be #{MAX_LIMITS_GROUP_NAME_LENGTH} characters or less.", usage)
-      end
-      if group_name.end_with?(LIMITS_GROUP_ENABLED_SUFFIX)
-        raise parser.error("LIMITS_GROUP #{group_name} cannot end with #{LIMITS_GROUP_ENABLED_SUFFIX}.", usage)
-      end
-      if Packet::RESERVED_ITEM_NAMES.include?(group_name)
-        raise parser.error("LIMITS_GROUP #{group_name} is a reserved item name.", usage)
-      end
-      # Packet#packet_time reads an item named PACKET_TIME instead of the received time
-      if group_name == 'PACKET_TIME'
-        raise parser.error("LIMITS_GROUP #{group_name} would replace the packet time of #{LIMITS_GROUP_PACKET}.", usage)
-      end
+    # Skipping a limits group isn't fatal, but log it since parser warnings aren't shown on install
+    def limits_group_warning(parser, message)
+      message = "#{message} (#{parser.filename}:#{parser.line_number})"
+      @warnings << message
+      Logger.warn(message)
     end
   end
 end

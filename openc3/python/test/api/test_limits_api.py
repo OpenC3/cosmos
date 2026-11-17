@@ -57,15 +57,10 @@ class TestLimitsApi(unittest.TestCase):
             for group, items in groups.items():
                 Store.hset("DEFAULT__limits_groups", f"{target_name}__{group}", json.dumps(items))
 
-        # Like a target installed by Ruby each model lists the groups it defines.
-        # The Python TargetModel doesn't store them so write the JSON directly.
-        for target_name in ["INST", "SYSTEM"]:
-            groups = list(System.limits.groups().get(target_name, {}).keys())
-            Store.hset(
-                "DEFAULT__openc3_targets",
-                target_name,
-                json.dumps({"name": target_name, "scope": "DEFAULT", "limits_groups": groups, "db_shard": 0}),
-            )
+        model = TargetModel(name="INST", scope="DEFAULT")
+        model.create()
+        model = TargetModel(name="SYSTEM", scope="DEFAULT")
+        model.create()
         model = MicroserviceModel(
             name="DEFAULT__DECOM__INST_INT",
             scope="DEFAULT",

@@ -67,14 +67,19 @@ LIMITS_GROUP:
     group's members which have limits enabled, so it can be displayed on screens, graphed,
     used in scripts with tlm and wait_check, and extracted from history.
     INST LIMITS_GROUP THERMAL_ENABLED is TRUE when limits are enabled on every member. A
-    group with no enabled members is GREEN with no limits color. A target which defines
-    limits groups can't also define its own LIMITS_GROUP telemetry packet.
+    group with no enabled members is GREEN with no limits color. The LIMITS_GROUP packet
+    name is reserved for targets which define limits groups. If such a target also defines
+    its own LIMITS_GROUP telemetry packet, COSMOS keeps that packet and logs a warning, and
+    the target's groups can still be enabled and disabled but aren't published as
+    telemetry until the packet is renamed and the target reinstalled.
 
 
     Group names become item names so they follow the same rules as ITEM names
     (no spaces, quotes, double underscores or trailing underscore). They can't end
-    in _ENABLED, use a reserved item name like RECEIVED_COUNT, or be longer than 119
-    characters. Group names only need to be unique within a target, so two targets
+    in _ENABLED, use a reserved item name like RECEIVED_COUNT or PACKET_TIME, or be
+    longer than 119 characters. A group whose name breaks these rules is skipped with
+    a warning, along with its LIMITS_GROUP_ITEM lines, and a nested group member with
+    such a name is skipped the same way. Group names only need to be unique within a target, so two targets
     can each define a THERMAL group, but two groups in a target can't differ only by
     characters the time-series database replaces with an underscore (like TEMP.A and TEMP_A).
   parameters:

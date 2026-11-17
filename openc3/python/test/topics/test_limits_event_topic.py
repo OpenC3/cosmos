@@ -55,39 +55,6 @@ class TestLimitsEventTopicLimitsGroupItems(unittest.TestCase):
             {"INST": {"HEALTH_STATUS": ["TEMP1", "VOLTS"]}, "INST2": {"HEALTH_STATUS": ["TEMP2"]}},
         )
 
-    def test_expands_a_member_of_a_targets_own_limits_group_packet_as_an_item(self):
-        # LimitsGroupBackfill kept INST's own packet. INST2 has a packet named
-        # LIMITS_GROUP and no groups. SYS generates its packet from its groups.
-        targets = {
-            "INST": {"limits_groups": ["THERMAL"], "own_limits_group_packet": True, "db_shard": 0},
-            "INST2": {"limits_groups": [], "db_shard": 1},
-            "SYS": {"limits_groups": ["POWER"], "db_shard": 0},
-        }
-        for name, target in targets.items():
-            Store.hset("DEFAULT__openc3_targets", name, json.dumps({"name": name, **target}))
-        # Each db_shard has its own fake so this is only found on INST2's db_shard
-        Store.instance(db_shard=1).hset("DEFAULT__openc3tlm__INST2", "LIMITS_GROUP", "{}")
-        Store.hset(
-            "DEFAULT__limits_groups",
-            "SYS__ALL",
-            json.dumps(
-                [
-                    ["INST", "LIMITS_GROUP", "TEMP1"],
-                    ["INST2", "LIMITS_GROUP", "TEMP2"],
-                    ["SYS", "LIMITS_GROUP", "POWER"],
-                    ["INST", "LIMITS_GROUP", "TEMP1"],
-                    ["INST3", "LIMITS_GROUP", "FUTURE"],
-                ]
-            ),
-        )
-        Store.hset("DEFAULT__limits_groups", "SYS__POWER", json.dumps([["INST", "HEALTH_STATUS", "VOLTS"]]))
-        items = LimitsEventTopic.limits_group_items("SYS__ALL", scope="DEFAULT")
-        # INST3 isn't installed so its member is a nested group which isn't defined yet
-        self.assertEqual(
-            items,
-            {"INST": {"LIMITS_GROUP": ["TEMP1"], "HEALTH_STATUS": ["VOLTS"]}, "INST2": {"LIMITS_GROUP": ["TEMP2"]}},
-        )
-
     def test_stops_at_cycles(self):
         Store.hset(
             "DEFAULT__limits_groups",

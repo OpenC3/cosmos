@@ -18,8 +18,11 @@ require 'openc3/topics/limits_event_topic'
 module OpenC3
   # Backfill limits groups as telemetry for scopes created before it existed:
   # - Store each limits group under the target which defines it (TARGET__GROUP)
-  #   rather than just its name
+  #   rather than just its name. Groups whose names can't become LIMITS_GROUP
+  #   items are removed with a warning, like installing skips them.
   # - Define the <TARGET> LIMITS_GROUP packet for each target with limits groups
+  #   A target with a packet of its own named LIMITS_GROUP keeps it and its
+  #   groups aren't published.
   # - Add the limits group microservice to the scope's SCOPEMULTI
   # New scopes get the microservice via ScopeModel#deploy and installing a target
   # stores its groups and defines its packet.
@@ -37,7 +40,7 @@ module OpenC3
       models = TargetModel.get_all_models(scope: scope)
       rekey_groups(scope, models)
       models.each do |target_name, model|
-        group_names = model.limits_groups || []
+        group_names = valid_group_names(model)
         next if group_names.empty?
 
         packet = PacketConfig.generate_limits_group_packet(target_name, group_names)
@@ -47,7 +50,7 @@ module OpenC3
         if json.nil? or JSON.parse(json, allow_nan: true, create_additions: true)['config_name'] == packet.config_name
           add_limits_group_packet(model, packet)
         else
-          Logger.warn("Target #{target_name} in scope #{scope} has its own #{PacketConfig::LIMITS_GROUP_PACKET} packet so its limits groups won't be published. Rename the packet and reinstall the target.")
+          Logger.error("Target #{target_name} in scope #{scope} has a telemetry packet of its own named #{PacketConfig::LIMITS_GROUP_PACKET}, which is now reserved for the limits groups the target defines. Its limits groups still work but won't be published as telemetry until the packet is renamed and the target reinstalled.")
           # Keeps the packet writable and in LATEST and stops the limits group
           # microservice publishing over it (see TargetModel.generated_limits_group_packet?)
           unless model.own_limits_group_packet
@@ -56,6 +59,20 @@ module OpenC3
           end
         end
       end
+    end
+
+    # Before groups became items in <TARGET> LIMITS_GROUP any name was allowed.
+    # Drop the ones which can't (rekey_groups removed them from the store).
+    #
+    # @return [Array<String>] The target's group names which can be LIMITS_GROUP items
+    def self.valid_group_names(model)
+      group_names = model.limits_groups || []
+      valid = group_names.reject { |group| PacketConfig.limits_group_name_error(group) }
+      if valid.length != group_names.length
+        model.limits_groups = valid
+        model.update
+      end
+      valid
     end
 
     # Store each group under the target which defines it. Names could contain
@@ -75,8 +92,12 @@ module OpenC3
           # Before groups were owned by a target they were stored by name alone
           next unless groups[group]
 
-          rekeyed[LimitsEventTopic.limits_group_key(target_name, group)] = groups[group]
           legacy << group
+          if (error = PacketConfig.limits_group_name_error(group))
+            Logger.warn("Removed LIMITS_GROUP #{group} of target #{target_name} in scope #{scope}: the name #{error}. Rename the group and reinstall the target to use it.")
+          else
+            rekeyed[LimitsEventTopic.limits_group_key(target_name, group)] = groups[group]
+          end
         end
       end
       legacy.subtract(rekeyed.keys)

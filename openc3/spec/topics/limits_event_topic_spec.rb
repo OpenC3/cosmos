@@ -35,23 +35,6 @@ module OpenC3
         expect(LimitsEventTopic.limits_group_items("SYS__SPACECRAFT", scope: "DEFAULT")).to eql expected
       end
 
-      it "expands a member of a target's own LIMITS_GROUP packet as an item" do
-        # LimitsGroupBackfill kept INST's own packet. INST2 has a packet named
-        # LIMITS_GROUP and no groups. SYS generates its packet from its groups.
-        Store.hset("DEFAULT__openc3_targets", "INST", JSON.generate({ name: "INST", limits_groups: ["THERMAL"], own_limits_group_packet: true, db_shard: 0 }))
-        Store.hset("DEFAULT__openc3_targets", "INST2", JSON.generate({ name: "INST2", limits_groups: [], db_shard: 1 }))
-        Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__INST2", "LIMITS_GROUP", "{}")
-        Store.hset("DEFAULT__openc3_targets", "SYS", JSON.generate({ name: "SYS", limits_groups: ["POWER"], db_shard: 0 }))
-        Store.hset("DEFAULT__limits_groups", "SYS__ALL", JSON.generate([["INST", "LIMITS_GROUP", "TEMP1"], ["INST2", "LIMITS_GROUP", "TEMP2"], ["SYS", "LIMITS_GROUP", "POWER"], ["INST", "LIMITS_GROUP", "TEMP1"], ["INST3", "LIMITS_GROUP", "FUTURE"]]))
-        Store.hset("DEFAULT__limits_groups", "SYS__POWER", JSON.generate([["INST", "HEALTH_STATUS", "VOLTS"]]))
-        allow(Store).to receive(:instance).and_call_original
-        # INST2's packet is looked up on its db_shard
-        expect(Store).to receive(:instance).with(db_shard: 1).at_least(:once).and_call_original
-        # INST3 isn't installed so its member is a nested group which isn't defined yet
-        expected = { "INST" => { "LIMITS_GROUP" => ["TEMP1"], "HEALTH_STATUS" => ["VOLTS"] }, "INST2" => { "LIMITS_GROUP" => ["TEMP2"] } }
-        expect(LimitsEventTopic.limits_group_items("SYS__ALL", scope: "DEFAULT")).to eql expected
-      end
-
       it "stops at cycles" do
         Store.hset("DEFAULT__limits_groups", "INST__A", JSON.generate([["INST", "LIMITS_GROUP", "B"], ["INST", "HEALTH_STATUS", "TEMP1"]]))
         Store.hset("DEFAULT__limits_groups", "INST__B", JSON.generate([["INST", "LIMITS_GROUP", "A"], ["INST", "HEALTH_STATUS", "TEMP2"]]))

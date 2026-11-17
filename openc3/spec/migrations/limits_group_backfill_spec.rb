@@ -62,7 +62,7 @@ module OpenC3
     it "keeps and marks a target's own LIMITS_GROUP packet" do
       Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP", JSON.generate({ 'items' => [] }))
       expect(TargetModel.generated_limits_group_packet?("SYSTEM", "LIMITS_GROUP", scope: "DEFAULT")).to be true
-      expect(Logger).to receive(:warn).with(/Target SYSTEM in scope DEFAULT has its own LIMITS_GROUP packet/)
+      expect(Logger).to receive(:error).with(/Target SYSTEM in scope DEFAULT has a telemetry packet of its own named LIMITS_GROUP.*renamed and the target reinstalled/)
       LimitsGroupBackfill.run
       expect(JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))).to eql({ 'items' => [] })
       expect(Store.hkeys("DEFAULT__limits_groups").sort).to eql %w(SYSTEM__POWER SYSTEM__TEMPS)
@@ -71,36 +71,33 @@ module OpenC3
       expect(TargetModel.generated_limits_group_packet?("SYSTEM", "LIMITS_GROUP", scope: "DEFAULT")).to be false
     end
 
-    it "keeps a member of a kept LIMITS_GROUP packet as an item" do
-      # Before groups were owned by a target <TARGET> LIMITS_GROUP <ITEM> was an item
-      Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP", JSON.generate({ 'items' => [{ 'name' => 'BATTERY' }] }))
-      Store.hset("DEFAULT__limits_groups", "POWER", JSON.generate([%w(INST HEALTH_STATUS VOLTS), %w(SYSTEM LIMITS_GROUP BATTERY)]))
-      allow(Logger).to receive(:warn)
-      LimitsGroupBackfill.run
-      expect(LimitsEventTopic.limits_group_items("SYSTEM__POWER", scope: "DEFAULT")).to eql({ "INST" => { "HEALTH_STATUS" => ["VOLTS"] }, "SYSTEM" => { "LIMITS_GROUP" => ["BATTERY"] } })
-      # Disabling and enabling the group changes the member's setting
-      [false, true].each do |enabled|
-        LimitsEventTopic.write({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: "SYSTEM", group_name: "POWER", enabled: enabled, time_nsec: 0, message: "test" }, scope: "DEFAULT")
-        expect(JSON.parse(Store.hget("DEFAULT__current_limits_settings", "SYSTEM__LIMITS_GROUP__BATTERY"))['enabled']).to be enabled
-      end
-    end
-
-    it "keeps a group whose new key is also a legacy group name" do
-      # Before groups were owned by a target a name could contain '__'
+    it "removes groups whose names can't be LIMITS_GROUP items" do
+      # Before groups were owned by a target any name was allowed. INST's
+      # SYSTEM__TEMPS is also the new key of SYSTEM's TEMPS.
       model = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')
-      model.limits_groups = %w(SYSTEM__TEMPS)
+      model.limits_groups = %w(SYSTEM__TEMPS HEATERS HEATERS_ENABLED)
       model.update
       Store.hset("DEFAULT__limits_groups", "SYSTEM__TEMPS", JSON.generate([%w(INST HEALTH_STATUS TEMP2)]))
+      Store.hset("DEFAULT__limits_groups", "HEATERS", JSON.generate([%w(INST HEALTH_STATUS TEMP3)]))
+      Store.hset("DEFAULT__limits_groups", "HEATERS_ENABLED", JSON.generate([%w(INST HEALTH_STATUS TEMP4)]))
+      warnings = []
+      allow(Logger).to receive(:warn) { |message| warnings << message }
       LimitsGroupBackfill.run
-      # A rerun (e.g. after add_microservice failed) can't tell SYSTEM's new key
-      # from INST's legacy group so it must not rekey again
+      expect(warnings).to eql [
+        "Removed LIMITS_GROUP SYSTEM__TEMPS of target INST in scope DEFAULT: the name cannot contain a double underscore ('__'). Rename the group and reinstall the target to use it.",
+        "Removed LIMITS_GROUP HEATERS_ENABLED of target INST in scope DEFAULT: the name cannot end with _ENABLED. Rename the group and reinstall the target to use it.",
+      ]
+      # A rerun (e.g. after add_microservice failed) must not rekey again
       LimitsGroupBackfill.run
       expected = {
         "SYSTEM__TEMPS" => JSON.generate([%w(INST HEALTH_STATUS TEMP1)]),
         "SYSTEM__POWER" => JSON.generate([%w(INST HEALTH_STATUS VOLTS)]),
-        "INST__SYSTEM__TEMPS" => JSON.generate([%w(INST HEALTH_STATUS TEMP2)]),
+        "INST__HEATERS" => JSON.generate([%w(INST HEALTH_STATUS TEMP3)]),
       }
       expect(Store.hgetall("DEFAULT__limits_groups")).to eql expected
+      expect(TargetModel.get_model(name: 'INST', scope: 'DEFAULT').limits_groups).to eql %w(HEATERS)
+      items = JSON.parse(Store.hget("DEFAULT__openc3tlm__INST", "LIMITS_GROUP"))['items'].map { |item| item['name'] }
+      expect(items).to include("HEATERS", "HEATERS_ENABLED")
     end
 
     it "adds the microservice to SCOPEMULTI when a previous run stopped after creating it" do

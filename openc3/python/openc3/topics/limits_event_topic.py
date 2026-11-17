@@ -108,37 +108,15 @@ class LimitsEventTopic(Topic):
         if key not in groups:
             return None
         items = {}
-        cls._expand_limits_group(key, groups, items, set(), set(), {}, scope)
+        cls._expand_limits_group(key, groups, items, set(), set())
         return items
-
-    # A member <TARGET> LIMITS_GROUP <NAME> is usually a nested group. It's an
-    # item when the target has a LIMITS_GROUP packet of its own: one kept by
-    # LimitsGroupBackfill (own_limits_group_packet) or one of a target without
-    # limits groups. A target which isn't installed (yet) can't have a packet so
-    # the member is a nested group which may be installed later.
-    @classmethod
-    def own_limits_group_packet(cls, target_name, scope):
-        target_json = Store.hget(f"{scope}__openc3_targets", target_name)
-        if target_json is None:
-            return False
-        target = json.loads(target_json)
-        if target.get("own_limits_group_packet"):
-            return True
-        # The target generates its LIMITS_GROUP packet from its groups
-        if target.get("limits_groups"):
-            return False
-        db_shard = int(target.get("db_shard", 0) or 0)
-        return bool(
-            Store.instance(db_shard=db_shard).hexists(f"{scope}__openc3tlm__{target_name}", cls.LIMITS_GROUP_PACKET)
-        )
 
     # Nested groups are members named <TARGET> LIMITS_GROUP <GROUP>. They have no limits
     # of their own so expand them into the items of the child group. Children which
     # aren't defined (yet) are ignored and each group is only expanded once which
-    # also guards against cycles. seen holds the items already added and own_packets
-    # the own_limits_group_packet result of each target looked up so far.
+    # also guards against cycles. seen holds the items already added.
     @classmethod
-    def _expand_limits_group(cls, key, groups, items, visited, seen, own_packets, scope):
+    def _expand_limits_group(cls, key, groups, items, visited, seen):
         if key in visited:
             return
         visited.add(key)
@@ -147,18 +125,11 @@ class LimitsEventTopic(Topic):
             return
         for target_name, packet_name, item_name in json.loads(group):
             if packet_name == cls.LIMITS_GROUP_PACKET:
-                if target_name not in own_packets:
-                    own_packets[target_name] = cls.own_limits_group_packet(target_name, scope)
-                if not own_packets[target_name]:
-                    cls._expand_limits_group(
-                        cls.limits_group_key(target_name, item_name), groups, items, visited, seen, own_packets, scope
-                    )
-                    continue
+                cls._expand_limits_group(cls.limits_group_key(target_name, item_name), groups, items, visited, seen)
             # A set rather than a scan of the item list since groups can contain many thousands of items
-            if (target_name, packet_name, item_name) in seen:
-                continue
-            seen.add((target_name, packet_name, item_name))
-            items.setdefault(target_name, {}).setdefault(packet_name, []).append(item_name)
+            elif (target_name, packet_name, item_name) not in seen:
+                seen.add((target_name, packet_name, item_name))
+                items.setdefault(target_name, {}).setdefault(packet_name, []).append(item_name)
 
     @classmethod
     def _active_db_shards(cls, scope):

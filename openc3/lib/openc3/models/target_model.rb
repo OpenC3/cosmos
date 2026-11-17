@@ -68,9 +68,9 @@ module OpenC3
     attr_accessor :ignored_parameters
     attr_accessor :ignored_items
     attr_accessor :limits_groups
-    # Set by LimitsGroupBackfill when a target upgraded with limits groups also has
-    # a telemetry packet of its own named LIMITS_GROUP. Installing never sets it
-    # since a target can't define both.
+    # Set when a target which defines limits groups also has a telemetry packet of
+    # its own named LIMITS_GROUP, by installing it or by LimitsGroupBackfill. The
+    # packet is kept and the target's groups aren't published as telemetry.
     attr_accessor :own_limits_group_packet
     attr_accessor :stored_limits_mode
     attr_accessor :cmd_tlm_files
@@ -457,7 +457,7 @@ module OpenC3
     # <TARGET> LIMITS_GROUP is generated from the limits groups of a target which
     # defines them. A target without limits groups can still have a telemetry
     # packet of its own named LIMITS_GROUP which behaves like any other packet,
-    # as does one kept by LimitsGroupBackfill (see own_limits_group_packet).
+    # as does one kept by an install or LimitsGroupBackfill (see own_limits_group_packet).
     #
     # @return [Boolean] Whether the packet is the generated limits group packet
     def self.generated_limits_group_packet?(target_name, packet_name, scope:)
@@ -1104,6 +1104,8 @@ module OpenC3
       @ignored_items = target.ignored_items
       @cmd_tlm_files = target.cmd_tlm_files
       @limits_groups = (system.limits.groups[@name] || {}).keys
+      # A packet of the target's own named LIMITS_GROUP is kept and its groups aren't published
+      @own_limits_group_packet = system.packet_config.own_limits_group_packet?(@name)
       update()
     end
 

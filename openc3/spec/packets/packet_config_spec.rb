@@ -498,7 +498,7 @@ module OpenC3
           tf.unlink
         end
 
-        it "rejects group names which can't be LIMITS_GROUP items" do
+        it "skips with a warning group names which can't be LIMITS_GROUP items" do
           bad_names = {
             'TEMP__A' => /cannot contain a double underscore/,
             'TEMP_' => /cannot end with an underscore/,
@@ -510,8 +510,13 @@ module OpenC3
           bad_names.each do |name, error|
             tf = Tempfile.new('unittest')
             tf.puts "LIMITS_GROUP #{name}"
+            # The group's members are skipped too
+            tf.puts "  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1"
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, error)
+            expect(Logger).to receive(:warn).with(/#{error.source}.*\. Skipping the group\. \(#{Regexp.escape(tf.path)}:1\)/)
+            @pc.process_file(tf.path, "TGT1")
+            expect(@pc.warnings[-1]).to match(error)
+            expect(@pc.limits_groups["TGT1"]).to be_nil
             tf.unlink
           end
           tf = Tempfile.new('unittest')
@@ -555,13 +560,17 @@ module OpenC3
           tf.unlink
         end
 
-        it "complains about a nested group name LIMITS_GROUP doesn't accept" do
+        it "skips with a warning a nested group name LIMITS_GROUP doesn't accept" do
           ['"CHILD GROUP"', 'TGT2 LIMITS_GROUP "CHILD GROUP"', 'CHILD__GROUP', 'TGT2 LIMITS_GROUP CHILD_ENABLED', 'RECEIVED_COUNT'].each do |member|
+            pc = PacketConfig.new
             tf = Tempfile.new('unittest')
             tf.puts 'LIMITS_GROUP SPACECRAFT'
             tf.puts "LIMITS_GROUP_ITEM #{member}"
+            tf.puts 'LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1'
             tf.close
-            expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error)
+            expect(Logger).to receive(:warn).with(/LIMITS_GROUP SPACECRAFT member .* Skipping the member/)
+            pc.process_file(tf.path, "TGT1")
+            expect(pc.limits_groups["TGT1"]["SPACECRAFT"]).to eql [%w(TGT1 PKT1 ITEM1)]
             tf.unlink
           end
           # Items of other packets aren't group names
@@ -612,14 +621,20 @@ module OpenC3
           tf.unlink
         end
 
-        it "refuses a target with limits groups and its own LIMITS_GROUP packet" do
+        it "keeps a target's own LIMITS_GROUP packet with a warning" do
           tf = Tempfile.new('unittest')
           tf.puts 'TELEMETRY TGT1 LIMITS_GROUP BIG_ENDIAN "Packet"'
           tf.puts '  ITEM ITEM1 0 8 UINT'
           tf.puts 'LIMITS_GROUP TVAC'
           tf.close
           @pc.process_file(tf.path, "TGT1")
-          expect { @pc.build_limits_group_packet("TGT1") }.to raise_error(/TGT1 LIMITS_GROUP is reserved/)
+          expect(Logger).to receive(:warn).with(/TGT1 LIMITS_GROUP is reserved .* Rename the packet and reinstall the target/)
+          @pc.build_limits_group_packet("TGT1")
+          expect(@pc.telemetry["TGT1"]["LIMITS_GROUP"].get_item("ITEM1")).to_not be_nil
+          expect(@pc.own_limits_group_packet?("TGT1")).to be true
+          expect(@pc.limits_group_packet?("TGT1", "LIMITS_GROUP")).to be false
+          # Its groups still work
+          expect(@pc.limits_groups["TGT1"]).to eql({ "TVAC" => [] })
           tf.unlink
         end
       end
