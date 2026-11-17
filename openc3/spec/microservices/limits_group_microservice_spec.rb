@@ -415,6 +415,21 @@ module OpenC3
       expect(cvt['A__C']).to eql 'RED'
     end
 
+    it "publishes to a target's new db_shard as soon as it's reinstalled there" do
+      start({ 'INST2__TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      expect(publishes('INST2')).to eql 1
+      # Reinstalled on db_shard 3 within a minute, while its old db_shard is still cached
+      model = TargetModel.get_model(name: 'INST2', scope: 'DEFAULT')
+      model.db_shard = 3
+      model.update
+      @microservice.reload(changed_targets: ['INST2'])
+      @microservice.flush
+      expect(EphemeralStore.instance(db_shard: 3).xrevrange("DEFAULT__DECOM__{INST2}__LIMITS_GROUP", count: 100).length).to eql 1
+      expect(Store.instance(db_shard: 3).hget("DEFAULT__tlm__INST2", "LIMITS_GROUP")).to_not be_nil
+      expect(Store.instance(db_shard: 3).hget("DEFAULT__TELEMETRYCNTS__{INST2}", "LIMITS_GROUP")).to eql "1"
+      expect(publishes('INST2')).to eql 1
+    end
+
     it "parses each packet definition once until its target changes" do
       store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
       # Members' definitions are read from their target's db_shard

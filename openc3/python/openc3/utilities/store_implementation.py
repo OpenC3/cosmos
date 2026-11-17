@@ -158,6 +158,13 @@ class Store(metaclass=StoreMeta):
 
         return db_shard_val
 
+    @classmethod
+    def clear_db_shard_for_target(cls, target_name, scope="DEFAULT"):
+        """Drop a target's cached db_shard so the next db_shard_for_target reads it
+        from the store, e.g. after the target is reinstalled on another db_shard."""
+        with cls._db_shard_cache_lock:
+            cls._db_shard_cache.pop(f"{scope}__{target_name}", None)
+
     # Delegate all unknown methods to redis through the @redis_pool
     def __getattr__(self, func):
         with self.redis_pool.get() as redis:

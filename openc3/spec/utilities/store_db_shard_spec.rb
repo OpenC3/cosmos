@@ -75,6 +75,19 @@ module OpenC3
         allow(Time).to receive(:now).and_return(now + 61)
         expect(Store.db_shard_for_target('INST', scope: 'DEFAULT')).to eql 2
       end
+
+      it "rereads a target whose cached db_shard was cleared" do
+        set_target_db_shard('INST', 1)
+        set_target_db_shard('INST2', 1)
+        expect(Store.db_shard_for_target('INST', scope: 'DEFAULT')).to eql 1
+        expect(Store.db_shard_for_target('INST2', scope: 'DEFAULT')).to eql 1
+        Store.hset('DEFAULT__openc3_targets', 'INST', JSON.generate({ 'db_shard' => 2 }))
+        Store.hset('DEFAULT__openc3_targets', 'INST2', JSON.generate({ 'db_shard' => 2 }))
+        Store.clear_db_shard_for_target('INST', scope: 'DEFAULT')
+        expect(Store.db_shard_for_target('INST', scope: 'DEFAULT')).to eql 2
+        # Other targets stay cached
+        expect(Store.db_shard_for_target('INST2', scope: 'DEFAULT')).to eql 1
+      end
     end
 
     describe "StoreQueued" do

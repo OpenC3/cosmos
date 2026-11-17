@@ -100,6 +100,14 @@ module OpenC3
       db_shard
     end
 
+    # Drops a target's cached db_shard so the next db_shard_for_target reads it
+    # from the store, e.g. after the target is reinstalled on another db_shard.
+    def self.clear_db_shard_for_target(target_name, scope: "DEFAULT")
+      @@db_shard_cache_mutex.synchronize do
+        @@db_shard_cache.delete("#{scope}__#{target_name}")
+      end
+    end
+
     # Get the singleton instance
     def self.instance(pool_size = 100, db_shard: 0)
       # Logger.level = Logger::DEBUG

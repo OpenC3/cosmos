@@ -154,6 +154,9 @@ module OpenC3
     # @param changed_targets [Array<String>] Targets installed or removed since the last reload
     def reload(changed_targets: [])
       changed_targets.each do |target_name|
+        # Reinstalling can move the target to another db_shard and the publish
+        # below writes to it, so don't use the db_shard cached before
+        Store.clear_db_shard_for_target(target_name, scope: @scope)
         @definitions.delete(target_name)
         # Installing a target clears its LIMITS_GROUP CVT so publish it again
         # even if its groups' values didn't change
