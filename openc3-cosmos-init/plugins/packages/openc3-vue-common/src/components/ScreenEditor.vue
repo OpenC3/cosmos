@@ -49,6 +49,7 @@
       <AceEditor
         ref="aceEditor"
         autofocus
+        vim
         :mode="screenMode"
         class="screen-editor"
         :style="{ height: fill ? '100%' : height, width: '100%' }"
@@ -87,7 +88,6 @@ import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { ScreenCompleter } from './autocomplete'
-import { AceEditorUtils } from './ace'
 import { Api } from '@openc3/js-common/services'
 
 export default {
@@ -177,7 +177,6 @@ export default {
       this.editor.completers = [new ScreenCompleter()]
       this.editor.setValue(this.modelValue)
       this.editor.clearSelection()
-      AceEditorUtils.applyVimModeIfEnabled(this.editor)
 
       this.editor.session.on('change', () => {
         this.$emit('update:modelValue', this.editor.getValue())
@@ -232,7 +231,7 @@ export default {
       return Mode
     },
     toggleVimMode() {
-      AceEditorUtils.toggleVimMode(this.editor)
+      this.$refs.aceEditor.toggleVim()
     },
     showContextMenu(event) {
       this.menuX = event.pageX

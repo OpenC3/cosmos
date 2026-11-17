@@ -32,6 +32,7 @@
       <AceEditor
         ref="aceEditor"
         autofocus
+        vim
         :mode="languageMode"
         class="script-editor"
         :style="{ height: height, width: '100%' }"
@@ -124,7 +125,6 @@ export default {
       this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
       this.editor.setValue(this.modelValue)
       this.editor.clearSelection()
-      AceEditorUtils.applyVimModeIfEnabled(this.editor)
 
       this.editor.session.on('change', () => {
         this.$emit('update:modelValue', this.editor.getValue())
@@ -134,7 +134,7 @@ export default {
       return this.editor ? this.editor.getValue() : this.modelValue
     },
     toggleVimMode() {
-      AceEditorUtils.toggleVimMode(this.editor)
+      this.$refs.aceEditor.toggleVim()
     },
     showContextMenu(event) {
       this.menuX = event.pageX

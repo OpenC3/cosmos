@@ -18,6 +18,7 @@
 <script setup>
 import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/theme-twilight'
+import { AceEditorUtils } from './ace'
 import {
   onBeforeUnmount,
   onMounted,
@@ -39,6 +40,17 @@ const props = defineProps({
   readOnly: {
     type: Boolean,
     default: false,
+  },
+  // Use vim keybindings when the user has enabled vim mode (a global setting
+  // stored in localStorage and toggled with toggleVim)
+  vim: {
+    type: Boolean,
+    default: false,
+  },
+  // Called for :w in vim mode. Defaults to Ace's 'save' command.
+  vimSaveFn: {
+    type: Function,
+    default: undefined,
   },
   // Wrapping is on by default; set to turn it off
   noWrap: {
@@ -79,6 +91,11 @@ onMounted(() => {
   editor.value.session.setTabSize(2)
   editor.value.session.setUseWrapMode(!props.noWrap)
   applyMode()
+  if (props.vim) {
+    AceEditorUtils.applyVimModeIfEnabled(editor.value, {
+      saveFn: props.vimSaveFn,
+    })
+  }
   editor.value.setReadOnly(props.readOnly)
   if (props.autofocus) {
     editor.value.focus()
@@ -94,7 +111,12 @@ onBeforeUnmount(() => {
   }
 })
 
+function toggleVim() {
+  AceEditorUtils.toggleVimMode(editor.value)
+}
+
 defineExpose({
   editor,
+  toggleVim,
 })
 </script>

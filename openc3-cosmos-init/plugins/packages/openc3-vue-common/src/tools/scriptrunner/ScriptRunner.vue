@@ -424,6 +424,8 @@
             <AceEditor
               ref="aceEditor"
               autofocus
+              vim
+              :vim-save-fn="saveFile"
               :mode="languageMode"
               :read-only="editorReadOnly"
               class="editor"
@@ -617,6 +619,8 @@
             <AceEditor
               ref="aceEditor"
               autofocus
+              vim
+              :vim-save-fn="saveFile"
               :mode="languageMode"
               :read-only="editorReadOnly"
               class="editor"
@@ -2014,7 +2018,6 @@ export default {
     this.editor.setOption('enableBasicAutocompletion', true)
     this.editor.setOption('enableLiveAutocompletion', true)
     this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
-    AceEditorUtils.applyVimModeIfEnabled(this.editor, { saveFn: this.saveFile })
 
     this.editor.on('guttermousedown', this.toggleBreakpoint)
     // Clicking a line fills in the Goto line number. Only user clicks count:
@@ -2128,7 +2131,7 @@ export default {
       })
     },
     toggleVimMode() {
-      AceEditorUtils.toggleVimMode(this.editor)
+      this.$refs.aceEditor.toggleVim()
     },
     openCommandEditor() {
       this.executeSelectionMenu = false

@@ -108,6 +108,7 @@
               <AceEditor
                 ref="aceEditor"
                 autofocus
+                vim
                 :mode="editorMode"
                 class="editor"
                 @contextmenu.prevent="showContextMenu"
@@ -288,7 +289,6 @@ export default {
       this.editor = this.$refs.aceEditor.editor
       this.editor.setValue(this.localPluginTxt)
       this.editor.clearSelection()
-      AceEditorUtils.applyVimModeIfEnabled(this.editor)
       this.editor.session.$undoManager.markClean() // because setting the initial content made it "dirty"
     } else {
       this.tab = 1 // Show the diff right off the bat
@@ -494,7 +494,7 @@ export default {
     },
     toggleVimMode: function () {
       if (this.editor) {
-        AceEditorUtils.toggleVimMode(this.editor)
+        this.$refs.aceEditor.toggleVim()
         // don't worry about this.differ since AceDiff replaces the editor anyway, and thus there's no context menu
       }
     },
