@@ -220,6 +220,20 @@ class TestDecomMicroservice(unittest.TestCase):
             # Should report the actual value and limits state
             self.assertIn("INST HEALTH_STATUS TEMP1 = 0 is BLUE", output)
 
+    def test_limits_change_includes_the_change_type(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.now(timezone.utc)
+        item = packet.get_item("COLLECTS")
+        item.limits.change_type = "SEQUENCE"
+        item.limits.state = "RED"
+        try:
+            for stdout in capture_io():
+                self.dm.limits_change_callback(packet, item, "GREEN", 5, True)
+                self.assertIn("INST HEALTH_STATUS COLLECTS = 5 is RED (SEQUENCE)", stdout.getvalue())
+        finally:
+            item.limits.change_type = None
+            item.limits.state = None
+
     @patch("openc3.microservices.decom_microservice.System.limits_set")
     def test_falls_back_to_default_limits_set_when_selected_set_is_not_defined(self, mock_limits_set):
         """When the system limits set (e.g. TVAC) is not defined for an item,

@@ -143,6 +143,23 @@ test('gets details with right click', async ({ page, utils }) => {
   // Check that a few of the details are there ... that proves the API request
   await expect(detailsDialog).toContainText('DERIVED')
   await expect(detailsDialog).toContainText('PacketTimeSecondsConversion')
+
+  // Get out of the details dialog
+  await page.locator('[data-test="notifications"]').click({ force: true })
+  await expect(detailsDialog).not.toBeVisible()
+
+  // CCSDSSEQCNT has SEQUENCE change limits
+  await page
+    .getByRole('cell', { name: 'CCSDSSEQCNT', exact: true })
+    .locator('xpath=..') // parent row
+    .locator('[data-test="value"]')
+    .click({
+      button: 'right',
+    })
+  await page.getByText('Details', { exact: true }).click()
+  await expect(detailsDialog).toBeVisible()
+  await expect(detailsDialog).toContainText('INST HEALTH_STATUS CCSDSSEQCNT')
+  await expect(detailsDialog).toContainText('SEQUENCE RED')
 })
 
 test('stops polling the previous packet after switching', async ({

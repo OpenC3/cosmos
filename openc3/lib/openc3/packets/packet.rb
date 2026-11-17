@@ -1542,10 +1542,8 @@ module OpenC3
           ok = (value.is_a?(Numeric) && last_value.is_a?(Numeric) && value == next_sequence_value(item, last_value))
         when :CHANGE
           ok = (value != last_value)
-        when :STATIC
+        else # :STATIC
           ok = (value == last_value)
-        else
-          raise "Unknown change_type #{item.limits.change_type} for item #{item.name}"
         end
       end
       limits_state = ok ? :GREEN : item.limits.change_color
