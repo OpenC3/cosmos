@@ -459,7 +459,7 @@ module OpenC3
     it "reloads after an error in case events were missed" do
       store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
       stub_const("OpenC3::LimitsGroupMicroservice::READ_TIMEOUT_MS", 10)
-      allow(@microservice).to receive(:sleep)
+      allow(@microservice.instance_variable_get(:@retry_sleeper)).to receive(:sleep).and_return(false)
       allow_any_instance_of(Logger).to receive(:error)
       calls = 0
       allow(Topic).to receive(:read_topics).and_wrap_original do |method, *args, &block|
@@ -477,6 +477,39 @@ module OpenC3
       thread.join(5)
       expect(cvt['TEMPS__C']).to eql 'RED'
       expect(publishes).to eql 2
+    end
+
+    it "retries a failed reload with backoff without waiting for another event" do
+      store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+      stub_const("OpenC3::LimitsGroupMicroservice::READ_TIMEOUT_MS", 10)
+      sleeps = []
+      allow(@microservice.instance_variable_get(:@retry_sleeper)).to receive(:sleep) { |seconds| sleeps << seconds; false }
+      allow_any_instance_of(Logger).to receive(:error)
+      reads = 0
+      allow(Topic).to receive(:read_topics).and_wrap_original do |method, *args, &block|
+        reads += 1
+        if reads == 1
+          # A limits change whose event never arrives
+          Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "RED")
+          raise "lost connection"
+        end
+        method.call(*args, &block)
+      end
+      reloads = 0
+      allow(@microservice).to receive(:reload).and_wrap_original do |method, **kwargs|
+        reloads += 1
+        # The first two recovery attempts fail too
+        raise "still down" if reloads == 2 or reloads == 3
+
+        method.call(**kwargs)
+      end
+      thread = Thread.new { @microservice.run }
+      wait_until { publishes == 2 }
+      @microservice.shutdown
+      thread.join(5)
+      expect(cvt['TEMPS__C']).to eql 'RED'
+      expect(reloads).to eql 4
+      expect(sleeps).to eql [1, 2, 4]
     end
 
     it "runs until shutdown" do

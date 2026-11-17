@@ -17,6 +17,7 @@ require 'openc3/topics/config_topic'
 require 'openc3/topics/limits_event_topic'
 require 'openc3/topics/telemetry_decom_topic'
 require 'openc3/utilities/limits_rollup'
+require 'openc3/utilities/sleeper'
 
 module OpenC3
   # Rolls up the limits state of every limits group in the scope into the
@@ -37,6 +38,8 @@ module OpenC3
   # to its target's db_shard.
   class LimitsGroupMicroservice < Microservice
     READ_TIMEOUT_MS = 1000
+    # Longest wait between retries after an error
+    MAX_RETRY_SECONDS = 30
 
     def initialize(*args)
       super(*args)
@@ -54,6 +57,9 @@ module OpenC3
       @publishable = {}      # target => whether its LIMITS_GROUP packet is the generated one
       @settings_changed = false # settings must be reread before the next publish
       @warned = Set.new
+      # Targets changed since an error, or nil when no recovery is pending
+      @recovery_targets = nil
+      @retry_sleeper = Sleeper.new
       @event_count = 0             # limits events which changed a group's inputs
       @processing_seconds = 0.0    # time spent computing and publishing for them
       @limits_events_topic = "#{@scope}__openc3_limits_events"
@@ -73,9 +79,22 @@ module OpenC3
       @limits_event_offset = Topic.get_last_offset(@limits_events_topic)
       reload()
       publish(force: true)
+      failures = 0
       until @cancel_thread
+        changed_targets = Set.new
+        recovering = false
         begin
-          changed_targets = Set.new
+          # Events may have been missed after an error so recompute everything
+          # from the store. Retried before every read, even when no events
+          # arrive, until it succeeds.
+          if @recovery_targets
+            recovering = true
+            reload(changed_targets: @recovery_targets.to_a)
+            publish()
+            @recovery_targets = nil
+            recovering = false
+          end
+
           limits_events_checked = false
           events = 0
           seconds = 0.0
@@ -110,19 +129,21 @@ module OpenC3
             seconds += Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
           end
           record_events(events, seconds) if events > 0
+          failures = 0
         rescue => e
           @error = e
-          @logger.error("Limits group microservice error: #{e.formatted}")
-          sleep(1) unless @cancel_thread
-          # Events may have been missed so recompute everything from the store
-          begin
-            reload(changed_targets: changed_targets.to_a) unless @cancel_thread
-            publish() unless @cancel_thread
-          rescue => e
-            @logger.error("Limits group microservice reload error: #{e.formatted}")
-          end
+          @logger.error("Limits group microservice #{recovering ? 'reload ' : ''}error: #{e.formatted}")
+          # Keep the targets changed so far so the recovery rereads their definitions
+          @recovery_targets = (@recovery_targets || Set.new).merge(changed_targets)
+          failures += 1
+          break if @retry_sleeper.sleep([2**(failures - 1), MAX_RETRY_SECONDS].min)
         end
       end
+    end
+
+    def shutdown
+      @retry_sleeper.cancel
+      super()
     end
 
     # Reread the group definitions, limits states and settings and recompute
