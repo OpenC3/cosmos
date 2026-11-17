@@ -62,6 +62,7 @@ check_debian(client)
 check_node(client)
 check_container_version(client, containers, 'traefik')
 check_container_version(client, containers, 'redis') # valkey base image
+check_ubi_valkey(client) # after the base image so a bump just accepted carries over
 new_versitygw = check_versitygw(client, versitygw_version)
 check_tsdb(client, tsdb_version)
 check_cacert(client)

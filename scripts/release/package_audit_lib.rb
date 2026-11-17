@@ -945,13 +945,11 @@ def check_vendored_sources(client, sources: VENDORED_SOURCES)
   sources.each { |source| check_vendored_source(client, **source) }
 end
 
-# Returns [version_or_sha, extension] referenced by the openc3-ruby Dockerfiles,
-# or nil if none reference it. Warns when the two Dockerfiles disagree.
-def vendored_source_ref(name)
+# Every distinct [version_or_sha, extension] the openc3-ruby Dockerfiles
+# reference for `name`. More than one means the Dockerfiles disagree.
+def vendored_source_refs(name)
   pattern = /\b#{Regexp.escape(name)}-([0-9a-f]{40}|\d+(?:\.\d+)+)\.(tar\.gz|zip)\b/
-  refs = OPENC3_RUBY_DOCKERFILES.select { |p| File.exist?(p) }.flat_map { |p| File.read(p).scan(pattern) }.uniq
-  puts "WARN: openc3-ruby Dockerfiles reference different #{name} sources: #{refs.map(&:first).join(', ')}" if refs.length > 1
-  refs.first
+  OPENC3_RUBY_DOCKERFILES.select { |p| File.exist?(p) }.flat_map { |p| File.read(p).scan(pattern) }.uniq
 end
 
 # Newest release tag that looks like a plain version (v1.2.3 or 1.2.3). Uses
@@ -967,8 +965,15 @@ def latest_github_version_tag(client, repo)
 end
 
 def check_vendored_source(client, name:, repo:)
-  current, ext = vendored_source_ref(name)
-  return puts("WARN: no #{name} source referenced in the openc3-ruby Dockerfiles") if current.nil?
+  refs = vendored_source_refs(name)
+  return puts("WARN: no #{name} source referenced in the openc3-ruby Dockerfiles") if refs.empty?
+  # An update rewrites one version's references but removes every other
+  # archive, which would leave the other Dockerfile copying a deleted file.
+  if refs.length > 1
+    puts "ERROR: openc3-ruby Dockerfiles reference different #{name} sources (#{refs.map(&:first).join(', ')}). Make them match, then re-run."
+    return nil
+  end
+  current, ext = refs.first
   unless File.exist?(File.join(OPENC3_RUBY_DIR, "#{name}-#{current}.#{ext}"))
     puts "ERROR: openc3-ruby/#{name}-#{current}.#{ext} is referenced by the Dockerfiles but missing"
   end
@@ -1019,17 +1024,29 @@ def check_vendored_source(client, name:, repo:)
 end
 
 # GitHub's archive of the tag, saved under the same <name>-<version>.<ext>
-# layout as the committed file. GitHub publishes no checksum for these, so check
+# layout as the committed file in `dir`. GitHub publishes no checksum for these,
+# so verify `sha256` when the project publishes one elsewhere, and always check
 # that it unpacks to the directory the Dockerfiles cd into before replacing the
 # old archive.
-def download_vendored_source(name, repo, tag, version, ext)
-  path = File.join(OPENC3_RUBY_DIR, "#{name}-#{version}.#{ext}")
+def download_vendored_source(name, repo, tag, version, ext, dir: OPENC3_RUBY_DIR, sha256: nil)
+  path = File.join(dir, "#{name}-#{version}.#{ext}")
   url = "https://github.com/#{repo}/archive/refs/tags/#{tag}.#{ext}"
   puts "  Downloading #{url}"
   unless system('curl', '-fSL', url, '-o', path)
     puts "ERROR: failed to download #{url}"
     FileUtils.rm_f(path)
     return false
+  end
+  if sha256
+    actual = Digest::SHA256.file(path).hexdigest
+    unless actual == sha256
+      puts "ERROR: sha256 mismatch for #{File.basename(path)}"
+      puts "  expected #{sha256}"
+      puts "  actual   #{actual}"
+      FileUtils.rm_f(path)
+      return false
+    end
+    puts "  Verified sha256 #{actual}"
   end
   list_cmd = ext == 'zip' ? ['unzip', '-Z1', path] : ['tar', '-tzf', path]
   listing, status = Open3.capture2(*list_cmd)
@@ -1039,7 +1056,7 @@ def download_vendored_source(name, repo, tag, version, ext)
     FileUtils.rm_f(path)
     return false
   end
-  old_paths = Dir.glob(File.join(OPENC3_RUBY_DIR, "#{name}-*.{tar.gz,zip}")).reject do |p|
+  old_paths = Dir.glob(File.join(dir, "#{name}-*.{tar.gz,zip}")).reject do |p|
     p == path || !File.basename(p).match?(/\A#{Regexp.escape(name)}-([0-9a-f]{40}|\d+(?:\.\d+)+)\./)
   end
   old_paths.each do |p|
@@ -1048,6 +1065,53 @@ def download_vendored_source(name, repo, tag, version, ext)
   end
   stage_vendored_files([path], old_paths)
   true
+end
+
+# openc3-redis/Dockerfile builds on the valkey/valkey Docker Hub image, which
+# check_container_version moves. The UBI image compiles Valkey from a source
+# tarball committed to openc3-redis/ instead, so it only moves when this check
+# moves it. Keep it on the Debian image's version so both get the same fixes.
+def check_ubi_valkey(client)
+  redis_dir = File.join(ROOT_DIR, 'openc3-redis')
+  dockerfile = File.join(redis_dir, 'Dockerfile-ubi')
+  return puts("WARN: openc3-redis/Dockerfile-ubi does not exist") unless File.exist?(dockerfile)
+  # e.g. 9.1.3-trixie -> 9.1.3
+  wanted = get_docker_version(File.join(redis_dir, 'Dockerfile'), arg: 'OPENC3_REDIS_VERSION').to_s[/\A\d+\.\d+\.\d+/]
+  return puts("WARN: OPENC3_REDIS_VERSION not found in openc3-redis/Dockerfile") if wanted.nil?
+  current = File.read(dockerfile)[/valkey-(\d+\.\d+\.\d+)\.tar\.gz/, 1]
+  return puts("WARN: valkey-<version>.tar.gz not found in openc3-redis/Dockerfile-ubi") if current.nil?
+  puts "Checking ubi valkey against version: #{current}"
+  if current == wanted
+    if File.exist?(File.join(redis_dir, "valkey-#{current}.tar.gz"))
+      puts "ubi valkey is up to date with #{current}"
+      return nil
+    end
+    puts "valkey-#{current}.tar.gz missing from openc3-redis; downloading."
+  else
+    puts "NOTE: openc3-redis/Dockerfile-ubi builds valkey #{current} but openc3-redis/Dockerfile uses #{wanted}"
+    return nil unless prompt_update?("Update ubi valkey from #{current} to #{wanted}?", current, wanted)
+  end
+  sha256 = valkey_sha256(client, wanted)
+  return nil if sha256.nil?
+  return nil unless download_vendored_source('valkey', 'valkey-io/valkey', wanted, wanted, 'tar.gz', dir: redis_dir, sha256: sha256)
+  # The version also appears in VALKEY_VERSION, the SBOM and a build message,
+  # not only the tarball name. The lookarounds keep 9.1.1 from matching 9.1.10.
+  content = File.read(dockerfile)
+  updated = content.gsub(/(?<![\d.])#{Regexp.escape(current)}(?!\.?\d)/, wanted)
+  if updated != content
+    File.write(dockerfile, updated)
+    puts "  Updated valkey #{current} -> #{wanted} in openc3-redis/Dockerfile-ubi"
+  end
+  wanted
+end
+
+# Valkey publishes the sha256 of each release's GitHub source archive in the
+# valkey-hashes repo (the official valkey-container images verify against it).
+def valkey_sha256(client, version)
+  resp = client.get('https://raw.githubusercontent.com/valkey-io/valkey-hashes/main/README')
+  sha256 = resp.status == 200 ? resp.body[/^hash valkey-#{Regexp.escape(version)}\.tar\.gz sha256 (\h{64})\s/, 1] : nil
+  puts "ERROR: no sha256 for valkey-#{version}.tar.gz in valkey-io/valkey-hashes" if sha256.nil?
+  sha256
 end
 
 # Both openc3-ruby Dockerfiles run `gem update --system <version>`, which also
