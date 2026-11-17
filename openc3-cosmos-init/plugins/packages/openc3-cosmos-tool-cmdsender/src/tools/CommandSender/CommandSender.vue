@@ -1033,7 +1033,5 @@ export default {
   margin-left: 30px;
   height: 50px;
   width: 95%;
-  position: relative;
-  font-size: 16px;
 }
 </style>

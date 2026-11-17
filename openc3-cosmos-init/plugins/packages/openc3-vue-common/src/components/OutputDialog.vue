@@ -153,8 +153,6 @@ export default {
 <style scoped>
 .editor {
   height: 75vh;
-  position: relative;
-  font-size: 16px;
 }
 
 .v-textarea :deep(textarea) {

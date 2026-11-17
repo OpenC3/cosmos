@@ -4291,8 +4291,6 @@ hr {
 .editor {
   height: 100%;
   width: 100%;
-  position: relative;
-  font-size: 16px;
 }
 
 .script-state :deep(.v-field) {

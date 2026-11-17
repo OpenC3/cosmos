@@ -12,7 +12,7 @@
 -->
 
 <template>
-  <pre ref="editor"></pre>
+  <pre ref="editor" class="openc3-ace-editor"></pre>
 </template>
 
 <script setup>
@@ -149,3 +149,10 @@ defineExpose({
   toggleVim,
 })
 </script>
+
+<style scoped>
+/* Ace's own default is 12px. Override with --ace-editor-font-size. */
+.openc3-ace-editor {
+  font-size: var(--ace-editor-font-size, 16px);
+}
+</style>

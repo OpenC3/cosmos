@@ -518,8 +518,6 @@ export default {
 <style scoped>
 .editor {
   height: 50vh;
-  position: relative;
-  font-size: 16px;
 }
 .tab {
   background-color: var(--color-background-surface-default);

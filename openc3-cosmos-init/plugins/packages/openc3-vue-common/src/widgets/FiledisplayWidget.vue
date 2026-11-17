@@ -68,6 +68,8 @@ export default {
       return {
         width: this.width + 'px',
         height: this.height + 'px',
+        // Compact in-screen widget: keep Ace's 12px rather than AceEditor's 16px
+        '--ace-editor-font-size': '12px',
       }
     },
     aceMode() {

@@ -284,8 +284,6 @@ export default {
 
 .screen-editor {
   width: 100%;
-  position: relative;
-  font-size: 16px;
 }
 </style>
 
