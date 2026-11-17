@@ -148,7 +148,10 @@ test('gets details with right click', async ({ page, utils }) => {
   await page.keyboard.press('Escape')
   await expect(detailsDialog).not.toBeVisible()
 
-  // CCSDSSEQCNT has SEQUENCE change limits
+  // CCSDSSEQCNT has SEQUENCE change limits but is an ignored item
+  await page.locator('[data-test=packet-viewer-view]').click()
+  await page.locator('text=Show Ignored').click()
+  await page.locator('[data-test=packet-viewer-view]').click()
   await page
     .getByRole('cell', { name: 'CCSDSSEQCNT', exact: true })
     .locator('xpath=..') // parent row
@@ -160,6 +163,41 @@ test('gets details with right click', async ({ page, utils }) => {
   await expect(detailsDialog).toBeVisible()
   await expect(detailsDialog).toContainText('INST HEALTH_STATUS CCSDSSEQCNT')
   await expect(detailsDialog).toContainText('SEQUENCE RED')
+  await expect(detailsDialog).not.toContainText('STEP')
+  await page.keyboard.press('Escape')
+  await expect(detailsDialog).not.toBeVisible()
+
+  // No demo item uses a non-default sequence step so rewrite the get_item
+  // response to check that the step is displayed
+  await page.route('**/openc3-api/api', async (route) => {
+    if (!route.request().postData()?.includes('"get_item"')) {
+      return route.fallback()
+    }
+    const response = await route.fetch()
+    const json = await response.json()
+    json.result.limits.DEFAULT.sequence_step = -1
+    await route.fulfill({ response, json })
+  })
+  await page
+    .getByRole('cell', { name: 'CCSDSSEQCNT', exact: true })
+    .locator('xpath=..') // parent row
+    .locator('[data-test="value"]')
+    .click({
+      button: 'right',
+    })
+  // The closed details dialog can linger in the DOM so scope to the menu item
+  await page
+    .locator('.v-list-item-title')
+    .getByText('Details', { exact: true })
+    .click()
+  await expect(detailsDialog).toBeVisible()
+  await expect(detailsDialog).toContainText('SEQUENCE RED STEP -1')
+  await page.keyboard.press('Escape')
+  await expect(detailsDialog).not.toBeVisible()
+  await page.unroute('**/openc3-api/api')
+  await page.locator('[data-test=packet-viewer-view]').click()
+  await page.locator('text=Show Ignored').click()
+  await page.locator('[data-test=packet-viewer-view]').click()
 })
 
 test('stops polling the previous packet after switching', async ({
