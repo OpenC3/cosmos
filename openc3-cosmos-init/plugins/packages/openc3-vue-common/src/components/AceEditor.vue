@@ -40,6 +40,11 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // Wrapping is on by default; set to turn it off
+  noWrap: {
+    type: Boolean,
+    default: false,
+  },
   // Focus the editor once mounted
   autofocus: {
     type: Boolean,
@@ -59,6 +64,10 @@ function applyMode() {
 
 watch(() => props.mode, applyMode)
 watch(
+  () => props.noWrap,
+  (value) => editor.value?.session.setUseWrapMode(!value),
+)
+watch(
   () => props.readOnly,
   (value) => editor.value?.setReadOnly(value),
 )
@@ -68,7 +77,7 @@ onMounted(() => {
   editor.value.setTheme('ace/theme/twilight')
   editor.value.setHighlightActiveLine(false)
   editor.value.session.setTabSize(2)
-  editor.value.session.setUseWrapMode(true)
+  editor.value.session.setUseWrapMode(!props.noWrap)
   applyMode()
   editor.value.setReadOnly(props.readOnly)
   if (props.autofocus) {

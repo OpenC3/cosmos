@@ -32,6 +32,7 @@
         ref="aceEditor"
         :mode="aceMode"
         read-only
+        no-wrap
         :style="contentStyle"
       />
     </v-card-text>
