@@ -215,7 +215,6 @@
 
 <script>
 import 'ace-builds/src-min-noconflict/mode-ruby'
-import 'ace-builds/src-min-noconflict/theme-twilight'
 import { Api, OpenC3Api } from '@openc3/js-common/services'
 import {
   AceEditor,

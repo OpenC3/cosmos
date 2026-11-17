@@ -87,7 +87,6 @@
 import * as ace from 'ace-builds'
 import AceEditor from './AceEditor.vue'
 import 'ace-builds/src-min-noconflict/mode-text'
-import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 import { ScreenCompleter } from './autocomplete'
 import { Api } from '@openc3/js-common/services'
