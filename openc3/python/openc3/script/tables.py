@@ -10,12 +10,29 @@
 # if purchased from OpenC3, Inc.
 
 import json
+from typing import Any
+
+from requests import Response
 
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
 
 
-def table_create_binary(definition: str, scope: str = OPENC3_SCOPE):
+def table_create_binary(definition: str, scope: str = OPENC3_SCOPE) -> dict[str, Any] | None:
+    """Create a table binary file with default values from a table definition.
+
+    Args:
+        definition: Path to the table definition file in a target directory,
+            e.g. "INST/tables/config/ConfigTables_def.txt".
+        scope: COSMOS scope.
+
+    Returns:
+        {"filename": path} with the path of the created binary, or None if
+        the server returned an empty body.
+
+    Raises:
+        RuntimeError: If the server returns an error.
+    """
     data = {}
     data["definition"] = definition
     response = openc3.script.API_SERVER.request(
@@ -29,7 +46,23 @@ def table_create_binary(definition: str, scope: str = OPENC3_SCOPE):
 # contents in the return value without creating a file.
 def table_create_report(
     filename: str, definition: str, table_name: str | None = None, save: bool = True, scope: str = OPENC3_SCOPE
-):
+) -> dict[str, Any] | None:
+    """Create a CSV report of the contents of a table binary file.
+
+    Args:
+        filename: Path to the table binary file in a target directory.
+        definition: Path to the table definition file in a target directory.
+        table_name: Name of a single table to report. Defaults to all tables.
+        save: Write the report to the target's storage next to the binary.
+        scope: COSMOS scope.
+
+    Returns:
+        {"filename": path, "contents": csv} with the report path and
+        contents, or None if the server returned an empty body.
+
+    Raises:
+        RuntimeError: If the server returns an error.
+    """
     data = {}
     data["binary"] = filename
     data["definition"] = definition
@@ -41,7 +74,7 @@ def table_create_report(
 
 
 # Helper method to handle the response
-def _handle_response(response, error_message):
+def _handle_response(response: Response | None, error_message: str):
     if response is None:
         return None
     if response.status_code >= 400:
