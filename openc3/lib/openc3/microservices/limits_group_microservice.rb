@@ -55,6 +55,7 @@ module OpenC3
       @published = {}        # target => its groups' @values as last published
       @packets = {}          # target => [group names, its LIMITS_GROUP packet]
       @publishable = {}      # target => whether its LIMITS_GROUP packet is the generated one
+      @own_packets = {}      # target => whether its LIMITS_GROUP packet is one of its own (see child_group?)
       @settings_changed = false # settings must be reread before the next publish
       @warned = Set.new
       # Targets changed since an error, or nil when no recovery is pending
@@ -160,6 +161,8 @@ module OpenC3
         @publishable.delete(target_name)
       end
       @groups = TargetModel.limits_groups(scope: @scope)
+      # Installing or removing any target can change whether its LIMITS_GROUP is its own
+      @own_packets = {}
       build_indexes()
       @current_limits = Store.hgetall("#{@scope}__current_limits")
       load_settings()
@@ -328,7 +331,7 @@ module OpenC3
       @parents = {}
       @groups.each do |group, members|
         members.each do |target_name, packet_name, item_name|
-          if child_group?(packet_name)
+          if child_group?(target_name, packet_name)
             (@parents[LimitsEventTopic.limits_group_key(target_name, item_name)] ||= []) << group
           else
             (@item_groups["#{target_name}__#{packet_name}__#{item_name}"] ||= []) << group
@@ -350,7 +353,7 @@ module OpenC3
         end
         visiting << group
         @groups[group].each do |target_name, packet_name, item_name|
-          next unless child_group?(packet_name)
+          next unless child_group?(target_name, packet_name)
 
           child = LimitsEventTopic.limits_group_key(target_name, item_name)
           visit.call(child) if @groups[child]
@@ -377,7 +380,7 @@ module OpenC3
       packets = Set.new
       @groups.each_value do |members|
         members.each do |target_name, packet_name, _item_name|
-          packets << [target_name, packet_name] unless child_group?(packet_name)
+          packets << [target_name, packet_name] unless child_group?(target_name, packet_name)
         end
       end
       # Drop packets no group references any more
@@ -435,7 +438,7 @@ module OpenC3
         members = []
         children_enabled = true
         @groups[group].each do |target_name, packet_name, item_name|
-          if child_group?(packet_name)
+          if child_group?(target_name, packet_name)
             # A child which isn't defined (yet) is ignored like an unknown item
             child = @values[LimitsEventTopic.limits_group_key(target_name, item_name)]
             unless child
@@ -478,9 +481,13 @@ module OpenC3
       [@current_limits[key], enabled ? true : false]
     end
 
-    # Nested groups are the members <TARGET> LIMITS_GROUP <GROUP>
-    def child_group?(packet_name)
-      packet_name == PacketConfig::LIMITS_GROUP_PACKET
+    # Nested groups are the members <TARGET> LIMITS_GROUP <GROUP> unless the
+    # target's LIMITS_GROUP packet is its own (see LimitsEventTopic.own_limits_group_packet?)
+    def child_group?(target_name, packet_name)
+      return false unless packet_name == PacketConfig::LIMITS_GROUP_PACKET
+
+      own = @own_packets.fetch(target_name) { @own_packets[target_name] = LimitsEventTopic.own_limits_group_packet?(target_name, scope: @scope) }
+      !own
     end
 
     # @return [String] TARGET GROUP for log messages

@@ -57,10 +57,15 @@ class TestLimitsApi(unittest.TestCase):
             for group, items in groups.items():
                 Store.hset("DEFAULT__limits_groups", f"{target_name}__{group}", json.dumps(items))
 
-        model = TargetModel(name="INST", scope="DEFAULT")
-        model.create()
-        model = TargetModel(name="SYSTEM", scope="DEFAULT")
-        model.create()
+        # Like a target installed by Ruby each model lists the groups it defines.
+        # The Python TargetModel doesn't store them so write the JSON directly.
+        for target_name in ["INST", "SYSTEM"]:
+            groups = list(System.limits.groups().get(target_name, {}).keys())
+            Store.hset(
+                "DEFAULT__openc3_targets",
+                target_name,
+                json.dumps({"name": target_name, "scope": "DEFAULT", "limits_groups": groups, "db_shard": 0}),
+            )
         model = MicroserviceModel(
             name="DEFAULT__DECOM__INST_INT",
             scope="DEFAULT",
@@ -406,9 +411,11 @@ class TestLimitsApi(unittest.TestCase):
             if kwargs.get("permission") == "tlm_set" and kwargs.get("target_name") == "INST":
                 raise AuthError("denied INST")
 
-        with patch("openc3.api.limits_api.authorize", side_effect=deny_inst):
-            with self.assertRaisesRegex(AuthError, "denied INST"):
-                disable_limits_group("SYSTEM", "FIRST")
+        with (
+            patch("openc3.api.limits_api.authorize", side_effect=deny_inst),
+            self.assertRaisesRegex(AuthError, "denied INST"),
+        ):
+            disable_limits_group("SYSTEM", "FIRST")
         self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
     def test_enable_limits_groups_complains_about_undefined_limits_groups(self):

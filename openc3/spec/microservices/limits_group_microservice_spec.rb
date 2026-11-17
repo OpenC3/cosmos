@@ -339,6 +339,22 @@ module OpenC3
       expect(cvt['TEMPS__C']).to eql 'RED'
     end
 
+    it "rolls up an item of a target's own LIMITS_GROUP packet rather than a nested group" do
+      warnings = []
+      allow_any_instance_of(Logger).to receive(:warn) { |_logger, message| warnings << message }
+      # LimitsGroupBackfill kept INST2's own packet whose BATTERY item has limits
+      Store.instance(db_shard: 2).hset("DEFAULT__openc3tlm__INST2", "LIMITS_GROUP", JSON.generate({ 'items' => [{ 'name' => 'BATTERY', 'limits' => { 'enabled' => true } }] }))
+      model = TargetModel.get_model(name: 'INST2', scope: 'DEFAULT')
+      model.limits_groups = ['OLD']
+      model.own_limits_group_packet = true
+      model.update
+      start({ 'POWER' => [%w(INST2 LIMITS_GROUP BATTERY), %w(INST HEALTH_STATUS TEMP1)] })
+      limits_event({ type: :LIMITS_CHANGE, target_name: 'INST2', packet_name: 'LIMITS_GROUP', item_name: 'BATTERY',
+                     old_limits_state: 'GREEN', new_limits_state: 'RED', time_nsec: 0, message: 'test' })
+      expect(cvt['POWER__C']).to eql 'RED'
+      expect(warnings).to be_empty
+    end
+
     it "counts a child installed after its parent" do
       start({ 'SPACECRAFT' => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)] })
       change('TEMP1', 'RED')

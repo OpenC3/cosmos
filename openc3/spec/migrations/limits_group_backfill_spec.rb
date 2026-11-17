@@ -71,6 +71,20 @@ module OpenC3
       expect(TargetModel.generated_limits_group_packet?("SYSTEM", "LIMITS_GROUP", scope: "DEFAULT")).to be false
     end
 
+    it "keeps a member of a kept LIMITS_GROUP packet as an item" do
+      # Before groups were owned by a target <TARGET> LIMITS_GROUP <ITEM> was an item
+      Store.instance(db_shard: 1).hset("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP", JSON.generate({ 'items' => [{ 'name' => 'BATTERY' }] }))
+      Store.hset("DEFAULT__limits_groups", "POWER", JSON.generate([%w(INST HEALTH_STATUS VOLTS), %w(SYSTEM LIMITS_GROUP BATTERY)]))
+      allow(Logger).to receive(:warn)
+      LimitsGroupBackfill.run
+      expect(LimitsEventTopic.limits_group_items("SYSTEM__POWER", scope: "DEFAULT")).to eql({ "INST" => { "HEALTH_STATUS" => ["VOLTS"] }, "SYSTEM" => { "LIMITS_GROUP" => ["BATTERY"] } })
+      # Disabling and enabling the group changes the member's setting
+      [false, true].each do |enabled|
+        LimitsEventTopic.write({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: "SYSTEM", group_name: "POWER", enabled: enabled, time_nsec: 0, message: "test" }, scope: "DEFAULT")
+        expect(JSON.parse(Store.hget("DEFAULT__current_limits_settings", "SYSTEM__LIMITS_GROUP__BATTERY"))['enabled']).to be enabled
+      end
+    end
+
     it "keeps a group whose new key is also a legacy group name" do
       # Before groups were owned by a target a name could contain '__'
       model = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')

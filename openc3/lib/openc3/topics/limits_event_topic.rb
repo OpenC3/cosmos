@@ -105,15 +105,38 @@ module OpenC3
       return nil unless groups[key]
 
       items = {}
-      _expand_limits_group(key, groups, items, Set.new)
+      _expand_limits_group(key, groups, items, Set.new, Set.new, {}, scope)
       items
+    end
+
+    # A member <TARGET> LIMITS_GROUP <NAME> is usually a nested group. It's an
+    # item when the target has a LIMITS_GROUP packet of its own: one kept by
+    # LimitsGroupBackfill (own_limits_group_packet) or one of a target without
+    # limits groups. A target which isn't installed (yet) can't have a packet so
+    # the member is a nested group which may be installed later.
+    #
+    # @param target_name [String] Target of the member
+    # @return [Boolean] Whether <TARGET> LIMITS_GROUP is a packet of the target's own
+    def self.own_limits_group_packet?(target_name, scope:)
+      json = Store.hget("#{scope}__openc3_targets", target_name)
+      return false unless json
+
+      target = JSON.parse(json, allow_nan: true, create_additions: true)
+      return true if target['own_limits_group_packet']
+      # The target generates its LIMITS_GROUP packet from its groups
+      return false unless (target['limits_groups'] || []).empty?
+
+      Store.instance(db_shard: target['db_shard'].to_i).hexists("#{scope}__openc3tlm__#{target_name}", LIMITS_GROUP_PACKET) ? true : false
     end
 
     # Nested groups are members named <TARGET> LIMITS_GROUP <GROUP>. They have no limits
     # of their own so expand them into the items of the child group. Children which
     # aren't defined (yet) are ignored and each group is only expanded once which
     # also guards against cycles.
-    def self._expand_limits_group(key, groups, items, visited)
+    #
+    # @param seen [Set<Array(String, String, String)>] Items already added
+    # @param own_packets [Hash{String => Boolean}] own_limits_group_packet? of each target looked up so far
+    def self._expand_limits_group(key, groups, items, visited, seen, own_packets, scope)
       return if visited.include?(key)
 
       visited << key
@@ -122,11 +145,16 @@ module OpenC3
 
       JSON.parse(json, allow_nan: true, create_additions: true).each do |target_name, packet_name, item_name|
         if packet_name == LIMITS_GROUP_PACKET
-          _expand_limits_group(limits_group_key(target_name, item_name), groups, items, visited)
-        else
-          item_names = ((items[target_name] ||= {})[packet_name] ||= [])
-          item_names << item_name unless item_names.include?(item_name)
+          own = own_packets.fetch(target_name) { own_packets[target_name] = own_limits_group_packet?(target_name, scope: scope) }
+          unless own
+            _expand_limits_group(limits_group_key(target_name, item_name), groups, items, visited, seen, own_packets, scope)
+            next
+          end
         end
+        # A Set rather than include? on the item list since groups can contain many thousands of items
+        next unless seen.add?([target_name, packet_name, item_name])
+
+        ((items[target_name] ||= {})[packet_name] ||= []) << item_name
       end
     end
 
