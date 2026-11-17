@@ -121,6 +121,19 @@ module OpenC3
       expect(cvt['OTHER_ENABLED__C']).to eql 'FALSE'
     end
 
+    it "counts a member whose limits the Python API disabled" do
+      # Python's disable_limits removes enabled from the definition rather than setting it false
+      store = Store.instance(db_shard: 1)
+      packet = JSON.parse(store.hget("DEFAULT__openc3tlm__INST", "HEALTH_STATUS"))
+      packet['items'].find { |item| item['name'] == 'TEMP1' }['limits'].delete('enabled')
+      store.hset("DEFAULT__openc3tlm__INST", "HEALTH_STATUS", JSON.generate(packet))
+      warnings = []
+      allow_any_instance_of(Logger).to receive(:warn) { |_logger, message| warnings << message }
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      expect(cvt['TEMPS_ENABLED__C']).to eql 'FALSE'
+      expect(warnings).to be_empty
+    end
+
     it "only builds the LIMITS_GROUP packet again when the groups change" do
       store_groups({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
       expect(PacketConfig).to receive(:generate_limits_group_packet).once.and_call_original

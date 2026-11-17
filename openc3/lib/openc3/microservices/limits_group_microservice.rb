@@ -404,12 +404,25 @@ module OpenC3
 
         items = {}
         JSON.parse(json, allow_nan: true, create_additions: true)['items'].each do |item|
-          limits = item['limits']
-          # Only items with limits (or state colors) have an enabled flag
-          items[item['name']] = limits['enabled'] if limits and limits.key?('enabled')
+          items[item['name']] = item['limits']['enabled'] ? true : false if limits?(item)
         end
         (@definitions[target_name] ||= {})[packet_name] = items
       end
+    end
+
+    # Only items with limits or state colors can be enabled. Ruby stores enabled
+    # false for a disabled item but the Python APIs remove the key, so look at
+    # the limits values and states too.
+    #
+    # @param item [Hash] Item definition
+    # @return [Boolean] Whether the item has limits or state colors
+    def limits?(item)
+      limits = item['limits'] || {}
+      return true if limits.key?('enabled')
+      # Limits values are stored by limits set name, e.g. DEFAULT
+      return true if limits.any? { |_name, value| value.is_a?(Hash) }
+
+      (item['states'] || {}).any? { |_name, state| state.is_a?(Hash) and state['color'] }
     end
 
     # @return [Integer, nil] the target's db_shard or nil if it isn't installed
