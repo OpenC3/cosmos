@@ -56,6 +56,7 @@ module OpenC3
       @packets = {}          # target => [group names, its LIMITS_GROUP packet]
       @publishable = {}      # target => whether its LIMITS_GROUP packet is the generated one
       @settings_changed = false # settings must be reread before the next publish
+      @changed_groups = Set.new # groups whose members changed since the last flush
       @warned = Set.new
       # Targets changed since an error, or nil when no recovery is pending
       @recovery_targets = nil
@@ -169,6 +170,7 @@ module OpenC3
       @settings_changed = false
       load_definitions()
       @values = {}
+      @changed_groups.clear
       compute(@order)
     end
 
@@ -196,7 +198,8 @@ module OpenC3
       record_events(1, Process.clock_gettime(Process::CLOCK_MONOTONIC) - start)
     end
 
-    # Recomputes the groups an event affects without publishing them
+    # Records the groups an event affects. flush recomputes them once for every
+    # event in a read since a large group can take a while to compute.
     #
     # @param event [Hash] A limits event from the limits events topic
     # @return [Boolean] Whether the event affects any group
@@ -212,7 +215,7 @@ module OpenC3
         @current_limits[key] = Store.hget("#{@scope}__current_limits", key)
         settings = Store.hget("#{@scope}__current_limits_settings", key)
         @settings[key] = settings ? JSON.parse(settings, allow_nan: true, create_additions: true) : nil
-        compute(with_ancestors(groups))
+        @changed_groups.merge(groups)
         true
       when 'LIMITS_GROUP_ENABLE_STATE', 'LIMITS_SETTINGS'
         # These can change the enabled flag of many items so reread them all,
@@ -224,14 +227,17 @@ module OpenC3
       end
     end
 
-    # Rereads the settings if an event changed them and publishes every target
-    # whose groups changed since its last publish
+    # Recomputes the groups events changed (all of them if the settings changed)
+    # and publishes every target whose groups changed since its last publish
     def flush
       if @settings_changed
         load_settings()
         compute(@order)
         @settings_changed = false
+      elsif !@changed_groups.empty?
+        compute(with_ancestors(@changed_groups.to_a))
       end
+      @changed_groups.clear
       publish()
     end
 

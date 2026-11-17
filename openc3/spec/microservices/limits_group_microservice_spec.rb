@@ -121,6 +121,29 @@ module OpenC3
       expect(cvt['OTHER_ENABLED__C']).to eql 'FALSE'
     end
 
+    it "computes the groups a read changed once, when it flushes" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)], 'OTHER' => [%w(INST HEALTH_STATUS TEMP3)],
+              'ALL' => [%w(INST LIMITS_GROUP TEMPS)] })
+      computed = []
+      allow(@microservice).to receive(:compute).and_wrap_original do |method, groups|
+        computed << groups
+        method.call(groups)
+      end
+      [%w(TEMP1 YELLOW), %w(TEMP2 RED), %w(TEMP1 RED)].each do |item, state|
+        event = { type: :LIMITS_CHANGE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: item,
+                  old_limits_state: 'GREEN', new_limits_state: state, time_nsec: 0, message: 'test' }
+        LimitsEventTopic.write(event, scope: 'DEFAULT')
+        @microservice.handle_event(JSON.parse(JSON.generate(event)))
+      end
+      expect(computed).to be_empty
+      @microservice.flush
+      # Children before parents and OTHER isn't affected
+      expect(computed).to eql [%w(INST__TEMPS INST__ALL)]
+      expect(cvt['ALL__C']).to eql 'RED'
+      @microservice.flush
+      expect(computed.length).to eql 1
+    end
+
     it "counts a member whose limits the Python API disabled" do
       # Python's disable_limits removes enabled from the definition rather than setting it false
       store = Store.instance(db_shard: 1)
