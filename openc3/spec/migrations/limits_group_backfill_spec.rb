@@ -100,6 +100,15 @@ module OpenC3
       expect(items).to include("HEATERS", "HEATERS_ENABLED")
     end
 
+    it "adds the LIMITS_GROUP packet to the target's TSDB microservice" do
+      MicroserviceModel.new(name: "DEFAULT__TSDB__SYSTEM", topics: ["DEFAULT__DECOM__{SYSTEM}__HEALTH"], scope: "DEFAULT").create
+      allow(Topic).to receive(:write_topic).and_call_original
+      # A running microservice is told on the target's db_shard
+      expect(Topic).to receive(:write_topic).with("MICROSERVICE__DEFAULT__TSDB__SYSTEM", { 'command' => 'ADD_TOPICS', 'topics' => ["DEFAULT__DECOM__{SYSTEM}__LIMITS_GROUP"].to_json }, db_shard: 1).once.and_call_original
+      LimitsGroupBackfill.run
+      expect(MicroserviceModel.get_model(name: "DEFAULT__TSDB__SYSTEM", scope: "DEFAULT").topics).to eql ["DEFAULT__DECOM__{SYSTEM}__HEALTH", "DEFAULT__DECOM__{SYSTEM}__LIMITS_GROUP"]
+    end
+
     it "adds the microservice to SCOPEMULTI when a previous run stopped after creating it" do
       parent = "DEFAULT__SCOPEMULTI__DEFAULT"
       options = ScopeModel.limits_group_microservice_options('DEFAULT', nil, parent)

@@ -21,8 +21,8 @@ module OpenC3
   #   rather than just its name. Groups whose names can't become LIMITS_GROUP
   #   items are removed with a warning, like installing skips them.
   # - Define the <TARGET> LIMITS_GROUP packet for each target with limits groups
-  #   A target with a packet of its own named LIMITS_GROUP keeps it and its
-  #   groups aren't published.
+  #   and add it to the target's TSDB microservice. A target with a packet of its
+  #   own named LIMITS_GROUP keeps it and its groups aren't published.
   # - Add the limits group microservice to the scope's SCOPEMULTI
   # New scopes get the microservice via ScopeModel#deploy and installing a target
   # stores its groups and defines its packet.
@@ -118,6 +118,14 @@ module OpenC3
       Store.instance(db_shard: model.db_shard).hsetnx("#{model.scope}__tlm__#{model.name}", packet.packet_name, JSON.generate(json_hash, allow_nan: true))
       packet.sorted_items.each { |item| TargetModel.add_to_target_allitems_list(model.name, item.name, scope: model.scope) }
       model.update_store_item_map
+      # Installing subscribes the TSDB microservice to every packet's DECOM topic.
+      # Like TargetModel#dynamic_update tell a running one and update its model.
+      tsdb = "#{model.scope}__TSDB__#{model.name}"
+      if MicroserviceModel.get_model(name: tsdb, scope: model.scope)
+        topics = ["#{model.scope}__DECOM__{#{model.name}}__#{packet.packet_name}"]
+        Topic.write_topic("MICROSERVICE__#{tsdb}", { 'command' => 'ADD_TOPICS', 'topics' => topics.to_json }, db_shard: model.db_shard)
+        model.add_topics_to_microservice(tsdb, topics)
+      end
     end
 
     def self.add_microservice(scope, scope_model)
