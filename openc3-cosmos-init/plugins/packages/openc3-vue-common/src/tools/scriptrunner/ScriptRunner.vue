@@ -102,6 +102,7 @@
       </div>
     </div>
     <splitpanes
+      ref="explorerSplit"
       class="explorer-split flex-grow-1 overflow-hidden"
       @resize="explorerResize"
       @resized="persistExplorer"
@@ -109,7 +110,7 @@
       <pane
         v-if="showExplorer"
         :size="explorerSize"
-        min-size="10"
+        :min-size="explorerMinSize"
         max-size="50"
       >
         <script-file-explorer
@@ -151,7 +152,7 @@
                     v-if="!showExplorer"
                     :open-delay="600"
                     location="top"
-                    text="Show Explorer"
+                    text="Show File Explorer"
                   >
                     <template #activator="{ props }">
                       <v-btn
@@ -160,35 +161,28 @@
                         variant="text"
                         density="compact"
                         class="mr-1"
-                        aria-label="Show Explorer"
+                        aria-label="Show File Explorer"
                         data-test="explorer-show"
                         @click="setShowExplorer(true)"
                       />
                     </template>
                   </v-tooltip>
-                  <v-tooltip :open-delay="600" location="top">
+                  <v-tooltip
+                    :open-delay="600"
+                    location="top"
+                    text="Reload File"
+                  >
                     <template #activator="{ props }">
                       <v-btn
-                        v-if="!scriptActive"
                         v-bind="props"
                         icon="mdi-cached"
                         variant="text"
                         density="compact"
-                        :disabled="filename === NEW_FILENAME"
+                        :disabled="scriptActive || filename === NEW_FILENAME"
                         aria-label="Reload File"
                         @click="reloadFile"
                       />
-                      <v-btn
-                        v-else
-                        v-bind="props"
-                        icon="mdi-arrow-left"
-                        variant="text"
-                        density="compact"
-                        @click="backToNewScript"
-                      />
                     </template>
-                    <span v-if="!scriptActive"> Reload File </span>
-                    <span v-else> Back to New Script </span>
                   </v-tooltip>
                 </div>
                 <v-tooltip
@@ -875,6 +869,8 @@ const RETRY = 'Retry'
 // rebuilding a 200-row Vuetify table that often adds no visible value at that
 // rate is expensive during output-heavy scripts.
 const OUTPUT_FLUSH_INTERVAL_MS = 500
+// Narrowest the explorer can get (px) and still fit its header buttons
+const EXPLORER_MIN_WIDTH = 200
 // Matches is_complete in script_status_model
 const TERMINAL_STATES = new Set([
   'completed',
@@ -1218,6 +1214,7 @@ export default {
       editorBoxSize: 50,
       showExplorer: false,
       explorerSize: 20,
+      explorerMinSize: 10, // Percent, recalculated from EXPLORER_MIN_WIDTH
       explorerLoadingFile: null, // File being opened from the explorer
       lockingEnabled: true,
       canApprove: false,
@@ -1926,6 +1923,12 @@ export default {
     // changes it (explorer toggle/drag animate the pane width)
     this.editorResizeObserver = new ResizeObserver(this.doResize)
     this.editorResizeObserver.observe(this.editor.container)
+    // Pane sizes are percentages, so the explorer's minimum has to be
+    // recalculated whenever the window (and so the split) changes width
+    this.explorerSplitObserver = new ResizeObserver(([entry]) => {
+      this.updateExplorerMinSize(entry.contentRect.width)
+    })
+    this.explorerSplitObserver.observe(this.$refs.explorerSplit.$el)
     // Listen on window (not editor.container) so Ctrl-S saves regardless of
     // where focus is — attaching to the editor only caught the key while the
     // cursor was in the editor, which made saving feel inconsistent after
@@ -1982,6 +1985,7 @@ export default {
     }
     window.removeEventListener('keydown', this.keydown)
     this.editorResizeObserver.disconnect()
+    this.explorerSplitObserver.disconnect()
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -2085,6 +2089,16 @@ export default {
     setShowExplorer(show) {
       this.showExplorer = show
       this.persistExplorer()
+    },
+    updateExplorerMinSize(width) {
+      if (!width) return // Not laid out (e.g. hidden tab)
+      this.explorerMinSize = Math.min(
+        50, // The explorer's max-size
+        Math.max(10, (EXPLORER_MIN_WIDTH / width) * 100),
+      )
+      if (this.explorerSize < this.explorerMinSize) {
+        this.explorerSize = this.explorerMinSize
+      }
     },
     explorerResize({ panes }) {
       if (this.showExplorer && panes.length > 1) {
@@ -4011,15 +4025,6 @@ export default {
     },
     onVersionRestored: function () {
       this.reloadFile()
-    },
-    backToNewScript: async function () {
-      // Disconnect from the current script
-      this.scriptDisconnect()
-      // Clear script-related state
-      this.removeAllMarkers()
-      await this.scriptComplete()
-      // Create a new blank script
-      this.newFile()
     },
     screenId(id) {
       return 'scriptRunnerScreen' + id
