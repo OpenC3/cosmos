@@ -48,6 +48,7 @@
     <v-row no-gutters class="editor-row mb-2">
       <AceEditor
         ref="aceEditor"
+        :mode="screenMode"
         class="screen-editor"
         :style="{ height: fill ? '100%' : height, width: '100%' }"
         @contextmenu.prevent="showContextMenu"
@@ -131,6 +132,10 @@ export default {
     }
   },
   computed: {
+    screenMode() {
+      const ScreenMode = this.buildScreenMode()
+      return new ScreenMode()
+    },
     effectiveKeywords() {
       // Use prop keywords if provided, otherwise use loaded keywords
       return this.keywords.length > 0 ? this.keywords : this.loadedKeywords
@@ -141,12 +146,6 @@ export default {
       if (this.editor && this.editor.getValue() !== newValue) {
         this.editor.setValue(newValue)
         this.editor.clearSelection()
-      }
-    },
-    effectiveKeywords() {
-      if (this.editor) {
-        const screenMode = this.buildScreenMode()
-        this.editor.session.setMode(new screenMode())
       }
     },
   },
@@ -172,8 +171,6 @@ export default {
     },
     initEditor() {
       this.editor = this.$refs.aceEditor.editor
-      const screenMode = this.buildScreenMode()
-      this.editor.session.setMode(new screenMode())
       this.editor.setOption('enableBasicAutocompletion', true)
       this.editor.setOption('enableLiveAutocompletion', true)
       this.editor.completers = [new ScreenCompleter()]

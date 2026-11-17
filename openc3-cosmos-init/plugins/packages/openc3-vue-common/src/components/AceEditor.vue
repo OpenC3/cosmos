@@ -18,14 +18,37 @@
 <script setup>
 import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/theme-twilight'
-import { onBeforeUnmount, onMounted, shallowRef, useTemplateRef } from 'vue'
+import {
+  onBeforeUnmount,
+  onMounted,
+  shallowRef,
+  toRaw,
+  useTemplateRef,
+  watch,
+} from 'vue'
 
 // Wraps ace.edit. Class, style and listeners fall through to the <pre>.
 // Parents get the Ace instance from `ref.editor` once mounted (or via the
 // `ready` event) and configure modes, options and content themselves.
+const props = defineProps({
+  // Ace mode: a mode path string ('ace/mode/ruby') or a mode instance
+  mode: {
+    type: [String, Object],
+    default: null,
+  },
+})
 const emit = defineEmits(['ready'])
 const editorRef = useTemplateRef('editor')
 const editor = shallowRef(null)
+
+// toRaw because mode instances held in parent data are reactive proxies
+function applyMode() {
+  if (editor.value && props.mode) {
+    editor.value.session.setMode(toRaw(props.mode))
+  }
+}
+
+watch(() => props.mode, applyMode)
 
 onMounted(() => {
   editor.value = ace.edit(editorRef.value)
@@ -33,6 +56,7 @@ onMounted(() => {
   editor.value.setHighlightActiveLine(false)
   editor.value.session.setTabSize(2)
   editor.value.session.setUseWrapMode(true)
+  applyMode()
   emit('ready', editor.value)
 })
 

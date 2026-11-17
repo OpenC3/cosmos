@@ -423,6 +423,7 @@
             </v-snackbar>
             <AceEditor
               ref="aceEditor"
+              :mode="languageMode"
               class="editor"
               @contextmenu.prevent="showExecuteSelectionMenu"
             />
@@ -613,6 +614,7 @@
           >
             <AceEditor
               ref="aceEditor"
+              :mode="languageMode"
               class="editor"
               style="height: 200px"
               @contextmenu.prevent="showExecuteSelectionMenu"
@@ -1131,6 +1133,7 @@ export default {
   data() {
     return {
       title: 'Script Runner',
+      editorLanguage: AceEditorUtils.getDefaultScriptingLanguage() || 'ruby',
       suiteRunner: false, // Whether to display the SuiteRunner GUI
       disableSuiteButtons: false,
       suiteMap: {
@@ -1321,6 +1324,9 @@ export default {
     }
   },
   computed: {
+    languageMode() {
+      return this.editorLanguage === 'python' ? this.pythonMode : this.rubyMode
+    },
     // True for the entire execution lifecycle: from Start (or connecting to
     // a running script) through the finishing window between the terminal
     // 'line' event and scriptComplete(). Use this to gate editing/UI, not
@@ -1863,6 +1869,11 @@ export default {
     },
   },
   created: async function () {
+    // Plain instance properties (not in data) so Vue doesn't proxy the modes
+    const RubyMode = this.buildRubyMode()
+    const PythonMode = this.buildPythonMode()
+    this.rubyMode = new RubyMode()
+    this.pythonMode = new PythonMode()
     // Websocket event queue drained by the processReceived interval.
     // Deliberately NOT in data(): nothing renders from it, and reactive
     // proxying would tax the hottest data path (per line event)
@@ -2011,16 +2022,6 @@ export default {
   },
   mounted: async function () {
     this.editor = this.$refs.aceEditor.editor
-    const RubyMode = this.buildRubyMode()
-    const PythonMode = this.buildPythonMode()
-    this.rubyMode = new RubyMode()
-    this.pythonMode = new PythonMode()
-    const language = AceEditorUtils.getDefaultScriptingLanguage()
-    if (language === 'python') {
-      this.editor.session.setMode(this.pythonMode)
-    } else {
-      this.editor.session.setMode(this.rubyMode)
-    }
     this.editor.setOption('enableBasicAutocompletion', true)
     this.editor.setOption('enableLiveAutocompletion', true)
     this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
@@ -3820,11 +3821,8 @@ export default {
         document.title = `${parts.pop()} (${parts.join('/')})`
       }
 
-      if (this.filename.split('.').pop() === 'py') {
-        this.editor.session.setMode(this.pythonMode)
-      } else {
-        this.editor.session.setMode(this.rubyMode)
-      }
+      this.editorLanguage =
+        this.filename.split('.').pop() === 'py' ? 'python' : 'ruby'
       this.currentFilename = null
       this.editor.session.setValue(file.contents)
       this.breakpoints[this.filename] = breakpoints

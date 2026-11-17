@@ -107,6 +107,7 @@
               </v-row>
               <AceEditor
                 ref="aceEditor"
+                :mode="editorMode"
                 class="editor"
                 @contextmenu.prevent="showContextMenu"
               />
@@ -236,6 +237,10 @@ export default {
     }
   },
   computed: {
+    editorMode() {
+      const PluginMode = this.buildPluginMode()
+      return new PluginMode()
+    },
     show: {
       get() {
         return this.modelValue
@@ -280,7 +285,6 @@ export default {
     const pluginMode = this.buildPluginMode()
     if (this.existingPluginTxt === null) {
       this.editor = this.$refs.aceEditor.editor
-      this.editor.session.setMode(new pluginMode())
       this.editor.setValue(this.localPluginTxt)
       this.editor.clearSelection()
       AceEditorUtils.applyVimModeIfEnabled(this.editor)

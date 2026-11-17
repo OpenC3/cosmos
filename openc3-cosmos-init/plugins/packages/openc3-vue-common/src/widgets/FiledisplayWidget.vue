@@ -28,7 +28,7 @@
     </v-card-title>
     <v-divider />
     <v-card-text class="pa-0">
-      <AceEditor ref="aceEditor" :style="contentStyle" />
+      <AceEditor ref="aceEditor" :mode="aceMode" :style="contentStyle" />
     </v-card-text>
   </v-card>
 </template>
@@ -103,7 +103,6 @@ export default {
   methods: {
     updateEditor() {
       if (this.editor) {
-        this.editor.session.setMode(this.aceMode)
         this.editor.setValue(this.fileContent, -1)
       }
     },

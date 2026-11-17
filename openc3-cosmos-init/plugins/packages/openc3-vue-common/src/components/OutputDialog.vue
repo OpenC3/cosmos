@@ -33,7 +33,7 @@
         </div>
       </v-toolbar>
       <v-card-text>
-        <AceEditor ref="aceEditor" class="editor" />
+        <AceEditor ref="aceEditor" :mode="languageMode" class="editor" />
       </v-card-text>
       <v-card-actions class="pr-6 pb-4 pt-0">
         <v-spacer />
@@ -85,43 +85,41 @@ export default {
         this.$emit('update:modelValue', value)
       },
     },
+    fileExtension() {
+      return this.filename ? this.filename.split('.').pop() : 'txt'
+    },
+    languageMode() {
+      let Mode
+      switch (this.fileExtension) {
+        case 'json':
+          Mode = this.buildJsonMode()
+          break
+        case 'py':
+        case 'pyi':
+          Mode = this.buildPythonMode()
+          break
+        case 'md':
+          Mode = this.buildMarkdownMode()
+          break
+        default:
+          // Most of the COSMOS text files are best display in Ruby
+          // This includes Rakefiles, Gemfiles, etc.
+          Mode = this.buildRubyMode()
+          break
+      }
+      return new Mode()
+    },
     title: function () {
       return `${this.type}: ${this.name}`
     },
   },
   mounted() {
     this.editor = this.$refs.aceEditor.editor
-    let languageMode = null
-    const fileExtension = this.filename ? this.filename.split('.').pop() : 'txt'
-    switch (fileExtension) {
-      case 'json': {
-        const JsonMode = this.buildJsonMode()
-        languageMode = new JsonMode()
-        this.editor.setOptions({
-          useWorker: false,
-        })
-        break
-      }
-      case 'py':
-      case 'pyi': {
-        const PythonMode = this.buildPythonMode()
-        languageMode = new PythonMode()
-        break
-      }
-      case 'md': {
-        const MarkdownMode = this.buildMarkdownMode()
-        languageMode = new MarkdownMode()
-        break
-      }
-      default: {
-        // Most of the COSMOS text files are best display in Ruby
-        // This includes Rakefiles, Gemfiles, etc.
-        const RubyMode = this.buildRubyMode()
-        languageMode = new RubyMode()
-        break
-      }
+    if (this.fileExtension === 'json') {
+      this.editor.setOptions({
+        useWorker: false,
+      })
     }
-    this.editor.session.setMode(languageMode)
     this.editor.setValue(this.content)
     this.editor.clearSelection()
     this.editor.focus()

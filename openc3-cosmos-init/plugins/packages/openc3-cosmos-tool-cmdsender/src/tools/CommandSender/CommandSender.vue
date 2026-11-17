@@ -64,6 +64,7 @@
             <v-col>
               <AceEditor
                 ref="aceEditor"
+                mode="ace/mode/ruby"
                 class="editor"
                 data-test="sender-history"
               />
@@ -385,7 +386,6 @@ export default {
   },
   mounted() {
     this.editor = this.$refs.aceEditor.editor
-    this.editor.session.setMode('ace/mode/ruby')
     this.editor.setValue(localStorage['command_sender__history'])
     this.history = this.editor.getValue().trim()
     this.editor.clearSelection()

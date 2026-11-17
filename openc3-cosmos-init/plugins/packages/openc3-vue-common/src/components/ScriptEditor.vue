@@ -31,6 +31,7 @@
     <v-row no-gutters class="mb-2">
       <AceEditor
         ref="aceEditor"
+        :mode="languageMode"
         class="script-editor"
         :style="{ height: height, width: '100%' }"
         @contextmenu.prevent="showContextMenu"
@@ -85,12 +86,15 @@ export default {
     return {
       editor: null,
       language: AceEditorUtils.getDefaultScriptingLanguage() || 'ruby',
-      rubyMode: null,
-      pythonMode: null,
       contextMenu: false,
       menuX: 0,
       menuY: 0,
     }
+  },
+  computed: {
+    languageMode() {
+      return this.language === 'python' ? this.pythonMode : this.rubyMode
+    },
   },
   watch: {
     modelValue(newValue) {
@@ -99,15 +103,13 @@ export default {
         this.editor.clearSelection()
       }
     },
-    language(newValue) {
-      if (this.editor) {
-        if (newValue === 'python') {
-          this.editor.session.setMode(this.pythonMode)
-        } else {
-          this.editor.session.setMode(this.rubyMode)
-        }
-      }
-    },
+  },
+  created() {
+    // Plain instance properties (not in data) so Vue doesn't proxy the modes
+    const RubyMode = this.buildRubyMode()
+    const PythonMode = this.buildPythonMode()
+    this.rubyMode = new RubyMode()
+    this.pythonMode = new PythonMode()
   },
   mounted() {
     this.initEditor()
@@ -115,19 +117,6 @@ export default {
   methods: {
     initEditor() {
       this.editor = this.$refs.aceEditor.editor
-
-      // Build modes using the mixin methods
-      const RubyMode = this.buildRubyMode()
-      const PythonMode = this.buildPythonMode()
-      this.rubyMode = new RubyMode()
-      this.pythonMode = new PythonMode()
-
-      // Set initial mode based on language
-      if (this.language === 'python') {
-        this.editor.session.setMode(this.pythonMode)
-      } else {
-        this.editor.session.setMode(this.rubyMode)
-      }
 
       this.editor.setOption('enableBasicAutocompletion', true)
       this.editor.setOption('enableLiveAutocompletion', true)
