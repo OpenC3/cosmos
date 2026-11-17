@@ -15,6 +15,8 @@
 #
 #   * the trivy release inside setup-trivy's `version` input
 #   * Dockerfile ARGs consumed by pip, which follow pyproject.toml's uv pin
+#   * the uv_build range in pyproject.toml's [build-system], which also
+#     follows the uv pin
 #   * PEP 723 script headers and their lockfiles (*.py.lock)
 #
 # See .github/scripts/check_tool_versions.py for the list of watched pins.

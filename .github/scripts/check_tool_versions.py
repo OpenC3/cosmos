@@ -17,8 +17,9 @@
 
 """Report pinned tool versions that have fallen behind upstream.
 
-Dependabot covers most of this repository, but three kinds of pin are invisible
-to it, and those are exactly the ones this script watches:
+Dependabot covers most of this repository, but four kinds of pin are beyond it
+(invisible to it, or tracking another pin rather than upstream), and those are
+exactly the ones this script watches:
 
   * versions inside a GitHub Actions input (setup-trivy's `version`) --
     dependabot bumps the action's SHA but never reads its inputs
@@ -27,6 +28,10 @@ to it, and those are exactly the ones this script watches:
     images run the uv that CI does
   * PEP 723 script headers and their lockfiles (*.py.lock). The stub
     generator's ruff follows pyproject.toml's, like the Dockerfile ARGs
+  * the uv_build range in openc3/python/pyproject.toml's [build-system], which
+    follows the uv pin's minor rather than upstream uv_build, so uv builds
+    openc3 itself instead of warning (and, in a future uv, perhaps fetching
+    uv_build from the index)
 
 Everything else used to be watched here too and moved to dependabot: the
 setup-uv action (including majors, through the github-actions-major group),
@@ -49,6 +54,7 @@ import argparse
 import os
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
 from typing import NamedTuple
 
@@ -78,12 +84,15 @@ MYPY = "pypi:mypy"
 REQUESTS = "pypi:requests"
 TRIVY = "gh:aquasecurity/trivy"
 
+# Holds the uv and ruff pins that repo: sources read, and the uv_build range
+PYPROJECT = "openc3/python/pyproject.toml"
+
 # repo: sources, as (file, regex whose first group captures the version).
 # Dependabot raises these in pyproject.toml; the copies follow, so the images
 # run CI's uv and the stub generator formats with the ruff that checks it.
 REPO_PINS = {
-    "uv": ("openc3/python/pyproject.toml", r'uv = \["uv==([\d.]+)"\]'),
-    "ruff": ("openc3/python/pyproject.toml", r'"ruff==([\d.]+)"'),
+    "uv": (PYPROJECT, r'uv = \["uv==([\d.]+)"\]'),
+    "ruff": (PYPROJECT, r'"ruff==([\d.]+)"'),
 }
 
 
@@ -94,6 +103,15 @@ class Surface(NamedTuple):
     path: str  # repository-relative file holding the pin
     pattern: str  # regex whose first group captures the pinned version
     source: str  # upstream to compare against
+    # Turns the upstream version into the form the pin should hold, for a pin
+    # that is not a plain copy of it (a version range, say)
+    derive: Callable[[str], str] | None = None
+
+
+def uv_build_range(uv: str) -> str:
+    """The uv_build range admitting one uv release's minor. '0.13.5' -> '>=0.13,<0.14'."""
+    major, minor = as_tuple(uv)[:2]
+    return f">={major}.{minor},<{major}.{minor + 1}"
 
 
 SURFACES = [
@@ -136,6 +154,15 @@ SURFACES = [
         "openc3/python/tools/generate_singleton_stubs.py",
         r'"ruff==([\d.]+)"',
         PYPROJECT_RUFF,
+    ),
+    # A range rather than a pin, so it is compared as a whole: as_tuple reads
+    # '>=0.13,<0.14' as (0, 13, 0, 14), which orders by the lower bound first.
+    Surface(
+        "uv_build range (openc3 build backend)",
+        PYPROJECT,
+        r'"uv_build(>=[\d.]+,<[\d.]+)"',
+        PYPROJECT_UV,
+        derive=uv_build_range,
     ),
 ]
 
@@ -271,6 +298,8 @@ def main() -> int:
         if latest is None:
             unresolved.append(f"{surface.label}: upstream lookup failed")
             continue
+        if surface.derive is not None:
+            latest = surface.derive(latest)
 
         results.append(Result(surface, match.group(1), latest))
 
