@@ -137,13 +137,16 @@ COPY --chmod=0755 uv_mirror_relock.sh /usr/local/bin/uv-mirror-relock
 ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
 
 # rbspy - https://github.com/rbspy/rbspy
-COPY rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz /opt/rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz
+# Same ARG as the Debian Dockerfile so scripts/release/package_audit.rb bumps
+# both. UBI builds are amd64 only (openc3_build_ubi.sh) so only x86_64 is used.
+ARG RBSPY_VERSION=0.49.0
+COPY rbspy-x86_64-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz /opt/
 WORKDIR /opt
-RUN tar -xzf rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz && \
+RUN tar -xzf "rbspy-x86_64-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz" && \
     cp rbspy-x86_64-unknown-linux-gnu /usr/local/bin/rbspy && \
     chmod +x /usr/local/bin/rbspy && \
     rm rbspy-x86_64-unknown-linux-gnu && \
-    rm rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz
+    rm "rbspy-x86_64-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz"
 
 # htop - https://github.com/htop-dev/htop
 COPY htop-3.4.1.tar.gz /opt/htop-3.4.1.tar.gz

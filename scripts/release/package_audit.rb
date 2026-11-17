@@ -70,6 +70,10 @@ check_cacert(client)
 # writes the new value back into ENV. Using the stale local would audit
 # Dockerfile-ubi against the old minor line and leave it behind the Debian image.
 check_ubi_ruby(client, ENV.fetch('RUBY_VERSION', ruby_version))
+check_rubygems(client, ruby_version: ENV.fetch('RUBY_VERSION', ruby_version))
+# The rest of the third-party sources committed to openc3-ruby/ for offline builds
+check_rbspy(client)
+check_vendored_sources(client)
 anycable_containers = containers.select { |c| c[:name].include?('openc3-cosmos-cmd-tlm-api') || c[:name].include?('openc3-cosmos-script-runner-api') }
 check_anycable(client, anycable_containers.map { |c| c[:name] }) unless anycable_containers.empty?
 
