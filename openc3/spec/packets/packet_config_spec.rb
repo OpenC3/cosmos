@@ -504,6 +504,7 @@ module OpenC3
             'TEMP_' => /cannot end with an underscore/,
             'FOO_ENABLED' => /LIMITS_GROUP FOO_ENABLED cannot end with _ENABLED/,
             'received_count' => /LIMITS_GROUP RECEIVED_COUNT is a reserved item name/,
+            'packet_time' => /LIMITS_GROUP PACKET_TIME would replace the packet time of LIMITS_GROUP/,
             'A' * 120 => /must be 119 characters or less/,
           }
           bad_names.each do |name, error|

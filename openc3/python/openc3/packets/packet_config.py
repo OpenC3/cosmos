@@ -1150,6 +1150,11 @@ class PacketConfig:
             raise parser.error(f"LIMITS_GROUP {group_name} cannot end with {self.LIMITS_GROUP_ENABLED_SUFFIX}.", usage)
         if group_name in Packet.RESERVED_ITEM_NAMES:
             raise parser.error(f"LIMITS_GROUP {group_name} is a reserved item name.", usage)
+        # Packet.packet_time reads an item named PACKET_TIME instead of the received time
+        if group_name == "PACKET_TIME":
+            raise parser.error(
+                f"LIMITS_GROUP {group_name} would replace the packet time of {self.LIMITS_GROUP_PACKET}.", usage
+            )
 
     def finish_item(self):
         if self.current_item:

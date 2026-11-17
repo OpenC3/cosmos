@@ -1049,6 +1049,10 @@ module OpenC3
       if Packet::RESERVED_ITEM_NAMES.include?(group_name)
         raise parser.error("LIMITS_GROUP #{group_name} is a reserved item name.", usage)
       end
+      # Packet#packet_time reads an item named PACKET_TIME instead of the received time
+      if group_name == 'PACKET_TIME'
+        raise parser.error("LIMITS_GROUP #{group_name} would replace the packet time of #{LIMITS_GROUP_PACKET}.", usage)
+      end
     end
   end
 end

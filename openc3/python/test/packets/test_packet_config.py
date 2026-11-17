@@ -549,6 +549,7 @@ class TestPacketConfig(unittest.TestCase):
             "TEMP_": "cannot end with an underscore",
             "FOO_ENABLED": "LIMITS_GROUP FOO_ENABLED cannot end with _ENABLED",
             "received_count": "LIMITS_GROUP RECEIVED_COUNT is a reserved item name",
+            "packet_time": "LIMITS_GROUP PACKET_TIME would replace the packet time of LIMITS_GROUP",
             "A" * 120: "must be 119 characters or less",
         }
         for name, error in bad_names.items():
