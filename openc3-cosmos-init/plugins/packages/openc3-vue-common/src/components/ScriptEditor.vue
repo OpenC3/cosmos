@@ -129,12 +129,9 @@ export default {
         this.editor.session.setMode(this.rubyMode)
       }
 
-      this.editor.session.setTabSize(2)
-      this.editor.session.setUseWrapMode(true)
       this.editor.setOption('enableBasicAutocompletion', true)
       this.editor.setOption('enableLiveAutocompletion', true)
       this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
-      this.editor.setHighlightActiveLine(false)
       this.editor.setValue(this.modelValue)
       this.editor.clearSelection()
       AceEditorUtils.applyVimModeIfEnabled(this.editor)

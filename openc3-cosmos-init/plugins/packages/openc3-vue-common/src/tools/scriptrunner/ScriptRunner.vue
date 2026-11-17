@@ -2021,12 +2021,9 @@ export default {
     } else {
       this.editor.session.setMode(this.rubyMode)
     }
-    this.editor.session.setTabSize(2)
-    this.editor.session.setUseWrapMode(true)
     this.editor.setOption('enableBasicAutocompletion', true)
     this.editor.setOption('enableLiveAutocompletion', true)
     this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
-    this.editor.setHighlightActiveLine(false)
     AceEditorUtils.applyVimModeIfEnabled(this.editor, { saveFn: this.saveFile })
     this.editor.focus()
 

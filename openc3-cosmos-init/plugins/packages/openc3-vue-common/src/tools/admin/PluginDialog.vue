@@ -281,9 +281,6 @@ export default {
     if (this.existingPluginTxt === null) {
       this.editor = this.$refs.aceEditor.editor
       this.editor.session.setMode(new pluginMode())
-      this.editor.session.setTabSize(2)
-      this.editor.session.setUseWrapMode(true)
-      this.editor.setHighlightActiveLine(false)
       this.editor.setValue(this.localPluginTxt)
       this.editor.clearSelection()
       AceEditorUtils.applyVimModeIfEnabled(this.editor)

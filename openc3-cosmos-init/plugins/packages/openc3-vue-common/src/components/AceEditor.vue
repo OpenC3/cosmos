@@ -30,6 +30,9 @@ const editor = shallowRef(null)
 onMounted(() => {
   editor.value = ace.edit(editorRef.value)
   editor.value.setTheme('ace/theme/twilight')
+  editor.value.setHighlightActiveLine(false)
+  editor.value.session.setTabSize(2)
+  editor.value.session.setUseWrapMode(true)
   emit('ready', editor.value)
 })
 

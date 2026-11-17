@@ -174,12 +174,9 @@ export default {
       this.editor = this.$refs.aceEditor.editor
       const screenMode = this.buildScreenMode()
       this.editor.session.setMode(new screenMode())
-      this.editor.session.setTabSize(2)
-      this.editor.session.setUseWrapMode(true)
       this.editor.setOption('enableBasicAutocompletion', true)
       this.editor.setOption('enableLiveAutocompletion', true)
       this.editor.completers = [new ScreenCompleter()]
-      this.editor.setHighlightActiveLine(false)
       this.editor.setValue(this.modelValue)
       this.editor.clearSelection()
       AceEditorUtils.applyVimModeIfEnabled(this.editor)

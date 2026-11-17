@@ -122,8 +122,6 @@ export default {
       }
     }
     this.editor.session.setMode(languageMode)
-    this.editor.session.setUseWrapMode(true)
-    this.editor.setHighlightActiveLine(false)
     this.editor.setValue(this.content)
     this.editor.clearSelection()
     this.editor.focus()

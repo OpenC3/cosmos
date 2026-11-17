@@ -91,7 +91,6 @@ export default {
     this.editor = this.$refs.aceEditor.editor
     this.editor.setReadOnly(true)
     this.editor.setShowPrintMargin(false)
-    this.editor.setHighlightActiveLine(false)
     this.editor.renderer.setShowGutter(false)
     this.editor.renderer.setScrollMargin(8, 8, 0, 0)
     this.editor.renderer.setPadding(8)
