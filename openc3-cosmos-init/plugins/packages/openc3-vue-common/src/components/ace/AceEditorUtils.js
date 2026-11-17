@@ -11,6 +11,7 @@
 # if purchased from OpenC3, Inc.
 */
 
+import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/keybinding-vim'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
 

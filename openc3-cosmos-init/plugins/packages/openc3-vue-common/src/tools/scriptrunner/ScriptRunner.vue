@@ -872,6 +872,7 @@
 </template>
 
 <script>
+import * as ace from 'ace-builds'
 import axios from 'axios'
 import { format } from 'date-fns'
 import { Splitpanes, Pane } from 'splitpanes'

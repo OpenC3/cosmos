@@ -44,6 +44,8 @@
 </template>
 
 <script>
+import * as ace from 'ace-builds'
+import 'ace-builds/src-min-noconflict/theme-twilight'
 import { AceEditorModes } from './ace'
 
 export default {
