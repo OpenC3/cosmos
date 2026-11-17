@@ -26,7 +26,7 @@ Different generators handle the `--ruby` / `--python` language flag differently:
 | `microservice` | Same resolution chain as `target`. |
 | `widget` | Ignored. Widgets are JavaScript-only — passing a language flag prints a notice and is otherwise ignored. |
 | `panel` | Ignored. Panels are JavaScript-only — passing a language flag prints a notice and is otherwise ignored. |
-| `tool`, `tool_vue`, `tool_angular`, `tool_react`, `tool_svelte` | Ignored. Tools are JavaScript-only — the flag is accepted but ignored with a notice. |
+| `tool`, `tool_vue` | Ignored. Tools are JavaScript-only — the flag is accepted but ignored with a notice. |
 | `conversion`, `processor`, `limits_response`, `command_validator` | Ignored. Language is inherited from the target's `target.txt` (`LANGUAGE` keyword). Passing the flag prints a notice and is otherwise ignored. |
 
 The language flag must appear **after** the NAME positional argument. `cli generate plugin --python` (with no name) is rejected — use `cli generate plugin MyPlugin --python` instead.
@@ -274,7 +274,7 @@ PANEL BATTERY
 
 ## Tool Generator
 
-The tool generator creates the scaffolding for a new COSMOS Tool. It must operate inside an existing COSMOS plugin and requires a tool name. Developing a custom tool requires intensive knowledge of a Javascript framework such as Vue.js, Angular, React, or Svelte. Since all the COSMOS tools are built in Vue.js, that is the recommended framework for new tool development. For additional help on frontend development, see [Running a Frontend Application](../development/developing#running-a-frontend-application). Tools are JavaScript-only, so a `--ruby`/`--python` flag is not required and will be ignored if supplied.
+The tool generator creates the scaffolding for a new COSMOS Tool. It must operate inside an existing COSMOS plugin and requires a tool name. Developing a custom tool requires intensive knowledge of a Javascript framework. The generator creates a Vue.js tool, which is the framework all the COSMOS tools are built in and the recommended framework for new tool development. Older Angular, React, and Svelte templates are archived in the [tool_templates](https://github.com/OpenC3/tool_templates) repo but are no longer maintained. For additional help on frontend development, see [Running a Frontend Application](../development/developing#running-a-frontend-application). Tools are JavaScript-only, so a `--ruby`/`--python` flag is not required and will be ignored if supplied.
 
 ```bash
 openc3-cosmos-gse % openc3.sh cli generate tool
