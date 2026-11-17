@@ -145,7 +145,7 @@ test('gets details with right click', async ({ page, utils }) => {
   await expect(detailsDialog).toContainText('PacketTimeSecondsConversion')
 
   // Get out of the details dialog
-  await page.locator('[data-test="notifications"]').click({ force: true })
+  await page.keyboard.press('Escape')
   await expect(detailsDialog).not.toBeVisible()
 
   // CCSDSSEQCNT has SEQUENCE change limits
