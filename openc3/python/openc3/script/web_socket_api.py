@@ -229,19 +229,14 @@ class WebSocketApi:
         self.stream.write(data)
 
     def connect(self):
-        """Connect to the websocket with authorization in query params"""
+        """Connect to the websocket. The token is sent in the subscription identifier
+        (see subscribe), never in the URL."""
         self.disconnect()
-        # Add the token directly in the URL since adding it to the header doesn't seem to work
-        # Note in the this case we remove the "Bearer " string which is part of the token
         final_url = self.url + f"?scope={self.scope}"
         self.stream = WebSocketClientStream(final_url, self.write_timeout, self.read_timeout, self.connect_timeout)
         self.stream.headers = {
             "Sec-WebSocket-Protocol": "actioncable-v1-json, actioncable-unsupported",
             "User-Agent": WebSocketApi.USER_AGENT,
-            # Adding the authorization token to the header is supposed to work
-            # We add it directly with "Bearer <token>"
-            # But for some reason it doesn't so we add it directly to the URL above
-            # "Authorization": self.authentication.token(include_bearer=False),
         }
         return self.stream.connect()
 

@@ -107,12 +107,20 @@ http:
       rule: PathPrefix(`/openc3-api/cable`)
       service: service-api-cable
       priority: 10
+      # Old clients (before COSMOS 7.2.0) put their token in the WebSocket URL,
+      # so keep these requests out of the access log
+      observability:
+        accessLogs: false
       tls: {}
     # Route to the openc3 script api websockets
     script-cable-router:
       rule: PathPrefix(`/script-api/cable`)
       service: service-script-cable
       priority: 9
+      # Old clients (before COSMOS 7.2.0) put their token in the WebSocket URL,
+      # so keep these requests out of the access log
+      observability:
+        accessLogs: false
       tls: {}
     # Route to the openc3 cmd/tlm api
     api-router:
