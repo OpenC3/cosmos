@@ -49,10 +49,12 @@
       <AceEditor
         ref="aceEditor"
         autofocus
+        :model-value="modelValue"
         vim
         :mode="screenMode"
         class="screen-editor"
         :style="{ height: fill ? '100%' : height, width: '100%' }"
+        @update:model-value="$emit('update:modelValue', $event)"
         @contextmenu.prevent="showContextMenu"
       />
       <v-menu v-model="contextMenu" :target="[menuX, menuY]">
@@ -142,14 +144,6 @@ export default {
       return this.keywords.length > 0 ? this.keywords : this.loadedKeywords
     },
   },
-  watch: {
-    modelValue(newValue) {
-      if (this.editor && this.editor.getValue() !== newValue) {
-        this.editor.setValue(newValue)
-        this.editor.clearSelection()
-      }
-    },
-  },
   created() {
     // Load keywords from API if not provided via prop
     if (this.keywords.length === 0) {
@@ -175,12 +169,6 @@ export default {
       this.editor.setOption('enableBasicAutocompletion', true)
       this.editor.setOption('enableLiveAutocompletion', true)
       this.editor.completers = [new ScreenCompleter()]
-      this.editor.setValue(this.modelValue)
-      this.editor.clearSelection()
-
-      this.editor.session.on('change', () => {
-        this.$emit('update:modelValue', this.editor.getValue())
-      })
     },
     getValue() {
       return this.editor ? this.editor.getValue() : this.modelValue

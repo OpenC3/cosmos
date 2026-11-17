@@ -108,6 +108,7 @@
               <AceEditor
                 ref="aceEditor"
                 autofocus
+                :model-value="localPluginTxt"
                 vim
                 :mode="editorMode"
                 class="editor"
@@ -287,8 +288,6 @@ export default {
     const pluginMode = this.buildPluginMode()
     if (this.existingPluginTxt === null) {
       this.editor = this.$refs.aceEditor.editor
-      this.editor.setValue(this.localPluginTxt)
-      this.editor.clearSelection()
       this.editor.session.$undoManager.markClean() // because setting the initial content made it "dirty"
     } else {
       this.tab = 1 // Show the diff right off the bat

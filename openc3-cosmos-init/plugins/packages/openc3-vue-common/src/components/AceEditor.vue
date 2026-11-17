@@ -57,12 +57,21 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // Where the cursor lands when the text is set. 'start' also leaves the view
+  // scrolled to the top, 'end' to the bottom.
+  cursor: {
+    type: String,
+    default: 'end',
+    validator: (value) => ['start', 'end'].includes(value),
+  },
   // Focus the editor once mounted
   autofocus: {
     type: Boolean,
     default: false,
   },
 })
+// The editor text. Leave undefined to manage content yourself.
+const model = defineModel({ type: String, default: undefined })
 const emit = defineEmits(['ready'])
 const editorRef = useTemplateRef('editor')
 const editor = shallowRef(null)
@@ -75,6 +84,19 @@ function applyMode() {
 }
 
 watch(() => props.mode, applyMode)
+
+function setText(value) {
+  editor.value.setValue(value, props.cursor === 'start' ? -1 : 1)
+}
+watch(model, (value) => {
+  if (
+    editor.value &&
+    value !== undefined &&
+    value !== editor.value.getValue()
+  ) {
+    setText(value)
+  }
+})
 watch(
   () => props.noWrap,
   (value) => editor.value?.session.setUseWrapMode(!value),
@@ -97,6 +119,13 @@ onMounted(() => {
     })
   }
   editor.value.setReadOnly(props.readOnly)
+  if (model.value !== undefined) {
+    setText(model.value)
+  }
+  // Attached after the initial value so mounting doesn't emit
+  editor.value.session.on('change', () => {
+    model.value = editor.value.getValue()
+  })
   if (props.autofocus) {
     editor.value.focus()
   }

@@ -37,6 +37,7 @@
           ref="aceEditor"
           :mode="languageMode"
           autofocus
+          :model-value="content"
           read-only
           class="editor"
         />
@@ -126,8 +127,6 @@ export default {
         useWorker: false,
       })
     }
-    this.editor.setValue(this.content)
-    this.editor.clearSelection()
   },
   methods: {
     close: function () {

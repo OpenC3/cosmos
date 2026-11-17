@@ -32,6 +32,8 @@
         ref="aceEditor"
         :mode="aceMode"
         read-only
+        cursor="start"
+        :model-value="fileContent"
         no-wrap
         :style="contentStyle"
       />
@@ -99,23 +101,15 @@ export default {
     this.editor.renderer.setShowGutter(false)
     this.editor.renderer.setScrollMargin(8, 8, 0, 0)
     this.editor.renderer.setPadding(8)
-    this.editor.setValue(this.fileContent, -1)
-
     if (this.filePath) {
       this.fetchFile()
     }
   },
   methods: {
-    updateEditor() {
-      if (this.editor) {
-        this.editor.setValue(this.fileContent, -1)
-      }
-    },
     async fetchFile() {
       if (!this.filePath) {
         this.fileContent =
           'Error: No file path specified. Usage: FILEDISPLAY "TARGET/path/to/file.txt"'
-        this.updateEditor()
         return
       }
       this.loading = true
@@ -126,7 +120,6 @@ export default {
         this.fileContent = `Error: ${error.message || error}`
       } finally {
         this.loading = false
-        this.updateEditor()
       }
     },
   },

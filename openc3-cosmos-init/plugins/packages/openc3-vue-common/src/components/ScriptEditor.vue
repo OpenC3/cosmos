@@ -32,10 +32,12 @@
       <AceEditor
         ref="aceEditor"
         autofocus
+        :model-value="modelValue"
         vim
         :mode="languageMode"
         class="script-editor"
         :style="{ height: height, width: '100%' }"
+        @update:model-value="$emit('update:modelValue', $event)"
         @contextmenu.prevent="showContextMenu"
       />
       <v-menu v-model="contextMenu" :target="[menuX, menuY]">
@@ -98,14 +100,6 @@ export default {
       return this.language === 'python' ? this.pythonMode : this.rubyMode
     },
   },
-  watch: {
-    modelValue(newValue) {
-      if (this.editor && this.editor.getValue() !== newValue) {
-        this.editor.setValue(newValue)
-        this.editor.clearSelection()
-      }
-    },
-  },
   created() {
     // Plain instance properties (not in data) so Vue doesn't proxy the modes
     const RubyMode = this.buildRubyMode()
@@ -123,12 +117,6 @@ export default {
       this.editor.setOption('enableBasicAutocompletion', true)
       this.editor.setOption('enableLiveAutocompletion', true)
       this.editor.completers = [new CmdCompleter(), new TlmCompleter()]
-      this.editor.setValue(this.modelValue)
-      this.editor.clearSelection()
-
-      this.editor.session.on('change', () => {
-        this.$emit('update:modelValue', this.editor.getValue())
-      })
     },
     getValue() {
       return this.editor ? this.editor.getValue() : this.modelValue
