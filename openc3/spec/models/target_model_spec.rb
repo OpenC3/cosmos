@@ -1285,40 +1285,49 @@ module OpenC3
 
       it "allows the same group name in different targets" do
         install_groups("INST2", { "TEMPS" => [%w(INST2 HEALTH_STATUS TEMP1)] })
-        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] })) }.to_not raise_error
+        expect(Logger).not_to receive(:warn)
+        model.check_limits_groups(build_system({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] }))
       end
 
-      it "refuses groups of the target which share a QuestDB column" do
-        expect { model.check_limits_groups(build_system({ "TEMP_A" => [], "TEMP.A" => [] })) }.to raise_error(/TEMP.A and LIMITS_GROUP TEMP_A would share the column TEMP_A in INST LIMITS_GROUP/)
-        expect { model.check_limits_groups(build_system({ "POWER" => [], "POWER.ENABLED" => [] })) }.to raise_error(/POWER.ENABLED and LIMITS_GROUP POWER would share the column POWER_ENABLED/)
+      it "skips the member of a group which contains itself" do
+        groups = { "TEMPS" => [%w(INST HEALTH_STATUS TEMP1), %w(INST LIMITS_GROUP TEMPS)] }
+        expect(Logger).to receive(:warn).with("LIMITS_GROUP INST TEMPS contains itself: INST TEMPS -> INST TEMPS. Skipping its member INST LIMITS_GROUP TEMPS since nested limits groups can't form a loop.")
+        model.check_limits_groups(build_system(groups))
+        expect(groups).to eql({ "TEMPS" => [%w(INST HEALTH_STATUS TEMP1)] })
       end
 
-      it "refuses a group which shares a QuestDB column with a reserved item" do
-        expect { model.check_limits_groups(build_system({ "PACKET.TIMESECONDS" => [] })) }.to \
-          raise_error(/LIMITS_GROUP PACKET.TIMESECONDS would share the column PACKET_TIMESECONDS with the reserved item PACKET_TIMESECONDS in INST LIMITS_GROUP/)
-        expect { model.check_limits_groups(build_system({ "COSMOS-EXTRA" => [] })) }.to raise_error(/reserved item COSMOS_EXTRA/)
-      end
-
-      it "ignores collisions with groups of other targets" do
-        install_groups("INST2", { "TEMP_A" => [] })
-        expect { model.check_limits_groups(build_system({ "TEMP.A" => [] })) }.to_not raise_error
-      end
-
-      it "refuses a group which contains itself" do
-        expect { model.check_limits_groups(build_system({ "TEMPS" => [%w(INST LIMITS_GROUP TEMPS)] })) }.to \
-          raise_error(/LIMITS_GROUP INST TEMPS contains itself: INST TEMPS -> INST TEMPS/)
-      end
-
-      it "refuses a loop through groups of other targets" do
+      it "skips the member of the target which closes a loop through groups of other targets" do
         install_groups("INST2", { "B" => [%w(INST2 LIMITS_GROUP C)], "C" => [%w(INST LIMITS_GROUP A)] })
-        expect { model.check_limits_groups(build_system({ "A" => [%w(INST2 LIMITS_GROUP B)] })) }.to \
-          raise_error(/LIMITS_GROUP INST A contains itself: INST A -> INST2 B -> INST2 C -> INST A/)
+        groups = { "A" => [%w(INST2 LIMITS_GROUP B), %w(INST HEALTH_STATUS TEMP1)] }
+        expect(Logger).to receive(:warn).with("LIMITS_GROUP INST A contains itself: INST A -> INST2 B -> INST2 C -> INST A. Skipping its member INST2 LIMITS_GROUP B since nested limits groups can't form a loop.")
+        model.check_limits_groups(build_system(groups))
+        expect(groups).to eql({ "A" => [%w(INST HEALTH_STATUS TEMP1)] })
+      end
+
+      it "skips one member per loop" do
+        # A -> B -> A and A -> C -> A each lose their last member of INST
+        groups = { "A" => [%w(INST LIMITS_GROUP B), %w(INST LIMITS_GROUP C)], "B" => [%w(INST LIMITS_GROUP A)], "C" => [%w(INST LIMITS_GROUP A)] }
+        warnings = []
+        allow(Logger).to receive(:warn) { |message| warnings << message }
+        model.check_limits_groups(build_system(groups))
+        expect(warnings.length).to eql 2
+        expect(groups).to eql({ "A" => [%w(INST LIMITS_GROUP B), %w(INST LIMITS_GROUP C)], "B" => [], "C" => [] })
+      end
+
+      it "only warns about a loop between groups of other targets" do
+        # Install never stores one but leave the other targets' groups alone if it's there
+        install_groups("INST2", { "B" => [%w(INST2 LIMITS_GROUP C)], "C" => [%w(INST2 LIMITS_GROUP B)] })
+        groups = { "A" => [%w(INST2 LIMITS_GROUP B)] }
+        expect(Logger).to receive(:warn).with(/LIMITS_GROUP INST2 C contains itself: INST2 B -> INST2 C -> INST2 B\. Nested limits groups can't form a loop\./)
+        model.check_limits_groups(build_system(groups))
+        expect(groups).to eql({ "A" => [%w(INST2 LIMITS_GROUP B)] })
       end
 
       it "replaces the target's own installed groups" do
         # The old definition loops but the new one doesn't
         install_groups("INST", { "A" => [%w(INST LIMITS_GROUP A)] })
-        expect { model.check_limits_groups(build_system({ "A" => [%w(INST HEALTH_STATUS TEMP1)] })) }.to_not raise_error
+        expect(Logger).not_to receive(:warn)
+        model.check_limits_groups(build_system({ "A" => [%w(INST HEALTH_STATUS TEMP1)] }))
       end
 
       it "allows nesting, shared children and children which aren't installed yet" do
@@ -1327,7 +1336,8 @@ module OpenC3
           "SPACECRAFT" => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST LIMITS_GROUP POWER), %w(INST LIMITS_GROUP LATER)],
           "POWER" => [%w(INST2 LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS VOLTS)],
         }
-        expect { model.check_limits_groups(build_system(groups)) }.to_not raise_error
+        expect(Logger).not_to receive(:warn)
+        model.check_limits_groups(build_system(groups))
       end
     end
 

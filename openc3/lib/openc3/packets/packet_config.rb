@@ -48,6 +48,9 @@ module OpenC3
     LIMITS_GROUP_ENABLED_STATES = { 'FALSE' => 0, 'TRUE' => 1 }.freeze
     # QuestDB column name limit (TargetModel::MAX_COLUMN_HEADER_LENGTH) minus room for _ENABLED
     MAX_LIMITS_GROUP_NAME_LENGTH = 127 - LIMITS_GROUP_ENABLED_SUFFIX.length
+    # Characters QuestDBClient.sanitize_column_name replaces with '_'. Group names
+    # can't contain them so every group has its own column (TEMP.A and TEMP_A would share one).
+    LIMITS_GROUP_COLUMN_INVALID_CHARS = /[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/
 
     # @return [String] The name of this configuration. To be used by higher
     #   level classes to store information about the current PacketConfig.
@@ -374,6 +377,9 @@ module OpenC3
       return "cannot contain a quote (' or \")" if group_name.include?('"') or group_name.include?("'")
       return "cannot contain a curly bracket ('{' or '}')" if group_name.include?('{') or group_name.include?('}')
       return "must be #{MAX_LIMITS_GROUP_NAME_LENGTH} characters or less" if group_name.length > MAX_LIMITS_GROUP_NAME_LENGTH
+      if (char = group_name[LIMITS_GROUP_COLUMN_INVALID_CHARS])
+        return "cannot contain '#{char}' since the time-series database replaces it with an underscore"
+      end
       return "cannot end with #{LIMITS_GROUP_ENABLED_SUFFIX}" if group_name.end_with?(LIMITS_GROUP_ENABLED_SUFFIX)
       return "is a reserved item name" if Packet::RESERVED_ITEM_NAMES.include?(group_name)
       # Packet#packet_time reads an item named PACKET_TIME instead of the received time

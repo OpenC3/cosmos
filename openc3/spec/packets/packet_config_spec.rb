@@ -506,6 +506,9 @@ module OpenC3
             'received_count' => /LIMITS_GROUP RECEIVED_COUNT is a reserved item name/,
             'packet_time' => /LIMITS_GROUP PACKET_TIME would replace the packet time of LIMITS_GROUP/,
             'A' * 120 => /must be 119 characters or less/,
+            # These would share a column with TEMP_A
+            'TEMP.A' => /cannot contain '\.' since the time-series database replaces it with an underscore/,
+            'TEMP-A' => /cannot contain '-' since the time-series database replaces it with an underscore/,
           }
           bad_names.each do |name, error|
             tf = Tempfile.new('unittest')
@@ -526,6 +529,13 @@ module OpenC3
           expect(@pc.limits_groups["TGT1"]).to include('A' * 119)
           tf.unlink
         end
+      end
+
+      it "rejects exactly the group name characters the time-series database replaces" do
+        require 'openc3/utilities/questdb_client'
+        chars = (32..126).map(&:chr)
+        replaced = chars.select { |char| QuestDBClient.sanitize_column_name("A#{char}B") != "A#{char}B" }
+        expect(chars.select { |char| char.match?(PacketConfig::LIMITS_GROUP_COLUMN_INVALID_CHARS) }).to eql replaced
       end
 
       context "with LIMITS_ITEM" do

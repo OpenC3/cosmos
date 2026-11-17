@@ -32,7 +32,6 @@ require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/target_file'
 require 'openc3/utilities/zip'
-require 'openc3/utilities/questdb_client'
 require 'openc3/conversions'
 require 'openc3/packets/packet_config'
 require 'fileutils'
@@ -901,40 +900,14 @@ module OpenC3
       end
     end
 
-    # Limits groups become items (and QuestDB columns) in the <TARGET> LIMITS_GROUP
-    # packet of the target which defines them. Their names must not share a column
-    # after QuestDB sanitizes them and nested groups must not loop.
+    # Nested limits groups can't form a loop. Since a loop is likely a typo the
+    # member which closes it is skipped with a warning, like a member whose name
+    # PacketConfig rejects. Group names are already checked by the parser
+    # (PacketConfig.limits_group_name_error) which also keeps each group in its own column.
     def check_limits_groups(system)
       new_groups = system.limits.groups[@name] || {}
       return if new_groups.empty?
 
-      # QuestDB replaces characters it doesn't allow with '_' so TEMP.A and TEMP_A share a column.
-      # The parser rejects the reserved item names but not ones which only match once sanitized.
-      reserved = Packet::RESERVED_ITEM_NAMES.to_h { |name| [QuestDBClient.sanitize_column_name(name), name] }
-      columns = {}
-      new_groups.each_key do |group|
-        limits_group_columns(group).each do |column|
-          if reserved[column]
-            raise "LIMITS_GROUP #{group} would share the column #{column} with the reserved item #{reserved[column]} in #{@name} #{PacketConfig::LIMITS_GROUP_PACKET}. Rename it."
-          end
-
-          other = columns[column]
-          if other and other != group
-            raise "LIMITS_GROUP #{group} and LIMITS_GROUP #{other} would share the column #{column} in #{@name} #{PacketConfig::LIMITS_GROUP_PACKET}. Rename one of them."
-          end
-
-          columns[column] = group
-        end
-      end
-
-      check_limits_group_cycles(new_groups)
-    end
-
-    def limits_group_columns(group)
-      [group, "#{group}#{PacketConfig::LIMITS_GROUP_ENABLED_SUFFIX}"].map { |name| QuestDBClient.sanitize_column_name(name) }
-    end
-
-    def check_limits_group_cycles(new_groups)
       # The groups of other targets plus this target's new groups which replace its old ones
       groups = {}
       Store.hgetall("#{@scope}__limits_groups").each do |key, json|
@@ -949,19 +922,48 @@ module OpenC3
                              .map { |target_name, _packet_name, item_name| LimitsEventTopic.limits_group_key(target_name, item_name) }
       end
 
-      # Depth first search keeping the current path so a loop can be reported
+      # Each pass removes one member so this ends
+      while (loop = find_limits_group_loop(children, new_groups.keys))
+        names = loop.map { |key| key.sub('__', ' ') }.join(' -> ')
+        # Skip the last member in the loop which belongs to this target. Install never
+        # stores a loop between other targets' groups but ignore one if it's found.
+        from, to = loop.each_cons(2).to_a.reverse.find { |key, _child| LimitsEventTopic.split_limits_group_key(key)[0] == @name }
+        unless from
+          from, to = loop.last(2)
+          children[from].delete(to)
+          Logger.warn("LIMITS_GROUP #{from.sub('__', ' ')} contains itself: #{names}. Nested limits groups can't form a loop.")
+          next
+        end
+        children[from].delete(to)
+        to_target, to_group = LimitsEventTopic.split_limits_group_key(to)
+        new_groups[LimitsEventTopic.split_limits_group_key(from)[1]].delete([to_target, PacketConfig::LIMITS_GROUP_PACKET, to_group])
+        Logger.warn("LIMITS_GROUP #{from.sub('__', ' ')} contains itself: #{names}. Skipping its member #{to_target} #{PacketConfig::LIMITS_GROUP_PACKET} #{to_group} since nested limits groups can't form a loop.")
+      end
+    end
+
+    # Depth first search keeping the current path so a loop can be reported
+    #
+    # @return [Array<String>, nil] The group keys of a loop with the first repeated
+    #   at the end, or nil if the groups don't loop
+    def find_limits_group_loop(children, group_names)
       done = Set.new
       visit = lambda do |key, path|
-        if path.include?(key)
-          loop = (path[path.index(key)..] + [key]).map { |name| name.sub('__', ' ') }
-          raise "LIMITS_GROUP #{key.sub('__', ' ')} contains itself: #{loop.join(' -> ')}. Nested limits groups can't form a loop."
-        end
-        return if done.include?(key)
+        index = path.index(key)
+        return path[index..] + [key] if index
+        return nil if done.include?(key)
 
-        (children[key] || []).each { |child| visit.call(child, path + [key]) }
+        (children[key] || []).each do |child|
+          loop = visit.call(child, path + [key])
+          return loop if loop
+        end
         done << key
+        nil
       end
-      new_groups.each_key { |group| visit.call(LimitsEventTopic.limits_group_key(@name, group), []) }
+      group_names.each do |group|
+        loop = visit.call(LimitsEventTopic.limits_group_key(@name, group), [])
+        return loop if loop
+      end
+      nil
     end
 
     def undeploy

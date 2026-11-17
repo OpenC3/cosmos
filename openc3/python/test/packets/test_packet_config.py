@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1953
 
 import os
+import re
 import shutil
 import tempfile
 import unittest
@@ -552,6 +553,9 @@ class TestPacketConfig(unittest.TestCase):
             "received_count": "LIMITS_GROUP RECEIVED_COUNT is a reserved item name",
             "packet_time": "LIMITS_GROUP PACKET_TIME would replace the packet time of LIMITS_GROUP",
             "A" * 120: "must be 119 characters or less",
+            # These would share a column with TEMP_A
+            "TEMP.A": "cannot contain '\\.' since the time-series database replaces it with an underscore",
+            "TEMP-A": "cannot contain '-' since the time-series database replaces it with an underscore",
         }
         for name, error in bad_names.items():
             with (
@@ -574,6 +578,14 @@ class TestPacketConfig(unittest.TestCase):
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
             self.assertIn("A" * 119, self.pc.limits_groups["TGT1"])
+
+    def test_rejects_exactly_the_group_name_characters_the_time_series_database_replaces(self):
+        from openc3.utilities.questdb_client import QuestDBClient
+
+        chars = [chr(code) for code in range(32, 127)]
+        replaced = [char for char in chars if QuestDBClient.sanitize_column_name(f"A{char}B") != f"A{char}B"]
+        rejected = [char for char in chars if re.search(PacketConfig.LIMITS_GROUP_COLUMN_INVALID_CHARS, char)]
+        self.assertEqual(rejected, replaced)
 
     def test_adds_a_nested_group_as_its_limits_group_item(self):
         with tempfile.NamedTemporaryFile(mode="w") as tf:

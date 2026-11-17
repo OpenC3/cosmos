@@ -14,6 +14,7 @@
 
 import base64
 import os
+import re
 import tempfile
 import traceback
 
@@ -51,6 +52,9 @@ class PacketConfig:
     LIMITS_GROUP_ENABLED_STATES = {"FALSE": 0, "TRUE": 1}
     # QuestDB column name limit (TargetModel MAX_COLUMN_HEADER_LENGTH) minus room for _ENABLED
     MAX_LIMITS_GROUP_NAME_LENGTH = 127 - len(LIMITS_GROUP_ENABLED_SUFFIX)
+    # Characters QuestDBClient.sanitize_column_name replaces with '_'. Group names
+    # can't contain them so every group has its own column (TEMP.A and TEMP_A would share one).
+    LIMITS_GROUP_COLUMN_INVALID_CHARS = r'[?\.,\'"\\/:)(+=\-*%~;!@#$^&]'
     COMMAND_STRING = "Command"
     TELEMETRY_STRING = "Telemetry"
     # Note: DERIVED is not a valid converted type. Also TIME is currently only a converted type
@@ -1166,6 +1170,9 @@ class PacketConfig:
             return "cannot contain a curly bracket ('{' or '}')"
         if len(group_name) > cls.MAX_LIMITS_GROUP_NAME_LENGTH:
             return f"must be {cls.MAX_LIMITS_GROUP_NAME_LENGTH} characters or less"
+        match = re.search(cls.LIMITS_GROUP_COLUMN_INVALID_CHARS, group_name)
+        if match:
+            return f"cannot contain '{match.group(0)}' since the time-series database replaces it with an underscore"
         if group_name.endswith(cls.LIMITS_GROUP_ENABLED_SUFFIX):
             return f"cannot end with {cls.LIMITS_GROUP_ENABLED_SUFFIX}"
         if group_name in Packet.RESERVED_ITEM_NAMES:
