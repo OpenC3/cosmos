@@ -478,15 +478,9 @@ export default {
       this.menuX = event.pageX
       this.menuY = event.pageY
 
-      let position = this.editor.getCursorPosition()
-      let token = this.editor.session.getTokenAt(position.row, position.column)
-      if (token) {
-        let value = token.value.trim()
-        if (value.includes(' ')) {
-          this.docsKeyword = value.split(' ')[0]
-        } else {
-          this.docsKeyword = value
-        }
+      const keyword = this.$refs.aceEditor.keywordAtCursor()
+      if (keyword !== null) {
+        this.docsKeyword = keyword
         this.contextMenu = true
       }
     },

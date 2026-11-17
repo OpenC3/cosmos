@@ -164,9 +164,18 @@ function toggleVim() {
   AceEditorUtils.toggleVimMode(editor.value)
 }
 
+// The first word of the token under the cursor, or null when there is none.
+// Used by right-click menus to look up documentation for a keyword.
+function keywordAtCursor() {
+  const { row, column } = editor.value.getCursorPosition()
+  const token = editor.value.session.getTokenAt(row, column)
+  return token ? token.value.trim().split(' ')[0] : null
+}
+
 defineExpose({
   editor,
   toggleVim,
+  keywordAtCursor,
 })
 </script>
 
