@@ -141,10 +141,10 @@ export default {
       if (this.metadataVals.length < 1) {
         return 'Please enter a value in the metadata table.'
       }
-      const emptyKeyValue = this.metadataVals.find(
+      const isMissingValue = this.metadataVals.some(
         (meta) => meta.key === '' || meta.value === '',
       )
-      if (emptyKeyValue) {
+      if (isMissingValue) {
         return 'Missing or empty key, value in the metadata table.'
       }
       return null

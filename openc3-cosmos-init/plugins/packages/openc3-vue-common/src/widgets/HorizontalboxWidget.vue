@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2025, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -55,7 +55,7 @@ export default {
   created() {
     this.labelSettings = [...this.appliedSettings]
     // Set the font-weight to bold if not already set
-    const fontWeightSetting = this.labelSettings.find(
+    const fontWeightSetting = this.labelSettings.some(
       (setting) =>
         setting[0] === '0' &&
         setting[1].startsWith('RAW') &&
