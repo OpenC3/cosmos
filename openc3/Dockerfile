@@ -13,9 +13,10 @@ ARG OPENC3_IMAGE=openc3-ruby
 #
 # Final stage
 #   [F1] C extension sources     <- ext/
-#   [F2] Gem dependencies        <- Gemfile, openc3.gemspec
+#   [F2] Gem dependencies        <- Gemfile, Gemfile.lock, openc3.gemspec
 #   [F3] Application source      <- Guardfile ... lib/, least to most edited
-#   [F4] Gem build and install   <- [F3] (compiles the C extensions)
+#   [F4] Gem build and install   <- [F3] (compiles the C extensions into the
+#                                    installed gem and into lib/)
 #   [F5] Python merge            <- python-build output
 #   [F6] Runtime dirs, env, user
 #
@@ -89,14 +90,15 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 # put the saved relocked one back; relocking again could resolve different
 # versions if the mirror changed.
 #
-# No --no-build: uv cannot install the editable openc3 project under it. All
-# dependencies are already installed, so the only setup code run is openc3's own.
+# --no-build holds here too: openc3 builds with uv_build, which uv runs itself
+# rather than as a third-party backend, so even the editable install of openc3
+# runs no setup code and fetches no build backend from the index.
 RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
       PYPI_HOST="${PYPI_URL#*://}"; PYPI_HOST="${PYPI_HOST%%/*}"; \
       export UV_INSECURE_HOST="${PYPI_HOST##*@}"; \
     fi && \
     cp /tmp/uv.lock.relocked uv.lock && rm /tmp/uv.lock.relocked && \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev # NOSONAR
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-build
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG}
 
@@ -110,12 +112,14 @@ USER root
 COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 ext/ ext/
 
 # [F2] Ruby dependencies: only the files that pick the gems, so code edits
-# don't reinstall them. The RUN below installs them.
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=777 Gemfile openc3.gemspec ./
+# don't reinstall them. The RUN below installs them. 644, not 777 like the
+# rest of the tree: these are only read after the build (the API images load
+# openc3.gemspec through their Bundler path gem), and the lockfile is frozen.
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} --chmod=644 Gemfile Gemfile.lock openc3.gemspec ./
 
 RUN git config --global http.sslCAinfo /devel/cacert.pem \
     && bundle config set --local without 'development test' \
-    && bundle install --quiet
+    && BUNDLE_FROZEN=true bundle install --quiet
 
 # [F3] Application source, listed by directory (not `COPY . .`) so python/ edits
 # don't invalidate the Ruby build. Ordered least to most frequently edited, so
@@ -134,6 +138,11 @@ RUN mkdir -p lib/openc3/ext \
     && rm -f ./*.gem \
     && rake gems \
     && gem install --local ./openc3-*.gem \
+    # Compile the C extensions into lib/ as well. The API images load openc3 from
+    # this source tree as a Bundler path gem, and Bundler does not build
+    # extensions for path gems. This runs after 'rake gems' so the compiled
+    # files are not packed into the gem.
+    && rake build \
     && openc3_gem=$(dirname `gem which openc3`) \
     && ln -s "${openc3_gem}/openc3" "${openc3_gem}/cosmos" \
     && mkdir -p gems \

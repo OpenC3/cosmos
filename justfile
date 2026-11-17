@@ -12,6 +12,10 @@ rubygems_url := env("RUBYGEMS_URL", "https://rubygems.org")
 # RuboCop config that inherits .rubocop.yml but excludes spec files
 rubocop_src_config := ".rubocop-src.yml"
 
+# Bundler version in the Docker images (openc3-ruby runs gem update --system
+# 3.7.2). Lock with the same version so the images don't switch Bundler.
+bundler_version := "2.7.2"
+
 # Component command namespaces
 mod playwright 'playwright/justfile'
 mod plugins 'openc3-cosmos-init/plugins/justfile'
@@ -28,6 +32,49 @@ check:
     just plugins::lint-check
     just python::lint-check
     just playwright::lint-check
+
+# ---------------------------------------------------------------------------
+# Lockfiles
+# ---------------------------------------------------------------------------
+
+# Regenerate every committed Ruby, uv and pnpm lockfile without upgrading
+lock:
+    just lock-ruby
+    just lock-uv
+    just lock-pnpm
+
+# Regenerate the committed Gemfile.lock files with the image's Bundler version
+lock-ruby:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    gem list -i bundler -v {{ bundler_version }} >/dev/null || gem install bundler -v {{ bundler_version }} --no-document
+    # openc3 first: the API locks pick up its gemspec as a path gem
+    for lock in openc3/Gemfile.lock $(git ls-files '*Gemfile.lock' | grep -v '^openc3/Gemfile.lock$'); do
+      echo "--- ${lock}"
+      (cd "$(dirname "${lock}")" && bundle _{{ bundler_version }}_ lock --add-platform x86_64-linux aarch64-linux)
+    done
+
+# Regenerate the committed uv.lock files and uv script locks
+lock-uv:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for lock in $(git ls-files '*uv.lock'); do
+      echo "--- ${lock}"
+      (cd "$(dirname "${lock}")" && uv lock)
+    done
+    for lock in $(git ls-files '*.py.lock'); do
+      echo "--- ${lock}"
+      uv lock --script "${lock%.lock}"
+    done
+
+# Regenerate the committed pnpm-lock.yaml files
+lock-pnpm:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    for lock in $(git ls-files '*pnpm-lock.yaml'); do
+      echo "--- ${lock}"
+      (cd "$(dirname "${lock}")" && pnpm install --lockfile-only)
+    done
 
 # ---------------------------------------------------------------------------
 # Linting
