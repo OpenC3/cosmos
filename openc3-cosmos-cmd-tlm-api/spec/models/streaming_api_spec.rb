@@ -688,6 +688,36 @@ RSpec.describe StreamingApi, type: :model do
       build([[latest_key, '0']]).objects.each { |o| collection.remove(o) }
       expect(collection.objects.map { |o| [o.key, o.source_key] }).to eq([[explicit_key, explicit_key]])
     end
+
+    it 'exact removal of a key-only item leaves other item_keys for the key' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      key_only = collection.objects.find { |o| o.item_key == explicit_key }
+      collection.remove(key_only, exact: true)
+      expect(collection.objects.map(&:item_key)).to eq(['0'])
+    end
+
+    it 'exact removal of one LATEST packet leaves the others' do
+      collection = build([latest_key])
+      collection.remove(collection.objects[0], exact: true)
+      expect(collection.objects.map(&:key)).to eq(['DECOM__TLM__INST__PARAMS__TEMP1__CONVERTED'])
+    end
+
+    it 'finishing a key-only item leaves an alias with a later end time' do
+      collection = build([explicit_key, [explicit_key, '0']])
+      thread = StreamingThread.new(@api, collection, scope: 'DEFAULT')
+      thread.finish([collection.objects.find { |o| o.item_key == explicit_key }])
+      expect(collection.objects.map(&:item_key)).to eq(['0'])
+      expect(thread.instance_variable_get(:@cancel_thread)).to be_falsey
+    end
+
+    it 'handing off a LATEST packet leaves the packets that have not caught up' do
+      collection = build([latest_key])
+      health_status = collection.objects[0]
+      health_status.offset = '100-0'
+      realtime = StreamingThread.new(@api, StreamingObjectCollection.new, scope: 'DEFAULT')
+      realtime.handoff_objects(collection, health_status.topic, { health_status.topic => [health_status] }, {})
+      expect(collection.objects.map(&:packet_name)).to eq(['PARAMS'])
+    end
   end
 
   describe 'add with COSMOS_ALL packets and authorization' do
@@ -1550,13 +1580,21 @@ RSpec.describe StreamingApi, type: :model do
     it 'groups realtime items with different time types into separate entries' do
       msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 100, 'received_time' => 200,
         'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
+      # Deliver once, after both subscriptions exist, so the first read can't
+      # publish only the PACKET entry and block the RECEIVED one
+      ready = false
+      sent = false
       allow(OpenC3::EphemeralStore.instance).to receive(:read_topics) do |topics, &block|
         sleep 0.1
-        block.call(topics[0], "1-0", msg, nil) if @messages.empty?
+        if ready and not sent
+          sent = true
+          block.call(topics[0], "1-0", msg, nil)
+        end
         {}
       end
       @api.add({ 'items' => [[item_key, 'PKT']], 'scope' => 'DEFAULT' })
       @api.add({ 'items' => [[item_key, 'RX']], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+      ready = true
       start = Time.now
       sleep 0.05 while @messages.empty? and (Time.now - start) < 3
       entries = @messages.flatten
@@ -1579,13 +1617,20 @@ RSpec.describe StreamingApi, type: :model do
       before(:each) do
         msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 100, 'received_time' => 200,
           'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
+        # Deliver once, after both subscriptions exist
+        ready = false
+        sent = false
         allow(OpenC3::EphemeralStore.instance).to receive(:read_topics) do |topics, &block|
           sleep 0.1
-          block.call(topics[0], "1-0", msg, nil) if @messages.empty?
+          if ready and not sent
+            sent = true
+            block.call(topics[0], "1-0", msg, nil)
+          end
           {}
         end
         @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT' })
         @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+        ready = true
       end
 
       it 'streams both instead of dropping the second' do
@@ -1602,8 +1647,10 @@ RSpec.describe StreamingApi, type: :model do
       end
 
       it 'removes every time_type when none is given' do
+        # Capture the collection first: the emptied thread completes and clears @realtime_thread
+        collection = @api.instance_variable_get(:@realtime_thread).instance_variable_get(:@collection)
         @api.remove({ 'items' => [item_key], 'scope' => 'DEFAULT' })
-        expect(@api.instance_variable_get(:@realtime_thread).instance_variable_get(:@collection).objects).to be_empty
+        expect(collection.objects).to be_empty
       end
 
       it 'removes a packet subscription by time_type' do
@@ -1620,12 +1667,17 @@ RSpec.describe StreamingApi, type: :model do
       # Packet times a day in the future, as from a simulator, received over the last 100s
       let(:oldest_msg) { { 'time' => (@start_time.to_i + 86_400) * 1_000_000_000, 'received_time' => (@start_time.to_i - 100) * 1_000_000_000 } }
 
-      def setup_mode(time_type)
+      def setup_thread(time_type)
         allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", oldest_msg])
         collection = StreamingObjectCollection.new
         collection.add(StreamingObject.new(item_key, (@start_time.to_i - 50) * 1_000_000_000, nil, item_key: item_key, scope: 'DEFAULT', time_type: time_type))
         thread = LoggedStreamingThread.new(@api, collection, scope: 'DEFAULT', token: nil)
         thread.setup_thread_body(collection.objects)
+        [thread, collection]
+      end
+
+      def setup_mode(time_type)
+        thread, collection = setup_thread(time_type)
         [thread.instance_variable_get(:@thread_mode), collection.objects[0].offset]
       end
 
@@ -1637,7 +1689,18 @@ RSpec.describe StreamingApi, type: :model do
       it 'compares the start time against the oldest received time for RECEIVED' do
         mode, offset = setup_mode(:RECEIVED)
         expect(mode).to eq(:STREAM) # The received times in Redis cover the start
-        expect(offset).to eq("#{(@start_time.to_i - 50) * 1000}-0")
+        # Backed off by the overlap buffer so variable write delay can't skip messages
+        overlap_ms = LoggedStreamingThread::TSDB_STREAM_OVERLAP_NSEC / 1_000_000
+        expect(offset).to eq("#{(@start_time.to_i - 50) * 1000 - overlap_ms}-0")
+      end
+
+      it 'skips the overlap messages before the start time' do
+        thread, _collection = setup_thread(:RECEIVED)
+        start_nsec = (@start_time.to_i - 50) * 1_000_000_000
+        topic = 'DEFAULT__DECOM__{INST}__PARAMS'
+        # Received just before the start but written to the stream after the estimated offset
+        expect(thread.skip_message?(topic, { 'time' => 0, 'received_time' => start_nsec - 1 })).to be true
+        expect(thread.skip_message?(topic, { 'time' => 0, 'received_time' => start_nsec })).to be false
       end
     end
 

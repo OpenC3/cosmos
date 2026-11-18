@@ -298,7 +298,7 @@ class StreamingThread
   def finish(objects)
     OpenC3::Logger.info "Finishing #{objects.length} objects from stream"
     objects.each do |object|
-      @collection.remove(object)
+      @collection.remove(object, exact: true)
     end
     @cancel_thread = true if @collection.empty?
   end
@@ -356,14 +356,14 @@ class StreamingThread
     if objects
       objects.each do |object|
         @collection.add(object)
-        collection.remove(object)
+        collection.remove(object, exact: true)
       end
     end
     objects = packet_objects_by_topic[topic]
     if objects
       objects.each do |object|
         @collection.add(object)
-        collection.remove(object)
+        collection.remove(object, exact: true)
       end
     end
   end

@@ -36,6 +36,7 @@ class LoggedStreamingThread < StreamingThread
     @token = token
     @local_api = OpenC3::LocalApi.new
     @last_tsdb_times = {} # topic => last nanosecond timestamp read from TSDB
+    @stream_start_time = nil # set when streaming starts from Valkey to skip messages before start_time
     # All objects in one request share a time_type (:PACKET or :RECEIVED) which
     # selects the timestamp used to filter, order, and report (__time) the data
     first_object = collection.objects[0]
@@ -98,8 +99,12 @@ class LoggedStreamingThread < StreamingThread
           # Guesstimate start offset in stream based on first packet time and redis time
           redis_time = oldest_msg_id.split('-')[0].to_i * 1_000_000
           delta = redis_time - oldest_time
-          # Start streaming from calculated redis time
-          offset = ((first_object.start_time + delta) / 1_000_000).to_s + '-0'
+          # The delay between a message's time and its stream write varies, so a single
+          # delta can land after messages at or after start_time. Start earlier by the
+          # overlap buffer and skip anything before start_time in skip_message?.
+          offset_ms = (first_object.start_time - TSDB_STREAM_OVERLAP_NSEC + delta) / 1_000_000
+          offset = (offset_ms > 0 ? offset_ms.to_s : '0') + '-0'
+          @stream_start_time = first_object.start_time
           # OpenC3::Logger.debug "stream from Redis offset:#{offset} redis_time:#{redis_time} delta:#{delta}"
           objects.each {|object| object.offset = offset}
           @thread_mode = :STREAM
@@ -160,9 +165,9 @@ class LoggedStreamingThread < StreamingThread
     @thread_mode = :STREAM
   end
 
-  # Overlap buffer when bridging from TSDB to Valkey stream.
-  # The offset interpolation is approximate, so we start reading 2 seconds
-  # earlier to guarantee overlap. The redis_thread_body filter deduplicates.
+  # Overlap buffer when estimating a Valkey stream offset from a time (setup and
+  # the TSDB to Valkey bridge). The offset interpolation is approximate, so we start
+  # reading 2 seconds earlier to guarantee overlap. skip_message? filters the extra messages.
   TSDB_STREAM_OVERLAP_NSEC = 2 * 1_000_000_000
 
   def bridge_tsdb_to_stream
@@ -202,6 +207,9 @@ class LoggedStreamingThread < StreamingThread
   # Override parent to also filter overlap during TSDB→STREAM transition
   def skip_message?(topic, msg_hash)
     return true if super
+
+    # Setup started reading before start_time to cover the offset estimate
+    return true if @stream_start_time and message_time(msg_hash, @time_type) < @stream_start_time
 
     # Check per-topic overlap filter
     last_time = @last_tsdb_times[topic]
