@@ -16,4 +16,4 @@
   APPEND_ITEM CCSDSLENGTH  16 UINT   "CCSDS packet data length"
   APPEND_ITEM TIMESEC      32 UINT   "Seconds since epoch (January 1st, 1970, midnight)"
   APPEND_ITEM TIMEUS       32 UINT   "Microseconds of second"
-  APPEND_ID_ITEM PKTID     16 UINT 1 "Packet id (The combination of CCSDS_APID and PACKET_ID identify the packet)"
+  APPEND_ID_ITEM PKTID     16 UINT <%= defined?(pktid) ? pktid : 1 %> "Packet id (The combination of CCSDS_APID and PACKET_ID identify the packet)"

@@ -469,11 +469,9 @@ export default {
             clearInterval(this.updater)
             this.updater = null
           }
-        } else {
+        } else if (this.playbackMode === 'realtime') {
           // Resume updates when unfrozen
-          if (this.playbackMode === 'realtime') {
-            this.updateRefreshInterval()
-          }
+          this.updateRefreshInterval()
         }
       },
     },
@@ -1325,7 +1323,7 @@ export default {
       delete this.unchangedCounts[valueId]
       // If frozen and we have a saved value for this item, use it
       // Otherwise initialize to null
-      if (this.frozen && this.frozenValues && this.frozenValues[valueId]) {
+      if (this.frozen && this.frozenValues?.[valueId]) {
         this.screenValues[valueId] = this.frozenValues[valueId]
       } else {
         this.screenValues[valueId] = [null, null, 0]

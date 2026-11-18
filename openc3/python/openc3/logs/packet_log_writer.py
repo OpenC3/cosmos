@@ -49,6 +49,7 @@ from openc3.logs.packet_log_constants import (
     OPENC3_TARGET_DECLARATION_ENTRY_TYPE_MASK,
     OPENC3_TARGET_DECLARATION_SECONDARY_FIXED_SIZE,
 )
+from openc3.utilities.json import JsonEncoder
 
 
 class PacketLogWriter:
@@ -393,7 +394,7 @@ class PacketLogWriter:
                     flags |= OPENC3_CBOR_FLAG_MASK
                     extra_encoded = cbor2.dumps(extra)
                 else:
-                    extra_encoded = json.dumps(extra).encode("utf-8")
+                    extra_encoded = json.dumps(extra, cls=JsonEncoder, allow_nan=True).encode("utf-8")
                 length += len(extra_encoded)
 
             # Build entry

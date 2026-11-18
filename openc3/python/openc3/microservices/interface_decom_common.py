@@ -24,6 +24,16 @@ from openc3.utilities.store import Store
 from openc3.utilities.time import from_nsec_from_epoch, to_nsec_from_epoch
 
 
+def _variable_length_item_names(packet, item_names):
+    """Names of the length items owned by the variable sized items in item_names"""
+    length_item_names = set()
+    for name in item_names:
+        item = packet.items.get(str(name).upper())
+        if item is not None and item.variable_bit_size:
+            length_item_names.add(item.variable_bit_size["length_item_name"].upper())
+    return length_item_names
+
+
 def handle_inject_tlm(inject_tlm_json, scope):
     inject_tlm_hash = json.loads(inject_tlm_json, cls=JsonDecoder)
     target_name = inject_tlm_hash["target_name"]
@@ -32,17 +42,11 @@ def handle_inject_tlm(inject_tlm_json, scope):
     data_type = str(inject_tlm_hash["type"])
     packet = System.telemetry.packet(target_name, packet_name)
     if item_hash:
-        # Writing a VARIABLE_BIT_SIZE item sets its length item to match. Writing the
-        # length item directly would make it disagree with the bytes in the buffer, so
-        # skip it when its variable sized item is also given.
-        given_names = [str(name).upper() for name in item_hash]
-        length_names = [
-            item.variable_bit_size["length_item_name"]
-            for item in packet.sorted_items
-            if item.variable_bit_size and item.name in given_names
-        ]
+        length_item_names = _variable_length_item_names(packet, item_hash.keys())
         for name, value in item_hash.items():
-            if str(name).upper() in length_names:
+            # Writing the variable sized item sets its length item, and writing the
+            # length item first would make the item's current size disagree with the buffer
+            if str(name).upper() in length_item_names:
                 continue
             packet.write(str(name), value, data_type)
     stored = inject_tlm_hash.get("stored", False)
