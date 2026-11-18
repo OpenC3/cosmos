@@ -175,7 +175,8 @@ module OpenC3
       limits = {}
       item = TargetModel.packet_item(target_name, packet_name, item_name, scope: scope)
       item['limits'].each do |key, vals|
-        next unless vals.is_a?(Hash)
+        # Skip non-numeric limits such as SEQUENCE, CHANGE, or STATIC change limits
+        next unless vals.is_a?(Hash) && vals.key?('red_low')
 
         limits[key] = [vals['red_low'], vals['yellow_low'], vals['yellow_high'], vals['red_high']]
         limits[key].concat([vals['green_low'], vals['green_high']]) if vals['green_low']
@@ -209,6 +210,12 @@ module OpenC3
         item = packet['items'].find { |packet_item| packet_item['name'] == item_name }
         raise "Item '#{target_name} #{name} #{item_name}' does not exist while setting limits" unless item
         raise "Cannot set_limits on item without any limits" unless item['limits']
+
+        default = item['limits']['DEFAULT']
+        if default.is_a?(Hash) && default['change_type']
+          raise "Cannot set_limits on item '#{target_name} #{name} #{item_name}' with #{default['change_type']} limits"
+        end
+
         [name, packet, item]
       end
       items.each do |name, packet, item|

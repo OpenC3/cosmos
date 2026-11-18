@@ -70,3 +70,65 @@ test('views the metrics for an interface', async ({ page }) => {
   await dialog.locator('[data-test=close]').click()
   await expect(dialog).not.toBeVisible()
 })
+
+// An interface that is registered but whose microservice isn't running makes
+// interface_details wait for a cmd ack timeout (30s) before failing. That must
+// not delay the other interfaces or pile up a request per refresh.
+test('renders healthy interfaces while another interface never responds', async ({
+  page,
+  utils,
+}) => {
+  const DEAD = 'DEAD_INT'
+  let deadDetailsRequests = 0
+  // Intercept the JSON-RPC API calls to simulate an interface whose
+  // microservice isn't running: add a fake interface name to the
+  // get_interface_names result and never answer its interface_details request.
+  // Everything else passes through to the real API. This avoids having to
+  // register a broken interface in the demo plugin.
+  await page.route('**/openc3-api/api*', async (route) => {
+    const body = route.request().postDataJSON()
+    if (body?.method === 'get_interface_names') {
+      // The tab polls every second, so a request can still be in flight when
+      // the test finishes and the page closes. The response body is then
+      // disposed ("Response has been disposed"), which is safe to ignore.
+      try {
+        const response = await route.fetch()
+        const json = await response.json()
+        json.result = [...json.result, DEAD]
+        await route.fulfill({ response, json })
+      } catch {
+        // page closed mid-request
+      }
+    } else if (
+      body?.method === 'interface_details' &&
+      body.params?.[0] === DEAD
+    ) {
+      // Never answer, like an interface with no running microservice
+      deadDetailsRequests++
+    } else {
+      await route.continue()
+    }
+  })
+
+  // The healthy interfaces render without waiting for the dead one. The
+  // timeout is well under the 30s cmd ack timeout the dead one is stuck on, but
+  // leaves room for slow details responses when tests run in parallel.
+  await expect(
+    page.getByRole('button', { name: /^INST_INT: .*View processing metrics/ }),
+  ).toBeVisible({ timeout: 15000 })
+  await expect(
+    page.getByRole('button', {
+      name: /^INST2_INT: .*View processing metrics/,
+    }),
+  ).toBeVisible({ timeout: 15000 })
+  // The unresponsive interface has no details so it isn't drawn
+  await expect(page.getByText(DEAD)).toHaveCount(0)
+
+  // The tab refreshes every second. Let several refreshes pass, then make sure
+  // the unanswered request wasn't repeated while it was still outstanding.
+  await utils.sleep(3500)
+  expect(deadDetailsRequests).toBe(1)
+
+  // Stop intercepting and let in-flight handlers finish before the page closes
+  await page.unrouteAll({ behavior: 'ignoreErrors' })
+})

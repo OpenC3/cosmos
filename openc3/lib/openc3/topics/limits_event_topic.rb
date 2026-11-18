@@ -286,12 +286,20 @@ module OpenC3
             limits_settings = JSON.parse(limits_settings, allow_nan: true, create_additions: true)
             enabled = limits_settings['enabled']
             persistence = limits_settings['persistence_setting']
+            # Items with change limits (SEQUENCE, CHANGE, STATIC) don't have numeric limits. Saved
+            # numeric settings can be left over from before the item definition changed.
+            packet_item = packet.items[item_name]
+            change_type = packet_item&.limits&.change_type
             limits_settings.each do |limits_set, settings|
               next unless Hash === settings
               if limits_set == 'state_colors'
                 settings.each do |state_name, color|
                   System.limits.set_state_color(target_name, packet_name, item_name, state_name, color)
                 end
+                next
+              end
+              if change_type
+                Logger.warn("Ignoring saved #{limits_set} limits settings for #{target_name} #{packet_name} #{item_name} which has #{change_type} limits")
                 next
               end
               System.limits.set(target_name, packet_name, item_name, settings['red_low'], settings['yellow_low'], settings['yellow_high'], settings['red_high'], settings['green_low'], settings['green_high'], limits_set.to_s.intern, persistence, enabled)

@@ -14,13 +14,29 @@
 # if purchased from OpenC3, Inc.
 
 import functools
+from collections.abc import Callable
+from typing import Any
 
 import requests
 
 
-def request_wrapper(func):
+def request_wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
+    """Wrap a function that makes an HTTP request to convert request errors to RuntimeError.
+
+    ValueError, requests.Timeout and other requests.RequestException errors are
+    raised as RuntimeError. A requests.HTTPError with a status code of 400 or
+    less is raised as RuntimeError; one with a higher status code is suppressed
+    and the wrapper returns None.
+
+    Args:
+        func: Function to wrap.
+
+    Returns:
+        The wrapped function.
+    """
+
     @functools.wraps(func)
-    def _request(*args, **kwargs):
+    def _request(*args: Any, **kwargs: Any):
         try:
             value = func(*args, **kwargs)
             return value
@@ -34,6 +50,7 @@ def request_wrapper(func):
             err = f"Error response {exc.response.status_code} while requesting {exc.request.url!r}."
             if exc.response.status_code <= 400:
                 raise RuntimeError(err) from exc
+            return None
         except requests.RequestException as exc:
             err = f"An error occurred while requesting {exc.request.url!r}."
             raise RuntimeError(err) from exc

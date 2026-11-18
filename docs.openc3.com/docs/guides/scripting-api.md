@@ -5202,7 +5202,7 @@ limits_sets = get_limits_sets()
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Returns hash / dict of all the limits settings for a telemetry point.
+Returns hash / dict of all the limits settings for a telemetry point. Items with SEQUENCE, CHANGE, or STATIC change limits have no numeric limits values so an empty hash / dict is returned. Use [get_item](#get_item) to see their change limits settings.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5256,7 +5256,7 @@ puts result['DEFAULT'] # => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
+The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime. Items with SEQUENCE, CHANGE, or STATIC change limits can't be changed with set_limits and raise an error.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -8283,6 +8283,8 @@ start("INST/procedures/test1.rb")
 
 Jumps to a specific line in either the current file or another file. Script context and local variables are retained if jumping in the same file. This method should not be used to create loops or in any other case where normal Python/Ruby functionality could perform the same function. Use of goto increases stack depth and excess use can lead to stack level too deep errors.
 
+When typed at the Script Runner debug prompt, the parentheses and capitalization are optional (`GOTO 32` or `goto "INST/procedures/other.rb", 12`). If the script is paused, execution moves to the line without running it and the script stays paused there. If the script is running, it jumps to the line and keeps running.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
@@ -9198,7 +9200,7 @@ running_script_go(15)
 
 <span class="badge badge--secondary since-heading">Since 6.4.0</span>
 
-Perform a goto or execute selection on a running script.
+Perform a goto or execute selection on a running script. Execute selection requires the script to be paused, stopped at a breakpoint, or in error. A goto on a paused script moves execution to the line without running it and stays paused. A goto on a running script jumps to the line and keeps running.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
