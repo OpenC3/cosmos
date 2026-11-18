@@ -1193,7 +1193,7 @@ module OpenC3
         expect(p.get_item("TEST2").limits.enabled).to be false
       end
 
-      it "calls the limits_change_callback for all non STALE items" do
+      it "calls the limits_change_callback for items with a limits state" do
         p = Packet.new("tgt", "pkt")
         p.append_item("test1", 8, :UINT)
         i = p.get_item("TEST1")
@@ -1219,6 +1219,19 @@ module OpenC3
         p.disable_limits("TEST2")
         expect(p.get_item("TEST1").limits.enabled).to be false
         expect(p.get_item("TEST2").limits.enabled).to be false
+      end
+
+      it "does not call the limits_change_callback for items without a limits state" do
+        p = Packet.new("tgt", "pkt")
+        p.append_item("test1", 8, :UINT)
+        i = p.get_item("TEST1")
+        i.limits.values = { :DEFAULT => [1, 2, 4, 5] }
+        p.update_limits_items_cache(i)
+        callback = double("callback", :call => true)
+        p.limits_change_callback = callback
+        expect(callback).not_to receive(:call)
+        p.disable_limits("TEST1") # Never checked so no state
+        expect(i.limits.enabled).to be false
       end
     end
 

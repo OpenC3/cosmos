@@ -321,6 +321,31 @@ class TestDecomMicroservice(unittest.TestCase):
                 )
         self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
+    def test_does_not_publish_the_limits_changes_made_while_resyncing(self):
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", json.dumps({"enabled": False}))
+        Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "GREEN")
+        System.telemetry.packet("INST", "HEALTH_STATUS").get_item("TEMP1").limits.state = "GREEN"
+        writes = []
+        original_write = LimitsEventTopic.write
+
+        def record_write(event, scope, publish=True):
+            writes.append((event.get("item_name"), publish))
+            return original_write(event, scope, publish=publish)
+
+        with (
+            patch.object(LimitsEventTopic, "events_trimmed", return_value=True),
+            patch.object(LimitsEventTopic, "write", side_effect=record_write),
+        ):
+            for stdout in capture_io():
+                self.dm.resync_if_limits_events_trimmed()
+                self.assertIn("resyncing limits", stdout.getvalue())
+        self.assertIn(("TEMP1", False), writes)
+        # The store is still updated so the overall limits state is correct
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1"), b"")
+        item_names = [event.get("item_name") for _, event in LimitsEventTopic.read(0, scope="DEFAULT")]
+        self.assertNotIn("TEMP1", item_names)
+        self.assertFalse(self.dm.resyncing_limits)
+
     def test_handles_exceptions_in_the_thread(self):
         with patch.object(self.dm, "microservice_cmd") as mock_microservice_cmd:
             mock_microservice_cmd.side_effect = Exception("Bad command")
@@ -385,7 +410,10 @@ class TestDecomMicroservice(unittest.TestCase):
                 pass
 
         packet = System.telemetry.packet("INST", "HEALTH_STATUS")
-        packet.get_item("TEMP1").limits.response = NoOpLimitsResponse()
+        temp1 = packet.get_item("TEMP1")
+        temp1.limits.response = NoOpLimitsResponse()
+        # Disabling only fires the callback when the item has a limits state to clear
+        temp1.limits.state = "RED_LOW"
 
         Store.hset(
             "DEFAULT__current_limits_settings",

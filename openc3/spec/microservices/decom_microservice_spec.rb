@@ -215,6 +215,23 @@ module OpenC3
         expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
       end
 
+      it "does not publish the limits changes made while resyncing" do
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1", JSON.generate({ 'enabled' => false }))
+        Store.hset("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1", "GREEN")
+        System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('TEMP1').limits.state = :GREEN
+        allow(LimitsEventTopic).to receive(:events_trimmed?).and_return(true)
+        expect(LimitsEventTopic).to receive(:write).with(hash_including(type: :LIMITS_CHANGE, item_name: "TEMP1"), scope: 'DEFAULT', publish: false).and_call_original
+
+        capture_io do |stdout|
+          @dm.resync_if_limits_events_trimmed
+          expect(stdout.string).to include("resyncing limits")
+        end
+        # The store is still updated so the overall limits state is correct
+        expect(Store.hget("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP1")).to eql ""
+        expect(LimitsEventTopic.read(0, scope: "DEFAULT").map { |_, event| event['item_name'] }).not_to include("TEMP1")
+        expect(@dm.instance_variable_get(:@resyncing_limits)).to be false
+      end
+
       it "handles exceptions in the thread" do
         expect(@dm).to receive(:microservice_cmd).and_raise("Bad command")
         capture_io do |stdout|
@@ -276,7 +293,10 @@ module OpenC3
             # Simple stub to test the callback
           end
         end
-        System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('TEMP1').limits.response = klass.new
+        temp1 = System.telemetry.packet('INST', 'HEALTH_STATUS').get_item('TEMP1')
+        temp1.limits.response = klass.new
+        # Disabling only fires the callback when the item has a limits state to clear
+        temp1.limits.state = :RED_LOW
 
         Store.hset(
           "DEFAULT__current_limits_settings",

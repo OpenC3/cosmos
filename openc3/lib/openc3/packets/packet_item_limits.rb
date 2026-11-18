@@ -22,6 +22,8 @@ module OpenC3
   # Maintains knowledge of limits for a PacketItem
   class PacketItemLimits
     # Array of all limit states
+    # :STALE is never set on an item. It is only returned by
+    # CvtModel.get_tlm_values for items whose packet hasn't been received recently.
     LIMITS_STATES = [:RED, :RED_HIGH, :RED_LOW, :YELLOW, :YELLOW_HIGH, :YELLOW_LOW, :GREEN, :GREEN_HIGH, :GREEN_LOW, :BLUE, :STALE, nil]
     # Array of all limit states which should be considered in error
     OUT_OF_LIMITS_STATES = [:RED, :RED_HIGH, :RED_LOW, :YELLOW, :YELLOW_HIGH, :YELLOW_LOW]
@@ -36,18 +38,19 @@ module OpenC3
     #   limits.
     attr_reader :values
 
-    # Every item effectively always has "limits" enabled because it can go from
-    # :STALE to nil as needed. This flag indicates whether an item with defined
-    # limit values can transition from nil to the various other states.
+    # Whether limits checking is enabled for an item with defined limit values
+    # or state colors. When enabled the state transitions from nil to the
+    # various other states as the item value changes.
     #
     # @return [Boolean] Whether limits are enabled on this item
     attr_accessor :enabled
 
-    # Current limits state of the item. One of nil, :STALE, :BLUE, :GREEN,
+    # Current limits state of the item. One of nil, :BLUE, :GREEN,
     # :GREEN_HIGH, :GREEN_LOW, :YELLOW, :YELLOW_HIGH, :YELLOW_LOW,
-    # :RED, :RED_HIGH, :RED_LOW. Items initialize to :STALE and change states
+    # :RED, :RED_HIGH, :RED_LOW. Items initialize to nil and change states
     # as the item value changes. If the limits are disabled the state changes
-    # to nil. If a packet becomes stale the items state changes to :STALE.
+    # to nil. :STALE is never set here. It is only returned by
+    # CvtModel.get_tlm_values for items whose packet hasn't been received recently.
     # @return [Symbol, nil] Current limits state of the item
     attr_reader :state
 

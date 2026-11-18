@@ -107,6 +107,7 @@ module OpenC3
       # can fire the callback synchronously for any persisted-disabled items.
       @limits_response_queue = Queue.new
       @limits_response_thread = nil
+      @resyncing_limits = false
       System.telemetry.limits_change_callback = method(:limits_change_callback)
       LimitsEventTopic.sync_system(scope: @scope)
       target_model = TargetModel.get_model(name: @target_names[0], scope: @scope)
@@ -179,7 +180,14 @@ module OpenC3
     def resync_if_limits_events_trimmed
       if LimitsEventTopic.events_trimmed?(@limits_event_offset, scope: @scope, db_shard: @db_shard)
         @logger.warn("#{@name}: Limits events were trimmed before they could be read, resyncing limits")
-        LimitsEventTopic.resync_system(scope: @scope)
+        # Don't publish the limits changes the resync makes. Otherwise a large
+        # resync can trim the stream again and cause another resync.
+        @resyncing_limits = true
+        begin
+          LimitsEventTopic.resync_system(scope: @scope)
+        ensure
+          @resyncing_limits = false
+        end
       end
     end
 
@@ -283,7 +291,7 @@ module OpenC3
                 time_nsec: packet_time.to_nsec_from_epoch, message: message.to_s }
       suppress_stored = packet.stored && @stored_limits_mode != 'PROCESS'
       event[:suppress_stored] = true if suppress_stored
-      LimitsEventTopic.write(event, scope: @scope)
+      LimitsEventTopic.write(event, scope: @scope, publish: !@resyncing_limits)
 
       if item.limits.response && !suppress_stored
         copied_packet = packet.deep_copy

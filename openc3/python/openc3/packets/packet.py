@@ -928,8 +928,11 @@ class Packet(Structure):
     def disable_limits(self, name):
         item = self.get_item(name)
         item.limits.enabled = False
-        if item.limits.state != "STALE":
-            old_limits_state = item.limits.state
+        old_limits_state = item.limits.state
+        # Only report an actual change. Disabling an item that is already disabled
+        # (None) must not fire the callback, because sync_system re-disables every
+        # persisted-disabled item and each callback publishes a limits event.
+        if old_limits_state is not None:
             item.limits.state = None
             if self.limits_change_callback is not None:
                 self.limits_change_callback(self, item, old_limits_state, None, False)
