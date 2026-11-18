@@ -5,7 +5,7 @@ TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from th
   SELECT_ITEM CCSDSSEQCNT
     LIMITS DEFAULT 1 ENABLED SEQUENCE RED
   # Microseconds should be different every sample
-  SELECT_ITEM TIMEUS
+  SELECT_ITEM TIMESEC
     LIMITS DEFAULT 1 ENABLED CHANGE YELLOW
   # CCSDS version should never change
   SELECT_ITEM CCSDSVER
