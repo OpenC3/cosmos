@@ -240,16 +240,16 @@ class StreamingApi
       elsif end_time.nil? or end_time > Time.now.to_nsec_from_epoch
         # Create a single realtime streaming thread to use the entire collection
         if @realtime_thread.nil? or not @realtime_thread.alive?
-          OpenC3::Logger.info("Creating new realtime thread")
+          OpenC3::Logger.debug("Creating new realtime thread")
           @realtime_thread = RealtimeStreamingThread.new(self, collection, scope: @scope)
           @realtime_thread.start
         else
-          OpenC3::Logger.info("Adding to existing realtime thread")
+          OpenC3::Logger.debug("Adding to existing realtime thread")
           @realtime_thread.add(collection)
         end
       end
     end
-    OpenC3::Logger.info("Added to stream: #{data.except("token")}")
+    OpenC3::Logger.debug("Added to stream: #{data.except("token")}")
   end
 
   # Request to remove data from the stream
@@ -302,7 +302,7 @@ class StreamingApi
         thread.remove(collection)
       end
     end
-    OpenC3::Logger.info("Removed from stream: #{data.except("token")}")
+    OpenC3::Logger.debug("Removed from stream: #{data.except("token")}")
   end
 
   # Stream closed

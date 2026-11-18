@@ -89,7 +89,7 @@ RSpec.describe MessagesThread, type: :model do
         thread = MessagesThread.new(subscription_key, start_time: future_time, scope: scope)
 
         logger_messages = []
-        allow(OpenC3::Logger).to receive(:info) do |msg|
+        allow(OpenC3::Logger).to receive(:debug) do |msg|
           logger_messages << msg
         end
 
@@ -136,7 +136,7 @@ RSpec.describe MessagesThread, type: :model do
           )
 
           logger_messages = []
-          allow(OpenC3::Logger).to receive(:info) do |msg|
+          allow(OpenC3::Logger).to receive(:debug) do |msg|
             logger_messages << msg
           end
 
@@ -303,7 +303,7 @@ RSpec.describe MessagesThread, type: :model do
         late_entry = base_log_entry.merge("time" => (end_time + 1000).to_s)
 
         logger_messages = []
-        allow(OpenC3::Logger).to receive(:info) do |msg|
+        allow(OpenC3::Logger).to receive(:debug) do |msg|
           logger_messages << msg
         end
 
