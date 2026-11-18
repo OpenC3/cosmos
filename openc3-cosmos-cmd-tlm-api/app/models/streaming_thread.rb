@@ -125,8 +125,11 @@ class StreamingThread
             objects.each do |object|
               object.offset = msg_id
             end
-            result_entry = handle_message(msg_hash, objects)
-            results << result_entry if result_entry
+            # Items share one result entry, which has a single __time
+            each_time_type_group(objects) do |time_type_objects|
+              result_entry = handle_message(msg_hash, time_type_objects)
+              results << result_entry if result_entry
+            end
           end
           break if @cancel_thread
 
@@ -196,11 +199,33 @@ class StreamingThread
     objects.each { |object| object.offset = msg_id } if objects
   end
 
+  # Returns the message time (nsec) used for the time_type: the packet time
+  # or the received time. Falls back to the packet time for messages without a received time.
+  def message_time(msg_hash, time_type)
+    if time_type == :RECEIVED and msg_hash['received_time']
+      msg_hash['received_time'].to_i
+    else
+      msg_hash['time'].to_i
+    end
+  end
+
+  # Yields the objects grouped by time_type, without allocating in the common
+  # case where they all share one
+  def each_time_type_group(objects)
+    first_time_type = objects[0].time_type
+    if objects.all? { |object| object.time_type == first_time_type }
+      yield objects
+    else
+      objects.group_by(&:time_type).each_value { |group| yield group }
+    end
+  end
+
   def handle_message(msg_hash, objects)
     first_object = objects[0]
     time = msg_hash['time'].to_i
+    stream_time = message_time(msg_hash, first_object.time_type)
     if first_object.stream_mode == :RAW
-      return handle_raw_packet(msg_hash['buffer'], objects, time)
+      return handle_raw_packet(msg_hash['buffer'], objects, stream_time)
     else # @stream_mode == :DECOM
       json_data = msg_hash["json_data"]
       extra = nil
@@ -209,16 +234,17 @@ class StreamingThread
       end
       json_packet = OpenC3::JsonPacket.new(first_object.cmd_or_tlm, first_object.target_name, first_object.packet_name,
         time, OpenC3::ConfigParser.handle_true_false(msg_hash["stored"]), json_data, extra: extra)
-      return handle_json_packet(json_packet, objects)
+      return handle_json_packet(json_packet, objects, stream_time)
     end
   end
 
-  def handle_json_packet(json_packet, objects)
-    time = json_packet.packet_time
-    objects = objects_active?(objects, time.to_nsec_from_epoch)
+  # time_nsec is the time for the objects' time_type and defaults to the packet time
+  def handle_json_packet(json_packet, objects, time_nsec = nil)
+    time_nsec ||= json_packet.packet_time.to_nsec_from_epoch
+    objects = objects_active?(objects, time_nsec)
     return nil if objects.length <= 0
     result = {}
-    result['__time'] = time.to_nsec_from_epoch
+    result['__time'] = time_nsec
     result['COSMOS_EXTRA'] = JSON.generate(json_packet.extra, allow_nan: true) if json_packet.extra
     objects.each do |object|
       # OpenC3::Logger.debug("item:#{object.item_name} key:#{object.key} type:#{object.value_type}")

@@ -339,6 +339,81 @@ module OpenC3
         expect(has_items).to be false
         expect(selects).to eq([QuestDBClient::TIMESTAMP_SELECT])
       end
+
+      it "buckets by received time for the RECEIVED time type" do
+        selects, = QuestDBClient.build_packet_reduced_selects(packet_def, :RAW, time_type: :RECEIVED)
+        expect(selects.first).to eq('CAST(RECEIVED_TIMESECONDS AS LONG) as RECEIVED_TIMESECONDS')
+      end
+    end
+
+    describe "time_type queries" do
+      it "filters on PACKET_TIMESECONDS by default" do
+        expect(QuestDBClient.time_where_clause(1, 2)).to eq(" WHERE PACKET_TIMESECONDS >= 1 AND PACKET_TIMESECONDS < 2")
+        expect(QuestDBClient.timestamp_select(:PACKET)).to eq(QuestDBClient::TIMESTAMP_SELECT)
+      end
+
+      it "filters on RECEIVED_TIMESECONDS for the RECEIVED time type" do
+        expect(QuestDBClient.time_where_clause(1, 2, prefix: 'T0.', time_type: :RECEIVED)).to eq(" WHERE T0.RECEIVED_TIMESECONDS >= 1 AND T0.RECEIVED_TIMESECONDS < 2")
+        expect(QuestDBClient.time_where_clause(1, nil, time_type: :RECEIVED)).to eq(" WHERE RECEIVED_TIMESECONDS >= 1")
+      end
+
+      it "builds an unsorted item query by packet time" do
+        query = QuestDBClient.build_item_columns_query("TBL", ['"TEMP1"'], 1, 2)
+        expect(query).to eq('SELECT "TEMP1", CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS, COSMOS_EXTRA FROM "TBL" WHERE PACKET_TIMESECONDS >= 1 AND PACKET_TIMESECONDS < 2')
+      end
+
+      it "builds an item query filtered and sorted by received time" do
+        query = QuestDBClient.build_item_columns_query("TBL", ['"TEMP1"'], 1, 2, time_type: :RECEIVED)
+        expect(query).to eq('SELECT "TEMP1", CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS, CAST(RECEIVED_TIMESECONDS AS LONG) as "__rx_time_ns", COSMOS_EXTRA FROM "TBL" WHERE RECEIVED_TIMESECONDS >= 1 AND RECEIVED_TIMESECONDS < 2 ORDER BY RECEIVED_TIMESECONDS, PACKET_TIMESECONDS')
+      end
+
+      it "builds a packet query filtered and sorted by received time" do
+        expect(QuestDBClient.build_packet_query("TBL", 1, 2)).to_not include("ORDER BY")
+        query = QuestDBClient.build_packet_query("TBL", 1, 2, time_type: :RECEIVED)
+        expect(query).to end_with('FROM "TBL" WHERE RECEIVED_TIMESECONDS >= 1 AND RECEIVED_TIMESECONDS < 2 ORDER BY RECEIVED_TIMESECONDS, PACKET_TIMESECONDS')
+      end
+
+      it "builds a reduced query by packet time" do
+        query = QuestDBClient.build_reduced_query("TBL", [QuestDBClient::TIMESTAMP_SELECT, 'avg("TEMP1") as "TEMP1__A"'], 1, 2, '1m')
+        expect(query).to eq('SELECT CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS, avg("TEMP1") as "TEMP1__A" FROM "TBL" WHERE PACKET_TIMESECONDS >= 1 AND PACKET_TIMESECONDS < 2 SAMPLE BY 1m ALIGN TO CALENDAR ORDER BY PACKET_TIMESECONDS')
+      end
+
+      it "builds a reduced query sampled by received time" do
+        selects = [QuestDBClient.timestamp_select(:RECEIVED), 'avg("TEMP1") as "TEMP1__A"']
+        query = QuestDBClient.build_reduced_query("TBL", selects, 1, 2, '1h', time_type: :RECEIVED)
+        expect(query).to eq('SELECT CAST(RECEIVED_TIMESECONDS AS LONG) as RECEIVED_TIMESECONDS, avg("TEMP1") as "TEMP1__A" FROM (SELECT * FROM "TBL" WHERE RECEIVED_TIMESECONDS >= 1 AND RECEIVED_TIMESECONDS < 2 ORDER BY RECEIVED_TIMESECONDS) timestamp(RECEIVED_TIMESECONDS) SAMPLE BY 1h ALIGN TO CALENDAR ORDER BY RECEIVED_TIMESECONDS')
+      end
+
+      it "checks for data in the received time range" do
+        result = double("result", ntuples: 1)
+        allow(QuestDBClient).to receive(:query_with_retry).and_return(result)
+        expect(QuestDBClient.table_has_data?("TBL", 1, 2, db_shard: 1, time_type: :RECEIVED)).to be true
+        expect(QuestDBClient).to have_received(:query_with_retry).with('SELECT 1 FROM "TBL" WHERE RECEIVED_TIMESECONDS >= 1 AND RECEIVED_TIMESECONDS < 2 LIMIT 1', max_retries: 1, label: "table_has_data", db_shard: 1)
+      end
+
+      it "returns the requested time as __time from item rows" do
+        meta = { item_keys: ['TEMP1'], item_types: [{ 'data_type' => 'FLOAT', 'array_size' => nil }], stored_timestamp_item_keys: {}, calculated_positions: {} }
+        row = [["TEMP1", 1.5], ["PACKET_TIMESECONDS", 100], ["__rx_time_ns", 250], ["COSMOS_EXTRA", nil]]
+        expect(QuestDBClient.decode_item_row(row, [0], meta)['__time']).to eq(100)
+        entry = QuestDBClient.decode_item_row(row, [0], meta, time_type: :RECEIVED)
+        expect(entry['__time']).to eq(250)
+        expect(entry['TEMP1']).to eq(1.5)
+      end
+
+      it "returns the requested time as __time from packet rows" do
+        row = [["TEMP1", 1.5], ["__pkt_time_ns", 100], ["__rx_time_ns", 250]]
+        expect(QuestDBClient.decode_packet_row(row, :RAW, nil)['__time']).to eq(100)
+        entry = QuestDBClient.decode_packet_row(row, :RAW, nil, time_type: :RECEIVED)
+        expect(entry['__time']).to eq(250)
+        # Both timestamps are still returned as items
+        expect(entry['PACKET_TIMESECONDS']).to eq(100 / 1_000_000_000.0)
+        expect(entry['RECEIVED_TIMESECONDS']).to eq(250 / 1_000_000_000.0)
+      end
+
+      it "decodes the received time bucket of reduced rows as __time" do
+        entry = QuestDBClient.decode_reduced_row([["RECEIVED_TIMESECONDS", 60_000_000_000], ["TEMP1__A", 2.0]])
+        expect(entry).to eq({ '__time' => 60_000_000_000, 'TEMP1__A' => 2.0 })
+      end
     end
 
     describe "multiple db_shards" do

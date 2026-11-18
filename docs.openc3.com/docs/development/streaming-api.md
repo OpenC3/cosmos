@@ -97,6 +97,8 @@ The values in the packet name are separated by double underscores, e.g. `<MODE>_
 For Raw mode, VALUE TYPE should be set to RAW or omitted (e.g. TLM\_\_INST\_\_ADCS\_\_RAW or TLM\_\_INST\_\_ADCS).
 start_time and end_time are standard COSMOS 64-bit integer timestamps in nanoseconds since the Unix Epoch (midnight January 1st, 1970). If start_time is null, that indicates to start streaming from the current time in realtime, indefinitely until items are removed, or the subscription is unsubscribed. end_time is ignored if start_time is null. If start_time is given and end_time is null, that indicates to playback from the given starttime and then continue indefinitely in realtime. If both start_time and end_time are given, then that indicates a temporary playback of historical data.
 
+By default start_time and end_time select data by packet time (PACKET_TIMESECONDS). Pass `time_type: 'RECEIVED'` to select data by the time COSMOS received it (RECEIVED_TIMESECONDS) instead, for example when the packet time comes from a simulator running in the past or future. The selected time is also what is returned as `__time`. RECEIVED is not supported for historical RAW packets because the raw log files are organized by packet time.
+
 Data returned by the streaming API is handled by the received callback in Javascript. Data is returned as a JSON Array, with a JSON object in the array for each packet returned. Results are batched, and the current implementation will return up to 100 packets in each batch (the array will have 100 entries). 100 packets per batch is not guaranteed, and batches may take on varying sizes based on the size of the data returned, or other factors. An empty array indicates that all data has been sent for a purely historical query and can be used as an end of data indicator.
 
 For decommutated items, each packet is represented as a JSON object with a 'time' field holding the COSMOS nanosecond timestamp of the packet, and then each of the requested item keys with their corresponding value from the packet.
@@ -454,6 +456,7 @@ class StreamingObject
   attr_reader :id             # String: unique id, e.g. "ITEM__DECOM__TLM__INST__ADCS__Q1__CONVERTED"
   attr_reader :realtime       # Boolean: true if end_time is nil or in the future
   attr_reader :item_key       # String or nil: client-provided key for result mapping
+  attr_reader :time_type      # Symbol: :PACKET or :RECEIVED, which timestamp start_time / end_time apply to
 end
 ```
 
@@ -520,6 +523,7 @@ end
   "token": "<auth_token>",
   "start_time": 1614890937274290500,
   "end_time": 1614891537276524900,
+  "time_type": "PACKET",
   "items": [
     ["DECOM__TLM__INST__ADCS__Q1__CONVERTED", "optional_item_key"],
     ["DECOM__TLM__INST__ADCS__Q2__RAW", null]
@@ -530,6 +534,7 @@ end
 
 - `start_time`: 64-bit nanoseconds from Unix epoch. Omit for realtime-only.
 - `end_time`: 64-bit nanoseconds from Unix epoch. Omit to stream indefinitely.
+- `time_type`: `PACKET` (default) or `RECEIVED`. Selects whether `start_time` and `end_time` apply to the packet time or the received time, and which of them is returned as `__time`. TSDB queries filter on that column, and with `RECEIVED` they also sort by it. `RECEIVED` is not supported for historical `RAW` packets.
 - `items`: Array of `[key, item_key]` pairs. `item_key` is used as the key in result JSON (defaults to key string if null).
 - `packets`: Array of key strings for whole-packet streaming.
 
@@ -620,6 +625,7 @@ ActionCable WebSocket Connection (managed by AnyCable/Rails)
 - Validates that `start_time` is not more than 1 minute in the future.
 - Queries Valkey for the oldest message on the first object's topic.
 - Decision logic:
+  - The oldest time is the packet time, or the received time when `time_type` is `RECEIVED`.
   - If `start_time < oldest_time_in_valkey` → switch to **TSDB** mode (data is too old for Valkey).
   - If `start_time >= oldest_time_in_valkey` → switch to **STREAM** mode (data is in Valkey). Calculates a Valkey stream offset by interpolating between Redis time and packet time.
   - If no data in Valkey → switch to **TSDB** mode.
