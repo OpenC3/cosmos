@@ -212,7 +212,8 @@ const states = Object.entries(LIFECYCLE_STATE_LABELS).map(([value, text]) => ({
   text,
 }))
 
-const keys = (...shortcuts) => shortcuts.map(formatShortcut)
+const keys = (...shortcuts) =>
+  shortcuts.map((shortcut) => formatShortcut(shortcut))
 
 const selectionSections = [
   {
@@ -259,7 +260,7 @@ const selectionSections = [
       },
       {
         name: 'Debug Prompt',
-        text: 'Script > Toggle Debug runs single statements in the running script. Use Up and Down to recall earlier ones.',
+        text: 'The Debug (bug icon) button shows Step, Goto, and a prompt that runs single statements in the running script. Use Up and Down to recall earlier ones.',
       },
     ],
   },

@@ -392,6 +392,7 @@ export default {
         while (next < versions.length && token === this.describeToken) {
           const index = next++
           try {
+            // eslint-disable-next-line no-await-in-loop -- bounded worker pool, sequential per worker by design
             bodies[index] = await this.fetchVersionBody(
               versions[index].version_id,
             )

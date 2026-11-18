@@ -5,7 +5,10 @@ playwright/openc3-cosmos-pw-test/
 *.bundle
 *.gem
 Makefile
-*Gemfile.lock
+# Gemfile.lock is committed for openc3 and the APIs. These are not:
+/Gemfile.lock
+.ruby-lsp/Gemfile.lock
+openc3/test/integration/tsdb/ruby/Gemfile.lock
 package-lock.json
 .yardoc
 .DS_Store
@@ -65,3 +68,6 @@ rubocop-report.json
 
 # Docusaurus build output (docs.openc3.com builds here; deployed by generate-docs.yml)
 /docs/
+
+# TSDB benchmark results (openc3/test/integration/tsdb/python/test_perf_ingest.py)
+openc3/test/integration/tsdb/perf_results.jsonl

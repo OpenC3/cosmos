@@ -17,6 +17,8 @@
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
     "axios": "1.20.0",
+    "dompurify": "3.4.17",
+    "marked": "14.0.0",
     "single-spa-vue": "3.0.1",
     "uplot": "1.6.32"
   },

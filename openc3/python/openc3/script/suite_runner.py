@@ -11,6 +11,9 @@
 
 import inspect
 import re
+from collections.abc import Iterator
+from types import ModuleType
+from typing import Any
 
 from openc3.script.exceptions import StopScriptError
 from openc3.tools.test_runner.test import Test, TestSuite
@@ -20,12 +23,14 @@ from .suite_results import SuiteResults
 
 
 class UnassignedSuite(Suite):
-    """Placeholder for all Groups discovered without assigned Suites"""
+    """Placeholder for all Groups discovered without assigned Suites."""
 
     pass
 
 
 class SuiteRunner:
+    """Build and run the Suites and Groups defined in a suite script."""
+
     # Default suite_runner options shared by all callers so the values stay
     # consistent in one place.
     DEFAULT_METHOD = "start"
@@ -41,20 +46,40 @@ class SuiteRunner:
     settings = {}
     suite_results = None
 
-    # Validate the suite_runner option combinations that don't require the
-    # built suites. Shared by all callers so the contract lives in one place.
-    # Suite/Group existence is checked in execute since it needs the suites.
     @classmethod
-    def validate_options(cls, group=None, script=None):
+    def validate_options(cls, group: Any = None, script: Any = None) -> None:
+        """Validate the suite runner option combinations that don't require the built suites.
+
+        Shared by all callers so the contract lives in one place. Suite and
+        Group existence is checked in `execute` since it needs the suites.
+
+        Args:
+            group: The Group name or class, or None.
+            script: The script method name, or None.
+
+        Raises:
+            ValueError: A script was given without a Group.
+        """
         if script and not group:
             raise ValueError(f"Script {script} requires a Group")
 
-    # Validate that the raw (client supplied) suite_runner values are plain
-    # identifiers. These values are interpolated into the Python snippet the
-    # running script executes, so anything other than a bare class / method
-    # name must be rejected before it reaches the interpreter.
     @classmethod
-    def validate_identifiers(cls, suite, group=None, script=None, method=None):
+    def validate_identifiers(cls, suite: Any, group: Any = None, script: Any = None, method: Any = None) -> None:
+        """Validate that raw (client supplied) suite runner values are plain identifiers.
+
+        These values are interpolated into the Python snippet the running
+        script executes, so anything other than a bare class or method name
+        must be rejected before it reaches the interpreter.
+
+        Args:
+            suite: The Suite class name, optionally module qualified.
+            group: The Group class name, optionally module qualified, or None.
+            script: The script method name, or None.
+            method: The SuiteRunner method to call ("start", "setup" or "teardown"), or None.
+
+        Raises:
+            ValueError: A value is not a string identifier, or method is not allowed.
+        """
         if not isinstance(suite, str) or not cls.CLASS_NAME_REGEX.match(suite):
             raise ValueError(f"Invalid Suite name: {suite!r}")
         if group and (not isinstance(group, str) or not cls.CLASS_NAME_REGEX.match(group)):
@@ -64,11 +89,35 @@ class SuiteRunner:
         if method and method not in cls.ALLOWED_METHODS:
             raise ValueError(f"Invalid method: {method!r}")
 
-    # Build the canonical, validated suite_runner dict from raw values, applying
-    # defaults. Shared so the dict shape, defaults, and validation live in one
-    # place (used by the running script when normalizing a received dict).
     @classmethod
-    def build_options(cls, suite, group=None, script=None, method=None, options=None):
+    def build_options(
+        cls,
+        suite: str,
+        group: str | None = None,
+        script: str | None = None,
+        method: str | None = None,
+        options: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Build the canonical, validated suite runner options from raw values, applying defaults.
+
+        Shared so the dict shape, defaults and validation live in one place
+        (used by the running script when normalizing a received dict).
+
+        Args:
+            suite: The Suite class name, optionally module qualified.
+            group: The Group class name, optionally module qualified, or None.
+            script: The script method name, or None. Requires group.
+            method: The SuiteRunner method to call ("start", "setup" or "teardown").
+                Defaults to "start", and is always "start" when script is given.
+            options: Suite runner options. Defaults to ["continueAfterError"].
+
+        Returns:
+            The suite runner options with the "suite", "method" and "options"
+            keys, plus "group" and "script" when given.
+
+        Raises:
+            ValueError: The values are not valid identifiers or are an invalid combination.
+        """
         cls.validate_options(group=group, script=script)
         cls.validate_identifiers(suite=suite, group=group, script=script, method=method)
         suite_runner = {"suite": suite}
@@ -82,7 +131,27 @@ class SuiteRunner:
         return suite_runner
 
     @classmethod
-    def execute(cls, result_string, suite_class, group_class=None, script=None):
+    def execute(
+        cls,
+        result_string: str,
+        suite_class: type[Suite],
+        group_class: type[Group] | None = None,
+        script: str | None = None,
+    ) -> Iterator[Suite]:
+        """Start the suite results and yield the Suite to run, repeatedly when looping.
+
+        Args:
+            result_string: Description of the run for the results context, e.g. "Manual Setup".
+            suite_class: The Suite class to run.
+            group_class: The Group class to run, or None to run the whole Suite.
+            script: The script method to run, or None to run the whole Group.
+
+        Yields:
+            The Suite instance to run.
+
+        Raises:
+            ValueError: The Suite or Group was not found, or a script was given without a Group.
+        """
         SuiteRunner.suite_results = SuiteResults()
         # Surface invalid suite / group / option combinations rather than
         # silently running nothing or failing with an opaque error. An
@@ -108,7 +177,17 @@ class SuiteRunner:
                 break
 
     @classmethod
-    def start(cls, suite_class, group_class=None, script=None):
+    def start(cls, suite_class: type[Suite], group_class: type[Group] | None = None, script: str | None = None) -> None:
+        """Run a Suite, a Group within it, or a single script method of a Group.
+
+        Args:
+            suite_class: The Suite class to run.
+            group_class: The Group class to run, or None to run the whole Suite.
+            script: The script method to run, or None to run the whole Group.
+
+        Raises:
+            StopScriptError: The run was stopped, or aborted after an error.
+        """
         result = []
         for suite in cls.execute("", suite_class, group_class, script):
             if script:
@@ -128,7 +207,16 @@ class SuiteRunner:
                         raise StopScriptError
 
     @classmethod
-    def setup(cls, suite_class, group_class=None):
+    def setup(cls, suite_class: type[Suite], group_class: type[Group] | None = None) -> None:
+        """Run the setup method of a Suite, or of a Group within it.
+
+        Args:
+            suite_class: The Suite class.
+            group_class: The Group class whose setup to run, or None to run the Suite setup.
+
+        Raises:
+            StopScriptError: The run was stopped.
+        """
         for suite in cls.execute("Manual Setup", suite_class, group_class):
             if group_class:
                 result = suite.run_group_setup(group_class)
@@ -141,7 +229,16 @@ class SuiteRunner:
                     raise StopScriptError
 
     @classmethod
-    def teardown(cls, suite_class, group_class=None):
+    def teardown(cls, suite_class: type[Suite], group_class: type[Group] | None = None) -> None:
+        """Run the teardown method of a Suite, or of a Group within it.
+
+        Args:
+            suite_class: The Suite class.
+            group_class: The Group class whose teardown to run, or None to run the Suite teardown.
+
+        Raises:
+            StopScriptError: The run was stopped.
+        """
         for suite in cls.execute("Manual Teardown", suite_class, group_class):
             if group_class:
                 result = suite.run_group_teardown(group_class)
@@ -153,9 +250,26 @@ class SuiteRunner:
                 if result.stopped:
                     raise StopScriptError
 
-    # Build list of Suites and Groups
     @classmethod
-    def build_suites(cls, from_module=None, from_globals=None):
+    def build_suites(
+        cls, from_module: ModuleType | None = None, from_globals: dict[str, Any] | None = None
+    ) -> dict[str, Any] | str:
+        """Build the list of Suites and Groups defined in a module or globals.
+
+        Groups not assigned to a Suite are added to an UnassignedSuite.
+
+        Args:
+            from_module: Module to search for Suite and Group subclasses.
+            from_globals: Globals dict to search for Suite and Group subclasses.
+
+        Returns:
+            A dict keyed by Suite name describing each Suite's setup, teardown
+            and Groups, or an error string if no Suite or no Group was found.
+
+        Raises:
+            AttributeError: A Suite references a script, setup or teardown
+                method which the Group does not define.
+        """
         SuiteRunner.suites = []
         suites = {}
         groups = []

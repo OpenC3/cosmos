@@ -32,6 +32,7 @@ module OpenC3
       include Extract
       include Api
       include Authorization
+      attr_reader :last_kw_params
       def shutdown
       end
 
@@ -43,6 +44,7 @@ module OpenC3
       end
 
       def method_missing(name, *params, **kw_params)
+        @last_kw_params = kw_params
         self.send(name, *params, **kw_params)
       end
     end
@@ -136,6 +138,20 @@ module OpenC3
               stdout.rewind
               cmd("INST", "ABORT")
               expect(stdout.string).to match(/#{@prefix}cmd\(\"INST ABORT\"\)/) # "
+            end
+          end
+
+          if connect == 'connected'
+            it "sends extra metadata" do
+              extra = { 'flow_uuid' => '1234-5678', 'hv_id' => 42 }
+              capture_io { cmd("INST ABORT", extra: extra) }
+              expect(@api.last_kw_params[:extra]).to eql(extra)
+            end
+
+            it "does not send extra when not given" do
+              # Older servers reject an unknown extra keyword, even when nil
+              capture_io { cmd("INST ABORT") }
+              expect(@api.last_kw_params).not_to have_key(:extra)
             end
           end
 

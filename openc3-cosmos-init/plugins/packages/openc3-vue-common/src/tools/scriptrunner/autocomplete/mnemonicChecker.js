@@ -175,11 +175,41 @@ export default class MnemonicChecker {
     }
   }
 
+  // Fetch (in parallel) any tlm/cmd packet data not yet cached for a target
+  async _loadTargetData(target, lineObjs) {
+    const needed = new Set(
+      lineObjs.map((lineObj) => (lineObj.mnemonic.item ? 'tlm' : 'cmd')),
+    )
+    await Promise.all(
+      [...needed]
+        .filter((cmdOrTlm) => !this.targets[target][cmdOrTlm])
+        .map(async (cmdOrTlm) => {
+          const method = cmdOrTlm === 'tlm' ? 'get_all_tlm' : 'get_all_cmds'
+          const response = await this.api[method](target)
+          this.targets[target][cmdOrTlm] = response.reduce(
+            (result, packetInfo) => {
+              result[packetInfo.packet_name] = packetInfo.items.map(
+                (item) => item.name,
+              )
+              return result
+            },
+            {},
+          )
+        }),
+    )
+  }
+
   async _checkLines(linesToCheck) {
     const problemLines = []
     const targetGroups = groupBy(
       linesToCheck,
       (lineObj) => lineObj.mnemonic.target,
+    )
+    // Load all needed packet data up front so the checks below are synchronous
+    await Promise.all(
+      Object.keys(targetGroups)
+        .filter((target) => this.targets[target])
+        .map((target) => this._loadTargetData(target, targetGroups[target])),
     )
     for (const target in targetGroups) {
       if (!this.targets[target]) {
@@ -198,22 +228,6 @@ export default class MnemonicChecker {
       for (const packet in packetGroups) {
         for (const lineObj of packetGroups[packet]) {
           const cmdOrTlm = lineObj.mnemonic.item ? 'tlm' : 'cmd'
-          if (!this.targets[target][cmdOrTlm]) {
-            const method = lineObj.mnemonic.item
-              ? 'get_all_tlm'
-              : 'get_all_cmds'
-            const response = await this.api[method](target)
-            this.targets[target][cmdOrTlm] = response.reduce(
-              (result, packetInfo) => {
-                result[packetInfo.packet_name] = packetInfo.items.map(
-                  (item) => item.name,
-                )
-                return result
-              },
-              {},
-            )
-          }
-
           const items = this.targets[target][cmdOrTlm][packet]
           if (!items) {
             problemLines.push({

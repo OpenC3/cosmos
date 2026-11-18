@@ -16,7 +16,7 @@ import sys
 import time
 import traceback
 
-from questdb.ingress import IngressError
+from questdb import QuestDBError
 
 from openc3.api.cmd_api import get_cmd
 from openc3.api.tlm_api import get_tlm
@@ -36,8 +36,13 @@ class TsdbMicroservice(Microservice):
     DEFAULT_FLUSH_PERIOD_S = 5.0  # 5 seconds
 
     # QuestDB returns "table does not exist" when QDB_LINE_AUTO_CREATE_NEW_TABLES=false
-    # and an ILP write targets a table we haven't created (e.g. after a DROP from the admin UI).
-    MISSING_TABLE_RE = re.compile(r"table\s+does\s+not\s+exist", re.IGNORECASE)
+    # and a write targets a table we haven't created (e.g. after a DROP from the admin UI).
+    # ILP reports "table does not exist". QWP retries the write, then reports
+    # "... failed to create table update details for: <table>".
+    MISSING_TABLE_RE = re.compile(
+        r"table\s+does\s+not\s+exist|failed\s+to\s+create\s+table\s+update\s+details", re.IGNORECASE
+    )
+    QWP_ERROR_TABLE_NAME_RE = re.compile(r"table\s+update\s+details\s+for:\s*([^\s,;\]]+)", re.IGNORECASE)
     ERROR_TABLE_NAME_RE = re.compile(r"table[=:\s]+(\w+)")
 
     def __init__(self, *args):
@@ -177,7 +182,7 @@ class TsdbMicroservice(Microservice):
                 self.metric.set(name="tsdb_ingest_duration_seconds", value=diff, type="gauge", unit="seconds")
             self.metric.set(name="tsdb_ingest_total", value=self.ingest_count, type="counter")
 
-        except IngressError as error:
+        except QuestDBError as error:
             self._handle_ingress_error(error)
 
     def _handle_ingress_error(self, error):
@@ -186,7 +191,7 @@ class TsdbMicroservice(Microservice):
         self.metric.set(name="tsdb_ingest_error_total", value=self.error_count, type="counter")
         if self.MISSING_TABLE_RE.search(str(error)):
             # Table was dropped (e.g. via admin UI). Recreate with proper COSMOS schema
-            # and replay pending rows. ILP auto-create is disabled to prevent QuestDB
+            # and replay pending rows. Table auto-create is disabled to prevent QuestDB
             # from creating a schema-less table with the wrong designated TIMESTAMP.
             self._handle_missing_table(error)
         else:
@@ -194,11 +199,11 @@ class TsdbMicroservice(Microservice):
             self.questdb.handle_ingress_error(error)
 
     def _handle_missing_table(self, error):
-        """Recreate a table that ILP rejected because it does not exist."""
+        """Recreate a table that a write was rejected for because it does not exist."""
         error_message = str(error)
-        self.logger.warn(f"QuestDB: Missing table IngressError: {error_message}")
+        self.logger.warn(f"QuestDB: Missing table error: {error_message}")
 
-        match = self.ERROR_TABLE_NAME_RE.search(error_message)
+        match = self.QWP_ERROR_TABLE_NAME_RE.search(error_message) or self.ERROR_TABLE_NAME_RE.search(error_message)
         if not match:
             self.logger.error(f"QuestDB: Could not parse table name from error: {error_message}")
             self._reset_after_error()
@@ -235,7 +240,7 @@ class TsdbMicroservice(Microservice):
             self._reset_after_error()
 
     def _reset_after_error(self):
-        """Discard pending rows and reopen the ILP sender."""
+        """Discard pending rows and reopen the ingest sender."""
         self.questdb.pending_rows.clear()
         try:
             self.questdb.connect_ingest()
@@ -260,8 +265,8 @@ class TsdbMicroservice(Microservice):
             self.next_flush_time_s = now + self.flush_period_s
             try:
                 self.questdb.flush()
-            except IngressError as error:
-                # Server-side ILP errors (cast mismatch, missing table) surface at flush,
+            except QuestDBError as error:
+                # Server-side errors (cast mismatch, missing table) surface at flush,
                 # so route them through the same recovery paths as read_topics
                 self._handle_ingress_error(error)
             diff = time.time() - now  # seconds as a float
@@ -294,8 +299,8 @@ class TsdbMicroservice(Microservice):
         super().shutdown()
         try:
             self.questdb.flush()
-        except IngressError as error:
-            # Server-side ILP errors (cast mismatch, missing table) surface at flush,
+        except QuestDBError as error:
+            # Server-side errors (cast mismatch, missing table) surface at flush,
             # so route them through the same recovery paths as read_topics
             self._handle_ingress_error(error)
         self.questdb.close()
