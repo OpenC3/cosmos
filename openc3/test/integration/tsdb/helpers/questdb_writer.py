@@ -280,6 +280,8 @@ def cmd_write_multi(args):
     Accepts a JSON spec describing multiple tables, each with rows at specific
     millisecond offsets from a common base timestamp. Used for testing multi-table
     k-way merge streaming. A table may set "db_shard" to write it to that db_shard.
+    A row may set "rx_time_ns" to an absolute received time, otherwise the received
+    time equals the packet time.
     """
     spec = json.loads(args.spec)
     clients = {}  # db_shard => client
@@ -331,6 +333,7 @@ def cmd_write_multi(args):
         # Write rows at precise offsets
         rows = table_spec["rows"]
         timestamps_ns = []
+        rx_timestamps_ns = []
         expected_values = []
 
         for i, row in enumerate(rows):
@@ -356,7 +359,9 @@ def cmd_write_multi(args):
             if cosmos_extra:
                 columns["COSMOS_EXTRA"] = cosmos_extra
 
-            client.write_row(table_name, columns, row_ts, rx_timestamp_ns=row_ts)
+            rx_ts = row.get("rx_time_ns", row_ts)
+            rx_timestamps_ns.append(rx_ts)
+            client.write_row(table_name, columns, row_ts, rx_timestamp_ns=rx_ts)
 
         tables_result.append(
             {
@@ -368,6 +373,7 @@ def cmd_write_multi(args):
                 "packet_def": packet_def,
                 "expected_values": expected_values,
                 "timestamps_ns": timestamps_ns,
+                "rx_timestamps_ns": rx_timestamps_ns,
                 "row_count": len(rows),
             }
         )

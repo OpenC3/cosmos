@@ -1564,6 +1564,58 @@ RSpec.describe StreamingApi, type: :model do
       expect(entries).to include(a_hash_including('__time' => 200, 'RX' => 5))
     end
 
+    it 'keeps PACKET ids unchanged and prefixes other time types' do
+      packet = StreamingObject.new(item_key, nil, nil, item_key: item_key, scope: 'DEFAULT')
+      received = StreamingObject.new(item_key, nil, nil, item_key: item_key, scope: 'DEFAULT', time_type: :RECEIVED)
+      expect(packet.id).to eq("ITEM__#{item_key}__#{item_key}__#{item_key}")
+      expect(received.id).to eq("RECEIVED__#{packet.id}")
+    end
+
+    context 'subscribing to the same item with both time types' do
+      def realtime_ids
+        @api.instance_variable_get(:@realtime_thread).instance_variable_get(:@collection).objects.map(&:id).sort
+      end
+
+      before(:each) do
+        msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 100, 'received_time' => 200,
+          'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
+        allow(OpenC3::EphemeralStore.instance).to receive(:read_topics) do |topics, &block|
+          sleep 0.1
+          block.call(topics[0], "1-0", msg, nil) if @messages.empty?
+          {}
+        end
+        @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT' })
+        @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+      end
+
+      it 'streams both instead of dropping the second' do
+        start = Time.now
+        sleep 0.05 while @messages.empty? and (Time.now - start) < 3
+        entries = @messages.flatten
+        expect(entries).to include(a_hash_including('__time' => 100, item_key => 5))
+        expect(entries).to include(a_hash_including('__time' => 200, item_key => 5))
+      end
+
+      it 'removes only the given time_type' do
+        @api.remove({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+        expect(realtime_ids).to eq(["ITEM__#{item_key}__#{item_key}__#{item_key}"])
+      end
+
+      it 'removes every time_type when none is given' do
+        @api.remove({ 'items' => [item_key], 'scope' => 'DEFAULT' })
+        expect(@api.instance_variable_get(:@realtime_thread).instance_variable_get(:@collection).objects).to be_empty
+      end
+
+      it 'removes a packet subscription by time_type' do
+        packet_key = 'DECOM__TLM__INST__PARAMS__CONVERTED'
+        @api.add({ 'packets' => [packet_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+        @api.add({ 'packets' => [packet_key], 'scope' => 'DEFAULT' })
+        @api.remove({ 'packets' => [packet_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED' })
+        expect(realtime_ids).to include("PACKET__#{packet_key}")
+        expect(realtime_ids).to_not include("RECEIVED__PACKET__#{packet_key}")
+      end
+    end
+
     describe 'LoggedStreamingThread setup' do
       # Packet times a day in the future, as from a simulator, received over the last 100s
       let(:oldest_msg) { { 'time' => (@start_time.to_i + 86_400) * 1_000_000_000, 'received_time' => (@start_time.to_i - 100) * 1_000_000_000 } }

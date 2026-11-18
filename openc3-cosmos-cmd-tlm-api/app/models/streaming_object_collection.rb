@@ -67,7 +67,7 @@ class StreamingObjectCollection
         # An explicit item_key that wasn't found exactly must also match on item_key
         # so an unknown [key, item_key] pair can't remove other subscriptions
         @objects.select do |obj|
-          obj.item_key and obj.source_key == object.source_key and (key_only or obj.item_key == object.item_key)
+          obj.item_key and obj.time_type == object.time_type and obj.source_key == object.source_key and (key_only or obj.item_key == object.item_key)
         end.each do |obj|
           _remove_found(obj)
         end

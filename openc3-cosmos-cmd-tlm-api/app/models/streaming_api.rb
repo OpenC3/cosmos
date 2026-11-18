@@ -261,6 +261,8 @@ class StreamingApi
   # data format:
   # scope: scope name
   # token: authorization token
+  # time_type: PACKET or RECEIVED - Only remove subscriptions added with this time_type.
+  #   If not present remove the subscriptions for every time_type.
   # items: [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE ]
   #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
   #   CMDORTLM - CMD or TLM
@@ -285,17 +287,21 @@ class StreamingApi
     # Expand glob patterns in item keys before building the collection
     expand_item_globs(data, scope: scope)
 
+    time_types = data["time_type"] ? [StreamingObject.parse_time_type(data["time_type"])] : StreamingObject::TIME_TYPES
+
     # Build the collection of streaming objects for this request
     collection = StreamingObjectCollection.new
-    if data["items"]
-      build_item_collection(collection, data, scope: scope, token: token)
-    end
-    if data["packets"]
-      data["packets"].each do |key|
-        begin
-          collection.add(StreamingObject.new(key, nil, nil, scope: scope, token: token))
-        rescue OpenC3::AuthError, OpenC3::ForbiddenError
-          OpenC3::Logger.info("Skipping unauthorized packet: #{key}")
+    time_types.each do |time_type|
+      if data["items"]
+        build_item_collection(collection, data, scope: scope, token: token, time_type: time_type)
+      end
+      if data["packets"]
+        data["packets"].each do |key|
+          begin
+            collection.add(StreamingObject.new(key, nil, nil, scope: scope, token: token, time_type: time_type))
+          rescue OpenC3::AuthError, OpenC3::ForbiddenError
+            OpenC3::Logger.info("Skipping unauthorized packet: #{key}")
+          end
         end
       end
     end

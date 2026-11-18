@@ -33,9 +33,11 @@ require 'logged_streaming_thread'
 class MockStreamingObject
   attr_accessor :key, :target_name, :packet_name, :item_name, :value_type
   attr_accessor :start_time, :end_time, :offset, :item_key, :topic, :stream_mode, :cmd_or_tlm
+  attr_accessor :reduced_type, :time_type
 
-  def initialize(target:, packet:, item: nil, value_type: :RAW, start_time: nil, end_time: nil, cmd_or_tlm: :TLM)
+  def initialize(target:, packet:, item: nil, value_type: :RAW, start_time: nil, end_time: nil, cmd_or_tlm: :TLM, time_type: :PACKET)
     @target_name = target
+    @time_type = time_type
     @packet_name = packet
     @item_name = item
     @value_type = value_type
@@ -1428,6 +1430,124 @@ RSpec.describe LoggedStreamingThread, :questdb do
         expect(results[i]).not_to have_key(raw_key), "Table B result at #{i} should not have Table A's RAW key"
         expect(results[i]).not_to have_key(ts_key), "Table B result at #{i} should not have Table A's TIMESECONDS key"
       end
+    end
+  end
+  describe 'Received time streaming' do
+    # Received times a day before now with sub-microsecond nanoseconds, so a
+    # received time rounded to microseconds anywhere along the way fails the
+    # exact __time comparisons. Packet times are around now.
+    let(:rx_base) { ((Time.now.to_i - 86_400) * 1_000_000_000) + 123_456_789 }
+
+    def rx_objects(test_params, start_time:, end_time:, time_type: :RECEIVED)
+      test_params['tables'].map do |table_info|
+        allow(OpenC3::TargetModel).to receive(:packet)
+          .with(table_info['target_name'], table_info['packet_name'], hash_including(type: :TLM))
+          .and_return(table_info['packet_def'])
+        MockStreamingObject.new(target: table_info['target_name'], packet: table_info['packet_name'], item: 'VALUE',
+          start_time: start_time, end_time: end_time, time_type: time_type)
+      end
+    end
+
+    def stream(objects)
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) do |_api, items, **_kwargs|
+        items
+      end
+      objects_by_topic = objects.group_by(&:topic)
+      create_thread(objects).send(:stream_items, objects_by_topic, objects_by_topic.keys, objects.map(&:offset))
+      streaming_api.transmitted_results.dup
+    end
+
+    it 'filters, merges and orders items by received time with nanosecond __time' do
+      spec = {
+        'tables' => [
+          # Received in the reverse of packet order
+          {
+            'target' => 'RXTIME', 'packet' => 'PKT_A', 'data_type' => 'INT', 'bit_size' => 32,
+            'rows' => [
+              { 'offset_ms' => 0, 'rx_time_ns' => rx_base + 4_000_000_000, 'values' => { 'VALUE' => 1 } },
+              { 'offset_ms' => 1000, 'rx_time_ns' => rx_base + 2_000_000_000, 'values' => { 'VALUE' => 2 } },
+              { 'offset_ms' => 2000, 'rx_time_ns' => rx_base, 'values' => { 'VALUE' => 3 } }
+            ]
+          },
+          {
+            'target' => 'RXTIME', 'packet' => 'PKT_B', 'data_type' => 'INT', 'bit_size' => 32,
+            'rows' => [
+              { 'offset_ms' => 500, 'rx_time_ns' => rx_base + 1_000_000_000, 'values' => { 'VALUE' => 10 } },
+              { 'offset_ms' => 1500, 'rx_time_ns' => rx_base + 3_000_000_000, 'values' => { 'VALUE' => 20 } },
+              { 'offset_ms' => 2500, 'rx_time_ns' => rx_base + 5_000_000_000, 'values' => { 'VALUE' => 30 } }
+            ]
+          }
+        ]
+      }
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      window = { start_time: rx_base, end_time: rx_base + 6_000_000_000 }
+      objects = rx_objects(test_params, **window)
+      results = stream(objects)
+
+      expect(results.map { |r| r['__time'] }).to eq((0..5).map { |i| rx_base + (i * 1_000_000_000) })
+      values = results.map { |r| r[objects[0].item_key] || r[objects[1].item_key] }
+      expect(values).to eq([3, 10, 2, 20, 1, 30])
+
+      # The same window selects nothing by packet time
+      streaming_api.clear
+      expect(stream(rx_objects(test_params, **window, time_type: :PACKET))).to be_empty
+    end
+
+    it 'samples reduced items into received time buckets' do
+      minute = ((rx_base / 60_000_000_000) * 60_000_000_000) - 120_000_000_000 # A whole minute before rx_base
+      spec = {
+        'tables' => [
+          {
+            'target' => 'RXTIME', 'packet' => 'REDUCED', 'data_type' => 'INT', 'bit_size' => 32,
+            'rows' => [
+              { 'offset_ms' => 0, 'rx_time_ns' => minute + 10_000_000_000, 'values' => { 'VALUE' => 1 } },
+              { 'offset_ms' => 1000, 'rx_time_ns' => minute + 20_000_000_000, 'values' => { 'VALUE' => 3 } },
+              { 'offset_ms' => 2000, 'rx_time_ns' => minute + 70_000_000_000, 'values' => { 'VALUE' => 5 } }
+            ]
+          }
+        ]
+      }
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+
+      obj = rx_objects(test_params, start_time: minute, end_time: minute + 120_000_000_000)[0]
+      obj.stream_mode = :REDUCED_MINUTE
+      obj.reduced_type = :AVG
+      create_thread([obj]).send(:stream_reduced_items, { obj.topic => [obj] })
+
+      results = streaming_api.transmitted_results
+      expect(results.map { |r| r['__time'] }).to eq([minute, minute + 60_000_000_000])
+      expect(results.map { |r| r[obj.item_key] }).to eq([2.0, 5.0])
+    end
+
+    it 'streams decom packets by received time' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'RXTIME', 'packet' => 'PACKETS', 'data_type' => 'INT', 'bit_size' => 32,
+            'rows' => [
+              { 'offset_ms' => 0, 'rx_time_ns' => rx_base + 2_000_000_000, 'values' => { 'VALUE' => 1 } },
+              { 'offset_ms' => 1000, 'rx_time_ns' => rx_base, 'values' => { 'VALUE' => 2 } }
+            ]
+          }
+        ]
+      }
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+      table_info = test_params['tables'][0]
+
+      obj = rx_objects(test_params, start_time: rx_base, end_time: rx_base + 3_000_000_000)[0]
+      obj.item_name = nil
+      create_thread([obj]).send(:stream_decom_packets_from_tsdb, { obj.topic => [obj] })
+
+      results = streaming_api.transmitted_results
+      expect(results.map { |r| r['__time'] }).to eq([rx_base, rx_base + 2_000_000_000])
+      expect(results.map { |r| r['VALUE'] }).to eq([2, 1])
+      # Both timestamps are still returned as items
+      expect(results[0]['RECEIVED_TIMESECONDS']).to be_within(0.000001).of(rx_base / 1_000_000_000.0)
+      expect(results[0]['PACKET_TIMESECONDS']).to be_within(0.000001).of(table_info['timestamps_ns'][1] / 1_000_000_000.0)
     end
   end
 end

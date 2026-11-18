@@ -693,6 +693,35 @@ class TestTimestampItemsRoundtrip:
             "formatted",
         )
 
+    def test_received_timestamp_keeps_nanoseconds(
+        self, questdb_client, clean_table, wait_for_data
+    ):
+        """RECEIVED_TIMESECONDS is stored with the same nanoseconds as PACKET_TIMESECONDS.
+
+        Received time streaming matches TSDB rows to Valkey messages by this
+        value, so rounding it to microseconds replays rows.
+        """
+        target_name = "ROUNDTRIP"
+        packet_name = "RX_NANOS"
+        table_name, _ = QuestDBClient.sanitize_table_name(target_name, packet_name)
+        clean_table(table_name)
+
+        packet_def = {"items": [{"name": "VALUE", "data_type": "INT", "bit_size": 32}]}
+        questdb_client.create_table(target_name, packet_name, packet_def)
+
+        packet_ts = int(time.time()) * 1_000_000_000 + 123_456_789
+        rx_ts = packet_ts + 987_654_321
+        columns = questdb_client.process_json_data({"VALUE": 1}, table_name)
+        questdb_client.write_row(table_name, columns, packet_ts, rx_timestamp_ns=rx_ts)
+        questdb_client.flush()
+        assert wait_for_data(questdb_client, table_name, 1) == 1
+
+        with questdb_client.query.cursor() as cur:
+            cur.execute(
+                f'SELECT CAST(PACKET_TIMESECONDS AS LONG), CAST(RECEIVED_TIMESECONDS AS LONG) FROM "{table_name}"'
+            )
+            assert cur.fetchone() == (packet_ts, rx_ts)
+
     def test_timestamp_items_with_regular_items(
         self, questdb_client, clean_table, wait_for_data
     ):
