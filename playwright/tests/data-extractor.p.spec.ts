@@ -449,62 +449,7 @@ test('extracts by packet time or received time', async ({ page, utils }) => {
   const receivedTime = new Date('2021-02-03T04:05:06Z')
   const offset = 1571 // OFFSET value which identifies the injected packet
 
-  const api = (method: string, params: any[], keywordParams = {}) =>
-    page.evaluate(
-      async ({ method, params, keywordParams }) => {
-        const response = await fetch('/openc3-api/api', {
-          method: 'POST',
-          headers: {
-            Authorization: localStorage.openc3Token,
-            'Content-Type': 'application/json-rpc',
-            manual: 'true',
-          },
-          body: JSON.stringify({
-            jsonrpc: '2.0',
-            method,
-            params,
-            id: 1,
-            keyword_params: { scope: 'DEFAULT', ...keywordParams },
-          }),
-        })
-        return response.json()
-      },
-      { method, params, keywordParams },
-    )
-
-  const injected = await api(
-    'inject_tlm',
-    [
-      'INST',
-      'MEMDUMP',
-      { TIMESEC: packetTime.getTime() / 1000, TIMEUS: 0, OFFSET: offset },
-    ],
-    {
-      type: 'RAW',
-      stored: true,
-      received_time: receivedTime.getTime() * 1_000_000, // nanoseconds
-    },
-  )
-  expect(injected.error).toBeUndefined()
-
-  // The TSDB microservice flushes periodically so wait for the row to land
-  const packetRange = {
-    start_time: sub(packetTime, { seconds: 1 }).toISOString(),
-    end_time: add(packetTime, { seconds: 1 }).toISOString(),
-  }
-  await expect
-    .poll(
-      async () =>
-        JSON.stringify(
-          await api(
-            'get_tlm_values',
-            [['INST__MEMDUMP__OFFSET__RAW']],
-            packetRange,
-          ),
-        ),
-      { timeout: 30000 },
-    )
-    .toContain(`${offset}`)
+  await utils.injectReceivedTimeMemdump(offset, packetTime, receivedTime)
 
   // Times are entered in local time like the rest of these tests
   const setRange = async (time: Date) => {

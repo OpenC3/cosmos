@@ -55,6 +55,8 @@ Editing an individual graph by clicking the pencil icon in title bar of the grap
 
 Editing the Start Date and Start Time will re-query the data to begin at the specified time. This operation can take several seconds depending on how far back data is requested. Similarly, specifying the End Date and End Time will limit the data request to the specified time. Leaving the End Date / End Time fields blank will cause Telemetry Grapher to continue to graph items in real-time as they arrive.
 
+By default each graph uses packet time, which is the time stored in the packet (or the time COSMOS received it if the packet has no time item), and labels the time axis Packet Time. Choose Received Time to graph by the time COSMOS received each packet instead. The start and end times then select data by received time and the time axis, labeled Received Time, plots the received time. This is useful when the packet times don't match the COSMOS clock, for example when testing against a simulator whose time is in the past or the future. The selection is saved with the configuration.
+
 Changing the Min Y and Max Y values simply sets the graph scale. Deleting the Min Y and Max Y values allows the graph to scale automatically as values arrive. Compare the following graph with the minimum set to 0 and the maximum set to 100 with the first graph image (auto-scale).
 
 ![Min Max](/img/telemetry_grapher/graph_min_max.png)

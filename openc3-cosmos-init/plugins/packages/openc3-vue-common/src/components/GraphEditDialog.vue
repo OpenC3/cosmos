@@ -56,6 +56,28 @@
             </v-row>
           </div>
           <div class="edit-box">
+            <v-card-text class="pa-0">
+              Graph by the time the packet was created or the time COSMOS
+              received it. Applies to the start / end times and the time axis.
+            </v-card-text>
+            <v-radio-group
+              v-model="graph.timeType"
+              inline
+              hide-details
+              class="mb-2"
+              data-test="time-type"
+            >
+              <v-radio
+                label="Packet Time"
+                value="PACKET"
+                data-test="packet-time-radio"
+              />
+              <v-radio
+                label="Received Time"
+                value="RECEIVED"
+                data-test="received-time-radio"
+              />
+            </v-radio-group>
             <v-card-text class="pa-0 d-flex align-center">
               <span>
                 Select a start date/time for the graph. Leave blank to start at
@@ -360,6 +382,10 @@ export default {
       type: Number,
       default: null,
     },
+    timeType: {
+      type: String,
+      default: 'PACKET',
+    },
     timeZone: {
       type: String,
       required: true,
@@ -500,6 +526,7 @@ export default {
       graphMaxX: this.graphMaxX,
       drawStyle: this.drawStyle,
       lines: [...this.lines],
+      timeType: this.timeType,
     }
     this.selectedDrawStyle = this.drawStyle
     this.customXAxisEnabled = this.xAxisItem && this.xAxisItem !== '__time'

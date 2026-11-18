@@ -175,6 +175,7 @@
       :colors="colors"
       :start-date-time="graphStartDateTime"
       :end-date-time="graphEndDateTime"
+      :time-type="timeType"
       :time-zone="timeZone"
       :x-axis-item-packet="allowableXAxisItemPacket"
       :x-axis-is-time="xAxisIsTime"
@@ -492,6 +493,8 @@ export default {
       graphMaxX: null,
       graphStartDateTime: null,
       graphEndDateTime: null,
+      // 'PACKET' or 'RECEIVED': which time selects the data and is graphed as __time
+      timeType: 'PACKET',
       xAxisItem: this.initialXAxisItem, // '__time' or something like 'DECOM__TLM__INST__ADCS__RECEIVED_COUNT__CONVERTED'
       drawStyle: 'lines', // 'lines' or 'points'
       indexes: {},
@@ -604,7 +607,17 @@ export default {
       }
     },
     xAxisLabel: function () {
-      return this.xAxisIsTime ? 'Time' : this.actualXAxisItem.split('__').at(-2)
+      if (this.xAxisIsDefault) {
+        return this.timeType === 'RECEIVED' ? 'Received Time' : 'Packet Time'
+      }
+      // A custom x axis item can be one of the times too
+      switch (this.actualXAxisItem.split('__').at(4)) {
+        case 'PACKET_TIMESECONDS':
+          return 'Packet Time'
+        case 'RECEIVED_TIMESECONDS':
+          return 'Received Time'
+      }
+      return this.actualXAxisItem.split('__').at(-2)
     },
     xAxisIsDefault: function () {
       return this.actualXAxisItem === DEFAULT_X_AXIS_ITEM
@@ -1158,6 +1171,11 @@ export default {
         )
       }
       this.addItems(clonedItems)
+      // The legend placement lives on the uPlot root we just replaced
+      this.moveLegend(this.legendPosition)
+      if (this.legendHidden) {
+        this.applyHideLegend(true)
+      }
       this.startRealtimeScrolling()
       // Don't need to $emit('edit') because addItems() does that
     },
@@ -1499,10 +1517,13 @@ export default {
       this.graphEndDateTime = graph.endDateTime
       // Allow the watch to update needToUpdate
       this.$nextTick(() => {
+        // Changing the time type rebuilds the chart which resubscribes with
+        // the new start / end times as well, so don't do that twice below
+        const timeTypeChanged = this.setTimeType(graph.timeType)
         if (this.needToUpdate) {
           if (this.subscription == null) {
             this.startGraph()
-          } else {
+          } else if (!timeTypeChanged) {
             // NOTE: removing and adding back to back broke the streaming_api
             // because the messages got out of order (add before remove)
             // Code in openc3-cosmos-cmd-tlm-api/app/channels/application_cable/channel.rb
@@ -1519,6 +1540,25 @@ export default {
       })
       this.moveLegend(this.legendPosition)
       this.$emit('edit')
+    },
+    // Returns whether the time type changed
+    setTimeType: function (timeType = 'PACKET') {
+      if (timeType === this.timeType) {
+        return false
+      }
+      this.timeType = timeType
+      if (this.graph) {
+        // The axis label and every point graphed so far depend on the time type
+        // so rebuild, which also resubscribes all the items with the new type.
+        // removeItems only unsubscribes the graphed items so also drop a
+        // custom x axis item or it keeps streaming with the old type.
+        this.pendingData = []
+        if (!this.xAxisIsDefault) {
+          this.removeItemsFromSubscription([this.actualXAxisItem])
+        }
+        this.rebuildChart()
+      }
+      return true
     },
     resize: function () {
       if (!this.graph) return
@@ -2048,6 +2088,7 @@ export default {
               items: items,
               start_time: theStartTime,
               end_time: this.graphEndDateTime,
+              time_type: this.timeType,
               // Ask to be told when realtime streaming skips data
               notices: true,
             })
