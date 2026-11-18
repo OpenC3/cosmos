@@ -16,19 +16,19 @@
     "@fontsource/ibm-plex-sans": "5.3.0",
     "@openc3/js-common": "workspace:*",
     "@openc3/vue-common": "workspace:*",
-    "axios": "1.20.0",
-    "dompurify": "3.4.17",
+    "axios": "1.21.1",
+    "dompurify": "3.4.18",
     "marked": "14.0.0",
     "single-spa-vue": "3.0.1",
     "uplot": "1.6.32"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "6.0.10",
-    "prettier": "3.9.10",
+    "@vitejs/plugin-vue": "6.0.11",
+    "prettier": "3.10.1",
     "rollup-plugin-sourcemaps2": "^0.5.10",
-    "sass": "1.106.1",
+    "sass": "1.108.2",
     "vite": "7.3.7",
-    "vitest": "5.0.4",
+    "vitest": "5.1.0",
     "vue": "3.5.44"
   }
 }
