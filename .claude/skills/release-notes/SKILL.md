@@ -18,11 +18,16 @@ that needs the user's go-ahead.
 From `$ARGUMENTS` or the user:
 
 - **Version**: e.g. `7.6.0`. The tag is `v7.6.0`.
-- **Previous version**: if not given, use the latest published release in
-  `gh release list -R OpenC3/cosmos`. If that release's body starts with
+- **Previous version**: if not given, use the newest published release in
+  `gh release list -R OpenC3/cosmos` that is older than the requested version
+  (when updating the notes for an existing v7.6.0, that is the release before
+  v7.6.0, not v7.6.0 itself). If that release's body starts with
   `# Incomplete Release`, use the release before it (7.5.1 was compared against
   7.4.1, not 7.5.0). State which previous version you used.
-- **Target**: if the new tag doesn't exist yet (`gh api repos/OpenC3/cosmos/git/ref/tags/v7.6.0` 404s), pass `--target main` to the script.
+- **Target**: check each repo separately before collecting from it. If the new
+  tag doesn't exist in that repo yet (`gh api repos/OpenC3/<repo>/git/ref/tags/v7.6.0`
+  404s), pass `--target main` to the script for that repo. Core may be tagged
+  while Enterprise is not.
 
 Work in a scratch directory (`$OUT` below), not in the repo.
 
@@ -164,6 +169,9 @@ headings to "What's Changed in Core", "New Core Contributors", and "Full Core
 Changelog". If it prints a warning about leftover refs, fix them by hand.
 
 ### Collect Enterprise PRs
+
+Check whether the tag exists in `OpenC3/cosmos-enterprise` first (see **Target**
+above). Don't reuse the Core answer.
 
 ```bash
 python3 .claude/skills/release-notes/scripts/collect_prs.py \

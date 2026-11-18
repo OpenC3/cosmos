@@ -35,7 +35,7 @@ BODY_EXCERPT_CHARS = 1500
 
 
 def gh(*args, input_text=None):
-    result = subprocess.run(["gh", *args], input=input_text, capture_output=True, text=True)
+    result = subprocess.run(["gh", *args], input=input_text, capture_output=True, encoding="utf-8")
     if result.returncode != 0:
         sys.exit(f"gh {' '.join(args)} failed:\n{result.stderr}")
     return result.stdout
@@ -86,7 +86,7 @@ def main():
 
     prefix = f"{args.out}/{args.repo.split('/')[1]}"
     generated = generate_notes(args.repo, args.tag, args.previous, args.target)
-    with open(f"{prefix}-generated.md", "w") as f:
+    with open(f"{prefix}-generated.md", "w", encoding="utf-8") as f:
         f.write(generated)
 
     pr_url = re.compile(rf"https://github\.com/{re.escape(args.repo)}/pull/(\d+)")
@@ -115,7 +115,7 @@ def main():
             lines.append("body: " + (excerpt or "(empty)"))
         lines.append("")
 
-    with open(f"{prefix}-prs.md", "w") as f:
+    with open(f"{prefix}-prs.md", "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     print(f"{len(numbers)} PRs ({with_notes} with a Release notes section)")
     print(f"wrote {prefix}-generated.md and {prefix}-prs.md")

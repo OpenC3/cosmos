@@ -38,7 +38,7 @@ def strip_refs(text):
 
 
 def main():
-    core = open(sys.argv[1]).read() if len(sys.argv) > 1 else sys.stdin.read()
+    core = open(sys.argv[1], encoding="utf-8").read() if len(sys.argv) > 1 else sys.stdin.read()
     match = WHATS_CHANGED.search(core)
     curated, generated = (core[: match.start()], core[match.start() :]) if match else (core, "")
 
