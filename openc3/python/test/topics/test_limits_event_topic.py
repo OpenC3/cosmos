@@ -239,6 +239,49 @@ class TestLimitsEventTopic(unittest.TestCase):
             },
         )
 
+    def test_clears_the_current_limits_state_of_items_a_limits_enable_state_event_disables(self):
+        # After a decom restart the item has no local state so disabling it can't publish a
+        # LIMITS_CHANGE, while current_limits still holds the state from before the restart
+        Store.hset("DEFAULT__current_limits", "TGT1__PKT1__ITEM1", "RED_LOW")
+        Store.hset("DEFAULT__current_limits", "TGT1__PKT1__ITEM2", "RED_LOW")
+        event = {
+            "type": "LIMITS_ENABLE_STATE",
+            "target_name": "TGT1",
+            "packet_name": "PKT1",
+            "item_name": "ITEM1",
+            "enabled": True,
+            "time_nsec": 123456789,
+            "message": "test",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM1"), b"RED_LOW")
+        event["enabled"] = False
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM1"), b"")
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM2"), b"RED_LOW")
+
+    def test_clears_the_current_limits_state_of_items_a_limits_group_enable_state_event_disables(self):
+        Store.hset(
+            "DEFAULT__limits_groups", "GROUP", json.dumps([["TGT1", "PKT1", "ITEM1"], ["TGT2", "PKT1", "ITEM1"]])
+        )
+        Store.hset("DEFAULT__current_limits", "TGT1__PKT1__ITEM1", "RED_LOW")
+        Store.hset("DEFAULT__current_limits", "TGT2__PKT1__ITEM1", "YELLOW_HIGH")
+        Store.hset("DEFAULT__current_limits", "TGT1__PKT1__ITEM2", "RED_LOW")
+        event = {
+            "type": "LIMITS_GROUP_ENABLE_STATE",
+            "group_name": "GROUP",
+            "enabled": True,
+            "time_nsec": 123456789,
+            "message": "test",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM1"), b"RED_LOW")
+        event["enabled"] = False
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM1"), b"")
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "TGT2__PKT1__ITEM1"), b"")
+        self.assertEqual(Store.hget("DEFAULT__current_limits", "TGT1__PKT1__ITEM2"), b"RED_LOW")
+
     def test_writes_and_reads_limits_set(self):
         set = LimitsEventTopic.current_set(scope="DEFAULT")
         self.assertEqual(set, "DEFAULT")
@@ -695,3 +738,41 @@ class TestLimitsEventTopicMultipleDbShards(unittest.TestCase):
         self.assertEqual(shard_redis(0).xlen("DEFAULT__openc3_limits_events"), 1)
         self.assertEqual(shard_redis(1).xlen("DEFAULT__openc3_limits_events"), 1)
         self.assertFalse(shard_redis(2).exists("DEFAULT__openc3_limits_events"))
+
+    def test_only_uses_the_db_shards_cache_for_limits_change_events(self):
+        self.assertEqual(LimitsEventTopic._active_db_shards("DEFAULT"), {0, 1})  # Fills the cache
+        # Another process installs a target on a new db_shard, which can't clear this process's cache
+        Store.instance(db_shard=0).hset(
+            "DEFAULT__openc3_targets", "INST2", json.dumps({"name": "INST2", "db_shard": 2})
+        )
+
+        change = {
+            "type": "LIMITS_CHANGE",
+            "target_name": "INST",
+            "packet_name": "HEALTH_STATUS",
+            "item_name": "TEMP1",
+            "old_limits_state": "GREEN",
+            "new_limits_state": "RED_HIGH",
+            "time_nsec": 123456789,
+            "message": "test change",
+        }
+        LimitsEventTopic.write(change, scope="DEFAULT")
+        self.assertFalse(shard_redis(2).exists("DEFAULT__openc3_limits_events"))  # Cached
+
+        # Events that change decom limits must reach the decom on the new db_shard
+        enable = {
+            "type": "LIMITS_ENABLE_STATE",
+            "target_name": "INST",
+            "packet_name": "HEALTH_STATUS",
+            "item_name": "TEMP1",
+            "enabled": False,
+            "time_nsec": 123456789,
+            "message": "test enable",
+        }
+        LimitsEventTopic.write(enable, scope="DEFAULT")
+        self.assertEqual(shard_redis(2).xlen("DEFAULT__openc3_limits_events"), 1)
+
+        # The lookup refreshed the cache for later LIMITS_CHANGE events
+        LimitsEventTopic.write(change, scope="DEFAULT")
+        self.assertEqual(shard_redis(2).xlen("DEFAULT__openc3_limits_events"), 2)
+        self.assertEqual(shard_redis(0).xlen("DEFAULT__openc3_limits_events"), 3)
