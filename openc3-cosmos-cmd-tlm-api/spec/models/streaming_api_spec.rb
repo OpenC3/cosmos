@@ -762,7 +762,7 @@ RSpec.describe StreamingApi, type: :model do
         data['end_time'] = (@start_time.to_i + 120) * 1_000_000_000
 
         logger_messages = []
-        allow(OpenC3::Logger).to receive(:info) do |msg|
+        allow(OpenC3::Logger).to receive(:debug) do |msg|
           logger_messages << msg
         end
         @api.add(data)

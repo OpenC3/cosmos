@@ -68,7 +68,7 @@ class LoggedStreamingThread < StreamingThread
     # start_time can be at most 1 minute in the future to prevent
     # spinning up threads that just block forever
     if (first_object.start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) > Time.now.to_nsec_from_epoch
-      OpenC3::Logger.info "Finishing stream start_time too far in future"
+      OpenC3::Logger.debug "Finishing stream start_time too far in future"
       finish(objects)
       @cancel_thread = true
       return
@@ -89,7 +89,7 @@ class LoggedStreamingThread < StreamingThread
       else
         if first_object.end_time and first_object.end_time < oldest_time
           # Bad times - just end
-          OpenC3::Logger.info "Finishing stream - start_time after end_time"
+          OpenC3::Logger.debug "Finishing stream - start_time after end_time"
           finish(objects)
           @cancel_thread = true
           return
@@ -151,7 +151,7 @@ class LoggedStreamingThread < StreamingThread
     end
 
     if done # We reached the end time
-      OpenC3::Logger.info "Finishing LoggedStreamingThread for #{@collection.length} objects - Reached End Time"
+      OpenC3::Logger.debug "Finishing LoggedStreamingThread for #{@collection.length} objects - Reached End Time"
       finish(@collection.objects)
       return
     end
@@ -190,9 +190,9 @@ class LoggedStreamingThread < StreamingThread
         offset_ms = (last_time - TSDB_STREAM_OVERLAP_NSEC + delta) / 1_000_000
         offset = (offset_ms > 0 ? offset_ms.to_s : '0') + '-0'
         offset_by_topic[topic] = offset
-        OpenC3::Logger.info "TSDB->STREAM bridge: topic=#{topic} last_tsdb_time=#{last_time} offset=#{offset}"
+        OpenC3::Logger.debug "TSDB->STREAM bridge: topic=#{topic} last_tsdb_time=#{last_time} offset=#{offset}"
       else
-        OpenC3::Logger.info "TSDB->STREAM bridge: topic=#{topic} no Valkey messages, using 0-0"
+        OpenC3::Logger.debug "TSDB->STREAM bridge: topic=#{topic} no Valkey messages, using 0-0"
       end
     end
 
