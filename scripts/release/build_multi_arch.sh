@@ -96,6 +96,7 @@ retry_build \
   --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
   --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
   --build-arg RUBY_VERSION=${RUBY_VERSION} \
+  --build-arg RUBY_PATCH_VERSION=${RUBY_PATCH_VERSION} \
   --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg PYPI_URL=$PYPI_URL \
@@ -115,6 +116,7 @@ retry_build \
   --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
   --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
   --build-arg RUBY_VERSION=${RUBY_VERSION} \
+  --build-arg RUBY_PATCH_VERSION=${RUBY_PATCH_VERSION} \
   --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg PYPI_URL=$PYPI_URL \

@@ -435,8 +435,9 @@ def check_debian(client, root_dir: ROOT_DIR)
   release = ENV.fetch('DEBIAN_RELEASE')
   ruby_version = ENV.fetch('RUBY_VERSION')
 
-  # Verify the pinned base image tags actually exist on Docker Hub
-  ruby_tag = "#{ruby_version}-slim-#{release}"
+  # Verify the pinned base image tags actually exist on Docker Hub.
+  # RUBY_PATCH_VERSION is optional so callers whose .env predates it still work.
+  ruby_tag = "#{ENV.fetch('RUBY_PATCH_VERSION', ruby_version)}-slim-#{release}"
   unless docker_tag_exists?(client, 'library/ruby', ruby_tag)
     puts "ERROR: Could not find ruby image tag: #{ruby_tag}"
   end
@@ -446,7 +447,7 @@ def check_debian(client, root_dir: ROOT_DIR)
   end
 
   # Check for a newer Ruby minor/major line built on the same Debian release.
-  # Ruby uses rolling "X.Y-slim-<release>" tags, so there is no patch to bump.
+  # Patch releases are handled by check_ubi_ruby and check_ruby_patch.
   major, minor = ruby_version.split('.').map(&:to_i)
   new_ruby = nil
   [[major, minor + 1], [major + 1, 0]].each do |mj, mn|
@@ -497,7 +498,7 @@ def check_debian(client, root_dir: ROOT_DIR)
   end
 end
 
-# Update a build variable (RUBY_VERSION or DEBIAN_RELEASE) in the .env and any
+# Update a build variable (RUBY_VERSION, RUBY_PATCH_VERSION, DEBIAN_POINT_RELEASE) in the .env and any
 # Dockerfile that pins it as a default ARG, then reload the in-process ENV.
 def update_debian_files(key, new_value, root_dir: ROOT_DIR)
   update_key_value(File.join(root_dir, '.env'), key, new_value)
@@ -740,10 +741,9 @@ def check_tsdb(client, tsdb_version)
   new_version
 end
 
-# The Debian image floats on ruby:${RUBY_VERSION}-slim and picks up patch
-# releases for free, but the UBI image compiles Ruby from a source tarball
-# committed to openc3-ruby/, so its patch version only moves when someone bumps
-# it here. Stay on the RUBY_VERSION minor line: moving off it is a deliberate decision,
+# The UBI image compiles Ruby from a source tarball committed to openc3-ruby/,
+# so its patch version only moves when someone bumps it here. The Debian image
+# follows it through check_ruby_patch. Stay on the RUBY_VERSION minor line: moving off it is a deliberate decision,
 # not an audit-time one.
 def check_ubi_ruby(client, ruby_version)
   dockerfile = File.join(ROOT_DIR, 'openc3-ruby/Dockerfile-ubi')
@@ -770,6 +770,33 @@ def check_ubi_ruby(client, ruby_version)
   File.write(dockerfile, content.gsub(/ruby-#{Regexp.escape(current)}(?!\d)/, "ruby-#{newest}"))
   puts "  Updated ruby-#{current} -> ruby-#{newest} in openc3-ruby/Dockerfile-ubi"
   newest
+end
+
+# Keep the Debian image's exact ruby:<RUBY_PATCH_VERSION>-slim-<release> tag on
+# the same Ruby as Dockerfile-ubi. Docker Official Images can trail a Ruby
+# release by a day or so, so a missing tag is reported and retried next audit.
+def check_ruby_patch(client, root_dir: ROOT_DIR)
+  current = ENV.fetch('RUBY_PATCH_VERSION', nil)
+  return puts("ERROR: RUBY_PATCH_VERSION is not set in .env") if current.nil? || current.empty?
+  ruby_version = ENV.fetch('RUBY_VERSION')
+  release = ENV.fetch('DEBIAN_RELEASE')
+  dockerfile = File.join(root_dir, 'openc3-ruby/Dockerfile-ubi')
+  target = File.exist?(dockerfile) ? File.read(dockerfile)[/ruby-(\d+\.\d+\.\d+)\.tar\.gz/, 1] : nil
+  if target.nil?
+    puts "WARN: Could not read the ubi ruby version to compare RUBY_PATCH_VERSION against"
+  elsif target != current
+    if docker_tag_exists?(client, 'library/ruby', "#{target}-slim-#{release}")
+      puts "NOTE: RUBY_PATCH_VERSION #{current} differs from ubi ruby #{target}"
+      if prompt_update?("Update RUBY_PATCH_VERSION from #{current} to #{target}?", current, target)
+        update_debian_files('RUBY_PATCH_VERSION', target, root_dir: root_dir)
+        current = target
+      end
+    else
+      puts "NOTE: ruby:#{target}-slim-#{release} is not on Docker Hub yet; RUBY_PATCH_VERSION stays #{current}. Rerun the audit later."
+    end
+  end
+  return if current.start_with?("#{ruby_version}.")
+  puts "ERROR: RUBY_PATCH_VERSION #{current} is not on the RUBY_VERSION #{ruby_version} line"
 end
 
 # index.txt is the canonical machine readable release list, one tab separated

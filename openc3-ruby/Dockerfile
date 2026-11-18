@@ -1,11 +1,14 @@
 # Make managed in .env-build
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
+# RUBY_VERSION is the minor line (GEM_HOME below); RUBY_PATCH_VERSION is the
+# exact base image tag, so a rebuild cannot silently pick up a new Ruby patch.
 ARG RUBY_VERSION=3.4
+ARG RUBY_PATCH_VERSION=3.4.12
 ARG DEBIAN_RELEASE=trixie
 
 # The official ruby image is Debian slim based and provides a current Ruby that
 # Debian's own apt repositories do not package. Should be loaded from ARG.
-FROM ${OPENC3_DEPENDENCY_REGISTRY}/ruby:${RUBY_VERSION}-slim-${DEBIAN_RELEASE}
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/ruby:${RUBY_PATCH_VERSION}-slim-${DEBIAN_RELEASE}
 
 # An ARG declared before a FROM is outside of a build stage, so it can't be
 # used in any instruction after a FROM. So we need to re-ARG the ones we use.
