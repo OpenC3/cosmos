@@ -654,7 +654,12 @@ module OpenC3
         @decom_flush_period = Float(parameters[0])
       when 'DECOM_UPDATE_INTERVAL'
         parser.verify_num_parameters(1, 1, "#{keyword} <Update interval in seconds - 0 = No queuing>")
-        @decom_update_interval = Float(parameters[0])
+        begin
+          @decom_update_interval = Float(parameters[0])
+        rescue ArgumentError, TypeError
+          raise ConfigParser::Error.new(parser, "#{keyword} must be a number of seconds")
+        end
+        raise ConfigParser::Error.new(parser, "#{keyword} must be a finite number of seconds") unless @decom_update_interval.finite?
       when 'REDUCED_MINUTE_LOG_RETAIN_TIME', 'REDUCED_HOUR_LOG_RETAIN_TIME', 'REDUCED_DAY_LOG_RETAIN_TIME', 'REDUCED_LOG_RETAIN_TIME'
         # DEPRECATED
       when 'REDUCER_DISABLE', 'REDUCER_DISABLED', 'REDUCER_MAX_CPU_UTILIZATION', 'REDUCED_MAX_CPU_UTILIZATION'

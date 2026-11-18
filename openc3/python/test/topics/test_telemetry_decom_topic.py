@@ -158,6 +158,7 @@ class TestTelemetryDecomTopicMultipleDbShards(unittest.TestCase):
         self.assertFalse(shard0.exists("DEFAULT__DECOM__{INST}__HEALTH_STATUS"))
         cvt = json.loads(shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))
         self.assertEqual(cvt["TEMP1__C"], packet.read("TEMP1"))
+        self.assertFalse(shard0.exists("DEFAULT__tlm__INST"))
 
     def test_queues_the_topic_and_current_values_on_the_target_db_shard(self):
         # test_helper makes StoreQueued write through, so this checks the shard routing
@@ -169,5 +170,4 @@ class TestTelemetryDecomTopicMultipleDbShards(unittest.TestCase):
         self.assertEqual(shard1.xlen("DEFAULT__DECOM__{INST}__HEALTH_STATUS"), 1)
         self.assertFalse(shard0.exists("DEFAULT__DECOM__{INST}__HEALTH_STATUS"))
         self.assertIsNotNone(shard1.hget("DEFAULT__tlm__INST", "HEALTH_STATUS"))
-        self.assertFalse(shard0.exists("DEFAULT__tlm__INST"))
         self.assertFalse(shard0.exists("DEFAULT__tlm__INST"))

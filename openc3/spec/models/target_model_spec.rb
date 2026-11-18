@@ -923,6 +923,22 @@ module OpenC3
         tf.unlink
       end
 
+      it "rejects a DECOM_UPDATE_INTERVAL that is not a finite number" do
+        ['abc', '1e9999'].each do |value|
+          model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+          parser = ConfigParser.new
+          tf = Tempfile.new
+          tf.puts "DECOM_UPDATE_INTERVAL #{value}"
+          tf.close
+          expect do
+            parser.parse_file(tf.path) do |keyword, params|
+              model.handle_config(parser, keyword, params)
+            end
+          end.to raise_error(ConfigParser::Error, /DECOM_UPDATE_INTERVAL must be a .*number of seconds/)
+          tf.unlink
+        end
+      end
+
       it "rejects TLM_DECOM_RETAIN_TIME with invalid format" do
         model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
         model.create
