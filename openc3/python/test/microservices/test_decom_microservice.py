@@ -230,6 +230,9 @@ class TestDecomMicroservice(unittest.TestCase):
             for stdout in capture_io():
                 self.dm.limits_change_callback(packet, item, "GREEN", 5, True)
                 self.assertIn("INST HEALTH_STATUS COLLECTS = 5 is RED (SEQUENCE)", stdout.getvalue())
+            for stdout in capture_io():
+                self.dm.limits_change_callback(packet, item, "GREEN", False, True)
+                self.assertIn("INST HEALTH_STATUS COLLECTS = False is RED (SEQUENCE)", stdout.getvalue())
         finally:
             item.limits.change_type = None
             item.limits.state = None

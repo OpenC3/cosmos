@@ -1323,9 +1323,12 @@ class Packet(Structure):
         else:
             match item.limits.change_type:
                 case "SEQUENCE":
+                    # bool is a subclass of int so exclude it like Ruby does
                     ok = (
                         isinstance(value, (int, float))
+                        and not isinstance(value, bool)
                         and isinstance(last_value, (int, float))
+                        and not isinstance(last_value, bool)
                         and value == self.next_sequence_value(item, last_value)
                     )
                 case "CHANGE":

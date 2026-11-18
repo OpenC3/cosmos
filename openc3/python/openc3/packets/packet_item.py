@@ -507,7 +507,7 @@ class PacketItem(StructureItem):
             if item_limits.values or item_limits.change_type:
                 config["limits"]["persistence_setting"] = item_limits.persistence_setting
                 if item_limits.response:
-                    config["limits"]["response"] = item_limits.response
+                    config["limits"]["response"] = str(item_limits.response)
             if item_limits.values:
                 for limits_set, limits_values in item_limits.values.items():
                     limits = {}

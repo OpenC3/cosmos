@@ -604,7 +604,7 @@ class TestPacketItem(unittest.TestCase):
         self.assertTrue(item["required"])
         self.assertFalse(item["limits"]["enabled"])
         # State is actually stored in Redis so it doesn't make sense to return via PacketItemLimits
-        self.assertIsInstance(item["limits"]["response"], LimitsResponse)
+        self.assertIn("LimitsResponse", item["limits"]["response"])
         self.assertEqual(item["limits"]["persistence_setting"], 1)
         # limits values are broken out by set and individual values
         self.assertEqual(item["limits"]["DEFAULT"]["red_low"], 0)

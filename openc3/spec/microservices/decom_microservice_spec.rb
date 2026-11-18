@@ -148,6 +148,7 @@ module OpenC3
       end
 
       it "includes the change type for change limits" do
+        item = nil
         packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
         packet.received_time = Time.now.sys
         item = packet.get_item("COLLECTS")
@@ -157,9 +158,13 @@ module OpenC3
           @dm.limits_change_callback(packet, item, :GREEN, 5, true)
           expect(stdout.string).to include("INST HEALTH_STATUS COLLECTS = 5 is RED (SEQUENCE)")
         end
+        capture_io do |stdout|
+          @dm.limits_change_callback(packet, item, :GREEN, false, true)
+          expect(stdout.string).to include("INST HEALTH_STATUS COLLECTS = false is RED (SEQUENCE)")
+        end
       ensure
-        item.limits.change_type = nil
-        item.limits.state = nil
+        item&.limits&.change_type = nil
+        item&.limits&.state = nil
       end
 
       it "falls back to DEFAULT limits set for GREEN and BLUE states" do

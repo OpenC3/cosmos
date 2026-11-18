@@ -1636,10 +1636,12 @@ module OpenC3
 
         it "rolls over raw UINT and INT SEQUENCE values" do
           set_change_limits("TEST1", :SEQUENCE)
-          expect(check_values("TEST1", [254, 255, 0, 1])).to eql :GREEN
+          expect(check_values("TEST1", [254, 255, 0])).to eql :GREEN
+          expect(check_values("TEST1", [1])).to eql :GREEN
           @p.append_item("test4", 8, :INT)
           set_change_limits("TEST4", :SEQUENCE)
-          expect(check_values("TEST4", [126, 127, -128, -127])).to eql :GREEN
+          expect(check_values("TEST4", [126, 127, -128])).to eql :GREEN
+          expect(check_values("TEST4", [-127])).to eql :GREEN
         end
 
         it "detects SEQUENCE violations with a step" do
@@ -1660,7 +1662,8 @@ module OpenC3
           expect(check_values("TEST1", [252, 255, 2])).to eql :GREEN
           @p.append_item("test4", 8, :INT)
           set_change_limits("TEST4", :SEQUENCE, :RED, 1, 3)
-          expect(check_values("TEST4", [125, -128, -125])).to eql :GREEN
+          expect(check_values("TEST4", [125, -128])).to eql :GREEN
+          expect(check_values("TEST4", [-125])).to eql :GREEN
           set_change_limits("TEST4", :SEQUENCE, :RED, 1, -2)
           expect(check_values("TEST4", [-127, 127])).to eql :GREEN
           set_change_limits("TEST1", :SEQUENCE, :RED, 1, -1)
@@ -1671,6 +1674,13 @@ module OpenC3
           set_change_limits("TEST3", :SEQUENCE)
           expect(check_values("TEST3", [1.5, 2.5])).to eql :GREEN
           expect(check_values("TEST3", [4.5])).to eql :RED
+        end
+
+        it "detects SEQUENCE violations on boolean values" do
+          item = set_change_limits("TEST1", :SEQUENCE)
+          item.read_conversion = GenericConversion.new("value == 1")
+          expect(check_values("TEST1", [0])).to eql :GREEN
+          expect(check_values("TEST1", [1])).to eql :RED
         end
 
         it "does not roll over items with a read conversion" do
