@@ -255,7 +255,8 @@ class Topic(metaclass=TopicMeta):
     def target_name_from_topic(cls, topic):
         """Extract the target name from the {TARGET} hash tag in a topic like
         DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS. Returns None if there is none."""
-        match = re.search(r"__\{([^}]+)\}__", topic)
+        # [^{}] (not [^}]) keeps this linear: target names never contain braces
+        match = re.search(r"__\{([^{}]+)\}__", topic)
         return match.group(1) if match else None
 
     @classmethod
