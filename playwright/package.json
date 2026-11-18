@@ -23,7 +23,7 @@
     "prettier": "^3.10.1"
   },
   "devDependencies": {
-    "@types/lodash": "^4.17.26",
+    "@types/lodash": "^4.17.27",
     "@types/node": "^26.6.6",
     "eslint": "^10.15.0",
     "globals": "^17.14.0",
