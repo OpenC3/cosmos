@@ -427,7 +427,7 @@
               :completers="completers"
               vim
               :vim-save-fn="saveFile"
-              :mode="languageMode"
+              :mode="editorLanguage"
               :read-only="editorReadOnly"
               class="editor"
               @contextmenu.prevent="showExecuteSelectionMenu"
@@ -623,7 +623,7 @@
               :completers="completers"
               vim
               :vim-save-fn="saveFile"
-              :mode="languageMode"
+              :mode="editorLanguage"
               :read-only="editorReadOnly"
               class="editor"
               style="height: 200px"
@@ -894,7 +894,6 @@ import { Api, Cable, OpenC3Api } from '@openc3/js-common/services'
 import { useContainerHeight } from '@/composables/useContainerHeight'
 import {
   AceEditor,
-  AceEditorModes,
   AceEditorUtils,
   CriticalCmdDialog,
   EnvironmentDialog,
@@ -1110,7 +1109,7 @@ export default {
     CommandEditor,
     VersionHistoryDialog,
   },
-  mixins: [AceEditorModes, ClassificationBanners],
+  mixins: [ClassificationBanners],
   beforeRouteUpdate: function (to, from, next) {
     if (to.params.id) {
       this.tryLoadRunningScript(to.params.id).then(next)
@@ -1344,9 +1343,6 @@ export default {
         this.scriptApproved ||
         this.scriptActive
       )
-    },
-    languageMode() {
-      return this.editorLanguage === 'python' ? this.pythonMode : this.rubyMode
     },
     // True for the entire execution lifecycle: from Start (or connecting to
     // a running script) through the finishing window between the terminal
@@ -1864,11 +1860,7 @@ export default {
     },
   },
   created: async function () {
-    // Plain instance properties (not in data) so Vue doesn't proxy the modes
-    const RubyMode = this.buildRubyMode()
-    const PythonMode = this.buildPythonMode()
-    this.rubyMode = new RubyMode()
-    this.pythonMode = new PythonMode()
+    // Plain instance property (not in data) so Vue doesn't proxy the completers
     this.completers = [new CmdCompleter(), new TlmCompleter()]
     // Websocket event queue drained by the processReceived interval.
     // Deliberately NOT in data(): nothing renders from it, and reactive

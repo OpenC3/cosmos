@@ -15,3 +15,4 @@ import AceEditorModes from './AceEditorModes'
 import AceEditorUtils from './AceEditorUtils'
 
 export { AceEditorModes, AceEditorUtils }
+export { getOpenC3Mode } from './AceEditorModes'

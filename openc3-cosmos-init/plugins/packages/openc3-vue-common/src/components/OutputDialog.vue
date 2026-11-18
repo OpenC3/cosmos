@@ -51,12 +51,10 @@
 </template>
 
 <script>
-import { AceEditorModes } from './ace'
 import AceEditor from './AceEditor.vue'
 
 export default {
   components: { AceEditor },
-  mixins: [AceEditorModes],
   props: {
     content: {
       type: String,
@@ -96,25 +94,19 @@ export default {
       return this.filename ? this.filename.split('.').pop() : 'txt'
     },
     languageMode() {
-      let Mode
       switch (this.fileExtension) {
         case 'json':
-          Mode = this.buildJsonMode()
-          break
+          return 'json'
         case 'py':
         case 'pyi':
-          Mode = this.buildPythonMode()
-          break
+          return 'python'
         case 'md':
-          Mode = this.buildMarkdownMode()
-          break
+          return 'markdown'
         default:
           // Most of the COSMOS text files are best display in Ruby
           // This includes Rakefiles, Gemfiles, etc.
-          Mode = this.buildRubyMode()
-          break
+          return 'ruby'
       }
-      return new Mode()
     },
     title: function () {
       return `${this.type}: ${this.name}`

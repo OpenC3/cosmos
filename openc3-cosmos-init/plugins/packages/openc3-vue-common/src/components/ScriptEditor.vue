@@ -35,7 +35,7 @@
         :completers="completers"
         :model-value="modelValue"
         vim
-        :mode="languageMode"
+        :mode="language"
         class="script-editor"
         :style="{ height: height, width: '100%' }"
         @update:model-value="$emit('update:modelValue', $event)"
@@ -61,14 +61,11 @@
 
 <script>
 import AceEditor from './AceEditor.vue'
-import 'ace-builds/src-min-noconflict/mode-ruby'
-import 'ace-builds/src-min-noconflict/mode-python'
-import { AceEditorModes, AceEditorUtils } from './ace'
+import { AceEditorUtils } from './ace'
 import { CmdCompleter, TlmCompleter } from '../tools/scriptrunner/autocomplete'
 
 export default {
   components: { AceEditor },
-  mixins: [AceEditorModes],
   props: {
     modelValue: {
       type: String,
@@ -93,17 +90,8 @@ export default {
       menuY: 0,
     }
   },
-  computed: {
-    languageMode() {
-      return this.language === 'python' ? this.pythonMode : this.rubyMode
-    },
-  },
   created() {
-    // Plain instance properties (not in data) so Vue doesn't proxy the modes
-    const RubyMode = this.buildRubyMode()
-    const PythonMode = this.buildPythonMode()
-    this.rubyMode = new RubyMode()
-    this.pythonMode = new PythonMode()
+    // Plain instance property (not in data) so Vue doesn't proxy the completers
     this.completers = [new CmdCompleter(), new TlmCompleter()]
   },
   mounted() {

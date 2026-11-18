@@ -20,7 +20,7 @@ import * as ace from 'ace-builds'
 import 'ace-builds/src-min-noconflict/theme-twilight'
 import 'ace-builds/src-min-noconflict/ext-language_tools'
 import 'ace-builds/src-min-noconflict/ext-searchbox'
-import { AceEditorUtils } from './ace'
+import { AceEditorUtils, getOpenC3Mode } from './ace'
 import {
   onBeforeUnmount,
   onMounted,
@@ -34,7 +34,8 @@ import {
 // Parents get the Ace instance from `ref.editor` once mounted (or via the
 // `ready` event) and configure modes, options and content themselves.
 const props = defineProps({
-  // Ace mode: a mode path string ('ace/mode/ruby') or a mode instance
+  // Ace mode: an OpenC3 mode name ('ruby', 'python', 'json', 'markdown'),
+  // a stock mode path ('ace/mode/text') or a mode instance
   mode: {
     type: [String, Object],
     default: null,
@@ -84,10 +85,15 @@ const emit = defineEmits(['ready'])
 const editorRef = useTemplateRef('editor')
 const editor = shallowRef(null)
 
-// toRaw because mode instances held in parent data are reactive proxies
+// toRaw because custom mode instances held in parent data are reactive proxies
 function applyMode() {
   if (editor.value && props.mode) {
-    editor.value.session.setMode(toRaw(props.mode))
+    const mode = props.mode
+    editor.value.session.setMode(
+      typeof mode === 'string' && !mode.includes('/')
+        ? getOpenC3Mode(mode)
+        : toRaw(mode),
+    )
   }
 }
 

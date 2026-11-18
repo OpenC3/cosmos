@@ -43,9 +43,6 @@
 
 <script>
 import AceEditor from '../components/AceEditor.vue'
-import 'ace-builds/src-min-noconflict/mode-json'
-import 'ace-builds/src-min-noconflict/mode-ruby'
-import 'ace-builds/src-min-noconflict/mode-python'
 import 'ace-builds/src-min-noconflict/mode-text'
 import Widget from './Widget'
 
