@@ -968,11 +968,17 @@ module OpenC3
         expect(action_data.first).not_to have_key('start_time')
         expect(action_data.first).not_to have_key('end_time')
         expect(action_data.first).not_to have_key('time_type')
+        expect(action_data.first).not_to have_key('include_times')
       end
 
       it "sends the time_type upcased" do
         api.add(items: ['ITEM'], start_time: 1_000_000_000, time_type: :received)
         expect(action_data.first['time_type']).to eq('RECEIVED')
+      end
+
+      it "asks for both times when include_times is set" do
+        api.add(items: ['ITEM'], include_times: true)
+        expect(action_data.first['include_times']).to be true
       end
 
       it "subscribes before sending the action" do
@@ -1023,9 +1029,10 @@ module OpenC3
       it "passes the time_type to add" do
         stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
         OpenC3.spec_with_password_auth do
-          StreamingWebSocketApi.read_all(items: ['ITEM'], start_time: 1, end_time: 2, time_type: 'RECEIVED')
+          StreamingWebSocketApi.read_all(items: ['ITEM'], start_time: 1, end_time: 2, time_type: 'RECEIVED', include_times: true)
         end
         expect(action_data.first['time_type']).to eq('RECEIVED')
+        expect(action_data.first['include_times']).to be true
       end
 
       # Guards against blocking forever on a stream whose end marker never comes

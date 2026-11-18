@@ -82,13 +82,22 @@
                 <v-card-text>
                   <v-row>
                     <v-col>
+                      <!-- showTimestamp is the packet time, named before received time could be shown -->
                       <v-switch
                         v-model="currentConfig.showTimestamp"
-                        label="Show timestamp"
+                        label="Show packet time"
                         density="compact"
                         color="primary"
                         hide-details
                         data-test="history-component-settings-show-timestamp"
+                      />
+                      <v-switch
+                        v-model="currentConfig.showReceivedTime"
+                        label="Show received time"
+                        density="compact"
+                        color="primary"
+                        hide-details
+                        data-test="history-component-settings-show-received-time"
                       />
                       <v-switch
                         v-if="hasRaw"
@@ -224,7 +233,7 @@ export default {
     // These are just here to trigger their respective watch functions above
     // There's a better solution to this in Vue 3 v3.vuejs.org/api/computed-watch-api.html#watching-multiple-sources
     allInstantSettings: function () {
-      return `${this.currentConfig.showLineAddress}|${this.currentConfig.showTimestamp}|${this.currentConfig.showAscii}|${this.currentConfig.newestAtTop}|${this.pauseOffset}`
+      return `${this.currentConfig.showLineAddress}|${this.currentConfig.showTimestamp}|${this.currentConfig.showReceivedTime}|${this.currentConfig.showAscii}|${this.currentConfig.newestAtTop}|${this.pauseOffset}`
     },
     allDebouncedSettings: function () {
       return `${this.currentConfig.bytesPerLine}|${this.currentConfig.packetsToShow}|${this.filterText}`
@@ -266,6 +275,7 @@ export default {
     const defaultConfig = {
       history: 300, // 5min at 1Hz
       showTimestamp: true,
+      showReceivedTime: true,
       showAscii: true,
       showLineAddress: true,
       packetsToShow: 1,

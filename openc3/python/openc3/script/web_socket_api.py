@@ -609,6 +609,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         end_time: datetime | int | None = None,
         scope: str | None = None,
         time_type: str | None = None,
+        include_times: bool = False,
     ) -> None:
         """Request to add data to the stream.
 
@@ -634,6 +635,8 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             time_type: "PACKET" or "RECEIVED". Whether start_time and end_time
                 select data by packet time or received time, which is also
                 returned as __time. The server defaults to "PACKET".
+            include_times: True to also return __packet_time and
+                __received_time (nanoseconds) in each result.
         """
         times = {}
         if start_time is not None:
@@ -642,6 +645,8 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             times["end_time"] = _nsec(end_time)
         if time_type is not None:
             times["time_type"] = time_type.upper()
+        if include_times:
+            times["include_times"] = True
         self._stream_action("add", items=items, packets=packets, scope=scope, extra=times)
 
     def remove(
@@ -696,6 +701,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         scope: str | None = None,
         timeout: float | None = None,
         time_type: str | None = None,
+        include_times: bool = False,
     ) -> list[Any]:
         """Read all data until the end marker is received.
 
@@ -718,6 +724,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                 checked only after each non-empty data batch, so this is not a
                 hard deadline. None waits for the end marker.
             time_type: "PACKET" or "RECEIVED", see `add`.
+            include_times: True to also return both times, see `add`.
 
         Returns:
             The data entries from every batch received.
@@ -736,6 +743,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
                 end_time=end_time,
                 scope=scope,
                 time_type=time_type,
+                include_times=include_times,
             )
             while True:
                 batch = api.read()

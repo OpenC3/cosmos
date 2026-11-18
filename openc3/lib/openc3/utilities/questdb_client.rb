@@ -766,12 +766,14 @@ module OpenC3
     # @param include_received_ts [Boolean] Whether to include RECEIVED_TIMESECONDS
     # @param time_type [Symbol] :PACKET or :RECEIVED, which timestamp filters and orders the rows.
     #   :RECEIVED also selects the nanosecond received time as "__rx_time_ns".
+    # @param include_times [Boolean] Also select the nanosecond received time as "__rx_time_ns"
+    #   so decode_item_row can return both the packet and received times
     # @return [String] Complete SQL query (without LIMIT clause)
-    def self.build_item_columns_query(table_name, column_names, start_time, end_time, include_received_ts: false, time_type: :PACKET)
+    def self.build_item_columns_query(table_name, column_names, start_time, end_time, include_received_ts: false, time_type: :PACKET, include_times: false)
       names = column_names.dup
       names << TIMESTAMP_SELECT
       names << "RECEIVED_TIMESECONDS" if include_received_ts
-      names << RECEIVED_TIMESTAMP_SELECT if time_type == :RECEIVED
+      names << RECEIVED_TIMESTAMP_SELECT if time_type == :RECEIVED or include_times
       names << "COSMOS_EXTRA"
       query = "SELECT #{names.join(', ')} FROM \"#{table_name}\""
       query += time_where_clause(start_time, end_time, time_type: time_type)
@@ -834,8 +836,11 @@ module OpenC3
     #   :calculated_positions [Hash] - { local_idx => { source: col_name, format: :seconds/:formatted } }
     # @param time_type [Symbol] :PACKET sets __time to the packet time, :RECEIVED to the
     #   received time (requires the "__rx_time_ns" column from build_item_columns_query)
+    # @param include_times [Boolean] Also set __packet_time and __received_time (requires
+    #   build_item_columns_query with include_times: true)
     # @return [Hash] Entry hash with __type, item_key => value, __time, COSMOS_EXTRA
-    def self.decode_item_row(row, sql_to_local, meta, time_type: :PACKET)
+    #   and optionally __packet_time and __received_time
+    def self.decode_item_row(row, sql_to_local, meta, time_type: :PACKET, include_times: false)
       num_sql_item_cols = sql_to_local.length
 
       entry = { "__type" => "ITEMS" }
@@ -905,6 +910,10 @@ module OpenC3
 
       entry_time = (time_type == :RECEIVED) ? received_time_ns : time_ns
       entry['__time'] = entry_time if entry_time
+      if include_times
+        entry['__packet_time'] = time_ns if time_ns
+        entry['__received_time'] = received_time_ns if received_time_ns
+      end
       entry['COSMOS_EXTRA'] = cosmos_extra if cosmos_extra
       entry
     end
@@ -917,8 +926,10 @@ module OpenC3
     # @param value_type [Symbol] :RAW, :CONVERTED, :FORMATTED
     # @param packet_def [Hash, nil] Packet definition for type-aware decoding
     # @param time_type [Symbol] :PACKET sets __time to the packet time, :RECEIVED to the received time
+    # @param include_times [Boolean] Also set __packet_time and __received_time
     # @return [Hash] Entry hash with item => value, __time, COSMOS_EXTRA, timestamp entries
-    def self.decode_packet_row(row, value_type, packet_def, time_type: :PACKET)
+    #   and optionally __packet_time and __received_time
+    def self.decode_packet_row(row, value_type, packet_def, time_type: :PACKET, include_times: false)
       entry = {}
       item_defs = build_item_defs_map(packet_def)
 
@@ -990,6 +1001,10 @@ module OpenC3
 
       add_timestamp_entries!(entry, cosmos_timestamp_ns, 'PACKET')
       add_timestamp_entries!(entry, received_timestamp_ns, 'RECEIVED')
+      if include_times
+        entry['__packet_time'] = cosmos_timestamp_ns if cosmos_timestamp_ns
+        entry['__received_time'] = received_timestamp_ns if received_timestamp_ns
+      end
       entry
     end
 

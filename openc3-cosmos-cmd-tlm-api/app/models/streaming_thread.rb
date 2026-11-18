@@ -223,9 +223,10 @@ class StreamingThread
   def handle_message(msg_hash, objects)
     first_object = objects[0]
     time = msg_hash['time'].to_i
+    received_time = msg_hash['received_time'] ? msg_hash['received_time'].to_i : nil
     stream_time = message_time(msg_hash, first_object.time_type)
     if first_object.stream_mode == :RAW
-      return handle_raw_packet(msg_hash['buffer'], objects, stream_time)
+      return handle_raw_packet(msg_hash['buffer'], objects, stream_time, packet_time: time, received_time: received_time)
     else # @stream_mode == :DECOM
       json_data = msg_hash["json_data"]
       extra = nil
@@ -233,9 +234,19 @@ class StreamingThread
         extra = JSON.parse(msg_hash["extra"], allow_nan: true, create_additions: true)
       end
       json_packet = OpenC3::JsonPacket.new(first_object.cmd_or_tlm, first_object.target_name, first_object.packet_name,
-        time, OpenC3::ConfigParser.handle_true_false(msg_hash["stored"]), json_data, extra: extra)
+        time, OpenC3::ConfigParser.handle_true_false(msg_hash["stored"]), json_data,
+        received_time_nsec_since_epoch: received_time, extra: extra)
       return handle_json_packet(json_packet, objects, stream_time)
     end
+  end
+
+  # Adds __packet_time and __received_time to a result if the client asked for them.
+  # received_time is nil when the source has no received time.
+  def add_times(result, packet_time, received_time)
+    return unless @streaming_api.include_times
+
+    result['__packet_time'] = packet_time
+    result['__received_time'] = received_time if received_time
   end
 
   # time_nsec is the time for the objects' time_type and defaults to the packet time
@@ -245,6 +256,8 @@ class StreamingThread
     return nil if objects.length <= 0
     result = {}
     result['__time'] = time_nsec
+    received_time = json_packet.received_time
+    add_times(result, json_packet.packet_time.to_nsec_from_epoch, received_time ? received_time.to_nsec_from_epoch : nil)
     result['COSMOS_EXTRA'] = JSON.generate(json_packet.extra, allow_nan: true) if json_packet.extra
     objects.each do |object|
       # OpenC3::Logger.debug("item:#{object.item_name} key:#{object.key} type:#{object.value_type}")
@@ -262,15 +275,19 @@ class StreamingThread
     return result
   end
 
-  def handle_raw_packet(buffer, objects, time)
+  # time is the time for the objects' time_type. packet_time and received_time are
+  # only used when the client asked for both times.
+  def handle_raw_packet(buffer, objects, time, packet_time: time, received_time: nil)
     objects = objects_active?(objects, time)
     return nil if objects.length <= 0
-    return {
+    result = {
       "__type" => "PACKET",
       "__packet" => objects[0].key,
       "__time" => time,
       "buffer" => Base64.encode64(buffer),
     }
+    add_times(result, packet_time, received_time)
+    return result
   end
 
   def objects_active?(objects, time)

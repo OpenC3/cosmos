@@ -388,7 +388,7 @@ class LoggedStreamingThread < StreamingThread
         sql_to_local << i unless name.nil?
       end
 
-      query = OpenC3::QuestDBClient.build_item_columns_query(table_name, query_names, start_time, end_time, include_received_ts: needs_received_ts, time_type: @time_type)
+      query = OpenC3::QuestDBClient.build_item_columns_query(table_name, query_names, start_time, end_time, include_received_ts: needs_received_ts, time_type: @time_type, include_times: @streaming_api.include_times)
       OpenC3::Logger.debug("QuestDB per-table query: #{query}")
 
       cursors << {
@@ -494,7 +494,7 @@ class LoggedStreamingThread < StreamingThread
     return nil unless result
     row_index = cursor[:row_index]
     return nil if row_index >= result.ntuples
-    OpenC3::QuestDBClient.decode_item_row(result[row_index], cursor[:sql_to_local], cursor[:meta], time_type: @time_type)
+    OpenC3::QuestDBClient.decode_item_row(result[row_index], cursor[:sql_to_local], cursor[:meta], time_type: @time_type, include_times: @streaming_api.include_times)
   end
 
   # Stream reduced (aggregated) items using QuestDB SAMPLE BY
@@ -745,7 +745,7 @@ class LoggedStreamingThread < StreamingThread
         results = []
         result.each do |tuples|
           objects.each do |object|
-            decoded = OpenC3::QuestDBClient.decode_packet_row(tuples, value_type, packet_def, time_type: @time_type)
+            decoded = OpenC3::QuestDBClient.decode_packet_row(tuples, value_type, packet_def, time_type: @time_type, include_times: @streaming_api.include_times)
             if decoded
               entry = decoded.merge("__type" => "PACKET", "__packet" => object.key)
               track_tsdb_time(object.topic, entry['__time'])
@@ -901,7 +901,8 @@ class LoggedStreamingThread < StreamingThread
   def handle_packet(packet, objects)
     first_object = objects[0]
     if first_object.stream_mode == :RAW
-      return handle_raw_packet(packet.buffer(false), objects, packet.packet_time.to_nsec_from_epoch)
+      received_time = packet.received_time ? packet.received_time.to_nsec_from_epoch : nil
+      return handle_raw_packet(packet.buffer(false), objects, packet.packet_time.to_nsec_from_epoch, received_time: received_time)
     else # @stream_mode == :DECOM
       return handle_json_packet(packet, objects)
     end

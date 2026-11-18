@@ -39,7 +39,11 @@ class StreamingApi
     @realtime_thread = nil
     @logged_threads = []
     @notices = false
+    @include_times = false
   end
+
+  # True once a client asked for __packet_time and __received_time in each result
+  attr_reader :include_times
 
   # Create new StreamingObjects using the data['items'] and add them to the StreamingObjectCollection
   def build_item_collection(collection, data, start_time: nil, end_time: nil, scope: nil, token: nil, time_type: :PACKET)
@@ -182,6 +186,8 @@ class StreamingApi
   # time_type: PACKET (default) or RECEIVED - Whether start_time and end_time select data by
   #   packet time or received time. The chosen time is also what is returned as __time.
   #   RECEIVED is not supported for historical RAW packets.
+  # include_times: true to also return __packet_time and __received_time (nanoseconds) in each
+  #   result, regardless of time_type. Not added to REDUCED results, which only have a bucket time.
   # notices: true to also receive notice Hashes, e.g. { "__type" => "NOTICE", "notice" => "SKIPPED",
   #   "message" => "...", "skipped_seconds" => 12.3 } when realtime streaming falls behind and skips ahead
   # items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE, item_key] ]
@@ -215,6 +221,8 @@ class StreamingApi
       # Clients opt in to out-of-band notices (a Hash rather than the usual
       # Array of results) so older clients never see a message they can't parse
       @notices = true if data["notices"]
+      # Same opt in for the extra time fields so older clients see results unchanged
+      @include_times = true if data["include_times"]
 
       # Expand ALL wildcards in packets before building the collection
       expand_all_packets(data, scope: scope)

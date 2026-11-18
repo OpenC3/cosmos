@@ -715,9 +715,7 @@ class TestWebSocketApiGenerateAuth(unittest.TestCase):
 
     def test_preserves_keycloak_authentication_from_the_shared_factory(self):
         expected_auth = OpenC3KeycloakAuthentication("http://keycloak:8080")
-        with patch(
-            "openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth
-        ):
+        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth):
             self.assertIs(self.api._generate_auth(), expected_auth)
 
 
@@ -977,11 +975,17 @@ class TestStreamingWebSocketApiActions(unittest.TestCase):
         self.assertNotIn("start_time", data)
         self.assertNotIn("end_time", data)
         self.assertNotIn("time_type", data)
+        self.assertNotIn("include_times", data)
 
     def test_add_sends_the_time_type_upcased(self):
         api = self._make_api()
         api.add(items=["ITEM"], start_time=1_000_000_000, time_type="received")
         self.assertEqual(self._action_data(api)[0]["time_type"], "RECEIVED")
+
+    def test_add_asks_for_both_times_when_include_times_is_set(self):
+        api = self._make_api()
+        api.add(items=["ITEM"], include_times=True)
+        self.assertIs(self._action_data(api)[0]["include_times"], True)
 
     def test_add_subscribes_before_sending_the_action(self):
         api = self._make_api()
@@ -1036,8 +1040,11 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
 
     def test_passes_the_time_type_to_add(self):
         self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
-        StreamingWebSocketApi.read_all(items=["ITEM"], start_time=1, end_time=2, time_type="RECEIVED")
+        StreamingWebSocketApi.read_all(
+            items=["ITEM"], start_time=1, end_time=2, time_type="RECEIVED", include_times=True
+        )
         self.assertEqual(action_data(self.stream)[0]["time_type"], "RECEIVED")
+        self.assertIs(action_data(self.stream)[0]["include_times"], True)
 
     # Guards against blocking forever on a stream whose end marker never comes
     def test_returns_the_data_collected_so_far_once_the_timeout_elapses(self):

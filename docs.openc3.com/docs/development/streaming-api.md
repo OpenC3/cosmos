@@ -99,6 +99,8 @@ start_time and end_time are standard COSMOS 64-bit integer timestamps in nanosec
 
 By default start_time and end_time select data by packet time (PACKET_TIMESECONDS). Pass `time_type: 'RECEIVED'` to select data by the time COSMOS received it (RECEIVED_TIMESECONDS) instead, for example when the packet time comes from a simulator running in the past or future. The selected time is also what is returned as `__time`. RECEIVED is not supported for historical RAW packets because the raw log files are organized by packet time.
 
+Pass `include_times: true` to also get both timestamps in every result, whichever `time_type` is used: `__packet_time` and `__received_time`, in nanoseconds since the Unix Epoch. Data Viewer uses this to show both times. Once one request on a connection sets it, every result on that connection includes them. REDUCED results don't include them because they only have the time of their sample bucket.
+
 Data returned by the streaming API is handled by the received callback in Javascript. Data is returned as a JSON Array, with a JSON object in the array for each packet returned. Results are batched, and the current implementation will return up to 100 packets in each batch (the array will have 100 entries). 100 packets per batch is not guaranteed, and batches may take on varying sizes based on the size of the data returned, or other factors. An empty array indicates that all data has been sent for a purely historical query and can be used as an end of data indicator.
 
 For decommutated items, each packet is represented as a JSON object with a 'time' field holding the COSMOS nanosecond timestamp of the packet, and then each of the requested item keys with their corresponding value from the packet.
@@ -524,6 +526,7 @@ end
   "start_time": 1614890937274290500,
   "end_time": 1614891537276524900,
   "time_type": "PACKET",
+  "include_times": true,
   "items": [
     ["DECOM__TLM__INST__ADCS__Q1__CONVERTED", "optional_item_key"],
     ["DECOM__TLM__INST__ADCS__Q2__RAW", null]
@@ -536,6 +539,7 @@ end
 - `end_time`: 64-bit nanoseconds from Unix epoch. Omit to stream indefinitely.
 - `time_type`: `PACKET` (default) or `RECEIVED`. Selects whether `start_time` and `end_time` apply to the packet time or the received time, and which of them is returned as `__time`. TSDB queries filter on that column, and with `RECEIVED` they also sort by it. `RECEIVED` is not supported for historical `RAW` packets.
   Subscribing to the same key with both time types creates two separate subscriptions. A `remove` request with a `time_type` only removes that one, and without one removes both.
+- `include_times`: `true` to add `__packet_time` and `__received_time` (nanoseconds) to each non-REDUCED result. Applies to every result on the connection once set. Omit it to keep results smaller.
 - `items`: Array of `[key, item_key]` pairs. `item_key` is used as the key in result JSON (defaults to key string if null).
 - `packets`: Array of key strings for whole-packet streaming.
 
