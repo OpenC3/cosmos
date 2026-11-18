@@ -18,14 +18,17 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.extract import *
 
 
-def get_screen_list(scope: str = OPENC3_SCOPE):
-    """Gets a list of screens
+def get_screen_list(scope: str = OPENC3_SCOPE) -> dict[str, list[str]]:
+    """Return the names of all screens grouped by target.
 
     Args:
-        scope (str) Optional, defaults to env.OPENC3_SCOPE
+        scope: COSMOS scope.
 
-    Return:
-        The json result of the method call
+    Returns:
+        Upper case screen names keyed by target name.
+
+    Raises:
+        RuntimeError: If the request fails.
     """
     try:
         endpoint = "/openc3-api/screens"
@@ -48,16 +51,19 @@ def get_screen_list(scope: str = OPENC3_SCOPE):
         raise RuntimeError(f"get_screen_list failed due to {traceback.format_exc()}") from error
 
 
-def get_screen_definition(target_name: str, screen_name: str, scope: str = OPENC3_SCOPE):
-    """Gets a screen definition
+def get_screen_definition(target_name: str, screen_name: str, scope: str = OPENC3_SCOPE) -> str:
+    """Return the text of a screen definition.
 
     Args:
-        target_name (str) the target name
-        screen_name (str) the screen name
-        scope (str) Optional, defaults to env.OPENC3_SCOPE
+        target_name: Target name.
+        screen_name: Screen name.
+        scope: COSMOS scope.
 
-    Return:
-        The json result of the method call
+    Returns:
+        The screen definition text.
+
+    Raises:
+        RuntimeError: If the screen is not found or the request fails.
     """
     try:
         endpoint = f"/openc3-api/screen/{target_name.upper()}/{screen_name.upper()}"
@@ -77,17 +83,20 @@ def get_screen_definition(target_name: str, screen_name: str, scope: str = OPENC
         raise RuntimeError(f"get_screen_definition failed due to {traceback.format_exc()}") from error
 
 
-def create_screen(target_name: str, screen_name: str, definition: str, scope: str = OPENC3_SCOPE):
-    """Create a screen definition
+def create_screen(target_name: str, screen_name: str, definition: str, scope: str = OPENC3_SCOPE) -> str:
+    """Create or overwrite a screen definition.
 
     Args:
-        target_name (str) the target name
-        screen_name (str) the screen name
-        definition (str) the screen definition
-        scope (str) Optional, defaults to env.OPENC3_SCOPE
+        target_name: Target name.
+        screen_name: Screen name.
+        definition: Screen definition text.
+        scope: COSMOS scope.
 
-    Return:
-        The json result of the method call
+    Returns:
+        The raw JSON response body describing the saved screen.
+
+    Raises:
+        RuntimeError: If the request fails.
     """
     try:
         endpoint = "/openc3-api/screen"
@@ -104,16 +113,19 @@ def create_screen(target_name: str, screen_name: str, definition: str, scope: st
         raise RuntimeError(f"create_screen failed due to {traceback.format_exc()}") from error
 
 
-def delete_screen(target_name: str, screen_name: str, scope: str = OPENC3_SCOPE):
-    """Create a screen definition
+def delete_screen(target_name: str, screen_name: str, scope: str = OPENC3_SCOPE) -> str:
+    """Delete a screen definition.
 
     Args:
-        target_name (str) the target name
-        screen_name (str) the screen name
-        scope (str) Optional, defaults to env.OPENC3_SCOPE
+        target_name: Target name.
+        screen_name: Screen name.
+        scope: COSMOS scope.
 
-    Return:
-        The json result of the method call
+    Returns:
+        The raw response body, normally empty.
+
+    Raises:
+        RuntimeError: If the request fails.
     """
     try:
         endpoint = f"/openc3-api/screen/{target_name.upper()}/{screen_name.upper()}"
@@ -130,26 +142,68 @@ def delete_screen(target_name: str, screen_name: str, scope: str = OPENC3_SCOPE)
         raise RuntimeError(f"delete_screen failed due to {traceback.format_exc()}") from error
 
 
-def display_screen(target_name, screen_name, x=None, y=None, scope=OPENC3_SCOPE):
+def display_screen(
+    target_name: str, screen_name: str, x: int | None = None, y: int | None = None, scope: str = OPENC3_SCOPE
+) -> None:
+    """Open a screen in Script Runner.
+
+    Does nothing outside of Script Runner.
+
+    Args:
+        target_name: Target name.
+        screen_name: Screen name.
+        x: Horizontal position of the screen in pixels.
+        y: Vertical position of the screen in pixels.
+        scope: COSMOS scope.
+    """
     # Noop outside of ScriptRunner
     pass
 
 
-def clear_screen(target_name, screen_name):
+def clear_screen(target_name: str, screen_name: str) -> None:
+    """Close a screen opened in Script Runner.
+
+    Does nothing outside of Script Runner.
+
+    Args:
+        target_name: Target name.
+        screen_name: Screen name.
+    """
     # Noop outside of ScriptRunner
     pass
 
 
-def clear_all_screens():
+def clear_all_screens() -> None:
+    """Close all screens opened in Script Runner.
+
+    Does nothing outside of Script Runner.
+    """
     # Noop outside of ScriptRunner
     pass
 
 
-def local_screen(screen_name, definition, x=None, y=None):
+def local_screen(screen_name: str, definition: str, x: int | None = None, y: int | None = None) -> None:
+    """Open a screen in Script Runner from a definition given in the script.
+
+    Does nothing outside of Script Runner.
+
+    Args:
+        screen_name: Screen name.
+        definition: Screen definition text.
+        x: Horizontal position of the screen in pixels.
+        y: Vertical position of the screen in pixels.
+    """
     # Noop outside of ScriptRunner
     pass
 
 
-def open_tab(url):
+def open_tab(url: str) -> None:
+    """Open a URL in a new browser tab from Script Runner.
+
+    Does nothing outside of Script Runner.
+
+    Args:
+        url: URL to open.
+    """
     # Noop outside of ScriptRunner
     pass

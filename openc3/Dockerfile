@@ -90,14 +90,15 @@ COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} python/ .
 # put the saved relocked one back; relocking again could resolve different
 # versions if the mirror changed.
 #
-# No --no-build: uv cannot install the editable openc3 project under it. All
-# dependencies are already installed, so the only setup code run is openc3's own.
+# --no-build holds here too: openc3 builds with uv_build, which uv runs itself
+# rather than as a third-party backend, so even the editable install of openc3
+# runs no setup code and fetches no build backend from the index.
 RUN if [ -n "${OPENC3_PYPI_ALLOW_INSECURE}" ]; then \
       PYPI_HOST="${PYPI_URL#*://}"; PYPI_HOST="${PYPI_HOST%%/*}"; \
       export UV_INSECURE_HOST="${PYPI_HOST##*@}"; \
     fi && \
     cp /tmp/uv.lock.relocked uv.lock && rm /tmp/uv.lock.relocked && \
-    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev # NOSONAR
+    UV_CACHE_DIR=/openc3/uv_cache uv sync --frozen --no-dev --no-build
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG}
 

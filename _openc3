@@ -341,9 +341,6 @@ _openc3_cli() {
                     'command_validator:generate a command validator (requires TARGET NAME)'
                     'tool:generate a tool (requires "Tool Name")'
                     'tool_vue:generate a Vue tool (requires "Tool Name")'
-                    'tool_angular:generate an Angular tool (requires "Tool Name")'
-                    'tool_react:generate a React tool (requires "Tool Name")'
-                    'tool_svelte:generate a Svelte tool (requires "Tool Name")'
                     '--help:show help message'
                     '-h:show help message'
                 )
@@ -355,7 +352,7 @@ _openc3_cli() {
                         # These require TARGET as first arg
                         _message -r 'TARGET (required)'
                         ;;
-                    plugin|target|microservice|widget|tool|tool_vue|tool_angular|tool_react|tool_svelte)
+                    plugin|target|microservice|widget|tool|tool_vue)
                         # These require NAME as first arg
                         _message -r 'NAME (required)'
                         ;;
