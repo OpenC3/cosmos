@@ -1,6 +1,6 @@
 ---
 title: Extending COSMOS Containers
-description: Add OS packages, gems, Python packages, and tools to the COSMOS images without forking them
+description: Add OS packages, binaries, and tools to the COSMOS images without forking them
 sidebar_custom_props:
   myEmoji: 🧱
 ---
@@ -65,12 +65,6 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends iputils-ping && \
     rm -rf /var/lib/apt/lists/*
 
-# Ruby gems
-RUN gem install --no-document rubyserial
-
-# Python packages, installed into the COSMOS Python environment
-RUN uv pip install --no-cache --python /openc3/python/.venv/bin/python pyusb
-
 # A vendor binary or SDK copied from the build context
 # COPY vendor-tool /usr/local/bin/vendor-tool
 
@@ -84,7 +78,7 @@ Notes:
 - Don't change the `CMD` or `ENTRYPOINT`. The image has to start the same way the original did.
 - Containers run with a read-only file system, so anything your code needs to write at runtime must go to `/tmp` or a volume you mount in `compose.override.yaml`, not into a directory you create in the image. `/gems` is mounted read-only in the operator and Script Runner containers.
 - If you use the Red Hat UBI images (`OPENC3_IMAGE_SUFFIX=-ubi`), install OS packages with `microdnf install -y <package>` instead of `apt-get`. The Node.js example below only works with the default Debian images.
-- In an air-gapped network, point `apt-get`, `gem`, and `uv` at your internal mirrors, or `COPY` the packages into the image and install them from files.
+- In an air-gapped network, point `apt-get` (or `microdnf`) at your internal mirror, or `COPY` the packages into the image and install them from files.
 
 ## Using the Custom Image
 
