@@ -281,6 +281,10 @@ class StreamingThread
     objects.each do |object|
       if object.end_time and time > object.end_time
         completed_objects << object
+      # Valkey reads start before start_time (see LoggedStreamingThread::TSDB_STREAM_OVERLAP_NSEC)
+      # and objects keep start_time after handoff to realtime, so skip earlier messages here
+      elsif object.start_time and time < object.start_time
+        next
       else
         result << object
       end
@@ -352,14 +356,15 @@ class StreamingThread
   end
 
   def handoff_objects(collection, topic, item_objects_by_topic, packet_objects_by_topic)
-    objects = item_objects_by_topic[topic]
+    # dup because these arrays are shared with the collection and remove deletes from them
+    objects = item_objects_by_topic[topic]&.dup
     if objects
       objects.each do |object|
         @collection.add(object)
         collection.remove(object, exact: true)
       end
     end
-    objects = packet_objects_by_topic[topic]
+    objects = packet_objects_by_topic[topic]&.dup
     if objects
       objects.each do |object|
         @collection.add(object)

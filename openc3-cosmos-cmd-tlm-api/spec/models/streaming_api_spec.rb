@@ -710,6 +710,16 @@ RSpec.describe StreamingApi, type: :model do
       expect(thread.instance_variable_get(:@cancel_thread)).to be_falsey
     end
 
+    it 'hands off every alias on a caught-up topic and leaves topics that have not caught up' do
+      collection = build([[explicit_key, '0'], [explicit_key, '1'], [latest_key, '2']])
+      realtime = StreamingThread.new(@api, StreamingObjectCollection.new, scope: 'DEFAULT')
+      health_status_topic = collection.objects[0].topic
+      _topics, _offsets, item_objects_by_topic, packet_objects_by_topic = collection.topics_offsets_and_objects
+      realtime.handoff_objects(collection, health_status_topic, item_objects_by_topic, packet_objects_by_topic)
+      expect(realtime.instance_variable_get(:@collection).objects.map(&:item_key)).to contain_exactly('0', '1', '2')
+      expect(collection.objects.map { |o| [o.packet_name, o.item_key] }).to eq([['PARAMS', '2']])
+    end
+
     it 'handing off a LATEST packet leaves the packets that have not caught up' do
       collection = build([latest_key])
       health_status = collection.objects[0]
@@ -1695,12 +1705,21 @@ RSpec.describe StreamingApi, type: :model do
       end
 
       it 'skips the overlap messages before the start time' do
-        thread, _collection = setup_thread(:RECEIVED)
+        thread, collection = setup_thread(:RECEIVED)
         start_nsec = (@start_time.to_i - 50) * 1_000_000_000
-        topic = 'DEFAULT__DECOM__{INST}__PARAMS'
+        msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 0, 'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
         # Received just before the start but written to the stream after the estimated offset
-        expect(thread.skip_message?(topic, { 'time' => 0, 'received_time' => start_nsec - 1 })).to be true
-        expect(thread.skip_message?(topic, { 'time' => 0, 'received_time' => start_nsec })).to be false
+        expect(thread.handle_message(msg.merge('received_time' => start_nsec - 1), collection.objects)).to be_nil
+        expect(thread.handle_message(msg.merge('received_time' => start_nsec), collection.objects)).to include('__time' => start_nsec)
+      end
+
+      it 'still skips messages before the start time after handoff to realtime' do
+        _thread, collection = setup_thread(:RECEIVED)
+        start_nsec = (@start_time.to_i - 50) * 1_000_000_000
+        realtime = RealtimeStreamingThread.new(@api, collection, scope: 'DEFAULT')
+        msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 0, 'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
+        expect(realtime.handle_message(msg.merge('received_time' => start_nsec - 1), collection.objects)).to be_nil
+        expect(realtime.handle_message(msg.merge('received_time' => start_nsec), collection.objects)).to include('__time' => start_nsec)
       end
     end
 
