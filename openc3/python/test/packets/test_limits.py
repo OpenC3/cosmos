@@ -169,6 +169,13 @@ class TestLimits(unittest.TestCase):
             [None, None, None, None, None, None, None, None, None],
         )
 
+    def test_set_complains_about_items_with_change_limits(self):
+        self.tlm.packet("TGT1", "PKT1").get_item("ITEM5").limits.change_type = "SEQUENCE"
+        with self.assertRaisesRegex(
+            RuntimeError, "Cannot set numeric limits on TGT1 PKT1 ITEM5 which has SEQUENCE limits"
+        ):
+            self.limits.set("TGT1", "PKT1", "ITEM5", 1, 2, 3, 4, None, None, "DEFAULT")
+
     def test_sets_limits_for_an_item(self):
         self.assertEqual(
             self.limits.set("TGT1", "PKT1", "ITEM5", 1, 2, 3, 4, None, None, "DEFAULT"),

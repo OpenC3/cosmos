@@ -41,8 +41,28 @@ permissions:
   contents: read
 
 jobs:
+  # Companion to openc3-build-ubi below with the inverse condition and the same
+  # check name. build-ubi is a required check, and a job skipped by its `if`
+  # can leave the check unreported. This one runs exactly when the real job is
+  # skipped, so the required check always gets a pass.
+  openc3-build-ubi-skipped:
+    name: openc3-build-ubi
+    if: >-
+      github.actor == 'dependabot[bot]' ||
+      (github.event_name == 'pull_request' &&
+       github.event.pull_request.head.repo.full_name != github.repository)
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - run: echo "Secrets unavailable (dependabot or fork PR); UBI build runs on push to main after merge."
   openc3-build-ubi:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    # Fork PRs (like dependabot's) get no secrets, and Registry1 has no
+    # anonymous pulls, so the UBI base images cannot be fetched. Their changes
+    # are still built by the push to main after merge.
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
