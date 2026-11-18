@@ -19,7 +19,7 @@ These tests verify that all COSMOS data types can be:
 
 Run with:
     1. Start QuestDB: docker compose -f docker-compose.test.yml up -d
-    2. Run tests: poetry run pytest python/test_tsdb_roundtrip.py -v
+    2. Run tests: cd openc3/python && uv run pytest ../test/integration/tsdb/python/test_tsdb_roundtrip.py -v
     3. Stop QuestDB: docker compose -f docker-compose.test.yml down
 """
 
