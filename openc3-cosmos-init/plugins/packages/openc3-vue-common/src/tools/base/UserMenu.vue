@@ -32,6 +32,7 @@
           v-bind="props"
           class="rux-icon"
           icon="person"
+          data-test="user-menu"
           status="off"
           :label="compact ? '' : name"
           :sublabel="compact ? '' : roles()"
