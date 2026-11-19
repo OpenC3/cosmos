@@ -165,9 +165,13 @@ class MicroserviceModel(Model):
 
     def create(self, update=False, force=False, queued=False):
         # Validate the route prefix on every write, including microservices
-        # created directly through the API rather than from a plugin.txt
+        # created directly through the API rather than from a plugin.txt. An
+        # update that keeps the stored prefix is allowed, so a microservice stored
+        # before prefixes were validated can still be started and stopped.
         if self.prefix is not None:
-            self.prefix = MicroserviceModel.validate_route_prefix(self.prefix)
+            existing = MicroserviceModel.get(self.name) if update else None
+            if not existing or existing.get("prefix") != self.prefix:
+                self.prefix = MicroserviceModel.validate_route_prefix(self.prefix)
         super().create(update=update, force=force, queued=queued)
 
     def as_json(self):

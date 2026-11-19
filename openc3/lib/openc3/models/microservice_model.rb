@@ -173,9 +173,16 @@ module OpenC3
     end
 
     # Validate the route prefix on every write, including microservices created
-    # directly through the API rather than from a plugin.txt
+    # directly through the API rather than from a plugin.txt. An update that keeps
+    # the stored prefix is allowed, so a microservice stored before prefixes were
+    # validated can still be started and stopped (#traefik doesn't route it).
     def create(update: false, force: false, queued: false)
-      @prefix = self.class.validate_route_prefix(@prefix) if @prefix
+      if @prefix
+        existing = self.class.get(name: @name) if update
+        unless existing and existing['prefix'] == @prefix
+          @prefix = self.class.validate_route_prefix(@prefix)
+        end
+      end
       super(update: update, force: force, queued: queued)
     end
 

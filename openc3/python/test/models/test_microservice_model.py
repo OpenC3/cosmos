@@ -10,10 +10,12 @@
 # if purchased from OpenC3, Inc.
 
 import inspect
+import json
 import unittest
 from unittest.mock import *
 
 from openc3.models.microservice_model import MicroserviceModel
+from openc3.utilities.store import Store
 from test.test_helper import *
 
 
@@ -87,6 +89,25 @@ class TestMicroserviceModel(unittest.TestCase):
     def test_create_stores_normalized_prefix(self):
         model = MicroserviceModel("DEFAULT__USER__MYAPI", prefix="myapi/", ports=[[7791, "TCP"]], scope="DEFAULT")
         model.create()
+        self.assertEqual(MicroserviceModel.get("DEFAULT__USER__MYAPI")["prefix"], "/myapi")
+
+    def test_update_allows_stored_prefix_from_before_validation(self):
+        model = MicroserviceModel("DEFAULT__USER__LEGACY", prefix="/my.api", ports=[[7791, "TCP"]], scope="DEFAULT")
+        Store.hset(MicroserviceModel.PRIMARY_KEY, model.name, json.dumps(model.as_json()))
+
+        model = MicroserviceModel.get_model("DEFAULT__USER__LEGACY", scope="DEFAULT")
+        model.enabled = False
+        model.update()
+        stored = MicroserviceModel.get("DEFAULT__USER__LEGACY")
+        self.assertFalse(stored["enabled"])
+        self.assertEqual(stored["prefix"], "/my.api")
+
+    def test_update_validates_changed_prefix(self):
+        model = MicroserviceModel("DEFAULT__USER__MYAPI", prefix="/myapi", ports=[[7791, "TCP"]], scope="DEFAULT")
+        model.create()
+        model.prefix = "/my.api"
+        with self.assertRaisesRegex(RuntimeError, "Invalid ROUTE_PREFIX"):
+            model.update()
         self.assertEqual(MicroserviceModel.get("DEFAULT__USER__MYAPI")["prefix"], "/myapi")
 
     def test_returns_the_specified_model_with_or_without_scope(self):

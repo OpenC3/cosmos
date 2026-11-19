@@ -151,6 +151,48 @@ module OpenC3
         model.create
         expect(MicroserviceModel.get(name: "DEFAULT__USER__MYAPI")['prefix']).to eql "/myapi"
       end
+
+      it "allows an update that keeps a stored prefix from before validation" do
+        model = MicroserviceModel.new(name: "DEFAULT__USER__LEGACY", prefix: "/my.api", ports: [[7791, 'TCP']], scope: "DEFAULT")
+        Store.hset(MicroserviceModel::PRIMARY_KEY, model.name, JSON.generate(model.as_json, allow_nan: true))
+
+        model = MicroserviceModel.get_model(name: "DEFAULT__USER__LEGACY", scope: "DEFAULT")
+        model.enabled = false
+        model.update
+        stored = MicroserviceModel.get(name: "DEFAULT__USER__LEGACY")
+        expect(stored['enabled']).to be false
+        expect(stored['prefix']).to eql "/my.api"
+      end
+
+      it "validates a prefix changed by an update" do
+        model = MicroserviceModel.new(name: "DEFAULT__USER__MYAPI", prefix: "/myapi", ports: [[7791, 'TCP']], scope: "DEFAULT")
+        model.create
+        model.prefix = "/my.api"
+        expect { model.update }.to raise_error(RuntimeError, /Invalid ROUTE_PREFIX/)
+        expect(MicroserviceModel.get(name: "DEFAULT__USER__MYAPI")['prefix']).to eql "/myapi"
+      end
+    end
+
+    describe "RESERVED_ROUTE_PREFIXES" do
+      # Microservice routes are priority 3, below most built in traefik routers. A
+      # built in PathPrefix(`/x`) would also match /xother, so every PathPrefix must
+      # be followed by a '/' and start with a reserved segment, or it would take
+      # requests meant for an accepted ROUTE_PREFIX such as /openc3-api-custom.
+      it "covers every built in traefik PathPrefix rule, anchored to a segment" do
+        files = Dir[File.expand_path(File.join(File.dirname(__FILE__), "../../../openc3-traefik/traefik*.yaml"))]
+        expect(files.length).to eql 3
+        files.each do |file|
+          rules = File.readlines(file).grep(/\A\s*rule:/)
+          prefixes = rules.join.scan(/PathPrefix\(`([^`]*)`\)/).flatten
+          expect(prefixes).not_to be_empty
+          prefixes.each do |prefix|
+            match = prefix.match(%r{\A/([^/]+)/})
+            expect(match).not_to be_nil, "#{File.basename(file)}: PathPrefix(`#{prefix}`) also matches #{prefix}other"
+            expect(MicroserviceModel::RESERVED_ROUTE_PREFIXES).to include(match[1].downcase), "#{File.basename(file)}: '/#{match[1]}' is not reserved"
+            expect { MicroserviceModel.validate_route_prefix("/#{match[1]}-custom") }.not_to raise_error
+          end
+        end
+      end
     end
 
     describe "initialize" do
