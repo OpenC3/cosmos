@@ -19,6 +19,7 @@
         class="ml-2 pa-2"
         size="small"
         icon="apps"
+        data-test="nav-drawer-toggle"
         @click="$emit('toggle-drawer')"
       ></rux-icon>
       <!-- Tools teleport their title and menus here (TopBar.vue). Takes the

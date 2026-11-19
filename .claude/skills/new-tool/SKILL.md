@@ -67,8 +67,7 @@ cd <parent-dir>/openc3-cosmos-<plugin-name>
 $COSMOS/openc3.sh cli generate tool '<Tool Name>'
 ```
 
-Use `tool_react`, `tool_angular` or `tool_svelte` instead of `tool` for
-another framework. For Vue this creates `src/App.vue`, `src/main.js`,
+This creates `src/App.vue`, `src/main.js`,
 `src/router.js`, `src/tools/<toolname>/<toolname>.vue`, `package.json`,
 `vite.config.js`, `eslint.config.mjs`, `jsconfig.json` and
 `pnpm-workspace.yaml`, and appends to `plugin.txt`:
