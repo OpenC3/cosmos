@@ -119,6 +119,36 @@ Layout Widgets:
         END
     TABBOOK:
       summary: Creates a tabbed area in which to place TABITEM widgets
+      example: |
+        TABBOOK
+          SETTING LIMITS_STATE TRUE
+          TABITEM "Temperatures"
+            LABELVALUE INST HEALTH_STATUS TEMP1
+            LABELVALUE INST HEALTH_STATUS TEMP2
+          END
+          TABITEM "Ground"
+            LABELVALUE INST HEALTH_STATUS GROUND1STATUS
+          END
+        END
+      settings:
+        LIMITS_STATE:
+          summary: Outline each tab in the worst limits color of the items on it
+          description:
+            When set to TRUE, each tab is outlined in the worst limits color of the items on
+            that tab (RED, then YELLOW, then GREEN, with BLUE counted as GREEN) and shows the
+            matching Astro status icon before its name, so you can see a problem on a tab that
+            isn't showing. Tabs without items in a limits state have
+            no outline. Items in TABBOOKs nested inside a tab count toward that tab.
+            To do this every tab, including the tabs of nested TABBOOKs, is built when the
+            screen opens instead of when it is first shown, so all of their items are polled
+            and their graphs and other widgets run from the start. Put this SETTING directly
+            after TABBOOK, before the first TABITEM.
+          since: _Coming Soon_
+          parameters:
+            - name: Enabled
+              required: true
+              description: Whether to outline the tabs
+              values: ["TRUE", "FALSE"]
     TABITEM:
       summary: Creates a VERTICAL layout tab into which to place widgets
       parameters:

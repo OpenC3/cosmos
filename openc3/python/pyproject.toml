@@ -69,7 +69,7 @@ openc3pycli = "openc3pycli:main"
 dev = [
     "coverage==7.16.1",
     "fakeredis==2.38.0",
-    "pytest==9.1.1",
+    "pytest==9.2.0",
     "pytest-profiling==1.8.1",
     # ruff and ty must move deliberately for a reason beyond the group rule
     # above: ruff's formatter output decides whether the generated .pyi stubs
