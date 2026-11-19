@@ -12,6 +12,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/utilities/bucket'
+require 'openc3/utilities/logger'
 OpenC3.require_file 'openc3/utilities/store'
 
 module OpenC3
@@ -38,6 +39,77 @@ module OpenC3
       'OPENC3_API_PASSWORD',
       'OPENC3_SERVICE_PASSWORD',
     ] + UNUSED_VARS
+
+    # Variables users may not set through the global Environment or the
+    # per-script environment. Global entries apply to every user's scripts, so
+    # these are the names that would let one user run code in, or redirect the
+    # credentials of, another user's script process. Keep this list to names
+    # that matter: script code can already read its own credentials, and an
+    # overly broad list (e.g. a RUBY or PYTHON prefix) breaks ordinary user
+    # variables. Matched case-insensitively.
+    RESERVED_PREFIXES = %w[
+      OPENC3_
+      LD_
+      BUNDLE
+      AWS_
+    ].freeze
+    RESERVED_NAMES = %w[
+      PATH HOME
+      RUBYOPT RUBYLIB RUBYGEMS_GEMDEPS GEM_HOME GEM_PATH
+      PYTHONPATH PYTHONHOME PYTHONUSERBASE PYTHONSTARTUP PYTHONWARNINGS
+      PYTHONBREAKPOINT PYTHONINSPECT PYTHONPYCACHEPREFIX VIRTUAL_ENV
+      GCONV_PATH OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES
+      BASH_ENV ENV IFS
+      HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY
+      HOSTALIASES LOCALDOMAIN RES_OPTIONS
+      SSL_CERT_FILE SSL_CERT_DIR REQUESTS_CA_BUNDLE CURL_CA_BUNDLE
+    ].freeze
+    # Reserved-prefix names that only change script output, not how the
+    # script connects or loads code. Script Runner sends OPENC3_FULL_BACKTRACE
+    # when "Enable Stack Traces" is checked.
+    ALLOWED_NAMES = %w[OPENC3_FULL_BACKTRACE].freeze
+    VALID_NAME = /\A[A-Za-z_][A-Za-z0-9_]*\z/
+
+    # Returns an error message if key can't be set by users, nil if it can
+    def self.key_error(key)
+      return "Environment variable name must be a String" unless key.is_a?(String)
+      unless VALID_NAME.match?(key)
+        return "Environment variable name '#{key}' must contain only letters, digits and underscores and not start with a digit"
+      end
+
+      upcased = key.upcase
+      return nil if ALLOWED_NAMES.include?(upcased)
+      if RESERVED_NAMES.include?(upcased) or RESERVED_PREFIXES.any? { |prefix| upcased.start_with?(prefix) }
+        return "Environment variable '#{key}' is reserved by COSMOS and can not be set for scripts"
+      end
+
+      return nil
+    end
+
+    def self.allowed_key?(key)
+      return key_error(key).nil?
+    end
+
+    # Copy user environment entries ([{ 'key' => , 'value' => }, ...]) into a
+    # ChildProcess environment, skipping reserved names. Returns the hash of
+    # entries applied.
+    def self.apply_user_entries(environment, entries, source:, scope: nil)
+      applied = {}
+      (entries || []).each do |entry|
+        key = entry.respond_to?(:key?) ? entry['key'] : nil
+        error = key_error(key)
+        if error
+          Logger.warn("Ignoring #{source} environment variable: #{error}", scope: scope)
+          next
+        end
+        # nil unsets the variable in the ChildProcess environment
+        value = entry['value']
+        value = value.to_s unless value.nil?
+        environment[key] = value
+        applied[key] = value
+      end
+      return applied
+    end
 
     # Secrets the script process needs, delivered over stdin instead of its
     # environment. Removing a variable from ENV does not change
