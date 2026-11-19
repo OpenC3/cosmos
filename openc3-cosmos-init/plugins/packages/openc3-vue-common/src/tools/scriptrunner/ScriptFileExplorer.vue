@@ -23,11 +23,10 @@
     data-test="script-explorer"
   >
     <div class="d-flex align-center px-2">
-      <span class="text-overline">
+      <span class="explorer-title text-overline text-truncate">
         {{ mode === 'files' ? 'Files' : 'Library' }}
       </span>
-      <v-spacer />
-      <v-tooltip :open-delay="600" location="bottom" text="Files">
+      <v-tooltip :open-delay="600" location="bottom" text="File Tree">
         <template #activator="{ props: tooltipProps }">
           <v-btn
             v-bind="tooltipProps"
@@ -35,7 +34,7 @@
             variant="text"
             size="x-small"
             :color="mode === 'files' ? 'primary' : undefined"
-            aria-label="Files"
+            aria-label="File Tree"
             data-test="explorer-mode-files"
             @click="mode = 'files'"
           />
@@ -55,7 +54,7 @@
           />
         </template>
       </v-tooltip>
-      <v-divider vertical class="mx-1 my-2" />
+      <v-divider vertical class="explorer-divider my-2" />
       <v-tooltip
         :open-delay="600"
         location="bottom"
@@ -562,6 +561,27 @@ defineExpose({ refresh, refreshFile })
 </script>
 
 <style scoped>
+/* The title pushes the header buttons to the right. When the explorer is
+   narrow drop the title (the highlighted mode button already shows it) so
+   the buttons stay visible, and move the mode buttons into its place */
+.script-explorer {
+  container-type: inline-size;
+}
+.explorer-title {
+  margin-inline-end: auto;
+}
+.explorer-divider {
+  margin-inline: 4px;
+}
+@container (max-width: 260px) {
+  .explorer-title {
+    display: none;
+  }
+  .explorer-divider {
+    margin-inline-start: auto;
+  }
+}
+
 /* Hide the scrollbar until the tree is hovered or focused, like VS Code.
    Keep the gutter so rows don't shift when it appears. scrollbar-color
    itself doesn't animate everywhere, so fade a registered color property

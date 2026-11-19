@@ -404,7 +404,39 @@ test('autocompletes screen keywords and their parameters', async ({
 })
 
 test('displays INST TABS', async ({ page, utils }) => {
-  await showScreen(page, utils, 'INST', 'TABS')
+  await showScreen(page, utils, 'INST', 'TABS', true, async function () {
+    // INST TABS sets LIMITS_STATE so every tab is outlined in the worst
+    // limits color of its items. HS (the second tab) has TEMP1-4 which have
+    // limits, and it is outlined even though it has never been shown.
+    await expect(page.locator('[data-test="tab-limits-1"]')).toHaveAttribute(
+      'data-limits-color',
+      /^(green|yellow|red)$/,
+    )
+    // The tab also shows the matching Astro status icon
+    await expect(page.locator('[data-test="tab-status-1"]')).toHaveAttribute(
+      'status',
+      /^(normal|caution|critical)$/,
+    )
+    // ADCS has no items with limits so it has no outline or icon
+    await expect(page.locator('[data-test="tab-limits-0"]')).toHaveCount(0)
+    await expect(page.locator('[data-test="tab-status-0"]')).toHaveCount(0)
+    // NESTED holds a TABBOOK without LIMITS_STATE. Its INNER B tab has
+    // never been shown but its TEMP1 still counts toward the NESTED outline.
+    await expect(page.locator('[data-test="tab-limits-2"]')).toHaveAttribute(
+      'data-limits-color',
+      /^(green|yellow|red)$/,
+    )
+  })
+})
+
+test('INST2 TABS without LIMITS_STATE has no tab outlines', async ({
+  page,
+  utils,
+}) => {
+  await showScreen(page, utils, 'INST2', 'TABS', true, async function () {
+    await expect(page.getByRole('tab', { name: 'HS' })).toBeVisible()
+    await expect(page.locator('[data-test^="tab-limits-"]')).toHaveCount(0)
+  })
 })
 
 test('displays INST WEB', async ({ page, utils }) => {
