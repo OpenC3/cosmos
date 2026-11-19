@@ -480,6 +480,71 @@ class TestLimitsApi(unittest.TestCase):
             self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", item))
         self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP4"))
 
+    def test_limits_group_only_changes_the_items_directly_in_the_group_with_cascade_false(self):
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "INST__SPACECRAFT",
+            json.dumps([["SYSTEM", "LIMITS_GROUP", "FIRST"], ["INST", "HEALTH_STATUS", "TEMP2"]]),
+        )
+        Store.delete("DEFAULT__openc3_limits_events")
+        disable_limits_group("INST", "SPACECRAFT", cascade=False)
+        # FIRST contains TEMP1 and TEMP3
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+        self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP2"))
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP3"))
+        settings = json.loads(Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP2"))
+        self.assertFalse(settings["enabled"])
+        settings = Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1")
+        self.assertTrue(settings is None or json.loads(settings).get("enabled") is not False)
+        events = [
+            event for event in LimitsEventTopic.read("0-0", scope="DEFAULT") if event[1]["type"] != "LIMITS_CHANGE"
+        ]
+        self.assertIs(events[-1][1]["cascade"], False)
+        self.assertEqual(events[-1][1]["message"], "Disabling Limits Group: INST SPACECRAFT (not nested groups)")
+
+        disable_limits_group("INST", "SPACECRAFT")
+        for item in ["TEMP1", "TEMP2", "TEMP3"]:
+            self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", item))
+        enable_limits_group("INST", "SPACECRAFT", cascade=False)
+        self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP2"))
+        # Only an event which doesn't cascade says so
+        enable_limits_group("INST", "SPACECRAFT")
+        events = [
+            event for event in LimitsEventTopic.read("0-0", scope="DEFAULT") if event[1]["type"] != "LIMITS_CHANGE"
+        ]
+        self.assertNotIn("cascade", events[-1][1])
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
+    def test_disable_limits_group_disables_a_group_of_only_nested_groups_itself_with_cascade_false(self):
+        Store.hset("DEFAULT__limits_groups", "INST__ALL", json.dumps([["SYSTEM", "LIMITS_GROUP", "FIRST"]]))
+        disable_limits_group("INST", "ALL", cascade=False)
+        # FIRST and its items are unchanged
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+        self.assertEqual(LimitsEventTopic.limits_group_settings("DEFAULT"), {"INST__ALL": {"enabled": False}})
+        enable_limits_group("INST", "ALL")
+        self.assertEqual(
+            LimitsEventTopic.limits_group_settings("DEFAULT"),
+            {"INST__ALL": {"enabled": True}, "SYSTEM__FIRST": {"enabled": True}},
+        )
+
+    def test_limits_group_takes_cascade_with_just_the_group_name(self):
+        Store.hset(
+            "DEFAULT__limits_groups",
+            "INST__SPACECRAFT",
+            json.dumps([["SYSTEM", "LIMITS_GROUP", "FIRST"], ["INST", "HEALTH_STATUS", "TEMP2"]]),
+        )
+        disable_limits_group("SPACECRAFT", cascade=False)
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+        self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP2"))
+        disable_limits_group("SPACECRAFT", cascade=True)
+        self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+        enable_limits_group("SPACECRAFT", cascade=False)
+        self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP2"))
+        enable_limits_group("SPACECRAFT", cascade=True)
+        self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
+
     def test_disable_limits_groups_accepts_a_lowercase_group_name(self):
         disable_limits_group("first")
         self.assertFalse(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
@@ -716,6 +781,12 @@ class TestLimitsApi(unittest.TestCase):
         self.assertEqual(get_overall_limits_state([["INST", "HEALTH_STATUS", None]]), "GREEN")
         # Ignoring just TEMP2 yields YELLOW due to TEMP1
         self.assertEqual(get_overall_limits_state([["INST", "HEALTH_STATUS", "TEMP2"]]), "YELLOW")
+
+    def test_get_overall_limits_state_is_never_blue(self):
+        with patch(
+            "openc3.api.limits_api.get_out_of_limits", return_value=[["INST", "HEALTH_STATUS", "TEMP1", "BLUE"]]
+        ):
+            self.assertEqual(get_overall_limits_state(), "GREEN")
 
     def test_get_overall_limits_state_raise_on_invalid_ignored_items(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid ignored item: BLAH"):

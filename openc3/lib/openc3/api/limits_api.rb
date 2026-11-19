@@ -82,7 +82,9 @@ module OpenC3
 
         states << limits_state
       end
-      return LimitsRollup.worst(states) || 'GREEN'
+      overall = LimitsRollup.worst(states)
+      # The overall state has never been BLUE
+      return (overall.nil? or overall == 'BLUE') ? 'GREEN' : overall
     end
 
     # Whether the limits are enabled for the given item
@@ -333,8 +335,11 @@ module OpenC3
     #   enable_limits_group(target_name, group_name)
     #
     # A group name alone must only be defined by one target
-    def enable_limits_group(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
-      _limits_group(args, 'enable_limits_group', action: :enable, manual: manual, scope: scope, token: token)
+    #
+    # @param cascade [Boolean] Whether to also enable the nested groups and their items.
+    #   When false only the group itself and the items directly in it are enabled.
+    def enable_limits_group(*args, cascade: true, manual: false, scope: $openc3_scope, token: $openc3_token)
+      _limits_group(args, 'enable_limits_group', action: :enable, cascade: cascade, manual: manual, scope: scope, token: token)
     end
 
     # Disables limits for all the items in the group
@@ -344,8 +349,11 @@ module OpenC3
     #   disable_limits_group(target_name, group_name)
     #
     # A group name alone must only be defined by one target
-    def disable_limits_group(*args, manual: false, scope: $openc3_scope, token: $openc3_token)
-      _limits_group(args, 'disable_limits_group', action: :disable, manual: manual, scope: scope, token: token)
+    #
+    # @param cascade [Boolean] Whether to also disable the nested groups and their items.
+    #   When false only the group itself and the items directly in it are disabled.
+    def disable_limits_group(*args, cascade: true, manual: false, scope: $openc3_scope, token: $openc3_token)
+      _limits_group(args, 'disable_limits_group', action: :disable, cascade: cascade, manual: manual, scope: scope, token: token)
     end
 
     # Returns all defined limits sets
@@ -418,7 +426,7 @@ module OpenC3
     ###########################################################################
 
     # Enables or disables a limits group
-    def _limits_group(args, method_name, action:, manual:, scope:, token:)
+    def _limits_group(args, method_name, action:, cascade:, manual:, scope:, token:)
       case args.length
       when 1
         target_name = nil
@@ -433,7 +441,8 @@ module OpenC3
       key = LimitsEventTopic.find_limits_group(target_name, group_name, scope: scope)
       target_name, group_name = LimitsEventTopic.split_limits_group_key(key)
       # Items grouped by target and packet so each packet is read and written once
-      items = LimitsEventTopic.limits_group_items(key, scope: scope)
+      cascade = cascade ? true : false
+      items = LimitsEventTopic.limits_group_items(key, cascade: cascade, scope: scope)
       # Members can be items of other targets, directly or through nested groups,
       # so check every target before changing any of them
       items.each_key do |item_target_name|
@@ -442,6 +451,7 @@ module OpenC3
 
       enabled = (action == :enable)
       message = "#{enabled ? 'Enabling' : 'Disabling'} Limits Group: #{[target_name, group_name].compact.join(' ')}"
+      message += " (not nested groups)" unless cascade
       Logger.info(message, scope: scope)
 
       items.each do |item_target_name, packets|
@@ -464,6 +474,8 @@ module OpenC3
                 enabled: enabled, time_nsec: Time.now.to_nsec_from_epoch, message: message }
       # Groups stored before they were owned by a target have no target name
       event[:target_name] = target_name if target_name
+      # Readers expand nested groups unless the event says not to
+      event[:cascade] = false unless cascade
       LimitsEventTopic.write(event, scope: scope)
     end
 

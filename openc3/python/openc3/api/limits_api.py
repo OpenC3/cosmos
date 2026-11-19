@@ -100,7 +100,9 @@ def get_overall_limits_state(ignored_items: list[Any] | None = None, scope: str 
         if any(item in f"{target_name}__{packet_name}__{item_name}" for item in ignored_items):
             continue
         states.append(limits_state)
-    return limits_rollup.worst(states) or "GREEN"
+    overall = limits_rollup.worst(states)
+    # The overall state has never been BLUE
+    return "GREEN" if overall is None or overall == "BLUE" else overall
 
 
 def limits_enabled(*args: str, scope: str = OPENC3_SCOPE) -> bool:
@@ -445,7 +447,7 @@ def get_limits_groups(target_name: str | None = None, scope: str = OPENC3_SCOPE)
     return {(key if counts[group_name] > 1 else group_name): items for key, _target, group_name, items in groups}
 
 
-def enable_limits_group(*args: str, scope: str = OPENC3_SCOPE) -> None:
+def enable_limits_group(*args: str, cascade: bool = True, scope: str = OPENC3_SCOPE) -> None:
     """Enable limits checking for all the items in a limits group.
 
     Accepts two calling styles::
@@ -457,16 +459,19 @@ def enable_limits_group(*args: str, scope: str = OPENC3_SCOPE) -> None:
 
     Args:
         *args: The group name, or the target name and group name.
+        cascade: Whether to also enable the nested groups and their items.
+            When False only the group itself and the items directly in it
+            are enabled.
         scope: COSMOS scope.
 
     Raises:
         RuntimeError: If the number of arguments is invalid or the group is
             undefined or ambiguous.
     """
-    _limits_group(args, "enable_limits_group", action="enable", scope=scope)
+    _limits_group(args, "enable_limits_group", action="enable", cascade=cascade, scope=scope)
 
 
-def disable_limits_group(*args: str, scope: str = OPENC3_SCOPE) -> None:
+def disable_limits_group(*args: str, cascade: bool = True, scope: str = OPENC3_SCOPE) -> None:
     """Disable limits checking for all the items in a limits group.
 
     Accepts two calling styles::
@@ -478,13 +483,16 @@ def disable_limits_group(*args: str, scope: str = OPENC3_SCOPE) -> None:
 
     Args:
         *args: The group name, or the target name and group name.
+        cascade: Whether to also disable the nested groups and their items.
+            When False only the group itself and the items directly in it
+            are disabled.
         scope: COSMOS scope.
 
     Raises:
         RuntimeError: If the number of arguments is invalid or the group is
             undefined or ambiguous.
     """
-    _limits_group(args, "disable_limits_group", action="disable", scope=scope)
+    _limits_group(args, "disable_limits_group", action="disable", cascade=cascade, scope=scope)
 
 
 def get_limits_sets(scope: str = OPENC3_SCOPE) -> list[str]:
@@ -587,7 +595,7 @@ def get_limits_events(offset: str | None = None, count: int = 100, scope: str = 
 
 
 # Enables or disables a limits group
-def _limits_group(args: tuple[str, ...], method_name: str, action: str, scope: str):
+def _limits_group(args: tuple[str, ...], method_name: str, action: str, cascade: bool, scope: str):
     match len(args):
         case 1:
             target_name = None
@@ -603,7 +611,8 @@ def _limits_group(args: tuple[str, ...], method_name: str, action: str, scope: s
     key = LimitsEventTopic.find_limits_group(target_name, group_name, scope)
     target_name, group_name = LimitsEventTopic.split_limits_group_key(key)
     # Items grouped by target and packet so each packet is read and written once
-    items = LimitsEventTopic.limits_group_items(key, scope)
+    cascade = bool(cascade)
+    items = LimitsEventTopic.limits_group_items(key, scope, cascade)
     # Members can be items of other targets, directly or through nested groups,
     # so check every target before changing any of them
     for item_target_name in items:
@@ -611,6 +620,8 @@ def _limits_group(args: tuple[str, ...], method_name: str, action: str, scope: s
 
     enabled = action == "enable"
     message = f"{'Enabling' if enabled else 'Disabling'} Limits Group: {' '.join(name for name in (target_name, group_name) if name)}"
+    if not cascade:
+        message += " (not nested groups)"
     Logger.info(message, scope=scope)
 
     for item_target_name, packets in items.items():
@@ -640,6 +651,9 @@ def _limits_group(args: tuple[str, ...], method_name: str, action: str, scope: s
     # Groups stored before they were owned by a target have no target name
     if target_name:
         event["target_name"] = target_name
+    # Readers expand nested groups unless the event says not to
+    if not cascade:
+        event["cascade"] = False
     LimitsEventTopic.write(event, scope=scope)
 
 

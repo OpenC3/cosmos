@@ -153,7 +153,7 @@ module OpenC3
       warnings = []
       allow_any_instance_of(Logger).to receive(:warn) { |_logger, message| warnings << message }
       start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
-      expect(cvt['TEMPS_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['TEMPS_ENABLED__C']).to eql 'PARTIAL'
       expect(warnings).to be_empty
     end
 
@@ -265,21 +265,43 @@ module OpenC3
       expect(api.get_overall_limits_state(scope: 'DEFAULT')).to eql 'YELLOW'
     end
 
-    it "ignores disabled members and reports the group not enabled" do
+    it "ignores disabled members and reports the group PARTIAL" do
       start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
       change('TEMP1', 'RED')
       limits_event({ type: :LIMITS_ENABLE_STATE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: 'TEMP1',
                      enabled: false, time_nsec: 0, message: 'test' })
       expect(cvt['TEMPS__C']).to eql 'GREEN'
-      expect(cvt['TEMPS_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['TEMPS_ENABLED__C']).to eql 'PARTIAL'
     end
 
-    it "reports GREEN with no limits state when no member is enabled" do
-      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1)] })
+    it "reports DISABLED with no limits state when no member is enabled" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'RED')
+      expect(cvt['TEMPS__L']).to eql 'RED'
       limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, group_name: 'TEMPS', enabled: false, time_nsec: 0, message: 'test' })
-      expect(cvt['TEMPS__C']).to eql 'GREEN'
+      expect(cvt['TEMPS__C']).to eql 'DISABLED'
+      expect(cvt['TEMPS']).to eql PacketConfig::LIMITS_GROUP_STATES['DISABLED']
       expect(cvt).to_not have_key('TEMPS__L')
       expect(cvt['TEMPS_ENABLED__C']).to eql 'FALSE'
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, group_name: 'TEMPS', enabled: true, time_nsec: 0, message: 'test' })
+      expect(cvt['TEMPS__C']).to eql 'RED'
+      expect(cvt['TEMPS_ENABLED__C']).to eql 'TRUE'
+    end
+
+    it "reports BLUE only when every enabled member is BLUE" do
+      start({ 'TEMPS' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'BLUE')
+      expect(cvt['TEMPS__C']).to eql 'GREEN'
+      change('TEMP2', 'BLUE')
+      expect(cvt['TEMPS__C']).to eql 'BLUE'
+      expect(cvt['TEMPS__L']).to eql 'BLUE'
+      expect(cvt['TEMPS']).to eql PacketConfig::LIMITS_GROUP_STATES['BLUE']
+      change('TEMP2', 'YELLOW_LOW')
+      expect(cvt['TEMPS__C']).to eql 'YELLOW'
+      # A disabled member doesn't count
+      limits_event({ type: :LIMITS_ENABLE_STATE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: 'TEMP2',
+                     enabled: false, time_nsec: 0, message: 'test' })
+      expect(cvt['TEMPS__C']).to eql 'BLUE'
     end
 
     it "ignores unknown members and warns once" do
@@ -307,8 +329,8 @@ module OpenC3
       # A disabled item below a child shows up at the top
       limits_event({ type: :LIMITS_ENABLE_STATE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: 'TEMP2',
                      enabled: false, time_nsec: 0, message: 'test' })
-      expect(cvt['THERMAL_ENABLED__C']).to eql 'FALSE'
-      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'PARTIAL'
+      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'PARTIAL'
     end
 
     it "keeps a partly disabled child's color in its parent" do
@@ -318,9 +340,132 @@ module OpenC3
       limits_event({ type: :LIMITS_ENABLE_STATE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: 'TEMP2',
                      enabled: false, time_nsec: 0, message: 'test' })
       expect(cvt['THERMAL__C']).to eql 'RED'
-      expect(cvt['THERMAL_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'PARTIAL'
       expect(cvt['SPACECRAFT__C']).to eql 'RED'
+      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'PARTIAL'
+    end
+
+    it "ignores a disabled child's color and reports its parent PARTIAL" do
+      start({ 'SPACECRAFT' => [%w(INST LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
+              'THERMAL' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'RED')
+      expect(cvt['SPACECRAFT__C']).to eql 'RED'
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'THERMAL', enabled: false, time_nsec: 0, message: 'test' })
+      expect(cvt['THERMAL__C']).to eql 'DISABLED'
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['SPACECRAFT__C']).to eql 'GREEN'
+      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'PARTIAL'
+
+      # Disabling the parent disables its child's items too
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'SPACECRAFT', enabled: false, time_nsec: 0, message: 'test' })
+      expect(cvt['SPACECRAFT__C']).to eql 'DISABLED'
       expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'FALSE'
+    end
+
+    it "only disables the group itself and its own items when the event doesn't cascade" do
+      start({ 'SPACECRAFT' => [%w(INST LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
+              'THERMAL' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP3', 'RED')
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'SPACECRAFT', enabled: false,
+                     cascade: false, time_nsec: 0, message: 'test' })
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'TRUE'
+      expect(cvt['SPACECRAFT__C']).to eql 'DISABLED'
+      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'FALSE'
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'SPACECRAFT', enabled: true,
+                     cascade: false, time_nsec: 0, message: 'test' })
+      expect(cvt['SPACECRAFT__C']).to eql 'RED'
+      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'TRUE'
+    end
+
+    it "disables a group of only nested groups without cascade" do
+      start({ 'ALL' => [%w(INST LIMITS_GROUP THERMAL), %w(INST LIMITS_GROUP POWER)],
+              'THERMAL' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)],
+              'POWER' => [%w(INST HEALTH_STATUS TEMP3)],
+              'TOP' => [%w(INST LIMITS_GROUP ALL), %w(INST HEALTH_STATUS TEMP4)] })
+      change('TEMP1', 'RED')
+      expect(cvt['ALL__C']).to eql 'RED'
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'ALL', enabled: false,
+                     cascade: false, time_nsec: 0, message: 'test' })
+      expect(cvt['ALL__C']).to eql 'DISABLED'
+      expect(cvt).to_not have_key('ALL__L')
+      expect(cvt['ALL_ENABLED__C']).to eql 'FALSE'
+      # The nested groups keep checking limits and rolling up
+      expect(cvt['THERMAL__C']).to eql 'RED'
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'TRUE'
+      expect(cvt['POWER_ENABLED__C']).to eql 'TRUE'
+      # The parent ignores the disabled group
+      expect(cvt['TOP__C']).to eql 'GREEN'
+      expect(cvt['TOP_ENABLED__C']).to eql 'PARTIAL'
+      change('TEMP3', 'YELLOW')
+      expect(cvt['POWER__C']).to eql 'YELLOW'
+      expect(cvt['ALL__C']).to eql 'DISABLED'
+
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'ALL', enabled: true,
+                     cascade: false, time_nsec: 0, message: 'test' })
+      expect(cvt['ALL__C']).to eql 'RED'
+      expect(cvt['ALL_ENABLED__C']).to eql 'TRUE'
+      expect(cvt['TOP_ENABLED__C']).to eql 'TRUE'
+    end
+
+    it "enables the nested groups a disabled parent cascades to" do
+      start({ 'ALL' => [%w(INST LIMITS_GROUP THERMAL)], 'THERMAL' => [%w(INST HEALTH_STATUS TEMP1)] })
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'THERMAL', enabled: false,
+                     cascade: false, time_nsec: 0, message: 'test' })
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['ALL__C']).to eql 'DISABLED'
+      expect(cvt['ALL_ENABLED__C']).to eql 'FALSE'
+      # Enabling only ALL leaves THERMAL disabled
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'ALL', enabled: true,
+                     cascade: false, time_nsec: 0, message: 'test' })
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['ALL_ENABLED__C']).to eql 'FALSE'
+      # Cascading enables THERMAL too
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'ALL', enabled: true,
+                     time_nsec: 0, message: 'test' })
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'TRUE'
+      expect(cvt['ALL_ENABLED__C']).to eql 'TRUE'
+    end
+
+    it "keeps a disabled group disabled after a reload" do
+      start({ 'ALL' => [%w(INST LIMITS_GROUP THERMAL)], 'THERMAL' => [%w(INST HEALTH_STATUS TEMP1)] })
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'ALL', enabled: false,
+                     cascade: false, time_nsec: 0, message: 'test' })
+      microservice = LimitsGroupMicroservice.new("DEFAULT__LIMITSGROUP__DEFAULT")
+      microservice.reload
+      expect(microservice.values['INST__ALL']).to eql %w(DISABLED FALSE)
+      expect(microservice.values['INST__THERMAL'][1]).to eql 'TRUE'
+      microservice.shutdown
+    end
+
+    it "enables only a disabled group's own items when the event doesn't cascade" do
+      start({ 'SPACECRAFT' => [%w(INST LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)],
+              'THERMAL' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)] })
+      change('TEMP1', 'RED')
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'SPACECRAFT', enabled: false,
+                     time_nsec: 0, message: 'test' })
+      %w(SPACECRAFT THERMAL).each do |group|
+        expect(cvt["#{group}__C"]).to eql 'DISABLED'
+        expect(cvt["#{group}_ENABLED__C"]).to eql 'FALSE'
+        expect(cvt["#{group}_ENABLED"]).to eql PacketConfig::LIMITS_GROUP_ENABLED_STATES['FALSE']
+      end
+
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'SPACECRAFT', enabled: true,
+                     cascade: false, time_nsec: 0, message: 'test' })
+      # Only TEMP3 counts since THERMAL stays disabled
+      expect(cvt['THERMAL__C']).to eql 'DISABLED'
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'FALSE'
+      expect(cvt['SPACECRAFT__C']).to eql 'GREEN'
+      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'PARTIAL'
+      expect(cvt['SPACECRAFT_ENABLED']).to eql PacketConfig::LIMITS_GROUP_ENABLED_STATES['PARTIAL']
+
+      # Enabling the child completes the parent
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'THERMAL', enabled: true,
+                     cascade: false, time_nsec: 0, message: 'test' })
+      expect(cvt['THERMAL__C']).to eql 'RED'
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'TRUE'
+      expect(cvt['SPACECRAFT__C']).to eql 'RED'
+      expect(cvt['SPACECRAFT_ENABLED__C']).to eql 'TRUE'
+      expect(cvt['SPACECRAFT_ENABLED']).to eql PacketConfig::LIMITS_GROUP_ENABLED_STATES['TRUE']
     end
 
     it "publishes a reinstalled target again even if its groups didn't change" do

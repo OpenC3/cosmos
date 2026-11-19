@@ -44,8 +44,10 @@ module OpenC3
     # which defines them, named <GROUP> and <GROUP>_ENABLED
     LIMITS_GROUP_PACKET = 'LIMITS_GROUP'.freeze
     LIMITS_GROUP_ENABLED_SUFFIX = '_ENABLED'.freeze
-    LIMITS_GROUP_STATES = { 'GREEN' => 0, 'YELLOW' => 1, 'RED' => 2 }.freeze
-    LIMITS_GROUP_ENABLED_STATES = { 'FALSE' => 0, 'TRUE' => 1 }.freeze
+    # BLUE when every member is BLUE, DISABLED when limits are disabled on every member
+    LIMITS_GROUP_STATES = { 'GREEN' => 0, 'YELLOW' => 1, 'RED' => 2, 'BLUE' => 3, 'DISABLED' => 4 }.freeze
+    # PARTIAL when limits are enabled on some members but not all
+    LIMITS_GROUP_ENABLED_STATES = { 'FALSE' => 0, 'TRUE' => 1, 'PARTIAL' => 2 }.freeze
     # QuestDB column name limit (TargetModel::MAX_COLUMN_HEADER_LENGTH) minus room for _ENABLED
     MAX_LIMITS_GROUP_NAME_LENGTH = 127 - LIMITS_GROUP_ENABLED_SUFFIX.length
     # Characters QuestDBClient.sanitize_column_name replaces with '_'. Group names
@@ -255,7 +257,7 @@ module OpenC3
             parser.verify_num_parameters(1, 1, usage)
             @current_limits_group = params[0].to_s.upcase
             # The group becomes items in <TARGET> LIMITS_GROUP so a name which can't
-            # is skipped, along with its LIMITS_GROUP_ITEM lines
+            # is skipped, along with its LIMITS_GROUP_ITEM and NESTED_LIMITS_GROUP lines
             if (error = self.class.limits_group_name_error(@current_limits_group))
               limits_group_warning(parser, "LIMITS_GROUP #{@current_limits_group} #{error}. Skipping the group.")
               @current_limits_group = nil
@@ -265,24 +267,33 @@ module OpenC3
 
           # Add a telemetry item to the limits group
           when 'LIMITS_GROUP_ITEM'
-            usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME> or LIMITS_GROUP_ITEM <GROUP NAME>"
-            parser.verify_num_parameters(1, 3, usage)
-            if params.length == 2
-              raise parser.error("Not enough parameters for LIMITS_GROUP_ITEM.", usage)
+            usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME>"
+            parser.verify_num_parameters(3, 3, usage)
+            if @current_limits_group
+              item = [params[0].to_s.upcase, params[1].to_s.upcase, params[2].to_s.upcase]
+              # Members in a LIMITS_GROUP packet are nested groups, added with NESTED_LIMITS_GROUP
+              if item[1] == LIMITS_GROUP_PACKET
+                limits_group_warning(parser, "LIMITS_GROUP #{@current_limits_group} member #{item.join(' ')}: use NESTED_LIMITS_GROUP #{item[0]} #{item[2]} to nest a limits group. Skipping the member.")
+              else
+                @limits_groups[process_target_name][@current_limits_group] << item
+              end
             end
 
+          # Add a nested limits group to the limits group
+          when 'NESTED_LIMITS_GROUP'
+            usage = "NESTED_LIMITS_GROUP <GROUP NAME> or NESTED_LIMITS_GROUP <TARGET NAME> <GROUP NAME>"
+            parser.verify_num_parameters(1, 2, usage)
             if @current_limits_group
+              # A nested group is stored as the item which carries its rollup. A
+              # group name alone is a group of this target.
               if params.length == 1
-                # A nested group of this target is stored as the item which carries its rollup.
-                # Groups of other targets use the full form <TARGET> LIMITS_GROUP <GROUP>.
                 item = [process_target_name, LIMITS_GROUP_PACKET, params[0].to_s.upcase]
               else
-                item = [params[0].to_s.upcase, params[1].to_s.upcase, params[2].to_s.upcase]
+                item = [params[0].to_s.upcase, LIMITS_GROUP_PACKET, params[1].to_s.upcase]
               end
-              # A member in a LIMITS_GROUP packet is always a nested group so its
-              # name must be one LIMITS_GROUP accepts (the child can be installed later)
-              if item[1] == LIMITS_GROUP_PACKET and (error = self.class.limits_group_name_error(item[2]))
-                limits_group_warning(parser, "LIMITS_GROUP #{@current_limits_group} member #{item.join(' ')}: LIMITS_GROUP #{item[2]} #{error}. Skipping the member.")
+              # The name must be one LIMITS_GROUP accepts (the child can be installed later)
+              if (error = self.class.limits_group_name_error(item[2]))
+                limits_group_warning(parser, "LIMITS_GROUP #{@current_limits_group} member NESTED_LIMITS_GROUP #{item[0]} #{item[2]}: LIMITS_GROUP #{item[2]} #{error}. Skipping the member.")
               else
                 @limits_groups[process_target_name][@current_limits_group] << item
               end
@@ -405,10 +416,10 @@ module OpenC3
       group_names.sort.each do |group|
         item = packet.append_item(group, 8, :UINT)
         item.states = LIMITS_GROUP_STATES.dup
-        item.description = "Most severe limits state of the members of limits group #{group}"
+        item.description = "Most severe limits state of the enabled members, or DISABLED when none are, of limits group #{group}"
         item = packet.append_item("#{group}#{LIMITS_GROUP_ENABLED_SUFFIX}", 8, :UINT)
         item.states = LIMITS_GROUP_ENABLED_STATES.dup
-        item.description = "Whether limits are enabled on every member of limits group #{group}"
+        item.description = "Whether limits are enabled on all (TRUE), none (FALSE) or some (PARTIAL) of the members of limits group #{group}"
       end
       packet
     end
@@ -466,8 +477,12 @@ module OpenC3
           groups.each do |limits_group_name, limits_group_items|
             file.puts "LIMITS_GROUP #{limits_group_name.to_s.quote_if_necessary}"
             limits_group_items.each do |item_target_name, packet_name, item_name|
-              if item_target_name == target_name and packet_name == LIMITS_GROUP_PACKET
-                file.puts "  LIMITS_GROUP_ITEM #{item_name.to_s.quote_if_necessary}"
+              if packet_name == LIMITS_GROUP_PACKET
+                if item_target_name == target_name
+                  file.puts "  NESTED_LIMITS_GROUP #{item_name.to_s.quote_if_necessary}"
+                else
+                  file.puts "  NESTED_LIMITS_GROUP #{item_target_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}"
+                end
               else
                 file.puts "  LIMITS_GROUP_ITEM #{item_target_name.to_s.quote_if_necessary} #{packet_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}"
               end

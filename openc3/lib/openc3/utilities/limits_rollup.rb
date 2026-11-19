@@ -19,12 +19,20 @@ module OpenC3
     COLORS = {
       'RED' => 'RED', 'RED_HIGH' => 'RED', 'RED_LOW' => 'RED',
       'YELLOW' => 'YELLOW', 'YELLOW_HIGH' => 'YELLOW', 'YELLOW_LOW' => 'YELLOW',
-      'GREEN' => 'GREEN', 'GREEN_HIGH' => 'GREEN', 'GREEN_LOW' => 'GREEN', 'BLUE' => 'GREEN',
+      'GREEN' => 'GREEN', 'GREEN_HIGH' => 'GREEN', 'GREEN_LOW' => 'GREEN',
+      'BLUE' => 'BLUE',
     }.freeze
-    SEVERITY = { 'GREEN' => 0, 'YELLOW' => 1, 'RED' => 2 }.freeze
+    # BLUE ranks below GREEN so a rollup is only BLUE when every state is BLUE
+    SEVERITY = { 'BLUE' => -1, 'GREEN' => 0, 'YELLOW' => 1, 'RED' => 2 }.freeze
+    # A group whose members all have limits disabled
+    DISABLED = 'DISABLED'.freeze
+    # Whether limits are enabled on a group's members: all, none, or some of them
+    ENABLED_TRUE = 'TRUE'.freeze
+    ENABLED_FALSE = 'FALSE'.freeze
+    ENABLED_PARTIAL = 'PARTIAL'.freeze
 
     # @param state [String, nil] An item limits state such as RED_HIGH or BLUE
-    # @return [String, nil] 'GREEN', 'YELLOW' or 'RED', or nil for a missing or unknown state
+    # @return [String, nil] 'BLUE', 'GREEN', 'YELLOW' or 'RED', or nil for a missing or unknown state
     def self.color(state)
       COLORS[state]
     end
@@ -35,17 +43,38 @@ module OpenC3
       states.map { |state| color(state) }.compact.max_by { |color| SEVERITY[color] }
     end
 
+    # @param enabled [Boolean, String] true or false for an item, or
+    #   ENABLED_TRUE, ENABLED_FALSE or ENABLED_PARTIAL for a nested group
+    # @return [String] ENABLED_TRUE, ENABLED_FALSE or ENABLED_PARTIAL
+    def self.enabled_state(enabled)
+      case enabled
+      when true then ENABLED_TRUE
+      when false, nil then ENABLED_FALSE
+      else enabled
+      end
+    end
+
     # Roll up a limits group from its members.
     #
-    # Members with limits disabled are ignored for the color, as are missing states.
-    # The group is enabled only when it has members and every one is enabled.
+    # The group is enabled (ENABLED_TRUE) when every member is, disabled
+    # (ENABLED_FALSE) when no member is or the group is empty, and otherwise
+    # ENABLED_PARTIAL. A disabled group's state is DISABLED. Otherwise it's the
+    # most severe state of the members which aren't disabled, ignoring missing states.
     #
-    # @param members [Array<Array(String|nil, Boolean)>] [limits_state, enabled] per member
-    # @return [Array(String|nil, Boolean)] [color, enabled] where color is nil
-    #   when no enabled member has a state
+    # @param members [Array<Array(String|nil, Boolean|String)>] [limits_state, enabled]
+    #   per member. Items pass true or false for enabled, nested groups pass
+    #   their rolled up [state, enabled].
+    # @return [Array(String|nil, String)] [state, enabled] where state is nil
+    #   when no member which counts has a state
     def self.rollup(members)
-      states = members.select { |_state, enabled| enabled }.map { |state, _enabled| state }
-      enabled = !members.empty? && members.all? { |_state, member_enabled| member_enabled }
+      members = members.map { |state, enabled| [state, enabled_state(enabled)] }
+      enabled_states = members.map { |_state, enabled| enabled }.uniq
+      if enabled_states.empty? or enabled_states == [ENABLED_FALSE]
+        return [DISABLED, ENABLED_FALSE]
+      end
+
+      enabled = enabled_states == [ENABLED_TRUE] ? ENABLED_TRUE : ENABLED_PARTIAL
+      states = members.reject { |_state, member_enabled| member_enabled == ENABLED_FALSE }.map { |state, _enabled| state }
       return [worst(states), enabled]
     end
   end

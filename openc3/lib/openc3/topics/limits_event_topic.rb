@@ -93,29 +93,66 @@ module OpenC3
       end
     end
 
+    # @return [Boolean] Whether a limits group event applies to the items of nested
+    #   groups. Only events which say otherwise (cascade: false) don't.
+    def self.limits_group_event_cascade?(event)
+      cascade = event.key?(:cascade) ? event[:cascade] : event['cascade']
+      cascade != false
+    end
+
     # Returns the items in a limits group grouped by target and packet, or nil if the
     # group is undefined. Reads the store directly to avoid a circular reference to TargetModel.
     #
     # @param key [String] Store key of the group (see limits_group_key)
+    # @param cascade [Boolean] Whether to include the items of nested groups
     # @return [Hash{String => Hash{String => Array<String>}}, nil]
-    def self.limits_group_items(key, scope:)
+    def self.limits_group_items(key, cascade: true, scope:)
       return nil unless key
 
       groups = Store.hgetall("#{scope}__limits_groups")
       return nil unless groups[key]
 
       items = {}
-      _expand_limits_group(key, groups, items, Set.new, Set.new)
+      _expand_limits_group(key, groups, items, Set.new, Set.new, cascade)
       items
     end
 
+    # Returns the store keys of a group and, with cascade, of every defined group
+    # nested below it. These are the groups whose own enabled flag a
+    # LIMITS_GROUP_ENABLE_STATE event sets (see limits_group_settings).
+    #
+    # @param key [String] Store key of the group (see limits_group_key)
+    # @param cascade [Boolean] Whether to include the nested groups
+    # @return [Array<String>] Group keys, empty if the group is undefined
+    def self.limits_group_keys(key, cascade: true, scope:)
+      return [] unless key
+
+      groups = Store.hgetall("#{scope}__limits_groups")
+      return [] unless groups[key]
+      return [key] unless cascade
+
+      visited = Set.new
+      _expand_limits_group(key, groups, {}, visited, Set.new, true)
+      visited.select { |group| groups[group] }
+    end
+
+    # A group can be disabled itself (by disable_limits_group with cascade false)
+    # independent of its members. Groups without a setting are enabled.
+    #
+    # @return [Hash{String => Hash}] Settings keyed by group store key, e.g. { 'enabled' => false }
+    def self.limits_group_settings(scope:)
+      Store.hgetall("#{scope}__limits_group_settings").transform_values do |json|
+        JSON.parse(json, allow_nan: true, create_additions: true)
+      end
+    end
+
     # Nested groups are members named <TARGET> LIMITS_GROUP <GROUP>. They have no limits
-    # of their own so expand them into the items of the child group. Children which
-    # aren't defined (yet) are ignored and each group is only expanded once which
-    # also guards against cycles.
+    # of their own so expand them into the items of the child group, unless cascade
+    # is false in which case they're skipped. Children which aren't defined (yet) are
+    # ignored and each group is only expanded once which also guards against cycles.
     #
     # @param seen [Set<Array(String, String, String)>] Items already added
-    def self._expand_limits_group(key, groups, items, visited, seen)
+    def self._expand_limits_group(key, groups, items, visited, seen, cascade = true)
       return if visited.include?(key)
 
       visited << key
@@ -124,7 +161,7 @@ module OpenC3
 
       JSON.parse(json, allow_nan: true, create_additions: true).each do |target_name, packet_name, item_name|
         if packet_name == LIMITS_GROUP_PACKET
-          _expand_limits_group(limits_group_key(target_name, item_name), groups, items, visited, seen)
+          _expand_limits_group(limits_group_key(target_name, item_name), groups, items, visited, seen, cascade) if cascade
         # A Set rather than include? on the item list since groups can contain many thousands of items
         elsif seen.add?([target_name, packet_name, item_name])
           ((items[target_name] ||= {})[packet_name] ||= []) << item_name
@@ -195,7 +232,16 @@ module OpenC3
       when :LIMITS_GROUP_ENABLE_STATE
         # Groups can contain many thousands of items so read and write the settings in bulk
         fields = []
-        (limits_group_items(limits_group_event_key(event, scope: scope), scope: scope) || {}).each do |target_name, packets|
+        key = limits_group_event_key(event, scope: scope)
+        cascade = limits_group_event_cascade?(event)
+        # The group itself, and with cascade every group below it, is enabled or
+        # disabled too so a group of only nested groups can be disabled on its own
+        group_keys = limits_group_keys(key, cascade: cascade, scope: scope)
+        unless group_keys.empty?
+          group_settings = JSON.generate({ 'enabled' => event[:enabled] }, allow_nan: true)
+          Store.hmset("#{scope}__limits_group_settings", *group_keys.flat_map { |group_key| [group_key, group_settings] })
+        end
+        (limits_group_items(key, cascade: cascade, scope: scope) || {}).each do |target_name, packets|
           packets.each do |packet_name, item_names|
             item_names.each { |item_name| fields << "#{target_name}__#{packet_name}__#{item_name}" }
           end
@@ -451,7 +497,8 @@ module OpenC3
 
       when 'LIMITS_GROUP_ENABLE_STATE'
         enabled = ConfigParser.handle_true_false_nil(event['enabled'])
-        (limits_group_items(limits_group_event_key(event, scope: scope), scope: scope) || {}).each do |target_name, packets|
+        key = limits_group_event_key(event, scope: scope)
+        (limits_group_items(key, cascade: limits_group_event_cascade?(event), scope: scope) || {}).each do |target_name, packets|
           target = telemetry[target_name]
           next unless target
 

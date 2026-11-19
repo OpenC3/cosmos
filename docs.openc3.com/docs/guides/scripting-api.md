@@ -4798,7 +4798,7 @@ elapsed = wait_check_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HE
 
 These methods deal with handling telemetry limits.
 
-Each limits group is also published as telemetry in the LIMITS_GROUP packet of the target which defines the group. For a group named THERMAL defined by the INST target, `INST LIMITS_GROUP THERMAL` is the most severe limits state (GREEN, YELLOW or RED) of the group's members with limits enabled, and `INST LIMITS_GROUP THERMAL_ENABLED` is TRUE when limits are enabled on every member. Read them with `tlm` and wait on them with `wait_check` like any other item. The LIMITS_GROUP packet is computed by COSMOS, so `set_tlm`, `inject_tlm` and `override_tlm` reject it. A packet name of LATEST never resolves to the LIMITS_GROUP packet, so always name the packet to read a group, as in `INST LIMITS_GROUP THERMAL`.
+Each limits group is also published as telemetry in the LIMITS_GROUP packet of the target which defines the group. For a group named THERMAL defined by the INST target, `INST LIMITS_GROUP THERMAL` is the most severe limits state (GREEN, YELLOW or RED) of the group's members with limits enabled. It's BLUE only when every member which counts is BLUE, and DISABLED when limits are disabled on every member. `INST LIMITS_GROUP THERMAL_ENABLED` is TRUE when limits are enabled on every member, FALSE when they're disabled on every member, and PARTIAL otherwise, for example when a nested group is disabled. Read them with `tlm` and wait on them with `wait_check` like any other item. The LIMITS_GROUP packet is computed by COSMOS, so `set_tlm`, `inject_tlm` and `override_tlm` reject it. A packet name of LATEST never resolves to the LIMITS_GROUP packet, so always name the packet to read a group, as in `INST LIMITS_GROUP THERMAL`.
 
 Limits group names only need to be unique within the target which defines them, so two targets can each define a THERMAL group. The limits group methods take the target name and the group name. They also accept just the group name, as they always have, as long as only one target defines a group with that name.
 
@@ -4806,7 +4806,7 @@ Limits group names only need to be unique within the target which defines them, 
 <TabItem value="python" label="Python Example">
 
 ```python
-print(tlm("INST LIMITS_GROUP THERMAL"))  # GREEN, YELLOW or RED
+print(tlm("INST LIMITS_GROUP THERMAL"))  # BLUE, GREEN, YELLOW, RED or DISABLED
 wait_check("INST LIMITS_GROUP THERMAL != 'RED'", 30)
 check("INST LIMITS_GROUP THERMAL_ENABLED == 'TRUE'")
 ```
@@ -4816,7 +4816,7 @@ check("INST LIMITS_GROUP THERMAL_ENABLED == 'TRUE'")
 <TabItem value="ruby" label="Ruby Example">
 
 ```ruby
-puts tlm("INST LIMITS_GROUP THERMAL") # GREEN, YELLOW or RED
+puts tlm("INST LIMITS_GROUP THERMAL") # BLUE, GREEN, YELLOW, RED or DISABLED
 wait_check("INST LIMITS_GROUP THERMAL != 'RED'", 30)
 check("INST LIMITS_GROUP THERMAL_ENABLED == 'TRUE'")
 ```
@@ -4972,15 +4972,15 @@ disable_limits("INST HEALTH_STATUS TEMP1")
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Enables limits monitoring on a set of telemetry items specified in a limits group. If the group contains nested groups, limits are enabled on every item below it.
+Enables limits monitoring on a set of telemetry items specified in a limits group. If the group contains nested groups, limits are enabled on every group and item below it. With cascade false only the group itself and the items directly in it are enabled, and its nested groups keep their own state.
 
-The target name parameter is available since _Coming Soon_. Without it the group name must only be defined by one target.
+The target name and cascade parameters are available since _Coming Soon_. Without a target name the group name must only be defined by one target.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
 ```python
-enable_limits_group("<Target Name>", "<Limits Group Name>")
+enable_limits_group("<Target Name>", "<Limits Group Name>", cascade=<True or False>)
 enable_limits_group("<Limits Group Name>")
 ```
 
@@ -4989,17 +4989,18 @@ enable_limits_group("<Limits Group Name>")
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-enable_limits_group("<Target Name>", "<Limits Group Name>")
+enable_limits_group("<Target Name>", "<Limits Group Name>", cascade: <true or false>)
 enable_limits_group("<Limits Group Name>")
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter         | Description                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------ |
-| Target Name       | Name of the target which defines the limits group. Optional if only one target defines it. |
-| Limits Group Name | Name of the limits group.                                                                  |
+| Parameter         | Description                                                                                                                                                                  |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Target Name       | Name of the target which defines the limits group. Optional if only one target defines it.                                                                                   |
+| Limits Group Name | Name of the limits group.                                                                                                                                                    |
+| cascade           | Whether to also enable the nested groups (NESTED_LIMITS_GROUP) and their items. When false only the group itself and the items directly in it are enabled. Defaults to true. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -5007,6 +5008,8 @@ enable_limits_group("<Limits Group Name>")
 ```python
 enable_limits_group("INST", "SAFE_MODE")
 enable_limits_group("SAFE_MODE")
+# Only SYSTEM PAYLOAD itself and its own items, not its nested groups
+enable_limits_group("SYSTEM", "PAYLOAD", cascade=False)
 ```
 
 </TabItem>
@@ -5016,6 +5019,8 @@ enable_limits_group("SAFE_MODE")
 ```ruby
 enable_limits_group("INST", "SAFE_MODE")
 enable_limits_group("SAFE_MODE")
+# Only SYSTEM PAYLOAD itself and its own items, not its nested groups
+enable_limits_group("SYSTEM", "PAYLOAD", cascade: false)
 ```
 
 </TabItem>
@@ -5025,15 +5030,15 @@ enable_limits_group("SAFE_MODE")
 
 <span class="badge badge--secondary since-heading">Since 5.0.0</span>
 
-Disables limits monitoring on a set of telemetry items specified in a limits group. If the group contains nested groups, limits are disabled on every item below it.
+Disables limits monitoring on a set of telemetry items specified in a limits group. If the group contains nested groups, limits are disabled on every group and item below it. With cascade false only the group itself and the items directly in it are disabled, so the group is DISABLED and its parents ignore it while its nested groups keep checking limits.
 
-The target name parameter is available since _Coming Soon_. Without it the group name must only be defined by one target.
+The target name and cascade parameters are available since _Coming Soon_. Without a target name the group name must only be defined by one target.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
 ```python
-disable_limits_group("<Target Name>", "<Limits Group Name>")
+disable_limits_group("<Target Name>", "<Limits Group Name>", cascade=<True or False>)
 disable_limits_group("<Limits Group Name>")
 ```
 
@@ -5042,17 +5047,18 @@ disable_limits_group("<Limits Group Name>")
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-disable_limits_group("<Target Name>", "<Limits Group Name>")
+disable_limits_group("<Target Name>", "<Limits Group Name>", cascade: <true or false>)
 disable_limits_group("<Limits Group Name>")
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter         | Description                                                                                |
-| ----------------- | ------------------------------------------------------------------------------------------ |
-| Target Name       | Name of the target which defines the limits group. Optional if only one target defines it. |
-| Limits Group Name | Name of the limits group.                                                                  |
+| Parameter         | Description                                                                                                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Target Name       | Name of the target which defines the limits group. Optional if only one target defines it.                                                                                     |
+| Limits Group Name | Name of the limits group.                                                                                                                                                      |
+| cascade           | Whether to also disable the nested groups (NESTED_LIMITS_GROUP) and their items. When false only the group itself and the items directly in it are disabled. Defaults to true. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -5060,6 +5066,8 @@ disable_limits_group("<Limits Group Name>")
 ```python
 disable_limits_group("INST", "SAFE_MODE")
 disable_limits_group("SAFE_MODE")
+# Only SYSTEM PAYLOAD itself and its own items, not its nested groups
+disable_limits_group("SYSTEM", "PAYLOAD", cascade=False)
 ```
 
 </TabItem>
@@ -5069,6 +5077,8 @@ disable_limits_group("SAFE_MODE")
 ```ruby
 disable_limits_group("INST", "SAFE_MODE")
 disable_limits_group("SAFE_MODE")
+# Only SYSTEM PAYLOAD itself and its own items, not its nested groups
+disable_limits_group("SYSTEM", "PAYLOAD", cascade: false)
 ```
 
 </TabItem>
@@ -5109,14 +5119,15 @@ get_limits_groups("<Target Name (optional)>")
 
 ```python
 limits_groups = get_limits_groups()
-# INST and INST2 both define TEMPS, GROUND and PAYLOAD so each key includes the target
+# INST and INST2 both define TEMPS, GROUND and PAYLOAD, and SYSTEM defines PAYLOAD, so each key includes the target
 print(limits_groups)  # =>
 # {'INST__TEMPS': [['INST', 'HEALTH_STATUS', 'TEMP1'], ['INST', 'HEALTH_STATUS', 'TEMP2'], ['INST', 'HEALTH_STATUS', 'TEMP3'], ['INST', 'HEALTH_STATUS', 'TEMP4']],
 #  'INST__GROUND': [['INST', 'HEALTH_STATUS', 'GROUND1STATUS'], ['INST', 'HEALTH_STATUS', 'GROUND2STATUS']],
 #  'INST__PAYLOAD': [['INST', 'LIMITS_GROUP', 'TEMPS'], ['INST', 'LIMITS_GROUP', 'GROUND']],
 #  'INST2__TEMPS': [['INST2', 'HEALTH_STATUS', 'TEMP1'], ['INST2', 'HEALTH_STATUS', 'TEMP2'], ['INST2', 'HEALTH_STATUS', 'TEMP3'], ['INST2', 'HEALTH_STATUS', 'TEMP4']],
 #  'INST2__GROUND': [['INST2', 'HEALTH_STATUS', 'GROUND1STATUS'], ['INST2', 'HEALTH_STATUS', 'GROUND2STATUS']],
-#  'INST2__PAYLOAD': [['INST2', 'LIMITS_GROUP', 'TEMPS'], ['INST2', 'LIMITS_GROUP', 'GROUND']]}
+#  'INST2__PAYLOAD': [['INST2', 'LIMITS_GROUP', 'TEMPS'], ['INST2', 'LIMITS_GROUP', 'GROUND']],
+#  'SYSTEM__PAYLOAD': [['INST', 'LIMITS_GROUP', 'TEMPS'], ['INST', 'LIMITS_GROUP', 'GROUND'], ['INST2', 'LIMITS_GROUP', 'TEMPS'], ['INST2', 'LIMITS_GROUP', 'GROUND'], ['INST', 'HEALTH_STATUS', 'ZERO']]}
 
 inst_groups = get_limits_groups("INST")
 print(inst_groups)  # =>
@@ -5131,14 +5142,15 @@ print(inst_groups)  # =>
 
 ```ruby
 limits_groups = get_limits_groups()
-# INST and INST2 both define TEMPS, GROUND and PAYLOAD so each key includes the target
+# INST and INST2 both define TEMPS, GROUND and PAYLOAD, and SYSTEM defines PAYLOAD, so each key includes the target
 puts limits_groups  # =>
 # {"INST__TEMPS"=>[["INST", "HEALTH_STATUS", "TEMP1"], ["INST", "HEALTH_STATUS", "TEMP2"], ["INST", "HEALTH_STATUS", "TEMP3"], ["INST", "HEALTH_STATUS", "TEMP4"]],
 #  "INST__GROUND"=>[["INST", "HEALTH_STATUS", "GROUND1STATUS"], ["INST", "HEALTH_STATUS", "GROUND2STATUS"]],
 #  "INST__PAYLOAD"=>[["INST", "LIMITS_GROUP", "TEMPS"], ["INST", "LIMITS_GROUP", "GROUND"]],
 #  "INST2__TEMPS"=>[["INST2", "HEALTH_STATUS", "TEMP1"], ["INST2", "HEALTH_STATUS", "TEMP2"], ["INST2", "HEALTH_STATUS", "TEMP3"], ["INST2", "HEALTH_STATUS", "TEMP4"]],
 #  "INST2__GROUND"=>[["INST2", "HEALTH_STATUS", "GROUND1STATUS"], ["INST2", "HEALTH_STATUS", "GROUND2STATUS"]],
-#  "INST2__PAYLOAD"=>[["INST2", "LIMITS_GROUP", "TEMPS"], ["INST2", "LIMITS_GROUP", "GROUND"]]}
+#  "INST2__PAYLOAD"=>[["INST2", "LIMITS_GROUP", "TEMPS"], ["INST2", "LIMITS_GROUP", "GROUND"]],
+#  "SYSTEM__PAYLOAD"=>[["INST", "LIMITS_GROUP", "TEMPS"], ["INST", "LIMITS_GROUP", "GROUND"], ["INST2", "LIMITS_GROUP", "TEMPS"], ["INST2", "LIMITS_GROUP", "GROUND"], ["INST", "HEALTH_STATUS", "ZERO"]]}
 
 inst_groups = get_limits_groups("INST")
 puts inst_groups  # =>

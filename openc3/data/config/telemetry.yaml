@@ -65,9 +65,12 @@ LIMITS_GROUP:
     target which defines the group. For a group named THERMAL defined by the INST target,
     INST LIMITS_GROUP THERMAL is the most severe limits state (GREEN, YELLOW or RED) of the
     group's members which have limits enabled, so it can be displayed on screens, graphed,
-    used in scripts with tlm and wait_check, and extracted from history.
-    INST LIMITS_GROUP THERMAL_ENABLED is TRUE when limits are enabled on every member. A
-    group with no enabled members is GREEN with no limits color. The LIMITS_GROUP packet
+    used in scripts with tlm and wait_check, and extracted from history. It's BLUE only
+    when every member which counts is BLUE, and DISABLED when limits are disabled on every
+    member. INST LIMITS_GROUP THERMAL_ENABLED is TRUE when limits are enabled on every
+    member, FALSE when they're disabled on every member, and PARTIAL otherwise, for example
+    when a nested group is disabled. A group whose enabled members have no limits state yet
+    is GREEN with no limits color. The LIMITS_GROUP packet
     name is reserved for targets which define limits groups. If such a target also defines
     its own LIMITS_GROUP telemetry packet, COSMOS keeps that packet and logs a warning, and
     the target's groups can still be enabled and disabled but aren't published as
@@ -80,9 +83,9 @@ LIMITS_GROUP:
     replaces with an underscore, like the period in TEMP.A. They can't end in _ENABLED,
     use a reserved item name like RECEIVED_COUNT or PACKET_TIME, or be longer than 119
     characters. A group whose name breaks these rules is skipped with a warning, along
-    with its LIMITS_GROUP_ITEM lines, and a nested group member with such a name is
-    skipped the same way. Group names only need to be unique within a target, so two
-    targets can each define a THERMAL group.
+    with its LIMITS_GROUP_ITEM and NESTED_LIMITS_GROUP lines, and a NESTED_LIMITS_GROUP
+    with such a name is skipped the same way. Group names only need to be unique within
+    a target, so two targets can each define a THERMAL group.
   parameters:
     - name: Group Name
       required: true
@@ -92,40 +95,53 @@ LIMITS_GROUP_ITEM:
   summary: Adds the specified telemetry item to the last defined LIMITS_GROUP
   description:
     Limits group information is typically kept in a separate configuration
-    file in the config/TARGET/cmd_tlm folder named limits_groups.txt.
-
-
-    Pass a single group name instead of a telemetry item to nest another group
-    defined by the same target. The parent then rolls up the child's state, and
-    enabling or disabling the parent enables or disables every item below it. The
-    nested group is stored as the item which carries the child's state, so in the
-    INST target LIMITS_GROUP_ITEM THERMAL is the same as
-    LIMITS_GROUP_ITEM INST LIMITS_GROUP THERMAL. Use that full form to nest a group
-    defined by another target. A member in a packet named LIMITS_GROUP is always a
-    nested group, never an item of a target's own packet with that name. A child
-    group can be installed after its parent and is ignored until it is.
-    Nested groups can't form a loop, so a group can't contain itself directly or
-    through other groups. Installing a target skips the nested group member which
-    would close a loop and logs a warning.
+    file in the config/TARGET/cmd_tlm folder named limits_groups.txt. Use
+    NESTED_LIMITS_GROUP to add another limits group. A LIMITS_GROUP_ITEM in a
+    packet named LIMITS_GROUP is skipped with a warning since that packet holds
+    the rolled up state of limits groups.
   parameters:
-    - name: Target Name or Group Name
+    - name: Target Name
       required: true
-      description: Name of the target, or the name of a limits group of this target to nest when it's the only parameter
+      description: Name of the target
       values: .+
     - name: Packet Name
-      required: false
-      description: Name of the packet. Required when adding a telemetry item.
+      required: true
+      description: Name of the packet
       values: .+
     - name: Item Name
-      required: false
-      description: Name of the telemetry item to add to the group. Required when adding a telemetry item.
+      required: true
+      description: Name of the telemetry item to add to the group
       values: .+
   example: |
     LIMITS_GROUP THERMAL
       LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP1
       LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP2
       LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP3
+NESTED_LIMITS_GROUP:
+  summary: Nests the specified limits group in the last defined LIMITS_GROUP
+  description:
+    The parent group rolls up the nested group's state. Enabling or disabling the
+    parent enables or disables every group and item below it unless the API is
+    called with cascade false, which only changes the parent itself and the items
+    directly in it. A group disabled this way is DISABLED and its parents ignore it
+    while its nested groups keep checking limits and rolling up their own state. Pass just
+    the group name to nest a group defined by the same target, or the target name
+    and group name to nest a group defined by another target. A nested group can be
+    installed after its parent and is ignored until it is.
+    Nested groups can't form a loop, so a group can't contain itself directly or
+    through other groups. Installing a target skips the NESTED_LIMITS_GROUP which
+    would close a loop and logs a warning.
+  parameters:
+    - name: Target Name or Group Name
+      required: true
+      description: Name of the target which defines the group, or the name of a limits group of this target when it's the only parameter
+      values: .+
+    - name: Group Name
+      required: false
+      description: Name of the limits group. Required when the first parameter is a target name.
+      values: .+
+  example: |
     LIMITS_GROUP SPACECRAFT
-      LIMITS_GROUP_ITEM THERMAL
-      LIMITS_GROUP_ITEM INST2 LIMITS_GROUP POWER
+      NESTED_LIMITS_GROUP THERMAL
+      NESTED_LIMITS_GROUP INST2 POWER
       LIMITS_GROUP_ITEM INST HEALTH_STATUS VOLTS

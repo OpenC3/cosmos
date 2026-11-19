@@ -25,8 +25,12 @@ module OpenC3
         %w(YELLOW YELLOW_HIGH YELLOW_LOW).each { |state| expect(LimitsRollup.color(state)).to eql 'YELLOW' }
       end
 
-      it "maps GREEN states and BLUE to GREEN" do
-        %w(GREEN GREEN_HIGH GREEN_LOW BLUE).each { |state| expect(LimitsRollup.color(state)).to eql 'GREEN' }
+      it "maps every GREEN state to GREEN" do
+        %w(GREEN GREEN_HIGH GREEN_LOW).each { |state| expect(LimitsRollup.color(state)).to eql 'GREEN' }
+      end
+
+      it "keeps BLUE" do
+        expect(LimitsRollup.color('BLUE')).to eql 'BLUE'
       end
 
       it "returns nil for a missing or unknown state" do
@@ -43,6 +47,12 @@ module OpenC3
         expect(LimitsRollup.worst(%w(RED_HIGH YELLOW))).to eql 'RED'
       end
 
+      it "is BLUE only when every state is BLUE" do
+        expect(LimitsRollup.worst(%w(BLUE BLUE))).to eql 'BLUE'
+        expect(LimitsRollup.worst(['BLUE', nil])).to eql 'BLUE'
+        expect(LimitsRollup.worst(%w(BLUE GREEN_LOW))).to eql 'GREEN'
+      end
+
       it "ignores missing states" do
         expect(LimitsRollup.worst([nil, 'YELLOW_HIGH', nil])).to eql 'YELLOW'
       end
@@ -55,29 +65,51 @@ module OpenC3
 
     describe "rollup" do
       it "rolls up an all-enabled group" do
-        expect(LimitsRollup.rollup([['GREEN', true], ['YELLOW_LOW', true]])).to eql ['YELLOW', true]
-        expect(LimitsRollup.rollup([['RED_HIGH', true], ['YELLOW_LOW', true]])).to eql ['RED', true]
-        expect(LimitsRollup.rollup([['BLUE', true], ['GREEN_HIGH', true]])).to eql ['GREEN', true]
+        expect(LimitsRollup.rollup([['GREEN', true], ['YELLOW_LOW', true]])).to eql ['YELLOW', 'TRUE']
+        expect(LimitsRollup.rollup([['RED_HIGH', true], ['YELLOW_LOW', true]])).to eql ['RED', 'TRUE']
+        expect(LimitsRollup.rollup([['BLUE', true], ['GREEN_HIGH', true]])).to eql ['GREEN', 'TRUE']
       end
 
-      it "ignores members with limits disabled and reports the group not enabled" do
-        expect(LimitsRollup.rollup([['RED', false], ['GREEN', true]])).to eql ['GREEN', false]
+      it "is BLUE when every member is BLUE" do
+        expect(LimitsRollup.rollup([['BLUE', true], ['BLUE', true]])).to eql ['BLUE', 'TRUE']
+        # A disabled member doesn't count
+        expect(LimitsRollup.rollup([['BLUE', true], ['GREEN', false]])).to eql ['BLUE', 'PARTIAL']
+        # A BLUE nested group
+        expect(LimitsRollup.rollup([['BLUE', 'TRUE'], ['BLUE', true]])).to eql ['BLUE', 'TRUE']
+      end
+
+      it "ignores members with limits disabled and reports the group PARTIAL" do
+        expect(LimitsRollup.rollup([['RED', false], ['GREEN', true]])).to eql ['GREEN', 'PARTIAL']
       end
 
       it "ignores missing states on enabled members" do
-        expect(LimitsRollup.rollup([[nil, true], ['YELLOW', true]])).to eql ['YELLOW', true]
+        expect(LimitsRollup.rollup([[nil, true], ['YELLOW', true]])).to eql ['YELLOW', 'TRUE']
       end
 
       it "has no color when enabled members have no state yet" do
-        expect(LimitsRollup.rollup([[nil, true]])).to eql [nil, true]
+        expect(LimitsRollup.rollup([[nil, true]])).to eql [nil, 'TRUE']
       end
 
-      it "has no color and is not enabled with no enabled members" do
-        expect(LimitsRollup.rollup([['RED', false], ['YELLOW', false]])).to eql [nil, false]
+      it "is DISABLED with no enabled members" do
+        expect(LimitsRollup.rollup([['RED', false], ['YELLOW', false]])).to eql ['DISABLED', 'FALSE']
       end
 
-      it "has no color and is not enabled when the group is empty" do
-        expect(LimitsRollup.rollup([])).to eql [nil, false]
+      it "is DISABLED when the group is empty" do
+        expect(LimitsRollup.rollup([])).to eql ['DISABLED', 'FALSE']
+      end
+
+      it "ignores a disabled nested group and reports the group PARTIAL" do
+        expect(LimitsRollup.rollup([['DISABLED', 'FALSE'], ['YELLOW', true]])).to eql ['YELLOW', 'PARTIAL']
+      end
+
+      it "counts a partly enabled nested group and reports the group PARTIAL" do
+        expect(LimitsRollup.rollup([['RED', 'PARTIAL'], ['GREEN', true]])).to eql ['RED', 'PARTIAL']
+        expect(LimitsRollup.rollup([['RED', 'PARTIAL']])).to eql ['RED', 'PARTIAL']
+      end
+
+      it "is DISABLED when every nested group is disabled" do
+        expect(LimitsRollup.rollup([['DISABLED', 'FALSE'], ['DISABLED', 'FALSE']])).to eql ['DISABLED', 'FALSE']
+        expect(LimitsRollup.rollup([['DISABLED', 'FALSE'], ['GREEN', false]])).to eql ['DISABLED', 'FALSE']
       end
     end
   end

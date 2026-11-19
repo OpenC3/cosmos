@@ -63,7 +63,9 @@ check_expression("limits_enabled?('INST2 HEALTH_STATUS GROUND1STATUS') == false"
 check_expression("limits_enabled?('INST2 HEALTH_STATUS GROUND2STATUS') == false")
 # The group's rollup is telemetry in the LIMITS_GROUP packet of the target which defines it
 wait_check("INST2 LIMITS_GROUP GROUND_ENABLED == 'FALSE'", 5)
-wait_check("INST2 LIMITS_GROUP PAYLOAD_ENABLED == 'FALSE'", 5)
+wait_check("INST2 LIMITS_GROUP GROUND == 'DISABLED'", 5)
+# PAYLOAD nests GROUND and TEMPS so it's only partly enabled
+wait_check("INST2 LIMITS_GROUP PAYLOAD_ENABLED == 'PARTIAL'", 5)
 enable_limits_group("INST2", "GROUND")
 check_expression("limits_enabled?('INST2 HEALTH_STATUS GROUND1STATUS') == true")
 check_expression("limits_enabled?('INST2 HEALTH_STATUS GROUND2STATUS') == true")

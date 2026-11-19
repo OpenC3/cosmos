@@ -416,6 +416,56 @@ module OpenC3
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP4")).to be true
       end
 
+      it "only changes the items directly in the group with cascade false" do
+        Store.hset("DEFAULT__limits_groups", "INST__SPACECRAFT", JSON.generate([["SYSTEM", "LIMITS_GROUP", "FIRST"], ["INST", "HEALTH_STATUS", "TEMP2"]]))
+        @redis.del("DEFAULT__openc3_limits_events")
+        @api.disable_limits_group("INST", "SPACECRAFT", cascade: false)
+        # FIRST contains TEMP1 and TEMP3
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP2")).to be false
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be true
+        settings = Store.hgetall("DEFAULT__current_limits_settings").transform_values { |v| JSON.parse(v) }
+        expect(settings["INST__HEALTH_STATUS__TEMP2"]['enabled']).to be false
+        expect(settings.dig("INST__HEALTH_STATUS__TEMP1", 'enabled')).to_not be false
+        event = LimitsEventTopic.read("0-0", scope: "DEFAULT")[-1][1]
+        expect(event["cascade"]).to be false
+        expect(event["message"]).to eql "Disabling Limits Group: INST SPACECRAFT (not nested groups)"
+
+        @api.disable_limits_group("INST", "SPACECRAFT")
+        %w(TEMP1 TEMP2 TEMP3).each { |item| expect(@api.limits_enabled?("INST", "HEALTH_STATUS", item)).to be false }
+        @api.enable_limits_group("INST", "SPACECRAFT", cascade: false)
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP2")).to be true
+        # Only an event which doesn't cascade says so
+        @api.enable_limits_group("INST", "SPACECRAFT")
+        expect(LimitsEventTopic.read("0-0", scope: "DEFAULT")[-1][1]).to_not have_key("cascade")
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+      end
+
+      it "disables a group of only nested groups itself with cascade false" do
+        Store.hset("DEFAULT__limits_groups", "INST__ALL", JSON.generate([["SYSTEM", "LIMITS_GROUP", "FIRST"]]))
+        @api.disable_limits_group("INST", "ALL", cascade: false)
+        # FIRST and its items are unchanged
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({ "INST__ALL" => { 'enabled' => false } })
+        @api.enable_limits_group("INST", "ALL")
+        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({ "INST__ALL" => { 'enabled' => true }, "SYSTEM__FIRST" => { 'enabled' => true } })
+      end
+
+      it "takes cascade with just the group name" do
+        Store.hset("DEFAULT__limits_groups", "INST__SPACECRAFT", JSON.generate([["SYSTEM", "LIMITS_GROUP", "FIRST"], ["INST", "HEALTH_STATUS", "TEMP2"]]))
+        @api.disable_limits_group("SPACECRAFT", cascade: false)
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP2")).to be false
+        @api.disable_limits_group("SPACECRAFT", cascade: true)
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+        @api.enable_limits_group("SPACECRAFT", cascade: false)
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP2")).to be true
+        @api.enable_limits_group("SPACECRAFT", cascade: true)
+        expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+      end
+
       it "authorizes every target the group's members belong to" do
         # SYSTEM's group FIRST contains INST items so tlm_set on SYSTEM alone isn't enough
         allow(@api).to receive(:authorize) do |**kwargs|
@@ -636,6 +686,11 @@ module OpenC3
           # Ignoring just TEMP2 yields YELLOW due to TEMP1
           expect(@api.get_overall_limits_state([["INST", "HEALTH_STATUS", "TEMP2"]])).to eql "YELLOW"
         end
+      end
+
+      it "is never BLUE" do
+        allow(@api).to receive(:get_out_of_limits).and_return([%w(INST HEALTH_STATUS TEMP1 BLUE)])
+        expect(@api.get_overall_limits_state).to eql "GREEN"
       end
 
       it "raise on invalid ignored_items" do

@@ -260,7 +260,7 @@ if vehicles > 0
         children = Array.new(count) { |i| "#{name}_#{child_name}#{i}" }
         children.each { |child| write_group.call(child, level + 1) }
         file.puts "LIMITS_GROUP #{name}"
-        children.each { |child| file.puts "  LIMITS_GROUP_ITEM #{child}" }
+        children.each { |child| file.puts "  NESTED_LIMITS_GROUP #{child}" }
       end
       num_limits_groups += 1
       file.puts

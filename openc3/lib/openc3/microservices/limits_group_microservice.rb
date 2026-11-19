@@ -51,7 +51,8 @@ module OpenC3
       @definitions = {}      # target => { packet => { item => limits enabled in the definition } }
       @current_limits = {}   # 'TGT__PKT__ITEM' => limits state
       @settings = {}         # 'TGT__PKT__ITEM' => { 'enabled' => ... }
-      @values = {}           # group => [color, enabled] as last computed
+      @disabled_groups = Set.new # groups disabled themselves (see LimitsEventTopic.limits_group_settings)
+      @values = {}           # group => [state, enabled] as last computed (see LimitsRollup.rollup)
       @published = {}        # target => its groups' @values as last published
       @packets = {}          # target => [group names, its LIMITS_GROUP packet]
       @publishable = {}      # target => whether its LIMITS_GROUP packet is the generated one
@@ -218,8 +219,8 @@ module OpenC3
         @changed_groups.merge(groups)
         true
       when 'LIMITS_GROUP_ENABLE_STATE', 'LIMITS_SETTINGS'
-        # These can change the enabled flag of many items so reread them all,
-        # once per read in flush
+        # These can change the enabled flag of many items and groups so reread
+        # them all, once per read in flush
         @settings_changed = true
         true
       else
@@ -296,14 +297,14 @@ module OpenC3
         packet = PacketConfig.generate_limits_group_packet(target_name, values.keys)
         @packets[target_name] = [values.keys, packet]
       end
-      values.each do |group, (color, enabled)|
+      values.each do |group, (state, enabled)|
         item = packet.get_item(group)
-        # A group with no enabled member reports GREEN with no limits state so
-        # limits aware widgets show it uncolored
-        packet.write_item(item, PacketConfig::LIMITS_GROUP_STATES[color || 'GREEN'], :RAW)
-        item.limits.state = color ? color.to_sym : nil
+        # A group whose enabled members have no state yet reports GREEN with no
+        # limits state so limits aware widgets show it uncolored, as does a DISABLED group
+        packet.write_item(item, PacketConfig::LIMITS_GROUP_STATES[state || 'GREEN'], :RAW)
+        item.limits.state = (state and state != LimitsRollup::DISABLED) ? state.to_sym : nil
         enabled_item = packet.get_item("#{group}#{PacketConfig::LIMITS_GROUP_ENABLED_SUFFIX}")
-        packet.write_item(enabled_item, PacketConfig::LIMITS_GROUP_ENABLED_STATES[enabled ? 'TRUE' : 'FALSE'], :RAW)
+        packet.write_item(enabled_item, PacketConfig::LIMITS_GROUP_ENABLED_STATES[enabled], :RAW)
       end
       packet.received_time = Time.now.sys
       # Count it like an interface does so the packet counts show it and it survives restarts
@@ -376,6 +377,8 @@ module OpenC3
       Store.hgetall("#{@scope}__current_limits_settings").each do |key, json|
         @settings[key] = JSON.parse(json, allow_nan: true, create_additions: true)
       end
+      @disabled_groups = LimitsEventTopic.limits_group_settings(scope: @scope)
+                                         .select { |_group, settings| settings['enabled'] == false }.keys.to_set
     end
 
     # Item definitions supply the limits enabled flag when no setting is stored
@@ -454,8 +457,14 @@ module OpenC3
     # @param groups [Array<String>] groups to compute, children before parents
     def compute(groups)
       groups.each do |group|
+        # A group disabled itself (disable_limits_group with cascade false) is
+        # DISABLED whatever its members are, and its parents ignore it
+        if @disabled_groups.include?(group)
+          @values[group] = [LimitsRollup::DISABLED, LimitsRollup::ENABLED_FALSE]
+          next
+        end
+
         members = []
-        children_enabled = true
         @groups[group].each do |target_name, packet_name, item_name|
           if child_group?(packet_name)
             # A child which isn't defined (yet) is ignored like an unknown item
@@ -466,18 +475,16 @@ module OpenC3
               next
             end
 
-            # A child's color already ignores its disabled members, so it always
-            # counts here. Its enabled flag only affects whether this group is enabled.
-            color, child_enabled = child
-            members << [color, true]
-            children_enabled &&= child_enabled
+            # A child's state already ignores its disabled members. A child which is
+            # entirely disabled is ignored like a disabled item and a partly enabled
+            # child makes this group partly enabled.
+            members << child
           else
             member = item_member(target_name, packet_name, item_name, group)
             members << member if member
           end
         end
-        color, enabled = LimitsRollup.rollup(members)
-        @values[group] = [color, enabled && children_enabled]
+        @values[group] = LimitsRollup.rollup(members)
       end
     end
 

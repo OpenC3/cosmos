@@ -28,13 +28,20 @@ COLORS = {
     "GREEN": "GREEN",
     "GREEN_HIGH": "GREEN",
     "GREEN_LOW": "GREEN",
-    "BLUE": "GREEN",
+    "BLUE": "BLUE",
 }
-SEVERITY = {"GREEN": 0, "YELLOW": 1, "RED": 2}
+# BLUE ranks below GREEN so a rollup is only BLUE when every state is BLUE
+SEVERITY = {"BLUE": -1, "GREEN": 0, "YELLOW": 1, "RED": 2}
+# A group whose members all have limits disabled
+DISABLED = "DISABLED"
+# Whether limits are enabled on a group's members: all, none, or some of them
+ENABLED_TRUE = "TRUE"
+ENABLED_FALSE = "FALSE"
+ENABLED_PARTIAL = "PARTIAL"
 
 
 def color(state: str | None) -> str | None:
-    """Return 'GREEN', 'YELLOW' or 'RED' for a limits state, or None for a missing or unknown state."""
+    """Return 'BLUE', 'GREEN', 'YELLOW' or 'RED' for a limits state, or None for a missing or unknown state."""
     return COLORS.get(state) if state is not None else None
 
 
@@ -46,14 +53,33 @@ def worst(states: Iterable[str | None]) -> str | None:
     return max(colors, key=lambda c: SEVERITY[c])
 
 
-def rollup(members: Iterable[tuple[str | None, bool]]) -> tuple[str | None, bool]:
+def enabled_state(enabled: bool | str | None) -> str:
+    """Return ENABLED_TRUE, ENABLED_FALSE or ENABLED_PARTIAL.
+
+    Items pass True or False, nested groups pass their rolled up enabled state.
+    """
+    if enabled is True:
+        return ENABLED_TRUE
+    if enabled is False or enabled is None:
+        return ENABLED_FALSE
+    return enabled
+
+
+def rollup(members: Iterable[tuple[str | None, bool | str]]) -> tuple[str | None, str]:
     """Roll up a limits group from (limits_state, enabled) per member.
 
-    Members with limits disabled are ignored for the color, as are missing states.
-    The group is enabled only when it has members and every one is enabled.
-    Returns (color, enabled) where color is None when no enabled member has a state.
+    Items pass True or False for enabled, nested groups pass their rolled up
+    (state, enabled). The group is enabled (ENABLED_TRUE) when every member is,
+    disabled (ENABLED_FALSE) when no member is or the group is empty, and
+    otherwise ENABLED_PARTIAL. A disabled group's state is DISABLED. Otherwise
+    it's the most severe state of the members which aren't disabled, ignoring
+    missing states. Returns (state, enabled) where state is None when no member
+    which counts has a state.
     """
-    members = list(members)
-    states = [state for state, enabled in members if enabled]
-    enabled = bool(members) and all(member_enabled for _, member_enabled in members)
+    members = [(state, enabled_state(enabled)) for state, enabled in members]
+    enabled_states = {enabled for _, enabled in members}
+    if not enabled_states or enabled_states == {ENABLED_FALSE}:
+        return DISABLED, ENABLED_FALSE
+    enabled = ENABLED_TRUE if enabled_states == {ENABLED_TRUE} else ENABLED_PARTIAL
+    states = [state for state, member_enabled in members if member_enabled != ENABLED_FALSE]
     return worst(states), enabled

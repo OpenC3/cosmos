@@ -48,8 +48,10 @@ class PacketConfig:
     # which defines them, named <GROUP> and <GROUP>_ENABLED
     LIMITS_GROUP_PACKET = "LIMITS_GROUP"
     LIMITS_GROUP_ENABLED_SUFFIX = "_ENABLED"
-    LIMITS_GROUP_STATES = {"GREEN": 0, "YELLOW": 1, "RED": 2}
-    LIMITS_GROUP_ENABLED_STATES = {"FALSE": 0, "TRUE": 1}
+    # BLUE when every member is BLUE, DISABLED when limits are disabled on every member
+    LIMITS_GROUP_STATES = {"GREEN": 0, "YELLOW": 1, "RED": 2, "BLUE": 3, "DISABLED": 4}
+    # PARTIAL when limits are enabled on some members but not all
+    LIMITS_GROUP_ENABLED_STATES = {"FALSE": 0, "TRUE": 1, "PARTIAL": 2}
     # QuestDB column name limit (TargetModel MAX_COLUMN_HEADER_LENGTH) minus room for _ENABLED
     MAX_LIMITS_GROUP_NAME_LENGTH = 127 - len(LIMITS_GROUP_ENABLED_SUFFIX)
     # Characters QuestDBClient.sanitize_column_name replaces with '_'. Group names
@@ -227,7 +229,7 @@ class PacketConfig:
                         parser.verify_num_parameters(1, 1, usage)
                         self.current_limits_group = params[0].upper()
                         # The group becomes items in <TARGET> LIMITS_GROUP so a name which can't
-                        # is skipped, along with its LIMITS_GROUP_ITEM lines
+                        # is skipped, along with its LIMITS_GROUP_ITEM and NESTED_LIMITS_GROUP lines
                         error = PacketConfig.limits_group_name_error(self.current_limits_group)
                         if error:
                             self._limits_group_warning(
@@ -241,26 +243,36 @@ class PacketConfig:
 
                     # Add a telemetry item to the limits group
                     case "LIMITS_GROUP_ITEM":
-                        usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME> or LIMITS_GROUP_ITEM <GROUP NAME>"
-                        parser.verify_num_parameters(1, 3, usage)
-                        if len(params) == 2:
-                            raise parser.error("Not enough parameters for LIMITS_GROUP_ITEM.", usage)
+                        usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME>"
+                        parser.verify_num_parameters(3, 3, usage)
                         if self.current_limits_group:
+                            item = [params[0].upper(), params[1].upper(), params[2].upper()]
+                            # Members in a LIMITS_GROUP packet are nested groups, added with NESTED_LIMITS_GROUP
+                            if item[1] == self.LIMITS_GROUP_PACKET:
+                                self._limits_group_warning(
+                                    parser,
+                                    f"LIMITS_GROUP {self.current_limits_group} member {' '.join(item)}: use NESTED_LIMITS_GROUP {item[0]} {item[2]} to nest a limits group. Skipping the member.",
+                                )
+                            else:
+                                self.limits_groups[process_target_name][self.current_limits_group].append(item)
+
+                    # Add a nested limits group to the limits group
+                    case "NESTED_LIMITS_GROUP":
+                        usage = "NESTED_LIMITS_GROUP <GROUP NAME> or NESTED_LIMITS_GROUP <TARGET NAME> <GROUP NAME>"
+                        parser.verify_num_parameters(1, 2, usage)
+                        if self.current_limits_group:
+                            # A nested group is stored as the item which carries its rollup. A
+                            # group name alone is a group of this target.
                             if len(params) == 1:
-                                # A nested group of this target is stored as the item which carries its rollup.
-                                # Groups of other targets use the full form <TARGET> LIMITS_GROUP <GROUP>.
                                 item = [process_target_name, self.LIMITS_GROUP_PACKET, params[0].upper()]
                             else:
-                                item = [params[0].upper(), params[1].upper(), params[2].upper()]
-                            # A member in a LIMITS_GROUP packet is always a nested group so its
-                            # name must be one LIMITS_GROUP accepts (the child can be installed later)
-                            error = None
-                            if item[1] == self.LIMITS_GROUP_PACKET:
-                                error = PacketConfig.limits_group_name_error(item[2])
+                                item = [params[0].upper(), self.LIMITS_GROUP_PACKET, params[1].upper()]
+                            # The name must be one LIMITS_GROUP accepts (the child can be installed later)
+                            error = PacketConfig.limits_group_name_error(item[2])
                             if error:
                                 self._limits_group_warning(
                                     parser,
-                                    f"LIMITS_GROUP {self.current_limits_group} member {' '.join(item)}: LIMITS_GROUP {item[2]} {error}. Skipping the member.",
+                                    f"LIMITS_GROUP {self.current_limits_group} member NESTED_LIMITS_GROUP {item[0]} {item[2]}: LIMITS_GROUP {item[2]} {error}. Skipping the member.",
                                 )
                             else:
                                 self.limits_groups[process_target_name][self.current_limits_group].append(item)
@@ -422,8 +434,13 @@ class PacketConfig:
                 for limits_group_name, limits_group_items in groups.items():
                     f.write(f"LIMITS_GROUP {quote_if_necessary(limits_group_name)}\n")
                     for item_target_name, packet_name, item_name in limits_group_items:
-                        if item_target_name == target_name and packet_name == self.LIMITS_GROUP_PACKET:
-                            f.write(f"  LIMITS_GROUP_ITEM {quote_if_necessary(item_name)}\n")
+                        if packet_name == self.LIMITS_GROUP_PACKET:
+                            if item_target_name == target_name:
+                                f.write(f"  NESTED_LIMITS_GROUP {quote_if_necessary(item_name)}\n")
+                            else:
+                                f.write(
+                                    f"  NESTED_LIMITS_GROUP {quote_if_necessary(item_target_name)} {quote_if_necessary(item_name)}\n"
+                                )
                         else:
                             f.write(
                                 f"  LIMITS_GROUP_ITEM {quote_if_necessary(item_target_name)} "
@@ -1201,10 +1218,12 @@ class PacketConfig:
         for group in sorted(group_names):
             item = packet.append_item(group, 8, "UINT")
             item.states = dict(cls.LIMITS_GROUP_STATES)
-            item.description = f"Most severe limits state of the members of limits group {group}"
+            item.description = (
+                f"Most severe limits state of the enabled members, or DISABLED when none are, of limits group {group}"
+            )
             item = packet.append_item(f"{group}{cls.LIMITS_GROUP_ENABLED_SUFFIX}", 8, "UINT")
             item.states = dict(cls.LIMITS_GROUP_ENABLED_STATES)
-            item.description = f"Whether limits are enabled on every member of limits group {group}"
+            item.description = f"Whether limits are enabled on all (TRUE), none (FALSE) or some (PARTIAL) of the members of limits group {group}"
         return packet
 
     # Skipping a limits group isn't fatal, but log it since parser warnings aren't shown on install

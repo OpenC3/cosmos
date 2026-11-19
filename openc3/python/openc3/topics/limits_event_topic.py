@@ -97,26 +97,59 @@ class LimitsEventTopic(Topic):
         except RuntimeError:
             return None
 
+    # Whether a limits group event applies to the items of nested groups.
+    # Only events which say otherwise (cascade: False) don't.
+    @classmethod
+    def limits_group_event_cascade(cls, event):
+        return event.get("cascade") is not False
+
     # Returns the items in a limits group grouped by target and packet, or None if the
     # group is undefined. Reads the store directly to avoid a circular reference to TargetModel.
-    # key is the store key of the group (see limits_group_key).
+    # key is the store key of the group (see limits_group_key). cascade is whether
+    # to include the items of nested groups.
     @classmethod
-    def limits_group_items(cls, key, scope):
+    def limits_group_items(cls, key, scope, cascade=True):
         if key is None:
             return None
         groups = cls._limits_groups(scope)
         if key not in groups:
             return None
         items = {}
-        cls._expand_limits_group(key, groups, items, set(), set())
+        cls._expand_limits_group(key, groups, items, set(), set(), cascade)
         return items
 
-    # Nested groups are members named <TARGET> LIMITS_GROUP <GROUP>. They have no limits
-    # of their own so expand them into the items of the child group. Children which
-    # aren't defined (yet) are ignored and each group is only expanded once which
-    # also guards against cycles. seen holds the items already added.
+    # Returns the store keys of a group and, with cascade, of every defined group
+    # nested below it. These are the groups whose own enabled flag a
+    # LIMITS_GROUP_ENABLE_STATE event sets (see limits_group_settings).
+    # Empty if the group is undefined.
     @classmethod
-    def _expand_limits_group(cls, key, groups, items, visited, seen):
+    def limits_group_keys(cls, key, scope, cascade=True):
+        if key is None:
+            return []
+        groups = cls._limits_groups(scope)
+        if key not in groups:
+            return []
+        if not cascade:
+            return [key]
+        visited = set()
+        cls._expand_limits_group(key, groups, {}, visited, set(), True)
+        return [group for group in visited if group in groups]
+
+    # A group can be disabled itself (by disable_limits_group with cascade False)
+    # independent of its members. Groups without a setting are enabled. Returns
+    # the settings keyed by group store key, e.g. {"enabled": False}.
+    @classmethod
+    def limits_group_settings(cls, scope):
+        settings = Store.hgetall(f"{scope}__limits_group_settings") or {}
+        return {(key.decode() if isinstance(key, bytes) else key): json.loads(value) for key, value in settings.items()}
+
+    # Nested groups are members named <TARGET> LIMITS_GROUP <GROUP>. They have no limits
+    # of their own so expand them into the items of the child group, unless cascade
+    # is False in which case they're skipped. Children which aren't defined (yet) are
+    # ignored and each group is only expanded once which also guards against cycles.
+    # seen holds the items already added.
+    @classmethod
+    def _expand_limits_group(cls, key, groups, items, visited, seen, cascade=True):
         if key in visited:
             return
         visited.add(key)
@@ -125,7 +158,10 @@ class LimitsEventTopic(Topic):
             return
         for target_name, packet_name, item_name in json.loads(group):
             if packet_name == cls.LIMITS_GROUP_PACKET:
-                cls._expand_limits_group(cls.limits_group_key(target_name, item_name), groups, items, visited, seen)
+                if cascade:
+                    cls._expand_limits_group(
+                        cls.limits_group_key(target_name, item_name), groups, items, visited, seen, cascade
+                    )
             # A set rather than a scan of the item list since groups can contain many thousands of items
             elif (target_name, packet_name, item_name) not in seen:
                 seen.add((target_name, packet_name, item_name))
@@ -201,9 +237,18 @@ class LimitsEventTopic(Topic):
             case "LIMITS_GROUP_ENABLE_STATE":
                 # Groups can contain many thousands of items so read and write the settings in bulk
                 fields = []
-                for target_name, packets in (
-                    cls.limits_group_items(cls.limits_group_event_key(event, scope), scope) or {}
-                ).items():
+                key = cls.limits_group_event_key(event, scope)
+                cascade = cls.limits_group_event_cascade(event)
+                # The group itself, and with cascade every group below it, is enabled or
+                # disabled too so a group of only nested groups can be disabled on its own
+                group_keys = cls.limits_group_keys(key, scope, cascade)
+                if group_keys:
+                    group_settings = json.dumps({"enabled": event["enabled"]})
+                    Store.hset(
+                        f"{scope}__limits_group_settings",
+                        mapping=dict.fromkeys(group_keys, group_settings),
+                    )
+                for target_name, packets in (cls.limits_group_items(key, scope, cascade) or {}).items():
                     for packet_name, item_names in packets.items():
                         for item_name in item_names:
                             fields.append(f"{target_name}__{packet_name}__{item_name}")
@@ -484,7 +529,10 @@ class LimitsEventTopic(Topic):
             case "LIMITS_GROUP_ENABLE_STATE":
                 enabled = event.get("enabled", False)
                 for target_name, packets in (
-                    cls.limits_group_items(cls.limits_group_event_key(event, scope), scope) or {}
+                    cls.limits_group_items(
+                        cls.limits_group_event_key(event, scope), scope, cls.limits_group_event_cascade(event)
+                    )
+                    or {}
                 ).items():
                     target = telemetry.get(target_name)
                     if not target:
