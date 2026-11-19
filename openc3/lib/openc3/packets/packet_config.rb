@@ -126,6 +126,7 @@ module OpenC3
       @commands = {}
       @limits_groups = {}
       @own_limits_group_packets = Set.new
+      @generated_limits_group_packets = Set.new
       @limits_sets = [:DEFAULT]
       # Hash of Hashes. First index by target name and then item name.
       # Returns an array of packets with that target and item.
@@ -359,6 +360,7 @@ module OpenC3
       end
 
       target_packets[LIMITS_GROUP_PACKET] = self.class.generate_limits_group_packet(target_name, groups.keys)
+      @generated_limits_group_packets << target_name
     end
 
     # @param target_name [String] The target name
@@ -369,9 +371,10 @@ module OpenC3
 
     # @param target_name [String] The target name
     # @param packet_name [String] The packet name
-    # @return [Boolean] Whether the packet is the generated limits group packet
+    # @return [Boolean] Whether the packet is the generated limits group packet.
+    #   A target's own LIMITS_GROUP packet isn't, even before build_limits_group_packet runs.
     def limits_group_packet?(target_name, packet_name)
-      packet_name == LIMITS_GROUP_PACKET and @limits_groups[target_name] and !@limits_groups[target_name].empty? and !own_limits_group_packet?(target_name)
+      packet_name == LIMITS_GROUP_PACKET and @generated_limits_group_packets.include?(target_name)
     end
 
     # Group names become item names and QuestDB column names in <TARGET> LIMITS_GROUP.

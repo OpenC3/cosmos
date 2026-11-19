@@ -86,6 +86,7 @@ class PacketConfig:
         # nested group is the member [<TARGET>, "LIMITS_GROUP", <GROUP>].
         self.limits_groups = {}
         self.own_limits_group_packets = set()
+        self.generated_limits_group_packets = set()
         self.limits_sets = ["DEFAULT"]
         self.converted_type = None
         self.converted_bit_size = None
@@ -1154,18 +1155,16 @@ class PacketConfig:
             Logger.warn(message)
             return
         target_packets[self.LIMITS_GROUP_PACKET] = PacketConfig.generate_limits_group_packet(target_name, groups.keys())
+        self.generated_limits_group_packets.add(target_name)
 
     # Whether the target defines limits groups but has a LIMITS_GROUP packet of its own
     def own_limits_group_packet(self, target_name):
         return target_name in self.own_limits_group_packets
 
-    # Whether the packet is the generated limits group packet
+    # Whether the packet is the generated limits group packet. A target's own
+    # LIMITS_GROUP packet isn't, even before build_limits_group_packet runs.
     def limits_group_packet_p(self, target_name, packet_name):
-        return (
-            packet_name == self.LIMITS_GROUP_PACKET
-            and bool(self.limits_groups.get(target_name))
-            and not self.own_limits_group_packet(target_name)
-        )
+        return packet_name == self.LIMITS_GROUP_PACKET and target_name in self.generated_limits_group_packets
 
     # Group names become item names and QuestDB column names in <TARGET> LIMITS_GROUP.
     # They follow the naming rules of LIMITS_GROUP parameters (see

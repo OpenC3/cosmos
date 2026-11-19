@@ -661,6 +661,8 @@ module OpenC3
           tf.puts 'LIMITS_GROUP TVAC'
           tf.close
           @pc.process_file(tf.path, "TGT1")
+          # Not the generated packet even before the builder runs (e.g. from_config)
+          expect(@pc.limits_group_packet?("TGT1", "LIMITS_GROUP")).to be false
           expect(Logger).to receive(:warn).with(/TGT1 LIMITS_GROUP is reserved .* Rename the packet and reinstall the target/)
           @pc.build_limits_group_packet("TGT1")
           expect(@pc.telemetry["TGT1"]["LIMITS_GROUP"].get_item("ITEM1")).to_not be_nil

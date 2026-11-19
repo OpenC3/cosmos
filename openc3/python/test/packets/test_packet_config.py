@@ -690,6 +690,8 @@ class TestPacketConfig(unittest.TestCase):
             tf.write("LIMITS_GROUP TVAC\n")
             tf.seek(0)
             self.pc.process_file(tf.name, "TGT1")
+        # Not the generated packet even before the builder runs (e.g. from_config)
+        self.assertFalse(self.pc.limits_group_packet_p("TGT1", "LIMITS_GROUP"))
         with patch("openc3.packets.packet_config.Logger") as logger:
             self.pc.build_limits_group_packet("TGT1")
         self.assertRegex(
