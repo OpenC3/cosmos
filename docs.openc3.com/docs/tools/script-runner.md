@@ -169,7 +169,7 @@ Environment variables are used for storing information about the runtime environ
 
 Click the "+" icon to add a new environment variable, and set its name and value in the text fields. These can then be read in your scripts.
 
-Names must contain only letters, digits and underscores, and can't start with a digit. Names that COSMOS configures for the script process are reserved and rejected. These include anything starting with `OPENC3_`, `LD_`, `RUBY`, `GEM_`, `BUNDLE`, `PYTHON`, `AWS_` or `SSL_`, plus `PATH`, `HOME` and the proxy variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`). Global environment variables that were saved with a reserved name before this check existed are skipped when scripts start, and a warning is logged.
+Names must contain only letters, digits and underscores, and can't start with a digit. Names that COSMOS configures for the script process are reserved and rejected. These include anything starting with `OPENC3_`, `LD_`, `RUBY`, `GEM_`, `BUNDLE`, `PYTHON`, `AWS_` or `SSL_`, plus `PATH`, `HOME` and the proxy variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`, `NO_PROXY`). The one exception is `OPENC3_FULL_BACKTRACE`, which Script Runner sets when you check "Enable Stack Traces". Global environment variables that were saved with a reserved name before this check existed are skipped when scripts start, and a warning is logged.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">

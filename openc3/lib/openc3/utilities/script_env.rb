@@ -52,11 +52,15 @@ module OpenC3
       RES_ GIT_
     ].freeze
     RESERVED_NAMES = %w[
-      PATH HOME USER SHELL TMPDIR TMP TEMP IFS ENV BASH_ENV
+      PATH HOME SHELL TMPDIR TMP TEMP IFS ENV BASH_ENV
       HOSTALIASES LOCALDOMAIN
       HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY FTP_PROXY
       REQUESTS_CA_BUNDLE CURL_CA_BUNDLE
     ].freeze
+    # Reserved-prefix names that only change script output, not how the
+    # script connects or loads code. Script Runner sends OPENC3_FULL_BACKTRACE
+    # when "Enable Stack Traces" is checked.
+    ALLOWED_NAMES = %w[OPENC3_FULL_BACKTRACE].freeze
     VALID_NAME = /\A[A-Za-z_][A-Za-z0-9_]*\z/
 
     # Returns an error message if key can't be set by users, nil if it can
@@ -67,6 +71,7 @@ module OpenC3
       end
 
       upcased = key.upcase
+      return nil if ALLOWED_NAMES.include?(upcased)
       if RESERVED_NAMES.include?(upcased) or RESERVED_PREFIXES.any? { |prefix| upcased.start_with?(prefix) }
         return "Environment variable '#{key}' is reserved by COSMOS and can not be set for scripts"
       end

@@ -30,9 +30,13 @@ module OpenC3
 
     describe ".key_error" do
       it "allows ordinary variable names" do
-        %w[MYVAR my_var _X TARGET2 OPENC3 PATHS HOMEDIR].each do |key|
+        %w[MYVAR my_var _X TARGET2 OPENC3 PATHS HOMEDIR USER].each do |key|
           expect(ScriptEnv.key_error(key)).to be_nil, "expected #{key} to be allowed"
         end
+      end
+
+      it "allows OPENC3_FULL_BACKTRACE so Script Runner can enable stack traces" do
+        expect(ScriptEnv.key_error("OPENC3_FULL_BACKTRACE")).to be_nil
       end
 
       it "rejects the variables COSMOS uses to connect scripts" do
