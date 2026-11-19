@@ -174,9 +174,13 @@ def target_total_after(time)
   loop do
     services = with_retry('get_metrics') { get_metrics(detailed: true) }['services'].select { |name, _service| name.end_with?("__#{TARGET}") }
     return nil if services.empty?
-    if services.all? { |_name, service| service['updated_at'].to_i > time * 1_000_000_000 } or now > deadline
+
+    stale = services.reject { |_name, service| service['updated_at'].to_i > time * 1_000_000_000 }
+    if stale.empty?
       return services.sum { |_name, service| service['values'].sum { |metric, data| metric.end_with?('_total') ? data['value'].to_i : 0 } }
     end
+    # Stale totals would look like a quiet system
+    raise "Timed out waiting for metrics from #{stale.keys.join(', ')}" if now > deadline
 
     sleep 1
   end
@@ -269,6 +273,7 @@ disable_instrumentation do
   # The RAW value which makes each item GREEN, YELLOW and RED
   puts "Reading packet definitions..."
   items = []
+  disabled = []
   packets = item_group.keys.map(&:split).group_by(&:first)
   packets.each_with_index do |(packet, packet_items), index|
     puts "  #{index} of #{packets.length} packets" if index > 0 and index % 250 == 0
@@ -285,9 +290,19 @@ disable_instrumentation do
       end
       next unless values['GREEN'] and (values['YELLOW'] or values['RED'])
 
+      # Disabled items don't change color so they'd never reach the expected rollups
+      unless definition.dig('limits', 'enabled')
+        disabled << "#{packet} #{item}"
+        next
+      end
+
       items << { packet: packet, item: item, group: item_group["#{packet} #{item}"], values: values }
     end
   end
+  unless disabled.empty?
+    raise "#{disabled.length} #{TARGET} items have limits disabled (e.g. #{disabled.first(3).join(', ')}). Enable them, e.g. with #{top_groups.map { |group| "enable_limits_group('#{TARGET}', '#{group}')" }.join(' and ')}, and run again."
+  end
+
   puts "#{items.length} items can change color (#{items.count { |item| item[:values]['RED'] }} RED, #{items.count { |item| item[:values]['YELLOW'] }} YELLOW)"
 
   # The sentinel's group is left out of the tests so only the sentinel changes it
