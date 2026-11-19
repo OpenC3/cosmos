@@ -53,7 +53,7 @@ class MessagesThread < TopicsThread
       # start_time can be at most 1 minute in the future to prevent
       # spinning up threads that just block forever
       if (@start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) > Time.now.to_nsec_from_epoch
-        OpenC3::Logger.info "MessagesThread - Finishing stream start_time too far in future"
+        OpenC3::Logger.debug "MessagesThread - Finishing stream start_time too far in future"
         @cancel_thread = true
         return
       end
@@ -73,7 +73,7 @@ class MessagesThread < TopicsThread
         else
           if @end_time and @end_time < oldest_time
             # Bad times - just end
-            OpenC3::Logger.info "MessagesThread - Finishing stream - start_time after end_time"
+            OpenC3::Logger.debug "MessagesThread - Finishing stream - start_time after end_time"
             @cancel_thread = true
             return
           else
@@ -171,7 +171,7 @@ class MessagesThread < TopicsThread
 
     # Filter based on end_time
     if @end_time and log_entry_time > @end_time
-      OpenC3::Logger.info "MessagesThread - Finishing #{@thread_mode} - Reached End Time"
+      OpenC3::Logger.debug "MessagesThread - Finishing #{@thread_mode} - Reached End Time"
       @cancel_thread = true
       return nil
     end
@@ -209,7 +209,7 @@ class MessagesThread < TopicsThread
   end
 
   def thread_teardown
-    OpenC3::Logger.info "MessagesThread - Sending stream complete marker"
+    OpenC3::Logger.debug "MessagesThread - Sending stream complete marker"
     transmit_results([], force: true)
   end
 end

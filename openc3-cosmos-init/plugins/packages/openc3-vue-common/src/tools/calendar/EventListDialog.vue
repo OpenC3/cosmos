@@ -8,7 +8,7 @@
 # See LICENSE.md for more details.
 
 # Modified by OpenC3, Inc.
-# All changes Copyright 2024, OpenC3, Inc.
+# All changes Copyright 2026, OpenC3, Inc.
 # All Rights Reserved
 #
 # This file may also be used under the terms of a commercial license
@@ -225,13 +225,14 @@ export default {
         case 'note':
           data = event.note.description
           break
-        case 'metadata':
+        case 'metadata': {
           let rows = []
           Object.entries(event.metadata.metadata).forEach(([key, value]) =>
             rows.push(`${key}: ${value}`),
           )
           data = rows.join(', ')
           break
+        }
       }
       return data
     },

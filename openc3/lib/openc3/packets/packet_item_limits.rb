@@ -25,6 +25,12 @@ module OpenC3
     LIMITS_STATES = [:RED, :RED_HIGH, :RED_LOW, :YELLOW, :YELLOW_HIGH, :YELLOW_LOW, :GREEN, :GREEN_HIGH, :GREEN_LOW, :BLUE, :STALE, nil]
     # Array of all limit states which should be considered in error
     OUT_OF_LIMITS_STATES = [:RED, :RED_HIGH, :RED_LOW, :YELLOW, :YELLOW_HIGH, :YELLOW_LOW]
+    # Array of change limits types. SEQUENCE means the value must increment by
+    # the sequence step (default 1) each sample, CHANGE means the value must change each sample, and
+    # STATIC means the value must not change.
+    CHANGE_TYPES = [:SEQUENCE, :CHANGE, :STATIC]
+    # Array of limits states a change limit can go to when violated
+    CHANGE_COLORS = [:RED, :YELLOW]
 
     # Hash of arrays - Hash key is uppercase symbol designating limits set.
     # :DEFAULT limits set is required if item has limits. nil indicates the
@@ -63,6 +69,27 @@ module OpenC3
     # @return [Integer] Current running persistence count
     attr_reader :persistence_count
 
+    # Change limits type. One of nil, :SEQUENCE, :CHANGE, :STATIC. Items with a
+    # change type are checked against their previous value rather than
+    # numeric limits values.
+    # @return [Symbol, nil] Change limits type
+    attr_reader :change_type
+
+    # @return [Symbol, nil] Limits state (:RED or :YELLOW) when a change limit is violated
+    attr_reader :change_color
+
+    # @return [Integer] Amount a SEQUENCE value must change by each sample.
+    #   Negative values count down.
+    attr_reader :sequence_step
+
+    # @return [Object, nil] Previous value used to evaluate change limits
+    attr_accessor :last_value
+
+    # @return [Object, nil] Previous stored (non-realtime) value used to evaluate
+    #   change limits. Kept separate so interleaved stored and realtime packets
+    #   are each compared against their own stream.
+    attr_accessor :last_stored_value
+
     # Create a PacketItemLimits
     def initialize
       @values = nil
@@ -71,6 +98,11 @@ module OpenC3
       @response = nil
       @persistence_setting = 1
       @persistence_count = 0
+      @change_type = nil
+      @change_color = nil
+      @sequence_step = 1
+      @last_value = nil
+      @last_stored_value = nil
     end
 
     def values=(values)
@@ -122,6 +154,24 @@ module OpenC3
       @persistence_count = persistence_count
     end
 
+    def change_type=(change_type)
+      raise ArgumentError, "change_type must be one of #{CHANGE_TYPES} but is #{change_type}" unless change_type.nil? || CHANGE_TYPES.include?(change_type)
+
+      @change_type = change_type
+    end
+
+    def change_color=(change_color)
+      raise ArgumentError, "change_color must be one of #{CHANGE_COLORS} but is #{change_color}" unless change_color.nil? || CHANGE_COLORS.include?(change_color)
+
+      @change_color = change_color
+    end
+
+    def sequence_step=(sequence_step)
+      raise ArgumentError, "sequence_step must be a non-zero Integer but is #{sequence_step}" unless Integer === sequence_step && sequence_step != 0
+
+      @sequence_step = sequence_step
+    end
+
     # Make a light weight clone of this limits
     def clone
       limits = super()
@@ -143,6 +193,11 @@ module OpenC3
       end
       hash['persistence_setting'] = self.persistence_setting
       hash['persistence_count'] = self.persistence_count
+      if self.change_type
+        hash['change_type'] = self.change_type.to_s
+        hash['change_color'] = self.change_color.to_s
+        hash['sequence_step'] = self.sequence_step if self.change_type == :SEQUENCE
+      end
       hash
     end
 
@@ -155,6 +210,9 @@ module OpenC3
       # limits.response = hash['response']
       limits.persistence_setting = hash['persistence_setting'] if hash['persistence_setting']
       limits.persistence_count = hash['persistence_count'] if hash['persistence_count']
+      limits.change_type = hash['change_type'].to_sym if hash['change_type']
+      limits.change_color = hash['change_color'].to_sym if hash['change_color']
+      limits.sequence_step = hash['sequence_step'] if hash['sequence_step']
       limits
     end
   end

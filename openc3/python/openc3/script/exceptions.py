@@ -11,10 +11,14 @@
 
 
 class CheckError(Exception):
+    """Raised when a telemetry check such as `check` or `wait_check` fails."""
+
     pass
 
 
 class StopScriptError(Exception):
+    """Raise to stop the running script."""
+
     pass
 
 
@@ -23,6 +27,8 @@ StopScript = StopScriptError
 
 
 class SkipScriptError(Exception):
+    """Raise to skip the current suite script, which is recorded with a SKIP result."""
+
     pass
 
 
