@@ -119,7 +119,7 @@ module OpenC3
 
     # Returns the store keys of a group and, with cascade, of every defined group
     # nested below it. These are the groups whose own enabled flag a
-    # LIMITS_GROUP_ENABLE_STATE event sets (see limits_group_settings).
+    # LIMITS_GROUP_ENABLE_STATE event sets or clears (see limits_group_settings).
     #
     # @param key [String] Store key of the group (see limits_group_key)
     # @param cascade [Boolean] Whether to include the nested groups
@@ -234,12 +234,17 @@ module OpenC3
         fields = []
         key = limits_group_event_key(event, scope: scope)
         cascade = limits_group_event_cascade?(event)
-        # The group itself, and with cascade every group below it, is enabled or
-        # disabled too so a group of only nested groups can be disabled on its own
+        # Only disabling with cascade false disables the group itself, so a group of
+        # only nested groups can be disabled on its own. Otherwise the group, and with
+        # cascade every group below it, follows its members again: with cascade they're
+        # all changed too, and a later change to any member then shows in the group.
         group_keys = limits_group_keys(key, cascade: cascade, scope: scope)
         unless group_keys.empty?
-          group_settings = JSON.generate({ 'enabled' => event[:enabled] }, allow_nan: true)
-          Store.hmset("#{scope}__limits_group_settings", *group_keys.flat_map { |group_key| [group_key, group_settings] })
+          if !cascade and !event[:enabled]
+            Store.hset("#{scope}__limits_group_settings", key, JSON.generate({ 'enabled' => false }, allow_nan: true))
+          else
+            Store.hdel("#{scope}__limits_group_settings", *group_keys)
+          end
         end
         (limits_group_items(key, cascade: cascade, scope: scope) || {}).each do |target_name, packets|
           packets.each do |packet_name, item_names|
@@ -367,6 +372,13 @@ module OpenC3
             Store.hdel("#{scope}__current_limits_settings", item)
           end
         end
+      end
+
+      # Removing the target removes its groups so a reinstalled target, or a new
+      # group with the same name, doesn't start disabled
+      unless packet_name
+        groups = Store.hkeys("#{scope}__limits_group_settings").select { |group| group.start_with?("#{target_name}__") }
+        Store.hdel("#{scope}__limits_group_settings", *groups) unless groups.empty?
       end
     end
 

@@ -522,11 +522,9 @@ class TestLimitsApi(unittest.TestCase):
         # FIRST and its items are unchanged
         self.assertTrue(limits_enabled("INST", "HEALTH_STATUS", "TEMP1"))
         self.assertEqual(LimitsEventTopic.limits_group_settings("DEFAULT"), {"INST__ALL": {"enabled": False}})
+        # Enabling clears the flag so the group follows its members again
         enable_limits_group("INST", "ALL")
-        self.assertEqual(
-            LimitsEventTopic.limits_group_settings("DEFAULT"),
-            {"INST__ALL": {"enabled": True}, "SYSTEM__FIRST": {"enabled": True}},
-        )
+        self.assertEqual(LimitsEventTopic.limits_group_settings("DEFAULT"), {})
 
     def test_limits_group_takes_cascade_with_just_the_group_name(self):
         Store.hset(

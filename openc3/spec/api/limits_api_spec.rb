@@ -448,8 +448,9 @@ module OpenC3
         # FIRST and its items are unchanged
         expect(@api.limits_enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
         expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({ "INST__ALL" => { 'enabled' => false } })
+        # Enabling clears the flag so the group follows its members again
         @api.enable_limits_group("INST", "ALL")
-        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({ "INST__ALL" => { 'enabled' => true }, "SYSTEM__FIRST" => { 'enabled' => true } })
+        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({})
       end
 
       it "takes cascade with just the group name" do

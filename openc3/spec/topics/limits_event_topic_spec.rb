@@ -405,7 +405,7 @@ module OpenC3
         expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
       end
 
-      it "stores the enabled flag of the group, and with cascade its nested groups" do
+      it "only disables the group itself without cascade and otherwise clears the flags" do
         Store.hset("DEFAULT__limits_groups", "INST__THERMAL", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
         Store.hset("DEFAULT__limits_groups", "INST__ALL", JSON.generate([%w(INST LIMITS_GROUP THERMAL)]))
         event = { type: :LIMITS_GROUP_ENABLE_STATE, target_name: "INST", group_name: "ALL", enabled: false, cascade: false,
@@ -414,10 +414,26 @@ module OpenC3
         expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({ "INST__ALL" => { 'enabled' => false } })
         # ALL has no items of its own
         expect(Store.hgetall("DEFAULT__current_limits_settings")).to be_empty
+        LimitsEventTopic.write(event.merge(enabled: true), scope: "DEFAULT")
+        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({})
+
+        # With cascade every item below is disabled so the groups follow their
+        # members, and enabling one of them later shows in the groups
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        LimitsEventTopic.write(event.merge(group_name: "THERMAL"), scope: "DEFAULT")
+        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT").keys.sort).to eql %w(INST__ALL INST__THERMAL)
         LimitsEventTopic.write(event.merge(cascade: true), scope: "DEFAULT")
-        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({ "INST__ALL" => { 'enabled' => false }, "INST__THERMAL" => { 'enabled' => false } })
-        LimitsEventTopic.write(event.merge(enabled: true, cascade: false), scope: "DEFAULT")
-        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({ "INST__ALL" => { 'enabled' => true }, "INST__THERMAL" => { 'enabled' => false } })
+        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({})
+        expect(JSON.parse(Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1"))['enabled']).to be false
+      end
+
+      it "removes a deleted target's group flags" do
+        Store.hset("DEFAULT__limits_group_settings", "INST__ALL", JSON.generate({ 'enabled' => false }))
+        Store.hset("DEFAULT__limits_group_settings", "INST2__ALL", JSON.generate({ 'enabled' => false }))
+        LimitsEventTopic.delete("INST", "HEALTH_STATUS", scope: "DEFAULT")
+        expect(Store.hkeys("DEFAULT__limits_group_settings").sort).to eql %w(INST2__ALL INST__ALL)
+        LimitsEventTopic.delete("INST", scope: "DEFAULT")
+        expect(Store.hkeys("DEFAULT__limits_group_settings")).to eql %w(INST2__ALL)
       end
 
       it "applies a LIMITS_GROUP_ENABLE_STATE event without cascade to the group's own items" do

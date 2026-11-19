@@ -426,6 +426,27 @@ module OpenC3
       expect(cvt['ALL_ENABLED__C']).to eql 'TRUE'
     end
 
+    it "follows the members of a group disabled with cascade when they're enabled another way" do
+      start({ 'ALL' => [%w(INST LIMITS_GROUP THERMAL)], 'THERMAL' => [%w(INST HEALTH_STATUS TEMP1), %w(INST HEALTH_STATUS TEMP2)],
+              'OTHER' => [%w(INST HEALTH_STATUS TEMP1)] })
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'ALL', enabled: false,
+                     time_nsec: 0, message: 'test' })
+      expect(cvt['ALL__C']).to eql 'DISABLED'
+      expect(cvt['THERMAL__C']).to eql 'DISABLED'
+      # Enabled through an overlapping group, then one by one
+      limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'OTHER', enabled: true,
+                     time_nsec: 0, message: 'test' })
+      change('TEMP1', 'RED')
+      expect(cvt['THERMAL__C']).to eql 'RED'
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'PARTIAL'
+      expect(cvt['ALL__C']).to eql 'RED'
+      expect(cvt['ALL_ENABLED__C']).to eql 'PARTIAL'
+      limits_event({ type: :LIMITS_ENABLE_STATE, target_name: 'INST', packet_name: 'HEALTH_STATUS', item_name: 'TEMP2',
+                     enabled: true, time_nsec: 0, message: 'test' })
+      expect(cvt['THERMAL_ENABLED__C']).to eql 'TRUE'
+      expect(cvt['ALL_ENABLED__C']).to eql 'TRUE'
+    end
+
     it "keeps a disabled group disabled after a reload" do
       start({ 'ALL' => [%w(INST LIMITS_GROUP THERMAL)], 'THERMAL' => [%w(INST HEALTH_STATUS TEMP1)] })
       limits_event({ type: :LIMITS_GROUP_ENABLE_STATE, target_name: 'INST', group_name: 'ALL', enabled: false,

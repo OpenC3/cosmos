@@ -113,7 +113,7 @@ class TestLimitsEventTopicLimitsGroupKeys(unittest.TestCase):
         self.assertEqual(LimitsEventTopic.limits_group_keys("NOPE", scope="DEFAULT"), [])
         self.assertEqual(LimitsEventTopic.limits_group_keys(None, scope="DEFAULT"), [])
 
-    def test_write_stores_the_enabled_flag_of_the_group_and_with_cascade_its_nested_groups(self):
+    def test_write_only_disables_the_group_itself_without_cascade_and_otherwise_clears_the_flags(self):
         Store.hset("DEFAULT__limits_groups", "INST__THERMAL", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))
         Store.hset("DEFAULT__limits_groups", "INST__ALL", json.dumps([["INST", "LIMITS_GROUP", "THERMAL"]]))
         event = {
@@ -128,16 +128,26 @@ class TestLimitsEventTopicLimitsGroupKeys(unittest.TestCase):
         self.assertEqual(LimitsEventTopic.limits_group_settings("DEFAULT"), {"INST__ALL": {"enabled": False}})
         # ALL has no items of its own
         self.assertEqual(Store.hgetall("DEFAULT__current_limits_settings"), {})
+        LimitsEventTopic.write({**event, "enabled": True}, scope="DEFAULT")
+        self.assertEqual(LimitsEventTopic.limits_group_settings("DEFAULT"), {})
+
+        # With cascade every item below is disabled so the groups follow their
+        # members, and enabling one of them later shows in the groups
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        LimitsEventTopic.write({**event, "group_name": "THERMAL"}, scope="DEFAULT")
+        self.assertEqual(sorted(LimitsEventTopic.limits_group_settings("DEFAULT")), ["INST__ALL", "INST__THERMAL"])
         LimitsEventTopic.write({**event, "cascade": True}, scope="DEFAULT")
-        self.assertEqual(
-            LimitsEventTopic.limits_group_settings("DEFAULT"),
-            {"INST__ALL": {"enabled": False}, "INST__THERMAL": {"enabled": False}},
-        )
-        LimitsEventTopic.write({**event, "enabled": True, "cascade": False}, scope="DEFAULT")
-        self.assertEqual(
-            LimitsEventTopic.limits_group_settings("DEFAULT"),
-            {"INST__ALL": {"enabled": True}, "INST__THERMAL": {"enabled": False}},
-        )
+        self.assertEqual(LimitsEventTopic.limits_group_settings("DEFAULT"), {})
+        settings = json.loads(Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1"))
+        self.assertFalse(settings["enabled"])
+
+    def test_delete_removes_a_deleted_targets_group_flags(self):
+        Store.hset("DEFAULT__limits_group_settings", "INST__ALL", json.dumps({"enabled": False}))
+        Store.hset("DEFAULT__limits_group_settings", "INST2__ALL", json.dumps({"enabled": False}))
+        LimitsEventTopic.delete("INST", "HEALTH_STATUS", scope="DEFAULT")
+        self.assertEqual(sorted(LimitsEventTopic.limits_group_settings("DEFAULT")), ["INST2__ALL", "INST__ALL"])
+        LimitsEventTopic.delete("INST", scope="DEFAULT")
+        self.assertEqual(list(LimitsEventTopic.limits_group_settings("DEFAULT")), ["INST2__ALL"])
 
 
 class TestLimitsEventTopicFindLimitsGroup(unittest.TestCase):

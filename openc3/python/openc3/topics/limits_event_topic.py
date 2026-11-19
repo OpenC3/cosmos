@@ -120,7 +120,7 @@ class LimitsEventTopic(Topic):
 
     # Returns the store keys of a group and, with cascade, of every defined group
     # nested below it. These are the groups whose own enabled flag a
-    # LIMITS_GROUP_ENABLE_STATE event sets (see limits_group_settings).
+    # LIMITS_GROUP_ENABLE_STATE event sets or clears (see limits_group_settings).
     # Empty if the group is undefined.
     @classmethod
     def limits_group_keys(cls, key, scope, cascade=True):
@@ -239,15 +239,16 @@ class LimitsEventTopic(Topic):
                 fields = []
                 key = cls.limits_group_event_key(event, scope)
                 cascade = cls.limits_group_event_cascade(event)
-                # The group itself, and with cascade every group below it, is enabled or
-                # disabled too so a group of only nested groups can be disabled on its own
+                # Only disabling with cascade false disables the group itself, so a group of
+                # only nested groups can be disabled on its own. Otherwise the group, and with
+                # cascade every group below it, follows its members again: with cascade they're
+                # all changed too, and a later change to any member then shows in the group.
                 group_keys = cls.limits_group_keys(key, scope, cascade)
                 if group_keys:
-                    group_settings = json.dumps({"enabled": event["enabled"]})
-                    Store.hset(
-                        f"{scope}__limits_group_settings",
-                        mapping=dict.fromkeys(group_keys, group_settings),
-                    )
+                    if not cascade and not event["enabled"]:
+                        Store.hset(f"{scope}__limits_group_settings", key, json.dumps({"enabled": False}))
+                    else:
+                        Store.hdel(f"{scope}__limits_group_settings", *group_keys)
                 for target_name, packets in (cls.limits_group_items(key, scope, cascade) or {}).items():
                     for packet_name, item_names in packets.items():
                         for item_name in item_names:
@@ -379,6 +380,17 @@ class LimitsEventTopic(Topic):
             else:
                 if re.match(rf"^{target_name}__", item):
                     Store.hdel(f"{scope}__current_limits_settings", item)
+
+        # Removing the target removes its groups so a reinstalled target, or a new
+        # group with the same name, doesn't start disabled
+        if not packet_name:
+            groups = [
+                group.decode() if isinstance(group, bytes) else group
+                for group in (Store.hkeys(f"{scope}__limits_group_settings") or [])
+            ]
+            groups = [group for group in groups if group.startswith(f"{target_name}__")]
+            if groups:
+                Store.hdel(f"{scope}__limits_group_settings", *groups)
 
     # Removes a limits set from the limits_sets hash and from the
     # current_limits_settings of every item. Note that the set is not removed
