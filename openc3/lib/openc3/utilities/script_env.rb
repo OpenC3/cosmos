@@ -95,7 +95,9 @@ module OpenC3
           Logger.warn("Ignoring #{source} environment variable: #{error}", scope: scope)
           next
         end
-        value = entry['value'].to_s
+        # nil unsets the variable in the ChildProcess environment
+        value = entry['value']
+        value = value.to_s unless value.nil?
         environment[key] = value
         applied[key] = value
       end

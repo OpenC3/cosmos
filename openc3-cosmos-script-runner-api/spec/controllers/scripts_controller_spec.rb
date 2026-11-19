@@ -399,6 +399,20 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:bad_request)
     end
 
+    it "rejects a blank environment that isn't an array" do
+      expect(Script).not_to receive(:run)
+      [false, " "].each do |environment|
+        post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", environment: environment}, as: :json
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    it "treats an empty environment array as no environment" do
+      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", nil, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(1)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", environment: []}, as: :json
+      expect(response).to have_http_status(:ok)
+    end
+
     it "passes a valid suiteRunner through to Script.run" do
       suite_runner = {"suite" => "MySuite", "group" => "MyGroup", "script" => "test_foo", "method" => "start"}
       expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", suite_runner, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(1)

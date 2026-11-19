@@ -246,14 +246,16 @@ class ScriptsController < ApplicationController
       end
     end
     disconnect = params[:disconnect] == 'disconnect'
-    environment = params[:environment].presence
+    environment = params[:environment]
+    # Check the type before presence, which turns false and " " into nil
+    unless environment.nil? or environment.is_a?(Array)
+      render json: { status: 'error', message: 'environment must be an array of key / value pairs' }, status: :bad_request
+      return
+    end
+    environment = environment.presence
     # Reserved names (OPENC3_*, LD_*, proxies, etc.) are also skipped when the
     # script spawns, but reject them here so the caller sees why
     if environment
-      unless environment.is_a?(Array)
-        render json: { status: 'error', message: 'environment must be an array of key / value pairs' }, status: :bad_request
-        return
-      end
       key_error = environment.lazy.filter_map { |env| OpenC3::ScriptEnv.key_error(env.respond_to?(:key?) ? env['key'] : nil) }.first
       if key_error
         render json: { status: 'error', message: key_error }, status: :bad_request

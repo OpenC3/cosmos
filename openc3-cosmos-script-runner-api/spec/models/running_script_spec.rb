@@ -302,13 +302,15 @@ RSpec.describe RunningScript, type: :model do
 
     context "user environment variables" do
       before do
-        # Reuse the process double from the outer before, capturing its environment
+        # Fully stubbed process double that captures its environment
         @process_env = {}
-        allow(ChildProcess).to receive(:build).and_wrap_original do |original, *args|
-          process = original.call(*args)
-          allow(process).to receive(:environment).and_return(@process_env)
-          process
-        end
+        process_double = double("process")
+        allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
+        allow(process_double).to receive(:cwd=)
+        allow(process_double).to receive(:environment).and_return(@process_env)
+        allow(process_double).to receive(:detach=)
+        allow(process_double).to receive(:start)
+        allow(ChildProcess).to receive(:build).and_return(process_double)
         allow(OpenC3::Logger).to receive(:warn)
       end
 

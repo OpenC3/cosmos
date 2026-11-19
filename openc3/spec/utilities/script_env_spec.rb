@@ -86,6 +86,17 @@ module OpenC3
         expect(ScriptEnv.apply_user_entries(environment, ["MYVAR", 1, nil], source: "script")).to eql({})
         expect(environment).to eql({})
       end
+
+      it "keeps nil values so they unset the variable and stringifies others" do
+        environment = { "MYVAR" => "inherited" }
+        applied = ScriptEnv.apply_user_entries(environment, [
+          { "key" => "MYVAR", "value" => nil },
+          { "key" => "EMPTY", "value" => "" },
+          { "key" => "NUM", "value" => 1 },
+        ], source: "script")
+        expect(applied).to eql({ "MYVAR" => nil, "EMPTY" => "", "NUM" => "1" })
+        expect(environment).to eql({ "MYVAR" => nil, "EMPTY" => "", "NUM" => "1" })
+      end
     end
 
     describe ".clear_credentials" do
