@@ -12,6 +12,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'spec_helper'
+require 'socket'
 require 'openc3/interfaces/http_client_interface'
 require 'openc3/accessors/form_accessor'
 
@@ -317,7 +318,7 @@ module OpenC3
         http = @interface.instance_variable_get(:@http)
         expect(http).not_to receive(:get)
         ['http://other.com/x', 'https://example.com:8080@other.com/x', 'https://user@example.com:8080/x',
-         'https://example.com:9999/x', 'http://example.com:8080/x', nil].each do |uri|
+         'https://example.com:9999/x', 'http://example.com:8080/x', 'https://example.com/x', nil].each do |uri|
           expect { @interface.write_interface('', { 'HTTP_URI' => uri, 'HTTP_METHOD' => 'get' }) }.to raise_error(WriteRejectError), uri.inspect
         end
         @interface.disconnect
@@ -331,6 +332,53 @@ module OpenC3
         expect { @interface.write_interface('', { 'HTTP_URI' => 'https://example.com:8080/x', 'HTTP_METHOD' => 'get' }) }.to \
           raise_error(RuntimeError, 'HTTP GET request to https://example.com:8080 failed (ConnectionFailed)')
         @interface.disconnect
+      end
+
+      it "redacts query strings from the failure log" do
+        @interface.connect
+        http = @interface.instance_variable_get(:@http)
+        allow(http).to receive(:get).and_raise(Faraday::ConnectionFailed.new('Failed to open TCP connection to /status?access_token=secret (Connection refused)'))
+        logged = nil
+        allow(Logger).to receive(:error) { |message| logged = message }
+        expect { @interface.write_interface('', { 'HTTP_URI' => 'https://example.com:8080/status?access_token=secret', 'HTTP_METHOD' => 'get' }) }.to \
+          raise_error(RuntimeError)
+        expect(logged).not_to include('secret')
+        expect(logged).to include('https://example.com:8080/status?[REDACTED]')
+        expect(logged).to include('Connection refused')
+        @interface.disconnect
+      end
+
+      it "accepts an explicit default port" do
+        i = HttpClientInterface.new(@example_com, 443, 'https')
+        i.connect
+        http = i.instance_variable_get(:@http)
+        allow(http).to receive(:get).and_return(double('resp', headers: {}, status: 200, body: ''))
+        ['https://example.com:443/x', 'https://example.com/x'].each do |uri|
+          expect { i.write_interface('', { 'HTTP_URI' => uri, 'HTTP_METHOD' => 'get' }) }.not_to raise_error, uri
+        end
+        i.disconnect
+      end
+
+      it "does not follow redirects" do
+        server = TCPServer.new('127.0.0.1', 0)
+        port = server.addr[1]
+        thread = Thread.new do
+          client = server.accept
+          while (line = client.gets) and line != "\r\n"; end
+          # If the redirect were followed, the request to port 1 would fail
+          client.write("HTTP/1.1 302 Found\r\nLocation: http://127.0.0.1:1/x\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+          client.close
+        end
+        i = HttpClientInterface.new('127.0.0.1', port)
+        i.connect
+        i.write_interface('', { 'HTTP_URI' => "http://127.0.0.1:#{port}/x", 'HTTP_METHOD' => 'get' })
+        _, extra = i.read_interface
+        expect(extra['HTTP_STATUS']).to eq 302
+        i.disconnect
+        thread.join
+        server.close
+        # Net::HTTP starts the Timeout watcher thread, which Timeout recreates on demand
+        Thread.list.each { |t| t.kill.join if t.name == 'Timeout stdlib thread' }
       end
     end
 

@@ -14,7 +14,6 @@
 require 'openc3/interfaces/interface'
 require 'openc3/config/config_parser'
 require 'faraday'
-require 'faraday/follow_redirects'
 require 'openc3/accessors/http_accessor'
 
 # TODO: Header Log Filtering? File Uploads? Authorization from secrets?
@@ -65,8 +64,9 @@ module OpenC3
       request['open_timeout'] = @connect_timeout if @connect_timeout
       request['read_timeout'] = @read_timeout if @read_timeout
       request['write_timeout'] = @write_timeout if @write_timeout
+      # Redirects are not followed, because a redirect to another host would bypass
+      # validate_uri. A 3xx response is returned like any other response.
       @http = Faraday.new(request: request) do |f|
-        f.response :follow_redirects # use Faraday::FollowRedirects::Middleware
         f.adapter :net_http # adds the adapter to the connection, defaults to `Faraday.default_adapter`
       end
       super()
@@ -158,7 +158,8 @@ module OpenC3
         end
       rescue Faraday::Error => e
         # Log the details but don't return the raw error to the command sender
-        Logger.error("#{@name}: HTTP #{method.to_s.upcase} #{uri} failed: #{e.class}: #{e.message}")
+        # Query strings can carry credentials, so they are redacted from the log
+        Logger.error("#{@name}: HTTP #{method.to_s.upcase} #{redact_queries(uri)} failed: #{e.class}: #{redact_queries(e.message)}")
         raise "HTTP #{method.to_s.upcase} request to #{@url} failed (#{e.class.name.split('::').last})"
       end
 
@@ -279,6 +280,11 @@ module OpenC3
       uri = "#{@url}#{path}"
       validate_uri(uri)
       return uri
+    end
+
+    # Replaces query strings in text with ?[REDACTED] so they aren't logged
+    def redact_queries(text)
+      return text.to_s.gsub(/\?[^\s)'"]+/, '?[REDACTED]')
     end
 
     # Raises WriteRejectError unless the URI goes to the configured scheme, host and port.

@@ -25,6 +25,14 @@ from openc3.utilities.logger import Logger
 # Backslash, whitespace and control characters are never valid in HTTP_PATH.
 # \s already covers the control characters 0x09-0x0d and 0x1c-0x1f.
 INVALID_PATH_CHARS = re.compile(r"[\\\s\x00-\x08\x0e-\x1b\x7f]")
+# Query strings can carry credentials, so they are redacted from logs
+QUERY_STRING = re.compile(r"\?[^\s)'\"]+")
+DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def redact_queries(text):
+    """Replaces query strings in text with ?[REDACTED] so they aren't logged"""
+    return QUERY_STRING.sub("?[REDACTED]", str(text))
 
 
 class HttpClientInterface(Interface):
@@ -64,6 +72,7 @@ class HttpClientInterface(Interface):
         else:
             self.url = f"{self.protocol}://{self.hostname}:{self.port}"
         self.base_uri = urlsplit(self.url)
+        self.base_port = self.effective_port(self.base_uri)
         self.read_timeout = ConfigParser.handle_none(read_timeout)
         if self.read_timeout is not None:
             self.read_timeout = float(self.read_timeout)
@@ -176,11 +185,16 @@ class HttpClientInterface(Interface):
                 headers=headers,
                 data=data,
                 stream=False,
+                # A redirect to another host would bypass validate_uri, so redirects
+                # are not followed. A 3xx response is returned like any other response.
+                allow_redirects=False,
                 timeout=(self.connect_timeout, self.read_timeout),
             )
         except requests.exceptions.RequestException as error:
             # Log the details but don't return the raw error to the command sender
-            Logger.error(f"{self.name}: HTTP {str(method).upper()} {uri} failed: {type(error).__name__}: {error}")
+            Logger.error(
+                f"{self.name}: HTTP {str(method).upper()} {redact_queries(uri)} failed: {type(error).__name__}: {redact_queries(error)}"
+            )
             raise RuntimeError(
                 f"HTTP {str(method).upper()} request to {self.url} failed ({type(error).__name__})"
             ) from None
@@ -297,6 +311,13 @@ class HttpClientInterface(Interface):
         self.validate_uri(uri)
         return uri
 
+    @staticmethod
+    def effective_port(parsed):
+        """Returns the URI port, or the scheme's default port when it has none, to match Ruby's URI"""
+        if parsed.port is not None:
+            return parsed.port
+        return DEFAULT_PORTS.get(parsed.scheme.lower())
+
     def validate_uri(self, uri):
         """
         Raises WriteRejectError unless the URI goes to the configured scheme, host and port.
@@ -304,14 +325,14 @@ class HttpClientInterface(Interface):
         """
         try:
             parsed = urlsplit(str(uri))
-            port = parsed.port
+            port = self.effective_port(parsed)
         except ValueError:
             raise WriteRejectError(f"Invalid HTTP URI: {uri!r}") from None
         if (
             uri is None
             or parsed.scheme.lower() != self.base_uri.scheme.lower()
             or parsed.hostname != self.base_uri.hostname
-            or port != self.base_uri.port
+            or port != self.base_port
             or parsed.username is not None
             or parsed.password is not None
         ):
