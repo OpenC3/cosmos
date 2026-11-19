@@ -100,6 +100,31 @@ module OpenC3
       expect(items).to include("HEATERS", "HEATERS_ENABLED")
     end
 
+    it "removes a group several targets define since only one definition was stored" do
+      # Each install overwrote TEMPS so the stored items may belong to either target
+      model = TargetModel.get_model(name: 'INST', scope: 'DEFAULT')
+      model.limits_groups = %w(TEMPS HEATERS)
+      model.update
+      Store.hset("DEFAULT__limits_groups", "HEATERS", JSON.generate([%w(INST HEALTH_STATUS TEMP3)]))
+      warnings = []
+      allow(Logger).to receive(:warn) { |message| warnings << message }
+      LimitsGroupBackfill.run
+      expect(warnings.sort).to eql [
+        "Removed LIMITS_GROUP TEMPS of target INST in scope DEFAULT: targets INST, SYSTEM all define it but only one of their definitions was stored. Reinstall the target to use it.",
+        "Removed LIMITS_GROUP TEMPS of target SYSTEM in scope DEFAULT: targets INST, SYSTEM all define it but only one of their definitions was stored. Reinstall the target to use it.",
+      ].sort
+      expected = {
+        "SYSTEM__POWER" => JSON.generate([%w(INST HEALTH_STATUS VOLTS)]),
+        "INST__HEATERS" => JSON.generate([%w(INST HEALTH_STATUS TEMP3)]),
+      }
+      expect(Store.hgetall("DEFAULT__limits_groups")).to eql expected
+      expect(TargetModel.get_model(name: 'SYSTEM', scope: 'DEFAULT').limits_groups).to eql %w(POWER)
+      expect(TargetModel.get_model(name: 'INST', scope: 'DEFAULT').limits_groups).to eql %w(HEATERS)
+      items = JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__openc3tlm__SYSTEM", "LIMITS_GROUP"))['items'].map { |item| item['name'] }
+      expect(items).to include("POWER")
+      expect(items).not_to include("TEMPS")
+    end
+
     it "adds the LIMITS_GROUP packet to the target's TSDB microservice" do
       MicroserviceModel.new(name: "DEFAULT__TSDB__SYSTEM", topics: ["DEFAULT__DECOM__{SYSTEM}__HEALTH"], scope: "DEFAULT").create
       allow(Topic).to receive(:write_topic).and_call_original

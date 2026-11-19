@@ -39,8 +39,9 @@ module OpenC3
     def self.backfill_targets(scope)
       models = TargetModel.get_all_models(scope: scope)
       rekey_groups(scope, models)
+      stored = Store.hkeys("#{scope}__limits_groups").to_set
       models.each do |target_name, model|
-        group_names = valid_group_names(model)
+        group_names = valid_group_names(model, stored)
         next if group_names.empty?
 
         packet = PacketConfig.generate_limits_group_packet(target_name, group_names)
@@ -62,12 +63,16 @@ module OpenC3
     end
 
     # Before groups became items in <TARGET> LIMITS_GROUP any name was allowed.
-    # Drop the ones which can't (rekey_groups removed them from the store).
+    # Drop the ones which can't, and the ones rekey_groups couldn't give to a
+    # single target, which it removed from the store.
     #
+    # @param stored [Set<String>] The group keys in the store
     # @return [Array<String>] The target's group names which can be LIMITS_GROUP items
-    def self.valid_group_names(model)
+    def self.valid_group_names(model, stored)
       group_names = model.limits_groups || []
-      valid = group_names.reject { |group| PacketConfig.limits_group_name_error(group) }
+      valid = group_names.select do |group|
+        !PacketConfig.limits_group_name_error(group) and stored.include?(LimitsEventTopic.limits_group_key(model.name, group))
+      end
       if valid.length != group_names.length
         model.limits_groups = valid
         model.update
@@ -85,16 +90,21 @@ module OpenC3
       return if Store.get(done_key)
 
       groups = Store.hgetall("#{scope}__limits_groups")
+      # Before groups were owned by a target they were stored by name alone
+      owners = Hash.new { |hash, group| hash[group] = [] }
+      models.each do |target_name, model|
+        (model.limits_groups || []).each { |group| owners[group] << target_name if groups[group] }
+      end
       rekeyed = {}
       legacy = Set.new
-      models.each do |target_name, model|
-        (model.limits_groups || []).each do |group|
-          # Before groups were owned by a target they were stored by name alone
-          next unless groups[group]
-
-          legacy << group
+      owners.each do |group, target_names|
+        legacy << group
+        target_names.each do |target_name|
           if (error = PacketConfig.limits_group_name_error(group))
             Logger.warn("Removed LIMITS_GROUP #{group} of target #{target_name} in scope #{scope}: the name #{error}. Rename the group and reinstall the target to use it.")
+          elsif target_names.length > 1
+            # Each install overwrote the group so only the last one's items were kept
+            Logger.warn("Removed LIMITS_GROUP #{group} of target #{target_name} in scope #{scope}: targets #{target_names.sort.join(', ')} all define it but only one of their definitions was stored. Reinstall the target to use it.")
           else
             rekeyed[LimitsEventTopic.limits_group_key(target_name, group)] = groups[group]
           end
