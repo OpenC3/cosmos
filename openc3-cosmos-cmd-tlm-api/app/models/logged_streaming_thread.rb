@@ -75,7 +75,7 @@ class LoggedStreamingThread < StreamingThread
     end
 
     # Check the topic to figure out what we have in Redis
-    oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic, db_shard: first_object.db_shard)
+    oldest_msg_id, oldest_msg_hash = get_oldest_realtime_message(first_object.topic, first_object.db_shard)
 
     if oldest_msg_id
       # We have data in Redis
@@ -176,7 +176,7 @@ class LoggedStreamingThread < StreamingThread
 
     @last_tsdb_times.each do |topic, last_time|
       topic_db_shard = topic_db_shard_map[topic] || 0
-      oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(topic, db_shard: topic_db_shard)
+      oldest_msg_id, oldest_msg_hash = get_oldest_realtime_message(topic, topic_db_shard)
       if oldest_msg_id
         oldest_time = message_time(oldest_msg_hash, @time_type)
         # Use the same interpolation formula as setup_thread_body
@@ -196,6 +196,32 @@ class LoggedStreamingThread < StreamingThread
     @collection.objects.each do |obj|
       offset = offset_by_topic[obj.topic]
       obj.offset = offset if offset
+    end
+  end
+
+  # Number of messages read at a time while looking past stored messages
+  OLDEST_REALTIME_SCAN_COUNT = 100
+
+  # Returns the oldest [msg_id, msg_hash] in the topic that isn't stored, or nil.
+  # Stored messages (e.g. telemetry played back from a recorder) share the topic
+  # with realtime ones, but their packet and received times can be anything and
+  # redis_thread_body skips them. Using one as the oldest message would make a
+  # start time after it stream from Redis instead of the TSDB and return nothing.
+  def get_oldest_realtime_message(topic, db_shard)
+    msg_id, msg_hash = OpenC3::Topic.get_oldest_message(topic, db_shard: db_shard)
+    return nil unless msg_id
+    return [msg_id, msg_hash] unless OpenC3::ConfigParser.handle_true_false(msg_hash['stored'])
+
+    store = OpenC3::EphemeralStore.instance(db_shard: db_shard)
+    loop do
+      # A '(' start is exclusive so this reads the messages after msg_id
+      messages = store.xrange(topic, "(#{msg_id}", '+', count: OLDEST_REALTIME_SCAN_COUNT)
+      return nil if messages.nil? or messages.empty?
+
+      messages.each do |id, hash|
+        return [id, hash] unless OpenC3::ConfigParser.handle_true_false(hash['stored'])
+      end
+      msg_id = messages[-1][0]
     end
   end
 

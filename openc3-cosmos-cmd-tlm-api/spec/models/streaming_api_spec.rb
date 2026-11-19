@@ -1639,6 +1639,53 @@ RSpec.describe StreamingApi, type: :model do
         expect(mode).to eq(:STREAM) # The received times in Redis cover the start
         expect(offset).to eq("#{(@start_time.to_i - 50) * 1000}-0")
       end
+
+      context 'with stored messages at the start of the topic' do
+        # Writes messages to the real (mock) topic rather than stubbing get_oldest_message
+        def setup_mode_from_topic(time_type, messages, start_time)
+          collection = StreamingObjectCollection.new
+          collection.add(StreamingObject.new(item_key, start_time, nil, item_key: item_key, scope: 'DEFAULT', time_type: time_type))
+          topic = collection.objects[0].topic
+          messages.each_with_index do |msg, index|
+            OpenC3::EphemeralStore.instance.xadd(topic, msg, id: "#{@start_time.to_i - 100 + index}000-0")
+          end
+          thread = LoggedStreamingThread.new(@api, collection, scope: 'DEFAULT', token: nil)
+          thread.setup_thread_body(collection.objects)
+          thread.instance_variable_get(:@thread_mode)
+        end
+
+        # Stored (e.g. played back) packets years old, then realtime ones from 50s ago
+        let(:stored_msg) { { 'time' => (@start_time.to_i - 86_400 * 365) * 1_000_000_000, 'received_time' => (@start_time.to_i - 86_400 * 300) * 1_000_000_000, 'stored' => 'true' } }
+        let(:realtime_msg) { { 'time' => (@start_time.to_i - 50) * 1_000_000_000, 'received_time' => (@start_time.to_i - 50) * 1_000_000_000, 'stored' => 'false' } }
+
+        [:PACKET, :RECEIVED].each do |time_type|
+          it "ignores them when deciding where #{time_type} data comes from" do
+            # The start is after the stored times but before the realtime data in Redis
+            start_time = (@start_time.to_i - 86_400) * 1_000_000_000
+            mode = setup_mode_from_topic(time_type, [stored_msg, stored_msg, realtime_msg], start_time)
+            expect(mode).to eq(:TSDB)
+          end
+        end
+
+        it 'reads past more stored messages than one scan returns' do
+          stub_const('LoggedStreamingThread::OLDEST_REALTIME_SCAN_COUNT', 2)
+          start_time = (@start_time.to_i - 86_400) * 1_000_000_000
+          mode = setup_mode_from_topic(:RECEIVED, [stored_msg] * 5 + [realtime_msg], start_time)
+          expect(mode).to eq(:TSDB)
+        end
+
+        it 'still streams from Redis when the realtime data covers the start' do
+          start_time = (@start_time.to_i - 10) * 1_000_000_000
+          mode = setup_mode_from_topic(:RECEIVED, [stored_msg, realtime_msg], start_time)
+          expect(mode).to eq(:STREAM)
+        end
+
+        it 'uses the TSDB when the topic only has stored messages' do
+          start_time = (@start_time.to_i - 10) * 1_000_000_000
+          mode = setup_mode_from_topic(:PACKET, [stored_msg, stored_msg], start_time)
+          expect(mode).to eq(:TSDB)
+        end
+      end
     end
 
     it 'queries TSDB items by received time and returns it as __time' do
