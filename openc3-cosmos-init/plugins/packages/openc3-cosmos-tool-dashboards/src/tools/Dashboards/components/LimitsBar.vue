@@ -26,6 +26,11 @@
       />
     </span>
     <span
+      v-if="band"
+      class="band"
+      :style="{ left: `${band.left}%`, width: `${band.width}%` }"
+    />
+    <span
       v-if="marker !== null"
       class="marker"
       :style="{ left: `${marker}%` }"
@@ -41,10 +46,12 @@ import { limitZones, paddedScale } from '../limits'
 // operational limits) zones with a
 // marker at the current value. The scale extends 10% of the yellow range past
 // the red limits on each side, like the COSMOS LimitsBar widget. Parents set
-// --limits-bar-track to change the track thickness.
+// --limits-bar-track to change the track thickness. With `range` ([low,
+// high]) it also brackets that span, e.g. the min and max over a time range.
 const props = defineProps({
   limits: { type: Object, default: null },
   value: { type: Number, default: null },
+  range: { type: Array, default: null },
 })
 
 const scale = computed(() => paddedScale(props.limits))
@@ -60,6 +67,16 @@ const zones = computed(() => {
 const marker = computed(() => {
   if (!scale.value || typeof props.value !== 'number') return null
   return Math.min(100, Math.max(0, percent(props.value)))
+})
+
+const band = computed(() => {
+  const [low, high] = props.range ?? []
+  if (!scale.value || typeof low !== 'number' || typeof high !== 'number') {
+    return null
+  }
+  const left = Math.min(100, Math.max(0, percent(low)))
+  const right = Math.min(100, Math.max(0, percent(high)))
+  return { left, width: right - left }
 })
 
 function percent(value) {
@@ -84,6 +101,18 @@ function percent(value) {
   top: 0;
   bottom: 0;
   background: var(--zone);
+}
+/* The range: an outlined bracket over the track, at least the marker wide */
+.band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  min-width: 2px;
+  border: 2px solid rgb(var(--v-theme-on-surface));
+  border-radius: 3px;
+  transition:
+    left 0.4s,
+    width 0.4s;
 }
 .marker {
   position: absolute;

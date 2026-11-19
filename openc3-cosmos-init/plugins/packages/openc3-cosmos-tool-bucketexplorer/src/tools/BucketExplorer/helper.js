@@ -19,6 +19,7 @@ export async function runPool(items, limit, fn) {
     while (next < items.length) {
       const i = next++
       try {
+        // eslint-disable-next-line no-await-in-loop -- worker pool: sequential per worker bounds concurrency
         results[i] = { status: 'fulfilled', value: await fn(items[i], i) }
       } catch (reason) {
         results[i] = { status: 'rejected', reason }

@@ -134,6 +134,7 @@
               class="ml-3 mr-2 pa-2"
               size="small"
               icon="apps"
+              data-test="nav-drawer-toggle"
               @click="drawer = !drawer"
             ></rux-icon>
             <span id="openc3-menu" />

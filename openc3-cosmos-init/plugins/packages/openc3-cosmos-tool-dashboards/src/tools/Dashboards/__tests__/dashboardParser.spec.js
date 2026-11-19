@@ -18,6 +18,7 @@ import {
   serializeDashboard,
 } from '../dashboardParser'
 import { UNKNOWN_TYPE } from '../panels/registry'
+import * as optionsModule from '../panels/options'
 
 const TEXT = `DASHBOARD "INST Overview"
   COLUMNS 24
@@ -149,5 +150,69 @@ describe('parsePanel', () => {
   it('wants exactly one panel', () => {
     const { errors } = parsePanel('')
     expect(errors[0].message).toMatch(/Expected one PANEL/)
+  })
+})
+
+describe('text settings', () => {
+  it('round trips markdown with quotes, backslashes and line breaks', () => {
+    const markdown =
+      '## Don\'t "panic"\n\n- path `C:\\data\\new`\n- literal \\n stays\n# not a comment'
+    // An empty TEXT panel parses, with a note to write some text
+    const { model, errors } = parsePanel('PANEL TEXT 0 0 4 4\nEND\n')
+    expect(errors.map((error) => error.message)).toEqual([
+      'TEXT panel: Write some text',
+    ])
+    const { withOption, option } = optionsModule
+    model.settings = withOption(model, 'TEXT', markdown)
+    const text = serializeDashboard({
+      title: 'T',
+      columns: 12,
+      settings: {},
+      panels: [model],
+    })
+    // One line, in double quotes
+    expect(
+      text.split('\n').filter((line) => line.includes('SETTING TEXT')),
+    ).toHaveLength(1)
+    const reparsed = parseDashboard(text)
+    expect(reparsed.errors).toEqual([])
+    expect(option(reparsed.model.panels[0], 'TEXT')).toBe(markdown)
+  })
+
+  it('reads older text written in single quotes', () => {
+    const { model, errors } = parsePanel(
+      `PANEL COMMAND 0 0 4 4\n  COMMAND INST COLLECT\n  SETTING DETAILS 'Say "go"\\nthen wait'\nEND\n`,
+    )
+    expect(errors).toEqual([])
+    expect(optionsModule.option(model, 'DETAILS')).toBe('Say "go"\nthen wait')
+  })
+})
+
+describe('AGGREGATE panels', () => {
+  it('reads statistics', () => {
+    const { model, errors } = parsePanel(`PANEL AGGREGATE 0 0 4 4
+  ITEM INST HEALTH_STATUS TEMP1
+  SETTING STATS MIN MAX PERCENTILE
+  SETTING PERCENTILE 99
+END
+`)
+    expect(errors).toEqual([])
+    expect(optionsModule.option(model, 'STATS')).toEqual([
+      'MIN',
+      'MAX',
+      'PERCENTILE',
+    ])
+    expect(optionsModule.option(model, 'PERCENTILE')).toBe(99)
+  })
+
+  it('reports unknown statistics', () => {
+    const { errors } = parsePanel(`PANEL AGGREGATE 0 0 4 4
+  ITEM INST HEALTH_STATUS TEMP1
+  SETTING STATS MIN CUSTOM
+END
+`)
+    expect(errors.map((error) => error.message)).toEqual([
+      expect.stringContaining("doesn't know CUSTOM"),
+    ])
   })
 })

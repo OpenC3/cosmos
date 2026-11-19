@@ -1,5 +1,15 @@
 TELEMETRY <%= target_name %> HEALTH_STATUS BIG_ENDIAN "Health and status from the <%= target_name %> target"
   <%= render "_ccsds_tlm.txt", locals: {apid: 1} %>
+  # Change limits compare each value to the previous value instead of fixed limits
+  # Sequence count must increase by exactly one (rolls over at 16383)
+  SELECT_ITEM CCSDSSEQCNT
+    LIMITS DEFAULT 1 ENABLED SEQUENCE RED
+  # Microseconds should be different every sample
+  SELECT_ITEM TIMESEC
+    LIMITS DEFAULT 1 ENABLED CHANGE YELLOW
+  # CCSDS version should never change
+  SELECT_ITEM CCSDSVER
+    LIMITS DEFAULT 1 ENABLED STATIC RED
   APPEND_ITEM CMD_ACPT_CNT     32 UINT     "Command accept count"
   APPEND_ITEM COLLECTS         16 UINT     "Number of collects"
   APPEND_ITEM TEMP1            16 UINT     "Temperature #1"

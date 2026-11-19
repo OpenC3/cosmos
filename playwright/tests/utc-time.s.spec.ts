@@ -162,7 +162,7 @@ test.describe('Data Extractor', () => {
     await expect(page.locator('.v-app-bar')).toContainText('Data Extractor', {
       timeout: 20000,
     })
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
     await expect(page.locator('#openc3-nav-drawer')).not.toBeInViewport()
 
     now = new Date()
@@ -256,7 +256,7 @@ test.describe('Data Viewer', () => {
     await expect(page.locator('.v-app-bar')).toContainText('Data Viewer', {
       timeout: 20000,
     })
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
     await expect(page.locator('#openc3-nav-drawer')).not.toBeInViewport()
 
     now = new Date()
