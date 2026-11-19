@@ -1394,11 +1394,13 @@ export default {
     },
     stateColorClass: function () {
       // All possible states: spawning, init, running, paused, waiting, breakpoint,
-      // error, crashed, stopped, completed, completed_errors, killed
+      // error, crashed, stopped, completed, completed_errors, killed, plus
+      // 'start failed' set by start() when the run request is rejected
       if (
         this.state === 'error' ||
         this.state === 'crashed' ||
-        this.state === 'killed'
+        this.state === 'killed' ||
+        this.state === 'start failed'
       ) {
         return 'script-state-red'
       } else if (this.state === 'completed_errors') {
@@ -2873,6 +2875,10 @@ export default {
           this.scriptStart(response.data)
         })
         .catch((error) => {
+          // The script never started, so no event will replace the
+          // 'Connecting...' set by initScriptStart(). The axios interceptor
+          // shows the reason in the error banner.
+          this.state = 'start failed'
           this.scriptComplete()
         })
     },

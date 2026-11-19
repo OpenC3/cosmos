@@ -165,14 +165,14 @@ The following instructions must be performed for each user using COSMOS. Individ
 
    Do not edit `compose.yaml` or `.env` - `openc3.sh` merges `compose.override.yaml` on top of `compose.yaml` and loads `.env.local` after `.env`, so your changes survive a COSMOS upgrade. See [Docker Compose](/docs/configuration/compose) for the full details. Common Podman changes:
 
-   - By default Traefik only listens on `127.0.0.1:2900` and `127.0.0.1:2943`. To allow access from other machines, republish the ports in `compose.override.yaml` without the `127.0.0.1` prefix. Rootless Podman cannot bind privileged ports, so choose a port above 1023 (or set `net.ipv4.ip_unprivileged_port_start`). Make sure your firewall allows the port you choose.
+   - By default Traefik only listens on `127.0.0.1:2900` and `127.0.0.1:2943`. To allow access from other machines, republish the ports in `compose.override.yaml` without the `127.0.0.1` prefix. Use `!override` so your list replaces the ports from `compose.yaml`; without it Compose adds your ports to the existing ones and the container fails to start because port 2900 is bound twice. `!override` requires Docker Compose (`docker compose` or `docker-compose`) 2.24.4 or newer. Rootless Podman cannot bind privileged ports, so choose a port above 1023 (or set `net.ipv4.ip_unprivileged_port_start`). Make sure your firewall allows the port you choose.
    - To allow HTTP (rather than HTTPS) connections, set `OPENC3_ALLOW_HTTP=1` under the `openc3-traefik` service's `environment:` in `compose.override.yaml`. For a real deployment use an SSL config instead - see [SSL-TLS](/docs/configuration/ssl-tls).
    - Set `OPENC3_EXTERNAL_URL` in `.env.local` to the URL users will browse to.
 
    ```yaml
    services:
      openc3-traefik:
-       ports:
+       ports: !override
          - "2900:2900"
          - "2943:2943"
        environment:

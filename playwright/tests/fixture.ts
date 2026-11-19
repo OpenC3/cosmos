@@ -169,7 +169,7 @@ export const test = base.extend<{
     await expect(page.locator('.v-app-bar')).toContainText(toolName, {
       timeout: 20000,
     })
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
     await expect(page.locator('#openc3-nav-drawer')).not.toBeInViewport()
 
     // This is like a yield in a Ruby block where we call back to the

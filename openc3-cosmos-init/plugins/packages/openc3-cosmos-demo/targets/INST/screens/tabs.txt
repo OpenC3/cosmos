@@ -1,6 +1,7 @@
 SCREEN AUTO AUTO 1.0
 
 TABBOOK
+  SETTING LIMITS_STATE TRUE
   TABITEM ADCS
     TITLE "<%= target_name %> Instrument ADCS Information"
 
@@ -51,6 +52,19 @@ TABBOOK
 
     VERTICALBOX
       LABELVALUE <%= target_name %> HEALTH_STATUS PACKET_TIMEFORMATTED FORMATTED 30
+    END
+  END
+
+  # A nested TABBOOK doesn't need its own LIMITS_STATE for its items to count
+  # toward the outer tab
+  TABITEM NESTED
+    TABBOOK
+      TABITEM "INNER A"
+        LABELVALUE <%= target_name %> ADCS POSX
+      END
+      TABITEM "INNER B"
+        LABELVALUE <%= target_name %> HEALTH_STATUS TEMP1
+      END
     END
   END
 END

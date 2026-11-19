@@ -12,6 +12,7 @@
 import sys
 import time
 import traceback
+import warnings
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from typing import Any
@@ -82,13 +83,15 @@ def check_formatted(*args: Any, scope: str = "DEFAULT") -> None:
 def check_with_units(*args: Any, scope: str = "DEFAULT") -> None:
     """Check the FORMATTED value of a telemetry item against a condition.
 
-    Deprecated: use `check_formatted`.
+    .. deprecated:: 7.0.0
+       WITH_UNITS was removed, use `check_formatted` instead.
 
     Args:
         *args: A single "TGT PKT ITEM comparison" string, or the target, packet
             and item names followed by an optional comparison string.
-        scope: COSMOS scope.
+        scope (str): COSMOS scope.
     """
+    warnings.warn("check_with_units is deprecated, use check_formatted", FutureWarning, stacklevel=2)
     return _check(*args, type="FORMATTED", scope=scope)
 
 
