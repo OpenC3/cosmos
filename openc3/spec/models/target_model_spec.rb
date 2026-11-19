@@ -1209,17 +1209,27 @@ module OpenC3
         double("System", packet_config: packet_config)
       end
 
-      it "raises if an item name exceeds the QuestDB column header limit" do
+      it "raises if an item name plus its value type suffix exceeds the QuestDB column name limit" do
         model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
         packet = Packet.new("INST", "PKT")
-        packet.define_item("A" * 128, 0, 8, :UINT)
-        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/127 characters or less/)
+        packet.define_item("A" * 125, 0, 8, :UINT) # 125 + "__C" = 128
+        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/124 bytes \(UTF-8\) or less.*\(125\)/m)
       end
 
       it "does not raise for names within the limit" do
         model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
         packet = Packet.new("INST", "PKT")
-        packet.define_item("A" * 127, 0, 8, :UINT)
+        packet.define_item("A" * 124, 0, 8, :UINT)
+        expect { model.check_column_header_lengths(build_system(packet)) }.to_not raise_error
+      end
+
+      it "measures names in UTF-8 bytes" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
+        packet = Packet.new("INST", "PKT")
+        packet.define_item("\u00C9" * 63, 0, 8, :UINT) # 63 characters, 126 bytes
+        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/\(126\)/)
+        packet = Packet.new("INST", "PKT")
+        packet.define_item("\u00C9" * 62, 0, 8, :UINT) # 62 characters, 124 bytes
         expect { model.check_column_header_lengths(build_system(packet)) }.to_not raise_error
       end
     end
