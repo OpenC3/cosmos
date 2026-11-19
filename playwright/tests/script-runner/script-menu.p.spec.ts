@@ -154,6 +154,31 @@ test('sets environment variables', async ({ page, utils }) => {
   await page.locator('[data-test="confirm-dialog-delete"]').click()
 })
 
+test('shows when a script fails to start', async ({ page, utils }) => {
+  await page.locator('textarea').fill(`puts "never runs"`)
+  // PATH is reserved, so the run request is rejected with a 400
+  await page.locator('[data-test="env-button"]').click()
+  await page.locator('[data-test="new-metadata-icon"]').click()
+  await page.locator('[data-test="key-0"] input').fill('PATH')
+  await page.locator('[data-test="value-0"] input').fill('x')
+  await page.locator('[data-test="environment-dialog-save"]').click()
+
+  await page.locator('[data-test=start-button]').click()
+  await expect(page.locator('[data-test=state] input')).toHaveValue(
+    'start failed',
+    {
+      timeout: 5000,
+    },
+  )
+  await expect(page.locator('[data-test=state]')).toHaveClass(
+    /script-state-red/,
+  )
+  await expect(page.locator('[data-test=start-button]')).toBeEnabled()
+  await expect(page.locator('[data-test=output-messages]')).not.toContainText(
+    'never runs',
+  )
+})
+
 test('show overrides', async ({ page, utils }) => {
   await page.locator('textarea').fill(`
 set_tlm("INST HEALTH_STATUS COLLECTS = 5")
