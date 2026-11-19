@@ -5,29 +5,34 @@ ARG OPENC3_IMAGE=openc3-base
 
 FROM ${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}/${OPENC3_IMAGE}:${OPENC3_TAG}
 
-# anycable-go is only run by the API images, so copy it here instead of into
-# openc3-ruby. The anycable build context is provided by compose-build.yaml
-# (additional_contexts) or by --build-context in the other build scripts.
-# TARGETARCH is set by BuildKit and must be amd64 or arm64 to match the
-# binaries in openc3-anycable/. Copied before the source so API edits don't
-# invalidate this layer.
-ARG TARGETARCH
-COPY --from=anycable --chmod=755 anycable-go-linux-${TARGETARCH} /usr/bin/anycable-go
-
 WORKDIR /src/
 
 RUN ["chown", "-R", "openc3:openc3", "/src/"]
 
 USER root
 
-COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
-
-ENV SKIP_DEV_GEMS=1
+# Install gems before copying the source so code changes don't reinstall them.
+# Gemfile.lock is committed and frozen, so the build fails if the Gemfile and
+# lock disagree instead of resolving new versions. openc3 comes from the
+# source in /openc3 (see the Gemfile). BUNDLE_FROZEN is set for this command
+# only, not saved with bundle config, because images built FROM this one
+# (COSMOS Enterprise) copy in their own Gemfile and re-resolve.
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} Gemfile Gemfile.lock ./
 RUN bundle config set --local without 'development test' && \
-    bundle install --quiet && \
+    BUNDLE_FROZEN=true bundle install --quiet && \
     rm -rf /usr/local/lib/ruby/gems/*/cache/* /var/lib/apt/lists/* /var/cache/apt/* /tmp/* /var/tmp/*
 
-RUN ["chown", "openc3:openc3", "/src/Gemfile.lock"]
+# anycable-go is only run by the API images, so copy it here instead of into
+# openc3-ruby. The anycable build context is provided by compose-build.yaml
+# (additional_contexts) or by --build-context in the other build scripts.
+# TARGETARCH is set by BuildKit and must be amd64 or arm64 to match the
+# binaries in openc3-anycable/. Copied after the gem install and before the
+# source so an anycable bump doesn't reinstall gems and API edits don't
+# invalidate this layer.
+ARG TARGETARCH
+COPY --from=anycable --chmod=755 anycable-go-linux-${TARGETARCH} /usr/bin/anycable-go
+
+COPY --chown=${IMAGE_USER}:${IMAGE_GROUP} ./ ./
 
 # Create a /tmp directory with global write permissions including the sticky bit (chmod -R 1777)
 # This is required for Ruby to be able to call Dir.mktmpdir and create temporary directories.

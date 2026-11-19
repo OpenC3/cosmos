@@ -102,6 +102,7 @@
       </div>
     </div>
     <splitpanes
+      ref="explorerSplit"
       class="explorer-split flex-grow-1 overflow-hidden"
       @resize="explorerResize"
       @resized="persistExplorer"
@@ -109,7 +110,7 @@
       <pane
         v-if="showExplorer"
         :size="explorerSize"
-        min-size="10"
+        :min-size="explorerMinSize"
         max-size="50"
       >
         <script-file-explorer
@@ -151,7 +152,7 @@
                     v-if="!showExplorer"
                     :open-delay="600"
                     location="top"
-                    text="Show Explorer"
+                    text="Show File Explorer"
                   >
                     <template #activator="{ props }">
                       <v-btn
@@ -160,35 +161,28 @@
                         variant="text"
                         density="compact"
                         class="mr-1"
-                        aria-label="Show Explorer"
+                        aria-label="Show File Explorer"
                         data-test="explorer-show"
                         @click="setShowExplorer(true)"
                       />
                     </template>
                   </v-tooltip>
-                  <v-tooltip :open-delay="600" location="top">
+                  <v-tooltip
+                    :open-delay="600"
+                    location="top"
+                    text="Reload File"
+                  >
                     <template #activator="{ props }">
                       <v-btn
-                        v-if="!scriptActive"
                         v-bind="props"
                         icon="mdi-cached"
                         variant="text"
                         density="compact"
-                        :disabled="filename === NEW_FILENAME"
+                        :disabled="scriptActive || filename === NEW_FILENAME"
                         aria-label="Reload File"
                         @click="reloadFile"
                       />
-                      <v-btn
-                        v-else
-                        v-bind="props"
-                        icon="mdi-arrow-left"
-                        variant="text"
-                        density="compact"
-                        @click="backToNewScript"
-                      />
                     </template>
-                    <span v-if="!scriptActive"> Reload File </span>
-                    <span v-else> Back to New Script </span>
                   </v-tooltip>
                 </div>
                 <v-tooltip
@@ -289,6 +283,28 @@
                     </div>
                   </template>
                   <span>{{ selectedVenvPath }}</span>
+                </v-tooltip>
+                <v-tooltip :open-delay="600" location="top">
+                  <template #activator="{ props }">
+                    <v-btn
+                      v-bind="props"
+                      class="mr-2 align-self-center"
+                      icon
+                      :variant="showDebug ? 'tonal' : 'text'"
+                      :color="showDebug ? 'primary' : undefined"
+                      density="compact"
+                      data-test="debug-button"
+                      aria-label="Debug"
+                      :aria-pressed="showDebug"
+                      @click="toggleDebug"
+                    >
+                      <v-icon icon="mdi-bug" />
+                    </v-btn>
+                  </template>
+                  <span>
+                    {{ showDebug ? 'Hide' : 'Show' }} Debug (Step, Goto, and
+                    debug prompt)
+                  </span>
                 </v-tooltip>
                 <div
                   v-if="startOrGoButton === 'Start'"
@@ -429,6 +445,12 @@
                   @click="runFromCursor"
                 />
                 <v-list-item
+                  v-if="!scriptActive && pendingStartLine !== null"
+                  title="Clear Goto Line"
+                  data-test="clear-goto-line"
+                  @click="clearPendingStartLine"
+                />
+                <v-list-item
                   v-if="!scriptActive"
                   title="Clear Local Breakpoints"
                   @click="clearBreakpoints"
@@ -444,25 +466,63 @@
           </pane>
           <pane id="messages" class="mt-2" :size="100 - editorBoxSize">
             <div v-if="showDebug" id="debug" class="pa-0">
-              <v-row no-gutters>
-                <v-btn
-                  color="primary"
-                  style="width: 100px"
-                  class="mr-4"
-                  text="Step"
-                  append-icon="mdi-step-forward"
-                  :disabled="!liveScriptId"
-                  data-test="step-button"
-                  @click="step"
-                />
+              <v-row no-gutters class="flex-nowrap align-center pt-3 pb-2">
+                <v-tooltip :open-delay="600" location="top">
+                  <template #activator="{ props }">
+                    <div v-bind="props" class="mr-2">
+                      <v-btn
+                        color="primary"
+                        style="width: 100px"
+                        text="Step"
+                        append-icon="mdi-step-forward"
+                        :disabled="!liveScriptId"
+                        data-test="step-button"
+                        @click="step"
+                      />
+                    </div>
+                  </template>
+                  <span
+                    >Execute the current line and pause on the next line</span
+                  >
+                </v-tooltip>
+                <v-tooltip :open-delay="600" location="top">
+                  <template #activator="{ props }">
+                    <div v-bind="props" class="d-flex align-center mr-4">
+                      <v-btn
+                        color="primary"
+                        style="width: 100px"
+                        text="Goto"
+                        append-icon="mdi-debug-step-over"
+                        :disabled="gotoDisabled"
+                        data-test="goto-button"
+                        @click="gotoExecutionLine"
+                      />
+                      <v-text-field
+                        v-model="gotoLineNumber"
+                        class="ml-1"
+                        style="width: 80px"
+                        type="number"
+                        min="1"
+                        variant="outlined"
+                        density="compact"
+                        hide-details
+                        label="Line"
+                        data-test="goto-line"
+                        @keydown.enter="gotoExecutionLine"
+                      />
+                    </div>
+                  </template>
+                  <span>{{ gotoTooltip }}</span>
+                </v-tooltip>
                 <v-text-field
                   ref="debug"
                   v-model="debug"
-                  class="mb-2"
                   variant="outlined"
                   density="compact"
                   hide-details
                   label="Debug"
+                  placeholder="GOTO 32, puts x / print(x), or any script code"
+                  persistent-placeholder
                   data-test="debug-text"
                   @keydown="debugKeydown"
                 />
@@ -875,6 +935,8 @@ const RETRY = 'Retry'
 // rebuilding a 200-row Vuetify table that often adds no visible value at that
 // rate is expensive during output-heavy scripts.
 const OUTPUT_FLUSH_INTERVAL_MS = 500
+// Narrowest the explorer can get (px) and still fit its header buttons
+const EXPLORER_MIN_WIDTH = 200
 // Matches is_complete in script_status_model
 const TERMINAL_STATES = new Set([
   'completed',
@@ -899,6 +961,29 @@ const NAMED_PARAM_REGEX = /\w:\s/
 const PYTHON_IMPORT_REGEX = /^\s*(import|from) /
 const PYTHON_BLOCK_REGEX = /^\s*(if|def|while|else|elif|class).*:\s*$/
 const PYTHON_FSTRING_REGEX = /\(f"/ // f strings
+
+// Lines that never execute so a breakpoint on them would never be hit: blank,
+// comment only, or a line that only closes or continues a block, optionally
+// with a trailing comment. Ruby: end, else, ensure, rescue (with or without an
+// exception list). Python: else:, try:, finally:, except ...:. Either: a line
+// of only closing brackets. These match the line with its comment and
+// surrounding whitespace already removed (see isNonExecutableLine).
+const BLOCK_ONLY_LINE_REGEX =
+  /^(?:end|else|ensure|else:|try:|finally:|[)\]}]*)$/
+const RESCUE_LINE_REGEX = /^rescue\b/
+const EXCEPT_LINE_REGEX = /^except\b/
+
+function isNonExecutableLine(line) {
+  // Cutting at the first # can also cut a string, but what's left then isn't
+  // one of the lines above, so the line still counts as executable
+  const hashIndex = line.indexOf('#')
+  const code = (hashIndex === -1 ? line : line.slice(0, hashIndex)).trim()
+  return (
+    BLOCK_ONLY_LINE_REGEX.test(code) ||
+    RESCUE_LINE_REGEX.test(code) ||
+    (EXCEPT_LINE_REGEX.test(code) && code.endsWith(':'))
+  )
+}
 
 const RUBY_SUITE_TEMPLATE = `require 'openc3/script/suite.rb'
 
@@ -1094,6 +1179,9 @@ export default {
       pauseOrRetryButton: PAUSE,
       showEnvironment: false,
       showDebug: false,
+      gotoLineNumber: null,
+      // Line Start runs from, set by Goto before a script starts
+      pendingStartLine: null,
       debug: '',
       debugHistory: [],
       debugHistoryIndex: 0,
@@ -1218,6 +1306,7 @@ export default {
       editorBoxSize: 50,
       showExplorer: false,
       explorerSize: 20,
+      explorerMinSize: 10, // Percent, recalculated from EXPLORER_MIN_WIDTH
       explorerLoadingFile: null, // File being opened from the explorer
       lockingEnabled: true,
       canApprove: false,
@@ -1252,6 +1341,45 @@ export default {
     },
     stopDisabled: function () {
       return !this.liveScriptId
+    },
+    gotoDisabled: function () {
+      return this.gotoDisabledReason !== null
+    },
+    // Why Goto can't run right now, or null if it can
+    gotoDisabledReason: function () {
+      const line = Number.parseInt(this.gotoLineNumber, 10)
+      if (Number.isNaN(line) || line < 1) {
+        return 'Enter a line number of 1 or more'
+      }
+      if (!this.scriptActive) {
+        // Before start Goto sets the line Start runs from. Suites have no Start.
+        if (this.suiteRunner) {
+          return 'Suites run from the suite buttons, so Goto cannot set a start line'
+        }
+        if (this.startOrGoDisabled) {
+          return 'Start is not available right now'
+        }
+        return null
+      }
+      // Goto repositions execution without running, so only while stopped on a line
+      if (!this.stoppedOnLine) {
+        return 'Pause the script before using Goto'
+      }
+      return null
+    },
+    // A live script stopped on a line, the only time the backend accepts
+    // goto and execute selection
+    stoppedOnLine: function () {
+      return (
+        !!this.liveScriptId &&
+        ['paused', 'breakpoint', 'error'].includes(this.state)
+      )
+    },
+    gotoTooltip: function () {
+      if (!this.scriptActive) {
+        return 'Set the line Start runs from. Click a line in the editor to fill in its number.'
+      }
+      return 'Move execution to this line without running it. Click a line in the editor to fill in its number. Also available by right-clicking a line and choosing Goto Line.'
     },
     stateTimer: function () {
       if (this.state === 'waiting' || this.state === 'paused') {
@@ -1594,13 +1722,6 @@ export default {
               divider: true,
             },
             {
-              label: 'Toggle Debug',
-              icon: 'mdi-bug',
-              command: () => {
-                this.toggleDebug()
-              },
-            },
-            {
               label: 'Toggle Disconnect',
               icon: 'mdi-connection',
               disabled: this.scriptActive,
@@ -1907,6 +2028,12 @@ export default {
     this.editor.focus()
 
     this.editor.on('guttermousedown', this.toggleBreakpoint)
+    // Clicking a line fills in the Goto line number. Only user clicks count:
+    // markLine moves the cursor on every line event, which would overwrite a
+    // number the user typed.
+    this.editor.on('click', () => {
+      this.gotoLineNumber = this.editor.getCursorPosition().row + 1
+    })
     // We listen to tokenizerUpdate rather than change because this
     // is the background process that updates as changes are processed
     // while change fires immediately before the UndoManager is updated.
@@ -1920,12 +2047,23 @@ export default {
     this.editor.session.on('change', ($event, session) => {
       sleepAnnotator.annotate($event, session)
       this.updateBreakpoints($event, session)
+      // Line numbers may have shifted, so a Goto start line could now point at
+      // the wrong line
+      if (!this.scriptActive) {
+        this.clearPendingStartLine()
+      }
     })
 
     // Ace doesn't track its container size so resize whenever the layout
     // changes it (explorer toggle/drag animate the pane width)
     this.editorResizeObserver = new ResizeObserver(this.doResize)
     this.editorResizeObserver.observe(this.editor.container)
+    // Pane sizes are percentages, so the explorer's minimum has to be
+    // recalculated whenever the window (and so the split) changes width
+    this.explorerSplitObserver = new ResizeObserver(([entry]) => {
+      this.updateExplorerMinSize(entry.contentRect.width)
+    })
+    this.explorerSplitObserver.observe(this.$refs.explorerSplit.$el)
     // Listen on window (not editor.container) so Ctrl-S saves regardless of
     // where focus is — attaching to the editor only caught the key while the
     // cursor was in the editor, which made saving feel inconsistent after
@@ -1964,14 +2102,12 @@ export default {
           await this.reloadFile(false)
         }
       }
-    } else {
-      if (this.body) {
-        this.editor.setValue(this.body)
-        this.editor.clearSelection()
-        // If initialFilename is provided, use it for path resolution
-        if (this.initialFilename) {
-          this.filename = this.initialFilename
-        }
+    } else if (this.body) {
+      this.editor.setValue(this.body)
+      this.editor.clearSelection()
+      // If initialFilename is provided, use it for path resolution
+      if (this.initialFilename) {
+        this.filename = this.initialFilename
       }
     }
     this.updateInterval = setInterval(() => {
@@ -1984,6 +2120,7 @@ export default {
     }
     window.removeEventListener('keydown', this.keydown)
     this.editorResizeObserver.disconnect()
+    this.explorerSplitObserver.disconnect()
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -2087,6 +2224,16 @@ export default {
     setShowExplorer(show) {
       this.showExplorer = show
       this.persistExplorer()
+    },
+    updateExplorerMinSize(width) {
+      if (!width) return // Not laid out (e.g. hidden tab)
+      this.explorerMinSize = Math.min(
+        50, // The explorer's max-size
+        Math.max(10, (EXPLORER_MIN_WIDTH / width) * 100),
+      )
+      if (this.explorerSize < this.explorerMinSize) {
+        this.explorerSize = this.explorerMinSize
+      }
     },
     explorerResize({ panes }) {
       if (this.showExplorer && panes.length > 1) {
@@ -2277,6 +2424,11 @@ export default {
       this.doResize()
     },
     showExecuteSelectionMenu: function ($event) {
+      // While a script runs (or waits on a prompt) none of the menu actions
+      // apply, so the menu only opens when idle or stopped on a line
+      if (this.scriptActive && !this.stoppedOnLine) {
+        return
+      }
       this.menuX = $event.pageX
       this.menuY = $event.pageY
       // Check if the current line contains a command
@@ -2342,11 +2494,16 @@ export default {
         return
       }
       const row = $event.getDocumentPosition().row
-      if ($event.editor.session.getBreakpoints(row, 0)[row]) {
-        $event.editor.session.clearBreakpoint(row)
-      } else {
-        $event.editor.session.setBreakpoint(row)
+      const session = $event.editor.session
+      if (session.getBreakpoints(row, 0)[row]) {
+        // Always allow clearing, even if the line has since become blank
+        session.clearBreakpoint(row)
+      } else if (this.canBreakOnRow(row, session)) {
+        session.setBreakpoint(row)
       }
+    },
+    canBreakOnRow: function (row, session = this.editor.session) {
+      return !isNonExecutableLine(session.getLine(row))
     },
     updateBreakpoints: function ($event, session) {
       if ($event.lines.length <= 1) {
@@ -2386,9 +2543,13 @@ export default {
     },
     restoreBreakpoints: function (filename) {
       this.clearBreakpoints()
-      this.breakpoints[filename]?.forEach((breakpoint) => {
-        this.editor.session.setBreakpoint(breakpoint)
-      })
+      // Skip saved breakpoints on lines that can no longer be hit, for
+      // example after the file was edited elsewhere
+      this.breakpoints[filename]
+        ?.filter((breakpoint) => this.canBreakOnRow(breakpoint))
+        .forEach((breakpoint) => {
+          this.editor.session.setBreakpoint(breakpoint)
+        })
     },
     deleteAllBreakpoints: function () {
       this.$dialog
@@ -2658,8 +2819,10 @@ export default {
     environmentHandler: function (event) {
       this.scriptEnvironment.env = event
     },
-    startHandler: function () {
-      this.start()
+    startHandler: async function () {
+      const startLine = this.pendingStartLine
+      this.pendingStartLine = null
+      await this.start(null, null, startLine)
     },
     async start(
       event = null,
@@ -2745,6 +2908,40 @@ export default {
     async step() {
       if (this.liveScriptId) {
         await Api.post(`/script-api/running-script/${this.liveScriptId}/step`)
+      }
+    },
+    gotoExecutionLine() {
+      if (this.gotoDisabled) {
+        return
+      }
+      const line = Number.parseInt(this.gotoLineNumber, 10)
+      if (this.scriptActive) {
+        // The backend errors on a line past the end of the file, so check here
+        const lastLine = this.editor.session.getLength()
+        if (line > lastLine) {
+          this.$notify.caution({
+            title: `Cannot goto line ${line}`,
+            body: `${this.currentFilename || 'The script'} has ${lastLine} lines`,
+          })
+          return
+        }
+        this.executeRange(line)
+      } else {
+        this.setPendingStartLine(line)
+      }
+    },
+    setPendingStartLine(line) {
+      const lastLine = this.editor.session.getLength()
+      const startLine = Math.min(line, lastLine)
+      this.pendingStartLine = startLine
+      this.gotoLineNumber = startLine
+      // markLine also moves the cursor to the line
+      this.markLine(startLine, 'startLine')
+    },
+    clearPendingStartLine() {
+      if (this.pendingStartLine !== null) {
+        this.pendingStartLine = null
+        this.removeAllMarkers()
       }
     },
     // This is called by processLine no matter the current state
@@ -2862,8 +3059,17 @@ export default {
             const existing = Object.keys(markers).filter(
               (key) => markers[key].clazz === `${this.state}Marker`,
             )
-            if (existing.length === 0) {
-              let line = data.line_no > 0 ? data.line_no : 1
+            const line = data.line_no > 0 ? data.line_no : 1
+            // Re-mark when the line or file changed while staying in the same
+            // state. Goto while paused goes straight from paused on one line to
+            // paused on another, so an existing marker isn't enough. The
+            // once-a-second republish of the same line still skips, so it
+            // doesn't scroll the editor back while the user looks around.
+            if (
+              existing.length === 0 ||
+              this.highlightedLine !== line ||
+              this.highlightedFilename !== this.currentFilename
+            ) {
               this.markLine(line, this.state)
               // Fatal errors don't always have a filename set
               if (data.filename) {
@@ -3021,13 +3227,14 @@ export default {
             case 'clearallscreens':
               this.screens = []
               break
-            case 'downloadfile':
+            case 'downloadfile': {
               // Make a link and then 'click' on it to start the download
               const link = document.createElement('a')
               link.href = window.location.origin + data.url
               link.setAttribute('download', data.filename)
               link.click()
               break
+            }
             case 'opentab':
               window.open(data.url, '_blank')
               break
@@ -3286,10 +3493,7 @@ export default {
         case 'combo_box':
         case 'check_box':
           // check_box is always multiple choice, combo_box is single choice unless kwargs.multiple is set to true
-          if (
-            data.method === 'check_box' ||
-            (data.kwargs && data.kwargs.multiple)
-          ) {
+          if (data.method === 'check_box' || data.kwargs?.multiple) {
             this.prompt.multiple = true
           }
           this.prompt.message = data.args[0]
@@ -3328,9 +3532,8 @@ export default {
         case 'open_bucket_dialog':
           this.bucket.title = data.args[0]
           this.bucket.message = data.args[1]
-          this.bucket.defaultPath =
-            (data.kwargs && data.kwargs.default_path) || null
-          this.bucket.filter = (data.kwargs && data.kwargs.filter) || null
+          this.bucket.defaultPath = data.kwargs?.default_path || null
+          this.bucket.filter = data.kwargs?.filter || null
           this.bucket.show = true
           break
         // This is called continuously by the backend
@@ -3338,7 +3541,7 @@ export default {
         case 'open_files_dialog':
           this.file.title = data.args[0]
           this.file.message = data.args[1]
-          if (data.kwargs && data.kwargs.filter) {
+          if (data.kwargs?.filter) {
             this.file.filter = data.kwargs.filter
           }
           if (data.method == 'open_files_dialog') {
@@ -3698,24 +3901,22 @@ export default {
             // Menu driven saves on a new file should prompt SaveAs
             this.saveAs()
             return
-          } else {
+          } else if (this.tempFilename === null) {
             // start or auto with NEW_FILENAME
-            if (this.tempFilename === null) {
-              let language = this.detectLanguage()
-              if (language === 'unknown') {
-                language = AceEditorUtils.getDefaultScriptingLanguage()
-              }
-              const ext = { ruby: 'rb', python: 'py' }[language]
-              if (!ext) {
-                // No autosave for unknown language
-                return
-              }
-              const uuid = crypto.randomUUID().split('-')[0]
-              const timestamp = format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')
-              this.tempFilename = `${TEMP_FOLDER}/${timestamp}_${uuid}_temp.${ext}`
-              this.filename = this.tempFilename
-              this.addToRecent(this.filename)
+            let language = this.detectLanguage()
+            if (language === 'unknown') {
+              language = AceEditorUtils.getDefaultScriptingLanguage()
             }
+            const ext = { ruby: 'rb', python: 'py' }[language]
+            if (!ext) {
+              // No autosave for unknown language
+              return
+            }
+            const uuid = crypto.randomUUID().split('-')[0]
+            const timestamp = format(Date.now(), 'yyyy_MM_dd_HH_mm_ss_SSS')
+            this.tempFilename = `${TEMP_FOLDER}/${timestamp}_${uuid}_temp.${ext}`
+            this.filename = this.tempFilename
+            this.addToRecent(this.filename)
           }
         }
         this.showSave = true
@@ -3946,6 +4147,40 @@ export default {
     toggleDisconnect() {
       this.showDisconnect = !this.showDisconnect
     },
+    // Parses a debug prompt goto. Returns null if the text is not a goto,
+    // otherwise { line } where line is null unless the goto is a bare line
+    // number such as GOTO 32 or goto(32)
+    parseDebugGoto(text) {
+      let args = text.trim()
+      if (!/^goto(?=[\s(]|$)/i.test(args)) {
+        return null
+      }
+      args = args.slice(4).trim()
+      if (args.startsWith('(') && args.endsWith(')')) {
+        args = args.slice(1, -1).trim()
+      }
+      return { line: /^\d+$/.test(args) ? Number.parseInt(args, 10) : null }
+    },
+    // Before start, GOTO <line> sets the line Start runs from. Anything else
+    // can't run yet, so say why rather than silently ignoring it.
+    setStartLineFromDebugGoto(gotoTarget) {
+      if (gotoTarget.line === null) {
+        this.$notify.caution({
+          title: 'Goto not set',
+          body: 'Before Start, GOTO only takes a line number in this file, for example GOTO 12',
+        })
+        return
+      }
+      this.gotoLineNumber = gotoTarget.line
+      if (this.gotoDisabled) {
+        this.$notify.caution({
+          title: 'Goto not set',
+          body: this.gotoDisabledReason,
+        })
+        return
+      }
+      this.setPendingStartLine(this.gotoLineNumber)
+    },
     debugKeydown(event) {
       if (event.key === 'Escape') {
         this.debug = ''
@@ -3953,6 +4188,10 @@ export default {
       } else if (event.key === 'Enter') {
         this.debugHistory.push(this.debug)
         this.debugHistoryIndex = this.debugHistory.length
+        const gotoTarget = this.parseDebugGoto(this.debug)
+        if (!this.scriptActive && gotoTarget !== null) {
+          this.setStartLineFromDebugGoto(gotoTarget)
+        }
         // Post the code to /debug, output is processed by receive()
         if (this.liveScriptId) {
           Api.post(`/script-api/running-script/${this.liveScriptId}/debug`, {
@@ -4019,15 +4258,6 @@ export default {
     },
     onVersionRestored: function () {
       this.reloadFile()
-    },
-    backToNewScript: async function () {
-      // Disconnect from the current script
-      this.scriptDisconnect()
-      // Clear script-related state
-      this.removeAllMarkers()
-      await this.scriptComplete()
-      // Create a new blank script
-      this.newFile()
     },
     screenId(id) {
       return 'scriptRunnerScreen' + id
@@ -4129,6 +4359,14 @@ hr {
   border-style: solid;
   border-color: red;
   background: rgba(0, 255, 0, 0.5);
+  z-index: 20;
+}
+
+.startLineMarker {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px dashed rgba(0, 140, 255, 1);
+  background: rgba(0, 140, 255, 0.15);
   z-index: 20;
 }
 

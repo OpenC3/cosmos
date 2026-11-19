@@ -609,8 +609,13 @@ export default {
     // Returns the Ruby or Python script at the given path, or null if neither
     // exists. Used to decide whether to offer the upload / download actions.
     findScript: async function (path) {
+      // Check Ruby first and request Python only if Ruby is missing. A GET on an
+      // existing script takes a lock, so a parallel request could leave a stale
+      // lock on the unused script.
       for (const extension of ['rb', 'py']) {
         try {
+          // Sequential on purpose, see above
+          // eslint-disable-next-line no-await-in-loop
           await Api.get(`/openc3-api/tables/${path}.${extension}`, {
             headers: {
               Accept: 'application/json',
@@ -619,8 +624,8 @@ export default {
             },
           })
           return `${path}.${extension}`
-        } catch (error) {
-          // Doesn't exist, try the next extension
+        } catch {
+          // This script does not exist; try the next extension
         }
       }
       return null

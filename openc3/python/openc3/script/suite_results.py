@@ -13,15 +13,23 @@ import re
 import time
 import traceback
 from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any
 
 from openc3.utilities.extract import remove_quotes
 
 
+if TYPE_CHECKING:
+    from .suite import ScriptResult
+
+
 class SuiteResults:
+    """Collect the results of a Suite run and build the text report."""
+
     metadata = None
     context = None
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Create an empty SuiteResults. Call `start` before processing results."""
         self._report = None
         self.context = None
         self.start_time = None
@@ -32,12 +40,22 @@ class SuiteResults:
 
     def start(
         self,
-        test_type,
-        test_suite_class,
-        test_class=None,
-        test_case=None,
-        settings=None,
-    ):
+        test_type: str,
+        test_suite_class: type,
+        test_class: type | None = None,
+        test_case: str | None = None,
+        settings: dict[str, Any] | None = None,
+    ) -> None:
+        """Start a new report and write its header.
+
+        Args:
+            test_type: Description of the run appended to the context, e.g. "Manual Setup".
+            test_suite_class: The Suite class being executed.
+            test_class: The Group class being executed, or None to execute the whole Suite.
+            test_case: The script method being executed, or None to execute the whole Group.
+                Requires test_class.
+            settings: Suite runner settings to list in the report header.
+        """
         self.results = []
         self.start_time = time.time()
         self.settings = settings
@@ -54,9 +72,12 @@ class SuiteResults:
             self.context = f"{test_suite_class.__name__} {test_type}"
         self.header()
 
-    # process_result can handle an array of OpenC3TestResult objects
-    # or a single OpenC3TestResult object
-    def process_result(self, results):
+    def process_result(self, results: "ScriptResult | list[ScriptResult]") -> None:
+        """Record one or more script results and add them to the report.
+
+        Args:
+            results: A single ScriptResult or a list of them.
+        """
         # If we were passed an array we concat it to the results global
         if isinstance(results, list):
             self.results.append(results)
@@ -80,14 +101,21 @@ class SuiteResults:
                 for _, error in enumerate(result.exceptions):
                     self._report.append("".join(traceback.format_exception(error)))
 
-    def complete(self):
+    def complete(self) -> None:
+        """Mark the run complete and write the report footer with the summary."""
         self.stop_time = time.time()
         self.footer()
 
-    def report(self):
+    def report(self) -> str:
+        """Return the report text.
+
+        Returns:
+            The report lines joined with newlines.
+        """
         return "\n".join(self._report)
 
-    def header(self):
+    def header(self) -> None:
+        """Write the report header with the settings and the execution context."""
         self._report.append("--- Script Report ---")
         if self.settings:
             self._report.append("")
@@ -99,7 +127,8 @@ class SuiteResults:
         self._report.append("Results:")
         self.puts(f"Executing {self.context}")
 
-    def footer(self):
+    def footer(self) -> None:
+        """Write the report footer with the run time and the pass, skip and fail counts."""
         self.puts(f"Completed {self.context}")
 
         self._report.append("")
@@ -131,7 +160,12 @@ class SuiteResults:
             self._report.append("*** Test was stopped prematurely ***")
             self._report.append("")
 
-    def write(self, string):
+    def write(self, string: str) -> None:
+        """Write a UTC timestamped line to the report.
+
+        Args:
+            string: The text to write.
+        """
         # Can't use isoformat because it appends "+00:00" instead of "Z"
         self._report.append(datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ") + ": " + string)
 

@@ -17,8 +17,10 @@ import contextlib
 import json
 import os
 from contextlib import contextmanager
+from typing import Any
 
 from openc3.api import WHITELIST
+from openc3.api.api_types import ValueType
 from openc3.api.interface_api import get_interface
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.queue_model import QueueModel
@@ -69,15 +71,35 @@ WHITELIST.extend(
 )
 
 
-# The following methods sends a command packet to a target. The 'raw' version of the equivalent
-# command methods do not perform command parameter conversions.
-#
-# Accepts two different calling styles:
-#   cmd("TGT CMD with PARAM1 val, PARAM2 val")
-#   cmd('TGT','CMD',{'PARAM1':val,'PARAM2':val})
-#
-# Favor the first syntax where possible as it is more succinct.
-def cmd(*args, **kwargs):
+def cmd(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Send a command packet to a target.
+
+    The cmd_raw variants send RAW parameter values without conversions.
+
+    Accepts two calling styles. Favor the first as it is more succinct::
+
+        cmd("TGT CMD with PARAM1 val, PARAM2 val")
+        cmd("TGT", "CMD", {"PARAM1": val, "PARAM2": val})
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Optional keyword arguments: scope (COSMOS scope), timeout
+            (seconds to wait for the command acknowledgement), log_message
+            (True or False to override whether the command is logged),
+            validate (True or False, default True), queue (name of the queue
+            to send the command to, or False to bypass OPENC3_DEFAULT_QUEUE),
+            queue_username (user who queued the command) and extra (dict of
+            extra data to send with the command).
+
+    Returns:
+        The command that was sent, as a dict.
+
+    Raises:
+        RuntimeError: If the number of arguments is invalid, or the timeout,
+            log_message, validate or extra keyword argument is invalid.
+        DisabledError: If the command is disabled.
+    """
     return _cmd_implementation(
         "cmd",
         *args,
@@ -89,7 +111,19 @@ def cmd(*args, **kwargs):
     )
 
 
-def cmd_raw(*args, **kwargs):
+def cmd_raw(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Send a command packet to a target without converting the parameter values.
+
+    Parameter values are given as RAW values. See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
+
+    Returns:
+        The command that was sent, as a dict.
+    """
     return _cmd_implementation(
         "cmd_raw",
         *args,
@@ -101,10 +135,20 @@ def cmd_raw(*args, **kwargs):
     )
 
 
-# S a command packet to a target without performing any value range
-# checks on the parameters. Useful for testing to allow sing command
-# parameters outside the allowable range as defined in the configuration.
-def cmd_no_range_check(*args, **kwargs):
+def cmd_no_range_check(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Send a command packet to a target without range checking the parameters.
+
+    Useful for testing to allow sending parameters outside the allowable
+    range defined in the configuration. See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
+
+    Returns:
+        The command that was sent, as a dict.
+    """
     return _cmd_implementation(
         "cmd_no_range_check",
         *args,
@@ -116,7 +160,19 @@ def cmd_no_range_check(*args, **kwargs):
     )
 
 
-def cmd_raw_no_range_check(*args, **kwargs):
+def cmd_raw_no_range_check(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Send a command with RAW parameter values and without range checking the parameters.
+
+    See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
+
+    Returns:
+        The command that was sent, as a dict.
+    """
     return _cmd_implementation(
         "cmd_raw_no_range_check",
         *args,
@@ -128,10 +184,21 @@ def cmd_raw_no_range_check(*args, **kwargs):
     )
 
 
-# S a command packet to a target without performing any hazardous checks
-# both on the command itself and its parameters. Useful in scripts to
-# prevent popping up warnings to the user.
-def cmd_no_hazardous_check(*args, **kwargs):
+def cmd_no_hazardous_check(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Send a command packet to a target without hazardous checks.
+
+    Hazardous checks are skipped on both the command and its parameters.
+    Useful in scripts to prevent popping up warnings to the user. See `cmd`
+    for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
+
+    Returns:
+        The command that was sent, as a dict.
+    """
     return _cmd_implementation(
         "cmd_no_hazardous_check",
         *args,
@@ -143,7 +210,19 @@ def cmd_no_hazardous_check(*args, **kwargs):
     )
 
 
-def cmd_raw_no_hazardous_check(*args, **kwargs):
+def cmd_raw_no_hazardous_check(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Send a command with RAW parameter values and without hazardous checks.
+
+    See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
+
+    Returns:
+        The command that was sent, as a dict.
+    """
     return _cmd_implementation(
         "cmd_raw_no_hazardous_check",
         *args,
@@ -155,9 +234,19 @@ def cmd_raw_no_hazardous_check(*args, **kwargs):
     )
 
 
-# S a command packet to a target without performing any value range
-# checks or hazardous checks both on the command itself and its parameters.
-def cmd_no_checks(*args, **kwargs):
+def cmd_no_checks(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Send a command packet to a target without range or hazardous checks.
+
+    See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
+
+    Returns:
+        The command that was sent, as a dict.
+    """
     return _cmd_implementation(
         "cmd_no_checks",
         *args,
@@ -169,7 +258,19 @@ def cmd_no_checks(*args, **kwargs):
     )
 
 
-def cmd_raw_no_checks(*args, **kwargs):
+def cmd_raw_no_checks(*args: Any, **kwargs: Any) -> dict[str, Any]:
+    """Send a command with RAW parameter values and without range or hazardous checks.
+
+    See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
+
+    Returns:
+        The command that was sent, as a dict.
+    """
     return _cmd_implementation(
         "cmd_raw_no_checks",
         *args,
@@ -181,8 +282,36 @@ def cmd_raw_no_checks(*args, **kwargs):
     )
 
 
-# Build a command binary
-def build_cmd(*args, range_check=True, raw=False, timeout=5, scope=OPENC3_SCOPE, manual=False):
+def build_cmd(
+    *args: Any,
+    range_check: bool = True,
+    raw: bool = False,
+    timeout: float = 5,
+    scope: str = OPENC3_SCOPE,
+    manual: bool = False,
+) -> dict[str, Any]:
+    """Build a command binary without sending it.
+
+    Accepts two calling styles. Favor the first as it is more succinct::
+
+        build_cmd("TGT CMD with PARAM1 val, PARAM2 val")
+        build_cmd("TGT", "CMD", {"PARAM1": val, "PARAM2": val})
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        range_check: Whether to range check the parameters.
+        raw: Whether the parameter values are RAW values.
+        timeout: Seconds to wait for the decom microservice to build the command.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+
+    Returns:
+        The built command with the raw bytes under the "buffer" key.
+
+    Raises:
+        RuntimeError: If the number of arguments is invalid.
+    """
     match len(args):
         case 1:
             target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
@@ -209,7 +338,7 @@ build_command = build_cmd
 
 # Helper method for disable_cmd / enable_cmd
 @contextmanager
-def _get_and_set_cmd(method, *args, scope=OPENC3_SCOPE, manual=False):
+def _get_and_set_cmd(method: str, *args: str, scope: str = OPENC3_SCOPE, manual: bool = False):
     target_name, command_name = _extract_target_command_names(method, *args)
     authorize(
         permission="admin",
@@ -223,35 +352,72 @@ def _get_and_set_cmd(method, *args, scope=OPENC3_SCOPE, manual=False):
     TargetModel.set_packet(target_name, command_name, command, type="CMD", scope=scope)
 
 
-# @since 5.15.1
-def enable_cmd(*args, scope=OPENC3_SCOPE, manual=False):
+def enable_cmd(*args: str, scope: str = OPENC3_SCOPE, manual: bool = False) -> None:
+    """Enable a command so it can be sent. Reverses `disable_cmd`.
+
+    Accepts two calling styles::
+
+        enable_cmd("TGT CMD")
+        enable_cmd("TGT", "CMD")
+
+    Args:
+        *args: A single "TGT CMD" string, or the target and command names.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+    """
     with _get_and_set_cmd("enable_cmd", *args, scope=scope, manual=manual) as command:
         command.pop("disabled", None)
 
 
-# @since 5.15.1
-def disable_cmd(*args, scope=OPENC3_SCOPE, manual=False):
+def disable_cmd(*args: str, scope: str = OPENC3_SCOPE, manual: bool = False) -> None:
+    """Disable a command so that sending it raises a DisabledError.
+
+    Accepts two calling styles::
+
+        disable_cmd("TGT CMD")
+        disable_cmd("TGT", "CMD")
+
+    Args:
+        *args: A single "TGT CMD" string, or the target and command names.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+    """
     with _get_and_set_cmd("disable_cmd", *args, scope=scope, manual=manual) as command:
         command["disabled"] = True
 
 
-# Send a raw binary string to the specified interface.
-#
-# @param interface_name [String] The interface to s the raw binary
-# @param data [String] The raw binary data
-def send_raw(interface_name, data, scope=OPENC3_SCOPE, manual=False):
+def send_raw(interface_name: str, data: bytes, scope: str = OPENC3_SCOPE, manual: bool = False) -> None:
+    """Send raw binary data to an interface.
+
+    Args:
+        interface_name: Name of the interface to write the data to.
+        data: The raw binary data.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+    """
     interface_name = interface_name.upper()
     authorize(permission="cmd_raw", interface_name=interface_name, scope=scope, manual=manual)
     get_interface(interface_name, scope=scope)  # Check to make sure the interface exists
     InterfaceTopic.write_raw(interface_name, data, scope=scope)
 
 
-# Returns the raw buffer from the most recent specified command packet.
-#
-# @param target_name [String] Target name of the command
-# @param command_name [String] Packet name of the command
-# @return [Hash] command hash with last command buffer
-def get_cmd_buffer(*args, scope=OPENC3_SCOPE, manual=False):
+def get_cmd_buffer(*args: str, scope: str = OPENC3_SCOPE, manual: bool = False) -> dict[str, Any] | None:
+    """Return the most recent raw buffer for a command packet.
+
+    Accepts two calling styles::
+
+        get_cmd_buffer("TGT CMD")
+        get_cmd_buffer("TGT", "CMD")
+
+    Args:
+        *args: A single "TGT CMD" string, or the target and command names.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+
+    Returns:
+        The command message with the raw bytes under the "buffer" key, or
+        None if the command has not been sent.
+    """
     target_name, command_name = _extract_target_command_names("get_cmd_buffer", *args)
     authorize(
         permission="cmd_info",
@@ -270,10 +436,17 @@ def get_cmd_buffer(*args, scope=OPENC3_SCOPE, manual=False):
     return None
 
 
-# Returns an array of all the commands as a hash
-# @param target_name [String] Name of the target
-# @return [Array<Hash>] Array of all commands as a hash
-def get_all_cmds(target_name, scope=OPENC3_SCOPE, manual=False):
+def get_all_cmds(target_name: str, scope: str = OPENC3_SCOPE, manual: bool = False) -> list[dict[str, Any]]:
+    """Return the definitions of all the command packets in a target.
+
+    Args:
+        target_name: Name of the target.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+
+    Returns:
+        One packet definition dict per command packet.
+    """
     target_name = target_name.upper()
     authorize(permission="cmd_info", target_name=target_name, scope=scope, manual=manual)
     return TargetModel.packets(target_name, type="CMD", scope=scope)
@@ -283,10 +456,21 @@ def get_all_cmds(target_name, scope=OPENC3_SCOPE, manual=False):
 get_all_commands = get_all_cmds
 
 
-# Returns an array of all the command packet names
-# @param target_name [String] Name of the target
-# @return [Array<String>] Array of all command packet names
-def get_all_cmd_names(target_name, hidden=False, scope=OPENC3_SCOPE, manual=False):
+def get_all_cmd_names(
+    target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE, manual: bool = False
+) -> list[str]:
+    """Return the names of all the command packets in a target.
+
+    Args:
+        target_name: Name of the target.
+        hidden: Whether to include packets marked HIDDEN.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+
+    Returns:
+        The packet names, or an empty list if the target does not exist or
+        the user is not authorized.
+    """
     target_name = target_name.upper()
     # Only the names are needed so avoid parsing every packet definition
     try:
@@ -304,8 +488,22 @@ def get_all_cmd_names(target_name, hidden=False, scope=OPENC3_SCOPE, manual=Fals
 get_all_command_names = get_all_cmd_names
 
 
-# Returns a hash of the given command
-def get_cmd(*args, scope=OPENC3_SCOPE, manual=False):
+def get_cmd(*args: str, scope: str = OPENC3_SCOPE, manual: bool = False) -> dict[str, Any]:
+    """Return the definition of a command packet.
+
+    Accepts two calling styles::
+
+        get_cmd("TGT CMD")
+        get_cmd("TGT", "CMD")
+
+    Args:
+        *args: A single "TGT CMD" string, or the target and command names.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+
+    Returns:
+        The packet definition, including its parameters.
+    """
     target_name, command_name = _extract_target_command_names("get_cmd", *args)
     authorize(permission="cmd_info", target_name=target_name, scope=scope, manual=manual)
     return TargetModel.packet(target_name, command_name, type="CMD", scope=scope)
@@ -315,12 +513,23 @@ def get_cmd(*args, scope=OPENC3_SCOPE, manual=False):
 get_command = get_cmd
 
 
-# Returns a hash of the given command parameter
-# @param target_name [String] Name of the target
-# @param command_name [String] Name of the packet
-# @param parameter_name [String] Name of the parameter
-# @return [Hash] Command parameter as a hash
-def get_param(*args, scope=OPENC3_SCOPE, manual=False):
+def get_param(*args: str, scope: str = OPENC3_SCOPE, manual: bool = False) -> dict[str, Any]:
+    """Return the definition of a command parameter.
+
+    Accepts two calling styles::
+
+        get_param("TGT CMD PARAM")
+        get_param("TGT", "CMD", "PARAM")
+
+    Args:
+        *args: A single "TGT CMD PARAM" string, or the target, command and
+            parameter names.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+
+    Returns:
+        The parameter definition.
+    """
     target_name, command_name, parameter_name = _extract_target_command_parameter_names("get_param", *args)
     authorize(
         permission="cmd_info",
@@ -336,15 +545,29 @@ def get_param(*args, scope=OPENC3_SCOPE, manual=False):
 get_parameter = get_param
 
 
-# Returns whether the specified command is hazardous
-#
-# Accepts two different calling styles:
-#   get_cmd_hazardous("TGT CMD with PARAM1 val, PARAM2 val")
-#   get_cmd_hazardous('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
-#
-# @param args [String|Array<String>] See the description for calling style
-# @return [Boolean] Whether the command is hazardous
-def get_cmd_hazardous(*args, scope=OPENC3_SCOPE, manual=False):
+def get_cmd_hazardous(*args: Any, scope: str = OPENC3_SCOPE, manual: bool = False) -> bool:
+    """Return whether a command is hazardous.
+
+    A command is hazardous if the command itself is marked hazardous or if a
+    given parameter value matches the name or value of a hazardous state.
+
+    Accepts two calling styles::
+
+        get_cmd_hazardous("TGT CMD with PARAM1 val, PARAM2 val")
+        get_cmd_hazardous("TGT", "CMD", {"PARAM1": val, "PARAM2": val})
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+
+    Returns:
+        Whether the command is hazardous.
+
+    Raises:
+        RuntimeError: If the number of arguments is invalid.
+    """
     match len(args):
         case 1:
             target_name, command_name, parameters = extract_fields_from_cmd_text(args[0])
@@ -391,13 +614,38 @@ def get_cmd_hazardous(*args, scope=OPENC3_SCOPE, manual=False):
     return False
 
 
-# Returns a value from the specified command
 def get_cmd_value(
-    *args,
-    type="CONVERTED",  # Ignore SonarQube warning, changing is a breaking change.
-    scope=OPENC3_SCOPE,
-    manual=False,
-):
+    *args: Any,
+    type: ValueType = "CONVERTED",  # Ignore SonarQube warning, changing is a breaking change.
+    scope: str = OPENC3_SCOPE,
+    manual: bool = False,
+) -> Any:
+    """Return a parameter value from the most recently sent command.
+
+    Accepts three calling styles::
+
+        get_cmd_value("TGT CMD PARAM")
+        get_cmd_value("TGT", "CMD", "PARAM")
+        get_cmd_value("TGT", "CMD", "PARAM", "RAW")
+
+    The parameter name can also be a reserved item such as RECEIVED_COUNT or
+    RECEIVED_TIMESECONDS.
+
+    Args:
+        *args: A single "TGT CMD PARAM" string, or the target, command and
+            parameter names optionally followed by the value type.
+        type: Value type to return: RAW, CONVERTED (default) or FORMATTED.
+            Overridden by a fourth positional argument.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+
+    Returns:
+        The parameter value in the requested type, or None if the command
+        has not been sent.
+
+    Raises:
+        RuntimeError: If the arguments are invalid.
+    """
     target_name = None
     command_name = None
     parameter_name = None
@@ -430,14 +678,27 @@ def get_cmd_value(
     return CommandDecomTopic.get_cmd_item(target_name, command_name, parameter_name, type=type, scope=scope)
 
 
-# Returns the time the most recent command was sent
-#
-# @param target_name [String] Target name of the command. If not given then
-#    the most recent time from all commands will be returned
-# @param command_name [String] Packet name of the command. If not given then
-#    then most recent time from the given target will be returned.
-# @return [Array<Target Name, Command Name, Time Seconds, Time Microseconds>]
-def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE, manual=False):
+def get_cmd_time(
+    target_name: str | None = None,
+    command_name: str | None = None,
+    scope: str = OPENC3_SCOPE,
+    manual: bool = False,
+) -> tuple[str | None, str | None, int, int]:
+    """Return the time the most recent command was sent.
+
+    Args:
+        target_name: Target name of the command. If not given, the most recent
+            time from all commands is returned.
+        command_name: Command name. If not given, the most recent time from
+            the given target is returned.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+
+    Returns:
+        The target name, command name, time in whole seconds and the
+        remaining microseconds. The names are None and the times 0 if no
+        command has been sent.
+    """
     authorize(
         permission="cmd_info",
         target_name=target_name,
@@ -499,12 +760,22 @@ def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE, manual
         )
 
 
-# Get the transmit count for a command packet
-#
-# @param target_name [String] Target name of the command
-# @param command_name [String] Packet name of the command
-# @return [Numeric] Transmit count for the command
-def get_cmd_cnt(*args, scope=OPENC3_SCOPE, manual=False):
+def get_cmd_cnt(*args: str, scope: str = OPENC3_SCOPE, manual: bool = False) -> int:
+    """Return the transmit count for a command packet.
+
+    Accepts two calling styles::
+
+        get_cmd_cnt("TGT CMD")
+        get_cmd_cnt("TGT", "CMD")
+
+    Args:
+        *args: A single "TGT CMD" string, or the target and command names.
+        scope: COSMOS scope.
+        manual: Whether the request was made manually by a user.
+
+    Returns:
+        Number of times the command has been sent.
+    """
     target_name, command_name = _extract_target_command_names("get_cmd_cnt", *args)
     authorize(
         permission="system",
@@ -517,11 +788,19 @@ def get_cmd_cnt(*args, scope=OPENC3_SCOPE, manual=False):
     return TargetModel.get_command_count(target_name, command_name, scope=scope)
 
 
-# Get the transmit counts for command packets
-#
-# @param target_commands [Array<Array<String, String>>] Array of arrays containing target_name, packet_name
-# @return [Numeric] Transmit count for the command
-def get_cmd_cnts(target_commands, scope=OPENC3_SCOPE):
+def get_cmd_cnts(target_commands: list[list[str]], scope: str = OPENC3_SCOPE) -> list[int]:
+    """Return the transmit counts for several command packets.
+
+    Args:
+        target_commands: [target name, command name] pairs.
+        scope: COSMOS scope.
+
+    Returns:
+        The transmit count of each command, in the same order.
+
+    Raises:
+        RuntimeError: If target_commands is not a nested list.
+    """
     authorize(permission="system", scope=scope)
     if isinstance(target_commands, list) and isinstance(target_commands[0], list):
         return TargetModel.get_command_counts(target_commands, scope=scope)
@@ -531,7 +810,7 @@ def get_cmd_cnts(target_commands, scope=OPENC3_SCOPE):
         )
 
 
-def _extract_target_command_names(method_name, *args):
+def _extract_target_command_names(method_name: str, *args: str):
     target_name = None
     command_name = None
     match len(args):
@@ -551,7 +830,7 @@ def _extract_target_command_names(method_name, *args):
     return (target_name, command_name)
 
 
-def _extract_target_command_parameter_names(method_name, *args):
+def _extract_target_command_parameter_names(method_name: str, *args: str):
     target_name = None
     command_name = None
     parameter_name = None
@@ -574,13 +853,13 @@ def _extract_target_command_parameter_names(method_name, *args):
 
 
 def _cmd_implementation(
-    method_name,
-    *args,
-    range_check,
-    hazardous_check,
-    raw,
-    manual=False,
-    **kwargs,
+    method_name: str,
+    *args: Any,
+    range_check: bool,
+    hazardous_check: bool,
+    raw: bool,
+    manual: bool = False,
+    **kwargs: Any,
 ):
     scope = OPENC3_SCOPE
     if kwargs.get("scope"):
@@ -611,6 +890,9 @@ def _cmd_implementation(
         manual=manual,
     )
     queue_username = kwargs.get("queue_username")
+    extra = kwargs.get("extra")
+    if extra is not None and not isinstance(extra, dict):
+        raise RuntimeError(f"Invalid extra parameter: {extra}. Must be a dict.")
     if not user:
         user = {}
         user["username"] = os.environ.get("OPENC3_MICROSERVICE_NAME")
@@ -690,6 +972,8 @@ def _cmd_implementation(
         "log_message": str(log_message),
         "obfuscated_items": json.dumps(packet.get("obfuscated_items", [])),
     }
+    if extra is not None:
+        command["extra"] = extra
     # Record the original queuing user (author) separately from 'username' (the
     # user or process that actually executed the command). Command History shows
     # 'username' as "Executed By" and queue_username as "Queued By".
@@ -705,7 +989,7 @@ def _cmd_implementation(
         # Pull the command out of the script string, e.g. cmd("INST ABORT")
         queued = cmd_string.split('("')[1].split('")')[0]
         QueueModel.queue_command(
-            queue, command=queued, username=username, scope=scope, validate=validate, timeout=timeout
+            queue, command=queued, username=username, scope=scope, validate=validate, timeout=timeout, extra=extra
         )
     else:
         CommandTopic.send_command(command, timeout=timeout, scope=scope)

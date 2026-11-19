@@ -854,6 +854,14 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 | log_message    | Optional named parameter to prevent logging of the command                                                                                                                          |
 | validate       | Optional named parameter to enable/disable validation (default is True)                                                                                                             |
 | queue          | Optional named parameter to send the command to a queue. If not given, `OPENC3_DEFAULT_QUEUE` is used when set. Pass `False` to never queue. See [Command Queues](#command-queues). |
+| extra          | Optional metadata Hash/dict carried with the command packet to the interface                                                                                                        |
+
+The interface receives `extra` as `packet.extra['metadata']`. It is kept under its own key so it
+can't change the values COSMOS adds to `packet.extra`, such as `cmd_string`, `username` and
+`approver`, or the `HTTP_*` values an accessor sets from the command definition.
+
+`extra` is written to the command log, the command topics and the queue exactly as given.
+It is not obfuscated, so don't put secrets in it.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -862,6 +870,7 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", { "DURATION": 10, "TYPE": "NORMAL" })
 cmd("INST ABORT", timeout=10, log_message=False, validate=False)
+cmd("INST ABORT", extra={ "request_id": "1234-5678" })
 cmd("INST ABORT", queue="TEST")  # Add to the TEST queue
 cmd("INST ABORT", queue=False)  # Bypass OPENC3_DEFAULT_QUEUE
 ```
@@ -876,6 +885,7 @@ cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", "DURATION" => 10, "TYPE" => "NORMAL")
 cmd("INST", "COLLECT", { "DURATION" => 10, "TYPE" => "NORMAL" })
 cmd("INST ABORT", timeout: 10, log_message: false, validate: false)
+cmd("INST ABORT", extra: { "request_id" => "1234-5678" })
 cmd("INST ABORT", queue: "TEST") # Add to the TEST queue
 cmd("INST ABORT", queue: false) # Bypass OPENC3_DEFAULT_QUEUE
 ```
@@ -918,6 +928,7 @@ cmd_no_range_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param 
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -974,6 +985,7 @@ cmd_no_hazardous_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Pa
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1030,6 +1042,7 @@ cmd_no_checks("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Va
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1086,6 +1099,7 @@ cmd_raw("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1142,6 +1156,7 @@ cmd_raw_no_range_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1198,6 +1213,7 @@ cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", "<Param #1 Name>" 
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1254,6 +1270,7 @@ cmd_raw_no_checks("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -2056,11 +2073,59 @@ status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") # => WAITIN
 </TabItem>
 </Tabs>
 
+### critical_cmd_info
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Returns the status of the critical command along with the users who have approved it and the number of approvals required. The number of approvals required is set by the scope's Critical Cmd Approvers setting when the command is created. Each approval must come from a different user, and the user who sent the command can't approve it.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+critical_cmd_info(uuid)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+critical_cmd_info(uuid)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+info = critical_cmd_info("2fa14183-3148-4399-9a74-a130257118f9")
+# => {'status': 'WAITING', 'approvers': ['operator'], 'approvers_required': 2}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+info = critical_cmd_info("2fa14183-3148-4399-9a74-a130257118f9")
+# => {"status"=>"WAITING", "approvers"=>["operator"], "approvers_required"=>2}
+```
+
+</TabItem>
+</Tabs>
+
 ### critical_cmd_approve
 
 <span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.20.0</span></span>
 
-Approve the critical command as the current user.
+Approve the critical command as the current user. If the scope requires more than one approver, the command remains `WAITING` until enough different users have approved it. Use [critical_cmd_info](#critical_cmd_info) to see the current approvals.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5143,7 +5208,7 @@ limits_sets = get_limits_sets()
 
 <span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-Returns hash / dict of all the limits settings for a telemetry point.
+Returns hash / dict of all the limits settings for a telemetry point. Items with SEQUENCE, CHANGE, or STATIC change limits have no numeric limits values so an empty hash / dict is returned. Use [get_item](#get_item) to see their change limits settings.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5197,7 +5262,7 @@ puts result['DEFAULT'] # => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 
 <span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
+The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime. Items with SEQUENCE, CHANGE, or STATIC change limits can't be changed with set_limits and raise an error.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -8224,6 +8289,8 @@ start("INST/procedures/test1.rb")
 
 Jumps to a specific line in either the current file or another file. Script context and local variables are retained if jumping in the same file. This method should not be used to create loops or in any other case where normal Python/Ruby functionality could perform the same function. Use of goto increases stack depth and excess use can lead to stack level too deep errors.
 
+When typed at the Script Runner debug prompt, the parentheses and capitalization are optional (`GOTO 32` or `goto "INST/procedures/other.rb", 12`). If the script is paused, execution moves to the line without running it and the script stays paused there. If the script is running, it jumps to the line and keeps running.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
@@ -9139,7 +9206,7 @@ running_script_go(15)
 
 <span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.0</span></span>
 
-Perform a goto or execute selection on a running script.
+Perform a goto or execute selection on a running script. Execute selection requires the script to be paused, stopped at a breakpoint, or in error. A goto on a paused script moves execution to the line without running it and stays paused. A goto on a running script jumps to the line and keeps running.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">

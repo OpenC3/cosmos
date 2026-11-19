@@ -15,6 +15,7 @@ from unittest.mock import Mock, patch
 
 from openc3.models.queue_model import QueueError, QueueModel
 from openc3.topics.queue_topic import QueueTopic
+from openc3.utilities.json import JsonDecoder
 from test.test_helper import mock_redis
 
 
@@ -94,6 +95,29 @@ class TestQueueModel(unittest.TestCase):
             {"username": "user", "value": "CMD", "validate": False, "timeout": 0, "timestamp": 1234567890}
         )
         mock_store.zadd.assert_called_once_with("DEFAULT:TEST", {expected_data: 1.0})
+
+    @patch("openc3.models.queue_model.Store")
+    @patch("openc3.models.queue_model.QueueModel.get_model")
+    def test_queue_command_with_extra_metadata(self, mock_get_model, mock_store):
+        mock_model = Mock()
+        mock_model.state = "RUNNING"
+        mock_get_model.return_value = mock_model
+        mock_store.zrevrange.return_value = []
+
+        with patch("time.time_ns", return_value=1234567890):
+            QueueModel.queue_command(
+                "TEST",
+                command="CMD",
+                username="user",
+                scope="DEFAULT",
+                extra={"flow_uuid": "1234-5678", "data": b"\xff"},
+            )
+
+        queued = json.loads(next(iter(mock_store.zadd.call_args.args[1])))
+        self.assertEqual(
+            json.loads(queued["extra"], cls=JsonDecoder),
+            {"flow_uuid": "1234-5678", "data": b"\xff"},
+        )
 
     @patch("openc3.models.queue_model.Store")
     @patch("openc3.models.queue_model.QueueModel.get_model")

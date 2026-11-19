@@ -117,7 +117,7 @@ export default {
           })
         })
         .catch((error) => {
-          if (error.response && error.response.data) {
+          if (error.response?.data) {
             this.errorMessage = error.response.data.message
           } else {
             this.errorMessage = error.message

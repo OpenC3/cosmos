@@ -37,6 +37,40 @@ module OpenC3
       ENV.delete('OPENC3_API_READ_TIMEOUT')
     end
 
+    describe "generate_auth" do
+      after(:each) do
+        ENV.delete('OPENC3_API_TOKEN')
+        ENV.delete('OPENC3_API_USER')
+        ENV.delete('OPENC3_API_PASSWORD')
+        ENV.delete('OPENC3_API_CLIENT_SECRET')
+        ENV.delete('OPENC3_KEYCLOAK_URL')
+      end
+
+      it "routes client-secret configuration to Keycloak authentication" do
+        ENV.delete('OPENC3_API_TOKEN')
+        ENV.delete('OPENC3_API_USER')
+        ENV['OPENC3_API_CLIENT_SECRET'] = 'm2m_secret'
+        ENV['OPENC3_KEYCLOAK_URL'] = 'http://keycloak:8080/auth'
+        keycloak_auth = instance_double(OpenC3KeycloakAuthentication)
+        allow(OpenC3KeycloakAuthentication).to receive(:new).with('http://keycloak:8080/auth').and_return(keycloak_auth)
+
+        expect(JsonApiObject.allocate.send(:generate_auth)).to eq(keycloak_auth)
+      end
+
+      it "treats an empty client secret as unset" do
+        ENV.delete('OPENC3_API_TOKEN')
+        ENV.delete('OPENC3_API_USER')
+        ENV['OPENC3_API_PASSWORD'] = 'test_password'
+        ENV['OPENC3_API_CLIENT_SECRET'] = ''
+        core_auth = instance_double(OpenC3Authentication)
+        allow(OpenC3Authentication).to receive(:new).and_return(core_auth)
+        allow(OpenC3KeycloakAuthentication).to receive(:new)
+
+        expect(JsonApiObject.allocate.send(:generate_auth)).to eq(core_auth)
+        expect(OpenC3KeycloakAuthentication).not_to have_received(:new)
+      end
+    end
+
     describe "read timeout" do
       it "sets an explicit read timeout on the underlying Net::HTTP connection" do
         api_object = JsonApiObject.new(url: 'http://openc3-cosmos-cmd-tlm-api:2901', timeout: 1.0)

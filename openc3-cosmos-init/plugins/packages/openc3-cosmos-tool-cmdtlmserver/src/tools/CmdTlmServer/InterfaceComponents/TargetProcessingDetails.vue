@@ -11,8 +11,6 @@
 # if purchased from OpenC3, Inc.
 -->
 
-<!-- Copyright 2026 OpenC3, Inc. All Rights Reserved. See LICENSE.md. -->
-
 <template>
   <v-card
     max-height="80vh"
