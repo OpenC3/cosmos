@@ -246,11 +246,11 @@ class TestHttpClientInterfaceUri(unittest.TestCase):
         self.interface.connect()
         self.interface.http = Mock()
         self.interface.http.request.side_effect = requests.exceptions.ConnectionError(
-            "HTTPConnectionPool(host='example.com', port=8080): Max retries exceeded with url: /status?access_token=secret (Caused by Connection refused)"
+            "HTTPConnectionPool(host='example.com', port=8080): Max retries exceeded with url: /status?access_token=abc)secret (Caused by Connection refused)"
         )
         with self.assertRaises(RuntimeError):
             self.interface.write_interface(
-                b"", {"HTTP_URI": "https://example.com:8080/status?access_token=secret", "HTTP_METHOD": "get"}
+                b"", {"HTTP_URI": "https://example.com:8080/status?access_token=abc)secret", "HTTP_METHOD": "get"}
             )
         logged = mock_logger.error.call_args[0][0]
         self.assertNotIn("secret", logged)
@@ -280,6 +280,8 @@ class TestHttpClientInterfaceUri(unittest.TestCase):
                 pass
 
         server = HTTPServer(("127.0.0.1", 0), RedirectHandler)
+        # Give up if no request arrives so the thread can't block forever
+        server.timeout = 5
         port = server.server_address[1]
         thread = threading.Thread(target=server.handle_request)
         thread.start()

@@ -337,10 +337,10 @@ module OpenC3
       it "redacts query strings from the failure log" do
         @interface.connect
         http = @interface.instance_variable_get(:@http)
-        allow(http).to receive(:get).and_raise(Faraday::ConnectionFailed.new('Failed to open TCP connection to /status?access_token=secret (Connection refused)'))
+        allow(http).to receive(:get).and_raise(Faraday::ConnectionFailed.new('Failed to open TCP connection to /status?access_token=abc)secret (Connection refused)'))
         logged = nil
         allow(Logger).to receive(:error) { |message| logged = message }
-        expect { @interface.write_interface('', { 'HTTP_URI' => 'https://example.com:8080/status?access_token=secret', 'HTTP_METHOD' => 'get' }) }.to \
+        expect { @interface.write_interface('', { 'HTTP_URI' => 'https://example.com:8080/status?access_token=abc)secret', 'HTTP_METHOD' => 'get' }) }.to \
           raise_error(RuntimeError)
         expect(logged).not_to include('secret')
         expect(logged).to include('https://example.com:8080/status?[REDACTED]')
@@ -363,6 +363,8 @@ module OpenC3
         server = TCPServer.new('127.0.0.1', 0)
         port = server.addr[1]
         thread = Thread.new do
+          # Give up if no request arrives so the thread can't block forever
+          next unless server.wait_readable(5)
           client = server.accept
           while (line = client.gets) and line != "\r\n"; end
           # If the redirect were followed, the request to port 1 would fail

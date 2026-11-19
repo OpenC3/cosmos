@@ -159,7 +159,7 @@ module OpenC3
       rescue Faraday::Error => e
         # Log the details but don't return the raw error to the command sender
         # Query strings can carry credentials, so they are redacted from the log
-        Logger.error("#{@name}: HTTP #{method.to_s.upcase} #{redact_queries(uri)} failed: #{e.class}: #{redact_queries(e.message)}")
+        Logger.error("#{@name}: HTTP #{method.to_s.upcase} #{redact_queries(uri, uri: true)} failed: #{e.class}: #{redact_queries(e.message)}")
         raise "HTTP #{method.to_s.upcase} request to #{@url} failed (#{e.class.name.split('::').last})"
       end
 
@@ -282,9 +282,12 @@ module OpenC3
       return uri
     end
 
-    # Replaces query strings in text with ?[REDACTED] so they aren't logged
-    def redact_queries(text)
-      return text.to_s.gsub(/\?[^\s)'"]+/, '?[REDACTED]')
+    # Replaces query strings with ?[REDACTED] so they aren't logged. In a URI everything
+    # after the '?' is the query. In other text the query ends at whitespace, which
+    # can't appear in a query because HTTP_PATH rejects it and queries are percent-encoded.
+    def redact_queries(text, uri: false)
+      return text.to_s.sub(/\?.*/m, '?[REDACTED]') if uri
+      return text.to_s.gsub(/\?\S+/, '?[REDACTED]')
     end
 
     # Raises WriteRejectError unless the URI goes to the configured scheme, host and port.
