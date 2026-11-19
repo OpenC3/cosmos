@@ -35,6 +35,14 @@ module OpenC3
         end
       end
 
+      it "allows user names that only share a prefix with interpreter or tool variables" do
+        %w[RUBY_TARGET PYTHON_TARGET PYTHONIC RUBY_GC_HEAP_INIT_SLOTS NODE_ID UV_LAMP
+           GIT_SHA SSL_MODE RES_LEVEL KC_LIMIT RAILS_SIDE SECRET_CODE GOOGLE_SHEET
+           AZURE_SITE MALLOC_SIZE TMPDIR SHELL].each do |key|
+          expect(ScriptEnv.key_error(key)).to be_nil, "expected #{key} to be allowed"
+        end
+      end
+
       it "allows OPENC3_FULL_BACKTRACE so Script Runner can enable stack traces" do
         expect(ScriptEnv.key_error("OPENC3_FULL_BACKTRACE")).to be_nil
       end
@@ -43,15 +51,18 @@ module OpenC3
         %w[OPENC3_API_HOSTNAME OPENC3_API_PORT OPENC3_API_SCHEMA OPENC3_KEYCLOAK_URL
            OPENC3_REDIS_HOSTNAME OPENC3_BUCKET_URL OPENC3_SCRIPT_API_HOSTNAME
            HTTP_PROXY https_proxy ALL_PROXY no_proxy HOSTALIASES LOCALDOMAIN RES_OPTIONS
-           AWS_ENDPOINT_URL SSL_CERT_FILE REQUESTS_CA_BUNDLE].each do |key|
+           AWS_ENDPOINT_URL AWS_REGION SSL_CERT_FILE SSL_CERT_DIR REQUESTS_CA_BUNDLE
+           CURL_CA_BUNDLE].each do |key|
           expect(ScriptEnv.key_error(key)).to include("reserved"), "expected #{key} to be reserved"
         end
       end
 
       it "rejects the variables that configure the interpreter" do
-        %w[LD_PRELOAD ld_library_path DYLD_INSERT_LIBRARIES RUBYOPT RUBYLIB GEM_HOME GEM_PATH
-           BUNDLE_GEMFILE PYTHONPATH PYTHONSTARTUP VIRTUAL_ENV PATH HOME BASH_ENV
-           OPENSSL_CONF GCONV_PATH].each do |key|
+        %w[LD_PRELOAD ld_library_path LD_AUDIT RUBYOPT rubylib RUBYGEMS_GEMDEPS GEM_HOME GEM_PATH
+           BUNDLE_GEMFILE BUNDLER_SETUP PYTHONPATH PYTHONHOME PYTHONUSERBASE PYTHONSTARTUP
+           PYTHONWARNINGS PYTHONBREAKPOINT PYTHONINSPECT PYTHONPYCACHEPREFIX VIRTUAL_ENV
+           PATH HOME BASH_ENV ENV IFS OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES
+           GCONV_PATH].each do |key|
           expect(ScriptEnv.key_error(key)).to include("reserved"), "expected #{key} to be reserved"
         end
       end

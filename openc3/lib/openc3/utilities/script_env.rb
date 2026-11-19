@@ -41,21 +41,28 @@ module OpenC3
     ] + UNUSED_VARS
 
     # Variables users may not set through the global Environment or the
-    # per-script environment because COSMOS configures them for the script
-    # process (connection settings, interpreter and library paths, proxies,
-    # name resolution). Matched case-insensitively.
+    # per-script environment. Global entries apply to every user's scripts, so
+    # these are the names that would let one user run code in, or redirect the
+    # credentials of, another user's script process. Keep this list to names
+    # that matter: script code can already read its own credentials, and an
+    # overly broad list (e.g. a RUBY or PYTHON prefix) breaks ordinary user
+    # variables. Matched case-insensitively.
     RESERVED_PREFIXES = %w[
-      OPENC3_ ANYCABLE_ KC_ KEYCLOAK RAILS_ SECRET_
-      LD_ DYLD_ GCONV_ GLIBC_ MALLOC_ BASH_FUNC_
-      RUBY GEM_ BUNDLE PYTHON UV_ VIRTUAL_ENV PIP_ NODE_
-      AWS_ GOOGLE_ AZURE_ SSL_ OPENSSL_
-      RES_ GIT_
+      OPENC3_
+      LD_
+      BUNDLE
+      AWS_
     ].freeze
     RESERVED_NAMES = %w[
-      PATH HOME SHELL TMPDIR TMP TEMP IFS ENV BASH_ENV
-      HOSTALIASES LOCALDOMAIN
-      HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY FTP_PROXY
-      REQUESTS_CA_BUNDLE CURL_CA_BUNDLE
+      PATH HOME
+      RUBYOPT RUBYLIB RUBYGEMS_GEMDEPS GEM_HOME GEM_PATH
+      PYTHONPATH PYTHONHOME PYTHONUSERBASE PYTHONSTARTUP PYTHONWARNINGS
+      PYTHONBREAKPOINT PYTHONINSPECT PYTHONPYCACHEPREFIX VIRTUAL_ENV
+      GCONV_PATH OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES
+      BASH_ENV ENV IFS
+      HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY
+      HOSTALIASES LOCALDOMAIN RES_OPTIONS
+      SSL_CERT_FILE SSL_CERT_DIR REQUESTS_CA_BUNDLE CURL_CA_BUNDLE
     ].freeze
     # Reserved-prefix names that only change script output, not how the
     # script connects or loads code. Script Runner sends OPENC3_FULL_BACKTRACE
