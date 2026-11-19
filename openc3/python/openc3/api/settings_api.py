@@ -100,10 +100,10 @@ def set_setting(name: str, data: Any, local_mode: bool = True, scope: str = OPEN
     Requires admin permission.
 
     Args:
-        name: Name of the setting.
-        data: Setting data. Must be JSON serializable.
-        local_mode: Whether to also save the setting in local mode.
-        scope: COSMOS scope.
+        name (str): Name of the setting.
+        data (Any): Setting data. Must be JSON serializable.
+        local_mode (bool): Whether to also save the setting in local mode.
+        scope (str): COSMOS scope.
     """
     authorize(permission="admin", scope=scope)
     SettingModel.set({"name": name, "data": data}, scope=scope)
@@ -113,17 +113,17 @@ def set_setting(name: str, data: Any, local_mode: bool = True, scope: str = OPEN
     Logger.info(f"User {username} saved setting '{name}': {data}", scope=scope, user=username)
 
 
-def save_setting(name, data, local_mode=True, scope=OPENC3_SCOPE):
+def save_setting(name: str, data: Any, local_mode: bool = True, scope: str = OPENC3_SCOPE) -> None:
     """Set the data of a setting.
 
     .. deprecated:: 5.12.0
        Use set_setting instead.
-    
+
     Args:
-        name: Name of the setting.
-        data: Setting data. Must be JSON serializable.
-        local_mode: Whether to also save the setting in local mode.
-        scope: COSMOS scope.
+        name (str): Name of the setting.
+        data (Any): Setting data. Must be JSON serializable.
+        local_mode (bool): Whether to also save the setting in local mode.
+        scope (str): COSMOS scope.
     """
     warnings.warn("save_setting is deprecated, use set_setting", FutureWarning, stacklevel=2)
     set_setting(name, data, local_mode, scope)
