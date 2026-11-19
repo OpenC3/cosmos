@@ -241,7 +241,7 @@ test('processes commands', async ({ page, utils }) => {
   const start = sub(new Date(), { minutes: 1 })
   await page.goto('/tools/dataextractor')
   await expect(page.locator('.v-app-bar')).toContainText('Data Extractor')
-  await page.locator('rux-icon-apps').getByRole('img').click()
+  await page.locator('[data-test="nav-drawer-toggle"]').click()
   await page
     .locator('[data-test=start-date] input')
     .fill(format(start, 'yyyy-MM-dd'))

@@ -18,7 +18,7 @@ test.use({
 })
 
 test('verify documentation pages and search', async ({ page, utils }) => {
-  await page.locator('rux-icon-apps path').click()
+  await page.locator('[data-test="nav-drawer-toggle"]').click()
   await page.getByRole('link', { name: 'Documentation' }).click()
 
   await page
