@@ -32,6 +32,7 @@
           v-bind="props"
           class="rux-icon"
           icon="person"
+          data-test="user-menu"
           status="off"
           :label="compact ? '' : name"
           :sublabel="compact ? '' : roles()"
@@ -101,10 +102,10 @@
               <hr />
               <v-list-item class="pl-2">
                 <v-list-item-title>
-                  <span class="news-title">{{ newsItem.title }}</span
-                  ><span class="news-date">{{
-                    formatDate(newsItem.date)
-                  }}</span>
+                  <span class="news-title">{{ newsItem.title }}</span><span
+                    class="news-date"
+                    >{{ formatDate(newsItem.date) }}</span
+                  >
                 </v-list-item-title>
                 <!-- eslint-disable-next-line vue/no-v-html -->
                 <div v-html="sanitizeNews(newsItem.body)"></div>
