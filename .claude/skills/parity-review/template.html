@@ -72,13 +72,39 @@ Data schema (render.py injects it into #data):
 <script id="data" type="application/json">{{DATA}}</script>
 <script>
 const D = JSON.parse(document.getElementById('data').textContent);
+// Report data holds trusted prose with inline <code>/<strong>. Render it through
+// an allowlist instead of assigning raw HTML: tags not listed are removed with their
+// content, and only the listed attributes survive (href only for http(s) or #).
+const SAFE_TAGS = new Set(['a', 'article', 'b', 'br', 'code', 'details', 'div', 'em', 'h1', 'h2', 'h3', 'i', 'li', 'ol', 'p', 'pre', 's', 'section', 'small', 'span', 'strong', 'summary', 'table', 'tbody', 'td', 'th', 'thead', 'tr', 'ul']);
+const SAFE_ATTRS = new Set(['class', 'colspan', 'href', 'id', 'open', 'title']);
+function sanitize(node) {
+  for (const child of [...node.childNodes]) {
+    if (child.nodeType === Node.TEXT_NODE) continue;
+    if (child.nodeType !== Node.ELEMENT_NODE || !SAFE_TAGS.has(child.localName)) { child.remove(); continue; }
+    for (const { name, value } of [...child.attributes]) {
+      if (!SAFE_ATTRS.has(name) || (name === 'href' && !/^(https?:|#)/i.test(value))) child.removeAttribute(name);
+    }
+    sanitize(child);
+  }
+}
+// el.cleanHTML = html parses html in el's own context (rows need a table) and
+// replaces el's children with the sanitized nodes.
+Object.defineProperty(Element.prototype, 'cleanHTML', {
+  set(html) {
+    const inTable = ['tbody', 'thead', 'table'].includes(this.localName);
+    const doc = new DOMParser().parseFromString(inTable ? `<table><tbody>${html}</tbody></table>` : html, 'text/html');
+    const root = inTable ? doc.querySelector('tbody') : doc.body;
+    sanitize(root);
+    this.replaceChildren(...root.childNodes);
+  },
+});
 const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const IMPACT = { Safety: 'bg-red-100 text-red-800', High: 'bg-orange-100 text-orange-800', Medium: 'bg-yellow-100 text-yellow-800', Low: 'bg-slate-100 text-slate-700' };
 const RIGHT = { ruby: ['bg-rose-100 text-rose-800', 'Ruby is right'], python: ['bg-sky-100 text-sky-800', 'Python is right'], unclear: ['bg-slate-200 text-slate-700', 'Unclear: decide'] };
 const pill = (cls, t) => `<span class="px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${cls}">${t}</span>`;
 const m = D.meta, c = m.counts;
 
-document.getElementById('hdr').innerHTML = `
+document.getElementById('hdr').cleanHTML = `
   <p class="lbl text-slate-500">OpenC3 COSMOS · ${esc(m.scope)} · ${esc(m.date)} · main @ ${esc(m.sha)}</p>
   <h1 class="font-serif text-4xl">Ruby ↔ Python parity review</h1>
   <div class="prose-c text-sm text-slate-700 space-y-2">${m.intro}</div>
@@ -93,7 +119,7 @@ document.getElementById('hdr').innerHTML = `
     <span class="flex items-center gap-2"><span class="inline-block w-6 h-4 side wrong rounded"></span>the side that drifted</span>
   </div>`;
 
-if (D.callout) document.getElementById('callout').innerHTML = `
+if (D.callout) document.getElementById('callout').cleanHTML = `
   <div class="rounded-xl border-2 border-red-700 bg-red-50 text-red-950 p-5 space-y-2">
     <p class="lbl text-red-800">Fix first</p><h2 class="font-serif text-2xl">${D.callout.title}</h2><div class="prose-c text-sm space-y-2">${D.callout.body}</div></div>`;
 
@@ -104,7 +130,7 @@ const side = (label, s, state) => `
     <pre class="scroll text-xs leading-relaxed"><code>${esc(s.code)}</code></pre>
   </div>`;
 
-document.getElementById('findings').innerHTML = `<h2 class="font-serif text-2xl">Behavior drift</h2>` + D.findings.map((f, i) => {
+document.getElementById('findings').cleanHTML = `<h2 class="font-serif text-2xl">Behavior drift</h2>` + D.findings.map((f, i) => {
   const r = f.right === 'ruby' ? 'right' : (f.right === 'python' ? 'wrong' : '');
   const p = f.right === 'python' ? 'right' : (f.right === 'ruby' ? 'wrong' : '');
   return `
@@ -127,18 +153,18 @@ document.getElementById('findings').innerHTML = `<h2 class="font-serif text-2xl"
   </article>`;
 }).join('');
 
-document.getElementById('smaller').innerHTML = D.smaller.map(s => `
+document.getElementById('smaller').cleanHTML = D.smaller.map(s => `
   <tr><td class="p-2">${s.item}</td><td class="p-2 font-mono text-xs">${esc(s.where)}</td><td class="p-2">${pill(RIGHT[s.right][0], RIGHT[s.right][1])}</td><td class="p-2 text-slate-700">${s.note}</td></tr>`).join('');
-document.getElementById('fixed').innerHTML = D.fixed.map(x => `<tr><td class="p-2">${x.item}</td><td class="p-2 text-xs whitespace-nowrap">${esc(x.pr)}</td></tr>`).join('');
+document.getElementById('fixed').cleanHTML = D.fixed.map(x => `<tr><td class="p-2">${x.item}</td><td class="p-2 text-xs whitespace-nowrap">${esc(x.pr)}</td></tr>`).join('');
 document.getElementById('sigcount').textContent = D.signatures.length;
-document.getElementById('signatures').innerHTML = D.signatures.map(s => `
+document.getElementById('signatures').cleanHTML = D.signatures.map(s => `
   <tr><td class="p-2"><code>${esc(s.name)}</code><div class="font-mono text-[11px] text-slate-500">${esc(s.ruby)}<br>${esc(s.python)}</div></td>
   <td class="p-2 text-xs"><ul class="list-disc pl-4">${s.diffs.map(d => `<li>${esc(d)}</li>`).join('')}</ul></td><td class="p-2 text-xs">${s.status}</td></tr>`).join('');
 document.getElementById('gapcount').textContent = D.gaps.length;
-document.getElementById('gaps').innerHTML = D.gaps.map(g => `
+document.getElementById('gaps').cleanHTML = D.gaps.map(g => `
   <tr><td class="p-2"><code>${esc(g.name)}</code></td><td class="p-2 text-xs whitespace-nowrap">${esc(g.side)}</td><td class="p-2 font-mono text-xs">${esc(g.where)}</td><td class="p-2 text-xs">${g.verdict}</td></tr>`).join('');
-document.getElementById('rec').innerHTML = `
+document.getElementById('rec').cleanHTML = `
   <p class="lbl">Top recommendation</p><h2 class="font-serif text-2xl">${D.recommendation.headline}</h2>
   <ol class="prose-c space-y-2 text-sm list-decimal pl-5">${D.recommendation.steps.map(s => `<li>${s}</li>`).join('')}</ol>`;
-document.getElementById('foot').innerHTML = m.footer || '';
+document.getElementById('foot').cleanHTML = m.footer || '';
 </script>

@@ -85,6 +85,32 @@
 </div>
 
 <script>
+// Report data holds trusted prose with inline <code>/<strong>. Render it through
+// an allowlist instead of assigning raw HTML: tags not listed are removed with their
+// content, and only the listed attributes survive (href only for http(s) or #).
+const SAFE_TAGS = new Set(['a', 'article', 'b', 'br', 'code', 'details', 'div', 'em', 'h1', 'h2', 'h3', 'i', 'li', 'ol', 'p', 'pre', 's', 'section', 'small', 'span', 'strong', 'summary', 'table', 'tbody', 'td', 'th', 'thead', 'tr', 'ul']);
+const SAFE_ATTRS = new Set(['class', 'colspan', 'href', 'id', 'open', 'title']);
+function sanitize(node) {
+  for (const child of [...node.childNodes]) {
+    if (child.nodeType === Node.TEXT_NODE) continue;
+    if (child.nodeType !== Node.ELEMENT_NODE || !SAFE_TAGS.has(child.localName)) { child.remove(); continue; }
+    for (const { name, value } of [...child.attributes]) {
+      if (!SAFE_ATTRS.has(name) || (name === 'href' && !/^(https?:|#)/i.test(value))) child.removeAttribute(name);
+    }
+    sanitize(child);
+  }
+}
+// el.cleanHTML = html parses html in el's own context (rows need a table) and
+// replaces el's children with the sanitized nodes.
+Object.defineProperty(Element.prototype, 'cleanHTML', {
+  set(html) {
+    const inTable = ['tbody', 'thead', 'table'].includes(this.localName);
+    const doc = new DOMParser().parseFromString(inTable ? `<table><tbody>${html}</tbody></table>` : html, 'text/html');
+    const root = inTable ? doc.querySelector('tbody') : doc.body;
+    sanitize(root);
+    this.replaceChildren(...root.childNodes);
+  },
+});
 const PARITY = {
   a: ['bg-sky-100 text-sky-800', 'a · counterpart already shares it'],
   b: ['bg-amber-100 text-amber-800', 'b · both duplicate'],
@@ -147,7 +173,7 @@ const after = (c) => `
     </div>
   </div>`;
 
-document.getElementById('candidates').innerHTML = CARDS.map((c, i) => {
+document.getElementById('candidates').cleanHTML = CARDS.map((c, i) => {
   const n = String(i + 1).padStart(2, '0');
   const [pc, pt] = PARITY[c.parity];
   return `
@@ -172,10 +198,10 @@ document.getElementById('candidates').innerHTML = CARDS.map((c, i) => {
 </article>`;
 }).join('');
 
-document.getElementById('small-rows').innerHTML = SMALL.map(([t, w, p, n]) => `
+document.getElementById('small-rows').cleanHTML = SMALL.map(([t, w, p, n]) => `
   <tr><td class="p-2">${t}</td><td class="p-2 font-mono text-xs">${w}</td><td class="p-2">${pill(PARITY[p][0], p)}</td><td class="p-2 text-slate-700">${n}</td></tr>`).join('');
 
-document.getElementById('bug-rows').innerHTML = BUGS.map(([b, w, r, card, ok]) => `
+document.getElementById('bug-rows').cleanHTML = BUGS.map(([b, w, r, card, ok]) => `
   <tr><td class="p-2">${b}</td><td class="p-2 font-mono text-xs">${w}</td><td class="p-2 text-xs">${r}</td>
   <td class="p-2"><a class="underline text-xs" href="#c${card}">${String(card).padStart(2, '0')}</a></td>
   <td class="p-2 text-xs">${ok ? '<span class="text-emerald-700">✓ read</span>' : '<span class="text-slate-500">sweep</span>'}</td></tr>`).join('');
