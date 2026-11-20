@@ -35,8 +35,8 @@ module ApplicationCable
       # proxy logs).
       #
       # The URL token path is deprecated and will be removed in COSMOS 8. It
-      # only remains for clients older than COSMOS 7.2.0. Traefik doesn't write
-      # the cable routes to its access log, so the token isn't logged there.
+      # only remains for clients older than COSMOS 7.2.0. Their token appears in
+      # proxy access logs (including Traefik's) because it's part of the URL.
       if request.query_parameters[:authorization]
         authorization('system')
         # Only reached once authorized (a rejection raises). Never include the

@@ -385,7 +385,7 @@ If you've updated your plugin but still see errors about `getClient`, an older c
 
 #### WebSocket token in the URL is deprecated
 
-Clients older than COSMOS 7.2.0 authenticate their WebSocket connection (`/openc3-api/cable` and `/script-api/cable`) with an `authorization` query parameter. Since 7.2.0 the token is sent in each channel subscription instead, so it doesn't end up in proxy logs. The query parameter still works, but the API logs a deprecation warning each time a client uses it, and COSMOS 8 will remove it.
+Clients older than COSMOS 7.2.0 authenticate their WebSocket connection (`/openc3-api/cable` and `/script-api/cable`) with an `authorization` query parameter. Since 7.2.0 the token is sent in each channel subscription instead, so it doesn't end up in proxy logs. The query parameter still works, but the API logs a deprecation warning each time a client uses it, and COSMOS 8 will remove it. Until those clients are upgraded, their token appears in the URL that the Traefik access log records.
 
 If you see this warning, upgrade the `openc3` Ruby gem or Python package your scripts use to 7.2.0 or later, and rebuild any custom tool plugin against `@openc3/js-common` 7.2.0 or later.
 
