@@ -14,7 +14,6 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-import openc3.script
 from openc3.script import open_bucket_dialog, open_file_dialog, open_files_dialog, prompt_for_critical_cmd
 
 
@@ -53,7 +52,7 @@ class TestPromptForCriticalCmd(unittest.TestCase):
     def test_waits_until_approved(self):
         statuses = iter(["WAITING", "WAITING", "APPROVED"])
         with (
-            patch.object(openc3.script, "critical_cmd_status", side_effect=lambda uuid: next(statuses)),
+            patch("openc3.script.critical_cmd_status", side_effect=lambda uuid: next(statuses)),
             patch("openc3.script.time.sleep") as sleep,
             redirect_stdout(io.StringIO()),
         ):
@@ -63,7 +62,7 @@ class TestPromptForCriticalCmd(unittest.TestCase):
     def test_raises_when_rejected(self):
         statuses = iter(["WAITING", "REJECTED"])
         with (
-            patch.object(openc3.script, "critical_cmd_status", side_effect=lambda uuid: next(statuses)),
+            patch("openc3.script.critical_cmd_status", side_effect=lambda uuid: next(statuses)),
             patch("openc3.script.time.sleep"),
             redirect_stdout(io.StringIO()),
             self.assertRaisesRegex(RuntimeError, "Critical command rejected"),
