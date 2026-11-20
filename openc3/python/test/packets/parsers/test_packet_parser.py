@@ -92,60 +92,6 @@ class TestPacketParser(unittest.TestCase):
             tf.close()
 
 
-class TestPacketParserCheckItemDefaultSizes(unittest.TestCase):
-    def setUp(self):
-        self.pc = PacketConfig()
-
-    def process(self, *lines):
-        tf = tempfile.NamedTemporaryFile(mode="w")
-        tf.write("COMMAND TGT1 PKT1 BIG_ENDIAN\n")
-        for line in lines:
-            tf.write(line + "\n")
-        tf.seek(0)
-        try:
-            self.pc.process_file(tf.name, "TGT1")
-        finally:
-            tf.close()
-
-    def test_complains_about_string_and_block_defaults_that_do_not_fit(self):
-        with self.assertRaisesRegex(
-            ValueError, "TGT1 PKT1 ITEM1: default value of 8 bytes does not fit into 4 bytes for data_type STRING"
-        ):
-            self.process('  APPEND_PARAMETER ITEM1 32 STRING "TOO LONG" "Description"')
-        self.pc = PacketConfig()
-        with self.assertRaisesRegex(
-            ValueError, "TGT1 PKT1 ITEM1: default value of 3 bytes does not fit into 2 bytes for data_type BLOCK"
-        ):
-            self.process('  APPEND_PARAMETER ITEM1 16 BLOCK 0x010203 "Description"')
-        # DEFAULT_VALUE is applied before the check
-        self.pc = PacketConfig()
-        with self.assertRaisesRegex(ValueError, "ITEM1: default value of 8 bytes"):
-            self.process('  APPEND_PARAMETER ITEM1 32 STRING "OK" "Description"', '    DEFAULT_VALUE "TOO LONG"')
-
-    def test_complains_about_required_parameter_defaults_that_do_not_fit(self):
-        with self.assertRaisesRegex(
-            ValueError, "TGT1 PKT1 ITEM1: default value of 8 bytes does not fit into 4 bytes for data_type STRING"
-        ):
-            self.process('  APPEND_PARAMETER ITEM1 32 STRING "TOO LONG" "Description"', "    REQUIRED")
-
-    def test_allows_defaults_that_fit_are_truncated_or_are_variably_sized(self):
-        self.process(
-            '  APPEND_PARAMETER ITEM1 32 STRING "FITS" "Description"',
-            '  APPEND_PARAMETER ITEM2 32 STRING "TRUNCATED" "Description"',
-            "    OVERFLOW TRUNCATE",
-            '  APPEND_PARAMETER ITEM3 0 STRING "ANY SIZE AT ALL" "Description"',
-        )
-        self.assertEqual([w for w in self.pc.warnings if "does not fit" in w], [])
-
-    def test_ignores_non_binary_accessors(self):
-        self.process(
-            "  ACCESSOR JsonAccessor",
-            '  APPEND_PARAMETER ITEM1 32 STRING "TOO LONG" "Description"',
-            "    KEY $.item1",
-        )
-        self.assertEqual([w for w in self.pc.warnings if "does not fit" in w], [])
-
-
 class TestPacketParserNilDefaults(unittest.TestCase):
     def setUp(self):
         self.pc = PacketConfig()
@@ -199,6 +145,16 @@ class TestPacketParserNilDefaults(unittest.TestCase):
         ):
             self.process('  APPEND_PARAMETER ITEM1 8 BOOL NONE "BOOL"')
 
+    def test_keeps_nil_defaults_for_parameters_with_a_write_conversion_or_derived(self):
+        # The write conversion or a DERIVED write handles the value
+        packet = self.process(
+            '  APPEND_PARAMETER ITEM1 16 UINT MIN MAX NONE "UINT"',
+            "    POLY_WRITE_CONVERSION 0 1",
+            '  APPEND_PARAMETER ITEM2 0 DERIVED nil nil null "DERIVED"',
+        )
+        self.assertEqual(packet.get_item("ITEM1").default, "NONE")
+        self.assertEqual(packet.get_item("ITEM2").default, "null")
+
     def test_keeps_nil_defaults_as_strings_for_string_and_block_parameters_that_are_not_required(self):
         packet = self.process(
             '  APPEND_PARAMETER ITEM1 32 STRING NONE "STRING"',
@@ -213,12 +169,22 @@ class TestPacketParserNilDefaults(unittest.TestCase):
             "    REQUIRED",
             '  APPEND_PARAMETER ITEM2 32 STRING nil "STRING"',
             "    REQUIRED",
+            '  APPEND_PARAMETER ITEM3 8 BOOL nil "BOOL"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM4 64 ARRAY nil "ARRAY"',
+            "    REQUIRED",
+            '  APPEND_PARAMETER ITEM5 64 OBJECT nil "OBJECT"',
+            "    REQUIRED",
         )
         config = packet.to_config("COMMAND")
         self.assertIn('PARAMETER ITEM1 0 16 UINT 0 65535 nil "UINT"', config)
         self.assertIn('PARAMETER ITEM2 16 32 STRING nil "STRING"', config)
+        # Only numeric types have a range
+        self.assertIn('PARAMETER ITEM3 48 8 BOOL nil "BOOL"', config)
+        self.assertIn('PARAMETER ITEM4 56 64 ARRAY nil "ARRAY"', config)
+        self.assertIn('PARAMETER ITEM5 120 64 OBJECT nil "OBJECT"', config)
         # The config loads back the same way
         self.pc = PacketConfig()
         packet = self.process(*config.split("\n")[1:])
-        self.assertIsNone(packet.get_item("ITEM1").default)
-        self.assertIsNone(packet.get_item("ITEM2").default)
+        for i in range(1, 6):
+            self.assertIsNone(packet.get_item(f"ITEM{i}").default)

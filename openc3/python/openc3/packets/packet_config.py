@@ -438,7 +438,6 @@ class PacketConfig:
                 )
             if self.current_cmd_or_tlm == PacketConfig.COMMAND_STRING:
                 PacketParser.check_item_data_types(self.current_packet)
-                PacketParser.check_item_default_sizes(self.current_packet)
                 self.commands[self.current_packet.target_name][self.current_packet.packet_name] = self.current_packet
                 if not self.current_packet.virtual:
                     if self.current_packet.subpacket:

@@ -130,6 +130,10 @@ export default {
       return this.modelValue === null ? 'Required' : undefined
     },
     stateValue() {
+      // null marks a required parameter that isn't set (see CommandEditor)
+      if (this.modelValue === null) {
+        return ''
+      }
       if (this.statesInHex) {
         return '0x' + this.modelValue.toString(16)
       } else {

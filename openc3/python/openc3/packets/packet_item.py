@@ -549,8 +549,8 @@ class PacketItem(StructureItem):
         config += f"{quote_if_necessary(self.name)} {self.bit_offset} {self.bit_size} {self.data_type} "
 
         if value is None:
-            # Only REQUIRED parameters have no default
-            if self.data_type != "BLOCK" and self.data_type != "STRING":
+            # Only REQUIRED parameters have no default. Only numeric types have a range.
+            if self.data_type in ("INT", "UINT", "FLOAT"):
                 config += f"{self.minimum} {self.maximum} "
             val_string = "nil"
         elif self.data_type == "BLOCK" or self.data_type == "STRING":

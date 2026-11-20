@@ -533,8 +533,8 @@ module OpenC3
       config << "#{@name.to_s.quote_if_necessary} #{@bit_offset} #{@bit_size} #{@data_type} "
 
       if value.nil?
-        # Only REQUIRED parameters have no default
-        config << "#{calculate_range().join(' ')} " unless @data_type == :BLOCK || @data_type == :STRING
+        # Only REQUIRED parameters have no default. Only numeric types have a range.
+        config << "#{calculate_range().join(' ')} " if [:INT, :UINT, :FLOAT].include?(@data_type)
         val_string = 'nil'
       elsif @data_type == :BLOCK || @data_type == :STRING
         unless value.is_printable?

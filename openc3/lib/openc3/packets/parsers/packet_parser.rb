@@ -73,15 +73,17 @@ module OpenC3
 
       if item.required
         item.default = nil
-      elsif ![:STRING, :BLOCK, :ANY].include?(item.data_type)
-        # STRING, BLOCK, and ANY keep it as a literal value
+      elsif !item.write_conversion and ![:STRING, :BLOCK, :ANY, :DERIVED].include?(item.data_type)
+        # STRING, BLOCK, ANY, and DERIVED keep it as a literal value, as does
+        # any parameter with a WRITE_CONVERSION which converts it
         raise ArgumentError, "#{item.name}: default of #{item.default} is only allowed for REQUIRED parameters"
       end
     end
 
     # Check that each STRING and BLOCK default fits in its item. A default that
     # doesn't fit makes the command impossible to build unless the parameter
-    # is given.
+    # is given. This only runs at plugin install (TargetModel#deploy) so
+    # targets installed before this check was added still load.
     #
     # @param packet [Packet] Command packet to check
     def self.check_item_default_sizes(packet)
@@ -93,10 +95,15 @@ module OpenC3
         next if item.array_size or item.variable_bit_size or item.parent_item or item.write_conversion
         next if item.bit_size <= 0 or item.overflow == :TRUNCATE
 
-        byte_size = item.bit_size / 8
-        next if item.default.bytesize <= byte_size
+        # A default that names a state writes the state's value
+        default = item.default
+        default = item.states[default.upcase] || default if item.states
+        next unless String === default
 
-        raise ArgumentError, "#{packet.target_name} #{packet.packet_name} #{item.name}: default value of #{item.default.bytesize} bytes does not fit into #{byte_size} bytes for data_type #{item.data_type}"
+        byte_size = item.bit_size / 8
+        next if default.bytesize <= byte_size
+
+        raise ArgumentError, "#{packet.target_name} #{packet.packet_name} #{item.name}: default value of #{default.bytesize} bytes does not fit into #{byte_size} bytes for data_type #{item.data_type}"
       end
     end
 
