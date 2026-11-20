@@ -635,7 +635,16 @@ class TestDecomMicroserviceMultipleDbShards(unittest.TestCase):
 
         # Handled commands are trimmed from the microservice topic on its db_shard
         msg_id = Topic.write_topic("MICROSERVICE__DEFAULT__DECOM__INST", {"command": "OTHER"}, db_shard=1)
-        self.dm.microservice_cmd("MICROSERVICE__DEFAULT__DECOM__INST", msg_id.decode(), {}, None)
+        original_trim = Topic.trim_topic
+        # Approximate trimming may leave a short stream untouched, so trim exactly
+        with patch.object(
+            Topic,
+            "trim_topic",
+            side_effect=lambda topic, minid, approximate=True, limit=0, db_shard=0: original_trim(
+                topic, minid, False, limit, db_shard=db_shard
+            ),
+        ):
+            self.dm.microservice_cmd("MICROSERVICE__DEFAULT__DECOM__INST", msg_id.decode(), {}, None)
         self.assertEqual(self.shard1.xlen("MICROSERVICE__DEFAULT__DECOM__INST"), 1)
 
     def test_builds_commands_on_the_target_db_shard(self):
