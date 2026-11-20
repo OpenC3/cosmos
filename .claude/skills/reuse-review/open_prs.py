@@ -10,7 +10,9 @@ root, and saves pr<N>.diff and pr<N>.md (title + body) plus index.tsv.
 Run it from the repo so gh resolves the remote.
 
 grep: for each regex, prints every PR hunk whose changed lines or enclosing
-function match (the last declaration seen in the hunk, else the @@ header), as "#N file [function] (+adds/-dels) first line".
+function match. The function is the last declaration seen in the hunk, else
+the enclosing one in the local file, else the @@ header. Output lines are
+"#N file [function] (+adds/-dels) first line". Run from the repo.
 A match is a lead: read the hunk to tell a fix from an overlap.
 """
 
@@ -67,35 +69,72 @@ def fetch(out, roots):
     print("\n".join(rows))
 
 
-# A method or function declaration (Python, Ruby, JS/Vue). The @@ header names
-# the nearest declaration above the hunk, which is wrong when the declaration is
-# inside the hunk, so declarations seen in the hunk (context or changed) win.
+# A method or function declaration (Python, Ruby, JS/Vue), after the one-char
+# diff prefix. Git names a hunk by the nearest unindented line above it, so a
+# Python method body change is usually credited to its class. Method identity
+# comes from, in order: a declaration seen in the hunk (context or changed); the
+# enclosing declaration in the local copy of the file, found from the hunk's old
+# line numbers; the @@ header.
 DECL = re.compile(
     r"^[ +-]\s*(?:(?:export|async|static|public|private|protected)\s+)*"
     r"(?:(?:def|function|class|module)\s+[\w.?!=]+|(?!(?:if|for|while|switch|catch|return)\b)[A-Za-z_]\w*\s*\([^)]*\)\s*\{\s*$)"
 )
+HUNK = re.compile(r"^@@ -(\d+)")
+
+
+def indent(text):
+    return len(text) - len(text.lstrip())
+
+
+def enclosing(lines, line_no, body):
+    """Return the nearest declaration above line_no (1-based) indented less than body."""
+    limit = indent(body) if body.strip() else None
+    for text in reversed(lines[: max(line_no - 1, 0)]):
+        if DECL.match(" " + text) and (limit is None or indent(text) < limit):
+            return text.strip()
+    return None
 
 
 def load(out):
+    try:
+        root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip()
+    except (OSError, subprocess.CalledProcessError):
+        root = os.getcwd()
+    cache = {}
+
+    def local(rel):
+        if rel not in cache:
+            try:
+                with open(os.path.join(root, rel), errors="replace") as f:
+                    cache[rel] = f.read().splitlines()
+            except OSError:
+                cache[rel] = []
+        return cache[rel]
+
     diffs = {}
     for path in sorted(glob.glob(os.path.join(out, "pr*.diff"))):
         n = os.path.basename(path)[2:-5]
-        cur, hdr, rows = None, "", []
+        cur, hdr, decl, old_ln, rows = None, "", None, 0, []
         with open(path, errors="replace") as f:
             for line in f:
                 if line.startswith("diff --git "):
-                    cur, hdr = None, ""
+                    cur, hdr, decl = None, "", None
                 elif line.startswith("--- a/"):
                     cur = line[6:].strip()  # kept when the file is deleted (+++ /dev/null)
                 elif line.startswith("+++ b/"):
                     cur = line[6:].strip()
                 elif line.startswith("@@"):
-                    hdr = line.split("@@")[-1].strip()
+                    hdr, decl = line.split("@@")[-1].strip(), None
+                    m = HUNK.match(line)
+                    old_ln = int(m.group(1)) if m else 0
                 elif line.startswith((" ", "+", "-")) and not line.startswith(("+++", "---")):
                     if DECL.match(line):
-                        hdr = line[1:].strip()
+                        decl = line[1:].strip()
                     if line[0] != " ":
-                        rows.append((cur, hdr, line.rstrip()))
+                        where = decl or (cur and enclosing(local(cur), old_ln, line[1:])) or hdr
+                        rows.append((cur, where, line.rstrip()))
+                    if line[0] != "+":
+                        old_ln += 1
         diffs[n] = rows
     return diffs
 
