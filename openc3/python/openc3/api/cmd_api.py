@@ -573,7 +573,7 @@ def get_cmd_hazardous(*args: Any, scope: str = OPENC3_SCOPE, manual: bool = Fals
             if len(args) == 2:
                 parameters = {}
             else:
-                parameters = args[2]
+                parameters = {k.upper(): v for k, v in args[2].items()}
 
         case _:
             # Invalid number of arguments

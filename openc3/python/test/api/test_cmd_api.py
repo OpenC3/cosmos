@@ -732,6 +732,13 @@ class TestCmdApi(unittest.TestCase):
         self.assertFalse(get_cmd_hazardous("INST", "COLLECT", {"DURATION": 5}))
         self.assertTrue(get_cmd_hazardous("INST", "COLLECT", {"TYPE": "SPECIAL", "DURATION": 5}))
 
+    def test_get_cmd_hazardous_uppercases_parameter_keys(self):
+        # Matches Ruby's transform_keys(&:upcase) for every calling style
+        self.assertTrue(get_cmd_hazardous("INST", "COLLECT", {"type": "SPECIAL"}))
+        self.assertTrue(get_cmd_hazardous("INST", "COLLECT", {"TYPE": "SPECIAL"}))
+        self.assertFalse(get_cmd_hazardous("INST", "COLLECT", {"type": "NORMAL"}))
+        self.assertFalse(get_cmd_hazardous("INST", "COLLECT", {}))
+
     def test_get_cmd_hazardous_returns_whether_the_command_is_hazardous(self):
         self.assertTrue(get_cmd_hazardous("INST CLEAR"))
         self.assertTrue(get_cmd_hazardous("INST", "CLEAR"))
