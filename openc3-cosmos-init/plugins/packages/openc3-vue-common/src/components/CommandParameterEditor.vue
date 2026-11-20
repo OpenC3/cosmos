@@ -20,6 +20,7 @@
     <v-text-field
       v-if="!states"
       :model-value="textFieldValue"
+      :placeholder="requiredPlaceholder"
       :disabled="disabled"
       hide-details
       density="compact"
@@ -119,7 +120,14 @@ export default {
   },
   computed: {
     textFieldValue() {
+      // null marks a required parameter that isn't set (see CommandEditor)
+      if (this.modelValue === null) {
+        return ''
+      }
       return this.convertToString(this.modelValue)
+    },
+    requiredPlaceholder() {
+      return this.modelValue === null ? 'Required' : undefined
     },
     stateValue() {
       if (this.statesInHex) {

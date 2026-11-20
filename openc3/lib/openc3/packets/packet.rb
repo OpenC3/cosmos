@@ -919,7 +919,14 @@ module OpenC3
           # Only skip if key is explicitly set (different from item name) - this distinguishes
           # JsonAccessor (key="$.field") from TemplateAccessor (key=name="FIELD")
           next if item.key and item.key != item.name and @template and use_template
-          write_item(item, item.default, :CONVERTED, buffer) unless skip_item_names and upcase_skip_item_names.include?(item.name)
+          next if skip_item_names and upcase_skip_item_names.include?(item.name)
+
+          begin
+            write_item(item, item.default, :CONVERTED, buffer)
+          rescue ArgumentError => e
+            # Name the item since the accessor error doesn't
+            raise ArgumentError, "#{@target_name} #{@packet_name} #{item.name} default value: #{e.message}", e.backtrace
+          end
         end
       end
     end

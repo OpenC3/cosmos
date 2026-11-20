@@ -608,6 +608,57 @@ module OpenC3
       end
     end
 
+    describe "build_cmd with REQUIRED parameters" do
+      before(:each) do
+        tf = Tempfile.new('unittest')
+        tf.puts 'COMMAND TGT1 STAT_FILE BIG_ENDIAN'
+        tf.puts '  APPEND_ID_PARAMETER OPCODE 8 UINT 1 1 1'
+        tf.puts '  APPEND_PARAMETER OPTION1 1024 STRING "Default" "Option 1"'
+        tf.puts '    REQUIRED'
+        tf.puts '  APPEND_PARAMETER OPTION2 256 STRING nil "Option 2"'
+        tf.puts '    REQUIRED'
+        tf.puts '  APPEND_PARAMETER OPTION3 16 UINT MIN MAX NONE "Option 3"'
+        tf.puts '    REQUIRED'
+        tf.close
+        pc = PacketConfig.new
+        pc.process_file(tf.path, "TGT1")
+        tf.unlink
+        @cmd = Commands.new(pc)
+      end
+
+      it "reports missing required parameters before writing defaults" do
+        expect { @cmd.build_cmd("TGT1", "STAT_FILE", { "OPTION1" => "test", "OPTION3" => 1 }) }.to \
+          raise_error(RuntimeError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given")
+        # A default that can't be written must not hide the missing parameter
+        @cmd.packet("TGT1", "STAT_FILE").get_item("OPTION2").default = "X" * 50
+        expect { @cmd.build_cmd("TGT1", "STAT_FILE", { "OPTION1" => "test", "OPTION3" => 1 }) }.to \
+          raise_error(RuntimeError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given")
+        # Symbol and lowercase names count as given
+        cmd = @cmd.build_cmd("TGT1", "STAT_FILE", { option1: "test", "option2" => "value", "Option3" => 3 })
+        expect(cmd.read("OPTION1")).to eql "test"
+        expect(cmd.read("OPTION2")).to eql "value"
+        expect(cmd.read("OPTION3")).to eql 3
+      end
+
+      it "skips nil defaults when required parameters aren't checked" do
+        cmd = @cmd.build_cmd("TGT1", "STAT_FILE", {}, true, false, false)
+        expect(cmd.read("OPTION1")).to eql "Default"
+        expect(cmd.read("OPTION2")).to eql ""
+        expect(cmd.read("OPTION3")).to eql 0
+      end
+
+      it "names the parameter when a given value doesn't fit" do
+        expect { @cmd.build_cmd("TGT1", "STAT_FILE", { "OPTION1" => "test", "OPTION2" => "X" * 33, "OPTION3" => 1 }) }.to \
+          raise_error(ArgumentError, "Command parameter 'TGT1 STAT_FILE OPTION2': value of 33 bytes does not fit into 32 bytes for data_type STRING")
+      end
+
+      it "names the parameter when its default doesn't fit" do
+        @cmd.packet("TGT1", "STAT_FILE").get_item("OPTION2").default = "X" * 50
+        expect { @cmd.build_cmd("TGT1", "STAT_FILE", { "OPTION1" => "test" }, true, false, false) }.to \
+          raise_error(ArgumentError, "TGT1 STAT_FILE OPTION2 default value: value of 50 bytes does not fit into 32 bytes for data_type STRING")
+      end
+    end
+
     describe "build_cmd with variable_bit_size arrays" do
       it "skips auto-managed length fields for variable_bit_size arrays" do
         # Test that build_cmd skips writing length fields that are auto-managed by

@@ -23,6 +23,115 @@ require 'tempfile'
 
 module OpenC3
   describe PacketParser do
+    describe "check_item_default_sizes" do
+      before(:each) do
+        @pc = PacketConfig.new
+      end
+
+      def process(*lines)
+        tf = Tempfile.new('unittest')
+        tf.puts 'COMMAND TGT1 PKT1 BIG_ENDIAN'
+        lines.each { |line| tf.puts line }
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+      ensure
+        tf.unlink
+      end
+
+      it "complains about STRING and BLOCK defaults that don't fit" do
+        expect { process('  APPEND_PARAMETER ITEM1 32 STRING "TOO LONG" "Description"') }.to \
+          raise_error(ArgumentError, "TGT1 PKT1 ITEM1: default value of 8 bytes does not fit into 4 bytes for data_type STRING")
+        @pc = PacketConfig.new
+        expect { process('  APPEND_PARAMETER ITEM1 16 BLOCK 0x010203 "Description"') }.to \
+          raise_error(ArgumentError, "TGT1 PKT1 ITEM1: default value of 3 bytes does not fit into 2 bytes for data_type BLOCK")
+        # DEFAULT_VALUE is applied before the check
+        @pc = PacketConfig.new
+        expect { process('  APPEND_PARAMETER ITEM1 32 STRING "OK" "Description"', '    DEFAULT_VALUE "TOO LONG"') }.to \
+          raise_error(ArgumentError, /ITEM1: default value of 8 bytes/)
+      end
+
+      it "complains about REQUIRED parameter defaults that don't fit" do
+        expect { process('  APPEND_PARAMETER ITEM1 32 STRING "TOO LONG" "Description"', '    REQUIRED') }.to \
+          raise_error(ArgumentError, "TGT1 PKT1 ITEM1: default value of 8 bytes does not fit into 4 bytes for data_type STRING")
+      end
+
+      it "allows defaults that fit, are truncated, or are variably sized" do
+        process('  APPEND_PARAMETER ITEM1 32 STRING "FITS" "Description"',
+                '  APPEND_PARAMETER ITEM2 32 STRING "TRUNCATED" "Description"',
+                '    OVERFLOW TRUNCATE',
+                '  APPEND_PARAMETER ITEM3 0 STRING "ANY SIZE AT ALL" "Description"')
+        expect(@pc.warnings.grep(/does not fit/)).to be_empty
+      end
+
+      it "ignores non-binary accessors" do
+        process('  ACCESSOR JsonAccessor',
+                '  APPEND_PARAMETER ITEM1 32 STRING "TOO LONG" "Description"',
+                '    KEY $.item1')
+        expect(@pc.warnings.grep(/does not fit/)).to be_empty
+      end
+    end
+
+    describe "nil defaults" do
+      before(:each) do
+        @pc = PacketConfig.new
+      end
+
+      def process(*lines)
+        tf = Tempfile.new('unittest')
+        tf.puts 'COMMAND TGT1 PKT1 BIG_ENDIAN'
+        lines.each { |line| tf.puts line }
+        tf.close
+        @pc.process_file(tf.path, "TGT1")
+        @pc.commands["TGT1"]["PKT1"]
+      ensure
+        tf.unlink
+      end
+
+      it "allows nil, none, or null defaults for REQUIRED parameters" do
+        packet = process(
+          '  APPEND_PARAMETER ITEM1 16 UINT MIN MAX nil "UINT"', '    REQUIRED',
+          '  APPEND_PARAMETER ITEM2 16 INT MIN MAX None "INT"', '    REQUIRED',
+          '  APPEND_PARAMETER ITEM3 32 FLOAT MIN MAX NULL "FLOAT"', '    REQUIRED',
+          '  APPEND_PARAMETER ITEM4 32 STRING nil "STRING"', '    REQUIRED',
+          '  APPEND_PARAMETER ITEM5 32 BLOCK "none" "BLOCK"', '    REQUIRED',
+          '  APPEND_PARAMETER ITEM6 8 BOOL null "BOOL"', '    REQUIRED',
+          '  APPEND_PARAMETER ITEM7 64 ARRAY nil "ARRAY"', '    REQUIRED',
+          '  APPEND_PARAMETER ITEM8 64 OBJECT nil "OBJECT"', '    REQUIRED',
+          # DEFAULT_VALUE and REQUIRED can come in either order
+          '  APPEND_PARAMETER ITEM9 16 UINT MIN MAX 0 "UINT"', '    REQUIRED', '    DEFAULT_VALUE nil'
+        )
+        (1..9).each { |i| expect(packet.get_item("ITEM#{i}").default).to be_nil }
+      end
+
+      it "complains about nil defaults for numeric parameters that aren't REQUIRED" do
+        expect { process('  APPEND_PARAMETER ITEM1 16 UINT MIN MAX nil "UINT"') }.to \
+          raise_error(ArgumentError, "TGT1 PKT1 ITEM1: default of nil is only allowed for REQUIRED parameters")
+        @pc = PacketConfig.new
+        expect { process('  APPEND_PARAMETER ITEM1 8 BOOL NONE "BOOL"') }.to \
+          raise_error(ArgumentError, "TGT1 PKT1 ITEM1: default of NONE is only allowed for REQUIRED parameters")
+      end
+
+      it "keeps nil defaults as strings for STRING and BLOCK parameters that aren't REQUIRED" do
+        packet = process('  APPEND_PARAMETER ITEM1 32 STRING NONE "STRING"',
+                         '  APPEND_PARAMETER ITEM2 32 BLOCK null "BLOCK"')
+        expect(packet.get_item("ITEM1").default).to eql "NONE"
+        expect(packet.get_item("ITEM2").default).to eql "null"
+      end
+
+      it "writes nil defaults to the config" do
+        packet = process('  APPEND_PARAMETER ITEM1 16 UINT MIN MAX nil "UINT"', '    REQUIRED',
+                         '  APPEND_PARAMETER ITEM2 32 STRING nil "STRING"', '    REQUIRED')
+        config = packet.to_config(:COMMAND)
+        expect(config).to include('PARAMETER ITEM1 0 16 UINT 0 65535 nil "UINT"')
+        expect(config).to include('PARAMETER ITEM2 16 32 STRING nil "STRING"')
+        # The config loads back the same way
+        @pc = PacketConfig.new
+        packet = process(*config.split("\n").drop(1))
+        expect(packet.get_item("ITEM1").default).to be_nil
+        expect(packet.get_item("ITEM2").default).to be_nil
+      end
+    end
+
     describe "process_file" do
       before(:each) do
         @pc = PacketConfig.new

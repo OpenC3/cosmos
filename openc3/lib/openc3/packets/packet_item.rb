@@ -85,6 +85,9 @@ module OpenC3
     # The allowable state colors
     STATE_COLORS = [:GREEN, :YELLOW, :RED]
 
+    # Default values (case insensitive) meaning a REQUIRED parameter has no default
+    NIL_DEFAULTS = ['NIL', 'NONE', 'NULL']
+
     # PacketItemLimits is created on first access since most items have no
     # limits and large definitions have hundreds of thousands of items.
     # @return [PacketItemLimits] All information regarding limits for this PacketItem
@@ -529,7 +532,11 @@ module OpenC3
       end
       config << "#{@name.to_s.quote_if_necessary} #{@bit_offset} #{@bit_size} #{@data_type} "
 
-      if @data_type == :BLOCK || @data_type == :STRING
+      if value.nil?
+        # Only REQUIRED parameters have no default
+        config << "#{calculate_range().join(' ')} " unless @data_type == :BLOCK || @data_type == :STRING
+        val_string = 'nil'
+      elsif @data_type == :BLOCK || @data_type == :STRING
         unless value.is_printable?
           val_string = "0x" + value.simple_formatted
         else

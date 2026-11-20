@@ -362,6 +362,7 @@ module OpenC3
         end
         if @current_cmd_or_tlm == COMMAND
           PacketParser.check_item_data_types(@current_packet)
+          PacketParser.check_item_default_sizes(@current_packet)
           @commands[@current_packet.target_name][@current_packet.packet_name] = @current_packet
           unless @current_packet.virtual
             if @current_packet.subpacket
