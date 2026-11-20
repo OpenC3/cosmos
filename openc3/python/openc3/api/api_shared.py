@@ -35,7 +35,7 @@ DEFAULT_TLM_POLLING_RATE = 0.25
 # Without the 'f' :.X means display X significant figures
 
 
-def check(*args: Any, type: ValueType = "CONVERTED", scope: str = "DEFAULT") -> None:
+def check(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:
     """Check the value of a telemetry item against a condition.
 
     Always prints the value of the telemetry item. Accepts two calling styles::
@@ -54,7 +54,7 @@ def check(*args: Any, type: ValueType = "CONVERTED", scope: str = "DEFAULT") -> 
     return _check(*args, type=type, scope=scope)
 
 
-def check_raw(*args: Any, scope: str = "DEFAULT") -> None:
+def check_raw(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the RAW value of a telemetry item against a condition. See `check` for the calling styles.
 
     Args:
@@ -65,7 +65,7 @@ def check_raw(*args: Any, scope: str = "DEFAULT") -> None:
     return _check(*args, type="RAW", scope=scope)
 
 
-def check_formatted(*args: Any, scope: str = "DEFAULT") -> None:
+def check_formatted(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the FORMATTED value of a telemetry item against a condition. See `check` for the calling styles.
 
     Args:
@@ -77,7 +77,7 @@ def check_formatted(*args: Any, scope: str = "DEFAULT") -> None:
 
 
 # DEPRECATED
-def check_with_units(*args: Any, scope: str = "DEFAULT") -> None:
+def check_with_units(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the FORMATTED value of a telemetry item against a condition.
 
     .. deprecated:: 7.0.0
@@ -192,7 +192,10 @@ def check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str = OPEN
 
 
 def check_expression(
-    exp_to_eval: str, globals: dict[str, Any] | None = None, locals: Mapping[str, Any] | None = None
+    exp_to_eval: str,
+    globals: dict[str, Any] | None = None,
+    locals: Mapping[str, Any] | None = None,
+    scope: str = OPENC3_SCOPE,
 ) -> None:
     """Check that a Python expression is true without waiting.
 
@@ -200,6 +203,8 @@ def check_expression(
         exp_to_eval: Python expression to evaluate. Must be ASCII.
         globals: Global namespace used to evaluate the expression.
         locals: Local namespace used to evaluate the expression.
+        scope: COSMOS scope. Unused because the expression is evaluated locally,
+            but accepted like the other check and wait methods.
 
     Raises:
         CheckError: If the expression is not true.
@@ -422,6 +427,7 @@ def wait_expression(
     globals: dict[str, Any] | None = None,
     locals: Mapping[str, Any] | None = None,
     quiet: bool = False,
+    scope: str = OPENC3_SCOPE,
 ) -> bool | None:
     """Wait for a Python expression to be true.
 
@@ -434,6 +440,8 @@ def wait_expression(
         globals: Global namespace used to evaluate the expression.
         locals: Local namespace used to evaluate the expression.
         quiet: Whether to suppress printing the result.
+        scope: COSMOS scope. Unused because the expression is evaluated locally,
+            but accepted like the other check and wait methods.
 
     Returns:
         True if the expression became true before the timeout, otherwise None.
@@ -605,6 +613,7 @@ def wait_check_expression(
     polling_rate: float = DEFAULT_TLM_POLLING_RATE,
     globals: dict[str, Any] | None = None,
     locals: Mapping[str, Any] | None = None,
+    scope: str = OPENC3_SCOPE,
 ) -> float:
     """Wait for a Python expression to be true, then check it.
 
@@ -614,6 +623,8 @@ def wait_check_expression(
         polling_rate: Seconds between evaluations.
         globals: Global namespace used to evaluate the expression.
         locals: Local namespace used to evaluate the expression.
+        scope: COSMOS scope. Unused because the expression is evaluated locally,
+            but accepted like the other check and wait methods.
 
     Returns:
         The seconds actually waited.

@@ -119,6 +119,33 @@ class TestOpenc3ScriptSleep(unittest.TestCase):
         mock_input.assert_called_once_with("Press any key to continue...")
 
 
+# Regression tests for scope handling in the check and expression methods
+class TestApiSharedScope(unittest.TestCase):
+    def test_check_methods_default_to_openc3_scope(self):
+        import importlib
+        import warnings
+
+        import openc3.script.api_shared as api_shared
+
+        # Defaults bind at import so reload the module with a non-DEFAULT OPENC3_SCOPE
+        self.addCleanup(importlib.reload, api_shared)
+        with patch("openc3.environment.OPENC3_SCOPE", "ENVSCOPE"):
+            importlib.reload(api_shared)
+        with patch.object(api_shared, "_check") as mock_check, warnings.catch_warnings():
+            warnings.simplefilter("ignore", FutureWarning)
+            for method in ("check", "check_raw", "check_formatted", "check_with_units"):
+                getattr(api_shared, method)("INST HEALTH_STATUS TEMP1 > 1")
+                self.assertEqual(mock_check.call_args.kwargs["scope"], "ENVSCOPE", method)
+
+    def test_expression_methods_accept_scope(self):
+        # Ruby accepts scope on these so Python must too, even though the eval doesn't use it
+        for stdout in capture_io():
+            check_expression("True", scope="OTHER")
+            self.assertTrue(wait_expression("True", 0, scope="OTHER"))
+            wait_check_expression("True", 0, scope="OTHER")
+            self.assertIn("CHECK: True is TRUE", stdout.getvalue())
+
+
 @patch("openc3.script.API_SERVER", Proxy)
 @patch("openc3.script.api_shared.openc3_script_sleep", my_openc3_script_sleep)
 class TestApiShared(unittest.TestCase):

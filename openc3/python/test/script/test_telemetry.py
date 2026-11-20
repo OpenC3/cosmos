@@ -88,6 +88,21 @@ class TestTelemetry(unittest.TestCase):
                 stdout.getvalue(),
             )
 
+    def test_inject_tlm_forwards_positional_scope_and_keyword_received_time(self):
+        with patch("openc3.script.API_SERVER") as server:
+            for _ in capture_io():
+                inject_tlm("TARGET", "PACKET", {"PARAM": 1}, "RAW", True, "OTHER", received_time=1000)
+            server.inject_tlm.assert_called_once_with(
+                "TARGET", "PACKET", {"PARAM": 1}, type="RAW", stored=True, scope="OTHER", received_time=1000
+            )
+
+    def test_inject_tlm_received_time_is_keyword_only(self):
+        # A positional received_time would be ambiguous with the positional scope before it
+        with patch("openc3.script.API_SERVER") as server:
+            with self.assertRaises(TypeError):
+                inject_tlm("TARGET", "PACKET", {"PARAM": 1}, "RAW", True, "OTHER", 1000)  # ty: ignore[too-many-positional-arguments]
+            server.inject_tlm.assert_not_called()
+
     def test_set_tlm(self):
         for stdout in capture_io():
             set_tlm("TARGET", "PACKET", "ITEM", 10)
