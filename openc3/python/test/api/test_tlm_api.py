@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1957
 
 import contextlib
+import inspect
 import json
 import re
 import threading
@@ -640,6 +641,20 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(pkt["packet_name"], "HEALTH_STATUS")
         pkt = get_tlm("inst   Health_Status", scope="DEFAULT")
         self.assertEqual(type(pkt), dict)
+
+    def test_get_telemetry_forwards_scope_to_get_tlm(self):
+        with patch.object(TargetModel, "packet", return_value={"packet_name": "HEALTH_STATUS"}) as packet:
+            with self.assertWarns(FutureWarning):
+                get_telemetry("INST", "HEALTH_STATUS", scope="OTHER")
+            packet.assert_called_with("INST", "HEALTH_STATUS", scope="OTHER")
+            with self.assertWarns(FutureWarning):
+                get_telemetry("INST HEALTH_STATUS", scope="OTHER")
+            packet.assert_called_with("INST", "HEALTH_STATUS", scope="OTHER")
+
+    def test_inject_tlm_received_time_is_keyword_only(self):
+        # A positional received_time would be ambiguous with the positional scope before it
+        received_time = inspect.signature(inject_tlm).parameters["received_time"]
+        self.assertEqual(received_time.kind, inspect.Parameter.KEYWORD_ONLY)
 
     # get_item
     def test_get_item_raises_if_the_target_or_packet_or_item_do_not_exist(self):

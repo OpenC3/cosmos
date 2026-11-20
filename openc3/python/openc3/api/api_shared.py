@@ -35,7 +35,7 @@ DEFAULT_TLM_POLLING_RATE = 0.25
 # Without the 'f' :.X means display X significant figures
 
 
-def check(*args: Any, type: ValueType = "CONVERTED", scope: str = "DEFAULT") -> None:
+def check(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:
     """Check the value of a telemetry item against a condition.
 
     Always prints the value of the telemetry item. Accepts two calling styles::
@@ -54,7 +54,7 @@ def check(*args: Any, type: ValueType = "CONVERTED", scope: str = "DEFAULT") -> 
     return _check(*args, type=type, scope=scope)
 
 
-def check_raw(*args: Any, scope: str = "DEFAULT") -> None:
+def check_raw(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the RAW value of a telemetry item against a condition. See `check` for the calling styles.
 
     Args:
@@ -65,7 +65,7 @@ def check_raw(*args: Any, scope: str = "DEFAULT") -> None:
     return _check(*args, type="RAW", scope=scope)
 
 
-def check_formatted(*args: Any, scope: str = "DEFAULT") -> None:
+def check_formatted(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the FORMATTED value of a telemetry item against a condition. See `check` for the calling styles.
 
     Args:
@@ -77,7 +77,7 @@ def check_formatted(*args: Any, scope: str = "DEFAULT") -> None:
 
 
 # DEPRECATED
-def check_with_units(*args: Any, scope: str = "DEFAULT") -> None:
+def check_with_units(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the FORMATTED value of a telemetry item against a condition.
 
     .. deprecated:: 7.0.0

@@ -10812,6 +10812,28 @@ In Enterprise, the `OPENC3_API_USER` and `OPENC3_API_PASSWORD` environment varia
 Depending on your deployment environment, there are several ways Secrets can be managed. In a Kubernetes deployment, [Secretes](https://kubernetes.io/docs/concepts/configuration/secret/) can be configured, or dynamically managed by a separate secrets management tool like [HashiCorp Vault](https://github.com/hashicorp/vault) or [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
 
 <Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+initialize_offline_access(scope=OPENC3_SCOPE)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+initialize_offline_access(scope: $openc3_scope)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                              |
+| --------- | ------------------------------------------------------------------------ |
+| scope     | Scope to set the offline access token in. Defaults to the current scope. |
+
+<Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python

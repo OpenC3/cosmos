@@ -15,7 +15,7 @@ from unittest.mock import *
 
 from openc3.models.target_model import TargetModel
 from openc3.script.commands import *
-from openc3.top_level import HazardousError
+from openc3.top_level import CriticalCmdError, HazardousError
 from test.test_helper import *
 
 
@@ -121,6 +121,29 @@ class Proxy:
             int(gTime),
             int((gTime - int(gTime)) * 1_000_000),
         )
+
+
+class TestCriticalCmdScope(unittest.TestCase):
+    def test_cmd_forwards_scope_to_prompt_for_critical_cmd(self):
+        error = CriticalCmdError()
+        error.uuid = "UUID"
+        error.command = {
+            "username": "user",
+            "target_name": "INST",
+            "cmd_name": "ABORT",
+            "cmd_params": {},
+            "cmd_string": 'cmd("INST ABORT")',
+            "obfuscated_items": [],
+        }
+        server = MagicMock()
+        server.cmd.side_effect = error
+        with (
+            patch("openc3.script.API_SERVER", server),
+            patch("openc3.script.prompt_for_critical_cmd") as prompt,
+        ):
+            for _ in capture_io():
+                cmd("INST ABORT", scope="OTHER")
+        prompt.assert_called_once_with("UUID", "user", "INST", "ABORT", {}, 'cmd("INST ABORT")', scope="OTHER")
 
 
 @patch("openc3.script.API_SERVER", Proxy)
