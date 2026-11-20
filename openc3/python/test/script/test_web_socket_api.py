@@ -15,6 +15,7 @@ import sys
 import time
 import unittest
 from datetime import datetime, timedelta, timezone
+from typing import Any
 from unittest.mock import Mock, patch
 
 from websockets.exceptions import ConnectionClosedOK
@@ -1099,8 +1100,9 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
 
     def test_only_accepts_keyword_arguments(self):
         # Positional arguments made it easy to pass the scope as the timeout
+        args: tuple[Any, ...] = (["ITEM"],)
         with self.assertRaises(TypeError):
-            StreamingWebSocketApi.read_all(["ITEM"])  # ty: ignore[too-many-positional-arguments]
+            StreamingWebSocketApi.read_all(*args)
         self.stream_class.assert_not_called()
 
 
