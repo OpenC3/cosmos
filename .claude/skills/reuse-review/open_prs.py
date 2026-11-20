@@ -23,24 +23,31 @@ import sys
 
 
 def fetch(out, roots):
-    os.makedirs(out, exist_ok=True)
+    # Repo-relative roots: "./openc3/lib" -> "openc3/lib"; "." matches every file
+    roots = [os.path.normpath(r) for r in roots]
     prs = json.loads(
         subprocess.check_output(
             ["gh", "pr", "list", "--state", "open", "--limit", "300", "--json", "number,title,body,files"]
         )
     )
-    rows = []
+    selected = []
     for pr in prs:
         paths = [f["path"] for f in pr["files"]]
-        hits = [p for p in paths if any(p.startswith(r.rstrip("/") + "/") or p == r for r in roots)]
-        if not hits:
-            continue
+        hits = [p for p in paths if any(r == "." or p == r or p.startswith(r + "/") for r in roots)]
+        if hits:
+            selected.append((pr, len(hits), subprocess.check_output(["gh", "pr", "diff", str(pr["number"])], text=True)))
+    # Everything fetched, so replace the old snapshot: a closed PR's files must not linger
+    os.makedirs(out, exist_ok=True)
+    for old in glob.glob(os.path.join(out, "pr*.diff")) + glob.glob(os.path.join(out, "pr*.md")):
+        os.remove(old)
+    rows = []
+    for pr, hits, diff in selected:
         n = pr["number"]
         with open(os.path.join(out, f"pr{n}.diff"), "w") as f:
-            f.write(subprocess.check_output(["gh", "pr", "diff", str(n)], text=True))
+            f.write(diff)
         with open(os.path.join(out, f"pr{n}.md"), "w") as f:
             f.write(f"# #{n} {pr['title']}\n\n{pr['body'] or ''}\n")
-        rows.append(f"{n}\t{pr['title']}\t{len(hits)}")
+        rows.append(f"{n}\t{pr['title']}\t{hits}")
     with open(os.path.join(out, "index.tsv"), "w") as f:
         f.write("\n".join(rows) + "\n")
     print(f"{len(rows)} open PRs touch {', '.join(roots)}; saved to {out}")
@@ -52,13 +59,18 @@ def load(out):
     for path in sorted(glob.glob(os.path.join(out, "pr*.diff"))):
         n = os.path.basename(path)[2:-5]
         cur, hdr, rows = None, "", []
-        for line in open(path, errors="replace"):
-            if line.startswith("+++ b/"):
-                cur = line[6:].strip()
-            elif line.startswith("@@"):
-                hdr = line.split("@@")[-1].strip()
-            elif line.startswith(("+", "-")) and not line.startswith(("+++", "---")):
-                rows.append((cur, hdr, line.rstrip()))
+        with open(path, errors="replace") as f:
+            for line in f:
+                if line.startswith("diff --git "):
+                    cur, hdr = None, ""
+                elif line.startswith("--- a/"):
+                    cur = line[6:].strip()  # kept when the file is deleted (+++ /dev/null)
+                elif line.startswith("+++ b/"):
+                    cur = line[6:].strip()
+                elif line.startswith("@@"):
+                    hdr = line.split("@@")[-1].strip()
+                elif line.startswith(("+", "-")) and not line.startswith(("+++", "---")):
+                    rows.append((cur, hdr, line.rstrip()))
         diffs[n] = rows
     return diffs
 

@@ -217,13 +217,23 @@ def compare(r, p):
         pp = pmap[name]
         if rp["default"] != pp["default"]:
             diffs.append(f"`{name}` default: Ruby `{rp['default']}` vs Python `{pp['default']}`")
+        # Only kind pairs that reject a call the twin accepts. A Ruby keyword
+        # with a Python positional-or-keyword default accepts the same calls.
         if rp["kind"] == "kw" and pp["kind"] == "pos" and pp["default"] == "REQUIRED":
             diffs.append(f"`{name}` is a keyword in Ruby, a required positional in Python")
+        if rp["kind"] == "pos" and pp["kind"] == "kw":
+            diffs.append(f"`{name}` is positional in Ruby, keyword-only in Python")
     for name in pmap:
         if name not in rmap and not r_varkw and name not in ("self", "cls") and name not in RUBY_ONLY_PARAMS:
             diffs.append(f"Python param `{name}` missing in Ruby")
+    r_order = [x["name"] for x in r["params"] if x["kind"] == "pos" and x["name"] in pmap]
+    p_order = [x["name"] for x in p["params"] if x["kind"] == "pos" and x["name"] in rmap]
+    if [n for n in r_order if n in p_order] != [n for n in p_order if n in r_order]:
+        diffs.append(f"positional order: Ruby ({', '.join(r_order)}) vs Python ({', '.join(p_order)})")
     if r_var != p_var:
         diffs.append(f"*args: Ruby {r_var} vs Python {p_var}")
+    if r_varkw != p_varkw:
+        diffs.append(f"**kwargs: Ruby {r_varkw} vs Python {p_varkw}")
     return diffs
 
 

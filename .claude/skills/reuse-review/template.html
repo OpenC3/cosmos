@@ -64,7 +64,7 @@
   <p class="text-sm text-slate-600 max-w-prose">Each of these can be fixed on its own, before any refactor. Fixing them first, with tests, gives each refactor a safety net. "Checked" means I read the code myself; the rest come from a sweep and still need a test to confirm.</p>
   <div class="scroll rounded-lg border border-slate-200 bg-white">
     <table class="w-full text-sm">
-      <thead class="bg-slate-50 text-left"><tr><th class="p-2">Bug</th><th class="p-2">Where</th><th class="p-2">Counterpart</th><th class="p-2">Card</th><th class="p-2">Checked</th></tr></thead>
+      <thead class="bg-slate-50 text-left"><tr><th class="p-2">Bug</th><th class="p-2">Where</th><th class="p-2">Counterpart</th><th class="p-2">Card</th><th class="p-2">Checked</th><th class="p-2">Open PR</th></tr></thead>
       <tbody id="bug-rows" class="divide-y divide-slate-100 align-top"></tbody>
     </table>
   </div>
@@ -145,8 +145,9 @@ const SMALL = [
 ];
 
 const BUGS = [
-// [bug, where, Ruby/counterpart status, card number, checked: true only if you read the code yourself]
-  ['<code>details()</code> deletes PASSWORD/CERT/KEY/CA_FILE from the live interface options', 'interface.py:575 + mqtt_interface.py:237-245', 'same', 3, true],
+// [bug, where, Ruby/counterpart status, card number, checked: true only if you read the code yourself,
+//  pr: '#N' when an open PR fixes it, or '' when none does]
+  ['<code>details()</code> deletes PASSWORD/CERT/KEY/CA_FILE from the live interface options', 'interface.py:575 + mqtt_interface.py:237-245', 'same', 3, true, ''],
 ];
 
 const pill = (cls, txt) => `<span class="px-2 py-0.5 rounded-full text-xs ${cls}">${txt}</span>`;
@@ -201,8 +202,9 @@ document.getElementById('candidates').cleanHTML = CARDS.map((c, i) => {
 document.getElementById('small-rows').cleanHTML = SMALL.map(([t, w, p, n]) => `
   <tr><td class="p-2">${t}</td><td class="p-2 font-mono text-xs">${w}</td><td class="p-2">${pill(PARITY[p][0], p)}</td><td class="p-2 text-slate-700">${n}</td></tr>`).join('');
 
-document.getElementById('bug-rows').cleanHTML = BUGS.map(([b, w, r, card, ok]) => `
-  <tr><td class="p-2">${b}</td><td class="p-2 font-mono text-xs">${w}</td><td class="p-2 text-xs">${r}</td>
+document.getElementById('bug-rows').cleanHTML = BUGS.map(([b, w, r, card, ok, pr]) => `
+  <tr class="${pr ? 'text-slate-400' : ''}"><td class="p-2">${pr ? `<s>${b}</s>` : b}</td><td class="p-2 font-mono text-xs">${w}</td><td class="p-2 text-xs">${r}</td>
   <td class="p-2"><a class="underline text-xs" href="#c${card}">${String(card).padStart(2, '0')}</a></td>
-  <td class="p-2 text-xs">${ok ? '<span class="text-emerald-700">✓ read</span>' : '<span class="text-slate-500">sweep</span>'}</td></tr>`).join('');
+  <td class="p-2 text-xs">${ok ? '<span class="text-emerald-700">✓ read</span>' : '<span class="text-slate-500">sweep</span>'}</td>
+  <td class="p-2 text-xs">${pr ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">fixed in ${pr}</span>` : 'none'}</td></tr>`).join('');
 </script>

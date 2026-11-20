@@ -67,8 +67,8 @@ python3 .claude/skills/reuse-review/open_prs.py grep "$SCRATCH/prs" "<method or 
 Grep for each bug's method and each candidate's functions, then read every
 matching hunk and sort it:
 
-- **Fixed:** the hunk changes the cited lines. Set the bug row's `pr` field to `#N` and say so in its card.
-- **Overlap:** the PR edits the same functions without fixing the finding. Name it in the card ("land after #N"), because the refactor will conflict with it. A PR that adds another copy of the duplicated code strengthens the card; say that too.
+- **Fixed:** the code after the PR no longer has the bug. Replay the bug's failing case against the PR's version of the lines; a hunk that only changes them is not enough. Set the bug row's `pr` field to `#N` and say so in its card.
+- **Overlap:** the PR edits the same functions, or changes the cited lines, without fixing the finding. Name it in the card ("land after #N"), because the refactor will conflict with it. A PR that adds another copy of the duplicated code strengthens the card; say that too.
 
 Done when every bug row is marked checked or sweep, has a PR status, and every candidate states which enterprise imports and open PRs it touches.
 

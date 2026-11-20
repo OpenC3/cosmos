@@ -21,11 +21,13 @@ counterparts too.
 ## 1. Inventory
 
 Run the signature inventory into the scratchpad (`$SCRATCH` is the session
-scratchpad directory). Pass `api`, `script` or both; the default is both:
+scratchpad directory). With no area it covers both `api` and `script`:
 
 ```bash
-python3 .claude/skills/parity-review/inventory.py . "$SCRATCH/parity" [api script] > "$SCRATCH/parity/inventory.md"
+python3 .claude/skills/parity-review/inventory.py . "$SCRATCH/parity" > "$SCRATCH/parity/inventory.md"
 ```
+
+To restrict it, append `api` or `script` after `"$SCRATCH/parity"`.
 
 It pairs Ruby and Python definitions by module and class, and lists:
 
@@ -75,7 +77,7 @@ For every finding:
 
 - Read both sides' cited lines. Keep the finding if the difference is real, and drop it if the code disagrees.
 - Mark it **checked** if you read it yourself, or **sweep** if you did not.
-- Confirm the PR check with `python3 .claude/skills/reuse-review/open_prs.py grep "$SCRATCH/parity/prs" "<method>"`, and read each matching hunk. If it changes the cited lines, move the finding to **Fixed in open PRs**. If it only edits the same method, keep the finding and note "conflicts with #N" so the fix lands after it.
+- Confirm the PR check with `python3 .claude/skills/reuse-review/open_prs.py grep "$SCRATCH/parity/prs" "<method>"`, and read each matching hunk. Move the finding to **Fixed in open PRs** only when the PR's version of the code no longer has the difference: trace the finding's script call through it. A hunk that changes the cited lines but leaves the difference is not a fix. Otherwise keep the finding and note "conflicts with #N" so the fix lands after it.
 - Settle "which side is right" from `docs.openc3.com/docs/guides/scripting-api.md` first, then the server code, then the tests. If none of them decides it, record "unclear".
 
 Done when every finding is marked checked or sweep, and every finding has a side or "unclear".
