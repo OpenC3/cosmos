@@ -378,6 +378,7 @@ def _cmd(
                 error.command["cmd_name"],
                 error.command["cmd_params"],
                 error.command["cmd_string"],
+                scope=scope,
             )
             if log_message is None or log_message:
                 _log_cmd(error.command, raw, no_range, no_hazardous)

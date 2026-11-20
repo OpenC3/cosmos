@@ -84,7 +84,7 @@ module OpenC3
     def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: $openc3_scope)
       case args.length
       when 1
-        target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
+        target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0], scope: scope)
       when 2, 3
         target_name = args[0]
         cmd_name    = args[1]
@@ -144,7 +144,7 @@ module OpenC3
           end
         rescue CriticalCmdError => e
           # This should not return until the critical command has been approved
-          prompt_for_critical_cmd(e.uuid, e.command['username'], e.command['target_name'], e.command['cmd_name'], e.command['cmd_params'], e.command['cmd_string'])
+          prompt_for_critical_cmd(e.uuid, e.command['username'], e.command['target_name'], e.command['cmd_name'], e.command['cmd_params'], e.command['cmd_string'], scope: scope)
           if log_message.nil? or log_message
             _log_cmd(e.command, raw, no_range, no_hazardous)
           end
