@@ -11,8 +11,10 @@ Run it from the repo so gh resolves the remote.
 
 grep: for each regex, prints every PR hunk whose changed lines or enclosing
 function match. The function is the last declaration seen in the hunk, else
-the enclosing one in the local file, else the @@ header. Output lines are
-"#N file [function] (+adds/-dels) first line". Run from the repo.
+the enclosing one in the local file, else the @@ header. A code hunk that
+can't be placed in the local file has no known method, so it matches when its
+file mentions the regex anywhere, and is marked "local file differs". Output lines
+are "#N file [function] (+adds/-dels) first line". Run from the repo.
 A match is a lead: read the hunk to tell a fix from an overlap.
 """
 
@@ -80,6 +82,7 @@ DECL = re.compile(
     r"(?:(?:def|function|class|module)\s+[\w.?!=]+|(?!(?:if|for|while|switch|catch|return)\b)[A-Za-z_]\w*\s*\([^)]*\)\s*\{\s*$)"
 )
 HUNK = re.compile(r"^@@ -(\d+)")
+CODE = (".py", ".rb", ".js", ".ts", ".vue")
 
 
 def indent(text):
@@ -155,15 +158,19 @@ def load(out):
         for cur, hdr, start, lines in parse(path):
             text = local(cur) if cur else []
             old_ln = locate(text, [x[1:] for x in lines if x[0] != "+"], start) if text else None
-            if text and old_ln is None:
-                hdr += " (local file differs)"
+            # Unplaced code hunk whose header names no method (a class, say):
+            # the method is unknown, so grep falls back to matching anywhere in the
+            # file (local copy and the hunk itself)
+            method_hdr = DECL.match(" " + hdr) and not re.match(r"(class|module)\b", hdr)
+            unplaced = text and old_ln is None and cur.endswith(CODE) and not method_hdr
+            scope = "\n".join(text + lines) if unplaced else None
             decl = None
             for line in lines:
                 if DECL.match(line):
                     decl = line[1:].strip()
                 if line[0] != " ":
                     where = decl or (old_ln and enclosing(text, old_ln, line[1:])) or hdr
-                    rows.append((cur, where, line))
+                    rows.append((cur, where, line, None if decl else scope))
                 if line[0] != "+" and old_ln:
                     old_ln += 1
         diffs[os.path.basename(path)[2:-5]] = rows
@@ -177,12 +184,17 @@ def grep(out, patterns):
         found = []
         for n, rows in diffs.items():
             hunks = {}
-            for f, h, line in rows:
-                if f and "/test" not in f and "/spec/" not in f and (rx.search(line) or rx.search(h)):
-                    hunks.setdefault((f, h), []).append(line)
-            for (f, h), lines in hunks.items():
+            for f, h, line, scope in rows:
+                if not f or "/test" in f or "/spec/" in f:
+                    continue
+                if rx.search(line) or rx.search(h):
+                    hunks.setdefault((f, h, scope is not None), []).append(line)
+                elif scope is not None and rx.search(scope):
+                    hunks.setdefault((f, h, True), []).append(line)
+            for (f, h, unsure), lines in hunks.items():
                 adds = sum(1 for x in lines if x[0] == "+")
-                found.append(f"  #{n} {f} [{h[:50]}] (+{adds}/-{len(lines) - adds}) {lines[0][:100]}")
+                note = " (local file differs: method unknown, read the hunk)" if unsure else ""
+                found.append(f"  #{n} {f} [{h[:50]}]{note} (+{adds}/-{len(lines) - adds}) {lines[0][:100]}")
         print(f"{pattern}: {'none' if not found else ''}")
         if found:
             print("\n".join(found))
