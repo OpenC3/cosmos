@@ -348,8 +348,9 @@ class Commands:
                     command.write(item_upcase, value, "RAW")
                 else:
                     command.write(item_upcase, value, "CONVERTED")
-            except ValueError as error:
-                # Name the parameter since the accessor error doesn't
+            except (ValueError, TypeError) as error:
+                # Name the parameter since the accessor error doesn't. TypeError
+                # is a bad value type like a non-list for an array parameter.
                 raise ValueError(
                     f"Command parameter '{command.target_name} {command.packet_name} {item_upcase}': {error}"
                 ) from error
@@ -359,6 +360,6 @@ class Commands:
         # so make sure any required parameters were actually passed in.
         for item_name, item_def in command.items.items():
             if item_def.required and item_name not in given_item_names:
-                raise RuntimeError(
+                raise ValueError(
                     f"Required command parameter '{command.target_name} {command.packet_name} {item_name}' not given"
                 )

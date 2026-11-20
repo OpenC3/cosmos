@@ -363,7 +363,7 @@ module OpenC3
       item_defs = command.items
       item_defs.each do |item_name, item_def|
         if item_def.required and not given_item_names.include? item_name
-          raise "Required command parameter '#{command.target_name} #{command.packet_name} #{item_name}' not given"
+          raise ArgumentError, "Required command parameter '#{command.target_name} #{command.packet_name} #{item_name}' not given"
         end
       end
     end

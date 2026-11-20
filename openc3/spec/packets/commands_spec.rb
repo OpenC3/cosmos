@@ -332,7 +332,7 @@ module OpenC3
           end
 
           it "complains about missing required parameters" do
-            expect { @cmd.build_cmd("tgt2", "pkt3", {}, range_checking, raw) }.to raise_error(RuntimeError, "Required command parameter 'TGT2 PKT3 ITEM2' not given")
+            expect { @cmd.build_cmd("tgt2", "pkt3", {}, range_checking, raw) }.to raise_error(ArgumentError, "Required command parameter 'TGT2 PKT3 ITEM2' not given")
           end
 
           it "creates a command packet with mixed endianness" do
@@ -628,11 +628,11 @@ module OpenC3
 
       it "reports missing required parameters before writing defaults" do
         expect { @cmd.build_cmd("TGT1", "STAT_FILE", { "OPTION1" => "test", "OPTION3" => 1 }) }.to \
-          raise_error(RuntimeError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given")
+          raise_error(ArgumentError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given")
         # A default that can't be written must not hide the missing parameter
         @cmd.packet("TGT1", "STAT_FILE").get_item("OPTION2").default = "X" * 50
         expect { @cmd.build_cmd("TGT1", "STAT_FILE", { "OPTION1" => "test", "OPTION3" => 1 }) }.to \
-          raise_error(RuntimeError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given")
+          raise_error(ArgumentError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given")
         # Symbol and lowercase names count as given
         cmd = @cmd.build_cmd("TGT1", "STAT_FILE", { option1: "test", "option2" => "value", "Option3" => 3 })
         expect(cmd.read("OPTION1")).to eql "test"

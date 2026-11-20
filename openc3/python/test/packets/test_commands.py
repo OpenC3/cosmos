@@ -307,7 +307,7 @@ class TestCommands(unittest.TestCase):
         for range_checking in [True, False]:
             for raw in [True, False]:
                 with self.assertRaisesRegex(
-                    RuntimeError,
+                    ValueError,
                     "Required command parameter 'TGT2 PKT3 ITEM2' not given",
                 ):
                     self.cmd.build_cmd("tgt2", "pkt3", {}, range_checking, raw)
@@ -791,11 +791,11 @@ class TestCommandsRequiredParameters(unittest.TestCase):
         self.cmd = Commands(pc, System)
 
     def test_reports_missing_required_parameters_before_writing_defaults(self):
-        with self.assertRaisesRegex(RuntimeError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given"):
+        with self.assertRaisesRegex(ValueError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given"):
             self.cmd.build_cmd("TGT1", "STAT_FILE", {"OPTION1": "test", "OPTION3": 1})
         # A default that can't be written must not hide the missing parameter
         self.cmd.packet("TGT1", "STAT_FILE").get_item("OPTION2").default = "X" * 50
-        with self.assertRaisesRegex(RuntimeError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given"):
+        with self.assertRaisesRegex(ValueError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given"):
             self.cmd.build_cmd("TGT1", "STAT_FILE", {"OPTION1": "test", "OPTION3": 1})
         # Lowercase names count as given
         cmd = self.cmd.build_cmd("TGT1", "STAT_FILE", {"option1": "test", "option2": "value", "Option3": 3})

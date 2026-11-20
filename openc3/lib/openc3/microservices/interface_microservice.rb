@@ -311,9 +311,10 @@ module OpenC3
 
                 next nil # Don't ack disabled targets
               end
-            rescue RangeError => e
-              # Command parameter out of range is a user error, not a bug,
-              # so only log the message and not the full stack trace
+            rescue RangeError, ArgumentError => e
+              # A command parameter that is out of range, can't be written, or
+              # is required but not given is a user error, not a bug, so only
+              # log the message and not the full stack trace
               @logger.error "#{@interface.name}: #{e.message}"
               next e.message
             rescue => e
