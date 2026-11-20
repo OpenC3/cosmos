@@ -57,6 +57,8 @@ module OpenC3
     # frontend's 60s request timeout so the user sees this error, not a
     # generic timeout.
     MODIFIED_DIFF_TIMEOUT = 50
+    # Most bytes of the modifieddiff child's output read back into an error
+    MODIFIED_DIFF_OUTPUT_LIMIT = 2048
 
     attr_accessor :variables
     attr_accessor :plugin_txt_lines
@@ -452,9 +454,14 @@ module OpenC3
         plugin_hash_path = File.join(temp_dir, 'plugin_hash.json')
         result_path = File.join(temp_dir, 'result.json')
         output_path = File.join(temp_dir, 'output.txt')
+        # The child's temp files (extracted gem, rendered files) go under
+        # temp_dir too. A child killed on timeout can't run its own cleanup,
+        # so removing temp_dir below is what cleans them up.
+        child_tmp_dir = File.join(temp_dir, 'tmp')
+        FileUtils.mkdir_p(child_tmp_dir)
         File.write(plugin_hash_path, JSON.generate(plugin_hash, allow_nan: true))
         cmd = modified_diff_command(scope, plugin_hash_path, result_path)
-        pid = Process.spawn(*cmd, in: File::NULL, [:out, :err] => [output_path, 'w'], pgroup: true)
+        pid = Process.spawn({ 'TMPDIR' => child_tmp_dir }, *cmd, in: File::NULL, [:out, :err] => [output_path, 'w'], pgroup: true)
         status = wait_for_child(pid, timeout)
         raise "Timed out after #{timeout} seconds checking modified files against the plugin" unless status
 
@@ -468,7 +475,7 @@ module OpenC3
 
         message = result['error'] if result.is_a?(Hash) and result['error']
         unless message
-          output = File.exist?(output_path) ? File.read(output_path).strip : ''
+          output = output_tail(output_path).strip
           message = "Modified file check failed (exit status #{status.exitstatus.inspect})"
           message += ": #{output.lines.last(5).join.strip}" unless output.empty?
         end
@@ -483,6 +490,19 @@ module OpenC3
     def self.modified_diff_command(scope, plugin_hash_path, result_path)
       ['ruby', '/openc3/bin/openc3cli', 'modifieddiff', scope, plugin_hash_path, result_path]
     end
+
+    # Returns at most the last max_bytes of the file at path, or '' if it
+    # doesn't exist, so a huge child log isn't read into the API process.
+    def self.output_tail(path, max_bytes = MODIFIED_DIFF_OUTPUT_LIMIT)
+      return '' unless File.exist?(path)
+
+      File.open(path, 'rb') do |file|
+        file.seek([file.size - max_bytes, 0].max)
+        # The seek can land inside a multibyte character
+        return file.read.to_s.force_encoding(Encoding::UTF_8).scrub('')
+      end
+    end
+    private_class_method :output_tail
 
     # Waits up to timeout seconds for pid. Returns its Process::Status, or nil
     # if it didn't finish in time. Either way it then kills pid's whole process

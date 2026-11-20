@@ -412,6 +412,26 @@ module OpenC3
         expect { PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT") }.to raise_error(/exit status 3.*something broke/m)
       end
 
+      it "reads back only the end of a large child output" do
+        stand_in('$stdout.write("x" * 100_000); puts; puts "the real error"; exit 1')
+        expect { PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT") }.to raise_error do |error|
+          expect(error.message).to include("the real error")
+          expect(error.message.bytesize).to be < PluginModel::MODIFIED_DIFF_OUTPUT_LIMIT + 100
+        end
+      end
+
+      it "removes the child's temp files when it times out" do
+        Dir.mktmpdir do |dir|
+          marker = File.join(dir, 'child_tmp')
+          # The child can't clean up after itself when it's killed
+          stand_in("require 'tmpdir'; File.write('#{marker}', Dir.mktmpdir); sleep 30")
+          expect { PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT", timeout: 2) }.to raise_error(/Timed out/)
+          child_tmp = File.read(marker)
+          expect(child_tmp).to_not be_empty
+          expect(File.exist?(child_tmp)).to be false
+        end
+      end
+
       it "raises if the child exits 0 without a valid result" do
         stand_in('File.write(ARGV[2], "not json")')
         expect { PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT") }.to raise_error(/Modified file check failed/)
