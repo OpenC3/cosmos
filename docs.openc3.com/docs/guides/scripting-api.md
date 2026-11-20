@@ -10622,20 +10622,21 @@ delete_timeline_activity(name, start, uuid, recurring: false)
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                                                                |
-| --------- | ---------------------------------------------------------------------------------------------------------- |
-| name      | Name of the timeline                                                                                       |
-| start     | Start time of the activity. Time / datetime instance.                                                      |
-| uuid      | UUID of the activity                                                                                       |
-| recurring | Whether to also delete every activity in the same recurring group. Default is false. (Since _Coming Soon_) |
+| Parameter | Description                                                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| name      | Name of the timeline                                                                                                                                                     |
+| start     | Start time of the activity. Time / datetime instance.                                                                                                                    |
+| uuid      | UUID of the activity, or the recurring group UUID (the activity's `recurring` `uuid`) when `recurring` is true                                                           |
+| recurring | Whether to also delete every activity in the same recurring group. `start` must be the start of an occurrence that still exists. Default is false. (Since _Coming Soon_) |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5")
-# Delete every activity in the recurring group
-delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5", recurring=True)
+# Delete every activity in a recurring group using an existing occurrence and the group UUID
+activity = next(act for act in get_timeline_activities("PythonTL") if act["recurring"].get("uuid"))
+delete_timeline_activity("PythonTL", activity["start"], activity["recurring"]["uuid"], recurring=True)
 ```
 
 </TabItem>
@@ -10644,8 +10645,9 @@ delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a3
 
 ```ruby
 delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782")
-# Delete every activity in the recurring group
-delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782", recurring: true)
+# Delete every activity in a recurring group using an existing occurrence and the group UUID
+activity = get_timeline_activities("RubyTL").find { |act| act['recurring']['uuid'] }
+delete_timeline_activity("RubyTL", activity['start'], activity['recurring']['uuid'], recurring: true)
 ```
 
 </TabItem>
