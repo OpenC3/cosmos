@@ -77,7 +77,21 @@ class SuiteRunnerOtherGroup(Group):
         pass
 
 
+class CustomSuite(Suite):
+    def __init__(self):
+        self.add_group(OrderedGroup)
+
+
 class TestSuiteRunner(unittest.TestCase):
+    def test_build_suites_skips_custom_suite(self):
+        mod = types.ModuleType("test_mod")
+        mod.OrderedGroup = OrderedGroup
+        mod.OrderedSuite = OrderedSuite
+        mod.CustomSuite = CustomSuite
+        suites = SuiteRunner.build_suites(from_module=mod)
+        self.assertIn("OrderedSuite", suites)
+        self.assertNotIn("CustomSuite", suites)
+
     def test_build_suites_creates_a_list_of_suites(self):
         mod = types.ModuleType("test_mod")
         mod.OrderedGroup = OrderedGroup
