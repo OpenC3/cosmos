@@ -131,6 +131,9 @@ def ruby_methods(path, repo):
         private = bool(stack and stack[-1][2])
         if name == "initialize":
             name = "__init__"
+        # Check the bare name: "Class#_helper" does not start with "_". A
+        # constructor counts only in a class, not in a mixin module.
+        private = private or (name.startswith("_") and not (name == "__init__" and cls))
         if cls:
             name = f"{CLASS_ALIASES.get(cls, cls)}#{name}"
         raw = ruby_params(lines, i, line)
@@ -140,7 +143,7 @@ def ruby_methods(path, repo):
                 "name": name,
                 "file": f"{path.relative_to(repo)}:{i + 1}",
                 "params": params,
-                "private": private or name.startswith("_"),
+                "private": private,
             }
         )
     return out
