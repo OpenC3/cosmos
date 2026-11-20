@@ -12,7 +12,7 @@
 import threading
 from typing import Any
 
-from openc3.environment import OPENC3_KEYCLOAK_URL
+from openc3.environment import OPENC3_KEYCLOAK_URL, OPENC3_SCOPE
 from openc3.script.server_proxy import ApiServerProxy, ScriptServerProxy
 from openc3.utilities.authentication import OpenC3KeycloakAuthentication
 from openc3.utilities.extract import convert_to_value
@@ -338,7 +338,7 @@ from .tables import *
 from .telemetry import *
 
 
-def initialize_offline_access() -> None:
+def initialize_offline_access(scope: str = OPENC3_SCOPE) -> None:
     """Set up an offline access token so that users can run scripts.
 
     Enterprise only. Use this for first time setup. It is not necessary when
@@ -349,6 +349,9 @@ def initialize_offline_access() -> None:
         initialize_offline_access()
         script_run("INST/procedures/collect.rb")
 
+    Args:
+        scope: COSMOS scope to set the offline access token in.
+
     Raises:
         RuntimeError: If not running COSMOS Enterprise (OPENC3_KEYCLOAK_URL is not set).
     """
@@ -358,7 +361,8 @@ def initialize_offline_access() -> None:
         )
     auth = OpenC3KeycloakAuthentication(OPENC3_KEYCLOAK_URL)
     auth.token(include_bearer=True, openid_scope="openid offline_access")
-    set_offline_access(auth.refresh_token)
+    # set_offline_access is generated from the API WHITELIST at the end of this module
+    set_offline_access(auth.refresh_token, scope=scope)  # ty: ignore[unresolved-reference]
 
 
 ###########################################################################
@@ -373,6 +377,7 @@ def prompt_for_critical_cmd(
     _cmd_name: str,
     _cmd_params: dict[str, Any],
     cmd_string: str,
+    scope: str = OPENC3_SCOPE,
 ) -> None:
     """Wait for a critical command to be approved.
 
@@ -385,6 +390,7 @@ def prompt_for_critical_cmd(
         _cmd_name: Command name. Unused by the command line version.
         _cmd_params: Command parameters. Unused by the command line version.
         cmd_string: The command as it appears in a script.
+        scope: COSMOS scope the command was sent in.
 
     Raises:
         RuntimeError: If the command is rejected.
@@ -393,7 +399,7 @@ def prompt_for_critical_cmd(
     print(f"  {cmd_string}")
     print(f"  UUID: {uuid}")
     while True:
-        status = critical_cmd_status(uuid)
+        status = critical_cmd_status(uuid, scope=scope)
         if status == "APPROVED":
             return
         elif status == "REJECTED":

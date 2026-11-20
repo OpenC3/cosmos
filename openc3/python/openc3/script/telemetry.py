@@ -63,6 +63,7 @@ def inject_tlm(
     type: ValueType = "CONVERTED",
     stored: bool = False,
     scope: str = OPENC3_SCOPE,
+    *,
     received_time: int | None = None,
 ) -> None:
     """Inject a packet into the system as if it was received from an interface.

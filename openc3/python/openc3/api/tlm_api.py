@@ -183,6 +183,7 @@ def inject_tlm(
     type: ValueType = "CONVERTED",
     stored: bool = False,
     scope: str = OPENC3_SCOPE,
+    *,
     received_time: int | None = None,
 ) -> None:
     """Inject a packet into the system as if it was received from an interface.
@@ -656,7 +657,7 @@ def get_telemetry(*args: str, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
        Use get_tlm instead.
     """
     warnings.warn("get_telemetry is deprecated, use get_tlm", FutureWarning, stacklevel=2)
-    return get_tlm(*args, scope)
+    return get_tlm(*args, scope=scope)
 
 
 def get_item(*args: str, scope: str = OPENC3_SCOPE, cache_timeout: float = 0.1) -> dict[str, Any]:
