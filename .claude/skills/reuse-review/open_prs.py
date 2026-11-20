@@ -100,15 +100,20 @@ def load(out):
         root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip()
     except (OSError, subprocess.CalledProcessError):
         root = os.getcwd()
+    root = os.path.realpath(root)
     cache = {}
 
     def local(rel):
+        # rel comes from a PR diff, so read only files inside the repo
         if rel not in cache:
-            try:
-                with open(os.path.join(root, rel), errors="replace") as f:
-                    cache[rel] = f.read().splitlines()
-            except OSError:
-                cache[rel] = []
+            target = os.path.realpath(os.path.join(root, rel))
+            cache[rel] = []
+            if os.path.commonpath([root, target]) == root:
+                try:
+                    with open(target, errors="replace") as f:
+                        cache[rel] = f.read().splitlines()
+                except OSError:
+                    pass
         return cache[rel]
 
     diffs = {}
