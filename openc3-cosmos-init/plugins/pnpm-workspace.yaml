@@ -33,4 +33,3 @@ allowBuilds:
 overrides:
   dompurify@<3.4.17: 3.4.17 # monaco-editor pins 3.4.15
   follow-redirects@<1.16.2: ^1.16.2 # axios
-  minimatch@>=7 <11.0.1: ^11.0.5 # GHSA-g3hv-75wg-m249; @typescript-eslint/typescript-estree 8.72 (eslint-plugin-vue peer)
