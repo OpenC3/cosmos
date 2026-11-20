@@ -14,6 +14,7 @@ import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
 
+from openc3.script.suite import ScriptResult
 from openc3.script.suite_results import SuiteResults
 
 
@@ -111,6 +112,37 @@ class TestSuiteResults(unittest.TestCase):
         self.assertIn("Z:", report)
         # Should NOT use +00:00 offset
         self.assertNotIn("+00:00", report)
+
+    def _result(self, script, result="PASS", message=None):
+        script_result = ScriptResult()
+        script_result.group = "Group"
+        script_result.script = script
+        script_result.result = result
+        script_result.message = message
+        return script_result
+
+    def test_process_result_extends_with_a_list_of_results(self):
+        class TestSuiteClass:
+            __name__ = "TestSuite"
+
+        self.suite_results.start("Test", TestSuiteClass)
+        self.suite_results.process_result([self._result("script_1"), self._result("script_2", "FAIL")])
+        self.assertEqual(len(self.suite_results.results), 2)
+        self.suite_results.complete()
+        report = self.suite_results.report()
+        self.assertIn("Total Tests: 2", report)
+        self.assertIn("Pass: 1", report)
+        self.assertIn("Fail: 1", report)
+
+    def test_process_result_escapes_control_characters(self):
+        class TestSuiteClass:
+            __name__ = "TestSuite"
+
+        self.suite_results.start("Test", TestSuiteClass)
+        self.suite_results.process_result(self._result("script_1", message="a\x01b"))
+        report = self.suite_results.report()
+        self.assertNotIn("\x01", report)
+        self.assertIn("a\\x01b", report)
 
 
 if __name__ == "__main__":

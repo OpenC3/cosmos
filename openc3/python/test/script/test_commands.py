@@ -279,3 +279,40 @@ class TestCommands(unittest.TestCase):
                 'cmd("INST HAZARDOUS_SET_PASSWORD with USERNAME user, PASSWORD *****")',
                 stdout.getvalue(),
             )
+
+
+class TestCommandWrappers(unittest.TestCase):
+    @patch("openc3.script.API_SERVER")
+    def test_build_cmd_forwards_keyword_arguments(self, api_server):
+        api_server.build_cmd.return_value = {"buffer": b""}
+        build_cmd("INST ABORT", range_check=False, raw=True, timeout=10, scope="OTHER")
+        api_server.build_cmd.assert_called_once_with(
+            "INST ABORT", range_check=False, raw=True, timeout=10, scope="OTHER"
+        )
+
+    @patch("openc3.script.API_SERVER")
+    def test_build_cmd_defaults(self, api_server):
+        build_cmd("INST", "ABORT", {})
+        api_server.build_cmd.assert_called_once_with(
+            "INST", "ABORT", {}, range_check=True, raw=False, timeout=5, scope=OPENC3_SCOPE
+        )
+
+    @patch("openc3.script.API_SERVER")
+    def test_get_cmd_hazardous_forwards_scope(self, api_server):
+        api_server.get_cmd_hazardous.return_value = True
+        self.assertTrue(get_cmd_hazardous("INST CLEAR", scope="OTHER"))
+        api_server.get_cmd_hazardous.assert_called_once_with("INST CLEAR", scope="OTHER")
+
+    @patch("openc3.script.API_SERVER")
+    def test_get_cmd_time_converts_when_microseconds_are_zero(self, api_server):
+        api_server.get_cmd_time.return_value = ["INST", "ABORT", 1700000000, 0]
+        result = get_cmd_time("INST", "ABORT")
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[:2], ["INST", "ABORT"])
+        self.assertEqual(result[2], datetime.fromtimestamp(1700000000))
+
+    @patch("openc3.script.API_SERVER")
+    def test_get_cmd_time_with_no_command_sent(self, api_server):
+        api_server.get_cmd_time.return_value = [None, None, 0, 0]
+        result = get_cmd_time()
+        self.assertEqual(result, [None, None, datetime.fromtimestamp(0)])

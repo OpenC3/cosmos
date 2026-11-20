@@ -22,6 +22,14 @@ from openc3.environment import OPENC3_SCOPE
 from openc3.script.api_shared import openc3_script_sleep
 
 
+def _format_call(method_name: str, args: tuple[Any, ...], type: str) -> str:
+    # Format the call like it appears in a script, using only the arguments given
+    # so a wrong number of arguments is reported by the API rather than here
+    parts = [f'"{arg}"' if isinstance(arg, str) else str(arg) for arg in args]
+    parts.append(f'type="{type}"')
+    return f"{method_name}({', '.join(parts)})"
+
+
 def get_packets(
     id: str, block: float | None = None, block_delay: float = 0.1, count: int = 1000, scope: str = OPENC3_SCOPE
 ) -> tuple[str, list[dict[str, Any]]]:
@@ -109,14 +117,7 @@ def set_tlm(*args: Any, type: OverrideValueType = "CONVERTED", scope: str = OPEN
             to set every value type.
         scope: COSMOS scope.
     """
-    if len(args) == 1:
-        print(f'set_tlm("{args[0]}", type="{type}")')
-    else:
-        if isinstance(args[3], str):
-            value = f'"{args[3]}"'
-        else:
-            value = args[3]
-        print(f'set_tlm("{args[0]}", "{args[1]}", "{args[2]}", {value}, type="{type}")')
+    print(_format_call("set_tlm", args, type))
     openc3.script.API_SERVER.set_tlm(*args, type=type, scope=scope)
 
 
@@ -140,14 +141,7 @@ def override_tlm(*args: Any, type: OverrideValueType = "ALL", scope: str = OPENC
         type: Value type to override: ALL (default), RAW, CONVERTED or FORMATTED.
         scope: COSMOS scope.
     """
-    if len(args) == 1:
-        print(f'override_tlm("{args[0]}", type="{type}")')
-    else:
-        if isinstance(args[3], str):
-            value = f'"{args[3]}"'
-        else:
-            value = args[3]
-        print(f'override_tlm("{args[0]}", "{args[1]}", "{args[2]}", {value}, type="{type}")')
+    print(_format_call("override_tlm", args, type))
     openc3.script.API_SERVER.override_tlm(*args, type=type, scope=scope)
 
 
@@ -168,9 +162,5 @@ def normalize_tlm(*args: str, type: OverrideValueType = "ALL", scope: str = OPEN
         type: Value type to normalize: ALL (default), RAW, CONVERTED or FORMATTED.
         scope: COSMOS scope.
     """
-    if len(args) == 1:
-        print(f'normalize_tlm("{args[0]}", type="{type}")')
-    else:
-        joined = '", "'.join(args)
-        print(f'normalize_tlm("{joined}", type="{type}")')
+    print(_format_call("normalize_tlm", args, type))
     openc3.script.API_SERVER.normalize_tlm(*args, type=type, scope=scope)
