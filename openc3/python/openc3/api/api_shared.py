@@ -11,7 +11,6 @@
 
 import sys
 import time
-import traceback
 import warnings
 from collections.abc import Callable, Mapping
 from typing import Any
@@ -19,6 +18,7 @@ from typing import Any
 from openc3.api.api_types import ValueType
 from openc3.api.tlm_api import get_item, tlm
 from openc3.environment import OPENC3_SCOPE
+from openc3.script.api_shared import _check_exception
 from openc3.script.exceptions import CheckError
 from openc3.utilities.extract import (
     compare_values,
@@ -109,22 +109,7 @@ def check_exception(method_name: str, *args: Any, **kwargs: Any) -> None:
         CheckError: If the method does not exist or does not raise an exception.
     """
     # Resolve from the whole API package, not just this module
-    method = getattr(sys.modules["openc3.api"], method_name, None)
-    if not callable(method):
-        raise CheckError(f"check_exception: {method_name} is not an API method")
-    orig_kwargs = kwargs.copy()
-    if "scope" not in kwargs:
-        kwargs["scope"] = OPENC3_SCOPE
-    try:
-        method(*args, **kwargs)
-    except Exception:
-        print(f"CHECK: {method_name} raised {traceback.format_exc()}")
-    else:
-        call = f"{method_name}({', '.join(str(arg) for arg in args)}"
-        if orig_kwargs:
-            call += f", {orig_kwargs}"
-        call += ")"
-        raise CheckError(f"{call} should have raised an exception but did not.")
+    _check_exception(sys.modules["openc3.api"], "an API method", method_name, *args, **kwargs)
 
 
 def check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:

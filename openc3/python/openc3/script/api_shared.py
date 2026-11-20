@@ -14,6 +14,7 @@ import traceback
 import warnings
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
+from types import ModuleType
 from typing import Any
 
 import openc3.script
@@ -111,9 +112,18 @@ def check_exception(method_name: str, *args: Any, **kwargs: Any) -> None:
         CheckError: If the method does not exist or does not raise an exception.
     """
     # Resolve from the whole scripting API, not just this module
-    method = getattr(openc3.script, method_name, None)
+    _check_exception(openc3.script, "a scripting method", method_name, *args, **kwargs)
+
+
+def _check_exception(namespace: ModuleType, method_kind: str, method_name: str, *args: Any, **kwargs: Any) -> None:
+    """Call namespace.method_name and raise CheckError unless it raises.
+
+    Shared by the openc3.script and openc3.api versions of check_exception.
+    method_kind describes the namespace in the error for an unknown method.
+    """
+    method = getattr(namespace, method_name, None)
     if not callable(method):
-        raise CheckError(f"check_exception: {method_name} is not a scripting method")
+        raise CheckError(f"check_exception: {method_name} is not {method_kind}")
     orig_kwargs = kwargs.copy()
     if "scope" not in kwargs:
         kwargs["scope"] = OPENC3_SCOPE
