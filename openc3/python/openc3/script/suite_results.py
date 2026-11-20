@@ -30,11 +30,11 @@ class SuiteResults:
 
     def __init__(self) -> None:
         """Create an empty SuiteResults. Call `start` before processing results."""
-        self._report = None
+        self._report: list[str] = []
         self.context = None
         self.start_time = None
         self.stop_time = None
-        self.results = None
+        self.results: list[ScriptResult] = []
         self.settings = None
         self.metadata = None
 

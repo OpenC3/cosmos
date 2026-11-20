@@ -11,6 +11,7 @@
 
 import sys
 import unittest
+from unittest.mock import patch
 
 from openc3.io.stderr import Stderr
 from openc3.io.stdout import Stdout
@@ -57,36 +58,40 @@ class TestSuiteAndGroup(unittest.TestCase):
         ScriptResult.suite = None
 
     def test_script_result_stores_the_running_suite(self):
-        ScriptResult.suite = "MySuite"
-        result = ScriptResult()
+        with patch.object(ScriptResult, "suite", "MySuite"):
+            result = ScriptResult()
         self.assertEqual(result.suite, "MySuite")
-        ScriptResult.suite = None
         self.assertIsNone(ScriptResult().suite)
 
     def test_current_suite_returns_suite_name_while_running(self):
-        CurrentSuiteGroup.seen_suite = None
-        suite = CurrentSuiteSuite()
-        list(suite.run_group(CurrentSuiteGroup))
-        self.assertEqual(CurrentSuiteGroup.seen_suite, "CurrentSuiteSuite")
+        with patch.object(CurrentSuiteGroup, "seen_suite", None):
+            list(CurrentSuiteSuite().run_group(CurrentSuiteGroup))
+            seen_suite = CurrentSuiteGroup.seen_suite
+        self.assertEqual(seen_suite, "CurrentSuiteSuite")
 
     def test_run_method_removes_output_buffer_from_stdout_and_stderr(self):
         group = StderrGroup()
         result = group.run_script("script_stderr")
-        self.assertIn("stderr text", result.output)
+        self.assertIn("stderr text", result.output or "")
         self.assertNotIn(group.output_io, Stdout.instance().streams)
         self.assertNotIn(group.output_io, Stderr.instance().streams)
 
     def test_group_setup_status_uses_class_name(self):
         group = StderrGroup()
         # run_script sets its own status, so stub it to see the run_setup status
-        group.run_script = lambda method_name: None
-        group.run_setup()
+        with patch.object(group, "run_script"):
+            group.run_setup()
         self.assertEqual(ScriptStatus.instance().status, "StderrGroup : setup")
 
     def test_suites_compare_and_hash_by_name(self):
-        self.assertEqual(EqualSuite(), EqualSuite())
-        self.assertNotEqual(EqualSuite(), OtherSuite())
-        self.assertEqual(len({EqualSuite(), EqualSuite(), OtherSuite()}), 2)
+        first = EqualSuite()
+        second = EqualSuite()
+        other = OtherSuite()
+        self.assertIsNot(first, second)
+        self.assertEqual(first, second)
+        self.assertNotEqual(first, other)
+        self.assertEqual(hash(first), hash(second))
+        self.assertEqual(len({first, second, other}), 2)
 
 
 if __name__ == "__main__":
