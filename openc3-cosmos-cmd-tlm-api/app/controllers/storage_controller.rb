@@ -41,7 +41,6 @@ class StorageController < ApplicationController
 
   VOLUME_DOWNLOAD_KEY_PREFIX = 'openc3_volume_download__'
   VOLUME_DOWNLOAD_TOKEN_EXPIRE_SECONDS = 60
-  PROTECTED_FORBIDDEN = 'This storage location is only accessible to system administrators'
 
   # Buckets COSMOS itself manages. Writes to these are admin-only (apart from the
   # config overlay, see non_admin_bucket_write?) because COSMOS loads their contents:
@@ -879,7 +878,7 @@ class StorageController < ApplicationController
   def deny_protected_storage?(root:, key:, contains: false)
     return false unless protected_storage?(root: root, key: key, contains: contains)
     return false if protected_storage_admin?
-    render json: { status: 'error', message: PROTECTED_FORBIDDEN }, status: :forbidden
+    render json: { status: 'error', message: 'This storage location is only accessible to system administrators' }, status: :forbidden
     true
   end
 
