@@ -9,9 +9,11 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import importlib
 import os
 import re
 import unittest
+import warnings
 from unittest.mock import *
 
 from openc3.io.json_drb_object import JsonDRbError
@@ -117,6 +119,23 @@ class TestOpenc3ScriptSleep(unittest.TestCase):
 
         openc3_script_sleep()
         mock_input.assert_called_once_with("Press any key to continue...")
+
+
+# Regression test for the check methods' scope default in both api_shared modules
+class TestApiSharedScope(unittest.TestCase):
+    def test_check_methods_default_to_openc3_scope(self):
+        for module_name in ("openc3.api.api_shared", "openc3.script.api_shared"):
+            with self.subTest(module=module_name):
+                api_shared = importlib.import_module(module_name)
+                # Defaults bind at import so reload the module with a non-DEFAULT OPENC3_SCOPE
+                self.addCleanup(importlib.reload, api_shared)
+                with patch("openc3.environment.OPENC3_SCOPE", "ENVSCOPE"):
+                    importlib.reload(api_shared)
+                with patch.object(api_shared, "_check") as mock_check, warnings.catch_warnings():
+                    warnings.simplefilter("ignore", FutureWarning)
+                    for method in ("check", "check_raw", "check_formatted", "check_with_units"):
+                        getattr(api_shared, method)("INST HEALTH_STATUS TEMP1 > 1")
+                        self.assertEqual(mock_check.call_args.kwargs["scope"], "ENVSCOPE", method)
 
 
 @patch("openc3.script.API_SERVER", Proxy)
