@@ -12,6 +12,7 @@ import json
 import sys
 from pathlib import Path
 
+
 data = json.loads(Path(sys.argv[1]).read_text())
 template = (Path(__file__).parent / "template.html").read_text()
 payload = json.dumps(data, indent=1).replace("</", "<\\/")

@@ -37,7 +37,9 @@ def fetch(out, roots):
         paths = [f["path"] for f in pr["files"]]
         hits = [p for p in paths if any(r == "." or p == r or p.startswith(r + "/") for r in roots)]
         if hits:
-            selected.append((pr, len(hits), subprocess.check_output(["gh", "pr", "diff", str(pr["number"])], text=True)))
+            selected.append(
+                (pr, len(hits), subprocess.check_output(["gh", "pr", "diff", str(pr["number"])], text=True))
+            )
     # Write the new snapshot to a staging dir first, so a failed write leaves the old one intact
     os.makedirs(out, exist_ok=True)
     staging = tempfile.mkdtemp(prefix=".staging-", dir=out)

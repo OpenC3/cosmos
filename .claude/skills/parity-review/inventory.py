@@ -12,10 +12,11 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
+
 
 RUBY_DEF = re.compile(r"^(\s*)def\s+(self\.)?([A-Za-z_]\w*[?!=]?)\s*(\(|$|\s)")
-NORMALIZE = {"nil": "None", "true": "True", "false": "False", "$openc3_scope": "OPENC3_SCOPE",
-             "[]": "[]", "{}": "{}"}
+NORMALIZE = {"nil": "None", "true": "True", "false": "False", "$openc3_scope": "OPENC3_SCOPE", "[]": "[]", "{}": "{}"}
 
 
 def split_params(text):
@@ -60,7 +61,7 @@ def ruby_params(lines, i, line):
     start = line.find("(", line.find("def"))
     if start == -1 or not re.match(r"^\s*def\s+(self\.)?[\w?!=]+\s*\(", line):
         m = re.match(r"^\s*def\s+(self\.)?[\w?!=]+\s+(.*)$", line)
-        return (m.group(2).strip() if m and m.group(2).strip() else "")
+        return m.group(2).strip() if m and m.group(2).strip() else ""
     text, depth, j, pos = "", 0, i, start
     while j < len(lines):
         seg = lines[j][pos:]
@@ -127,8 +128,14 @@ def ruby_methods(path, repo):
             name = f"{CLASS_ALIASES.get(cls, cls)}#{name}"
         raw = ruby_params(lines, i, line)
         params = [x for x in (parse_ruby_param(p) for p in split_params(raw)) if x]
-        out.append({"name": name, "file": f"{path.relative_to(repo)}:{i + 1}", "params": params,
-                    "private": private or name.startswith("_")})
+        out.append(
+            {
+                "name": name,
+                "file": f"{path.relative_to(repo)}:{i + 1}",
+                "params": params,
+                "private": private or name.startswith("_"),
+            }
+        )
     return out
 
 
@@ -155,24 +162,36 @@ def py_methods(path, repo):
         params = []
         pos = a.posonlyargs + a.args
         defaults = [None] * (len(pos) - len(a.defaults)) + list(a.defaults)
-        for arg, d in zip(pos, defaults):
-            params.append({"name": arg.arg, "kind": "pos",
-                           "default": norm_default(ast.unparse(d)) if d is not None else "REQUIRED"})
+        for arg, d in zip(pos, defaults, strict=True):
+            params.append(
+                {
+                    "name": arg.arg,
+                    "kind": "pos",
+                    "default": norm_default(ast.unparse(d)) if d is not None else "REQUIRED",
+                }
+            )
         if a.vararg:
             params.append({"name": a.vararg.arg, "kind": "var", "default": None})
-        for arg, d in zip(a.kwonlyargs, a.kw_defaults):
-            params.append({"name": arg.arg, "kind": "kw",
-                           "default": norm_default(ast.unparse(d)) if d is not None else "REQUIRED"})
+        for arg, d in zip(a.kwonlyargs, a.kw_defaults, strict=True):
+            params.append(
+                {
+                    "name": arg.arg,
+                    "kind": "kw",
+                    "default": norm_default(ast.unparse(d)) if d is not None else "REQUIRED",
+                }
+            )
         if a.kwarg:
             params.append({"name": a.kwarg.arg, "kind": "varkw", "default": None})
         params = [x for x in params if x["name"] not in ("self", "cls")]
         if any(isinstance(d, ast.Name) and d.id == "property" for d in node.decorator_list) or any(
-                isinstance(d, ast.Attribute) and d.attr == "setter" for d in node.decorator_list):
+            isinstance(d, ast.Attribute) and d.attr == "setter" for d in node.decorator_list
+        ):
             continue
         private = node.name.startswith("_") and node.name != "__init__"
         name = f"{cls}#{node.name}" if cls else node.name
-        out.append({"name": name, "file": f"{path.relative_to(repo)}:{node.lineno}", "params": params,
-                    "private": private})
+        out.append(
+            {"name": name, "file": f"{path.relative_to(repo)}:{node.lineno}", "params": params, "private": private}
+        )
     return out
 
 
@@ -180,8 +199,12 @@ def py_whitelist(path):
     tree = ast.parse(path.read_text())
     names = []
     for node in ast.walk(tree):
-        if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
-                and node.func.attr == "extend" and getattr(node.func.value, "id", None) == "WHITELIST"):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "extend"
+            and getattr(node.func.value, "id", None) == "WHITELIST"
+        ):
             for arg in node.args:
                 if isinstance(arg, (ast.List, ast.Tuple)):
                     names += [e.value for e in arg.elts if isinstance(e, ast.Constant)]
@@ -280,13 +303,19 @@ def main():
                 p_defs.setdefault(m["name"], []).append(m)
             p_wl.update(py_whitelist(f))
 
-    rows = []
+    rows: list[dict[str, Any]] = []
     for name in sorted(set(r_defs) | set(p_defs)):
         r, p = r_defs.get(name, []), p_defs.get(name, [])
         private = all(m["private"] for m in r + p)
-        row = {"name": name, "private": private,
-               "ruby": [m["file"] for m in r], "python": [m["file"] for m in p],
-               "ruby_whitelist": name in r_wl, "python_whitelist": name in p_wl, "diffs": []}
+        row = {
+            "name": name,
+            "private": private,
+            "ruby": [m["file"] for m in r],
+            "python": [m["file"] for m in p],
+            "ruby_whitelist": name in r_wl,
+            "python_whitelist": name in p_wl,
+            "diffs": [],
+        }
         if r and p:
             seen = set()
             for rm, pm in pairs(r, p):
@@ -305,8 +334,10 @@ def main():
     wl_gap = sorted((r_wl - p_wl) | (p_wl - r_wl))
     sig = [x for x in public if x["diffs"]]
     print(f"# Parity inventory ({', '.join(areas)})\n")
-    print(f"Public names: {len(public)} · Ruby only: {len(only_r)} · Python only: {len(only_p)} · "
-          f"signature diffs: {len(sig)} · WHITELIST gaps: {len(wl_gap)}\n")
+    print(
+        f"Public names: {len(public)} · Ruby only: {len(only_r)} · Python only: {len(only_p)} · "
+        f"signature diffs: {len(sig)} · WHITELIST gaps: {len(wl_gap)}\n"
+    )
     print("## WHITELIST gaps\n")
     for n in wl_gap:
         print(f"- `{n}`: Ruby {'yes' if n in r_wl else 'no'}, Python {'yes' if n in p_wl else 'no'}")
