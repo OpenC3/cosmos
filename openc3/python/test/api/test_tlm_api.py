@@ -13,13 +13,13 @@
 # See https://github.com/OpenC3/cosmos/pull/1957
 
 import contextlib
+import inspect
 import json
 import re
 import threading
 import time
 import unittest
 from datetime import datetime, timedelta, timezone
-from typing import Any
 from unittest.mock import *
 
 from openc3.api.tlm_api import *
@@ -653,9 +653,8 @@ class TestTlmApi(unittest.TestCase):
 
     def test_inject_tlm_received_time_is_keyword_only(self):
         # A positional received_time would be ambiguous with the positional scope before it
-        args: tuple[Any, ...] = ("INST", "HEALTH_STATUS", {}, "CONVERTED", False, "DEFAULT", 1000)
-        with self.assertRaises(TypeError):
-            inject_tlm(*args)
+        received_time = inspect.signature(inject_tlm).parameters["received_time"]
+        self.assertEqual(received_time.kind, inspect.Parameter.KEYWORD_ONLY)
 
     # get_item
     def test_get_item_raises_if_the_target_or_packet_or_item_do_not_exist(self):

@@ -9,9 +9,9 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import inspect
 import time
 import unittest
-from typing import Any
 from unittest.mock import patch
 
 from openc3.script.telemetry import (
@@ -99,11 +99,8 @@ class TestTelemetry(unittest.TestCase):
 
     def test_inject_tlm_received_time_is_keyword_only(self):
         # A positional received_time would be ambiguous with the positional scope before it
-        with patch("openc3.script.API_SERVER") as server:
-            args: tuple[Any, ...] = ("TARGET", "PACKET", {"PARAM": 1}, "RAW", True, "OTHER", 1000)
-            with self.assertRaises(TypeError):
-                inject_tlm(*args)
-            server.inject_tlm.assert_not_called()
+        received_time = inspect.signature(inject_tlm).parameters["received_time"]
+        self.assertEqual(received_time.kind, inspect.Parameter.KEYWORD_ONLY)
 
     def test_set_tlm(self):
         for stdout in capture_io():

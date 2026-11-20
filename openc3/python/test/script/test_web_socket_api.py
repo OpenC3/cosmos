@@ -9,13 +9,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import inspect
 import json
 import os
 import sys
 import time
 import unittest
 from datetime import datetime, timedelta, timezone
-from typing import Any
 from unittest.mock import Mock, patch
 
 from websockets.exceptions import ConnectionClosedOK
@@ -717,9 +717,7 @@ class TestWebSocketApiGenerateAuth(unittest.TestCase):
 
     def test_preserves_keycloak_authentication_from_the_shared_factory(self):
         expected_auth = OpenC3KeycloakAuthentication("http://keycloak:8080")
-        with patch(
-            "openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth
-        ):
+        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth):
             self.assertIs(self.api._generate_auth(), expected_auth)
 
 
@@ -1100,10 +1098,8 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
 
     def test_only_accepts_keyword_arguments(self):
         # Positional arguments made it easy to pass the scope as the timeout
-        args: tuple[Any, ...] = (["ITEM"],)
-        with self.assertRaises(TypeError):
-            StreamingWebSocketApi.read_all(*args)
-        self.stream_class.assert_not_called()
+        parameters = inspect.signature(StreamingWebSocketApi.read_all).parameters.values()
+        self.assertEqual({p.kind for p in parameters}, {inspect.Parameter.KEYWORD_ONLY})
 
 
 if __name__ == "__main__":
