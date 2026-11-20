@@ -461,6 +461,11 @@ export default {
             return
           }
           const response = result.value
+          if (!response.data) {
+            // Widget deleted between list and detail requests
+            console.error('Unable to load widget', matches[index].widget)
+            return
+          }
           let label = response.data.label
           if (label === null) {
             label = response.data.name.slice(10)

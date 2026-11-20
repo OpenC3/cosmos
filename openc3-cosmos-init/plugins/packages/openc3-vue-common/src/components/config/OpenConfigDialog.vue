@@ -170,7 +170,7 @@ export default {
       this.selectedRows = [row.item.configId]
     },
     success: function () {
-      if (!this.selectedItem) return
+      if (!this.selectedItem || this.deleting) return
       this.$emit('success', this.selectedItem.config)
       this.show = false
       this.search = null
