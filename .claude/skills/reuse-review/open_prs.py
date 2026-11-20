@@ -95,6 +95,39 @@ def enclosing(lines, line_no, body):
     return None
 
 
+def locate(lines, old, start):
+    """Return where (1-based) the hunk's old-side lines sit in lines, or None.
+
+    The hunk's line numbers refer to the PR's base, which can differ from the
+    local checkout, so check the stated start, then the nearest exact match.
+    """
+    if not old:
+        return start
+    size = len(old)
+    hits = [i + 1 for i in range(len(lines) - size + 1) if lines[i : i + size] == old]
+    return min(hits, key=lambda i: abs(i - start), default=None)
+
+
+def parse(path):
+    """Return the hunks of a diff file as (file, @@ header, old start, lines)."""
+    hunks, cur = [], None
+    with open(path, errors="replace") as f:
+        for line in f:
+            line = line.rstrip("\n")
+            if line.startswith("diff --git "):
+                cur = None
+            elif line.startswith("--- a/"):
+                cur = line[6:].strip()  # kept when the file is deleted (+++ /dev/null)
+            elif line.startswith("+++ b/"):
+                cur = line[6:].strip()
+            elif line.startswith("@@"):
+                m = HUNK.match(line)
+                hunks.append((cur, line.split("@@")[-1].strip(), int(m.group(1)) if m else 0, []))
+            elif hunks and line.startswith((" ", "+", "-")) and not line.startswith(("+++", "---")):
+                hunks[-1][3].append(line)
+    return hunks
+
+
 def load(out):
     try:
         root = subprocess.check_output(["git", "rev-parse", "--show-toplevel"], text=True).strip()
@@ -113,34 +146,27 @@ def load(out):
                     with open(target, errors="replace") as f:
                         cache[rel] = f.read().splitlines()
                 except OSError:
-                    pass
+                    pass  # added in the PR or missing locally: no lookup, use the @@ header
         return cache[rel]
 
     diffs = {}
     for path in sorted(glob.glob(os.path.join(out, "pr*.diff"))):
-        n = os.path.basename(path)[2:-5]
-        cur, hdr, decl, old_ln, rows = None, "", None, 0, []
-        with open(path, errors="replace") as f:
-            for line in f:
-                if line.startswith("diff --git "):
-                    cur, hdr, decl = None, "", None
-                elif line.startswith("--- a/"):
-                    cur = line[6:].strip()  # kept when the file is deleted (+++ /dev/null)
-                elif line.startswith("+++ b/"):
-                    cur = line[6:].strip()
-                elif line.startswith("@@"):
-                    hdr, decl = line.split("@@")[-1].strip(), None
-                    m = HUNK.match(line)
-                    old_ln = int(m.group(1)) if m else 0
-                elif line.startswith((" ", "+", "-")) and not line.startswith(("+++", "---")):
-                    if DECL.match(line):
-                        decl = line[1:].strip()
-                    if line[0] != " ":
-                        where = decl or (cur and enclosing(local(cur), old_ln, line[1:])) or hdr
-                        rows.append((cur, where, line.rstrip()))
-                    if line[0] != "+":
-                        old_ln += 1
-        diffs[n] = rows
+        rows = []
+        for cur, hdr, start, lines in parse(path):
+            text = local(cur) if cur else []
+            old_ln = locate(text, [x[1:] for x in lines if x[0] != "+"], start) if text else None
+            if text and old_ln is None:
+                hdr += " (local file differs)"
+            decl = None
+            for line in lines:
+                if DECL.match(line):
+                    decl = line[1:].strip()
+                if line[0] != " ":
+                    where = decl or (old_ln and enclosing(text, old_ln, line[1:])) or hdr
+                    rows.append((cur, where, line))
+                if line[0] != "+" and old_ln:
+                    old_ln += 1
+        diffs[os.path.basename(path)[2:-5]] = rows
     return diffs
 
 
