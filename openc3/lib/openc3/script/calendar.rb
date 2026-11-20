@@ -90,18 +90,21 @@ module OpenC3
 
     def get_timeline_activities(name, start: nil, stop: nil, limit: nil, scope: $openc3_scope)
       url = "/openc3-api/timeline/#{name}/activities"
+      params = []
       if start and stop
-        url += "?start=#{start}&stop=#{stop}"
+        params << "start=#{start}"
+        params << "stop=#{stop}"
       end
-      if limit
-        url += "?limit=#{limit}"
-      end
+      params << "limit=#{limit}" if limit
+      url += "?#{params.join('&')}" unless params.empty?
       response = $api_server.request('get', url, scope: scope)
       return _cal_handle_response(response, 'Failed to get timeline activities')
     end
 
-    def delete_timeline_activity(name, start, uuid, scope: $openc3_scope)
-      response = $api_server.request('delete', "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}", scope: scope)
+    def delete_timeline_activity(name, start, uuid, recurring: false, scope: $openc3_scope)
+      url = "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}"
+      url += "?recurring=true" if recurring
+      response = $api_server.request('delete', url, scope: scope)
       return _cal_handle_response(response, 'Failed to delete timeline activity')
     end
 

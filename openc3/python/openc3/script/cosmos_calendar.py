@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from requests import Response
@@ -138,8 +138,10 @@ def create_timeline_activity(
     Args:
         name: Timeline name.
         kind: Activity kind: COMMAND, SCRIPT or RESERVE (case insensitive).
-        start: Activity start time in UTC. It is sent with a Z suffix.
-        stop: Activity stop time in UTC. It is sent with a Z suffix.
+        start: Activity start time. A timezone-aware datetime is converted
+            to UTC; a naive datetime is treated as UTC.
+        stop: Activity stop time. A timezone-aware datetime is converted
+            to UTC; a naive datetime is treated as UTC.
         data: Activity data. Any activity can provide "username", "notes"
             and "customTitle". The "command", "script" and "reserve" keys are
             reserved for the corresponding activity kind, with "environment"
@@ -179,8 +181,10 @@ def update_timeline_activity(
         name: Timeline name.
         id: Current start time of the activity in epoch seconds.
         kind: Activity kind: COMMAND, SCRIPT or RESERVE (case insensitive).
-        start: New start time in UTC. It is sent with a Z suffix.
-        stop: New stop time in UTC. It is sent with a Z suffix.
+        start: New start time. A timezone-aware datetime is converted to
+            UTC; a naive datetime is treated as UTC.
+        stop: New stop time. A timezone-aware datetime is converted to
+            UTC; a naive datetime is treated as UTC.
         uuid: Activity UUID.
         data: Activity data. See `create_timeline_activity` for the keys.
         scope: COSMOS scope.
@@ -254,16 +258,20 @@ def get_timeline_activities(
         RuntimeError: If the server returns an error.
     """
     url = f"/openc3-api/timeline/{name}/activities"
+    params = []
     if start and stop:
-        url += f"?start={start}&stop={stop}"
+        params.append(f"start={start}")
+        params.append(f"stop={stop}")
     if limit:
-        url += f"?limit={limit}"
+        params.append(f"limit={limit}")
+    if params:
+        url += "?" + "&".join(params)
     response = openc3.script.API_SERVER.request("get", url, scope=scope)
     return _handle_response(response, "Failed to get timeline activities")
 
 
 def delete_timeline_activity(
-    name: str, start: int | str, uuid: str, scope: str = OPENC3_SCOPE
+    name: str, start: int | str, uuid: str, recurring: bool = False, scope: str = OPENC3_SCOPE
 ) -> dict[str, Any] | None:
     """Delete an activity from a timeline.
 
@@ -271,6 +279,8 @@ def delete_timeline_activity(
         name: Timeline name.
         start: Start time of the activity in epoch seconds.
         uuid: Activity UUID.
+        recurring: Whether to also delete every activity in the same
+            recurring group.
         scope: COSMOS scope.
 
     Returns:
@@ -281,9 +291,10 @@ def delete_timeline_activity(
         RuntimeError: If the server returns an error, including when the
             activity is not found.
     """
-    response = openc3.script.API_SERVER.request(
-        "delete", f"/openc3-api/timeline/{name}/activity/{start}/{uuid}", scope=scope
-    )
+    url = f"/openc3-api/timeline/{name}/activity/{start}/{uuid}"
+    if recurring:
+        url += "?recurring=true"
+    response = openc3.script.API_SERVER.request("delete", url, scope=scope)
     return _handle_response(response, "Failed to delete timeline activity")
 
 
@@ -295,11 +306,19 @@ def _build_activity_data(kind: str, start: datetime, stop: datetime, data: dict[
     if kind not in kinds:
         raise RuntimeError(f"Unknown kind: {kind}. Must be one of {', '.join(kinds)}.")
     return {
-        "start": start.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
-        "stop": stop.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+        "start": _format_activity_time(start),
+        "stop": _format_activity_time(stop),
         "kind": kind,
         "data": data,
     }
+
+
+# Format a datetime as UTC with a Z suffix. Aware datetimes are converted to UTC
+# and naive datetimes are treated as UTC.
+def _format_activity_time(time: datetime) -> str:
+    if time.utcoffset() is not None:
+        time = time.astimezone(timezone.utc)
+    return time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
 
 # Helper method to handle the response

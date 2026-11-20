@@ -10364,7 +10364,7 @@ Delete an existing timeline activity.
 <TabItem value="python" label="Python Syntax">
 
 ```python
-delete_timeline_activity(name, start, uuid)
+delete_timeline_activity(name, start, uuid, recurring=False)
 ```
 
 </TabItem>
@@ -10372,23 +10372,26 @@ delete_timeline_activity(name, start, uuid)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-delete_timeline_activity(name, start, uuid)
+delete_timeline_activity(name, start, uuid, recurring: false)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                           |
-| --------- | ----------------------------------------------------- |
-| name      | Name of the timeline                                  |
-| start     | Start time of the activity. Time / datetime instance. |
-| uuid      | UUID of the activity                                  |
+| Parameter | Description                                                                                                     |
+| --------- | --------------------------------------------------------------------------------------------------------------- |
+| name      | Name of the timeline                                                                                            |
+| start     | Start time of the activity. Time / datetime instance.                                                           |
+| uuid      | UUID of the activity                                                                                            |
+| recurring | Whether to also delete every activity in the same recurring group. Default is false. (Since _Coming Soon_) |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5")
+# Delete every activity in the recurring group
+delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5", recurring=True)
 ```
 
 </TabItem>
@@ -10397,6 +10400,8 @@ delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a3
 
 ```ruby
 delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782")
+# Delete every activity in the recurring group
+delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782", recurring: true)
 ```
 
 </TabItem>
