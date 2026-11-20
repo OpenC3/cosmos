@@ -98,21 +98,28 @@ def parse_ruby_param(p):
     return {"name": p, "kind": "pos", "default": "REQUIRED"}
 
 
+# Ruby modules mixed into scripts, where `private` hides methods from explicit
+# receivers but they stay callable from scripts
+SCRIPT_MODULES = {"Script", "ApiShared"}
+
+
 def ruby_methods(path, repo):
     lines = path.read_text().splitlines()
     out = []
-    stack = []  # (indent, class name or None for module, private)
+    stack = []  # (indent, class name or None for module, private, module name)
     for i, line in enumerate(lines):
         indent = len(line) - len(line.lstrip())
         cm = re.match(r"^(\s*)(class|module)\s+([\w:]+)", line)
         if cm and not line.rstrip().endswith(" end"):
             name = cm.group(3).split("::")[-1]
-            stack.append([indent, name if cm.group(2) == "class" else None, False])
+            stack.append([indent, name if cm.group(2) == "class" else None, False, name])
             continue
         if re.match(r"^\s*end\b", line) and stack and stack[-1][0] == indent:
             stack.pop()
             continue
-        if re.match(r"^\s*private\s*$", line) and stack:
+        # Script modules open with a bare `private` that covers user-callable
+        # methods (check, wait, plugin_list), so it marks nothing as internal there
+        if re.match(r"^\s*private\s*$", line) and stack and stack[-1][3] not in SCRIPT_MODULES:
             stack[-1][2] = True
         m = RUBY_DEF.match(line)
         if not m:

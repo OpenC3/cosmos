@@ -10,7 +10,7 @@ root, and saves pr<N>.diff and pr<N>.md (title + body) plus index.tsv.
 Run it from the repo so gh resolves the remote.
 
 grep: for each regex, prints every PR hunk whose changed lines or enclosing
-function (the @@ header) match, as "#N file [function] (+adds/-dels) first line".
+function match (the last declaration seen in the hunk, else the @@ header), as "#N file [function] (+adds/-dels) first line".
 A match is a lead: read the hunk to tell a fix from an overlap.
 """
 
@@ -67,6 +67,15 @@ def fetch(out, roots):
     print("\n".join(rows))
 
 
+# A method or function declaration (Python, Ruby, JS/Vue). The @@ header names
+# the nearest declaration above the hunk, which is wrong when the declaration is
+# inside the hunk, so declarations seen in the hunk (context or changed) win.
+DECL = re.compile(
+    r"^[ +-]\s*(?:(?:export|async|static|public|private|protected)\s+)*"
+    r"(?:(?:def|function|class|module)\s+[\w.?!=]+|(?!(?:if|for|while|switch|catch|return)\b)[A-Za-z_]\w*\s*\([^)]*\)\s*\{\s*$)"
+)
+
+
 def load(out):
     diffs = {}
     for path in sorted(glob.glob(os.path.join(out, "pr*.diff"))):
@@ -82,8 +91,11 @@ def load(out):
                     cur = line[6:].strip()
                 elif line.startswith("@@"):
                     hdr = line.split("@@")[-1].strip()
-                elif line.startswith(("+", "-")) and not line.startswith(("+++", "---")):
-                    rows.append((cur, hdr, line.rstrip()))
+                elif line.startswith((" ", "+", "-")) and not line.startswith(("+++", "---")):
+                    if DECL.match(line):
+                        hdr = line[1:].strip()
+                    if line[0] != " ":
+                        rows.append((cur, hdr, line.rstrip()))
         diffs[n] = rows
     return diffs
 
