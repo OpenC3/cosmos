@@ -9,7 +9,6 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import sys
 import time
 import traceback
 import warnings
@@ -96,35 +95,38 @@ def check_with_units(*args: Any, scope: str = "DEFAULT") -> None:
 
 
 def check_exception(method_name: str, *args: Any, **kwargs: Any) -> None:
-    """Call a function in this module by name and expect it to raise an exception.
+    """Call a scripting method by name and expect it to raise an exception.
 
     The raised exception is printed. For example::
 
-        check_exception("check", "INST HEALTH_STATUS TEMP1 == 9")
+        check_exception("cmd", "INST ABORT with BAD_PARAM 1")
 
     Args:
-        method_name: Name of the function to call.
-        *args: Positional arguments passed to the function.
-        **kwargs: Keyword arguments passed to the function. scope defaults to
+        method_name: Name of the openc3.script method to call.
+        *args: Positional arguments passed to the method.
+        **kwargs: Keyword arguments passed to the method. scope defaults to
             OPENC3_SCOPE if not given.
 
     Raises:
-        CheckError: If the function does not raise an exception.
+        CheckError: If the method does not exist or does not raise an exception.
     """
+    # Resolve from the whole scripting API, not just this module
+    method = getattr(openc3.script, method_name, None)
+    if not callable(method):
+        raise CheckError(f"check_exception: {method_name} is not a scripting method")
+    orig_kwargs = kwargs.copy()
+    if "scope" not in kwargs:
+        kwargs["scope"] = OPENC3_SCOPE
     try:
-        method = method_name
-        orig_kwargs = kwargs.copy()
-        if "scope" not in kwargs:
-            kwargs["scope"] = OPENC3_SCOPE
-        getattr(sys.modules[__name__], method_name)(*args, **kwargs)
-        method = f"{method_name}({', '.join(args)}"
-        if orig_kwargs:
-            method += f", {orig_kwargs}"
-        method += ")"
+        method(*args, **kwargs)
     except Exception:
-        print(f"CHECK: {method} raised {traceback.format_exc()}")
+        print(f"CHECK: {method_name} raised {traceback.format_exc()}")
     else:
-        raise CheckError(f"{method} should have raised an exception but did not.")
+        call = f"{method_name}({', '.join(str(arg) for arg in args)}"
+        if orig_kwargs:
+            call += f", {orig_kwargs}"
+        call += ")"
+        raise CheckError(f"{call} should have raised an exception but did not.")
 
 
 def check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:

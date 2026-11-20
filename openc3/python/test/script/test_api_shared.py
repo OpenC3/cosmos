@@ -373,6 +373,30 @@ class TestApiShared(unittest.TestCase):
         ):
             check_exception("check", "INST HEALTH_STATUS TEMP1 == 1", type="RAW")
 
+    def test_check_exception_calls_scripting_methods_outside_api_shared(self):
+        # https://github.com/OpenC3/cosmos/issues/4302
+        with patch("openc3.script.cmd", MagicMock(side_effect=RuntimeError("Bad command"))) as cmd:
+            for stdout in capture_io():
+                check_exception("cmd", "INST ABORT with BAD_PARAM 1")
+                self.assertIn("CHECK: cmd raised", stdout.getvalue())
+                self.assertIn("RuntimeError: Bad command", stdout.getvalue())
+            cmd.assert_called_once_with("INST ABORT with BAD_PARAM 1", scope="DEFAULT")
+
+    def test_check_exception_raises_if_method_with_non_string_args_does_not_raise(self):
+        # https://github.com/OpenC3/cosmos/issues/4295
+        with patch("openc3.script.cmd", MagicMock(return_value=None)) as cmd:
+            with self.assertRaisesRegex(
+                CheckError,
+                r"cmd\(INST, COLLECT, \{'TYPE': 'NORMAL'\}, 5\) should have raised an exception but did not",
+            ):
+                check_exception("cmd", "INST", "COLLECT", {"TYPE": "NORMAL"}, 5)
+            cmd.assert_called_once()
+
+    def test_check_exception_raises_if_the_method_does_not_exist(self):
+        # https://github.com/OpenC3/cosmos/issues/4302
+        with self.assertRaisesRegex(CheckError, "check_exception: no_such_method is not a scripting method"):
+            check_exception("no_such_method", "INST")
+
     def test_check_tolerance_raises_with_invalid_params(self):
         with self.assertRaisesRegex(
             RuntimeError,
