@@ -192,10 +192,7 @@ def check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str = OPEN
 
 
 def check_expression(
-    exp_to_eval: str,
-    globals: dict[str, Any] | None = None,
-    locals: Mapping[str, Any] | None = None,
-    scope: str = OPENC3_SCOPE,
+    exp_to_eval: str, globals: dict[str, Any] | None = None, locals: Mapping[str, Any] | None = None
 ) -> None:
     """Check that a Python expression is true without waiting.
 
@@ -203,8 +200,6 @@ def check_expression(
         exp_to_eval: Python expression to evaluate. Must be ASCII.
         globals: Global namespace used to evaluate the expression.
         locals: Local namespace used to evaluate the expression.
-        scope: COSMOS scope. Unused because the expression is evaluated locally,
-            but accepted like the other check and wait methods.
 
     Raises:
         CheckError: If the expression is not true.
@@ -427,7 +422,6 @@ def wait_expression(
     globals: dict[str, Any] | None = None,
     locals: Mapping[str, Any] | None = None,
     quiet: bool = False,
-    scope: str = OPENC3_SCOPE,
 ) -> bool | None:
     """Wait for a Python expression to be true.
 
@@ -440,8 +434,6 @@ def wait_expression(
         globals: Global namespace used to evaluate the expression.
         locals: Local namespace used to evaluate the expression.
         quiet: Whether to suppress printing the result.
-        scope: COSMOS scope. Unused because the expression is evaluated locally,
-            but accepted like the other check and wait methods.
 
     Returns:
         True if the expression became true before the timeout, otherwise None.
@@ -613,7 +605,6 @@ def wait_check_expression(
     polling_rate: float = DEFAULT_TLM_POLLING_RATE,
     globals: dict[str, Any] | None = None,
     locals: Mapping[str, Any] | None = None,
-    scope: str = OPENC3_SCOPE,
 ) -> float:
     """Wait for a Python expression to be true, then check it.
 
@@ -623,8 +614,6 @@ def wait_check_expression(
         polling_rate: Seconds between evaluations.
         globals: Global namespace used to evaluate the expression.
         locals: Local namespace used to evaluate the expression.
-        scope: COSMOS scope. Unused because the expression is evaluated locally,
-            but accepted like the other check and wait methods.
 
     Returns:
         The seconds actually waited.
