@@ -15,6 +15,7 @@
 
 import logging
 import time
+import warnings
 
 import requests
 
@@ -86,26 +87,35 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
     Use it as the ``auth`` of a requests call to call COSMOS server methods
     directly::
 
-        auth = CosmosKeycloakAuthorization(schema="", hostname="127.0.0.1", port=7777)
+        auth = CosmosKeycloakAuthorization()
         requests.get("example.org", auth=auth)
+
+    Tokens are requested from OPENC3_KEYCLOAK_URL in the Keycloak realm
+    OPENC3_KEYCLOAK_REALM.
     """
 
     def __init__(
         self,
-        schema: str = OPENC3_API_SCHEMA,
-        hostname: str = OPENC3_API_HOSTNAME,
-        port: int = OPENC3_API_PORT,
+        schema: str | None = None,
+        hostname: str | None = None,
+        port: int | None = None,
     ) -> None:
         """Create the authorization. Tokens are requested lazily on first use.
 
-        The token is always requested from OPENC3_KEYCLOAK_URL; the arguments
-        are accepted for compatibility but not used.
+        The token is always requested from OPENC3_KEYCLOAK_URL.
 
         Args:
-            schema: The schema to connect to COSMOS with.
-            hostname: The name of the machine which has started the JSON service.
-            port: The port number of the JSON service.
+            schema: Deprecated and unused. Passing a value emits a DeprecationWarning.
+            hostname: Deprecated and unused. Passing a value emits a DeprecationWarning.
+            port: Deprecated and unused. Passing a value emits a DeprecationWarning.
         """
+        if schema is not None or hostname is not None or port is not None:
+            warnings.warn(
+                "CosmosKeycloakAuthorization ignores schema, hostname and port; tokens are always requested "
+                "from OPENC3_KEYCLOAK_URL. These arguments are deprecated and will be removed.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.request_url = OPENC3_KEYCLOAK_URL
         self.refresh_token = None
         self.expires_at = None
@@ -179,6 +189,9 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
         Returns:
             The requests.Response, see
             https://docs.python-requests.org/en/master/user/quickstart/#json-response-content
+
+        Raises:
+            RuntimeError: If the request fails or returns an HTTP error status.
         """
         request_kwargs = {
             "url": f"{self.request_url}/realms/{OPENC3_KEYCLOAK_REALM}/protocol/openid-connect/token",
@@ -195,6 +208,7 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
             resp.elapsed.total_seconds(),
             resp.content,
         )
+        resp.raise_for_status()
         return resp
 
     def _refresh_token(self):
@@ -231,6 +245,9 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
         Returns:
             The requests.Response, see
             https://docs.python-requests.org/en/master/user/quickstart/#json-response-content
+
+        Raises:
+            RuntimeError: If the request fails or returns an HTTP error status.
         """
         request_kwargs = {
             "url": f"{self.request_url}/realms/{OPENC3_KEYCLOAK_REALM}/protocol/openid-connect/token",
@@ -248,4 +265,5 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
             resp.elapsed.total_seconds(),
             resp.content,
         )
+        resp.raise_for_status()
         return resp
