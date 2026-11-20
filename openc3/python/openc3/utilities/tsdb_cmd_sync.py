@@ -180,6 +180,9 @@ def ingest_rows(
     """Write rows to the destination. fields holds (column, source type, destination type)
     for each column after the time column.
     """
+    if dest.ingest is None:
+        raise SyncError("Destination ingest is not connected")
+    ingest = dest.ingest
     # Convert the whole page before writing any of it, so a value that can't be
     # converted fails the page without leaving part of it in the sender's buffer
     converted_rows = []
@@ -196,7 +199,7 @@ def ingest_rows(
                 values[column] = converted
         converted_rows.append((symbols or None, values, TimestampNanos(int(row[0]) * source_nsec)))
     for symbols, values, at in converted_rows:
-        dest.ingest.row(table, symbols=symbols, columns=values, at=at)
+        ingest.row(table, symbols=symbols, columns=values, at=at)
     dest.flush()
 
 
@@ -213,6 +216,8 @@ def sync_table(
     Returns:
         The number of rows copied (or that would be copied, with dry_run).
     """
+    if dest.query is None:
+        raise SyncError("Destination query is not connected")
     with source.cursor() as source_cursor, dest.query.cursor() as dest_cursor:
         source_types = get_columns(source_cursor, table)
         dest_types = get_columns(dest_cursor, table)
@@ -279,9 +284,10 @@ def sync_db_shard(db_shard: int, args: argparse.Namespace) -> bool:
                 # through a time, and the next run resumes after the newest time
                 # written, skipping the rest of the rows at that time.
                 if not args.dry_run:
-                    with contextlib.suppress(Exception):
-                        dest.ingest.close(flush=False)
-                    dest.ingest = None
+                    if dest.ingest is not None:
+                        with contextlib.suppress(Exception):
+                            dest.ingest.close(flush=False)
+                        dest.ingest = None
                     dest.connect_ingest()
                 continue
             if copied:
