@@ -134,6 +134,15 @@ class TestTelemetry(unittest.TestCase):
                 stdout.getvalue(),
             )
 
+    def test_set_and_override_tlm_print_only_the_given_args(self):
+        # A missing value must reach the API, which reports the argument error,
+        # rather than raise IndexError while building the printed call
+        for stdout in capture_io():
+            set_tlm("TARGET", "PACKET", "ITEM")
+            self.assertIn('set_tlm("TARGET", "PACKET", "ITEM", type="CONVERTED")', stdout.getvalue())
+            override_tlm("TARGET", "PACKET", "ITEM")
+            self.assertIn('override_tlm("TARGET", "PACKET", "ITEM", type="ALL")', stdout.getvalue())
+
     def test_normalize_tlm(self):
         for stdout in capture_io():
             normalize_tlm("TARGET", "PACKET", "ITEM")

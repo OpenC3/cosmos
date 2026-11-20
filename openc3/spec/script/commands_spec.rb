@@ -402,6 +402,24 @@ module OpenC3
             expect(get_cmd_hazardous("inst collect with type NORMAL")).to be false
             expect(get_cmd_hazardous("INST COLLECT with TYPE SPECIAL")).to be true
           end
+
+          it "forwards scope and string keyword parameters" do
+            expect(get_cmd_hazardous("INST", "COLLECT", "TYPE" => "SPECIAL", scope: 'DEFAULT')).to be true
+            expect($api_server).to receive(:get_cmd_hazardous).with("INST CLEAR", scope: 'OTHER').and_return(true)
+            expect(get_cmd_hazardous("INST CLEAR", scope: 'OTHER')).to be true
+          end
+        end
+
+        describe "build_cmd keyword arguments" do
+          it "forwards range_check, raw, timeout and scope" do
+            expect($api_server).to receive(:build_cmd).with("INST ABORT", range_check: false, raw: true, timeout: 10, scope: 'OTHER').and_return({})
+            build_cmd("INST ABORT", range_check: false, raw: true, timeout: 10, scope: 'OTHER')
+          end
+
+          it "converts string keyword parameters and uses the defaults" do
+            expect($api_server).to receive(:build_cmd).with("INST", "COLLECT", { "TYPE" => "NORMAL" }, range_check: true, raw: false, timeout: 5, scope: 'DEFAULT').and_return({})
+            build_cmd("INST", "COLLECT", "TYPE" => "NORMAL")
+          end
         end
 
         if connect == 'connected'

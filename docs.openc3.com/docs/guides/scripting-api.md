@@ -1302,7 +1302,7 @@ Builds a command binary string so you can see the raw bytes for a given command.
 <TabItem value="python" label="Python Syntax">
 
 ```python
-build_cmd(<ARGS>, range_check=True, raw=False)
+build_cmd(<ARGS>, range_check=True, raw=False, timeout=5)
 ```
 
 </TabItem>
@@ -1310,7 +1310,7 @@ build_cmd(<ARGS>, range_check=True, raw=False)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-build_cmd(<ARGS>, range_check: true, raw: false)
+build_cmd(<ARGS>, range_check: true, raw: false, timeout: 5)
 ```
 
 </TabItem>
@@ -1321,6 +1321,7 @@ build_cmd(<ARGS>, range_check: true, raw: false)
 | ARGS        | Command parameters (see cmd)                                                            |
 | range_check | Whether to perform range checking on the command. Default is true.                      |
 | raw         | Whether to write the command arguments as RAW or CONVERTED value. Default is CONVERTED. |
+| timeout     | Seconds to wait for the decom microservice to build the command. Default is 5.          |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
