@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from unittest.mock import Mock
 
 import requests
@@ -76,6 +76,15 @@ class TestCosmosCalendar(unittest.TestCase):
         update_timeline_activity("TL", 100, kind="reserve", start=start, stop=stop, uuid="UUID")
         data = self.api_server.request.call_args.kwargs["data"]
         self.assertEqual(data["start"], "2030-01-01T19:00:00.000000Z")
+
+    def test_activity_dates_are_midnight_utc(self):
+        create_timeline_activity("TL", kind="reserve", start=date(2030, 1, 1), stop=date(2030, 1, 2))
+        data = self.api_server.request.call_args.kwargs["data"]
+        self.assertEqual(data["start"], "2030-01-01T00:00:00.000000Z")
+        self.assertEqual(data["stop"], "2030-01-02T00:00:00.000000Z")
+        update_timeline_activity("TL", 100, kind="reserve", start=date(2030, 1, 1), stop=date(2030, 1, 2), uuid="UUID")
+        data = self.api_server.request.call_args.kwargs["data"]
+        self.assertEqual(data["start"], "2030-01-01T00:00:00.000000Z")
 
     def test_naive_activity_times_are_treated_as_utc(self):
         start = datetime(2030, 1, 1, 12, 0)

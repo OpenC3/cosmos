@@ -10,7 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import Any
 
 from requests import Response
@@ -128,8 +128,8 @@ def delete_timeline(name: str, force: bool = False, scope: str = OPENC3_SCOPE) -
 def create_timeline_activity(
     name: str,
     kind: str,
-    start: datetime,
-    stop: datetime,
+    start: datetime | date,
+    stop: datetime | date,
     data: dict[str, Any] | None = None,
     scope: str = OPENC3_SCOPE,
 ) -> dict[str, Any] | None:
@@ -139,9 +139,9 @@ def create_timeline_activity(
         name: Timeline name.
         kind: Activity kind: COMMAND, SCRIPT or RESERVE (case insensitive).
         start: Activity start time. A timezone-aware datetime is converted
-            to UTC; a naive datetime is treated as UTC.
+            to UTC, a naive datetime is treated as UTC and a date is midnight UTC.
         stop: Activity stop time. A timezone-aware datetime is converted
-            to UTC; a naive datetime is treated as UTC.
+            to UTC, a naive datetime is treated as UTC and a date is midnight UTC.
         data: Activity data. Any activity can provide "username", "notes"
             and "customTitle". The "command", "script" and "reserve" keys are
             reserved for the corresponding activity kind, with "environment"
@@ -169,8 +169,8 @@ def update_timeline_activity(
     name: str,
     id: int | str,
     kind: str,
-    start: datetime,
-    stop: datetime,
+    start: datetime | date,
+    stop: datetime | date,
     uuid: str,
     data: dict[str, Any] | None = None,
     scope: str = OPENC3_SCOPE,
@@ -182,9 +182,9 @@ def update_timeline_activity(
         id: Current start time of the activity in epoch seconds.
         kind: Activity kind: COMMAND, SCRIPT or RESERVE (case insensitive).
         start: New start time. A timezone-aware datetime is converted to
-            UTC; a naive datetime is treated as UTC.
+            UTC, a naive datetime is treated as UTC and a date is midnight UTC.
         stop: New stop time. A timezone-aware datetime is converted to
-            UTC; a naive datetime is treated as UTC.
+            UTC, a naive datetime is treated as UTC and a date is midnight UTC.
         uuid: Activity UUID.
         data: Activity data. See `create_timeline_activity` for the keys.
         scope: COSMOS scope.
@@ -300,7 +300,7 @@ def delete_timeline_activity(
     return _handle_response(response, "Failed to delete timeline activity")
 
 
-def _build_activity_data(kind: str, start: datetime, stop: datetime, data: dict[str, Any] | None):
+def _build_activity_data(kind: str, start: datetime | date, stop: datetime | date, data: dict[str, Any] | None):
     if data is None:
         data = {}
     kind = kind.lower()
@@ -315,10 +315,10 @@ def _build_activity_data(kind: str, start: datetime, stop: datetime, data: dict[
     }
 
 
-# Format a datetime as UTC with a Z suffix. Aware datetimes are converted to UTC
-# and naive datetimes are treated as UTC.
-def _format_activity_time(time: datetime) -> str:
-    if time.utcoffset() is not None:
+# Format a datetime as UTC with a Z suffix. Aware datetimes are converted to UTC,
+# naive datetimes are treated as UTC and dates are treated as midnight UTC.
+def _format_activity_time(time: datetime | date) -> str:
+    if isinstance(time, datetime) and time.utcoffset() is not None:
         time = time.astimezone(timezone.utc)
     return time.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
