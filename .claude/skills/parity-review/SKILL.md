@@ -100,5 +100,11 @@ page escapes them. Prose fields may hold `<code>` and `<strong>`.
 - **Fixed in open PRs:** drift the sweeps found that an open PR already fixes, so reviewers can see the coverage.
 - **Top recommendation:** group the fixes into PRs by module. Name the first PR and the docs changes it needs. AGENTS.md requires `scripting-api.md` updates for any signature or behavior change.
 
-Publish with the Artifact tool, give the user the link, and ask which fixes to
-start.
+Publish as a new version of the standing report, so the link people already
+have stays current and earlier runs stay in its version history:
+
+1. Read it first: Artifact `action: "read"` on https://claude.ai/artifact/XYFqNkJkN4JyE8DtyBBsV9.
+2. Publish the rendered file with that `url` and a `label` of `<YYYY-MM-DD> @ <short sha>`.
+3. If the publish is refused because the user can't edit that artifact, publish a new one and tell them to ask its owner for edit access or to replace the URL above.
+
+Give the user the link and ask which fixes to start.

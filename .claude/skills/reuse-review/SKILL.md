@@ -90,6 +90,18 @@ diagrams and tables from those arrays, so edit data, not markup.
 
 The diagrams are HTML boxes, not Mermaid. The artifact viewer renders Mermaid nodes dark and drops `<br/>`, so the template's boxes stay readable.
 
-Publish with the Artifact tool. Give the user the link and ask which candidate
-to take on. A chosen candidate continues with the grilling skill, as in
+Publish as a new version of the standing report for that language, so the link
+people already have stays current and earlier runs stay in its version history:
+
+| Language | Report |
+| --- | --- |
+| `python` | https://claude.ai/artifact/244jzhZQMRcxt8N8nsmUKy |
+| `ruby` | none yet |
+| `vue` | none yet |
+
+1. With a URL: Artifact `action: "read"` on it, then publish with that `url` and a `label` of `<YYYY-MM-DD> @ <short sha>`.
+2. With no URL (a new language or a path argument): publish a new artifact. For a language, add its URL to this table in the same PR as any other skill change, or tell the user to.
+3. If the publish is refused because the user can't edit that artifact, publish a new one and tell them to ask its owner for edit access or to replace the URL above.
+
+Give the user the link and ask which candidate to take on. A chosen candidate continues with the grilling skill, as in
 improve-codebase-architecture.
