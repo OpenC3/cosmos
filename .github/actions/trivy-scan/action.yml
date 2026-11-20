@@ -1,0 +1,216 @@
+# Copyright 2026 OpenC3, Inc.
+# All Rights Reserved.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See LICENSE.md for more details.
+#
+# This file may also be used under the terms of a commercial license
+# if purchased from OpenC3, Inc.
+
+name: Trivy Scan Images
+description: |
+  Scan local docker images with trivy and report the result as its own check
+  run instead of failing the job.
+
+  Most findings come from upstream base images and packages that a pull
+  request cannot fix, so a red check on every PR hides which ones are actually
+  broken. Findings are posted as a check run with conclusion "neutral" (a gray
+  icon that does not fail the PR), listed in the job summary, and emitted as
+  warning annotations. The calling job stays green.
+
+  Requires the trivy binary (.github/actions/setup-trivy), the VEX hub in the
+  trivy cache (.github/actions/fetch-vexhub, with
+  TRIVY_SKIP_VEX_REPO_UPDATE=true), and `checks: write` on the job to post the
+  check run. A fork PR's token is read-only, so there the check run is skipped
+  with a warning and the results are only in the job summary.
+
+inputs:
+  images:
+    description: Whitespace-separated image names, without registry or tag.
+    required: true
+  image-prefix:
+    description: Registry and namespace in front of each image, e.g. docker.io/openc3inc.
+    required: true
+  tag:
+    description: Tag of the images to scan.
+    required: true
+  check-name:
+    description: Name of the check run to post.
+    required: true
+  config:
+    description: trivy config file.
+    required: false
+    default: trivy.yaml
+  token:
+    description: Token used to post the check run. Needs checks write.
+    required: false
+    default: ${{ github.token }}
+
+runs:
+  using: composite
+  steps:
+    - name: Run trivy
+      id: scan
+      shell: bash
+      env:
+        IMAGES: ${{ inputs.images }}
+        PREFIX: ${{ inputs.image-prefix }}
+        TAG: ${{ inputs.tag }}
+        CONFIG: ${{ inputs.config }}
+        CHECK_NAME: ${{ inputs.check-name }}
+      run: |
+        out_dir="$RUNNER_TEMP/trivy-scan-${GITHUB_ACTION}"
+        rm -rf "$out_dir"
+        mkdir -p "$out_dir"
+
+        # --image-src docker pins each scan to the image in the local daemon.
+        # Without it trivy falls back to pulling the published image of the
+        # same name, which would scan the last release, not this commit.
+        #
+        # Trivy exits 1 on any fatal error (e.g. a DB download failure), which
+        # is also the exit-code trivy.yaml sets for findings. --exit-code 2
+        # tells the two apart. Record either and keep going: one bad image
+        # should not hide the results for the others.
+        failed=()
+        errored=()
+        for image in $IMAGES; do
+          echo "::group::trivy ${image}"
+          set +e
+          trivy image --config "$CONFIG" --exit-code 2 --image-src docker \
+            "${PREFIX}/${image}:${TAG}" \
+            2> >(tee "$out_dir/${image}.err" >&2) | tee "$out_dir/${image}.out"
+          rc=${PIPESTATUS[0]}
+          set -e
+          case $rc in
+            0) ;;
+            2) failed+=("$image") ;;
+            *) errored+=("$image") ;;
+          esac
+          echo "::endgroup::"
+        done
+        # Let the stderr tee processes finish writing before reading the files.
+        wait
+
+        if [ ${#failed[@]} -eq 0 ] && [ ${#errored[@]} -eq 0 ]; then
+          conclusion=success
+          title="No fixable CRITICAL/HIGH vulnerabilities"
+        else
+          conclusion=neutral
+          title=""
+          if [ ${#failed[@]} -gt 0 ]; then
+            title="${#failed[@]} image(s) with fixable CRITICAL/HIGH vulnerabilities"
+          fi
+          if [ ${#errored[@]} -gt 0 ]; then
+            title="${title:+${title}, }${#errored[@]} image(s) failed to scan"
+          fi
+        fi
+
+        # Each image's log is inside a collapsed ::group::, and a clean image
+        # still prints a full all-zero Report Summary. Name the images with
+        # findings where they are visible without expanding anything.
+        summary="$out_dir/summary.md"
+        {
+          if [ "$conclusion" = success ]; then
+            echo "No fixable CRITICAL/HIGH vulnerabilities in ${PREFIX}/*:${TAG}."
+          else
+            echo "These findings do not fail CI. Most come from upstream base images or packages; fix the ones this change can."
+            echo
+          fi
+          if [ ${#failed[@]} -gt 0 ]; then
+            echo "Fixable CRITICAL/HIGH vulnerabilities in:"
+            printf -- '- `%s`\n' "${failed[@]}"
+            echo
+          fi
+          if [ ${#errored[@]} -gt 0 ]; then
+            echo "Trivy failed to scan (see the log for the error):"
+            printf -- '- `%s`\n' "${errored[@]}"
+          fi
+        } > "$summary"
+
+        details="$out_dir/details.md"
+        : > "$details"
+        for image in "${failed[@]}"; do
+          {
+            echo "<details><summary>${image}</summary>"
+            echo
+            echo '```'
+            cat "$out_dir/${image}.out"
+            echo '```'
+            echo
+            echo "</details>"
+          } >> "$details"
+        done
+        for image in "${errored[@]}"; do
+          {
+            echo "<details><summary>${image} (scan failed)</summary>"
+            echo
+            echo '```'
+            tail -n 20 "$out_dir/${image}.err"
+            echo '```'
+            echo
+            echo "</details>"
+          } >> "$details"
+        done
+
+        {
+          echo "### ${CHECK_NAME}"
+          cat "$summary"
+          echo
+          cat "$details"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+        for image in "${failed[@]}"; do
+          echo "::warning title=Trivy::${image} has fixable CRITICAL/HIGH vulnerabilities"
+        done
+        for image in "${errored[@]}"; do
+          echo "::warning title=Trivy::trivy failed to scan ${image}"
+        done
+
+        {
+          echo "conclusion=${conclusion}"
+          echo "title=${title}"
+          echo "summary-file=${summary}"
+          echo "details-file=${details}"
+        } >> "$GITHUB_OUTPUT"
+
+    # A check run rather than a commit status because a commit status has no
+    # neutral state: its only non-passing states (failure, error) are red.
+    - name: Post check run
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        CHECK_NAME: ${{ inputs.check-name }}
+        # On a pull_request event github.sha is the throwaway merge commit,
+        # which is not the commit the PR shows checks against.
+        SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        CONCLUSION: ${{ steps.scan.outputs.conclusion }}
+        TITLE: ${{ steps.scan.outputs.title }}
+        SUMMARY_FILE: ${{ steps.scan.outputs.summary-file }}
+        DETAILS_FILE: ${{ steps.scan.outputs.details-file }}
+      run: |
+        # The check run's text field is capped at 65535 characters.
+        limit=60000
+        text_file="${DETAILS_FILE%.md}-text.md"
+        if [ "$(wc -c < "$DETAILS_FILE")" -gt "$limit" ]; then
+          { head -c "$limit" "$DETAILS_FILE"; printf '\n```\n\nTruncated. See the full output in %s\n' "$RUN_URL"; } > "$text_file"
+        else
+          cp "$DETAILS_FILE" "$text_file"
+        fi
+        payload="${DETAILS_FILE%.md}-payload.json"
+        jq -n \
+          --arg name "$CHECK_NAME" \
+          --arg sha "$SHA" \
+          --arg conclusion "$CONCLUSION" \
+          --arg url "$RUN_URL" \
+          --arg title "$TITLE" \
+          --rawfile summary "$SUMMARY_FILE" \
+          --rawfile text "$text_file" \
+          '{name: $name, head_sha: $sha, status: "completed", conclusion: $conclusion,
+            details_url: $url, output: {title: $title, summary: $summary, text: $text}}' \
+          > "$payload"
+        if ! gh api "repos/${GITHUB_REPOSITORY}/check-runs" --input "$payload" --silent; then
+          echo "::warning title=Trivy::Could not post the '${CHECK_NAME}' check run (a fork pull request has a read-only token). The results are in this job's summary."
+        fi
