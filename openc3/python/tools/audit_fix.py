@@ -118,14 +118,18 @@ def main() -> int:
         print("uv audit found no vulnerabilities")
         return 0
 
+    # Split by uv.lock, not by the advisories: if only numpy 2.5.5 is flagged, a
+    # ">=" bound would still move the other locked numpy versions
+    before = locked_versions()
     locked: dict[str, set[str]] = {}
     for vuln in vulnerabilities:
         locked.setdefault(vuln["dependency"]["name"], set()).add(vuln["dependency"]["version"])
-    split = {name for name, versions in locked.items() if len(versions) > 1}
+    split = {name for name in locked if len(before.get(name, set())) > 1}
     targets, unfixed = plan([v for v in vulnerabilities if v["dependency"]["name"] not in split])
 
     for name in sorted(split):
-        print(f"Locked at several versions, fix by hand: {name} {', '.join(sorted(locked[name]))}")
+        flagged = ", ".join(sorted(locked[name]))
+        print(f"Locked at several versions, fix by hand: {name} {', '.join(sorted(before[name]))} (flagged: {flagged})")
     for name, ids in sorted(unfixed.items()):
         print(f"No fix released: {name} {', '.join(sorted(locked[name]))} ({', '.join(ids)})")
     if not targets:
@@ -136,7 +140,6 @@ def main() -> int:
         print(f"Upgrading: {name} {', '.join(sorted(locked[name]))} -> >={version}")
         upgrade_args += ["--upgrade-package", f"{name}>={version}"]
     sys.stdout.flush()
-    before = locked_versions()
     returncode = subprocess.run(["uv", "lock", *upgrade_args], check=False).returncode
     if returncode == 0:
         after = locked_versions()
