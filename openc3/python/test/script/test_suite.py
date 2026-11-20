@@ -35,8 +35,21 @@ class StderrGroup(Group):
         # Intentionally empty, used to check the setup status string
         pass
 
+    def teardown(self):
+        # Intentionally empty, used to check the teardown status string
+        pass
+
     def script_stderr(self):
         print("stderr text", file=sys.stderr)
+
+
+class TeardownSuite(Suite):
+    def __init__(self):
+        self.add_group(StderrGroup)
+
+    def teardown(self):
+        # Intentionally empty, used to check the teardown status string
+        pass
 
 
 class EqualSuite(Suite):
@@ -82,6 +95,19 @@ class TestSuiteAndGroup(unittest.TestCase):
         with patch.object(group, "run_script"):
             group.run_setup()
         self.assertEqual(ScriptStatus.instance().status, "StderrGroup : setup")
+
+    def test_group_teardown_status_uses_class_name(self):
+        group = StderrGroup()
+        with patch.object(group, "run_script"):
+            group.run_teardown()
+        self.assertEqual(ScriptStatus.instance().status, "StderrGroup : teardown")
+
+    def test_suite_teardown_status_uses_class_name(self):
+        suite = TeardownSuite()
+        # run_method runs the teardown, so stub it to see the run_teardown status
+        with patch.object(StderrGroup, "run_method"):
+            suite.run_teardown()
+        self.assertEqual(ScriptStatus.instance().status, "TeardownSuite : teardown")
 
     def test_suites_compare_and_hash_by_name(self):
         first = EqualSuite()
