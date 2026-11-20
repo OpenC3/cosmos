@@ -50,18 +50,18 @@ class StreamingThread
 
   def add(collection)
     collection.objects.each do |object|
-      OpenC3::Logger.info "Adding #{object.key}"
+      OpenC3::Logger.debug "Adding #{object.key}"
       @collection.add(object)
     end
   end
 
   def remove(collection)
     collection.objects.each do |object|
-      OpenC3::Logger.info "Removing #{object.key}"
+      OpenC3::Logger.debug "Removing #{object.key}"
       @collection.remove(object)
     end
     if @collection.objects.length == 0
-      OpenC3::Logger.info "Last object removed, canceling streaming."
+      OpenC3::Logger.debug "Last object removed, canceling streaming."
       @cancel_thread = true
     end
   end
@@ -270,7 +270,7 @@ class StreamingThread
   end
 
   def finish(objects)
-    OpenC3::Logger.info "Finishing #{objects.length} objects from stream"
+    OpenC3::Logger.debug "Finishing #{objects.length} objects from stream"
     objects.each do |object|
       @collection.remove(object)
     end

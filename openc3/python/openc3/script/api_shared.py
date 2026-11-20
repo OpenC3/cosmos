@@ -12,9 +12,12 @@
 import sys
 import time
 import traceback
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
+from typing import Any
 
 import openc3.script
+from openc3.api.api_types import ValueType
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.extract import (
     compare_values,
@@ -33,59 +36,78 @@ DEFAULT_TLM_POLLING_RATE = 0.25
 # Without the 'f' :.X means display X significant figures
 
 
-def check(*args, type="CONVERTED", scope="DEFAULT"):
-    """Check the converted value of a telmetry item against a condition
-    Always print the value of the telemetry item to STDOUT
-    If the condition check fails, raise an error
-    Supports two signatures:
-    check(target_name, packet_name, item_name, comparison_to_eval)
-    or
-    check('target_name packet_name item_name > 1')
+def check(*args: Any, type: ValueType = "CONVERTED", scope: str = "DEFAULT") -> None:
+    """Check the value of a telemetry item against a condition.
+
+    Always prints the value of the telemetry item. Accepts two calling styles::
+
+        check("TGT PKT ITEM > 1")
+        check("TGT", "PKT", "ITEM", "> 1")
+
+    The comparison is optional, in which case the value is only printed. In
+    disconnect mode a failed check is printed instead of raised.
+
+    Args:
+        *args: A single "TGT PKT ITEM comparison" string, or the target, packet
+            and item names followed by an optional comparison string.
+        type: Value type to check: RAW, CONVERTED (default) or FORMATTED.
+        scope: COSMOS scope.
     """
     return _check(*args, type=type, scope=scope)
 
 
-def check_raw(*args, scope="DEFAULT"):
-    """Check the raw value of a telmetry item against a condition
-    Always print the value of the telemetry item to STDOUT
-    If the condition check fails, raise an error
-    Supports two signatures:
-    check(target_name, packet_name, item_name, comparison_to_eval)
-    or
-    check('target_name packet_name item_name > 1')
+def check_raw(*args: Any, scope: str = "DEFAULT") -> None:
+    """Check the RAW value of a telemetry item against a condition. See `check` for the calling styles.
+
+    Args:
+        *args: A single "TGT PKT ITEM comparison" string, or the target, packet
+            and item names followed by an optional comparison string.
+        scope: COSMOS scope.
     """
     return _check(*args, type="RAW", scope=scope)
 
 
-def check_formatted(*args, scope="DEFAULT"):
-    """Check the formatted value of a telmetry item against a condition
-    Always print the value of the telemetry item to STDOUT
-    If the condition check fails, raise an error
-    Supports two signatures:
-    check(target_name, packet_name, item_name, comparison_to_eval)
-    or
-    check('target_name packet_name item_name > 1')
+def check_formatted(*args: Any, scope: str = "DEFAULT") -> None:
+    """Check the FORMATTED value of a telemetry item against a condition. See `check` for the calling styles.
+
+    Args:
+        *args: A single "TGT PKT ITEM comparison" string, or the target, packet
+            and item names followed by an optional comparison string.
+        scope: COSMOS scope.
     """
     return _check(*args, type="FORMATTED", scope=scope)
 
 
 # DEPRECATED
-def check_with_units(*args, scope="DEFAULT"):
-    """Check the formatted with units value of a telmetry item against a condition
-    Always print the value of the telemetry item to STDOUT
-    If the condition check fails, raise an error
-    Supports two signatures:
-    check(target_name, packet_name, item_name, comparison_to_eval)
-    or
-    check('target_name packet_name item_name > 1')
+def check_with_units(*args: Any, scope: str = "DEFAULT") -> None:
+    """Check the FORMATTED value of a telemetry item against a condition.
+
+    Deprecated: use `check_formatted`.
+
+    Args:
+        *args: A single "TGT PKT ITEM comparison" string, or the target, packet
+            and item names followed by an optional comparison string.
+        scope: COSMOS scope.
     """
     return _check(*args, type="FORMATTED", scope=scope)
 
 
-def check_exception(method_name, *args, **kwargs):
-    """Executes the passed method and expects an exception to be raised.
-    Raises a CheckError if an Exception is not raised.
-    Usage: check_exception(method_name, method_params}"""
+def check_exception(method_name: str, *args: Any, **kwargs: Any) -> None:
+    """Call a function in this module by name and expect it to raise an exception.
+
+    The raised exception is printed. For example::
+
+        check_exception("check", "INST HEALTH_STATUS TEMP1 == 9")
+
+    Args:
+        method_name: Name of the function to call.
+        *args: Positional arguments passed to the function.
+        **kwargs: Keyword arguments passed to the function. scope defaults to
+            OPENC3_SCOPE if not given.
+
+    Raises:
+        CheckError: If the function does not raise an exception.
+    """
     try:
         method = method_name
         orig_kwargs = kwargs.copy()
@@ -102,14 +124,27 @@ def check_exception(method_name, *args, **kwargs):
         raise CheckError(f"{method} should have raised an exception but did not.")
 
 
-def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
-    """Check the converted value of a telmetry item against an expected value with a tolerance
-    Always print the value of the telemetry item to STDOUT
-    If the condition check fails, raise an error
-    Supports two signatures:
-    check_tolerance(target_name, packet_name, item_name, expected_value, tolerance)
-    or
-    check_tolerance('target_name packet_name item_name', expected_value, tolerance)
+def check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:
+    """Check the value of a telemetry item is within a tolerance of an expected value.
+
+    Always prints the value of the telemetry item. Accepts two calling styles::
+
+        check_tolerance("TGT PKT ITEM", expected_value, tolerance)
+        check_tolerance("TGT", "PKT", "ITEM", expected_value, tolerance)
+
+    For an array item, expected_value and tolerance can each be a list with
+    one entry per element or a single value applied to every element. In
+    disconnect mode a failed check is printed instead of raised.
+
+    Args:
+        *args: A single "TGT PKT ITEM" string, or the target, packet and item
+            names, followed by the expected value and the tolerance.
+        type: Value type to check: RAW or CONVERTED (default).
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If type is not RAW or CONVERTED.
+        CheckError: If the value, or any array element, is outside the tolerance.
     """
     if type not in ["RAW", "CONVERTED"]:
         raise RuntimeError(f"Invalid type '{type}' for check_tolerance")
@@ -162,9 +197,21 @@ def check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
                 raise CheckError(message)
 
 
-def check_expression(exp_to_eval, globals=None, locals=None):
-    """Check to see if an expression is true without waiting.  If the expression
-    is not true, the script will pause."""
+def check_expression(
+    exp_to_eval: str, globals: dict[str, Any] | None = None, locals: Mapping[str, Any] | None = None
+) -> None:
+    """Check that a Python expression is true without waiting.
+
+    In disconnect mode a failed check is printed instead of raised.
+
+    Args:
+        exp_to_eval: Python expression to evaluate. Must be ASCII.
+        globals: Global namespace used to evaluate the expression.
+        locals: Local namespace used to evaluate the expression.
+
+    Raises:
+        CheckError: If the expression is not true.
+    """
     success = _openc3_script_wait_expression(exp_to_eval, 0, DEFAULT_TLM_POLLING_RATE, globals, locals)
     if success:
         print(f"CHECK: {exp_to_eval} is TRUE")
@@ -176,12 +223,33 @@ def check_expression(exp_to_eval, globals=None, locals=None):
             raise CheckError(message)
 
 
-def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
-    """Wait on an expression to be true.  On a timeout, the script will continue.
-    Supports multiple signatures:
-    wait(time)
-    wait('target_name packet_name item_name > 1', timeout, polling_rate)
-    wait('target_name', 'packet_name', 'item_name', comparison_to_eval, timeout, polling_rate)
+def wait(*args: Any, type: ValueType = "CONVERTED", quiet: bool = False, scope: str = OPENC3_SCOPE) -> float | bool:
+    """Wait for a time, or for a telemetry item to pass a comparison.
+
+    On a timeout execution continues without raising. Accepts these calling
+    styles, where polling_rate is optional::
+
+        wait()
+        wait(5)
+        wait("TGT PKT ITEM > 1", timeout, polling_rate)
+        wait("TGT", "PKT", "ITEM", "> 1", timeout, polling_rate)
+
+    With no arguments, waits until the user continues.
+
+    Args:
+        *args: Nothing, a number of seconds, or a "TGT PKT ITEM comparison"
+            string (or the target, packet and item names and the comparison)
+            followed by the timeout and an optional polling rate in seconds.
+        type: Value type to compare: RAW, CONVERTED (default) or FORMATTED.
+        quiet: Whether to suppress printing the result.
+        scope: COSMOS scope.
+
+    Returns:
+        The seconds actually waited for a time wait, or whether the comparison
+        passed before the timeout.
+
+    Raises:
+        RuntimeError: If the wait time is not numeric or the number of arguments is invalid.
     """
     time_diff = None
 
@@ -256,16 +324,36 @@ def wait(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
                 quiet,
                 scope,
             )
-        case _:
-            # Invalid number of arguments
-            raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to wait()")
+
+    # Invalid number of arguments
+    raise RuntimeError(f"ERROR: Invalid number of arguments ({len(args)}) passed to wait()")
 
 
-def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
-    """Wait on an expression to be true.  On a timeout, the script will continue.
-    Supports multiple signatures:
-    wait_tolerance('target_name packet_name item_name', expected_value, tolerance, timeout, polling_rate)
-    wait_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
+def wait_tolerance(*args: Any, type: ValueType = "CONVERTED", quiet: bool = False, scope: str = OPENC3_SCOPE) -> bool:
+    """Wait for a telemetry item to be within a tolerance of an expected value.
+
+    On a timeout execution continues without raising. Accepts two calling
+    styles, where polling_rate is optional::
+
+        wait_tolerance("TGT PKT ITEM", expected_value, tolerance, timeout, polling_rate)
+        wait_tolerance("TGT", "PKT", "ITEM", expected_value, tolerance, timeout, polling_rate)
+
+    For an array item, expected_value and tolerance can each be a list with
+    one entry per element or a single value applied to every element.
+
+    Args:
+        *args: A single "TGT PKT ITEM" string, or the target, packet and item
+            names, followed by the expected value, tolerance, timeout and an
+            optional polling rate in seconds.
+        type: Value type to compare: RAW or CONVERTED (default).
+        quiet: Whether to suppress printing the result.
+        scope: COSMOS scope.
+
+    Returns:
+        Whether the value was within the tolerance before the timeout.
+
+    Raises:
+        RuntimeError: If type is not RAW or CONVERTED.
     """
     if type not in ["RAW", "CONVERTED"]:
         raise RuntimeError(f"Invalid type '{type}' for wait_tolerance")
@@ -339,14 +427,28 @@ def wait_tolerance(*args, type="CONVERTED", quiet=False, scope=OPENC3_SCOPE):
 
 
 def wait_expression(
-    exp_to_eval,
-    timeout,
-    polling_rate=DEFAULT_TLM_POLLING_RATE,
-    globals=None,
-    locals=None,
-    quiet=False,
-):
-    """Wait on a custom expression to be true"""
+    exp_to_eval: str,
+    timeout: float,
+    polling_rate: float = DEFAULT_TLM_POLLING_RATE,
+    globals: dict[str, Any] | None = None,
+    locals: Mapping[str, Any] | None = None,
+    quiet: bool = False,
+) -> bool | None:
+    """Wait for a Python expression to be true.
+
+    On a timeout execution continues without raising.
+
+    Args:
+        exp_to_eval: Python expression to evaluate. Must be ASCII.
+        timeout: Seconds to wait before giving up.
+        polling_rate: Seconds between evaluations.
+        globals: Global namespace used to evaluate the expression.
+        locals: Local namespace used to evaluate the expression.
+        quiet: Whether to suppress printing the result.
+
+    Returns:
+        True if the expression became true before the timeout, otherwise None.
+    """
     start_time = time.time()
     success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, locals)
     time_diff = time.time() - start_time
@@ -358,13 +460,29 @@ def wait_expression(
     return success
 
 
-def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
-    """Wait for the converted value of a telmetry item against a condition or for a timeout
-    and then check against the condition
-    Supports two signatures:
-    wait_check(target_name, packet_name, item_name, comparison_to_eval, timeout, polling_rate)
-    or
-    wait_check('target_name packet_name item_name > 1', timeout, polling_rate)"""
+def wait_check(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> float:
+    """Wait for a telemetry item to pass a comparison, then check it.
+
+    Accepts two calling styles, where polling_rate is optional::
+
+        wait_check("TGT PKT ITEM > 1", timeout, polling_rate)
+        wait_check("TGT", "PKT", "ITEM", "> 1", timeout, polling_rate)
+
+    In disconnect mode a failed check is printed instead of raised.
+
+    Args:
+        *args: A single "TGT PKT ITEM comparison" string, or the target, packet
+            and item names and the comparison, followed by the timeout and an
+            optional polling rate in seconds.
+        type: Value type to compare: RAW, CONVERTED (default) or FORMATTED.
+        scope: COSMOS scope.
+
+    Returns:
+        The seconds actually waited.
+
+    Raises:
+        CheckError: If the comparison did not pass before the timeout.
+    """
     (
         target_name,
         packet_name,
@@ -401,13 +519,31 @@ def wait_check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
     return time_diff
 
 
-def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
-    """Wait for the value of a telmetry item to be within a tolerance of a value
-    and then check against the condition.
-    Supports two signatures:
-    wait_check_tolerance('target_name packet_name item_name', expected_value, tolerance, timeout, polling_rate)
-    or
-    wait_check_tolerance('target_name', 'packet_name', 'item_name', expected_value, tolerance, timeout, polling_rate)
+def wait_check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> float:
+    """Wait for a telemetry item to be within a tolerance of an expected value, then check it.
+
+    Accepts two calling styles, where polling_rate is optional::
+
+        wait_check_tolerance("TGT PKT ITEM", expected_value, tolerance, timeout, polling_rate)
+        wait_check_tolerance("TGT", "PKT", "ITEM", expected_value, tolerance, timeout, polling_rate)
+
+    For an array item, expected_value and tolerance can each be a list with
+    one entry per element or a single value applied to every element. In
+    disconnect mode a failed check is printed instead of raised.
+
+    Args:
+        *args: A single "TGT PKT ITEM" string, or the target, packet and item
+            names, followed by the expected value, tolerance, timeout and an
+            optional polling rate in seconds.
+        type: Value type to compare: RAW or CONVERTED (default).
+        scope: COSMOS scope.
+
+    Returns:
+        The seconds actually waited.
+
+    Raises:
+        RuntimeError: If type is not RAW or CONVERTED.
+        CheckError: If the value was not within the tolerance before the timeout.
     """
     if type not in ["RAW", "CONVERTED"]:
         raise RuntimeError(f"Invalid type '{type}' for wait_check_tolerance")
@@ -487,13 +623,29 @@ def wait_check_tolerance(*args, type="CONVERTED", scope=OPENC3_SCOPE):
 
 
 def wait_check_expression(
-    exp_to_eval,
-    timeout,
-    polling_rate=DEFAULT_TLM_POLLING_RATE,
-    globals=None,
-    locals=None,
-):
-    """Wait on an expression to be true.  On a timeout, the script will pause"""
+    exp_to_eval: str,
+    timeout: float,
+    polling_rate: float = DEFAULT_TLM_POLLING_RATE,
+    globals: dict[str, Any] | None = None,
+    locals: Mapping[str, Any] | None = None,
+) -> float:
+    """Wait for a Python expression to be true, then check it.
+
+    In disconnect mode a failed check is printed instead of raised.
+
+    Args:
+        exp_to_eval: Python expression to evaluate. Must be ASCII.
+        timeout: Seconds to wait before giving up.
+        polling_rate: Seconds between evaluations.
+        globals: Global namespace used to evaluate the expression.
+        locals: Local namespace used to evaluate the expression.
+
+    Returns:
+        The seconds actually waited.
+
+    Raises:
+        CheckError: If the expression was not true before the timeout.
+    """
     start_time = time.time()
     success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, locals)
     time_diff = time.time() - start_time
@@ -509,14 +661,34 @@ def wait_check_expression(
 
 
 def wait_packet(
-    target_name,
-    packet_name,
-    num_packets,
-    timeout,
-    polling_rate=DEFAULT_TLM_POLLING_RATE,
-    quiet=False,
-    scope=OPENC3_SCOPE,
-):
+    target_name: str,
+    packet_name: str,
+    num_packets: int,
+    timeout: float,
+    polling_rate: float = DEFAULT_TLM_POLLING_RATE,
+    quiet: bool = False,
+    scope: str = OPENC3_SCOPE,
+) -> bool:
+    """Wait for a telemetry packet to be received a number of times.
+
+    Counts packets received after the call. On a timeout execution continues
+    without raising.
+
+    Args:
+        target_name: Target name of the packet.
+        packet_name: Packet name. LATEST is not supported.
+        num_packets: Number of new packets to wait for.
+        timeout: Seconds to wait before giving up.
+        polling_rate: Seconds between checks of the received count.
+        quiet: Whether to suppress printing the result.
+        scope: COSMOS scope.
+
+    Returns:
+        Whether the packets were received before the timeout.
+
+    Raises:
+        RuntimeError: If packet_name is LATEST.
+    """
     success, _ = _wait_packet(
         False,
         target_name,
@@ -531,21 +703,53 @@ def wait_packet(
 
 
 def wait_check_packet(
-    target_name,
-    packet_name,
-    num_packets,
-    timeout,
-    polling_rate=DEFAULT_TLM_POLLING_RATE,
-    quiet=False,
-    scope=OPENC3_SCOPE,
-):
-    """Wait for a telemetry packet to be received a certain number of times or timeout and raise an error"""
+    target_name: str,
+    packet_name: str,
+    num_packets: int,
+    timeout: float,
+    polling_rate: float = DEFAULT_TLM_POLLING_RATE,
+    quiet: bool = False,
+    scope: str = OPENC3_SCOPE,
+) -> float:
+    """Wait for a telemetry packet to be received a number of times, then check it.
+
+    Counts packets received after the call. In disconnect mode a failed check
+    is printed instead of raised.
+
+    Args:
+        target_name: Target name of the packet.
+        packet_name: Packet name. LATEST is not supported.
+        num_packets: Number of new packets to wait for.
+        timeout: Seconds to wait before giving up.
+        polling_rate: Seconds between checks of the received count.
+        quiet: Whether to suppress printing the result.
+        scope: COSMOS scope.
+
+    Returns:
+        The seconds actually waited.
+
+    Raises:
+        RuntimeError: If packet_name is LATEST.
+        CheckError: If the packets were not received before the timeout.
+    """
     _, time_diff = _wait_packet(True, target_name, packet_name, num_packets, timeout, polling_rate, quiet, scope)
     return time_diff
 
 
 @contextmanager
-def disable_instrumentation():
+def disable_instrumentation() -> Iterator[None]:
+    """Disable Script Runner line instrumentation inside a with block.
+
+    Code in the block runs faster but its lines are not highlighted or
+    stepped. Outside Script Runner this has no effect. For example::
+
+        with disable_instrumentation():
+            for _ in range(1000):
+                value = tlm("INST HEALTH_STATUS TEMP1")
+
+    Yields:
+        None.
+    """
     if openc3.script.RUNNING_SCRIPT:
         openc3.script.RUNNING_SCRIPT.instance.use_instrumentation = False
         try:
@@ -556,25 +760,51 @@ def disable_instrumentation():
         yield
 
 
-def set_line_delay(delay):
+def set_line_delay(delay: float) -> None:
+    """Set the delay Script Runner adds between executing each script line.
+
+    Has no effect outside Script Runner or for a negative delay.
+
+    Args:
+        delay: Seconds to delay between lines.
+    """
     if openc3.script.RUNNING_SCRIPT and delay >= 0.0:
         openc3.script.RUNNING_SCRIPT.line_delay = delay
         print(f"set_line_delay({delay})")
 
 
-def get_line_delay():
+def get_line_delay() -> float | None:
+    """Get the delay Script Runner adds between executing each script line.
+
+    Returns:
+        The line delay in seconds, or None outside Script Runner.
+    """
     if openc3.script.RUNNING_SCRIPT:
         return openc3.script.RUNNING_SCRIPT.line_delay
+    return None
 
 
-def set_max_output(characters):
+def set_max_output(characters: int | str) -> None:
+    """Set the maximum number of characters of script output Script Runner publishes per line.
+
+    Longer output is truncated. Has no effect outside Script Runner.
+
+    Args:
+        characters: Maximum number of characters. Converted with int().
+    """
     if openc3.script.RUNNING_SCRIPT:
         openc3.script.RUNNING_SCRIPT.max_output_characters = int(characters)
 
 
-def get_max_output():
+def get_max_output() -> int | None:
+    """Get the maximum number of characters of script output Script Runner publishes per line.
+
+    Returns:
+        The maximum number of characters, or None outside Script Runner.
+    """
     if openc3.script.RUNNING_SCRIPT:
         return openc3.script.RUNNING_SCRIPT.max_output_characters
+    return None
 
 
 ###########################################################################
@@ -586,17 +816,47 @@ def get_max_output():
 
 
 # Exec a procedure
-def start(procedure_name):
+def start(procedure_name: str) -> None:
+    """Execute another Python script file in place.
+
+    Script Runner overrides this to run the procedure inside the running
+    script.
+
+    Args:
+        procedure_name: Path of the script file to execute.
+    """
     with open(procedure_name) as f:
         exec(f.read())
 
 
-def goto(line_no_or_procedure_name, line_no=None):
+def goto(line_no_or_procedure_name: int | str, line_no: int | None = None) -> None:
+    """Jump to a line in the current script or another script.
+
+    Only supported in Script Runner, which overrides this function.
+
+    Args:
+        line_no_or_procedure_name: Line number in the current script, or the
+            procedure name when line_no is given.
+        line_no: Line number in the named procedure.
+
+    Raises:
+        RuntimeError: Always, outside Script Runner.
+    """
     raise RuntimeError("goto is not supported outside of ScriptRunner")
 
 
 # Require an additional python file
-def load_utility(procedure_name):
+def load_utility(procedure_name: str) -> None:
+    """Load a Python utility file into the running script.
+
+    Only supported in Script Runner, which overrides this function.
+
+    Args:
+        procedure_name: Path of the utility file to load.
+
+    Raises:
+        RuntimeError: Always, outside Script Runner.
+    """
     raise RuntimeError("load_utility not supported outside of Script Runner")
 
 
@@ -605,31 +865,44 @@ def load_utility(procedure_name):
 ###########################################################################
 
 
-def openc3_script_sleep(sleep_time=None):
+def openc3_script_sleep(sleep_time: float | None = None) -> bool | None:
+    """Sleep for a time, or until the user presses a key.
+
+    Script Runner overrides this with a version that can be paused or
+    canceled.
+
+    Args:
+        sleep_time: Seconds to sleep. If None, waits for keyboard input.
+
+    Returns:
+        Whether the sleep was canceled early. Callers treat a truthy result as
+        canceled; this implementation never cancels and returns None.
+    """
     if sleep_time is not None:
         time.sleep(float(sleep_time))
     else:
         input("Press any key to continue...")
 
 
-def _upcase(target_name, packet_name, item_name):
-    """Creates a string with the parameters upcased"""
+def _upcase(target_name: str, packet_name: str, item_name: str):
+    """Create a string with the parameters upcased."""
     return f"{target_name.upper()} {packet_name.upper()} {item_name.upper()}"
 
 
-def _check(*args, type="CONVERTED", scope=OPENC3_SCOPE):
-    """Implementation of the various check commands. It yields back to the
-    caller to allow the return of the value through various telemetry calls.
-    This method should not be called directly by application code."""
+def _check(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE):
+    """Implement the various check commands.
+
+    This method should not be called directly by application code.
+    """
     target_name, packet_name, item_name, comparison_to_eval = _check_process_args(args, "check")
     value = openc3.script.API_SERVER.tlm(target_name, packet_name, item_name, type=type, scope=scope)
     if comparison_to_eval:
-        return _check_comparison(target_name, packet_name, item_name, type, comparison_to_eval, value, scope)
+        _check_comparison(target_name, packet_name, item_name, type, comparison_to_eval, value, scope)
     else:
         print(f"CHECK: {_upcase(target_name, packet_name, item_name)} == {value}")
 
 
-def _check_process_args(args, method_name):
+def _check_process_args(args: tuple[Any, ...], method_name: str):
     match len(args):
         case 1:
             (
@@ -656,7 +929,7 @@ def _check_process_args(args, method_name):
     return target_name, packet_name, item_name, comparison_to_eval
 
 
-def _check_tolerance_process_args(args):
+def _check_tolerance_process_args(args: tuple[Any, ...]):
     length = len(args)
     if length == 3:
         target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
@@ -681,16 +954,16 @@ def _check_tolerance_process_args(args):
 
 
 def _wait_packet(
-    check,
-    target_name,
-    packet_name,
-    num_packets,
-    timeout,
-    polling_rate=DEFAULT_TLM_POLLING_RATE,
-    quiet=False,
-    scope=OPENC3_SCOPE,
+    check: bool,
+    target_name: str,
+    packet_name: str,
+    num_packets: int,
+    timeout: float,
+    polling_rate: float = DEFAULT_TLM_POLLING_RATE,
+    quiet: bool = False,
+    scope: str = OPENC3_SCOPE,
 ):
-    """Wait for a telemetry packet to be received a certain number of times or timeout"""
+    """Wait for a telemetry packet to be received a certain number of times or timeout."""
     if check:
         type = "CHECK"
     else:
@@ -735,15 +1008,15 @@ def _wait_packet(
 
 
 def _execute_wait(
-    target_name,
-    packet_name,
-    item_name,
-    value_type,
-    comparison_to_eval,
-    timeout,
-    polling_rate,
-    quiet,
-    scope,
+    target_name: str,
+    packet_name: str,
+    item_name: str,
+    value_type: ValueType,
+    comparison_to_eval: str | None,
+    timeout: float,
+    polling_rate: float,
+    quiet: bool,
+    scope: str,
 ):
     start_time = time.time()
     success, value = _openc3_script_wait_value(
@@ -769,7 +1042,7 @@ def _execute_wait(
     return success
 
 
-def _wait_tolerance_process_args(args, function_name):
+def _wait_tolerance_process_args(args: tuple[Any, ...], function_name: str):
     length = len(args)
     if length == 4 or length == 5:
         target_name, packet_name, item_name = extract_fields_from_tlm_text(args[0])
@@ -811,8 +1084,9 @@ def _wait_tolerance_process_args(args, function_name):
     )
 
 
-def _array_tolerance_process_args(array_size, expected_value, tolerance, function_name):
-    """
+def _array_tolerance_process_args(array_size: int, expected_value: Any, tolerance: Any, function_name: str):
+    """Expand the expected value and tolerance for an array tolerance check.
+
     When testing an array with a tolerance, the expected value and tolerance
     can both be supplied as either an array or a single value.  If a single
     value is passed in, that value will be used for all array elements.
@@ -830,7 +1104,7 @@ def _array_tolerance_process_args(array_size, expected_value, tolerance, functio
     return expected_value, tolerance
 
 
-def _wait_check_process_args(args):
+def _wait_check_process_args(args: tuple[Any, ...]):
     length = len(args)
     if length == 2 or length == 3:
         (
@@ -868,16 +1142,17 @@ def _wait_check_process_args(args):
 
 
 def _openc3_script_wait(
-    target_name,
-    packet_name,
-    item_name,
-    value_type,
-    timeout,
-    polling_rate,
-    comparison,
-    scope,
+    target_name: str,
+    packet_name: str,
+    item_name: str,
+    value_type: ValueType,
+    timeout: float,
+    polling_rate: float,
+    comparison: Callable[[Any], bool] | None,
+    scope: str,
 ):
-    """Waits for the comparison to be true or the timeout to expire.
+    """Wait for the comparison to be true or the timeout to expire.
+
     The comparison is a callable which takes the telemetry value and returns True or False.
     """
     value = None
@@ -909,9 +1184,17 @@ def _openc3_script_wait(
     return False, value
 
 
-def _comparison_implementation(target_name, packet_name, item_name, value_type, comparison_to_eval, scope=OPENC3_SCOPE):
-    """Builds a callable which compares a telemetry value against the given comparison string,
-    e.g. "> 1". Returns None if there is no comparison, e.g. a check with no comparison.
+def _comparison_implementation(
+    target_name: str,
+    packet_name: str,
+    item_name: str,
+    value_type: ValueType,
+    comparison_to_eval: str | None,
+    scope: str = OPENC3_SCOPE,
+):
+    """Build a callable which compares a telemetry value against a comparison string such as "> 1".
+
+    Returns None if there is no comparison, e.g. a check with no comparison.
     Raises if the comparison is invalid, e.g. an unsupported operator or unparsable operand.
     """
     if not comparison_to_eval:
@@ -929,10 +1212,10 @@ def _comparison_implementation(target_name, packet_name, item_name, value_type, 
     return lambda value: compare_values(value, operator, operand)
 
 
-def _tolerance_implementation(expected_value, tolerance):
-    """Builds a callable which checks a telemetry value is within the given tolerance"""
+def _tolerance_implementation(expected_value: Any, tolerance: Any):
+    """Build a callable which checks a telemetry value is within the given tolerance."""
 
-    def _comparison(value):
+    def _comparison(value: Any):
         try:
             return (expected_value - abs(tolerance)) <= value <= (expected_value + abs(tolerance))
         except TypeError:
@@ -941,10 +1224,10 @@ def _tolerance_implementation(expected_value, tolerance):
     return _comparison
 
 
-def _array_tolerance_implementation(array_size, expected_value, tolerance):
-    """Builds a callable which checks every telemetry value is within the given tolerance"""
+def _array_tolerance_implementation(array_size: int, expected_value: list[Any], tolerance: list[Any]):
+    """Build a callable which checks every telemetry value is within the given tolerance."""
 
-    def _comparison(values):
+    def _comparison(values: Any):
         try:
             if not isinstance(values, list) or len(values) != array_size:
                 return False
@@ -960,14 +1243,14 @@ def _array_tolerance_implementation(array_size, expected_value, tolerance):
 
 # Wait for a converted telemetry item to pass a comparison
 def _openc3_script_wait_value(
-    target_name,
-    packet_name,
-    item_name,
-    value_type,
-    comparison_to_eval,
-    timeout,
-    polling_rate=DEFAULT_TLM_POLLING_RATE,
-    scope=OPENC3_SCOPE,
+    target_name: str,
+    packet_name: str,
+    item_name: str,
+    value_type: ValueType,
+    comparison_to_eval: str | None,
+    timeout: float,
+    polling_rate: float = DEFAULT_TLM_POLLING_RATE,
+    scope: str = OPENC3_SCOPE,
 ):
     return _openc3_script_wait(
         target_name,
@@ -982,15 +1265,15 @@ def _openc3_script_wait_value(
 
 
 def _openc3_script_wait_tolerance(
-    target_name,
-    packet_name,
-    item_name,
-    value_type,
-    expected_value,
-    tolerance,
-    timeout,
-    polling_rate=DEFAULT_TLM_POLLING_RATE,
-    scope=OPENC3_SCOPE,
+    target_name: str,
+    packet_name: str,
+    item_name: str,
+    value_type: ValueType,
+    expected_value: Any,
+    tolerance: Any,
+    timeout: float,
+    polling_rate: float = DEFAULT_TLM_POLLING_RATE,
+    scope: str = OPENC3_SCOPE,
 ):
     return _openc3_script_wait(
         target_name,
@@ -1005,16 +1288,16 @@ def _openc3_script_wait_tolerance(
 
 
 def _openc3_script_wait_array_tolerance(
-    array_size,
-    target_name,
-    packet_name,
-    item_name,
-    value_type,
-    expected_value,
-    tolerance,
-    timeout,
-    polling_rate=DEFAULT_TLM_POLLING_RATE,
-    scope=OPENC3_SCOPE,
+    array_size: int,
+    target_name: str,
+    packet_name: str,
+    item_name: str,
+    value_type: ValueType,
+    expected_value: list[Any],
+    tolerance: list[Any],
+    timeout: float,
+    polling_rate: float = DEFAULT_TLM_POLLING_RATE,
+    scope: str = OPENC3_SCOPE,
 ):
     return _openc3_script_wait(
         target_name,
@@ -1028,7 +1311,13 @@ def _openc3_script_wait_array_tolerance(
     )
 
 
-def _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, locals):
+def _openc3_script_wait_expression(
+    exp_to_eval: str,
+    timeout: float,
+    polling_rate: float,
+    globals: dict[str, Any] | None,
+    locals: Mapping[str, Any] | None,
+):
     """Wait on an expression to be true."""
     end_time = time.time() + timeout
     if not exp_to_eval.isascii():
@@ -1064,7 +1353,15 @@ def _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, 
     return None
 
 
-def _check_comparison(target_name, packet_name, item_name, value_type, comparison_to_eval, value, scope=OPENC3_SCOPE):
+def _check_comparison(
+    target_name: str,
+    packet_name: str,
+    item_name: str,
+    value_type: ValueType,
+    comparison_to_eval: str,
+    value: Any,
+    scope: str = OPENC3_SCOPE,
+):
     check_str = f"CHECK: {_upcase(target_name, packet_name, item_name)} {comparison_to_eval}"
     # Show user the check against a quoted string
     if isinstance(value, str):
@@ -1095,7 +1392,7 @@ def _check_comparison(target_name, packet_name, item_name, value_type, compariso
             raise CheckError(message)
 
 
-def _frange(value):
+def _frange(value: Any):
     if isinstance(value, float):
         # Display at most 6 significant figures on a range value
         # This truncates float values like 1.6500000000000001 to simply 1.65
@@ -1104,8 +1401,9 @@ def _frange(value):
         return value
 
 
-def _valid_comparison(value, operator, operand):
-    """Returns whether the value and operand can be meaningfully compared with the operator.
+def _valid_comparison(value: Any, operator: str | None, operand: Any):
+    """Return whether the value and operand can be meaningfully compared with the operator.
+
     Note this is only used by check() because wait() polls until the value changes.
     """
     if operator is None:

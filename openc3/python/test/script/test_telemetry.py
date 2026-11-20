@@ -136,23 +136,23 @@ class TestTelemetry(unittest.TestCase):
 
     def test_normalize_tlm(self):
         for stdout in capture_io():
-            normalize_tlm("TARGET", "PACKET", "ITEM", 10)
+            normalize_tlm("TARGET", "PACKET", "ITEM")
             self.assertIn(
-                'normalize_tlm("TARGET", "PACKET", "ITEM", 10, type="ALL")',
+                'normalize_tlm("TARGET", "PACKET", "ITEM", type="ALL")',
                 stdout.getvalue(),
             )
-            normalize_tlm("TARGET", "PACKET", "ITEM", "10", type="RAW")
+            normalize_tlm("TARGET", "PACKET", "ITEM", type="RAW")
             self.assertIn(
-                'normalize_tlm("TARGET", "PACKET", "ITEM", "10", type="RAW")',
+                'normalize_tlm("TARGET", "PACKET", "ITEM", type="RAW")',
                 stdout.getvalue(),
             )
-            normalize_tlm("TARGET PACKET ITEM = 10")
+            normalize_tlm("TARGET PACKET ITEM")
             self.assertIn(
-                'normalize_tlm("TARGET PACKET ITEM = 10", type="ALL")',
+                'normalize_tlm("TARGET PACKET ITEM", type="ALL")',
                 stdout.getvalue(),
             )
-            normalize_tlm("TARGET PACKET ITEM = '10'", type="WITH_UNITS")
+            normalize_tlm("TARGET PACKET ITEM", type="CONVERTED")
             self.assertIn(
-                'normalize_tlm("TARGET PACKET ITEM = \'10\'", type="WITH_UNITS")',
+                'normalize_tlm("TARGET PACKET ITEM", type="CONVERTED")',
                 stdout.getvalue(),
             )

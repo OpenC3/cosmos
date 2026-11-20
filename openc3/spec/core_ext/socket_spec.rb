@@ -20,11 +20,12 @@ require 'openc3/core_ext/socket'
 
 describe Socket do
   describe "get_own_ip_address" do
-    it "returns the ip address of the current machine" do
-      Socket.get_own_ip_address
-      expect(Socket.get_own_ip_address).to match(/\b(?:\d{1,3}\.){3}\d{1,3}\b/)
-    rescue Resolv::ResolvError
-      # Oh well
+    it "returns the ip address the machine's hostname resolves to" do
+      # Stub the lookup because CI runners don't reliably resolve their own
+      # hostname (one returned "" rather than an address or a ResolvError)
+      allow(Socket).to receive(:gethostname).and_return("myhost")
+      expect(Resolv).to receive(:getaddress).with("myhost").and_return("10.1.2.3")
+      expect(Socket.get_own_ip_address).to eql "10.1.2.3"
     end
   end
 
