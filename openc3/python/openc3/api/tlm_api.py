@@ -17,6 +17,7 @@
 
 import contextlib
 import json
+import warnings
 from typing import Any
 
 from openc3.api import WHITELIST
@@ -82,10 +83,10 @@ def tlm(*args: str, type: ValueType = "CONVERTED", cache_timeout: float = 0.1, s
     packet time which contains it.
 
     Args:
-        *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
-        type: Value type to return: RAW, CONVERTED (default) or FORMATTED.
-        cache_timeout: Seconds a cached current value table read stays valid.
-        scope: COSMOS scope.
+        *args (str|List[str]): A single "TGT PKT ITEM" string, or the target, packet and item names.
+        type (str): Value type to return: RAW, CONVERTED (default) or FORMATTED.
+        cache_timeout (float): Seconds a cached current value table read stays valid.
+        scope (str): COSMOS scope.
 
     Returns:
         The telemetry value in the requested type.
@@ -99,9 +100,9 @@ def tlm_raw(*args: str, cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE) -
     """Request the RAW value of a telemetry item. See `tlm` for the calling styles.
 
     Args:
-        *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
-        cache_timeout: Seconds a cached current value table read stays valid.
-        scope: COSMOS scope.
+        *args (str|List[str]): A single "TGT PKT ITEM" string, or the target, packet and item names.
+        cache_timeout (float): Seconds a cached current value table read stays valid.
+        scope (str): COSMOS scope.
 
     Returns:
         The RAW telemetry value.
@@ -113,9 +114,9 @@ def tlm_formatted(*args: str, cache_timeout: float = 0.1, scope: str = OPENC3_SC
     """Request the FORMATTED value of a telemetry item. See `tlm` for the calling styles.
 
     Args:
-        *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
-        cache_timeout: Seconds a cached current value table read stays valid.
-        scope: COSMOS scope.
+        *args (str|List[str]): A single "TGT PKT ITEM" string, or the target, packet and item names.
+        cache_timeout (float): Seconds a cached current value table read stays valid.
+        scope (str): COSMOS scope.
 
     Returns:
         The FORMATTED telemetry value.
@@ -126,21 +127,23 @@ def tlm_formatted(*args: str, cache_timeout: float = 0.1, scope: str = OPENC3_SC
 def tlm_with_units(*args: str, cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE) -> Any:
     """Request the FORMATTED value of a telemetry item.
 
-    Deprecated: use `tlm_formatted`.
+    .. deprecated:: 7.0.0
+       WITH_UNITS was removed, use tlm_formatted instead.
 
     Args:
-        *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
-        cache_timeout: Seconds a cached current value table read stays valid.
-        scope: COSMOS scope.
+        *args (str|List[str]): A single "TGT PKT ITEM" string, or the target, packet and item names.
+        cache_timeout (float): Seconds a cached current value table read stays valid.
+        scope (str): COSMOS scope.
 
     Returns:
         The FORMATTED telemetry value.
     """
+    warnings.warn("tlm_with_units is deprecated, use tlm_formatted", FutureWarning, stacklevel=2)
     return tlm(*args, type="FORMATTED", cache_timeout=cache_timeout, scope=scope)
 
 
 def set_tlm(
-    *args: Any, type: OverrideValueType = "CONVERTED", cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE
+    *args: str, type: OverrideValueType = "CONVERTED", cache_timeout: float = 0.1, scope: str = OPENC3_SCOPE
 ) -> None:
     """Set a telemetry item in the current value table.
 
@@ -154,12 +157,12 @@ def set_tlm(
         set_tlm("TGT", "PKT", "ITEM", 10.0)
 
     Args:
-        *args: A single "TGT PKT ITEM = value" string, or the target, packet
+        *args (str|List[str]): A single "TGT PKT ITEM = value" string, or the target, packet
             and item names followed by the value.
-        type: Value type to set: RAW, CONVERTED (default), FORMATTED, or ALL
+        type (str): Value type to set: RAW, CONVERTED (default), FORMATTED, or ALL
             to set every value type.
-        cache_timeout: Seconds a cached current value table read stays valid.
-        scope: COSMOS scope.
+        cache_timeout (float): Seconds a cached current value table read stays valid.
+        scope (str): COSMOS scope.
     """
     target_name, packet_name, item_name, value = _set_tlm_process_args(
         args, "set_tlm", cache_timeout=cache_timeout, scope=scope
@@ -187,13 +190,13 @@ def inject_tlm(
     Items not in item_hash keep their current value from the current value table.
 
     Args:
-        target_name: Target name of the packet.
-        packet_name: Packet name. LATEST is not supported.
-        item_hash: Item names mapped to the values to change.
-        type: Value type of the item_hash values: RAW, CONVERTED (default) or FORMATTED.
-        stored: Whether to flag the packet as stored (historical) telemetry.
-        scope: COSMOS scope.
-        received_time: Received time in nanoseconds since the Unix epoch. Defaults to now.
+        target_name (str): Target name of the packet.
+        packet_name (str): Packet name. LATEST is not supported.
+        item_hash (dict): Item names mapped to the values to change.
+        type (str): Value type of the item_hash values: RAW, CONVERTED (default) or FORMATTED.
+        stored (bool): Whether to flag the packet as stored (historical) telemetry.
+        scope (str): COSMOS scope.
+        received_time (int|None): Received time in nanoseconds since the Unix epoch. Defaults to now.
 
     Raises:
         RuntimeError: If the type is unknown or a CONVERTED value is not a valid state.
@@ -257,7 +260,7 @@ def inject_tlm(
         )
 
 
-def override_tlm(*args: Any, type: OverrideValueType = "ALL", scope: str = OPENC3_SCOPE) -> None:
+def override_tlm(*args: str, type: OverrideValueType = "ALL", scope: str = OPENC3_SCOPE) -> None:
     """Override an item in the current value table so it always returns the same value.
 
     The override persists when new packets are received from the target.
@@ -271,10 +274,10 @@ def override_tlm(*args: Any, type: OverrideValueType = "ALL", scope: str = OPENC
     A packet name of LATEST overrides the item in every packet which contains it.
 
     Args:
-        *args: A single "TGT PKT ITEM = value" string, or the target, packet
+        *args (str|List[str]): A single "TGT PKT ITEM = value" string, or the target, packet
             and item names followed by the value.
-        type: Value type to override: ALL (default), RAW, CONVERTED or FORMATTED.
-        scope: COSMOS scope.
+        type (str): Value type to override: ALL (default), RAW, CONVERTED or FORMATTED.
+        scope (str): COSMOS scope.
     """
     target_name, packet_names, item_name, value = _set_tlm_process_args_all_packets(args, "override_tlm", scope=scope)
     for packet_name in packet_names:
@@ -287,7 +290,7 @@ def get_overrides(scope: str = OPENC3_SCOPE) -> list[dict[str, Any]]:
     """Return the current value table overrides set by `override_tlm`.
 
     Args:
-        scope: COSMOS scope.
+        scope (str): COSMOS scope.
 
     Returns:
         One dict per override with target_name, packet_name, item_name,
@@ -308,9 +311,9 @@ def normalize_tlm(*args: str, type: OverrideValueType = "ALL", scope: str = OPEN
     A packet name of LATEST normalizes the item in every packet which contains it.
 
     Args:
-        *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
-        type: Value type to normalize: ALL (default), RAW, CONVERTED or FORMATTED.
-        scope: COSMOS scope.
+        *args (str|List[str]): A single "TGT PKT ITEM" string, or the target, packet and item names.
+        type (str): Value type to normalize: ALL (default), RAW, CONVERTED or FORMATTED.
+        scope (str): COSMOS scope.
     """
     target_name, packet_names, item_name = _tlm_process_args_all_packets(args, "normalize_tlm", scope=scope)
     for packet_name in packet_names:
@@ -328,9 +331,9 @@ def get_tlm_buffer(*args: str, scope: str = OPENC3_SCOPE, timeout: float = 5) ->
         get_tlm_buffer("TGT", "PKT")
 
     Args:
-        *args: A single "TGT PKT" string, or the target and packet names.
-        scope: COSMOS scope.
-        timeout: Seconds to wait for a subpacket buffer from the decom microservice.
+        *args (str|List[str]): A single "TGT PKT" string, or the target and packet names.
+        scope (str): COSMOS scope.
+        timeout (int|float): Seconds to wait for a subpacket buffer from the decom microservice.
 
     Returns:
         The packet message with the raw bytes under the "buffer" key, or None
@@ -363,10 +366,10 @@ def get_tlm_packet(
         get_tlm_packet("TGT", "PKT")
 
     Args:
-        *args: A single "TGT PKT" string, or the target and packet names.
-        stale_time: Seconds since the packet was received before it is marked stale.
-        type: Value type to return: RAW, CONVERTED (default) or FORMATTED.
-        scope: COSMOS scope.
+        *args (str|List[str]): A single "TGT PKT" string, or the target and packet names.
+        stale_time (int): Seconds since the packet was received before it is marked stale.
+        type (str): Value type to return: RAW, CONVERTED (default) or FORMATTED.
+        scope (str): COSMOS scope.
 
     Returns:
         One [item name, value, limits state] list per item, where the limits
@@ -476,14 +479,14 @@ def get_tlm_values(
     which contains it.
 
     Args:
-        items: Items formatted as TGT__PKT__ITEM__TYPE, optionally suffixed with
+        items (List[str]): Items formatted as TGT__PKT__ITEM__TYPE, optionally suffixed with
             __LIMITS. None entries (from `get_tlm_available`) return [None, None].
-        stale_time: Seconds since the packet was received before an item is marked stale.
-        cache_timeout: Seconds a cached current value table read stays valid.
-        start_time: Read historical values from the time series database at
+        stale_time (int): Seconds since the packet was received before an item is marked stale.
+        cache_timeout (float): Seconds a cached current value table read stays valid.
+        start_time (str|None): Read historical values from the time series database at
             this ISO 8601 time instead of the current values.
-        end_time: With start_time, read every value up to this ISO 8601 time.
-        scope: COSMOS scope.
+        end_time (str|None): With start_time, read every value up to this ISO 8601 time.
+        scope (str): COSMOS scope.
 
     Returns:
         Without start_time, one [value, limits state] list per item, where the
@@ -496,7 +499,7 @@ def get_tlm_values(
     """
     if not isinstance(items, list) or len(items) == 0:
         raise TypeError("items must be array of strings: ['TGT__PKT__ITEM__TYPE', ...]")
-    packets = []
+    packets = set()
     cvt_items = []
     # Index of each historical LATEST item in cvt_items => every packet containing the item
     latest_candidates = {}
@@ -522,7 +525,7 @@ def get_tlm_values(
                 # Each packet must be queried for the value type and limits it has or the query fails
                 candidates = []
                 for candidate in _tlm_packet_names(target_name, packet_name, item_name, scope):
-                    packets.append([target_name, candidate])
+                    packets.add((target_name, candidate))
                     candidate_item = TargetModel.packet_item(target_name, candidate, item_name, scope=scope)
                     candidate_limits = limits if limits and candidate_item.get("limits", {}).get("DEFAULT") else None
                     candidate_type = _tlm_available_value_type(candidate_item, item_name, value_type)
@@ -533,14 +536,12 @@ def get_tlm_values(
             packet_name = CvtModel.determine_latest_packet_for_item(target_name, item_name, cache_timeout, scope)
         # NOTE: limits is required by the historical (start_time) QuestDB lookup
         cvt_items.append(TlmItem(target_name, packet_name, item_name, value_type, limits))
-        packets.append([target_name, packet_name])
-    # Make the array of arrays unique
-    packets = [list(x) for x in {tuple(x) for x in packets}]
-    for name in packets:
+        packets.add((target_name, packet_name))
+    for target, packet in packets:
         authorize(
             permission="tlm",
-            target_name=name[0],
-            packet_name=name[1],
+            target_name=target,
+            packet_name=packet,
             scope=scope,
         )
     if latest_candidates and start_time is not None:
@@ -552,8 +553,8 @@ def get_all_tlm(target_name: str, scope: str = OPENC3_SCOPE) -> list[dict[str, A
     """Return the definitions of all the telemetry packets in a target.
 
     Args:
-        target_name: Name of the target.
-        scope: COSMOS scope.
+        target_name (str): Name of the target.
+        scope (str): COSMOS scope.
 
     Returns:
         One packet definition dict per telemetry packet.
@@ -563,17 +564,23 @@ def get_all_tlm(target_name: str, scope: str = OPENC3_SCOPE) -> list[dict[str, A
     return TargetModel.packets(target_name, type="TLM", scope=scope)
 
 
-# get_all_telemetry is DEPRECATED
-get_all_telemetry = get_all_tlm
+def get_all_telemetry(target_name: str, scope: str = OPENC3_SCOPE) -> list[dict[str, Any]]:
+    """Returns a list of all the telemetry packet dicts.
+
+    .. deprecated:: 5.13.0
+       Use get_all_tlm instead.
+    """
+    warnings.warn("get_all_telemetry is deprecated, use get_all_tlm", FutureWarning, stacklevel=2)
+    return get_all_tlm(target_name, scope)
 
 
 def get_all_tlm_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE) -> list[str]:
     """Return the names of all the telemetry packets in a target.
 
     Args:
-        target_name: Name of the target.
-        hidden: Whether to include packets marked HIDDEN.
-        scope: COSMOS scope.
+        target_name (str): Name of the target.
+        hidden (bool): Whether to include packets marked HIDDEN.
+        scope (str): COSMOS scope.
 
     Returns:
         The packet names, or an empty list if the target does not exist or
@@ -596,9 +603,9 @@ def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = 
     """Return the names of all the telemetry items in every packet of a target.
 
     Args:
-        target_name: Name of the target.
-        hidden: Unused in Python.
-        scope: COSMOS scope.
+        target_name (str): Name of the target.
+        hidden (bool): Unused in Python.
+        scope (str): COSMOS scope.
 
     Returns:
         The unique item names as bytes (unlike Ruby, which returns strings),
@@ -612,8 +619,14 @@ def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = 
     return items
 
 
-# get_all_telemetry_names is DEPRECATED
-get_all_telemetry_names = get_all_tlm_names
+def get_all_telemetry_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE) -> list[str]:
+    """Returns a list of all the telemetry packet names.
+
+    .. deprecated:: 5.13.0
+       Use get_all_tlm_names instead.
+    """
+    warnings.warn("get_all_telemetry_names is deprecated, use get_all_tlm_names", FutureWarning, stacklevel=2)
+    return get_all_tlm_names(target_name, hidden, scope)
 
 
 def get_tlm(*args: str, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
@@ -626,7 +639,7 @@ def get_tlm(*args: str, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
 
     Args:
         *args: A single "TGT PKT" string, or the target and packet names.
-        scope: COSMOS scope.
+        scope (str): COSMOS scope.
 
     Returns:
         The packet definition, including its items.
@@ -636,8 +649,14 @@ def get_tlm(*args: str, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
     return TargetModel.packet(target_name, packet_name, scope=scope)
 
 
-# get_telemetry is DEPRECATED
-get_telemetry = get_tlm
+def get_telemetry(*args: str, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
+    """Returns a telemetry packet definition dict.
+
+    .. deprecated:: 5.13.0
+       Use get_tlm instead.
+    """
+    warnings.warn("get_telemetry is deprecated, use get_tlm", FutureWarning, stacklevel=2)
+    return get_tlm(*args, scope)
 
 
 def get_item(*args: str, scope: str = OPENC3_SCOPE, cache_timeout: float = 0.1) -> dict[str, Any]:
@@ -653,8 +672,8 @@ def get_item(*args: str, scope: str = OPENC3_SCOPE, cache_timeout: float = 0.1) 
 
     Args:
         *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
-        scope: COSMOS scope.
-        cache_timeout: Seconds a cached LATEST packet lookup stays valid.
+        scope (str): COSMOS scope.
+        cache_timeout (float): Seconds a cached LATEST packet lookup stays valid.
 
     Returns:
         The item definition.
@@ -676,8 +695,8 @@ def subscribe_packets(packets: list[list[str]], scope: str = OPENC3_SCOPE) -> st
     """Subscribe to telemetry packets. Pass the returned ID to `get_packets`.
 
     Args:
-        packets: [target name, packet name] pairs. LATEST is not supported.
-        scope: COSMOS scope.
+        packets (List[List[str]]): [target name, packet name] pairs. LATEST is not supported.
+        scope (str): COSMOS scope.
 
     Returns:
         Subscription ID to pass to `get_packets`.
@@ -721,9 +740,9 @@ def get_packets(id: str, count: int = 1000, scope: str = OPENC3_SCOPE) -> tuple[
     across calls.
 
     Args:
-        id: ID returned from `subscribe_packets` or the last call to get_packets.
-        count: Maximum number of packets to return from EACH packet stream.
-        scope: COSMOS scope.
+        id (str): ID returned from `subscribe_packets` or the last call to get_packets.
+        count (int): Maximum number of packets to return from EACH packet stream.
+        scope (str): COSMOS scope.
 
     Returns:
         The ID to pass to the next call, and the decommutated packets found.
@@ -769,7 +788,7 @@ def get_tlm_cnt(*args: str, scope: str = OPENC3_SCOPE) -> int:
 
     Args:
         *args: A single "TGT PKT" string, or the target and packet names.
-        scope: COSMOS scope.
+        scope (str): COSMOS scope.
 
     Returns:
         Number of times the packet has been received.
@@ -789,8 +808,8 @@ def get_tlm_cnts(target_packets: list[list[str]], scope: str = OPENC3_SCOPE) -> 
     """Return the receive counts for several telemetry packets.
 
     Args:
-        target_packets: [target name, packet name] pairs.
-        scope: COSMOS scope.
+        target_packets (List[List[str]]): [target name, packet name] pairs.
+        scope (str): COSMOS scope.
 
     Returns:
         The receive count of each packet, in the same order.
@@ -809,7 +828,7 @@ def get_packet_derived_items(*args: str, scope: str = OPENC3_SCOPE) -> list[str]
 
     Args:
         *args: A single "TGT PKT" string, or the target and packet names.
-        scope: COSMOS scope.
+        scope (str): COSMOS scope.
 
     Returns:
         The DERIVED item names.

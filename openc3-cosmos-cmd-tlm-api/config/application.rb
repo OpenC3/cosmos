@@ -41,6 +41,11 @@ module CmdTlmApi
     # Skip views, helpers and assets when generating a new resource.
     config.api_only = true
 
+    # Only derive request.remote_ip from headers traefik sets. See
+    # openc3/lib/openc3/utilities/client_ip_header_filter.rb
+    require 'openc3/utilities/client_ip_header_filter'
+    config.middleware.insert_before(ActionDispatch::RemoteIp, OpenC3::ClientIpHeaderFilter)
+
     config.action_cable.disable_request_forgery_protection = true
     config.action_cable.mount_path = '/openc3-api/cable'
 
