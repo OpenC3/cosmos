@@ -4065,14 +4065,7 @@ export default {
         })
     },
     download() {
-      const blob = new Blob([this.editor.getValue()], {
-        type: 'text/plain',
-      })
-      // Make a link and then 'click' on it to start the download
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.setAttribute('download', this.filename)
-      link.click()
+      this.$refs.aceEditor.download(this.filename)
     },
     // ScriptRunner Script menu actions
     syntaxCheck() {

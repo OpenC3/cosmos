@@ -234,13 +234,7 @@ export default {
       )
     },
     downloadContent() {
-      const blob = new Blob([this.editor.getValue()], {
-        type: 'text/plain',
-      })
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.setAttribute('download', this.filename)
-      link.click()
+      this.$refs.aceEditor.download(this.filename)
     },
     loadFile() {
       const fileReader = new FileReader()

@@ -125,18 +125,10 @@ export default {
       this.show = !this.show
     },
     download: function () {
-      const blob = new Blob([this.editor.getValue()], {
-        type: 'text/plain',
-      })
-      // Make a link and then 'click' on it to start the download
-      let filename = `${this.type.toLowerCase()}_${this.name.toLowerCase()}.json`
-      if (this.filename) {
-        filename = this.filename
-      }
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.setAttribute('download', filename)
-      link.click()
+      const filename =
+        this.filename ||
+        `${this.type.toLowerCase()}_${this.name.toLowerCase()}.json`
+      this.$refs.aceEditor.download(filename)
     },
   },
 }

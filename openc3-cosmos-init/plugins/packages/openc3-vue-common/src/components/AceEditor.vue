@@ -178,10 +178,22 @@ function keywordAtCursor() {
   return token ? token.value.trim().split(' ')[0] : null
 }
 
+// Download the editor text as a plain text file with the given name
+function download(filename) {
+  const blob = new Blob([editor.value.getValue()], { type: 'text/plain' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', filename)
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 defineExpose({
   editor,
   toggleVim,
   keywordAtCursor,
+  download,
 })
 </script>
 

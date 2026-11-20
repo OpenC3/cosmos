@@ -111,13 +111,7 @@ export default {
     },
     downloadContent() {
       const ext = this.language === 'python' ? '.py' : '.rb'
-      const blob = new Blob([this.editor.getValue()], {
-        type: 'text/plain',
-      })
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.setAttribute('download', `${this.filename}${ext}`)
-      link.click()
+      this.$refs.aceEditor.download(`${this.filename}${ext}`)
     },
   },
 }
