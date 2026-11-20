@@ -1,9 +1,11 @@
-Please Read:
-https://packaging.python.org/tutorials/distributing-packages/
+The release workflow (.github/workflows/release.yml) builds and publishes the
+openc3 package to PyPI. To do it by hand, build from a fresh clone of the
+release tag, not a working tree: uv build ships every file under openc3/,
+including untracked and gitignored ones.
 
-python3 -m pip install --upgrade pip
-python3 -m pip install --upgrade build
-python3 -m pip install --upgrade twine
+git clone --depth 1 --branch v<version> https://github.com/OpenC3/cosmos.git
+cd cosmos/openc3/python
+uv build
+uv publish
 
-python3 -m build
-python3 -m twine upload dist/*
+See https://docs.astral.sh/uv/guides/package/ for building and publishing.
