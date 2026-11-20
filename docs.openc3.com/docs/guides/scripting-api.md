@@ -2954,7 +2954,7 @@ check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_ST
 
 <span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-Executes a method and expects an exception to be raised. If the method does not raise an exception, a CheckError is raised.
+Executes a method and expects an exception to be raised. If the method does not raise an exception, a CheckError is raised. If the method name is not a scripting method, the check fails with a CheckError instead of counting as the expected exception. In Python, the check also fails with a CheckError if the parameters don't match the method's signature.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
