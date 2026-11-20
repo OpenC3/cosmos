@@ -24,6 +24,7 @@ Run the signature inventory into the scratchpad (`$SCRATCH` is the session
 scratchpad directory). With no area it covers both `api` and `script`:
 
 ```bash
+mkdir -p "$SCRATCH/parity"
 python3 .claude/skills/parity-review/inventory.py . "$SCRATCH/parity" > "$SCRATCH/parity/inventory.md"
 ```
 

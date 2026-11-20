@@ -18,8 +18,10 @@ import glob
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 
 
 def fetch(out, roots):
@@ -36,20 +38,29 @@ def fetch(out, roots):
         hits = [p for p in paths if any(r == "." or p == r or p.startswith(r + "/") for r in roots)]
         if hits:
             selected.append((pr, len(hits), subprocess.check_output(["gh", "pr", "diff", str(pr["number"])], text=True)))
-    # Everything fetched, so replace the old snapshot: a closed PR's files must not linger
+    # Write the new snapshot to a staging dir first, so a failed write leaves the old one intact
     os.makedirs(out, exist_ok=True)
-    for old in glob.glob(os.path.join(out, "pr*.diff")) + glob.glob(os.path.join(out, "pr*.md")):
-        os.remove(old)
-    rows = []
-    for pr, hits, diff in selected:
-        n = pr["number"]
-        with open(os.path.join(out, f"pr{n}.diff"), "w") as f:
-            f.write(diff)
-        with open(os.path.join(out, f"pr{n}.md"), "w") as f:
-            f.write(f"# #{n} {pr['title']}\n\n{pr['body'] or ''}\n")
-        rows.append(f"{n}\t{pr['title']}\t{hits}")
-    with open(os.path.join(out, "index.tsv"), "w") as f:
-        f.write("\n".join(rows) + "\n")
+    staging = tempfile.mkdtemp(prefix=".staging-", dir=out)
+    try:
+        rows = []
+        for pr, hits, diff in selected:
+            n = pr["number"]
+            with open(os.path.join(staging, f"pr{n}.diff"), "w") as f:
+                f.write(diff)
+            with open(os.path.join(staging, f"pr{n}.md"), "w") as f:
+                f.write(f"# #{n} {pr['title']}\n\n{pr['body'] or ''}\n")
+            rows.append(f"{n}\t{pr['title']}\t{hits}")
+        with open(os.path.join(staging, "index.tsv"), "w") as f:
+            f.write("\n".join(rows) + "\n")
+        # Publish: drop a closed PR's files, then rename each new file in (same filesystem, so no copy fails)
+        new = set(os.listdir(staging))
+        for old in glob.glob(os.path.join(out, "pr*.diff")) + glob.glob(os.path.join(out, "pr*.md")):
+            if os.path.basename(old) not in new:
+                os.remove(old)
+        for name in sorted(new - {"index.tsv"}) + ["index.tsv"]:
+            os.replace(os.path.join(staging, name), os.path.join(out, name))
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
     print(f"{len(rows)} open PRs touch {', '.join(roots)}; saved to {out}")
     print("\n".join(rows))
 

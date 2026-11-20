@@ -206,5 +206,5 @@ document.getElementById('bug-rows').cleanHTML = BUGS.map(([b, w, r, card, ok, pr
   <tr class="${pr ? 'text-slate-400' : ''}"><td class="p-2">${pr ? `<s>${b}</s>` : b}</td><td class="p-2 font-mono text-xs">${w}</td><td class="p-2 text-xs">${r}</td>
   <td class="p-2"><a class="underline text-xs" href="#c${card}">${String(card).padStart(2, '0')}</a></td>
   <td class="p-2 text-xs">${ok ? '<span class="text-emerald-700">✓ read</span>' : '<span class="text-slate-500">sweep</span>'}</td>
-  <td class="p-2 text-xs">${pr ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">fixed in ${pr}</span>` : 'none'}</td></tr>`).join('');
+  <td class="p-2 text-xs">${pr ? `<a class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 underline" href="https://github.com/OpenC3/cosmos/pull/${pr.replace('#', '')}">fixed in ${pr}</a>` : 'none'}</td></tr>`).join('');
 </script>
