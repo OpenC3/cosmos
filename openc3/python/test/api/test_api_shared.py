@@ -210,6 +210,16 @@ class TestApiShared(unittest.TestCase):
         with self.assertRaisesRegex(CheckError, "check_exception: no_such_method is not an API method"):
             check_exception("no_such_method", "INST")
 
+    def test_check_exception_does_not_pass_scope_to_methods_without_it(self):
+        # check_expression has no scope parameter so passing one raised TypeError,
+        # which counted as the expected exception
+        with self.assertRaisesRegex(CheckError, r"check_expression\(1 == 1\) should have raised an exception"):
+            check_exception("check_expression", "1 == 1")
+
+    def test_check_exception_raises_if_the_arguments_do_not_match(self):
+        with self.assertRaisesRegex(CheckError, "check_exception: invalid arguments for check_expression"):
+            check_exception("check_expression")
+
     def test_check_tolerance_raises_with_invalid_params(self):
         with self.assertRaisesRegex(
             RuntimeError,

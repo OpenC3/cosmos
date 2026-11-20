@@ -397,6 +397,22 @@ class TestApiShared(unittest.TestCase):
         with self.assertRaisesRegex(CheckError, "check_exception: no_such_method is not a scripting method"):
             check_exception("no_such_method", "INST")
 
+    def test_check_exception_does_not_pass_scope_to_methods_without_it(self):
+        # check_expression has no scope parameter so passing one raised TypeError,
+        # which counted as the expected exception
+        with self.assertRaisesRegex(CheckError, r"check_expression\(1 == 1\) should have raised an exception"):
+            check_exception("check_expression", "1 == 1")
+        for stdout in capture_io():
+            check_exception("check_expression", "1 == 2")
+            self.assertIn("CHECK: check_expression raised", stdout.getvalue())
+            self.assertIn("CheckError: CHECK: 1 == 2 is FALSE", stdout.getvalue())
+
+    def test_check_exception_raises_if_the_arguments_do_not_match(self):
+        with self.assertRaisesRegex(CheckError, "check_exception: invalid arguments for check_expression"):
+            check_exception("check_expression")
+        with self.assertRaisesRegex(CheckError, "check_exception: invalid arguments for check_expression"):
+            check_exception("check_expression", "1 == 1", scope="DEFAULT")
+
     def test_check_tolerance_raises_with_invalid_params(self):
         with self.assertRaisesRegex(
             RuntimeError,
@@ -746,12 +762,12 @@ class TestApiShared(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Invalid comparison to non-ascii value"):
             wait_expression("True == '\xff'", 0.01)
 
-    def test_wait_expression_returns_none_when_cancelled_and_expression_is_false(self):
+    def test_wait_expression_returns_false_when_cancelled_and_expression_is_false(self):
         global cancel
         cancel = True
         for stdout in capture_io():
             result = wait_expression("True == False", 0.1, 0.01)
-            self.assertIsNone(result)
+            self.assertIs(result, False)
             self.assertIn("WARN: WAIT: True == False is FALSE", stdout.getvalue())
         cancel = False
 
@@ -764,7 +780,8 @@ class TestApiShared(unittest.TestCase):
                 stdout.getvalue(),
             )
             result = wait_expression("True == False", 0.01)
-            self.assertFalse(result)
+            # wait_expression returns False, not None, on a timeout
+            self.assertIs(result, False)
             self.assertIn("WAIT: True == False is FALSE after waiting", stdout.getvalue())
 
     def test_waits_for_a_logical_expression(self):
@@ -776,7 +793,7 @@ class TestApiShared(unittest.TestCase):
                 stdout.getvalue(),
             )
             result = wait_expression("1 == 2", 0.01)
-            self.assertFalse(result)
+            self.assertIs(result, False)
             self.assertIn("WAIT: 1 == 2 is FALSE after waiting", stdout.getvalue())
         with self.assertRaisesRegex(
             NameError,
@@ -1187,3 +1204,42 @@ class TestApiShared(unittest.TestCase):
             "load_utility not supported outside of Script Runner",
         ):
             load_utility("tester.py")
+
+
+@patch("openc3.script.api_shared.openc3_script_sleep", my_openc3_script_sleep)
+class TestApiSharedWaitScope(unittest.TestCase):
+    """The wait functions poll telemetry in the scope they are given."""
+
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
+
+    def assert_polled_scope(self, server, scope):
+        self.assertGreater(server.tlm.call_count, 0)
+        for call in server.tlm.call_args_list:
+            self.assertEqual(call.kwargs["scope"], scope)
+
+    def test_wait_tolerance_polls_the_given_scope(self):
+        for value, item in ((10, "TEMP1"), ([2, 3, 4], "ARY")):
+            with patch("openc3.script.API_SERVER") as server:
+                server.tlm.return_value = value
+                for _ in capture_io():
+                    self.assertTrue(
+                        wait_tolerance(f"INST HEALTH_STATUS {item}", 3 if item == "ARY" else 10, 2, 1, scope="OTHER")
+                    )
+                self.assert_polled_scope(server, "OTHER")
+
+    def test_wait_check_polls_the_given_scope(self):
+        with patch("openc3.script.API_SERVER") as server:
+            server.tlm.return_value = 10
+            for _ in capture_io():
+                wait_check("INST HEALTH_STATUS TEMP1 == 10", 1, scope="OTHER")
+            self.assert_polled_scope(server, "OTHER")
+
+    def test_wait_check_tolerance_polls_the_given_scope(self):
+        for value, item in ((10, "TEMP1"), ([2, 3, 4], "ARY")):
+            with patch("openc3.script.API_SERVER") as server:
+                server.tlm.return_value = value
+                for _ in capture_io():
+                    wait_check_tolerance(f"INST HEALTH_STATUS {item}", 3 if item == "ARY" else 10, 2, 1, scope="OTHER")
+                self.assert_polled_scope(server, "OTHER")

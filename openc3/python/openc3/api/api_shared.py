@@ -103,10 +103,11 @@ def check_exception(method_name: str, *args: Any, **kwargs: Any) -> None:
         method_name: Name of the openc3.api method to call.
         *args: Positional arguments passed to the method.
         **kwargs: Keyword arguments passed to the method. scope defaults to
-            OPENC3_SCOPE if not given.
+            OPENC3_SCOPE if not given and the method accepts it.
 
     Raises:
-        CheckError: If the method does not exist or does not raise an exception.
+        CheckError: If the method does not exist, the arguments don't match
+            its signature, or it does not raise an exception.
     """
     # Resolve from the whole API package, not just this module
     _check_exception(sys.modules["openc3.api"], "an API method", method_name, *args, **kwargs)

@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import inspect
 import time
 import traceback
 import warnings
@@ -106,10 +107,11 @@ def check_exception(method_name: str, *args: Any, **kwargs: Any) -> None:
         method_name: Name of the openc3.script method to call.
         *args: Positional arguments passed to the method.
         **kwargs: Keyword arguments passed to the method. scope defaults to
-            OPENC3_SCOPE if not given.
+            OPENC3_SCOPE if not given and the method accepts it.
 
     Raises:
-        CheckError: If the method does not exist or does not raise an exception.
+        CheckError: If the method does not exist, the arguments don't match
+            its signature, or it does not raise an exception.
     """
     # Resolve from the whole scripting API, not just this module
     _check_exception(openc3.script, "a scripting method", method_name, *args, **kwargs)
@@ -125,8 +127,18 @@ def _check_exception(namespace: ModuleType, method_kind: str, method_name: str, 
     if not callable(method):
         raise CheckError(f"check_exception: {method_name} is not {method_kind}")
     orig_kwargs = kwargs.copy()
-    if "scope" not in kwargs:
+    try:
+        signature = inspect.signature(method)
+    except (TypeError, ValueError):
+        signature = None  # Can't inspect it so pass scope as always
+    if "scope" not in kwargs and (signature is None or _accepts_keyword(signature, "scope")):
         kwargs["scope"] = OPENC3_SCOPE
+    # A call with the wrong arguments raises TypeError, which must not count as the expected exception
+    if signature is not None:
+        try:
+            signature.bind(*args, **kwargs)
+        except TypeError as error:
+            raise CheckError(f"check_exception: invalid arguments for {method_name}: {error}") from error
     try:
         method(*args, **kwargs)
     except Exception:
@@ -137,6 +149,15 @@ def _check_exception(namespace: ModuleType, method_kind: str, method_name: str, 
             call += f", {orig_kwargs}"
         call += ")"
         raise CheckError(f"{call} should have raised an exception but did not.")
+
+
+def _accepts_keyword(signature: inspect.Signature, name: str) -> bool:
+    """Return whether a callable with this signature accepts the keyword argument name."""
+    return any(
+        (param.name == name and param.kind != inspect.Parameter.POSITIONAL_ONLY)
+        or param.kind == inspect.Parameter.VAR_KEYWORD
+        for param in signature.parameters.values()
+    )
 
 
 def check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:
@@ -398,6 +419,7 @@ def wait_tolerance(*args: Any, type: ValueType = "CONVERTED", quiet: bool = Fals
             tolerance,
             timeout,
             polling_rate,
+            scope=scope,
         )
         time_diff = time.time() - start_time
 
@@ -427,6 +449,7 @@ def wait_tolerance(*args: Any, type: ValueType = "CONVERTED", quiet: bool = Fals
             tolerance,
             timeout,
             polling_rate,
+            scope=scope,
         )
         time_diff = time.time() - start_time
         range_bottom = expected_value - tolerance
@@ -448,7 +471,7 @@ def wait_expression(
     globals: dict[str, Any] | None = None,
     locals: Mapping[str, Any] | None = None,
     quiet: bool = False,
-) -> bool | None:
+) -> bool:
     """Wait for a Python expression to be true.
 
     On a timeout execution continues without raising.
@@ -462,7 +485,7 @@ def wait_expression(
         quiet: Whether to suppress printing the result.
 
     Returns:
-        True if the expression became true before the timeout, otherwise None.
+        True if the expression became true before the timeout, otherwise False.
     """
     start_time = time.time()
     success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, locals)
@@ -515,6 +538,7 @@ def wait_check(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SC
         comparison_to_eval,
         timeout,
         polling_rate,
+        scope=scope,
     )
     if isinstance(value, str):
         value = f"'{value}'"  # Show user the check against a quoted string
@@ -588,6 +612,7 @@ def wait_check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str =
             tolerance,
             timeout,
             polling_rate,
+            scope=scope,
         )
         time_diff = time.time() - start_time
 
@@ -1356,16 +1381,13 @@ def _openc3_script_wait_expression(
             canceled = openc3_script_sleep(sleep_time)
 
             if canceled:
-                if eval(exp_to_eval, globals, locals):
-                    return True
-                else:
-                    return None
+                return bool(eval(exp_to_eval, globals, locals))
     except NameError as error:
         parts = error.args[0].split("'")
         new_error = NameError(f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?")
         raise new_error from error
 
-    return None
+    return False
 
 
 def _check_comparison(
