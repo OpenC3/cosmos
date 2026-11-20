@@ -5415,9 +5415,9 @@ get_overall_limits_state(<Ignored Items> (optional))
 </TabItem>
 </Tabs>
 
-| Parameter     | Description                                                                                                                        |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Ignored Items | Array of arrays with items to ignore when determining the overall limits state. [['TARGET_NAME', 'PACKET_NAME', 'ITEM_NAME'], ...] |
+| Parameter     | Description                                                                                                                                                                                                                                    |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ignored Items | Array of arrays with items to ignore when determining the overall limits state. [['TARGET_NAME', 'PACKET_NAME', 'ITEM_NAME'], ...]. Names must match exactly. ITEM_NAME can be None (Python) or nil (Ruby) to ignore every item in the packet. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
