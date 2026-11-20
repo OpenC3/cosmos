@@ -1,0 +1,182 @@
+<title>COSMOS {{Language}} Reuse</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<style>
+  /* Single deliberate light look, matching the 2026-11-19 architecture reports. */
+  :root { color-scheme: light; --bg: #fafaf9; --fg: #0f172a; }
+  body { background: var(--bg); color: var(--fg); }
+  :focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
+  .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+  .deep { background: #ecfdf5; color: #064e3b; border: 3px solid #047857; }
+  .copy { background: #ffffff; border: 1px solid #94a3b8; }
+  .copy.bug { border-left: 4px solid #b91c1c; }
+  .caller { background: #ffffff; border: 1px dashed #64748b; }
+  .scroll { overflow-x: auto; }
+  code { font-size: .85em; background: #f1f5f9; padding: 0 .25em; border-radius: 3px; }
+  .deep code { background: #d1fae5; }
+  .prose-c p { max-width: 70ch; }
+  h1, h2 { text-wrap: balance; }
+</style>
+<div class="font-sans">
+<main class="max-w-6xl mx-auto py-12 space-y-12" style="padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))">
+
+<header class="space-y-4">
+  <p class="lbl text-slate-500">OpenC3 COSMOS · {{root}} · {{YYYY-MM-DD}} · main @ {{short sha}}</p>
+  <h1 class="font-serif text-4xl">{{Language}} reuse review</h1>
+  <div class="prose-c text-sm text-slate-700 space-y-2">
+    <p>This review looks for the same logic written more than once in {{root}}: copies that one shared helper module would replace. Every finding was checked against its {{counterpart}} counterpart, because a refactor has to keep the two in step. The most useful findings are small differences between copies, where one copy got a fix the others never received.</p>
+    <p>Three parallel sweeps: {{slice 1}}, {{slice 2}}, {{slice 3}}. Already reported elsewhere and left out: {{exclusions, or "none"}}.</p>
+  </div>
+  <div class="grid sm:grid-cols-3 gap-3 text-sm">
+    <div class="rounded-lg border border-slate-200 bg-white p-3"><p class="lbl text-slate-500">Candidates</p><p class="text-2xl font-serif">{{N}}</p><p class="text-xs text-slate-500">+ {{M}} smaller items</p></div>
+    <div class="rounded-lg border border-slate-200 bg-white p-3"><p class="lbl text-slate-500">Est. {{Language}} lines removed</p><p class="text-2xl font-serif">≈ {{total}}</p><p class="text-xs text-slate-500">{{biggest single contributor}}</p></div>
+    <div class="rounded-lg border border-slate-200 bg-white p-3"><p class="lbl text-slate-500">Bugs found in divergent copies</p><p class="text-2xl font-serif">{{bug count}}</p><p class="text-xs text-slate-500"><a href="#bugs" class="underline">listed below</a>; fixable without refactoring</p></div>
+  </div>
+  <div class="rounded-lg border border-slate-200 bg-white p-4 text-sm space-y-2">
+    <p class="lbl text-slate-500">{{counterpart}} parity class</p>
+    <ul class="space-y-1">
+      <li><span class="px-2 py-0.5 rounded-full text-xs bg-sky-100 text-sky-800">a · counterpart already shares it</span> This side diverged. Copy the counterpart's shape; there is no design question to settle.</li>
+      <li><span class="px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">b · both duplicate</span> Apply the same refactor on both sides, in one PR.</li>
+      <li><span class="px-2 py-0.5 rounded-full text-xs bg-slate-200 text-slate-700">c · no counterpart</span> Only this side has the code.</li>
+    </ul>
+    <div class="flex flex-wrap gap-4 text-xs text-slate-600 pt-1">
+      <span class="flex items-center gap-2"><span class="inline-block w-6 h-4 copy"></span>copy</span>
+      <span class="flex items-center gap-2"><span class="inline-block w-6 h-4 copy bug"></span>copy that diverged (bug)</span>
+      <span class="flex items-center gap-2"><span class="inline-block w-6 h-4 deep rounded"></span>shared helper module</span>
+      <span class="flex items-center gap-2"><span class="inline-block w-6 h-4 caller"></span>thin caller</span>
+    </div>
+  </div>
+</header>
+
+<section id="candidates" class="space-y-10"></section>
+
+<section id="smaller" class="space-y-3">
+  <h2 class="font-serif text-2xl">Smaller items</h2>
+  <div class="scroll rounded-lg border border-slate-200 bg-white">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-left"><tr><th class="p-2">Item</th><th class="p-2">Where</th><th class="p-2">Parity</th><th class="p-2">Note</th></tr></thead>
+      <tbody id="small-rows" class="divide-y divide-slate-100 align-top"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="bugs" class="space-y-3">
+  <h2 class="font-serif text-2xl">Bugs found in divergent copies</h2>
+  <p class="text-sm text-slate-600 max-w-prose">Each of these can be fixed on its own, before any refactor. Fixing them first, with tests, gives each refactor a safety net. "Checked" means I read the code myself; the rest come from a sweep and still need a test to confirm.</p>
+  <div class="scroll rounded-lg border border-slate-200 bg-white">
+    <table class="w-full text-sm">
+      <thead class="bg-slate-50 text-left"><tr><th class="p-2">Bug</th><th class="p-2">Where</th><th class="p-2">Counterpart</th><th class="p-2">Card</th><th class="p-2">Checked</th></tr></thead>
+      <tbody id="bug-rows" class="divide-y divide-slate-100 align-top"></tbody>
+    </table>
+  </div>
+</section>
+
+<section id="top-recommendation" class="rounded-xl deep p-6 sm:p-8 space-y-3">
+  <p class="lbl">Top recommendation</p>
+  <h2 class="font-serif text-2xl">{{headline}}</h2>
+  <div class="prose-c space-y-2 text-sm">
+    <p><strong>Step 0: one bug-fix PR.</strong> {{the one-line fixes from the bugs table, each with a regression test}}</p>
+    <p><strong>Step 1: candidate {{NN}}.</strong> {{why first: parity class, lines removed, drift already seen}}</p>
+    <p><strong>Step 2: candidate {{NN}}.</strong> {{why next}}</p>
+  </div>
+</section>
+
+<p class="text-xs text-slate-500">Line numbers are as of main @ {{short sha}}. {{Enterprise check result: which affected modules ../cosmos-enterprise imports, or that it is not checked out.}}</p>
+</main>
+</div>
+
+<script>
+const PARITY = {
+  a: ['bg-sky-100 text-sky-800', 'a · counterpart already shares it'],
+  b: ['bg-amber-100 text-amber-800', 'b · both duplicate'],
+  c: ['bg-slate-200 text-slate-700', 'c · no counterpart'],
+};
+const STRENGTH = {
+  'Strong': 'bg-emerald-100 text-emerald-800',
+  'Worth exploring': 'bg-yellow-100 text-yellow-800',
+  'Speculative': 'bg-slate-100 text-slate-700',
+};
+
+const CARDS = [
+// One object per candidate, ranked by value. Example kept from the 2026-11-20 Python run; replace it.
+{
+  title: 'One <code>api_shared</code> module for api and script',
+  strength: 'Strong', parity: 'a', lines: '≈ 1,150', risk: 'Medium',
+  files: ['api/api_shared.py (1253 lines)', 'script/api_shared.py (1432 lines)', 'api/__init__.py:14 (star import)', 'script/__init__.py:323 (star import)'],
+  problem: 'The api copy is a near-complete duplicate of the script copy: every <code>check*</code>, <code>wait*</code>, <code>wait_check*</code>, <code>wait_packet</code>, the <code>_process_args</code> parsers, and the comparison and tolerance code. Only two differences are intended. The api copy calls <code>tlm()</code> directly, while the script copy goes through <code>openc3.script.API_SERVER</code> and prints instead of raising in disconnect mode. Fixes land in one copy and not the other: the script copy rejects <code>LATEST</code> in <code>wait_packet</code> (script:974-976), and the api copy does not (api:811).',
+  solution: 'Keep one implementation module that reaches the server through a few hooks (<code>_tlm</code>, <code>_get_item</code>, <code>_fail</code>). <code>openc3.api</code> and <code>openc3.script</code> each re-export it and supply their own hooks. This mirrors Ruby, where one module is mixed into both.',
+  benefits: '<strong>Locality:</strong> one place to fix each wait or check. <strong>Leverage:</strong> both callers get every fix. <strong>Tests:</strong> one suite covers both entry points, plus two short hook tests.',
+  counterpart: '<code>script/api_shared.rb:22</code> is one <code>ApiShared</code> module, included by <code>api/api.rb:19,45</code> and <code>script/script.rb:21,57</code>.',
+  before: [['api/api_shared.py · 1253 lines', 'no LATEST guard (:811)'], ['script/api_shared.py · 1432 lines', null]],
+  helper: 'api_shared (one module)', helperSig: 'hooks: _tlm · _get_item · _fail',
+  callers: ['openc3.api: direct hooks', 'openc3.script: API_SERVER hooks'],
+  notes: ['<code>_openc3_script_wait_expression</code>: <code>globals</code> defaults to <code>None</code> in api:1150 but is required in script:1321.', '<code>check_exception</code> uses <code>getattr(sys.modules[__name__], …)</code> (api:116, script:119), so it can only call functions in its own module. The api docstring example <code>check_exception("cmd", …)</code> cannot work. Ruby uses <code>send</code>.', 'Risk: MCP tool schemas come from <code>openc3.script</code> signatures, so keep the script copy\'s signatures and docstrings.'],
+},
+];
+
+const SMALL = [
+// [item, where, parity a|b|c, note]
+  ['current_limits_settings read-modify-write', 'topics/limits_event_topic.py:69-139, 251-262', 'b', '<code>if event.get("persistence")</code> skips <code>0</code>; Ruby writes it. Helper <code>_update_item_limits_settings(…, mutate)</code>.'],
+];
+
+const BUGS = [
+// [bug, where, Ruby/counterpart status, card number, checked: true only if you read the code yourself]
+  ['<code>details()</code> deletes PASSWORD/CERT/KEY/CA_FILE from the live interface options', 'interface.py:575 + mqtt_interface.py:237-245', 'same', 3, true],
+];
+
+const pill = (cls, txt) => `<span class="px-2 py-0.5 rounded-full text-xs ${cls}">${txt}</span>`;
+
+const before = (copies) => `
+  <div class="rounded-lg border border-slate-200 p-3 bg-slate-50 min-w-0">
+    <p class="lbl text-red-700 mb-2">Before · ${copies.length} copies</p>
+    <div class="grid gap-1.5">${copies.map(([l, bug]) => `
+      <div class="copy ${bug ? 'bug' : ''} rounded px-2 py-1.5">
+        <div class="font-mono text-xs text-slate-800">${l}</div>
+        ${bug ? `<div class="text-xs text-red-800">${bug}</div>` : ''}
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+const after = (c) => `
+  <div class="rounded-lg border border-slate-200 p-3 bg-slate-50 min-w-0 flex flex-col">
+    <p class="lbl text-emerald-800 mb-2">After · one helper module</p>
+    <div class="flex flex-wrap gap-1.5 mb-2">${c.callers.map(x => `<span class="caller rounded px-2 py-0.5 text-xs text-slate-700">${x}</span>`).join('')}</div>
+    <div class="text-center text-slate-400 text-xs leading-none mb-1">│ one call each │</div>
+    <div class="deep rounded-lg p-3 flex-1">
+      <div class="font-mono text-sm font-semibold">${c.helper}</div>
+      <div class="text-xs mt-1">${c.helperSig}</div>
+    </div>
+  </div>`;
+
+document.getElementById('candidates').innerHTML = CARDS.map((c, i) => {
+  const n = String(i + 1).padStart(2, '0');
+  const [pc, pt] = PARITY[c.parity];
+  return `
+<article id="c${i + 1}" class="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
+  <div class="flex flex-wrap items-center gap-2">
+    <span class="text-slate-400 font-mono">${n}</span>
+    <h2 class="font-serif text-2xl">${c.title}</h2>
+    ${pill(STRENGTH[c.strength], c.strength)} ${pill(pc, pt)}
+  </div>
+  <p class="text-xs text-slate-500">Est. lines removed: <strong>${c.lines}</strong> · Risk: <strong>${c.risk}</strong></p>
+  <ul class="font-mono text-xs text-slate-600 grid sm:grid-cols-2 gap-x-6 gap-y-0.5">${c.files.map(f => `<li class="min-w-0 break-words">${f}</li>`).join('')}</ul>
+  <div class="grid md:grid-cols-2 gap-3">${before(c.before)}${after(c)}</div>
+  <div class="grid md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+    <div class="min-w-0"><p class="lbl text-slate-500 mb-1">Problem</p><p>${c.problem}</p></div>
+    <div class="min-w-0 space-y-3">
+      <div><p class="lbl text-slate-500 mb-1">Solution</p><p>${c.solution}</p></div>
+      <div><p class="lbl text-slate-500 mb-1">Benefits</p><p>${c.benefits}</p></div>
+      <div><p class="lbl text-slate-500 mb-1">Counterpart</p><p>${c.counterpart}</p></div>
+    </div>
+  </div>
+  ${c.notes.length ? `<ul class="text-xs text-slate-600 list-disc pl-5 space-y-1">${c.notes.map(x => `<li>${x}</li>`).join('')}</ul>` : ''}
+</article>`;
+}).join('');
+
+document.getElementById('small-rows').innerHTML = SMALL.map(([t, w, p, n]) => `
+  <tr><td class="p-2">${t}</td><td class="p-2 font-mono text-xs">${w}</td><td class="p-2">${pill(PARITY[p][0], p)}</td><td class="p-2 text-slate-700">${n}</td></tr>`).join('');
+
+document.getElementById('bug-rows').innerHTML = BUGS.map(([b, w, r, card, ok]) => `
+  <tr><td class="p-2">${b}</td><td class="p-2 font-mono text-xs">${w}</td><td class="p-2 text-xs">${r}</td>
+  <td class="p-2"><a class="underline text-xs" href="#c${card}">${String(card).padStart(2, '0')}</a></td>
+  <td class="p-2 text-xs">${ok ? '<span class="text-emerald-700">✓ read</span>' : '<span class="text-slate-500">sweep</span>'}</td></tr>`).join('');
+</script>
