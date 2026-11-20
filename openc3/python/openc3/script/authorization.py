@@ -180,7 +180,7 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
         self.refresh_expires_at = current_time + oath["refresh_expires_in"]
 
     @request_wrapper
-    def _make_token_request(self):
+    def _make_token_request(self) -> requests.Response:
         """Use the python requests library to request a token from Cosmos Keycloak.
 
         This is an internal method decorated with request_wrapper, which
@@ -236,7 +236,7 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
         self.refresh_expires_at = current_time + oath["refresh_expires_in"]
 
     @request_wrapper
-    def _make_refresh_request(self):
+    def _make_refresh_request(self) -> requests.Response:
         """Use the python requests library to refresh the token.
 
         This is an internal method decorated with request_wrapper, which

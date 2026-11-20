@@ -51,8 +51,18 @@ class TestCosmosCalendar(unittest.TestCase):
     def test_delete_timeline_activity_recurring(self):
         delete_timeline_activity("TL", 100, "UUID")
         self.assertEqual(self.url(), "/openc3-api/timeline/TL/activity/100/UUID")
-        delete_timeline_activity("TL", 100, "UUID", recurring=True)
+        # With recurring the given (recurring group) UUID is sent unchanged
+        delete_timeline_activity("TL", 100, "GROUP-UUID", recurring=True)
+        self.assertEqual(self.url(), "/openc3-api/timeline/TL/activity/100/GROUP-UUID?recurring=true")
+
+    def test_delete_timeline_activity_positional_scope(self):
+        # The fourth positional argument is still scope and does not turn on recurring
+        delete_timeline_activity("TL", 100, "UUID", "OTHER")
+        self.assertEqual(self.url(), "/openc3-api/timeline/TL/activity/100/UUID")
+        self.assertEqual(self.api_server.request.call_args.kwargs["scope"], "OTHER")
+        delete_timeline_activity("TL", 100, "UUID", "OTHER", recurring=True)
         self.assertEqual(self.url(), "/openc3-api/timeline/TL/activity/100/UUID?recurring=true")
+        self.assertEqual(self.api_server.request.call_args.kwargs["scope"], "OTHER")
 
     def test_activity_times_are_converted_to_utc(self):
         tz = timezone(timedelta(hours=-7))

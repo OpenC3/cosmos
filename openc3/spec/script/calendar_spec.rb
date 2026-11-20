@@ -51,8 +51,9 @@ module OpenC3
         end
 
         it "deletes the recurring group when recurring is true" do
-          expect($api_server).to receive(:request).with('delete', "/openc3-api/timeline/TL/activity/100/UUID?recurring=true", scope: 'DEFAULT').and_return(@response)
-          delete_timeline_activity('TL', 100, 'UUID', recurring: true, scope: 'DEFAULT')
+          # The given (recurring group) UUID is sent unchanged
+          expect($api_server).to receive(:request).with('delete', "/openc3-api/timeline/TL/activity/100/GROUP-UUID?recurring=true", scope: 'OTHER').and_return(@response)
+          delete_timeline_activity('TL', 100, 'GROUP-UUID', recurring: true, scope: 'OTHER')
         end
       end
     end

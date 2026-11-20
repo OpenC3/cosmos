@@ -101,6 +101,15 @@ module OpenC3
       return _cal_handle_response(response, 'Failed to get timeline activities')
     end
 
+    # Deletes an activity from the specified timeline.
+    #
+    # @param name [String] The name of the timeline.
+    # @param start [Integer] The start time of the activity (Unix seconds). With recurring,
+    #   the start of an occurrence of the group that still exists.
+    # @param uuid [String] The UUID of the activity. With recurring, the recurring group UUID
+    #   (activity['recurring']['uuid']).
+    # @param recurring [Boolean] Whether to also delete every activity in the same recurring group.
+    # @param scope [String, optional] The scope of the timeline. Defaults to OPENC3_SCOPE.
     def delete_timeline_activity(name, start, uuid, recurring: false, scope: $openc3_scope)
       url = "/openc3-api/timeline/#{name}/activity/#{start}/#{uuid}"
       url += "?recurring=true" if recurring

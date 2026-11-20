@@ -271,17 +271,19 @@ def get_timeline_activities(
 
 
 def delete_timeline_activity(
-    name: str, start: int | str, uuid: str, recurring: bool = False, scope: str = OPENC3_SCOPE
+    name: str, start: int | str, uuid: str, scope: str = OPENC3_SCOPE, *, recurring: bool = False
 ) -> dict[str, Any] | None:
     """Delete an activity from a timeline.
 
     Args:
         name: Timeline name.
-        start: Start time of the activity in epoch seconds.
-        uuid: Activity UUID.
+        start: Start time of the activity in epoch seconds. With recurring,
+            the start of an occurrence of the group that still exists.
+        uuid: Activity UUID. With recurring, the recurring group UUID
+            (``activity["recurring"]["uuid"]``).
+        scope: COSMOS scope.
         recurring: Whether to also delete every activity in the same
             recurring group.
-        scope: COSMOS scope.
 
     Returns:
         {"status": count} with the number of activities removed, or None if
