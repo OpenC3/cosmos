@@ -983,6 +983,16 @@ module OpenC3
 
     describe "#remove" do
       it_behaves_like "a streaming action", :remove
+
+      it "omits the time_type when not given so both time types are removed" do
+        api.remove(items: ['ITEM'])
+        expect(action_data.first).not_to have_key('time_type')
+      end
+
+      it "sends the time_type upcased" do
+        api.remove(items: ['ITEM'], time_type: :received)
+        expect(action_data.first['time_type']).to eq('RECEIVED')
+      end
     end
 
     describe ".read_all" do

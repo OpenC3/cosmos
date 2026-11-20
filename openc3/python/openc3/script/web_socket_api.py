@@ -649,6 +649,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         items: list[str | list[str]] | None = None,
         packets: list[str] | None = None,
         scope: str | None = None,
+        time_type: str | None = None,
     ) -> None:
         """Request to remove data from the stream.
 
@@ -658,8 +659,13 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
             items: Item keys to remove.
             packets: Packet keys to remove.
             scope: Scope name. Defaults to the scope this API was created with.
+            time_type: "PACKET" or "RECEIVED" to remove only the subscriptions
+                added with that time_type. Removes both when not given.
         """
-        self._stream_action("remove", items=items, packets=packets, scope=scope)
+        extra = {}
+        if time_type is not None:
+            extra["time_type"] = time_type.upper()
+        self._stream_action("remove", items=items, packets=packets, scope=scope, extra=extra)
 
     def _stream_action(
         self,

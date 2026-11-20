@@ -1713,14 +1713,72 @@ RSpec.describe StreamingApi, type: :model do
         expect(thread.handle_message(msg.merge('received_time' => start_nsec), collection.objects)).to include('__time' => start_nsec)
       end
 
-      it 'still skips messages before the start time after handoff to realtime' do
+      it 'delivers messages before the start time after handoff to realtime' do
+        # A target whose clock is behind the requested start time would otherwise
+        # never get live data after handoff
         _thread, collection = setup_thread(:RECEIVED)
         start_nsec = (@start_time.to_i - 50) * 1_000_000_000
         realtime = RealtimeStreamingThread.new(@api, collection, scope: 'DEFAULT')
         msg = { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 0, 'json_data' => JSON.generate({ 'VALUE1' => 5 }) }
-        expect(realtime.handle_message(msg.merge('received_time' => start_nsec - 1), collection.objects)).to be_nil
+        expect(realtime.handle_message(msg.merge('received_time' => start_nsec - 1), collection.objects)).to include('__time' => start_nsec - 1)
         expect(realtime.handle_message(msg.merge('received_time' => start_nsec), collection.objects)).to include('__time' => start_nsec)
       end
+    end
+
+    # Returns the bounds for the packet time bounds lookup, pg_data for the first data
+    # query, and nothing after. Returns the list of queries run.
+    def mock_received_queries(mock_conn, pg_data, bounds)
+      bounds_result = [{ 'min_time' => bounds[0].to_s, 'max_time' => bounds[1].to_s }]
+      bounds_result.define_singleton_method(:ntuples) { 1 }
+      queries = []
+      data_sent = false
+      allow(mock_conn).to receive(:exec) do |query|
+        queries << query
+        if query.include?('min(PACKET_TIMESECONDS)')
+          bounds_result
+        elsif !data_sent
+          data_sent = true
+          pg_data
+        end
+      end
+      queries
+    end
+
+    it 'skips a TSDB table with no rows received in the range' do
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) { |_instance, items, **_kwargs| items }
+      allow(OpenC3::TargetModel).to receive(:packet).and_return({ 'items' => [{ 'name' => 'VALUE1', 'data_type' => 'FLOAT', 'array_size' => nil }] })
+      mock_conn = instance_double(PG::Connection)
+      allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+      allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+      empty_bounds = [{ 'min_time' => nil, 'max_time' => nil }]
+      empty_bounds.define_singleton_method(:ntuples) { 1 }
+      queries = []
+      allow(mock_conn).to receive(:exec) do |query|
+        queries << query
+        empty_bounds
+      end
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }])
+
+      @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED',
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1000 })
+      sleep 1.65
+
+      expect(queries.length).to eq(1)
+      expect(queries[0]).to start_with('SELECT CAST(min(PACKET_TIMESECONDS) AS LONG)')
+      expect(@messages[-1]).to eq([])
+    end
+
+    it 'only limits an open-ended received time query from below' do
+      thread = LoggedStreamingThread.new(@api, StreamingObjectCollection.new, scope: 'DEFAULT', token: nil)
+      thread.instance_variable_set(:@time_type, :RECEIVED)
+      allow(OpenC3::QuestDBClient).to receive(:packet_time_bounds) { [10, 20] }
+      expect(thread.received_packet_bounds('TBL', 1, nil, 2)).to eq([10, nil])
+      expect(OpenC3::QuestDBClient).to have_received(:packet_time_bounds).with('TBL', 1, nil, db_shard: 2)
+      # A range ending now could still get rows, so it isn't limited from above either
+      expect(thread.received_packet_bounds('TBL', 1, Time.now.to_nsec_from_epoch, 2)).to eq([10, nil])
+      expect(thread.received_packet_bounds('TBL', 1, 2, 2)).to eq([10, 20])
+      thread.instance_variable_set(:@time_type, :PACKET)
+      expect(thread.received_packet_bounds('TBL', 1, 2, 2)).to eq([nil, nil])
     end
 
     it 'queries TSDB items by received time and returns it as __time' do
@@ -1730,21 +1788,21 @@ RSpec.describe StreamingApi, type: :model do
       allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
       allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
       received_time = @file_start_time + 500
-      pg_data = [[["VALUE1__C", 1.5], ["PACKET_TIMESECONDS", @file_start_time - 86_400_000_000_000], ["__rx_time_ns", received_time], ["COSMOS_EXTRA", nil]]]
+      packet_time = @file_start_time - 86_400_000_000_000
+      pg_data = [[["VALUE1__C", 1.5], ["PACKET_TIMESECONDS", packet_time], ["__rx_time_ns", received_time], ["COSMOS_EXTRA", nil]]]
       pg_data.define_singleton_method(:ntuples) { 1 }
-      queries = []
-      allow(mock_conn).to receive(:exec) do |query|
-        queries << query
-        queries.length == 1 ? pg_data : nil
-      end
+      queries = mock_received_queries(mock_conn, pg_data, [packet_time, packet_time + 10])
       allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }])
 
       @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED',
         'start_time' => @file_start_time, 'end_time' => @file_start_time + 1000 })
       sleep 1.65
 
-      expect(queries[0]).to include("WHERE RECEIVED_TIMESECONDS >= #{@file_start_time} AND RECEIVED_TIMESECONDS < #{@file_start_time + 1000}")
-      expect(queries[0]).to include('ORDER BY RECEIVED_TIMESECONDS')
+      # The packet time bounds lookup runs once, then the data query is limited to them
+      expect(queries[0]).to start_with('SELECT CAST(min(PACKET_TIMESECONDS) AS LONG)')
+      expect(queries[1]).to include("WHERE RECEIVED_TIMESECONDS >= #{@file_start_time} AND RECEIVED_TIMESECONDS < #{@file_start_time + 1000} AND PACKET_TIMESECONDS >= #{packet_time} AND PACKET_TIMESECONDS <= #{packet_time + 10}")
+      expect(queries[1]).to include('ORDER BY RECEIVED_TIMESECONDS')
+      expect(queries.count { |q| q.include?('min(PACKET_TIMESECONDS)') }).to eq(1)
       expect(@messages[0][0]['__time']).to eq(received_time)
       expect(@messages[0][0][item_key]).to eq(1.5)
       expect(@messages[-1]).to eq([])
@@ -1757,11 +1815,7 @@ RSpec.describe StreamingApi, type: :model do
       allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
       pg_data = [[["RECEIVED_TIMESECONDS", @file_start_time], ["VALUE1__A", 2.5]]]
       pg_data.define_singleton_method(:ntuples) { 1 }
-      queries = []
-      allow(mock_conn).to receive(:exec) do |query|
-        queries << query
-        queries.length == 1 ? pg_data : nil
-      end
+      queries = mock_received_queries(mock_conn, pg_data, [10, 20])
       allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }])
 
       key = 'REDUCED_MINUTE__TLM__INST__PARAMS__VALUE1__RAW__AVG'
@@ -1769,8 +1823,8 @@ RSpec.describe StreamingApi, type: :model do
         'start_time' => @file_start_time, 'end_time' => @file_start_time + 120_000_000_000 })
       sleep 1.5
 
-      expect(queries[0]).to start_with('SELECT CAST(RECEIVED_TIMESECONDS AS LONG) as RECEIVED_TIMESECONDS')
-      expect(queries[0]).to include('timestamp(RECEIVED_TIMESECONDS) SAMPLE BY 1m')
+      expect(queries[1]).to start_with('SELECT CAST(RECEIVED_TIMESECONDS AS LONG) as RECEIVED_TIMESECONDS')
+      expect(queries[1]).to include('AND PACKET_TIMESECONDS >= 10 AND PACKET_TIMESECONDS <= 20 ORDER BY RECEIVED_TIMESECONDS) timestamp(RECEIVED_TIMESECONDS) SAMPLE BY 1m')
       expect(@messages[0][0]['__time']).to eq(@file_start_time)
       expect(@messages[0][0][key]).to eq(2.5)
     end

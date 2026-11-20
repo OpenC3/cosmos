@@ -281,9 +281,7 @@ class StreamingThread
     objects.each do |object|
       if object.end_time and time > object.end_time
         completed_objects << object
-      # Valkey reads start before start_time (see LoggedStreamingThread::TSDB_STREAM_OVERLAP_NSEC)
-      # and objects keep start_time after handoff to realtime, so skip earlier messages here
-      elsif object.start_time and time < object.start_time
+      elsif before_start_time?(object, time)
         next
       else
         result << object
@@ -291,6 +289,13 @@ class StreamingThread
     end
     finish(completed_objects) if completed_objects.length > 0
     return result
+  end
+
+  # Whether to skip a message stamped before the object's start_time. Realtime
+  # streaming delivers every message, so objects handed off from a LoggedStreamingThread
+  # keep getting live data even when the target's clock is behind their start_time.
+  def before_start_time?(_object, _time)
+    false
   end
 
   # Only use this method if nothing was received from Redis

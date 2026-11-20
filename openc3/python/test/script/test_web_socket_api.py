@@ -715,9 +715,7 @@ class TestWebSocketApiGenerateAuth(unittest.TestCase):
 
     def test_preserves_keycloak_authentication_from_the_shared_factory(self):
         expected_auth = OpenC3KeycloakAuthentication("http://keycloak:8080")
-        with patch(
-            "openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth
-        ):
+        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth):
             self.assertIs(self.api._generate_auth(), expected_auth)
 
 
@@ -981,6 +979,16 @@ class TestStreamingWebSocketApiActions(unittest.TestCase):
     def test_add_sends_the_time_type_upcased(self):
         api = self._make_api()
         api.add(items=["ITEM"], start_time=1_000_000_000, time_type="received")
+        self.assertEqual(self._action_data(api)[0]["time_type"], "RECEIVED")
+
+    def test_remove_omits_the_time_type_when_not_given(self):
+        api = self._make_api()
+        api.remove(items=["ITEM"])
+        self.assertNotIn("time_type", self._action_data(api)[0])
+
+    def test_remove_sends_the_time_type_upcased(self):
+        api = self._make_api()
+        api.remove(items=["ITEM"], time_type="received")
         self.assertEqual(self._action_data(api)[0]["time_type"], "RECEIVED")
 
     def test_add_subscribes_before_sending_the_action(self):

@@ -479,9 +479,13 @@ module OpenC3
     #   TARGET - Target name
     #   PACKET - Packet name
     #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
+    # time_type: PACKET or RECEIVED to remove only the subscriptions added with that time_type.
+    #   Removes both when not given.
     #
-    def remove(items: nil, packets: nil, scope: nil)
-      stream_action('remove', items: items, packets: packets, scope: scope)
+    def remove(items: nil, packets: nil, scope: nil, time_type: nil)
+      extra = {}
+      extra['time_type'] = time_type.to_s.upcase if time_type
+      stream_action('remove', items: items, packets: packets, scope: scope, extra: extra)
     end
 
     # Convenience method to read all data until end marker is received.

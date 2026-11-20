@@ -1549,5 +1549,107 @@ RSpec.describe LoggedStreamingThread, :questdb do
       expect(results[0]['RECEIVED_TIMESECONDS']).to be_within(0.000001).of(rx_base / 1_000_000_000.0)
       expect(results[0]['PACKET_TIMESECONDS']).to be_within(0.000001).of(table_info['timestamps_ns'][1] / 1_000_000_000.0)
     end
+
+    # RECEIVED_TIMESECONDS is a regular column, not the designated timestamp the
+    # table is partitioned on, so filtering on it alone scans every partition, and
+    # paging re-runs that scan for every page. The thread looks up the packet time
+    # range of the requested rows first so QuestDB can skip the other partitions.
+    describe 'partition pruning' do
+      day_ms = 86_400_000
+
+      # A simulator whose clock runs days behind: packet times spread over a week
+      # of daily partitions, only the rows on days -4 and -3 were received in the window
+      let(:spec) do
+        {
+          'tables' => [
+            {
+              'target' => 'RXTIME', 'packet' => 'PRUNE', 'data_type' => 'INT', 'bit_size' => 32,
+              'rows' => [
+                { 'offset_ms' => -6 * day_ms, 'rx_time_ns' => rx_base + 10_000_000_000, 'values' => { 'VALUE' => 1 } },
+                { 'offset_ms' => -4 * day_ms, 'rx_time_ns' => rx_base, 'values' => { 'VALUE' => 2 } },
+                { 'offset_ms' => -3 * day_ms, 'rx_time_ns' => rx_base + 1_000_000_000, 'values' => { 'VALUE' => 3 } },
+                { 'offset_ms' => -1 * day_ms, 'rx_time_ns' => rx_base + 20_000_000_000, 'values' => { 'VALUE' => 4 } },
+                { 'offset_ms' => 0, 'rx_time_ns' => rx_base - 5_000_000_000, 'values' => { 'VALUE' => 5 } }
+              ]
+            }
+          ]
+        }
+      end
+      let(:window) { { start_time: rx_base, end_time: rx_base + 2_000_000_000 } }
+
+      def explain(query)
+        OpenC3::QuestDBClient.query_with_retry("EXPLAIN #{query}").values.flatten.join("\n")
+      end
+
+      def ns_to_iso(ns)
+        Time.at(ns / 1_000_000_000, ns % 1_000_000_000, :nsec, in: 'UTC').strftime('%Y-%m-%dT%H:%M:%S.%9NZ')
+      end
+
+      # Runs the block and returns the paged data queries it ran (the ones with a LIMIT)
+      def data_queries
+        queries = []
+        allow(OpenC3::QuestDBClient).to receive(:query_with_retry).and_wrap_original do |method, query, **kwargs|
+          queries << query
+          method.call(query, **kwargs)
+        end
+        yield
+        queries.select { |q| q.include?(' LIMIT ') }
+      end
+
+      # The scan of a received-time query must be limited to the packet times of
+      # the rows received in the window (days -4 and -3), not the whole table
+      def expect_pruned(query, table_info)
+        plan = explain(query)
+        expect(plan).to include('Interval forward scan'), "Expected a partition-pruned scan, got:\n#{plan}"
+        expect(plan).not_to include('Frame forward scan')
+        timestamps = table_info['timestamps_ns']
+        expect(plan).to include("(\"#{ns_to_iso(timestamps[1])}\",\"#{ns_to_iso(timestamps[2])}\")")
+      end
+
+      before do
+        @test_params = write_multi_table_data(spec)
+        expect(@test_params['success']).to be true
+        @table_info = @test_params['tables'][0]
+        partitions = OpenC3::QuestDBClient.query_with_retry("SELECT count() FROM table_partitions('#{@table_info['table_name']}')").values[0][0].to_i
+        expect(partitions).to eq(5) # Otherwise there is nothing to prune
+      end
+
+      it 'scans every partition when filtering on received time alone' do
+        # The query without the packet time bounds, as before the fix
+        query = OpenC3::QuestDBClient.build_item_columns_query(@table_info['table_name'], ['"VALUE"'], window[:start_time], window[:end_time], time_type: :RECEIVED)
+        plan = explain("#{query} LIMIT 0, 100")
+        expect(plan).to include('Frame forward scan')
+        expect(plan).not_to include('Interval forward scan')
+      end
+
+      it 'limits item queries to the packet times of the received rows' do
+        objects = rx_objects(@test_params, **window)
+        results = nil
+        queries = data_queries { results = stream(objects) }
+        expect(results.map { |r| r[objects[0].item_key] }).to eq([2, 3])
+        expect(results.map { |r| r['__time'] }).to eq([rx_base, rx_base + 1_000_000_000])
+        expect(queries).not_to be_empty
+        queries.each { |query| expect_pruned(query, @table_info) }
+      end
+
+      it 'limits decom packet queries to the packet times of the received rows' do
+        obj = rx_objects(@test_params, **window)[0]
+        obj.item_name = nil
+        queries = data_queries { create_thread([obj]).send(:stream_decom_packets_from_tsdb, { obj.topic => [obj] }) }
+        expect(streaming_api.transmitted_results.map { |r| r['VALUE'] }).to eq([2, 3])
+        expect(queries).not_to be_empty
+        queries.each { |query| expect_pruned(query, @table_info) }
+      end
+
+      it 'limits reduced queries to the packet times of the received rows' do
+        obj = rx_objects(@test_params, **window)[0]
+        obj.stream_mode = :REDUCED_MINUTE
+        obj.reduced_type = :AVG
+        queries = data_queries { create_thread([obj]).send(:stream_reduced_items, { obj.topic => [obj] }) }
+        expect(streaming_api.transmitted_results.map { |r| r[obj.item_key] }).to eq([2.5])
+        expect(queries).not_to be_empty
+        queries.each { |query| expect_pruned(query, @table_info) }
+      end
+    end
   end
 end
