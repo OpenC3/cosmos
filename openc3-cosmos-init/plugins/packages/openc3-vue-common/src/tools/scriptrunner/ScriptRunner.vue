@@ -429,6 +429,7 @@
               :vim-save-fn="saveFile"
               :mode="editorLanguage"
               :read-only="editorReadOnly"
+              resize-observer
               class="editor"
               @contextmenu.prevent="showExecuteSelectionMenu"
             />
@@ -625,6 +626,7 @@
               :vim-save-fn="saveFile"
               :mode="editorLanguage"
               :read-only="editorReadOnly"
+              resize-observer
               class="editor"
               style="height: 200px"
               @contextmenu.prevent="showExecuteSelectionMenu"
@@ -2037,10 +2039,6 @@ export default {
       }
     })
 
-    // Ace doesn't track its container size so resize whenever the layout
-    // changes it (explorer toggle/drag animate the pane width)
-    this.editorResizeObserver = new ResizeObserver(this.doResize)
-    this.editorResizeObserver.observe(this.editor.container)
     // Pane sizes are percentages, so the explorer's minimum has to be
     // recalculated whenever the window (and so the split) changes width
     this.explorerSplitObserver = new ResizeObserver(([entry]) => {
@@ -2102,7 +2100,6 @@ export default {
       sessionStorage.setItem('script_runner__script_id', this.scriptId)
     }
     window.removeEventListener('keydown', this.keydown)
-    this.editorResizeObserver.disconnect()
     this.explorerSplitObserver.disconnect()
   },
   unmounted() {

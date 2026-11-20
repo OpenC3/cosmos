@@ -78,12 +78,19 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  // Ace doesn't track its container size, so resize the editor whenever the
+  // layout changes it (e.g. an animated pane width)
+  resizeObserver: {
+    type: Boolean,
+    default: false,
+  },
 })
 // The editor text. Leave undefined to manage content yourself.
 const model = defineModel({ type: String, default: undefined })
 const emit = defineEmits(['ready'])
 const editorRef = useTemplateRef('editor')
 const editor = shallowRef(null)
+let containerObserver = null
 
 // toRaw because custom mode instances held in parent data are reactive proxies
 function applyMode() {
@@ -155,10 +162,18 @@ onMounted(() => {
   if (props.autofocus) {
     editor.value.focus()
   }
+  if (props.resizeObserver) {
+    containerObserver = new ResizeObserver(() => editor.value?.resize())
+    containerObserver.observe(editor.value.container)
+  }
   emit('ready', editor.value)
 })
 
 onBeforeUnmount(() => {
+  if (containerObserver) {
+    containerObserver.disconnect()
+    containerObserver = null
+  }
   if (editor.value) {
     editor.value.destroy()
     editor.value.container.remove()
