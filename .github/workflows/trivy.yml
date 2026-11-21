@@ -102,7 +102,9 @@ jobs:
       #
       # To bring back SARIF upload to code scanning, set format: "sarif" in
       # trivy.yaml and upload each image's output with
-      # github/codeql-action/upload-sarif.
+      # github/codeql-action/upload-sarif, passing that image's report path
+      # and a distinct category per image. The uploading job also needs
+      # `security-events: write`; leave it out while uploads are disabled.
       - name: Run Trivy on the images
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: ./.github/actions/trivy-scan

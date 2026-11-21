@@ -133,24 +133,31 @@ jobs:
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: ./.github/actions/fetch-vexhub
       # scripts/linux/openc3_build_ubi.sh tags the images with these .env
-      # values, so read them rather than hardcoding the reference.
+      # values, so read them rather than hardcoding the reference. Sourced
+      # the way openc3.sh does, so any form it accepts works here. If they
+      # can't be resolved the scan is skipped without failing the job.
       - name: UBI image reference
         id: ubi-ref
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        continue-on-error: true
         shell: bash
         run: |
-          registry=$(grep -E '^OPENC3_REGISTRY=' .env | cut -d= -f2)
-          namespace=$(grep -E '^OPENC3_NAMESPACE=' .env | cut -d= -f2)
-          tag=$(grep -E '^OPENC3_TAG=' .env | cut -d= -f2)
-          echo "prefix=${registry}/${namespace}" >> "$GITHUB_OUTPUT"
-          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          set -a
+          . ./.env
+          set +a
+          if [ -z "${OPENC3_REGISTRY}" ] || [ -z "${OPENC3_NAMESPACE}" ] || [ -z "${OPENC3_TAG}" ]; then
+            echo "::warning title=Trivy::Could not read OPENC3_REGISTRY, OPENC3_NAMESPACE, and OPENC3_TAG from .env. The UBI images were not scanned."
+            exit 1
+          fi
+          echo "prefix=${OPENC3_REGISTRY}/${OPENC3_NAMESPACE}" >> "$GITHUB_OUTPUT"
+          echo "tag=${OPENC3_TAG}" >> "$GITHUB_OUTPUT"
       # A vulnerable IronBank base image is not a broken build: the traefik
       # UBI image, for one, is rebuilt upstream on RedHat's schedule, not ours.
       # Findings are posted as a neutral (gray) "Trivy UBI Scan Results" check
       # run and as warnings, so this job reports only whether the UBI images
       # built and came up.
       - name: Run Trivy on the UBI images
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.ubi-ref.outcome == 'success' }}
         uses: ./.github/actions/trivy-scan
         with:
           check-name: Trivy UBI Scan Results

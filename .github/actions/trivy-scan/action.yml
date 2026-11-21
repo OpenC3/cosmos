@@ -40,7 +40,10 @@ inputs:
     description: Name of the check run to post.
     required: true
   config:
-    description: trivy config file.
+    description: |
+      trivy config file. The severity (CRITICAL,HIGH) and ignore-unfixed
+      filters are always set by this action, so the check text stays true
+      whatever the file says.
     required: false
     default: trivy.yaml
   token:
@@ -73,12 +76,16 @@ runs:
         # is also the exit-code trivy.yaml sets for findings. --exit-code 2
         # tells the two apart. Record either and keep going: one bad image
         # should not hide the results for the others.
+        #
+        # --severity and --ignore-unfixed override the config file so the
+        # "fixable CRITICAL/HIGH" wording below describes the scan that ran.
         failed=()
         errored=()
         for image in $IMAGES; do
           echo "::group::trivy ${image}"
           set +e
           trivy image --config "$CONFIG" --exit-code 2 --image-src docker \
+            --severity CRITICAL,HIGH --ignore-unfixed \
             "${PREFIX}/${image}:${TAG}" \
             2> >(tee "$out_dir/${image}.err" >&2) | tee "$out_dir/${image}.out"
           rc=${PIPESTATUS[0]}
@@ -154,19 +161,32 @@ runs:
           } >> "$details"
         done
 
+        # GitHub rejects a step summary over 1 MiB, losing the compact list
+        # too. Write that first and add the details only while they fit.
+        run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+        step_summary="$out_dir/step-summary.md"
         {
           echo "### ${CHECK_NAME}"
           cat "$summary"
           echo
-          cat "$details"
-        } >> "$GITHUB_STEP_SUMMARY"
+        } > "$step_summary"
+        summary_limit=$((1000 * 1024))
+        room=$((summary_limit - $(wc -c < "$step_summary") - 200))
+        if [ "$(wc -c < "$details")" -le "$room" ]; then
+          cat "$details" >> "$step_summary"
+        elif [ "$room" -gt 0 ]; then
+          { head -c "$room" "$details"; printf '\n```\n\nTruncated. See the full output in the log of %s\n' "$run_url"; } >> "$step_summary"
+        fi
+        cat "$step_summary" >> "$GITHUB_STEP_SUMMARY"
 
-        for image in "${failed[@]}"; do
-          echo "::warning title=Trivy::${image} has fixable CRITICAL/HIGH vulnerabilities"
-        done
-        for image in "${errored[@]}"; do
-          echo "::warning title=Trivy::trivy failed to scan ${image}"
-        done
+        # GitHub shows at most 10 warning annotations per step, and the
+        # callers scan 11 images, so emit one warning per category.
+        if [ ${#failed[@]} -gt 0 ]; then
+          echo "::warning title=Trivy::Fixable CRITICAL/HIGH vulnerabilities in: ${failed[*]}"
+        fi
+        if [ ${#errored[@]} -gt 0 ]; then
+          echo "::warning title=Trivy::trivy failed to scan: ${errored[*]}"
+        fi
 
         {
           echo "conclusion=${conclusion}"
