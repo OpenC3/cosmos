@@ -60,7 +60,10 @@ module OpenC3
       end
       # Non-existent just returns nil
       return nil if response.nil? || response.status != 200
-      return JSON.parse(response.body, allow_nan: true, create_additions: true)
+      result = JSON.parse(response.body, allow_nan: true, create_additions: true)
+      # The latest endpoint returns 200 with an error status when there is no metadata
+      return nil if result.is_a?(Hash) && result['status'] == 'error'
+      return result
     end
 
     # @deprecated Use inject_tlm on a metadata packet instead.
@@ -106,6 +109,7 @@ module OpenC3
       end
       if start.nil? # No start so grab latest
         existing = _metadata_get(scope: scope)
+        raise "No metadata to update; use metadata_set" if existing.nil?
         start = existing['start']
         color = existing['color'] unless color
         metadata = existing['metadata'].merge(metadata)

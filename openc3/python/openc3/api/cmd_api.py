@@ -89,8 +89,9 @@ def cmd(*args: Any, **kwargs: Any) -> dict[str, Any]:
             (True or False to override whether the command is logged),
             validate (True or False, default True), queue (name of the queue
             to send the command to, or False to bypass OPENC3_DEFAULT_QUEUE),
-            queue_username (user who queued the command) and extra (dict of
-            extra data to send with the command).
+            queue_username (user who queued the command), extra (dict of
+            extra data to send with the command) and manual (whether the
+            request was made manually by a user, default False).
 
     Returns:
         The command that was sent, as a dict.
@@ -106,7 +107,6 @@ def cmd(*args: Any, **kwargs: Any) -> dict[str, Any]:
         range_check=True,
         hazardous_check=True,
         raw=False,
-        manual=False,
         **kwargs,
     )
 
@@ -130,7 +130,6 @@ def cmd_raw(*args: Any, **kwargs: Any) -> dict[str, Any]:
         range_check=True,
         hazardous_check=True,
         raw=True,
-        manual=False,
         **kwargs,
     )
 
@@ -155,7 +154,6 @@ def cmd_no_range_check(*args: Any, **kwargs: Any) -> dict[str, Any]:
         range_check=False,
         hazardous_check=True,
         raw=False,
-        manual=False,
         **kwargs,
     )
 
@@ -179,7 +177,6 @@ def cmd_raw_no_range_check(*args: Any, **kwargs: Any) -> dict[str, Any]:
         range_check=False,
         hazardous_check=True,
         raw=True,
-        manual=False,
         **kwargs,
     )
 
@@ -205,7 +202,6 @@ def cmd_no_hazardous_check(*args: Any, **kwargs: Any) -> dict[str, Any]:
         range_check=True,
         hazardous_check=False,
         raw=False,
-        manual=False,
         **kwargs,
     )
 
@@ -229,7 +225,6 @@ def cmd_raw_no_hazardous_check(*args: Any, **kwargs: Any) -> dict[str, Any]:
         range_check=True,
         hazardous_check=False,
         raw=True,
-        manual=False,
         **kwargs,
     )
 
@@ -253,7 +248,6 @@ def cmd_no_checks(*args: Any, **kwargs: Any) -> dict[str, Any]:
         range_check=False,
         hazardous_check=False,
         raw=False,
-        manual=False,
         **kwargs,
     )
 
@@ -277,7 +271,6 @@ def cmd_raw_no_checks(*args: Any, **kwargs: Any) -> dict[str, Any]:
         range_check=False,
         hazardous_check=False,
         raw=True,
-        manual=False,
         **kwargs,
     )
 
@@ -580,7 +573,7 @@ def get_cmd_hazardous(*args: Any, scope: str = OPENC3_SCOPE, manual: bool = Fals
             if len(args) == 2:
                 parameters = {}
             else:
-                parameters = args[2]
+                parameters = {k.upper(): v for k, v in args[2].items()}
 
         case _:
             # Invalid number of arguments
@@ -598,7 +591,7 @@ def get_cmd_hazardous(*args: Any, scope: str = OPENC3_SCOPE, manual: bool = Fals
         return True
 
     for item in packet["items"]:
-        if item["name"] not in parameters and "states" not in item:
+        if item["name"] not in parameters or not item.get("states"):
             continue
 
         # States are an array of the name followed by a dict of 'value' and sometimes 'hazardous'
@@ -802,11 +795,11 @@ def get_cmd_cnts(target_commands: list[list[str]], scope: str = OPENC3_SCOPE) ->
         RuntimeError: If target_commands is not a nested list.
     """
     authorize(permission="system", scope=scope)
-    if isinstance(target_commands, list) and isinstance(target_commands[0], list):
+    if isinstance(target_commands, list) and len(target_commands) > 0 and isinstance(target_commands[0], list):
         return TargetModel.get_command_counts(target_commands, scope=scope)
     else:
         raise RuntimeError(
-            "get_cmd_cnts takes a dict of dicts containing target, packet_name, e.g. [['INST', 'COLLECT'], ['INST', 'ABORT']]"
+            "get_cmd_cnts takes a list of lists containing target, packet_name, e.g. [['INST', 'COLLECT'], ['INST', 'ABORT']]"
         )
 
 
@@ -920,8 +913,8 @@ def _cmd_implementation(
     if kwargs.get("timeout") is not None:
         try:
             timeout = float(kwargs["timeout"])
-        except ValueError as e:
-            raise RuntimeError(f"Invalid timeout parameter: {timeout}. Must be numeric.") from e
+        except (TypeError, ValueError) as e:
+            raise RuntimeError(f"Invalid timeout parameter: {kwargs['timeout']}. Must be numeric.") from e
 
     # Determine if we should log this command
     log_message = True  # Default is True

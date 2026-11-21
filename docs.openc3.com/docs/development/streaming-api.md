@@ -534,7 +534,7 @@ end
 
 - `start_time`: 64-bit nanoseconds from Unix epoch. Omit for realtime-only.
 - `end_time`: 64-bit nanoseconds from Unix epoch. Omit to stream indefinitely.
-- `time_type`: `PACKET` (default) or `RECEIVED`. Selects whether `start_time` and `end_time` apply to the packet time or the received time, and which of them is returned as `__time`. TSDB queries filter on that column, and with `RECEIVED` they also sort by it. `RECEIVED` is not supported for historical `RAW` packets.
+- `time_type`: `PACKET` (default) or `RECEIVED`. Selects whether `start_time` and `end_time` apply to the packet time or the received time, and which of them is returned as `__time`. TSDB queries filter on that column, and with `RECEIVED` they also sort by it. A `RECEIVED` query first looks up the packet time range of the rows received in the range and adds it to the filter, so QuestDB can skip partitions outside it. `RECEIVED` is not supported for historical `RAW` packets.
   Subscribing to the same key with both time types creates two separate subscriptions. A `remove` request with a `time_type` only removes that one, and without one removes both.
 - `items`: Array of `[key, item_key]` pairs. `item_key` is used as the key in result JSON (defaults to key string if null).
 - `packets`: Array of key strings for whole-packet streaming.

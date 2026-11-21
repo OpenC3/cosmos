@@ -367,7 +367,7 @@ test.describe(() => {
     // Create a new script
     await page.goto('/tools/scriptrunner')
     await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
     await page.locator('textarea').fill('puts "modify the PW_TEST"')
     await page.locator('[data-test=script-runner-file]').click()
     await page.locator('text=Save File').click()
@@ -394,7 +394,7 @@ test.describe(() => {
     // Download the changes
     await page.goto('/tools/admin/plugins')
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
 
     // Check that we have a link to click
     await expect(
@@ -410,7 +410,7 @@ test.describe(() => {
     // Download the changes from the targets tab
     await page.goto('/tools/admin/targets')
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
 
     await checkForSaveNewFile(page, () => page
         .locator('.v-list-item')
@@ -421,7 +421,7 @@ test.describe(() => {
 
     await page.goto('/tools/admin/plugins')
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
 
     // ==========================================
     // Section: UPGRADE THE PLUGIN
@@ -535,7 +535,7 @@ test.describe(() => {
     // Create a new screen so we have modifications to delete
     await page.goto('/tools/tlmviewer')
     await expect(page.locator('.v-app-bar')).toContainText('Telemetry Viewer')
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
     await page.locator('[data-test=select-target] i').click()
     await page.getByRole('option', { name: 'NEW_TGT', exact: true }).click()
     await utils.sleep(500)
@@ -550,6 +550,6 @@ test.describe(() => {
     ).toBeVisible()
     await page.goto('/tools/admin/plugins')
     await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
   })
 })

@@ -97,11 +97,9 @@ class TestDecomMicroservice(unittest.TestCase):
         packet.received_time = datetime.now(timezone.utc)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            # Wait for async processing to complete with retries for CI reliability
-            for _ in range(10):
-                time.sleep(0.01)
-                if "GROUND2STATUS" in stdout.getvalue():
-                    break
+            # Limits messages are logged before the CVT is written, so wait for
+            # the CVT (the last step of decom) rather than a log message
+            wait_for(lambda: tlm("INST HEALTH_STATUS TEMP1") is not None)
             self.assertIn(
                 "INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)",
                 stdout.getvalue(),
@@ -219,6 +217,23 @@ class TestDecomMicroservice(unittest.TestCase):
             self.assertNotIn("is disabled", output)
             # Should report the actual value and limits state
             self.assertIn("INST HEALTH_STATUS TEMP1 = 0 is BLUE", output)
+
+    def test_limits_change_includes_the_change_type(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.now(timezone.utc)
+        item = packet.get_item("COLLECTS")
+        item.limits.change_type = "SEQUENCE"
+        item.limits.state = "RED"
+        try:
+            for stdout in capture_io():
+                self.dm.limits_change_callback(packet, item, "GREEN", 5, True)
+                self.assertIn("INST HEALTH_STATUS COLLECTS = 5 is RED (SEQUENCE)", stdout.getvalue())
+            for stdout in capture_io():
+                self.dm.limits_change_callback(packet, item, "GREEN", False, True)
+                self.assertIn("INST HEALTH_STATUS COLLECTS = False is RED (SEQUENCE)", stdout.getvalue())
+        finally:
+            item.limits.change_type = None
+            item.limits.state = None
 
     @patch("openc3.microservices.decom_microservice.System.limits_set")
     def test_falls_back_to_default_limits_set_when_selected_set_is_not_defined(self, mock_limits_set):
@@ -344,11 +359,9 @@ class TestDecomMicroservice(unittest.TestCase):
         packet.received_time = datetime.now(timezone.utc)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            # Wait for async processing to complete with retries for CI reliability
-            for _ in range(10):
-                time.sleep(0.01)
-                if "Bad processor" in stdout.getvalue():
-                    break
+            # The processor error is logged before the CVT is written, so wait
+            # for the CVT (the last step of decom) rather than the log message
+            wait_for(lambda: tlm("INST HEALTH_STATUS TEMP1") is not None)
             self.assertIn("Bad processor", stdout.getvalue())
         # This is an implementation detail but we want to ensure the error was logged
         self.assertEqual(self.dm.metric.data["decom_error_total"]["value"], 1)
@@ -618,7 +631,16 @@ class TestDecomMicroserviceMultipleDbShards(unittest.TestCase):
 
         # Handled commands are trimmed from the microservice topic on its db_shard
         msg_id = Topic.write_topic("MICROSERVICE__DEFAULT__DECOM__INST", {"command": "OTHER"}, db_shard=1)
-        self.dm.microservice_cmd("MICROSERVICE__DEFAULT__DECOM__INST", msg_id.decode(), {}, None)
+        original_trim = Topic.trim_topic
+        # Approximate trimming may leave a short stream untouched, so trim exactly
+        with patch.object(
+            Topic,
+            "trim_topic",
+            side_effect=lambda topic, minid, approximate=True, limit=0, db_shard=0: original_trim(
+                topic, minid, False, limit, db_shard=db_shard
+            ),
+        ):
+            self.dm.microservice_cmd("MICROSERVICE__DEFAULT__DECOM__INST", msg_id.decode(), {}, None)
         self.assertEqual(self.shard1.xlen("MICROSERVICE__DEFAULT__DECOM__INST"), 1)
 
     def test_builds_commands_on_the_target_db_shard(self):

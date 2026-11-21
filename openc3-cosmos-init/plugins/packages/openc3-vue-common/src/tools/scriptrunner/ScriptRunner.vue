@@ -1394,11 +1394,13 @@ export default {
     },
     stateColorClass: function () {
       // All possible states: spawning, init, running, paused, waiting, breakpoint,
-      // error, crashed, stopped, completed, completed_errors, killed
+      // error, crashed, stopped, completed, completed_errors, killed, plus
+      // 'start failed' set by start() when the run request is rejected
       if (
         this.state === 'error' ||
         this.state === 'crashed' ||
-        this.state === 'killed'
+        this.state === 'killed' ||
+        this.state === 'start failed'
       ) {
         return 'script-state-red'
       } else if (this.state === 'completed_errors') {
@@ -2059,11 +2061,15 @@ export default {
     this.editorResizeObserver = new ResizeObserver(this.doResize)
     this.editorResizeObserver.observe(this.editor.container)
     // Pane sizes are percentages, so the explorer's minimum has to be
-    // recalculated whenever the window (and so the split) changes width
-    this.explorerSplitObserver = new ResizeObserver(([entry]) => {
-      this.updateExplorerMinSize(entry.contentRect.width)
-    })
-    this.explorerSplitObserver.observe(this.$refs.explorerSplit.$el)
+    // recalculated whenever the window (and so the split) changes width.
+    // The inline layout (Notebooks script steps) has no explorer split, and
+    // throwing here would skip the rest of mounted (cable, inline body).
+    if (!this.inline) {
+      this.explorerSplitObserver = new ResizeObserver(([entry]) => {
+        this.updateExplorerMinSize(entry.contentRect.width)
+      })
+      this.explorerSplitObserver.observe(this.$refs.explorerSplit.$el)
+    }
     // Listen on window (not editor.container) so Ctrl-S saves regardless of
     // where focus is — attaching to the editor only caught the key while the
     // cursor was in the editor, which made saving feel inconsistent after
@@ -2120,7 +2126,7 @@ export default {
     }
     window.removeEventListener('keydown', this.keydown)
     this.editorResizeObserver.disconnect()
-    this.explorerSplitObserver.disconnect()
+    this.explorerSplitObserver?.disconnect()
     this.editor.destroy()
     this.editor.container.remove()
   },
@@ -2873,6 +2879,10 @@ export default {
           this.scriptStart(response.data)
         })
         .catch((error) => {
+          // The script never started, so no event will replace the
+          // 'Connecting...' set by initScriptStart(). The axios interceptor
+          // shows the reason in the error banner.
+          this.state = 'start failed'
           this.scriptComplete()
         })
     },
@@ -3227,13 +3237,14 @@ export default {
             case 'clearallscreens':
               this.screens = []
               break
-            case 'downloadfile':
+            case 'downloadfile': {
               // Make a link and then 'click' on it to start the download
               const link = document.createElement('a')
               link.href = window.location.origin + data.url
               link.setAttribute('download', data.filename)
               link.click()
               break
+            }
             case 'opentab':
               window.open(data.url, '_blank')
               break

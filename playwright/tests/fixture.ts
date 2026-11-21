@@ -71,8 +71,12 @@ const AUTH_STATE_KEYS = new Set([
 ])
 
 // Persist just the signed-in session, dropping everything else (UI preferences,
-// notification read state, keycloak kc-callback-* redirect leftovers).
-const saveAuthState = async (context: any, path: string) => {
+// notification read state, keycloak kc-callback-* redirect leftovers). Every
+// write of the storage state files must go through here, global.setup.ts
+// included: its page has been running Notifications.vue, and if an alert lands
+// before the save, a raw storageState() captures notificationStreamOffset and
+// every later context replays (and toasts) every alert since.
+export const saveAuthState = async (context: any, path: string) => {
   const state = await context.storageState()
   for (const origin of state.origins || []) {
     origin.localStorage = (origin.localStorage || []).filter(
@@ -169,7 +173,7 @@ export const test = base.extend<{
     await expect(page.locator('.v-app-bar')).toContainText(toolName, {
       timeout: 20000,
     })
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
     await expect(page.locator('#openc3-nav-drawer')).not.toBeInViewport()
 
     // This is like a yield in a Ruby block where we call back to the

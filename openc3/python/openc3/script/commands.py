@@ -137,7 +137,13 @@ def cmd_raw_no_checks(*args: Any, **kwargs: Any) -> None:
     return _cmd("cmd_raw_no_checks", None, *args, **kwargs)
 
 
-def build_cmd(*args: Any, **kwargs: Any) -> dict[str, Any]:
+def build_cmd(
+    *args: Any,
+    range_check: bool = True,
+    raw: bool = False,
+    timeout: float = 5,
+    scope: str = OPENC3_SCOPE,
+) -> dict[str, Any]:
     """Build a command binary without sending it.
 
     Accepts two calling styles. Favor the first as it is more succinct::
@@ -148,20 +154,22 @@ def build_cmd(*args: Any, **kwargs: Any) -> dict[str, Any]:
     Args:
         *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
             target name, command name and optional dict of parameter values.
-        **kwargs: Not supported. Keyword arguments are not forwarded to the API server.
+        range_check: Whether to range check the parameters.
+        raw: Whether the parameter values are RAW values.
+        timeout: Seconds to wait for the decom microservice to build the command.
+        scope: COSMOS scope.
 
     Returns:
         The built command with the raw bytes under the "buffer" key.
     """
-    extract_string_kwargs_to_args(args, kwargs)
-    return openc3.script.API_SERVER.build_cmd(*args)
+    return openc3.script.API_SERVER.build_cmd(*args, range_check=range_check, raw=raw, timeout=timeout, scope=scope)
 
 
 # build_command is DEPRECATED
 build_command = build_cmd
 
 
-def get_cmd_hazardous(*args: Any, **kwargs: Any) -> bool:
+def get_cmd_hazardous(*args: Any, scope: str = OPENC3_SCOPE) -> bool:
     """Return whether a command is hazardous.
 
     A command is hazardous if the command itself is marked hazardous or if a
@@ -175,13 +183,12 @@ def get_cmd_hazardous(*args: Any, **kwargs: Any) -> bool:
     Args:
         *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
             target name, command name and optional dict of parameter values.
-        **kwargs: Not supported. Keyword arguments are not forwarded to the API server.
+        scope: COSMOS scope.
 
     Returns:
         Whether the command is hazardous.
     """
-    extract_string_kwargs_to_args(args, kwargs)
-    return openc3.script.API_SERVER.get_cmd_hazardous(*args)
+    return openc3.script.API_SERVER.get_cmd_hazardous(*args, scope=scope)
 
 
 def get_cmd_time(
@@ -197,16 +204,14 @@ def get_cmd_time(
         scope: COSMOS scope.
 
     Returns:
-        The target name, command name and the time as a datetime. If either
-        the whole seconds or the microseconds from the server are 0 (e.g. no
-        command has been sent), the time is not converted and the list holds
-        the target name, command name, whole seconds and microseconds.
+        The target name, command name and the time as a datetime. If no
+        command has been sent, the names are None and the time is the epoch.
     """
     results = openc3.script.API_SERVER.get_cmd_time(target_name, command_name, scope=scope)
     results = list(results)
-    if results[2] and results[3]:
+    if results[2] is not None and results[3] is not None:
         results[2] = datetime.fromtimestamp(results[2] + results[3] / 1000000)
-        results.pop(3)
+    results.pop(3)
     return results
 
 
@@ -378,6 +383,7 @@ def _cmd(
                 error.command["cmd_name"],
                 error.command["cmd_params"],
                 error.command["cmd_string"],
+                scope=scope,
             )
             if log_message is None or log_message:
                 _log_cmd(error.command, raw, no_range, no_hazardous)
