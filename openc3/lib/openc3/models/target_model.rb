@@ -783,6 +783,7 @@ module OpenC3
         # Build a System for just this target
         system = System.new([@name], temp_dir)
         check_column_header_lengths(system)
+        check_command_default_sizes(system)
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
           if variables['time_association_name'].to_s.empty?
@@ -872,6 +873,16 @@ module OpenC3
       end
       unless too_long.empty?
         raise "Item / parameter names must be #{MAX_ITEM_NAME_BYTES} bytes (UTF-8) or less (QuestDB column name limit of #{MAX_COLUMN_HEADER_LENGTH} bytes minus the #{COLUMN_SUFFIX_LENGTH} byte __C or __F value type suffix). The following are too long:\n  #{too_long.join("\n  ")}"
+      end
+    end
+
+    # Check that command STRING and BLOCK defaults fit. This is only done at
+    # install so targets installed before the check was added still load.
+    def check_command_default_sizes(system)
+      system.packet_config.commands.each do |_target_name, packets|
+        packets.each do |_packet_name, packet|
+          PacketParser.check_item_default_sizes(packet)
+        end
       end
     end
 

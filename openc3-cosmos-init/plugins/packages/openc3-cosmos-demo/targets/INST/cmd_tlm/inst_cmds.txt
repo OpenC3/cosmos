@@ -111,7 +111,9 @@ COMMAND <%= target_name %> HIDDEN BIG_ENDIAN "Hidden command to bump the hidden 
   APPEND_PARAMETER COUNT 32 UINT MIN MAX 0 "Count to set"
 
 COMMAND <%= target_name %> SET_PASSWORD BIG_ENDIAN "Set Password Command"
-  APPEND_PARAMETER USERNAME  256 STRING "username"
+  # REQUIRED parameters can use nil (or none or null) for no default
+  APPEND_PARAMETER USERNAME  256 STRING nil "Username for the account being changed"
+    REQUIRED
   APPEND_PARAMETER PASSWORD_STR  256 STRING "password string"
     OBFUSCATE
   APPEND_PARAMETER SPACER_1  256 STRING "Spacer 1"

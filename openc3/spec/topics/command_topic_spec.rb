@@ -176,7 +176,11 @@ module OpenC3
         }, 'redis')
         expect {
           CommandTopic.send_command(command, scope: 'DEFAULT')
-        }.to raise_error('Some other error message')
+        }.to raise_error(RuntimeError, 'Some other error message') do |error|
+          # The interface logs the error so the API doesn't log a backtrace of the ack loop
+          expect(error.backtrace).to eql []
+          expect(error.formatted).to eql "RuntimeError : Some other error message\n"
+        end
       end
 
       it "updates topic offsets for acknowledgment topic" do
