@@ -27,6 +27,7 @@ require 'openc3/packets/parsers/processor_parser'
 require 'openc3/packets/parsers/xtce_parser'
 require 'openc3/packets/parsers/xtce_converter'
 require 'openc3/utilities/python_proxy'
+require 'openc3/utilities/logger'
 require 'openc3/conversions'
 require 'openc3/processors'
 require 'openc3/accessors'
@@ -39,6 +40,20 @@ require 'tempfile'
 module OpenC3
   # Reads a command or telemetry configuration file and builds a hash of packets.
   class PacketConfig
+    # Limits groups become items in the <TARGET> LIMITS_GROUP packet of the target
+    # which defines them, named <GROUP> and <GROUP>_ENABLED
+    LIMITS_GROUP_PACKET = 'LIMITS_GROUP'.freeze
+    LIMITS_GROUP_ENABLED_SUFFIX = '_ENABLED'.freeze
+    # BLUE when every member is BLUE, DISABLED when limits are disabled on every member
+    LIMITS_GROUP_STATES = { 'GREEN' => 0, 'YELLOW' => 1, 'RED' => 2, 'BLUE' => 3, 'DISABLED' => 4 }.freeze
+    # PARTIAL when limits are enabled on some members but not all
+    LIMITS_GROUP_ENABLED_STATES = { 'FALSE' => 0, 'TRUE' => 1, 'PARTIAL' => 2 }.freeze
+    # QuestDB column name limit (TargetModel::MAX_COLUMN_HEADER_LENGTH) minus room for _ENABLED
+    MAX_LIMITS_GROUP_NAME_LENGTH = 127 - LIMITS_GROUP_ENABLED_SUFFIX.length
+    # Characters QuestDBClient.sanitize_column_name replaces with '_'. Group names
+    # can't contain them so every group has its own column (TEMP.A and TEMP_A would share one).
+    LIMITS_GROUP_COLUMN_INVALID_CHARS = /[?\.,'"\\\/:\)\(\+=\-\*\%~;!@#\$\^&]/
+
     # @return [String] The name of this configuration. To be used by higher
     #   level classes to store information about the current PacketConfig.
     attr_accessor :name
@@ -51,9 +66,11 @@ module OpenC3
     #   keyed by the packet name.
     attr_reader :commands
 
-    # @return [Hash<String=>Array(String, String, String)>] Hash of all the
-    #   limits groups keyed by the group name. The value is a three element
-    #   array consisting of the target_name, packet_name, and item_name.
+    # @return [Hash<String=>Hash<String=>Array<Array(String, String, String)>>>]
+    #   Limits groups keyed by the name of the target which defines them and then
+    #   by the group name. Each member is a three element array consisting of the
+    #   target_name, packet_name, and item_name. A nested group is the member
+    #   <TARGET> LIMITS_GROUP <GROUP>.
     attr_reader :limits_groups
 
     # @return [Array<Symbol>] The defined limits sets for all items in the
@@ -108,6 +125,8 @@ module OpenC3
       @telemetry = {}
       @commands = {}
       @limits_groups = {}
+      @own_limits_group_packets = Set.new
+      @generated_limits_group_packets = Set.new
       @limits_sets = [:DEFAULT]
       # Hash of Hashes. First index by target name and then item name.
       # Returns an array of packets with that target and item.
@@ -238,13 +257,48 @@ module OpenC3
             usage = "LIMITS_GROUP <GROUP NAME>"
             parser.verify_num_parameters(1, 1, usage)
             @current_limits_group = params[0].to_s.upcase
-            @limits_groups[@current_limits_group] = [] unless @limits_groups.include?(@current_limits_group)
+            # The group becomes items in <TARGET> LIMITS_GROUP so a name which can't
+            # is skipped, along with its LIMITS_GROUP_ITEM and NESTED_LIMITS_GROUP lines
+            if (error = self.class.limits_group_name_error(@current_limits_group))
+              limits_group_warning(parser, "LIMITS_GROUP #{@current_limits_group} #{error}. Skipping the group.")
+              @current_limits_group = nil
+            else
+              (@limits_groups[process_target_name] ||= {})[@current_limits_group] ||= []
+            end
 
           # Add a telemetry item to the limits group
           when 'LIMITS_GROUP_ITEM'
             usage = "LIMITS_GROUP_ITEM <TARGET NAME> <PACKET NAME> <ITEM NAME>"
             parser.verify_num_parameters(3, 3, usage)
-            @limits_groups[@current_limits_group] << [params[0].to_s.upcase, params[1].to_s.upcase, params[2].to_s.upcase] if @current_limits_group
+            if @current_limits_group
+              item = [params[0].to_s.upcase, params[1].to_s.upcase, params[2].to_s.upcase]
+              # Members in a LIMITS_GROUP packet are nested groups, added with NESTED_LIMITS_GROUP
+              if item[1] == LIMITS_GROUP_PACKET
+                limits_group_warning(parser, "LIMITS_GROUP #{@current_limits_group} member #{item.join(' ')}: use NESTED_LIMITS_GROUP #{item[0]} #{item[2]} to nest a limits group. Skipping the member.")
+              else
+                @limits_groups[process_target_name][@current_limits_group] << item
+              end
+            end
+
+          # Add a nested limits group to the limits group
+          when 'NESTED_LIMITS_GROUP'
+            usage = "NESTED_LIMITS_GROUP <GROUP NAME> or NESTED_LIMITS_GROUP <TARGET NAME> <GROUP NAME>"
+            parser.verify_num_parameters(1, 2, usage)
+            if @current_limits_group
+              # A nested group is stored as the item which carries its rollup. A
+              # group name alone is a group of this target.
+              if params.length == 1
+                item = [process_target_name, LIMITS_GROUP_PACKET, params[0].to_s.upcase]
+              else
+                item = [params[0].to_s.upcase, LIMITS_GROUP_PACKET, params[1].to_s.upcase]
+              end
+              # The name must be one LIMITS_GROUP accepts (the child can be installed later)
+              if (error = self.class.limits_group_name_error(item[2]))
+                limits_group_warning(parser, "LIMITS_GROUP #{@current_limits_group} member NESTED_LIMITS_GROUP #{item[0]} #{item[2]}: LIMITS_GROUP #{item[2]} #{error}. Skipping the member.")
+              else
+                @limits_groups[process_target_name][@current_limits_group] << item
+              end
+            end
 
           #######################################################################
           # All the following keywords must have a current packet defined
@@ -285,6 +339,94 @@ module OpenC3
       finish_packet()
     end
 
+    # Adds the <TARGET> LIMITS_GROUP packet for the limits groups the target defines.
+    # Call once all of the target's configuration files are processed.
+    #
+    # @param target_name [String] The target name
+    def build_limits_group_packet(target_name)
+      target_name = target_name.to_s.upcase
+      groups = @limits_groups[target_name]
+      return if groups.nil? or groups.empty?
+
+      target_packets = (@telemetry[target_name] ||= {})
+      # Keep a packet of the target's own. Its groups still work but aren't
+      # published as telemetry (see TargetModel#own_limits_group_packet).
+      if target_packets[LIMITS_GROUP_PACKET]
+        @own_limits_group_packets << target_name
+        message = "Telemetry packet #{target_name} #{LIMITS_GROUP_PACKET} is reserved for the limits groups the target defines so they won't be published as telemetry. Rename the packet and reinstall the target."
+        @warnings << message
+        Logger.warn(message)
+        return
+      end
+
+      target_packets[LIMITS_GROUP_PACKET] = self.class.generate_limits_group_packet(target_name, groups.keys)
+      @generated_limits_group_packets << target_name
+    end
+
+    # @param target_name [String] The target name
+    # @return [Boolean] Whether the target defines limits groups but has a LIMITS_GROUP packet of its own
+    def own_limits_group_packet?(target_name)
+      @own_limits_group_packets.include?(target_name)
+    end
+
+    # @param target_name [String] The target name
+    # @param packet_name [String] The packet name
+    # @return [Boolean] Whether the packet is the generated limits group packet.
+    #   A target's own LIMITS_GROUP packet isn't, even before build_limits_group_packet runs.
+    def limits_group_packet?(target_name, packet_name)
+      packet_name == LIMITS_GROUP_PACKET and @generated_limits_group_packets.include?(target_name)
+    end
+
+    # Group names become item names and QuestDB column names in <TARGET> LIMITS_GROUP.
+    # They follow the naming rules of LIMITS_GROUP parameters (see
+    # ConfigParser#verify_parameter_naming) plus the rules of the generated items.
+    #
+    # @param group_name [String] Upper case group name
+    # @return [String, nil] Why the name can't be a limits group, nil if it can
+    def self.limits_group_name_error(group_name)
+      return "cannot end with an underscore ('_')" if group_name.end_with?('_')
+      return "cannot contain a double underscore ('__')" if group_name.include?('__')
+      return "cannot contain double brackets ('[[' or ']]')" if group_name.include?('[[') or group_name.include?(']]')
+      return "cannot contain a space (' ')" if group_name.include?(' ')
+      return "cannot contain a quote (' or \")" if group_name.include?('"') or group_name.include?("'")
+      return "cannot contain a curly bracket ('{' or '}')" if group_name.include?('{') or group_name.include?('}')
+      return "must be #{MAX_LIMITS_GROUP_NAME_LENGTH} characters or less" if group_name.length > MAX_LIMITS_GROUP_NAME_LENGTH
+      if (char = group_name[LIMITS_GROUP_COLUMN_INVALID_CHARS])
+        return "cannot contain '#{char}' since the time-series database replaces it with an underscore"
+      end
+      return "cannot end with #{LIMITS_GROUP_ENABLED_SUFFIX}" if group_name.end_with?(LIMITS_GROUP_ENABLED_SUFFIX)
+      return "is a reserved item name" if Packet::RESERVED_ITEM_NAMES.include?(group_name)
+      # Packet#packet_time reads an item named PACKET_TIME instead of the received time
+      return "would replace the packet time of #{LIMITS_GROUP_PACKET}" if group_name == 'PACKET_TIME'
+
+      nil
+    end
+
+    # Builds the <TARGET> LIMITS_GROUP packet with a <GROUP> and <GROUP>_ENABLED
+    # item for each group, sorted by group name. The packet is virtual so it's never
+    # used to identify received data (the limits group microservice publishes it)
+    # but unlike a VIRTUAL packet it stays visible and enabled in the tools.
+    #
+    # @param target_name [String] Target which defines the groups
+    # @param group_names [Array<String>] Limits group names
+    # @return [Packet]
+    def self.generate_limits_group_packet(target_name, group_names)
+      packet = Packet.new(target_name, LIMITS_GROUP_PACKET, :BIG_ENDIAN, "Rolled-up limits state of each limits group defined by #{target_name}")
+      packet.virtual = true
+      packet.hidden = false
+      packet.disabled = false
+      packet.define_reserved_items()
+      group_names.sort.each do |group|
+        item = packet.append_item(group, 8, :UINT)
+        item.states = LIMITS_GROUP_STATES.dup
+        item.description = "Most severe limits state of the enabled members, or DISABLED when none are, of limits group #{group}"
+        item = packet.append_item("#{group}#{LIMITS_GROUP_ENABLED_SUFFIX}", 8, :UINT)
+        item.states = LIMITS_GROUP_ENABLED_STATES.dup
+        item.description = "Whether limits are enabled on all (TRUE), none (FALSE) or some (PARTIAL) of the members of limits group #{group}"
+      end
+      packet
+    end
+
     # Convert the PacketConfig back to OpenC3 configuration files for each target
     def to_config(output_dir)
       FileUtils.mkdir_p(output_dir)
@@ -299,7 +441,10 @@ module OpenC3
         rescue
           # Doesn't exist
         end
-        packets.each do |_packet_name, packet|
+        packets.each do |packet_name, packet|
+          # The limits group packet is generated from the limits groups written below
+          next if limits_group_packet?(target_name, packet_name)
+
           File.open(filename, 'a') do |file|
             file.puts packet.to_config(:TELEMETRY)
             file.puts ""
@@ -325,15 +470,25 @@ module OpenC3
         end
       end
 
-      # Put limits groups into SYSTEM target
-      if @limits_groups.length > 0
-        FileUtils.mkdir_p(File.join(output_dir, 'SYSTEM', 'cmd_tlm'))
-        filename = File.join(output_dir, 'SYSTEM', 'cmd_tlm', 'limits_groups.txt')
+      # Limits groups go into the target which defines them
+      @limits_groups.each do |target_name, groups|
+        next if groups.empty?
+
+        FileUtils.mkdir_p(File.join(output_dir, target_name, 'cmd_tlm'))
+        filename = File.join(output_dir, target_name, 'cmd_tlm', 'limits_groups.txt')
         File.open(filename, 'w') do |file|
-          @limits_groups.each do |limits_group_name, limits_group_items|
+          groups.each do |limits_group_name, limits_group_items|
             file.puts "LIMITS_GROUP #{limits_group_name.to_s.quote_if_necessary}"
-            limits_group_items.each do |target_name, packet_name, item_name|
-              file.puts "  LIMITS_GROUP_ITEM #{target_name.to_s.quote_if_necessary} #{packet_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}"
+            limits_group_items.each do |item_target_name, packet_name, item_name|
+              if packet_name == LIMITS_GROUP_PACKET
+                if item_target_name == target_name
+                  file.puts "  NESTED_LIMITS_GROUP #{item_name.to_s.quote_if_necessary}"
+                else
+                  file.puts "  NESTED_LIMITS_GROUP #{item_target_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}"
+                end
+              else
+                file.puts "  LIMITS_GROUP_ITEM #{item_target_name.to_s.quote_if_necessary} #{packet_name.to_s.quote_if_necessary} #{item_name.to_s.quote_if_necessary}"
+              end
             end
             file.puts ""
           end
@@ -946,6 +1101,13 @@ module OpenC3
         end
         @current_item = nil
       end
+    end
+
+    # Skipping a limits group isn't fatal, but log it since parser warnings aren't shown on install
+    def limits_group_warning(parser, message)
+      message = "#{message} (#{parser.filename}:#{parser.line_number})"
+      @warnings << message
+      Logger.warn(message)
     end
   end
 end

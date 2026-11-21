@@ -32,6 +32,8 @@ require 'openc3/utilities/local_mode'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/target_file'
 require 'openc3/utilities/zip'
+require 'openc3/conversions'
+require 'openc3/packets/packet_config'
 require 'fileutils'
 require 'ostruct'
 require 'set'
@@ -43,7 +45,7 @@ module OpenC3
   # in the target are stored under the <SCOPE>__openc3cmd__<TARGET NAME> key and the
   # telemetry under the <SCOPE>__openc3tlm__<TARGET NAME> key. Any new limits sets
   # are merged into the <SCOPE>__limits_sets key as fields. Any new limits groups are
-  # created under <SCOPE>__limits_groups with field name. These Redis key/fields are
+  # created under <SCOPE>__limits_groups with field <TARGET NAME>__<GROUP NAME>. These Redis key/fields are
   # all removed when the undeploy method is called.
   class TargetModel < Model
     PRIMARY_KEY = 'openc3_targets'
@@ -70,6 +72,10 @@ module OpenC3
     attr_accessor :ignored_parameters
     attr_accessor :ignored_items
     attr_accessor :limits_groups
+    # Set when a target which defines limits groups also has a telemetry packet of
+    # its own named LIMITS_GROUP, by installing it or by LimitsGroupBackfill. The
+    # packet is kept and the target's groups aren't published as telemetry.
+    attr_accessor :own_limits_group_packet
     attr_accessor :stored_limits_mode
     attr_accessor :cmd_tlm_files
     attr_accessor :id
@@ -452,7 +458,21 @@ module OpenC3
       store_for_target(target_name, scope: scope).zadd("#{scope}__openc3tlm__#{target_name}__allitems", score, item_name)
     end
 
-    # @return [Hash{String => Array<Array<String, String, String>>}]
+    # <TARGET> LIMITS_GROUP is generated from the limits groups of a target which
+    # defines them. A target without limits groups can still have a telemetry
+    # packet of its own named LIMITS_GROUP which behaves like any other packet,
+    # as does one kept by an install or LimitsGroupBackfill (see own_limits_group_packet).
+    #
+    # @return [Boolean] Whether the packet is the generated limits group packet
+    def self.generated_limits_group_packet?(target_name, packet_name, scope:)
+      return false unless packet_name == PacketConfig::LIMITS_GROUP_PACKET
+
+      target = get(name: target_name, scope: scope)
+      (target and !(target['limits_groups'] || []).empty? and !target['own_limits_group_packet']) ? true : false
+    end
+
+    # @return [Hash{String => Array<Array<String, String, String>>}] Limits groups keyed
+    #   by TARGET__GROUP (see LimitsEventTopic.limits_group_key)
     def self.limits_groups(scope:)
       groups = Store.hgetall("#{scope}__limits_groups")
       if groups
@@ -485,7 +505,12 @@ module OpenC3
     def self.build_item_to_packet_map(target_name, scope:)
       item_map = {}
       packets = packets(target_name, scope: scope)
+      # LATEST never resolves to the generated LIMITS_GROUP packet. Its items are
+      # limits groups which can share a name with an item in another packet.
+      skip_limits_group = generated_limits_group_packet?(target_name, PacketConfig::LIMITS_GROUP_PACKET, scope: scope)
       packets.each do |packet|
+        next if skip_limits_group and packet['packet_name'] == PacketConfig::LIMITS_GROUP_PACKET
+
         items = packet['items']
         items.each do |item|
           item_name = item['name']
@@ -503,6 +528,7 @@ module OpenC3
         usage = "#{keyword} <TARGET FOLDER NAME> <TARGET NAME>"
         parser.verify_num_parameters(2, 2, usage)
         parser.verify_parameter_naming(2) # Target name is the 2nd parameter
+
         return self.new(name: parameters[1].to_s.upcase, folder_name: parameters[0].to_s.upcase, plugin: plugin,  needs_dependencies: needs_dependencies, scope: scope)
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Target: #{keyword} #{parameters.join(" ")}")
@@ -517,6 +543,7 @@ module OpenC3
       ignored_parameters: [],
       ignored_items: [],
       limits_groups: [],
+      own_limits_group_packet: false,
       stored_limits_mode: 'PROCESS',
       cmd_tlm_files: [],
       id: nil,
@@ -547,6 +574,7 @@ module OpenC3
       @ignored_parameters = ignored_parameters
       @ignored_items = ignored_items
       @limits_groups = limits_groups
+      @own_limits_group_packet = own_limits_group_packet ? true : false
       @stored_limits_mode = stored_limits_mode.to_s.upcase
       @stored_limits_mode = 'PROCESS' unless %w(PROCESS LOG DISABLE).include?(@stored_limits_mode)
       @cmd_tlm_files = cmd_tlm_files
@@ -580,6 +608,7 @@ module OpenC3
         'ignored_parameters' => @ignored_parameters,
         'ignored_items' => @ignored_items,
         'limits_groups' => @limits_groups,
+        'own_limits_group_packet' => @own_limits_group_packet,
         'stored_limits_mode' => @stored_limits_mode,
         'cmd_tlm_files' => @cmd_tlm_files,
         'id' => @id,
@@ -783,6 +812,7 @@ module OpenC3
         # Build a System for just this target
         system = System.new([@name], temp_dir)
         check_column_header_lengths(system)
+        check_limits_groups(system)
         if variables["xtce_output"]
           puts "Converting target #{@name} to .xtce files in #{variables["xtce_output"]}/#{@name}"
           if variables['time_association_name'].to_s.empty?
@@ -875,6 +905,72 @@ module OpenC3
       end
     end
 
+    # Nested limits groups can't form a loop. Since a loop is likely a typo the
+    # member which closes it is skipped with a warning, like a member whose name
+    # PacketConfig rejects. Group names are already checked by the parser
+    # (PacketConfig.limits_group_name_error) which also keeps each group in its own column.
+    def check_limits_groups(system)
+      new_groups = system.limits.groups[@name] || {}
+      return if new_groups.empty?
+
+      # The groups of other targets plus this target's new groups which replace its old ones
+      groups = {}
+      Store.hgetall("#{@scope}__limits_groups").each do |key, json|
+        next if LimitsEventTopic.split_limits_group_key(key)[0] == @name
+
+        groups[key] = JSON.parse(json, allow_nan: true, create_additions: true)
+      end
+      new_groups.each { |group, items| groups[LimitsEventTopic.limits_group_key(@name, group)] = items }
+      children = {}
+      groups.each do |key, items|
+        children[key] = items.select { |_target_name, packet_name, _item| packet_name == PacketConfig::LIMITS_GROUP_PACKET }
+                             .map { |target_name, _packet_name, item_name| LimitsEventTopic.limits_group_key(target_name, item_name) }
+      end
+
+      # Each pass removes one member so this ends
+      while (loop = find_limits_group_loop(children, new_groups.keys))
+        names = loop.map { |key| key.sub('__', ' ') }.join(' -> ')
+        # Skip the last member in the loop which belongs to this target. Install never
+        # stores a loop between other targets' groups but ignore one if it's found.
+        from, to = loop.each_cons(2).to_a.reverse.find { |key, _child| LimitsEventTopic.split_limits_group_key(key)[0] == @name }
+        unless from
+          from, to = loop.last(2)
+          children[from].delete(to)
+          Logger.warn("LIMITS_GROUP #{from.sub('__', ' ')} contains itself: #{names}. Nested limits groups can't form a loop.")
+          next
+        end
+        children[from].delete(to)
+        to_target, to_group = LimitsEventTopic.split_limits_group_key(to)
+        new_groups[LimitsEventTopic.split_limits_group_key(from)[1]].delete([to_target, PacketConfig::LIMITS_GROUP_PACKET, to_group])
+        Logger.warn("LIMITS_GROUP #{from.sub('__', ' ')} contains itself: #{names}. Skipping its member #{to_target} #{PacketConfig::LIMITS_GROUP_PACKET} #{to_group} since nested limits groups can't form a loop.")
+      end
+    end
+
+    # Depth first search keeping the current path so a loop can be reported
+    #
+    # @return [Array<String>, nil] The group keys of a loop with the first repeated
+    #   at the end, or nil if the groups don't loop
+    def find_limits_group_loop(children, group_names)
+      done = Set.new
+      visit = lambda do |key, path|
+        index = path.index(key)
+        return path[index..] + [key] if index
+        return nil if done.include?(key)
+
+        (children[key] || []).each do |child|
+          loop = visit.call(child, path + [key])
+          return loop if loop
+        end
+        done << key
+        nil
+      end
+      group_names.each do |group|
+        loop = visit.call(LimitsEventTopic.limits_group_key(@name, group), [])
+        return loop if loop
+      end
+      nil
+    end
+
     def undeploy
       prefix = "#{@scope}/targets/#{@name}/"
       objects = @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix)
@@ -887,7 +983,7 @@ module OpenC3
       end
 
       self.class.get_model(name: @name, scope: @scope).limits_groups.each do |group|
-        Store.hdel("#{@scope}__limits_groups", group)
+        Store.hdel("#{@scope}__limits_groups", LimitsEventTopic.limits_group_key(@name, group))
       end
       self.class.packets(@name, type: :CMD, scope: @scope).each do |packet|
         Topic.del("#{@scope}__COMMAND__{#{@name}}__#{packet['packet_name']}", db_shard: @db_shard)
@@ -1014,7 +1110,9 @@ module OpenC3
       @ignored_parameters = target.ignored_parameters
       @ignored_items = target.ignored_items
       @cmd_tlm_files = target.cmd_tlm_files
-      @limits_groups = system.limits.groups.keys
+      @limits_groups = (system.limits.groups[@name] || {}).keys
+      # A packet of the target's own named LIMITS_GROUP is kept and its groups aren't published
+      @own_limits_group_packet = system.packet_config.own_limits_group_packet?(@name)
       update()
     end
 
@@ -1085,9 +1183,9 @@ module OpenC3
     end
 
     def update_store_limits_groups(system)
-      system.limits.groups.each do |group, items|
+      (system.limits.groups[@name] || {}).each do |group, items|
         begin
-          Store.hset("#{@scope}__limits_groups", group, JSON.generate(items, allow_nan: true))
+          Store.hset("#{@scope}__limits_groups", LimitsEventTopic.limits_group_key(@name, group), JSON.generate(items, allow_nan: true))
         rescue JSON::GeneratorError => e
           Logger.error("Invalid text present in #{group} limits group")
           raise e

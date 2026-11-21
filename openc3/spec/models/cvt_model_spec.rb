@@ -230,6 +230,21 @@ module OpenC3
         expect(result[0][1]).to eql :GREEN
       end
 
+      it "never marks generated LIMITS_GROUP values stale" do
+        TargetModel.new(name: "GRP", scope: "DEFAULT", limits_groups: ["TEMPS"]).create
+        update_temp1(time: Time.now - 10)
+        %w(GRP NOGRP).each do |target_name|
+          CvtModel.set({ "TEMPS" => 2, "TEMPS__C" => "RED", "TEMPS__L" => :RED, "RECEIVED_TIMESECONDS" => (Time.now - 10).to_f },
+            target_name: target_name, packet_name: "LIMITS_GROUP", scope: "DEFAULT")
+        end
+        values = [["GRP", "LIMITS_GROUP", "TEMPS", "CONVERTED"], ["INST", "HEALTH_STATUS", "TEMP1", "RAW"], ["NOGRP", "LIMITS_GROUP", "TEMPS", "CONVERTED"]]
+        result = CvtModel.get_tlm_values(values, stale_time: 9)
+        expect(result[0]).to eql ["RED", :RED]
+        expect(result[1][1]).to eql :STALE
+        # A target without limits groups can have its own packet named LIMITS_GROUP
+        expect(result[2]).to eql ["RED", :STALE]
+      end
+
       it "returns overridden values" do
         update_temp1()
         json_hash = {}

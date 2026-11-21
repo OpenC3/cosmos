@@ -59,6 +59,33 @@ LIMITS_GROUP:
     but the last enabled or disabled group "wins". For example, if an item belongs to
     GROUP1 and GROUP2 and you first enable GROUP1 and then disable GROUP2 the item will
     be disabled. If you then enable GROUP1 again it will be enabled.
+
+
+    Each limits group is also published as telemetry in the LIMITS_GROUP packet of the
+    target which defines the group. For a group named THERMAL defined by the INST target,
+    INST LIMITS_GROUP THERMAL is the most severe limits state (GREEN, YELLOW or RED) of the
+    group's members which have limits enabled, so it can be displayed on screens, graphed,
+    used in scripts with tlm and wait_check, and extracted from history. It's BLUE only
+    when every member which counts is BLUE, and DISABLED when limits are disabled on every
+    member. INST LIMITS_GROUP THERMAL_ENABLED is TRUE when limits are enabled on every
+    member, FALSE when they're disabled on every member, and PARTIAL otherwise, for example
+    when a nested group is disabled. A group whose enabled members have no limits state yet
+    is GREEN with no limits color. The LIMITS_GROUP packet
+    name is reserved for targets which define limits groups. If such a target also defines
+    its own LIMITS_GROUP telemetry packet, COSMOS keeps that packet and logs a warning, and
+    the target's groups can still be enabled and disabled but aren't published as
+    telemetry until the packet is renamed and the target reinstalled.
+
+
+    Group names become item names so they follow the same rules as ITEM names
+    (no spaces, quotes, double underscores or trailing underscore). They also become
+    time-series database columns so they can't contain characters the database
+    replaces with an underscore, like the period in TEMP.A. They can't end in _ENABLED,
+    use a reserved item name like RECEIVED_COUNT or PACKET_TIME, or be longer than 119
+    characters. A group whose name breaks these rules is skipped with a warning, along
+    with its LIMITS_GROUP_ITEM and NESTED_LIMITS_GROUP lines, and a NESTED_LIMITS_GROUP
+    with such a name is skipped the same way. Group names only need to be unique within
+    a target, so two targets can each define a THERMAL group.
   parameters:
     - name: Group Name
       required: true
@@ -68,7 +95,10 @@ LIMITS_GROUP_ITEM:
   summary: Adds the specified telemetry item to the last defined LIMITS_GROUP
   description:
     Limits group information is typically kept in a separate configuration
-    file in the config/TARGET/cmd_tlm folder named limits_groups.txt.
+    file in the config/TARGET/cmd_tlm folder named limits_groups.txt. Use
+    NESTED_LIMITS_GROUP to add another limits group. A LIMITS_GROUP_ITEM in a
+    packet named LIMITS_GROUP is skipped with a warning since that packet holds
+    the rolled up state of limits groups.
   parameters:
     - name: Target Name
       required: true
@@ -83,7 +113,35 @@ LIMITS_GROUP_ITEM:
       description: Name of the telemetry item to add to the group
       values: .+
   example: |
-    LIMITS_GROUP SUBSYSTEM
+    LIMITS_GROUP THERMAL
       LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP1
       LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP2
       LIMITS_GROUP_ITEM INST HEALTH_STATUS TEMP3
+NESTED_LIMITS_GROUP:
+  summary: Nests the specified limits group in the last defined LIMITS_GROUP
+  description:
+    The parent group rolls up the nested group's state. Enabling or disabling the
+    parent enables or disables every group and item below it unless the API is
+    called with cascade false, which only changes the parent itself and the items
+    directly in it. A group disabled this way is DISABLED and its parents ignore it
+    while its nested groups keep checking limits and rolling up their own state. Pass just
+    the group name to nest a group defined by the same target, or the target name
+    and group name to nest a group defined by another target. A nested group can be
+    installed after its parent and is ignored until it is.
+    Nested groups can't form a loop, so a group can't contain itself directly or
+    through other groups. Installing a target skips the NESTED_LIMITS_GROUP which
+    would close a loop and logs a warning.
+  parameters:
+    - name: Target Name or Group Name
+      required: true
+      description: Name of the target which defines the group, or the name of a limits group of this target when it's the only parameter
+      values: .+
+    - name: Group Name
+      required: false
+      description: Name of the limits group. Required when the first parameter is a target name.
+      values: .+
+  example: |
+    LIMITS_GROUP SPACECRAFT
+      NESTED_LIMITS_GROUP THERMAL
+      NESTED_LIMITS_GROUP INST2 POWER
+      LIMITS_GROUP_ITEM INST HEALTH_STATUS VOLTS

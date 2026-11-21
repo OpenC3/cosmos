@@ -149,24 +149,27 @@ module OpenC3
               "  PARAMETER PARAM 0 16 UINT 0 0 0 \"Param\"\n"
         tf.write cmd
         limits = "LIMITS_GROUP TVAC\n"\
-                 "  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n"
+                 "  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1\n"\
+                 "  NESTED_LIMITS_GROUP THERMAL\n"\
+                 "  NESTED_LIMITS_GROUP TGT2 POWER\n"
         tf.write limits
         tf.close
         @pc.process_file(tf.path, "TGT1")
+        @pc.build_limits_group_packet("TGT1")
         @pc.to_config(OpenC3::USERPATH)
         @pc.to_xtce(OpenC3::USERPATH, "PACKET_TIME")
         expect(cmd.strip).to eql File.read(File.join(OpenC3::USERPATH, 'TGT1', 'cmd_tlm', 'tgt1_cmd.txt')).strip
         expect(tlm.strip).to eql File.read(File.join(OpenC3::USERPATH, 'TGT1', 'cmd_tlm', 'tgt1_tlm.txt')).strip
-        expect(limits.strip).to eql File.read(File.join(OpenC3::USERPATH, 'SYSTEM', 'cmd_tlm', 'limits_groups.txt')).strip
+        # The generated LIMITS_GROUP packet isn't written since the limits groups recreate it
+        expect(limits.strip).to eql File.read(File.join(OpenC3::USERPATH, 'TGT1', 'cmd_tlm', 'limits_groups.txt')).strip
         tf.unlink
         FileUtils.rm_rf(File.join(OpenC3::USERPATH, 'TGT1'))
-        FileUtils.rm_rf(File.join(OpenC3::USERPATH, 'SYSTEM'))
       end
 
       context "with all telemetry keywords" do
         before(:all) do
           # top level keywords
-          @top_keywords = %w(SELECT_COMMAND SELECT_TELEMETRY LIMITS_GROUP LIMITS_GROUP_ITEM)
+          @top_keywords = %w(SELECT_COMMAND SELECT_TELEMETRY LIMITS_GROUP LIMITS_GROUP_ITEM NESTED_LIMITS_GROUP)
           # Keywords that require a current packet from TELEMETRY keyword
           @tlm_keywords = %w(SELECT_ITEM ITEM ID_ITEM ARRAY_ITEM APPEND_ITEM APPEND_ID_ITEM APPEND_ARRAY_ITEM PROCESSOR META)
           # Keywords that require both a current packet and current item
@@ -275,6 +278,8 @@ module OpenC3
               tf.puts "LIMITS_GROUP name extra"
             when 'LIMITS_GROUP_ITEM'
               tf.puts "LIMITS_GROUP_ITEM target packet item extra"
+            when 'NESTED_LIMITS_GROUP'
+              tf.puts "NESTED_LIMITS_GROUP target group extra"
             end
             tf.close
             expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Too many parameters for #{keyword}/)
@@ -480,9 +485,59 @@ module OpenC3
           tf.close
           expect(@pc.limits_groups).to be_empty
           @pc.process_file(tf.path, "TGT1")
-          expect(@pc.limits_groups).to include('TVAC', 'VIBE')
+          expect(@pc.limits_groups["TGT1"]).to include('TVAC', 'VIBE')
           tf.unlink
         end
+
+        it "keeps the groups of each target separate" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'LIMITS_GROUP TEMPS'
+          tf.puts '  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.process_file(tf.path, "TGT2")
+          expect(@pc.limits_groups).to eql({ "TGT1" => { "TEMPS" => [%w(TGT1 PKT1 ITEM1)] }, "TGT2" => { "TEMPS" => [%w(TGT1 PKT1 ITEM1)] } })
+          tf.unlink
+        end
+
+        it "skips with a warning group names which can't be LIMITS_GROUP items" do
+          bad_names = {
+            'TEMP__A' => /cannot contain a double underscore/,
+            'TEMP_' => /cannot end with an underscore/,
+            'FOO_ENABLED' => /LIMITS_GROUP FOO_ENABLED cannot end with _ENABLED/,
+            'received_count' => /LIMITS_GROUP RECEIVED_COUNT is a reserved item name/,
+            'packet_time' => /LIMITS_GROUP PACKET_TIME would replace the packet time of LIMITS_GROUP/,
+            'A' * 120 => /must be 119 characters or less/,
+            # These would share a column with TEMP_A
+            'TEMP.A' => /cannot contain '\.' since the time-series database replaces it with an underscore/,
+            'TEMP-A' => /cannot contain '-' since the time-series database replaces it with an underscore/,
+          }
+          bad_names.each do |name, error|
+            tf = Tempfile.new('unittest')
+            tf.puts "LIMITS_GROUP #{name}"
+            # The group's members are skipped too
+            tf.puts "  LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1"
+            tf.close
+            expect(Logger).to receive(:warn).with(/#{error.source}.*\. Skipping the group\. \(#{Regexp.escape(tf.path)}:1\)/)
+            @pc.process_file(tf.path, "TGT1")
+            expect(@pc.warnings[-1]).to match(error)
+            expect(@pc.limits_groups["TGT1"]).to be_nil
+            tf.unlink
+          end
+          tf = Tempfile.new('unittest')
+          tf.puts "LIMITS_GROUP #{'A' * 119}"
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.limits_groups["TGT1"]).to include('A' * 119)
+          tf.unlink
+        end
+      end
+
+      it "rejects exactly the group name characters the time-series database replaces" do
+        require 'openc3/utilities/questdb_client'
+        chars = (32..126).map(&:chr)
+        replaced = chars.select { |char| QuestDBClient.sanitize_column_name("A#{char}B") != "A#{char}B" }
+        expect(chars.select { |char| char.match?(PacketConfig::LIMITS_GROUP_COLUMN_INVALID_CHARS) }).to eql replaced
       end
 
       context "with LIMITS_ITEM" do
@@ -493,7 +548,7 @@ module OpenC3
           tf.close
           expect(@pc.limits_groups).to be_empty
           @pc.process_file(tf.path, "TGT1")
-          expect(@pc.limits_groups["TVAC"]).to eql [%w(TGT1 PKT1 ITEM1)]
+          expect(@pc.limits_groups["TGT1"]["TVAC"]).to eql [%w(TGT1 PKT1 ITEM1)]
           tf.unlink
 
           # Show we can 're-open' the group and add items
@@ -502,7 +557,119 @@ module OpenC3
           tf.puts 'LIMITS_GROUP_ITEM TGT1 PKT1 ITEM2'
           tf.close
           @pc.process_file(tf.path, "TGT1")
-          expect(@pc.limits_groups["TVAC"]).to eql [%w(TGT1 PKT1 ITEM1), %w(TGT1 PKT1 ITEM2)]
+          expect(@pc.limits_groups["TGT1"]["TVAC"]).to eql [%w(TGT1 PKT1 ITEM1), %w(TGT1 PKT1 ITEM2)]
+          tf.unlink
+        end
+
+        it "adds a nested group with NESTED_LIMITS_GROUP as its LIMITS_GROUP item" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'LIMITS_GROUP SPACECRAFT'
+          tf.puts 'NESTED_LIMITS_GROUP thermal'
+          tf.puts 'NESTED_LIMITS_GROUP tgt2 POWER'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.limits_groups["TGT1"]["SPACECRAFT"]).to eql [%w(TGT1 LIMITS_GROUP THERMAL), %w(TGT2 LIMITS_GROUP POWER)]
+          tf.unlink
+        end
+
+        it "skips with a warning a LIMITS_GROUP_ITEM in a LIMITS_GROUP packet" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'LIMITS_GROUP SPACECRAFT'
+          tf.puts 'LIMITS_GROUP_ITEM TGT2 LIMITS_GROUP POWER'
+          tf.puts 'LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1'
+          tf.close
+          expect(Logger).to receive(:warn).with(/LIMITS_GROUP SPACECRAFT member TGT2 LIMITS_GROUP POWER: use NESTED_LIMITS_GROUP TGT2 POWER to nest a limits group. Skipping the member/)
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.limits_groups["TGT1"]["SPACECRAFT"]).to eql [%w(TGT1 PKT1 ITEM1)]
+          tf.unlink
+        end
+
+        it "complains about a LIMITS_GROUP_ITEM with one parameter" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'LIMITS_GROUP SPACECRAFT'
+          tf.puts 'LIMITS_GROUP_ITEM THERMAL'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for LIMITS_GROUP_ITEM/)
+          tf.unlink
+        end
+
+        it "skips with a warning a nested group name LIMITS_GROUP doesn't accept" do
+          ['"CHILD GROUP"', 'TGT2 "CHILD GROUP"', 'CHILD__GROUP', 'TGT2 CHILD_ENABLED', 'RECEIVED_COUNT'].each do |member|
+            pc = PacketConfig.new
+            tf = Tempfile.new('unittest')
+            tf.puts 'LIMITS_GROUP SPACECRAFT'
+            tf.puts "NESTED_LIMITS_GROUP #{member}"
+            tf.puts 'LIMITS_GROUP_ITEM TGT1 PKT1 ITEM1'
+            tf.close
+            expect(Logger).to receive(:warn).with(/LIMITS_GROUP SPACECRAFT member NESTED_LIMITS_GROUP .* Skipping the member/)
+            pc.process_file(tf.path, "TGT1")
+            expect(pc.limits_groups["TGT1"]["SPACECRAFT"]).to eql [%w(TGT1 PKT1 ITEM1)]
+            tf.unlink
+          end
+          # Items of other packets aren't group names
+          tf = Tempfile.new('unittest')
+          tf.puts 'LIMITS_GROUP SPACECRAFT'
+          tf.puts 'LIMITS_GROUP_ITEM TGT2 PKT "ITEM NAME"'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          expect(@pc.limits_groups["TGT1"]["SPACECRAFT"]).to eql [["TGT2", "PKT", "ITEM NAME"]]
+          tf.unlink
+        end
+
+        it "complains about two parameters" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'LIMITS_GROUP TVAC'
+          tf.puts 'LIMITS_GROUP_ITEM TGT1 PKT1'
+          tf.close
+          expect { @pc.process_file(tf.path, "TGT1") }.to raise_error(ConfigParser::Error, /Not enough parameters for LIMITS_GROUP_ITEM/)
+          tf.unlink
+        end
+      end
+
+      context "with build_limits_group_packet" do
+        it "adds nothing for a target without limits groups" do
+          @pc.build_limits_group_packet("TGT1")
+          expect(@pc.telemetry["TGT1"]).to be_nil
+        end
+
+        it "adds a visible LIMITS_GROUP packet which is never identified" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY TGT1 PKT1 BIG_ENDIAN "Packet"'
+          tf.puts '  ITEM ITEM1 0 8 UINT'
+          tf.puts 'LIMITS_GROUP VIBE'
+          tf.puts 'LIMITS_GROUP TVAC'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          @pc.build_limits_group_packet("TGT1")
+          packet = @pc.telemetry["TGT1"]["LIMITS_GROUP"]
+          expect(packet.target_name).to eql "TGT1"
+          expect(packet.virtual).to be true
+          expect(packet.hidden).to be false
+          expect(packet.disabled).to be false
+          expect(packet.identify?("\x00")).to be false
+          names = packet.sorted_items.map(&:name)
+          expect(names).to include("TVAC", "TVAC_ENABLED", "VIBE", "VIBE_ENABLED", "RECEIVED_COUNT")
+          expect(packet.get_item("TVAC").states).to eql({ 'GREEN' => 0, 'YELLOW' => 1, 'RED' => 2, 'BLUE' => 3, 'DISABLED' => 4 })
+          expect(packet.get_item("TVAC_ENABLED").states).to eql({ 'FALSE' => 0, 'TRUE' => 1, 'PARTIAL' => 2 })
+          tf.unlink
+        end
+
+        it "keeps a target's own LIMITS_GROUP packet with a warning" do
+          tf = Tempfile.new('unittest')
+          tf.puts 'TELEMETRY TGT1 LIMITS_GROUP BIG_ENDIAN "Packet"'
+          tf.puts '  ITEM ITEM1 0 8 UINT'
+          tf.puts 'LIMITS_GROUP TVAC'
+          tf.close
+          @pc.process_file(tf.path, "TGT1")
+          # Not the generated packet even before the builder runs (e.g. from_config)
+          expect(@pc.limits_group_packet?("TGT1", "LIMITS_GROUP")).to be false
+          expect(Logger).to receive(:warn).with(/TGT1 LIMITS_GROUP is reserved .* Rename the packet and reinstall the target/)
+          @pc.build_limits_group_packet("TGT1")
+          expect(@pc.telemetry["TGT1"]["LIMITS_GROUP"].get_item("ITEM1")).to_not be_nil
+          expect(@pc.own_limits_group_packet?("TGT1")).to be true
+          expect(@pc.limits_group_packet?("TGT1", "LIMITS_GROUP")).to be false
+          # Its groups still work
+          expect(@pc.limits_groups["TGT1"]).to eql({ "TVAC" => [] })
           tf.unlink
         end
       end

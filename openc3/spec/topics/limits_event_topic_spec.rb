@@ -21,6 +21,76 @@ module OpenC3
       setup_system()
     end
 
+    describe "self.limits_group_items" do
+      it "returns nil for an undefined group" do
+        expect(LimitsEventTopic.limits_group_items("NOPE", scope: "DEFAULT")).to be_nil
+      end
+
+      it "expands nested groups of any target into their items" do
+        Store.hset("DEFAULT__limits_groups", "SYS__SPACECRAFT", JSON.generate([["INST", "LIMITS_GROUP", "THERMAL"], ["INST", "HEALTH_STATUS", "VOLTS"], ["SYS", "LIMITS_GROUP", "UNDEFINED"]]))
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", JSON.generate([["INST", "HEALTH_STATUS", "TEMP1"], ["INST2", "HEALTH_STATUS", "TEMP2"], ["INST", "HEALTH_STATUS", "VOLTS"]]))
+        # Same group name in another target isn't the child
+        Store.hset("DEFAULT__limits_groups", "INST2__THERMAL", JSON.generate([["INST2", "HEALTH_STATUS", "TEMP4"]]))
+        expected = { "INST" => { "HEALTH_STATUS" => ["TEMP1", "VOLTS"] }, "INST2" => { "HEALTH_STATUS" => ["TEMP2"] } }
+        expect(LimitsEventTopic.limits_group_items("SYS__SPACECRAFT", scope: "DEFAULT")).to eql expected
+      end
+
+      it "stops at cycles" do
+        Store.hset("DEFAULT__limits_groups", "INST__A", JSON.generate([["INST", "LIMITS_GROUP", "B"], ["INST", "HEALTH_STATUS", "TEMP1"]]))
+        Store.hset("DEFAULT__limits_groups", "INST__B", JSON.generate([["INST", "LIMITS_GROUP", "A"], ["INST", "HEALTH_STATUS", "TEMP2"]]))
+        expect(LimitsEventTopic.limits_group_items("INST__A", scope: "DEFAULT")).to eql({ "INST" => { "HEALTH_STATUS" => ["TEMP2", "TEMP1"] } })
+      end
+
+      it "skips nested groups without cascade" do
+        Store.hset("DEFAULT__limits_groups", "SYS__SPACECRAFT", JSON.generate([["INST", "LIMITS_GROUP", "THERMAL"], ["INST", "HEALTH_STATUS", "VOLTS"]]))
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", JSON.generate([["INST", "HEALTH_STATUS", "TEMP1"]]))
+        expect(LimitsEventTopic.limits_group_items("SYS__SPACECRAFT", cascade: false, scope: "DEFAULT")).to eql({ "INST" => { "HEALTH_STATUS" => ["VOLTS"] } })
+        # A group of only nested groups has no items of its own
+        Store.hset("DEFAULT__limits_groups", "SYS__ALL", JSON.generate([["SYS", "LIMITS_GROUP", "SPACECRAFT"]]))
+        expect(LimitsEventTopic.limits_group_items("SYS__ALL", cascade: false, scope: "DEFAULT")).to eql({})
+      end
+    end
+
+    describe "self.limits_group_keys" do
+      it "returns the group and every defined group below it with cascade" do
+        Store.hset("DEFAULT__limits_groups", "SYS__ALL", JSON.generate([["INST", "LIMITS_GROUP", "THERMAL"], ["SYS", "LIMITS_GROUP", "UNDEFINED"], ["INST", "HEALTH_STATUS", "TEMP1"]]))
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", JSON.generate([["INST", "LIMITS_GROUP", "INNER"]]))
+        Store.hset("DEFAULT__limits_groups", "INST__INNER", JSON.generate([["INST", "HEALTH_STATUS", "TEMP2"]]))
+        expect(LimitsEventTopic.limits_group_keys("SYS__ALL", scope: "DEFAULT").sort).to eql %w(INST__INNER INST__THERMAL SYS__ALL)
+        expect(LimitsEventTopic.limits_group_keys("SYS__ALL", cascade: false, scope: "DEFAULT")).to eql %w(SYS__ALL)
+        expect(LimitsEventTopic.limits_group_keys("NOPE", scope: "DEFAULT")).to eql []
+        expect(LimitsEventTopic.limits_group_keys(nil, scope: "DEFAULT")).to eql []
+      end
+    end
+
+    describe "self.find_limits_group" do
+      before(:each) do
+        Store.del("DEFAULT__limits_groups")
+        Store.hset("DEFAULT__limits_groups", "INST__TEMPS", "[]")
+        Store.hset("DEFAULT__limits_groups", "INST2__TEMPS", "[]")
+        Store.hset("DEFAULT__limits_groups", "INST__POWER", "[]")
+        Store.hset("DEFAULT__limits_groups", "LEGACY", "[]")
+      end
+
+      it "finds a group by target and name" do
+        expect(LimitsEventTopic.find_limits_group("inst2", "temps", scope: "DEFAULT")).to eql "INST2__TEMPS"
+        expect { LimitsEventTopic.find_limits_group("INST2", "POWER", scope: "DEFAULT") }.to raise_error(/LIMITS_GROUP INST2 POWER undefined/)
+      end
+
+      it "finds a group by a name only one target defines" do
+        expect(LimitsEventTopic.find_limits_group(nil, "power", scope: "DEFAULT")).to eql "INST__POWER"
+        expect(LimitsEventTopic.find_limits_group(nil, "LEGACY", scope: "DEFAULT")).to eql "LEGACY"
+        expect(LimitsEventTopic.find_limits_group(nil, "INST2__TEMPS", scope: "DEFAULT")).to eql "INST2__TEMPS"
+        expect { LimitsEventTopic.find_limits_group(nil, "NOPE", scope: "DEFAULT") }.to raise_error(/LIMITS_GROUP NOPE undefined/)
+        expect { LimitsEventTopic.find_limits_group(nil, "TEMPS", scope: "DEFAULT") }.to raise_error(/LIMITS_GROUP TEMPS is defined by targets INST, INST2/)
+      end
+
+      it "splits keys" do
+        expect(LimitsEventTopic.split_limits_group_key("INST__TEMPS")).to eql %w(INST TEMPS)
+        expect(LimitsEventTopic.split_limits_group_key("LEGACY")).to eql [nil, "LEGACY"]
+      end
+    end
+
     describe "self.write, self.read" do
       it "writes and reads LIMITS_CHANGE events" do
         event = { type: :LIMITS_CHANGE, target_name: "TGT", packet_name: "PKT",
@@ -333,6 +403,87 @@ module OpenC3
         LimitsEventTopic.write(event, scope: "DEFAULT")
         LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT")
         expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+      end
+
+      it "only disables the group itself without cascade and otherwise clears the flags" do
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+        Store.hset("DEFAULT__limits_groups", "INST__ALL", JSON.generate([%w(INST LIMITS_GROUP THERMAL)]))
+        event = { type: :LIMITS_GROUP_ENABLE_STATE, target_name: "INST", group_name: "ALL", enabled: false, cascade: false,
+                  time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({ "INST__ALL" => { 'enabled' => false } })
+        # ALL has no items of its own
+        expect(Store.hgetall("DEFAULT__current_limits_settings")).to be_empty
+        LimitsEventTopic.write(event.merge(enabled: true), scope: "DEFAULT")
+        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({})
+
+        # With cascade every item below is disabled so the groups follow their
+        # members, and enabling one of them later shows in the groups
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        LimitsEventTopic.write(event.merge(group_name: "THERMAL"), scope: "DEFAULT")
+        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT").keys.sort).to eql %w(INST__ALL INST__THERMAL)
+        LimitsEventTopic.write(event.merge(cascade: true), scope: "DEFAULT")
+        expect(LimitsEventTopic.limits_group_settings(scope: "DEFAULT")).to eql({})
+        expect(JSON.parse(Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__TEMP1"))['enabled']).to be false
+      end
+
+      it "removes a deleted target's group flags" do
+        Store.hset("DEFAULT__limits_group_settings", "INST__ALL", JSON.generate({ 'enabled' => false }))
+        Store.hset("DEFAULT__limits_group_settings", "INST2__ALL", JSON.generate({ 'enabled' => false }))
+        LimitsEventTopic.delete("INST", "HEALTH_STATUS", scope: "DEFAULT")
+        expect(Store.hkeys("DEFAULT__limits_group_settings").sort).to eql %w(INST2__ALL INST__ALL)
+        LimitsEventTopic.delete("INST", scope: "DEFAULT")
+        expect(Store.hkeys("DEFAULT__limits_group_settings")).to eql %w(INST2__ALL)
+      end
+
+      it "applies a LIMITS_GROUP_ENABLE_STATE event without cascade to the group's own items" do
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+        Store.hset("DEFAULT__limits_groups", "INST__ALL", JSON.generate([%w(INST LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)]))
+        event = { type: :LIMITS_GROUP_ENABLE_STATE, target_name: "INST", group_name: "ALL", enabled: false, cascade: false,
+                  time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        settings = Store.hgetall("DEFAULT__current_limits_settings").transform_values { |v| JSON.parse(v) }
+        expect(settings.keys).to eql ["INST__HEALTH_STATUS__TEMP3"]
+        LimitsEventTopic.process_event(JSON.parse(JSON.generate(event)), scope: "DEFAULT")
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be false
+      end
+
+      it "sync_system_thread_body applies LIMITS_GROUP_ENABLE_STATE events with and without cascade" do
+        LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT") # Set the stream offset
+        Store.hset("DEFAULT__limits_groups", "INST__THERMAL", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+        Store.hset("DEFAULT__limits_groups", "INST__ALL", JSON.generate([%w(INST LIMITS_GROUP THERMAL), %w(INST HEALTH_STATUS TEMP3)]))
+        event = { type: :LIMITS_GROUP_ENABLE_STATE, target_name: "INST", group_name: "ALL", enabled: false,
+                  time_nsec: Time.now.to_nsec_from_epoch, message: "TEST1" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT")
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be false
+
+        LimitsEventTopic.write(event.merge(enabled: true, cascade: false), scope: "DEFAULT")
+        LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT")
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be true
+        settings = Store.hgetall("DEFAULT__current_limits_settings").transform_values { |v| JSON.parse(v)['enabled'] }
+        expect(settings).to eql({ "INST__HEALTH_STATUS__TEMP1" => false, "INST__HEALTH_STATUS__TEMP3" => true })
+
+        LimitsEventTopic.write(event.merge(enabled: true, cascade: true), scope: "DEFAULT")
+        LimitsEventTopic.sync_system_thread_body(scope: "DEFAULT")
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+      end
+
+      it "process_event applies the group of the event's target" do
+        Store.hset("DEFAULT__limits_groups", "INST__TEMPS", JSON.generate([%w(INST HEALTH_STATUS TEMP1)]))
+        Store.hset("DEFAULT__limits_groups", "INST2__TEMPS", JSON.generate([%w(INST HEALTH_STATUS TEMP3)]))
+        event = { 'type' => 'LIMITS_GROUP_ENABLE_STATE', 'target_name' => 'INST2', 'group_name' => "TEMPS", 'enabled' => false }
+        LimitsEventTopic.process_event(event, scope: "DEFAULT")
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP3")).to be false
+
+        # Without a target the name is ambiguous so nothing changes
+        event = { 'type' => 'LIMITS_GROUP_ENABLE_STATE', 'group_name' => "TEMPS", 'enabled' => false }
+        LimitsEventTopic.process_event(event, scope: "DEFAULT")
+        expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be true
       end
 
       it "process_event applies the rest of a group when one item fails" do

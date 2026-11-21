@@ -350,6 +350,27 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
+    def deploy_limits_group_microservice(gem_path, variables, parent)
+      microservice_name = "#{@scope}__LIMITSGROUP__#{@scope}"
+      microservice = MicroserviceModel.new(**self.class.limits_group_microservice_options(@scope, @shard, parent))
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      @children << microservice_name if parent
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
+    # Shared with the migration which adds the limits group microservice to existing scopes
+    def self.limits_group_microservice_options(scope, shard, parent)
+      {
+        name: "#{scope}__LIMITSGROUP__#{scope}",
+        cmd: ["ruby", "limits_group_microservice.rb", "#{scope}__LIMITSGROUP__#{scope}"],
+        work_dir: "/openc3/lib/openc3/microservices",
+        parent: parent,
+        shard: shard,
+        scope: scope
+      }
+    end
+
     def deploy_critical_cmd_microservice(gem_path, variables, parent)
       microservice_name = "#{@scope}__CRITICALCMD__#{@scope}"
       microservice = MicroserviceModel.new(
@@ -417,6 +438,9 @@ module OpenC3
 
       # Scope Cleanup Microservice
       deploy_scopecleanup_microservice(gem_path, variables, @parent)
+
+      # Limits Group Microservice publishes each target's LIMITS_GROUP packet
+      deploy_limits_group_microservice(gem_path, variables, @parent)
 
       if ENTERPRISE
         # Critical Cmd Microservice

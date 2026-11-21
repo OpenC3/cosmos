@@ -316,6 +316,28 @@ class TestCvtModel(unittest.TestCase):
         self.assertEqual(result[0][0], 1)
         self.assertEqual(result[0][1], "GREEN")
 
+    def test_never_marks_generated_limits_group_values_stale(self):
+        # Ruby's TargetModel stores the names of the limits groups the target defines
+        Store.hset("DEFAULT__openc3_targets", "GRP", json.dumps({"name": "GRP", "limits_groups": ["TEMPS"]}))
+        self.update_temp1(rxtime=(time.time() - 10))
+        for target_name in ["GRP", "NOGRP"]:
+            CvtModel.set(
+                {"TEMPS": 2, "TEMPS__C": "RED", "TEMPS__L": "RED", "RECEIVED_TIMESECONDS": time.time() - 10},
+                target_name,
+                "LIMITS_GROUP",
+                scope="DEFAULT",
+            )
+        values = [
+            ["GRP", "LIMITS_GROUP", "TEMPS", "CONVERTED"],
+            ["INST", "HEALTH_STATUS", "TEMP1", "RAW"],
+            ["NOGRP", "LIMITS_GROUP", "TEMPS", "CONVERTED"],
+        ]
+        result = CvtModel.get_tlm_values(values, stale_time=9)
+        self.assertEqual(result[0], ["RED", "RED"])
+        self.assertEqual(result[1][1], "STALE")
+        # A target without limits groups can have its own packet named LIMITS_GROUP
+        self.assertEqual(result[2], ["RED", "STALE"])
+
     def test_returns_overridden_values(self):
         self.update_temp1()
         json_hash = {}

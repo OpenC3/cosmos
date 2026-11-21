@@ -262,6 +262,7 @@ class System(metaclass=SystemMeta):
         try:
             for cmd_tlm_file in target.cmd_tlm_files:
                 self.packet_config.process_file(cmd_tlm_file, target.name)
+            self.packet_config.build_limits_group_packet(target.name)
         except Exception as error:
             trace = "".join(traceback.TracebackException.from_exception(error).format())
             errors.append(f"Error processing {target_name}:\n{trace}")
