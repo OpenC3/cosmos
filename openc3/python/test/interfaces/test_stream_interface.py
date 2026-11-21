@@ -335,7 +335,10 @@ class TestStreamInterface(unittest.TestCase):
         self.assertIsNone(self.interface.read_queue_thread)
 
     def test_setting_the_stream_stops_the_read_thread(self):
-        self.interface.stream = QueueStream(b"\x01")
+        first = QueueStream(b"\x01")
+        # The interface only disconnects its current stream so release the replaced one
+        self.addCleanup(first.disconnect)
+        self.interface.stream = first
         self.interface.connect()
         self.wait_for_queue_size(1)
         self.assertEqual(self.interface.read_queue_size(), 1)

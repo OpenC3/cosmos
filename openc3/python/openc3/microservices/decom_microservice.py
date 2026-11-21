@@ -345,6 +345,8 @@ class DecomMicroservice(Microservice):
                 elif item.limits.state == "BLUE":
                     # If we're blue we display the blue range (GREEN_LOW - GREEN_HIGH)
                     message += f" ({values[4]} to {values[5]})"
+            elif item.limits.change_type:
+                message += f" ({item.limits.change_type})"
         else:
             message = f"{packet.target_name} {packet.packet_name} {item.name} is disabled"
 

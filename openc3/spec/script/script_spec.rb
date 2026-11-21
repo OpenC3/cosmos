@@ -74,5 +74,24 @@ module OpenC3
         expect(@methods).to eql %i(tlm limits_enabled? get_cmd stash_get list_configs)
       end
     end
+
+    describe "initialize_offline_access" do
+      before(:each) do
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('OPENC3_KEYCLOAK_URL', nil).and_return('http://keycloak')
+        auth = double("auth", token: 'TOKEN', refresh_token: 'REFRESH')
+        allow(OpenC3KeycloakAuthentication).to receive(:new).and_return(auth)
+      end
+
+      it "sets the offline access token in the given scope" do
+        expect(self).to receive(:set_offline_access).with('REFRESH', scope: 'OTHER')
+        initialize_offline_access(scope: 'OTHER')
+      end
+
+      it "sets the offline access token in the current scope by default" do
+        expect(self).to receive(:set_offline_access).with('REFRESH', scope: $openc3_scope)
+        initialize_offline_access()
+      end
+    end
   end
 end

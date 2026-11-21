@@ -127,8 +127,26 @@ PWDEBUG=1 pnpm test:parallel --headed        # Debug mode
 
 - **Ruby**: RuboCop, configured in `.rubocop.yml`.
 - **Python**: Ruff for lint and format, configured in `openc3/python/pyproject.toml`. Minimum supported Python is 3.10 (ruff `target-version = "py310"`), so don't use syntax newer than that. Commit `uv.lock` with any dependency change.
+- **Python checks**: All three of these must pass for any Python code you write, before you commit. Run them from `openc3/python` on the files you touched (paths relative to `openc3/python`):
+  ```bash
+  uv run ruff format --check <files>
+  uv run ruff check <files>
+  uv run ty check <files>
+  ```
+  A ty diagnostic in your code is a failure. CI runs ty as advisory, but that doesn't relax this rule. New files must pass all three with no errors. In existing files, no line you added or changed may produce an error. Errors that were already there on lines you didn't touch don't block your change.
 - **JavaScript/Vue**: ESLint 9 + Prettier, configured in `openc3-cosmos-init/plugins/eslint.config.mjs`. After editing Vue/JS files, always run `pnpm lint` in the package. CI runs `pnpm lint --max-warnings 0`, so any warning fails the build.
 - **Vue API style**: New Vue files must use the Composition API (`<script setup>`), not the Options API. Share logic through composables (`useXxx` functions), not mixins. Existing Options API files can stay as they are for small edits.
+
+## Tests
+
+- **Bug fixes need a regression test.** Add a test that fails without the fix
+  and passes with it, in the same PR. Confirm it fails by running it against
+  the unfixed code.
+- **Test both languages.** If the fix lands in both Ruby and Python, add the
+  test to both the spec and the pytest file.
+- **Say when you can't.** If a bug can't be reproduced in a unit test (for
+  example, it needs multiple real shards, real timing, or a live service), say
+  so and explain why in the PR description. Don't skip it silently.
 
 ## Sharding
 
@@ -256,6 +274,25 @@ there has its own `###` heading with:
 Removed or deprecated methods go in the migration table near the top of the
 file. See `docs.openc3.com/CLAUDE.md` for the docs build and
 `check_doc_code_examples.py` for checking the examples.
+
+### Python docstrings and type hints
+
+Python API methods carry a Google-style docstring and full type hints, and the
+same change that edits a method's parameters, return value, or behavior updates
+its `Args:`, `Returns:`, `Raises:`, and annotations. Ruff's `D` and `ANN` rules
+check that they exist for the packages listed in `per-file-ignores` in
+`openc3/python/pyproject.toml` (currently `openc3/api` and `openc3/script`).
+When you convert another package, add it there. Ruff can't check that they're
+accurate, so:
+
+- Make return types truthful: read what the method returns (often a model
+  method) and use `Any` when the shape varies, rather than a guess. COSMOS
+  Enterprise's MCP server builds tool schemas from `openc3.script` signatures,
+  so a wrong type breaks MCP clients, not just type checkers.
+- Type `RAW`/`CONVERTED`/`FORMATTED` parameters with `ValueType` or
+  `OverrideValueType` from `openc3/python/openc3/api/api_types.py`.
+- Follow the existing modules (e.g. `openc3/python/openc3/api/tlm_api.py`) for
+  calling styles, `Deprecated: use x.` notes, and `scope: str = OPENC3_SCOPE`.
 
 ## Commit Messages
 

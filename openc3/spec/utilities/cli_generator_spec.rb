@@ -661,25 +661,11 @@ module OpenC3
         expect(File.exist?('src/App.vue')).to be true
       end
 
-      it "generates an Angular tool" do
-        result = run_gen(['tool_angular', 'Test Tool'])
-        expect(result).to eql('testtool')
-        expect(File.exist?('angular.json')).to be true
-        expect(File.exist?('src/main.single-spa.ts')).to be true
-      end
-
-      it "generates a React tool" do
-        result = run_gen(['tool_react', 'Test Tool'])
-        expect(result).to eql('testtool')
-        expect(File.exist?('webpack.config.js')).to be true
-        expect(File.exist?('src/root.component.js')).to be true
-      end
-
-      it "generates a Svelte tool" do
-        result = run_gen(['tool_svelte', 'Test Tool'])
-        expect(result).to eql('testtool')
-        expect(File.exist?('rollup.config.js')).to be true
-        expect(File.exist?('src/App.svelte')).to be true
+      %w(tool_angular tool_react tool_svelte).each do |removed|
+        it "rejects the removed #{removed} generator" do
+          expect { run_gen([removed, 'Test Tool']) }
+            .to raise_error(SystemExit).and output(/Unknown generator '#{removed}'/).to_stderr
+        end
       end
 
       include_examples 'standard help/arg behavior', 'tool_vue'

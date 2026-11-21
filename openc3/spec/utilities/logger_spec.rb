@@ -69,7 +69,7 @@ module OpenC3
       end
 
       it "warns once and returns INFO for an unknown level" do
-        stderr = StringIO.new('', 'r+')
+        stderr = StringIO.new(String.new, 'r+')
         $stderr = stderr
         ENV['OPENC3_LOG_LEVEL'] = 'WARNING'
         expect(Logger.default_level).to eql Logger::INFO
@@ -89,7 +89,7 @@ module OpenC3
     end
 
     def test_output(level, method, block = false)
-      stdout = StringIO.new('', 'r+')
+      stdout = StringIO.new(String.new, 'r+')
       $stdout = stdout
       Logger.level = level
       if block
@@ -112,7 +112,7 @@ module OpenC3
     end
 
     def test_no_output(level, method, block = false)
-      stdout = StringIO.new('', 'r+')
+      stdout = StringIO.new(String.new, 'r+')
       $stdout = stdout
       Logger.level = level
       if block
@@ -227,8 +227,8 @@ module OpenC3
 
       # Helper method to setup StringIO streams
       def setup_streams
-        stdout = StringIO.new('', 'r+')
-        stderr = StringIO.new('', 'r+')
+        stdout = StringIO.new(String.new, 'r+')
+        stderr = StringIO.new(String.new, 'r+')
         $stdout = stdout
         $stderr = stderr
         [stdout, stderr]
@@ -334,7 +334,7 @@ module OpenC3
       end
 
       def setup_stdout
-        stdout = StringIO.new('', 'r+')
+        stdout = StringIO.new(String.new, 'r+')
         $stdout = stdout
         stdout
       end

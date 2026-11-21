@@ -9,6 +9,8 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+from typing import Any
+
 from openc3.api import WHITELIST
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.interface_model import InterfaceModel
@@ -38,12 +40,20 @@ WHITELIST.extend(
 )
 
 
-# Get information about an interface
-#
-# @since 5.0.0
-# @param interface_name [String] Interface name
-# @return [Hash] Hash of all the interface information
-def get_interface(interface_name, scope=OPENC3_SCOPE):
+def get_interface(interface_name: str, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
+    """Return the configuration and current status of an interface.
+
+    Args:
+        interface_name: Interface name.
+        scope: COSMOS scope.
+
+    Returns:
+        The interface configuration merged with its status (state, clients,
+        queue sizes, byte and packet counts).
+
+    Raises:
+        RuntimeError: If the interface does not exist.
+    """
     authorize(permission="system", interface_name=interface_name, scope=scope)
     interface = InterfaceModel.get(name=interface_name, scope=scope)
     if not interface:
@@ -51,60 +61,84 @@ def get_interface(interface_name, scope=OPENC3_SCOPE):
     return interface | InterfaceStatusModel.get_or_default(name=interface_name, scope=scope)
 
 
-# @return [Array<String>] All the interface names
-def get_interface_names(scope=OPENC3_SCOPE):
+def get_interface_names(scope: str = OPENC3_SCOPE) -> list[str]:
+    """Return the names of all interfaces.
+
+    Args:
+        scope: COSMOS scope.
+
+    Returns:
+        Sorted interface names.
+    """
     authorize(permission="system", scope=scope)
     return InterfaceModel.names(scope=scope)
 
 
-# Connects an interface and starts its telemetry gathering thread
-#
-# @param interface_name [String] The name of the interface
-# @param interface_params [Array] Optional parameters to pass to the interface
-def connect_interface(interface_name, *interface_params, scope=OPENC3_SCOPE):
+def connect_interface(interface_name: str, *interface_params: Any, scope: str = OPENC3_SCOPE) -> None:
+    """Connect an interface and start its telemetry gathering thread.
+
+    Args:
+        interface_name: Interface name.
+        *interface_params: Optional parameters which replace the interface's
+            configured parameters when it is rebuilt.
+        scope: COSMOS scope.
+    """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
     InterfaceTopic.connect_interface(interface_name, *interface_params, scope=scope)
 
 
-# Disconnects from an interface and kills its telemetry gathering thread
-#
-# @param interface_name [String] The name of the interface
-def disconnect_interface(interface_name, scope=OPENC3_SCOPE):
+def disconnect_interface(interface_name: str, scope: str = OPENC3_SCOPE) -> None:
+    """Disconnect an interface and stop its telemetry gathering thread.
+
+    Args:
+        interface_name: Interface name.
+        scope: COSMOS scope.
+    """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
     InterfaceTopic.disconnect_interface(interface_name, scope=scope)
 
 
-# Starts raw logging for an interface
-#
-# @param interface_name [String] The name of the interface
-def start_raw_logging_interface(interface_name="ALL", scope=OPENC3_SCOPE):
+def start_raw_logging_interface(interface_name: str = "ALL", scope: str = OPENC3_SCOPE) -> None:
+    """Start raw logging on an interface.
+
+    Args:
+        interface_name: Interface name, or ALL (default) for every interface.
+        scope: COSMOS scope.
+    """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
     if interface_name == "ALL":
-        for interface_name in get_interface_names():
+        for interface_name in get_interface_names(scope=scope):
             InterfaceTopic.start_raw_logging(interface_name, scope=scope)
     else:
         InterfaceTopic.start_raw_logging(interface_name, scope=scope)
 
 
-# Stop raw logging for an interface
-#
-# @param interface_name [String] The name of the interface
-def stop_raw_logging_interface(interface_name="ALL", scope=OPENC3_SCOPE):
+def stop_raw_logging_interface(interface_name: str = "ALL", scope: str = OPENC3_SCOPE) -> None:
+    """Stop raw logging on an interface.
+
+    Args:
+        interface_name: Interface name, or ALL (default) for every interface.
+        scope: COSMOS scope.
+    """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
     if interface_name == "ALL":
-        for interface_name in get_interface_names():
+        for interface_name in get_interface_names(scope=scope):
             InterfaceTopic.stop_raw_logging(interface_name, scope=scope)
     else:
         InterfaceTopic.stop_raw_logging(interface_name, scope=scope)
 
 
-# Get information about all interfaces
-#
-# @return [Array<Array<String, Numeric, Numeric, Numeric, Numeric, Numeric,
-#   Numeric, Numeric>>] Array of Arrays containing \[name, state, num clients,
-#   TX queue size, RX queue size, TX bytes, RX bytes, Command count,
-#   Telemetry count] for all interfaces
-def get_all_interface_info(scope=OPENC3_SCOPE):
+def get_all_interface_info(scope: str = OPENC3_SCOPE) -> list[list[Any]]:
+    """Return status information about all interfaces in a single call.
+
+    Args:
+        scope: COSMOS scope.
+
+    Returns:
+        One list per interface containing [name, state, num clients,
+        TX queue size, RX queue size, TX bytes, RX bytes, command count,
+        telemetry count, disable disconnect].
+    """
     authorize(permission="system", scope=scope)
     info = []
     for int_name, int in InterfaceStatusModel.all(scope=scope).items():
@@ -131,22 +165,32 @@ def get_all_interface_info(scope=OPENC3_SCOPE):
     return info
 
 
-# Associates a target and all its commands and telemetry with a particular
-# interface. All the commands will go out over and telemetry be received
-# from that interface.
-#
-# @param target_name [String/Array] The name of the target(s)
-# @param interface_name (see #connect_interface)
 def map_target_to_interface(
-    target_name,
-    interface_name,
-    cmd_only=False,
-    tlm_only=False,
-    unmap_old=True,
-    scope=OPENC3_SCOPE,
-):
+    target_name: str | list[str],
+    interface_name: str,
+    cmd_only: bool = False,
+    tlm_only: bool = False,
+    unmap_old: bool = True,
+    scope: str = OPENC3_SCOPE,
+) -> None:
+    """Map one or more targets to an interface.
+
+    All of the target's commands go out over, and telemetry is received
+    from, that interface.
+
+    Args:
+        target_name: Target name, or a list of target names.
+        interface_name: Interface name.
+        cmd_only: Map only the target's commands.
+        tlm_only: Map only the target's telemetry.
+        unmap_old: Remove the target from any interface it was previously mapped to.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the interface does not exist.
+    """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
-    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    interface = _get_interface_model(interface_name, "map_target_to_interface", scope)
     if isinstance(target_name, list):
         target_names = target_name
     else:
@@ -156,21 +200,30 @@ def map_target_to_interface(
         Logger.info(f"Target {name} mapped to Interface {interface_name}", scope=scope)
 
 
-# Removes the association of a target and all its commands and telemetry with a particular
-# interface. None of the commands will go out over and no telemetry be received
-# from that interface.
-#
-# @param target_name [String/Array] The name of the target(s)
-# @param interface_name (see #connect_interface)
 def unmap_target_from_interface(
-    target_name,
-    interface_name,
-    cmd_only=False,
-    tlm_only=False,
-    scope=OPENC3_SCOPE,
-):
+    target_name: str | list[str],
+    interface_name: str,
+    cmd_only: bool = False,
+    tlm_only: bool = False,
+    scope: str = OPENC3_SCOPE,
+) -> None:
+    """Unmap one or more targets from an interface.
+
+    None of the target's commands go out over, and no telemetry is received
+    from, that interface.
+
+    Args:
+        target_name: Target name, or a list of target names.
+        interface_name: Interface name.
+        cmd_only: Unmap only the target's commands.
+        tlm_only: Unmap only the target's telemetry.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the interface does not exist.
+    """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
-    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    interface = _get_interface_model(interface_name, "unmap_target_from_interface", scope)
     if isinstance(target_name, list):
         target_names = target_name
     else:
@@ -180,19 +233,43 @@ def unmap_target_from_interface(
         Logger.info(f"Target {name} unmapped from Interface {interface_name}", scope=scope)
 
 
-def interface_cmd(interface_name, cmd_name, *cmd_params, scope=OPENC3_SCOPE):
+def interface_cmd(interface_name: str, cmd_name: str, *cmd_params: Any, scope: str = OPENC3_SCOPE) -> None:
+    """Send a command directly to an interface.
+
+    The command is handled by the interface's `interface_cmd` method. The
+    base Interface class supports clear_counters.
+
+    Args:
+        interface_name: Interface name.
+        cmd_name: Name of the interface command.
+        *cmd_params: Parameters for the interface command.
+        scope: COSMOS scope.
+    """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
     InterfaceTopic.interface_cmd(interface_name, cmd_name, *cmd_params, scope=scope)
 
 
 def interface_protocol_cmd(
-    interface_name,
-    cmd_name,
-    *cmd_params,
-    read_write="READ_WRITE",
-    index=-1,
-    scope=OPENC3_SCOPE,
-):
+    interface_name: str,
+    cmd_name: str,
+    *cmd_params: Any,
+    read_write: str = "READ_WRITE",
+    index: int = -1,
+    scope: str = OPENC3_SCOPE,
+) -> None:
+    """Send a command to the protocols of an interface.
+
+    The command is handled by each matching protocol's `protocol_cmd` method.
+
+    Args:
+        interface_name: Interface name.
+        cmd_name: Name of the protocol command.
+        *cmd_params: Parameters for the protocol command.
+        read_write: Protocols to send to: READ, WRITE or READ_WRITE (default).
+        index: Index of the protocol in the stack to send to. -1 (default)
+            sends to every protocol.
+        scope: COSMOS scope.
+    """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
     InterfaceTopic.protocol_cmd(
         interface_name,
@@ -205,14 +282,28 @@ def interface_protocol_cmd(
 
 
 def interface_target_enable(
-    interface_name,
-    target_name,
-    cmd_only=False,
-    tlm_only=False,
-    scope=OPENC3_SCOPE,
-):
+    interface_name: str,
+    target_name: str,
+    cmd_only: bool = False,
+    tlm_only: bool = False,
+    scope: str = OPENC3_SCOPE,
+) -> None:
+    """Enable a target on an interface.
+
+    Setting both cmd_only and tlm_only is the same as setting neither.
+
+    Args:
+        interface_name: Interface name.
+        target_name: Target name.
+        cmd_only: Enable only the target's commands.
+        tlm_only: Enable only the target's telemetry.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the interface does not exist.
+    """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
-    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    interface = _get_interface_model(interface_name, "interface_target_enable", scope)
     if cmd_only and tlm_only:
         cmd_only = False
         tlm_only = False
@@ -227,14 +318,28 @@ def interface_target_enable(
 
 
 def interface_target_disable(
-    interface_name,
-    target_name,
-    cmd_only=False,
-    tlm_only=False,
-    scope=OPENC3_SCOPE,
-):
+    interface_name: str,
+    target_name: str,
+    cmd_only: bool = False,
+    tlm_only: bool = False,
+    scope: str = OPENC3_SCOPE,
+) -> None:
+    """Disable a target on an interface.
+
+    Setting both cmd_only and tlm_only is the same as setting neither.
+
+    Args:
+        interface_name: Interface name.
+        target_name: Target name.
+        cmd_only: Disable only the target's commands.
+        tlm_only: Disable only the target's telemetry.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the interface does not exist.
+    """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
-    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    interface = _get_interface_model(interface_name, "interface_target_disable", scope)
     if cmd_only and tlm_only:
         cmd_only = False
         tlm_only = False
@@ -248,6 +353,27 @@ def interface_target_disable(
     )
 
 
-def interface_details(interface_name, scope=OPENC3_SCOPE):
+def interface_details(interface_name: str, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
+    """Return detailed runtime information from a running interface.
+
+    Args:
+        interface_name: Interface name.
+        scope: COSMOS scope.
+
+    Returns:
+        Interface details such as its configuration, target mappings and
+        enables, and recent raw data.
+
+    Raises:
+        RuntimeError: If the interface does not respond in time or fails to
+            return details.
+    """
     authorize(permission="system", interface_name=interface_name, scope=scope)
     return InterfaceTopic.interface_details(interface_name, scope=scope)
+
+
+def _get_interface_model(interface_name: str, method_name: str, scope: str) -> InterfaceModel:
+    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    if interface is None:
+        raise RuntimeError(f"Interface '{interface_name}' does not exist ({method_name})")
+    return interface

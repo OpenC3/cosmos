@@ -90,7 +90,7 @@ test('disable parameter conversions', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText('Sets numbered parameters')
   await expect(page.locator('main')).toContainText('Value 1 setting') // Ensures the params are rendered
   await page.locator('[data-test="select-send"]').click()
-  await page.locator('rux-icon-apps').getByRole('img').click()
+  await page.locator('[data-test="nav-drawer-toggle"]').click()
 
   await page.locator('text=Script Runner').click()
   await expect(page.locator('.v-app-bar')).toContainText('Script Runner')
