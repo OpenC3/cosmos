@@ -58,8 +58,8 @@ export class Utilities {
         if (!token) return undefined
         const payload = token
           .split('.')[1]
-          .replace(/-/g, '+')
-          .replace(/_/g, '/')
+          .replaceAll('-', '+')
+          .replaceAll('_', '/')
         return JSON.parse(atob(payload)).preferred_username
       })
     } catch {
