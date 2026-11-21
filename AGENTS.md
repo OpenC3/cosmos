@@ -294,6 +294,16 @@ accurate, so:
 - Follow the existing modules (e.g. `openc3/python/openc3/api/tlm_api.py`) for
   calling styles, `Deprecated: use x.` notes, and `scope: str = OPENC3_SCOPE`.
 
+## Release Notes
+
+Fill in the "Release notes" section of the PR description
+(`.github/pull_request_template.md`): one or two plain-language sentences for
+users, or "None" for changes users won't notice. When users must act on
+upgrade (a migration, a change to a file they keep a copy of such as
+`compose.yaml`, `.env`, or `openc3-redis/users.acl`, a behavior change that
+custom plugins, tools, or scripts depend on, or a removal), say exactly what
+to do. The `release-notes` skill builds the release notes from these sections.
+
 ## Commit Messages
 
 [Conventional Commits v1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
