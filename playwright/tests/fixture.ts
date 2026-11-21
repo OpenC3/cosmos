@@ -167,12 +167,7 @@ export const test = base.extend<{
         // Keeping the file fresh is what stops that. Safe because every spec
         // that logs out mid-test runs in the single-worker *.s.spec.ts batch, so
         // these fixed paths are never written by two workers at once.
-        await page.locator('input[name="username"]').fill(username)
-        await page.locator('input[name="password"]').fill(password)
-        await Promise.all([
-          page.waitForURL(`${baseURL}${toolPath}`),
-          page.locator('button:has-text("Sign In")').click(),
-        ])
+        await utils.signIn(username, password)
         await saveAuthState(
           page.context(),
           username === 'admin' ? ADMIN_STORAGE_STATE : STORAGE_STATE,
