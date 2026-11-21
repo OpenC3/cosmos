@@ -279,6 +279,19 @@ ensure
   exit(result)
 end
 
+# Internal: run by PluginModel.modified_diff in a child process, like
+# load_plugin is for installs. Writes {"files": [...]} or {"error": "message"}
+# to result_file.
+def plugin_modified_diff(scope, plugin_hash_file, result_file)
+  plugin_hash = JSON.parse(File.read(plugin_hash_file), allow_nan: true)
+  files = OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope, diff_only: true)
+  File.write(result_file, JSON.generate({ 'files' => files }))
+rescue Exception => e
+  File.write(result_file, JSON.generate({ 'error' => e.message })) rescue nil
+  puts e.formatted
+  exit(ERROR_CODE)
+end
+
 def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:, existing_plugin_name:, force: false, username: nil, version_history_files: nil)
   new_gem = File.basename(plugin_file_path)
   old_gem = existing_plugin_name.split("__")[0]
@@ -1661,6 +1674,16 @@ if not ARGV[0].nil? # argument(s) given
 
   when 'migratepassword'
     migrate_password_hash()
+
+  when 'modifieddiff'
+    # Internal, used by PluginModel.modified_diff (not listed in print_usage)
+    if ARGV[1].nil? || ARGV[3].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli modifieddiff SCOPE PLUGIN_HASH.json RESULT.json"
+      puts ""
+      puts "Internal: list modified target files that installing the plugin would supersede"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
+    plugin_modified_diff(ARGV[1], ARGV[2], ARGV[3])
 
   when 'migratetouv'
     if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
