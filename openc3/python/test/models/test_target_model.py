@@ -523,7 +523,7 @@ class TestTargetModelMultipleDbShards(unittest.TestCase):
 
     def test_all_item_names_builds_the_list_on_the_target_db_shard(self):
         items = TargetModel.all_item_names("INST", scope="DEFAULT")
-        self.assertIn(b"TEMP1", items)
+        self.assertIn("TEMP1", items)
         self.assertIn(b"TEMP1", self.shard1.zrange("DEFAULT__openc3tlm__INST__allitems", 0, -1))
         self.assertFalse(self.shard0.exists("DEFAULT__openc3tlm__INST__allitems"))
 

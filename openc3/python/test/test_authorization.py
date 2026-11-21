@@ -10,8 +10,13 @@
 # if purchased from OpenC3, Inc.
 
 import unittest
+import warnings
+from unittest.mock import patch
 
-from openc3.script.authorization import CosmosAuthorization
+import requests
+
+from openc3.script.authorization import CosmosAuthorization, CosmosKeycloakAuthorization
+from openc3.script.decorators import request_wrapper
 
 
 class CosmosMockRequest:
@@ -30,65 +35,48 @@ class TestCosmosAuthorization(unittest.TestCase):
         self.assertTrue("Authorization" in requ.headers)
 
 
-# class TestCosmosKeycloakAuthorization(unittest.TestCase):
-#     HOST, PORT = "127.0.0.1", 7777
+class TestCosmosKeycloakAuthorization(unittest.TestCase):
+    def error_response(self, status_code):
+        response = requests.Response()
+        response.status_code = status_code
+        response.url = "http://keycloak/realms/openc3/protocol/openid-connect/token"
+        response.request = requests.Request("POST", response.url).prepare()
+        response._content = b'{"error": "invalid_grant"}'
+        return response
 
-#     @patch("requests.post")
-#     def test_object(self, post):
-#         """
-#         Test json request
-#         """
-#         keycloak = CosmosKeycloakAuthorization(hostname=self.HOST, port=self.PORT)
-#         post.assert_not_called()
-#         self.assertIsNotNone(keycloak.request_url)
-#         self.assertTrue(self.HOST in keycloak.request_url)
-#         self.assertTrue(str(self.PORT) in keycloak.request_url)
+    def test_no_deprecation_warning_by_default(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            CosmosKeycloakAuthorization()
 
-# @patch("requests.post")
-# def test_object_localhost(self, post):
-#     """
-#     Test json request
-#     """
-#     keycloak = CosmosKeycloakAuthorization()
-#     post.assert_not_called()
-#     self.assertIsNotNone(keycloak.request_url)
-#     self.assertTrue(self.HOST in keycloak.request_url)
-#     self.assertTrue("2900" in keycloak.request_url)
+    def test_schema_hostname_port_are_deprecated(self):
+        with self.assertWarns(DeprecationWarning):
+            auth = CosmosKeycloakAuthorization(schema="https", hostname="other-host", port=443)
+        self.assertNotIn("other-host", str(auth.request_url))
 
-# @patch("requests.post")
-# def test_object_tacocat(self, post):
-#     """
-#     Test hostname in request_url
-#     """
-#     hostname = "tacocat"
-#     keycloak = CosmosKeycloakAuthorization(hostname=hostname, port=self.PORT)
-#     post.assert_not_called()
-#     self.assertIsNotNone(keycloak.request_url)
-#     self.assertTrue(hostname in keycloak.request_url)
-#     self.assertTrue(str(self.PORT) in keycloak.request_url)
+    @patch("requests.post")
+    def test_token_request_raises_for_http_errors(self, post):
+        for status_code in (400, 401, 404, 500):
+            post.return_value = self.error_response(status_code)
+            auth = CosmosKeycloakAuthorization()
+            with self.assertRaisesRegex(RuntimeError, f"Error response {status_code} while requesting"):
+                auth._make_token_request()
+            with self.assertRaisesRegex(RuntimeError, f"Error response {status_code} while requesting"):
+                auth._make_refresh_request()
 
-# @patch("requests.post")
-# def test_keycloak(self, post):
-#     """
-#     Test keycloak status 200
-#     """
-#     ret = {
-#         "access_token": "",
-#         "expires_in": 600,
-#         "refresh_expires_in": 1800,
-#         "refresh_token": "",
-#         "token_type": "bearer",
-#         "id_token": "",
-#         "not-before-policy": 0,
-#         "session_state": "",
-#         "scope": "openid email profile",
-#     }
-#     post.return_value = MagicMock(status_code=200, json=lambda: ret)
-#     requ = CosmosMockRequest()
-#     auth = CosmosKeycloakAuthorization()
-#     auth(requ)
-#     self.assertTrue("Authorization" in requ.headers)
-#     post.assert_called_once()
+
+class TestRequestWrapper(unittest.TestCase):
+    def test_http_errors_above_400_raise(self):
+        response = requests.Response()
+        response.status_code = 500
+        response.url = "http://example.org"
+
+        @request_wrapper
+        def failing_request():
+            raise requests.HTTPError(response=response, request=requests.Request("GET", response.url).prepare())
+
+        with self.assertRaisesRegex(RuntimeError, "Error response 500 while requesting 'http://example.org/'"):
+            failing_request()
 
 
 if __name__ == "__main__":
