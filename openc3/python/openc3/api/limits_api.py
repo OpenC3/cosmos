@@ -81,23 +81,21 @@ def get_overall_limits_state(ignored_items: list[Any] | None = None, scope: str 
     out_of_limits = get_out_of_limits(scope=scope)
     overall = "GREEN"
 
-    # Build easily matchable ignore list
+    # Build easily matchable ignore list without modifying the caller's list
+    ignored_keys = []
     if ignored_items is not None:
-        new_items = []
         for item in ignored_items:
             if len(item) != 3:
                 raise RuntimeError(f"Invalid ignored item: {item}. Must be [TGT, PKT, ITEM] where ITEM can be None.")
-            if item[2] is None:
-                item[2] = ""
-            new_items.append("__".join(item))
-        ignored_items = new_items
-    else:
-        ignored_items = []
+            ignored_keys.append(f"{item[0]}__{item[1]}__{item[2] or ''}")
 
     for target_name, packet_name, item_name, limits_state in out_of_limits:
-        # Ignore this item if we match one of the ignored items
-        for item in ignored_items:
-            if item in f"{target_name}__{packet_name}__{item_name}":
+        # Ignore this item if we match one of the ignored items. A key ending in __
+        # has no item so it matches every item in the packet, otherwise the item must
+        # match exactly so ignoring TEMP1 does not also ignore TEMP10.
+        full_name = f"{target_name}__{packet_name}__{item_name}"
+        for key in ignored_keys:
+            if full_name.startswith(key) if key.endswith("__") else full_name == key:
                 break
         else:  # Executed if 'for item in ignored_items:' did NOT break
             if limits_state == "RED" or limits_state == "RED_HIGH" or limits_state == "RED_LOW":
@@ -209,7 +207,8 @@ def get_limits(target_name: str, packet_name: str, item_name: str, scope: str = 
     limits = {}
     item = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
     for key, vals in item["limits"].items():
-        if not isinstance(vals, dict):
+        # Skip non-numeric limits such as SEQUENCE, CHANGE, or STATIC change limits
+        if not isinstance(vals, dict) or "red_low" not in vals:
             continue
 
         limits[key] = [
@@ -289,6 +288,11 @@ def set_limits(
             raise RuntimeError(f"Item '{target_name} {name} {item_name}' does not exist while setting limits")
         if not item["limits"]:
             raise RuntimeError("Cannot set_limits on item without any limits")
+        default = item["limits"].get("DEFAULT")
+        if isinstance(default, dict) and default.get("change_type"):
+            raise RuntimeError(
+                f"Cannot set_limits on item '{target_name} {name} {item_name}' with {default['change_type']} limits"
+            )
         items.append((name, packet, item))
     for name, packet, item in items:
         if persistence:

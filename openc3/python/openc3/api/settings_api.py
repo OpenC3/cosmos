@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.:
 
+import warnings
 from typing import Any
 
 from openc3.api import WHITELIST
@@ -99,10 +100,10 @@ def set_setting(name: str, data: Any, local_mode: bool = True, scope: str = OPEN
     Requires admin permission.
 
     Args:
-        name: Name of the setting.
-        data: Setting data. Must be JSON serializable.
-        local_mode: Whether to also save the setting in local mode.
-        scope: COSMOS scope.
+        name (str): Name of the setting.
+        data (Any): Setting data. Must be JSON serializable.
+        local_mode (bool): Whether to also save the setting in local mode.
+        scope (str): COSMOS scope.
     """
     authorize(permission="admin", scope=scope)
     SettingModel.set({"name": name, "data": data}, scope=scope)
@@ -112,16 +113,17 @@ def set_setting(name: str, data: Any, local_mode: bool = True, scope: str = OPEN
     Logger.info(f"User {username} saved setting '{name}': {data}", scope=scope, user=username)
 
 
-# DEPRECATED
 def save_setting(name: str, data: Any, local_mode: bool = True, scope: str = OPENC3_SCOPE) -> None:
     """Set the data of a setting.
 
-    Deprecated: use `set_setting`.
+    .. deprecated:: 5.12.0
+       Use set_setting instead.
 
     Args:
-        name: Name of the setting.
-        data: Setting data. Must be JSON serializable.
-        local_mode: Whether to also save the setting in local mode.
-        scope: COSMOS scope.
+        name (str): Name of the setting.
+        data (Any): Setting data. Must be JSON serializable.
+        local_mode (bool): Whether to also save the setting in local mode.
+        scope (str): COSMOS scope.
     """
+    warnings.warn("save_setting is deprecated, use set_setting", FutureWarning, stacklevel=2)
     set_setting(name, data, local_mode, scope)

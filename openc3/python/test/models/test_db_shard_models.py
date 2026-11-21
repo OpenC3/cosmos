@@ -207,7 +207,7 @@ class TestTargetDbShard(DbShardModelTestCase):
         self.assertEqual(TargetModel.packet("INST", "ABORT", type="CMD", scope="DEFAULT")["packet_name"], "ABORT")
         packet_names = [packet["packet_name"] for packet in TargetModel.packets("INST", scope="DEFAULT")]
         self.assertIn("HEALTH_STATUS", packet_names)
-        self.assertIn(b"TEMP1", TargetModel.all_item_names("INST", scope="DEFAULT"))
+        self.assertIn("TEMP1", TargetModel.all_item_names("INST", scope="DEFAULT"))
         self.clear_cache(TargetModel, "item_map_cache")
         self.assertEqual(TargetModel.get_item_to_packet_map("INST", scope="DEFAULT")["TEMP1"], ["HEALTH_STATUS"])
 

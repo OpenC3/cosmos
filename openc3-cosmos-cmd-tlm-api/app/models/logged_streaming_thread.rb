@@ -68,7 +68,7 @@ class LoggedStreamingThread < StreamingThread
     # start_time can be at most 1 minute in the future to prevent
     # spinning up threads that just block forever
     if (first_object.start_time - ALLOWABLE_START_TIME_OFFSET_NSEC) > Time.now.to_nsec_from_epoch
-      OpenC3::Logger.info "Finishing stream start_time too far in future"
+      OpenC3::Logger.debug "Finishing stream start_time too far in future"
       finish(objects)
       @cancel_thread = true
       return
@@ -89,7 +89,7 @@ class LoggedStreamingThread < StreamingThread
       else
         if first_object.end_time and first_object.end_time < oldest_time
           # Bad times - just end
-          OpenC3::Logger.info "Finishing stream - start_time after end_time"
+          OpenC3::Logger.debug "Finishing stream - start_time after end_time"
           finish(objects)
           @cancel_thread = true
           return
@@ -98,8 +98,11 @@ class LoggedStreamingThread < StreamingThread
           # Guesstimate start offset in stream based on first packet time and redis time
           redis_time = oldest_msg_id.split('-')[0].to_i * 1_000_000
           delta = redis_time - oldest_time
-          # Start streaming from calculated redis time
-          offset = ((first_object.start_time + delta) / 1_000_000).to_s + '-0'
+          # The delay between a message's time and its stream write varies, so a single
+          # delta can land after messages at or after start_time. Start earlier by the
+          # overlap buffer; before_start_time? skips anything before start_time.
+          offset_ms = (first_object.start_time - TSDB_STREAM_OVERLAP_NSEC + delta) / 1_000_000
+          offset = (offset_ms > 0 ? offset_ms.to_s : '0') + '-0'
           # OpenC3::Logger.debug "stream from Redis offset:#{offset} redis_time:#{redis_time} delta:#{delta}"
           objects.each {|object| object.offset = offset}
           @thread_mode = :STREAM
@@ -148,7 +151,7 @@ class LoggedStreamingThread < StreamingThread
     end
 
     if done # We reached the end time
-      OpenC3::Logger.info "Finishing LoggedStreamingThread for #{@collection.length} objects - Reached End Time"
+      OpenC3::Logger.debug "Finishing LoggedStreamingThread for #{@collection.length} objects - Reached End Time"
       finish(@collection.objects)
       return
     end
@@ -160,9 +163,10 @@ class LoggedStreamingThread < StreamingThread
     @thread_mode = :STREAM
   end
 
-  # Overlap buffer when bridging from TSDB to Valkey stream.
-  # The offset interpolation is approximate, so we start reading 2 seconds
-  # earlier to guarantee overlap. The redis_thread_body filter deduplicates.
+  # Overlap buffer when estimating a Valkey stream offset from a time (setup and
+  # the TSDB to Valkey bridge). The offset interpolation is approximate, so we start
+  # reading 2 seconds earlier to guarantee overlap. skip_message? and before_start_time?
+  # filter the extra messages.
   TSDB_STREAM_OVERLAP_NSEC = 2 * 1_000_000_000
 
   def bridge_tsdb_to_stream
@@ -186,9 +190,9 @@ class LoggedStreamingThread < StreamingThread
         offset_ms = (last_time - TSDB_STREAM_OVERLAP_NSEC + delta) / 1_000_000
         offset = (offset_ms > 0 ? offset_ms.to_s : '0') + '-0'
         offset_by_topic[topic] = offset
-        OpenC3::Logger.info "TSDB->STREAM bridge: topic=#{topic} last_tsdb_time=#{last_time} offset=#{offset}"
+        OpenC3::Logger.debug "TSDB->STREAM bridge: topic=#{topic} last_tsdb_time=#{last_time} offset=#{offset}"
       else
-        OpenC3::Logger.info "TSDB->STREAM bridge: topic=#{topic} no Valkey messages, using 0-0"
+        OpenC3::Logger.debug "TSDB->STREAM bridge: topic=#{topic} no Valkey messages, using 0-0"
       end
     end
 
@@ -390,7 +394,12 @@ class LoggedStreamingThread < StreamingThread
 
     # Filter to tables that exist and have data in the queried range
     per_table.select! { |table_name, meta| tsdb_table_exists?(table_name, meta[:db_shard]) }
-    if per_table.size > 1
+    if @time_type == :RECEIVED
+      # The packet time bounds lookup also finds the tables without data
+      per_table.select! do |table_name, meta|
+        meta[:packet_bounds] = received_packet_bounds(table_name, start_time, end_time, meta[:db_shard])
+      end
+    elsif per_table.size > 1
       per_table.select! do |table_name, meta|
         db_shard = meta[:db_shard]
         OpenC3::QuestDBClient.table_has_data?(table_name, start_time, end_time, db_shard: db_shard, time_type: @time_type)
@@ -414,7 +423,7 @@ class LoggedStreamingThread < StreamingThread
         sql_to_local << i unless name.nil?
       end
 
-      query = OpenC3::QuestDBClient.build_item_columns_query(table_name, query_names, start_time, end_time, include_received_ts: needs_received_ts, time_type: @time_type, include_times: @streaming_api.include_times)
+      query = OpenC3::QuestDBClient.build_item_columns_query(table_name, query_names, start_time, end_time, include_received_ts: needs_received_ts, time_type: @time_type, include_times: @streaming_api.include_times, packet_bounds: meta[:packet_bounds])
       OpenC3::Logger.debug("QuestDB per-table query: #{query}")
 
       cursors << {
@@ -593,7 +602,12 @@ class LoggedStreamingThread < StreamingThread
         end
       end
 
-      query = OpenC3::QuestDBClient.build_reduced_query(table_name, selects, start_time, end_time, sample_interval, time_type: @time_type)
+      packet_bounds = received_packet_bounds(table_name, start_time, end_time, db_shard)
+      unless packet_bounds
+        done = true if past_end_time?(end_time)
+        next
+      end
+      query = OpenC3::QuestDBClient.build_reduced_query(table_name, selects, start_time, end_time, sample_interval, time_type: @time_type, packet_bounds: packet_bounds)
 
       OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced query", db_shard: db_shard) do |result|
         break if @cancel_thread
@@ -764,7 +778,12 @@ class LoggedStreamingThread < StreamingThread
       pkt_type = (first_object.cmd_or_tlm == :CMD) ? :CMD : :TLM
       packet_def = OpenC3::QuestDBClient.fetch_packet_def(first_object.target_name, first_object.packet_name, type: pkt_type, scope: @scope)
 
-      query = OpenC3::QuestDBClient.build_packet_query(table_name, start_time, end_time, time_type: @time_type)
+      packet_bounds = received_packet_bounds(table_name, start_time, end_time, db_shard)
+      unless packet_bounds
+        done = true if past_end_time?(end_time)
+        next
+      end
+      query = OpenC3::QuestDBClient.build_packet_query(table_name, start_time, end_time, time_type: @time_type, packet_bounds: packet_bounds)
 
       OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "packet query", db_shard: db_shard) do |result|
         break if @cancel_thread
@@ -843,7 +862,12 @@ class LoggedStreamingThread < StreamingThread
         next
       end
 
-      query = OpenC3::QuestDBClient.build_reduced_query(table_name, selects, start_time, end_time, sample_interval, time_type: @time_type)
+      packet_bounds = received_packet_bounds(table_name, start_time, end_time, db_shard)
+      unless packet_bounds
+        done = true if past_end_time?(end_time)
+        next
+      end
+      query = OpenC3::QuestDBClient.build_reduced_query(table_name, selects, start_time, end_time, sample_interval, time_type: @time_type, packet_bounds: packet_bounds)
 
       OpenC3::QuestDBClient.paginate_query(query, @max_batch_size, label: "reduced packet query", db_shard: db_shard) do |result|
         break if @cancel_thread
@@ -899,9 +923,31 @@ class LoggedStreamingThread < StreamingThread
     @last_tsdb_times[topic] = time_ns if !prev or time_ns > prev
   end
 
+  # Valkey reads start before start_time (see TSDB_STREAM_OVERLAP_NSEC), so skip the
+  # earlier messages. This only applies here: after handoff the realtime thread
+  # delivers everything, as it did before the overlap read existed.
+  def before_start_time?(object, time)
+    object.start_time and time < object.start_time
+  end
+
   # Returns true if end_time is set and has been reached.
   def past_end_time?(end_time)
     end_time and end_time <= Time.now.to_nsec_from_epoch
+  end
+
+  # Returns the packet_bounds to pass to a QuestDBClient query builder: [nil, nil] for
+  # packet time, or the [min, max] packet times of the rows received in the range.
+  # Returns nil when no rows were received in the range.
+  # Received time isn't the designated timestamp, so without these limits every page of
+  # a received-time query scans and sorts the whole table.
+  def received_packet_bounds(table_name, start_time, end_time, db_shard)
+    return [nil, nil] unless @time_type == :RECEIVED
+    bounds = OpenC3::QuestDBClient.packet_time_bounds(table_name, start_time, end_time, db_shard: db_shard)
+    return nil unless bounds
+    # Rows can still be written in an open-ended or recent range and their packet times
+    # can be later than the max found now, so only limit from below until the range is done
+    bounds[1] = nil unless past_end_time?(end_time && (end_time + TSDB_STREAM_OVERLAP_NSEC))
+    bounds
   end
 
   # Splits "ARY[0]" into ["ARY", 0] and "TEMP1" into ["TEMP1", nil]

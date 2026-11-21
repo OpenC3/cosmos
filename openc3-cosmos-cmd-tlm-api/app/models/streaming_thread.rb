@@ -50,18 +50,18 @@ class StreamingThread
 
   def add(collection)
     collection.objects.each do |object|
-      OpenC3::Logger.info "Adding #{object.key}"
+      OpenC3::Logger.debug "Adding #{object.key}"
       @collection.add(object)
     end
   end
 
   def remove(collection)
     collection.objects.each do |object|
-      OpenC3::Logger.info "Removing #{object.key}"
+      OpenC3::Logger.debug "Removing #{object.key}"
       @collection.remove(object)
     end
     if @collection.objects.length == 0
-      OpenC3::Logger.info "Last object removed, canceling streaming."
+      OpenC3::Logger.debug "Last object removed, canceling streaming."
       @cancel_thread = true
     end
   end
@@ -298,12 +298,21 @@ class StreamingThread
     objects.each do |object|
       if object.end_time and time > object.end_time
         completed_objects << object
+      elsif before_start_time?(object, time)
+        next
       else
         result << object
       end
     end
     finish(completed_objects) if completed_objects.length > 0
     return result
+  end
+
+  # Whether to skip a message stamped before the object's start_time. Realtime
+  # streaming delivers every message, so objects handed off from a LoggedStreamingThread
+  # keep getting live data even when the target's clock is behind their start_time.
+  def before_start_time?(_object, _time)
+    false
   end
 
   # Only use this method if nothing was received from Redis
@@ -313,9 +322,9 @@ class StreamingThread
   end
 
   def finish(objects)
-    OpenC3::Logger.info "Finishing #{objects.length} objects from stream"
+    OpenC3::Logger.debug "Finishing #{objects.length} objects from stream"
     objects.each do |object|
-      @collection.remove(object)
+      @collection.remove(object, exact: true)
     end
     @cancel_thread = true if @collection.empty?
   end
@@ -369,18 +378,19 @@ class StreamingThread
   end
 
   def handoff_objects(collection, topic, item_objects_by_topic, packet_objects_by_topic)
-    objects = item_objects_by_topic[topic]
+    # dup because these arrays are shared with the collection and remove deletes from them
+    objects = item_objects_by_topic[topic]&.dup
     if objects
       objects.each do |object|
         @collection.add(object)
-        collection.remove(object)
+        collection.remove(object, exact: true)
       end
     end
-    objects = packet_objects_by_topic[topic]
+    objects = packet_objects_by_topic[topic]&.dup
     if objects
       objects.each do |object|
         @collection.add(object)
-        collection.remove(object)
+        collection.remove(object, exact: true)
       end
     end
   end

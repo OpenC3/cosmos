@@ -13,7 +13,8 @@ several months as users transition to the latest version.
 
 ## Reporting a Vulnerability
 
-To report a vulnerability, go to the Security and quality tab and click Report a vulnerability.
+To report a vulnerability, [open a private vulnerability report](https://github.com/OpenC3/cosmos/security/advisories/new),
+or go to the Security and quality tab and click Report a vulnerability.
 
 We will triage the vulnerability within 1 week and typically Accept it as a Draft.
 We then work on a fix and link it to the Draft advisory before submitting the CVE to Github.

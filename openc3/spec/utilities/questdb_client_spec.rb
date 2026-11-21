@@ -391,6 +391,34 @@ module OpenC3
         expect(QuestDBClient).to have_received(:query_with_retry).with('SELECT 1 FROM "TBL" WHERE RECEIVED_TIMESECONDS >= 1 AND RECEIVED_TIMESECONDS < 2 LIMIT 1', max_retries: 1, label: "table_has_data", db_shard: 1)
       end
 
+      it "limits received time queries to the packet time bounds" do
+        expect(QuestDBClient.time_where_clause(1, 2, time_type: :RECEIVED, packet_bounds: [10, 20])).to eq(" WHERE RECEIVED_TIMESECONDS >= 1 AND RECEIVED_TIMESECONDS < 2 AND PACKET_TIMESECONDS >= 10 AND PACKET_TIMESECONDS <= 20")
+        expect(QuestDBClient.time_where_clause(1, nil, time_type: :RECEIVED, packet_bounds: [10, nil])).to eq(" WHERE RECEIVED_TIMESECONDS >= 1 AND PACKET_TIMESECONDS >= 10")
+        # Packet time queries already filter on the designated timestamp
+        expect(QuestDBClient.time_where_clause(1, 2, packet_bounds: [10, 20])).to eq(" WHERE PACKET_TIMESECONDS >= 1 AND PACKET_TIMESECONDS < 2")
+        query = QuestDBClient.build_item_columns_query("TBL", ['"TEMP1"'], 1, 2, time_type: :RECEIVED, packet_bounds: [10, 20])
+        expect(query).to end_with('WHERE RECEIVED_TIMESECONDS >= 1 AND RECEIVED_TIMESECONDS < 2 AND PACKET_TIMESECONDS >= 10 AND PACKET_TIMESECONDS <= 20 ORDER BY RECEIVED_TIMESECONDS, PACKET_TIMESECONDS')
+        query = QuestDBClient.build_packet_query("TBL", 1, 2, time_type: :RECEIVED, packet_bounds: [10, 20])
+        expect(query).to end_with('WHERE RECEIVED_TIMESECONDS >= 1 AND RECEIVED_TIMESECONDS < 2 AND PACKET_TIMESECONDS >= 10 AND PACKET_TIMESECONDS <= 20 ORDER BY RECEIVED_TIMESECONDS, PACKET_TIMESECONDS')
+        query = QuestDBClient.build_reduced_query("TBL", [QuestDBClient.timestamp_select(:RECEIVED)], 1, 2, '1h', time_type: :RECEIVED, packet_bounds: [10, 20])
+        expect(query).to include('(SELECT * FROM "TBL" WHERE RECEIVED_TIMESECONDS >= 1 AND RECEIVED_TIMESECONDS < 2 AND PACKET_TIMESECONDS >= 10 AND PACKET_TIMESECONDS <= 20 ORDER BY RECEIVED_TIMESECONDS)')
+      end
+
+      it "looks up the packet time bounds of the rows received in a range" do
+        result = double("result", ntuples: 1)
+        allow(result).to receive(:[]).with(0).and_return({ 'min_time' => '10', 'max_time' => '20' })
+        allow(QuestDBClient).to receive(:query_with_retry).and_return(result)
+        expect(QuestDBClient.packet_time_bounds("TBL", 1, 2, db_shard: 1)).to eq([10, 20])
+        expect(QuestDBClient).to have_received(:query_with_retry).with('SELECT CAST(min(PACKET_TIMESECONDS) AS LONG) as min_time, CAST(max(PACKET_TIMESECONDS) AS LONG) as max_time FROM "TBL" WHERE RECEIVED_TIMESECONDS >= 1 AND RECEIVED_TIMESECONDS < 2', label: "packet_time_bounds", db_shard: 1)
+      end
+
+      it "returns nil packet time bounds when no rows were received in the range" do
+        result = double("result", ntuples: 1)
+        allow(result).to receive(:[]).with(0).and_return({ 'min_time' => nil, 'max_time' => nil })
+        allow(QuestDBClient).to receive(:query_with_retry).and_return(result)
+        expect(QuestDBClient.packet_time_bounds("TBL", 1, 2)).to be_nil
+      end
+
       it "returns the requested time as __time from item rows" do
         meta = { item_keys: ['TEMP1'], item_types: [{ 'data_type' => 'FLOAT', 'array_size' => nil }], stored_timestamp_item_keys: {}, calculated_positions: {} }
         row = [["TEMP1", 1.5], ["PACKET_TIMESECONDS", 100], ["__rx_time_ns", 250], ["COSMOS_EXTRA", nil]]

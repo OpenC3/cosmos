@@ -105,6 +105,6 @@ class StreamingObject
     # Subscriptions to the same key with different time types are separate. A prefix
     # (rather than a suffix) can't collide with an item_key and keeps PACKET ids unchanged.
     @id = "#{@time_type}__#{@id}" unless @time_type == :PACKET
-    OpenC3::Logger.info("Creating object #{@id} start:#{@start_time} end:#{@end_time} time_type:#{@time_type} offset:#{@offset}")
+    OpenC3::Logger.debug("Creating object #{@id} start:#{@start_time} end:#{@end_time} time_type:#{@time_type} offset:#{@offset}")
   end
 end

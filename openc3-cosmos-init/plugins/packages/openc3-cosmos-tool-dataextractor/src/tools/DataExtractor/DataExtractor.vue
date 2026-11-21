@@ -379,6 +379,9 @@ export default {
       },
       cmdOrTlm: 'tlm',
       timeType: 'PACKET',
+      // timeType captured when an extraction starts so changing the selection
+      // mid-extraction can't relabel the timestamps already requested
+      activeTimeType: 'PACKET',
       items: [],
       search: '',
       headers: [
@@ -809,6 +812,7 @@ export default {
       }
 
       this.progress = 0
+      this.activeTimeType = this.timeType
       this.processButtonText = 'Cancel'
       // We're using the ActionCable implementation of AnyCable via mapping of events:
       // https://github.com/anycable/anycable-client/blob/master/packages/core/create-cable/index.js#L218
@@ -877,7 +881,7 @@ export default {
             items: items,
             start_time: this.startDateTime,
             end_time: this.endDateTime,
-            time_type: this.timeType,
+            time_type: this.activeTimeType,
           })
         })
         // An AuthRequiredError means we have no token and are being redirected
@@ -932,9 +936,9 @@ export default {
     buildHeaders: function (itemKeys) {
       // Normal column mode has the target and packet listed for each item
       if (this.columnHeaders.length === 0 && this.columnMode === 'normal') {
-        // __time holds the packet or received time depending on timeType
+        // __time holds the packet or received time depending on activeTimeType
         this.columnHeaders.push(
-          this.timeType === 'RECEIVED' ? 'RECEIVED_TIME' : 'TIME',
+          this.activeTimeType === 'RECEIVED' ? 'RECEIVED_TIME' : 'TIME',
         )
         this.columnHeaders.push('TARGET')
         this.columnHeaders.push('PACKET')
@@ -1166,7 +1170,8 @@ export default {
       } else if (this.fileCount === 0) {
         let start = new Date(this.startDateTime / 1000000).toISOString()
         let end = new Date(this.endDateTime / 1000000).toISOString()
-        let timeName = this.timeType === 'RECEIVED' ? 'received' : 'packet'
+        let timeName =
+          this.activeTimeType === 'RECEIVED' ? 'received' : 'packet'
         this.$notify.caution({
           body: `No data found for the items in the requested ${timeName} time range of ${start} to ${end}`,
         })

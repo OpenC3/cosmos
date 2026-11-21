@@ -378,6 +378,8 @@ The HTTP client interface connects to a HTTP server to send commands and receive
 | Connect Timeout             | Number of seconds to wait before aborting the connection                                | No       | 5          |
 | Include Request In Response | Whether to include the request in the extra data                                        | No       | false      |
 
+Requests are only sent to the configured host, port and protocol. Redirects are not followed. A redirect response (status 3xx) is returned like any other response, so it goes to the HTTP_ERROR_PACKET if one is defined.
+
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
 
