@@ -5,15 +5,22 @@
 # if purchased from OpenC3, Inc.
 
 # ---------------------------------------------------------------------------
-# Local compose override
+# Example local compose override
 # ---------------------------------------------------------------------------
-# Edit this file to customize your
-# deployment WITHOUT modifying the upstream compose.yaml. This keeps pulling
-# in future COSMOS updates clean (compose.yaml stays pristine).
+# This is an EXAMPLE. Don't edit it - COSMOS upgrades replace it. Instead copy
+# it (or just the blocks you need) to compose.override.yaml and edit that:
+#
+#   cp compose.override.example.yaml compose.override.yaml
+#
+# compose.override.yaml is yours: COSMOS never ships it and 'openc3.sh upgrade'
+# never touches it, so your customizations survive upgrades and compose.yaml
+# stays pristine. Commit it to your project's git repository.
 #
 # openc3.sh automatically merges compose.override.yaml on top of compose.yaml
 # when it exists (docker compose -f compose.yaml -f compose.override.yaml ...),
-# so no other changes are needed. See:
+# so no other changes are needed. This example file is NOT loaded. After an
+# upgrade, compare this file with your compose.override.yaml to see newly
+# documented options. See:
 #   https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/
 #
 # UNCOMMENT "services:" TOO
@@ -44,8 +51,8 @@
 #
 # DO NOT PUT SECRETS HERE
 # ---------------------------------------------------------------------------
-# This file is tracked by git. Never hardcode passwords / keys
-# (OPENC3_*_PASSWORD, SECRET_KEY_BASE, etc.) in this file. To override a
+# compose.override.yaml is tracked by git. Never hardcode passwords / keys
+# (OPENC3_*_PASSWORD, SECRET_KEY_BASE, etc.) in it. To override a
 # secret, put it in a .env.local file next to .env (it is gitignored and is
 # loaded after .env, so its values win). compose.yaml already reads the
 # secrets via ${VAR} interpolation, so setting the value in .env.local is all

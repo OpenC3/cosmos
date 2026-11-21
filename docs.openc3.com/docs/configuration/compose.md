@@ -6,12 +6,13 @@ sidebar_custom_props:
   myEmoji: 🐳
 ---
 
-COSMOS runs as a set of containers described by two Docker Compose files in your COSMOS project:
+COSMOS runs as a set of containers described by Docker Compose files in your COSMOS project:
 
 | File | Owner | Purpose |
 | --- | --- | --- |
 | `compose.yaml` | COSMOS | The upstream service definitions. Treat as read only. |
-| `compose.override.yaml` | You | Your customizations, merged on top of `compose.yaml`. |
+| `compose.override.example.yaml` | COSMOS | A fully commented example override. Not loaded. Treat as read only. |
+| `compose.override.yaml` | You | Your customizations, merged on top of `compose.yaml`. You create it; COSMOS never ships it. |
 
 Environment variable *values* live in `.env` and `.env.local` - see [Environment Variables](environment.md).
 
@@ -19,7 +20,7 @@ Environment variable *values* live in `.env` and `.env.local` - see [Environment
 
 `compose.yaml` defines every COSMOS service (`openc3-cosmos-cmd-tlm-api`, `openc3-operator`, `openc3-redis`, `openc3-traefik`, ...), the volumes they mount and, under each service's `environment:` key, the variables that service reads.
 
-Editing it works, but it conflicts on every COSMOS upgrade, because upgrading a COSMOS project means pulling in a new `compose.yaml`. Put your changes in `compose.override.yaml` instead and `compose.yaml` stays pristine.
+Don't edit it. [`openc3.sh upgrade`](../getting-started/upgrading.md) replaces `compose.yaml` with the version from the new release, so your edits are lost. Put your changes in `compose.override.yaml` instead and `compose.yaml` stays pristine.
 
 ## compose.override.yaml
 
@@ -31,7 +32,27 @@ docker compose --env-file .env -f compose.yaml -f compose.override.yaml ...
 
 No other change is needed - creating the file is enough. Compose merges the two per the [multiple compose files](https://docs.docker.com/compose/how-tos/multiple-compose-files/merge/) rules: only the keys you specify change, and everything else is inherited.
 
-The file that ships with a COSMOS project is entirely comments, with a worked example for every service. Uncomment what you need.
+COSMOS ships `compose.override.example.yaml`, which is entirely comments with a worked example for every service. To start, copy it and uncomment what you need:
+
+```bash
+cp compose.override.example.yaml compose.override.yaml
+```
+
+Or create an empty `compose.override.yaml` and copy in only the blocks you need. Either way, commit `compose.override.yaml` to your project's git repository.
+
+### Upgrades leave your file alone
+
+`compose.override.yaml` is yours. COSMOS never ships a file with that name, and `openc3.sh upgrade` skips it, so your customizations survive every upgrade. Don't edit `compose.override.example.yaml`: it belongs to COSMOS and each upgrade replaces it.
+
+After an upgrade, and before you commit it, see what changed in the example:
+
+```bash
+git diff compose.override.example.yaml
+```
+
+:::warning[Upgrading from 7.3.0 through 7.5.1]
+Those releases shipped the example as `compose.override.yaml` itself, and their upgrade script deletes that file on the first upgrade to a newer release. See [Upgrading](../getting-started/upgrading.md#cosmos-upgrades) for how to restore it.
+:::
 
 ### Uncomment `services:` too
 
@@ -103,7 +124,7 @@ services:
 The exceptions, which read their value instead: `OPENC3_DEMO`, and the `OPENC3_SETTINGS_OVERWRITE` / `OPENC3_SETTINGS_ALLOW_UNKNOWN` / `OPENC3_SETTINGS_STRICT` variables described in [Controlling how the settings are applied](../getting-started/cli.md#controlling-how-the-settings-are-applied). Those accept `true`/`false` (and `1`/`0`), so `OPENC3_DEMO=false` does not install the Demo.
 :::
 
-Each flag is documented in `compose.override.yaml` under the service it applies to, since a flag only takes effect on the container that reads it - `OPENC3_NO_*` tool flags and `OPENC3_FORCE_INSTALL` on `openc3-cosmos-init`, `OPENC3_ALLOW_HTTP` on `openc3-traefik`, and so on.
+Each flag is documented in `compose.override.example.yaml` under the service it applies to, since a flag only takes effect on the container that reads it - `OPENC3_NO_*` tool flags and `OPENC3_FORCE_INSTALL` on `openc3-cosmos-init`, `OPENC3_ALLOW_HTTP` on `openc3-traefik`, and so on.
 
 ## Configuring Admin settings at deploy time
 
@@ -123,4 +144,4 @@ These variables are deliberately absent from `compose.yaml`; adding them here is
 
 ## Do not put secrets in this file
 
-`compose.override.yaml` is tracked by git. Never hardcode a password or key (`OPENC3_*_PASSWORD`, `SECRET_KEY_BASE`) here. `compose.yaml` already reads those through `${VAR}` interpolation, so setting the value in a gitignored `.env.local` is all that is needed - see [Environment Variables](environment.md#envlocal) and [Security](../getting-started/security.md#overriding-secrets-with-envlocal).
+You commit `compose.override.yaml` to git. Never hardcode a password or key (`OPENC3_*_PASSWORD`, `SECRET_KEY_BASE`) here. `compose.yaml` already reads those through `${VAR}` interpolation, so setting the value in a gitignored `.env.local` is all that is needed - see [Environment Variables](environment.md#envlocal) and [Security](../getting-started/security.md#overriding-secrets-with-envlocal).

@@ -57,6 +57,8 @@ if not defined CONTAINER_COMPOSE_CMD (
 
 REM Merge a user-provided compose.override.yaml (if present) on top of
 REM compose.yaml so local customizations layer on without editing compose.yaml.
+REM COSMOS ships only compose.override.example.yaml, which is not loaded, so
+REM upgrades never touch the user's file.
 REM See https://github.com/OpenC3/cosmos/issues/3024
 set COMPOSE_OVERRIDE=
 if exist "%~dp0compose.override.yaml" (

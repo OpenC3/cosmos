@@ -56,8 +56,9 @@ Then start claude and run the following to authenticate:
 
 <span class="badge badge--secondary since-right">Since 7.2.1</span>
 To disable the MCP Server entirely, set the following environment variable in
-the `openc3-metrics` section of the `compose.override.yaml` file at the root of
-your COSMOS Enterprise project and restart COSMOS:
+the `openc3-metrics` section of your COSMOS Enterprise project's
+`compose.override.yaml` (see [Docker Compose](/docs/configuration/compose)) and
+restart COSMOS:
 
 ```yaml
 services:

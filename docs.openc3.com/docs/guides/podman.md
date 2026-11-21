@@ -180,7 +180,7 @@ The following instructions must be performed for each user using COSMOS. Individ
    ```
 
    :::warning[compose.override.yaml cannot be empty under Podman]
-   COSMOS ships `compose.override.yaml` with everything commented out. Docker Compose accepts that, but a Podman build rejects a compose file with no content. If you hit an error parsing the override file, either delete it or give it a single valid key:
+   If you copy `compose.override.example.yaml` to `compose.override.yaml` without uncommenting anything, the file is all comments. Docker Compose accepts that, but a Podman build rejects a compose file with no content. If you hit an error parsing the override file, either delete it or give it a single valid key:
 
    ```yaml
    services: {}
