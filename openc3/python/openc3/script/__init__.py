@@ -9,7 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import threading
+import time
 from typing import Any
 
 from openc3.environment import OPENC3_KEYCLOAK_URL, OPENC3_SCOPE
@@ -210,7 +210,7 @@ def open_file_dialog(title: str, message: str = "Open File", filter: str | None 
 
     Script Runner replaces this command line version with a file dialog that
     returns the selected file. The command line version prompts for a file
-    name and returns None.
+    name and returns it.
 
     Args:
         title: Title to put on the dialog.
@@ -218,9 +218,9 @@ def open_file_dialog(title: str, message: str = "Open File", filter: str | None 
         filter: Comma delimited file types to allow, e.g. ".txt,.doc".
 
     Returns:
-        The selected file in Script Runner, otherwise None.
+        The selected file in Script Runner, otherwise the file name typed at the prompt.
     """
-    _file_dialog(title, message, filter)
+    return _file_dialog(title, message, filter)
 
 
 def open_files_dialog(title: str, message: str = "Open File", filter: str | None = None) -> Any:
@@ -228,7 +228,7 @@ def open_files_dialog(title: str, message: str = "Open File", filter: str | None
 
     Script Runner replaces this command line version with a file dialog that
     returns a list of the selected files. The command line version prompts
-    for a file name and returns None.
+    for a file name and returns it.
 
     Args:
         title: Title to put on the dialog.
@@ -236,9 +236,10 @@ def open_files_dialog(title: str, message: str = "Open File", filter: str | None
         filter: Comma delimited file types to allow, e.g. ".txt,.doc".
 
     Returns:
-        The list of selected files in Script Runner, otherwise None.
+        The list of selected files in Script Runner, otherwise the file name
+        typed at the prompt.
     """
-    _file_dialog(title, message, filter)
+    return _file_dialog(title, message, filter)
 
 
 def open_bucket_dialog(
@@ -404,7 +405,7 @@ def prompt_for_critical_cmd(
             return
         elif status == "REJECTED":
             raise RuntimeError("Critical command rejected")
-        threading.sleep(0.1)
+        time.sleep(0.1)
 
 
 # Define all the WHITELIST methods

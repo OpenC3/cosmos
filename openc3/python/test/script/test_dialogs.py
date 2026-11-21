@@ -14,7 +14,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from openc3.script import open_bucket_dialog
+from openc3.script import open_bucket_dialog, open_file_dialog, open_files_dialog, prompt_for_critical_cmd
 
 
 class TestOpenBucketDialog(unittest.TestCase):
@@ -36,6 +36,39 @@ class TestOpenBucketDialog(unittest.TestCase):
         # Hint text should mention both kwargs to the user.
         self.assertIn("config/DEFAULT/targets/INST2/procedures/", output)
         self.assertIn(".py", output)
+
+
+class TestOpenFileDialogs(unittest.TestCase):
+    def test_open_file_dialog_returns_user_input(self):
+        with patch("builtins.input", return_value="foo.txt"), redirect_stdout(io.StringIO()):
+            self.assertEqual(open_file_dialog("Title"), "foo.txt")
+
+    def test_open_files_dialog_returns_user_input(self):
+        with patch("builtins.input", return_value="foo.txt"), redirect_stdout(io.StringIO()):
+            self.assertEqual(open_files_dialog("Title"), "foo.txt")
+
+
+class TestPromptForCriticalCmd(unittest.TestCase):
+    def test_waits_until_approved(self):
+        statuses = iter(["WAITING", "WAITING", "APPROVED"])
+        with (
+            patch("openc3.script.critical_cmd_status", side_effect=lambda uuid, scope: next(statuses)) as status,
+            patch("openc3.script.time.sleep") as sleep,
+            redirect_stdout(io.StringIO()),
+        ):
+            prompt_for_critical_cmd("uuid", "user", "INST", "CLEAR", {}, 'cmd("INST CLEAR")', scope="OTHER")
+        self.assertEqual(sleep.call_count, 2)
+        status.assert_called_with("uuid", scope="OTHER")
+
+    def test_raises_when_rejected(self):
+        statuses = iter(["WAITING", "REJECTED"])
+        with (
+            patch("openc3.script.critical_cmd_status", side_effect=lambda uuid, scope: next(statuses)),
+            patch("openc3.script.time.sleep"),
+            redirect_stdout(io.StringIO()),
+            self.assertRaisesRegex(RuntimeError, "Critical command rejected"),
+        ):
+            prompt_for_critical_cmd("uuid", "user", "INST", "CLEAR", {}, 'cmd("INST CLEAR")')
 
 
 if __name__ == "__main__":

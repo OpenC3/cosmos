@@ -194,6 +194,18 @@ class TestTlmApi(unittest.TestCase):
         set_tlm("INST", "HEALTH_STATUS", "TEMP1", -50.0)
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), (-50.0))
 
+    def test_set_tlm_sets_the_value_in_the_given_scope(self):
+        # https://github.com/OpenC3/cosmos/issues/4288
+        with (
+            patch(
+                "openc3.api.tlm_api._set_tlm_process_args",
+                return_value=("INST", "HEALTH_STATUS", "TEMP1", 5),
+            ),
+            patch("openc3.api.tlm_api.CvtModel.set_item") as set_item,
+        ):
+            set_tlm("INST HEALTH_STATUS TEMP1 = 5", scope="OTHER")
+            set_item.assert_called_once_with("INST", "HEALTH_STATUS", "TEMP1", 5, "CONVERTED", scope="OTHER")
+
     def test_set_tlm_sets_raw_telemetry(self):
         set_tlm("INST HEALTH_STATUS TEMP1 = 10.0", type="RAW")
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP1", type="RAW"), 10.0)
@@ -622,10 +634,15 @@ class TestTlmApi(unittest.TestCase):
         items = get_all_tlm_item_names("INST", scope="DEFAULT")
         self.assertEqual(type(items), list)
         self.assertEqual(len(items), 65)
-        self.assertIn(b"ARY", items)
-        self.assertIn(b"ATTPROGRESS", items)
-        self.assertIn(b"BLOCKTEST", items)
-        self.assertIn(b"CCSDSAPID", items)
+        self.assertIn("ARY", items)
+        self.assertIn("ATTPROGRESS", items)
+        self.assertIn("BLOCKTEST", items)
+        self.assertIn("CCSDSAPID", items)
+        self.assertTrue(all(isinstance(item, str) for item in items))
+        # A second call reads the existing list rather than rebuilding it
+        items = get_all_tlm_item_names("INST", scope="DEFAULT")
+        self.assertIn("ARY", items)
+        self.assertTrue(all(isinstance(item, str) for item in items))
 
     # get_tlm
     def test_get_tlm_raises_if_the_target_or_packet_do_not_exist(self):
