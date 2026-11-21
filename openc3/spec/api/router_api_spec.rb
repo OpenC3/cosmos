@@ -115,6 +115,13 @@ module OpenC3
         expect_any_instance_of(OpenC3::Interface).to receive(:start_raw_logging)
         @api.start_raw_logging_router("ALL")
       end
+
+      it "should start raw logging on all routers in the given scope" do
+        RouterModel.new(name: "OTHER_INT", scope: "OTHER").create
+        expect(RouterTopic).to receive(:start_raw_logging).with("OTHER_INT", scope: "OTHER")
+        expect(RouterTopic).not_to receive(:start_raw_logging).with("ROUTE_INT", anything)
+        @api.start_raw_logging_router("ALL", scope: "OTHER")
+      end
     end
 
     describe "stop_raw_logging_router" do
@@ -126,6 +133,13 @@ module OpenC3
       it "should stop raw logging on all routers" do
         expect_any_instance_of(OpenC3::Interface).to receive(:stop_raw_logging)
         @api.stop_raw_logging_router("ALL")
+      end
+
+      it "should stop raw logging on all routers in the given scope" do
+        RouterModel.new(name: "OTHER_INT", scope: "OTHER").create
+        expect(RouterTopic).to receive(:stop_raw_logging).with("OTHER_INT", scope: "OTHER")
+        expect(RouterTopic).not_to receive(:stop_raw_logging).with("ROUTE_INT", anything)
+        @api.stop_raw_logging_router("ALL", scope: "OTHER")
       end
     end
 
