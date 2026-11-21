@@ -89,6 +89,8 @@ You can also add links to existing tools in the navigation bar by using the Add 
 
 The Redis tab allows you to interact directly with the underlying Redis database, making it easy to modify or delete data. THIS IS DANGEROUS, and should only be performed by COSMOS developers.
 
+In COSMOS Enterprise, the Redis tab and the TSDB query tab need the `superadmin` permission (the `ALLSCOPES__admin` role), since they can read and change data for every scope. The admin role of a single scope can't use them.
+
 ![Redis](/img/admin/redis.png)
 
 ### Secrets

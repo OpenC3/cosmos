@@ -21,7 +21,9 @@ class RedisController < ApplicationController
   ]
 
   def execute_raw
-    return unless authorization('admin')
+    # Raw access spans every scope, so require system-wide admin (ALLSCOPES__admin
+    # in Enterprise) rather than admin of the requested scope
+    return unless authorization('superadmin')
 
     args = request.body.read.split(' ').compact
 

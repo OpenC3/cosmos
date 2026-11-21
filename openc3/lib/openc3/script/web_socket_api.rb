@@ -172,7 +172,8 @@ module OpenC3
       @stream.write(data)
     end
 
-    # Connect to the websocket with authorization in query params
+    # Connect to the websocket. The token is sent in the subscription identifier
+    # (see #subscribe), never in the URL.
     def connect
       disconnect()
       final_url = @url + "?scope=#{@scope}"
