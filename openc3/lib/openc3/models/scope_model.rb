@@ -366,6 +366,22 @@ module OpenC3
       Logger.info "Configured microservice #{microservice_name}"
     end
 
+    # Runs the TSDB partition archive, restore and release jobs. Its own process (not a SCOPEMULTI child), since
+    # the jobs are long and on Kubernetes it gets the archive volume.
+    def deploy_tsdb_partitions_microservice(gem_path, variables)
+      microservice_name = "#{@scope}__TSDBPARTITIONS__#{@scope}"
+      microservice = MicroserviceModel.new(
+        name: microservice_name,
+        cmd: ["ruby", "tsdb_partitions_microservice.rb", microservice_name],
+        work_dir: "/openc3-enterprise/lib/openc3-enterprise/microservices",
+        shard: @shard,
+        scope: @scope
+      )
+      microservice.create
+      microservice.deploy(gem_path, variables)
+      Logger.info "Configured microservice #{microservice_name}"
+    end
+
     def deploy_scopemulti_microservice(gem_path, variables)
       microservice_name = "#{@scope}__SCOPEMULTI__#{@scope}"
       microservice = MicroserviceModel.new(
@@ -413,6 +429,9 @@ module OpenC3
       if @scope == "DEFAULT"
         # Periodic Microservice
         deploy_periodic_microservice(gem_path, variables, @parent)
+
+        # TSDB data is cluster wide, so one TSDB Partitions Microservice serves every scope
+        deploy_tsdb_partitions_microservice(gem_path, variables) if ENTERPRISE
       end
 
       # Scope Cleanup Microservice
