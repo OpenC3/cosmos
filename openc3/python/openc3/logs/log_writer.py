@@ -299,14 +299,14 @@ class LogWriter:
                 self.enforce_time_order
                 and self.previous_time_nsec_since_epoch
                 and (self.previous_time_nsec_since_epoch > time_nsec_since_epoch)
+                and not self.out_of_order
             ):
                 # Warning= Creating new files here can cause lots of files to be created if packets make it through out of order:
                 # Changed to just a warning to prevent file thrashing
-                if not self.out_of_order:
-                    Logger.warn(
-                        f"Log writer out of order time detected (increase buffer depth?): {from_nsec_from_epoch(self.previous_time_nsec_since_epoch)} {from_nsec_from_epoch(time_nsec_since_epoch)}"
-                    )
-                    self.out_of_order = True
+                Logger.warn(
+                    f"Log writer out of order time detected (increase buffer depth?): {from_nsec_from_epoch(self.previous_time_nsec_since_epoch)} {from_nsec_from_epoch(time_nsec_since_epoch)}"
+                )
+                self.out_of_order = True
         # This is needed for the redis offset marker entry at the end of the log file
         if redis_topic and redis_offset:
             self.last_offsets[redis_topic] = redis_offset

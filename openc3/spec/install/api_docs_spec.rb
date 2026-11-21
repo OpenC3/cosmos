@@ -27,6 +27,8 @@ module OpenC3
 
     # APIs that are documented but intentionally not in standard source locations
     EXTRA_DOCS_ALLOWED = %w(download_file)
+    # Command Authority APIs are defined in COSMOS Enterprise, not in core source
+    EXTRA_DOCS_ALLOWED.concat(%w(cmd_authority_info cmd_authority_take cmd_authority_release cmd_authority_take_all cmd_authority_release_all))
 
     def parse_file(filename, methods)
       File.open(filename) do |file|

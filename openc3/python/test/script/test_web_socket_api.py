@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import inspect
 import json
 import os
 import sys
@@ -19,6 +20,7 @@ from unittest.mock import Mock, patch
 
 from websockets.exceptions import ConnectionClosedOK
 
+from openc3.environment import OPENC3_SCOPE
 from openc3.script.exceptions import StopScriptError
 from openc3.script.web_socket_api import (
     AllScriptsWebSocketApi,
@@ -715,9 +717,7 @@ class TestWebSocketApiGenerateAuth(unittest.TestCase):
 
     def test_preserves_keycloak_authentication_from_the_shared_factory(self):
         expected_auth = OpenC3KeycloakAuthentication("http://keycloak:8080")
-        with patch(
-            "openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth
-        ):
+        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth):
             self.assertIs(self.api._generate_auth(), expected_auth)
 
 
@@ -992,7 +992,8 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
         auth_patcher.start().return_value = mock_auth()
         self.addCleanup(auth_patcher.stop)
         stream_patcher = patch("openc3.script.web_socket_api.WebSocketClientStream")
-        stream_patcher.start().return_value = self.stream
+        self.stream_class = stream_patcher.start()
+        self.stream_class.return_value = self.stream
         self.addCleanup(stream_patcher.stop)
         env_patcher = patch.dict(os.environ, {"OPENC3_API_PASSWORD": "password"}, clear=True)
         env_patcher.start()
@@ -1080,6 +1081,25 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
         self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
         StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc))
         self.assertEqual(self.stream.disconnect_count, 1)
+
+    def test_connects_with_the_requested_scope(self):
+        self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
+        StreamingWebSocketApi.read_all(
+            items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc), scope="OTHER"
+        )
+        self.assertTrue(self.stream_class.call_args.args[0].endswith("?scope=OTHER"))
+        self.assertEqual(action_data(self.stream)[0]["scope"], "OTHER")
+
+    def test_connects_with_the_default_scope_when_not_given(self):
+        self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
+        StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc))
+        self.assertTrue(self.stream_class.call_args.args[0].endswith(f"?scope={OPENC3_SCOPE}"))
+        self.assertEqual(action_data(self.stream)[0]["scope"], OPENC3_SCOPE)
+
+    def test_only_accepts_keyword_arguments(self):
+        # Positional arguments made it easy to pass the scope as the timeout
+        parameters = inspect.signature(StreamingWebSocketApi.read_all).parameters.values()
+        self.assertEqual({p.kind for p in parameters}, {inspect.Parameter.KEYWORD_ONLY})
 
 
 if __name__ == "__main__":

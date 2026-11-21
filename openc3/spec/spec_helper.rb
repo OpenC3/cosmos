@@ -372,6 +372,22 @@ def capture_io(output = false)
   end
 end
 
+# Poll until the block returns truthy or the timeout expires.
+#
+# Call this instead of sleeping a fixed amount when waiting on a background
+# microservice thread to process telemetry. A sleep that is long enough on a
+# developer machine can be too short on a loaded CI runner, which makes the
+# expectation that follows it flaky. Does not fail on timeout: the caller's
+# expectation still runs so its failure message stays useful.
+def wait_for(timeout: 5, interval: 0.005)
+  start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  while (Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) < timeout
+    return if yield
+
+    sleep interval
+  end
+end
+
 # Get a list of running threads
 def running_threads
   threads = []
