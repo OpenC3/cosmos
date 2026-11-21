@@ -68,7 +68,7 @@ class Topic(metaclass=TopicMeta):
     def clear_topics(cls, topics, maxlen=0, db_shard=0):
         store = EphemeralStore.instance(db_shard=db_shard)
         for topic in topics:
-            store.xtrim(topic, maxlen)
+            store.xtrim(topic, maxlen, approximate=False)
 
     @classmethod
     def topics(cls, key, scope, db_shard=0):

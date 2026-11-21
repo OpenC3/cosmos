@@ -50,25 +50,33 @@ module OpenC3
 
     # @deprecated
     def check_with_units(*args, scope: $openc3_scope, token: $openc3_token)
+      OpenC3.deprecation_warning("`check_with_units` is deprecated. Please use `check_formatted` instead.", uplevel: 1)
       check(*args, type: :FORMATTED, scope: scope, token: token)
     end
 
     # Executes the passed method and expects an exception to be raised.
-    # Raises a CheckError if an Exception is not raised.
+    # Raises a CheckError if the method does not exist or an Exception is not raised.
     # Usage:
     #   check_exception(method_name, method_params}
     def check_exception(method_name, *args, **kwargs)
+      # Check outside the rescue so an unknown method doesn't count as the expected exception
+      unless respond_to?(method_name.intern, true)
+        raise(CheckError, "check_exception: #{method_name} is not a scripting method")
+      end
+
       orig_kwargs = kwargs.clone
       kwargs[:scope] = $openc3_scope unless kwargs[:scope]
       kwargs[:token] = $openc3_token unless kwargs[:token]
-      send(method_name.intern, *args, **kwargs)
-      method = "#{method_name}(#{args.join(", ")}"
-      method += ", #{orig_kwargs}" unless orig_kwargs.empty?
-      method += ")"
-    rescue Exception => e
-      puts "CHECK: #{method} raised #{e.class}:#{e.message}"
-    else
-      raise(CheckError, "#{method} should have raised an exception but did not.")
+      begin
+        send(method_name.intern, *args, **kwargs)
+      rescue Exception => e
+        puts "CHECK: #{method_name} raised #{e.class}:#{e.message}"
+      else
+        method = "#{method_name}(#{args.join(", ")}"
+        method += ", #{orig_kwargs}" unless orig_kwargs.empty?
+        method += ")"
+        raise(CheckError, "#{method} should have raised an exception but did not.")
+      end
     end
 
     # Check the converted value of a telmetry item against an expected value with a tolerance.

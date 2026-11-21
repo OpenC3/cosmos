@@ -108,7 +108,7 @@ def start_raw_logging_router(router_name: str = "ALL", scope: str = OPENC3_SCOPE
     """
     authorize(permission="system_set", router_name=router_name, scope=scope)
     if router_name == "ALL":
-        for router_name in get_router_names():
+        for router_name in get_router_names(scope=scope):
             RouterTopic.start_raw_logging(router_name, scope=scope)
     else:
         RouterTopic.start_raw_logging(router_name, scope=scope)
@@ -123,7 +123,7 @@ def stop_raw_logging_router(router_name: str = "ALL", scope: str = OPENC3_SCOPE)
     """
     authorize(permission="system_set", router_name=router_name, scope=scope)
     if router_name == "ALL":
-        for router_name in get_router_names():
+        for router_name in get_router_names(scope=scope):
             RouterTopic.stop_raw_logging(router_name, scope=scope)
     else:
         RouterTopic.stop_raw_logging(router_name, scope=scope)
@@ -225,9 +225,12 @@ def map_target_to_router(
         tlm_only: Map only the target's telemetry.
         unmap_old: Remove the target from any router it was previously mapped to.
         scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the router does not exist.
     """
     authorize(permission="system_set", router_name=router_name, scope=scope)
-    router = RouterModel.get_model(name=router_name, scope=scope)
+    router = _get_router_model(router_name, "map_target_to_router", scope)
     if isinstance(target_name, list):
         target_names = target_name
     else:
@@ -252,9 +255,12 @@ def unmap_target_from_router(
         cmd_only: Unmap only the target's commands.
         tlm_only: Unmap only the target's telemetry.
         scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the router does not exist.
     """
     authorize(permission="system_set", router_name=router_name, scope=scope)
-    router = RouterModel.get_model(name=router_name, scope=scope)
+    router = _get_router_model(router_name, "unmap_target_from_router", scope)
     if isinstance(target_name, list):
         target_names = target_name
     else:
@@ -281,9 +287,12 @@ def router_target_enable(
         cmd_only: Enable only the target's commands.
         tlm_only: Enable only the target's telemetry.
         scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the router does not exist.
     """
     authorize(permission="system_set", router_name=router_name, scope=scope)
-    router = RouterModel.get_model(name=router_name, scope=scope)
+    router = _get_router_model(router_name, "router_target_enable", scope)
     if cmd_only and tlm_only:
         cmd_only = False
         tlm_only = False
@@ -312,9 +321,12 @@ def router_target_disable(
         cmd_only: Disable only the target's commands.
         tlm_only: Disable only the target's telemetry.
         scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the router does not exist.
     """
     authorize(permission="system_set", router_name=router_name, scope=scope)
-    router = RouterModel.get_model(name=router_name, scope=scope)
+    router = _get_router_model(router_name, "router_target_disable", scope)
     if cmd_only and tlm_only:
         cmd_only = False
         tlm_only = False
@@ -343,3 +355,10 @@ def router_details(router_name: str, scope: str = OPENC3_SCOPE) -> dict[str, Any
     """
     authorize(permission="system", router_name=router_name, scope=scope)
     return RouterTopic.router_details(router_name, scope=scope)
+
+
+def _get_router_model(router_name: str, method_name: str, scope: str) -> RouterModel:
+    router = RouterModel.get_model(name=router_name, scope=scope)
+    if router is None:
+        raise RuntimeError(f"Router '{router_name}' does not exist ({method_name})")
+    return router

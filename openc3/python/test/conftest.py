@@ -33,9 +33,13 @@ os.environ["AWS_ACCESS_KEY_ID"] = "testing"
 os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
 os.environ.pop("AWS_SESSION_TOKEN", None)
 
+import threading  # noqa: E402
+import time  # noqa: E402
+
 import pytest  # noqa: E402
 
 from openc3.utilities.logger import Logger  # noqa: E402
+from openc3.utilities.metric import Metric  # noqa: E402
 
 
 @pytest.fixture(autouse=True, scope="function")
@@ -45,3 +49,25 @@ def configure_logging():
     Logger.stdout = True
     yield
     Logger.stdout = original_stdout
+
+
+@pytest.fixture(autouse=True, scope="function")
+def stop_metric_update_thread():
+    """Stop the Metric update thread a test started (every Microservice starts it).
+    Tests that don't shut down their microservice otherwise leave it writing
+    metrics into later tests while they patch the store, which has crashed
+    the interpreter with a segfault."""
+    yield
+    thread = Metric.update_thread
+    if isinstance(thread, threading.Thread):
+        # The thread creates its sleeper after it starts so keep canceling
+        # whichever sleeper it has until it exits
+        deadline = time.time() + 5
+        while thread.is_alive() and time.time() < deadline:
+            if Metric.update_sleeper:
+                Metric.update_sleeper.cancel()
+            thread.join(timeout=0.05)
+        Metric.update_thread = None
+        Metric.update_sleeper = None
+        Metric.instances = []
+        Metric.update_generators = []
