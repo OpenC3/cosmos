@@ -60,6 +60,11 @@ class TestTargetModel(unittest.TestCase):
         self.assertIn("TEST", all_targs.keys())
         self.assertIn("SPEC", all_targs.keys())
 
+    def test_accepts_decom_update_interval_from_the_ruby_json(self):
+        # Ruby writes decom_update_interval into the target JSON that from_json passes as kwargs
+        TargetModel(folder_name="TEST", name="TEST", decom_update_interval=0.5, scope="DEFAULT")
+        TargetModel(folder_name="TEST", name="TEST", decom_update_interval=None, scope="DEFAULT")
+
     def test_stored_limits_mode_defaults_to_process(self):
         model = TargetModel(folder_name="TEST", name="TEST", scope="DEFAULT")
         self.assertEqual(model.stored_limits_mode, "PROCESS")

@@ -40,6 +40,8 @@ module OpenC3
     #   'LOG' still evaluates limits (callback handles suppressing reactions).
     #   'DISABLE' skips limits evaluation entirely for stored packets and omits
     #   limits states from the decommutated output.
+    # @param queued [Boolean] Queue the decom stream and CVT writes (StoreQueued) rather
+    #   than writing them directly to Redis.
     # @param metric [Metric, nil] Optional; when set, records decom_duration_seconds.
     # @param error_callback [Proc, nil] Called as error_callback.call(exception) when
     #   Packet#process or Packet#check_limits raises. The microservice uses this to
@@ -47,7 +49,7 @@ module OpenC3
     # @return [Integer] Number of (sub)packets published.
     def decom_and_publish(packet, scope:, target_names:, logger:, name:,
                           check_limits: true, stored_limits_mode: 'PROCESS',
-                          metric: nil, error_callback: nil)
+                          queued: false, metric: nil, error_callback: nil)
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC) if metric
       published = 0
 
@@ -75,6 +77,7 @@ module OpenC3
 
         TelemetryDecomTopic.write_packet(packet_or_subpacket,
                                          include_limits_states: !disable_stored_limits,
+                                         queued: queued,
                                          scope: scope)
         published += 1
       end
