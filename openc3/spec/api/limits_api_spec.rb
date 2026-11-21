@@ -694,6 +694,26 @@ module OpenC3
         expect(@api.get_overall_limits_state).to eql "GREEN"
       end
 
+      it "matches ignored items by full name" do
+        out_of_limits = [
+          ["INST", "PKT", "TEMP10", "RED_HIGH"],
+          ["INST", "PKT", "TEMP1", "YELLOW_HIGH"],
+        ]
+        allow(@api).to receive(:get_out_of_limits).and_return(out_of_limits)
+        # Ignoring TEMP1 does not ignore TEMP10
+        expect(@api.get_overall_limits_state([["INST", "PKT", "TEMP1"]])).to eql "RED"
+        expect(@api.get_overall_limits_state([["INST", "PKT", "TEMP10"]])).to eql "YELLOW"
+        # PK is a prefix of the packet name but not the packet name
+        expect(@api.get_overall_limits_state([["INST", "PK", nil]])).to eql "RED"
+        expect(@api.get_overall_limits_state([["INST", "PKT", nil]])).to eql "GREEN"
+      end
+
+      it "does not modify ignored_items" do
+        ignored = [["INST", "HEALTH_STATUS", nil]]
+        @api.get_overall_limits_state(ignored)
+        expect(ignored).to eql [["INST", "HEALTH_STATUS", nil]]
+      end
+
       it "raise on invalid ignored_items" do
         expect { @api.get_overall_limits_state(["BLAH"]) }.to raise_error(/Invalid ignored item: BLAH/)
         expect { @api.get_overall_limits_state([["INST", "HEALTH_STATUS"]]) }.to raise_error(/Invalid ignored item: \["INST", "HEALTH_STATUS"\]/)

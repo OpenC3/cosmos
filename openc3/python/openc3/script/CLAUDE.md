@@ -1,0 +1,1 @@
+When any files in this directory are modified, update the appropriate documentation in docs.openc3.com/docs/guides/scripting-api.md and docs.openc3.com/docs/guides/script-writing.md

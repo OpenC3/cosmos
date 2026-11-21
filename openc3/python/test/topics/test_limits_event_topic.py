@@ -187,6 +187,10 @@ class TestLimitsEventTopic(unittest.TestCase):
         mock_redis(self)
         setup_system()
 
+    def test_read_returns_an_empty_list_with_no_events(self):
+        # https://github.com/OpenC3/cosmos/issues/4293
+        self.assertEqual(LimitsEventTopic.read(scope="DEFAULT"), [])
+
     def test_writes_and_reads_limits_change_events(self):
         event = {
             "type": "LIMITS_CHANGE",

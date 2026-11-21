@@ -62,7 +62,9 @@ module OpenC3
         packet.received_time = Time.now.sys
         capture_io do |stdout|
           TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
-          sleep 0.01
+          # Limits messages are logged before the CVT is written, so wait for
+          # the CVT (the last step of decom) rather than sleeping
+          wait_for { @api.tlm("INST HEALTH_STATUS TEMP1") }
           expect(stdout.string).to include("INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)")
           expect(stdout.string).to include("INST HEALTH_STATUS TEMP2 = -100.0 is RED_LOW (-60.0)")
           expect(stdout.string).to include("INST HEALTH_STATUS TEMP3 = -100.0 is RED_LOW (-25.0)")
@@ -254,7 +256,9 @@ module OpenC3
         packet.received_time = Time.now.sys
         capture_io do |stdout|
           TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
-          sleep 0.01
+          # The processor error is logged before the CVT is written, so wait
+          # for the CVT (the last step of decom) rather than sleeping
+          wait_for { @api.tlm("INST HEALTH_STATUS TEMP1") }
           expect(stdout.string).to include("Bad processor")
         end
         # This is an implementation detail but we want to ensure the error was logged

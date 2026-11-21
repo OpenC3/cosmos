@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1957
 
 import contextlib
+import inspect
 import json
 import re
 import threading
@@ -192,6 +193,18 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), (0.0))
         set_tlm("INST", "HEALTH_STATUS", "TEMP1", -50.0)
         self.assertEqual(tlm("INST HEALTH_STATUS TEMP1"), (-50.0))
+
+    def test_set_tlm_sets_the_value_in_the_given_scope(self):
+        # https://github.com/OpenC3/cosmos/issues/4288
+        with (
+            patch(
+                "openc3.api.tlm_api._set_tlm_process_args",
+                return_value=("INST", "HEALTH_STATUS", "TEMP1", 5),
+            ),
+            patch("openc3.api.tlm_api.CvtModel.set_item") as set_item,
+        ):
+            set_tlm("INST HEALTH_STATUS TEMP1 = 5", scope="OTHER")
+            set_item.assert_called_once_with("INST", "HEALTH_STATUS", "TEMP1", 5, "CONVERTED", scope="OTHER")
 
     def test_set_tlm_sets_raw_telemetry(self):
         set_tlm("INST HEALTH_STATUS TEMP1 = 10.0", type="RAW")
@@ -621,10 +634,15 @@ class TestTlmApi(unittest.TestCase):
         items = get_all_tlm_item_names("INST", scope="DEFAULT")
         self.assertEqual(type(items), list)
         self.assertEqual(len(items), 65)
-        self.assertIn(b"ARY", items)
-        self.assertIn(b"ATTPROGRESS", items)
-        self.assertIn(b"BLOCKTEST", items)
-        self.assertIn(b"CCSDSAPID", items)
+        self.assertIn("ARY", items)
+        self.assertIn("ATTPROGRESS", items)
+        self.assertIn("BLOCKTEST", items)
+        self.assertIn("CCSDSAPID", items)
+        self.assertTrue(all(isinstance(item, str) for item in items))
+        # A second call reads the existing list rather than rebuilding it
+        items = get_all_tlm_item_names("INST", scope="DEFAULT")
+        self.assertIn("ARY", items)
+        self.assertTrue(all(isinstance(item, str) for item in items))
 
     # get_tlm
     def test_get_tlm_raises_if_the_target_or_packet_do_not_exist(self):
@@ -640,6 +658,20 @@ class TestTlmApi(unittest.TestCase):
         self.assertEqual(pkt["packet_name"], "HEALTH_STATUS")
         pkt = get_tlm("inst   Health_Status", scope="DEFAULT")
         self.assertEqual(type(pkt), dict)
+
+    def test_get_telemetry_forwards_scope_to_get_tlm(self):
+        with patch.object(TargetModel, "packet", return_value={"packet_name": "HEALTH_STATUS"}) as packet:
+            with self.assertWarns(FutureWarning):
+                get_telemetry("INST", "HEALTH_STATUS", scope="OTHER")
+            packet.assert_called_with("INST", "HEALTH_STATUS", scope="OTHER")
+            with self.assertWarns(FutureWarning):
+                get_telemetry("INST HEALTH_STATUS", scope="OTHER")
+            packet.assert_called_with("INST", "HEALTH_STATUS", scope="OTHER")
+
+    def test_inject_tlm_received_time_is_keyword_only(self):
+        # A positional received_time would be ambiguous with the positional scope before it
+        received_time = inspect.signature(inject_tlm).parameters["received_time"]
+        self.assertEqual(received_time.kind, inspect.Parameter.KEYWORD_ONLY)
 
     # get_item
     def test_get_item_raises_if_the_target_or_packet_or_item_do_not_exist(self):

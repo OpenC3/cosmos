@@ -335,7 +335,8 @@ end
 class Redis
   def xtrim_minid(key, minid, approximate: true, limit: nil)
     args = [:xtrim, key, :MINID, (approximate ? '~' : '='), minid]
-    args.concat([:LIMIT, limit]) if limit
+    # XTRIM only accepts LIMIT together with the ~ modifier
+    args.concat([:LIMIT, limit]) if limit and approximate
     send_command(args)
   end
 end

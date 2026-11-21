@@ -67,5 +67,30 @@ module OpenC3
         end
       end
     end
+
+    describe "metadata with no entries" do
+      before(:each) do
+        @orig_api_server = $api_server
+        $api_server = double("ApiServer")
+        # GET /openc3-api/metadata/latest returns 200 with an error status when there is no metadata
+        body = JSON.generate({ 'status' => 'error', 'message' => 'no metadata entries' })
+        allow($api_server).to receive(:request).with('get', '/openc3-api/metadata/latest', scope: 'DEFAULT').and_return(double("Response", status: 200, body: body))
+      end
+
+      after(:each) do
+        $api_server = @orig_api_server
+      end
+
+      it "metadata_get returns nil" do
+        expect { expect(metadata_get()).to be_nil }.to output.to_stderr
+      end
+
+      it "metadata_update without start raises a clear error" do
+        expect($api_server).not_to receive(:request).with('put', any_args)
+        expect {
+          expect { metadata_update({ 'key1' => 'value1' }) }.to raise_error(RuntimeError, "No metadata to update; use metadata_set")
+        }.to output.to_stderr
+      end
+    end
   end
 end
