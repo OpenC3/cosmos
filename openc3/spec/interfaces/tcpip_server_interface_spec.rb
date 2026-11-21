@@ -127,8 +127,7 @@ module OpenC3
         i = TcpipServerInterface.new('8888', '8889', '5', '5', 'burst')
         i.connect
         sleep(1)
-        write_interface_infos = i.instance_variable_get(:@write_interface_infos)
-        wii = TcpipServerInterface::InterfaceInfo.new(StreamInterface.new, nil, nil, nil)
+        wii = TcpipServerInterface::InterfaceInfo.new(StreamInterface.new, nil, nil)
         interface = wii.interface
         class << interface
           def connected?; true; end
@@ -151,7 +150,7 @@ module OpenC3
             a
           end
         end
-        write_interface_infos << wii
+        i.add_write_client(wii)
         begin
           expect(i.write_count).to eql 0
           expect(i.bytes_written).to eql 0
@@ -205,9 +204,93 @@ module OpenC3
         read_interface_infos = i.instance_variable_get(:@read_interface_infos)
         [3, 4].each do |bytes|
           interface = double('interface', read_queue_bytes: bytes)
-          read_interface_infos << TcpipServerInterface::InterfaceInfo.new(interface, nil, nil, nil)
+          read_interface_infos << TcpipServerInterface::InterfaceInfo.new(interface, nil, nil)
         end
         expect(i.read_queue_bytes).to eql 7
+      end
+    end
+
+    describe "slow clients" do
+      def wait_until?(timeout)
+        end_time = Time.now + timeout
+        until yield
+          return false if Time.now > end_time
+
+          sleep(0.01)
+        end
+        true
+      end
+
+      # A client which connects but never reads so its socket buffers fill up
+      def connect_stalled_client(port)
+        socket = Socket.new(Socket::AF_INET, Socket::SOCK_STREAM, 0)
+        socket.setsockopt(Socket::SOL_SOCKET, Socket::SO_RCVBUF, 1024)
+        socket.connect(Socket.pack_sockaddr_in(port, '127.0.0.1'))
+        socket
+      end
+
+      def start_reader(socket, received)
+        Thread.new do
+          loop { received[0] += socket.readpartial(65536).length }
+        rescue IOError, SystemCallError
+          # Socket closed
+        end
+      end
+
+      it "keeps writing to other clients and accepting while a client is not reading" do
+        expect(Socket).not_to receive(:lookup_hostname_from_ip)
+        i = TcpipServerInterface.new('8891', nil, '5', nil)
+        i.connect
+        sockets = []
+        reader_thread = nil
+        begin
+          # Connect the stalled client first so it is written to first
+          sockets << connect_stalled_client(8891)
+          expect(wait_until?(2) { i.num_clients == 1 }).to be true
+          reader = TCPSocket.new('127.0.0.1', 8891)
+          sockets << reader
+          expect(wait_until?(2) { i.num_clients == 2 }).to be true
+          received = [0]
+          reader_thread = start_reader(reader, received)
+
+          chunk = "\x00" * 65536
+          64.times { i.write_raw(chunk) }
+          # Well under the 5s write timeout the stalled client would hold each write for
+          expect(wait_until?(3) { received[0] == 64 * 65536 }).to be true
+
+          # New connections are still accepted while the stalled client is held
+          sockets << TCPSocket.new('127.0.0.1', 8891)
+          expect(wait_until?(1) { i.num_clients == 3 }).to be true
+        ensure
+          sockets.each(&:close)
+          i.disconnect
+          reader_thread.join(1) if reader_thread
+        end
+      end
+
+      it "drops a client which does not read within the write timeout" do
+        i = TcpipServerInterface.new('8891', nil, '1', nil)
+        i.connect
+        sockets = []
+        reader_thread = nil
+        begin
+          sockets << connect_stalled_client(8891)
+          expect(wait_until?(2) { i.num_clients == 1 }).to be true
+          reader = TCPSocket.new('127.0.0.1', 8891)
+          sockets << reader
+          expect(wait_until?(2) { i.num_clients == 2 }).to be true
+          reader_thread = start_reader(reader, [0])
+
+          chunk = "\x00" * 65536
+          64.times { i.write_raw(chunk) }
+          expect(wait_until?(5) { i.num_clients == 1 }).to be true
+          # The reading client is the one which remains
+          expect(i.instance_variable_get(:@write_interface_infos)[0].interface.stream.write_socket).not_to be_closed
+        ensure
+          sockets.each(&:close)
+          i.disconnect
+          reader_thread.join(1) if reader_thread
+        end
       end
     end
 

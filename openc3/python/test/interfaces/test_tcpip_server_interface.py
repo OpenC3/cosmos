@@ -13,7 +13,7 @@ import socket
 import threading
 import time
 import unittest
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from openc3.interfaces.tcpip_server_interface import TcpipServerInterface
 from openc3.packets.packet import Packet
@@ -250,6 +250,8 @@ class TestTcpipServerInterface(unittest.TestCase):
         thread.start()
         wait_for(lambda: i.num_clients() == 0)
         self.assertEqual(i.num_clients(), 0)
+        # Let the send finish before disconnecting so write_raw doesn't raise
+        thread.join()
         i.disconnect()
 
     def test_first_read_client_disconnect_cleans_up(self):
@@ -320,6 +322,89 @@ class TestTcpipServerInterface(unittest.TestCase):
             self.assertEqual(i.read_interface_infos[0].interface.read_queue_max_size, 1000)
         finally:
             sock.close()
+            i.disconnect()
+
+    # A client which connects but never reads so its socket buffers fill up
+    def connect_stalled_client(self, port):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 1024)
+        sock.connect(("127.0.0.1", port))
+        return sock
+
+    def start_reader(self, sock, received):
+        def reader():
+            try:
+                while True:
+                    data = sock.recv(65536)
+                    if not data:
+                        return
+                    received[0] += len(data)
+            except OSError:
+                pass  # Socket closed
+
+        thread = threading.Thread(target=reader, daemon=True)
+        thread.start()
+        return thread
+
+    def wait_until(self, condition, timeout):
+        end_time = time.time() + timeout
+        while not condition():
+            if time.time() > end_time:
+                return False
+            time.sleep(0.01)
+        return True
+
+    @patch("socket.gethostbyaddr")
+    def test_keeps_writing_to_other_clients_and_accepting_while_a_client_is_not_reading(self, gethostbyaddr):
+        i = TcpipServerInterface("8891", None, "5", None)
+        i.connect()
+        sockets = []
+        try:
+            # Connect the stalled client first so it is written to first
+            sockets.append(self.connect_stalled_client(8891))
+            self.assertTrue(self.wait_until(lambda: i.num_clients() == 1, 2))
+            reader = socket.create_connection(("127.0.0.1", 8891))
+            sockets.append(reader)
+            self.assertTrue(self.wait_until(lambda: i.num_clients() == 2, 2))
+            received = [0]
+            self.start_reader(reader, received)
+
+            chunk = b"\x00" * 65536
+            for _ in range(64):
+                i.write_raw(chunk)
+            # Well under the 5s write timeout the stalled client would hold each write for
+            self.assertTrue(self.wait_until(lambda: received[0] == 64 * 65536, 3))
+
+            # New connections are still accepted while the stalled client is held
+            sockets.append(socket.create_connection(("127.0.0.1", 8891)))
+            self.assertTrue(self.wait_until(lambda: i.num_clients() == 3, 1))
+            gethostbyaddr.assert_not_called()
+        finally:
+            for sock in sockets:
+                sock.close()
+            i.disconnect()
+
+    def test_drops_a_client_which_does_not_read_within_the_write_timeout(self):
+        i = TcpipServerInterface("8891", None, "1", None)
+        i.connect()
+        sockets = []
+        try:
+            sockets.append(self.connect_stalled_client(8891))
+            self.assertTrue(self.wait_until(lambda: i.num_clients() == 1, 2))
+            reader = socket.create_connection(("127.0.0.1", 8891))
+            sockets.append(reader)
+            self.assertTrue(self.wait_until(lambda: i.num_clients() == 2, 2))
+            self.start_reader(reader, [0])
+
+            chunk = b"\x00" * 65536
+            for _ in range(64):
+                i.write_raw(chunk)
+            self.assertTrue(self.wait_until(lambda: i.num_clients() == 1, 5))
+            # The reading client is the one which remains
+            self.assertNotEqual(i.write_interface_infos[0].interface.stream.write_socket.fileno(), -1)
+        finally:
+            for sock in sockets:
+                sock.close()
             i.disconnect()
 
     def test_read_queue_bytes_sums_the_client_connections(self):
