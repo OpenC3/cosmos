@@ -435,6 +435,8 @@ module OpenC3
     # scope: scope name
     # start_time: 64-bit nanoseconds from unix epoch - If not present then realtime
     # end_time: 64-bit nanoseconds from unix epoch - If not present stream forever
+    # time_type: 'PACKET' or 'RECEIVED' - Whether start_time and end_time select data by packet
+    #   time or received time (also returned as __time). Defaults to PACKET on the server.
     # items: [ [ MODE__CMDORTLM__TARGET__PACKET__ITEM__VALUETYPE__REDUCEDTYPE, item_key] ]
     #   MODE - RAW, DECOM, REDUCED_MINUTE, REDUCED_HOUR, or REDUCED_DAY
     #   CMDORTLM - CMD or TLM
@@ -451,10 +453,11 @@ module OpenC3
     #   PACKET - Packet name
     #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
     #
-    def add(items: nil, packets: nil, start_time: nil, end_time: nil, scope: nil)
+    def add(items: nil, packets: nil, start_time: nil, end_time: nil, scope: nil, time_type: nil)
       times = {}
       times['start_time'] = to_nsec(start_time) if start_time
       times['end_time'] = to_nsec(end_time) if end_time
+      times['time_type'] = time_type.to_s.upcase if time_type
       stream_action('add', items: items, packets: packets, scope: scope, extra: times)
     end
 
@@ -476,21 +479,25 @@ module OpenC3
     #   TARGET - Target name
     #   PACKET - Packet name
     #   VALUETYPE - RAW, CONVERTED, FORMATTED, or PURE (pure means all types as stored in log)
+    # time_type: PACKET or RECEIVED to remove only the subscriptions added with that time_type.
+    #   Removes both when not given.
     #
-    def remove(items: nil, packets: nil, scope: nil)
-      stream_action('remove', items: items, packets: packets, scope: scope)
+    def remove(items: nil, packets: nil, scope: nil, time_type: nil)
+      extra = {}
+      extra['time_type'] = time_type.to_s.upcase if time_type
+      stream_action('remove', items: items, packets: packets, scope: scope, extra: extra)
     end
 
     # Convenience method to read all data until end marker is received.
     # Omitting end_time streams realtime and endlessly: no end marker is ever
     # sent, so a timeout is the only way the collection ends on its own.
     # Warning: DATA IS STORED IN RAM.  Do not use this with large queries
-    def self.read_all(items: nil, packets: nil, start_time: nil, end_time: nil, scope: nil, timeout: nil)
+    def self.read_all(items: nil, packets: nil, start_time: nil, end_time: nil, scope: nil, timeout: nil, time_type: nil)
       read_all_start_time = Time.now
       data = []
       # Connect with the requested scope, not just add the items with it
       self.new(scope: scope || $openc3_scope) do |api|
-        api.add(items: items, packets: packets, start_time: start_time, end_time: end_time, scope: scope)
+        api.add(items: items, packets: packets, start_time: start_time, end_time: end_time, scope: scope, time_type: time_type)
         while true
           batch = api.read
           if batch.nil?
