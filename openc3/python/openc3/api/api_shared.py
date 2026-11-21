@@ -11,13 +11,14 @@
 
 import sys
 import time
-import traceback
+import warnings
 from collections.abc import Callable, Mapping
 from typing import Any
 
 from openc3.api.api_types import ValueType
 from openc3.api.tlm_api import get_item, tlm
 from openc3.environment import OPENC3_SCOPE
+from openc3.script.api_shared import _check_exception
 from openc3.script.exceptions import CheckError
 from openc3.utilities.extract import (
     compare_values,
@@ -34,7 +35,7 @@ DEFAULT_TLM_POLLING_RATE = 0.25
 # Without the 'f' :.X means display X significant figures
 
 
-def check(*args: Any, type: ValueType = "CONVERTED", scope: str = "DEFAULT") -> None:
+def check(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:
     """Check the value of a telemetry item against a condition.
 
     Always prints the value of the telemetry item. Accepts two calling styles::
@@ -53,7 +54,7 @@ def check(*args: Any, type: ValueType = "CONVERTED", scope: str = "DEFAULT") -> 
     return _check(*args, type=type, scope=scope)
 
 
-def check_raw(*args: Any, scope: str = "DEFAULT") -> None:
+def check_raw(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the RAW value of a telemetry item against a condition. See `check` for the calling styles.
 
     Args:
@@ -64,7 +65,7 @@ def check_raw(*args: Any, scope: str = "DEFAULT") -> None:
     return _check(*args, type="RAW", scope=scope)
 
 
-def check_formatted(*args: Any, scope: str = "DEFAULT") -> None:
+def check_formatted(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the FORMATTED value of a telemetry item against a condition. See `check` for the calling styles.
 
     Args:
@@ -76,16 +77,18 @@ def check_formatted(*args: Any, scope: str = "DEFAULT") -> None:
 
 
 # DEPRECATED
-def check_with_units(*args: Any, scope: str = "DEFAULT") -> None:
+def check_with_units(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the FORMATTED value of a telemetry item against a condition.
 
-    Deprecated: use `check_formatted`.
+    .. deprecated:: 7.0.0
+       WITH_UNITS was removed, use check_formatted instead.
 
     Args:
         *args: A single "TGT PKT ITEM comparison" string, or the target, packet
             and item names followed by an optional comparison string.
         scope: COSMOS scope.
     """
+    warnings.warn("check_with_units is deprecated, use check_formatted", FutureWarning, stacklevel=2)
     return _check(*args, type="FORMATTED", scope=scope)
 
 
@@ -97,28 +100,17 @@ def check_exception(method_name: str, *args: Any, **kwargs: Any) -> None:
         check_exception("cmd", "INST ABORT with BAD_PARAM 1")
 
     Args:
-        method_name: Name of the API method to call.
+        method_name: Name of the openc3.api method to call.
         *args: Positional arguments passed to the method.
         **kwargs: Keyword arguments passed to the method. scope defaults to
-            OPENC3_SCOPE if not given.
+            OPENC3_SCOPE if not given and the method accepts it.
 
     Raises:
-        CheckError: If the method does not raise an exception.
+        CheckError: If the method does not exist, the arguments don't match
+            its signature, or it does not raise an exception.
     """
-    try:
-        method = method_name
-        orig_kwargs = kwargs.copy()
-        if "scope" not in kwargs:
-            kwargs["scope"] = OPENC3_SCOPE
-        getattr(sys.modules[__name__], method_name)(*args, **kwargs)
-        method = f"{method_name}({', '.join(args)}"
-        if orig_kwargs:
-            method += f", {orig_kwargs}"
-        method += ")"
-    except Exception:
-        print(f"CHECK: {method} raised {traceback.format_exc()}")
-    else:
-        raise CheckError(f"{method} should have raised an exception but did not.")
+    # Resolve from the whole API package, not just this module
+    _check_exception(sys.modules["openc3.api"], "an API method", method_name, *args, **kwargs)
 
 
 def check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:
@@ -369,6 +361,7 @@ def wait_tolerance(*args: Any, type: ValueType = "CONVERTED", quiet: bool = Fals
             tolerance,
             timeout,
             polling_rate,
+            scope=scope,
         )
         time_diff = time.time() - start_time
 
@@ -398,6 +391,7 @@ def wait_tolerance(*args: Any, type: ValueType = "CONVERTED", quiet: bool = Fals
             tolerance,
             timeout,
             polling_rate,
+            scope=scope,
         )
         time_diff = time.time() - start_time
         range_bottom = expected_value - tolerance
@@ -419,7 +413,7 @@ def wait_expression(
     globals: dict[str, Any] | None = None,
     locals: Mapping[str, Any] | None = None,
     quiet: bool = False,
-) -> bool | None:
+) -> bool:
     """Wait for a Python expression to be true.
 
     On a timeout execution continues without raising.
@@ -433,7 +427,7 @@ def wait_expression(
         quiet: Whether to suppress printing the result.
 
     Returns:
-        True if the expression became true before the timeout, otherwise None.
+        True if the expression became true before the timeout, otherwise False.
     """
     start_time = time.time()
     success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, locals)
@@ -484,6 +478,7 @@ def wait_check(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SC
         comparison_to_eval,
         timeout,
         polling_rate,
+        scope=scope,
     )
     if isinstance(value, str):
         value = f"'{value}'"  # Show user the check against a quoted string
@@ -553,6 +548,7 @@ def wait_check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str =
             tolerance,
             timeout,
             polling_rate,
+            scope=scope,
         )
         time_diff = time.time() - start_time
 
@@ -581,7 +577,7 @@ def wait_check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str =
             tolerance,
             timeout,
             polling_rate,
-            scope,
+            scope=scope,
         )
         time_diff = time.time() - start_time
         range_bottom = expected_value - tolerance
@@ -705,15 +701,13 @@ def wait_check_packet(
 ###########################################################################
 
 
-def openc3_script_sleep(sleep_time: float | None = None) -> bool | None:
+def openc3_script_sleep(sleep_time: float | None = None) -> None:
     """Sleep for a time, or until the user presses a key.
+
+    Unlike openc3.script.api_shared, this sleep can't be canceled.
 
     Args:
         sleep_time: Seconds to sleep. If None, waits for keyboard input.
-
-    Returns:
-        Whether the sleep was canceled early. Callers treat a truthy result as
-        canceled; this implementation never cancels and returns None.
     """
     if sleep_time is not None:
         time.sleep(float(sleep_time))
@@ -1003,14 +997,7 @@ def _openc3_script_wait(
             sleep_time = end_delta
         if sleep_time < 0:
             sleep_time = 0
-        canceled = openc3_script_sleep(sleep_time)
-
-        if canceled:
-            value = tlm(target_name, packet_name, item_name, type=value_type, scope=scope)
-            if comparison and comparison(value):
-                return True, value
-            else:
-                return False, value
+        openc3_script_sleep(sleep_time)
 
     return False, value
 
@@ -1167,19 +1154,13 @@ def _openc3_script_wait_expression(
                 sleep_time = end_delta
             if sleep_time < 0:
                 sleep_time = 0
-            canceled = openc3_script_sleep(sleep_time)
-
-            if canceled:
-                if eval(exp_to_eval, globals, locals):
-                    return True
-                else:
-                    return None
+            openc3_script_sleep(sleep_time)
     except NameError as error:
         parts = error.args[0].split("'")
         new_error = NameError(f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?")
         raise new_error from error
 
-    return None
+    return False
 
 
 def _check_comparison(

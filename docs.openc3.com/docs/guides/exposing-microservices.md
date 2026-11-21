@@ -45,6 +45,8 @@ In OpenC3 Enterprise, KUBERNETES_SERVICE_HOST is used to detect if we are runnin
 
 [ROUTE_PREFIX](../configuration/plugins#route_prefix-1) is used to define the external route. The external route will take the form of http(s)://YOURCOSMOSDOMAIN:PORT/ROUTE_PREFIX. So for example, if you set the [ROUTE_PREFIX](../configuration/plugins#route_prefix-1) to /mymicroservice then on a default local installation, it could be reached at `http://localhost:2900/mymicroservice`. The `http://localhost:2900` part should be substituted by whatever domain you are accessing COSMOS at.
 
+The route matches the prefix itself and anything below it (`/mymicroservice` and `/mymicroservice/api`, but not `/mymicroserviceother`). A [ROUTE_PREFIX](../configuration/plugins#route_prefix-1) can only contain letters, numbers, underscore, dash and slashes between path segments, and its first segment can't be one that COSMOS uses itself: `openc3-api`, `script-api`, `tools`, `files`, `login`, `js`, `css`, `fonts`, `icons`, `img`, `assets`, `auth`, `metrics`, `grafana` or `mcp`. Built-in COSMOS routes always take precedence over microservice routes.
+
 Here is a snippet of code showing [PORT](../configuration/plugins#port-1) and [ROUTE_PREFIX](../configuration/plugins#route_prefix-1) in use within a plugin.txt file:
 
 ```bash

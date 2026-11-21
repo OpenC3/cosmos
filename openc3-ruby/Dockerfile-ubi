@@ -1,6 +1,6 @@
 ARG OPENC3_UBI_REGISTRY=registry1.dso.mil
 ARG OPENC3_UBI_IMAGE=ironbank/redhat/ubi/ubi9-minimal
-ARG OPENC3_UBI_TAG=9.8
+ARG OPENC3_UBI_TAG=9.9
 
 FROM ${OPENC3_UBI_REGISTRY}/${OPENC3_UBI_IMAGE}:${OPENC3_UBI_TAG}
 
@@ -137,25 +137,28 @@ COPY --chmod=0755 uv_mirror_relock.sh /usr/local/bin/uv-mirror-relock
 ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
 
 # rbspy - https://github.com/rbspy/rbspy
-COPY rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz /opt/rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz
+# Same ARG as the Debian Dockerfile so scripts/release/package_audit.rb bumps
+# both. UBI builds are amd64 only (openc3_build_ubi.sh) so only x86_64 is used.
+ARG RBSPY_VERSION=0.55.0
+COPY rbspy-x86_64-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz /opt/
 WORKDIR /opt
-RUN tar -xzf rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz && \
+RUN tar -xzf "rbspy-x86_64-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz" && \
     cp rbspy-x86_64-unknown-linux-gnu /usr/local/bin/rbspy && \
     chmod +x /usr/local/bin/rbspy && \
     rm rbspy-x86_64-unknown-linux-gnu && \
-    rm rbspy-x86_64-unknown-linux-gnu-0.49.0.tar.gz
+    rm "rbspy-x86_64-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz"
 
 # htop - https://github.com/htop-dev/htop
-COPY htop-3.4.1.tar.gz /opt/htop-3.4.1.tar.gz
+COPY htop-3.5.3.tar.gz /opt/htop-3.5.3.tar.gz
 WORKDIR /opt
-RUN tar -xzf htop-3.4.1.tar.gz
-WORKDIR /opt/htop-3.4.1
+RUN tar -xzf htop-3.5.3.tar.gz
+WORKDIR /opt/htop-3.5.3
 RUN ./autogen.sh && \
     ./configure && \
     make && \
     make install && \
-    rm -rf /opt/htop-3.4.1 && \
-    rm /opt/htop-3.4.1.tar.gz
+    rm -rf /opt/htop-3.5.3 && \
+    rm /opt/htop-3.5.3.tar.gz
 
 # libsocketcan - used by libcsp - https://github.com/linux-can/libsocketcan
 COPY libsocketcan-0.0.12.tar.gz /opt/libsocketcan-0.0.12.tar.gz
@@ -186,21 +189,21 @@ RUN cmake .. \
     rm /opt/libzmq-34f7fa22022bed9e0e390ed3580a1c83ac4a2834.zip
 
 # libcsp - https://github.com/libcsp/libcsp
-COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+COPY libcsp-2.1.zip /opt/libcsp-2.1.zip
 WORKDIR /opt
-RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip && \
+RUN unzip libcsp-2.1.zip && \
     # Patches to fix compilation issues
-    sed -i '1s/^/#include <sys\/select.h>/' \
-      libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632/src/drivers/can/can_socketcan.c && \
-    sed -i '2s/^/#include <endian.h>/' \
-      libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632/src/drivers/eth/eth_linux.c
-WORKDIR /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632/build
-RUN cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USR_RTABLE=ON -DCMAKE_INSTALL_LIBDIR=/usr/lib64 && \
+    sed -i '1i #include <sys/select.h>' \
+      libcsp-2.1/src/drivers/can/can_socketcan.c && \
+    sed -i '1i #include <endian.h>' \
+      libcsp-2.1/src/drivers/eth/eth_linux.c
+WORKDIR /opt/libcsp-2.1/build
+RUN cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USE_RTABLE=ON -DCMAKE_INSTALL_LIBDIR=/usr/lib64 && \
     make && \
     make install && \
     cp libcsp_py3* /lib64/python3.12/lib-dynload/. && \
-    rm -rf /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 && \
-    rm /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+    rm -rf /opt/libcsp-2.1 && \
+    rm /opt/libcsp-2.1.zip
 
 # Set user and group
 ENV IMAGE_USER=openc3

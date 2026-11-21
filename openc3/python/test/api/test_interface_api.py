@@ -342,3 +342,24 @@ class TestInterfaceApi(unittest.TestCase):
     def test_gets_interface_details(self, mock_details):
         interface_details("INST_INT")
         mock_details.assert_called_with("INST_INT", scope="DEFAULT")
+
+    def test_raises_if_the_interface_does_not_exist(self):
+        # https://github.com/OpenC3/cosmos/issues/4298
+        for method, args in (
+            (map_target_to_interface, ("INST", "NO_SUCH")),
+            (unmap_target_from_interface, ("INST", "NO_SUCH")),
+            (interface_target_enable, ("NO_SUCH", "INST")),
+            (interface_target_disable, ("NO_SUCH", "INST")),
+        ):
+            with self.assertRaisesRegex(RuntimeError, rf"Interface 'NO_SUCH' does not exist \({method.__name__}\)"):
+                method(*args)
+
+    @patch("openc3.topics.interface_topic.InterfaceTopic.stop_raw_logging")
+    @patch("openc3.topics.interface_topic.InterfaceTopic.start_raw_logging")
+    def test_raw_logging_all_uses_the_given_scope(self, mock_start, mock_stop):
+        # https://github.com/OpenC3/cosmos/issues/4299
+        InterfaceModel(name="OTHER_INT", scope="OTHER").create()
+        start_raw_logging_interface("ALL", scope="OTHER")
+        mock_start.assert_called_once_with("OTHER_INT", scope="OTHER")
+        stop_raw_logging_interface("ALL", scope="OTHER")
+        mock_stop.assert_called_once_with("OTHER_INT", scope="OTHER")

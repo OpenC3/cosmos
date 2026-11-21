@@ -11,7 +11,7 @@
 
 import re
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from openc3.api import (
     CheckError,
@@ -33,7 +33,6 @@ from openc3.api import (
 from test.test_helper import capture_io, mock_redis, setup_system
 
 
-cancel = False
 count = True
 received_count = 0
 
@@ -79,10 +78,9 @@ def tlm(target_name, packet_name, item_name, type="CONVERTED", scope="DEFAULT"):
             return None
 
 
-# sleep in a script - returns true if canceled mid sleep
+# openc3.api.api_shared sleep can't be canceled so don't sleep in tests
 def my_openc3_script_sleep(sleep_time=None):
-    global cancel
-    return cancel
+    pass
 
 
 # Test that we go right to the API method (Redis) when we're not using a proxy
@@ -100,10 +98,8 @@ class TestApiSharedNoProxy(unittest.TestCase):
 class TestApiShared(unittest.TestCase):
     def setUp(self):
         global received_count
-        global cancel
         global count
         received_count = 0
-        cancel = False
         count = True
 
         mock_redis(self)
@@ -189,6 +185,40 @@ class TestApiShared(unittest.TestCase):
             r"check\(INST HEALTH_STATUS TEMP1 == 10\) should have raised an exception but did not",
         ):
             check_exception("check", "INST HEALTH_STATUS TEMP1 == 10")
+
+    def test_check_exception_calls_api_methods_outside_api_shared(self):
+        # https://github.com/OpenC3/cosmos/issues/4302
+        with patch("openc3.api.cmd", MagicMock(side_effect=RuntimeError("Bad command"))) as cmd:
+            for stdout in capture_io():
+                check_exception("cmd", "INST ABORT with BAD_PARAM 1")
+                self.assertIn("CHECK: cmd raised", stdout.getvalue())
+                self.assertIn("RuntimeError: Bad command", stdout.getvalue())
+            cmd.assert_called_once_with("INST ABORT with BAD_PARAM 1", scope="DEFAULT")
+
+    def test_check_exception_raises_if_method_with_non_string_args_does_not_raise(self):
+        # https://github.com/OpenC3/cosmos/issues/4295
+        with patch("openc3.api.cmd", MagicMock(return_value=None)) as cmd:
+            with self.assertRaisesRegex(
+                CheckError,
+                r"cmd\(INST, COLLECT, \{'TYPE': 'NORMAL'\}, 5\) should have raised an exception but did not",
+            ):
+                check_exception("cmd", "INST", "COLLECT", {"TYPE": "NORMAL"}, 5)
+            cmd.assert_called_once()
+
+    def test_check_exception_raises_if_the_method_does_not_exist(self):
+        # https://github.com/OpenC3/cosmos/issues/4302
+        with self.assertRaisesRegex(CheckError, "check_exception: no_such_method is not an API method"):
+            check_exception("no_such_method", "INST")
+
+    def test_check_exception_does_not_pass_scope_to_methods_without_it(self):
+        # check_expression has no scope parameter so passing one raised TypeError,
+        # which counted as the expected exception
+        with self.assertRaisesRegex(CheckError, r"check_expression\(1 == 1\) should have raised an exception"):
+            check_exception("check_expression", "1 == 1")
+
+    def test_check_exception_raises_if_the_arguments_do_not_match(self):
+        with self.assertRaisesRegex(CheckError, "check_exception: invalid arguments for check_expression"):
+            check_exception("check_expression")
 
     def test_check_tolerance_raises_with_invalid_params(self):
         with self.assertRaisesRegex(
@@ -506,7 +536,8 @@ class TestApiShared(unittest.TestCase):
                 stdout.getvalue(),
             )
             result = wait_expression("True == False", 0.1)
-            self.assertFalse(result)
+            # https://github.com/OpenC3/cosmos/issues/4296
+            self.assertIs(result, False)
             self.assertIn("WAIT: True == False is FALSE after waiting", stdout.getvalue())
 
     def test_waits_for_a_logical_expression(self):
@@ -518,7 +549,7 @@ class TestApiShared(unittest.TestCase):
                 stdout.getvalue(),
             )
             result = wait_expression("1 == 2", 0.1)
-            self.assertFalse(result)
+            self.assertIs(result, False)
             self.assertIn("WAIT: 1 == 2 is FALSE after waiting", stdout.getvalue())
         with self.assertRaisesRegex(
             NameError,
@@ -799,18 +830,9 @@ class TestApiShared(unittest.TestCase):
             )
 
     def test_wait_packet_prints_success_if_the_packet_is_received(self):
-        global cancel
         global count
         count = True
         for stdout in capture_io():
-            cancel = True
-            result = wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
-            self.assertFalse(result)
-            self.assertIn(
-                "WAIT: INST HEALTH_STATUS expected to be received 5 times",
-                stdout.getvalue(),
-            )
-            cancel = False
             result = wait_packet("INST", "HEALTH_STATUS", 5, 0.5)
             self.assertTrue(result)
             self.assertIn(
@@ -828,20 +850,44 @@ class TestApiShared(unittest.TestCase):
             wait_check_packet("INST", "HEALTH_STATUS", 1, 0.5)
 
     def test_wait_check_packet_prints_success_if_the_packet_is_received(self):
-        global cancel
         global count
         count = True
         for stdout in capture_io():
-            cancel = True
-            with self.assertRaisesRegex(
-                CheckError,
-                "CHECK: INST HEALTH_STATUS expected to be received 5 times",
-            ):
-                wait_check_packet("INST", "HEALTH_STATUS", 5, 0.0)
-            cancel = False
             result = wait_check_packet("INST", "HEALTH_STATUS", 5, 0.5)
             self.assertIsInstance(result, float)
             self.assertIn(
                 "CHECK: INST HEALTH_STATUS received 5 times after waiting",
                 stdout.getvalue(),
             )
+
+    # https://github.com/OpenC3/cosmos/issues/4294
+    def assert_polled_scope(self, mock_tlm, scope):
+        self.assertGreater(mock_tlm.call_count, 0)
+        for call in mock_tlm.call_args_list:
+            self.assertEqual(call.kwargs["scope"], scope)
+
+    def test_wait_tolerance_polls_the_given_scope(self):
+        with patch("openc3.api.api_shared.tlm", MagicMock(return_value=10)) as mock_tlm:
+            for _ in capture_io():
+                self.assertTrue(wait_tolerance("INST HEALTH_STATUS TEMP1", 10, 1, 1, scope="OTHER"))
+            self.assert_polled_scope(mock_tlm, "OTHER")
+        with patch("openc3.api.api_shared.tlm", MagicMock(return_value=[2, 3, 4])) as mock_tlm:
+            for _ in capture_io():
+                self.assertTrue(wait_tolerance("INST HEALTH_STATUS ARY", 3, 2, 1, scope="OTHER"))
+            self.assert_polled_scope(mock_tlm, "OTHER")
+
+    def test_wait_check_polls_the_given_scope(self):
+        with patch("openc3.api.api_shared.tlm", MagicMock(return_value=10)) as mock_tlm:
+            for _ in capture_io():
+                wait_check("INST HEALTH_STATUS TEMP1 == 10", 1, scope="OTHER")
+            self.assert_polled_scope(mock_tlm, "OTHER")
+
+    def test_wait_check_tolerance_polls_the_given_scope(self):
+        with patch("openc3.api.api_shared.tlm", MagicMock(return_value=10)) as mock_tlm:
+            for _ in capture_io():
+                wait_check_tolerance("INST HEALTH_STATUS TEMP1", 10, 1, 1, scope="OTHER")
+            self.assert_polled_scope(mock_tlm, "OTHER")
+        with patch("openc3.api.api_shared.tlm", MagicMock(return_value=[2, 3, 4])) as mock_tlm:
+            for _ in capture_io():
+                wait_check_tolerance("INST HEALTH_STATUS ARY", 3, 2, 1, scope="OTHER")
+            self.assert_polled_scope(mock_tlm, "OTHER")

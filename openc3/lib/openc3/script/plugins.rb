@@ -11,6 +11,14 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+# NOTE: plugin_list and plugin_get are intentionally NOT in the Api module
+# (and not in Api::WHITELIST) like most other script methods. The Python api
+# has no PluginModel and no way to read default_plugins.yaml (it lives outside
+# the python package and Python has no yaml dependency), so a shared api
+# implementation can't be mirrored in both languages. Instead these call the
+# PluginsController REST endpoints directly, which also gives the same results
+# in Ruby and Python scripts.
+
 module OpenC3
   module Script
     private

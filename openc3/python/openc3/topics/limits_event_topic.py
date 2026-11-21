@@ -169,7 +169,8 @@ class LimitsEventTopic(Topic):
                 final_result.append([msg_id, msg_hash])
         else:
             result = Topic.get_newest_message(topic)
-            if result:
+            # get_newest_message returns (None, None) when the stream is empty
+            if result and result[0] is not None:
                 final_result = [result]
         parsed_result = []
         for offset, hash in final_result:
@@ -302,12 +303,21 @@ class LimitsEventTopic(Topic):
                     limits_settings = json.loads(limits_settings)
                     enabled = limits_settings.get("enabled", None)
                     persistence = limits_settings.get("persistence_setting", 1)
+                    # Items with change limits (SEQUENCE, CHANGE, STATIC) don't have numeric limits. Saved
+                    # numeric settings can be left over from before the item definition changed.
+                    packet_item = packet.items.get(item_name)
+                    change_type = packet_item.limits.change_type if packet_item is not None else None
                     for limits_set, settings in limits_settings.items():
                         if not isinstance(settings, dict):
                             continue
                         if limits_set == "state_colors":
                             for state_name, color in settings.items():
                                 System.limits.set_state_color(target_name, packet_name, item_name, state_name, color)
+                            continue
+                        if change_type:
+                            Logger.warn(
+                                f"Ignoring saved {limits_set} limits settings for {target_name} {packet_name} {item_name} which has {change_type} limits"
+                            )
                             continue
                         System.limits.set(
                             target_name,

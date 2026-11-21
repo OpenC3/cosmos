@@ -107,7 +107,7 @@ def start_raw_logging_interface(interface_name: str = "ALL", scope: str = OPENC3
     """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
     if interface_name == "ALL":
-        for interface_name in get_interface_names():
+        for interface_name in get_interface_names(scope=scope):
             InterfaceTopic.start_raw_logging(interface_name, scope=scope)
     else:
         InterfaceTopic.start_raw_logging(interface_name, scope=scope)
@@ -122,7 +122,7 @@ def stop_raw_logging_interface(interface_name: str = "ALL", scope: str = OPENC3_
     """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
     if interface_name == "ALL":
-        for interface_name in get_interface_names():
+        for interface_name in get_interface_names(scope=scope):
             InterfaceTopic.stop_raw_logging(interface_name, scope=scope)
     else:
         InterfaceTopic.stop_raw_logging(interface_name, scope=scope)
@@ -185,9 +185,12 @@ def map_target_to_interface(
         tlm_only: Map only the target's telemetry.
         unmap_old: Remove the target from any interface it was previously mapped to.
         scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the interface does not exist.
     """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
-    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    interface = _get_interface_model(interface_name, "map_target_to_interface", scope)
     if isinstance(target_name, list):
         target_names = target_name
     else:
@@ -215,9 +218,12 @@ def unmap_target_from_interface(
         cmd_only: Unmap only the target's commands.
         tlm_only: Unmap only the target's telemetry.
         scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the interface does not exist.
     """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
-    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    interface = _get_interface_model(interface_name, "unmap_target_from_interface", scope)
     if isinstance(target_name, list):
         target_names = target_name
     else:
@@ -292,9 +298,12 @@ def interface_target_enable(
         cmd_only: Enable only the target's commands.
         tlm_only: Enable only the target's telemetry.
         scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the interface does not exist.
     """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
-    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    interface = _get_interface_model(interface_name, "interface_target_enable", scope)
     if cmd_only and tlm_only:
         cmd_only = False
         tlm_only = False
@@ -325,9 +334,12 @@ def interface_target_disable(
         cmd_only: Disable only the target's commands.
         tlm_only: Disable only the target's telemetry.
         scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the interface does not exist.
     """
     authorize(permission="system_set", interface_name=interface_name, scope=scope)
-    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    interface = _get_interface_model(interface_name, "interface_target_disable", scope)
     if cmd_only and tlm_only:
         cmd_only = False
         tlm_only = False
@@ -358,3 +370,10 @@ def interface_details(interface_name: str, scope: str = OPENC3_SCOPE) -> dict[st
     """
     authorize(permission="system", interface_name=interface_name, scope=scope)
     return InterfaceTopic.interface_details(interface_name, scope=scope)
+
+
+def _get_interface_model(interface_name: str, method_name: str, scope: str) -> InterfaceModel:
+    interface = InterfaceModel.get_model(name=interface_name, scope=scope)
+    if interface is None:
+        raise RuntimeError(f"Interface '{interface_name}' does not exist ({method_name})")
+    return interface

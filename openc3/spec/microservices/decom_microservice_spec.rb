@@ -62,7 +62,9 @@ module OpenC3
         packet.received_time = Time.now.sys
         capture_io do |stdout|
           TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
-          sleep 0.01
+          # Limits messages are logged before the CVT is written, so wait for
+          # the CVT (the last step of decom) rather than sleeping
+          wait_for { @api.tlm("INST HEALTH_STATUS TEMP1") }
           expect(stdout.string).to include("INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)")
           expect(stdout.string).to include("INST HEALTH_STATUS TEMP2 = -100.0 is RED_LOW (-60.0)")
           expect(stdout.string).to include("INST HEALTH_STATUS TEMP3 = -100.0 is RED_LOW (-25.0)")
@@ -145,6 +147,26 @@ module OpenC3
 
         # Restore the default limits set
         System.limits_set = :DEFAULT
+      end
+
+      it "includes the change type for change limits" do
+        item = nil
+        packet = System.telemetry.packet('INST', 'HEALTH_STATUS')
+        packet.received_time = Time.now.sys
+        item = packet.get_item("COLLECTS")
+        item.limits.change_type = :SEQUENCE
+        item.limits.state = :RED
+        capture_io do |stdout|
+          @dm.limits_change_callback(packet, item, :GREEN, 5, true)
+          expect(stdout.string).to include("INST HEALTH_STATUS COLLECTS = 5 is RED (SEQUENCE)")
+        end
+        capture_io do |stdout|
+          @dm.limits_change_callback(packet, item, :GREEN, false, true)
+          expect(stdout.string).to include("INST HEALTH_STATUS COLLECTS = false is RED (SEQUENCE)")
+        end
+      ensure
+        item&.limits&.change_type = nil
+        item&.limits&.state = nil
       end
 
       it "falls back to DEFAULT limits set for GREEN and BLUE states" do
@@ -234,7 +256,9 @@ module OpenC3
         packet.received_time = Time.now.sys
         capture_io do |stdout|
           TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
-          sleep 0.01
+          # The processor error is logged before the CVT is written, so wait
+          # for the CVT (the last step of decom) rather than sleeping
+          wait_for { @api.tlm("INST HEALTH_STATUS TEMP1") }
           expect(stdout.string).to include("Bad processor")
         end
         # This is an implementation detail but we want to ensure the error was logged

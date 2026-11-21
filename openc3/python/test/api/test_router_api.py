@@ -331,3 +331,24 @@ class TestRouterApi(unittest.TestCase):
     def test_gets_router_details(self, mock_details):
         router_details("ROUTE_INT")
         mock_details.assert_called_with("ROUTE_INT", scope="DEFAULT")
+
+    def test_raises_if_the_router_does_not_exist(self):
+        # https://github.com/OpenC3/cosmos/issues/4298
+        for method, args in (
+            (map_target_to_router, ("INST", "NO_SUCH")),
+            (unmap_target_from_router, ("INST", "NO_SUCH")),
+            (router_target_enable, ("NO_SUCH", "INST")),
+            (router_target_disable, ("NO_SUCH", "INST")),
+        ):
+            with self.assertRaisesRegex(RuntimeError, rf"Router 'NO_SUCH' does not exist \({method.__name__}\)"):
+                method(*args)
+
+    @patch("openc3.topics.router_topic.RouterTopic.stop_raw_logging")
+    @patch("openc3.topics.router_topic.RouterTopic.start_raw_logging")
+    def test_raw_logging_all_uses_the_given_scope(self, mock_start, mock_stop):
+        # https://github.com/OpenC3/cosmos/issues/4299
+        RouterModel(name="OTHER_INT", scope="OTHER").create()
+        start_raw_logging_router("ALL", scope="OTHER")
+        mock_start.assert_called_once_with("OTHER_INT", scope="OTHER")
+        stop_raw_logging_router("ALL", scope="OTHER")
+        mock_stop.assert_called_once_with("OTHER_INT", scope="OTHER")

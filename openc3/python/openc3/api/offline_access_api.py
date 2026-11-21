@@ -51,8 +51,8 @@ def offline_access_needed(manual: bool = False, scope: str = OPENC3_SCOPE, token
         # Not needed if can't run scripts
         return False
     info = user_info(token)
-    if "offline_access" in info["roles"]:
-        username = info["username"]
+    if "offline_access" in (info.get("roles") or []):
+        username = info.get("username")
         if username and username != "":
             model = OfflineAccessModel.get_model(name=username, scope=scope)
             if model and model.offline_access_token:

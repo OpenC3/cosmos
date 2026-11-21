@@ -62,6 +62,17 @@ const config = {
     },
   ],
 
+  scripts: [
+    // Shared OpenC3 consent + tracking. Must load in <head>, synchronously.
+    {
+      src: "https://openc3.com/oc3-tracking.js",
+      async: false,
+      defer: false,
+    },
+  ],
+
+  clientModules: [require.resolve("./src/clientModules/oc3Tracking.js")],
+
   // Set the production url of your site here
   url: "https://docs.openc3.com",
   // Set the /<baseUrl>/ pathname under which your site is served
@@ -304,7 +315,9 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} OpenC3, Inc.`,
+        copyright:
+          `Copyright © ${new Date().getFullYear()} OpenC3, Inc. · ` +
+          '<a href="#cookie-preferences" data-oc3-cookie-preferences>Cookie preferences</a>',
       },
       prism: {
         theme: lightCodeTheme,

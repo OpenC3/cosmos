@@ -9,9 +9,15 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import threading
 import unittest
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from unittest.mock import Mock, patch
+
+import requests
 
 from openc3.interfaces.http_client_interface import HttpClientInterface
+from openc3.interfaces.interface import WriteRejectError
 from test.test_helper import mock_redis, setup_system
 
 
@@ -163,3 +169,129 @@ class TestHttpClientInterface(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestHttpClientInterfaceUri(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
+        self.interface = HttpClientInterface("example.com", 8080, "https")
+
+    def packet_with_path(self, path):
+        packet = Mock()
+        packet.buffer = b"packet data"
+        packet.read.return_value = path
+        packet.target_name = "TARGET"
+        packet.extra = None
+        return packet
+
+    def test_allows_empty_paths_and_paths_with_queries_or_at(self):
+        _, extra = self.interface.convert_packet_to_data(self.packet_with_path(""))
+        self.assertEqual(extra["HTTP_URI"], "https://example.com:8080")
+        _, extra = self.interface.convert_packet_to_data(self.packet_with_path(None))
+        self.assertEqual(extra["HTTP_URI"], "https://example.com:8080")
+        _, extra = self.interface.convert_packet_to_data(self.packet_with_path("/users/@me?x=1"))
+        self.assertEqual(extra["HTTP_URI"], "https://example.com:8080/users/@me?x=1")
+
+    def test_rejects_invalid_paths(self):
+        for path in [
+            "@other.com:80/x",
+            "@other.com",
+            ":9999/x",
+            ".other.com/x",
+            "//other.com/x",
+            "x/y",
+            "/a\\b",
+            "/a b",
+            "/a\r\nHost: other.com",
+            "/a\tb",
+        ]:
+            packet = self.packet_with_path(path)
+            with self.subTest(path=path), self.assertRaises(WriteRejectError):
+                self.interface.convert_packet_to_data(packet)
+
+    def test_write_interface_rejects_uri_for_a_different_host_without_sending(self):
+        self.interface.connect()
+        self.interface.http = Mock()
+        for uri in [
+            "http://other.com/x",
+            "https://example.com:8080@other.com/x",
+            "https://user@example.com:8080/x",
+            "https://example.com:9999/x",
+            "http://example.com:8080/x",
+            "https://example.com/x",
+            "https://example.com:notaport/x",
+            None,
+        ]:
+            with self.subTest(uri=uri), self.assertRaises(WriteRejectError):
+                self.interface.write_interface(b"", {"HTTP_URI": uri, "HTTP_METHOD": "get"})
+        self.interface.http.request.assert_not_called()
+
+    @patch("openc3.interfaces.http_client_interface.Logger")
+    def test_write_interface_does_not_return_the_raw_connection_error(self, mock_logger):
+        self.interface.connect()
+        self.interface.http = Mock()
+        self.interface.http.request.side_effect = requests.exceptions.ConnectionError(
+            "HTTPConnectionPool(host='10.0.0.1', port=22): Connection refused"
+        )
+        with self.assertRaises(RuntimeError) as context:
+            self.interface.write_interface(b"", {"HTTP_URI": "https://example.com:8080/x", "HTTP_METHOD": "get"})
+        self.assertEqual(
+            str(context.exception), "HTTP GET request to https://example.com:8080 failed (ConnectionError)"
+        )
+        self.assertIn("Connection refused", mock_logger.error.call_args[0][0])
+
+    @patch("openc3.interfaces.http_client_interface.Logger")
+    def test_write_interface_redacts_query_strings_from_the_failure_log(self, mock_logger):
+        self.interface.connect()
+        self.interface.http = Mock()
+        self.interface.http.request.side_effect = requests.exceptions.ConnectionError(
+            "HTTPConnectionPool(host='example.com', port=8080): Max retries exceeded with url: /status?access_token=abc)secret (Caused by Connection refused)"
+        )
+        with self.assertRaises(RuntimeError):
+            self.interface.write_interface(
+                b"", {"HTTP_URI": "https://example.com:8080/status?access_token=abc)secret", "HTTP_METHOD": "get"}
+            )
+        logged = mock_logger.error.call_args[0][0]
+        self.assertNotIn("secret", logged)
+        self.assertIn("https://example.com:8080/status?[REDACTED]", logged)
+        self.assertIn("Connection refused", logged)
+
+    def test_write_interface_accepts_an_explicit_default_port(self):
+        i = HttpClientInterface("example.com", 443, "https")
+        i.connect()
+        i.http = Mock()
+        i.http.request.return_value = Mock(headers={}, status_code=200, text="")
+        for uri in ["https://example.com:443/x", "https://example.com/x"]:
+            with self.subTest(uri=uri):
+                i.write_interface(b"", {"HTTP_URI": uri, "HTTP_METHOD": "get"})
+        self.assertEqual(i.http.request.call_count, 2)
+
+    def test_write_interface_does_not_follow_redirects(self):
+        class RedirectHandler(BaseHTTPRequestHandler):
+            def do_GET(self):
+                # If the redirect were followed, the request to port 1 would fail
+                self.send_response(302)
+                self.send_header("Location", "http://127.0.0.1:1/x")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+
+            def log_message(self, *args):
+                pass
+
+        server = HTTPServer(("127.0.0.1", 0), RedirectHandler)
+        # Give up if no request arrives so the thread can't block forever
+        server.timeout = 5
+        port = server.server_address[1]
+        thread = threading.Thread(target=server.handle_request)
+        thread.start()
+        try:
+            i = HttpClientInterface("127.0.0.1", port)
+            i.connect()
+            i.write_interface(b"", {"HTTP_URI": f"http://127.0.0.1:{port}/x", "HTTP_METHOD": "get"})
+            _, extra = i.read_interface()
+            self.assertEqual(extra["HTTP_STATUS"], 302)
+            i.disconnect()
+        finally:
+            thread.join(timeout=5)
+            server.server_close()
