@@ -345,6 +345,7 @@ export default {
             lines: vueGraph.lines,
             xAxisItem: vueGraph.xAxisItem,
             drawStyle: vueGraph.drawStyle,
+            timeType: vueGraph.timeType,
           }
           // Only add the start and end time if we have both
           // This prevents adding just the start time and having the graph
@@ -667,6 +668,9 @@ export default {
         if (graph.drawStyle) {
           vueGraph.drawStyle = graph.drawStyle
         }
+        // Set before adding items so they subscribe with it. Older configs
+        // don't have it and were always packet time.
+        vueGraph.setTimeType(graph.timeType || 'PACKET')
         vueGraph.addItems([...graph.items])
         vueGraph.lines = graph.lines
         vueGraph.xAxisItem = graph.xAxisItem
