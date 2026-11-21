@@ -30,11 +30,11 @@ class SuiteResults:
 
     def __init__(self) -> None:
         """Create an empty SuiteResults. Call `start` before processing results."""
-        self._report = None
+        self._report: list[str] = []
         self.context = None
         self.start_time = None
         self.stop_time = None
-        self.results = None
+        self.results: list[ScriptResult] = []
         self.settings = None
         self.metadata = None
 
@@ -80,7 +80,7 @@ class SuiteResults:
         """
         # If we were passed an array we concat it to the results global
         if isinstance(results, list):
-            self.results.append(results)
+            self.results.extend(results)
         # A single result is appended and then turned into an array
         else:
             self.results.append(results)
@@ -91,7 +91,7 @@ class SuiteResults:
             self.puts(f"{result.group}:{result.script}:{result.result}")
             if result.message:
                 for line in result.message.split("\n"):
-                    if re.search(r"\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\xFF", line):
+                    if re.search(r"[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F-\xFF]", line):
                         line = line.rstrip("\n")
                         line = remove_quotes(repr(line))
                     self._report.append("  " + line.strip())

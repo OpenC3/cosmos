@@ -195,9 +195,9 @@ module OpenC3
     # Accepts two different calling styles:
     #   build_cmd("TGT CMD with PARAM1 val, PARAM2 val")
     #   build_cmd('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
-    def build_cmd(*args, range_check: true, raw: false, scope: $openc3_scope, **kwargs)
+    def build_cmd(*args, range_check: true, raw: false, timeout: 5, scope: $openc3_scope, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
-      $api_server.build_cmd(*args)
+      $api_server.build_cmd(*args, range_check: range_check, raw: raw, timeout: timeout, scope: scope)
     end
     # build_command is DEPRECATED
     alias build_command build_cmd
@@ -207,9 +207,9 @@ module OpenC3
     # Accepts two different calling styles:
     #   get_cmd_hazardous("TGT CMD with PARAM1 val, PARAM2 val")
     #   get_cmd_hazardous('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
-    def get_cmd_hazardous(*args, **kwargs)
+    def get_cmd_hazardous(*args, scope: $openc3_scope, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
-      $api_server.get_cmd_hazardous(*args)
+      $api_server.get_cmd_hazardous(*args, scope: scope)
     end
 
     # Returns the time the most recent command was sent
