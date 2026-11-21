@@ -407,6 +407,33 @@ class TestCvtModel(unittest.TestCase):
         )
         CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type="ALL", scope="DEFAULT")
 
+    def test_set_item_and_override_store_a_none_formatted_value_as_an_empty_string(self):
+        # Matches Ruby's nil.to_s rather than str(None) which is "None"
+        self.update_temp1()
+        CvtModel.set_item("INST", "HEALTH_STATUS", "TEMP1", None, type="FORMATTED", scope="DEFAULT")
+        self.assertEqual(
+            CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED", scope="DEFAULT"),
+            "",
+        )
+        CvtModel.set_item("INST", "HEALTH_STATUS", "TEMP1", None, type="ALL", scope="DEFAULT")
+        self.assertEqual(
+            CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED", scope="DEFAULT"),
+            "",
+        )
+        self.update_temp1()
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", None, type="FORMATTED", scope="DEFAULT")
+        self.assertEqual(
+            CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED", scope="DEFAULT"),
+            "",
+        )
+        CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type="ALL", scope="DEFAULT")
+        CvtModel.override("INST", "HEALTH_STATUS", "TEMP1", None, type="ALL", scope="DEFAULT")
+        self.assertEqual(
+            CvtModel.get_item("INST", "HEALTH_STATUS", "TEMP1", type="FORMATTED", scope="DEFAULT"),
+            "",
+        )
+        CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type="ALL", scope="DEFAULT")
+
     def test_normalize_raises_for_an_unknown_type(self):
         with self.assertRaisesRegex(RuntimeError, "Unknown type 'OTHER'"):
             CvtModel.normalize("INST", "HEALTH_STATUS", "TEMP1", type="OTHER", scope="DEFAULT")

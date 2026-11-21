@@ -136,7 +136,7 @@ class TestDecomMicroservice(unittest.TestCase):
         self.assertEqual(events[0][1].get("target_name"), "INST")
         self.assertEqual(events[0][1].get("packet_name"), "HEALTH_STATUS")
         self.assertEqual(events[0][1].get("item_name"), "TEMP1")
-        self.assertEqual(events[0][1].get("old_limits_state"), "None")
+        self.assertEqual(events[0][1].get("old_limits_state"), "")
         self.assertEqual(events[0][1].get("new_limits_state"), "RED_LOW")
         self.assertEqual(
             events[0][1].get("message"),
@@ -191,7 +191,7 @@ class TestDecomMicroservice(unittest.TestCase):
         self.assertEqual(events[0][1]["packet_name"], "HEALTH_STATUS")
         self.assertEqual(events[0][1]["item_name"], "TEMP3")
         self.assertEqual(events[0][1]["old_limits_state"], "RED_LOW")
-        self.assertEqual(events[0][1]["new_limits_state"], "None")
+        self.assertEqual(events[0][1]["new_limits_state"], "")
         self.assertEqual(events[0][1]["message"], "INST HEALTH_STATUS TEMP3 is disabled")
         assert re.search(
             r"INST HEALTH_STATUS TEMP1 = .* is BLUE \(-20.0 to 20.0\)",

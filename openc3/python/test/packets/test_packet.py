@@ -710,6 +710,15 @@ class PacketWrite(unittest.TestCase):
         self.p.write_item(i, "FALSE", "CONVERTED", self.buffer)
         self.assertEqual(self.buffer, b"\x01\x00\x00\x00")
 
+    def test_does_not_write_a_none_value_as_a_state_named_none(self):
+        # Ruby's nil.to_s.upcase is "" which never matches a state, but str(None).upper() is "NONE"
+        self.p.append_item("item", 8, "UINT")
+        i = self.p.get_item("ITEM")
+        i.states = {"NONE": 1, "TRUE": 2}
+        with self.assertRaises(TypeError):
+            self.p.write_item(i, None, "CONVERTED", self.buffer)
+        self.assertEqual(self.buffer, b"\x00\x00\x00\x00")
+
     def test_writes_the_converted_value_with_states_no_buffer(self):
         self.p.append_item("item", 8, "UINT")
         i = self.p.get_item("ITEM")
