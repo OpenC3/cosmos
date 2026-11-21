@@ -1302,7 +1302,7 @@ Builds a command binary string so you can see the raw bytes for a given command.
 <TabItem value="python" label="Python Syntax">
 
 ```python
-build_cmd(<ARGS>, range_check=True, raw=False)
+build_cmd(<ARGS>, range_check=True, raw=False, timeout=5)
 ```
 
 </TabItem>
@@ -1310,7 +1310,7 @@ build_cmd(<ARGS>, range_check=True, raw=False)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-build_cmd(<ARGS>, range_check: true, raw: false)
+build_cmd(<ARGS>, range_check: true, raw: false, timeout: 5)
 ```
 
 </TabItem>
@@ -1321,6 +1321,7 @@ build_cmd(<ARGS>, range_check: true, raw: false)
 | ARGS        | Command parameters (see cmd)                                                            |
 | range_check | Whether to perform range checking on the command. Default is true.                      |
 | raw         | Whether to write the command arguments as RAW or CONVERTED value. Default is CONVERTED. |
+| timeout     | Seconds to wait for the decom microservice to build the command. Default is 5.          |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -2259,6 +2260,250 @@ status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") # => t
 </TabItem>
 </Tabs>
 
+## Command Authority
+
+These methods manage [Command Authority](../configuration/command.md#command-authority-enterprise), a COSMOS Enterprise feature. When Command Authority is enabled for a scope, a user must take command authority of a target before sending commands or starting scripts for that target. See [Roles and Permissions](roles-permissions.md#command-authority) for the permissions involved. Each method raises an error if Command Authority is not enabled for the scope. The methods are available in Ruby since 5.18.0 and in Python since 6.4.0.
+
+### cmd_authority_info
+
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.18.0</span></span>
+
+Returns the command authority of every target which has it taken, as a hash / dict keyed by target name. Requires the `system` permission.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+cmd_authority_info()
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_authority_info()
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                                         |
+| --------- | ----------------------------------------------------------------------------------- |
+| scope     | Scope to get command authority for. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+info = cmd_authority_info()
+print(info) # =>
+# {'INST': {'name': 'INST', 'username': 'operator', 'updated_at': 1737129305507111708, 'scope': 'DEFAULT'}}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+info = cmd_authority_info()
+puts info # =>
+# {"INST"=>{"name"=>"INST", "username"=>"operator", "updated_at"=>1737129305507111708, "scope"=>"DEFAULT"}}
+```
+
+</TabItem>
+</Tabs>
+
+### cmd_authority_take
+
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.18.0</span></span>
+
+Takes command authority of a target. Raises an error if another user already has command authority of the target. Requires the `cmd` permission.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+cmd_authority_take("<Target Name>", username=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_authority_take("<Target Name>", username: nil)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                           |
+| ----------- | --------------------------------------------------------------------- |
+| Target Name | Name of the target                                                    |
+| username    | User to give command authority to. Default is the authenticated user. |
+| scope       | Scope of the target. Default is the OPENC3_SCOPE, usually "DEFAULT".  |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+cmd_authority_take("INST")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_authority_take("INST")
+```
+
+</TabItem>
+</Tabs>
+
+### cmd_authority_release
+
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.18.0</span></span>
+
+Releases command authority of a target. Releasing command authority held by a different user also requires the `admin` permission. Does nothing if no user has command authority of the target. Requires the `cmd` permission.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+cmd_authority_release("<Target Name>", username=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_authority_release("<Target Name>", username: nil)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                          |
+| ----------- | -------------------------------------------------------------------- |
+| Target Name | Name of the target                                                   |
+| username    | User releasing command authority. Default is the authenticated user. |
+| scope       | Scope of the target. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+cmd_authority_release("INST")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_authority_release("INST")
+```
+
+</TabItem>
+</Tabs>
+
+### cmd_authority_take_all
+
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.18.0</span></span>
+
+Takes command authority of every target in the scope. Targets which another user already has command authority of are skipped. Requires the `cmd` permission.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+cmd_authority_take_all(username=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_authority_take_all(username: nil)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                           |
+| --------- | --------------------------------------------------------------------- |
+| username  | User to give command authority to. Default is the authenticated user. |
+| scope     | Scope of the targets. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+cmd_authority_take_all()
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_authority_take_all()
+```
+
+</TabItem>
+</Tabs>
+
+### cmd_authority_release_all
+
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.18.0</span></span>
+
+Releases command authority of every target in the scope. Releasing command authority held by a different user also requires the `admin` permission. Requires the `cmd` permission.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+cmd_authority_release_all(username=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_authority_release_all(username: nil)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                           |
+| --------- | --------------------------------------------------------------------- |
+| username  | User releasing command authority. Default is the authenticated user.  |
+| scope     | Scope of the targets. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+cmd_authority_release_all()
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_authority_release_all()
+```
+
+</TabItem>
+</Tabs>
+
 ## Command Queues
 
 Command queues can be used to store commands prior to "releasing" them for execution. Commands are sent to queues via the `queue` keyword argument to the various `cmd` API calls. Queues can be in three different states: `HOLD`, `RELEASE`, and `DISABLE`. `HOLD` builds up a FIFO of commands as they are generated. `RELEASE` sends the commands to the interface for execution. `DISABLE` rejects all commands that are sent via the `cmd` API calls. Sending a command while a queue is in the `DISABLE` state will raise an exception and stop the script.
@@ -2954,7 +3199,7 @@ check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_ST
 
 <span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-Executes a method and expects an exception to be raised. If the method does not raise an exception, a CheckError is raised.
+Executes a method and expects an exception to be raised. If the method does not raise an exception, a CheckError is raised. If the method name is not a scripting method, the check fails with a CheckError instead of counting as the expected exception. In Python, the check also fails with a CheckError if the parameters don't match the method's signature.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5415,9 +5660,9 @@ get_overall_limits_state(<Ignored Items> (optional))
 </TabItem>
 </Tabs>
 
-| Parameter     | Description                                                                                                                        |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Ignored Items | Array of arrays with items to ignore when determining the overall limits state. [['TARGET_NAME', 'PACKET_NAME', 'ITEM_NAME'], ...] |
+| Parameter     | Description                                                                                                                                                                                                                                    |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ignored Items | Array of arrays with items to ignore when determining the overall limits state. [['TARGET_NAME', 'PACKET_NAME', 'ITEM_NAME'], ...]. Names must match exactly. ITEM_NAME can be None (Python) or nil (Ruby) to ignore every item in the packet. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -10363,7 +10608,7 @@ Delete an existing timeline activity.
 <TabItem value="python" label="Python Syntax">
 
 ```python
-delete_timeline_activity(name, start, uuid)
+delete_timeline_activity(name, start, uuid, recurring=False)
 ```
 
 </TabItem>
@@ -10371,23 +10616,27 @@ delete_timeline_activity(name, start, uuid)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-delete_timeline_activity(name, start, uuid)
+delete_timeline_activity(name, start, uuid, recurring: false)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                           |
-| --------- | ----------------------------------------------------- |
-| name      | Name of the timeline                                  |
-| start     | Start time of the activity. Time / datetime instance. |
-| uuid      | UUID of the activity                                  |
+| Parameter | Description                                                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| name      | Name of the timeline                                                                                                                                                     |
+| start     | Start time of the activity. Time / datetime instance.                                                                                                                    |
+| uuid      | UUID of the activity, or the recurring group UUID (the activity's `recurring` `uuid`) when `recurring` is true                                                           |
+| recurring | Whether to also delete every activity in the same recurring group. `start` must be the start of an occurrence that still exists. Default is false. (Since _Coming Soon_) |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5")
+# Delete every activity in a recurring group using an existing occurrence and the group UUID
+activity = next(act for act in get_timeline_activities("PythonTL") if act["recurring"].get("uuid"))
+delete_timeline_activity("PythonTL", activity["start"], activity["recurring"]["uuid"], recurring=True)
 ```
 
 </TabItem>
@@ -10396,6 +10645,9 @@ delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a3
 
 ```ruby
 delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782")
+# Delete every activity in a recurring group using an existing occurrence and the group UUID
+activity = get_timeline_activities("RubyTL").find { |act| act['recurring']['uuid'] }
+delete_timeline_activity("RubyTL", activity['start'], activity['recurring']['uuid'], recurring: true)
 ```
 
 </TabItem>
@@ -10810,6 +11062,28 @@ Creates and sets the offline access token for the user. Note: calling this metho
 In Enterprise, the `OPENC3_API_USER` and `OPENC3_API_PASSWORD` environment variables must be set for the `initialize_offline_access` to generate a token. This API user must also be a valid user with the respective permissions setup in Keycloak. These two variables are not in the `.env` by default, and should not be as they contain sensitive information.
 
 Depending on your deployment environment, there are several ways Secrets can be managed. In a Kubernetes deployment, [Secretes](https://kubernetes.io/docs/concepts/configuration/secret/) can be configured, or dynamically managed by a separate secrets management tool like [HashiCorp Vault](https://github.com/hashicorp/vault) or [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+initialize_offline_access(scope=OPENC3_SCOPE)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+initialize_offline_access(scope: $openc3_scope)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                              |
+| --------- | ------------------------------------------------------------------------ |
+| scope     | Scope to set the offline access token in. Defaults to the current scope. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">

@@ -52,6 +52,21 @@ module OpenC3
       end
     end
 
+    describe "xtrim_minid" do
+      # Redis rejects LIMIT unless the trim is approximate (~)
+      it "only sends LIMIT with approximate trimming" do
+        redis = Redis.new
+        commands = []
+        allow(redis).to receive(:send_command) { |args| commands << args }
+        redis.xtrim_minid('TOPIC', '2-0', approximate: true, limit: 0)
+        redis.xtrim_minid('TOPIC', '2-0', approximate: false, limit: 0)
+        expect(commands).to eql [
+          [:xtrim, 'TOPIC', :MINID, '~', '2-0', :LIMIT, 0],
+          [:xtrim, 'TOPIC', :MINID, '=', '2-0'],
+        ]
+      end
+    end
+
     describe "mock_redis" do
       # Each shard must get its own mock so specs can catch a read against the
       # wrong shard instead of silently finding the data in a shared mock
