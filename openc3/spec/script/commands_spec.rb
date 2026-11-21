@@ -452,5 +452,34 @@ module OpenC3
         end
       end
     end
+
+    describe "critical commands" do
+      it "polls the critical command status in the command's scope" do
+        error = CriticalCmdError.new
+        error.uuid = 'UUID'
+        error.command = {
+          'username' => 'user', 'target_name' => 'INST', 'cmd_name' => 'ABORT',
+          'cmd_params' => {}, 'cmd_string' => 'cmd("INST ABORT")', 'obfuscated_items' => []
+        }
+        allow($api_server).to receive(:method_missing).and_raise(error)
+        expect(self).to receive(:critical_cmd_status).with('UUID', scope: 'OTHER').and_return('APPROVED')
+        capture_io do |stdout|
+          cmd("INST ABORT", scope: 'OTHER')
+          expect(stdout.string).to include("Waiting for critical command approval")
+        end
+      end
+    end
+
+    describe "disconnected cmd" do
+      it "looks up the command text parameters in the given scope" do
+        disconnect_script()
+        expect(TargetModel).to receive(:packet).with('INST', 'COLLECT', type: :CMD, scope: 'OTHER').and_call_original
+        allow($api_server).to receive(:get_cmd).with('INST', 'COLLECT', scope: 'OTHER').and_return({ 'target_name' => 'INST', 'items' => [{ 'name' => 'TYPE' }] })
+        capture_io do |stdout|
+          cmd("INST COLLECT with TYPE NORMAL", scope: 'OTHER')
+          expect(stdout.string).to include('cmd("INST COLLECT with TYPE')
+        end
+      end
+    end
   end
 end
