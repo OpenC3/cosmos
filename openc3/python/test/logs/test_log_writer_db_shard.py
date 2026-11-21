@@ -50,13 +50,21 @@ class TestLogWriterDbShard(unittest.TestCase):
                 for index in range(1, 4):
                     Topic.write_topic(topic, {"index": str(index)}, f"{index}-0", db_shard=db_shard)
 
+        original_trim = Topic.trim_topic
         # Don't start a cycle thread, the test runs a single pass of it below
         with patch.object(LogWriter, "cycle_thread", True):
             writer = LogWriter("DEFAULT/logs")
+        exact_trim = lambda topic, minid, approximate=True, limit=0, db_shard=0: original_trim(  # noqa: E731
+            topic, minid, False, limit, db_shard=db_shard
+        )
         writer.cleanup_offsets = [dict.fromkeys(topics, "3-0")]
         writer.cleanup_times = [datetime.now(timezone.utc) - timedelta(seconds=1)]
         try:
-            with patch("openc3.logs.log_writer.Sleeper.sleep", return_value=True):
+            # Approximate trimming may leave a short stream untouched, so trim exactly
+            with (
+                patch.object(Topic, "trim_topic", side_effect=exact_trim),
+                patch("openc3.logs.log_writer.Sleeper.sleep", return_value=True),
+            ):
                 writer.cycle_thread_body()
         finally:
             LogWriter.instances.remove(writer)

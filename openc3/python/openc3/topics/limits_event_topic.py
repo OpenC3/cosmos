@@ -169,7 +169,8 @@ class LimitsEventTopic(Topic):
                 final_result.append([msg_id, msg_hash])
         else:
             result = Topic.get_newest_message(topic)
-            if result:
+            # get_newest_message returns (None, None) when the stream is empty
+            if result and result[0] is not None:
                 final_result = [result]
         parsed_result = []
         for offset, hash in final_result:

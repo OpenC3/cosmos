@@ -54,6 +54,11 @@ jobs:
           ruby-version: ${{ matrix.ruby-version }}
           bundler-cache: true # runs 'bundle install' and caches installed gems automatically
           working-directory: openc3
+      # uv_index_isolation_spec.rb checks uv's real behavior and skips without it
+      - name: Set up uv
+        uses: ./.github/actions/setup-uv-python
+        with:
+          sync: "false"
       - name: Run unit tests
         run: bundle exec rake build spec
         working-directory: openc3

@@ -173,7 +173,7 @@ def set_tlm(
         packet_name=packet_name,
         scope=scope,
     )
-    CvtModel.set_item(target_name, packet_name, item_name, value, type, scope)
+    CvtModel.set_item(target_name, packet_name, item_name, value, type, scope=scope)
 
 
 def inject_tlm(
@@ -183,6 +183,7 @@ def inject_tlm(
     type: ValueType = "CONVERTED",
     stored: bool = False,
     scope: str = OPENC3_SCOPE,
+    *,
     received_time: int | None = None,
 ) -> None:
     """Inject a packet into the system as if it was received from an interface.
@@ -599,7 +600,7 @@ def get_all_tlm_names(target_name: str, hidden: bool = False, scope: str = OPENC
     return names
 
 
-def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE) -> list[bytes]:
+def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = OPENC3_SCOPE) -> list[str]:
     """Return the names of all the telemetry items in every packet of a target.
 
     Args:
@@ -608,8 +609,7 @@ def get_all_tlm_item_names(target_name: str, hidden: bool = False, scope: str = 
         scope (str): COSMOS scope.
 
     Returns:
-        The unique item names as bytes (unlike Ruby, which returns strings),
-        or an empty list if the target does not exist.
+        The unique item names, or an empty list if the target does not exist.
     """
     authorize(permission="tlm", target_name=target_name, scope=scope)
     try:
@@ -656,7 +656,7 @@ def get_telemetry(*args: str, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
        Use get_tlm instead.
     """
     warnings.warn("get_telemetry is deprecated, use get_tlm", FutureWarning, stacklevel=2)
-    return get_tlm(*args, scope)
+    return get_tlm(*args, scope=scope)
 
 
 def get_item(*args: str, scope: str = OPENC3_SCOPE, cache_timeout: float = 0.1) -> dict[str, Any]:
