@@ -695,6 +695,7 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
     @classmethod
     def read_all(
         cls,
+        *,
         items: list[str | list[str]] | None = None,
         packets: list[str] | None = None,
         start_time: datetime | int | None = None,
@@ -734,7 +735,8 @@ class StreamingWebSocketApi(CmdTlmWebSocketApi):
         """
         read_all_start_time = time.time()
         data = []
-        with cls() as api:
+        # Connect with the requested scope, not just add the items with it
+        with cls(scope=OPENC3_SCOPE if scope is None else scope) as api:
             api.add(
                 items=items,
                 packets=packets,

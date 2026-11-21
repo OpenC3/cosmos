@@ -17,6 +17,7 @@
 
 require 'digest'
 require 'openc3/models/environment_model'
+require 'openc3/utilities/script_env'
 
 class EnvironmentController < ApplicationController
   def initialize
@@ -59,6 +60,12 @@ class EnvironmentController < ApplicationController
         status: 'error',
         message: "Parameter '#{params['key'].nil? ? 'key' : 'value'}' is required",
       }, status: :bad_request
+      return
+    end
+    # Names that COSMOS configures for scripts (OPENC3_*, PATH, etc.) are reserved
+    key_error = OpenC3::ScriptEnv.key_error(params['key'])
+    if key_error
+      render json: { status: 'error', message: key_error }, status: :bad_request
       return
     end
     begin

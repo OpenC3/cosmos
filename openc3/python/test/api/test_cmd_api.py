@@ -399,7 +399,8 @@ class TestCmdApi(unittest.TestCase):
             "cmd_raw_no_checks",
         ]:
             func = globals()[name]
-            with self.assertRaisesRegex(RuntimeError, "Must be numeric"):
+            # https://github.com/OpenC3/cosmos/issues/4291
+            with self.assertRaisesRegex(RuntimeError, "Invalid timeout parameter: YES. Must be numeric"):
                 func("INST", "ABORT", timeout="YES")
             self.process = False
             with self.assertRaisesRegex(RuntimeError, "Timeout of 0.003s waiting for cmd ack"):
@@ -723,6 +724,21 @@ class TestCmdApi(unittest.TestCase):
         self.assertFalse(get_cmd_hazardous("INST", "COLLECT", {"TYPE": 0}))
         self.assertTrue(get_cmd_hazardous("INST", "COLLECT", {"TYPE": 1}))
 
+    def test_get_cmd_hazardous_skips_parameters_not_passed_or_without_states(self):
+        # https://github.com/OpenC3/cosmos/issues/4289
+        # TYPE has states but is not passed
+        self.assertFalse(get_cmd_hazardous("INST", "COLLECT", {}))
+        # DURATION is passed but has no states
+        self.assertFalse(get_cmd_hazardous("INST", "COLLECT", {"DURATION": 5}))
+        self.assertTrue(get_cmd_hazardous("INST", "COLLECT", {"TYPE": "SPECIAL", "DURATION": 5}))
+
+    def test_get_cmd_hazardous_uppercases_parameter_keys(self):
+        # Matches Ruby's transform_keys(&:upcase) for every calling style
+        self.assertTrue(get_cmd_hazardous("INST", "COLLECT", {"type": "SPECIAL"}))
+        self.assertTrue(get_cmd_hazardous("INST", "COLLECT", {"TYPE": "SPECIAL"}))
+        self.assertFalse(get_cmd_hazardous("INST", "COLLECT", {"type": "NORMAL"}))
+        self.assertFalse(get_cmd_hazardous("INST", "COLLECT", {}))
+
     def test_get_cmd_hazardous_returns_whether_the_command_is_hazardous(self):
         self.assertTrue(get_cmd_hazardous("INST CLEAR"))
         self.assertTrue(get_cmd_hazardous("INST", "CLEAR"))
@@ -855,6 +871,29 @@ class TestCmdApi(unittest.TestCase):
         time.sleep(0.001)
         cnts = get_cmd_cnts([["INST", "ABORT"], ["INST", "COLLECT"]])
         self.assertEqual(cnts, ([3, 2]))
+
+    def test_get_cmd_cnts_raises_with_invalid_input(self):
+        # https://github.com/OpenC3/cosmos/issues/4291
+        for target_commands in ([], ["INST", "ABORT"], "INST ABORT"):
+            with self.assertRaisesRegex(RuntimeError, "get_cmd_cnts takes a list of lists"):
+                get_cmd_cnts(target_commands)
+
+    def test_cmd_variants_forward_manual(self):
+        # https://github.com/OpenC3/cosmos/issues/4290
+        for name in [
+            "cmd",
+            "cmd_no_range_check",
+            "cmd_no_hazardous_check",
+            "cmd_no_checks",
+            "cmd_raw",
+            "cmd_raw_no_range_check",
+            "cmd_raw_no_hazardous_check",
+            "cmd_raw_no_checks",
+        ]:
+            func = globals()[name]
+            with patch("openc3.api.cmd_api.authorize", return_value={"username": "user"}) as authorize:
+                func("INST ABORT", manual=True)
+                self.assertTrue(authorize.call_args.kwargs["manual"])
 
 
 # INST is installed on db_shard 1 while its interface stays on db_shard 0

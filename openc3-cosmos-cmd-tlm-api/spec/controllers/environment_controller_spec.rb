@@ -59,6 +59,24 @@ RSpec.describe EnvironmentController, :type => :controller do
       expect(json["value"]).to eql('Jason')
     end
 
+    it "rejects names reserved by COSMOS" do
+      %w[OPENC3_API_HOSTNAME OPENC3_API_PORT OPENC3_KEYCLOAK_URL openc3_redis_hostname
+         LD_PRELOAD RUBYLIB PYTHONPATH GEM_HOME PATH HOME https_proxy].each do |key|
+        post :create, params: { 'scope' => 'DEFAULT', 'key' => key, 'value' => 'other' }
+        expect(response).to have_http_status(400), "expected #{key} to be rejected"
+        json = JSON.parse(response.body, allow_nan: true, create_additions: true)
+        expect(json['status']).to eql('error')
+        expect(json['message']).to include("'#{key}' is reserved")
+      end
+      expect(OpenC3::EnvironmentModel.all(scope: 'DEFAULT')).to be_empty
+    end
+
+    it "rejects names that are not valid environment variable names" do
+      post :create, params: { 'scope' => 'DEFAULT', 'key' => 'A=B', 'value' => 'other' }
+      expect(response).to have_http_status(400)
+      expect(OpenC3::EnvironmentModel.all(scope: 'DEFAULT')).to be_empty
+    end
+
     it "requires scope" do
       post :create, params: { 'key' => 'NAME', 'value' => 'Jason' }
       expect(response).to have_http_status(401)

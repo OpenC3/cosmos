@@ -1103,6 +1103,24 @@ module OpenC3
         end
         expect(stream.disconnect_count).to eq(1)
       end
+
+      it "connects with the requested scope" do
+        stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
+        OpenC3.spec_with_password_auth do
+          StreamingWebSocketApi.read_all(items: ['ITEM'], end_time: 2_000_000_000, scope: 'OTHER')
+        end
+        expect(WebSocketClientStream).to have_received(:new).with(end_with('?scope=OTHER'), any_args)
+        expect(action_data.first).to include('scope' => 'OTHER')
+      end
+
+      it "connects with the current scope when no scope is given" do
+        stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
+        OpenC3.spec_with_password_auth do
+          StreamingWebSocketApi.read_all(items: ['ITEM'], end_time: 2_000_000_000)
+        end
+        expect(WebSocketClientStream).to have_received(:new).with(end_with("?scope=#{$openc3_scope}"), any_args)
+        expect(action_data.first).to include('scope' => $openc3_scope)
+      end
     end
   end
 end
