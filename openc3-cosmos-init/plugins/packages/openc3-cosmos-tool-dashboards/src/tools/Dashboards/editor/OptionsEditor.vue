@@ -77,6 +77,20 @@
         @update:model-value="(v) => set(def, v)"
       />
       <v-select
+        v-else-if="def.type === 'list' && def.items"
+        :model-value="value(def)"
+        :items="def.items"
+        :label="def.label"
+        multiple
+        chips
+        closable-chips
+        density="compact"
+        variant="outlined"
+        hide-details
+        :data-test="`option-${def.name}`"
+        @update:model-value="(v) => setList(def, v)"
+      />
+      <v-select
         v-else-if="def.type === 'item'"
         :model-value="itemKey(value(def))"
         :items="itemChoices"
@@ -131,6 +145,15 @@ function setNumber(def, newValue) {
   const number = Number(newValue)
   if (Number.isNaN(number)) return
   set(def, number)
+}
+
+// Kept in the order the choices are listed, whatever order they're picked
+function setList(def, values) {
+  const order = def.items.map((item) => item.value)
+  set(
+    def,
+    [...values].sort((a, b) => order.indexOf(a) - order.indexOf(b)),
+  )
 }
 
 function itemKey(item) {

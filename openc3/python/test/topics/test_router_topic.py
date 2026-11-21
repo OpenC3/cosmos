@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import json
 import threading
 import unittest
 from types import SimpleNamespace
@@ -18,6 +19,31 @@ from openc3.packets.packet import Packet
 from openc3.topics.router_topic import RouterTopic
 from openc3.topics.topic import Topic
 from test.test_helper import mock_redis, read_topics_from_start, setup_system, shard_redis
+
+
+class TestRouterTopicConnectRouter(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        p = patch("openc3.topics.router_topic.Topic.write_topic")
+        self.write_topic = p.start()
+        self.addCleanup(p.stop)
+
+    def test_connect_router_sends_the_router_params(self):
+        # https://github.com/OpenC3/cosmos/issues/4322
+        RouterTopic.connect_router("ROUTE_INT", "otherhost", 7779, scope="DEFAULT")
+        self.write_topic.assert_called_once_with(
+            "{DEFAULT__CMD}ROUTER__ROUTE_INT",
+            {"connect": "true", "params": json.dumps(["otherhost", 7779])},
+            "*",
+            100,
+            db_shard=0,
+        )
+
+    def test_connect_router_without_params(self):
+        RouterTopic.connect_router("ROUTE_INT", scope="DEFAULT")
+        self.write_topic.assert_called_once_with(
+            "{DEFAULT__CMD}ROUTER__ROUTE_INT", {"connect": "true"}, "*", 100, db_shard=0
+        )
 
 
 class TestRouterTopicRouteCommand(unittest.TestCase):

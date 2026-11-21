@@ -115,6 +115,13 @@ module OpenC3
         expect_any_instance_of(OpenC3::Interface).to receive(:start_raw_logging)
         @api.start_raw_logging_interface("ALL")
       end
+
+      it "should start raw logging on all interfaces in the given scope" do
+        InterfaceModel.new(name: "OTHER_INT", scope: "OTHER").create
+        expect(InterfaceTopic).to receive(:start_raw_logging).with("OTHER_INT", scope: "OTHER")
+        expect(InterfaceTopic).not_to receive(:start_raw_logging).with("INST_INT", anything)
+        @api.start_raw_logging_interface("ALL", scope: "OTHER")
+      end
     end
 
     describe "stop_raw_logging_interface" do
@@ -126,6 +133,13 @@ module OpenC3
       it "should stop raw logging on all interfaces" do
         expect_any_instance_of(OpenC3::Interface).to receive(:stop_raw_logging)
         @api.stop_raw_logging_interface("ALL")
+      end
+
+      it "should stop raw logging on all interfaces in the given scope" do
+        InterfaceModel.new(name: "OTHER_INT", scope: "OTHER").create
+        expect(InterfaceTopic).to receive(:stop_raw_logging).with("OTHER_INT", scope: "OTHER")
+        expect(InterfaceTopic).not_to receive(:stop_raw_logging).with("INST_INT", anything)
+        @api.stop_raw_logging_interface("ALL", scope: "OTHER")
       end
     end
 

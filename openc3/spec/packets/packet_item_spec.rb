@@ -417,6 +417,14 @@ module OpenC3
         expect(config).to match(/STATE FALSE 0 RED/)
       end
 
+      it "writes the limits response for an item with only state colors" do
+        @pi.range = (0..1)
+        @pi.states = { "TRUE" => 1, "FALSE" => 0 }
+        @pi.state_colors = { "TRUE" => :GREEN, "FALSE" => :RED }
+        @pi.limits.response = LimitsResponse.new
+        expect(@pi.to_config(:TELEMETRY, :BIG_ENDIAN)).to include("    LIMITS_RESPONSE limits_response.rb\n")
+      end
+
       it "only writes the state attributes valid for the packet type" do
         @pi.range = (0..2)
         @pi.states = { "OFF" => 0, "ON" => 1, "FAULT" => 2 }

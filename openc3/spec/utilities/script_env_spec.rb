@@ -28,6 +28,88 @@ module OpenC3
       end
     end
 
+    describe ".key_error" do
+      it "allows ordinary variable names" do
+        %w[MYVAR my_var _X TARGET2 OPENC3 PATHS HOMEDIR USER].each do |key|
+          expect(ScriptEnv.key_error(key)).to be_nil, "expected #{key} to be allowed"
+        end
+      end
+
+      it "allows user names that only share a prefix with interpreter or tool variables" do
+        %w[RUBY_TARGET PYTHON_TARGET PYTHONIC RUBY_GC_HEAP_INIT_SLOTS NODE_ID UV_LAMP
+           GIT_SHA SSL_MODE RES_LEVEL KC_LIMIT RAILS_SIDE SECRET_CODE GOOGLE_SHEET
+           AZURE_SITE MALLOC_SIZE TMPDIR SHELL].each do |key|
+          expect(ScriptEnv.key_error(key)).to be_nil, "expected #{key} to be allowed"
+        end
+      end
+
+      it "allows OPENC3_FULL_BACKTRACE so Script Runner can enable stack traces" do
+        expect(ScriptEnv.key_error("OPENC3_FULL_BACKTRACE")).to be_nil
+      end
+
+      it "rejects the variables COSMOS uses to connect scripts" do
+        %w[OPENC3_API_HOSTNAME OPENC3_API_PORT OPENC3_API_SCHEMA OPENC3_KEYCLOAK_URL
+           OPENC3_REDIS_HOSTNAME OPENC3_BUCKET_URL OPENC3_SCRIPT_API_HOSTNAME
+           HTTP_PROXY https_proxy ALL_PROXY no_proxy HOSTALIASES LOCALDOMAIN RES_OPTIONS
+           AWS_ENDPOINT_URL AWS_REGION SSL_CERT_FILE SSL_CERT_DIR REQUESTS_CA_BUNDLE
+           CURL_CA_BUNDLE].each do |key|
+          expect(ScriptEnv.key_error(key)).to include("reserved"), "expected #{key} to be reserved"
+        end
+      end
+
+      it "rejects the variables that configure the interpreter" do
+        %w[LD_PRELOAD ld_library_path LD_AUDIT RUBYOPT rubylib RUBYGEMS_GEMDEPS GEM_HOME GEM_PATH
+           BUNDLE_GEMFILE BUNDLER_SETUP PYTHONPATH PYTHONHOME PYTHONUSERBASE PYTHONSTARTUP
+           PYTHONWARNINGS PYTHONBREAKPOINT PYTHONINSPECT PYTHONPYCACHEPREFIX VIRTUAL_ENV
+           PATH HOME BASH_ENV ENV IFS OPENSSL_CONF OPENSSL_MODULES OPENSSL_ENGINES
+           GCONV_PATH].each do |key|
+          expect(ScriptEnv.key_error(key)).to include("reserved"), "expected #{key} to be reserved"
+        end
+      end
+
+      it "rejects names that are not valid identifiers" do
+        ["", "1ABC", "A=B", "A B", "A\0B", "A-B", "PATH\n"].each do |key|
+          expect(ScriptEnv.key_error(key)).to include("letters, digits and underscores"), "expected #{key.inspect} to be invalid"
+        end
+        expect(ScriptEnv.key_error(nil)).to include("must be a String")
+        expect(ScriptEnv.key_error(5)).to include("must be a String")
+      end
+    end
+
+    describe ".apply_user_entries" do
+      it "applies allowed entries and skips reserved ones with a warning" do
+        environment = { "OPENC3_API_HOSTNAME" => nil }
+        expect(Logger).to receive(:warn).with(/OPENC3_API_HOSTNAME/, scope: "DEFAULT")
+        expect(Logger).to receive(:warn).with(/LD_PRELOAD/, scope: "DEFAULT")
+        applied = ScriptEnv.apply_user_entries(environment, [
+          { "key" => "MYVAR", "value" => "foo" },
+          { "key" => "OPENC3_API_HOSTNAME", "value" => "other.example.com" },
+          { "key" => "LD_PRELOAD", "value" => "/tmp/other.so" },
+        ], source: "global", scope: "DEFAULT")
+        expect(applied).to eql({ "MYVAR" => "foo" })
+        expect(environment).to eql({ "OPENC3_API_HOSTNAME" => nil, "MYVAR" => "foo" })
+      end
+
+      it "ignores nil and malformed entries" do
+        allow(Logger).to receive(:warn)
+        environment = {}
+        expect(ScriptEnv.apply_user_entries(environment, nil, source: "script")).to eql({})
+        expect(ScriptEnv.apply_user_entries(environment, ["MYVAR", 1, nil], source: "script")).to eql({})
+        expect(environment).to eql({})
+      end
+
+      it "keeps nil values so they unset the variable and stringifies others" do
+        environment = { "MYVAR" => "inherited" }
+        applied = ScriptEnv.apply_user_entries(environment, [
+          { "key" => "MYVAR", "value" => nil },
+          { "key" => "EMPTY", "value" => "" },
+          { "key" => "NUM", "value" => 1 },
+        ], source: "script")
+        expect(applied).to eql({ "MYVAR" => nil, "EMPTY" => "", "NUM" => "1" })
+        expect(environment).to eql({ "MYVAR" => nil, "EMPTY" => "", "NUM" => "1" })
+      end
+    end
+
     describe ".clear_credentials" do
       before(:each) do
         @saved = ScriptEnv::CLEARED_VARS.to_h { |key| [key, ENV[key]] }

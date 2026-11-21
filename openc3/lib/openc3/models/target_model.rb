@@ -51,7 +51,12 @@ module OpenC3
     ERB_EXTENSIONS = %w(.txt .rb .py .json .yaml .yml)
     ITEM_MAP_CACHE_TIMEOUT = 10.0
     PACKET_CACHE_TIMEOUT = 10.0
-    MAX_COLUMN_HEADER_LENGTH = 127 # QuestDB column header limit for item/param names
+    # QuestDB limits column names to 127 bytes of UTF-8 (cairo.max.file.name.length). Items get
+    # __C (converted) and __F (formatted) columns when they have states, conversions, formats or
+    # units. All names leave room for the 3 byte suffix so adding one never breaks an item.
+    MAX_COLUMN_HEADER_LENGTH = 127
+    COLUMN_SUFFIX_LENGTH = 3
+    MAX_ITEM_NAME_BYTES = MAX_COLUMN_HEADER_LENGTH - COLUMN_SUFFIX_LENGTH
     @@item_map_cache = {}
     @@packet_cache = {}
     @@packet_cache_mutex = Mutex.new
@@ -858,15 +863,15 @@ module OpenC3
         packets_by_target.each do |target_name, packets|
           packets.each do |packet_name, packet|
             packet.sorted_items.each do |item|
-              if item.name.length > MAX_COLUMN_HEADER_LENGTH
-                too_long << "#{target_name} #{packet_name} #{item.name} (#{item.name.length})"
+              if item.name.bytesize > MAX_ITEM_NAME_BYTES
+                too_long << "#{target_name} #{packet_name} #{item.name} (#{item.name.bytesize})"
               end
             end
           end
         end
       end
       unless too_long.empty?
-        raise "Item / parameter names must be #{MAX_COLUMN_HEADER_LENGTH} characters or less (QuestDB column header limit). The following are too long:\n  #{too_long.join("\n  ")}"
+        raise "Item / parameter names must be #{MAX_ITEM_NAME_BYTES} bytes (UTF-8) or less (QuestDB column name limit of #{MAX_COLUMN_HEADER_LENGTH} bytes minus the #{COLUMN_SUFFIX_LENGTH} byte __C or __F value type suffix). The following are too long:\n  #{too_long.join("\n  ")}"
       end
     end
 

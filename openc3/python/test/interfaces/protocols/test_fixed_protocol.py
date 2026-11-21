@@ -292,6 +292,8 @@ class TestFixedProtocol(unittest.TestCase):
         from openc3.interfaces.stream_interface import StreamInterface
 
         interface = StreamInterface()
+        # The mock streams below return data forever so stop the read thread
+        self.addCleanup(interface.stop_read_queue_thread)
         interface.add_protocol(FixedProtocol, [2, 0, None, True], "READ_WRITE")
         interface.target_names = ["TEST"]
         interface.tlm_target_names = ["TEST"]

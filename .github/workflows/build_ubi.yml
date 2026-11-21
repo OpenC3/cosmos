@@ -42,7 +42,17 @@ permissions:
 
 jobs:
   openc3-build-ubi:
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    # Fork PRs (like dependabot's) get no secrets, and Registry1 has no
+    # anonymous pulls, so the UBI base images cannot be fetched. Their changes
+    # are still built by the push to main after merge.
+    #
+    # This is a required check. A job skipped by its `if` reports "Skipped",
+    # which GitHub counts as success, so skipping does not block the merge:
+    # https://docs.github.com/en/actions/writing-workflows/choosing-when-your-workflow-runs/using-conditions-to-control-job-execution
+    if: >-
+      github.actor != 'dependabot[bot]' &&
+      (github.event_name != 'pull_request' ||
+       github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -114,16 +124,11 @@ jobs:
       # of them again, and unlike the Debian images they have no GHCR build
       # cache. The build above already left them in the local docker daemon.
       #
-      # aquasecurity/setup-trivy installs the binary the scan step below calls
-      # directly. The version here is the trivy release, not the action:
-      # dependabot bumps the action SHA but cannot see this input, so it is
-      # watched by .github/workflows/tool_version_check.yml instead.
+      # Installs the trivy binary the scan step below calls directly. The
+      # trivy release is pinned in that action.
       - name: Manual Trivy Setup
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
-        with:
-          cache: true
-          version: v0.76.1
+        uses: ./.github/actions/setup-trivy
       - name: Fetch VEX Hub
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         uses: ./.github/actions/fetch-vexhub

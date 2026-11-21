@@ -586,6 +586,7 @@ export default {
         for (let i = 0; i < tableNames.length; i++) {
           this.gapProgress = Math.round(((i + 1) / tableNames.length) * 100)
           try {
+            // eslint-disable-next-line no-await-in-loop -- sequential to avoid flooding QuestDB and to report progress
             const result = await this.fetchTableGaps(tableNames[i])
             if (result.gaps.length > 0) {
               const parts = tableNames[i].split('__')

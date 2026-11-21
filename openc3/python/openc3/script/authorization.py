@@ -15,6 +15,7 @@
 
 import logging
 import time
+import warnings
 
 import requests
 
@@ -27,9 +28,12 @@ from .decorators import request_wrapper
 LOGGER = logging.getLogger(__title__)
 
 
-def generate_auth():
-    """
-    Pick Auth class base on environment variables
+def generate_auth() -> "CosmosAuthorization":
+    """Pick the authorization class based on environment variables.
+
+    Returns:
+        A `CosmosKeycloakAuthorization` if OPENC3_API_USER is set, otherwise a
+        `CosmosAuthorization`.
     """
     if OPENC3_API_USER is None:
         return CosmosAuthorization()
@@ -37,49 +41,81 @@ def generate_auth():
 
 
 class CosmosAuthorization(requests.auth.AuthBase):
-    """Class to hold token for COSMOS
+    """Hold the password token for COSMOS Core.
 
-    The CosmosAuthorization can be used to call COSMOS server methods directly:
-      auth = CosmosAuthorization()
-      requests.get("example.org", auth=auth)
+    Use it as the ``auth`` of a requests call to call COSMOS server methods
+    directly::
+
+        auth = CosmosAuthorization()
+        requests.get("example.org", auth=auth)
     """
 
-    def get(self):
+    def get(self) -> str | None:
+        """Return the authorization header value.
+
+        Returns:
+            The OPENC3_API_PASSWORD environment value, or None if it is not set.
+        """
         return OPENC3_API_PASSWORD
 
-    def __call__(self, r: requests.Request):
+    def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
+        """Add the Authorization header to a request.
+
+        Args:
+            r: The request to authorize.
+
+        Returns:
+            The same request with its Authorization header set.
+        """
         r.headers["Authorization"] = OPENC3_API_PASSWORD
         return r
 
-    def __repr__(self):
+    def __repr__(self) -> str:
+        """Return the class name without exposing the token."""
         return f"<{self.__class__.__name__}>"
 
-    def __str__(self):
+    def __str__(self) -> str:
+        """Return the class name without exposing the token."""
         return f"<{self.__class__.__name__}>"
 
 
 class CosmosKeycloakAuthorization(CosmosAuthorization):
-    """Class to generate Keycloak token for COSMOS Enterprise
-    https://developers.redhat.com/blog/2020/01/29/api-login-and-jwt-token-generation-using-keycloak
+    """Generate and refresh a Keycloak token for COSMOS Enterprise.
 
-    The CosmosKeycloakAuthorization can be used to call the COSMOS keycloak server methods directly:
-      auth = CosmosKeycloakAuthorization(schema="", hostname="127.0.0.1", port=7777)
-      requests.get("example.org", auth=auth)
+    See https://developers.redhat.com/blog/2020/01/29/api-login-and-jwt-token-generation-using-keycloak
+
+    Use it as the ``auth`` of a requests call to call COSMOS server methods
+    directly::
+
+        auth = CosmosKeycloakAuthorization()
+        requests.get("example.org", auth=auth)
+
+    Tokens are requested from OPENC3_KEYCLOAK_URL in the Keycloak realm
+    OPENC3_KEYCLOAK_REALM.
     """
 
     def __init__(
         self,
-        schema: str = OPENC3_API_SCHEMA,
-        hostname: str = OPENC3_API_HOSTNAME,
-        port: int = OPENC3_API_PORT,
-    ):
-        """Constructor
+        schema: str | None = None,
+        hostname: str | None = None,
+        port: int | None = None,
+    ) -> None:
+        """Create the authorization. Tokens are requested lazily on first use.
 
-        Parameters:
-        schema -- The schema to connect to cosmos with
-        hostname -- The name of the machine which has started the JSON service
-        port -- The port number of the JSON service
+        The token is always requested from OPENC3_KEYCLOAK_URL.
+
+        Args:
+            schema: Deprecated and unused. Passing a value emits a DeprecationWarning.
+            hostname: Deprecated and unused. Passing a value emits a DeprecationWarning.
+            port: Deprecated and unused. Passing a value emits a DeprecationWarning.
         """
+        if schema is not None or hostname is not None or port is not None:
+            warnings.warn(
+                "CosmosKeycloakAuthorization ignores schema, hostname and port; tokens are always requested "
+                "from OPENC3_KEYCLOAK_URL. These arguments are deprecated and will be removed.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self.request_url = OPENC3_KEYCLOAK_URL
         self.refresh_token = None
         self.expires_at = None
@@ -93,28 +129,44 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
         elif self.expires_at < current_time:
             self._refresh_token()
 
-    def get(self):
+    def get(self) -> str:
+        """Return the authorization header value, requesting or refreshing the token if needed.
+
+        Returns:
+            The token as "Bearer <token>".
+        """
         self._time_logic()
         return f"Bearer {self.token}"
 
-    def __call__(self, r: requests.Request):
+    def __call__(self, r: requests.PreparedRequest) -> requests.PreparedRequest:
+        """Add the Authorization header to a request, requesting or refreshing the token if needed.
+
+        Args:
+            r: The request to authorize.
+
+        Returns:
+            The same request with its Authorization header set.
+        """
         self._time_logic()
         r.headers["Authorization"] = f"Bearer {self.token}"
         return r
 
     def _make_token(self):
-        """
-        {
-            "access_token": "",
-            "expires_in": 600,
-            "refresh_expires_in": 1800,
-            "refresh_token": "",
-            "token_type": "bearer",
-            "id_token": "",
-            "not-before-policy": 0,
-            "session_state": "",
-            "scope": "openid email profile"
-        }
+        """Request a new token, or refresh it when no user and password are set.
+
+        The Keycloak response looks like::
+
+            {
+                "access_token": "",
+                "expires_in": 600,
+                "refresh_expires_in": 1800,
+                "refresh_token": "",
+                "token_type": "bearer",
+                "id_token": "",
+                "not-before-policy": 0,
+                "session_state": "",
+                "scope": "openid email profile",
+            }
         """
         oath = None
         if OPENC3_API_USER and OPENC3_API_PASSWORD:
@@ -128,13 +180,18 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
         self.refresh_expires_at = current_time + oath["refresh_expires_in"]
 
     @request_wrapper
-    def _make_token_request(self):
+    def _make_token_request(self) -> requests.Response:
         """Use the python requests library to request a token from Cosmos Keycloak.
 
-        This is an internal method that uses two decorators. request_wrapper
+        This is an internal method decorated with request_wrapper, which
         captures errors from the request library.
-        return -- request.Response
+
+        Returns:
+            The requests.Response, see
             https://docs.python-requests.org/en/master/user/quickstart/#json-response-content
+
+        Raises:
+            RuntimeError: If the request fails or returns an HTTP error status.
         """
         request_kwargs = {
             "url": f"{self.request_url}/realms/{OPENC3_KEYCLOAK_REALM}/protocol/openid-connect/token",
@@ -151,21 +208,25 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
             resp.elapsed.total_seconds(),
             resp.content,
         )
+        resp.raise_for_status()
         return resp
 
     def _refresh_token(self):
-        """
-        {
-            "access_token": "",
-            "expires_in": 600,
-            "refresh_expires_in": 1800,
-            "refresh_token": "",
-            "token_type": "bearer",
-            "id_token": "",
-            "not-before-policy": 0,
-            "session_state": "",
-            "scope": "openid email profile"
-        }
+        """Refresh the token using the refresh token.
+
+        The Keycloak response looks like::
+
+            {
+                "access_token": "",
+                "expires_in": 600,
+                "refresh_expires_in": 1800,
+                "refresh_token": "",
+                "token_type": "bearer",
+                "id_token": "",
+                "not-before-policy": 0,
+                "session_state": "",
+                "scope": "openid email profile",
+            }
         """
         oath = self._make_refresh_request().json()
         self.token = oath["access_token"]
@@ -175,13 +236,18 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
         self.refresh_expires_at = current_time + oath["refresh_expires_in"]
 
     @request_wrapper
-    def _make_refresh_request(self):
+    def _make_refresh_request(self) -> requests.Response:
         """Use the python requests library to refresh the token.
 
-        This is an internal method that uses two decorators. request_wrapper
+        This is an internal method decorated with request_wrapper, which
         captures errors from the request library.
-        return -- request.Response
+
+        Returns:
+            The requests.Response, see
             https://docs.python-requests.org/en/master/user/quickstart/#json-response-content
+
+        Raises:
+            RuntimeError: If the request fails or returns an HTTP error status.
         """
         request_kwargs = {
             "url": f"{self.request_url}/realms/{OPENC3_KEYCLOAK_REALM}/protocol/openid-connect/token",
@@ -199,4 +265,5 @@ class CosmosKeycloakAuthorization(CosmosAuthorization):
             resp.elapsed.total_seconds(),
             resp.content,
         )
+        resp.raise_for_status()
         return resp
