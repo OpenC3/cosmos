@@ -149,6 +149,25 @@ module OpenC3
         tf.unlink
       end
 
+      it "validates ROUTE_PREFIX" do
+        model = InterfaceModel.new(name: "TEST_INT", scope: "DEFAULT")
+        parser = ConfigParser.new
+        tf = Tempfile.new
+        tf.puts "ROUTE_PREFIX interface/"
+        tf.puts "ROUTE_PREFIX /openc3-api/cable"
+        tf.close
+        results = []
+        parser.parse_file(tf.path) do |keyword, params|
+          model.handle_config(parser, keyword, params)
+          results << model.prefix
+        rescue ConfigParser::Error => error
+          results << error.message
+        end
+        expect(results[0]).to eql "/interface"
+        expect(results[1]).to match(/is reserved by COSMOS/)
+        tf.unlink
+      end
+
       it "parses tool specific keywords" do
         TargetModel.new(name: "TARGET1", scope: "DEFAULT").create
         TargetModel.new(name: "TARGET2", scope: "DEFAULT").create

@@ -9,11 +9,13 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
-import sys
+import inspect
 import time
 import traceback
+import warnings
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
+from types import ModuleType
 from typing import Any
 
 import openc3.script
@@ -36,7 +38,7 @@ DEFAULT_TLM_POLLING_RATE = 0.25
 # Without the 'f' :.X means display X significant figures
 
 
-def check(*args: Any, type: ValueType = "CONVERTED", scope: str = "DEFAULT") -> None:
+def check(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:
     """Check the value of a telemetry item against a condition.
 
     Always prints the value of the telemetry item. Accepts two calling styles::
@@ -56,7 +58,7 @@ def check(*args: Any, type: ValueType = "CONVERTED", scope: str = "DEFAULT") -> 
     return _check(*args, type=type, scope=scope)
 
 
-def check_raw(*args: Any, scope: str = "DEFAULT") -> None:
+def check_raw(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the RAW value of a telemetry item against a condition. See `check` for the calling styles.
 
     Args:
@@ -67,7 +69,7 @@ def check_raw(*args: Any, scope: str = "DEFAULT") -> None:
     return _check(*args, type="RAW", scope=scope)
 
 
-def check_formatted(*args: Any, scope: str = "DEFAULT") -> None:
+def check_formatted(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the FORMATTED value of a telemetry item against a condition. See `check` for the calling styles.
 
     Args:
@@ -79,49 +81,83 @@ def check_formatted(*args: Any, scope: str = "DEFAULT") -> None:
 
 
 # DEPRECATED
-def check_with_units(*args: Any, scope: str = "DEFAULT") -> None:
+def check_with_units(*args: Any, scope: str = OPENC3_SCOPE) -> None:
     """Check the FORMATTED value of a telemetry item against a condition.
 
-    Deprecated: use `check_formatted`.
+    .. deprecated:: 7.0.0
+       WITH_UNITS was removed, use `check_formatted` instead.
 
     Args:
         *args: A single "TGT PKT ITEM comparison" string, or the target, packet
             and item names followed by an optional comparison string.
-        scope: COSMOS scope.
+        scope (str): COSMOS scope.
     """
+    warnings.warn("check_with_units is deprecated, use check_formatted", FutureWarning, stacklevel=2)
     return _check(*args, type="FORMATTED", scope=scope)
 
 
 def check_exception(method_name: str, *args: Any, **kwargs: Any) -> None:
-    """Call a function in this module by name and expect it to raise an exception.
+    """Call a scripting method by name and expect it to raise an exception.
 
     The raised exception is printed. For example::
 
-        check_exception("check", "INST HEALTH_STATUS TEMP1 == 9")
+        check_exception("cmd", "INST ABORT with BAD_PARAM 1")
 
     Args:
-        method_name: Name of the function to call.
-        *args: Positional arguments passed to the function.
-        **kwargs: Keyword arguments passed to the function. scope defaults to
-            OPENC3_SCOPE if not given.
+        method_name: Name of the openc3.script method to call.
+        *args: Positional arguments passed to the method.
+        **kwargs: Keyword arguments passed to the method. scope defaults to
+            OPENC3_SCOPE if not given and the method accepts it.
 
     Raises:
-        CheckError: If the function does not raise an exception.
+        CheckError: If the method does not exist, the arguments don't match
+            its signature, or it does not raise an exception.
     """
+    # Resolve from the whole scripting API, not just this module
+    _check_exception(openc3.script, "a scripting method", method_name, *args, **kwargs)
+
+
+def _check_exception(namespace: ModuleType, method_kind: str, method_name: str, *args: Any, **kwargs: Any) -> None:
+    """Call namespace.method_name and raise CheckError unless it raises.
+
+    Shared by the openc3.script and openc3.api versions of check_exception.
+    method_kind describes the namespace in the error for an unknown method.
+    """
+    method = getattr(namespace, method_name, None)
+    if not callable(method):
+        raise CheckError(f"check_exception: {method_name} is not {method_kind}")
+    orig_kwargs = kwargs.copy()
     try:
-        method = method_name
-        orig_kwargs = kwargs.copy()
-        if "scope" not in kwargs:
-            kwargs["scope"] = OPENC3_SCOPE
-        getattr(sys.modules[__name__], method_name)(*args, **kwargs)
-        method = f"{method_name}({', '.join(args)}"
-        if orig_kwargs:
-            method += f", {orig_kwargs}"
-        method += ")"
+        signature = inspect.signature(method)
+    except (TypeError, ValueError):
+        signature = None  # Can't inspect it so pass scope as always
+    if "scope" not in kwargs and (signature is None or _accepts_keyword(signature, "scope")):
+        kwargs["scope"] = OPENC3_SCOPE
+    # A call with the wrong arguments raises TypeError, which must not count as the expected exception
+    if signature is not None:
+        try:
+            signature.bind(*args, **kwargs)
+        except TypeError as error:
+            raise CheckError(f"check_exception: invalid arguments for {method_name}: {error}") from error
+    try:
+        method(*args, **kwargs)
     except Exception:
-        print(f"CHECK: {method} raised {traceback.format_exc()}")
+        print(f"CHECK: {method_name} raised {traceback.format_exc()}")
     else:
-        raise CheckError(f"{method} should have raised an exception but did not.")
+        call = f"{method_name}({', '.join(str(arg) for arg in args)}"
+        if orig_kwargs:
+            call += f", {orig_kwargs}"
+        call += ")"
+        raise CheckError(f"{call} should have raised an exception but did not.")
+
+
+def _accepts_keyword(signature: inspect.Signature, name: str) -> bool:
+    """Return whether a callable with this signature accepts the keyword argument name."""
+    return any(
+        (param.name == name and param.kind != inspect.Parameter.POSITIONAL_ONLY)
+        or param.kind == inspect.Parameter.VAR_KEYWORD
+        for param in signature.parameters.values()
+    )
 
 
 def check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SCOPE) -> None:
@@ -383,6 +419,7 @@ def wait_tolerance(*args: Any, type: ValueType = "CONVERTED", quiet: bool = Fals
             tolerance,
             timeout,
             polling_rate,
+            scope=scope,
         )
         time_diff = time.time() - start_time
 
@@ -412,6 +449,7 @@ def wait_tolerance(*args: Any, type: ValueType = "CONVERTED", quiet: bool = Fals
             tolerance,
             timeout,
             polling_rate,
+            scope=scope,
         )
         time_diff = time.time() - start_time
         range_bottom = expected_value - tolerance
@@ -433,7 +471,7 @@ def wait_expression(
     globals: dict[str, Any] | None = None,
     locals: Mapping[str, Any] | None = None,
     quiet: bool = False,
-) -> bool | None:
+) -> bool:
     """Wait for a Python expression to be true.
 
     On a timeout execution continues without raising.
@@ -447,7 +485,7 @@ def wait_expression(
         quiet: Whether to suppress printing the result.
 
     Returns:
-        True if the expression became true before the timeout, otherwise None.
+        True if the expression became true before the timeout, otherwise False.
     """
     start_time = time.time()
     success = _openc3_script_wait_expression(exp_to_eval, timeout, polling_rate, globals, locals)
@@ -500,6 +538,7 @@ def wait_check(*args: Any, type: ValueType = "CONVERTED", scope: str = OPENC3_SC
         comparison_to_eval,
         timeout,
         polling_rate,
+        scope=scope,
     )
     if isinstance(value, str):
         value = f"'{value}'"  # Show user the check against a quoted string
@@ -573,6 +612,7 @@ def wait_check_tolerance(*args: Any, type: ValueType = "CONVERTED", scope: str =
             tolerance,
             timeout,
             polling_rate,
+            scope=scope,
         )
         time_diff = time.time() - start_time
 
@@ -1341,16 +1381,13 @@ def _openc3_script_wait_expression(
             canceled = openc3_script_sleep(sleep_time)
 
             if canceled:
-                if eval(exp_to_eval, globals, locals):
-                    return True
-                else:
-                    return None
+                return bool(eval(exp_to_eval, globals, locals))
     except NameError as error:
         parts = error.args[0].split("'")
         new_error = NameError(f"Uninitialized constant {parts[1]}. Did you mean '{parts[1]}' as a string?")
         raise new_error from error
 
-    return None
+    return False
 
 
 def _check_comparison(

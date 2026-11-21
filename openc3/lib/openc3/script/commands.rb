@@ -84,7 +84,7 @@ module OpenC3
     def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: $openc3_scope)
       case args.length
       when 1
-        target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
+        target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0], scope: scope)
       when 2, 3
         target_name = args[0]
         cmd_name    = args[1]
@@ -144,7 +144,7 @@ module OpenC3
           end
         rescue CriticalCmdError => e
           # This should not return until the critical command has been approved
-          prompt_for_critical_cmd(e.uuid, e.command['username'], e.command['target_name'], e.command['cmd_name'], e.command['cmd_params'], e.command['cmd_string'])
+          prompt_for_critical_cmd(e.uuid, e.command['username'], e.command['target_name'], e.command['cmd_name'], e.command['cmd_params'], e.command['cmd_string'], scope: scope)
           if log_message.nil? or log_message
             _log_cmd(e.command, raw, no_range, no_hazardous)
           end
@@ -195,9 +195,9 @@ module OpenC3
     # Accepts two different calling styles:
     #   build_cmd("TGT CMD with PARAM1 val, PARAM2 val")
     #   build_cmd('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
-    def build_cmd(*args, range_check: true, raw: false, scope: $openc3_scope, **kwargs)
+    def build_cmd(*args, range_check: true, raw: false, timeout: 5, scope: $openc3_scope, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
-      $api_server.build_cmd(*args)
+      $api_server.build_cmd(*args, range_check: range_check, raw: raw, timeout: timeout, scope: scope)
     end
     # build_command is DEPRECATED
     alias build_command build_cmd
@@ -207,9 +207,9 @@ module OpenC3
     # Accepts two different calling styles:
     #   get_cmd_hazardous("TGT CMD with PARAM1 val, PARAM2 val")
     #   get_cmd_hazardous('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
-    def get_cmd_hazardous(*args, **kwargs)
+    def get_cmd_hazardous(*args, scope: $openc3_scope, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
-      $api_server.get_cmd_hazardous(*args)
+      $api_server.get_cmd_hazardous(*args, scope: scope)
     end
 
     # Returns the time the most recent command was sent

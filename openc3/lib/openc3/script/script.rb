@@ -114,12 +114,12 @@ module OpenC3
       end
     end
 
-    def prompt_for_critical_cmd(uuid, _username, _target_name, _cmd_name, _cmd_params, cmd_string)
+    def prompt_for_critical_cmd(uuid, _username, _target_name, _cmd_name, _cmd_params, cmd_string, scope: $openc3_scope)
       puts "Waiting for critical command approval:"
       puts "  #{cmd_string}"
       puts "  UUID: #{uuid}"
       loop do
-        status = critical_cmd_status(uuid)
+        status = critical_cmd_status(uuid, scope: scope)
         if status == 'APPROVED'
           return
         elsif status == 'REJECTED'
@@ -240,14 +240,14 @@ module OpenC3
     # initialize_offline_access()
     # script_run("INST/procedures/collect.rb")
     #
-    def initialize_offline_access
+    def initialize_offline_access(scope: $openc3_scope)
       keycloak_url = ENV.fetch('OPENC3_KEYCLOAK_URL', nil)
       if keycloak_url.nil? or keycloak_url.empty?
         raise "initialize_offline_access only valid in COSMOS Enterprise. OPENC3_KEYCLOAK_URL environment variable must be set."
       end
       auth = OpenC3KeycloakAuthentication.new(keycloak_url)
       auth.token(include_bearer: true, openid_scope: 'openid offline_access')
-      set_offline_access(auth.refresh_token)
+      set_offline_access(auth.refresh_token, scope: scope)
     end
 
     ###########################################################################

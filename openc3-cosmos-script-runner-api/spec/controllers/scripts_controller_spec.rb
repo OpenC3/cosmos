@@ -375,6 +375,44 @@ RSpec.describe ScriptsController, type: :controller do
       expect(response).to have_http_status(:ok)
     end
 
+    it "passes the environment through to Script.run" do
+      environment = [{"key" => "MYVAR", "value" => "foo"}]
+      expect(Script).to receive(:run) do |*args|
+        expect(args[4].map { |env| env.to_unsafe_h }).to eql(environment)
+        1
+      end
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", environment: environment}, as: :json
+      expect(response).to have_http_status(:ok)
+    end
+
+    it "rejects environment names reserved by COSMOS" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb",
+                          environment: [{"key" => "MYVAR", "value" => "foo"}, {"key" => "OPENC3_API_HOSTNAME", "value" => "other"}]}, as: :json
+      expect(response).to have_http_status(:bad_request)
+      expect(response.body).to include("'OPENC3_API_HOSTNAME' is reserved")
+    end
+
+    it "rejects an environment that isn't an array" do
+      expect(Script).not_to receive(:run)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", environment: {"OPENC3_API_HOSTNAME" => "other"}}, as: :json
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it "rejects a blank environment that isn't an array" do
+      expect(Script).not_to receive(:run)
+      [false, " "].each do |environment|
+        post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", environment: environment}, as: :json
+        expect(response).to have_http_status(:bad_request)
+      end
+    end
+
+    it "treats an empty environment array as no environment" do
+      expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", nil, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(1)
+      post :run, params: {scope: "DEFAULT", name: "INST/procedures/test.rb", environment: []}, as: :json
+      expect(response).to have_http_status(:ok)
+    end
+
     it "passes a valid suiteRunner through to Script.run" do
       suite_runner = {"suite" => "MySuite", "group" => "MyGroup", "script" => "test_foo", "method" => "start"}
       expect(Script).to receive(:run).with("DEFAULT", "INST/procedures/test.rb", suite_runner, false, nil, "Anonymous", "anonymous", 1, nil, nil).and_return(1)
