@@ -322,6 +322,27 @@ module OpenC3
       ensure
         limits&.change_type = nil
       end
+
+      it "clears a state color that was cleared with a LIMITS_STATE_COLOR event" do
+        item = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("GROUND1STATUS")
+        expect(item.state_colors['CONNECTED']).to eql :GREEN
+        event = { type: :LIMITS_STATE_COLOR, target_name: "INST", packet_name: "HEALTH_STATUS", item_name: "GROUND1STATUS",
+                  state_name: "CONNECTED", color: nil, time_nsec: Time.now.to_nsec_from_epoch, message: "Clearing color" }
+        LimitsEventTopic.write(event, scope: "DEFAULT")
+        settings = JSON.parse(Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__GROUND1STATUS"))
+        expect(settings['state_colors']).to eql({ 'CONNECTED' => nil })
+        LimitsEventTopic.resync_system(scope: "DEFAULT")
+        expect(item.state_colors).to_not have_key('CONNECTED')
+      end
+
+      it "treats a state color saved as an empty string as cleared" do
+        # Earlier versions saved a cleared color as "" which isn't a valid color
+        item = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("GROUND1STATUS")
+        Store.hset("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__GROUND1STATUS",
+          JSON.generate({ 'state_colors' => { 'CONNECTED' => '' } }))
+        expect { LimitsEventTopic.resync_system(scope: "DEFAULT") }.to_not raise_error
+        expect(item.state_colors).to_not have_key('CONNECTED')
+      end
     end
 
     describe "limits group events" do
