@@ -967,6 +967,60 @@ module OpenC3
       end
     end
 
+    describe "validate" do
+      # Run a Ruby script in place of openc3cli, keeping how it's run
+      def fake_cli(script)
+        allow(Open3).to receive(:popen2e).and_wrap_original do |original, *command, **options, &block|
+          expect(command[0..4]).to eql ['ruby', '/openc3/bin/openc3cli', 'validate', '--plugin-hash', command[4]]
+          expect(JSON.parse(File.read(command[4]))).to eql({ 'name' => 'gem__1', 'variables' => {}, 'plugin_txt_lines' => ['TARGET INST INST'] })
+          expect(command[5]).to eql 'DEFAULT'
+          original.call('ruby', '-e', script, **options, &block)
+        end
+      end
+
+      let(:plugin_hash) { { 'name' => 'gem__1', 'variables' => {}, 'plugin_txt_lines' => ['TARGET INST INST'], 'other' => 1 } }
+
+      it "returns the result printed last" do
+        fake_cli('puts "from the plugin {}"; puts %q({"valid":false,"error":"plugin.txt:1: bad"})')
+        expect(PluginModel.validate(plugin_hash, scope: 'DEFAULT')).to eql({ 'valid' => false, 'error' => 'plugin.txt:1: bad' })
+        fake_cli('puts %q({"valid":true})')
+        expect(PluginModel.validate(plugin_hash, scope: 'DEFAULT')).to eql({ 'valid' => true })
+      end
+
+      it "reports a crash" do
+        fake_cli('puts "one"; puts "boom"; exit 1')
+        expect(PluginModel.validate(plugin_hash, scope: 'DEFAULT')).to eql({ 'valid' => false, 'error' => "Validation failed: one\nboom" })
+      end
+
+      it "stops validation that takes too long" do
+        stub_const("OpenC3::PluginModel::VALIDATE_TIMEOUT_S", 0.5)
+        fake_cli('sleep 30')
+        start = Time.now
+        expect(PluginModel.validate(plugin_hash, scope: 'DEFAULT')).to eql({ 'valid' => false, 'error' => 'Validation did not finish within 0.5 seconds' })
+        expect(Time.now - start).to be < 5
+      end
+
+      it "describes where a configuration error is" do
+        parser = ConfigParser.new
+        Tempfile.create(PluginModel::PLUGIN_TXT) do |file|
+          file.write("TARGET INST\n  BAD_KEYWORD 1\n")
+          file.close
+          error = nil
+          parser.parse_file(file.path) do |keyword, _params|
+            error = parser.error("Unknown keyword '#{keyword}'", "TARGET <NAME>") if keyword == 'BAD_KEYWORD'
+          end
+          expect(PluginModel.validation_error(error)).to eql "plugin.txt:2: Unknown keyword 'BAD_KEYWORD'\n  BAD_KEYWORD 1\nUsage: TARGET <NAME>"
+        end
+        error = ConfigParser::Error.new(parser, "Bad item")
+        allow(error).to receive(:filename).and_return('/tmp/d20261119/gem/targets/INST/cmd_tlm/cmd.txt')
+        allow(error).to receive(:line_number).and_return(7)
+        allow(error).to receive(:line).and_return('')
+        allow(error).to receive(:usage).and_return('')
+        expect(PluginModel.validation_error(error)).to eql "targets/INST/cmd_tlm/cmd.txt:7: Bad item"
+        expect(PluginModel.validation_error(RuntimeError.new("plain"))).to eql "plain"
+      end
+    end
+
     describe "VARIABLE_FILE" do
       UPLOAD = "0f1e2d3c-aaaa-bbbb-cccc-000000000001/icd.csv"
 
@@ -990,6 +1044,28 @@ module OpenC3
         expect(phase1(lines, existing_variables: { 'icd' => { 'value' => UPLOAD } })['variables']['icd']['value']).to eql UPLOAD
         # Anything else isn't an upload
         expect(phase1(lines, existing_variables: { 'icd' => 'icd.csv' })['variables']['icd']['value']).to eql ''
+      end
+
+      it "parses the accepted file extensions" do
+        variable = phase1(["VARIABLE_FILE icd data/icd.csv .csv CSV .Tar.GZ csv"])['variables']['icd']
+        expect(variable['extensions']).to eql ['.csv', '.tar.gz']
+        expect(phase1(["VARIABLE_FILE icd data/icd.csv"])['variables']['icd']).not_to have_key('extensions')
+        ['.', '..csv', '.c/v', '.c sv'].each do |extension|
+          expect { phase1(["VARIABLE_FILE icd data/icd.csv \"#{extension}\""]) }.to raise_error(/not a valid file extension/)
+        end
+      end
+
+      it "checks the uploaded file's extension" do
+        extensions = ['.csv', '.tar.gz']
+        expect(PluginModel.upload_extension_allowed?(UPLOAD, extensions)).to be true
+        expect(PluginModel.upload_extension_allowed?(UPLOAD.sub('icd.csv', 'ICD.CSV'), extensions)).to be true
+        expect(PluginModel.upload_extension_allowed?(UPLOAD.sub('icd.csv', 'icd.tar.gz'), extensions)).to be true
+        expect(PluginModel.upload_extension_allowed?(UPLOAD.sub('icd.csv', 'icd.xlsx'), extensions)).to be false
+        expect(PluginModel.upload_extension_allowed?(UPLOAD.sub('icd.csv', 'icd.gz'), extensions)).to be false
+        # The extension alone isn't a file name with that extension
+        expect(PluginModel.upload_extension_allowed?(UPLOAD.sub('icd.csv', '.csv'), extensions)).to be false
+        expect(PluginModel.upload_extension_allowed?(UPLOAD.sub('icd.csv', 'icd.xlsx'), nil)).to be true
+        expect(PluginModel.upload_extension_allowed?(UPLOAD.sub('icd.csv', 'icd.xlsx'), [])).to be true
       end
 
       it "only copies files inside the plugin" do
@@ -1028,6 +1104,9 @@ module OpenC3
           Dir.mktmpdir do |gem_path|
             PluginModel.copy_uploads({ 'variables' => variables }, gem_path, scope: 'DEFAULT')
             expect(File.read(File.join(gem_path, 'targets/INST/data/icd.csv'))).to eql 'a,b'
+            # A file without an accepted extension fails the install
+            wrong = { 'icd' => variables['icd'].merge('extensions' => ['.xlsx']) }
+            expect { PluginModel.copy_uploads({ 'variables' => wrong }, gem_path, scope: 'DEFAULT') }.to raise_error(/icd must be a \.xlsx file/)
             # A missing upload fails the install rather than installing without it
             stored.clear
             expect { PluginModel.copy_uploads({ 'variables' => variables }, gem_path + '/other', scope: 'DEFAULT') }.to raise_error(/file uploaded for VARIABLE_FILE icd is missing/)

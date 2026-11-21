@@ -198,6 +198,33 @@ RSpec.describe PluginsController, type: :controller do
     end
   end
 
+  describe "POST validate" do
+    it "returns the validation result" do
+      allow(OpenC3::PluginModel).to receive(:validate)
+        .with({"name" => "x"}, scope: "DEFAULT").and_return({"valid" => false, "error" => "plugin.txt:2: bad"})
+      post :validate, params: {scope: "DEFAULT", plugin_hash: '{"name":"x"}'}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq({"valid" => false, "error" => "plugin.txt:2: bad"})
+    end
+
+    it "returns internal_server_error when validation can't run" do
+      allow(OpenC3::PluginModel).to receive(:validate).and_raise("boom")
+      post :validate, params: {scope: "DEFAULT", plugin_hash: '{"name":"x"}'}
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)["message"]).to eq("boom")
+    end
+
+    it "returns bad_request on invalid plugin_hash JSON" do
+      post :validate, params: {scope: "DEFAULT", plugin_hash: "not json"}
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it "returns nothing without authorization" do
+      post :validate, params: {plugin_hash: "{}"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
   describe "POST upload_file" do
     before(:each) do
       @file = Tempfile.new(["icd", ".csv"])

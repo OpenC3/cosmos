@@ -201,10 +201,11 @@ VARIABLE_FILE:
     plugin.txt can include the file conditionally. Uploading a file again replaces it.
     VARIABLE_DESCRIPTION, VARIABLE_LABEL, VARIABLE_REQUIRED and the other VARIABLE modifiers except VARIABLE_TYPE
     can follow it. A PRE_INSTALL_SCRIPT can read the file to generate the rest of the plugin.
-    Files can be up to 100 MB.
+    Files can be up to 100 MB. List file extensions after the destination path to only accept files with one of
+    them, e.g. .csv .xlsx. Extensions aren't case sensitive.
   since: _Coming Soon_
   example: |
-    VARIABLE_FILE icd targets/INST/data/icd.csv
+    VARIABLE_FILE icd targets/INST/data/icd.csv .csv
       VARIABLE_LABEL "Interface control document"
       VARIABLE_REQUIRED
     PRE_INSTALL_SCRIPT scripts/generate_target.py <%%= icd %>
@@ -218,6 +219,11 @@ VARIABLE_FILE:
       required: true
       description: Path the uploaded file is copied to, relative to the top of the plugin. It must stay inside the
         plugin and is created if needed.
+      values: .+
+    - name: File Extensions
+      required: false
+      description: Any number of file extensions the uploaded file must have one of, e.g. .csv .xlsx. The leading
+        dot is optional. Any file is accepted if none are given.
       values: .+
 VARIABLE_DISCOVERY:
   summary: Discover the possible values of a plugin variable from the host computer

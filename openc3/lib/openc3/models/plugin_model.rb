@@ -65,10 +65,15 @@ module OpenC3
     UPLOADS_PATH = 'plugin_uploads'
     # The value of a VARIABLE_FILE variable: the upload's id and file name
     UPLOAD_VALUE = %r{\A(\h{8}-\h{4}-\h{4}-\h{4}-\h{12})/([^/\\]+)\z}
+    # A file extension a VARIABLE_FILE accepts, e.g. .csv or .tar.gz
+    FILE_EXTENSION = /\A\.\w[\w.-]*\z/
     # Keywords that run a script in the plugin before or after it is installed
     INSTALL_SCRIPT_KEYWORDS = ['PRE_INSTALL_SCRIPT', 'POST_INSTALL_SCRIPT']
     # Seconds an install script can run before the install fails
     INSTALL_SCRIPT_TIMEOUT_S = 600
+    # Seconds the plugin dialog's validation can run before it's reported as
+    # not finishing (it can run PRE_INSTALL_SCRIPTs)
+    VALIDATE_TIMEOUT_S = 120
     PLUGIN_TXT = 'plugin.txt'
 
     attr_accessor :variables
@@ -234,8 +239,8 @@ module OpenC3
               end
             end
           when 'VARIABLE_FILE'
-            usage = "#{keyword} <Variable Name> <Destination Path>"
-            parser.verify_num_parameters(2, 2, usage)
+            usage = "#{keyword} <Variable Name> <Destination Path> <File Extensions (optional)> ..."
+            parser.verify_num_parameters(2, nil, usage)
             variable_name = params[0]
             if RESERVED_VARIABLE_NAMES.include?(variable_name) or variable_name == BRIDGE_VARIABLE_NAME
               raise "VARIABLE name '#{variable_name}' is reserved"
@@ -247,6 +252,15 @@ module OpenC3
             # The value is the uploaded file (blank until one is uploaded),
             # which phase 2 copies to file_path in the plugin
             variables[variable_name] = { 'value' => '', 'type' => FILE_VARIABLE_TYPE, 'file_path' => file_path }
+            # The file extensions the upload must have, if any (with a leading
+            # dot and lowercase, so .CSV, CSV and csv are all .csv)
+            extensions = params[2..].map do |extension|
+              extension = extension.strip.downcase
+              extension = ".#{extension}" unless extension.start_with?('.')
+              raise "VARIABLE_FILE extension '#{extension}' is not a valid file extension" unless extension.match?(FILE_EXTENSION)
+              extension
+            end.uniq
+            variables[variable_name]['extensions'] = extensions unless extensions.empty?
             current_variable_name = variable_name
             if existing_variables && existing_variables.key?(variable_name)
               existing = existing_variables[variable_name]
@@ -830,6 +844,63 @@ module OpenC3
       install_phase2(plugin_hash, scope: scope, diff_only: true)
     end
 
+    # Validate a plugin as the plugin dialog would install it (its variables
+    # and possibly edited plugin.txt lines) with a dry run install of its gem.
+    # Runs in a separate process like an install, since the dry run loads the
+    # plugin's code and renders its ERB. Returns { 'valid' => true } or
+    # { 'valid' => false, 'error' => message }.
+    def self.validate(plugin_hash, scope:)
+      plugin_hash = plugin_hash.slice('name', 'variables', 'plugin_txt_lines')
+      output = +''
+      Tempfile.create(['plugin_hash', '.json']) do |file|
+        file.write(JSON.generate(plugin_hash, allow_nan: true))
+        file.close
+        command = ['ruby', '/openc3/bin/openc3cli', 'validate', '--plugin-hash', file.path, scope]
+        # Its own process group so a timeout also stops any install scripts it started
+        Open3.popen2e(*command, pgroup: true) do |stdin, out, wait_thread|
+          stdin.close
+          reader = Thread.new do
+            output << out.read.to_s
+          rescue IOError
+          end
+          unless wait_thread.join(VALIDATE_TIMEOUT_S)
+            Process.kill('KILL', -wait_thread.pid) rescue nil
+            wait_thread.join
+            reader.join(1)
+            return { 'valid' => false, 'error' => "Validation did not finish within #{VALIDATE_TIMEOUT_S} seconds" }
+          end
+          reader.join
+        end
+      end
+      # The result is the last line, after anything the plugin's code printed
+      result = output.lines.reverse.lazy.filter_map do |line|
+        JSON.parse(line) if line.start_with?('{"valid"')
+      rescue JSON::ParserError
+        nil
+      end.first
+      result || { 'valid' => false, 'error' => "Validation failed: #{output.lines.last(5).join.strip}" }
+    end
+
+    # The message of an error from validating a plugin, with where it is in
+    # the plugin for a configuration error
+    def self.validation_error(error)
+      message = error.message.to_s
+      return message unless error.is_a?(ConfigParser::Error) and error.filename
+      filename = error.filename.to_s
+      # plugin.txt is processed from a temporary file, and the plugin's other
+      # files from where its gem was extracted
+      if File.basename(filename).start_with?(PLUGIN_TXT)
+        filename = PLUGIN_TXT
+      elsif (match = filename.match(%r{/gem/(.+)\z}))
+        filename = match[1]
+      end
+      location = error.line_number ? "#{filename}:#{error.line_number}" : filename
+      details = ["#{location}: #{message}"]
+      details << "  #{error.line.strip}" if error.line and not error.line.strip.empty?
+      details << "Usage: #{error.usage}" if error.usage and not error.usage.empty?
+      details.join("\n")
+    end
+
     # The plugin.txt lines that install the plugin with ERB rendered using the
     # plugin_hash variables, without the variable definitions and text blocks.
     # Returns { 'plugin_txt' => text } or { 'error' => message } if ERB fails.
@@ -1340,6 +1411,14 @@ module OpenC3
       "#{scope}/#{UPLOADS_PATH}/#{match[1]}/#{match[2]}"
     end
 
+    # Whether an uploaded VARIABLE_FILE value's file name has one of the
+    # extensions (any extension if there are none)
+    def self.upload_extension_allowed?(value, extensions)
+      return true if extensions.nil? or extensions.empty?
+      filename = value.to_s.match(UPLOAD_VALUE)&.[](2).to_s.downcase
+      extensions.any? { |extension| filename.end_with?(extension) and filename.length > extension.length }
+    end
+
     # Store a file uploaded for a VARIABLE_FILE in the config bucket. Returns
     # the variable value that refers to it.
     def self.store_upload(file_path, filename, scope:)
@@ -1361,6 +1440,9 @@ module OpenC3
         next unless variable.is_a?(Hash) and variable['type'] == FILE_VARIABLE_TYPE
         key = upload_key(variable['value'], scope: scope)
         next unless key
+        unless upload_extension_allowed?(variable['value'], variable['extensions'])
+          raise "The file uploaded for VARIABLE_FILE #{name} must be a #{variable['extensions'].join(', ')} file. Upload it again."
+        end
         unless safe_relative_path?(variable['file_path'])
           raise "VARIABLE_FILE #{name} destination '#{variable['file_path']}' must be a path inside the plugin"
         end

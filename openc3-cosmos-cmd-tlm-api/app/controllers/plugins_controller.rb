@@ -274,6 +274,24 @@ class PluginsController < ModelController
     end
   end
 
+  # Validate the plugin as the plugin dialog would install it, with a dry run
+  # install in a separate process
+  def validate
+    return unless authorization('admin')
+    begin
+      scope = sanitize_params([:scope])
+      return unless scope
+      scope = scope[0]
+      plugin_hash = JSON.parse(params[:plugin_hash])
+      render json: OpenC3::PluginModel.validate(plugin_hash, scope: scope)
+    rescue JSON::ParserError => error
+      render json: { status: 'error', message: error.message }, status: :bad_request
+    rescue Exception => error
+      logger.error(error.formatted)
+      render json: { status: 'error', message: error.message }, status: :internal_server_error
+    end
+  end
+
   # Largest file a VARIABLE_FILE upload can be
   MAX_UPLOAD_BYTES = 100 * 1024 * 1024
 

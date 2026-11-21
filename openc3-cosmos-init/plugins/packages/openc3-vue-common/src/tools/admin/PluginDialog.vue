@@ -169,6 +169,7 @@
                           uploadErrors[name] || variableErrors[name]
                         "
                         :loading="uploading[name] || false"
+                        :accept="variable.extensions?.join(',')"
                         persistent-hint
                         prepend-icon=""
                         prepend-inner-icon="mdi-paperclip"
@@ -486,6 +487,34 @@
             >
               {{ previewError }}
             </v-alert>
+            <!-- A dry run install of the plugin with these variables, like
+                 openc3cli validate -->
+            <v-alert
+              v-else-if="validation"
+              :type="validation.type"
+              variant="tonal"
+              density="compact"
+              class="mb-3"
+              data-test="plugin-validation"
+            >
+              <template v-if="validation.type === 'info'">
+                <v-progress-circular
+                  indeterminate
+                  size="16"
+                  width="2"
+                  class="mr-2"
+                />
+                Validating the plugin...
+              </template>
+              <template v-else-if="validation.type === 'success'">
+                The plugin is valid with these variables
+              </template>
+              <template v-else-if="validation.type === 'error'">
+                The plugin isn't valid with these variables:
+                <pre class="validation-error">{{ validation.message }}</pre>
+              </template>
+              <template v-else>{{ validation.message }}</template>
+            </v-alert>
             <pre
               v-show="!previewError"
               ref="preview"
@@ -725,6 +754,10 @@ export default {
       previewEditor: null,
       previewLoading: false,
       previewError: null,
+      // Plugin validation shown in the preview: { type, message }
+      validation: null,
+      // Counts validations so only the newest one's result is shown
+      validationRuns: 0,
       // Text typed into each combobox, used to rank and highlight its items
       searches: {},
       // Comboboxes being typed in. Typed text is a search until an item is
@@ -1153,6 +1186,17 @@ export default {
         return this.requiredVariables.has(name) ? 'Required' : null
       }
       switch (variable.type) {
+        case 'FILE':
+          // e.g. a file uploaded before VARIABLE_FILE listed its extensions
+          if (
+            !this.extensionAllowed(
+              this.uploadedFilename(variable),
+              variable.extensions,
+            )
+          ) {
+            return this.extensionsMessage(variable.extensions)
+          }
+          break
         case 'BOOLEAN':
           if (!['true', 'false'].includes(value)) return 'Must be true or false'
           break
@@ -1213,6 +1257,19 @@ export default {
       const value = variable.value || ''
       return value.includes('/') ? value.slice(value.indexOf('/') + 1) : ''
     },
+    // Whether a file name has one of a VARIABLE_FILE's extensions (any
+    // extension if it has none). The server checks this too.
+    extensionAllowed(filename, extensions) {
+      if (!extensions?.length) return true
+      const lower = filename.toLowerCase()
+      return extensions.some(
+        (extension) =>
+          lower.endsWith(extension) && lower.length > extension.length,
+      )
+    },
+    extensionsMessage(extensions) {
+      return `Must be a ${extensions.join(', ')} file`
+    },
     // What a VARIABLE_FILE's file input shows: the file chosen in this dialog,
     // or the file uploaded when the plugin was last installed. A file input
     // can't show a placeholder, so the earlier file is shown by name like a
@@ -1237,6 +1294,14 @@ export default {
         return
       }
       this.chosenFiles[name] = file
+      const extensions = this.localVariables[name].extensions
+      if (!this.extensionAllowed(file.name, extensions)) {
+        // Not uploaded, so it isn't installed
+        this.localVariables[name].value = ''
+        this.uploading[name] = false
+        this.uploadErrors[name] = this.extensionsMessage(extensions)
+        return
+      }
       const formData = new FormData()
       formData.append('file', file, file.name)
       this.uploading[name] = true
@@ -1300,6 +1365,43 @@ export default {
       } finally {
         this.previewLoading = false
       }
+      // Rendering failed, so there's nothing more to validate
+      if (this.previewError) {
+        this.validationRuns += 1
+        this.validation = null
+      } else {
+        void this.validatePlugin()
+      }
+    },
+    // Dry run install of the plugin as it would be installed now, which
+    // checks its target, interface and other definitions
+    async validatePlugin() {
+      this.validationRuns += 1
+      const run = this.validationRuns
+      this.validation = { type: 'info' }
+      let validation = null
+      try {
+        const { data } = await Api.post('/openc3-api/plugins/validate', {
+          data: {
+            plugin_hash: JSON.stringify({
+              name: this.pluginName,
+              variables: toRaw(this.localVariables),
+              plugin_txt_lines: this.currentPluginTxtLines(),
+            }),
+          },
+          // Reported here rather than in the global banner
+          headers: { 'Ignore-Errors': '500' },
+        })
+        validation = data.valid
+          ? { type: 'success' }
+          : { type: 'error', message: data.error }
+      } catch (error) {
+        validation = {
+          type: 'warning',
+          message: `Validation couldn't run: ${error.response?.data?.message || error.message}`,
+        }
+      }
+      if (run === this.validationRuns) this.validation = validation
     },
     checkVersionAndSubmit: function () {
       if (!this.validate()) return
@@ -1989,12 +2091,14 @@ export default {
   overflow-y: auto;
 }
 /* A short window leaves the content too little room between the header and
-   footer, so the whole dialog scrolls instead. The selectors are more
-   specific than the v-dialog scrollable layout's, which scrolls only the
-   card text. */
+   footer, so the whole card scrolls instead. Its overflow must be !important
+   because tool-base sets overflow: initial !important on every v-card (and
+   Vuetify's scroll blocking hides overflow on the overlay with !important,
+   so the overlay can't scroll instead). The card text selector is more
+   specific than the v-dialog scrollable layout's, which scrolls only it. */
 @media (max-height: 760px) {
-  .v-dialog--scrollable > .v-overlay__content > .plugin-dialog {
-    overflow-y: auto;
+  .plugin-dialog {
+    overflow-y: auto !important; /* NOSONAR - see above */
   }
   .v-dialog--scrollable
     > .v-overlay__content
@@ -2003,6 +2107,12 @@ export default {
     flex: 0 0 auto;
     overflow-y: visible;
   }
+}
+.validation-error {
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: 4px;
+  font-size: 0.875rem;
 }
 .side-panel {
   position: sticky;
