@@ -29,11 +29,12 @@ versitygw_version = get_docker_version("openc3-buckets/Dockerfile", arg: 'OPENC3
 tsdb_version = get_docker_version("openc3-tsdb/Dockerfile", arg: 'OPENC3_TSDB_VERSION')
 debian_release = ENV.fetch('DEBIAN_RELEASE', 'trixie')
 ruby_version = ENV.fetch('RUBY_VERSION', '3.4')
+ruby_patch_version = ENV.fetch('RUBY_PATCH_VERSION', ruby_version)
 
 # Manual list - MAKE SURE UP TO DATE especially base images
 containers = [
   # This should match the values in the .env file
-  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "ruby:#{ruby_version}-slim-#{debian_release}", apt: true, gems: true, python: true },
+  { name: "openc3inc/openc3-ruby:#{version_tag}", base_image: "ruby:#{ruby_patch_version}-slim-#{debian_release}", apt: true, gems: true, python: true },
   { name: "openc3inc/openc3-node:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apt: true },
   { name: "openc3inc/openc3-base:#{version_tag}", base_image: "openc3inc/openc3-ruby:#{version_tag}", apt: true, gems: true, python: true },
   { name: "openc3inc/openc3-cosmos-cmd-tlm-api:#{version_tag}", base_image: "openc3inc/openc3-base:#{version_tag}", apt: true, gems: true, python: true },
@@ -71,6 +72,8 @@ check_cacert(client)
 # writes the new value back into ENV. Using the stale local would audit
 # Dockerfile-ubi against the old minor line and leave it behind the Debian image.
 check_ubi_ruby(client, ENV.fetch('RUBY_VERSION', ruby_version))
+# Runs after check_ubi_ruby so the Debian image follows any UBI Ruby bump
+check_ruby_patch(client)
 check_rubygems(client, ruby_version: ENV.fetch('RUBY_VERSION', ruby_version))
 # The rest of the third-party sources committed to openc3-ruby/ for offline builds
 check_rbspy(client)
