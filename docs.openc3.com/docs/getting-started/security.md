@@ -227,6 +227,12 @@ The VersityGW credentials (`OPENC3_BUCKET_*`, `OPENC3_SR_BUCKET_*`) and `OPENC3_
 
 ### Overriding Secrets with .env.local
 
+:::warning[Requires COSMOS 7.3.0 or later]
+`openc3.sh` loads `.env.local` starting with COSMOS 7.3.0, and `openc3.sh cli` honors it starting with 7.4.0. Older versions silently ignore `.env.local`, so a Redis password set there never reaches the containers, and Redis rejects the default password with `WRONGPASS` once `users.acl` holds the new hash. On older versions, upgrade or set the values directly in `.env`.
+
+To confirm the containers will get your values, run `docker compose --env-file .env --env-file .env.local config | grep REDIS_PASSWORD`.
+:::
+
 Do not edit `.env` to change passwords. It is tracked by git, so edits cause merge conflicts on upgrade and can leak secrets into your repository. `compose.override.yaml` is also tracked and must not hold secrets either.
 
 Instead, create a `.env.local` file next to `.env`. It is gitignored, and `openc3.sh` loads it after `.env`, so any value you set there overrides the matching default in `.env`. `compose.yaml` already reads every secret via `${VAR}` interpolation, so setting the value in `.env.local` is all that is needed — no `compose.override.yaml` entry is required.
