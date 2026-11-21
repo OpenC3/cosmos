@@ -23,10 +23,10 @@ import requests
 def request_wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
     """Wrap a function that makes an HTTP request to convert request errors to RuntimeError.
 
-    ValueError, requests.Timeout and other requests.RequestException errors are
-    raised as RuntimeError. A requests.HTTPError with a status code of 400 or
-    less is raised as RuntimeError; one with a higher status code is suppressed
-    and the wrapper returns None.
+    ValueError, requests.Timeout, requests.HTTPError and other
+    requests.RequestException errors are raised as RuntimeError. A wrapped
+    function should call ``raise_for_status()`` on its response so HTTP error
+    statuses (400 and above) are raised.
 
     Args:
         func: Function to wrap.
@@ -48,9 +48,7 @@ def request_wrapper(func: Callable[..., Any]) -> Callable[..., Any]:
             raise RuntimeError(err) from exc
         except requests.HTTPError as exc:
             err = f"Error response {exc.response.status_code} while requesting {exc.request.url!r}."
-            if exc.response.status_code <= 400:
-                raise RuntimeError(err) from exc
-            return None
+            raise RuntimeError(err) from exc
         except requests.RequestException as exc:
             err = f"An error occurred while requesting {exc.request.url!r}."
             raise RuntimeError(err) from exc

@@ -488,7 +488,8 @@ module OpenC3
     def self.read_all(items: nil, packets: nil, start_time: nil, end_time: nil, scope: nil, timeout: nil)
       read_all_start_time = Time.now
       data = []
-      self.new do |api|
+      # Connect with the requested scope, not just add the items with it
+      self.new(scope: scope || $openc3_scope) do |api|
         api.add(items: items, packets: packets, start_time: start_time, end_time: end_time, scope: scope)
         while true
           batch = api.read

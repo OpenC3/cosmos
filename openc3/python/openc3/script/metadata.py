@@ -79,7 +79,11 @@ def _metadata_get(start: int | None = None, scope: str = OPENC3_SCOPE):
     # Non-existent just returns None
     if not response or response.status_code != 200:
         return None
-    return json.loads(response.text)
+    result = json.loads(response.text)
+    # The latest endpoint returns 200 with an error status when there is no metadata
+    if isinstance(result, dict) and result.get("status") == "error":
+        return None
+    return result
 
 
 # DEPRECATED
@@ -160,7 +164,8 @@ def metadata_update(
 
     Raises:
         TypeError: If metadata is not a dict.
-        RuntimeError: If the request fails.
+        RuntimeError: If start is None and there is no metadata to update,
+            or if the request fails.
     """
     warnings.warn(
         "metadata_update is deprecated, use inject_tlm with only the changed items. See https://docs.openc3.com/docs/guides/metadata",
@@ -172,6 +177,8 @@ def metadata_update(
 
     if start is None:  # No start so grab latest
         existing = _metadata_get(scope=scope)
+        if existing is None:
+            raise RuntimeError("No metadata to update; use metadata_set")
         start = existing["start"]
         if not color:
             color = existing["color"]

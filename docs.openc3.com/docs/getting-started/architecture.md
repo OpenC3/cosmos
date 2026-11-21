@@ -234,10 +234,12 @@ Important notes on idle timeout behavior:
 
 #### Default Token Lifespans
 
-| Token Type    | Setting      | Default Value |
-| ------------- | ------------ | ------------- |
-| Access Token  | Lifespan     | 5 minutes     |
-| Refresh Token | Idle Timeout | 30 minutes    |
-| Refresh Token | Max Lifespan | 10 hours      |
-| Offline Token | Idle Timeout | 30 days       |
-| Offline Token | Max Lifespan | Not enforced  |
+| Token Type    | Setting      | Keycloak Setting      | Default Value |
+| ------------- | ------------ | --------------------- | ------------- |
+| Access Token  | Lifespan     | Access Token Lifespan | 5 minutes     |
+| Refresh Token | Idle Timeout | SSO Session Idle      | 30 minutes    |
+| Refresh Token | Max Lifespan | SSO Session Max       | 10 hours      |
+| Offline Token | Idle Timeout | Offline Session Idle  | 30 days       |
+| Offline Token | Max Lifespan | Offline Session Max   | Not enforced  |
+
+To change these values, for example to keep users logged in longer, see [Session Length and Automatic Logout](/docs/getting-started/security#session-length-and-automatic-logout).

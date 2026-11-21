@@ -141,3 +141,34 @@ class TestMetadata(unittest.TestCase):
             warnings.simplefilter("always")
             metadata_update({"key1": "value2"})
         self.assertEqual(len(caught), 1)
+
+
+class TestMetadataNoEntries(unittest.TestCase):
+    def setUp(self):
+        catcher = warnings.catch_warnings()
+        catcher.__enter__()
+        self.addCleanup(catcher.__exit__, None, None, None)
+        warnings.simplefilter("ignore", FutureWarning)
+        # GET /openc3-api/metadata/latest returns 200 with an error status when there is no metadata
+        response = Mock()
+        response.status_code = 200
+        response.text = json.dumps({"status": "error", "message": "no metadata entries"})
+        self.api_server = Mock()
+        self.api_server.request.return_value = response
+        patcher = patch("openc3.script.API_SERVER", self.api_server)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_metadata_get_returns_none(self):
+        self.assertIsNone(metadata_get())
+
+    def test_metadata_update_without_start_raises(self):
+        with self.assertRaisesRegex(RuntimeError, "No metadata to update; use metadata_set"):
+            metadata_update({"key1": "value1"})
+        # Only the GET for the latest entry was made, nothing was PUT
+        self.assertEqual([c.args[0] for c in self.api_server.request.call_args_list], ["get"])
+
+    def test_metadata_update_without_start_raises_when_request_fails(self):
+        self.api_server.request.return_value = None
+        with self.assertRaisesRegex(RuntimeError, "No metadata to update; use metadata_set"):
+            metadata_update({"key1": "value1"})

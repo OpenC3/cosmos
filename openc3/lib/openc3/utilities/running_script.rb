@@ -511,21 +511,18 @@ class RunningScript
       model = nil
       model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username != 'Anonymous'
 
-      # Load the global environment variables
-      status_environment = {}
-      values = OpenC3::EnvironmentModel.all(scope: scope).values
-      values.each do |env|
-        process.environment[env['key']] = env['value']
-        status_environment[env['key']] = env['value']
-      end
+      # Load the global environment variables. Reserved names (OPENC3_*, LD_*,
+      # proxies, etc.) are configured by COSMOS and skipped here. The
+      # controllers reject them on create; this also covers entries stored
+      # before that check existed.
+      status_environment = OpenC3::ScriptEnv.apply_user_entries(
+        process.environment, OpenC3::EnvironmentModel.all(scope: scope).values, source: 'global', scope: scope
+      )
       # Load the script specific ENV vars set by the GUI
       # These can override the previously defined global env vars
-      if environment
-        environment.each do |env|
-          process.environment[env['key']] = env['value']
-          status_environment[env['key']] = env['value']
-        end
-      end
+      status_environment.merge!(
+        OpenC3::ScriptEnv.apply_user_entries(process.environment, environment, source: 'script', scope: scope)
+      )
 
       script_status = OpenC3::ScriptStatusModel.new(
         name: running_script_id.to_s, # Unique id for this script

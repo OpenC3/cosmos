@@ -63,6 +63,7 @@ check_debian(client)
 check_node(client)
 check_container_version(client, containers, 'traefik')
 check_container_version(client, containers, 'redis') # valkey base image
+check_ubi_valkey(client) # after the base image so a bump just accepted carries over
 new_versitygw = check_versitygw(client, versitygw_version)
 check_tsdb(client, tsdb_version)
 check_cacert(client)
@@ -73,6 +74,10 @@ check_cacert(client)
 check_ubi_ruby(client, ENV.fetch('RUBY_VERSION', ruby_version))
 # Runs after check_ubi_ruby so the Debian image follows any UBI Ruby bump
 check_ruby_patch(client)
+check_rubygems(client, ruby_version: ENV.fetch('RUBY_VERSION', ruby_version))
+# The rest of the third-party sources committed to openc3-ruby/ for offline builds
+check_rbspy(client)
+check_vendored_sources(client)
 anycable_containers = containers.select { |c| c[:name].include?('openc3-cosmos-cmd-tlm-api') || c[:name].include?('openc3-cosmos-script-runner-api') }
 check_anycable(client, anycable_containers.map { |c| c[:name] }) unless anycable_containers.empty?
 
