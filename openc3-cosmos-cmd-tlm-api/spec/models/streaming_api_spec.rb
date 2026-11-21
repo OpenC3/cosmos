@@ -1704,6 +1704,52 @@ RSpec.describe StreamingApi, type: :model do
         expect(offset).to eq("#{(@start_time.to_i - 50) * 1000 - overlap_ms}-0")
       end
 
+      context 'with stored messages at the start of the topic' do
+        # Writes messages to the real (mock) topic rather than stubbing get_oldest_message
+        def setup_mode_from_topic(time_type, messages, start_time)
+          collection = StreamingObjectCollection.new
+          collection.add(StreamingObject.new(item_key, start_time, nil, item_key: item_key, scope: 'DEFAULT', time_type: time_type))
+          topic = collection.objects[0].topic
+          messages.each_with_index do |msg, index|
+            OpenC3::EphemeralStore.instance.xadd(topic, msg, id: "#{@start_time.to_i - 100 + index}000-0")
+          end
+          thread = LoggedStreamingThread.new(@api, collection, scope: 'DEFAULT', token: nil)
+          thread.setup_thread_body(collection.objects)
+          thread.instance_variable_get(:@thread_mode)
+        end
+
+        # Stored (e.g. played back) packets years old, then realtime ones from 50s ago
+        let(:stored_msg) { { 'time' => (@start_time.to_i - 86_400 * 365) * 1_000_000_000, 'received_time' => (@start_time.to_i - 86_400 * 300) * 1_000_000_000, 'stored' => 'true' } }
+        let(:realtime_msg) { { 'time' => (@start_time.to_i - 50) * 1_000_000_000, 'received_time' => (@start_time.to_i - 50) * 1_000_000_000, 'stored' => 'false' } }
+
+        [:PACKET, :RECEIVED].each do |time_type|
+          it "ignores them when deciding where #{time_type} data comes from" do
+            # The start is after the stored times but before the realtime data in Redis
+            start_time = (@start_time.to_i - 86_400) * 1_000_000_000
+            mode = setup_mode_from_topic(time_type, [stored_msg, stored_msg, realtime_msg], start_time)
+            expect(mode).to eq(:TSDB)
+          end
+        end
+
+        it 'reads past more stored messages than one scan returns' do
+          stub_const('LoggedStreamingThread::OLDEST_REALTIME_SCAN_COUNT', 2)
+          start_time = (@start_time.to_i - 86_400) * 1_000_000_000
+          mode = setup_mode_from_topic(:RECEIVED, [stored_msg] * 5 + [realtime_msg], start_time)
+          expect(mode).to eq(:TSDB)
+        end
+
+        it 'still streams from Redis when the realtime data covers the start' do
+          start_time = (@start_time.to_i - 10) * 1_000_000_000
+          mode = setup_mode_from_topic(:RECEIVED, [stored_msg, realtime_msg], start_time)
+          expect(mode).to eq(:STREAM)
+        end
+
+        it 'uses the TSDB when the topic only has stored messages' do
+          start_time = (@start_time.to_i - 10) * 1_000_000_000
+          mode = setup_mode_from_topic(:PACKET, [stored_msg, stored_msg], start_time)
+          expect(mode).to eq(:TSDB)
+        end
+      end
       it 'skips the overlap messages before the start time' do
         thread, collection = setup_thread(:RECEIVED)
         start_nsec = (@start_time.to_i - 50) * 1_000_000_000
@@ -1827,6 +1873,104 @@ RSpec.describe StreamingApi, type: :model do
       expect(queries[1]).to include('AND PACKET_TIMESECONDS >= 10 AND PACKET_TIMESECONDS <= 20 ORDER BY RECEIVED_TIMESECONDS) timestamp(RECEIVED_TIMESECONDS) SAMPLE BY 1m')
       expect(@messages[0][0]['__time']).to eq(@file_start_time)
       expect(@messages[0][0][key]).to eq(2.5)
+    end
+  end
+
+  context 'include_times' do
+    let(:item_key) { 'DECOM__TLM__INST__PARAMS__VALUE1__CONVERTED' }
+
+    def stream_realtime(data, msg)
+      sent = false
+      allow(OpenC3::EphemeralStore.instance).to receive(:read_topics) do |topics, &block|
+        sleep 0.1
+        unless sent
+          sent = true
+          block.call(topics[0], "#{@start_time.to_i * 1000}-0", msg, nil)
+        end
+        {}
+      end
+      @api.add(data)
+      start = Time.now
+      sleep 0.05 while @messages.empty? and (Time.now - start) < 3
+      @messages[0][0]
+    end
+
+    let(:msg) do
+      { 'target_name' => 'INST', 'packet_name' => 'PARAMS', 'time' => 100, 'received_time' => 200,
+        'json_data' => JSON.generate({ 'VALUE1' => 5 }), 'buffer' => "\x01\x02" }
+    end
+
+    it 'does not return the extra times unless asked' do
+      entry = stream_realtime({ 'items' => [item_key], 'scope' => 'DEFAULT' }, msg)
+      expect(entry['__time']).to eq(100)
+      expect(entry).to_not have_key('__packet_time')
+      expect(entry).to_not have_key('__received_time')
+    end
+
+    it 'returns both times for realtime items whatever the time_type' do
+      entry = stream_realtime({ 'items' => [item_key], 'scope' => 'DEFAULT', 'time_type' => 'RECEIVED', 'include_times' => true }, msg)
+      expect(entry['__time']).to eq(200)
+      expect(entry['__packet_time']).to eq(100)
+      expect(entry['__received_time']).to eq(200)
+      expect(entry[item_key]).to eq(5)
+    end
+
+    it 'returns both times for realtime decom packets' do
+      entry = stream_realtime({ 'packets' => ['DECOM__TLM__INST__PARAMS__CONVERTED'], 'scope' => 'DEFAULT', 'include_times' => true }, msg)
+      expect(entry['__type']).to eq('PACKET')
+      expect(entry['__time']).to eq(100)
+      expect(entry['__packet_time']).to eq(100)
+      expect(entry['__received_time']).to eq(200)
+    end
+
+    it 'returns both times for realtime raw packets' do
+      entry = stream_realtime({ 'packets' => ['RAW__TLM__INST__PARAMS'], 'scope' => 'DEFAULT', 'include_times' => true }, msg)
+      expect(entry['buffer']).to_not be_nil
+      expect(entry['__time']).to eq(100)
+      expect(entry['__packet_time']).to eq(100)
+      expect(entry['__received_time']).to eq(200)
+    end
+
+    it 'returns both times for raw packets from log files' do
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }])
+      @api.add({ 'packets' => ['RAW__TLM__INST__PARAMS'], 'scope' => 'DEFAULT', 'include_times' => true,
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1_000_000_000 })
+      sleep 2.5 # Files need a long time
+
+      first_packet = @messages[0][0]
+      expect(first_packet['buffer']).to_not be_nil
+      expect(first_packet['__packet_time']).to eq(first_packet['__time'])
+      # Packet logs store the received time with each packet
+      expect(first_packet['__received_time']).to be_a(Integer)
+    end
+
+    it 'selects and returns both times for TSDB items' do
+      allow_any_instance_of(OpenC3::LocalApi).to receive(:get_tlm_available) { |_instance, items, **_kwargs| items }
+      allow(OpenC3::TargetModel).to receive(:packet).and_return({ 'items' => [{ 'name' => 'VALUE1', 'data_type' => 'FLOAT', 'array_size' => nil }] })
+      mock_conn = instance_double(PG::Connection)
+      allow(OpenC3::QuestDBClient).to receive(:connection).and_return(mock_conn)
+      allow(mock_conn).to receive(:type_map_for_results).and_return(Object.new)
+      received_time = @file_start_time + 500
+      pg_data = [[["VALUE1__C", 1.5], ["PACKET_TIMESECONDS", @file_start_time], ["__rx_time_ns", received_time], ["COSMOS_EXTRA", nil]]]
+      pg_data.define_singleton_method(:ntuples) { 1 }
+      queries = []
+      allow(mock_conn).to receive(:exec) do |query|
+        queries << query
+        queries.length == 1 ? pg_data : nil
+      end
+      allow(OpenC3::EphemeralStore.instance).to receive(:get_oldest_message).and_return(["#{@start_time.to_i - 100}000-0", { 'time' => (@start_time.to_i - 100) * 1_000_000_000 }])
+
+      @api.add({ 'items' => [item_key], 'scope' => 'DEFAULT', 'include_times' => true,
+        'start_time' => @file_start_time, 'end_time' => @file_start_time + 1000 })
+      sleep 1.65
+
+      expect(queries[0]).to include('"__rx_time_ns"')
+      expect(queries[0]).to include("WHERE PACKET_TIMESECONDS >= #{@file_start_time}")
+      entry = @messages[0][0]
+      expect(entry['__time']).to eq(@file_start_time)
+      expect(entry['__packet_time']).to eq(@file_start_time)
+      expect(entry['__received_time']).to eq(received_time)
+      expect(entry[item_key]).to eq(1.5)
     end
   end
 end

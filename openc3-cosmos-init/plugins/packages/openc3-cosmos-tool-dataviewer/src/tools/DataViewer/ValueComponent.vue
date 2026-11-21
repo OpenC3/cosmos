@@ -1,5 +1,5 @@
 <!--
-# Copyright 2024 OpenC3, Inc.
+# Copyright 2026 OpenC3, Inc.
 # All Rights Reserved.
 #
 # This program is distributed in the hope that it will be useful,
@@ -41,7 +41,8 @@ export default {
   created: function () {
     const defaultConfig = {
       history: 300, // 5min at 1Hz
-      showTimestamp: true,
+      showTimestamp: true, // Packet time
+      showReceivedTime: true,
       packetsToShow: 10, // override the default of 1
       newestAtTop: true,
     }
@@ -51,12 +52,20 @@ export default {
     }
   },
   methods: {
+    timeText: function (name, nanoseconds) {
+      if (nanoseconds === undefined || nanoseconds === null) return ''
+      const date = new Date(nanoseconds / 1000000).toISOString()
+      return `${name}: ${date}  `
+    },
     calculatePacketText: function (packet) {
       let text = ''
+      // showTimestamp is the packet time. Data Viewer asks the stream for both
+      // __packet_time and __received_time (nanoseconds) in every entry.
       if (this.currentConfig.showTimestamp) {
-        const milliseconds = packet.__time / 1000000
-        const receivedDate = new Date(milliseconds).toISOString()
-        text = `Time: ${receivedDate}  `
+        text += this.timeText('Packet Time', packet.__packet_time)
+      }
+      if (this.currentConfig.showReceivedTime) {
+        text += this.timeText('Received Time', packet.__received_time)
       }
       text += Object.keys(packet)
         .map((item) => {
