@@ -256,6 +256,15 @@ info:
     @echo "UV: $(uv --version)"
     @uv tree --depth 1
 
+# Run uv audit on the lock file (OSV database)
+audit:
+    uv audit --frozen --preview-features audit-command
+
+# Upgrade only the packages uv audit flags, to at least their fixed versions
+audit-fix: && audit
+    uv run --script --locked tools/audit_fix.py
+    uv sync
+
 # Run Trivy security scan on dependencies (includes dev dependencies)
 trivy:
     #!/usr/bin/env bash
