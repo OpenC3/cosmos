@@ -52,17 +52,18 @@ class TestPromptForCriticalCmd(unittest.TestCase):
     def test_waits_until_approved(self):
         statuses = iter(["WAITING", "WAITING", "APPROVED"])
         with (
-            patch("openc3.script.critical_cmd_status", side_effect=lambda uuid: next(statuses)),
+            patch("openc3.script.critical_cmd_status", side_effect=lambda uuid, scope: next(statuses)) as status,
             patch("openc3.script.time.sleep") as sleep,
             redirect_stdout(io.StringIO()),
         ):
-            prompt_for_critical_cmd("uuid", "user", "INST", "CLEAR", {}, 'cmd("INST CLEAR")')
+            prompt_for_critical_cmd("uuid", "user", "INST", "CLEAR", {}, 'cmd("INST CLEAR")', scope="OTHER")
         self.assertEqual(sleep.call_count, 2)
+        status.assert_called_with("uuid", scope="OTHER")
 
     def test_raises_when_rejected(self):
         statuses = iter(["WAITING", "REJECTED"])
         with (
-            patch("openc3.script.critical_cmd_status", side_effect=lambda uuid: next(statuses)),
+            patch("openc3.script.critical_cmd_status", side_effect=lambda uuid, scope: next(statuses)),
             patch("openc3.script.time.sleep"),
             redirect_stdout(io.StringIO()),
             self.assertRaisesRegex(RuntimeError, "Critical command rejected"),
