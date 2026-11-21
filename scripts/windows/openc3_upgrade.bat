@@ -21,7 +21,7 @@ if exist "%REPO_ROOT%\openc3-enterprise-traefik" (
 
 REM Files the user owns. COSMOS never ships these, so the upgrade must never
 REM touch them. Without the exclude, a committed compose.override.yaml shows up
-REM in 'git diff -R <tag>' as a deletion (it doesn't exist in the tag) and would
+REM in 'git diff -R TAG' as a deletion (it doesn't exist in the tag) and would
 REM be removed. plugins/ holds the user's own plugins.
 set EXCLUDE_PATHSPECS=":(exclude)plugins/" ":(exclude)compose.override.yaml" ":(exclude).env.local"
 
