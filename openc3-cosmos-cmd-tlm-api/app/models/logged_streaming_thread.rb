@@ -205,28 +205,39 @@ class LoggedStreamingThread < StreamingThread
 
   # Number of messages read at a time while looking past stored messages
   OLDEST_REALTIME_SCAN_COUNT = 100
+  # Most messages read while looking past stored messages. A topic can hold only
+  # stored messages (e.g. a FileInterface feed), and reading all of it on every
+  # historical request is slow.
+  OLDEST_REALTIME_SCAN_MAX = 2000
 
   # Returns the oldest [msg_id, msg_hash] in the topic that isn't stored, or nil.
   # Stored messages (e.g. telemetry played back from a recorder) share the topic
   # with realtime ones, but their packet and received times can be anything and
   # redis_thread_body skips them. Using one as the oldest message would make a
   # start time after it stream from Redis instead of the TSDB and return nothing.
+  # Returns nil if no realtime message is found within OLDEST_REALTIME_SCAN_MAX
+  # messages. Callers treat nil as no realtime data: setup reads from the TSDB
+  # and the bridge keeps the current offset.
   def get_oldest_realtime_message(topic, db_shard)
     msg_id, msg_hash = OpenC3::Topic.get_oldest_message(topic, db_shard: db_shard)
     return nil unless msg_id
     return [msg_id, msg_hash] unless OpenC3::ConfigParser.handle_true_false(msg_hash['stored'])
 
     store = OpenC3::EphemeralStore.instance(db_shard: db_shard)
-    loop do
+    scanned = 1
+    while scanned < OLDEST_REALTIME_SCAN_MAX
       # A '(' start is exclusive so this reads the messages after msg_id
-      messages = store.xrange(topic, "(#{msg_id}", '+', count: OLDEST_REALTIME_SCAN_COUNT)
+      count = [OLDEST_REALTIME_SCAN_COUNT, OLDEST_REALTIME_SCAN_MAX - scanned].min
+      messages = store.xrange(topic, "(#{msg_id}", '+', count: count)
       return nil if messages.nil? or messages.empty?
 
       messages.each do |id, hash|
         return [id, hash] unless OpenC3::ConfigParser.handle_true_false(hash['stored'])
       end
+      scanned += messages.length
       msg_id = messages[-1][0]
     end
+    nil
   end
 
   # Override parent to also filter overlap during TSDB→STREAM transition

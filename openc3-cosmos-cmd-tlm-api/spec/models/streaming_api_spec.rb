@@ -1706,12 +1706,12 @@ RSpec.describe StreamingApi, type: :model do
 
       context 'with stored messages at the start of the topic' do
         # Writes messages to the real (mock) topic rather than stubbing get_oldest_message
-        def setup_mode_from_topic(time_type, messages, start_time)
+        def setup_mode_from_topic(time_type, messages, start_time, db_shard: 0)
           collection = StreamingObjectCollection.new
           collection.add(StreamingObject.new(item_key, start_time, nil, item_key: item_key, scope: 'DEFAULT', time_type: time_type))
           topic = collection.objects[0].topic
           messages.each_with_index do |msg, index|
-            OpenC3::EphemeralStore.instance.xadd(topic, msg, id: "#{@start_time.to_i - 100 + index}000-0")
+            OpenC3::EphemeralStore.instance(db_shard: db_shard).xadd(topic, msg, id: "#{@start_time.to_i - 100 + index}000-0")
           end
           thread = LoggedStreamingThread.new(@api, collection, scope: 'DEFAULT', token: nil)
           thread.setup_thread_body(collection.objects)
@@ -1736,6 +1736,27 @@ RSpec.describe StreamingApi, type: :model do
           start_time = (@start_time.to_i - 86_400) * 1_000_000_000
           mode = setup_mode_from_topic(:RECEIVED, [stored_msg] * 5 + [realtime_msg], start_time)
           expect(mode).to eq(:TSDB)
+        end
+
+        it 'stops scanning after OLDEST_REALTIME_SCAN_MAX messages' do
+          stub_const('LoggedStreamingThread::OLDEST_REALTIME_SCAN_COUNT', 2)
+          stub_const('LoggedStreamingThread::OLDEST_REALTIME_SCAN_MAX', 5)
+          # The realtime data would cover the start, but it's past the scan limit
+          start_time = (@start_time.to_i - 10) * 1_000_000_000
+          mode = setup_mode_from_topic(:RECEIVED, [stored_msg] * 5 + [realtime_msg], start_time)
+          expect(mode).to eq(:TSDB)
+        end
+
+        it 'reads the oldest realtime message from the target db_shard' do
+          # mock_redis gives each db_shard its own MockRedis, so reading the oldest
+          # message or scanning past the stored one on another db_shard finds
+          # nothing and falls back to the TSDB
+          OpenC3::TargetModel.new(name: 'INST', scope: 'DEFAULT', db_shard: 1).create
+          allow(OpenC3::Topic).to receive(:get_oldest_message).and_call_original
+          start_time = (@start_time.to_i - 10) * 1_000_000_000
+          mode = setup_mode_from_topic(:RECEIVED, [stored_msg, realtime_msg], start_time, db_shard: 1)
+          expect(mode).to eq(:STREAM)
+          expect(OpenC3::Topic).to have_received(:get_oldest_message).with(anything, db_shard: 1)
         end
 
         it 'still streams from Redis when the realtime data covers the start' do
