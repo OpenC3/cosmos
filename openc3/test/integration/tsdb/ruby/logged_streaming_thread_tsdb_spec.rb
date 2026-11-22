@@ -62,9 +62,11 @@ end
 # Mock StreamingApi for capturing transmitted results
 class MockStreamingApi
   attr_reader :transmitted_results
+  attr_accessor :include_times
 
   def initialize
     @transmitted_results = []
+    @include_times = false
   end
 
   def transmit_results(results)
@@ -1548,6 +1550,39 @@ RSpec.describe LoggedStreamingThread, :questdb do
       # Both timestamps are still returned as items
       expect(results[0]['RECEIVED_TIMESECONDS']).to be_within(0.000001).of(rx_base / 1_000_000_000.0)
       expect(results[0]['PACKET_TIMESECONDS']).to be_within(0.000001).of(table_info['timestamps_ns'][1] / 1_000_000_000.0)
+    end
+
+    it 'returns __packet_time and __received_time with include_times' do
+      spec = {
+        'tables' => [
+          {
+            'target' => 'RXTIME', 'packet' => 'TIMES', 'data_type' => 'INT', 'bit_size' => 32,
+            'rows' => [
+              { 'offset_ms' => 0, 'rx_time_ns' => rx_base + 1_000_000_000, 'values' => { 'VALUE' => 1 } },
+              { 'offset_ms' => 1000, 'rx_time_ns' => rx_base, 'values' => { 'VALUE' => 2 } }
+            ]
+          }
+        ]
+      }
+      test_params = write_multi_table_data(spec)
+      expect(test_params['success']).to be true
+      packet_times = test_params['tables'][0]['timestamps_ns']
+      window = { start_time: rx_base, end_time: rx_base + 2_000_000_000 }
+      streaming_api.include_times = true
+
+      # Items, ordered by received time
+      results = stream(rx_objects(test_params, **window))
+      expect(results.map { |r| r['__received_time'] }).to eq([rx_base, rx_base + 1_000_000_000])
+      expect(results.map { |r| r['__packet_time'] }).to eq([packet_times[1], packet_times[0]])
+
+      # Decom packets
+      streaming_api.clear
+      obj = rx_objects(test_params, **window)[0]
+      obj.item_name = nil
+      create_thread([obj]).send(:stream_decom_packets_from_tsdb, { obj.topic => [obj] })
+      results = streaming_api.transmitted_results
+      expect(results.map { |r| r['__received_time'] }).to eq([rx_base, rx_base + 1_000_000_000])
+      expect(results.map { |r| r['__packet_time'] }).to eq([packet_times[1], packet_times[0]])
     end
 
     # RECEIVED_TIMESECONDS is a regular column, not the designated timestamp the
