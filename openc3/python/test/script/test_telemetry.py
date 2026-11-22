@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import inspect
 import time
 import unittest
 from unittest.mock import patch
@@ -88,6 +89,19 @@ class TestTelemetry(unittest.TestCase):
                 stdout.getvalue(),
             )
 
+    def test_inject_tlm_forwards_positional_scope_and_keyword_received_time(self):
+        with patch("openc3.script.API_SERVER") as server:
+            for _ in capture_io():
+                inject_tlm("TARGET", "PACKET", {"PARAM": 1}, "RAW", True, "OTHER", received_time=1000)
+            server.inject_tlm.assert_called_once_with(
+                "TARGET", "PACKET", {"PARAM": 1}, type="RAW", stored=True, scope="OTHER", received_time=1000
+            )
+
+    def test_inject_tlm_received_time_is_keyword_only(self):
+        # A positional received_time would be ambiguous with the positional scope before it
+        received_time = inspect.signature(inject_tlm).parameters["received_time"]
+        self.assertEqual(received_time.kind, inspect.Parameter.KEYWORD_ONLY)
+
     def test_set_tlm(self):
         for stdout in capture_io():
             set_tlm("TARGET", "PACKET", "ITEM", 10)
@@ -133,6 +147,15 @@ class TestTelemetry(unittest.TestCase):
                 'override_tlm("TARGET PACKET ITEM = \'10\'", type="WITH_UNITS")',
                 stdout.getvalue(),
             )
+
+    def test_set_and_override_tlm_print_only_the_given_args(self):
+        # A missing value must reach the API, which reports the argument error,
+        # rather than raise IndexError while building the printed call
+        for stdout in capture_io():
+            set_tlm("TARGET", "PACKET", "ITEM")
+            self.assertIn('set_tlm("TARGET", "PACKET", "ITEM", type="CONVERTED")', stdout.getvalue())
+            override_tlm("TARGET", "PACKET", "ITEM")
+            self.assertIn('override_tlm("TARGET", "PACKET", "ITEM", type="ALL")', stdout.getvalue())
 
     def test_normalize_tlm(self):
         for stdout in capture_io():

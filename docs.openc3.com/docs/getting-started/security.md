@@ -227,6 +227,12 @@ The VersityGW credentials (`OPENC3_BUCKET_*`, `OPENC3_SR_BUCKET_*`) and `OPENC3_
 
 ### Overriding Secrets with .env.local
 
+:::warning[Requires COSMOS 7.3.0 or later]
+`openc3.sh` loads `.env.local` starting with COSMOS 7.3.0, and `openc3.sh cli` honors it starting with 7.4.0. Older versions silently ignore `.env.local`, so a Redis password set there never reaches the containers, and Redis rejects the default password with `WRONGPASS` once `users.acl` holds the new hash. On older versions, upgrade or set the values directly in `.env`.
+
+To confirm the containers will get your values, run `docker compose --env-file .env --env-file .env.local config | grep REDIS_PASSWORD`.
+:::
+
 Do not edit `.env` to change passwords. It is tracked by git, so edits cause merge conflicts on upgrade and can leak secrets into your repository. `compose.override.yaml` is also tracked and must not hold secrets either.
 
 Instead, create a `.env.local` file next to `.env`. It is gitignored, and `openc3.sh` loads it after `.env`, so any value you set there overrides the matching default in `.env`. `compose.yaml` already reads every secret via `${VAR}` interpolation, so setting the value in `.env.local` is all that is needed — no `compose.override.yaml` entry is required.
@@ -353,3 +359,34 @@ It's important to understand the distinction:
   - **COSMOS Enterprise**: Uses Keycloak for authentication with individual user accounts, roles, and permissions.
 
 The frontend password you set when first accessing COSMOS at `http://localhost:2900` is stored in Redis and is completely separate from the backend service credentials documented here.
+
+## Session Length and Automatic Logout in COSMOS Enterprise
+
+In COSMOS Enterprise, session length is controlled entirely by the `openc3` realm in Keycloak. The defaults are:
+
+| Keycloak Setting      | Default    | Effect                                                                                                                 |
+| --------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| SSO Session Idle      | 30 minutes | The user must log in again if no COSMOS tab refreshes its token for this long, e.g. the browser was closed.            |
+| SSO Session Max       | 10 hours   | The user must log in again this long after logging in, even if they were active the whole time.                        |
+| Access Token Lifespan | 5 minutes  | How long each access token is valid. COSMOS refreshes it automatically, so users don't notice this.                    |
+
+SSO Session Idle and SSO Session Max are on the **Realm settings** > **Sessions** tab of the Keycloak Admin Console, and Access Token Lifespan is on the **Realm settings** > **Tokens** tab.
+
+While a COSMOS tab is open, the browser refreshes the access token every few minutes (see [Automatic Token Refresh](/docs/getting-started/architecture#automatic-token-refresh)), which keeps resetting the idle timeout. Leaving a tab open therefore does not log the user out after 30 minutes, but they are still logged out when SSO Session Max is reached. When a refresh fails because the session has ended, COSMOS redirects to the Keycloak login page.
+
+#### Changing the Session Length
+
+Change the session settings in the Keycloak Admin Console:
+
+1. Browse to `http://localhost:2900/auth/` (or your `OPENC3_KEYCLOAK_EXTERNAL_URL`) and log in with the Keycloak admin account.
+2. Select the **openc3** realm from the realm dropdown. Don't change the `master` realm, which only holds the Keycloak admin account.
+3. Go to **Realm settings** > **Sessions** and change **SSO Session Idle** and **SSO Session Max**.
+4. Click **Save**.
+5. Log out of COSMOS and log back in to start a session with the new settings.
+
+#### Scripts and Background Tasks
+
+Session length does not affect scripts or other automation:
+
+- Scripts, the CLI, and external programs using `OPENC3_API_USER` / `OPENC3_API_PASSWORD` refresh their token automatically and log in again when the refresh token expires.
+- Work that continues after the browser is closed, such as a running Script Runner script, uses an [offline access token](/docs/getting-started/architecture#offline-access-token). It is controlled by the separate **Offline Session Idle** setting (default 30 days) on the same Sessions page. COSMOS refreshes stored offline tokens once a day, so with the defaults they only expire if COSMOS is stopped for longer than Offline Session Idle.

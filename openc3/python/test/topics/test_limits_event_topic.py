@@ -23,6 +23,10 @@ class TestLimitsEventTopic(unittest.TestCase):
         mock_redis(self)
         setup_system()
 
+    def test_read_returns_an_empty_list_with_no_events(self):
+        # https://github.com/OpenC3/cosmos/issues/4293
+        self.assertEqual(LimitsEventTopic.read(scope="DEFAULT"), [])
+
     def test_writes_and_reads_limits_change_events(self):
         event = {
             "type": "LIMITS_CHANGE",
@@ -540,6 +544,30 @@ class TestLimitsEventTopic(unittest.TestCase):
         self.assertFalse(Store.hexists("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP2"))
         self.assertEqual(Store.hget("DEFAULT__current_limits", "INST__HEALTH_STATUS__TEMP3"), b"RED_HIGH")
         self.assertEqual(LimitsEventTopic.out_of_limits("DEFAULT"), [["INST", "HEALTH_STATUS", "TEMP3", "RED_HIGH"]])
+
+    def test_resync_system_ignores_saved_numeric_settings_for_items_with_change_limits(self):
+        limits = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("TEMP1").limits
+        limits.change_type = "SEQUENCE"
+        try:
+            numeric = {"red_low": -50.0, "yellow_low": -40.0, "yellow_high": 40.0, "red_high": 50.0}
+            Store.hset(
+                "DEFAULT__current_limits_settings",
+                "INST__HEALTH_STATUS__TEMP1",
+                json.dumps({"DEFAULT": numeric, "persistence_setting": 1, "enabled": False}),
+            )
+            Store.hset(
+                "DEFAULT__current_limits_settings",
+                "INST__HEALTH_STATUS__TEMP3",
+                json.dumps({"DEFAULT": numeric, "persistence_setting": 2, "enabled": True}),
+            )
+            LimitsEventTopic.resync_system("DEFAULT")
+            # Enabled state is still applied and other items still sync
+            self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
+            self.assertEqual(
+                list(System.limits.get("INST", "HEALTH_STATUS", "TEMP3")[1:7]), [2, True, -50.0, -40.0, 40.0, 50.0]
+            )
+        finally:
+            limits.change_type = None
 
     def test_sync_system_thread_body_applies_a_limits_group_enable_state_event(self):
         LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")  # Set the stream offset

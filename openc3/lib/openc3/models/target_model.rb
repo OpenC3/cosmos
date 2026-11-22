@@ -51,7 +51,12 @@ module OpenC3
     ERB_EXTENSIONS = %w(.txt .rb .py .json .yaml .yml)
     ITEM_MAP_CACHE_TIMEOUT = 10.0
     PACKET_CACHE_TIMEOUT = 10.0
-    MAX_COLUMN_HEADER_LENGTH = 127 # QuestDB column header limit for item/param names
+    # QuestDB limits column names to 127 bytes of UTF-8 (cairo.max.file.name.length). Items get
+    # __C (converted) and __F (formatted) columns when they have states, conversions, formats or
+    # units. All names leave room for the 3 byte suffix so adding one never breaks an item.
+    MAX_COLUMN_HEADER_LENGTH = 127
+    COLUMN_SUFFIX_LENGTH = 3
+    MAX_ITEM_NAME_BYTES = MAX_COLUMN_HEADER_LENGTH - COLUMN_SUFFIX_LENGTH
     @@item_map_cache = {}
     @@packet_cache = {}
     @@packet_cache_mutex = Mutex.new
@@ -79,6 +84,7 @@ module OpenC3
     attr_accessor :cmd_decom_retain_time
     attr_accessor :tlm_decom_retain_time
     attr_accessor :decom_flush_period
+    attr_accessor :decom_update_interval
     attr_accessor :cleanup_poll_time
     attr_accessor :needs_dependencies
     attr_accessor :target_microservices
@@ -528,6 +534,7 @@ module OpenC3
       cmd_decom_retain_time: nil,
       tlm_decom_retain_time: nil,
       decom_flush_period: 5.0,
+      decom_update_interval: nil,
       cleanup_poll_time: 3600,
       needs_dependencies: false,
       target_microservices: {},
@@ -557,6 +564,7 @@ module OpenC3
       @cmd_decom_retain_time = cmd_decom_retain_time
       @tlm_decom_retain_time = tlm_decom_retain_time
       @decom_flush_period = decom_flush_period
+      @decom_update_interval = decom_update_interval
       @cleanup_poll_time = cleanup_poll_time
       @needs_dependencies = needs_dependencies
       @target_microservices = target_microservices
@@ -591,6 +599,7 @@ module OpenC3
         'cmd_decom_retain_time' => @cmd_decom_retain_time,
         'tlm_decom_retain_time' => @tlm_decom_retain_time,
         'decom_flush_period' => @decom_flush_period,
+        'decom_update_interval' => @decom_update_interval,
         'cleanup_poll_time' => @cleanup_poll_time,
         'needs_dependencies' => @needs_dependencies,
         'target_microservices' => @target_microservices.as_json(),
@@ -648,6 +657,14 @@ module OpenC3
       when 'DECOM_FLUSH_PERIOD'
         parser.verify_num_parameters(1, 1, "#{keyword} <Flush period in seconds>")
         @decom_flush_period = Float(parameters[0])
+      when 'DECOM_UPDATE_INTERVAL'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Update interval in seconds - 0 = No queuing>")
+        begin
+          @decom_update_interval = Float(parameters[0])
+        rescue ArgumentError, TypeError
+          raise ConfigParser::Error.new(parser, "#{keyword} must be a number of seconds")
+        end
+        raise ConfigParser::Error.new(parser, "#{keyword} must be a finite number of seconds") unless @decom_update_interval.finite?
       when 'REDUCED_MINUTE_LOG_RETAIN_TIME', 'REDUCED_HOUR_LOG_RETAIN_TIME', 'REDUCED_DAY_LOG_RETAIN_TIME', 'REDUCED_LOG_RETAIN_TIME'
         # DEPRECATED
       when 'REDUCER_DISABLE', 'REDUCER_DISABLED', 'REDUCER_MAX_CPU_UTILIZATION', 'REDUCED_MAX_CPU_UTILIZATION'
@@ -858,15 +875,15 @@ module OpenC3
         packets_by_target.each do |target_name, packets|
           packets.each do |packet_name, packet|
             packet.sorted_items.each do |item|
-              if item.name.length > MAX_COLUMN_HEADER_LENGTH
-                too_long << "#{target_name} #{packet_name} #{item.name} (#{item.name.length})"
+              if item.name.bytesize > MAX_ITEM_NAME_BYTES
+                too_long << "#{target_name} #{packet_name} #{item.name} (#{item.name.bytesize})"
               end
             end
           end
         end
       end
       unless too_long.empty?
-        raise "Item / parameter names must be #{MAX_COLUMN_HEADER_LENGTH} characters or less (QuestDB column header limit). The following are too long:\n  #{too_long.join("\n  ")}"
+        raise "Item / parameter names must be #{MAX_ITEM_NAME_BYTES} bytes (UTF-8) or less (QuestDB column name limit of #{MAX_COLUMN_HEADER_LENGTH} bytes minus the #{COLUMN_SUFFIX_LENGTH} byte __C or __F value type suffix). The following are too long:\n  #{too_long.join("\n  ")}"
       end
     end
 
@@ -1262,11 +1279,14 @@ module OpenC3
         # Use venv Python to ensure editable packages are found
         language_cmd = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
       end
+      options = []
+      options << ["UPDATE_INTERVAL", @decom_update_interval] if @decom_update_interval
       microservice = MicroserviceModel.new(
         name: microservice_name,
         folder_name: @folder_name,
         cmd: [language_cmd, filename, microservice_name],
         work_dir: work_dir,
+        options: options,
         topics: topics,
         target_names: [@name],
         plugin: @plugin,

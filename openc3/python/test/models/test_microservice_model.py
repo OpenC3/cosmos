@@ -10,16 +10,105 @@
 # if purchased from OpenC3, Inc.
 
 import inspect
+import json
 import unittest
 from unittest.mock import *
 
 from openc3.models.microservice_model import MicroserviceModel
+from openc3.utilities.store import Store
 from test.test_helper import *
 
 
 class TestMicroserviceModel(unittest.TestCase):
     def setUp(self):
         self.redis = mock_redis(self)
+
+    def test_validate_route_prefix_normalizes_valid_prefixes(self):
+        self.assertEqual(MicroserviceModel.validate_route_prefix("/myapi"), "/myapi")
+        self.assertEqual(MicroserviceModel.validate_route_prefix("myapi"), "/myapi")
+        self.assertEqual(MicroserviceModel.validate_route_prefix("/myapi/"), "/myapi")
+        self.assertEqual(MicroserviceModel.validate_route_prefix("/My_Api-2/v1"), "/My_Api-2/v1")
+        # Only the first segment is reserved
+        self.assertEqual(MicroserviceModel.validate_route_prefix("/myapi/files"), "/myapi/files")
+        self.assertEqual(MicroserviceModel.validate_route_prefix("/filesystem"), "/filesystem")
+
+    def test_validate_route_prefix_rejects_non_path_segments(self):
+        for prefix in [
+            "",
+            "/",
+            "//",
+            "/a//b",
+            "/my.api",
+            "/sandbox.html",
+            "/.well-known",
+            "/a b",
+            "/my`api",
+            "/%2e%2e",
+            "/a?b",
+            "/a#b",
+            "/../openc3-api",
+            "/my\napi",
+        ]:
+            with self.subTest(prefix=prefix), self.assertRaisesRegex(RuntimeError, "Invalid ROUTE_PREFIX"):
+                MicroserviceModel.validate_route_prefix(prefix)
+
+    def test_validate_route_prefix_rejects_reserved_prefixes(self):
+        for prefix in [
+            "/openc3-api",
+            "/openc3-api/cable",
+            "/script-api",
+            "/tools",
+            "/tools/base",
+            "/files",
+            "/files/myapi",
+            "/login",
+            "/js",
+            "/css",
+            "/fonts",
+            "/icons",
+            "/img",
+            "/assets",
+            "/auth",
+            "/metrics",
+            "/grafana",
+            "/mcp",
+            "/OPENC3-API",
+            "Files",
+        ]:
+            with self.subTest(prefix=prefix), self.assertRaisesRegex(RuntimeError, "is reserved by COSMOS"):
+                MicroserviceModel.validate_route_prefix(prefix)
+
+    def test_create_rejects_invalid_prefix(self):
+        model = MicroserviceModel(
+            "DEFAULT__USER__FILES_API", prefix="files/myapi", ports=[[7791, "TCP"]], scope="DEFAULT"
+        )
+        with self.assertRaisesRegex(RuntimeError, "is reserved by COSMOS"):
+            model.create()
+        self.assertIsNone(MicroserviceModel.get("DEFAULT__USER__FILES_API"))
+
+    def test_create_stores_normalized_prefix(self):
+        model = MicroserviceModel("DEFAULT__USER__MYAPI", prefix="myapi/", ports=[[7791, "TCP"]], scope="DEFAULT")
+        model.create()
+        self.assertEqual(MicroserviceModel.get("DEFAULT__USER__MYAPI")["prefix"], "/myapi")
+
+    def test_update_allows_stored_prefix_from_before_validation(self):
+        model = MicroserviceModel("DEFAULT__USER__LEGACY", prefix="/my.api", ports=[[7791, "TCP"]], scope="DEFAULT")
+        Store.hset(MicroserviceModel.PRIMARY_KEY, model.name, json.dumps(model.as_json()))
+
+        model = MicroserviceModel.get_model("DEFAULT__USER__LEGACY", scope="DEFAULT")
+        model.enabled = False
+        model.update()
+        stored = MicroserviceModel.get("DEFAULT__USER__LEGACY")
+        self.assertFalse(stored["enabled"])
+        self.assertEqual(stored["prefix"], "/my.api")
+
+    def test_update_validates_changed_prefix(self):
+        model = MicroserviceModel("DEFAULT__USER__MYAPI", prefix="/myapi", ports=[[7791, "TCP"]], scope="DEFAULT")
+        model.create()
+        model.prefix = "/my.api"
+        with self.assertRaisesRegex(RuntimeError, "Invalid ROUTE_PREFIX"):
+            model.update()
+        self.assertEqual(MicroserviceModel.get("DEFAULT__USER__MYAPI")["prefix"], "/myapi")
 
     def test_returns_the_specified_model_with_or_without_scope(self):
         model = MicroserviceModel(

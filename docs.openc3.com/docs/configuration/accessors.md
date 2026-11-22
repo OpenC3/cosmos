@@ -177,7 +177,7 @@ When used with the HTTP Client Interface, HTTP Accessor utilizes the following c
 
 | Parameter         | Description                                                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------------- |
-| HTTP_PATH         | requests at this path                                                                                |
+| HTTP_PATH         | requests at this path on the interface host and port, must be empty or start with a single '/'       |
 | HTTP_METHOD       | request method (GET, POST, DELETE)                                                                   |
 | HTTP_PACKET       | telemetry packet to store the response                                                               |
 | HTTP_ERROR_PACKET | telemetry packet to store error responses (status code >= 300)                                       |

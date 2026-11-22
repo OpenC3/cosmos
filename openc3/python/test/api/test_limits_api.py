@@ -90,6 +90,27 @@ class TestLimitsApi(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, r"Item 'INST HEALTH_STATUS BLAH' does not exist \(TargetModel\)"):
             get_limits("INST", "HEALTH_STATUS", "BLAH")
 
+    def set_change_limits(self, item_name):
+        packet = TargetModel.packet("INST", "HEALTH_STATUS", scope="DEFAULT")
+        item = next(packet_item for packet_item in packet["items"] if packet_item["name"] == item_name)
+        item["limits"] = {
+            "enabled": True,
+            "persistence_setting": 1,
+            "DEFAULT": {"change_type": "SEQUENCE", "change_color": "RED"},
+        }
+        TargetModel.set_packet("INST", "HEALTH_STATUS", packet, scope="DEFAULT")
+
+    def test_skips_change_limits_which_have_no_numeric_values(self):
+        self.set_change_limits("TEMP1")
+        self.assertEqual(get_limits("INST", "HEALTH_STATUS", "TEMP1"), {})
+
+    def test_set_limits_complains_about_items_with_change_limits(self):
+        self.set_change_limits("TEMP1")
+        with self.assertRaisesRegex(
+            RuntimeError, "Cannot set_limits on item 'INST HEALTH_STATUS TEMP1' with SEQUENCE limits"
+        ):
+            set_limits("INST", "HEALTH_STATUS", "TEMP1", 0.0, 10.0, 20.0, 30.0)
+
     def test_gets_limits_for_an_item(self):
         self.assertEqual(
             get_limits("INST", "HEALTH_STATUS", "TEMP1"),
@@ -445,6 +466,11 @@ class TestLimitsApi(unittest.TestCase):
         # (cleaned up on the next plugin install)
         self.assertIn("CUSTOM", get_limits("INST", "HEALTH_STATUS", "TEMP1").keys())
 
+    def test_get_limits_events_returns_an_empty_list_with_no_events(self):
+        # https://github.com/OpenC3/cosmos/issues/4293
+        Store.delete("DEFAULT__openc3_limits_events")
+        self.assertEqual(get_limits_events(), [])
+
     def test_get_limits_events_returns_an_offset_and_limits_event_hash(self):
         # Load the events topic with two events ... only the last should be returned
         event = {
@@ -609,6 +635,28 @@ class TestLimitsApi(unittest.TestCase):
         self.assertEqual(get_overall_limits_state([["INST", "HEALTH_STATUS", None]]), "GREEN")
         # Ignoring just TEMP2 yields YELLOW due to TEMP1
         self.assertEqual(get_overall_limits_state([["INST", "HEALTH_STATUS", "TEMP2"]]), "YELLOW")
+
+    def test_get_overall_limits_state_matches_ignored_items_exactly(self):
+        # https://github.com/OpenC3/cosmos/issues/4292
+        out_of_limits = [
+            ["INST", "PKT", "TEMP10", "RED_HIGH"],
+            ["INST", "PKT", "TEMP1", "YELLOW_HIGH"],
+        ]
+        with patch("openc3.api.limits_api.get_out_of_limits", return_value=out_of_limits):
+            # ST is a substring but not the target name
+            self.assertEqual(get_overall_limits_state([["ST", "PKT", None]]), "RED")
+            # Ignoring TEMP1 does not ignore TEMP10
+            self.assertEqual(get_overall_limits_state([["INST", "PKT", "TEMP1"]]), "RED")
+            self.assertEqual(get_overall_limits_state([["INST", "PKT", "TEMP10"]]), "YELLOW")
+            # PK is a prefix of the packet name but not the packet name
+            self.assertEqual(get_overall_limits_state([["INST", "PK", None]]), "RED")
+            self.assertEqual(get_overall_limits_state([["INST", "PKT", None]]), "GREEN")
+
+    def test_get_overall_limits_state_does_not_modify_ignored_items(self):
+        # https://github.com/OpenC3/cosmos/issues/4292
+        ignored = [["INST", "HEALTH_STATUS", None]]
+        get_overall_limits_state(ignored)
+        self.assertEqual(ignored, [["INST", "HEALTH_STATUS", None]])
 
     def test_get_overall_limits_state_raise_on_invalid_ignored_items(self):
         with self.assertRaisesRegex(RuntimeError, "Invalid ignored item: BLAH"):

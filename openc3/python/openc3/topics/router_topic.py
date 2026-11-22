@@ -119,17 +119,17 @@ class RouterTopic(Topic):
     @classmethod
     def connect_router(cls, router_name, *router_params, scope=OPENC3_SCOPE):
         db_shard = cls._db_shard_for_router(router_name, scope)
-        if router_params and len(router_params) == 0:
+        if router_params and len(router_params) != 0:
             Topic.write_topic(
                 f"{{{scope}__CMD}}ROUTER__{router_name}",
-                {"connect": "True", "params": json.dumps(router_params)},
+                {"connect": "true", "params": json.dumps(router_params)},
                 "*",
                 100,
                 db_shard=db_shard,
             )
         else:
             Topic.write_topic(
-                f"{{{scope}__CMD}}ROUTER__{router_name}", {"connect": "True"}, "*", 100, db_shard=db_shard
+                f"{{{scope}__CMD}}ROUTER__{router_name}", {"connect": "true"}, "*", 100, db_shard=db_shard
             )
 
     @classmethod

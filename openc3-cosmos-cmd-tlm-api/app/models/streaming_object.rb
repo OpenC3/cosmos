@@ -85,6 +85,6 @@ class StreamingObject
     else
       @id = 'PACKET__' + key
     end
-    OpenC3::Logger.info("Creating object #{@id} start:#{@start_time} end:#{@end_time} offset:#{@offset}")
+    OpenC3::Logger.debug("Creating object #{@id} start:#{@start_time} end:#{@end_time} offset:#{@offset}")
   end
 end

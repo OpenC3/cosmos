@@ -140,6 +140,20 @@ jobs:
 
           git switch -c "$BRANCH"
           git commit --all --message "$TITLE" --message "$(cat "$REPORT")"
+
+          # GitHub refuses a push from GITHUB_TOKEN that changes anything under
+          # .github/workflows/ on the branch. Regenerating from a base that has
+          # since changed a workflow does exactly that, relative to the old
+          # branch tip, and wedged every run from 2026-10-05 to 2026-11-16.
+          # Creating a branch is allowed, so in that case delete and recreate it
+          # (which closes any open pull request; a new one is opened below).
+          if git ls-remote --exit-code --heads origin "$BRANCH" > /dev/null; then
+            git fetch --no-tags --depth=1 origin "refs/heads/$BRANCH"
+            if ! git diff --quiet FETCH_HEAD HEAD -- .github/workflows; then
+              echo "$BASE changed workflow files since $BRANCH was pushed; recreating it"
+              git push origin --delete "$BRANCH"
+            fi
+          fi
           # Force: the branch is regenerated from its base each run, so it
           # always carries exactly the bumps that are outstanding today.
           git push --force origin "$BRANCH"
@@ -171,5 +185,9 @@ jobs:
           if [ -n "$existing" ]; then
             gh pr close "$existing" --delete-branch \
               --comment "All watched pins are current as of $GITHUB_SHA. Closing."
+          elif gh api "repos/${GITHUB_REPOSITORY}/branches/${BRANCH}" --silent 2>/dev/null; then
+            # A run that pushed but failed to open its pull request leaves the
+            # branch behind with nothing to close it
+            gh api -X DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/${BRANCH}"
           fi
           echo "Nothing behind upstream."

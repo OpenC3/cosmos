@@ -1,11 +1,14 @@
 # Make managed in .env-build
 ARG OPENC3_DEPENDENCY_REGISTRY=docker.io
+# RUBY_VERSION is the minor line (GEM_HOME below); RUBY_PATCH_VERSION is the
+# exact base image tag, so a rebuild cannot silently pick up a new Ruby patch.
 ARG RUBY_VERSION=3.4
+ARG RUBY_PATCH_VERSION=3.4.12
 ARG DEBIAN_RELEASE=trixie
 
 # The official ruby image is Debian slim based and provides a current Ruby that
 # Debian's own apt repositories do not package. Should be loaded from ARG.
-FROM ${OPENC3_DEPENDENCY_REGISTRY}/ruby:${RUBY_VERSION}-slim-${DEBIAN_RELEASE}
+FROM ${OPENC3_DEPENDENCY_REGISTRY}/ruby:${RUBY_PATCH_VERSION}-slim-${DEBIAN_RELEASE}
 
 # An ARG declared before a FROM is outside of a build stage, so it can't be
 # used in any instruction after a FROM. So we need to re-ARG the ones we use.
@@ -178,7 +181,7 @@ ENV OPENC3_PYTHON_BIN=/openc3/python/.venv/bin/python
 
 # rbspy - https://github.com/rbspy/rbspy
 # Not packaged for Debian, so ship the prebuilt release binary per architecture.
-ARG RBSPY_VERSION=0.49.0
+ARG RBSPY_VERSION=0.55.0
 ARG TARGETARCH
 COPY rbspy-*-unknown-linux-gnu-${RBSPY_VERSION}.tar.gz /tmp/
 RUN RB_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "aarch64" || echo "x86_64") && \
@@ -202,23 +205,23 @@ RUN tar -xzf libsocketcan-0.0.12.tar.gz && \
     rm libsocketcan-0.0.12.tar.gz
 
 # libcsp - https://github.com/libcsp/libcsp
-COPY libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip /opt/libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+COPY libcsp-2.1.zip /opt/libcsp-2.1.zip
 WORKDIR /opt
-RUN unzip libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip && \
-    cd libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 && \
+RUN unzip libcsp-2.1.zip && \
+    cd libcsp-2.1 && \
     # Patches to fix compilation issues
-    sed -i '1s/^/#include <sys\/select.h>/' src/drivers/can/can_socketcan.c && \
-    sed -i '2s/^/#include <endian.h>/' src/drivers/eth/eth_linux.c && \
+    sed -i '1i #include <sys/select.h>' src/drivers/can/can_socketcan.c && \
+    sed -i '1i #include <endian.h>' src/drivers/eth/eth_linux.c && \
     mkdir build && \
     cd build && \
-    cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USR_RTABLE=ON && \
+    cmake .. -DCSP_ENABLE_PYTHON3_BINDINGS=ON -DCSP_USE_RTABLE=ON && \
     make && \
     make install && \
     ldconfig && \
     cp libcsp_py3* "/usr/lib/python${PYTHON_VERSION}/lib-dynload/." && \
     cd /opt && \
-    rm -rf libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632 && \
-    rm libcsp-6b6e2dd2870bd1f8ab4516123f1fa255d6c1b632.zip
+    rm -rf libcsp-2.1 && \
+    rm libcsp-2.1.zip
 
 # Set user and group
 ENV IMAGE_USER=openc3
