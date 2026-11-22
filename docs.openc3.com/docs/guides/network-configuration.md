@@ -40,6 +40,8 @@ OPENC3_EXTERNAL_URL=https://mydomain.com
 OPENC3_KEYCLOAK_EXTERNAL_URL=https://mydomain.com/auth
 ```
 
+A variable exported in your shell overrides `.env.local`, so if either one is exported, unset it or change it before starting COSMOS.
+
 That is the only file change needed. `compose.yaml` passes these values to Keycloak (its `KC_HOSTNAME`) and to Grafana, whose `grafana.ini` and COSMOS data source are built into its image and read them from the environment, so you don't edit any Keycloak or Grafana files. Keycloak itself must also accept the new URL: add it to the valid redirect URIs of the `api` and `grafana` clients as described in [Keycloak Configuration](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/KeycloakConfiguration.md#updating-the-redirect-url).
 
 Leave `OPENC3_KEYCLOAK_URL` set to the internal service URL `http://openc3-keycloak:8080/auth`. COSMOS containers, including Grafana, use it to talk to Keycloak directly.
