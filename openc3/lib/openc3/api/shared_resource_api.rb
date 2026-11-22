@@ -23,17 +23,23 @@ module OpenC3
                        'release_shared_resource',
                      ])
 
+    # Members in scopes the user can't access are left out
     # @return [Array<Hash>] The shared resources with members in the scope
     def get_shared_resources(manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', manual: manual, scope: scope, token: token)
-      SharedResourceModel.all.values.select { |record| record['members'][scope] }.sort_by { |record| record['name'] }
+      records = SharedResourceModel.all.values.select { |record| record['members'][scope] }.sort_by { |record| record['name'] }
+      accessible = { scope => true }
+      records.map { |record| _shared_resource_for_user(record, accessible, manual: manual, token: token) }
     end
 
+    # Members in scopes the user can't access are left out
     # @param name [String] Shared resource name
-    # @return [Hash|nil] The shared resource or nil if it doesn't exist
+    # @return [Hash|nil] The shared resource or nil if it doesn't exist or has no members in the scope
     def get_shared_resource(name, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', manual: manual, scope: scope, token: token)
-      SharedResourceModel.get(name)
+      record = SharedResourceModel.get(name)
+      return nil unless record and record['members'][scope]
+      _shared_resource_for_user(record, { scope => true }, manual: manual, token: token)
     end
 
     # Make a shared resource active in a scope. Its microservices in the
@@ -73,6 +79,28 @@ module OpenC3
       record = SharedResourceModel.release(name, force: force)
       username = user_info(token)['username'] || 'Anonymous'
       Logger.info("User #{username} released shared resource #{record['name']}#{force ? ' (forced)' : ''}", scope: scope, user: username)
+      record
+    end
+
+    # Remove the members (and the owner's waiting members) of scopes the user
+    # doesn't have system permission in. The owner and state stay so the UI can
+    # say where the resource is active.
+    # @param accessible [Hash<String, Boolean>] Cache of scope to whether the user can access it
+    def _shared_resource_for_user(record, accessible, manual:, token:)
+      can_access = lambda do |other_scope|
+        unless accessible.key?(other_scope)
+          begin
+            authorize(permission: 'system', manual: manual, scope: other_scope, token: token)
+            accessible[other_scope] = true
+          rescue ForbiddenError
+            accessible[other_scope] = false
+          end
+        end
+        accessible[other_scope]
+      end
+      record = record.dup
+      record['members'] = record['members'].select { |member_scope, _members| can_access.call(member_scope) }
+      record['waiting'] = [] if record['owner'] and record['waiting'] and !can_access.call(record['owner'])
       record
     end
   end

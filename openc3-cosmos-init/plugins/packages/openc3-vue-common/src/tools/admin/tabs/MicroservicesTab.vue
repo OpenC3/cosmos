@@ -45,7 +45,7 @@
         <v-btn
           color="warning"
           prepend-icon="mdi-refresh"
-          :disabled="filteredServiceCount === 0"
+          :disabled="restartableMicroservices.length === 0"
           @click="bulkRestartServices"
         >
           Restart All
@@ -275,6 +275,10 @@ export default {
     filteredServiceCount() {
       return this.filteredMicroservices.length
     },
+    // Dormant shared resource members can't be started in this scope
+    restartableMicroservices() {
+      return this.filteredMicroservices.filter((m) => !this.isDormant(m))
+    },
   },
   watch: {
     '$route.query.services': function () {
@@ -479,10 +483,8 @@ export default {
       }
     },
     bulkRestartServices: async function () {
-      // Dormant shared resource members can't be started in this scope
-      const microserviceNames = this.filteredMicroservices
-        .filter((m) => !this.isDormant(m))
-        .map((m) => m.name)
+      const microserviceNames = this.restartableMicroservices.map((m) => m.name)
+      if (microserviceNames.length === 0) return
       const microserviceList = microserviceNames.join(', ')
       const confirmMessage = `Are you sure you want to restart ${microserviceNames.length} microservice(s)? ${microserviceList}`
 

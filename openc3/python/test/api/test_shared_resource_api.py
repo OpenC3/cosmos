@@ -22,6 +22,7 @@ from openc3.api.shared_resource_api import (
     switch_shared_resource,
 )
 from openc3.models.shared_resource_model import SharedResourceModel
+from openc3.utilities.authorization import ForbiddenError
 from test.test_helper import mock_redis
 
 
@@ -47,6 +48,29 @@ class TestSharedResourceApi(unittest.TestCase):
     def test_get_shared_resource(self):
         self.assertEqual(list(get_shared_resource("chamber")["members"].keys()), ["DEFAULT", "OTHER"])
         self.assertIsNone(get_shared_resource("NOPE"))
+
+    def test_get_shared_resource_returns_none_without_members_in_the_scope(self):
+        self.assertIsNone(get_shared_resource("LAB", scope="DEFAULT"))
+        self.assertIsNone(get_shared_resource("CHAMBER", scope="THIRD"))
+
+    def test_leaves_out_members_in_scopes_the_user_cant_access(self):
+        def deny_default(permission=None, scope=None, manual=False, **_kwargs):
+            if permission == "system" and scope == "DEFAULT":
+                raise ForbiddenError("no access")
+
+        # DEFAULT owns CHAMBER, start switching it to OTHER so it has waiting members
+        SharedResourceModel.switch("CHAMBER", to_scope="OTHER")
+        with patch("openc3.api.shared_resource_api.authorize", side_effect=deny_default):
+            resources = [get_shared_resources(scope="OTHER")[0], get_shared_resource("CHAMBER", scope="OTHER")]
+        for resource in resources:
+            self.assertEqual(list(resource["members"].keys()), ["OTHER"])
+            self.assertEqual(resource["waiting"], [])
+            # Still says where the resource is active
+            self.assertEqual(resource["owner"], "DEFAULT")
+            self.assertEqual(resource["to"], "OTHER")
+        # The stored resource is unchanged
+        self.assertEqual(list(SharedResourceModel.get("CHAMBER")["members"].keys()), ["DEFAULT", "OTHER"])
+        self.assertNotEqual(SharedResourceModel.get("CHAMBER")["waiting"], [])
 
     def test_switch_defaults_to_current_scope(self):
         record = switch_shared_resource("CHAMBER", scope="OTHER")

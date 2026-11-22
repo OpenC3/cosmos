@@ -53,6 +53,33 @@ module OpenC3
         expect(@api.get_shared_resource('chamber')['members'].keys).to eql %w(DEFAULT OTHER)
         expect(@api.get_shared_resource('NOPE')).to be_nil
       end
+
+      it "returns nil for a shared resource with no members in the scope" do
+        expect(@api.get_shared_resource('LAB', scope: 'DEFAULT')).to be_nil
+        expect(@api.get_shared_resource('CHAMBER', scope: 'THIRD')).to be_nil
+      end
+    end
+
+    describe "members in scopes the user can't access" do
+      before(:each) do
+        allow(@api).to receive(:authorize).and_call_original
+        allow(@api).to receive(:authorize).with(hash_including(permission: 'system', scope: 'DEFAULT')).and_raise(ForbiddenError, "no access")
+        # DEFAULT owns CHAMBER, start switching it to OTHER so it has waiting members
+        SharedResourceModel.switch('CHAMBER', to_scope: 'OTHER')
+      end
+
+      it "leaves them out of get_shared_resources and get_shared_resource" do
+        [@api.get_shared_resources(scope: 'OTHER')[0], @api.get_shared_resource('CHAMBER', scope: 'OTHER')].each do |resource|
+          expect(resource['members'].keys).to eql ['OTHER']
+          expect(resource['waiting']).to eql []
+          # Still says where the resource is active
+          expect(resource['owner']).to eql 'DEFAULT'
+          expect(resource['to']).to eql 'OTHER'
+        end
+        # The stored resource is unchanged
+        expect(SharedResourceModel.get('CHAMBER')['members'].keys).to eql %w(DEFAULT OTHER)
+        expect(SharedResourceModel.get('CHAMBER')['waiting']).to_not be_empty
+      end
     end
 
     describe "switch_shared_resource" do

@@ -7767,7 +7767,7 @@ A shared resource record is a hash with the following keys:
 
 <span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
 
-Returns an array of the shared resources which have members in the current scope.
+Returns an array of the shared resources which have members in the current scope. Members in scopes you don't have system permission in are left out, but `owner` still shows which scope the resource is active in.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -7814,7 +7814,7 @@ end
 
 <span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
 
-Returns the shared resource record or nil / None if it doesn't exist.
+Returns the shared resource record or nil / None if it doesn't exist or has no members in the current scope. Members in scopes you don't have system permission in are left out.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
