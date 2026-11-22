@@ -16,13 +16,13 @@ require 'json'
 
 module OpenC3
   class CliGenerator
-    GENERATORS = %w(plugin target microservice widget panel conversion processor limits_response tool tool_vue tool_angular tool_react tool_svelte command_validator)
+    GENERATORS = %w(plugin target microservice widget panel conversion processor limits_response tool tool_vue command_validator)
     TEMPLATES_DIR = "#{File.dirname(__FILE__)}/../../../templates"
 
     # Generators that derive language from the target's target.txt
     TARGET_DERIVED_GENERATORS = %w(conversion processor limits_response command_validator).freeze
     # Generators that are JavaScript-only and ignore language flags
-    JS_ONLY_GENERATORS = %w(widget panel tool tool_vue tool_angular tool_react tool_svelte).freeze
+    JS_ONLY_GENERATORS = %w(widget panel tool tool_vue).freeze
     # Generators that require an explicit language (or env/plugin default)
     LANGUAGE_REQUIRED_GENERATORS = %w(target microservice).freeze
 
@@ -45,9 +45,6 @@ module OpenC3
         puts "  command_validator     Create a new command validator for a target (language inherited from target)"
         puts "  tool                  Create a new tool, Vue.js by default (JavaScript only)"
         puts "  tool_vue              Create a new Vue.js tool (JavaScript only)"
-        puts "  tool_angular          Create a new Angular tool (JavaScript only)"
-        puts "  tool_react            Create a new React tool (JavaScript only)"
-        puts "  tool_svelte           Create a new Svelte tool (JavaScript only)"
         puts ""
         puts "Run 'cli generate GENERATOR --help' for detailed help on each generator."
         puts ""
@@ -680,7 +677,7 @@ module OpenC3
       if args.length != 2
         abort("Usage: cli generate #{args[0]} <BatteryPanel>")
       end
-      if args[1] !~ /.+Panel$/ or args[1][0...-5] != args[1][0...-5].capitalize
+      if !args[1].end_with?('Panel') or args[1].length <= 5 or args[1][0...-5] != args[1][0...-5].capitalize
         abort("Panel name should be Uppercase followed by Panel, e.g. BatteryPanel. Found '#{args[1]}'.")
       end
 
@@ -749,13 +746,7 @@ module OpenC3
         docs_url = 'https://docs.openc3.com/docs/guides/custom-tools'
 
         if tool_type != 'tool'
-          framework = case tool_type
-                      when 'tool_vue' then 'Vue.js'
-                      when 'tool_react' then 'React'
-                      when 'tool_angular' then 'Angular'
-                      when 'tool_svelte' then 'Svelte'
-                      else 'Custom'
-                      end
+          framework = 'Vue.js'
           print_help(
             usage: "cli generate #{args[0]} 'TOOL NAME'",
             description: "Generate a new #{framework} tool within an existing plugin",
@@ -780,9 +771,6 @@ module OpenC3
               lines: [
                 'tool              Generate Vue.js tool (default)',
                 'tool_vue          Generate Vue.js tool',
-                'tool_angular      Generate Angular tool',
-                'tool_react        Generate React tool',
-                'tool_svelte       Generate Svelte tool',
               ],
             },
             example: [
@@ -840,9 +828,6 @@ module OpenC3
       return tool_name
     end
     self.singleton_class.send(:alias_method, :generate_tool_vue, :generate_tool)
-    self.singleton_class.send(:alias_method, :generate_tool_react, :generate_tool)
-    self.singleton_class.send(:alias_method, :generate_tool_angular, :generate_tool)
-    self.singleton_class.send(:alias_method, :generate_tool_svelte, :generate_tool)
 
     def self.generate_conversion(args)
       generate_target_artifact(args, {

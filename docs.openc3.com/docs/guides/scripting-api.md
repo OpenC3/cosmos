@@ -43,11 +43,13 @@ When writing a script that connects to COSMOS from outside of the COSMOS cluster
 For more information see [API vs Script](./script-writing.md#api-vs-script)
 :::
 
+Each method below is tagged with where it is available: **openc3.api** (blue; `from openc3.api import *` / `require 'openc3/api/api'`) and **openc3.script** (green; `from openc3.script import *` / `require 'openc3/script'`). A method is only tagged where it is available. A tag followed by (Ruby only) or (Python only) means only that language provides it. Methods tagged Script Runner only (yellow) exist only inside Script Runner scripts.
+
 ### Migration from COSMOS v6 to v7
 
 See the [Migrating From COSMOS 6 to COSMOS 7](../getting-started/upgrading#migrating-from-cosmos-6-to-cosmos-7) guide for other changes including password hashing, JSON API session tokens, and configuration changes.
 
-The following API methods have been removed from COSMOS v7. Since WITH_UNITS were removed in COSMOS 7 those APIs are deprecated and simply return the formatted result.
+The following API methods changed in COSMOS v7. The WITH_UNITS APIs are deprecated and still return the formatted result; the remaining APIs were removed.
 
 | Method                   | API        | Status                                                                   |
 | ------------------------ | ---------- | ------------------------------------------------------------------------ |
@@ -178,7 +180,7 @@ These methods allow the user to enter values that are needed by the script.
 
 ### ask
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Prompts the user for input with a question. User input is automatically converted from a string to the appropriate data type. For example if the user enters "1", the number 1 as an integer will be returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
@@ -231,7 +233,7 @@ password = ask("Enter your password", false, true)
 
 ### ask_string
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Prompts the user for input with a question. User input is always returned as a string. For example if the user enters "1", the string "1" will be returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
@@ -283,19 +285,19 @@ password = ask_string("Enter your password", false, true)
 
 ### message_box
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 ### vertical_message_box
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 ### combo_box
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 ### check_box
 
-<span class="badge badge--secondary since-heading">Since 7.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 7.0.0</span></span>
 
 The message_box, vertical_message_box, combo_box and check_box methods create a message box with buttons / selections / checkboxes that the user can click. The text of the button / selection / checkbox is returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
@@ -378,11 +380,11 @@ end
 
 ### open_file_dialog
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 ### open_files_dialog
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 The open_file_dialog and open_files_dialog methods create a file dialog box so the user can select a single or multiple files. The selected file(s) is returned. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
@@ -455,7 +457,7 @@ end
 
 ### open_bucket_dialog
 
-<span class="badge badge--secondary since-heading">Since 7.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 7.0.0</span></span>
 
 The open_bucket_dialog method creates a dialog box that allows the user to browse S3 bucket files and select one. It presents the available buckets (similar to Bucket Explorer) and allows navigating directories within the selected bucket. The selected file is downloaded and returned as a file object, similar to open_file_dialog. If the user clicks Cancel, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
@@ -542,7 +544,7 @@ These methods provide capability to interact with files in the target directory.
 
 ### get_target_file
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Return a file handle to a file in the target directory. Returns `None` (Python) or `nil` (Ruby) if the file is not found.
 
@@ -601,7 +603,7 @@ file.unlink # delete file
 
 ### put_target_file
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Writes a file to the target directory
 
@@ -670,7 +672,7 @@ put_target_file("INST/test4.bin", buf)
 
 ### delete_target_file
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Delete a file in the target directory
 
@@ -718,7 +720,7 @@ delete_target_file("INST/delete_me.txt")
 
 ### download_file
 
-<span class="badge badge--secondary since-heading">Since 5.8.0</span>
+<span class="since-heading"><span class="badge badge--warning">Script Runner only</span> <span class="badge badge--secondary">Since 5.8.0</span></span>
 
 Prompts the user to download a file from the OpenC3 system to their local machine.
 
@@ -768,7 +770,7 @@ These methods notify the user that something has occurred.
 
 ### prompt
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Displays a message to the user and waits for them to press an ok button. If the user clicks Cancel instead, the script is paused but remains at the prompt line. Pressing Go re-displays the prompt.
 
@@ -818,7 +820,7 @@ These methods provide capability to send commands to a target and receive inform
 
 ### cmd
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sends a specified command.
 
@@ -852,6 +854,14 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 | log_message    | Optional named parameter to prevent logging of the command                                                                                                                          |
 | validate       | Optional named parameter to enable/disable validation (default is True)                                                                                                             |
 | queue          | Optional named parameter to send the command to a queue. If not given, `OPENC3_DEFAULT_QUEUE` is used when set. Pass `False` to never queue. See [Command Queues](#command-queues). |
+| extra          | Optional metadata Hash/dict carried with the command packet to the interface                                                                                                        |
+
+The interface receives `extra` as `packet.extra['metadata']`. It is kept under its own key so it
+can't change the values COSMOS adds to `packet.extra`, such as `cmd_string`, `username` and
+`approver`, or the `HTTP_*` values an accessor sets from the command definition.
+
+`extra` is written to the command log, the command topics and the queue exactly as given.
+It is not obfuscated, so don't put secrets in it.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -860,6 +870,7 @@ cmd("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Value>, "Par
 cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", { "DURATION": 10, "TYPE": "NORMAL" })
 cmd("INST ABORT", timeout=10, log_message=False, validate=False)
+cmd("INST ABORT", extra={ "request_id": "1234-5678" })
 cmd("INST ABORT", queue="TEST")  # Add to the TEST queue
 cmd("INST ABORT", queue=False)  # Bypass OPENC3_DEFAULT_QUEUE
 ```
@@ -874,6 +885,7 @@ cmd("INST COLLECT with DURATION 10, TYPE NORMAL")
 cmd("INST", "COLLECT", "DURATION" => 10, "TYPE" => "NORMAL")
 cmd("INST", "COLLECT", { "DURATION" => 10, "TYPE" => "NORMAL" })
 cmd("INST ABORT", timeout: 10, log_message: false, validate: false)
+cmd("INST ABORT", extra: { "request_id" => "1234-5678" })
 cmd("INST ABORT", queue: "TEST") # Add to the TEST queue
 cmd("INST ABORT", queue: false) # Bypass OPENC3_DEFAULT_QUEUE
 ```
@@ -883,7 +895,7 @@ cmd("INST ABORT", queue: false) # Bypass OPENC3_DEFAULT_QUEUE
 
 ### cmd_no_range_check
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sends a specified command without performing range checking on its parameters. This should only be used when it is necessary to intentionally send a bad command parameter to test a target.
 
@@ -916,6 +928,7 @@ cmd_no_range_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Param 
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -939,7 +952,7 @@ cmd_no_range_check("INST", "COLLECT", "DURATION" => 11, "TYPE" => "NORMAL")
 
 ### cmd_no_hazardous_check
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sends a specified command without performing the notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands.
 
@@ -972,6 +985,7 @@ cmd_no_hazardous_check("<Target Name>", "<Command Name>", "Param #1 Name" => <Pa
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -995,7 +1009,7 @@ cmd_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_no_checks
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sends a specified command without performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
@@ -1028,6 +1042,7 @@ cmd_no_checks("<Target Name>", "<Command Name>", "Param #1 Name" => <Param #1 Va
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1051,7 +1066,7 @@ cmd_no_checks("INST", "COLLECT", "DURATION" => 11, "TYPE" => "SPECIAL")
 
 ### cmd_raw
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sends a specified command without running conversions.
 
@@ -1084,6 +1099,7 @@ cmd_raw("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param #1 Value>
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1107,7 +1123,7 @@ cmd_raw("INST", "COLLECT", "DURATION" => 10, "TYPE" => 0)
 
 ### cmd_raw_no_range_check
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sends a specified command without running conversions or performing range checking on its parameters. This should only be used when it is necessary to intentionally send a bad command parameter to test a target.
 
@@ -1140,6 +1156,7 @@ cmd_raw_no_range_check("<Target Name>", "<Command Name>", "<Param #1 Name>" => <
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1163,7 +1180,7 @@ cmd_raw_no_range_check("INST", "COLLECT", "DURATION" => 11, "TYPE" => 0)
 
 ### cmd_raw_no_hazardous_check
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sends a specified command without running conversions or performing the notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands.
 
@@ -1196,6 +1213,7 @@ cmd_raw_no_hazardous_check("<Target Name>", "<Command Name>", "<Param #1 Name>" 
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1219,7 +1237,7 @@ cmd_raw_no_hazardous_check("INST", "CLEAR")
 
 ### cmd_raw_no_checks
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sends a specified command without running conversions or performing the parameter range checks or notification if it is a hazardous command. This should only be used when it is necessary to fully automate testing involving hazardous commands that intentionally have invalid parameters.
 
@@ -1252,6 +1270,7 @@ cmd_raw_no_checks("<Target Name>", "<Command Name>", "<Param #1 Name>" => <Param
 | timeout        | Optional named parameter to change the default timeout value of 5 seconds                            |
 | log_message    | Optional named parameter to prevent logging of the command                                           |
 | queue          | Optional named parameter to send the command to a queue. See [Command Queues](#command-queues).      |
+| extra          | Optional metadata Hash/dict carried to the interface. See [cmd](#cmd).                               |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1275,7 +1294,7 @@ cmd_raw_no_checks("INST", "COLLECT", "DURATION" => 11, "TYPE" => 1)
 
 ### build_cmd
 
-<span class="badge badge--secondary since-heading">Since 5.8.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.8.0</span></span>
 
 Builds a command binary string so you can see the raw bytes for a given command. Previously `build_command`. Use the [get_cmd](#get_cmd) to get information about a command like endianness, description, items, etc.
 
@@ -1283,7 +1302,7 @@ Builds a command binary string so you can see the raw bytes for a given command.
 <TabItem value="python" label="Python Syntax">
 
 ```python
-build_cmd(<ARGS>, range_check=True, raw=False)
+build_cmd(<ARGS>, range_check=True, raw=False, timeout=5)
 ```
 
 </TabItem>
@@ -1291,7 +1310,7 @@ build_cmd(<ARGS>, range_check=True, raw=False)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-build_cmd(<ARGS>, range_check: true, raw: false)
+build_cmd(<ARGS>, range_check: true, raw: false, timeout: 5)
 ```
 
 </TabItem>
@@ -1302,6 +1321,7 @@ build_cmd(<ARGS>, range_check: true, raw: false)
 | ARGS        | Command parameters (see cmd)                                                            |
 | range_check | Whether to perform range checking on the command. Default is true.                      |
 | raw         | Whether to write the command arguments as RAW or CONVERTED value. Default is CONVERTED. |
+| timeout     | Seconds to wait for the decom microservice to build the command. Default is 5.          |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -1325,7 +1345,7 @@ puts x  # => {"id"=>"1696437370872-0", "result"=>"SUCCESS", "time"=>"16964373708
 
 ### enable_cmd
 
-<span class="badge badge--secondary since-heading">Since 5.15.1</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.15.1</span></span>
 
 Enables a disabled command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
 
@@ -1374,7 +1394,7 @@ enable_cmd("INST ABORT")
 
 ### disable_cmd
 
-<span class="badge badge--secondary since-heading">Since 5.15.1</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.15.1</span></span>
 
 Disables a command. Sending a disabled command raises `DisabledError` with a message like 'INST ABORT is Disabled'.
 
@@ -1423,7 +1443,7 @@ disable_cmd("INST ABORT")
 
 ### send_raw
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sends raw data on an interface.
 
@@ -1470,7 +1490,7 @@ send_raw("INST_INT", data)
 
 ### get_all_cmds
 
-<span class="badge badge--secondary since-heading">Since 5.13.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.13.0</span></span>
 
 Returns an array of the commands that are available for a particular target. The returned array is an array of hashes / list of dicts which fully describe the command packet. Previously `get_all_commands`.
 
@@ -1532,7 +1552,7 @@ puts cmd_list  # =>
 
 ### get_all_cmd_names
 
-<span class="badge badge--secondary since-heading">Since 5.13.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.13.0</span></span>
 
 Returns an array of the command names for a particular target. Previously `get_all_command_names`.
 
@@ -1580,7 +1600,7 @@ puts cmd_list  # => ['ABORT', 'ARYCMD', 'ASCIICMD', ...]
 
 ### get_cmd
 
-<span class="badge badge--secondary since-heading">Since 5.13.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.13.0</span></span>
 
 Returns a command hash which fully describes the command packet. Previously `get_command`. To get the binary buffer of an as-built command use [build_cmd](#build_cmd).
 
@@ -1645,7 +1665,7 @@ puts abort_cmd  # =>
 
 ### get_param
 
-<span class="badge badge--secondary since-heading">Since 5.13.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.13.0</span></span>
 
 Returns a hash of the given command parameter. Previously `get_parameter`.
 
@@ -1705,7 +1725,7 @@ puts param  # =>
 
 ### get_cmd_buffer
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns a packet hash (similar to get_cmd) along with the raw packet buffer as a Ruby string.
 
@@ -1762,7 +1782,7 @@ puts packet  # =>
 
 ### get_cmd_hazardous
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns true/false indicating whether a particular command is flagged as hazardous.
 
@@ -1812,7 +1832,7 @@ puts hazardous  # => true
 
 ### get_cmd_value
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns reads a value from the most recently sent command packet. The pseudo-parameters 'PACKET_TIMESECONDS', 'PACKET_TIMEFORMATTED', 'RECEIVED_COUNT', 'RECEIVED_TIMEFORMATTED', and 'RECEIVED_TIMESECONDS' are also supported.
 
@@ -1863,7 +1883,7 @@ puts value  # => 0.0
 
 ### get_cmd_time
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the time of the most recent command sent.
 
@@ -1914,7 +1934,7 @@ target_name, command_name, time = get_cmd_time("INST", "COLLECT") # Name of the 
 
 ### get_cmd_cnt
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the number of times a specified command has been sent.
 
@@ -1963,7 +1983,7 @@ cmd_cnt = get_cmd_cnt("INST COLLECT") # Number of times the INST COLLECT command
 
 ### get_cmd_cnts
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the number of times the specified commands have been sent.
 
@@ -2010,7 +2030,7 @@ cmd_cnt = get_cmd_cnts([['INST', 'COLLECT'], ['INST', 'ABORT']]) # Number of tim
 
 ### critical_cmd_status
 
-<span class="badge badge--secondary since-heading">Since 5.20.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.20.0</span></span>
 
 Returns the status of a critical command. One of APPROVED, REJECTED, or WAITING.
 
@@ -2054,11 +2074,59 @@ status = critical_cmd_status("2fa14183-3148-4399-9a74-a130257118f9") # => WAITIN
 </TabItem>
 </Tabs>
 
+### critical_cmd_info
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Returns the status of the critical command along with the users who have approved it and the number of approvals required. The number of approvals required is set by the scope's Critical Cmd Approvers setting when the command is created. Each approval must come from a different user, and the user who sent the command can't approve it.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+critical_cmd_info(uuid)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+critical_cmd_info(uuid)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                 |
+| --------- | ----------------------------------------------------------- |
+| uuid      | UUID for the critical command (displayed in the COSMOS GUI) |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+info = critical_cmd_info("2fa14183-3148-4399-9a74-a130257118f9")
+# => {'status': 'WAITING', 'approvers': ['operator'], 'approvers_required': 2}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+info = critical_cmd_info("2fa14183-3148-4399-9a74-a130257118f9")
+# => {"status"=>"WAITING", "approvers"=>["operator"], "approvers_required"=>2}
+```
+
+</TabItem>
+</Tabs>
+
 ### critical_cmd_approve
 
-<span class="badge badge--secondary since-heading">Since 5.20.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.20.0</span></span>
 
-Approve the critical command as the current user.
+Approve the critical command as the current user. If the scope requires more than one approver, the command remains `WAITING` until enough different users have approved it. Use [critical_cmd_info](#critical_cmd_info) to see the current approvals.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -2102,7 +2170,7 @@ critical_cmd_approve("2fa14183-3148-4399-9a74-a130257118f9")
 
 ### critical_cmd_reject
 
-<span class="badge badge--secondary since-heading">Since 5.20.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.20.0</span></span>
 
 Reject the critical command as the current user.
 
@@ -2148,7 +2216,7 @@ critical_cmd_reject("2fa14183-3148-4399-9a74-a130257118f9")
 
 ### critical_cmd_can_approve
 
-<span class="badge badge--secondary since-heading">Since 5.20.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.20.0</span></span>
 
 Returns whether or not the current user can approve the critical command.
 
@@ -2187,6 +2255,250 @@ status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") # => T
 
 ```ruby
 status = critical_cmd_can_approve("2fa14183-3148-4399-9a74-a130257118f9") # => true / false
+```
+
+</TabItem>
+</Tabs>
+
+## Command Authority
+
+These methods manage [Command Authority](../configuration/command.md#command-authority-enterprise), a COSMOS Enterprise feature. When Command Authority is enabled for a scope, a user must take command authority of a target before sending commands or starting scripts for that target. See [Roles and Permissions](roles-permissions.md#command-authority) for the permissions involved. Each method raises an error if Command Authority is not enabled for the scope. The methods are available in Ruby since 5.18.0 and in Python since 6.4.0.
+
+### cmd_authority_info
+
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.18.0</span></span>
+
+Returns the command authority of every target which has it taken, as a hash / dict keyed by target name. Requires the `system` permission.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+cmd_authority_info()
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_authority_info()
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                                         |
+| --------- | ----------------------------------------------------------------------------------- |
+| scope     | Scope to get command authority for. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+info = cmd_authority_info()
+print(info) # =>
+# {'INST': {'name': 'INST', 'username': 'operator', 'updated_at': 1737129305507111708, 'scope': 'DEFAULT'}}
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+info = cmd_authority_info()
+puts info # =>
+# {"INST"=>{"name"=>"INST", "username"=>"operator", "updated_at"=>1737129305507111708, "scope"=>"DEFAULT"}}
+```
+
+</TabItem>
+</Tabs>
+
+### cmd_authority_take
+
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.18.0</span></span>
+
+Takes command authority of a target. Raises an error if another user already has command authority of the target. Requires the `cmd` permission.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+cmd_authority_take("<Target Name>", username=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_authority_take("<Target Name>", username: nil)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                           |
+| ----------- | --------------------------------------------------------------------- |
+| Target Name | Name of the target                                                    |
+| username    | User to give command authority to. Default is the authenticated user. |
+| scope       | Scope of the target. Default is the OPENC3_SCOPE, usually "DEFAULT".  |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+cmd_authority_take("INST")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_authority_take("INST")
+```
+
+</TabItem>
+</Tabs>
+
+### cmd_authority_release
+
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.18.0</span></span>
+
+Releases command authority of a target. Releasing command authority held by a different user also requires the `admin` permission. Does nothing if no user has command authority of the target. Requires the `cmd` permission.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+cmd_authority_release("<Target Name>", username=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_authority_release("<Target Name>", username: nil)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description                                                          |
+| ----------- | -------------------------------------------------------------------- |
+| Target Name | Name of the target                                                   |
+| username    | User releasing command authority. Default is the authenticated user. |
+| scope       | Scope of the target. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+cmd_authority_release("INST")
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_authority_release("INST")
+```
+
+</TabItem>
+</Tabs>
+
+### cmd_authority_take_all
+
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.18.0</span></span>
+
+Takes command authority of every target in the scope. Targets which another user already has command authority of are skipped. Requires the `cmd` permission.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+cmd_authority_take_all(username=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_authority_take_all(username: nil)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                           |
+| --------- | --------------------------------------------------------------------- |
+| username  | User to give command authority to. Default is the authenticated user. |
+| scope     | Scope of the targets. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+cmd_authority_take_all()
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_authority_take_all()
+```
+
+</TabItem>
+</Tabs>
+
+### cmd_authority_release_all
+
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.18.0</span></span>
+
+Releases command authority of every target in the scope. Releasing command authority held by a different user also requires the `admin` permission. Requires the `cmd` permission.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+cmd_authority_release_all(username=None)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+cmd_authority_release_all(username: nil)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                           |
+| --------- | --------------------------------------------------------------------- |
+| username  | User releasing command authority. Default is the authenticated user.  |
+| scope     | Scope of the targets. Default is the OPENC3_SCOPE, usually "DEFAULT". |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+cmd_authority_release_all()
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+cmd_authority_release_all()
 ```
 
 </TabItem>
@@ -2240,7 +2552,7 @@ cmd("INST ABORT", queue: false)
 
 ### queue_create
 
-<span class="badge badge--secondary since-heading">Since 6.8.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.8.0</span></span>
 
 Create a command queue. Queues are initially created in HOLD state.
 
@@ -2286,7 +2598,7 @@ queue_create('TEST')
 
 ### queue_get
 
-<span class="badge badge--secondary since-heading">Since 6.8.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.8.0</span></span>
 
 Get information about a command queue including what state it is in.
 
@@ -2334,7 +2646,7 @@ puts queue # =>
 
 ### queue_all
 
-<span class="badge badge--secondary since-heading">Since 6.8.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.8.0</span></span>
 
 Get information about all command queues.
 
@@ -2360,7 +2672,7 @@ puts all # =>
 
 ### queue_list
 
-<span class="badge badge--secondary since-heading">Since 6.8.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.8.0</span></span>
 
 List all the commands in the queue including the username, the creation time, and the command itself.
 
@@ -2408,7 +2720,7 @@ puts cmds # =>
 
 ### queue_hold
 
-<span class="badge badge--secondary since-heading">Since 6.8.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.8.0</span></span>
 
 Puts the specified queue into HOLD mode which means that commands are queued up and not released to the interface.
 
@@ -2454,7 +2766,7 @@ queue_hold('TEST')
 
 ### queue_release
 
-<span class="badge badge--secondary since-heading">Since 6.8.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.8.0</span></span>
 
 Puts the specified queue into RELEASE mode which means that commands in the queue are released to the interface. Any new commands added to the queue are immediately released to the interface.
 
@@ -2500,7 +2812,7 @@ queue_release('TEST')
 
 ### queue_disable
 
-<span class="badge badge--secondary since-heading">Since 6.8.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.8.0</span></span>
 
 Puts the specified queue into DISABLE mode which means that commands are rejected and not added to the queue. Commands added to a queue in DISABLE mode via script will raise an exception and stop.
 
@@ -2546,7 +2858,7 @@ queue_disable('TEST')
 
 ### queue_exec
 
-<span class="badge badge--secondary since-heading">Since 6.8.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.8.0</span></span>
 
 Removes a command from the queue and executes it.
 
@@ -2595,7 +2907,7 @@ queue_exec('TEST', index: 5) # Removes and executes the command at index 5
 
 ### queue_remove
 
-<span class="badge badge--secondary since-heading">Since 6.9.1</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.9.1</span></span>
 
 Removes a command from the queue.
 
@@ -2644,7 +2956,7 @@ queue_remove('TEST', index: 5) # Removes the command at index 5
 
 ### queue_delete
 
-<span class="badge badge--secondary since-heading">Since 6.8.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.8.0</span></span>
 
 Deletes the specified queue and any commands that it holds.
 
@@ -2694,7 +3006,7 @@ These methods allow the user to interact with telemetry items.
 
 ### check, check_raw, check_formatted
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Performs a verification of a telemetry item using its specified telemetry type. If the verification fails then the script will be paused with an error. If no comparison is given to check then the telemetry item is simply printed to the script output. Note: In most cases using wait_check is a better choice than using check.
 
@@ -2766,7 +3078,7 @@ check("INST HEALTH_STATUS COLLECTS > 1", type: :RAW)
 
 ### check_tolerance
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Checks a converted telemetry item against an expected value with a tolerance. If the verification fails then the script will be paused with an error. Note: In most cases using wait_check_tolerance is a better choice than using check_tolerance.
 
@@ -2819,7 +3131,7 @@ check_tolerance("INST HEALTH_STATUS TEMP1", 50000, 20000, type: :RAW)
 
 ### check_expression
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Evaluates an expression. If the expression evaluates to false the script will be paused with an error. This method can be used to perform more complicated comparisons than using check as shown in the example. Note: In most cases using [wait_check_expression](#wait_check_expression) is a better choice than using check_expression.
 
@@ -2885,9 +3197,9 @@ check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST HEALTH_ST
 
 ### check_exception
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-Executes a method and expects an exception to be raised. If the method does not raise an exception, a CheckError is raised.
+Executes a method and expects an exception to be raised. If the method does not raise an exception, a CheckError is raised. If the method name is not a scripting method, the check fails with a CheckError instead of counting as the expected exception. In Python, the check also fails with a CheckError if the parameters don't match the method's signature.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -2932,7 +3244,7 @@ check_exception("cmd", "INST", "COLLECT", "TYPE" => "NORMAL")
 
 ### tlm, tlm_raw, tlm_formatted
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Reads the specified form of a telemetry item.
 
@@ -2993,7 +3305,7 @@ raw_value = tlm("INST HEALTH_STATUS COLLECTS", type: :RAW)
 
 ### get_tlm_buffer
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns a packet hash (similar to get_tlm) along with the raw packet buffer.
 
@@ -3044,7 +3356,7 @@ packet['buffer']
 
 ### get_tlm_packet
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the names, values, and limits states of all telemetry items in a specified packet. The value is returned as an array of arrays with each entry containing [item_name, item_value, limits_state].
 
@@ -3094,7 +3406,7 @@ names_values_and_limits_states = get_tlm_packet("INST HEALTH_STATUS", type: :FOR
 
 ### get_tlm_available
 
-<span class="badge badge--secondary since-heading">Since 6.7.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.7.0</span></span>
 
 Returns the _actual_ items available based on the specified set of telemetry items. For example, if you request `INST__HEALTH_STATUS__CCSDSVER__FORMATTED` the method will return `INST__HEALTH_STATUS__CCSDSVER__RAW` for that item because it does not have formatting or conversions so only the RAW value is available. This _must_ be called before calling `get_tlm_values` when passing a `start_time` / `end_time` as it ensures a correct request of historical data.
 
@@ -3142,7 +3454,7 @@ puts values # ["INST__HEALTH_STATUS__CCSDSVER__RAW", "INST__HEALTH_STATUS__TEMP1
 
 ### get_tlm_values
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the values and current limits state for a specified set of telemetry items. Items can be in any telemetry packet in the system. They can all be retrieved using the same value type or a specific value type can be specified for each item.
 
@@ -3150,7 +3462,7 @@ Returns the values and current limits state for a specified set of telemetry ite
 <TabItem value="python" label="Python Syntax">
 
 ```python
-values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
+values = get_tlm_values(<Items>, stale_time=30, cache_timeout=0.1, start_time=None, end_time=None)
 ```
 
 </TabItem>
@@ -3158,22 +3470,26 @@ values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-values, limits_states, limits_settings, limits_set = get_tlm_values(<Items>)
+values = get_tlm_values(<Items>, stale_time: 30, cache_timeout: 0.1, start_time: nil, end_time: nil)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                                 |
-| --------- | ----------------------------------------------------------- |
-| Items     | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ] |
+| Parameter     | Description                                                                                                                       |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| items         | Array of strings of the form ['TGT__PKT__ITEM__TYPE', ... ]                                                                       |
+| stale_time    | Time in seconds from now that data will be marked stale. Default is 30.                                                           |
+| cache_timeout | Time in seconds to cache the current value table lookup. Default is 0.1.                                                          |
+| start_time    | Optional start of a historical query. If given, values are read from the time series database instead of the current value table. |
+| end_time      | Optional end of a historical query. If not given, the latest single row is returned.                                              |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
-print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
+print(values) # [[-100.0, 'RED_LOW'], [0, None]]
 ```
 
 </TabItem>
@@ -3182,7 +3498,7 @@ print(values) # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 
 ```ruby
 values = get_tlm_values(["INST__HEALTH_STATUS__TEMP1__CONVERTED", "INST__HEALTH_STATUS__TEMP2__RAW"])
-puts values # [[-100.0, :RED_LOW], [0, :RED_LOW]]
+puts values.inspect # [[-100.0, :RED_LOW], [0, nil]]
 ```
 
 </TabItem>
@@ -3190,7 +3506,7 @@ puts values # [[-100.0, :RED_LOW], [0, :RED_LOW]]
 
 ### get_all_tlm
 
-<span class="badge badge--secondary since-heading">Since 5.13.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.13.0</span></span>
 
 Returns an array of all target packet hashes. Previously `get_all_telemetry`.
 
@@ -3256,7 +3572,7 @@ puts packets
 
 ### get_all_tlm_names
 
-<span class="badge badge--secondary since-heading">Since 5.13.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.13.0</span></span>
 
 Returns an array of all target packet names. Previously `get_all_telemetry_names`.
 
@@ -3302,7 +3618,7 @@ get_all_tlm_names("INST")  # => ["ADCS", "HEALTH_STATUS", ...]
 
 ### get_all_tlm_item_names
 
-<span class="badge badge--secondary since-heading">Since 6.3.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.3.0</span></span>
 
 Returns all the item names for every packet in a target
 
@@ -3348,9 +3664,9 @@ get_all_tlm_item_names("INST")  # => ["ARY", "ARY2", "ASCIICMD", "ATTPROGRESS", 
 
 ### get_tlm
 
-<span class="badge badge--secondary since-heading">Since 5.13.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.13.0</span></span>
 
-Returns a packet hash. Previously `get_telemetry`.
+Returns a packet definition hash (for data, use [tlm](#tlm-tlm_raw-tlm_formatted), [get_tlm_values](#get_tlm_values), or [get_tlm_buffer](#get_tlm_buffer)). Previously `get_telemetry`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -3431,7 +3747,7 @@ puts packet
 
 ### get_item
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns an item hash.
 
@@ -3499,7 +3815,7 @@ puts item
 
 ### get_tlm_cnt
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the number of times a specified telemetry packet has been received.
 
@@ -3548,7 +3864,7 @@ tlm_cnt = get_tlm_cnt("INST HEALTH_STATUS") # Number of times the INST HEALTH_ST
 
 ### set_tlm
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sets a telemetry item value in the Command and Telemetry Server. This value will be overwritten if a new packet is received from an interface. For that reason this method is most useful if interfaces are disconnected or for testing via the Script Runner disconnect mode. Manually setting telemetry values allows for the execution of many logical paths in scripts.
 
@@ -3604,7 +3920,7 @@ check("INST HEALTH_STATUS COLLECTS == 10", type: :RAW)
 
 ### inject_tlm
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Injects a packet into the system as if it was received from an interface.
 
@@ -3658,7 +3974,7 @@ inject_tlm("INST", "PARAMS", {'VALUE1' => 5.0, 'VALUE2' => 7.0}, stored: true)
 
 ### override_tlm
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sets the converted value for a telmetry point in the Command and Telemetry Server. This value will be maintained even if a new packet is received on the interface unless the override is canceled with the normalize_tlm method.
 
@@ -3710,7 +4026,7 @@ override_tlm("INST HEALTH_STATUS TEMP2 = 0", type: :RAW) # Only RAW tlm set to 0
 
 ### normalize_tlm
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Clears the override of a telmetry point in the Command and Telemetry Server.
 
@@ -3761,7 +4077,7 @@ normalize_tlm("INST HEALTH_STATUS TEMP1", type: :RAW) # clear only the RAW overr
 
 ### get_overrides
 
-<span class="badge badge--secondary since-heading">Since 5.4.2</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.4.2</span></span>
 
 Returns an array of the the currently overridden values set by override_tlm. NOTE: This returns all the value types that are overridden which by default is all 4 values types when using override_tlm.
 
@@ -3815,7 +4131,7 @@ APIs for subscribing to specific packets of data. This provides an interface to 
 
 ### subscribe_packets
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Gets the current Redis stream offsets (IDs) for the given packets. These offsets are used to collect packet data from this point in time by passing them to `get_packets`.
 
@@ -3865,7 +4181,7 @@ id = subscribe_packets([['INST', 'HEALTH_STATUS'], ['INST', 'ADCS']])
 
 ### get_packets
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Streams packet data from a previous subscription. Returns an updated id and an array of packet hashes/dictionaries. The updated id should be passed to the next call to `get_packets` to continue streaming.
 
@@ -3973,7 +4289,7 @@ end
 
 ### get_tlm_cnt
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Get the receive count for a telemetry packet
 
@@ -4022,7 +4338,7 @@ get_tlm_cnt("INST HEALTH_STATUS")  # => 10
 
 ### get_tlm_cnts
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Get the receive counts for an array of telemetry packets
 
@@ -4069,7 +4385,7 @@ get_tlm_cnts([["INST", "ADCS"], ["INST", "HEALTH_STATUS"]])  # => [100, 10]
 
 ### get_packet_derived_items
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Get the list of derived telemetry items for a packet
 
@@ -4122,7 +4438,7 @@ These methods allow the user to pause the script to wait for telemetry to change
 
 ### wait
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Pauses the script for a configurable amount of time (minimum 10ms) or until a converted telemetry item meets given criteria. It supports three different syntaxes as shown. If no parameters are given then an infinite wait occurs until the user presses Go. Note that on a timeout, wait does not stop the script, usually wait_check is a better choice.
 
@@ -4234,7 +4550,7 @@ success = wait("INST HEALTH_STATUS COLLECTS == 3", 10, type: :RAW, quiet: true)
 
 ### wait_tolerance
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Pauses the script for a configurable amount of time or until a converted telemetry item meets equals an expected value within a tolerance. Note that on a timeout, wait_tolerance does not stop the script, usually wait_check_tolerance is a better choice.
 
@@ -4302,7 +4618,7 @@ success = wait_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, type='RAW
 
 ### wait_expression
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will continue. This method can be used to perform more complicated comparisons than using wait as shown in the example. Note that on a timeout, wait_expression does not stop the script, usually [wait_check_expression](#wait_check_expression) is a better choice.
 
@@ -4376,7 +4692,7 @@ success = wait_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm('INST 
 
 ### wait_packet
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Pauses the script until a certain number of packets have been received. If a timeout occurs the script will continue. Note that on a timeout, wait_packet does not stop the script, usually wait_check_packet is a better choice.
 
@@ -4443,7 +4759,7 @@ success = wait_packet('INST', 'HEALTH_STATUS', 5, 10) # Wait for 5 INST HEALTH_S
 
 ### wait_check
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Combines the wait and check keywords into one. This pauses the script until the converted value of a telemetry item meets given criteria or times out. On a timeout the script stops.
 
@@ -4524,7 +4840,7 @@ elapsed = wait_check("INST HEALTH_STATUS COLLECTS > 5", 10, type: :RAW)
 
 ### wait_check_tolerance
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Pauses the script for a configurable amount of time or until a converted telemetry item equals an expected value within a tolerance. On a timeout the script stops.
 
@@ -4595,7 +4911,7 @@ elapsed = wait_check_tolerance("INST HEALTH_STATUS COLLECTS", 10.0, 5.0, 10, typ
 
 ### wait_check_expression
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Pauses the script until an expression is evaluated to be true or a timeout occurs. If a timeout occurs the script will stop. This method can be used to perform more complicated comparisons than using wait as shown in the example. Also see the syntax notes for [check_expression](#check_expression).
 
@@ -4664,7 +4980,7 @@ elapsed = wait_check_expression("tlm('INST HEALTH_STATUS COLLECTS') > 5 and tlm(
 
 ### wait_check_packet
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Pauses the script until a certain number of packets have been received. If a timeout occurs the script will stop.
 
@@ -4735,7 +5051,7 @@ These methods deal with handling telemetry limits.
 
 ### limits_enabled?, limits_enabled
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 The limits_enabled? method returns true/false depending on whether limits are enabled for a telemetry item.
 
@@ -4783,7 +5099,7 @@ enabled = limits_enabled?("INST HEALTH_STATUS TEMP1") # => true or false
 
 ### enable_limits
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Enables limits monitoring for the specified telemetry item.
 
@@ -4831,7 +5147,7 @@ enable_limits("INST HEALTH_STATUS TEMP1")
 
 ### disable_limits
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Disables limits monitoring for the specified telemetry item.
 
@@ -4879,7 +5195,7 @@ disable_limits("INST HEALTH_STATUS TEMP1")
 
 ### enable_limits_group
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Enables limits monitoring on a set of telemetry items specified in a limits group.
 
@@ -4925,7 +5241,7 @@ enable_limits_group("SAFE_MODE")
 
 ### disable_limits_group
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Disables limits monitoring on a set of telemetry items specified in a limits group.
 
@@ -4971,7 +5287,7 @@ disable_limits_group("SAFE_MODE")
 
 ### get_limits_groups
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the list of limits groups in the system.
 
@@ -4995,7 +5311,7 @@ limits_groups = get_limits_groups()
 
 ### set_limits_set
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sets the current limits set. The default limits set is DEFAULT.
 
@@ -5041,7 +5357,7 @@ set_limits_set("DEFAULT")
 
 ### delete_limits_set
 
-<span class="badge badge--secondary since-heading">Since 7.2.1</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 7.2.1</span></span>
 
 Deletes a limits set and removes it from all telemetry items. The DEFAULT limits set and the currently active limits set cannot be deleted. Use [set_limits_set](#set_limits_set) to change the active set before deleting it. Use [get_limits_sets](#get_limits_sets) to get the available limit set names.
 
@@ -5087,7 +5403,7 @@ delete_limits_set("TVAC")
 
 ### get_limits_set
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the name of the current limits set. The default limits set is DEFAULT.
 
@@ -5111,7 +5427,7 @@ limits_set = get_limits_set()
 
 ### get_limits_sets
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the list of limits sets in the system.
 
@@ -5135,9 +5451,9 @@ limits_sets = get_limits_sets()
 
 ### get_limits
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-Returns hash / dict of all the limits settings for a telemetry point.
+Returns hash / dict of all the limits settings for a telemetry point. Items with SEQUENCE, CHANGE, or STATIC change limits have no numeric limits values so an empty hash / dict is returned. Use [get_item](#get_item) to see their change limits settings.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5189,9 +5505,9 @@ puts result['DEFAULT'] # => [-80.0, -70.0, 60.0, 80.0, -20.0, 20.0]
 
 ### set_limits
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime.
+The set_limits method sets limits settings for a telemetry point. Note: In most cases it would be better to update your config files or use different limits sets rather than changing limits settings in realtime. Items with SEQUENCE, CHANGE, or STATIC change limits can't be changed with set_limits and raise an error.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -5246,7 +5562,7 @@ set_limits('INST', 'HEALTH_STATUS', 'TEMP1', -10.0, 0.0, 50.0, 60.0, 30.0, 40.0,
 
 ### set_state_color
 
-<span class="badge badge--secondary since-heading">Since 7.2.1</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 7.2.1</span></span>
 
 The set_state_color method changes the color associated with a telemetry item's state in realtime. Items with states (e.g. CONNECTED, UNAVAILABLE) use a state color (GREEN, YELLOW, or RED) to determine their limits state rather than numeric red/yellow/green limits. Pass `None` (Python) or `nil` (Ruby) as the color to clear (remove) the state color. Setting a color also enables limits for the item, but clearing the color (passing `None`/`nil`) does not change whether limits are enabled. Note: In most cases it would be better to update your config files rather than changing state colors in realtime.
 
@@ -5298,7 +5614,7 @@ set_state_color('INST', 'HEALTH_STATUS', 'GROUND1STATUS', 'CONNECTED', nil)  # C
 
 ### get_out_of_limits
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns an array with the target_name, packet_name, item_name, and limits_state of all items that are out of their limits ranges.
 
@@ -5322,7 +5638,7 @@ out_of_limits_items = get_out_of_limits()
 
 ### get_overall_limits_state
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the overall limits state for the COSMOS system. Returns 'GREEN', 'YELLOW', or 'RED'.
 
@@ -5344,9 +5660,9 @@ get_overall_limits_state(<Ignored Items> (optional))
 </TabItem>
 </Tabs>
 
-| Parameter     | Description                                                                                                                        |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Ignored Items | Array of arrays with items to ignore when determining the overall limits state. [['TARGET_NAME', 'PACKET_NAME', 'ITEM_NAME'], ...] |
+| Parameter     | Description                                                                                                                                                                                                                                    |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Ignored Items | Array of arrays with items to ignore when determining the overall limits state. [['TARGET_NAME', 'PACKET_NAME', 'ITEM_NAME'], ...]. Names must match exactly. ITEM_NAME can be None (Python) or nil (Ruby) to ignore every item in the packet. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -5370,7 +5686,7 @@ overall_limits_state = get_overall_limits_state([['INST', 'HEALTH_STATUS', 'TEMP
 
 ### get_limits_events
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns limits events based on an offset returned from the last time it was called.
 
@@ -5471,7 +5787,7 @@ APIs for getting knowledge about plugins and packages.
 
 ### plugin_list
 
-<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.6.0</span></span>
 
 Returns all the installed plugins.
 
@@ -5553,7 +5869,7 @@ plugins = plugin_list(default: true) # =>
 
 ### plugin_get
 
-<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.6.0</span></span>
 
 Returns information about an installed plugin.
 
@@ -5609,7 +5925,7 @@ plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__2025011621453
 
 ### package_list
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 List all the packages installed in COSMOS.
 
@@ -5639,7 +5955,7 @@ APIs for getting knowledge about targets.
 
 ### get_target_names
 
-<span class="badge badge--secondary since-heading">Since 5.9.1</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.9.1</span></span>
 
 Returns a list of the targets in the system in an array. Previously `get_target_list`.
 
@@ -5663,7 +5979,7 @@ targets = get_target_names() # => ['INST', 'INST2', 'EXAMPLE', 'TEMPLATED']
 
 ### get_target
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns a target hash containing all the information about the target.
 
@@ -5775,7 +6091,7 @@ puts target
 
 ### get_target_interfaces
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the interfaces for all targets. The return value is an array of arrays where each subarray contains the target name, and a String of all the interface names.
 
@@ -5808,7 +6124,7 @@ These methods allow the user to manipulate COSMOS interfaces.
 
 ### get_interface
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns an interface status including the as built interface and its current status (cmd/tlm counters, etc).
 
@@ -5898,7 +6214,7 @@ puts interface
 
 ### get_interface_names
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns a list of the interfaces in the system in an array.
 
@@ -5922,7 +6238,7 @@ interface_names = get_interface_names() # => ['INST_INT', 'INST2_INT', 'EXAMPLE_
 
 ### connect_interface
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Connects to targets associated with a COSMOS interface.
 
@@ -5976,7 +6292,7 @@ connect_interface("INT1", hostname, port)
 
 ### disconnect_interface
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Disconnects from targets associated with a COSMOS interface. If the interface has
 already been disconnected this is a no-op. Otherwise the interface is asked to
@@ -6025,7 +6341,7 @@ disconnect_interface("INT1")
 
 ### start_raw_logging_interface
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Starts logging of raw data on one or all interfaces. This is for debugging purposes only.
 
@@ -6071,7 +6387,7 @@ start_raw_logging_interface("int1")
 
 ### stop_raw_logging_interface
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Stops logging of raw data on one or all interfaces. This is for debugging purposes only.
 
@@ -6117,7 +6433,7 @@ stop_raw_logging_interface("int1")
 
 ### get_all_interface_info
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns information about all interfaces. The return value is an array of arrays where each subarray contains the interface name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, command count, and telemetry count.
 
@@ -6151,7 +6467,7 @@ end
 
 ### map_target_to_interface
 
-<span class="badge badge--secondary since-heading">Since 5.0.9</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.9</span></span>
 
 Map a target to an interface allowing target commands and telemetry to be processed by that interface. Note this will cause the interface to respawn.
 
@@ -6205,7 +6521,7 @@ map_target_to_interface("INST", "INST_INT", tlm_only: true)
 
 ### unmap_target_from_interface
 
-<span class="badge badge--secondary since-heading">Since 6.9.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.9.0</span></span>
 
 Unmap a target from an interface. This removes all knowledge of the target and will cause the interface to respawn.
 
@@ -6258,7 +6574,7 @@ unmap_target_from_interface("INST", "INST_INT", tlm_only: true)
 
 ### interface_cmd
 
-<span class="badge badge--secondary since-heading">Since 5.3.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.3.0</span></span>
 
 Send a command directly to an interface. This has no effect in the standard COSMOS interfaces but can be implemented by a custom interface to change behavior.
 
@@ -6306,7 +6622,7 @@ interface_cmd("INST", "DISABLE_CRC")
 
 ### interface_protocol_cmd
 
-<span class="badge badge--secondary since-heading">Since 5.3.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.3.0</span></span>
 
 Send a command directly to an interface protocol. This has no effect in the standard COSMOS protocols but can be implemented by a custom protocol to change behavior.
 
@@ -6356,7 +6672,7 @@ interface_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1
 
 ### interface_target_enable
 
-<span class="badge badge--secondary since-heading">Since 6.9.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.9.0</span></span>
 
 Enable commanding and telemetry processing for a given target in an interface.
 
@@ -6409,7 +6725,7 @@ interface_target_enable("INST_INT", "INST", tlm_only: true)
 
 ### interface_target_disable
 
-<span class="badge badge--secondary since-heading">Since 6.9.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.9.0</span></span>
 
 Disable commanding and telemetry processing for a given target in an interface.
 
@@ -6462,7 +6778,7 @@ interface_target_disable("INST_INT", "INST", tlm_only: true)
 
 ### interface_details
 
-<span class="badge badge--secondary since-heading">Since 6.9.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.9.0</span></span>
 
 Get details on the interface and its protocols. Unlike [get_interface](#get_interface), which returns the stored interface model, `interface_details` queries the running interface microservice and returns its live runtime state, including the most recent raw data read and written and the state of every read and write protocol.
 
@@ -6740,7 +7056,7 @@ These methods allow the user to manipulate COSMOS routers.
 
 ### connect_router
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Connects a COSMOS router.
 
@@ -6789,7 +7105,7 @@ connect_router("INST_ROUTER", 7779, 7779, nil, 10.0, 'PREIDENTIFIED')
 
 ### disconnect_router
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Disconnects a COSMOS router.
 
@@ -6835,7 +7151,7 @@ disconnect_router("INT1_ROUTER")
 
 ### get_router_names
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns a list of the routers in the system in an array.
 
@@ -6859,7 +7175,7 @@ router_names = get_router_names() # => ['ROUTER_INT']
 
 ### get_router
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns a router status including the as built router and its current status (cmd/tlm counters, etc).
 
@@ -6949,7 +7265,7 @@ puts router
 
 ### get_all_router_info
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns information about all routers. The return value is an array of arrays where each subarray contains the router name, connection state, number of connected clients, transmit queue size, receive queue size, bytes transmitted, bytes received, packets received, and packets sent.
 
@@ -6983,7 +7299,7 @@ end
 
 ### map_target_to_router
 
-<span class="badge badge--secondary since-heading">Since 6.9.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.9.0</span></span>
 
 Map a target to an router allowing target commands and telemetry to be processed by that router. Note: this will cause the router to respawn.
 
@@ -7037,7 +7353,7 @@ map_target_to_router("INST", "INST_ROUTER", tlm_only: true)
 
 ### unmap_target_from_router
 
-<span class="badge badge--secondary since-heading">Since 6.9.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.9.0</span></span>
 
 Unmap a target from an router. This removes all knowledge of the target and will cause the router to respawn.
 
@@ -7090,7 +7406,7 @@ unmap_target_from_router("INST", "INST_ROUTER", tlm_only: true)
 
 ### start_raw_logging_router
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Starts logging of raw data on one or all routers. This is for debugging purposes only.
 
@@ -7136,7 +7452,7 @@ start_raw_logging_router("router1")
 
 ### stop_raw_logging_router
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Stops logging of raw data on one or all routers. This is for debugging purposes only.
 
@@ -7182,7 +7498,7 @@ stop_raw_logging_router("router1")
 
 ### router_cmd
 
-<span class="badge badge--secondary since-heading">Since 5.3.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.3.0</span></span>
 
 Send a command directly to a router. This has no effect in the standard COSMOS routers but can be implemented by a custom router to change behavior.
 
@@ -7230,7 +7546,7 @@ router_cmd("INST", "DISABLE_CRC")
 
 ### router_protocol_cmd
 
-<span class="badge badge--secondary since-heading">Since 5.3.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.3.0</span></span>
 
 Send a command directly to an router protocol. This has no effect in the standard COSMOS protocols but can be implemented by a custom protocol to change behavior.
 
@@ -7280,7 +7596,7 @@ router_protocol_cmd("INST", "DISABLE_CRC", read_write: :READ_WRITE, index: -1)
 
 ### router_target_enable
 
-<span class="badge badge--secondary since-heading">Since 6.9.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.9.0</span></span>
 
 Enable commanding and telemetry processing for a given target in a router.
 
@@ -7333,7 +7649,7 @@ router_target_enable("INST_ROUTER", "INST", tlm_only: true)
 
 ### router_target_disable
 
-<span class="badge badge--secondary since-heading">Since 6.9.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.9.0</span></span>
 
 Disable commanding and telemetry processing for a given target in a router.
 
@@ -7386,7 +7702,7 @@ router_target_disable("INST_ROUTER", "INST", tlm_only: true)
 
 ### router_details
 
-<span class="badge badge--secondary since-heading">Since 6.9.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.9.0</span></span>
 
 Get details on the router and its protocols.
 
@@ -7655,7 +7971,7 @@ These methods allow the user to script Table Manager.
 
 ### table_create_binary
 
-<span class="badge badge--secondary since-heading">Since 6.1.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.1.0</span></span>
 
 Creates a table binary based on a table definition file. You can achieve the same result in the Table Manager GUI with File->New File. Returns the path to the binary file created.
 
@@ -7734,7 +8050,7 @@ put_target_file("INST/tables/bin/MCConfigurationTable_NoScrub.bin", table.buffer
 
 ### table_create_report
 
-<span class="badge badge--secondary since-heading">Since 6.1.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.1.0</span></span>
 
 Creates a CSV report of the values in a table binary. You can achieve the same result in the Table Manager GUI with the Download Report button. Returns the report filename and the report contents.
 
@@ -7807,7 +8123,7 @@ These methods allow the user to store data into COSMOS and retrieve it. The stor
 
 ### stash_set
 
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.2.0</span></span>
 
 Sets a stash item.
 
@@ -7856,7 +8172,7 @@ stash_set('setpoint', 23.4)
 
 ### stash_get
 
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.2.0</span></span>
 
 Returns the specified stash item.
 
@@ -7902,7 +8218,7 @@ stash_get('run_count')  # => 5
 
 ### stash_all
 
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.2.0</span></span>
 
 Returns all the stash items as a Ruby hash or Python dict.
 
@@ -7926,7 +8242,7 @@ stash_all()  # => ['run_count' => 5, 'setpoint' => 23.4]
 
 ### stash_keys
 
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.2.0</span></span>
 
 Returns all the stash keys.
 
@@ -7950,7 +8266,7 @@ stash_keys()  # => ['run_count', 'setpoint']
 
 ### stash_delete
 
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.2.0</span></span>
 
 Deletes a stash item. Note this actions is permanent!
 
@@ -8000,7 +8316,7 @@ These methods allow the user to open, close or create unique telemetry screens f
 
 ### display_screen
 
-<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.6.0</span></span>
 
 Opens a telemetry screen at the specified position.
 
@@ -8049,7 +8365,7 @@ display_screen("INST", "ADCS", 100, 200)
 
 ### clear_screen
 
-<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.6.0</span></span>
 
 Closes an open telemetry screen.
 
@@ -8096,7 +8412,7 @@ clear_screen("INST", "ADCS")
 
 ### clear_all_screens
 
-<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.6.0</span></span>
 
 Closes all open screens.
 
@@ -8120,7 +8436,7 @@ clear_all_screens()
 
 ### delete_screen
 
-<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.6.0</span></span>
 
 Deletes an existing Telemetry Viewer screen.
 
@@ -8167,7 +8483,7 @@ delete_screen("INST", "ADCS")
 
 ### get_screen_list
 
-<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.6.0</span></span>
 
 Returns a hash of available telemetry screens keyed by target name, where each value is a list of screen names for that target.
 
@@ -8191,7 +8507,7 @@ get_screen_list() # => {"INST" => ["ADCS", "COMMANDING", ...], "INST2" => [...]}
 
 ### get_screen_definition
 
-<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.6.0</span></span>
 
 Returns the text file contents of a telemetry screen definition.
 
@@ -8238,7 +8554,7 @@ screen_definition = get_screen_definition("INST", "HS")
 
 ### create_screen
 
-<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.6.0</span></span>
 
 Allows you to create a screen directly from a script. This screen is saved to Telemetry Viewer for future use in that application.
 
@@ -8306,7 +8622,7 @@ create_screen("INST", "LOCAL", screen_def)
 
 ### local_screen
 
-<span class="badge badge--secondary since-heading">Since 5.6.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.6.0</span></span>
 
 Allows you to create a local screen directly from a script which is not permanently saved to the Telemetry Viewer screen list. This is useful for one off screens that help users interact with scripts.
 
@@ -8387,7 +8703,7 @@ These methods allow the user to control Script Runner scripts.
 
 ### start
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api (Ruby only)</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Starts execution of another high level test procedure. Script Runner will load the file and immediately start executing it (with line-by-line highlighting in Script Runner) before jumping back to the calling procedure. Parameters are not directly given to high level test procedures, though they can use environment variables. If parameters are necessary, consider using a subroutine.
 
@@ -8433,9 +8749,11 @@ start("INST/procedures/test1.rb")
 
 ### goto
 
-<span class="badge badge--secondary since-heading">Since 6.4.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.0</span></span>
 
 Jumps to a specific line in either the current file or another file. Script context and local variables are retained if jumping in the same file. This method should not be used to create loops or in any other case where normal Python/Ruby functionality could perform the same function. Use of goto increases stack depth and excess use can lead to stack level too deep errors.
+
+When typed at the Script Runner debug prompt, the parentheses and capitalization are optional (`GOTO 32` or `goto "INST/procedures/other.rb", 12`). If the script is paused, execution moves to the line without running it and the script stays paused there. If the script is running, it jumps to the line and keeps running.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -8486,7 +8804,7 @@ goto("TARGET/procedures/other_script.py", 12)
 
 ### load_utility
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api (Ruby only)</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Reads in a script file that contains useful subroutines for use in your test procedure. The file is instrumented, but instrumentation is disabled while load_utility is loading it so lines are not highlighted during the initial load. Afterwards, any functions defined in the loaded file will be highlighted when called. If you want to import subroutines but do not want their lines to be highlighted at all in Script Runner, use the standard Ruby `load` or `require` statement or Python `import` statement instead.
 
@@ -8534,7 +8852,7 @@ load_utility("INST/lib/mode_changes") # .rb extension is added automatically
 
 ### script_list
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns all the available files in COSMOS as an array / list. This includes configuration files at every directory level to ensure the user has access to every file. You can filter the list client side to just the 'lib' and or 'procedures' directories if you wish. Note: script names do NOT include '\*' to indicate modified.
 
@@ -8564,7 +8882,7 @@ puts scripts.select {|script| script.include?('/lib/') || script.include?('/proc
 
 ### script_create
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Creates a new script with the given contents.
 
@@ -8613,7 +8931,7 @@ script_create("INST/procedures/new_script.rb", contents)
 
 ### script_body
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the script contents.
 
@@ -8661,7 +8979,7 @@ puts script # => # Display all environment variables\nputs ENV.inspect ...
 
 ### script_delete
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Deletes a script from COSMOS. Note, you can only _really_ delete TEMP scripts and modified scripts. Scripts that are part of an installed COSMOS plugin remain as they were installed.
 
@@ -8707,7 +9025,7 @@ script_delete("INST/procedures/checks.rb")
 
 ### script_run
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Kicks off running a script in Script Runner. The script will run in the background, while the caller continues to run, and can be opened in Script Runner by selecting "Execution Status" from the "Script" menu at the top, and then connecting to it from the "Running Scripts" tab.
 
@@ -8774,7 +9092,7 @@ puts id
 
 ### script_lock
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Locks a script for editing. Subsequent users that open this script will get a warning that the script is currently locked.
 
@@ -8820,7 +9138,7 @@ script_lock("INST/procedures/checks.rb")
 
 ### script_unlock
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Unlocks a script for editing. If the script was not previously locked this does nothing.
 
@@ -8866,7 +9184,7 @@ script_unlock("INST/procedures/checks.rb")
 
 ### script_syntax_check
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Performs a Ruby or Python syntax check on the given script.
 
@@ -8914,7 +9232,7 @@ puts result # => {"title"=>"Syntax Check Successful", "description"=>"[\"Syntax 
 
 ### script_instrumented
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Returns the instrumented script which allows COSMOS Script Runner to monitor the execution and provide line by line visualization. This is primarily a low level debugging method used by COSMOS developers.
 
@@ -8962,7 +9280,7 @@ puts script # => private; __return_val = nil; begin; RunningScript.instance.scri
 
 ### script_delete_all_breakpoints
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Delete _all_ breakpoints associated with _all_ scripts.
 
@@ -8986,7 +9304,7 @@ script_delete_all_breakpoints()
 
 ### step_mode
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Places ScriptRunner into step mode where Go must be hit to proceed to the next line.
 
@@ -9010,7 +9328,7 @@ step_mode()
 
 ### run_mode
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Places ScriptRunner into run mode where the next line is run automatically.
 
@@ -9034,7 +9352,7 @@ run_mode()
 
 ### disconnect_script
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Puts scripting into disconnect mode. In disconnect mode, commands are not sent to targets, checks are all successful, and waits expire instantly. Requests for telemetry (tlm()) typically return 0. Disconnect mode is useful for dry-running scripts without having connected targets.
 
@@ -9058,7 +9376,7 @@ disconnect_script()
 
 ### running_script_list
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 List the currently running scripts. Note, this will also include the script which is calling this method. Thus the list will never be empty but will always contain at least 1 item. Returns an array of hashes / list of dicts (see [script_get](#script_get) for hash / dict contents).
 
@@ -9105,7 +9423,7 @@ running_script_list(limit: 20, offset: 10) # => [{"name"=>"293", "state"=>"waiti
 
 ### script_get
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Get information on the script with the specified ID. The information returned is the script name (id), state (spawning, init, running, paused, waiting, error, breakpoint, crashed, stopped, completed, completed_errors, killed), shard, filename, current_filename, line_no, start_line_no, end_line_no, username, user_full_name, start_time, end_time, disconnect state, environment variables, suite_runner configuration, errors, pid, log file, report file, update time, and scope.
 
@@ -9166,7 +9484,7 @@ script_get(15) # => {"name"=>"293", "state"=>"waiting", "shard"=>0, "filename"=>
 
 ### running_script_stop
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Stop the running script with the specified ID. This is equivalent to clicking the Stop button in the Script Runner GUI.
 
@@ -9212,7 +9530,7 @@ running_script_stop(15)
 
 ### running_script_pause
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Pause the running script with the specified ID. This is equivalent to clicking the Pause button in the Script Runner GUI.
 
@@ -9258,7 +9576,7 @@ running_script_pause(15)
 
 ### running_script_retry
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Retry the current line of the running script with the specified ID. This is equivalent to clicking the Retry button in the Script Runner GUI.
 
@@ -9304,7 +9622,7 @@ running_script_retry(15)
 
 ### running_script_go
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Unpause the running script with the specified ID. This is equivalent to clicking the Go button in the Script Runner GUI.
 
@@ -9350,9 +9668,9 @@ running_script_go(15)
 
 ### running_script_execute_while_paused
 
-<span class="badge badge--secondary since-heading">Since 6.4.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.0</span></span>
 
-Perform a goto or execute selection on a running script.
+Perform a goto or execute selection on a running script. Execute selection requires the script to be paused, stopped at a breakpoint, or in error. A goto on a paused script moves execution to the line without running it and stays paused. A goto on a running script jumps to the line and keeps running.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
@@ -9405,7 +9723,7 @@ running_script_execute_while_paused("33", "INST2/procedures/collect.py", 7)
 
 ### running_script_step
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Step the running script with the specified ID. This is equivalent to clicking the Step button in the Script Runner GUI's Debug window.
 
@@ -9451,7 +9769,7 @@ running_script_step(15)
 
 ### running_script_delete
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Force quit the running script with the specified ID. This is equivalent to clicking the Delete button under the Running Scripts in the Script Runner GUI's Script -> Execution Status pane. Note, the 'stop' signal is first sent to the specified script and then the script is forcibly removed. Normally you should use the [running_script_stop](#running_script_stop) method.
 
@@ -9497,7 +9815,7 @@ running_script_delete(15)
 
 ### completed_script_list
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 List the completed scripts. Returns an array of hashes / list of dicts containing the id, username, script name, script log, and start time.
 
@@ -9548,7 +9866,7 @@ These methods allow the user to control various Script Runner settings.
 
 ### set_line_delay
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 This method sets the line delay in script runner.
 
@@ -9594,7 +9912,7 @@ set_line_delay(0.0)
 
 ### get_line_delay
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 The method gets the line delay that script runner is currently using.
 
@@ -9618,7 +9936,7 @@ curr_line_delay = get_line_delay()
 
 ### set_max_output
 
-<span class="badge badge--secondary since-heading">Since 5.1.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.1.0</span></span>
 
 This method sets the maximum number of characters to display in Script Runner output before truncating. Default is 50,000 characters.
 
@@ -9664,7 +9982,7 @@ set_max_output(100)
 
 ### get_max_output
 
-<span class="badge badge--secondary since-heading">Since 5.1.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.1.0</span></span>
 
 The method gets the maximum number of characters to display in Script Runner output before truncating. Default is 50,000 characters.
 
@@ -9688,7 +10006,7 @@ puts get_max_output() # => 50000
 
 ### disable_instrumentation
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Disables instrumentation for a block of code (line highlighting and exception catching). This is especially useful for speeding up loops that are very slow if lines are instrumented.
 Consider breaking code like this into a separate file and using either require/load to read the file for the same effect while still allowing errors to be caught by your script.
@@ -9726,20 +10044,17 @@ end
 
 Creating Script Runner suites utilizes APIs to add groups to the defined suites. For more information please see [running script suites](../tools/script-runner.md#running-script-suites).
 
-### add_group, add_group_setup, add_group_teardown, add_script
+### add_group
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--warning">Script Runner only</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
-Adds a group's methods to the suite. The add_group method adds all the group methods including setup, teardown, and all the methods starting with 'script\_' or 'test\_'. The add_group_setup method adds just the setup method defined in the group class. The add_group_teardown method adds just the teardown method defined in the group class. The add_script method adds an individual method to the suite. NOTE: add_script can add any method including those not named with 'script\_' or 'test\_'.
+Adds all of a group's methods to the suite, including setup, teardown, and all the methods starting with 'script\_' or 'test\_'.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Syntax">
 
 ```python
 add_group(<Group Class>)
-add_group_setup(<Group Class>)
-add_group_teardown(<Group Class>)
-add_script(<Group Class>, <Method>)
 ```
 
 </TabItem>
@@ -9748,18 +10063,14 @@ add_script(<Group Class>, <Method>)
 
 ```ruby
 add_group(<Group Class>)
-add_group_setup(<Group Class>)
-add_group_teardown(<Group Class>)
-add_script(<Group Class>, <Method>)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter   | Description                                                                                                                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parameter   | Description |
+| ----------- | ----------- |
 | Group Class | Name of the previously defined class which inherits from the OpenC3 Group class. The Ruby API passes a String with the name of the group. The Python API passes the Group class directly. |
-| Method      | Name of the method in the OpenC3 Group class. The Ruby API passes a String with the name of the method. The Python API passes the Group class directly.                                   |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -9829,13 +10140,176 @@ end
 </TabItem>
 </Tabs>
 
+### add_group_setup
+
+<span class="since-heading"><span class="badge badge--warning">Script Runner only</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
+
+Adds just the setup method defined in the group class to the suite.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+add_group_setup(<Group Class>)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+add_group_setup(<Group Class>)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description |
+| ----------- | ----------- |
+| Group Class | Name of the previously defined class which inherits from the OpenC3 Group class. The Ruby API passes a String with the name of the group. The Python API passes the Group class directly. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+class MySuite(Suite):
+    def __init__(self):
+        super().__init__()
+        self.add_group_setup(WrapperGroup)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+class MySuite < OpenC3::Suite
+  def initialize
+    super()
+    add_group_setup('WrapperGroup')
+  end
+end
+```
+
+</TabItem>
+</Tabs>
+
+### add_group_teardown
+
+<span class="since-heading"><span class="badge badge--warning">Script Runner only</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
+
+Adds just the teardown method defined in the group class to the suite.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+add_group_teardown(<Group Class>)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+add_group_teardown(<Group Class>)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description |
+| ----------- | ----------- |
+| Group Class | Name of the previously defined class which inherits from the OpenC3 Group class. The Ruby API passes a String with the name of the group. The Python API passes the Group class directly. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+class MySuite(Suite):
+    def __init__(self):
+        super().__init__()
+        self.add_group_teardown(WrapperGroup)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+class MySuite < OpenC3::Suite
+  def initialize
+    super()
+    add_group_teardown('WrapperGroup')
+  end
+end
+```
+
+</TabItem>
+</Tabs>
+
+### add_script
+
+<span class="since-heading"><span class="badge badge--warning">Script Runner only</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
+
+Adds an individual method to the suite. NOTE: add_script can add any method including those not named with 'script\_' or 'test\_'.
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+add_script(<Group Class>, <Method>)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+add_script(<Group Class>, <Method>)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter   | Description |
+| ----------- | ----------- |
+| Group Class | Name of the previously defined class which inherits from the OpenC3 Group class. The Ruby API passes a String with the name of the group. The Python API passes the Group class directly. |
+| Method | Name of the method in the OpenC3 Group class. The Ruby API passes a String with the name of the method. The Python API passes the Group class directly. |
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Example">
+
+```python
+class MySuite(Suite):
+    def __init__(self):
+        super().__init__()
+        self.add_script(WrapperGroup, 'my_method')
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Example">
+
+```ruby
+class MySuite < OpenC3::Suite
+  def initialize
+    super()
+    add_script('WrapperGroup', 'my_method')
+  end
+end
+```
+
+</TabItem>
+</Tabs>
+
 ## Timelines
 
 The Timelines API allows you to manipulate Calendar timelines. Calendar is a COSMOS Enterprise tool.
 
 ### list_timelines
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 Returns all the timelines in an array of hashes / list of dicts.
 
@@ -9861,7 +10335,7 @@ timelines = list_timelines() # =>
 
 ### create_timeline
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 Create a new timeline in Calendar which can hold activities.
 
@@ -9910,7 +10384,7 @@ tl = create_timeline("Mine") # =>
 
 ### get_timeline
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 Get information about an existing timeline.
 
@@ -9958,7 +10432,7 @@ tl = get_timeline("Mine") # =>
 
 ### set_timeline_color
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 Set the displayed color for an existing timeline.
 
@@ -10005,7 +10479,7 @@ set_timeline_color("Mine", "#4287f5")
 
 ### delete_timeline
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 Delete an existing timeline. Timelines with activities can only be deleted by passing force = true.
 
@@ -10052,7 +10526,7 @@ delete_timeline("Mine", force: true)
 
 ### create_timeline_activity
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 Create an activity on an existing timeline. Activities can be one of COMMAND, SCRIPT, or RESERVE. Activities have a start and stop time and commands and scripts take data on the command or script to execute.
 
@@ -10154,6 +10628,8 @@ act = create_timeline_activity("RubyTL", kind: "SCRIPT", start: start, stop: sto
 
 ### update_timeline_activity
 
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span></span>
+
 Update an existing timeline activity. The activity is identified by its timeline name and current start time (id). All fields (kind, start, stop, data) are replaced with the provided values.
 
 <Tabs groupId="script-language">
@@ -10235,7 +10711,7 @@ updated = update_timeline_activity("RubyTL",
 
 ### get_timeline_activity
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 Get an existing timeline activity.
 
@@ -10291,7 +10767,7 @@ act = get_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1db
 
 ### get_timeline_activities
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 Get a range of timeline activities between start and stop time. If called without a start / stop time it defaults to 1 week before "now" up to 1 week from "now" (2 weeks total).
 
@@ -10343,7 +10819,7 @@ acts = get_timeline_activities("RubyTL", start: Time.now() - 3600, stop: Time.no
 
 ### delete_timeline_activity
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 Delete an existing timeline activity.
 
@@ -10351,7 +10827,7 @@ Delete an existing timeline activity.
 <TabItem value="python" label="Python Syntax">
 
 ```python
-delete_timeline_activity(name, start, uuid)
+delete_timeline_activity(name, start, uuid, recurring=False)
 ```
 
 </TabItem>
@@ -10359,23 +10835,27 @@ delete_timeline_activity(name, start, uuid)
 <TabItem value="ruby" label="Ruby Syntax">
 
 ```ruby
-delete_timeline_activity(name, start, uuid)
+delete_timeline_activity(name, start, uuid, recurring: false)
 ```
 
 </TabItem>
 </Tabs>
 
-| Parameter | Description                                           |
-| --------- | ----------------------------------------------------- |
-| name      | Name of the timeline                                  |
-| start     | Start time of the activity. Time / datetime instance. |
-| uuid      | UUID of the activity                                  |
+| Parameter | Description                                                                                                                                                              |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| name      | Name of the timeline                                                                                                                                                     |
+| start     | Start time of the activity. Time / datetime instance.                                                                                                                    |
+| uuid      | UUID of the activity, or the recurring group UUID (the activity's `recurring` `uuid`) when `recurring` is true                                                           |
+| recurring | Whether to also delete every activity in the same recurring group. `start` must be the start of an occurrence that still exists. Default is false. (Since _Coming Soon_) |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a39b06a5")
+# Delete every activity in a recurring group using an existing occurrence and the group UUID
+activity = next(act for act in get_timeline_activities("PythonTL") if act["recurring"].get("uuid"))
+delete_timeline_activity("PythonTL", activity["start"], activity["recurring"]["uuid"], recurring=True)
 ```
 
 </TabItem>
@@ -10384,6 +10864,9 @@ delete_timeline_activity("PythonTL", 1737133108, "cddbf034-ccdd-4c36-91c2-2653a3
 
 ```ruby
 delete_timeline_activity("RubyTL", 1737132303, "cdb661b4-a65b-44e7-95e2-5e1dba80c782")
+# Delete every activity in a recurring group using an existing occurrence and the group UUID
+activity = get_timeline_activities("RubyTL").find { |act| act['recurring']['uuid'] }
+delete_timeline_activity("RubyTL", activity['start'], activity['recurring']['uuid'], recurring: true)
 ```
 
 </TabItem>
@@ -10395,7 +10878,7 @@ COSMOS has several settings typically accessed through the Admin Settings tab. T
 
 ### list_settings
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Return all the current COSMOS setting name. These are the names that should be used in the other APIs.
 
@@ -10419,7 +10902,7 @@ puts list_settings() # => ["pypi_url", "rubygems_url", "source_url", "version"]
 
 ### get_all_settings
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Return all the current COSMOS settings along with their values.
 
@@ -10451,7 +10934,7 @@ settings = get_all_settings() # =>
 
 ### get_setting, get_settings
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Return the data from the given COSMOS setting. Returns nil (Ruby) or None (Python) if the setting does not exist.
 
@@ -10501,7 +10984,7 @@ setting = get_settings('version', 'rubygems_url') # => ["5.11.4-beta0", "https:/
 
 ### set_setting
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Sets the given setting value.
 
@@ -10556,7 +11039,7 @@ Many COSMOS tools have the ability to load and save a configuration. These APIs 
 
 ### config_tool_names
 
-<span class="badge badge--secondary since-heading">Since 5.12.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
 List all the configuration tool names which are used as the first parameter in the other APIs.
 
@@ -10580,7 +11063,7 @@ names = config_tool_names() # => ["telemetry_grapher", "data_viewer"]
 
 ### list_configs
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 List all the saved configuration names under the given tool name.
 
@@ -10626,7 +11109,7 @@ configs = list_configs('telemetry_grapher') # => ['adcs', 'temps']
 
 ### load_config
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Load a particular tool configuration.
 
@@ -10691,7 +11174,7 @@ config = load_config('telemetry_grapher', 'adcs') # =>
 
 ### save_config
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Save a particular tool configuration.
 
@@ -10739,7 +11222,7 @@ save_config('telemetry_grapher', 'adcs', config)
 
 ### delete_config
 
-<span class="badge badge--secondary since-heading">Since 5.0.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.0.0</span></span>
 
 Delete a particular tool configuration.
 
@@ -10791,13 +11274,35 @@ An offline access token is required to execute scripts in COSMOS Enterprise. The
 
 ### initialize_offline_access
 
-<span class="badge badge--secondary since-heading">Since 6.3.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.3.0</span></span>
 
 Creates and sets the offline access token for the user. Note: calling this method is required before executing any api methods that require an offline access token like script_run (Enterprise Only). This method must be called OUTSIDE of ScriptRunner as it is needed in order to start a script in the first place.
 
 In Enterprise, the `OPENC3_API_USER` and `OPENC3_API_PASSWORD` environment variables must be set for the `initialize_offline_access` to generate a token. This API user must also be a valid user with the respective permissions setup in Keycloak. These two variables are not in the `.env` by default, and should not be as they contain sensitive information.
 
 Depending on your deployment environment, there are several ways Secrets can be managed. In a Kubernetes deployment, [Secretes](https://kubernetes.io/docs/concepts/configuration/secret/) can be configured, or dynamically managed by a separate secrets management tool like [HashiCorp Vault](https://github.com/hashicorp/vault) or [AWS Secrets Manager](https://aws.amazon.com/secrets-manager/).
+
+<Tabs groupId="script-language">
+<TabItem value="python" label="Python Syntax">
+
+```python
+initialize_offline_access(scope=OPENC3_SCOPE)
+```
+
+</TabItem>
+
+<TabItem value="ruby" label="Ruby Syntax">
+
+```ruby
+initialize_offline_access(scope: $openc3_scope)
+```
+
+</TabItem>
+</Tabs>
+
+| Parameter | Description                                                              |
+| --------- | ------------------------------------------------------------------------ |
+| scope     | Scope to set the offline access token in. Defaults to the current scope. |
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
@@ -10823,7 +11328,7 @@ script_run("INST/procedures/collect.rb")
 
 ### offline_access_needed
 
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.2.0</span></span>
 
 Returns true if the user needs to generate an offline access token. Note this will only be true if the user is at least authorized to view scripts, otherwise it will always be false if script_view permission is not available for the user.
 
@@ -10847,7 +11352,7 @@ result = offline_access_needed() # => true
 
 ### set_offline_access
 
-<span class="badge badge--secondary since-heading">Since 5.2.0</span>
+<span class="since-heading"><span class="badge badge--primary">openc3.api</span> <span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.2.0</span></span>
 
 Sets the offline access token in the backend. Note: You probably don't need to call this method directly, as it will be called by initialize_offline_access().
 
@@ -10897,7 +11402,7 @@ Autonomic provides automated reactions to telemetry conditions through triggers 
 
 ### autonomic_group_list
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Returns a list of all autonomic groups.
 
@@ -10943,7 +11448,7 @@ groups = autonomic_group_list()
 
 ### autonomic_group_create
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Creates a new autonomic group.
 
@@ -10990,7 +11495,7 @@ group = autonomic_group_create("SAFETY")
 
 ### autonomic_group_show
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Shows details about a specific autonomic group.
 
@@ -11037,7 +11542,7 @@ group_info = autonomic_group_show("SAFETY")
 
 ### autonomic_group_destroy
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Destroys an autonomic group.
 
@@ -11084,7 +11589,7 @@ autonomic_group_destroy("SAFETY")
 
 ### autonomic_trigger_list
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Returns a list of triggers in a specific group.
 
@@ -11131,7 +11636,7 @@ triggers = autonomic_trigger_list(group: "SAFETY")
 
 ### autonomic_trigger_create
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Creates a new trigger with the specified condition.
 
@@ -11206,7 +11711,7 @@ trigger = autonomic_trigger_create(left: left, operator: operator, right: right,
 
 ### autonomic_trigger_show
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Shows details about a specific trigger.
 
@@ -11254,7 +11759,7 @@ trigger_info = autonomic_trigger_show("TRIG1", group: "SAFETY")
 
 ### autonomic_trigger_enable
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Enables a trigger.
 
@@ -11302,7 +11807,7 @@ autonomic_trigger_enable("TRIG1", group: "SAFETY")
 
 ### autonomic_trigger_disable
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Disables a trigger.
 
@@ -11350,7 +11855,7 @@ autonomic_trigger_disable("TRIG1", group: "SAFETY")
 
 ### autonomic_trigger_update
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Updates an existing trigger with new parameters.
 
@@ -11417,7 +11922,7 @@ updated_trigger = autonomic_trigger_update(
 
 ### autonomic_trigger_destroy
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Destroys a trigger.
 
@@ -11465,7 +11970,7 @@ autonomic_trigger_destroy("TRIG1", group: "SAFETY")
 
 ### autonomic_reaction_list
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Returns a list of all reactions.
 
@@ -11511,7 +12016,7 @@ reactions = autonomic_reaction_list()
 
 ### autonomic_reaction_create
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Creates a new reaction that executes actions when triggers are activated.
 
@@ -11587,7 +12092,7 @@ reaction = autonomic_reaction_create(
 
 ### autonomic_reaction_show
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Shows details about a specific reaction.
 
@@ -11634,7 +12139,7 @@ reaction_info = autonomic_reaction_show("REACT1")
 
 ### autonomic_reaction_enable
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Enables a reaction.
 
@@ -11681,7 +12186,7 @@ autonomic_reaction_enable("REACT1")
 
 ### autonomic_reaction_disable
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Disables a reaction.
 
@@ -11728,7 +12233,7 @@ autonomic_reaction_disable("REACT1")
 
 ### autonomic_reaction_execute
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Manually executes a reaction's actions.
 
@@ -11775,7 +12280,7 @@ autonomic_reaction_execute("REACT1")
 
 ### autonomic_reaction_update
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Updates an existing reaction with new parameters.
 
@@ -11832,7 +12337,7 @@ updated_reaction = autonomic_reaction_update(
 
 ### autonomic_reaction_destroy
 
-<span class="badge badge--secondary since-heading">Since 6.4.2</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 6.4.2</span></span>
 
 Destroys a reaction.
 
@@ -11883,7 +12388,7 @@ Various utilities that can be used in scripts.
 
 ### open_tab
 
-<span class="badge badge--secondary since-heading">Since 7.0.0</span>
+<span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 7.0.0</span></span>
 
 Opens a new tab in the browser.
 

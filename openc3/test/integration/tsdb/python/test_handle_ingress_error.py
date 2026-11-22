@@ -12,12 +12,12 @@
 """
 Integration tests for handle_ingress_error value casting.
 
-Since create_table proactively reconciles column types on startup, IngressErrors
+Since create_table proactively reconciles column types on startup, QuestDBErrors
 should be rare in normal operation. When they do occur, handle_ingress_error casts
 the value to fit the existing column type rather than altering the schema.
 
 These tests bypass create_table's proactive ALTER by writing mismatched values
-directly to a table, triggering IngressError, and verifying that
+directly to a table, triggering QuestDBError, and verifying that
 handle_ingress_error correctly casts the value and retries.
 
 Run with:
@@ -46,7 +46,7 @@ os.environ.setdefault("OPENC3_TSDB_PASSWORD", "admin")
 os.environ.setdefault("OPENC3_SCOPE", "DEFAULT")
 
 from conftest import requires_questdb
-from questdb.ingress import IngressError
+from questdb import QuestDBError
 
 
 def _make_packet_def(data_type, bit_size=None):
@@ -68,7 +68,7 @@ def _get_column_type(client, table_name, column_name="VALUE"):
 
 
 def _write_with_error_handling(client, table_name, columns, ts):
-    """Write a row, delegating to handle_ingress_error on IngressError.
+    """Write a row, delegating to handle_ingress_error on QuestDBError.
 
     handle_ingress_error uses client.pending_rows (populated by write_row)
     to find and fix the affected row data, then reconnects and replays.
@@ -81,7 +81,7 @@ def _write_with_error_handling(client, table_name, columns, ts):
         client.write_row(table_name, columns, ts)
         client.flush()
         return True, False
-    except IngressError as error:
+    except QuestDBError as error:
         result = client.handle_ingress_error(error)
         if result:
             # handle_ingress_error reconnects and replays rows into the sender
@@ -112,7 +112,7 @@ class TestCastFloatToIntColumn:
             questdb_client, table_name, columns, base_ts
         )
         assert success is True
-        assert was_handled is True, "Float -> LONG should trigger IngressError"
+        assert was_handled is True, "Float -> LONG should be rejected"
         wait_for_data(questdb_client, table_name, 1)
 
         # Column type must NOT have changed
@@ -177,7 +177,8 @@ class TestCastStringToIntColumn:
             questdb_client, table_name, columns, base_ts
         )
         assert success is True
-        assert was_handled is True, "String -> LONG should trigger IngressError"
+        # QWP parses numeric strings server side, ILP rejects them and they're cast
+        assert was_handled is not questdb_client.is_qwp, "String -> LONG should only be rejected by ILP"
         wait_for_data(questdb_client, table_name, 1)
 
         assert _get_column_type(questdb_client, table_name) == "LONG"
@@ -241,7 +242,8 @@ class TestCastStringToFloatColumn:
             questdb_client, table_name, columns, base_ts
         )
         assert success is True
-        assert was_handled is True, "String -> DOUBLE should trigger IngressError"
+        # QWP parses numeric strings server side, ILP rejects them and they're cast
+        assert was_handled is not questdb_client.is_qwp, "String -> DOUBLE should only be rejected by ILP"
         wait_for_data(questdb_client, table_name, 1)
 
         assert _get_column_type(questdb_client, table_name) == "DOUBLE"

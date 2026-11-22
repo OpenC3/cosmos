@@ -244,17 +244,12 @@ module OpenC3
       end
     end
 
-    # Generate the appropriate token for OpenC3
+    # Generate the appropriate token for OpenC3.
     def generate_auth
-      if ENV['OPENC3_API_TOKEN'].nil? and ENV['OPENC3_API_USER'].nil?
-        if ENV['OPENC3_API_PASSWORD']
-          return OpenC3Authentication.new()
-        else
-          raise "Environment Variables Not Set for Authentication"
-        end
-      else
-        return OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
-      end
+      authentication = OpenC3.authentication_from_environment
+      raise "Environment Variables Not Set for Authentication" unless authentication
+
+      authentication
     end
   end
 
@@ -493,7 +488,8 @@ module OpenC3
     def self.read_all(items: nil, packets: nil, start_time: nil, end_time: nil, scope: nil, timeout: nil)
       read_all_start_time = Time.now
       data = []
-      self.new do |api|
+      # Connect with the requested scope, not just add the items with it
+      self.new(scope: scope || $openc3_scope) do |api|
         api.add(items: items, packets: packets, start_time: start_time, end_time: end_time, scope: scope)
         while true
           batch = api.read

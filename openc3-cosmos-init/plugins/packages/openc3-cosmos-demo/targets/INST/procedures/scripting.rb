@@ -8,8 +8,21 @@ def wait_for_action(id, state)
       break
     end
     wait 0.1
+    i += 1
   end
   check_expression("'#{script['state']}' == '#{state}'")
+end
+
+# Helper method to check for a script to reach a line
+def wait_for_line(id, line_no)
+  i = 0
+  while i < 100
+    script = running_script_get(id)
+    break if script['line_no'] == line_no
+    wait 0.1
+    i += 1
+  end
+  check_expression("#{script['line_no']} == #{line_no}")
 end
 
 SCRIPT_NAME = "INST/procedures/new_script.rb"
@@ -49,9 +62,9 @@ check_expression("'#{script['filename']}' == SCRIPT_NAME")
 
 running_script_pause(id)
 wait_for_action(id, 'paused')
+# Goto on a paused script moves to the line and stays paused
 running_script_execute_while_paused(id, SCRIPT_NAME, 1)
-wait_for_action(id, 'running')
-running_script_pause(id)
+wait_for_line(id, 1)
 wait_for_action(id, 'paused')
 running_script_step(id)
 wait_for_action(id, 'paused')

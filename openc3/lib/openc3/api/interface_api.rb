@@ -85,7 +85,7 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, manual: manual, scope: scope, token: token)
       if interface_name == 'ALL'
-        get_interface_names().each do |interface_name|
+        get_interface_names(manual: manual, scope: scope, token: token).each do |interface_name|
           InterfaceTopic.start_raw_logging(interface_name, scope: scope)
         end
       else
@@ -100,7 +100,7 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this interface
       authorize(permission: 'system_set', interface_name: interface_name, manual: manual, scope: scope, token: token)
       if interface_name == 'ALL'
-        get_interface_names().each do |interface_name|
+        get_interface_names(manual: manual, scope: scope, token: token).each do |interface_name|
           InterfaceTopic.stop_raw_logging(interface_name, scope: scope)
         end
       else

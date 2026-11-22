@@ -40,7 +40,7 @@ jobs:
       id-token: write # required for Docker Hub OIDC login
     steps:
       - name: Harden the runner (Audit all outbound calls)
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: step-security/harden-runner@1d88384fd173af6ecb012dfd0264a306b711241a # v2.22.4
         with:
           egress-policy: audit
 
@@ -50,13 +50,13 @@ jobs:
         with:
           node-version: 24
       - name: Install pnpm
-        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           version: 11
       # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
       # Fork PRs get no id-token, so let them fall back to anonymous pulls.
       - name: Docker login
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
         env:
           DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
@@ -104,96 +104,6 @@ jobs:
           grep -q "System.register" tools/testvuetool/main.js
           # Validate gem
           ../openc3.sh cli validate openc3-cosmos-tool-vue-test-1.0.0.gem
-          cd ..
-
-      # Test Angular tool generation and build
-      - name: Generate and build Angular tool
-        shell: 'script -q -e -c "bash {0}"'
-        run: |
-          set -e
-          # Generate plugin
-          ./openc3.sh cli generate plugin tool-angular-test --ruby
-          cd openc3-cosmos-tool-angular-test
-          # Generate Angular tool
-          ../openc3.sh cli generate tool_angular 'Test Angular Tool' --ruby
-          # Verify tool structure created
-          test -f package.json
-          test -f angular.json
-          test -f src/main.single-spa.ts
-          # Verify tool was added to plugin.txt
-          grep -q 'TOOL testangulartool "Test Angular Tool"' plugin.txt
-          grep -q 'INLINE_URL main.js' plugin.txt
-          # Verify package.json has required scripts
-          grep -q '"build"' package.json
-          # Build plugin (skip --frozen-lockfile for fresh plugins, keep --ignore-scripts)
-          pnpm install --ignore-scripts
-          rake build VERSION=1.0.0
-          # Verify build output (Angular builds to tools/testangulartool/)
-          test -f tools/testangulartool/main.js
-          # Verify output is a SystemJS module
-          grep -q "System.register" tools/testangulartool/main.js
-          # Validate gem
-          ../openc3.sh cli validate openc3-cosmos-tool-angular-test-1.0.0.gem
-          cd ..
-
-      # Test React tool generation and build
-      - name: Generate and build React tool
-        shell: 'script -q -e -c "bash {0}"'
-        run: |
-          set -e
-          # Generate plugin
-          ./openc3.sh cli generate plugin tool-react-test --ruby
-          cd openc3-cosmos-tool-react-test
-          # Generate React tool
-          ../openc3.sh cli generate tool_react 'Test React Tool' --ruby
-          # Verify tool structure created
-          test -f package.json
-          test -f webpack.config.js
-          test -f src/root.component.js
-          # Verify tool was added to plugin.txt
-          grep -q 'TOOL testreacttool "Test React Tool"' plugin.txt
-          grep -q 'INLINE_URL main.js' plugin.txt
-          # Verify package.json has required scripts
-          grep -q '"build"' package.json
-          # Build plugin (skip --frozen-lockfile for fresh plugins, keep --ignore-scripts)
-          pnpm install --ignore-scripts
-          rake build VERSION=1.0.0
-          # Verify build output (React builds to tools/testreacttool/)
-          test -f tools/testreacttool/main.js
-          # Verify output is a SystemJS module
-          grep -q "System.register" tools/testreacttool/main.js
-          # Validate gem
-          ../openc3.sh cli validate openc3-cosmos-tool-react-test-1.0.0.gem
-          cd ..
-
-      # Test Svelte tool generation and build
-      - name: Generate and build Svelte tool
-        shell: 'script -q -e -c "bash {0}"'
-        run: |
-          set -e
-          # Generate plugin
-          ./openc3.sh cli generate plugin tool-svelte-test --ruby
-          cd openc3-cosmos-tool-svelte-test
-          # Generate Svelte tool
-          ../openc3.sh cli generate tool_svelte 'Test Svelte Tool' --ruby
-          # Verify tool structure created
-          test -f package.json
-          test -f rollup.config.js
-          test -f src/App.svelte
-          # Verify tool was added to plugin.txt
-          grep -q 'TOOL testsveltetool "Test Svelte Tool"' plugin.txt
-          grep -q 'INLINE_URL main.js' plugin.txt
-          # Verify package.json has required scripts
-          grep -q '"build"' package.json
-          # Build plugin (skip --frozen-lockfile for fresh plugins, keep --ignore-scripts)
-          pnpm install --ignore-scripts
-          rake build VERSION=1.0.0
-          # Verify build output (Svelte builds to tools/testsveltetool/)
-          test -f tools/testsveltetool/main.js
-          # Verify output is a SystemJS module
-          grep -q "System.register" tools/testsveltetool/main.js
-          # Validate gem
-          ../openc3.sh cli validate openc3-cosmos-tool-svelte-test-1.0.0.gem
           cd ..
 
       # Test widget generator

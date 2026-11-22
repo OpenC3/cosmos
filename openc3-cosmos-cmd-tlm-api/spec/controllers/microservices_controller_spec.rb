@@ -122,6 +122,62 @@ RSpec.describe MicroservicesController, type: :controller do
       expect(result["http"]).to have_key("routers")
       expect(result["http"]).to have_key("services")
       expect(result["http"]["routers"]).to have_key("DEFAULT__MICROSERVICE__MICRO1")
+      router = result["http"]["routers"]["DEFAULT__MICROSERVICE__MICRO1"]
+      # Anchored so /PREFIX doesn't also capture /PREFIXother
+      expect(router["rule"]).to eq("Path(`/PREFIX`) || PathPrefix(`/PREFIX/`)")
+      expect(router["service"]).to eq("DEFAULT__MICROSERVICE__MICRO1")
+      # Below the api (8), tools (4-6) and other built in routers
+      expect(router["priority"]).to eq(3)
+    end
+
+    it "returns an empty object when there are no routes" do
+      OpenC3::MicroserviceModel.new(name: "DEFAULT__MICROSERVICE__MICRO1", scope: "DEFAULT").destroy
+
+      get :traefik
+
+      expect(response).to have_http_status(:ok)
+      # Traefik rejects {"http":{"routers":{},"services":{}}} and keeps the old
+      # routes live, so the last route being deleted must produce {}
+      expect(JSON.parse(response.body)).to eq({})
+    end
+
+    it "is not served through traefik" do
+      request.headers["X-Forwarded-For"] = "127.0.0.1"
+      get :traefik
+      expect(response).to have_http_status(:not_found)
+      expect(response.body).to be_empty
+    end
+
+    it "skips stored routes with invalid prefixes or names" do
+      # Write directly to the store to simulate microservices saved before
+      # prefixes were validated
+      store = OpenC3::MicroserviceModel.store
+      {
+        "DEFAULT__USER__FILES" => "files/myapi",
+        "DEFAULT__USER__API" => "/openc3-api",
+        "DEFAULT__USER__ROOT" => "/",
+        "DEFAULT__USER__BACKTICK" => "/my`api",
+        "DEFAULT__USER__BAD@NAME" => "/badname",
+      }.each do |name, prefix|
+        store.hset(OpenC3::MicroserviceModel::PRIMARY_KEY, name, JSON.generate({ "name" => name, "prefix" => prefix, "ports" => [[7791, "TCP"]] }))
+      end
+      allow(controller.logger).to receive(:warn)
+
+      get :traefik
+
+      expect(response).to have_http_status(:ok)
+      result = JSON.parse(response.body)
+      expect(result["http"]["routers"].keys).to eq(["DEFAULT__MICROSERVICE__MICRO1"])
+      expect(result["http"]["services"].keys).to eq(["DEFAULT__MICROSERVICE__MICRO1"])
+      expect(controller.logger).to have_received(:warn).exactly(5).times
+    end
+
+    it "rejects creating a microservice with a reserved prefix" do
+      json = { "name" => "DEFAULT__USER__FILES_API", "prefix" => "files/myapi", "ports" => [[7791, "http"]] }.to_json
+      post :create, params: { scope: "DEFAULT", json: json }
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)["message"]).to match(/is reserved by COSMOS/)
+      expect(OpenC3::MicroserviceModel.get(name: "DEFAULT__USER__FILES_API")).to be_nil
     end
 
     it "uses base operator hostname for shard 0" do

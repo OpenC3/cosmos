@@ -12,6 +12,7 @@
 # A portion of this file was funded by Blue Origin Enterprises, L.P.
 # See https://github.com/OpenC3/cosmos/pull/1953
 
+import re
 
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.model import Model
@@ -22,6 +23,48 @@ from openc3.utilities.bucket import Bucket
 
 class MicroserviceModel(Model):
     PRIMARY_KEY = "openc3_microservices"
+
+    # A ROUTE_PREFIX becomes a traefik rule on the COSMOS web port. Limit it to
+    # plain path segments so it is always a valid traefik rule, and keep it off the
+    # paths used by the built in traefik routers and the COSMOS front end.
+    ROUTE_PREFIX_REGEX = re.compile(r"(/[A-Za-z0-9_\-]+)+")
+    # First path segments a ROUTE_PREFIX may not use (compared case-insensitively).
+    # Includes the Enterprise routes (auth, metrics, grafana, mcp) and the
+    # directories served from tools/base (js, css, fonts, icons, img, assets).
+    RESERVED_ROUTE_PREFIXES = (
+        "openc3-api",
+        "script-api",
+        "tools",
+        "files",
+        "login",
+        "js",
+        "css",
+        "fonts",
+        "icons",
+        "img",
+        "assets",
+        "auth",
+        "metrics",
+        "grafana",
+        "mcp",
+    )
+
+    @classmethod
+    def validate_route_prefix(cls, prefix) -> str:
+        """Validate a ROUTE_PREFIX and return it with a leading and no trailing slash"""
+        normalized = str(prefix).strip()
+        if not normalized.startswith("/"):
+            normalized = f"/{normalized}"
+        if normalized.endswith("/"):
+            normalized = normalized[:-1]
+        if not cls.ROUTE_PREFIX_REGEX.fullmatch(normalized):
+            raise RuntimeError(
+                f"Invalid ROUTE_PREFIX '{prefix}': must be one or more path segments containing only letters, numbers, '_' or '-' (e.g. /mymicroservice)"
+            )
+        first_segment = normalized.split("/")[1].lower()
+        if first_segment in cls.RESERVED_ROUTE_PREFIXES:
+            raise RuntimeError(f"Invalid ROUTE_PREFIX '{prefix}': '/{first_segment}' is reserved by COSMOS")
+        return normalized
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -121,6 +164,17 @@ class MicroserviceModel(Model):
             self.enabled = True
         self.shared_resource = shared_resource
         self.bucket = Bucket.get_client()
+
+    def create(self, update=False, force=False, queued=False):
+        # Validate the route prefix on every write, including microservices
+        # created directly through the API rather than from a plugin.txt. An
+        # update that keeps the stored prefix is allowed, so a microservice stored
+        # before prefixes were validated can still be started and stopped.
+        if self.prefix is not None:
+            existing = MicroserviceModel.get(self.name) if update else None
+            if not existing or existing.get("prefix") != self.prefix:
+                self.prefix = MicroserviceModel.validate_route_prefix(self.prefix)
+        super().create(update=update, force=force, queued=queued)
 
     def as_json(self):
         return {

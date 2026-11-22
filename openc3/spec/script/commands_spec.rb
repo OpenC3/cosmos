@@ -32,6 +32,7 @@ module OpenC3
       include Extract
       include Api
       include Authorization
+      attr_reader :last_kw_params
       def shutdown
       end
 
@@ -43,6 +44,7 @@ module OpenC3
       end
 
       def method_missing(name, *params, **kw_params)
+        @last_kw_params = kw_params
         self.send(name, *params, **kw_params)
       end
     end
@@ -136,6 +138,20 @@ module OpenC3
               stdout.rewind
               cmd("INST", "ABORT")
               expect(stdout.string).to match(/#{@prefix}cmd\(\"INST ABORT\"\)/) # "
+            end
+          end
+
+          if connect == 'connected'
+            it "sends extra metadata" do
+              extra = { 'flow_uuid' => '1234-5678', 'hv_id' => 42 }
+              capture_io { cmd("INST ABORT", extra: extra) }
+              expect(@api.last_kw_params[:extra]).to eql(extra)
+            end
+
+            it "does not send extra when not given" do
+              # Older servers reject an unknown extra keyword, even when nil
+              capture_io { cmd("INST ABORT") }
+              expect(@api.last_kw_params).not_to have_key(:extra)
             end
           end
 
@@ -386,6 +402,24 @@ module OpenC3
             expect(get_cmd_hazardous("inst collect with type NORMAL")).to be false
             expect(get_cmd_hazardous("INST COLLECT with TYPE SPECIAL")).to be true
           end
+
+          it "forwards scope and string keyword parameters" do
+            expect(get_cmd_hazardous("INST", "COLLECT", "TYPE" => "SPECIAL", scope: 'DEFAULT')).to be true
+            expect($api_server).to receive(:get_cmd_hazardous).with("INST CLEAR", scope: 'OTHER').and_return(true)
+            expect(get_cmd_hazardous("INST CLEAR", scope: 'OTHER')).to be true
+          end
+        end
+
+        describe "build_cmd keyword arguments" do
+          it "forwards range_check, raw, timeout and scope" do
+            expect($api_server).to receive(:build_cmd).with("INST ABORT", range_check: false, raw: true, timeout: 10, scope: 'OTHER').and_return({})
+            build_cmd("INST ABORT", range_check: false, raw: true, timeout: 10, scope: 'OTHER')
+          end
+
+          it "converts string keyword parameters and uses the defaults" do
+            expect($api_server).to receive(:build_cmd).with("INST", "COLLECT", { "TYPE" => "NORMAL" }, range_check: true, raw: false, timeout: 5, scope: 'DEFAULT').and_return({})
+            build_cmd("INST", "COLLECT", "TYPE" => "NORMAL")
+          end
         end
 
         if connect == 'connected'
@@ -433,6 +467,35 @@ module OpenC3
             _, _, time = get_cmd_time()
             expect(time).to be_a(Time)
           end
+        end
+      end
+    end
+
+    describe "critical commands" do
+      it "polls the critical command status in the command's scope" do
+        error = CriticalCmdError.new
+        error.uuid = 'UUID'
+        error.command = {
+          'username' => 'user', 'target_name' => 'INST', 'cmd_name' => 'ABORT',
+          'cmd_params' => {}, 'cmd_string' => 'cmd("INST ABORT")', 'obfuscated_items' => []
+        }
+        allow($api_server).to receive(:method_missing).and_raise(error)
+        expect(self).to receive(:critical_cmd_status).with('UUID', scope: 'OTHER').and_return('APPROVED')
+        capture_io do |stdout|
+          cmd("INST ABORT", scope: 'OTHER')
+          expect(stdout.string).to include("Waiting for critical command approval")
+        end
+      end
+    end
+
+    describe "disconnected cmd" do
+      it "looks up the command text parameters in the given scope" do
+        disconnect_script()
+        expect(TargetModel).to receive(:packet).with('INST', 'COLLECT', type: :CMD, scope: 'OTHER').and_call_original
+        allow($api_server).to receive(:get_cmd).with('INST', 'COLLECT', scope: 'OTHER').and_return({ 'target_name' => 'INST', 'items' => [{ 'name' => 'TYPE' }] })
+        capture_io do |stdout|
+          cmd("INST COLLECT with TYPE NORMAL", scope: 'OTHER')
+          expect(stdout.string).to include('cmd("INST COLLECT with TYPE')
         end
       end
     end

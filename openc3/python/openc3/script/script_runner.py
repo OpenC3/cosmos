@@ -10,13 +10,14 @@
 # if purchased from OpenC3, Inc.
 
 import json
+from typing import Any, NoReturn
 
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
 from openc3.utilities.extract import *
 
 
-def _script_response_error(response, message, scope=OPENC3_SCOPE):
+def _script_response_error(response: Any, message: str, scope: str = OPENC3_SCOPE) -> NoReturn:
     # NOTE: check identity not truthiness - requests.Response is falsy for any
     # non-2xx status (Response.__bool__ returns self.ok), which would otherwise
     # report an error response (e.g. 404) as "No Response" and discard the body.
@@ -26,7 +27,19 @@ def _script_response_error(response, message, scope=OPENC3_SCOPE):
         raise RuntimeError(f"{message}: No Response")
 
 
-def script_list(scope=OPENC3_SCOPE):
+def script_list(scope: str = OPENC3_SCOPE) -> list[str]:
+    """List the script files in a scope.
+
+    Args:
+        scope: COSMOS scope.
+
+    Returns:
+        The script file names (target relative paths). Names of scripts with
+        unsaved modifications are returned without the trailing '*'.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = "/script-api/scripts"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
     if not response or response.status_code != 200:
@@ -37,7 +50,20 @@ def script_list(scope=OPENC3_SCOPE):
         return [script.rstrip("*") for script in scripts]
 
 
-def script_syntax_check(script, scope=OPENC3_SCOPE):
+def script_syntax_check(script: str, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
+    """Check the syntax of Python script text.
+
+    Args:
+        script: The script text to check.
+        scope: COSMOS scope.
+
+    Returns:
+        The Script Runner API result with a "success" key added which is True
+        when the syntax check passed.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = "/script-api/scripts/temp.py/syntax"
     # Explicitly set the headers to text/plain so the request.body is set correctly
     headers = {"Content-Type": "text/plain"}
@@ -55,7 +81,19 @@ def script_syntax_check(script, scope=OPENC3_SCOPE):
         return result
 
 
-def script_body(filename, scope=OPENC3_SCOPE):
+def script_body(filename: str, scope: str = OPENC3_SCOPE) -> str | None:
+    """Get the contents of a script file.
+
+    Args:
+        filename: Script file name including the target, e.g. "INST/procedures/test.py".
+        scope: COSMOS scope.
+
+    Returns:
+        The script file contents, or None if the response has no contents.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails, e.g. the file does not exist.
+    """
     endpoint = f"/script-api/scripts/{filename}"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
     if not response or response.status_code != 200:
@@ -65,7 +103,29 @@ def script_body(filename, scope=OPENC3_SCOPE):
         return result.get("contents")
 
 
-def script_run(filename, disconnect=False, environment=None, suite_runner=None, scope=OPENC3_SCOPE):
+def script_run(
+    filename: str,
+    disconnect: bool = False,
+    environment: dict[str, Any] | None = None,
+    suite_runner: dict[str, Any] | None = None,
+    scope: str = OPENC3_SCOPE,
+) -> int:
+    """Start running a script file in Script Runner.
+
+    Args:
+        filename: Script file name including the target, e.g. "INST/procedures/test.py".
+        disconnect: Run the script in disconnect mode.
+        environment: Environment variables to set for the script as name / value pairs.
+        suite_runner: Suite runner options for a suite file, e.g.
+            {"suite": "MySuite", "group": "MyGroup", "script": "script_1"}.
+        scope: COSMOS scope.
+
+    Returns:
+        The ID of the started running script.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     if disconnect:
         endpoint = f"/script-api/scripts/{filename}/run/disconnect"
     else:
@@ -92,7 +152,19 @@ def script_run(filename, disconnect=False, environment=None, suite_runner=None, 
         return script_id
 
 
-def script_delete(filename, scope=OPENC3_SCOPE):
+def script_delete(filename: str, scope: str = OPENC3_SCOPE) -> bool:
+    """Delete a script file.
+
+    Args:
+        filename: Script file name including the target, e.g. "INST/procedures/test.py".
+        scope: COSMOS scope.
+
+    Returns:
+        True when the script was deleted.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = f"/script-api/scripts/{filename}/delete"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, scope=scope)
     if not response or response.status_code != 200:
@@ -101,7 +173,19 @@ def script_delete(filename, scope=OPENC3_SCOPE):
         return True
 
 
-def script_lock(filename, scope=OPENC3_SCOPE):
+def script_lock(filename: str, scope: str = OPENC3_SCOPE) -> bool:
+    """Lock a script file for editing by the current user.
+
+    Args:
+        filename: Script file name including the target, e.g. "INST/procedures/test.py".
+        scope: COSMOS scope.
+
+    Returns:
+        True when the script was locked.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = f"/script-api/scripts/{filename}/lock"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, scope=scope)
     if not response or response.status_code != 200:
@@ -110,7 +194,19 @@ def script_lock(filename, scope=OPENC3_SCOPE):
         return True
 
 
-def script_unlock(filename, scope=OPENC3_SCOPE):
+def script_unlock(filename: str, scope: str = OPENC3_SCOPE) -> bool:
+    """Unlock a script file.
+
+    Args:
+        filename: Script file name including the target, e.g. "INST/procedures/test.py".
+        scope: COSMOS scope.
+
+    Returns:
+        True when the script was unlocked.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = f"/script-api/scripts/{filename}/unlock"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, scope=scope)
     if not response or response.status_code != 200:
@@ -119,7 +215,23 @@ def script_unlock(filename, scope=OPENC3_SCOPE):
         return True
 
 
-def script_instrumented(script, scope=OPENC3_SCOPE):
+def script_instrumented(script: str, scope: str = OPENC3_SCOPE) -> str:
+    """Get the instrumented version of Python script text.
+
+    The instrumented script is what Script Runner executes to track the
+    current line.
+
+    Args:
+        script: The script text to instrument.
+        scope: COSMOS scope.
+
+    Returns:
+        The instrumented script text.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails or the
+            script can't be instrumented, e.g. because of a syntax error.
+    """
     endpoint = "/script-api/scripts/temp.py/instrumented"
     # Explicitly set the headers to text/plain so the request.body is set correctly
     headers = {"Content-Type": "text/plain"}
@@ -134,10 +246,27 @@ def script_instrumented(script, scope=OPENC3_SCOPE):
             parsed = json.loads(result.get("description"))
             return "\n".join(parsed)
         else:
-            raise result
+            raise RuntimeError(f"{result.get('title')}: {result.get('description')}")
 
 
-def script_create(filename, script, breakpoints=None, scope=OPENC3_SCOPE):
+def script_create(
+    filename: str, script: str, breakpoints: list[int] | None = None, scope: str = OPENC3_SCOPE
+) -> dict[str, Any]:
+    """Create or overwrite a script file.
+
+    Args:
+        filename: Script file name including the target, e.g. "INST/procedures/test.py".
+        script: The script text.
+        breakpoints: Line numbers to set breakpoints on.
+        scope: COSMOS scope.
+
+    Returns:
+        The Script Runner API result. For a suite file it includes the parsed
+        "suites", "error" and "success" keys.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     if breakpoints is None:
         breakpoints = []
     endpoint = f"/script-api/scripts/{filename}"
@@ -154,7 +283,18 @@ def script_create(filename, script, breakpoints=None, scope=OPENC3_SCOPE):
         return json.loads(response.text)
 
 
-def script_delete_all_breakpoints(scope=OPENC3_SCOPE):
+def script_delete_all_breakpoints(scope: str = OPENC3_SCOPE) -> bool:
+    """Delete all script breakpoints in a scope.
+
+    Args:
+        scope: COSMOS scope.
+
+    Returns:
+        True when the breakpoints were deleted.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = "/script-api/breakpoints/delete/all"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("delete", endpoint, scope=scope)
     if not response or response.status_code != 200:
@@ -163,7 +303,20 @@ def script_delete_all_breakpoints(scope=OPENC3_SCOPE):
         return True
 
 
-def running_script_list(limit=10, offset=0, scope=OPENC3_SCOPE):
+def running_script_list(limit: int = 10, offset: int = 0, scope: str = OPENC3_SCOPE) -> list[Any]:
+    """List the currently running scripts, most recent first.
+
+    Args:
+        limit: Maximum number of scripts to return.
+        offset: Number of scripts to skip, for paging.
+        scope: COSMOS scope.
+
+    Returns:
+        The running script status records.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = "/script-api/running-script"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
         "get", endpoint, query={"limit": limit, "offset": offset}, scope=scope
@@ -174,7 +327,19 @@ def running_script_list(limit=10, offset=0, scope=OPENC3_SCOPE):
         return json.loads(response.text)["items"]
 
 
-def script_get(id, scope=OPENC3_SCOPE):
+def script_get(id: int | str, scope: str = OPENC3_SCOPE) -> dict[str, Any]:
+    """Get the status of a running or completed script.
+
+    Args:
+        id: Running script ID.
+        scope: COSMOS scope.
+
+    Returns:
+        The script status record.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails, e.g. the ID does not exist.
+    """
     endpoint = f"/script-api/running-script/{id}"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("get", endpoint, scope=scope)
     if not response or response.status_code != 200:
@@ -186,7 +351,7 @@ def script_get(id, scope=OPENC3_SCOPE):
 running_script_get = script_get  # Alias for compatibility
 
 
-def _running_script_action(id, action_name, scope=OPENC3_SCOPE):
+def _running_script_action(id: int | str, action_name: str, scope: str = OPENC3_SCOPE):
     endpoint = f"/script-api/running-script/{id}/{action_name}"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request("post", endpoint, scope=scope)
     if not response or response.status_code != 200:
@@ -195,35 +360,111 @@ def _running_script_action(id, action_name, scope=OPENC3_SCOPE):
         return True
 
 
-def running_script_stop(id, scope=OPENC3_SCOPE):
+def running_script_stop(id: int | str, scope: str = OPENC3_SCOPE) -> None:
+    """Stop a running script.
+
+    Args:
+        id: Running script ID.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     _running_script_action(id, "stop", scope=scope)
 
 
-def running_script_pause(id, scope=OPENC3_SCOPE):
+def running_script_pause(id: int | str, scope: str = OPENC3_SCOPE) -> None:
+    """Pause a running script.
+
+    Args:
+        id: Running script ID.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     _running_script_action(id, "pause", scope=scope)
 
 
-def running_script_retry(id, scope=OPENC3_SCOPE):
+def running_script_retry(id: int | str, scope: str = OPENC3_SCOPE) -> None:
+    """Retry the current line of a running script which is paused on an error.
+
+    Args:
+        id: Running script ID.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     _running_script_action(id, "retry", scope=scope)
 
 
-def running_script_go(id, scope=OPENC3_SCOPE):
+def running_script_go(id: int | str, scope: str = OPENC3_SCOPE) -> None:
+    """Continue a paused running script.
+
+    Args:
+        id: Running script ID.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     _running_script_action(id, "go", scope=scope)
 
 
-def running_script_step(id, scope=OPENC3_SCOPE):
+def running_script_step(id: int | str, scope: str = OPENC3_SCOPE) -> None:
+    """Execute the next line of a running script and pause.
+
+    Args:
+        id: Running script ID.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     _running_script_action(id, "step", scope=scope)
 
 
-def running_script_delete(id, scope=OPENC3_SCOPE):
+def running_script_delete(id: int | str, scope: str = OPENC3_SCOPE) -> None:
+    """Delete a running script from the running script list.
+
+    Args:
+        id: Running script ID.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     _running_script_action(id, "delete", scope=scope)
 
 
-def running_script_backtrace(id, scope=OPENC3_SCOPE):
+def running_script_backtrace(id: int | str, scope: str = OPENC3_SCOPE) -> None:
+    """Request the backtrace of a running script.
+
+    Args:
+        id: Running script ID.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     _running_script_action(id, "backtrace", scope=scope)
 
 
-def running_script_debug(id, debug_code, scope=OPENC3_SCOPE):
+def running_script_debug(id: int | str, debug_code: str, scope: str = OPENC3_SCOPE) -> bool:
+    """Execute debug code in the context of a running script.
+
+    Args:
+        id: Running script ID.
+        debug_code: The code to execute.
+        scope: COSMOS scope.
+
+    Returns:
+        True when the request was accepted.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = f"/script-api/running-script/{id}/debug"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
         "post", endpoint, json=True, data={"args": debug_code}, scope=scope
@@ -234,7 +475,30 @@ def running_script_debug(id, debug_code, scope=OPENC3_SCOPE):
         return True
 
 
-def running_script_prompt(id, method_name, answer, prompt_id, password=None, scope=OPENC3_SCOPE):
+def running_script_prompt(
+    id: int | str,
+    method_name: str,
+    answer: Any,
+    prompt_id: str,
+    password: str | None = None,
+    scope: str = OPENC3_SCOPE,
+) -> bool:
+    """Answer a prompt (e.g. ask or message_box) displayed by a running script.
+
+    Args:
+        id: Running script ID.
+        method_name: Name of the prompting method, e.g. "ask".
+        answer: The answer to the prompt.
+        prompt_id: ID of the prompt being answered.
+        password: Password, for prompts which require one.
+        scope: COSMOS scope.
+
+    Returns:
+        True when the answer was accepted.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = f"/script-api/running-script/{id}/prompt"
     if password:
         response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
@@ -263,7 +527,28 @@ def running_script_prompt(id, method_name, answer, prompt_id, password=None, sco
         return True
 
 
-def running_script_execute_while_paused(id, filename, line_no, end_line_no=None, scope=OPENC3_SCOPE):
+def running_script_execute_while_paused(
+    id: int | str,
+    filename: str,
+    line_no: int,
+    end_line_no: int | None = None,
+    scope: str = OPENC3_SCOPE,
+) -> bool:
+    """Execute a line, or range of lines, of a script while the running script is paused.
+
+    Args:
+        id: Running script ID.
+        filename: Script file name containing the lines to execute.
+        line_no: First line number to execute.
+        end_line_no: Last line number to execute. Only line_no is executed if None.
+        scope: COSMOS scope.
+
+    Returns:
+        True when the request was accepted.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = f"/script-api/running-script/{id}/executewhilepaused"
     if end_line_no is not None:
         response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
@@ -289,7 +574,20 @@ def running_script_execute_while_paused(id, filename, line_no, end_line_no=None,
         return True
 
 
-def completed_script_list(limit=10, offset=0, scope=OPENC3_SCOPE):
+def completed_script_list(limit: int = 10, offset: int = 0, scope: str = OPENC3_SCOPE) -> list[Any]:
+    """List the completed scripts, most recent first.
+
+    Args:
+        limit: Maximum number of scripts to return.
+        offset: Number of scripts to skip, for paging.
+        scope: COSMOS scope.
+
+    Returns:
+        The completed script status records.
+
+    Raises:
+        RuntimeError: If the request to the Script Runner API fails.
+    """
     endpoint = "/script-api/completed-scripts"
     response = openc3.script.SCRIPT_RUNNER_API_SERVER.request(
         "get", endpoint, query={"limit": limit, "offset": offset}, scope=scope

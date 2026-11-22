@@ -10,13 +10,34 @@
 # if purchased from OpenC3, Inc.
 
 import queue
+import re
+from urllib.parse import urlsplit
 
 import requests
 
 from openc3.accessors.http_accessor import HttpAccessor
 from openc3.config.config_parser import ConfigParser
-from openc3.interfaces.interface import Interface
+from openc3.interfaces.interface import Interface, WriteRejectError
 from openc3.packets.packet import Packet
+from openc3.utilities.logger import Logger
+
+
+# Backslash, whitespace and control characters are never valid in HTTP_PATH.
+# \s already covers the control characters 0x09-0x0d and 0x1c-0x1f.
+INVALID_PATH_CHARS = re.compile(r"[\\\s\x00-\x08\x0e-\x1b\x7f]")
+# Query strings can carry credentials, so they are redacted from logs. In a URI
+# everything after the '?' is the query. In other text the query ends at whitespace,
+# which can't appear in a query because HTTP_PATH rejects it and queries are percent-encoded.
+URI_QUERY = re.compile(r"\?.*", re.DOTALL)
+QUERY_STRING = re.compile(r"\?\S+")
+DEFAULT_PORTS = {"http": 80, "https": 443}
+
+
+def redact_queries(text, uri=False):
+    """Replaces query strings with ?[REDACTED] so they aren't logged"""
+    if uri:
+        return URI_QUERY.sub("?[REDACTED]", str(text), count=1)
+    return QUERY_STRING.sub("?[REDACTED]", str(text))
 
 
 class HttpClientInterface(Interface):
@@ -55,6 +76,8 @@ class HttpClientInterface(Interface):
             self.url = f"{self.protocol}://{self.hostname}"
         else:
             self.url = f"{self.protocol}://{self.hostname}:{self.port}"
+        self.base_uri = urlsplit(self.url)
+        self.base_port = self.effective_port(self.base_uri)
         self.read_timeout = ConfigParser.handle_none(read_timeout)
         if self.read_timeout is not None:
             self.read_timeout = float(self.read_timeout)
@@ -130,7 +153,7 @@ class HttpClientInterface(Interface):
         extra = packet.extra
         extra = extra or {}
         data = packet.buffer  # Copy buffer so logged command isn't modified
-        extra["HTTP_URI"] = f"{self.url}{packet.read('HTTP_PATH')}"
+        extra["HTTP_URI"] = self.build_uri(packet.read("HTTP_PATH"))
         extra["HTTP_REQUEST_TARGET_NAME"] = packet.target_name
         return data, extra
 
@@ -153,18 +176,33 @@ class HttpClientInterface(Interface):
         extra = extra or {}
         params = extra.get("HTTP_QUERIES")
         headers = extra.get("HTTP_HEADERS")
-        uri = extra["HTTP_URI"]
-        method = extra["HTTP_METHOD"]
+        uri = extra.get("HTTP_URI")
+        method = extra.get("HTTP_METHOD")
+        # HTTP_URI normally comes from convert_packet_to_data, but write_raw passes
+        # extra straight through, so check the destination here as well
+        self.validate_uri(uri)
 
-        resp = self.http.request(
-            method,
-            uri,
-            params=params,
-            headers=headers,
-            data=data,
-            stream=False,
-            timeout=(self.connect_timeout, self.read_timeout),
-        )
+        try:
+            resp = self.http.request(
+                method,
+                uri,
+                params=params,
+                headers=headers,
+                data=data,
+                stream=False,
+                # A redirect to another host would bypass validate_uri, so redirects
+                # are not followed. A 3xx response is returned like any other response.
+                allow_redirects=False,
+                timeout=(self.connect_timeout, self.read_timeout),
+            )
+        except requests.exceptions.RequestException as error:
+            # Log the details but don't return the raw error to the command sender
+            Logger.error(
+                f"{self.name}: HTTP {str(method).upper()} {redact_queries(uri, uri=True)} failed: {type(error).__name__}: {redact_queries(error)}"
+            )
+            raise RuntimeError(
+                f"HTTP {str(method).upper()} request to {self.url} failed ({type(error).__name__})"
+            ) from None
 
         # Normalize Response into simple hash
         response_data = None
@@ -257,3 +295,50 @@ class HttpClientInterface(Interface):
         result["include_request_in_response"] = self.include_request_in_response
         result["response_queue_length"] = self.response_queue.qsize()
         return result
+
+    def build_uri(self, path):
+        """
+        Builds the request URI from the configured URL and the HTTP_PATH parameter.
+        The request always goes to the configured scheme, host and port.
+
+        Args:
+            path (str): Request path, which must start with a single '/'
+        Returns:
+            str: Full request URI
+        """
+        path = "" if path is None else str(path)
+        if path:
+            if not path.startswith("/") or path.startswith("//"):
+                raise WriteRejectError(f"HTTP_PATH must start with a single '/': {path!r}")
+            if INVALID_PATH_CHARS.search(path):
+                raise WriteRejectError(f"HTTP_PATH contains invalid characters: {path!r}")
+        uri = f"{self.url}{path}"
+        self.validate_uri(uri)
+        return uri
+
+    @staticmethod
+    def effective_port(parsed):
+        """Returns the URI port, or the scheme's default port when it has none, to match Ruby's URI"""
+        if parsed.port is not None:
+            return parsed.port
+        return DEFAULT_PORTS.get(parsed.scheme.lower())
+
+    def validate_uri(self, uri):
+        """
+        Raises WriteRejectError unless the URI goes to the configured scheme, host and port.
+        WriteRejectError rejects the command without disconnecting the interface.
+        """
+        try:
+            parsed = urlsplit(str(uri))
+            port = self.effective_port(parsed)
+        except ValueError:
+            raise WriteRejectError(f"Invalid HTTP URI: {uri!r}") from None
+        if (
+            uri is None
+            or parsed.scheme.lower() != self.base_uri.scheme.lower()
+            or parsed.hostname != self.base_uri.hostname
+            or port != self.base_port
+            or parsed.username is not None
+            or parsed.password is not None
+        ):
+            raise WriteRejectError(f"HTTP URI {uri!r} does not match interface URL {self.url}")

@@ -40,6 +40,9 @@ env:
   # The Fetch VEX Hub step puts the VEX hub in the trivy cache; trivy's own
   # fetch goes through the GitHub API and fails (see fetch-vexhub/action.yml).
   TRIVY_SKIP_VEX_REPO_UPDATE: "true"
+  # Where Fetch VEX Hub writes and the DB cache below restores to. Set so the
+  # trivy CLI reads the same place.
+  TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
 
 permissions:
   contents: read
@@ -50,6 +53,7 @@ jobs:
     permissions:
       contents: read
       packages: write # required to push the GHCR build cache
+      checks: write # required to post the Trivy Scan Results check run
       id-token: write # required for Docker Hub OIDC login
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -58,7 +62,7 @@ jobs:
       # Authenticate Docker Hub pulls via OIDC to avoid anonymous rate limits.
       # Fork PRs get no id-token, so let them fall back to anonymous pulls.
       - name: Docker login
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         continue-on-error: ${{ github.event.pull_request.head.repo.fork == true }}
         env:
           DOCKERHUB_OIDC_CONNECTIONID: 49349db4-6ea2-468a-9d7a-5133cbbc5326
@@ -69,21 +73,14 @@ jobs:
         uses: ./.github/actions/build-cosmos
         with:
           tag: ${{ github.sha }}
-      # aquasecurity/setup-trivy installs the binary once for all the scan
-      # steps below (each passes skip-setup-trivy: true). The version here is
-      # the trivy release, not the action: dependabot bumps the action SHA but
-      # cannot see this input, so it is watched by
-      # .github/workflows/tool_version_check.yml instead.
+      # Installs the trivy binary the scan step below calls directly. The
+      # trivy release is pinned in that action.
       - name: Manual Trivy Setup
-        uses: aquasecurity/setup-trivy@81e514348e19b6112ce2a7e3ecbafe19c1e1f567
-        with:
-          cache: true
-          version: v0.76.1
-      # trivy-action's own cache (cache: false on each scan below) restores all
-      # of .cache/trivy at every scan step, which would overwrite the VEX Hub
-      # checkout with whatever was cached and save that back, so a VEX Hub pin
-      # bump would never take effect. Cache only the vulnerability DBs, once,
-      # before the VEX Hub is fetched. Keyed by day like trivy-action's.
+        uses: ./.github/actions/setup-trivy
+      # Cache only the vulnerability DBs, not all of .cache/trivy: restoring
+      # the whole directory would overwrite the VEX Hub checkout with whatever
+      # was cached and save that back, so a VEX Hub pin bump would never take
+      # effect. Restored before the VEX Hub is fetched. Keyed by day.
       - name: Get current date
         id: date
         run: echo "date=$(date -u +%Y-%m-%d)" >> "$GITHUB_OUTPUT"
@@ -97,200 +94,36 @@ jobs:
           restore-keys: trivy-db-
       - name: Fetch VEX Hub
         uses: ./.github/actions/fetch-vexhub
-      - name: Run Trivy on image ruby
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        # See https://github.com/aquasecurity/trivy-action
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: "docker.io/openc3inc/openc3-ruby:${{ github.sha }}"
-          # output: "trivy-ruby.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # NOTE: Disabling upload of SARIF files so we can see the output in the job
-      # like with COSMOS Enterprise. To re-enable, uncomment the Upload lines,
-      # and output: "trivy-ruby.sarif" as well as setting format: "sarif" in trivy.yaml.
+      # Findings do not fail this job: they are posted as a neutral (gray)
+      # "Trivy Scan Results" check run, listed in the job summary, and emitted
+      # as warnings. Most come from upstream base images a PR cannot fix, and
+      # a red check on every PR hides which ones are actually broken. A build
+      # failure above still fails the job.
       #
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-ruby"
-      #     sarif_file: "trivy-ruby.sarif"
-      - name: Run Trivy on image node
+      # To bring back SARIF upload to code scanning, set format: "sarif" in
+      # trivy.yaml and upload each image's output with
+      # github/codeql-action/upload-sarif, passing that image's report path
+      # and a distinct category per image. The uploading job also needs
+      # `security-events: write`; leave it out while uploads are disabled.
+      - name: Run Trivy on the images
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
+        uses: ./.github/actions/trivy-scan
         with:
-          image-ref: "docker.io/openc3inc/openc3-node:${{ github.sha }}"
-          # output: "trivy-node.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-node"
-      #     sarif_file: "trivy-node.sarif"
-      - name: Run Trivy on image base
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: "docker.io/openc3inc/openc3-base:${{ github.sha }}"
-          # output: "trivy-base.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-base"
-      #     sarif_file: "trivy-base.sarif"
-      - name: Run Trivy on image cosmos-init
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: "docker.io/openc3inc/openc3-cosmos-init:${{ github.sha }}"
-          # output: "trivy-init.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-init"
-      #     sarif_file: "trivy-init.sarif"
-      - name: Run Trivy on image redis
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: "docker.io/openc3inc/openc3-redis:${{ github.sha }}"
-          # output: "trivy-redis.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-redis"
-      #     sarif_file: "trivy-redis.sarif"
-      - name: Run Trivy on image bucket
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: "docker.io/openc3inc/openc3-buckets:${{ github.sha }}"
-          # output: "trivy-bucket.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-buckets"
-      #     sarif_file: "trivy-bucket.sarif"
-      - name: Run Trivy on image tsdb
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: "docker.io/openc3inc/openc3-tsdb:${{ github.sha }}"
-          # output: "trivy-tsdb.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-tsdb"
-      #     sarif_file: "trivy-tsdb.sarif"
-      - name: Run Trivy on image operator
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: "docker.io/openc3inc/openc3-operator:${{ github.sha }}"
-          # output: "trivy-operator.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-operator"
-      #     sarif_file: "trivy-operator.sarif"
-      - name: Run Trivy on image cmd-tlm-api
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: "docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:${{ github.sha }}"
-          # output: "trivy-cmd-tlm-api.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-cmd-tlm-api"
-      #     sarif_file: "trivy-cmd-tlm-api.sarif"
-      - name: Run Trivy on image script-runner-api
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: "docker.io/openc3inc/openc3-cosmos-script-runner-api:${{ github.sha }}"
-          # output: "trivy-script-runner-api.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-script-runner-api"
-      #     sarif_file: "trivy-script-runner-api.sarif"
-      - name: Run Trivy on image traefik
-        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25
-        with:
-          image-ref: "docker.io/openc3inc/openc3-traefik:${{ github.sha }}"
-          # output: "trivy-traefik.sarif"
-          trivy-config: trivy.yaml
-          skip-setup-trivy: true
-          cache: false
-      # - name: Upload Trivy scan results
-      #   if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-      #   uses: github/codeql-action/upload-sarif@v3
-      #   with:
-      #     category: "openc3-traefik"
-      #     sarif_file: "trivy-traefik.sarif"
-      # - uses: anchore/scan-action/download-grype@v3
-      #   id: grype
-      # - name: Run grype on the image ruby
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-ruby:latest
-      # - name: Run grype on the image node
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-node:latest
-      # - name: Run grype on the image base
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-base:latest
-      # - name: Run grype on the image init
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-init:latest
-      # - name: Run grype on the image redis
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-redis:latest
-      # - name: Run grype on the image bucket
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-buckets:latest
-      # - name: Run grype on the image tsdb
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-tsdb:latest
-      # - name: Run grype on the image operator
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-operator:latest
-      # - name: Run grype on the image cmd-tlm-api
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-cmd-tlm-api:latest
-      # - name: Run grype on the image script-runner-api
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-cosmos-script-runner-api:latest
-      # - name: Run grype on the image traefik
-      #   run: ${{steps.grype.outputs.cmd}} docker.io/openc3inc/openc3-traefik:latest
+          check-name: Trivy Scan Results
+          image-prefix: docker.io/openc3inc
+          tag: ${{ github.sha }}
+          images: >-
+            openc3-ruby
+            openc3-node
+            openc3-base
+            openc3-cosmos-init
+            openc3-redis
+            openc3-buckets
+            openc3-tsdb
+            openc3-operator
+            openc3-cosmos-cmd-tlm-api
+            openc3-cosmos-script-runner-api
+            openc3-traefik
 
   # Dependency Snapshots are recorded against GITHUB_REF, so this is kept off
   # pull requests: filing a PR branch's dependencies would corrupt the repo

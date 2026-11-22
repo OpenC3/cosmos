@@ -10,12 +10,14 @@
 # if purchased from OpenC3, Inc.
 
 import json
+import re
 
 from openc3.models.model import Model
 
 
 class ScopeModel(Model):
     PRIMARY_KEY = "openc3_scopes"
+    MAX_CRITICAL_CMD_APPROVERS = 10
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -64,6 +66,7 @@ class ScopeModel(Model):
         cleanup_poll_time: int = 3600,
         command_authority: bool = False,
         critical_commanding: str = "OFF",
+        critical_cmd_approvers: int = 1,
         shard: int = 0,
         updated_at: int = None,
     ):
@@ -86,6 +89,25 @@ class ScopeModel(Model):
             self.critical_commanding = "OFF"
         if self.critical_commanding not in ["OFF", "NORMAL", "ALL"]:
             raise RuntimeError(f"Invalid value for critical_commanding: {self.critical_commanding}")
+        # Number of distinct users (other than the sender) who must approve each critical command
+        # Only accept whole numbers so values like 1.9 or "2oops" aren't silently truncated
+        approvers = critical_cmd_approvers if critical_cmd_approvers is not None else 1
+        if isinstance(approvers, str):
+            approvers = approvers.strip()
+        self.critical_cmd_approvers = None
+        if (isinstance(approvers, int) and not isinstance(approvers, bool)) or (
+            isinstance(approvers, str) and re.fullmatch(r"\d+", approvers)
+        ):
+            self.critical_cmd_approvers = int(approvers)
+        if (
+            self.critical_cmd_approvers is None
+            or self.critical_cmd_approvers < 1
+            or self.critical_cmd_approvers > self.MAX_CRITICAL_CMD_APPROVERS
+        ):
+            raise RuntimeError(
+                f"Invalid value for critical_cmd_approvers: {critical_cmd_approvers} "
+                f"(must be 1 to {self.MAX_CRITICAL_CMD_APPROVERS})"
+            )
         self.shard = shard
         if self.shard is None:
             self.shard = 0
@@ -103,5 +125,6 @@ class ScopeModel(Model):
             "cleanup_poll_time": self.cleanup_poll_time,
             "command_authority": self.command_authority,
             "critical_commanding": self.critical_commanding,
+            "critical_cmd_approvers": self.critical_cmd_approvers,
             "shard": self.shard,
         }

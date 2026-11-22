@@ -84,7 +84,7 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this router
       authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       if router_name == 'ALL'
-        get_router_names().each do |router_name|
+        get_router_names(manual: manual, scope: scope, token: token).each do |router_name|
           RouterTopic.start_raw_logging(router_name, scope: scope)
         end
       else
@@ -99,7 +99,7 @@ module OpenC3
       # TODO: Check if they have command authority for the targets mapped to this router
       authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
       if router_name == 'ALL'
-        get_router_names().each do |router_name|
+        get_router_names(manual: manual, scope: scope, token: token).each do |router_name|
           RouterTopic.stop_raw_logging(router_name, scope: scope)
         end
       else

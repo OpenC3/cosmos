@@ -442,8 +442,13 @@ module OpenC3
         @container = parameters[0]
 
       when 'ROUTE_PREFIX'
-        parser.verify_num_parameters(1, 1, "#{keyword} <Route Prefix>")
-        @prefix = parameters[0]
+        usage = "#{keyword} <Route Prefix>"
+        parser.verify_num_parameters(1, 1, usage)
+        begin
+          @prefix = MicroserviceModel.validate_route_prefix(parameters[0])
+        rescue RuntimeError => error
+          raise ConfigParser::Error.new(parser, error.message, usage)
+        end
 
       when 'SHARD'
         parser.verify_num_parameters(1, 1, "#{keyword} <Shard Number Starting from 0>")

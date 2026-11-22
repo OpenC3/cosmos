@@ -120,6 +120,7 @@
 </template>
 
 <script>
+import { OpenC3Api } from '@openc3/js-common/services'
 import Updater from './Updater'
 import { activateSharedResource, applySharedResources } from './sharedResources'
 import InterfaceFlowChart from './InterfaceComponents/InterfaceFlowChart.vue'
@@ -135,6 +136,7 @@ export default {
   },
   data() {
     return {
+      api: new OpenC3Api(),
       search: '',
       data: [],
       buttonsDisabled: false,
@@ -181,12 +183,10 @@ export default {
               } else {
                 return 1
               }
+            } else if (a[column] === 'CONNECTED') {
+              return 1
             } else {
-              if (a[column] === 'CONNECTED') {
-                return 1
-              } else {
-                return -1
-              }
+              return -1
             }
           } else if (column === 'name') {
             // Items are the same so continue to let subsequent column sorts apply

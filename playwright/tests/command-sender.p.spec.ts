@@ -763,7 +763,7 @@ for (const target of ['INST', 'INST2']) {
     )
 
     // Open Packet Viewer to verify the telemetry
-    await page.locator('rux-icon-apps').getByRole('img').click()
+    await page.locator('[data-test="nav-drawer-toggle"]').click()
     await page.locator('text=Packet Viewer').click()
     await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
     await expect(page.locator('.v-table')).toContainText('PACKET_TIMESECONDS *')
