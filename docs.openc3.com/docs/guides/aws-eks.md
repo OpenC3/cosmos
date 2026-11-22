@@ -56,7 +56,7 @@ Change `cosmosDomain`, `cosmosExternalUrl`, and potentially the registry. You al
 - `cloud.aws.region` (and `cloud.aws.arnPrefix` to `arn:aws-us-gov` for US GovCloud)
 - `serviceAccount.annotations` with your account ID and stack name
 - `aws.certArn` to your ACM certificate ARN
-- `grafana.rootUrl`, `grafana.authUrl`, and `keycloak.externalUrl` to match your domain
+- `keycloak.externalUrl` to match your domain. Grafana uses it and `cosmosExternalUrl`, so the `grafana.rootUrl` and `grafana.authUrl` values from older charts are no longer needed.
 
 The AWS ALB terminates TLS with the ACM certificate, so keep `ssl: true` and `traefik.tlsCerts: false`. See [SSL-TLS](/docs/configuration/ssl-tls#pattern-1-platform-load-balancer-terminates-tls-aws-eks-gcp-gke) for details on this pattern and the `openc3-cacert` secret.
 

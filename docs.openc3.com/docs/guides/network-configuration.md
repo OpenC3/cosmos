@@ -40,12 +40,14 @@ OPENC3_EXTERNAL_URL=https://mydomain.com
 OPENC3_KEYCLOAK_EXTERNAL_URL=https://mydomain.com/auth
 ```
 
-That is the only change needed. `compose.yaml` passes these values to Keycloak (its `KC_HOSTNAME`) and to Grafana, whose `grafana.ini` and COSMOS data source read them from the environment, so you don't edit any Keycloak or Grafana files.
+That is the only file change needed. `compose.yaml` passes these values to Keycloak (its `KC_HOSTNAME`) and to Grafana, whose `grafana.ini` and COSMOS data source are built into its image and read them from the environment, so you don't edit any Keycloak or Grafana files. Keycloak itself must also accept the new URL: add it to the valid redirect URIs of the `api` and `grafana` clients as described in [Keycloak Configuration](https://repos.openc3.com/OpenC3/cosmos-enterprise-project/src/branch/main/KeycloakConfiguration.md#updating-the-redirect-url).
 
-Leave `OPENC3_KEYCLOAK_URL` set to the internal service URL `http://openc3-keycloak:8080/auth`. COSMOS containers use it to talk to Keycloak directly.
+Leave `OPENC3_KEYCLOAK_URL` set to the internal service URL `http://openc3-keycloak:8080/auth`. COSMOS containers, including Grafana, use it to talk to Keycloak directly.
+
+To change any other Grafana setting, add a `GF_<SECTION>_<KEY>` variable to the `openc3-grafana` service in `compose.override.yaml`, e.g. `GF_LOG_LEVEL=debug` for `level` under `[log]`. If you regenerate the secret of the Keycloak `grafana` client, set `OPENC3_GRAFANA_CLIENT_SECRET` in `.env.local`.
 
 :::note[Upgrading from 7.5.1 or earlier]
-Earlier releases had you set `KC_HOSTNAME` in `compose.override.yaml` and edit `openc3-enterprise-grafana/cosmos.yaml` and `grafana.ini` directly. Once you upgrade and have the two URLs in `.env.local`, remove the `KC_HOSTNAME` entry from your `compose.override.yaml`. The upgrade replaces the Grafana files with versions that read the environment, so there is nothing to carry over from them.
+Earlier releases had you set `KC_HOSTNAME` in `compose.override.yaml` and edit `openc3-enterprise-grafana/cosmos.yaml` and `grafana.ini` directly. Those files are no longer used. The upgrade (or the first `openc3.sh run` afterwards, if an older upgrade script did the upgrade) migrates them for you: it moves a changed client secret into `.env.local`, prints any other changed setting as the `GF_` line to add to `compose.override.yaml`, and saves copies as `.bak` files. Once the two URLs are in `.env.local`, you can remove the `KC_HOSTNAME` entry from your `compose.override.yaml`.
 :::
 
 ## Choose a Configuration
