@@ -176,20 +176,6 @@ module OpenC3
       @bucket = Bucket.getClient()
     end
 
-    # Validate the route prefix on every write, including microservices created
-    # directly through the API rather than from a plugin.txt. An update that keeps
-    # the stored prefix is allowed, so a microservice stored before prefixes were
-    # validated can still be started and stopped (#traefik doesn't route it).
-    def create(update: false, force: false, queued: false)
-      if @prefix
-        existing = self.class.get(name: @name) if update
-        unless existing and existing['prefix'] == @prefix
-          @prefix = self.class.validate_route_prefix(@prefix)
-        end
-      end
-      super(update: update, force: force, queued: queued)
-    end
-
     # Resolve the Python environment variables that will be used at runtime.
     # This mirrors the logic in MicroserviceOperator#convert_microservice_to_process_definition.
     def runtime_python_env
@@ -319,11 +305,20 @@ module OpenC3
       return nil
     end
 
-    # Join the shared resource before the model is written so the operator never
-    # sees the microservice without its shared resource record
+    # Validate the route prefix on every write, including microservices created
+    # directly through the API rather than from a plugin.txt. An update that keeps
+    # the stored prefix is allowed, so a microservice stored before prefixes were
+    # validated can still be started and stopped (#traefik doesn't route it).
+    #
     # Join the shared resource before the operator can see the microservice so
-    # it is never started in a scope where the resource isn't active
+    # it is never started in a scope where the resource isn't active.
     def create(update: false, force: false, queued: false)
+      if @prefix
+        existing = self.class.get(name: @name) if update
+        unless existing and existing['prefix'] == @prefix
+          @prefix = self.class.validate_route_prefix(@prefix)
+        end
+      end
       added = false
       if @shared_resource and not update
         type = shared_resource_member_type()
