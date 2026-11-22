@@ -267,6 +267,20 @@ module OpenC3
       end
     end
 
+    describe "target_name_from_topic" do
+      it "extracts the target name from the hash tag" do
+        expect(Topic.target_name_from_topic('DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS')).to eql 'INST'
+        expect(Topic.target_name_from_topic('DEFAULT__openc3_log_messages')).to be_nil
+      end
+
+      it "handles pathological input in linear time" do
+        topic = '__{' + ('{|__{' * 50_000)
+        start = Time.now
+        expect(Topic.target_name_from_topic(topic)).to be_nil
+        expect(Time.now - start).to be < 1.0
+      end
+    end
+
     describe "group_topics_by_db_shard" do
       before(:each) do
         set_target_db_shard('INST', 0)

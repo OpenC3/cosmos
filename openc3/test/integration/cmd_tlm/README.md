@@ -12,12 +12,18 @@ ruby test/integration/cmd_tlm/generate_cmd_tlm.rb
 ```
 
 By default this writes `generated/targets/BIG/cmd_tlm/{tlm.txt,cmd.txt}`
-(about 125 MB, gitignored) containing:
+(about 215 MB, gitignored) containing:
 
-- 2,000 telemetry packets with 500,000 items and 2,000,000 states
-  (4 states per item). Packet and item descriptions are 50 to 250 characters.
-- 2,000 command packets with 500,000 parameters, also with 50 to 250
-  character packet and parameter descriptions.
+- 2,000 telemetry packets with 500,000 items and about 2,000,000 states
+  (4 states per item, except `PKT0 ITEM1`, which has 1,000). Packet and item
+  descriptions are 50 to 250 characters.
+- 2,000 command packets with 500,000 parameters and about 2,000,000 states
+  (4 states per parameter, except `CMD0 PARAM1`, which has 1,000), also with
+  50 to 250 character packet and parameter descriptions.
+
+States are named `S0`, `S1`, and so on, with values counting up from 0.
+`--tlm-item1-states` and `--cmd-param1-states` change the size of the one
+large state list.
 
 Each packet starts with an ID item/parameter, which counts toward the totals.
 Output is deterministic for a given `--seed`. Run with `--help` to change any
@@ -25,7 +31,7 @@ of the counts, e.g. for a quick smoke test:
 
 ```bash
 ruby test/integration/cmd_tlm/generate_cmd_tlm.rb --tlm-packets 20 --tlm-items 5000 \
-  --tlm-states 20000 --cmd-packets 20 --cmd-params 1500
+  --tlm-states 20000 --cmd-packets 20 --cmd-params 1500 --cmd-states 6000
 ```
 
 ## Install as a plugin

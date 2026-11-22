@@ -11,6 +11,7 @@
 
 import json
 from datetime import datetime
+from typing import Any
 
 import openc3.script
 from openc3.environment import OPENC3_SCOPE
@@ -19,117 +20,209 @@ from openc3.top_level import CriticalCmdError, HazardousError
 from openc3.utilities.extract import *
 
 
-def cmd(*args, **kwargs):
-    """Send a command to the specified target
-    Usage:
-      cmd(target_name, cmd_name, cmd_params = {})
-    or
-      cmd('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+def cmd(*args: Any, **kwargs: Any) -> None:
+    """Send a command packet to a target.
+
+    The script logs the command and, if it is hazardous or critical, prompts
+    the user before sending it.
+
+    Accepts two calling styles. Favor the first as it is more succinct::
+
+        cmd("TGT CMD with PARAM1 val, PARAM2 val")
+        cmd("TGT", "CMD", {"PARAM1": val, "PARAM2": val})
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Optional keyword arguments: scope (COSMOS scope), timeout
+            (seconds to wait for the command acknowledgement), log_message
+            (True or False to override whether the command is logged),
+            validate (True or False, default True), queue (name of the queue
+            to send the command to, or False to bypass OPENC3_DEFAULT_QUEUE)
+            and extra (dict of extra data to send with the command).
     """
     return _cmd("cmd", "cmd_no_hazardous_check", *args, **kwargs)
 
 
-def cmd_raw(*args, **kwargs):
-    """Send a command to the specified target without running conversions
-    Usage:
-      cmd_raw(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_raw('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+def cmd_raw(*args: Any, **kwargs: Any) -> None:
+    """Send a command packet to a target without converting the parameter values.
+
+    Parameter values are given as RAW values. See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
     """
     return _cmd("cmd_raw", "cmd_raw_no_hazardous_check", *args, **kwargs)
 
 
-def cmd_no_range_check(*args, **kwargs):
-    """Send a command to the specified target without range checking parameters
-    Usage:
-      cmd_no_range_check(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_no_range_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+def cmd_no_range_check(*args: Any, **kwargs: Any) -> None:
+    """Send a command packet to a target without range checking the parameters.
+
+    Useful for testing to allow sending parameters outside the allowable
+    range defined in the configuration. See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
     """
     return _cmd("cmd_no_range_check", "cmd_no_checks", *args, **kwargs)
 
 
-def cmd_raw_no_range_check(*args, **kwargs):
-    """Send a command to the specified target without range checking parameters or running conversions
-    Usage:
-      cmd_raw_no_range_check(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_raw_no_range_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+def cmd_raw_no_range_check(*args: Any, **kwargs: Any) -> None:
+    """Send a command with RAW parameter values and without range checking the parameters.
+
+    See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
     """
     return _cmd("cmd_raw_no_range_check", "cmd_raw_no_checks", *args, **kwargs)
 
 
-def cmd_no_hazardous_check(*args, **kwargs):
-    """Send a command to the specified target without hazardous checks
-    Usage:
-      cmd_no_hazardous_check(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_no_hazardous_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+def cmd_no_hazardous_check(*args: Any, **kwargs: Any) -> None:
+    """Send a command packet to a target without hazardous checks.
+
+    Hazardous checks are skipped on both the command and its parameters.
+    Useful in scripts to prevent prompting the user. See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
     """
     return _cmd("cmd_no_hazardous_check", None, *args, **kwargs)
 
 
-def cmd_raw_no_hazardous_check(*args, **kwargs):
-    """Send a command to the specified target without hazardous checks or running conversions
-    Usage:
-      cmd_raw_no_hazardous_check(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_raw_no_hazardous_check('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+def cmd_raw_no_hazardous_check(*args: Any, **kwargs: Any) -> None:
+    """Send a command with RAW parameter values and without hazardous checks.
+
+    See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
     """
     return _cmd("cmd_raw_no_hazardous_check", None, *args, **kwargs)
 
 
-def cmd_no_checks(*args, **kwargs):
-    """Send a command to the specified target without range checking or hazardous checks
-    Usage:
-      cmd_no_checks(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_no_checks('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+def cmd_no_checks(*args: Any, **kwargs: Any) -> None:
+    """Send a command packet to a target without range or hazardous checks.
+
+    See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
     """
     return _cmd("cmd_no_checks", None, *args, **kwargs)
 
 
-def cmd_raw_no_checks(*args, **kwargs):
-    """Send a command to the specified target without range checking or hazardous checks or running conversions
-    Usage:
-      cmd_raw_no_checks(target_name, cmd_name, cmd_params = {})
-    or
-      cmd_raw_no_checks('target_name cmd_name with cmd_param1 value1, cmd_param2 value2')
+def cmd_raw_no_checks(*args: Any, **kwargs: Any) -> None:
+    """Send a command with RAW parameter values and without range or hazardous checks.
+
+    See `cmd` for the calling styles.
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        **kwargs: Keyword arguments described in `cmd`.
     """
     return _cmd("cmd_raw_no_checks", None, *args, **kwargs)
 
 
-def build_cmd(*args, **kwargs):
-    """Builds a command binary
-    Accepts two different calling styles:
-    build_command("TGT CMD with PARAM1 val, PARAM2 val")
-    build_command('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})"""
-    extract_string_kwargs_to_args(args, kwargs)
-    return openc3.script.API_SERVER.build_cmd(*args)
+def build_cmd(
+    *args: Any,
+    range_check: bool = True,
+    raw: bool = False,
+    timeout: float = 5,
+    scope: str = OPENC3_SCOPE,
+) -> dict[str, Any]:
+    """Build a command binary without sending it.
+
+    Accepts two calling styles. Favor the first as it is more succinct::
+
+        build_cmd("TGT CMD with PARAM1 val, PARAM2 val")
+        build_cmd("TGT", "CMD", {"PARAM1": val, "PARAM2": val})
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        range_check: Whether to range check the parameters.
+        raw: Whether the parameter values are RAW values.
+        timeout: Seconds to wait for the decom microservice to build the command.
+        scope: COSMOS scope.
+
+    Returns:
+        The built command with the raw bytes under the "buffer" key.
+    """
+    return openc3.script.API_SERVER.build_cmd(*args, range_check=range_check, raw=raw, timeout=timeout, scope=scope)
 
 
 # build_command is DEPRECATED
 build_command = build_cmd
 
 
-def get_cmd_hazardous(*args, **kwargs):
-    """Returns whether a command is hazardous (true or false)"""
-    extract_string_kwargs_to_args(args, kwargs)
-    return openc3.script.API_SERVER.get_cmd_hazardous(*args)
+def get_cmd_hazardous(*args: Any, scope: str = OPENC3_SCOPE) -> bool:
+    """Return whether a command is hazardous.
+
+    A command is hazardous if the command itself is marked hazardous or if a
+    given parameter value matches the name or value of a hazardous state.
+
+    Accepts two calling styles::
+
+        get_cmd_hazardous("TGT CMD with PARAM1 val, PARAM2 val")
+        get_cmd_hazardous("TGT", "CMD", {"PARAM1": val, "PARAM2": val})
+
+    Args:
+        *args: A single "TGT CMD with PARAM1 val, PARAM2 val" string, or the
+            target name, command name and optional dict of parameter values.
+        scope: COSMOS scope.
+
+    Returns:
+        Whether the command is hazardous.
+    """
+    return openc3.script.API_SERVER.get_cmd_hazardous(*args, scope=scope)
 
 
-# Returns the time the most recent command was sent
-def get_cmd_time(target_name=None, command_name=None, scope=OPENC3_SCOPE):
+def get_cmd_time(
+    target_name: str | None = None, command_name: str | None = None, scope: str = OPENC3_SCOPE
+) -> list[Any]:
+    """Return the time the most recent command was sent.
+
+    Args:
+        target_name: Target name of the command. If not given, the most recent
+            time from all commands is returned.
+        command_name: Command name. If not given, the most recent time from
+            the given target is returned.
+        scope: COSMOS scope.
+
+    Returns:
+        The target name, command name and the time as a datetime. If no
+        command has been sent, the names are None and the time is the epoch.
+    """
     results = openc3.script.API_SERVER.get_cmd_time(target_name, command_name, scope=scope)
     results = list(results)
-    if results[2] and results[3]:
+    if results[2] is not None and results[3] is not None:
         results[2] = datetime.fromtimestamp(results[2] + results[3] / 1000000)
-        results.pop(3)
+    results.pop(3)
     return results
 
 
 # Format the command like it appears in a script
-def _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscated_items):
+def _cmd_string(
+    target_name: str,
+    cmd_name: str,
+    cmd_params: dict[str, Any] | None,
+    raw: bool,
+    obfuscated_items: list[str] | str | None,
+):
     # Normally obfuscated_items is returned as an list formatted as a JSON string
     # because we're hitting the API server, but in the case of a disconnect command, it is a list
     if obfuscated_items and isinstance(obfuscated_items, str):
@@ -167,9 +260,9 @@ def _cmd_string(target_name, cmd_name, cmd_params, raw, obfuscated_items):
     return output_string
 
 
-def _log_cmd(cmd, raw, no_range, no_hazardous):
-    """Log any warnings about disabling checks and log the command itself
-    NOTE: This is a helper method and should not be called directly"""
+# Log any warnings about disabling checks and log the command itself
+# NOTE: This is a helper method and should not be called directly
+def _log_cmd(cmd: dict[str, Any], raw: bool, no_range: bool, no_hazardous: bool):
     if no_range:
         print(f"WARN: Command {cmd['target_name']} {cmd['cmd_name']} being sent ignoring range checks")
     if no_hazardous:
@@ -185,7 +278,7 @@ def _log_cmd(cmd, raw, no_range, no_hazardous):
     )
 
 
-def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
+def _cmd_disconnect(cmd: str, raw: bool, no_range: bool, no_hazardous: bool, *args: Any, scope: str):
     match len(args):
         case 1:
             target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
@@ -220,23 +313,25 @@ def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope):
     _log_cmd(command, raw, no_range, no_hazardous)
 
 
+# Send the command and log the results
+# This method signature has to include the keyword params present in cmd_api.py cmd_implementation()
+# NOTE: This is a helper method and should not be called directly
 def _cmd(
-    cmd,
-    cmd_no_hazardous,
-    *args,
-    timeout=None,
-    log_message=None,
-    validate=True,
-    queue=None,
-    scope=OPENC3_SCOPE,
+    cmd: str,
+    cmd_no_hazardous: Any,
+    *args: Any,
+    timeout: float | None = None,
+    log_message: bool | None = None,
+    validate: bool = True,
+    queue: str | bool | None = None,
+    extra: dict[str, Any] | None = None,
+    scope: str = OPENC3_SCOPE,
 ):
-    """Send the command and log the results
-    # This method signature has to include the keyword params present in cmd_api.py cmd_implementation()
-    NOTE: This is a helper method and should not be called directly"""
-
     raw = "raw" in cmd
     no_range = "no_range" in cmd or "no_checks" in cmd
     no_hazardous = "no_hazardous" in cmd or "no_checks" in cmd
+    # Only send extra when given so commands still work against servers that predate it
+    extra_kwargs = {} if extra is None else {"extra": extra}
 
     if openc3.script.DISCONNECT:
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope=scope)
@@ -249,6 +344,7 @@ def _cmd(
                     log_message=log_message,
                     validate=validate,
                     queue=queue,
+                    **extra_kwargs,
                     scope=scope,
                 )
                 if log_message is None or log_message:
@@ -270,6 +366,7 @@ def _cmd(
                     log_message=log_message,
                     validate=validate,
                     queue=queue,
+                    **extra_kwargs,
                     scope=scope,
                 )
                 if log_message is None or log_message:
@@ -286,6 +383,7 @@ def _cmd(
                 error.command["cmd_name"],
                 error.command["cmd_params"],
                 error.command["cmd_string"],
+                scope=scope,
             )
             if log_message is None or log_message:
                 _log_cmd(error.command, raw, no_range, no_hazardous)

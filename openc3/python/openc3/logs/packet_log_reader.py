@@ -51,6 +51,7 @@ from openc3.logs.packet_log_constants import (
 )
 from openc3.packets.json_packet import JsonPacket
 from openc3.packets.packet import Packet
+from openc3.utilities.json import JsonDecoder
 
 
 class PacketLogReader:
@@ -306,7 +307,7 @@ class PacketLogReader:
             if is_cbor:
                 extra = cbor2.loads(extra_encoded)
             else:
-                extra = json.loads(extra_encoded)
+                extra = json.loads(extra_encoded, cls=JsonDecoder)
 
         data = entry[next_offset:]
         return received_time_nsec, extra, data

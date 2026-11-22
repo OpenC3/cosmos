@@ -333,7 +333,8 @@ class Store(metaclass=StoreMeta):
     # @return [Integer] the number of entries actually deleted
     def trim_topic(self, topic, minid, approximate=True, limit=0):
         with self.redis_pool.get() as redis:
-            return redis.xtrim(name=topic, minid=minid, approximate=approximate, limit=limit)
+            # XTRIM only accepts LIMIT together with the ~ modifier
+            return redis.xtrim(name=topic, minid=minid, approximate=approximate, limit=limit if approximate else None)
 
 
 class EphemeralStore(Store):

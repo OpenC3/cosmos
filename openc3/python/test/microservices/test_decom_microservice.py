@@ -31,6 +31,8 @@ from openc3.topics.limits_event_topic import LimitsEventTopic
 from openc3.topics.telemetry_topic import TelemetryTopic
 from openc3.topics.topic import Topic
 from openc3.utilities.store import Store
+from openc3.utilities.store_queued import EphemeralStoreQueued, StoreQueued
+from openc3.utilities.time import to_nsec_from_epoch
 from test.test_helper import (
     capture_io,
     mock_redis,
@@ -97,11 +99,9 @@ class TestDecomMicroservice(unittest.TestCase):
         packet.received_time = datetime.now(timezone.utc)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            # Wait for async processing to complete with retries for CI reliability
-            for _ in range(10):
-                time.sleep(0.01)
-                if "GROUND2STATUS" in stdout.getvalue():
-                    break
+            # Limits messages are logged before the CVT is written, so wait for
+            # the CVT (the last step of decom) rather than a log message
+            wait_for(lambda: tlm("INST HEALTH_STATUS TEMP1") is not None)
             self.assertIn(
                 "INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)",
                 stdout.getvalue(),
@@ -220,6 +220,23 @@ class TestDecomMicroservice(unittest.TestCase):
             # Should report the actual value and limits state
             self.assertIn("INST HEALTH_STATUS TEMP1 = 0 is BLUE", output)
 
+    def test_limits_change_includes_the_change_type(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.now(timezone.utc)
+        item = packet.get_item("COLLECTS")
+        item.limits.change_type = "SEQUENCE"
+        item.limits.state = "RED"
+        try:
+            for stdout in capture_io():
+                self.dm.limits_change_callback(packet, item, "GREEN", 5, True)
+                self.assertIn("INST HEALTH_STATUS COLLECTS = 5 is RED (SEQUENCE)", stdout.getvalue())
+            for stdout in capture_io():
+                self.dm.limits_change_callback(packet, item, "GREEN", False, True)
+                self.assertIn("INST HEALTH_STATUS COLLECTS = False is RED (SEQUENCE)", stdout.getvalue())
+        finally:
+            item.limits.change_type = None
+            item.limits.state = None
+
     @patch("openc3.microservices.decom_microservice.System.limits_set")
     def test_falls_back_to_default_limits_set_when_selected_set_is_not_defined(self, mock_limits_set):
         """When the system limits set (e.g. TVAC) is not defined for an item,
@@ -321,6 +338,41 @@ class TestDecomMicroservice(unittest.TestCase):
                 )
         self.assertFalse(System.limits.enabled("INST", "HEALTH_STATUS", "TEMP1"))
 
+    def test_queues_the_decom_writes_every_tenth_of_a_second_by_default(self):
+        self.assertTrue(self.dm.queued)
+        self.assertEqual(EphemeralStoreQueued.all_shards_update_interval, 0.1)
+        self.assertEqual(StoreQueued.all_shards_update_interval, 0.1)
+
+    def test_uses_the_update_interval_option_and_disables_queuing_with_zero(self):
+        self.dm.config = {"options": [["UPDATE_INTERVAL", 0.5]]}
+        with (
+            patch.object(EphemeralStoreQueued, "set_update_interval_all_shards") as ephemeral_set,
+            patch.object(StoreQueued, "set_update_interval_all_shards") as store_set,
+        ):
+            self.dm.setup_queued_writes()
+        ephemeral_set.assert_called_once_with(0.5)
+        store_set.assert_called_once_with(0.5)
+        self.assertTrue(self.dm.queued)
+
+        self.dm.config = {"options": [["UPDATE_INTERVAL", "0"]]}
+        self.dm.setup_queued_writes()
+        self.assertFalse(self.dm.queued)
+
+    def test_passes_queued_to_write_packet(self):
+        packet = System.telemetry.packet("INST", "HEALTH_STATUS")
+        packet.received_time = datetime.now(timezone.utc)
+        msg_hash = {
+            b"target_name": b"INST",
+            b"packet_name": b"HEALTH_STATUS",
+            b"stored": b"false",
+            b"received_time": str(to_nsec_from_epoch(packet.received_time)).encode(),
+            b"received_count": b"1",
+            b"buffer": bytes(packet.buffer),
+        }
+        with patch("openc3.microservices.decom_microservice.TelemetryDecomTopic.write_packet") as write_packet:
+            self.dm.decom_packet("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS", "1-0", msg_hash, None)
+        self.assertTrue(write_packet.call_args.kwargs["queued"])
+
     def test_handles_exceptions_in_the_thread(self):
         with patch.object(self.dm, "microservice_cmd") as mock_microservice_cmd:
             mock_microservice_cmd.side_effect = Exception("Bad command")
@@ -344,11 +396,9 @@ class TestDecomMicroservice(unittest.TestCase):
         packet.received_time = datetime.now(timezone.utc)
         for stdout in capture_io():
             TelemetryTopic.write_packet(packet, scope="DEFAULT")
-            # Wait for async processing to complete with retries for CI reliability
-            for _ in range(10):
-                time.sleep(0.01)
-                if "Bad processor" in stdout.getvalue():
-                    break
+            # The processor error is logged before the CVT is written, so wait
+            # for the CVT (the last step of decom) rather than the log message
+            wait_for(lambda: tlm("INST HEALTH_STATUS TEMP1") is not None)
             self.assertIn("Bad processor", stdout.getvalue())
         # This is an implementation detail but we want to ensure the error was logged
         self.assertEqual(self.dm.metric.data["decom_error_total"]["value"], 1)
@@ -668,7 +718,16 @@ class TestDecomMicroserviceMultipleDbShards(unittest.TestCase):
 
         # Handled commands are trimmed from the microservice topic on its db_shard
         msg_id = Topic.write_topic("MICROSERVICE__DEFAULT__DECOM__INST", {"command": "OTHER"}, db_shard=1)
-        self.dm.microservice_cmd("MICROSERVICE__DEFAULT__DECOM__INST", msg_id.decode(), {}, None)
+        original_trim = Topic.trim_topic
+        # Approximate trimming may leave a short stream untouched, so trim exactly
+        with patch.object(
+            Topic,
+            "trim_topic",
+            side_effect=lambda topic, minid, approximate=True, limit=0, db_shard=0: original_trim(
+                topic, minid, False, limit, db_shard=db_shard
+            ),
+        ):
+            self.dm.microservice_cmd("MICROSERVICE__DEFAULT__DECOM__INST", msg_id.decode(), {}, None)
         self.assertEqual(self.shard1.xlen("MICROSERVICE__DEFAULT__DECOM__INST"), 1)
 
     def test_builds_commands_on_the_target_db_shard(self):

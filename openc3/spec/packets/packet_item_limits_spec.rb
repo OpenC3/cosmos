@@ -141,6 +141,50 @@ module OpenC3
       end
     end
 
+    describe "change_type=" do
+      it "sets the change_type" do
+        PacketItemLimits::CHANGE_TYPES.each do |change_type|
+          @l.change_type = change_type
+          expect(@l.change_type).to eql change_type
+        end
+        @l.change_type = nil
+        expect(@l.change_type).to be_nil
+      end
+
+      it "complains about bad change_type" do
+        expect { @l.change_type = :DELTA }.to raise_error(ArgumentError, /change_type must be one of .* but is DELTA/)
+      end
+    end
+
+    describe "change_color=" do
+      it "sets the change_color" do
+        PacketItemLimits::CHANGE_COLORS.each do |change_color|
+          @l.change_color = change_color
+          expect(@l.change_color).to eql change_color
+        end
+        @l.change_color = nil
+        expect(@l.change_color).to be_nil
+      end
+
+      it "complains about bad change_color" do
+        expect { @l.change_color = :GREEN }.to raise_error(ArgumentError, /change_color must be one of .* but is GREEN/)
+      end
+    end
+
+    describe "sequence_step=" do
+      it "sets the sequence_step" do
+        expect(@l.sequence_step).to eql 1
+        @l.sequence_step = -2
+        expect(@l.sequence_step).to eql(-2)
+      end
+
+      it "complains about bad sequence_step" do
+        [0, 1.5, "1", nil].each do |sequence_step|
+          expect { @l.sequence_step = sequence_step }.to raise_error(ArgumentError, /sequence_step must be a non-zero Integer/)
+        end
+      end
+    end
+
     describe "clone" do
       it "duplicates the entire Limits" do
         l2 = @l.clone
@@ -187,6 +231,25 @@ module OpenC3
         expect(hash["response"]).to be_nil
         expect(hash["persistence_setting"]).to eql 1
         expect(hash["persistence_count"]).to eql 2
+      end
+
+      it "includes sequence change limits" do
+        @l.change_type = :SEQUENCE
+        @l.change_color = :RED
+        @l.sequence_step = 2
+        hash = @l.as_json()
+        expect(hash["change_type"]).to eql "SEQUENCE"
+        expect(hash["change_color"]).to eql "RED"
+        expect(hash["sequence_step"]).to eql 2
+      end
+
+      it "includes non-sequence change limits without a step" do
+        @l.change_type = :STATIC
+        @l.change_color = :YELLOW
+        hash = @l.as_json()
+        expect(hash["change_type"]).to eql "STATIC"
+        expect(hash["change_color"]).to eql "YELLOW"
+        expect(hash.keys).not_to include("sequence_step")
       end
     end
 

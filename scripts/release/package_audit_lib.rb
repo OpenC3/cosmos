@@ -435,8 +435,9 @@ def check_debian(client, root_dir: ROOT_DIR)
   release = ENV.fetch('DEBIAN_RELEASE')
   ruby_version = ENV.fetch('RUBY_VERSION')
 
-  # Verify the pinned base image tags actually exist on Docker Hub
-  ruby_tag = "#{ruby_version}-slim-#{release}"
+  # Verify the pinned base image tags actually exist on Docker Hub.
+  # RUBY_PATCH_VERSION is optional so callers whose .env predates it still work.
+  ruby_tag = "#{ENV.fetch('RUBY_PATCH_VERSION', ruby_version)}-slim-#{release}"
   unless docker_tag_exists?(client, 'library/ruby', ruby_tag)
     puts "ERROR: Could not find ruby image tag: #{ruby_tag}"
   end
@@ -446,7 +447,7 @@ def check_debian(client, root_dir: ROOT_DIR)
   end
 
   # Check for a newer Ruby minor/major line built on the same Debian release.
-  # Ruby uses rolling "X.Y-slim-<release>" tags, so there is no patch to bump.
+  # Patch releases are handled by check_ubi_ruby and check_ruby_patch.
   major, minor = ruby_version.split('.').map(&:to_i)
   new_ruby = nil
   [[major, minor + 1], [major + 1, 0]].each do |mj, mn|
@@ -497,7 +498,7 @@ def check_debian(client, root_dir: ROOT_DIR)
   end
 end
 
-# Update a build variable (RUBY_VERSION or DEBIAN_RELEASE) in the .env and any
+# Update a build variable (RUBY_VERSION, RUBY_PATCH_VERSION, DEBIAN_POINT_RELEASE) in the .env and any
 # Dockerfile that pins it as a default ARG, then reload the in-process ENV.
 def update_debian_files(key, new_value, root_dir: ROOT_DIR)
   update_key_value(File.join(root_dir, '.env'), key, new_value)
@@ -740,10 +741,9 @@ def check_tsdb(client, tsdb_version)
   new_version
 end
 
-# The Debian image floats on ruby:${RUBY_VERSION}-slim and picks up patch
-# releases for free, but the UBI image compiles Ruby from a source tarball
-# committed to openc3-ruby/, so its patch version only moves when someone bumps
-# it here. Stay on the RUBY_VERSION minor line: moving off it is a deliberate decision,
+# The UBI image compiles Ruby from a source tarball committed to openc3-ruby/,
+# so its patch version only moves when someone bumps it here. The Debian image
+# follows it through check_ruby_patch. Stay on the RUBY_VERSION minor line: moving off it is a deliberate decision,
 # not an audit-time one.
 def check_ubi_ruby(client, ruby_version)
   dockerfile = File.join(ROOT_DIR, 'openc3-ruby/Dockerfile-ubi')
@@ -770,6 +770,33 @@ def check_ubi_ruby(client, ruby_version)
   File.write(dockerfile, content.gsub(/ruby-#{Regexp.escape(current)}(?!\d)/, "ruby-#{newest}"))
   puts "  Updated ruby-#{current} -> ruby-#{newest} in openc3-ruby/Dockerfile-ubi"
   newest
+end
+
+# Keep the Debian image's exact ruby:<RUBY_PATCH_VERSION>-slim-<release> tag on
+# the same Ruby as Dockerfile-ubi. Docker Official Images can trail a Ruby
+# release by a day or so, so a missing tag is reported and retried next audit.
+def check_ruby_patch(client, root_dir: ROOT_DIR)
+  current = ENV.fetch('RUBY_PATCH_VERSION', nil)
+  return puts("ERROR: RUBY_PATCH_VERSION is not set in .env") if current.nil? || current.empty?
+  ruby_version = ENV.fetch('RUBY_VERSION')
+  release = ENV.fetch('DEBIAN_RELEASE')
+  dockerfile = File.join(root_dir, 'openc3-ruby/Dockerfile-ubi')
+  target = File.exist?(dockerfile) ? File.read(dockerfile)[/ruby-(\d+\.\d+\.\d+)\.tar\.gz/, 1] : nil
+  if target.nil?
+    puts "WARN: Could not read the ubi ruby version to compare RUBY_PATCH_VERSION against"
+  elsif target != current
+    if docker_tag_exists?(client, 'library/ruby', "#{target}-slim-#{release}")
+      puts "NOTE: RUBY_PATCH_VERSION #{current} differs from ubi ruby #{target}"
+      if prompt_update?("Update RUBY_PATCH_VERSION from #{current} to #{target}?", current, target)
+        update_debian_files('RUBY_PATCH_VERSION', target, root_dir: root_dir)
+        current = target
+      end
+    else
+      puts "NOTE: ruby:#{target}-slim-#{release} is not on Docker Hub yet; RUBY_PATCH_VERSION stays #{current}. Rerun the audit later."
+    end
+  end
+  return if current.start_with?("#{ruby_version}.")
+  puts "ERROR: RUBY_PATCH_VERSION #{current} is not on the RUBY_VERSION #{ruby_version} line"
 end
 
 # index.txt is the canonical machine readable release list, one tab separated
@@ -838,6 +865,328 @@ def download_ubi_ruby(version, release)
     puts "  WARN: could not stage, run: git add -f openc3-ruby/#{File.basename(path)}"
   end
   true
+end
+
+OPENC3_RUBY_DIR = File.join(ROOT_DIR, 'openc3-ruby')
+OPENC3_RUBY_DOCKERFILES = %w(Dockerfile Dockerfile-ubi).map { |f| File.join(OPENC3_RUBY_DIR, f) }
+
+# Stage a vendored file replacement. openc3-ruby/.gitignore ignores *.tar.gz, so
+# without -f the new file is invisible to git status and only the deletion of
+# the old one shows up.
+def stage_vendored_files(new_paths, old_paths)
+  new_paths.each do |path|
+    next if system('git', '-C', ROOT_DIR, 'add', '-f', '--', path)
+    puts "  WARN: could not stage, run: git add -f #{path.sub(ROOT_DIR + '/', '')}"
+  end
+  old_paths.each do |path|
+    system('git', '-C', ROOT_DIR, 'rm', '-q', '--cached', '--ignore-unmatch', '--', path)
+  end
+end
+
+# rbspy is not packaged by Debian or UBI, so both Dockerfiles install the
+# prebuilt release binary committed to openc3-ruby/ (the Debian image needs both
+# arches for multi-arch builds). Both Dockerfiles pin it with ARG RBSPY_VERSION.
+def check_rbspy(client)
+  # Not get_docker_version: it stops reading at the first FROM, and this ARG is
+  # declared inside the build stage.
+  versions = OPENC3_RUBY_DOCKERFILES.select { |p| File.exist?(p) }.filter_map { |p| File.read(p)[/^ARG RBSPY_VERSION=(\S+)/, 1] }.uniq
+  return puts("WARN: ARG RBSPY_VERSION not found in the openc3-ruby Dockerfiles") if versions.empty?
+  puts "WARN: openc3-ruby Dockerfiles pin different rbspy versions: #{versions.join(', ')}" if versions.length > 1
+  current = versions.first
+  puts "Checking rbspy against version: #{current}"
+  resp = client.get('https://api.github.com/repos/rbspy/rbspy/releases/latest')
+  return puts("WARN: Could not read the latest rbspy release (HTTP #{resp.status})") unless resp.status == 200
+  tag = JSON.parse(resp.body)['tag_name'].to_s
+  latest = tag.delete_prefix('v')
+  if Gem::Version.new(latest) <= Gem::Version.new(current)
+    return nil if rbspy_binaries_present?(current)
+    # Self-heal like versitygw: the ARG was bumped without fetching the binaries
+    puts "rbspy #{current} binaries missing from openc3-ruby; downloading."
+    tag = "v#{current}"
+    latest = current
+  else
+    puts "NOTE: rbspy has a newer release: #{latest}, Current Version: #{current}"
+    return nil unless prompt_update?("Update rbspy from #{current} to #{latest}?", current, latest)
+  end
+  return nil unless download_rbspy_binaries(client, tag, latest)
+  OPENC3_RUBY_DOCKERFILES.each { |path| update_key_value(path, 'RBSPY_VERSION', latest) }
+  latest
+end
+
+RBSPY_ARCHES = %w(x86_64 aarch64).freeze
+
+def rbspy_path(arch, version)
+  File.join(OPENC3_RUBY_DIR, "rbspy-#{arch}-unknown-linux-gnu-#{version}.tar.gz")
+end
+
+def rbspy_binaries_present?(version)
+  RBSPY_ARCHES.all? { |arch| File.exist?(rbspy_path(arch, version)) }
+end
+
+# Download both rbspy release tarballs, verify each against the .sha256 file
+# published with the release, and replace the old ones. On any failure the new
+# downloads are removed and the existing binaries are left in place.
+def download_rbspy_binaries(client, tag, version)
+  new_paths = RBSPY_ARCHES.map { |arch| rbspy_path(arch, version) }
+  RBSPY_ARCHES.zip(new_paths).each do |arch, path|
+    asset = "rbspy-#{arch}-unknown-linux-gnu.tar.gz"
+    url = "https://github.com/rbspy/rbspy/releases/download/#{tag}/#{asset}"
+    sha_resp = client.get("#{url}.sha256")
+    expected = sha_resp.status == 200 ? sha_resp.body.to_s.split.first.to_s.downcase : ''
+    puts "  Downloading #{url}"
+    ok = !expected.empty? && system('curl', '-fSL', url, '-o', path)
+    actual = ok ? Digest::SHA256.file(path).hexdigest : nil
+    if ok && actual == expected
+      puts "  Verified sha256 #{actual}"
+      next
+    end
+    puts(expected.empty? ? "ERROR: could not read #{url}.sha256" : "ERROR: failed to download or verify #{url}")
+    new_paths.each { |p| FileUtils.rm_f(p) }
+    return false
+  end
+  old_paths = Dir.glob(File.join(OPENC3_RUBY_DIR, 'rbspy-*-unknown-linux-gnu-*.tar.gz')) - new_paths
+  old_paths.each do |path|
+    FileUtils.rm_f(path)
+    puts "  Removed #{File.basename(path)}"
+  end
+  stage_vendored_files(new_paths, old_paths)
+  true
+end
+
+# Third-party sources committed to openc3-ruby/ so the images build without
+# reaching GitHub: an air-gapped build only has the apt/dnf, gem and PyPI
+# mirrors. UBI repos package none of these and Debian packages only some (the
+# Debian Dockerfile uses apt for those), so they are built from source. Each
+# Dockerfile references them by exact filename, which is all this check edits.
+# A 40 hex digit "version" is a commit pinned because no release had a fix we
+# needed. Those stay pinned until a release contains the commit.
+VENDORED_SOURCES = [
+  { name: 'htop', repo: 'htop-dev/htop' },             # UBI only
+  { name: 'tini', repo: 'krallin/tini' },              # UBI only
+  { name: 'libzmq', repo: 'zeromq/libzmq' },           # UBI only
+  { name: 'libsocketcan', repo: 'linux-can/libsocketcan' },
+  { name: 'libcsp', repo: 'libcsp/libcsp' },
+].freeze
+
+def check_vendored_sources(client, sources: VENDORED_SOURCES)
+  sources.each { |source| check_vendored_source(client, **source) }
+end
+
+# Every distinct [version_or_sha, extension] the openc3-ruby Dockerfiles
+# reference for `name`. More than one means the Dockerfiles disagree.
+def vendored_source_refs(name)
+  pattern = /\b#{Regexp.escape(name)}-([0-9a-f]{40}|\d+(?:\.\d+)+)\.(tar\.gz|zip)\b/
+  OPENC3_RUBY_DOCKERFILES.select { |p| File.exist?(p) }.flat_map { |p| File.read(p).scan(pattern) }.uniq
+end
+
+# Newest release tag that looks like a plain version (v1.2.3 or 1.2.3). Uses
+# tags rather than releases since libsocketcan only publishes tags.
+def latest_github_version_tag(client, repo)
+  resp = client.get("https://api.github.com/repos/#{repo}/tags?per_page=100")
+  unless resp.status == 200
+    puts "WARN: Could not read #{repo} tags (HTTP #{resp.status})"
+    return nil
+  end
+  tags = JSON.parse(resp.body).map { |t| t['name'] }.grep(/\Av?\d+(?:\.\d+)+\z/)
+  tags.max_by { |t| Gem::Version.new(t.delete_prefix('v')) }
+end
+
+def check_vendored_source(client, name:, repo:)
+  refs = vendored_source_refs(name)
+  return puts("WARN: no #{name} source referenced in the openc3-ruby Dockerfiles") if refs.empty?
+  # An update rewrites one version's references but removes every other
+  # archive, which would leave the other Dockerfile copying a deleted file.
+  if refs.length > 1
+    puts "ERROR: openc3-ruby Dockerfiles reference different #{name} sources (#{refs.map(&:first).join(', ')}). Make them match, then re-run."
+    return nil
+  end
+  current, ext = refs.first
+  unless File.exist?(File.join(OPENC3_RUBY_DIR, "#{name}-#{current}.#{ext}"))
+    puts "ERROR: openc3-ruby/#{name}-#{current}.#{ext} is referenced by the Dockerfiles but missing"
+  end
+  puts "Checking #{name} against version: #{current}"
+  tag = latest_github_version_tag(client, repo)
+  return puts("WARN: no release tags found for #{repo}") if tag.nil?
+  latest = tag.delete_prefix('v')
+
+  if current.match?(/\A[0-9a-f]{40}\z/)
+    # base...head: 'behind' means the pinned commit is an ancestor of the tag
+    resp = client.get("https://api.github.com/repos/#{repo}/compare/#{tag}...#{current}")
+    return puts("WARN: Could not compare #{name} #{current[0, 12]} to #{tag} (HTTP #{resp.status})") unless resp.status == 200
+    compare = JSON.parse(resp.body)
+    case compare['status']
+    when 'ahead', 'identical'
+      puts "#{name} pinned commit #{current[0, 12]} already includes the latest release #{tag} (#{compare['ahead_by']} commits past it)"
+      return nil
+    when 'behind'
+      puts "NOTE: #{name} release #{tag} includes pinned commit #{current[0, 12]} plus #{compare['behind_by']} commits"
+      return nil unless prompt_yes_no("Switch #{name} from commit #{current[0, 12]} to release #{latest}? (review the Dockerfile build patches)")
+    else
+      puts "NOTE: #{name} pinned commit #{current[0, 12]} is not in the history of release #{tag}. Review manually: https://github.com/#{repo}/compare/#{tag}...#{current}"
+      return nil
+    end
+  else
+    if Gem::Version.new(latest) <= Gem::Version.new(current)
+      puts "#{name} is up to date with #{current}"
+      return nil
+    end
+    puts "NOTE: #{name} has a newer release: #{latest}, Current Version: #{current}"
+    return nil unless prompt_update?("Update #{name} from #{current} to #{latest}?", current, latest)
+  end
+  return nil unless download_vendored_source(name, repo, tag, latest, ext)
+
+  # The archive name doubles as its extracted directory name in the Dockerfiles
+  # (GitHub archives unpack to <repo>-<version>/), so one substitution moves
+  # both. The lookahead keeps 3.4.1 from also matching 3.4.10.
+  old_ref = /\b#{Regexp.escape("#{name}-#{current}")}(?!\.?\d)/
+  OPENC3_RUBY_DOCKERFILES.each do |path|
+    next unless File.exist?(path)
+    content = File.read(path)
+    updated = content.gsub(old_ref, "#{name}-#{latest}")
+    next if updated == content
+    File.write(path, updated)
+    puts "  Updated #{name}-#{current} -> #{name}-#{latest} in #{path.sub(ROOT_DIR + '/', '')}"
+  end
+  latest
+end
+
+# GitHub's archive of the tag, saved under the same <name>-<version>.<ext>
+# layout as the committed file in `dir`. GitHub publishes no checksum for these,
+# so verify `sha256` when the project publishes one elsewhere, and always check
+# that it unpacks to the directory the Dockerfiles cd into before replacing the
+# old archive.
+def download_vendored_source(name, repo, tag, version, ext, dir: OPENC3_RUBY_DIR, sha256: nil)
+  path = File.join(dir, "#{name}-#{version}.#{ext}")
+  url = "https://github.com/#{repo}/archive/refs/tags/#{tag}.#{ext}"
+  puts "  Downloading #{url}"
+  unless system('curl', '-fSL', url, '-o', path)
+    puts "ERROR: failed to download #{url}"
+    FileUtils.rm_f(path)
+    return false
+  end
+  if sha256
+    actual = Digest::SHA256.file(path).hexdigest
+    unless actual == sha256
+      puts "ERROR: sha256 mismatch for #{File.basename(path)}"
+      puts "  expected #{sha256}"
+      puts "  actual   #{actual}"
+      FileUtils.rm_f(path)
+      return false
+    end
+    puts "  Verified sha256 #{actual}"
+  end
+  list_cmd = ext == 'zip' ? ['unzip', '-Z1', path] : ['tar', '-tzf', path]
+  listing, status = Open3.capture2(*list_cmd)
+  top_dir = listing.lines.first.to_s.strip.chomp('/')
+  unless status.success? && top_dir == "#{name}-#{version}"
+    puts "ERROR: #{File.basename(path)} unpacks to '#{top_dir}', expected '#{name}-#{version}'"
+    FileUtils.rm_f(path)
+    return false
+  end
+  old_paths = Dir.glob(File.join(dir, "#{name}-*.{tar.gz,zip}")).reject do |p|
+    p == path || !File.basename(p).match?(/\A#{Regexp.escape(name)}-([0-9a-f]{40}|\d+(?:\.\d+)+)\./)
+  end
+  old_paths.each do |p|
+    FileUtils.rm_f(p)
+    puts "  Removed #{File.basename(p)}"
+  end
+  stage_vendored_files([path], old_paths)
+  true
+end
+
+# openc3-redis/Dockerfile builds on the valkey/valkey Docker Hub image, which
+# check_container_version moves. The UBI image compiles Valkey from a source
+# tarball committed to openc3-redis/ instead, so it only moves when this check
+# moves it. Keep it on the Debian image's version so both get the same fixes.
+def check_ubi_valkey(client)
+  redis_dir = File.join(ROOT_DIR, 'openc3-redis')
+  dockerfile = File.join(redis_dir, 'Dockerfile-ubi')
+  return puts("WARN: openc3-redis/Dockerfile-ubi does not exist") unless File.exist?(dockerfile)
+  # e.g. 9.1.3-trixie -> 9.1.3
+  wanted = get_docker_version(File.join(redis_dir, 'Dockerfile'), arg: 'OPENC3_REDIS_VERSION').to_s[/\A\d+\.\d+\.\d+/]
+  return puts("WARN: OPENC3_REDIS_VERSION not found in openc3-redis/Dockerfile") if wanted.nil?
+  current = File.read(dockerfile)[/valkey-(\d+\.\d+\.\d+)\.tar\.gz/, 1]
+  return puts("WARN: valkey-<version>.tar.gz not found in openc3-redis/Dockerfile-ubi") if current.nil?
+  puts "Checking ubi valkey against version: #{current}"
+  if current == wanted
+    if File.exist?(File.join(redis_dir, "valkey-#{current}.tar.gz"))
+      puts "ubi valkey is up to date with #{current}"
+      return nil
+    end
+    puts "valkey-#{current}.tar.gz missing from openc3-redis; downloading."
+  else
+    puts "NOTE: openc3-redis/Dockerfile-ubi builds valkey #{current} but openc3-redis/Dockerfile uses #{wanted}"
+    return nil unless prompt_update?("Update ubi valkey from #{current} to #{wanted}?", current, wanted)
+  end
+  sha256 = valkey_sha256(client, wanted)
+  return nil if sha256.nil?
+  return nil unless download_vendored_source('valkey', 'valkey-io/valkey', wanted, wanted, 'tar.gz', dir: redis_dir, sha256: sha256)
+  # The version also appears in VALKEY_VERSION, the SBOM and a build message,
+  # not only the tarball name. The lookarounds keep 9.1.1 from matching 9.1.10.
+  content = File.read(dockerfile)
+  updated = content.gsub(/(?<![\d.])#{Regexp.escape(current)}(?!\.?\d)/, wanted)
+  if updated != content
+    File.write(dockerfile, updated)
+    puts "  Updated valkey #{current} -> #{wanted} in openc3-redis/Dockerfile-ubi"
+  end
+  wanted
+end
+
+# Valkey publishes the sha256 of each release's GitHub source archive in the
+# valkey-hashes repo (the official valkey-container images verify against it).
+def valkey_sha256(client, version)
+  resp = client.get('https://raw.githubusercontent.com/valkey-io/valkey-hashes/main/README')
+  sha256 = resp.status == 200 ? resp.body[/^hash valkey-#{Regexp.escape(version)}\.tar\.gz sha256 (\h{64})\s/, 1] : nil
+  puts "ERROR: no sha256 for valkey-#{version}.tar.gz in valkey-io/valkey-hashes" if sha256.nil?
+  sha256
+end
+
+# Both openc3-ruby Dockerfiles run `gem update --system <version>`, which also
+# sets the Bundler the images run. The justfile's bundler_version must match it
+# so `just lock-ruby` writes the same BUNDLED WITH into the Gemfile.locks.
+def check_rubygems(client, ruby_version: ENV.fetch('RUBY_VERSION', nil))
+  pattern = /gem update --system (\d+\.\d+\.\d+)/
+  versions = OPENC3_RUBY_DOCKERFILES.select { |p| File.exist?(p) }.filter_map { |p| File.read(p)[pattern, 1] }.uniq
+  return puts("WARN: 'gem update --system <version>' not found in the openc3-ruby Dockerfiles") if versions.empty?
+  puts "WARN: openc3-ruby Dockerfiles run different rubygems versions: #{versions.join(', ')}" if versions.length > 1
+  current = versions.first
+  puts "Checking rubygems against version: #{current}"
+  resp = client.get('https://rubygems.org/api/v1/versions/rubygems-update.json')
+  return puts("WARN: Could not read rubygems-update versions (HTTP #{resp.status})") unless resp.status == 200
+  # Skip releases that need a newer Ruby than the images run
+  ruby = ruby_version && Gem::Version.new("#{ruby_version}.99")
+  latest = JSON.parse(resp.body).reject { |v| v['prerelease'] }.select do |v|
+    ruby.nil? || Gem::Requirement.new(*Array(v['ruby_version'] || '>= 0').flat_map { |r| r.split(',') }).satisfied_by?(ruby)
+  end.map { |v| v['number'] }.max_by { |v| Gem::Version.new(v) }
+  if latest.nil? || Gem::Version.new(latest) <= Gem::Version.new(current)
+    puts "rubygems is up to date with #{current}"
+    return nil
+  end
+  puts "NOTE: rubygems has a newer release: #{latest}, Current Version: #{current}"
+  return nil unless prompt_update?("Update rubygems from #{current} to #{latest}?", current, latest)
+  OPENC3_RUBY_DOCKERFILES.each do |path|
+    next unless File.exist?(path)
+    content = File.read(path)
+    updated = content.gsub("gem update --system #{current}", "gem update --system #{latest}")
+    next if updated == content
+    File.write(path, updated)
+    puts "  Updated gem update --system #{latest} in #{path.sub(ROOT_DIR + '/', '')}"
+  end
+  # RubyGems 3.x shipped Bundler 2.x with the same minor and patch, 4.x onward match
+  major, minor, patch = latest.split('.')
+  bundler = major == '3' ? "2.#{minor}.#{patch}" : latest
+  justfile = File.join(ROOT_DIR, 'justfile')
+  if File.exist?(justfile)
+    content = File.read(justfile)
+    updated = content.sub(/^bundler_version := "[^"]*"/, %(bundler_version := "#{bundler}"))
+                     .gsub(/(?<![\d.])#{Regexp.escape(current)}(?!\.?\d)/, latest)
+    if updated != content
+      File.write(justfile, updated)
+      puts "  Updated bundler_version := \"#{bundler}\" in justfile"
+    end
+  end
+  puts "  NOTE: run `just lock-ruby` so the Gemfile.lock BUNDLED WITH matches Bundler #{bundler}"
+  latest
 end
 
 CACERT_BASE_URL = 'https://curl.se/ca'
@@ -1570,10 +1919,6 @@ end
 # Gemfile constraint blocks the bump, so `bundle update <gem>` becomes a no-op
 # and the user thinks acceptance did nothing.
 #
-# The openc3-cosmos-cmd-tlm-api / -script-runner-api Gemfiles depend on the
-# local `openc3` gem via ENV['OPENC3_PATH'] (falling back to a rubygems version
-# that may not exist yet), so we point OPENC3_PATH at the openc3/ directory in
-# this repo for every bundle call.
 # Pass the same `approved` hash across calls to auto-approve gems already
 # accepted in an earlier directory (keyed by "name installed newest"), so overlapping
 # gems in cmd-tlm-api and script-runner-api are only prompted once.
@@ -1581,7 +1926,7 @@ def update_outdated_gems(dir, extra_env = {}, approved: {})
   label = dir.sub(ROOT_DIR + '/', '')
   puts "\nChecking outdated gems in #{label}:"
   updated = 0
-  env = { 'OPENC3_PATH' => File.join(ROOT_DIR, 'openc3') }.merge(extra_env)
+  env = extra_env
   Dir.chdir(dir) do
     system(env, 'bundle install') unless File.exist?('Gemfile.lock')
 

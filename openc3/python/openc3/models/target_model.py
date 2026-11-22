@@ -234,20 +234,20 @@ class TargetModel(Model):
 
     # @return [List<String>] All the item names for every packet in a target
     @classmethod
-    def all_item_names(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE):
+    def all_item_names(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE) -> list[str]:
         items = cls._store_for_target(target_name, scope).zrange(f"{scope}__openc3tlm__{target_name}__allitems", 0, -1)
         if not items:
-            items = cls.rebuild_target_allitems_list(target_name, type=type, scope=scope)
-        return items
+            return cls.rebuild_target_allitems_list(target_name, type=type, scope=scope)
+        return [item.decode() if isinstance(item, bytes) else item for item in items]
 
     @classmethod
-    def rebuild_target_allitems_list(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE):
+    def rebuild_target_allitems_list(cls, target_name: str, type: str = "TLM", scope: str = OPENC3_SCOPE) -> list[str]:
         for packet in cls.packets(target_name, scope=scope):
             for item in packet["items"]:
                 cls.add_to_target_allitems_list(target_name, item["name"], scope=scope)
-        return cls._store_for_target(target_name, scope).zrange(
-            f"{scope}__openc3tlm__{target_name}__allitems", 0, -1
-        )  # return the new sorted set to let redis do the sorting
+        # return the new sorted set to let redis do the sorting
+        items = cls._store_for_target(target_name, scope).zrange(f"{scope}__openc3tlm__{target_name}__allitems", 0, -1)
+        return [item.decode() if isinstance(item, bytes) else item for item in items]
 
     @classmethod
     def add_to_target_allitems_list(cls, target_name: str, item_name: str, scope: str = OPENC3_SCOPE):
@@ -532,6 +532,7 @@ class TargetModel(Model):
         cmd_decom_retain_time=None,
         tlm_decom_retain_time=None,
         decom_flush_period=5.0,
+        decom_update_interval=None,
         cleanup_poll_time=3600,
         needs_dependencies=False,
         target_microservices=None,

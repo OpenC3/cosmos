@@ -65,21 +65,42 @@ class MicroservicesController < ModelController
     head :ok
   end
 
+  # Microservice routes sit below every built in traefik router except files (3),
+  # base (2) and web (1). Their prefixes can't overlap /files (it is reserved),
+  # and they must win over base and web so a microservice can serve paths with
+  # a file extension.
+  ROUTER_PRIORITY = 3
+  ROUTER_NAME_REGEX = /\A[A-Za-z0-9_\-]+\z/
+
+  # Dynamic configuration for traefik's http provider, which polls this directly
+  # on the internal network. No authentication because traefik can't send any.
   def traefik
-    result = {}
-    result['http'] = {}
-    http = result['http']
-    http['routers'] = {}
-    routers = http['routers']
-    http['services'] = {}
-    services = http['services']
+    # Requests routed through traefik have X-Forwarded-For set. The route
+    # table is only used by traefik's provider so don't serve it externally.
+    if request.headers['X-Forwarded-For'] or request.headers['X-Real-Ip']
+      head :not_found
+      return
+    end
+
+    routers = {}
+    services = {}
     models = OpenC3::MicroserviceModel.all
     models.each do |microservice_name, microservice|
       prefix = microservice['prefix']
       ports = microservice['ports']
-      if prefix and ports[0][0]
+      if prefix and ports and ports[0] and ports[0][0]
+        # Microservices stored before prefixes were validated may still be in Redis
+        unless ROUTER_NAME_REGEX.match?(microservice_name)
+          logger.warn("Not routing microservice #{microservice_name.inspect}: invalid name")
+          next
+        end
+        begin
+          prefix = OpenC3::MicroserviceModel.validate_route_prefix(prefix)
+        rescue RuntimeError => error
+          logger.warn("Not routing microservice #{microservice_name}: #{error.message}")
+          next
+        end
         port = ports[0][0].to_i
-        prefix = '/' + prefix unless prefix[0] == '/'
         shard = microservice['shard'] || 0
         if ENV['OPENC3_OPERATOR_HOSTNAME']
           if shard != 0
@@ -102,11 +123,20 @@ class MicroservicesController < ModelController
         services[service_name]['loadBalancer']['servers'] = []
         services[service_name]['loadBalancer']['servers'] << {"url" => url}
         routers[router_name] = {}
-        routers[router_name]['rule'] = "PathPrefix(`#{prefix}`)"
+        # PathPrefix is a plain string prefix (/api would also match /apix), so
+        # match the prefix itself or anything below it
+        routers[router_name]['rule'] = "Path(`#{prefix}`) || PathPrefix(`#{prefix}/`)"
         routers[router_name]['service'] = service_name
-        routers[router_name]['priority'] = 20
+        routers[router_name]['priority'] = ROUTER_PRIORITY
       end
     end
-    render json: result
+    if routers.empty?
+      # Traefik rejects empty routers and services maps as "standalone elements"
+      # and then keeps its previous configuration, leaving deleted routes live.
+      # An empty object is accepted and clears them.
+      render json: {}
+    else
+      render json: { 'http' => { 'routers' => routers, 'services' => services } }
+    end
   end
 end

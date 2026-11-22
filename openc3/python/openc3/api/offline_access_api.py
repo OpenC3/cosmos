@@ -28,7 +28,22 @@ except ImportError:
 WHITELIST.extend(["offline_access_needed", "set_offline_access"])
 
 
-def offline_access_needed(manual=False, scope=OPENC3_SCOPE, token=None):
+def offline_access_needed(manual: bool = False, scope: str = OPENC3_SCOPE, token: str | None = None) -> bool:
+    """Return whether the current user needs to provide an offline access token.
+
+    An offline access token is needed when the user has the offline_access
+    role but no stored token, or the stored token can no longer be refreshed.
+    An invalid stored token is cleared. Users who cannot run scripts never
+    need one.
+
+    Args:
+        manual: Whether the request was made manually by a user.
+        scope: COSMOS scope.
+        token: Access token of the requesting user.
+
+    Returns:
+        True if an offline access token is needed, otherwise False.
+    """
     authorize(permission="system", manual=manual, scope=scope)
     try:
         authorize(permission="script_view", manual=manual, scope=scope)
@@ -36,8 +51,8 @@ def offline_access_needed(manual=False, scope=OPENC3_SCOPE, token=None):
         # Not needed if can't run scripts
         return False
     info = user_info(token)
-    if "offline_access" in info["roles"]:
-        username = info["username"]
+    if "offline_access" in (info.get("roles") or []):
+        username = info.get("username")
         if username and username != "":
             model = OfflineAccessModel.get_model(name=username, scope=scope)
             if model and model.offline_access_token:
@@ -56,7 +71,20 @@ def offline_access_needed(manual=False, scope=OPENC3_SCOPE, token=None):
         return False
 
 
-def set_offline_access(offline_access_token, manual=False, scope=OPENC3_SCOPE, token=None):
+def set_offline_access(
+    offline_access_token: str, manual: bool = False, scope: str = OPENC3_SCOPE, token: str | None = None
+) -> None:
+    """Store the offline access token for the current user.
+
+    Args:
+        offline_access_token: Keycloak offline access (refresh) token.
+        manual: Whether the request was made manually by a user.
+        scope: COSMOS scope.
+        token: Access token of the requesting user.
+
+    Raises:
+        ValueError: If the requesting user has no username.
+    """
     authorize(permission="script_view", manual=manual, scope=scope)
     info = user_info(token)
     username = info["username"]

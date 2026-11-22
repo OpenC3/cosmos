@@ -69,9 +69,21 @@ module OpenC3
         packet.stored = false
         expect(CvtModel).to receive(:set_json).with(
           kind_of(String), kind_of(Hash),
-          target_name: 'TARGET', packet_name: 'PKT', scope: 'DEFAULT'
+          target_name: 'TARGET', packet_name: 'PKT', queued: false, scope: 'DEFAULT'
         )
         TelemetryDecomTopic.write_packet(packet, scope: 'DEFAULT')
+      end
+
+      it "queues the stream and CVT writes when queued" do
+        expect(Topic).not_to receive(:write_topic)
+        expect(EphemeralStoreQueued.instance(db_shard: 0)).to receive(:write_topic).with(
+          "DEFAULT__DECOM__{TARGET}__PKT", hash_including(target_name: 'TARGET'), nil, minid: kind_of(String)
+        )
+        expect(CvtModel).to receive(:set_json).with(
+          kind_of(String), kind_of(Hash),
+          target_name: 'TARGET', packet_name: 'PKT', queued: true, scope: 'DEFAULT'
+        )
+        TelemetryDecomTopic.write_packet(packet, queued: true, scope: 'DEFAULT')
       end
 
       it "skips CVT update when packet is stored" do
@@ -115,6 +127,36 @@ module OpenC3
       expect(JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__tlm__TARGET", "PKT"))['VALUE']).to eql 5
       expect(EphemeralStore.instance(db_shard: 0).exists?("DEFAULT__DECOM__{TARGET}__PKT")).to be false
       expect(Store.instance(db_shard: 0).exists?("DEFAULT__tlm__TARGET")).to be false
+    end
+
+    it "queues the decom topic and the CVT writes on the target's db_shard" do
+      packet = Packet.new('TARGET', 'PKT')
+      packet.append_item('VALUE', 16, :UINT)
+      packet.received_time = Time.now
+      packet.packet_time = Time.now
+      packet.received_count = 1
+      packet.write('VALUE', 7)
+      # spec_helper makes StoreQueued write through unless $store_queued is set
+      $store_queued = true
+      # Let the queue threads make their first (empty) flush so they are
+      # sleeping for the 1s default interval when the writes are queued
+      EphemeralStoreQueued.instance(db_shard: 1)
+      StoreQueued.instance(db_shard: 1)
+      sleep 0.05
+      TelemetryDecomTopic.write_packet(packet, queued: true, scope: 'DEFAULT')
+      # Nothing is written until the queues are flushed
+      expect(EphemeralStore.instance(db_shard: 1).exists?("DEFAULT__DECOM__{TARGET}__PKT")).to be false
+      expect(Store.instance(db_shard: 1).hget("DEFAULT__tlm__TARGET", "PKT")).to be_nil
+      EphemeralStoreQueued.instance(db_shard: 1).process_queue
+      StoreQueued.instance(db_shard: 1).process_queue
+      _, msg_hash = EphemeralStore.instance(db_shard: 1).get_newest_message("DEFAULT__DECOM__{TARGET}__PKT")
+      expect(JSON.parse(msg_hash['json_data'])['VALUE']).to eql 7
+      expect(JSON.parse(Store.instance(db_shard: 1).hget("DEFAULT__tlm__TARGET", "PKT"))['VALUE']).to eql 7
+      expect(EphemeralStore.instance(db_shard: 0).exists?("DEFAULT__DECOM__{TARGET}__PKT")).to be false
+    ensure
+      EphemeralStoreQueued.instance(db_shard: 1).shutdown
+      StoreQueued.instance(db_shard: 1).shutdown
+      $store_queued = false
     end
   end
 end

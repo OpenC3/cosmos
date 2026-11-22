@@ -84,7 +84,7 @@ module OpenC3
     def _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: $openc3_scope)
       case args.length
       when 1
-        target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0])
+        target_name, cmd_name, cmd_params = extract_fields_from_cmd_text(args[0], scope: scope)
       when 2, 3
         target_name = args[0]
         cmd_name    = args[1]
@@ -117,17 +117,19 @@ module OpenC3
     # except for range_check, hazardous_check, and raw as they are part of the cmd name
     # manual is always false since this is called from script and that is the default
     # NOTE: This is a helper method and should not be called directly
-    def _cmd(cmd, cmd_no_hazardous, *args, timeout: nil, log_message: nil, validate: true, queue: nil, scope: $openc3_scope, token: $openc3_token, **kwargs)
+    def _cmd(cmd, cmd_no_hazardous, *args, timeout: nil, log_message: nil, validate: true, queue: nil, extra: nil, scope: $openc3_scope, token: $openc3_token, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
       raw = cmd.include?('raw')
       no_range = cmd.include?('no_range') || cmd.include?('no_checks')
       no_hazardous = cmd.include?('no_hazardous') || cmd.include?('no_checks')
+      # Only send extra when given so commands still work against servers that predate it
+      extra_kwargs = extra.nil? ? {} : { extra: extra }
       if $disconnect
         _cmd_disconnect(cmd, raw, no_range, no_hazardous, *args, scope: scope)
       else
         begin
           begin
-            command = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, queue: queue, scope: scope, token: token)
+            command = $api_server.method_missing(cmd, *args, timeout: timeout, log_message: log_message, validate: validate, queue: queue, **extra_kwargs, scope: scope, token: token)
             if log_message.nil? or log_message
               _log_cmd(command, raw, no_range, no_hazardous)
             end
@@ -135,14 +137,14 @@ module OpenC3
             # This opens a prompt at which point they can cancel and stop the script
             # or say Yes and send the command. Thus we don't care about the return value.
             prompt_for_hazardous(e.target_name, e.cmd_name, e.hazardous_description)
-            command = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, queue: queue, scope: scope, token: token)
+            command = $api_server.method_missing(cmd_no_hazardous, *args, timeout: timeout, log_message: log_message, validate: validate, queue: queue, **extra_kwargs, scope: scope, token: token)
             if log_message.nil? or log_message
               _log_cmd(command, raw, no_range, no_hazardous)
             end
           end
         rescue CriticalCmdError => e
           # This should not return until the critical command has been approved
-          prompt_for_critical_cmd(e.uuid, e.command['username'], e.command['target_name'], e.command['cmd_name'], e.command['cmd_params'], e.command['cmd_string'])
+          prompt_for_critical_cmd(e.uuid, e.command['username'], e.command['target_name'], e.command['cmd_name'], e.command['cmd_params'], e.command['cmd_string'], scope: scope)
           if log_message.nil? or log_message
             _log_cmd(e.command, raw, no_range, no_hazardous)
           end
@@ -193,9 +195,9 @@ module OpenC3
     # Accepts two different calling styles:
     #   build_cmd("TGT CMD with PARAM1 val, PARAM2 val")
     #   build_cmd('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
-    def build_cmd(*args, range_check: true, raw: false, scope: $openc3_scope, **kwargs)
+    def build_cmd(*args, range_check: true, raw: false, timeout: 5, scope: $openc3_scope, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
-      $api_server.build_cmd(*args)
+      $api_server.build_cmd(*args, range_check: range_check, raw: raw, timeout: timeout, scope: scope)
     end
     # build_command is DEPRECATED
     alias build_command build_cmd
@@ -205,9 +207,9 @@ module OpenC3
     # Accepts two different calling styles:
     #   get_cmd_hazardous("TGT CMD with PARAM1 val, PARAM2 val")
     #   get_cmd_hazardous('TGT','CMD',{'PARAM1'=>val,'PARAM2'=>val})
-    def get_cmd_hazardous(*args, **kwargs)
+    def get_cmd_hazardous(*args, scope: $openc3_scope, **kwargs)
       extract_string_kwargs_to_args(args, kwargs)
-      $api_server.get_cmd_hazardous(*args)
+      $api_server.get_cmd_hazardous(*args, scope: scope)
     end
 
     # Returns the time the most recent command was sent

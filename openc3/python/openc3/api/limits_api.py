@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 from datetime import datetime, timezone
+from typing import Any
 
 from openc3.api import WHITELIST
 from openc3.api.tlm_api import _tlm_packet_names, _tlm_process_args, _tlm_process_args_all_packets
@@ -45,44 +46,56 @@ WHITELIST.extend(
 )
 
 
-# Return an array of arrays indicating all items in the packet that are out of limits
-#   [[target name, packet name, item name, item limits state], ...]
-#
-# @return [Array<Array<String, String, String, String>>]
-def get_out_of_limits(scope=OPENC3_SCOPE):
+def get_out_of_limits(scope: str = OPENC3_SCOPE) -> list[list[str]]:
+    """Return all telemetry items which are currently out of limits.
+
+    Args:
+        scope: COSMOS scope.
+
+    Returns:
+        A [target_name, packet_name, item_name, limits_state] list for each
+        item which is YELLOW or RED.
+    """
     authorize(permission="tlm", scope=scope)
     return LimitsEventTopic.out_of_limits(scope=scope)
 
 
-# Get the overall limits state which is the worse case of all limits items.
-# For example if any limits are YELLOW_LOW or YELLOW_HIGH then the overall limits state is YELLOW.
-# If a single limit item then turns RED_HIGH the overall limits state is RED.
-#
-# @param ignored_items [Array<Array<String, String, String|nil>>] Array of [TGT, PKT, ITEM] strings
-#   to ignore when determining overall state. Note, ITEM can be nil to indicate to ignore entire packet.
-# @return [String] The overall limits state for the system, one of 'GREEN', 'YELLOW', 'RED'
-def get_overall_limits_state(ignored_items=None, scope=OPENC3_SCOPE):
+def get_overall_limits_state(ignored_items: list[Any] | None = None, scope: str = OPENC3_SCOPE) -> str:
+    """Return the overall limits state, which is the worst state of all items.
+
+    For example if any item is YELLOW_LOW or YELLOW_HIGH the overall state is
+    YELLOW. If a single item then turns RED_HIGH the overall state is RED.
+
+    Args:
+        ignored_items: [TGT, PKT, ITEM] lists to ignore when determining the
+            overall state. ITEM can be None to ignore the entire packet.
+        scope: COSMOS scope.
+
+    Returns:
+        The overall limits state: GREEN, YELLOW or RED.
+
+    Raises:
+        RuntimeError: If an ignored item does not have exactly three elements.
+    """
     # We only need to check out of limits items so call get_out_of_limits() which authorizes
     out_of_limits = get_out_of_limits(scope=scope)
     overall = "GREEN"
 
-    # Build easily matchable ignore list
+    # Build easily matchable ignore list without modifying the caller's list
+    ignored_keys = []
     if ignored_items is not None:
-        new_items = []
         for item in ignored_items:
             if len(item) != 3:
                 raise RuntimeError(f"Invalid ignored item: {item}. Must be [TGT, PKT, ITEM] where ITEM can be None.")
-            if item[2] is None:
-                item[2] = ""
-            new_items.append("__".join(item))
-        ignored_items = new_items
-    else:
-        ignored_items = []
+            ignored_keys.append(f"{item[0]}__{item[1]}__{item[2] or ''}")
 
     for target_name, packet_name, item_name, limits_state in out_of_limits:
-        # Ignore this item if we match one of the ignored items
-        for item in ignored_items:
-            if item in f"{target_name}__{packet_name}__{item_name}":
+        # Ignore this item if we match one of the ignored items. A key ending in __
+        # has no item so it matches every item in the packet, otherwise the item must
+        # match exactly so ignoring TEMP1 does not also ignore TEMP10.
+        full_name = f"{target_name}__{packet_name}__{item_name}"
+        for key in ignored_keys:
+            if full_name.startswith(key) if key.endswith("__") else full_name == key:
                 break
         else:  # Executed if 'for item in ignored_items:' did NOT break
             if limits_state == "RED" or limits_state == "RED_HIGH" or limits_state == "RED_LOW":
@@ -103,34 +116,41 @@ def get_overall_limits_state(ignored_items=None, scope=OPENC3_SCOPE):
     return overall
 
 
-# Whether the limits are enabled for the given item
-#
-# Accepts two different calling styles:
-#   limits_enabled("TGT PKT ITEM")
-#   limits_enabled('TGT','PKT','ITEM')
-#
-# Favor the first syntax where possible as it is more succinct.
-#
-# @param args [String|Array<String>] See the description for calling style
-# @return [Boolean] Whether limits are enable for the item
-def limits_enabled(*args, scope=OPENC3_SCOPE):
+def limits_enabled(*args: str, scope: str = OPENC3_SCOPE) -> bool:
+    """Return whether limits checking is enabled for a telemetry item.
+
+    Accepts two calling styles. Favor the first as it is more succinct::
+
+        limits_enabled("TGT PKT ITEM")
+        limits_enabled("TGT", "PKT", "ITEM")
+
+    Args:
+        *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
+        scope: COSMOS scope.
+
+    Returns:
+        True if limits checking is enabled for the item.
+    """
     target_name, packet_name, item_name = _tlm_process_args(args, "limits_enabled", scope=scope)
     authorize(permission="tlm", target_name=target_name, packet_name=packet_name, scope=scope)
     item = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
     return bool(item["limits"].get("enabled"))
 
 
-# Enable limits checking for a telemetry item
-#
-# Accepts two different calling styles:
-#   enable_limits("TGT PKT ITEM")
-#   enable_limits('TGT','PKT','ITEM')
-#
-# Favor the first syntax where possible as it is more succinct.
-#
-# @param args [String|Array<String>] See the description for calling style.
-#   A packet name of LATEST applies to every packet which contains the item.
-def enable_limits(*args, scope=OPENC3_SCOPE):
+def enable_limits(*args: str, scope: str = OPENC3_SCOPE) -> None:
+    """Enable limits checking for a telemetry item.
+
+    Accepts two calling styles. Favor the first as it is more succinct::
+
+        enable_limits("TGT PKT ITEM")
+        enable_limits("TGT", "PKT", "ITEM")
+
+    A packet name of LATEST applies to every packet which contains the item.
+
+    Args:
+        *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
+        scope: COSMOS scope.
+    """
     target_name, packet_names, item_name = _tlm_process_args_all_packets(args, "enable_limits", scope=scope)
     for packet_name in packet_names:
         authorize(permission="tlm_set", target_name=target_name, packet_name=packet_name, scope=scope)
@@ -138,17 +158,20 @@ def enable_limits(*args, scope=OPENC3_SCOPE):
         _set_limits_enabled(target_name, packet_name, item_name, True, scope)
 
 
-# Disable limit checking for a telemetry item
-#
-# Accepts two different calling styles:
-#   disable_limits("TGT PKT ITEM")
-#   disable_limits('TGT','PKT','ITEM')
-#
-# Favor the first syntax where possible as it is more succinct.
-#
-# @param args [String|Array<String>] See the description for calling style.
-#   A packet name of LATEST applies to every packet which contains the item.
-def disable_limits(*args, scope=OPENC3_SCOPE):
+def disable_limits(*args: str, scope: str = OPENC3_SCOPE) -> None:
+    """Disable limits checking for a telemetry item.
+
+    Accepts two calling styles. Favor the first as it is more succinct::
+
+        disable_limits("TGT PKT ITEM")
+        disable_limits("TGT", "PKT", "ITEM")
+
+    A packet name of LATEST applies to every packet which contains the item.
+
+    Args:
+        *args: A single "TGT PKT ITEM" string, or the target, packet and item names.
+        scope: COSMOS scope.
+    """
     target_name, packet_names, item_name = _tlm_process_args_all_packets(args, "disable_limits", scope=scope)
     for packet_name in packet_names:
         authorize(permission="tlm_set", target_name=target_name, packet_name=packet_name, scope=scope)
@@ -156,16 +179,24 @@ def disable_limits(*args, scope=OPENC3_SCOPE):
         _set_limits_enabled(target_name, packet_name, item_name, False, scope)
 
 
-# Get a Hash of all the limits sets defined for an item. Hash keys are the limit
-# set name in uppercase (note there is always a DEFAULT) and the value is an array
-# of limit values: red low, yellow low, yellow high, red high, <green low, green high>.
-# Green low and green high are optional.
-#
-# For example: {'DEFAULT' => [-80, -70, 60, 80, -20, 20],
-#               'TVAC' => [-25, -10, 50, 55] }
-#
-# @return [Hash{String => Array<Number, Number, Number, Number, Number, Number>}]
-def get_limits(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
+def get_limits(target_name: str, packet_name: str, item_name: str, scope: str = OPENC3_SCOPE) -> dict[str, list[float]]:
+    """Return all the limits sets defined for a telemetry item.
+
+    Each value is a list of red low, yellow low, yellow high, red high and the
+    optional green low and green high limits. For example::
+
+        {"DEFAULT": [-80, -70, 60, 80, -20, 20], "TVAC": [-25, -10, 50, 55]}
+
+    Args:
+        target_name: Target name.
+        packet_name: Packet name. LATEST reads the packet most recently
+            received which contains the item.
+        item_name: Item name.
+        scope: COSMOS scope.
+
+    Returns:
+        Uppercase limits set names (there is always a DEFAULT) mapped to the limits.
+    """
     target_name = target_name.upper()
     packet_name = packet_name.upper()
     item_name = item_name.upper()
@@ -176,7 +207,8 @@ def get_limits(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
     limits = {}
     item = TargetModel.packet_item(target_name, packet_name, item_name, scope=scope)
     for key, vals in item["limits"].items():
-        if not isinstance(vals, dict):
+        # Skip non-numeric limits such as SEQUENCE, CHANGE, or STATIC change limits
+        if not isinstance(vals, dict) or "red_low" not in vals:
             continue
 
         limits[key] = [
@@ -190,24 +222,48 @@ def get_limits(target_name, packet_name, item_name, scope=OPENC3_SCOPE):
     return limits
 
 
-# Change the limits settings for a given item. By default, a new limits set called 'CUSTOM'
-# is created to avoid overriding existing limits. A packet name of LATEST
-# applies to every packet which contains the item.
 def set_limits(
-    target_name,
-    packet_name,
-    item_name,
-    red_low,
-    yellow_low,
-    yellow_high,
-    red_high,
-    green_low=None,
-    green_high=None,
-    limits_set="CUSTOM",
-    persistence=None,
-    enabled=True,
-    scope=OPENC3_SCOPE,
-):
+    target_name: str,
+    packet_name: str,
+    item_name: str,
+    red_low: float,
+    yellow_low: float,
+    yellow_high: float,
+    red_high: float,
+    green_low: float | None = None,
+    green_high: float | None = None,
+    limits_set: str = "CUSTOM",
+    persistence: int | None = None,
+    enabled: bool = True,
+    scope: str = OPENC3_SCOPE,
+) -> None:
+    """Change the limits settings for a telemetry item.
+
+    By default a new limits set called CUSTOM is created to avoid overriding
+    existing limits. Every packet is validated before any is changed, so a
+    validation error does not leave a partial update.
+
+    Args:
+        target_name: Target name.
+        packet_name: Packet name. LATEST applies to every packet which
+            contains the item.
+        item_name: Item name.
+        red_low: Red low limit.
+        yellow_low: Yellow low limit.
+        yellow_high: Yellow high limit.
+        red_high: Red high limit.
+        green_low: Optional green low limit. Requires green_high.
+        green_high: Optional green high limit. Requires green_low.
+        limits_set: Name of the limits set to change.
+        persistence: Number of consecutive out of limits samples before the
+            limits state changes. None leaves the current setting.
+        enabled: Whether limits checking is enabled for the item.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the limits are not nested correctly, or the item does
+            not exist or has no limits.
+    """
     target_name = target_name.upper()
     packet_name = packet_name.upper()
     item_name = item_name.upper()
@@ -232,6 +288,11 @@ def set_limits(
             raise RuntimeError(f"Item '{target_name} {name} {item_name}' does not exist while setting limits")
         if not item["limits"]:
             raise RuntimeError("Cannot set_limits on item without any limits")
+        default = item["limits"].get("DEFAULT")
+        if isinstance(default, dict) and default.get("change_type"):
+            raise RuntimeError(
+                f"Cannot set_limits on item '{target_name} {name} {item_name}' with {default['change_type']} limits"
+            )
         items.append((name, packet, item))
     for name, packet, item in items:
         if persistence:
@@ -280,17 +341,28 @@ def set_limits(
         LimitsEventTopic.write(event, scope=scope)
 
 
-# Change the color associated with a telemetry item state in realtime.
-# Items with states use the state color (GREEN, YELLOW, RED) to determine
-# their limits state rather than numeric red/yellow/green limits.
-#
-# @param target_name [str] Target name
-# @param packet_name [str] Packet name
-# @param item_name [str] Item name
-# @param state_name [str] Name of the state to change (e.g. 'CONNECTED')
-# @param color [str] New color for the state. Must be GREEN, YELLOW, or RED.
-# A packet name of LATEST applies to every packet which contains the item.
-def set_state_color(target_name, packet_name, item_name, state_name, color, scope=OPENC3_SCOPE):
+def set_state_color(
+    target_name: str, packet_name: str, item_name: str, state_name: str, color: str | None, scope: str = OPENC3_SCOPE
+) -> None:
+    """Change the color of a telemetry item state in realtime.
+
+    Items with states use the state color (GREEN, YELLOW, RED) to determine
+    their limits state rather than numeric limits. Setting a color also
+    enables limits checking for the item.
+
+    Args:
+        target_name: Target name.
+        packet_name: Packet name. LATEST applies to every packet which
+            contains the item.
+        item_name: Item name.
+        state_name: Name of the state to change, e.g. CONNECTED.
+        color: New color for the state: GREEN, YELLOW or RED. None clears the
+            state color.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the color is invalid, or the item or state does not exist.
+    """
     target_name = target_name.upper()
     packet_name = packet_name.upper()
     item_name = item_name.upper()
@@ -349,42 +421,62 @@ def set_state_color(target_name, packet_name, item_name, state_name, color, scop
         LimitsEventTopic.write(event, scope=scope)
 
 
-# Returns all limits_groups and their members
-# @since 5.0.0 Returns hash with values
-# @return [Hash{String => Array<Array<String, String, String>>]
-def get_limits_groups(scope=OPENC3_SCOPE):
+def get_limits_groups(scope: str = OPENC3_SCOPE) -> dict[str, list[list[str]]]:
+    """Return all limits groups and their members.
+
+    Args:
+        scope: COSMOS scope.
+
+    Returns:
+        Group names mapped to the [target_name, packet_name, item_name] of
+        each member.
+    """
     authorize(permission="tlm", scope=scope)
     return TargetModel.limits_groups(scope=scope)
 
 
-# Enables limits for all the items in the group
-#
-# @param group_name [String] Name of the group to enable
-def enable_limits_group(group_name, scope=OPENC3_SCOPE):
+def enable_limits_group(group_name: str, scope: str = OPENC3_SCOPE) -> None:
+    """Enable limits checking for all the items in a limits group.
+
+    Args:
+        group_name: Name of the limits group.
+        scope: COSMOS scope.
+    """
     _limits_group(group_name, action="enable", scope=scope)
 
 
-# Disables limits for all the items in the group
-#
-# @param group_name [String] Name of the group to disable
-def disable_limits_group(group_name, scope=OPENC3_SCOPE):
+def disable_limits_group(group_name: str, scope: str = OPENC3_SCOPE) -> None:
+    """Disable limits checking for all the items in a limits group.
+
+    Args:
+        group_name: Name of the limits group.
+        scope: COSMOS scope.
+    """
     _limits_group(group_name, action="disable", scope=scope)
 
 
-# Returns all defined limits sets
-#
-# @return [Array<String>] All defined limits sets
-def get_limits_sets(scope=OPENC3_SCOPE):
+def get_limits_sets(scope: str = OPENC3_SCOPE) -> list[str]:
+    """Return the names of all defined limits sets.
+
+    Args:
+        scope: COSMOS scope.
+
+    Returns:
+        Sorted limits set names.
+    """
     authorize(permission="tlm", scope=scope)
     sets = list(LimitsEventTopic.sets(scope=scope).keys())
     sets.sort()
     return sets
 
 
-# Changes the active limits set that applies to all telemetry
-#
-# @param limits_set [String] The name of the limits set
-def set_limits_set(limits_set, scope=OPENC3_SCOPE):
+def set_limits_set(limits_set: str, scope: str = OPENC3_SCOPE) -> None:
+    """Change the active limits set that applies to all telemetry.
+
+    Args:
+        limits_set: Name of the limits set.
+        scope: COSMOS scope.
+    """
     authorize(permission="tlm_set", scope=scope)
     message = f"Setting Limits Set: {limits_set}"
     Logger.info(message, scope=scope)
@@ -399,13 +491,21 @@ def set_limits_set(limits_set, scope=OPENC3_SCOPE):
     )
 
 
-# Deletes a limits set. The DEFAULT limits set and the currently active
-# limits set cannot be deleted. Use set_limits_set to change the active set
-# before deleting it. Note that the limits set is not removed from the
-# TargetModel packet definitions; that is cleaned up on the next plugin install.
-#
-# @param limits_set [String] The name of the limits set to delete
-def delete_limits_set(limits_set, scope=OPENC3_SCOPE):
+def delete_limits_set(limits_set: str, scope: str = OPENC3_SCOPE) -> None:
+    """Delete a limits set.
+
+    The DEFAULT limits set and the active limits set cannot be deleted. Use
+    `set_limits_set` to change the active set before deleting it. The limits
+    set is not removed from the target packet definitions; that is cleaned up
+    on the next plugin install.
+
+    Args:
+        limits_set: Name of the limits set to delete.
+        scope: COSMOS scope.
+
+    Raises:
+        RuntimeError: If the set is DEFAULT, is the active set, or does not exist.
+    """
     authorize(permission="tlm_set", scope=scope)
     limits_set = str(limits_set)
     if limits_set == "DEFAULT":
@@ -424,29 +524,38 @@ def delete_limits_set(limits_set, scope=OPENC3_SCOPE):
     Logger.info(message, scope=scope)
 
 
-# Returns the active limits set that applies to all telemetry
-#
-# @return [String] The current limits set
-def get_limits_set(scope=OPENC3_SCOPE):
+def get_limits_set(scope: str = OPENC3_SCOPE) -> str:
+    """Return the active limits set that applies to all telemetry.
+
+    Args:
+        scope: COSMOS scope.
+
+    Returns:
+        Name of the active limits set.
+    """
     authorize(permission="tlm", scope=scope)
     return LimitsEventTopic.current_set(scope=scope)
 
 
-# Returns limits events starting at the provided offset. Passing nil for an
-# offset will return the last received limits event and associated offset.
-#
-# @param offset [Integer] Offset to start reading limits events. Nil to return
-#   the last received limits event (if any).
-# @param count [Integer] The total number of events returned. Default is 100.
-# @return [Hash, Integer] Event hash followed by the offset. The offset can
-#   be used in subsequent calls to return events from where the last call left off.
-def get_limits_events(offset=None, count=100, scope=OPENC3_SCOPE):
+def get_limits_events(offset: str | None = None, count: int = 100, scope: str = OPENC3_SCOPE) -> list[list[Any]]:
+    """Return limits events starting at an offset.
+
+    Args:
+        offset: Offset to start reading events from, as returned by a previous
+            call. None returns the last received event (if any).
+        count: Maximum number of events to return.
+        scope: COSMOS scope.
+
+    Returns:
+        An [offset, event] list for each event. Pass the last offset to the
+        next call to continue where this call left off.
+    """
     authorize(permission="tlm", scope=scope)
     return LimitsEventTopic.read(offset, count=count, scope=scope)
 
 
 # Enables or disables a limits group
-def _limits_group(group_name, action, scope):
+def _limits_group(group_name: str, action: str, scope: str):
     authorize(permission="tlm_set", scope=scope)
     group_name = group_name.upper()
     # Items grouped by target and packet so each packet is read and written once
@@ -487,7 +596,7 @@ def _limits_group(group_name, action, scope):
     LimitsEventTopic.write(event, scope=scope)
 
 
-def _set_limits_enabled(target_name, packet_name, item_name, enabled, scope):
+def _set_limits_enabled(target_name: str, packet_name: str, item_name: str, enabled: bool, scope: str):
     packet = TargetModel.packet(target_name, packet_name, scope=scope)
     item = next((packet_item for packet_item in packet["items"] if packet_item["name"] == item_name), None)
     if item is None:

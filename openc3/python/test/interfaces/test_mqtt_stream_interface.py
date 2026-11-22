@@ -56,6 +56,7 @@ class TestMqttStreamInterface(unittest.TestCase):
         i.set_option("KEY", ["key_content"])
         i.set_option("CA_FILE", ["ca_file_content"])
         i.connect()
+        self.addCleanup(i.disconnect)
         self.assertTrue(i.connected())
         self.assertEqual(i.ack_timeout, 10.0)
         mock_client_instance.username_pw_set.assert_called_with("test_user", "test_pass")
@@ -74,6 +75,7 @@ class TestMqttStreamInterface(unittest.TestCase):
         mock_client_instance = mock_client.return_value
         i = MqttStreamInterface("localhost", "1883", False, "write_topic", "read_topic")
         i.connect()
+        self.addCleanup(i.disconnect)
         i.disconnect()
         self.assertFalse(i.connected())
         i.disconnect()  # Safe to call twice
@@ -83,6 +85,7 @@ class TestMqttStreamInterface(unittest.TestCase):
     def test_disconnect_wakes_up_the_read_thread(self, _mock_client):
         i = MqttStreamInterface("localhost", "1883", False, "write_topic", "read_topic")
         i.connect()
+        self.addCleanup(i.disconnect)
         thread = i.read_queue_thread
         self.assertTrue(thread.is_alive())
         start = time.time()
@@ -97,6 +100,7 @@ class TestMqttStreamInterface(unittest.TestCase):
         mock_client_instance = mock_client.return_value
         i = MqttStreamInterface("localhost", "1883", False, "write_topic", "read_topic")
         i.connect()
+        self.addCleanup(i.disconnect)
         message = Mock()
         message.topic = "read_topic"
         message.payload = b"\x00\x01\x02\x03\x04\x05"
@@ -111,6 +115,7 @@ class TestMqttStreamInterface(unittest.TestCase):
         mock_client_instance = mock_client.return_value
         i = MqttStreamInterface("localhost", "1883", False, "write_topic", "read_topic")
         i.connect()
+        self.addCleanup(i.disconnect)
         pkt = System.commands.packet("INST", "COLLECT")
         pkt.restore_defaults()
         i.write(pkt)

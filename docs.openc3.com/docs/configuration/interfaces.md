@@ -131,7 +131,7 @@ INTERFACE INTERFACE_NAME tcpip_client_interface.rb host.docker.internal 8080 808
 
 #### UPDATE_INTERVAL
 
-Number of seconds to wait before writing packets to Redis. Interfaces queue the raw packet stream writes they make to Redis and flush them in a single pipelined batch every 0.1 seconds by default. Decommutated telemetry and the Current Value Table (CVT) are written separately by the decom microservice and are not affected by this option. Raising this value reduces processor utilization for high rate data at the cost of slower updates. Lowering it gives faster updates but increases processor utilization. Setting it to 0 disables raw packet stream queuing and writes every packet to Redis immediately, which is the slowest option for high rate data. This option was previously known as `OPTIMIZE_THROUGHPUT`.
+Number of seconds to wait before writing packets to Redis. Interfaces queue the raw packet stream writes they make to Redis and flush them in a single pipelined batch every 0.1 seconds by default. Decommutated telemetry and the Current Value Table (CVT) are written separately by the decom microservice, which queues its writes the same way. Use the [DECOM_UPDATE_INTERVAL](plugins#decom_update_interval) target modifier to configure it. Raising this value reduces processor utilization for high rate data at the cost of slower updates. Lowering it gives faster updates but increases processor utilization. Setting it to 0 disables raw packet stream queuing and writes every packet to Redis immediately, which is the slowest option for high rate data. This option was previously known as `OPTIMIZE_THROUGHPUT`.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">
@@ -377,6 +377,8 @@ The HTTP client interface connects to a HTTP server to send commands and receive
 | Read Timeout                | Number of seconds to wait before aborting the read. Pass nil / None to block on read.   | No       | nil / None |
 | Connect Timeout             | Number of seconds to wait before aborting the connection                                | No       | 5          |
 | Include Request In Response | Whether to include the request in the extra data                                        | No       | false      |
+
+Requests are only sent to the configured host, port and protocol. Redirects are not followed. A redirect response (status 3xx) is returned like any other response, so it goes to the HTTP_ERROR_PACKET if one is defined.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python">

@@ -9,6 +9,7 @@
 # This file may also be used under the terms of a commercial license
 # if purchased from OpenC3, Inc.
 
+import inspect
 import json
 import os
 import sys
@@ -19,6 +20,7 @@ from unittest.mock import Mock, patch
 
 from websockets.exceptions import ConnectionClosedOK
 
+from openc3.environment import OPENC3_SCOPE
 from openc3.script.exceptions import StopScriptError
 from openc3.script.web_socket_api import (
     AllScriptsWebSocketApi,
@@ -366,9 +368,13 @@ class TestWebSocketApiInit(unittest.TestCase):
         self.assertEqual(api.scope, "OTHER")
 
     def test_generates_authentication_when_none_is_passed(self):
-        with patch.dict(os.environ, {"OPENC3_API_TOKEN": "token"}, clear=True):
+        expected_auth = OpenC3KeycloakAuthentication("http://keycloak")
+        with patch(
+            "openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth
+        ) as factory:
             api = WebSocketApi(url="ws://test.com/cable")
-            self.assertIsInstance(api.authentication, OpenC3KeycloakAuthentication)
+            self.assertIs(api.authentication, expected_auth)
+            factory.assert_called_once_with()
 
     # Subclasses forward **options, which would otherwise silently swallow a
     # typo'd option name that explicit keyword arguments used to reject
@@ -692,35 +698,27 @@ class TestWebSocketApiGenerateAuth(unittest.TestCase):
         # Bypass __init__ so we test the auth selection alone
         self.api = WebSocketApi.__new__(WebSocketApi)
 
-    def test_uses_password_authentication_when_only_the_password_is_set(self):
-        # The real OpenC3Authentication constructor performs an HTTP token request
-        with (
-            patch.dict(os.environ, {"OPENC3_API_PASSWORD": "password"}, clear=True),
-            patch("openc3.script.web_socket_api.OpenC3Authentication") as auth_class,
-        ):
-            auth_class.return_value = "core_auth"
-            self.assertEqual(self.api._generate_auth(), "core_auth")
+    def test_uses_shared_authentication_factory(self):
+        expected_auth = object()
+        with patch(
+            "openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth
+        ) as factory:
+            self.assertIs(self.api._generate_auth(), expected_auth)
+            factory.assert_called_once_with()
 
     # Failing fast beats returning None, which would only surface later as an
     # AttributeError inside subscribe(). Matches the Ruby client.
     def test_raises_when_no_authentication_environment_is_set(self):
         with (
-            patch.dict(os.environ, {}, clear=True),
+            patch("openc3.script.web_socket_api.authentication_from_environment", return_value=None),
             self.assertRaisesRegex(RuntimeError, "Environment Variables Not Set for Authentication"),
         ):
             self.api._generate_auth()
 
-    def test_uses_keycloak_authentication_when_the_api_token_is_set(self):
-        env = {"OPENC3_API_TOKEN": "token", "OPENC3_KEYCLOAK_URL": "http://keycloak:8080"}
-        with patch.dict(os.environ, env, clear=True):
-            auth = self.api._generate_auth()
-            self.assertIsInstance(auth, OpenC3KeycloakAuthentication)
-            self.assertEqual(auth.url, "http://keycloak:8080")
-
-    def test_uses_keycloak_authentication_when_the_api_user_is_set(self):
-        env = {"OPENC3_API_USER": "user", "OPENC3_KEYCLOAK_URL": "http://keycloak:8080"}
-        with patch.dict(os.environ, env, clear=True):
-            self.assertIsInstance(self.api._generate_auth(), OpenC3KeycloakAuthentication)
+    def test_preserves_keycloak_authentication_from_the_shared_factory(self):
+        expected_auth = OpenC3KeycloakAuthentication("http://keycloak:8080")
+        with patch("openc3.script.web_socket_api.authentication_from_environment", return_value=expected_auth):
+            self.assertIs(self.api._generate_auth(), expected_auth)
 
 
 class TestCmdTlmWebSocketApiGenerateUrl(unittest.TestCase):
@@ -989,12 +987,13 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
     def setUp(self):
         self.stream = FakeWebSocketStream()
         # read_all takes no authentication argument, so _generate_auth runs;
-        # patch only the network-touching constructor
-        auth_patcher = patch("openc3.script.web_socket_api.OpenC3Authentication")
+        # patch the shared factory to avoid environment-dependent authentication.
+        auth_patcher = patch("openc3.script.web_socket_api.authentication_from_environment")
         auth_patcher.start().return_value = mock_auth()
         self.addCleanup(auth_patcher.stop)
         stream_patcher = patch("openc3.script.web_socket_api.WebSocketClientStream")
-        stream_patcher.start().return_value = self.stream
+        self.stream_class = stream_patcher.start()
+        self.stream_class.return_value = self.stream
         self.addCleanup(stream_patcher.stop)
         env_patcher = patch.dict(os.environ, {"OPENC3_API_PASSWORD": "password"}, clear=True)
         env_patcher.start()
@@ -1082,6 +1081,25 @@ class TestStreamingWebSocketApiReadAll(unittest.TestCase):
         self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
         StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc))
         self.assertEqual(self.stream.disconnect_count, 1)
+
+    def test_connects_with_the_requested_scope(self):
+        self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
+        StreamingWebSocketApi.read_all(
+            items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc), scope="OTHER"
+        )
+        self.assertTrue(self.stream_class.call_args.args[0].endswith("?scope=OTHER"))
+        self.assertEqual(action_data(self.stream)[0]["scope"], "OTHER")
+
+    def test_connects_with_the_default_scope_when_not_given(self):
+        self.stream.queue_read('{"type":"confirm_subscription"}', '{"message":[]}')
+        StreamingWebSocketApi.read_all(items=["ITEM"], end_time=datetime(2026, 1, 1, tzinfo=timezone.utc))
+        self.assertTrue(self.stream_class.call_args.args[0].endswith(f"?scope={OPENC3_SCOPE}"))
+        self.assertEqual(action_data(self.stream)[0]["scope"], OPENC3_SCOPE)
+
+    def test_only_accepts_keyword_arguments(self):
+        # Positional arguments made it easy to pass the scope as the timeout
+        parameters = inspect.signature(StreamingWebSocketApi.read_all).parameters.values()
+        self.assertEqual({p.kind for p in parameters}, {inspect.Parameter.KEYWORD_ONLY})
 
 
 if __name__ == "__main__":

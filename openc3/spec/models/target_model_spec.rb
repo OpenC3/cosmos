@@ -890,6 +890,7 @@ module OpenC3
         tf.puts "TLM_LOG_CYCLE_TIME 5"
         tf.puts "TLM_LOG_CYCLE_SIZE 6"
         tf.puts "STORED_LIMITS_MODE DISABLE"
+        tf.puts "DECOM_UPDATE_INTERVAL 0.25"
         tf.close
         parser.parse_file(tf.path) do |keyword, params|
           model.handle_config(parser, keyword, params)
@@ -903,6 +904,7 @@ module OpenC3
         expect(json['tlm_decom_retain_time']).to eql '60d'
         expect(json['shard']).to eql 9
         expect(json['stored_limits_mode']).to eql 'DISABLE'
+        expect(json['decom_update_interval']).to eql 0.25
         tf.unlink
       end
 
@@ -919,6 +921,22 @@ module OpenC3
           end
         end.to raise_error(ConfigParser::Error, /CMD_DECOM_RETAIN_TIME must be a number followed by h, d, w, M, or y/)
         tf.unlink
+      end
+
+      it "rejects a DECOM_UPDATE_INTERVAL that is not a finite number" do
+        ['abc', '1e9999'].each do |value|
+          model = TargetModel.new(folder_name: "TEST", name: "TEST", scope: "DEFAULT")
+          parser = ConfigParser.new
+          tf = Tempfile.new
+          tf.puts "DECOM_UPDATE_INTERVAL #{value}"
+          tf.close
+          expect do
+            parser.parse_file(tf.path) do |keyword, params|
+              model.handle_config(parser, keyword, params)
+            end
+          end.to raise_error(ConfigParser::Error, /DECOM_UPDATE_INTERVAL must be a .*number of seconds/)
+          tf.unlink
+        end
       end
 
       it "rejects TLM_DECOM_RETAIN_TIME with invalid format" do
@@ -1023,6 +1041,22 @@ module OpenC3
         @scope = "DEFAULT"
         @target = "INST"
         @target_dir = File.join(SPEC_DIR, "install", "config")
+      end
+
+      it "passes DECOM_UPDATE_INTERVAL to the decom microservice as UPDATE_INTERVAL" do
+        decom_kwargs = []
+        umodel = double(MicroserviceModel, create: nil, deploy: nil)
+        allow(MicroserviceModel).to receive(:new) do |**kwargs|
+          decom_kwargs << kwargs if kwargs[:name].include?("__DECOM__")
+          umodel
+        end
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN')
+        model.deploy_decom_microservice(double(language: 'ruby'), @target_dir, {}, [])
+        expect(decom_kwargs[-1][:options]).to eql []
+
+        model = TargetModel.new(folder_name: @target, name: @target, scope: @scope, plugin: 'PLUGIN', decom_update_interval: 0.5)
+        model.deploy_decom_microservice(double(language: 'ruby'), @target_dir, {}, [])
+        expect(decom_kwargs[-1][:options]).to eql [["UPDATE_INTERVAL", 0.5]]
       end
 
       it "raises if the target can't be found" do
@@ -1209,17 +1243,27 @@ module OpenC3
         double("System", packet_config: packet_config)
       end
 
-      it "raises if an item name exceeds the QuestDB column header limit" do
+      it "raises if an item name plus its value type suffix exceeds the QuestDB column name limit" do
         model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
         packet = Packet.new("INST", "PKT")
-        packet.define_item("A" * 128, 0, 8, :UINT)
-        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/127 characters or less/)
+        packet.define_item("A" * 125, 0, 8, :UINT) # 125 + "__C" = 128
+        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/124 bytes \(UTF-8\) or less.*\(125\)/m)
       end
 
       it "does not raise for names within the limit" do
         model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
         packet = Packet.new("INST", "PKT")
-        packet.define_item("A" * 127, 0, 8, :UINT)
+        packet.define_item("A" * 124, 0, 8, :UINT)
+        expect { model.check_column_header_lengths(build_system(packet)) }.to_not raise_error
+      end
+
+      it "measures names in UTF-8 bytes" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
+        packet = Packet.new("INST", "PKT")
+        packet.define_item("\u00C9" * 63, 0, 8, :UINT) # 63 characters, 126 bytes
+        expect { model.check_column_header_lengths(build_system(packet)) }.to raise_error(/\(126\)/)
+        packet = Packet.new("INST", "PKT")
+        packet.define_item("\u00C9" * 62, 0, 8, :UINT) # 62 characters, 124 bytes
         expect { model.check_column_header_lengths(build_system(packet)) }.to_not raise_error
       end
     end

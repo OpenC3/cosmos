@@ -15,7 +15,7 @@ from unittest.mock import *
 
 from openc3.models.target_model import TargetModel
 from openc3.script.commands import *
-from openc3.top_level import HazardousError
+from openc3.top_level import CriticalCmdError, HazardousError
 from test.test_helper import *
 
 
@@ -123,6 +123,29 @@ class Proxy:
         )
 
 
+class TestCriticalCmdScope(unittest.TestCase):
+    def test_cmd_forwards_scope_to_prompt_for_critical_cmd(self):
+        error = CriticalCmdError()
+        error.uuid = "UUID"
+        error.command = {
+            "username": "user",
+            "target_name": "INST",
+            "cmd_name": "ABORT",
+            "cmd_params": {},
+            "cmd_string": 'cmd("INST ABORT")',
+            "obfuscated_items": [],
+        }
+        server = MagicMock()
+        server.cmd.side_effect = error
+        with (
+            patch("openc3.script.API_SERVER", server),
+            patch("openc3.script.prompt_for_critical_cmd") as prompt,
+        ):
+            for _ in capture_io():
+                cmd("INST ABORT", scope="OTHER")
+        prompt.assert_called_once_with("UUID", "user", "INST", "ABORT", {}, 'cmd("INST ABORT")', scope="OTHER")
+
+
 @patch("openc3.script.API_SERVER", Proxy)
 @patch("openc3.script.prompt_for_hazardous", my_prompt_for_hazardous)
 class TestCommands(unittest.TestCase):
@@ -148,6 +171,18 @@ class TestCommands(unittest.TestCase):
                 stdout.getvalue(),
             )
         self.assertEqual(gArgs, ("INST ABORT",))
+
+    def test_sends_extra_metadata(self):
+        extra = {"flow_uuid": "1234-5678", "hv_id": 42}
+        for _stdout in capture_io():
+            cmd("INST ABORT", extra=extra)
+        self.assertEqual(gKwargs["extra"], extra)
+
+    def test_does_not_send_extra_when_not_given(self):
+        # Older servers reject an unknown extra keyword, even when None
+        for _stdout in capture_io():
+            cmd("INST ABORT")
+        self.assertNotIn("extra", gKwargs)
 
     def test_sends_a_cmd_raw(self):
         global gArgs
@@ -244,3 +279,40 @@ class TestCommands(unittest.TestCase):
                 'cmd("INST HAZARDOUS_SET_PASSWORD with USERNAME user, PASSWORD *****")',
                 stdout.getvalue(),
             )
+
+
+class TestCommandWrappers(unittest.TestCase):
+    @patch("openc3.script.API_SERVER")
+    def test_build_cmd_forwards_keyword_arguments(self, api_server):
+        api_server.build_cmd.return_value = {"buffer": b""}
+        build_cmd("INST ABORT", range_check=False, raw=True, timeout=10, scope="OTHER")
+        api_server.build_cmd.assert_called_once_with(
+            "INST ABORT", range_check=False, raw=True, timeout=10, scope="OTHER"
+        )
+
+    @patch("openc3.script.API_SERVER")
+    def test_build_cmd_defaults(self, api_server):
+        build_cmd("INST", "ABORT", {})
+        api_server.build_cmd.assert_called_once_with(
+            "INST", "ABORT", {}, range_check=True, raw=False, timeout=5, scope=OPENC3_SCOPE
+        )
+
+    @patch("openc3.script.API_SERVER")
+    def test_get_cmd_hazardous_forwards_scope(self, api_server):
+        api_server.get_cmd_hazardous.return_value = True
+        self.assertTrue(get_cmd_hazardous("INST CLEAR", scope="OTHER"))
+        api_server.get_cmd_hazardous.assert_called_once_with("INST CLEAR", scope="OTHER")
+
+    @patch("openc3.script.API_SERVER")
+    def test_get_cmd_time_converts_when_microseconds_are_zero(self, api_server):
+        api_server.get_cmd_time.return_value = ["INST", "ABORT", 1700000000, 0]
+        result = get_cmd_time("INST", "ABORT")
+        self.assertEqual(len(result), 3)
+        self.assertEqual(result[:2], ["INST", "ABORT"])
+        self.assertEqual(result[2], datetime.fromtimestamp(1700000000))
+
+    @patch("openc3.script.API_SERVER")
+    def test_get_cmd_time_with_no_command_sent(self, api_server):
+        api_server.get_cmd_time.return_value = [None, None, 0, 0]
+        result = get_cmd_time()
+        self.assertEqual(result, [None, None, datetime.fromtimestamp(0)])
