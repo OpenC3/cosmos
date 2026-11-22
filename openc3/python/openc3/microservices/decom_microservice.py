@@ -142,7 +142,8 @@ class DecomMicroservice(Microservice):
         self.limits_response_thread = None
         # Only for this microservice's targets. Other decom microservices in the same
         # process (a PYMULTIGROUP) share System and handle their own targets.
-        for target_name in self.target_names:
+        target_names: list[str] = self.target_names or []
+        for target_name in target_names:
             try:
                 for packet in System.telemetry.packets(target_name).values():
                     packet.limits_change_callback = self.limits_change_callback
@@ -156,7 +157,7 @@ class DecomMicroservice(Microservice):
         self.limits_telemetry = {
             target_name: packets
             for target_name, packets in System.telemetry.all().items()
-            if target_name in self.target_names
+            if target_name in target_names
         }
         LimitsEventTopic.sync_system(scope=self.scope, telemetry=self.limits_telemetry)
         target_model = TargetModel.get_model(name=self.target_names[0], scope=self.scope)

@@ -44,7 +44,10 @@ module OpenC3
         @lm.instance_variable_set(:@cancel_thread, true)
         {}
       end
-      allow_any_instance_of(Sleeper).to receive(:sleep).with(1).and_return(false)
+      # Only skip the retry wait. The status thread's sleep must still work
+      allow_any_instance_of(Sleeper).to receive(:sleep).and_wrap_original do |original, *args|
+        args == [1] ? false : original.call(*args)
+      end
       @lm.run
       expect(calls).to eql 2
       expect(@lm.instance_variable_get(:@error_count)).to eql 1
@@ -56,7 +59,7 @@ module OpenC3
       allow(Topic).to receive(:read_topics).and_raise("Redis unavailable")
       waiting = Queue.new
       allow_any_instance_of(Sleeper).to receive(:sleep).and_wrap_original do |original, *args|
-        waiting << true
+        waiting << true if args == [1] # The retry wait, not the status thread's sleep
         original.call(*args)
       end
       thread = Thread.new { @lm.run }
