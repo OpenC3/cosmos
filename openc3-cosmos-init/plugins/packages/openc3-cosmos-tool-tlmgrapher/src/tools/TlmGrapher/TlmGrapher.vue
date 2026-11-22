@@ -117,7 +117,7 @@
           :id="graph"
           :ref="`graph${graph}`"
           :state="state"
-          :start-time="startTime"
+          :start-times="startTimes"
           :selected-graph-id="selectedGraphId"
           :seconds-graphed="settings.secondsGraphed.value"
           :points-saved="settings.pointsSaved.value"
@@ -198,7 +198,8 @@ export default {
       grid: null,
       panel: 0,
       state: 'stop', // Valid: stop, start, pause
-      startTime: null, // Start time in nanoseconds
+      // Start time in nanoseconds for each time type ('PACKET' / 'RECEIVED')
+      startTimes: {},
       // Setup defaults to show an initial graph
       graphs: [0],
       selectedGraphId: 0,
@@ -565,9 +566,9 @@ export default {
       let items = this.grid.getItems([document.getElementById(`gridItem${id}`)])
       this.grid.remove(items)
       this.graphs.splice(this.graphs.indexOf(id), 1)
-      // Clear out the startTime if we close all the graphs ... we're starting over
+      // Clear out the startTimes if we close all the graphs ... we're starting over
       if (this.graphs.length === 0) {
-        this.startTime = null
+        this.startTimes = {}
         this.selectedGraphId = null
       } else {
         this.selectedGraphId = this.graphs[0]
@@ -621,11 +622,12 @@ export default {
         MUURI_REFRESH_TIME * 2, // Double the time since there is more animation
       )
     },
-    graphStarted: function (time) {
-      // Only set startTime once when notified by the first graph to start
-      // This allows us to have a uniform start time on all graphs
-      if (this.startTime === null) {
-        this.startTime = time
+    graphStarted: function (time, timeType = 'PACKET') {
+      // Only set the start time once when notified by the first graph to start
+      // This allows us to have a uniform start time on all graphs. Keep one
+      // per time type since a packet time and a received time can differ.
+      if (this.startTimes[timeType] == null) {
+        this.startTimes = { ...this.startTimes, [timeType]: time }
       }
     },
     togglePause: function () {

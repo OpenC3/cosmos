@@ -385,6 +385,13 @@ export default {
       type: Number,
       default: null,
     },
+    // Start times keyed by time type ('PACKET' / 'RECEIVED') in nanoseconds.
+    // Overrides startTime so graphs using different time types each get a
+    // start time taken in their own time type.
+    startTimes: {
+      type: Object,
+      default: null,
+    },
     secondsGraphed: {
       type: Number,
       required: true,
@@ -549,6 +556,16 @@ export default {
     }
   },
   computed: {
+    // The shared start time, but only if it was taken in our time type.
+    // A packet time start sent as a received time start (or the reverse)
+    // selects the wrong data when the two clocks differ.
+    sharedStartTime: function () {
+      if (this.startTimes) {
+        return this.startTimes[this.timeType] ?? null
+      }
+      // startTime alone is always a packet time
+      return this.timeType === 'PACKET' ? this.startTime : null
+    },
     calcFullSize: function () {
       return this.fullWidth || this.fullHeight
     },
@@ -1553,6 +1570,8 @@ export default {
         // removeItems only unsubscribes the graphed items so also drop a
         // custom x axis item or it keeps streaming with the old type.
         this.pendingData = []
+        // The realtime x axis anchor is a time in the old time type
+        this.resetRealtimeXAxis()
         if (!this.xAxisIsDefault) {
           this.removeItemsFromSubscription([this.actualXAxisItem])
         }
@@ -2056,7 +2075,7 @@ export default {
       }
     },
     addItemsToSubscription: function (itemArray = this.items) {
-      let theStartTime = this.startTime
+      let theStartTime = this.sharedStartTime
       if (this.graphStartDateTime) {
         theStartTime = this.graphStartDateTime
       }
@@ -2099,10 +2118,13 @@ export default {
           .catch(logUnlessAuthRequired)
       }
     },
-    clearAllData: function () {
+    resetRealtimeXAxis: function () {
       this.realtimeXAxisAnchor = null
       this.realtimeXAxisAnchorTime = null
       this.lastScrolledMax = null
+    },
+    clearAllData: function () {
+      this.resetRealtimeXAxis()
       // Clear all data so delete the time data as well
       this.data[0] = []
       this.clearData(this.items)
@@ -2309,9 +2331,9 @@ export default {
       }
 
       // If we weren't passed a startTime notify grapher of our start
-      if (this.startTime == null && this.data[0][0]) {
+      if (this.sharedStartTime == null && this.data[0][0]) {
         let newStartTime = this.data[0][0] * 1_000_000_000
-        this.$emit('started', newStartTime)
+        this.$emit('started', newStartTime, this.timeType)
       }
       if (
         this.playbackMode !== 'playback' &&
