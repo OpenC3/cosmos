@@ -127,6 +127,16 @@ if [[ "$IS_ENTERPRISE" == false ]] && [[ "$UPGRADING_TO_ENTERPRISE" == true ]] &
   fi
 fi
 
+# Run the release's project migrations, if it ships any, before its files
+# replace the user's. They carry user settings forward when a release moves
+# them (e.g. out of a file the upgrade is about to replace) and print anything
+# the user must still do. With --preview they only report. A failure stops the
+# upgrade before anything changes.
+migrate_script="$(git cat-file -p "$hash:scripts/linux/openc3_upgrade_migrate.sh" 2> /dev/null || true)"
+if [[ -n "$migrate_script" ]]; then
+  bash -c "$migrate_script" openc3_upgrade_migrate.sh "$hash" "$2"
+fi
+
 # If the --preview flag is set, show the diff without applying changes
 if [[ "$2" == "--preview" ]]; then
   git diff -R $hash -- . "${EXCLUDE_PATHSPECS[@]}"

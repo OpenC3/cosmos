@@ -123,6 +123,24 @@ if "%IS_ENTERPRISE%"=="false" if "%UPGRADING_TO_ENTERPRISE%"=="true" if not "%2"
     )
 )
 
+REM Run the release's project migrations, if it ships any, before its files
+REM replace the user's. They carry user settings forward when a release moves
+REM them (e.g. out of a file the upgrade is about to replace) and print anything
+REM the user must still do. With --preview they only report. A failure stops
+REM the upgrade before anything changes.
+set MIGRATE_SCRIPT=%TEMP%\openc3_upgrade_migrate_%RANDOM%%RANDOM%.bat
+git cat-file --filters "refs/tags/%TAG%:scripts/windows/openc3_upgrade_migrate.bat" > "%MIGRATE_SCRIPT%" 2>nul
+if errorlevel 1 goto migrate_done
+call "%MIGRATE_SCRIPT%" "refs/tags/%TAG%" %2
+set MIGRATE_RESULT=!errorlevel!
+del "%MIGRATE_SCRIPT%" >nul 2>&1
+if not "!MIGRATE_RESULT!"=="0" (
+    echo Upgrade stopped: the release's project migration failed.
+    exit /b !MIGRATE_RESULT!
+)
+:migrate_done
+del "%MIGRATE_SCRIPT%" >nul 2>&1
+
 REM If the --preview flag is set, show the diff without applying changes
 if "%2"=="--preview" (
     git diff -R "refs/tags/%TAG%" -- . %EXCLUDE_PATHSPECS%
