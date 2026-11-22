@@ -45,8 +45,8 @@ This writes:
 - `$OUT/cosmos-generated.md`: exactly what the GitHub "Generate release notes"
   button produces (What's Changed, New Contributors, Full Changelog).
 - `$OUT/cosmos-prs.md`: every PR with its title, author, and its `RELEASE NOTES:`
-  section from the PR template. Older PRs have no such section, so the start of
-  the body is included instead. When a body ends in `...` and the PR might be
+  section from the PR template. When that section is missing (older PRs), empty,
+  or `None`, the start of the body is included too. When a body ends in `...` and the PR might be
   breaking or a headline, read all of it: `gh pr view N -R OpenC3/cosmos --json body --jq .body`.
 
 Also read the last published Core release
@@ -67,9 +67,12 @@ Go through `cosmos-prs.md` and put each PR into exactly one bucket:
 | 🪲 Bug Fixes | User-visible fixes |
 | Omit | CI, tests, refactors, release tooling, lint rules, license text changes, and "AI review fixes for #N" PRs. They still appear in What's Changed. |
 
-`RELEASE NOTES: None` means omit. When a PR has a written `RELEASE NOTES:`
-section, base the bullet on it. Otherwise write the bullet from the title and
-body. Only state facts that the PR says. Don't invent numbers or results.
+`RELEASE NOTES: None` usually means omit. The template pre-fills `None`, so an
+author may have left it on a user-visible change. When the title is a `feat`,
+`fix`, or `perf`, or the body shows a user-visible change, sort it from the
+title and body anyway. When a PR has a written `RELEASE NOTES:` section, base
+the bullet on it. Otherwise write the bullet from the title and body. Only state
+facts that the PR says. Don't invent numbers or results.
 
 Several PRs that fix the same thing become one bullet with all their numbers:
 `(#4106, #4109, #4166)`. A human follow-up PR to another PR in the release

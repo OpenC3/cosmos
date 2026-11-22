@@ -19,7 +19,8 @@ Writes two files to --out (prefixed with the repo name, e.g. cosmos-):
   <name>-generated.md  GitHub's "Generate release notes" output (What's Changed,
                        New Contributors, Full Changelog). Same as the button.
   <name>-prs.md        One entry per PR: title, author, the PR's "Release notes"
-                       section when it has one, otherwise the start of the body.
+                       section when it has one, and the start of the body when
+                       that section is missing, empty, or "None".
 
 --target is the branch or commit to release from when --tag doesn't exist yet.
 Requires an authenticated `gh`.
@@ -75,6 +76,12 @@ def release_notes_section(body):
     return strip_comments(match.group(1))
 
 
+def body_excerpt(body):
+    body = strip_comments(body)
+    excerpt = body[:BODY_EXCERPT_CHARS] + ("..." if len(body) > BODY_EXCERPT_CHARS else "")
+    return excerpt or "(empty)"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--repo", required=True)
@@ -109,10 +116,11 @@ def main():
         if notes is not None:
             with_notes += 1
             lines.append(f"RELEASE NOTES: {notes or 'None'}")
-        else:
-            body = strip_comments(pr["body"])
-            excerpt = body[:BODY_EXCERPT_CHARS] + ("..." if len(body) > BODY_EXCERPT_CHARS else "")
-            lines.append("body: " + (excerpt or "(empty)"))
+        if not notes or notes.lower() == "none":
+            # No section, or the template's pre-filled "None" left as is. Include
+            # the body so a user-visible change isn't dropped just because the
+            # author never filled in the section.
+            lines.append("body: " + body_excerpt(pr["body"]))
         lines.append("")
 
     with open(f"{prefix}-prs.md", "w", encoding="utf-8") as f:
