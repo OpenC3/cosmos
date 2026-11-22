@@ -401,7 +401,10 @@ module OpenC3
         end
 
       when 'LIMITS_SET'
-        System.limits_set = event['set']
+        # Read the current set rather than the event's set. Decoms sharing a process
+        # share System.limits_set, so a decom still catching up on old events must
+        # not switch the others back to an obsolete set.
+        System.limits_set = current_set(scope: scope)
       end
     end
 

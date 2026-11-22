@@ -108,8 +108,6 @@ class TestTargetModel(unittest.TestCase):
 
     def test_microservice_group_and_language_round_trip_through_redis(self):
         # Ruby stores these keys, so from_json must accept them
-        import json
-
         json_data = {
             "name": "TEST",
             "folder_name": "TEST",
@@ -678,3 +676,47 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
 
         # Known packet counts must still be updated correctly
         self.assertGreater(packet.received_count, 0)
+
+    def test_sync_tlm_packet_counts_keeps_unwritten_counts_when_a_redis_write_fails(self):
+        health_status = System.telemetry.packet("INST", "HEALTH_STATUS")
+        adcs = System.telemetry.packet("INST", "ADCS")
+        TargetModel.sync_packet_count_data = {"INST": {"HEALTH_STATUS": 2}}
+        original = TargetModel.increment_telemetry_count
+        calls = []
+
+        def fail_second(*args, **kwargs):
+            calls.append(args)
+            if len(calls) == 2:
+                raise RuntimeError("Redis unavailable")
+            return original(*args, **kwargs)
+
+        TargetModel.sync_packet_count_time = None
+        with (
+            patch.object(TargetModel, "increment_telemetry_count", side_effect=fail_second),
+            self.assertRaisesRegex(RuntimeError, "Redis unavailable"),
+        ):
+            TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope="DEFAULT")
+        # HEALTH_STATUS was written so it isn't replayed, ADCS is kept for the next sync
+        self.assertEqual(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope="DEFAULT"), 2)
+        self.assertEqual(TargetModel.sync_packet_count_data, {"INST": {"ADCS": 1}})
+
+        TargetModel.sync_packet_count_time = None
+        TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope="DEFAULT")
+        self.assertEqual(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope="DEFAULT"), 3)
+        self.assertEqual(TargetModel.get_telemetry_count("INST", "ADCS", scope="DEFAULT"), 1)
+
+    def test_sync_tlm_packet_counts_includes_counts_queued_by_other_threads_in_the_readback(self):
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+        packet = System.telemetry.packet("INST", "ADCS")
+        original = TargetModel.get_all_telemetry_counts
+
+        def queue_during_readback(target_name, scope):
+            if target_name == "INST":
+                # Another decom in the process queues a packet after the flush
+                TargetModel.sync_packet_count_data["INST"] = {"HEALTH_STATUS": 2}
+            return original(target_name, scope=scope)
+
+        TargetModel.sync_packet_count_time = None
+        with patch.object(TargetModel, "get_all_telemetry_counts", side_effect=queue_during_readback):
+            TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope="DEFAULT")
+        self.assertEqual(System.telemetry.packet("INST", "HEALTH_STATUS").received_count, 12)

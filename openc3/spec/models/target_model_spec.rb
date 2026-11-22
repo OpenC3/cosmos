@@ -1562,6 +1562,41 @@ module OpenC3
 
           expect(packet.received_count).to be > 0
         end
+
+        it "keeps the counts it couldn't write when a Redis write fails" do
+          health_status = System.telemetry.packet("INST", "HEALTH_STATUS")
+          adcs = System.telemetry.packet("INST", "ADCS")
+          TargetModel.class_variable_set(:@@sync_packet_count_data, { "INST" => { "HEALTH_STATUS" => 2 } })
+          calls = 0
+          allow(TargetModel).to receive(:increment_telemetry_count).and_wrap_original do |original, *args, **kwargs|
+            calls += 1
+            raise "Redis unavailable" if calls == 2
+            original.call(*args, **kwargs)
+          end
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          expect { TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope: "DEFAULT") }.to raise_error("Redis unavailable")
+          # HEALTH_STATUS was written so it isn't replayed, ADCS is kept for the next sync
+          expect(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope: "DEFAULT")).to eql 2
+          expect(TargetModel.class_variable_get(:@@sync_packet_count_data)).to eql({ "INST" => { "ADCS" => 1 } })
+
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope: "DEFAULT")
+          expect(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope: "DEFAULT")).to eql 3
+          expect(TargetModel.get_telemetry_count("INST", "ADCS", scope: "DEFAULT")).to eql 1
+        end
+
+        it "includes counts queued by other threads when reading back the global counters" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+          packet = System.telemetry.packet("INST", "ADCS")
+          allow(TargetModel).to receive(:get_all_telemetry_counts).and_wrap_original do |original, target_name, **kwargs|
+            # Another decom in the process queues a packet after the flush
+            TargetModel.class_variable_get(:@@sync_packet_count_data)["INST"] = { "HEALTH_STATUS" => 2 } if target_name == "INST"
+            original.call(target_name, **kwargs)
+          end
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT")
+          expect(System.telemetry.packet("INST", "HEALTH_STATUS").received_count).to eql 12
+        end
       end
     end
 

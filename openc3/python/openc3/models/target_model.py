@@ -414,38 +414,48 @@ class TargetModel(Model):
                     cls.sync_packet_count_data = {}
 
             if sync_data is not None:
-                # Increment global counters for packets received
-                for (
-                    target_name,
-                    packet_data,
-                ) in sync_data.items():
-                    for packet_name, count in packet_data.items():
-                        TargetModel.increment_telemetry_count(target_name, packet_name, count, scope=scope)
+                cls._write_packet_counts(sync_data, scope)
 
                 # Get all the packet counts with the global counters
-                for target_name in tlm_target_names:
-                    for packet_name, count in TargetModel.get_all_telemetry_counts(target_name, scope=scope).items():
-                        try:
-                            update_packet = System.telemetry.packet(
-                                target_name, packet_name.decode() if isinstance(packet_name, bytes) else packet_name
-                            )
-                            update_packet.received_count = int(count)
-                        except RuntimeError:
-                            key = f"{target_name} {packet_name.decode() if isinstance(packet_name, bytes) else packet_name}"
-                            if key not in cls.stale_packet_keys_warned:
-                                cls.stale_packet_keys_warned.add(key)
-                                Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
-                for packet_name, count in TargetModel.get_all_telemetry_counts("UNKNOWN", scope=scope).items():
-                    try:
-                        update_packet = System.telemetry.packet(
-                            "UNKNOWN", packet_name.decode() if isinstance(packet_name, bytes) else packet_name
-                        )
-                        update_packet.received_count = int(count)
-                    except RuntimeError:
-                        key = f"UNKNOWN {packet_name.decode() if isinstance(packet_name, bytes) else packet_name}"
-                        if key not in cls.stale_packet_keys_warned:
-                            cls.stale_packet_keys_warned.add(key)
-                            Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
+                counts = {}
+                for target_name in dict.fromkeys([*tlm_target_names, "UNKNOWN"]):
+                    counts[target_name] = TargetModel.get_all_telemetry_counts(target_name, scope=scope)
+                with cls.sync_packet_count_lock:
+                    for target_name, packet_counts in counts.items():
+                        for packet_name, count in packet_counts.items():
+                            if isinstance(packet_name, bytes):
+                                packet_name = packet_name.decode()
+                            try:
+                                update_packet = System.telemetry.packet(target_name, packet_name)
+                                # Add the increments other threads in this process queued since the
+                                # flush (e.g. UNKNOWN is shared) so the count doesn't go backwards
+                                pending = cls.sync_packet_count_data.get(target_name, {}).get(packet_name, 0)
+                                update_packet.received_count = int(count) + pending
+                            except RuntimeError:
+                                key = f"{target_name} {packet_name}"
+                                if key not in cls.stale_packet_keys_warned:
+                                    cls.stale_packet_keys_warned.add(key)
+                                    Logger.warn(f"Stale tlmcnt Redis key detected for unknown packet {key} - ignoring")
+
+    @classmethod
+    def _write_packet_counts(cls, sync_data, scope):
+        """Write a batch detached from sync_packet_count_data to Redis. Entries are
+        removed as they're written so if a write fails only the unwritten counts
+        are put back for the next sync."""
+        try:
+            for target_name, packet_data in sync_data.items():
+                for packet_name in list(packet_data):
+                    TargetModel.increment_telemetry_count(
+                        target_name, packet_name, packet_data[packet_name], scope=scope
+                    )
+                    del packet_data[packet_name]
+        except Exception:
+            with cls.sync_packet_count_lock:
+                for target_name, packet_data in sync_data.items():
+                    pending = cls.sync_packet_count_data.setdefault(target_name, {})
+                    for packet_name, count in packet_data.items():
+                        pending[packet_name] = pending.get(packet_name, 0) + count
+            raise
 
     @classmethod
     def increment_command_count(cls, target_name: str, packet_name: str, count: int, scope: str = OPENC3_SCOPE):

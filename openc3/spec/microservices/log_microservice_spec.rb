@@ -54,12 +54,19 @@ module OpenC3
 
     it "stops retrying when shut down" do
       allow(Topic).to receive(:read_topics).and_raise("Redis unavailable")
+      waiting = Queue.new
+      allow_any_instance_of(Sleeper).to receive(:sleep).and_wrap_original do |original, *args|
+        waiting << true
+        original.call(*args)
+      end
       thread = Thread.new { @lm.run }
-      sleep 0.1
-      expect(thread).to be_alive # Waiting to retry
+      expect(waiting.pop(timeout: 5)).to be true # Waiting to retry
+      start = Time.now
       @lm.shutdown
-      thread.join(10)
+      thread.join(5)
       expect(thread).to_not be_alive
+      # The 1s retry wait must be interrupted, not run out
+      expect(Time.now - start).to be < 0.5
     end
   end
 end

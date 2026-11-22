@@ -1645,43 +1645,59 @@ module OpenC3
         end
 
         if sync_data
-          # Increment global counters for packets received
-          sync_data.each do |target_name, packet_data|
-            packet_data.each do |packet_name, count|
-              increment_telemetry_count(target_name, packet_name, count, scope: scope)
-            end
-          end
+          write_packet_counts(sync_data, scope: scope)
 
           # Get all the packet counts with the global counters
-          tlm_target_names.each do |target_name|
-            get_all_telemetry_counts(target_name, scope: scope).each do |packet_name, count|
-              begin
-                update_packet = System.telemetry.packet(target_name, packet_name)
-                update_packet.received_count = count.to_i
-              rescue RuntimeError
-                key = "#{target_name} #{packet_name}"
-                unless @@stale_packet_keys_warned.include?(key)
-                  @@stale_packet_keys_warned.add(key)
-                  Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
-                end
-              end
-            end
+          counts = {}
+          (tlm_target_names + ['UNKNOWN']).uniq.each do |target_name|
+            counts[target_name] = get_all_telemetry_counts(target_name, scope: scope)
           end
-          get_all_telemetry_counts('UNKNOWN', scope: scope).each do |packet_name, count|
-            begin
-              update_packet = System.telemetry.packet('UNKNOWN', packet_name)
-              update_packet.received_count = count.to_i
-            rescue RuntimeError
-              key = "UNKNOWN #{packet_name}"
-              unless @@stale_packet_keys_warned.include?(key)
-                @@stale_packet_keys_warned.add(key)
-                Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
+          @@sync_packet_count_mutex.synchronize do
+            counts.each do |target_name, packet_counts|
+              packet_counts.each do |packet_name, count|
+                begin
+                  update_packet = System.telemetry.packet(target_name, packet_name)
+                  # Add the increments other threads in this process queued since the
+                  # flush (e.g. UNKNOWN is shared) so the count doesn't go backwards
+                  pending = @@sync_packet_count_data.dig(target_name, packet_name) || 0
+                  update_packet.received_count = count.to_i + pending
+                rescue RuntimeError
+                  key = "#{target_name} #{packet_name}"
+                  unless @@stale_packet_keys_warned.include?(key)
+                    @@stale_packet_keys_warned.add(key)
+                    Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
+                  end
+                end
               end
             end
           end
         end
       end
     end
+
+    # Write a batch detached from @@sync_packet_count_data to Redis. Entries are
+    # removed as they're written so if a write fails only the unwritten counts
+    # are put back for the next sync.
+    def self.write_packet_counts(sync_data, scope:)
+      sync_data.each do |target_name, packet_data|
+        packet_data.keys.each do |packet_name|
+          increment_telemetry_count(target_name, packet_name, packet_data[packet_name], scope: scope)
+          packet_data.delete(packet_name)
+        end
+      end
+    rescue StandardError
+      @@sync_packet_count_mutex.synchronize do
+        sync_data.each do |target_name, packet_data|
+          packet_data.each do |packet_name, count|
+            @@sync_packet_count_data[target_name] ||= {}
+            @@sync_packet_count_data[target_name][packet_name] ||= 0
+            @@sync_packet_count_data[target_name][packet_name] += count
+          end
+        end
+      end
+      raise
+    end
+    private_class_method :write_packet_counts
 
     def self.increment_command_count(target_name, packet_name, count, scope:)
       result = store_for_target(target_name, scope: scope).hincrby("#{scope}__COMMANDCNTS__{#{target_name}}", packet_name, count)
