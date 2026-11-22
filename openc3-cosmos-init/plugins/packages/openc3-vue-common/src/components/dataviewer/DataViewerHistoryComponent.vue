@@ -85,13 +85,18 @@
                       <!-- showTimestamp is the packet time, named before received time could be shown -->
                       <v-switch
                         v-model="currentConfig.showTimestamp"
-                        label="Show packet time"
+                        :label="
+                          hasReceivedTime
+                            ? 'Show packet time'
+                            : 'Show timestamp'
+                        "
                         density="compact"
                         color="primary"
                         hide-details
                         data-test="history-component-settings-show-timestamp"
                       />
                       <v-switch
+                        v-if="hasReceivedTime"
                         v-model="currentConfig.showReceivedTime"
                         label="Show received time"
                         density="compact"
@@ -206,6 +211,13 @@ export default {
     calculatePacketText: {
       type: Function,
       default: (packet) => `${packet}`,
+    },
+    // Set by components whose calculatePacketText shows __packet_time and
+    // __received_time. Adds the received time switch and labels the timestamp
+    // switch as the packet time.
+    hasReceivedTime: {
+      type: Boolean,
+      default: false,
     },
   },
   data: function () {

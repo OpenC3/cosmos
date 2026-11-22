@@ -21,6 +21,7 @@
     :config="currentConfig"
     :packets="currentPackets"
     :calculate-packet-text="calculatePacketText"
+    has-received-time
     @config="(config) => (currentConfig = config)"
   />
 </template>
