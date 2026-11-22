@@ -33,13 +33,32 @@ _MSG_DONTWAIT = getattr(socket, "MSG_DONTWAIT", 0)
 DEFAULT_WRITE_TIMEOUT = 10.0
 
 
+# Interface for each client connection. Tracks the time spent writing to
+# the socket so a client which can't keep up can be told apart from one
+# whose protocols take a while (e.g. waiting for a command response).
+class ClientInterface(StreamInterface):
+    def __init__(self):
+        super().__init__()
+        # Total seconds spent in stream writes
+        self.socket_write_time = 0.0
+
+    def write_interface(self, data, extra=None):
+        self.write_interface_base(data, extra)
+        start = time.monotonic()
+        try:
+            self.stream.write(data)
+        finally:
+            self.socket_write_time += time.monotonic() - start
+        return data, extra
+
+
 # Data class which stores the interface and associated information
 class InterfaceInfo:
     def __init__(self, interface, host_ip, port):
         self.interface = interface
         self.host_ip = host_ip
         self.port = port
-        # Queue of (method, packet_or_data, queued_at) waiting to be written to the client
+        # Queue of (method, packet_or_data, socket_write_time) waiting to be written to the client
         self.write_queue = None
         # Thread which services the write_queue
         self.write_thread = None
@@ -431,7 +450,7 @@ class TcpipServerInterface(StreamInterface):
                 read_socket = client_socket
             stream = TcpipSocketStream(write_socket, read_socket, self.write_timeout, self.read_timeout)
 
-            interface = StreamInterface()
+            interface = ClientInterface()
             # Only the read side of the connection needs a read thread
             interface.read_allowed = listen_read
             # Each connection buffers its own reads so give it the configured limit
@@ -507,13 +526,16 @@ class TcpipServerInterface(StreamInterface):
                 if item is None:
                     return
 
-                method, packet_or_data, queued_at = item
+                method, packet_or_data, socket_write_time = item
                 # A client which is reading too slowly to keep up would otherwise
-                # queue data forever so drop it once it falls write_timeout behind
-                lag = time.monotonic() - queued_at
+                # queue data forever so drop it once it has spent more than
+                # write_timeout blocked on the socket since this item was queued.
+                # Only socket time counts, not time spent in protocols, so a
+                # protocol waiting for a response doesn't get the client dropped.
+                lag = interface.socket_write_time - socket_write_time
                 if lag > max_lag:
                     Logger.error(
-                        f"{self.name}: Tcpip server dropping client {interface_info} which fell {lag:.1f}s behind (write timeout {max_lag}s)"
+                        f"{self.name}: Tcpip server dropping client {interface_info} which spent {lag:.1f}s blocked writing since this data was queued (write timeout {max_lag}s)"
                     )
                     return
 
@@ -696,7 +718,6 @@ class TcpipServerInterface(StreamInterface):
     def _write_to_clients(self, method, packet_or_data):
         with self.connection_mutex:
             interface_infos = list(self.write_interface_infos)
-        queued_at = time.monotonic()
         last_index = len(interface_infos) - 1
         for index, interface_info in enumerate(interface_infos):
             if interface_info.write_stopped:
@@ -706,7 +727,7 @@ class TcpipServerInterface(StreamInterface):
             # so every client but the last gets its own copy
             if method == "write" and index != last_index:
                 item = packet_or_data.clone()
-            interface_info.write_queue.put((method, item, queued_at))
+            interface_info.write_queue.put((method, item, interface_info.interface.socket_write_time))
 
     def details(self):
         result = super().details()

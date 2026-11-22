@@ -35,10 +35,34 @@ module OpenC3
     # Write timeout used when none is given, matching TcpipSocketStream
     DEFAULT_WRITE_TIMEOUT = 10.0
 
+    # Interface for each client connection. Tracks the time spent writing to
+    # the socket so a client which can't keep up can be told apart from one
+    # whose protocols take a while (e.g. waiting for a command response).
+    class ClientInterface < StreamInterface
+      # Total seconds spent in stream writes
+      attr_reader :socket_write_time
+
+      def initialize
+        super()
+        @socket_write_time = 0.0
+      end
+
+      def write_interface(data, extra = nil)
+        write_interface_base(data, extra)
+        start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        begin
+          @stream.write(data)
+        ensure
+          @socket_write_time += Process.clock_gettime(Process::CLOCK_MONOTONIC) - start
+        end
+        return data, extra
+      end
+    end
+
     # Data class which stores the interface and associated information
     class InterfaceInfo
       attr_reader :interface, :host_ip, :port
-      # Queue of [method, packet_or_data, queued_at] waiting to be written to the client
+      # Queue of [method, packet_or_data, socket_write_time] waiting to be written to the client
       attr_accessor :write_queue
       # Thread which services the write_queue
       attr_accessor :write_thread
@@ -437,7 +461,7 @@ module OpenC3
         stream.set_option(option_name, option_values)
       end
 
-      interface = StreamInterface.new
+      interface = ClientInterface.new
       # Only the read side of the connection needs a read thread
       interface.read_allowed = listen_read
       # Each connection buffers its own reads so give it the configured limit
@@ -505,12 +529,15 @@ module OpenC3
           next
         end
 
-        method, packet_or_data, queued_at = item
+        method, packet_or_data, socket_write_time = item
         # A client which is reading too slowly to keep up would otherwise
-        # queue data forever so drop it once it falls write_timeout behind
-        lag = Process.clock_gettime(Process::CLOCK_MONOTONIC) - queued_at
+        # queue data forever so drop it once it has spent more than
+        # write_timeout blocked on the socket since this item was queued.
+        # Only socket time counts, not time spent in protocols, so a
+        # protocol waiting for a response doesn't get the client dropped.
+        lag = interface.socket_write_time - socket_write_time
         if lag > max_lag
-          Logger.error "#{@name}: Tcpip server dropping client #{interface_info} which fell #{lag.round(1)}s behind (write timeout #{max_lag}s)"
+          Logger.error "#{@name}: Tcpip server dropping client #{interface_info} which spent #{lag.round(1)}s blocked writing since this data was queued (write timeout #{max_lag}s)"
           return
         end
 
@@ -676,14 +703,13 @@ module OpenC3
     # stops reading can't delay the other clients or accepting new connections.
     def write_to_clients(method, packet_or_data)
       interface_infos = @connection_mutex.synchronize { @write_interface_infos.dup }
-      queued_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       last_index = interface_infos.length - 1
       interface_infos.each_with_index do |interface_info, index|
         item = packet_or_data
         # Each client's protocols run concurrently and may modify the packet
         # so every client but the last gets its own copy
         item = packet_or_data.clone if method == :write and index != last_index
-        interface_info.write_queue << [method, item, queued_at]
+        interface_info.write_queue << [method, item, interface_info.interface.socket_write_time]
       rescue ClosedQueueError
         # Client is being removed
       end

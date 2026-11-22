@@ -127,7 +127,7 @@ module OpenC3
         i = TcpipServerInterface.new('8888', '8889', '5', '5', 'burst')
         i.connect
         sleep(1)
-        wii = TcpipServerInterface::InterfaceInfo.new(StreamInterface.new, nil, nil)
+        wii = TcpipServerInterface::InterfaceInfo.new(TcpipServerInterface::ClientInterface.new, nil, nil)
         interface = wii.interface
         class << interface
           def connected?; true; end
@@ -288,6 +288,42 @@ module OpenC3
           expect(i.instance_variable_get(:@write_interface_infos)[0].interface.stream.write_socket).not_to be_closed
         ensure
           sockets.each(&:close)
+          i.disconnect
+          reader_thread.join(1) if reader_thread
+        end
+      end
+
+      # Blocks after each write like CmdResponseProtocol waiting for a response
+      class SlowPostWriteProtocol < Protocol
+        def post_write_interface(packet, data, extra = nil)
+          sleep(0.4)
+          super(packet, data, extra)
+        end
+      end
+
+      it "does not drop a client whose protocol is slow but which reads its data" do
+        i = TcpipServerInterface.new('8891', nil, '1', nil)
+        i.add_protocol(SlowPostWriteProtocol, [], :WRITE)
+        i.connect
+        reader = nil
+        reader_thread = nil
+        begin
+          reader = TCPSocket.new('127.0.0.1', 8891)
+          expect(wait_until?(2) { i.num_clients == 1 }).to be true
+          received = [0]
+          reader_thread = start_reader(reader, received)
+
+          # The protocol takes 2s to write all 5 packets, more than the 1s write
+          # timeout, but the socket is never blocked so the client must not be dropped
+          5.times do
+            packet = Packet.new('TGT', 'PKT')
+            packet.buffer = "\x01\x02\x03\x04"
+            i.write(packet)
+          end
+          expect(wait_until?(5) { received[0] == 5 * 4 }).to be true
+          expect(i.num_clients).to eql 1
+        ensure
+          reader.close if reader
           i.disconnect
           reader_thread.join(1) if reader_thread
         end

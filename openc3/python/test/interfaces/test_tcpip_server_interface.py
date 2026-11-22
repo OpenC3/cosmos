@@ -15,9 +15,17 @@ import time
 import unittest
 from unittest.mock import Mock, patch
 
+from openc3.interfaces.protocols.protocol import Protocol
 from openc3.interfaces.tcpip_server_interface import TcpipServerInterface
 from openc3.packets.packet import Packet
 from test.test_helper import mock_redis, wait_for
+
+
+# Blocks after each write like CmdResponseProtocol waiting for a response
+class SlowPostWriteProtocol(Protocol):
+    def post_write_interface(self, packet, data, extra=None):
+        time.sleep(0.4)
+        return super().post_write_interface(packet, data, extra)
 
 
 class TestTcpipServerInterface(unittest.TestCase):
@@ -405,6 +413,30 @@ class TestTcpipServerInterface(unittest.TestCase):
         finally:
             for sock in sockets:
                 sock.close()
+            i.disconnect()
+
+    def test_does_not_drop_a_client_whose_protocol_is_slow_but_which_reads_its_data(self):
+        i = TcpipServerInterface("8891", None, "1", None)
+        i.add_protocol(SlowPostWriteProtocol, [], "WRITE")
+        i.connect()
+        reader = None
+        try:
+            reader = socket.create_connection(("127.0.0.1", 8891))
+            self.assertTrue(self.wait_until(lambda: i.num_clients() == 1, 2))
+            received = [0]
+            self.start_reader(reader, received)
+
+            # The protocol takes 2s to write all 5 packets, more than the 1s write
+            # timeout, but the socket is never blocked so the client must not be dropped
+            for _ in range(5):
+                packet = Packet("TGT", "PKT")
+                packet.buffer = b"\x01\x02\x03\x04"
+                i.write(packet)
+            self.assertTrue(self.wait_until(lambda: received[0] == 5 * 4, 5))
+            self.assertEqual(i.num_clients(), 1)
+        finally:
+            if reader:
+                reader.close()
             i.disconnect()
 
     def test_read_queue_bytes_sums_the_client_connections(self):
