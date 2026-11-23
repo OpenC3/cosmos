@@ -148,7 +148,8 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
-  await page.locator(`td:has-text("playwright")`).click()
+  // Exact match so other tests' configs (e.g. playwright-ignored-mix) don't match
+  await page.getByRole('cell', { name: 'playwright', exact: true }).click()
   await page.locator('button:has-text("Ok")').click()
   // Opening the config shows a toast banner that auto-hides after ~5s, so its
   // Dismiss button can disappear (or be briefly covered by a transitioning
@@ -181,7 +182,11 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page
-    .locator(`tr:has-text("playwright") [data-test=item-delete]`)
+    .getByRole('row')
+    .filter({
+      has: page.getByRole('cell', { name: 'playwright', exact: true }),
+    })
+    .locator('[data-test=item-delete]')
     .click()
   await page.locator('button:has-text("Delete")').click()
   await page.locator('[data-test=open-config-cancel-btn]').click()
