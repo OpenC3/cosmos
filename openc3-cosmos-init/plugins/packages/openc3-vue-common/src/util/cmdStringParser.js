@@ -46,7 +46,7 @@ export function parseCmdText(text) {
 
   // One whitespace character either side (the rest is trimmed), which
   // can't backtrack the way \s+with\s+ can on long runs of spaces
-  const withMatch = /\swith(?:\s|$)/i.exec(trimmed)
+  const withMatch = /\swith(?:\s|$)/i.exec(trimmed) // codespell:ignore
   const head = withMatch ? trimmed.slice(0, withMatch.index).trim() : trimmed
   const tail = withMatch
     ? trimmed.slice(withMatch.index + withMatch[0].length)
