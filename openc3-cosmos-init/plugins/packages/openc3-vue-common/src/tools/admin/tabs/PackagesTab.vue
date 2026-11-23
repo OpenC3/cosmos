@@ -181,6 +181,12 @@ import { Api, OpenC3Api } from '@openc3/js-common/services'
 import { SimpleTextDialog } from '@/components'
 import { DownloadDialog } from '@/tools/admin'
 import { TimeFilters } from '@/util'
+import {
+  CACHED_VENV,
+  SHARED_VENV,
+  pluginVenvNames,
+  wheelInstallTargets,
+} from './pythonVenvTargets.js'
 
 export default {
   components: {
@@ -209,20 +215,14 @@ export default {
   },
   computed: {
     pythonVenvOptions() {
-      return Object.keys(this.python).filter(
-        (k) => k !== 'cached' && k !== 'shared',
-      )
+      return wheelInstallTargets(this.python)
     },
     orderedPluginNames() {
       const names = Object.keys(this.python)
-      const reserved = new Set(['cached', 'shared'])
       // Cached first, then plugin venvs sorted, then shared last
-      const cached = names.filter((k) => k === 'cached')
-      const plugins = names
-        .filter((k) => !reserved.has(k))
-        .sort((a, b) => a.localeCompare(b))
-      const shared = names.filter((k) => k === 'shared')
-      return [...cached, ...plugins, ...shared]
+      const cached = names.filter((k) => k === CACHED_VENV)
+      const shared = names.filter((k) => k === SHARED_VENV)
+      return [...cached, ...pluginVenvNames(this.python), ...shared]
     },
   },
   created() {
@@ -281,10 +281,9 @@ export default {
       const files = event.target.files
       if (files.length > 0) {
         const hasWheel = [...files].some((f) => !f.name.endsWith('.gem'))
-        const pluginNames = Object.keys(this.python).filter(
-          (k) => k !== 'shared',
-        )
-        if (hasWheel && pluginNames.length > 0) {
+        // Ask only when there is a real choice. With no plugin venvs the
+        // wheel goes to the shared folder.
+        if (hasWheel && this.pythonVenvOptions.length > 0) {
           this.pendingFiles = files
           this.selectedPlugin = null
           this.showPluginSelect = true
@@ -331,7 +330,9 @@ export default {
     },
     confirmPluginInstall() {
       const files = this.pendingFiles
-      const plugin = this.selectedPlugin
+      // The shared folder is the install target when no plugin is sent
+      const plugin =
+        this.selectedPlugin === SHARED_VENV ? null : this.selectedPlugin
       this.showPluginSelect = false
       this.pendingFiles = null
       this.uploadFiles(files, plugin)

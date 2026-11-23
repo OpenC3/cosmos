@@ -30,6 +30,8 @@ module OpenC3
         target_info = {"plugin" => "demo-plugin"}
         allow(TargetModel).to receive(:get).with(name: "INST", scope: "DEFAULT").and_return(target_info)
         allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT__demo-plugin/.venv").and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with("/gems/plugin_venvs/DEFAULT__demo-plugin/.uv_managed").and_return(true)
         expect(PythonVenv).to receive(:configure_environment).with(
           environment,
           "/gems/plugin_venvs/DEFAULT__demo-plugin/.venv"
@@ -52,6 +54,8 @@ module OpenC3
         environment = {}
         expect(TargetModel).not_to receive(:get)
         allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT__demo/.venv").and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with("/gems/plugin_venvs/DEFAULT__demo/.uv_managed").and_return(true)
         allow(PythonVenv).to receive(:configure_environment).and_return(environment)
 
         result = PythonVenv.configure_for_script(
@@ -67,6 +71,8 @@ module OpenC3
       it "strips directory components from a temporary script venv" do
         environment = {}
         allow(File).to receive(:directory?).with("/gems/plugin_venvs/DEFAULT__demo/.venv").and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with("/gems/plugin_venvs/DEFAULT__demo/.uv_managed").and_return(true)
         allow(PythonVenv).to receive(:configure_environment).and_return(environment)
 
         result = PythonVenv.configure_for_script(
@@ -90,6 +96,22 @@ module OpenC3
         )
 
         expect(result).to be_nil
+      end
+
+      it "ignores a temporary script venv that has no .uv_managed marker" do
+        Dir.mktmpdir do |venvs_dir|
+          stub_const("OpenC3::PythonVenv::PLUGIN_VENVS_DIR", venvs_dir)
+          FileUtils.mkdir_p(File.join(venvs_dir, "DEFAULT__partial", ".venv"))
+
+          result = PythonVenv.configure_for_script(
+            {},
+            name: "__TEMP__/test.py",
+            scope: "DEFAULT",
+            python_venv: "DEFAULT__partial"
+          )
+
+          expect(result).to be_nil
+        end
       end
 
       it "strips glob metacharacters from a temporary script venv" do
@@ -283,6 +305,8 @@ module OpenC3
       it "sanitizes the scope and plugin name" do
         expected_path = "/gems/plugin_venvs/MY_SCOPE__demo_plugin_1_0/.venv"
         allow(File).to receive(:directory?).with(expected_path).and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(File.join(File.dirname(expected_path), ".uv_managed")).and_return(true)
 
         result = PythonVenv.plugin_venv_path(scope: "MY SCOPE", plugin_name: "demo/plugin@1.0")
 
@@ -295,6 +319,22 @@ module OpenC3
         result = PythonVenv.plugin_venv_path(scope: "DEFAULT", plugin_name: "missing")
 
         expect(result).to be_nil
+      end
+
+      # uvinstall creates .venv before it installs anything and writes
+      # .uv_managed only when the install succeeds. A failed install's partial
+      # venv must not go first on PYTHONPATH and shadow the shared packages.
+      it "returns nil for a venv that a failed install left without its .uv_managed marker" do
+        Dir.mktmpdir do |venvs_dir|
+          stub_const("OpenC3::PythonVenv::PLUGIN_VENVS_DIR", venvs_dir)
+          FileUtils.mkdir_p(File.join(venvs_dir, "DEFAULT__partial", ".venv"))
+
+          expect(PythonVenv.plugin_venv_path(scope: "DEFAULT", plugin_name: "partial")).to be_nil
+
+          FileUtils.touch(File.join(venvs_dir, "DEFAULT__partial", ".uv_managed"))
+          expect(PythonVenv.plugin_venv_path(scope: "DEFAULT", plugin_name: "partial"))
+            .to eq(File.join(venvs_dir, "DEFAULT__partial", ".venv"))
+        end
       end
     end
   end

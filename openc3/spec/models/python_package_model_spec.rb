@@ -66,7 +66,7 @@ module OpenC3
         allow(ENV).to receive(:[]).and_call_original
         allow(ENV).to receive(:[]).with('PYTHONUSERBASE').and_return(nil)
 
-        result = PythonPackageModel.names
+        result = PythonPackageModel.names(scope: "DEFAULT")
         expect(result).to eq({})
       end
 
@@ -75,7 +75,7 @@ module OpenC3
         stub_plugin_venvs(nil)
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
-        result = PythonPackageModel.names
+        result = PythonPackageModel.names(scope: "DEFAULT")
         expect(result["cached"]).to eq(["numpy-2.4.6", "requests-2.34.2"])
       end
 
@@ -83,34 +83,34 @@ module OpenC3
         stub_plugin_venvs(nil)
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
-        result = PythonPackageModel.names
+        result = PythonPackageModel.names(scope: "DEFAULT")
         expect(result).not_to have_key("cached")
       end
 
       it "places cached key before plugin keys" do
         allow(PythonPackageModel).to receive(:cached_packages).and_return(["numpy-2.0.0"])
-        stub_plugin_venvs("demo" => ["requests-2.31.0"])
+        stub_plugin_venvs("DEFAULT__demo" => ["requests-2.31.0"])
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
-        result = PythonPackageModel.names
+        result = PythonPackageModel.names(scope: "DEFAULT")
         expect(result.keys.first).to eq("cached")
       end
 
       it "collects packages from per-plugin venvs" do
-        stub_plugin_venvs("demo" => ["numpy-2.0.0", "requests-2.31.0"], "other" => ["boto3-1.28.0"])
+        stub_plugin_venvs("DEFAULT__demo" => ["numpy-2.0.0", "requests-2.31.0"], "DEFAULT__other" => ["boto3-1.28.0"])
 
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
-        result = PythonPackageModel.names
-        expect(result["demo"]).to eq(["numpy-2.0.0", "requests-2.31.0"])
-        expect(result["other"]).to eq(["boto3-1.28.0"])
+        result = PythonPackageModel.names(scope: "DEFAULT")
+        expect(result["DEFAULT__demo"]).to eq(["numpy-2.0.0", "requests-2.31.0"])
+        expect(result["DEFAULT__other"]).to eq(["boto3-1.28.0"])
       end
 
       it "includes shared venv packages under 'shared' key when present" do
         stub_plugin_venvs(nil)
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return(["requests-2.31.0", "flask-3.0.0"])
 
-        result = PythonPackageModel.names
+        result = PythonPackageModel.names(scope: "DEFAULT")
         expect(result["shared"]).to eq(["flask-3.0.0", "requests-2.31.0"])
       end
 
@@ -118,16 +118,26 @@ module OpenC3
         stub_plugin_venvs(nil)
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
-        result = PythonPackageModel.names
+        result = PythonPackageModel.names(scope: "DEFAULT")
         expect(result).not_to have_key("shared")
       end
 
-      it "skips plugin dirs that lack a .venv subdirectory" do
-        stub_plugin_venvs("incomplete" => nil)
+      # Venv directories are named "<scope>__<plugin>". Admin > Packages must
+      # show and target only the venvs in the scope it is looking at.
+      it "lists only the plugin venvs in the requested scope" do
+        stub_plugin_venvs("DEFAULT__demo" => ["numpy-2.0.0"], "OTHER__secret" => ["boto3-1.28.0"])
         allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
 
-        result = PythonPackageModel.names
-        expect(result).not_to have_key("incomplete")
+        expect(PythonPackageModel.names(scope: "DEFAULT").keys).to eq(["DEFAULT__demo"])
+        expect(PythonPackageModel.names(scope: "OTHER").keys).to eq(["OTHER__secret"])
+      end
+
+      it "skips plugin dirs that lack a .venv subdirectory" do
+        stub_plugin_venvs("DEFAULT__incomplete" => nil)
+        allow(PythonPackageModel).to receive(:shared_venv_packages).and_return([])
+
+        result = PythonPackageModel.names(scope: "DEFAULT")
+        expect(result).not_to have_key("DEFAULT__incomplete")
       end
     end
 
@@ -382,9 +392,24 @@ module OpenC3
       it "forwards plugin parameter to install" do
         whl_file = File.join(@temp_dir, "my_lib-1.0.0-py3-none-any.whl")
         File.write(whl_file, "fake wheel content")
-        expect(PythonPackageModel).to receive(:install).with(anything, scope: "DEFAULT", plugin: "demo").and_return("process_name")
+        expect(PythonPackageModel).to receive(:install).with(anything, scope: "DEFAULT", plugin: "DEFAULT__demo").and_return("process_name")
 
-        PythonPackageModel.put(whl_file, scope: "DEFAULT", plugin: "demo")
+        PythonPackageModel.put(whl_file, scope: "DEFAULT", plugin: "DEFAULT__demo")
+      end
+
+      # Checked before the copy, so a rejected upload isn't left behind in the
+      # shared cache and listed under Cached
+      it "rejects another scope's plugin venv before copying the upload" do
+        upload_dir = Dir.mktmpdir
+        whl_file = File.join(upload_dir, "my_lib-1.0.0-py3-none-any.whl")
+        File.write(whl_file, "fake wheel content")
+        expect(PythonPackageModel).not_to receive(:install)
+
+        expect { PythonPackageModel.put(whl_file, scope: "DEFAULT", plugin: "OTHER__demo") }
+          .to raise_error(/not a python venv in scope DEFAULT/)
+        expect(Dir.children(@temp_dir)).to be_empty
+      ensure
+        FileUtils.remove_entry_secure(upload_dir, true)
       end
     end
 
@@ -412,11 +437,28 @@ module OpenC3
         capture_spawn { PythonPackageModel.install(pkg_file, scope: "DEFAULT", **kwargs) }
       end
 
-      it "sets PIPINSTALL_VENV when plugin is provided" do
+      # A plugin venv goes first on PYTHONPATH, so a package that pulls in
+      # openc3 would shadow the system library. pipinstall purges what it's told.
+      it "targets the plugin venv and has pipinstall purge reserved packages" do
         allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
 
-        _cmd, kw = install_spawn(plugin: "demo")
-        expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/demo/.venv' })
+        _cmd, kw = install_spawn(plugin: "DEFAULT__demo")
+        expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/DEFAULT__demo/.venv',
+                                 'PIPINSTALL_RESERVED_PACKAGES' => 'openc3' })
+      end
+
+      # The plugin name comes from the client, so a user in one scope must not
+      # be able to install into another scope's venv, or outside PLUGIN_VENVS_DIR.
+      ["OTHER__demo", "../DEFAULT__demo", "DEFAULT__demo/../../x"].each do |plugin|
+        it "rejects plugin venv #{plugin.inspect} for scope DEFAULT" do
+          allow(PythonPackageModel).to receive(:get_setting).and_raise("no redis")
+          pkg_file = File.join(@temp_dir, "my_lib-1.0.0.tar.gz")
+          File.write(pkg_file, "fake")
+          expect(OpenC3::ProcessManager).not_to receive(:instance)
+
+          expect { PythonPackageModel.install(pkg_file, scope: "DEFAULT", plugin: plugin) }
+            .to raise_error(/not a python venv in scope DEFAULT/)
+        end
       end
 
       it "passes empty env hash when plugin is nil" do
@@ -504,9 +546,16 @@ module OpenC3
       end
 
       it "sets PIPINSTALL_VENV when plugin is provided" do
-        cmd, kw = destroy_spawn(plugin: "demo")
-        expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/demo/.venv' })
+        cmd, kw = destroy_spawn(plugin: "DEFAULT__demo")
+        expect(kw[:env]).to eq({ 'PIPINSTALL_VENV' => '/gems/plugin_venvs/DEFAULT__demo/.venv' })
         expect(cmd).to include("my-package")
+      end
+
+      it "rejects another scope's plugin venv" do
+        expect(OpenC3::ProcessManager).not_to receive(:instance)
+
+        expect { PythonPackageModel.destroy("my-package-1.0.0", scope: "DEFAULT", plugin: "OTHER__demo") }
+          .to raise_error(/not a python venv in scope DEFAULT/)
       end
 
       it "passes empty env hash when plugin is nil" do
@@ -517,30 +566,40 @@ module OpenC3
 
     describe ".trees" do
       it "calls uv pip list for each plugin venv and returns output keyed by plugin name" do
-        stub_plugin_venvs("demo" => [])
+        stub_plugin_venvs("DEFAULT__demo" => [])
 
         uv_output = "Package    Version\n---------- -------\nnumpy      2.0.0\nrequests   2.31.0"
         status = double("status", success?: true)
-        allow(Open3).to receive(:capture2).with('uv', 'pip', 'list', '--python', '/gems/plugin_venvs/demo/.venv').and_return([uv_output, status])
+        allow(Open3).to receive(:capture2).with('uv', 'pip', 'list', '--python', '/gems/plugin_venvs/DEFAULT__demo/.venv').and_return([uv_output, status])
 
-        result = PythonPackageModel.trees
-        expect(result["demo"]).to eq(uv_output)
+        result = PythonPackageModel.trees(scope: "DEFAULT")
+        expect(result["DEFAULT__demo"]).to eq(uv_output)
       end
 
       it "skips venvs where uv pip list fails" do
-        stub_plugin_venvs("broken" => [])
+        stub_plugin_venvs("DEFAULT__broken" => [])
 
         status = double("status", success?: false)
-        allow(Open3).to receive(:capture2).with('uv', 'pip', 'list', '--python', '/gems/plugin_venvs/broken/.venv').and_return(["", status])
+        allow(Open3).to receive(:capture2).with('uv', 'pip', 'list', '--python', '/gems/plugin_venvs/DEFAULT__broken/.venv').and_return(["", status])
 
-        result = PythonPackageModel.trees
+        result = PythonPackageModel.trees(scope: "DEFAULT")
         expect(result).to be_empty
+      end
+
+      it "lists only the plugin venvs in the requested scope" do
+        stub_plugin_venvs("DEFAULT__demo" => [], "OTHER__secret" => [])
+        uv_output = "Package    Version\n---------- -------\nnumpy      2.0.0"
+        status = double("status", success?: true)
+        allow(Open3).to receive(:capture2).and_return([uv_output, status])
+
+        expect(PythonPackageModel.trees(scope: "DEFAULT").keys).to eq(["DEFAULT__demo"])
+        expect(PythonPackageModel.trees(scope: "OTHER").keys).to eq(["OTHER__secret"])
       end
 
       it "returns empty hash when plugin venvs directory does not exist" do
         stub_plugin_venvs(nil)
 
-        result = PythonPackageModel.trees
+        result = PythonPackageModel.trees(scope: "DEFAULT")
         expect(result).to eq({})
       end
     end

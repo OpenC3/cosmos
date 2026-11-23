@@ -98,9 +98,23 @@ module OpenC3
 
     def self.plugin_venv_path(scope:, plugin_name:)
       sanitized_name = "#{scope}__#{plugin_name}".tr('^a-zA-Z0-9_-', '_')
-      candidate = File.join(PLUGIN_VENVS_DIR, sanitized_name, '.venv')
-      candidate if File.directory?(candidate)
+      complete_venv(sanitized_name)
     end
+
+    # The .venv under PLUGIN_VENVS_DIR/<venv_name>, or nil unless uvinstall
+    # finished it. uvinstall creates .venv before it installs anything and
+    # writes .uv_managed only on success, so a venv without the marker is
+    # partial. Putting it first on PYTHONPATH would shadow the shared packages
+    # with whatever versions the failed install got in.
+    def self.complete_venv(venv_name)
+      venv_base = File.join(PLUGIN_VENVS_DIR, venv_name)
+      candidate = File.join(venv_base, '.venv')
+      return nil unless File.directory?(candidate)
+      return nil unless File.exist?(File.join(venv_base, '.uv_managed'))
+
+      candidate
+    end
+    private_class_method :complete_venv
 
     def self.resolve_script_venv(name:, scope:, python_venv: nil)
       target_name = name.split('/')[0].to_s.upcase
@@ -117,8 +131,7 @@ module OpenC3
         # could name another scope's venv and run against its packages.
         return nil unless safe_name.start_with?("#{scope}__".tr('^a-zA-Z0-9_-', '_'))
 
-        candidate = File.join(PLUGIN_VENVS_DIR, safe_name, '.venv')
-        return candidate if File.directory?(candidate)
+        return complete_venv(safe_name)
       else
         target_info = TargetModel.get(name: target_name, scope: scope)
         if target_info && target_info['plugin']

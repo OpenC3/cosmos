@@ -285,13 +285,15 @@ module OpenC3
           unless dry_run
             pypi_args = build_pypi_args(pypi_url)
 
-            # Install Python dependencies into an isolated per-plugin venv when UV
-            # is available. Each plugin gets its own venv at /gems/plugin_venvs/<name>/.venv
-            # so that plugins with conflicting Python dependency versions don't interfere.
-            # If UV is unavailable or the install fails, fall back to the shared pipinstall
-            # which installs into PYTHONUSERBASE (the legacy shared environment).
-            uv_installed = ENV['OPENC3_USE_UV'] != 'false' && system('which uv > /dev/null 2>&1')
-            if uv_installed
+            # Install Python dependencies into an isolated per-plugin venv. Each
+            # plugin gets its own venv at /gems/plugin_venvs/<name>/.venv so that
+            # plugins with conflicting Python dependency versions don't interfere.
+            # If OPENC3_USE_UV is 'false' or the install fails, fall back to the
+            # shared pipinstall, which installs into PYTHONUSERBASE (the legacy
+            # shared environment). There is no check for uv on PATH: every image
+            # ships it, and pipinstall runs uv as well.
+            uv_enabled = ENV['OPENC3_USE_UV'] != 'false'
+            if uv_enabled
               plugin_venv_name = plugin_venv_name(scope: scope, plugin_name: plugin_model.name)
               Logger.info "Installing python packages into per-plugin venv '#{plugin_venv_name}' with pypi_url=#{pypi_url}"
               uv_args = [plugin_venv_name, gem_path] + pypi_args
@@ -301,14 +303,14 @@ module OpenC3
                 # A plugin that declares openc3 itself would shadow the system
                 # library once its site-packages goes on PYTHONPATH, so drop it
                 # here rather than let the wrong client reach a running script.
-                PythonVenv.purge_reserved_packages(File.join('/gems', 'plugin_venvs', plugin_venv_name, '.venv'))
+                PythonVenv.purge_reserved_packages(File.join(PythonVenv::PLUGIN_VENVS_DIR, plugin_venv_name, '.venv'))
               else
                 Logger.warn "UV per-plugin install failed, falling back to shared pipinstall"
-                uv_installed = false
+                uv_enabled = false
               end
             end
 
-            unless uv_installed
+            unless uv_enabled
               pip_args = pypi_args.dup
               if File.exist?(pyproject_path)
                 Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
@@ -341,6 +343,11 @@ module OpenC3
         if needs_dependencies
           plugin_model.needs_dependencies = true
           plugin_model.update unless dry_run
+          # needs_dependencies also covers lib/ and gem dependencies, which
+          # need no venv. Mark those plugins so Admin doesn't offer Migrate to UV.
+          unless dry_run || File.exist?(pyproject_path) || File.exist?(requirements_path)
+            write_uv_marker(scope: scope, plugin_name: plugin_model.name)
+          end
         end
 
         # Temporarily add all lib folders from the gem to the end of the load path
@@ -630,18 +637,31 @@ module OpenC3
     def needs_uv_migration?
       return false unless @needs_dependencies
 
-      plugin_venv_name = self.class.plugin_venv_name(scope: @scope, plugin_name: @name)
-      marker_path = File.join('/gems', 'plugin_venvs', plugin_venv_name, '.uv_managed')
-      !File.exist?(marker_path)
+      !File.exist?(self.class.uv_marker_path(scope: @scope, plugin_name: @name))
+    end
+
+    # Path of the .uv_managed marker uvinstall writes once a plugin venv is
+    # complete. PythonVenv.plugin_venv_path only uses a venv that has it.
+    def self.uv_marker_path(scope:, plugin_name:)
+      File.join(PythonVenv::PLUGIN_VENVS_DIR, plugin_venv_name(scope: scope, plugin_name: plugin_name), '.uv_managed')
+    end
+
+    # Mark a plugin with no Python dependency files as migrated. It has no venv
+    # to build, so without the marker needs_uv_migration? would stay true and
+    # Admin would offer Migrate to UV forever. No .venv is created, so
+    # PythonVenv.plugin_venv_path still returns nil and the plugin keeps the
+    # shared fallback.
+    def self.write_uv_marker(scope:, plugin_name:)
+      marker_path = uv_marker_path(scope: scope, plugin_name: plugin_name)
+      FileUtils.mkdir_p(File.dirname(marker_path))
+      FileUtils.touch(marker_path)
     end
 
     # Migrate this plugin from the shared Python venv to a per-plugin UV virtual environment.
     # Non-fatal: logs a warning on failure, plugin continues using the shared venv.
     # Returns true on success, false on failure.
     def migrate_to_uv!(scope:)
-      plugin_venv_name = self.class.plugin_venv_name(scope: scope, plugin_name: @name)
-      marker_path = File.join('/gems', 'plugin_venvs', plugin_venv_name, '.uv_managed')
-      if File.exist?(marker_path)
+      if File.exist?(self.class.uv_marker_path(scope: scope, plugin_name: @name))
         Logger.info("Plugin '#{@name}' is already migrated to a per-plugin UV venv")
         return true
       end
@@ -663,6 +683,7 @@ module OpenC3
 
         unless File.exist?(pyproject_path) || File.exist?(requirements_path)
           Logger.info("Plugin #{@name} has no Python dependencies to migrate")
+          self.class.write_uv_marker(scope: scope, plugin_name: @name)
           return true
         end
 
@@ -670,12 +691,15 @@ module OpenC3
         pypi_args = self.class.build_pypi_args(pypi_url)
 
         # Run uvinstall for this plugin
-        plugin_venv_name = self.class.plugin_venv_name(scope: @scope, plugin_name: @name)
+        plugin_venv_name = self.class.plugin_venv_name(scope: scope, plugin_name: @name)
         Logger.info("Migrating plugin '#{@name}' to per-plugin UV venv '#{plugin_venv_name}'")
         uv_args = [plugin_venv_name, gem_path] + pypi_args
         output, status = Open3.capture2e("/openc3/bin/uvinstall", *uv_args)
         puts output
         if status.success?
+          # Same reason as install_phase2: a plugin-supplied openc3 would
+          # shadow the system library once this venv goes on PYTHONPATH.
+          PythonVenv.purge_reserved_packages(File.join(PythonVenv::PLUGIN_VENVS_DIR, plugin_venv_name, '.venv'))
           Logger.info("Successfully migrated plugin '#{@name}' to per-plugin UV venv")
           return true
         else

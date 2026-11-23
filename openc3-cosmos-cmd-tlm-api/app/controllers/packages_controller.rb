@@ -19,7 +19,7 @@ class PackagesController < ApplicationController
   def index
     return unless authorization('system')
     gems = OpenC3::GemModel.names
-    packages = OpenC3::PythonPackageModel.names
+    packages = OpenC3::PythonPackageModel.names(scope: params[:scope])
     render json: { ruby: gems, python: packages }
   end
 
@@ -79,7 +79,7 @@ class PackagesController < ApplicationController
   # in a collapsible tree view per plugin.
   def trees
     return unless authorization('system')
-    render json: OpenC3::PythonPackageModel.trees
+    render json: OpenC3::PythonPackageModel.trees(scope: params[:scope])
   end
 
   def download

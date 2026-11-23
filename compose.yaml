@@ -199,6 +199,9 @@ services:
       - OPENC3_PYPI_ALLOW_INSECURE=${OPENC3_PYPI_ALLOW_INSECURE:-}
       - PIP_ENABLE_TRUSTED_HOST=${PIP_ENABLE_TRUSTED_HOST:-}
       - PYTHONUSERBASE=/gems/python_packages
+      # Plugin installs started from Admin run in this container. Unset also
+      # means true; it is set here to match the other services.
+      - OPENC3_USE_UV=true
       - ANYCABLE_REDIS_URL=redis://${OPENC3_REDIS_USERNAME}:${OPENC3_REDIS_PASSWORD}@${OPENC3_REDIS_HOSTNAME}:${OPENC3_REDIS_PORT}
       - SECRET_KEY_BASE=${SECRET_KEY_BASE}
       - WEB_CONCURRENCY=8 # Set to number of cores on your machine

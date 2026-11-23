@@ -22,6 +22,17 @@ require 'openc3/utilities/aws_bucket'
 
 module OpenC3
   describe PluginModel do
+    # A plugin that needs dependencies but has no Python files gets a
+    # .uv_managed marker, so keep install_phase2's writes out of the real /gems.
+    # stub_const in an around hook outlives the example, so use before/after.
+    def self.isolate_plugin_venvs_dir
+      before(:each) do
+        @venvs_dir = Dir.mktmpdir
+        stub_const("OpenC3::PythonVenv::PLUGIN_VENVS_DIR", @venvs_dir)
+      end
+      after(:each) { FileUtils.remove_entry_secure(@venvs_dir, true) }
+    end
+
     # Simple URL that is valid for testing (starts with /)
     URL = "URL /myurl"
 
@@ -281,6 +292,8 @@ module OpenC3
     end
 
     describe "self.install_phase2" do
+      isolate_plugin_venvs_dir
+
       it "creates the plugin by deploying models in the plugin.txt" do
         stub_s3_client
 
@@ -385,6 +398,8 @@ module OpenC3
     end
 
     describe "self.install_phase2 errors" do
+      isolate_plugin_venvs_dir
+
       it "raises on non-lowercase screen file names" do
         stub_s3_client
 
@@ -559,6 +574,29 @@ module OpenC3
         expect(plugin_model['needs_dependencies']).to eql false
       end
 
+      # lib/ sets needs_dependencies, but there is no venv to build. Admin must
+      # not then offer Migrate to UV, which could never clear it.
+      it "does not offer Migrate to UV for a ruby plugin with a lib folder" do
+        stub_s3_client
+
+        expect(GemModel).to receive(:get).and_return("my_plugin.gem")
+        gem = double("gem")
+        expect(gem).to receive(:extract_files) do |path|
+          File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
+          FileUtils.mkdir_p(File.join(path, 'lib'))
+        end
+        expect(Gem::Package).to receive(:new).and_return(gem)
+        allow(gem).to receive(:spec).and_return(gem_spec_double)
+        expect(GemModel).to receive(:install).and_return(nil)
+        expect(Open3).to_not receive(:capture2e)
+
+        result = PluginModel.install_phase2({ "name" => "name", "variables" => {}, "plugin_txt_lines" => [] }, scope: "DEFAULT")
+        expect(result['needs_dependencies']).to eql true
+
+        model = PluginModel.get_model(name: result['name'], scope: "DEFAULT")
+        expect(model.needs_uv_migration?).to be false
+      end
+
       context "with python dependencies" do
         let(:plugin_txt_lines) { [] }
         let(:spec_double) { gem_spec_double }
@@ -598,39 +636,24 @@ module OpenC3
           allow(ENV).to receive(:[]).with('PYPI_URL').and_return(nil)
         end
 
-        def stub_uv_on_path(available)
-          allow(PluginModel).to receive(:system).with('which uv > /dev/null 2>&1').and_return(available)
-        end
-
         def install_plugin
           PluginModel.install_phase2({"name" => "name", "variables" => {}, "plugin_txt_lines" => plugin_txt_lines}, scope: "DEFAULT")
         end
 
-        it "uses uvinstall for python packages when UV is available" do
-          stub_plugin_gem
-          stub_uv_on_path(true)
-          expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "--default-index", anything).and_return(["ok", success_status])
-          allow(PythonVenv).to receive(:purge_reserved_packages).and_return([])
-
-          expect(install_plugin['needs_dependencies']).to eql true
-        end
-
         it "purges a plugin-supplied openc3 from the venv after uvinstall succeeds" do
           stub_plugin_gem
-          stub_uv_on_path(true)
           expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "--default-index", anything).and_return(["ok", success_status])
 
           # The venv is named "<scope>__<plugin>" so this is where a plugin's
           # own openc3 copy would land and shadow the system library.
           expect(PythonVenv).to receive(:purge_reserved_packages)
-            .with("/gems/plugin_venvs/DEFAULT__name__0/.venv").and_return(['openc3'])
+            .with(File.join(@venvs_dir, "DEFAULT__name__0", ".venv")).and_return(['openc3'])
 
           install_plugin
         end
 
         it "does not purge the venv when uvinstall fails" do
           stub_plugin_gem
-          stub_uv_on_path(true)
           expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "--default-index", anything).and_return(["uv failed", failure_status])
           expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "--default-index", anything, anything).and_return(["pip ok", success_status])
 
@@ -641,7 +664,6 @@ module OpenC3
 
         it "falls back to pipinstall when uvinstall fails" do
           stub_plugin_gem
-          stub_uv_on_path(true)
           allow(PythonVenv).to receive(:purge_reserved_packages).and_return([])
 
           # uvinstall fails, then pipinstall succeeds
@@ -653,9 +675,6 @@ module OpenC3
 
         it "skips UV and uses pipinstall when OPENC3_USE_UV is 'false'" do
           stub_plugin_gem(dep_file: 'requirements.txt', dep_body: 'requests', use_uv: 'false')
-
-          # Should NOT call system for uv check
-          expect(PluginModel).not_to receive(:system)
 
           # Should go straight to pipinstall
           expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "--default-index", anything, "-r", anything).and_return(["pip ok", success_status])
@@ -669,7 +688,6 @@ module OpenC3
         # index that is not the public default.
         it "passes a configured pypi_url and --no-config through to uvinstall" do
           stub_plugin_gem
-          stub_uv_on_path(true)
           allow(PluginModel).to receive(:get_setting).with('pypi_url', scope: "DEFAULT").and_return("https://mirror.example.com")
 
           expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything,
@@ -682,7 +700,6 @@ module OpenC3
 
         it "sanitizes an invalid pypi_url setting before invoking uvinstall" do
           stub_plugin_gem
-          stub_uv_on_path(true)
 
           # A user-writable setting must never put shell metacharacters on the uvinstall argv
           allow(OpenC3::Logger).to receive(:error)
@@ -695,19 +712,19 @@ module OpenC3
           expect(install_plugin['needs_dependencies']).to eql true
         end
 
-        it "falls back to pipinstall when uv is not on PATH" do
+        # Every image ships uv, and pipinstall runs uv too, so a missing uv has
+        # no working fallback. OPENC3_USE_UV is the only switch.
+        it "runs uvinstall without probing PATH for uv" do
           stub_plugin_gem
-          stub_uv_on_path(false)
-
-          # Should fall back to pipinstall
-          expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "--default-index", anything, anything).and_return(["pip ok", success_status])
+          expect(PluginModel).not_to receive(:system)
+          expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "--default-index", anything).and_return(["ok", success_status])
+          allow(PythonVenv).to receive(:purge_reserved_packages).and_return([])
 
           expect(install_plugin['needs_dependencies']).to eql true
         end
 
         it "does not install python packages when diff_only" do
           stub_plugin_gem(gem_install: false)
-          stub_uv_on_path(true)
 
           expect(Open3).to_not receive(:capture2e)
 
@@ -1012,6 +1029,9 @@ module OpenC3
         model.create
         allow(File).to receive(:exist?).and_call_original
         allow(File).to receive(:exist?).with('/gems/plugin_venvs/DEFAULT__TEST__0/.uv_managed').and_return(false)
+        # A successful migration purges reserved packages with the real uv,
+        # which these examples don't have
+        allow(PythonVenv).to receive(:purge_reserved_packages)
         model
       end
 
@@ -1056,6 +1076,18 @@ module OpenC3
         expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
       end
 
+      it "purges a plugin-supplied openc3 from the venv after a successful migration" do
+        model = unmigrated_plugin
+        stub_migration_gem { |path| File.open("#{path}/pyproject.toml", 'w') { |f| f.puts "[project]" } }
+        stub_default_pypi_url
+
+        success_status = double("status", success?: true)
+        expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "--default-index", anything).and_return(["ok", success_status])
+        expect(PythonVenv).to receive(:purge_reserved_packages).with('/gems/plugin_venvs/DEFAULT__TEST__0/.venv')
+
+        expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
+      end
+
       it "returns false on uvinstall failure" do
         model = unmigrated_plugin
         stub_migration_gem { |path| File.open("#{path}/requirements.txt", 'w') { |f| f.puts "requests" } }
@@ -1063,16 +1095,26 @@ module OpenC3
 
         failure_status = double("status", success?: false)
         expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "--default-index", anything).and_return(["fail", failure_status])
+        expect(PythonVenv).not_to receive(:purge_reserved_packages)
 
         expect(model.migrate_to_uv!(scope: "DEFAULT")).to be false
       end
 
-      it "returns true when no Python dependency files found" do
-        model = unmigrated_plugin
-        # No pyproject.toml or requirements.txt created during extract
-        stub_migration_gem
+      it "clears needs_uv_migration? for a plugin with no Python dependency files" do
+        Dir.mktmpdir do |venvs_dir|
+          stub_const("OpenC3::PythonVenv::PLUGIN_VENVS_DIR", venvs_dir)
+          model = unmigrated_plugin
+          # A Ruby-only plugin: lib/ or gem dependencies set needs_dependencies,
+          # but there is nothing for uv to install
+          stub_migration_gem
+          expect(Open3).not_to receive(:capture2e)
 
-        expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
+          expect(model.needs_uv_migration?).to be true
+          expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
+          expect(model.needs_uv_migration?).to be false
+          # The marker alone must not look like a usable venv
+          expect(PythonVenv.plugin_venv_path(scope: "DEFAULT", plugin_name: "TEST__0")).to be_nil
+        end
       end
 
       it "returns false and cleans up temp dir when an exception is raised" do

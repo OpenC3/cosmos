@@ -31,14 +31,15 @@ RSpec.describe PackagesController, type: :controller do
 
     it "returns per-plugin python package structure" do
       allow(OpenC3::GemModel).to receive(:names).and_return([])
-      allow(OpenC3::PythonPackageModel).to receive(:names).and_return(
-        {"demo" => ["numpy-2.0.0"], "shared" => ["requests-2.31.0"]}
+      # Scoped so Admin > Packages lists only this scope's plugin venvs
+      expect(OpenC3::PythonPackageModel).to receive(:names).with(scope: "DEFAULT").and_return(
+        { "DEFAULT__demo" => ["numpy-2.0.0"], "shared" => ["requests-2.31.0"] }
       )
 
       get :index, params: {scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
-      expect(json["python"]).to eq({"demo" => ["numpy-2.0.0"], "shared" => ["requests-2.31.0"]})
+      expect(json["python"]).to eq({ "DEFAULT__demo" => ["numpy-2.0.0"], "shared" => ["requests-2.31.0"] })
     end
 
     it "returns nothing without authorization" do
@@ -159,13 +160,13 @@ RSpec.describe PackagesController, type: :controller do
 
   describe "GET trees" do
     it "returns dependency trees from PythonPackageModel" do
-      trees_data = {"demo" => "Package    Version\n---------- -------\nnumpy      2.0.0"}
-      allow(OpenC3::PythonPackageModel).to receive(:trees).and_return(trees_data)
+      trees_data = { "DEFAULT__demo" => "Package    Version\n---------- -------\nnumpy      2.0.0" }
+      expect(OpenC3::PythonPackageModel).to receive(:trees).with(scope: "DEFAULT").and_return(trees_data)
 
       get :trees, params: {scope: "DEFAULT"}
       expect(response).to have_http_status(:ok)
       json = JSON.parse(response.body)
-      expect(json["demo"]).to include("numpy")
+      expect(json["DEFAULT__demo"]).to include("numpy")
     end
 
     it "returns empty hash when no venvs exist" do
