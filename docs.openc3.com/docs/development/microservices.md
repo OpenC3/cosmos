@@ -136,11 +136,13 @@ When a Python plugin microservice starts, the COSMOS operator automatically conf
 | Variable | Value | Purpose |
 | --- | --- | --- |
 | `VIRTUAL_ENV` | `/gems/plugin_venvs/<SCOPE>__<plugin name>/.venv` (see [how the folder is named](/docs/configuration/plugins#phase-2-deploy)) | Points to the plugin's isolated virtual environment |
-| `PATH` | Prepended with the venv's `bin/` directory | Ensures the venv's Python binary is used |
+| `PATH` | Prepended with the venv's `bin/` directory | Puts the venv's command-line tools first |
 | `PYTHONUSERBASE` | Same as `VIRTUAL_ENV` | Directs user-level installs to the venv |
-| `PYTHONPATH` | `/openc3/python/.venv/lib/python3.X/site-packages` | Makes the core `openc3` package and system dependencies available |
+| `PYTHONPATH` | `<venv>/lib/python3.X/site-packages:/openc3/python/.venv/lib/python3.X/site-packages/:/gems/python_packages/lib/python3.X/site-packages/` | Puts the plugin's packages first, then the core `openc3` package and system dependencies, then the shared package folder |
 
-This means plugin-specific dependencies (declared in `pyproject.toml` or `requirements.txt`) are installed in the per-plugin venv, while the core `openc3` library and system dependencies remain available from the base COSMOS Python environment. No manual configuration is needed — the operator handles this automatically when starting the microservice.
+The microservice still runs the COSMOS Python, `/openc3/python/.venv/bin/python`. Its imports find the plugin's packages because the venv's `site-packages` comes first on `PYTHONPATH`. The rest of `PYTHONPATH` is the value set in the COSMOS image, so plugin-specific dependencies (declared in `pyproject.toml` or `requirements.txt`) come from the per-plugin venv, while the core `openc3` library and system dependencies remain available from the base COSMOS Python environment. No manual configuration is needed — the operator handles this automatically when starting the microservice.
+
+A plugin with no venv, for example one installed before COSMOS used per-plugin venvs, falls back to the shared package folder. The operator leaves `VIRTUAL_ENV` and `PATH` alone, sets `PYTHONUSERBASE` to `/gems/python_packages`, and passes the image's `PYTHONPATH` through unchanged. A plugin whose uv install failed still has a venv folder, so the operator configures that venv as shown above. The packages COSMOS installed into the shared folder instead are still importable, because the shared folder comes later on `PYTHONPATH`.
 
 :::note
 The `add_to_search_path` pattern for importing from a plugin's `lib/` directory is still needed, as described in the section below. The per-plugin virtual environment handles third-party package isolation (e.g. `numpy`, `requests`), not plugin-internal `lib/` imports.
