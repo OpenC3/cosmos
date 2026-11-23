@@ -352,7 +352,19 @@ class TargetModel(Model):
         return counts
 
     @classmethod
-    def init_tlm_packet_counts(cls, tlm_target_names, scope):
+    def init_tlm_packet_counts(cls, tlm_target_names: list[str], scope: str) -> None:
+        """Load the global telemetry packet counts from Redis into System.
+
+        Called when an interface microservice starts. Sets each known packet's
+        received_count from its TELEMETRYCNTS field and passes the fields for
+        packets System doesn't know to prune_stale_telemetry_counts. Also starts
+        a new epoch for the stale key warnings, so each start warns again.
+
+        Args:
+            tlm_target_names: Names of the targets the interface receives
+                telemetry for. The UNKNOWN target is always loaded too.
+            scope: Scope the targets are installed in.
+        """
         cls.sync_packet_count_time = time.time()
         cls.stale_packet_keys_warned = set()
 
@@ -379,11 +391,21 @@ class TargetModel(Model):
 
     @classmethod
     def prune_stale_telemetry_counts(cls, target_name: str, unknown_packet_names: list[str], scope: str) -> None:
-        """A microservice still running the old packet definitions during a plugin
+        """Delete the telemetry counts of packets the target no longer defines.
+
+        A microservice still running the old packet definitions during a plugin
         upgrade can write counts for removed packets after the upgrade cleared
-        the counts. Delete the counts for packets the target no longer defines.
-        Keep the count of a packet that is still defined but this System didn't
-        load (e.g. a dynamic packet) and warn about it instead."""
+        the counts. A packet that is still in the target's Redis packet
+        definitions but that this System didn't load (e.g. a dynamic packet)
+        keeps its count and is warned about once per epoch instead. If the
+        target isn't installed, every count is kept and warned about.
+
+        Args:
+            target_name: Target whose TELEMETRYCNTS hash holds the fields.
+            unknown_packet_names: Packet names that have a count field but
+                aren't in System.
+            scope: Scope the target is installed in.
+        """
         try:
             defined_packet_names = cls.packet_names(target_name, type="TLM", scope=scope)
         except RuntimeError:

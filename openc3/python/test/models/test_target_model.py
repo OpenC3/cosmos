@@ -639,6 +639,7 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
     # GitHub issue #2868: a microservice still running the old packet
     # definitions during an upgrade can recreate counts for removed packets
     def test_init_tlm_packet_counts_removes_count_of_undefined_packet(self):
+        """Deletes the count of a packet the installed target no longer defines."""
         TargetModel(folder_name="INST", name="INST", scope="DEFAULT").create()
         Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
         Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
@@ -655,6 +656,7 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
         self.assertEqual(System.telemetry.packet("INST", "HEALTH_STATUS").received_count, 10)
 
     def test_init_tlm_packet_counts_keeps_count_of_defined_unloaded_packet(self):
+        """Keeps and warns about the count of a defined packet System didn't load."""
         TargetModel(folder_name="INST", name="INST", scope="DEFAULT").create()
         # DYNAMIC_PACKET is in the target's packet definitions (e.g. added with
         # dynamic_update) but this System didn't load it
