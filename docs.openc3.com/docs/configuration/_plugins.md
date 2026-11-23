@@ -83,6 +83,10 @@ COSMOS tries these installs in order and stops at the first one that succeeds:
 
 If both fail, COSMOS logs a warning and finishes installing the plugin, so its non-Python parts still work.
 
+:::note[Keep openc3 out of runtime dependencies]
+List `openc3` only in the plugin's dev dependency group, as the generated `pyproject.toml` does. If a plugin lists `openc3` as a runtime dependency, COSMOS removes it from the plugin venv when it installs the plugin, and logs a warning, and the plugin uses the `openc3` library shipped in the COSMOS image. A plugin venv comes first on `PYTHONPATH`, so its own copy would otherwise replace the system library for the plugin's scripts and microservices.
+:::
+
 Dependencies are resolved against the `pypi_url` Admin Console setting, falling back to the `PYPI_URL` environment variable and then to public PyPI. When that setting names an index other than `https://pypi.org`, COSMOS treats it as authoritative and passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. A plugin depending on a package published only to its author's private index therefore fails to install unless your index serves that package too.
 
 This applies only to the paths where uv resolves — `requirements.txt` plugins, and `pyproject.toml` plugins with no `uv.lock`. A plugin shipping a `uv.lock` installs with `uv sync --frozen`, which reuses the registry and wheel URLs already recorded in that lock and never consults an index, so a locked plugin still downloads from whatever index its author locked against.
