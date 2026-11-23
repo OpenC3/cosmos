@@ -385,6 +385,8 @@ A COSMOS Bridge is a small application that is run on the local computer to conn
 
 Allows you to install or remove Ruby gems or Python wheels into COSMOS. These are dependencies that are not packaged with the COSMOS plugin itself.
 
+A Python wheel always installs into the shared `/gems/python_packages` folder, which is on the `PYTHONPATH` of scripts and plugin microservices. There is no option to choose a plugin venv. To install into one plugin's venv, upload the wheel on the [Admin Packages tab](/docs/tools/admin#packages) and select the venv there.
+
 ```bash
 % openc3.sh cli pkginstall rspec-3.13.0.gem
 ```

@@ -57,7 +57,12 @@ The Python packages section is organized into the following subsections:
 
 - **Cached** — Python wheels available in the UV download cache. This includes system packages (copied from the COSMOS Docker image every time the init container starts, which adds only wheels the cache does not already have) plus any packages downloaded during plugin installs. This section shows what's available for installation without network access, which is useful for planning plugin installs in airgapped environments. Uploaded `.whl` files are listed here too, but plugin installs do not use them: an upload installs right away into the plugin venv you select in the upload dialog, or into the shared folder when the dialog does not appear. To install a plugin's dependencies without network access, build the plugin with [`offline_install`](/docs/configuration/plugins#offline-installs-with-bundled-wheels) or set `pypi_url` to a reachable PyPI mirror.
 - **Plugin venvs** — Lists each installed plugin's isolated virtual environment and the packages installed in it. Each plugin gets its own venv at `/gems/plugin_venvs/<SCOPE>__<plugin name>/.venv` (see [how the folder is named](/docs/configuration/plugins#phase-2-deploy)), so different plugins can use different versions of the same package without conflicts.
-- **Shared** (legacy) — Packages from the pre-UV shared install path. This section only appears when packages are present from plugins that were installed before the UV per-plugin virtual environment feature was added. Use the **Migrate to UV** button on the Plugins tab to migrate these plugins to isolated virtual environments.
+- **Shared** — Packages in the shared `/gems/python_packages` folder, which is on the `PYTHONPATH` of scripts and plugin microservices. This section appears only when that folder has packages. They come from:
+  - plugins installed before the UV per-plugin virtual environment feature was added;
+  - plugins whose uv install failed and fell back to the shared folder (see [plugin Python dependencies](/docs/configuration/plugins#phase-2-deploy));
+  - wheels installed with [`cli pkginstall`](/docs/getting-started/cli#pkginstall-and-pkguninstall) or the `package_install` script method, which always install here.
+
+  Use the **Migrate to UV** button on the Plugins tab to move a plugin's dependencies into its own virtual environment.
 
 ![Packages](/img/admin/packages.png)
 
