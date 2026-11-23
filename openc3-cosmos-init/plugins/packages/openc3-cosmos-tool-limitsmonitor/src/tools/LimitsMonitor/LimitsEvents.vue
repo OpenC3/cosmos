@@ -97,7 +97,8 @@ export default {
           },
         },
         {
-          historyCount: 1000,
+          // Channel parameter is history_count with underscore
+          history_count: this.historyCount,
         },
       )
       .then((limitsSubscription) => {
