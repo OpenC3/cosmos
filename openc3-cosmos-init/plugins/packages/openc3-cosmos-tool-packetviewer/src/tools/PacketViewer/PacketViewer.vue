@@ -310,6 +310,10 @@ export default {
       // uninstalled or reinstalled under another name)
       targetMissing: false,
       checkingTarget: false,
+      // Incremented by each packetChanged so a slower, older call can tell
+      // that a newer selection replaced it while it was awaiting the API
+      selectionGeneration: 0,
+      unmounted: false,
       counter: 0,
       targetName: '',
       packetName: '',
@@ -550,6 +554,9 @@ export default {
     }
   },
   beforeUnmount() {
+    // Stop pending packetChanged / checkTarget calls from restarting polling
+    // or routing back to Packet Viewer after the user has left
+    this.unmounted = true
     if (this.updater != null) {
       clearInterval(this.updater)
       this.updater = null
@@ -603,12 +610,18 @@ export default {
       }
       // The chooser clears its selection when the target has no packets or the
       // request failed (e.g. no permission). Nothing to look up in that case.
-      if (!event.targetName || !event.packetName) {
+      if (!event.targetName || !event.packetName || this.unmounted) {
         return
       }
+      const generation = ++this.selectionGeneration
+      const isStale = () =>
+        generation !== this.selectionGeneration || this.unmounted
       try {
         this.loadingPacket = true
         const target = await this.api.get_target(event.targetName)
+        if (isStale()) {
+          return
+        }
         if (target) {
           this.targetMissing = false
           this.ignoredItems = target.ignored_items
@@ -625,6 +638,9 @@ export default {
               event.targetName,
               event.packetName,
             )
+            if (isStale()) {
+              return
+            }
             if (derived) {
               this.derivedItems = derived
             }
@@ -655,7 +671,10 @@ export default {
           })
         }
       } finally {
-        this.loadingPacket = false
+        // A newer call owns the loading state if this one was superseded
+        if (generation === this.selectionGeneration) {
+          this.loadingPacket = false
+        }
       }
     },
     latestGetTlmValues(values) {
@@ -740,6 +759,15 @@ export default {
             this.api
               .get_all_tlm_item_names(this.targetName)
               .then((itemNames) => {
+                // get_all_tlm_item_names returns [] rather than raising when the
+                // target (or its packets, mid-upgrade) doesn't exist. Don't cache
+                // that as the item list: treat it as a failure so the target is
+                // checked and discovery is retried on the next update.
+                if (!itemNames?.length) {
+                  throw new Error(
+                    `No telemetry items found for ${this.targetName}`,
+                  )
+                }
                 this.latestItemNames = itemNames
                 // Build items array in format TGT__LATEST__ITEM__TYPE
                 const items = itemNames.map(

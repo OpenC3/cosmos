@@ -317,6 +317,35 @@ test('keeps polling when the packet fails but the target exists', async ({
   await expect(page.locator('[data-test=target-missing]')).not.toBeVisible()
 })
 
+test('retries LATEST item discovery that finds no items', async ({
+  page,
+  utils,
+}) => {
+  const isDiscovery = (request: Request) =>
+    request.url().includes('/openc3-api/api') &&
+    !!request.postData()?.includes('"get_all_tlm_item_names"')
+  let discoveries = 0
+  page.on('request', (request) => {
+    if (isDiscovery(request)) {
+      discoveries++
+    }
+  })
+  // get_all_tlm_item_names returns [] instead of raising for a target with no
+  // packets, as happens while a plugin upgrade is still loading them
+  await removeTarget(page, ['get_all_tlm_item_names'])
+  await page.goto('/tools/packetviewer/INST/LATEST/')
+  await page.waitForRequest(isDiscovery)
+  // The empty list must not be cached as the item list: discovery is retried
+  // on each update. The chooser also calls it, but only once per selection.
+  const count = discoveries
+  await utils.sleep(3000) // Allow a few polling intervals to fire
+  expect(discoveries).toBeGreaterThan(count + 1)
+
+  // The packets finish loading, so LATEST shows telemetry without reselecting
+  await page.unroute('**/openc3-api/api')
+  await matchItem(page, 'TEMP1', /\d+/)
+})
+
 // Changing the polling rate is fraught with danger because it's all
 // about waiting for changes and detecting changes
 test('changes the polling rate', async ({ page, utils }) => {
