@@ -155,7 +155,7 @@ def _shared_resource_for_user(record: dict[str, Any], accessible: dict[str, bool
     active. accessible caches scope to whether the user can access it.
     """
 
-    def can_access(other_scope: str) -> bool:
+    def _can_access(other_scope: str) -> bool:
         if other_scope not in accessible:
             try:
                 authorize(permission="system", scope=other_scope, manual=manual)
@@ -166,8 +166,8 @@ def _shared_resource_for_user(record: dict[str, Any], accessible: dict[str, bool
 
     record = dict(record)
     record["members"] = {
-        member_scope: members for member_scope, members in record["members"].items() if can_access(member_scope)
+        member_scope: members for member_scope, members in record["members"].items() if _can_access(member_scope)
     }
-    if record.get("owner") and record.get("waiting") and not can_access(record["owner"]):
+    if record.get("owner") and record.get("waiting") and not _can_access(record["owner"]):
         record["waiting"] = []
     return record
