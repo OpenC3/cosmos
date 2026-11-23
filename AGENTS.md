@@ -126,6 +126,11 @@ PWDEBUG=1 pnpm test:parallel --headed        # Debug mode
 ## Code Style
 
 - **Ruby**: RuboCop, configured in `.rubocop.yml`.
+- **Ruby checks**: RuboCop must pass for any Ruby code you write, specs included, before you commit. Run it from the repo root on the files you touched:
+  ```bash
+  just lint-ruby <files>
+  ```
+  New files must pass with no offenses. In existing files, no line you added or changed may produce an offense. Offenses that were already there on lines you didn't touch don't block your change. `just lint-ruby-fix <files>` applies the safe corrections.
 - **Python**: Ruff for lint and format, configured in `openc3/python/pyproject.toml`. Minimum supported Python is 3.10 (ruff `target-version = "py310"`), so don't use syntax newer than that. Commit `uv.lock` with any dependency change.
 - **Python checks**: All three of these must pass for any Python code you write, before you commit. Run them from `openc3/python` on the files you touched (paths relative to `openc3/python`):
   ```bash
