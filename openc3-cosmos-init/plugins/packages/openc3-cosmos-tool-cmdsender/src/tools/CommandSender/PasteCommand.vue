@@ -122,7 +122,8 @@ function focusInput() {
 function enter(event) {
   if (event.target.closest('button')) return
   event.preventDefault()
-  submit()
+  // submit shows its own errors in the box
+  void submit()
 }
 
 async function submit() {

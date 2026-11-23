@@ -157,6 +157,34 @@ describe('useCommandHistory', () => {
     expect(history.entries.value).toHaveLength(1)
   })
 
+  it('works when reading localStorage itself throws', () => {
+    const descriptor = Object.getOwnPropertyDescriptor(
+      globalThis,
+      'localStorage',
+    )
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      get() {
+        throw new Error('SecurityError')
+      },
+    })
+    try {
+      const scope = effectScope()
+      const history = scope.run(() => useCommandHistory(undefined, null))
+      history.add('cmd("INST ABORT")')
+      expect(history.entries.value).toHaveLength(1)
+      history.clear()
+      expect(history.entries.value).toEqual([])
+      scope.stop()
+    } finally {
+      if (descriptor) {
+        Object.defineProperty(globalThis, 'localStorage', descriptor)
+      } else {
+        delete globalThis.localStorage
+      }
+    }
+  })
+
   it('keeps working when saving fails', () => {
     const storage = memoryStorage()
     storage.setItem = () => {

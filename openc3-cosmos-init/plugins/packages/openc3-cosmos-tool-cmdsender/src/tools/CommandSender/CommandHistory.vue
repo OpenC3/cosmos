@@ -54,7 +54,6 @@
       item-key="id"
       max-height="50vh"
       class="cs-history-list"
-      role="list"
       data-test="sender-history"
     >
       <template #default="{ item }">
@@ -63,7 +62,6 @@
             'cs-history-row d-flex align-start ga-3 pl-4 pr-2',
             { current: item.id === selectedId },
           ]"
-          role="listitem"
         >
           <span
             class="cs-time num text-medium-emphasis flex-shrink-0"

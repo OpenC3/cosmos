@@ -55,7 +55,7 @@ The Send button is the only way to send a command. Sending a command updates the
 
 ### Command History
 
-The Command History lists every command sent from Command Sender, newest first, with the time it was sent. Sending the same command again adds another entry, so the history is a complete record of what was sent. The history is kept in the browser and persists across sessions until it is cleared with the delete button or File → Clear History.
+The Command History lists the commands sent from Command Sender, newest first, with the time each was sent. Sending the same command again adds another entry. It keeps the 500 most recent commands: once it is full, each new command removes the oldest. The history is kept in the browser and persists across sessions until it is cleared with the delete button or File → Clear History.
 
 Clicking a command in the history loads it into the form above, selecting the target, packet and queue (None if it was sent without one) and filling in every parameter value. Nothing is sent until you press Send, so you can review or change parameters first. The copy button at the end of each entry copies the command to the clipboard, ready to paste into a script.
 

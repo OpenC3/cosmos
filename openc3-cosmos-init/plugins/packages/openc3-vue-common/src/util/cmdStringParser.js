@@ -22,8 +22,17 @@ import { convertToValue, isArray, removeQuotes } from './cmdUtilities'
 // Same tokens as OpenC3::Extract::SCANNING_REGULAR_EXPRESSION, which parses
 // this text on the server: double or single quoted strings, arrays with one
 // level of nesting, a comma, or a bare word
-const TOKEN_REGEX =
-  /"(?:[^\\"]|\\.)*"|'(?:[^\\']|\\.)*'|\[(?:[^\\[\]]|\\.|\[(?:[^\\[\]]|\\.)*\])*\]|,|[^\s,]+/g
+// A quoted element inside an array is matched whole, so a ] inside it (e.g.
+// [ "a]b" ]) doesn't end the array as it would on the server
+const DOUBLE_QUOTED = /"(?:[^\\"]|\\.)*"/.source
+const SINGLE_QUOTED = /'(?:[^\\']|\\.)*'/.source
+const ELEMENT = String.raw`${DOUBLE_QUOTED}|${SINGLE_QUOTED}|[^\\[\]"']|\\.`
+const INNER_ARRAY = String.raw`\[(?:${ELEMENT})*\]`
+const ARRAY = String.raw`\[(?:${ELEMENT}|${INNER_ARRAY})*\]`
+const TOKEN_REGEX = new RegExp(
+  [DOUBLE_QUOTED, SINGLE_QUOTED, ARRAY, ',', String.raw`[^\s,]+`].join('|'),
+  'g',
+)
 
 // The scripting API methods that send a command from a single string
 const METHOD_REGEX =
@@ -35,8 +44,10 @@ export function parseCmdText(text) {
   const trimmed = (text || '').trim()
   if (trimmed === '') throw new Error('Command text must not be empty')
 
-  const withMatch = /\s+with(?:\s+|$)/i.exec(trimmed)
-  const head = withMatch ? trimmed.slice(0, withMatch.index) : trimmed
+  // One whitespace character either side (the rest is trimmed), which
+  // can't backtrack the way \s+with\s+ can on long runs of spaces
+  const withMatch = /\swith(?:\s|$)/i.exec(trimmed)
+  const head = withMatch ? trimmed.slice(0, withMatch.index).trim() : trimmed
   const tail = withMatch
     ? trimmed.slice(withMatch.index + withMatch[0].length)
     : null
@@ -155,7 +166,7 @@ export function parseCmdLine(line) {
   if (!call && !bareCall) {
     return {
       method: null,
-      ...parseCmdText(trimmed),
+      ...parseCmdText(stripComment(trimmed)),
       queue: undefined,
       validate: undefined,
       ignored: [],
@@ -182,6 +193,8 @@ export function parseCmdLine(line) {
   // Check the arguments before the text so a multiple argument call, e.g.
   // cmd("INST", "COLLECT", {...}), says so rather than what "INST" lacks
   const parts = rest === '' ? [] : splitTopLevel(rest.slice(1))
+  // An optional trailing comma, as Ruby and Python allow in a call
+  if (parts.length && parts.at(-1) === '') parts.pop()
   const result = {
     method,
     target: '',
@@ -192,7 +205,7 @@ export function parseCmdLine(line) {
     ignored: [],
   }
   for (const part of parts) {
-    const keyword = /^([A-Za-z_]\w*)\s*(?::|=)\s*(\S[\s\S]*)$/.exec(part)
+    const keyword = /^([A-Za-z_]\w*)\s*[:=]\s*(\S[\s\S]*)$/.exec(part)
     if (!keyword) {
       // A second positional argument, e.g. cmd("INST", "COLLECT", {...})
       if (/^["'{[]/.test(part)) throw new Error(single)
@@ -259,8 +272,9 @@ function closingParen(text, start) {
   return -1
 }
 
-// The text before a # comment outside quotes, for a call without
-// parentheses (one with them finds its end with closingParen)
+// The text before a # comment: outside quotes, and at the start or after
+// whitespace so a # within a word is kept. For bare text and calls without
+// parentheses (one with them finds its end with closingParen).
 function stripComment(text) {
   let quote = null
   for (let i = 0; i < text.length; i++) {
@@ -273,7 +287,7 @@ function stripComment(text) {
       }
     } else if (char === '"' || char === "'") {
       quote = char
-    } else if (char === '#') {
+    } else if (char === '#' && (i === 0 || /\s/.test(text.charAt(i - 1)))) {
       return text.slice(0, i).trim()
     }
   }

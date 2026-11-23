@@ -860,6 +860,18 @@ test('asks for obfuscated values loaded from the history', async ({
   await page.locator('[data-test=error-dialog-ok]').click()
   await expect(historyEntries(page)).toHaveCount(1)
 
+  // Toggling Show Ignored Parameters reloads the rows but keeps what's in the
+  // form: an entered value, and the obfuscated values still waiting
+  await setValue(page, 'USERNAME', 'operator')
+  await toggleMode(page, 'Show Ignored')
+  await checkValue(page, 'USERNAME', 'operator')
+  await checkValue(page, 'PASSWORD_STR', '')
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('.v-dialog')).toContainText('Enter PASSWORD_STR')
+  await page.locator('[data-test=error-dialog-ok]').click()
+  await toggleMode(page, 'Show Ignored')
+  await expect(historyEntries(page)).toHaveCount(1)
+
   // Once entered they send
   for (const [param, value] of [
     ['PASSWORD_STR', 'secret'],
@@ -874,6 +886,14 @@ test('asks for obfuscated values loaded from the history', async ({
   }
   await page.locator('[data-test="select-send"]').click()
   await expect(historyEntries(page)).toHaveCount(2)
+
+  // ***** is only the history's mask for obfuscated parameters; pasted for
+  // any other it's the value
+  await pasteCommand(page, `cmd("INST SET_PASSWORD with USERNAME '*****'")`)
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST SET_PASSWORD',
+  )
+  await checkValue(page, 'USERNAME', `'*****'`)
 })
 
 test('reloads history commands with double quotes', async ({ page, utils }) => {

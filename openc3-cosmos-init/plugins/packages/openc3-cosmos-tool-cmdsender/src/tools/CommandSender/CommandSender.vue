@@ -343,10 +343,12 @@ export default {
       return 'Hazardous'
     },
     hazardTitle() {
-      if (this.commandIsHazardousNow) {
-        return this.hazardText
+      if (!this.commandIsHazardousNow) {
+        return `Hazardous because ${this.hazardousModes}`
       }
-      return `Hazardous because ${this.hazardousModes}`
+      return this.hazardousDescription
+        ? `Hazardous: ${this.hazardousDescription}`
+        : 'Hazardous'
     },
     // Not while a history entry or paste loads, so Send only ever sends the
     // command shown in the form
@@ -552,7 +554,8 @@ export default {
       if (index === current) return
       const entry = entries[index]
       this.$refs.commandHistory.scrollToEntry(entry.id)
-      this.selectHistory(entry)
+      // selectHistory reports its own errors in the status
+      void this.selectHistory(entry)
     },
 
     commandChanged(event) {
@@ -953,7 +956,10 @@ export default {
       }
       // Escaped like a script string literal, so values with double quotes
       // (e.g. string arrays) copy into a script and load back from history
-      let msg = `${cmd_sent}("${text.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}`
+      const escaped = text
+        .replaceAll('\\', String.raw`\\`)
+        .replaceAll('"', String.raw`\"`)
+      let msg = `${cmd_sent}("${escaped}`
       // Build the closing part with optional parameters
       const closingParams = []
       if (queueName !== null) {
@@ -1105,6 +1111,10 @@ export default {
       }
       if (parsed.queue === false) {
         notes.push('queue false is not supported here, the queue is None')
+      } else if (result.queueLookupFailed) {
+        notes.push(
+          `the queue list couldn't be loaded to check queue "${result.unknownQueue}", the queue is None`,
+        )
       } else if (result.unknownQueue) {
         notes.push(
           `queue "${result.unknownQueue}" doesn't exist, the queue is None`,

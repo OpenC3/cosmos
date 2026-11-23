@@ -18,7 +18,12 @@ export default defineConfig((options) => {
     // are requested from /tools/cmdsender/assets rather than /assets. Builds
     // only: the dev server (pnpm serve, for import map overrides) serves the
     // package folder, where the build lands in tools/cmdsender already.
-    base: options.command === 'build' ? '/tools/cmdsender/' : '/',
+    // vite preview (serve:standalone) serves the build, so it needs the same
+    // base as the build for those asset URLs to resolve.
+    base:
+      options.command === 'build' || options.isPreview
+        ? '/tools/cmdsender/'
+        : '/',
     build: {
       sourcemap: coverageBuild,
       outDir: 'tools/cmdsender',

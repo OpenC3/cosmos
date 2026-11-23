@@ -57,10 +57,20 @@ export function addEntry(entries, cmd, sentAt = Date.now()) {
   return [{ cmd, sentAt }, ...entries].slice(0, MAX_HISTORY)
 }
 
+// localStorage, or null where reading it throws (e.g. a sandboxed frame or
+// blocked site data); the history then only lasts until the page closes
+function defaultStorage() {
+  try {
+    return globalThis.localStorage ?? null
+  } catch {
+    return null
+  }
+}
+
 // entries are the saved entries plus an id (for list keys and selection)
 // that is only unique within this page
 export function useCommandHistory(
-  storage = globalThis.localStorage,
+  storage = defaultStorage(),
   eventTarget = globalThis.window,
 ) {
   let nextId = 1

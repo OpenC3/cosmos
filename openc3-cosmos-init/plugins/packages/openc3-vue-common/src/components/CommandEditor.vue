@@ -196,6 +196,8 @@ export default {
       // Incremented by every setCommand so only the newest of overlapping
       // calls loads, whichever finishes fetching first
       setCommandId: 0,
+      // TARGET COMMAND the rows were built for
+      rowsCommand: null,
       parsedParameters: null,
       targetName: '',
       commandName: '',
@@ -284,6 +286,13 @@ export default {
     },
     // Resolves once the parameters are loaded (or failed to load)
     updateCmdParams() {
+      // Reloading the same command (e.g. Show Ignored Parameters toggled)
+      // keeps the values in the form, including obfuscated values still
+      // waiting to be entered, so nothing reverts to its default
+      const keep =
+        this.rowsCommand === `${this.targetName} ${this.commandName}`
+          ? new Map(this.computedRows.map((row) => [row.parameter_name, row]))
+          : null
       this.ignoredParams = []
       this.computedRows = []
       this.hazardousParameters = {}
@@ -310,7 +319,16 @@ export default {
               if (loadId !== this.loadId) return
               this.commandLoading = false
               if (command) {
-                this.computedRows = this.buildRows(command)
+                const rows = this.buildRows(command)
+                for (const row of keep ? rows : []) {
+                  const previous = keep.get(row.parameter_name)
+                  if (previous) {
+                    row.val = previous.val
+                    row.obfuscated = previous.obfuscated
+                  }
+                }
+                this.computedRows = rows
+                this.rowsCommand = `${targetName} ${commandName}`
                 this.commandDescription = command.description
 
                 // Populate with parsed parameters if available
@@ -334,7 +352,14 @@ export default {
     },
     // The table rows for a command definition, with default values.
     // showIgnored overrides the showIgnoredParams prop.
-    buildRows(command, showIgnored = this.showIgnoredParams) {
+    // ignoredParams and keyId default to the editor's; setCommand passes the
+    // new command's before committing them.
+    buildRows(
+      command,
+      showIgnored = this.showIgnoredParams,
+      ignoredParams = this.ignoredParams,
+      keyId = this.loadId,
+    ) {
       // Identify length fields that are auto-managed by variable_bit_size arrays
       // These should be shown but disabled - they will be set when the array is written
       const autoLengthFields = new Set()
@@ -351,7 +376,7 @@ export default {
         if (this.reservedItemNames.includes(parameter.name)) return
         if (
           !parameter.hidden &&
-          (!this.ignoredParams.includes(parameter.name) || showIgnored)
+          (!ignoredParams.includes(parameter.name) || showIgnored)
         ) {
           let val = parameter.default
           if (
@@ -385,7 +410,7 @@ export default {
           rows.push({
             // Unique per load so the table doesn't reuse a parameter editor
             // (and its local state) from the previous command
-            key: `${this.loadId}-${parameter.name}`,
+            key: `${keyId}-${parameter.name}`,
             parameter_name: parameter.name,
             val: val,
             states: parameter.states,
@@ -395,6 +420,8 @@ export default {
             type: parameter.data_type,
             // Disable auto-managed length fields for variable_bit_size arrays
             disabled: autoLengthFields.has(parameter.name.toUpperCase()),
+            // OBFUSCATE: shown as ***** in logs and the history
+            obfuscate: !!parameter.obfuscate,
           })
         }
       })
@@ -506,23 +533,35 @@ export default {
         {},
         headers,
       )
+      // The queue list loads when the chooser is created, so a queue can
+      // only be checked against it once it has
+      const queuesLoaded = await this.$refs.targetPacketChooser.queuesReady
       // A newer setCommand, or a command picked in the chooser, replaced this
       // one. Without the request check, an older call that finished first
       // would take loadId and make the newer one fail instead.
       if (request !== this.setCommandId || startId !== this.loadId) {
         throw new Error('Another command was selected while loading')
       }
-      this.loadId++
       const ignoredParams = targetInfo?.ignored_parameters || []
       const showIgnored =
         this.showIgnoredParams ||
         Object.keys(params).some((name) =>
           ignoredParams.includes(name.toUpperCase()),
         )
-      this.ignoredParams = ignoredParams
-      const rows = this.buildRows(definition, showIgnored)
-      const result = this.applyParameters(params, rows)
+      // Build and fill in the rows before changing anything, so a value
+      // that can't be converted leaves the editor (and any reload in
+      // progress) as it was
+      const rows = this.buildRows(
+        definition,
+        showIgnored,
+        ignoredParams,
+        this.loadId + 1,
+      )
+      const result = this.applyParameters(params, rows, ignoredParams)
 
+      this.loadId++
+      this.ignoredParams = ignoredParams
+      this.rowsCommand = `${targetName} ${commandName}`
       this.parsedParameters = null
       this.targetName = targetName
       this.commandName = commandName
@@ -538,8 +577,10 @@ export default {
         commandName,
         queue,
       )
-      // A queue that isn't in the queue list is left off (None)
+      // A queue that isn't in the queue list is left off (None), as is one
+      // that couldn't be checked because the queue list failed to load
       result.unknownQueue = queueSelected ? null : queue
+      result.queueLookupFailed = !queueSelected && !queuesLoaded
       this.$emit('command-loaded', definition)
       return result
     },
@@ -547,7 +588,11 @@ export default {
     // that couldn't be set: unknown (not a parameter of the command), hidden
     // (an ignored parameter that isn't shown) and obfuscated (shown as *****
     // in the history, so the value is unknown and left unset).
-    applyParameters(params, rows = this.computedRows) {
+    applyParameters(
+      params,
+      rows = this.computedRows,
+      ignoredParams = this.ignoredParams,
+    ) {
       const result = { unknown: [], hidden: [], obfuscated: [] }
       const byName = new Map(
         rows.map((row) => [row.parameter_name.toUpperCase(), row]),
@@ -556,7 +601,7 @@ export default {
         const upcaseName = name.toUpperCase()
         const row = byName.get(upcaseName)
         if (!row) {
-          if (this.ignoredParams.includes(upcaseName)) {
+          if (ignoredParams.includes(upcaseName)) {
             result.hidden.push(upcaseName)
           } else {
             result.unknown.push(upcaseName)
@@ -564,9 +609,10 @@ export default {
           continue
         }
         const value = String(text)
-        if (this.removeQuotes(value) === '*****') {
-          // Unset, like a required parameter, and flagged so Send can ask
-          // for it rather than send the default
+        if (row.obfuscate && this.removeQuotes(value) === '*****') {
+          // The history's mask for an obfuscated value (a literal ***** for
+          // any other parameter is kept). Unset, like a required parameter,
+          // and flagged so Send asks for it rather than send the default.
           row.val = null
           row.obfuscated = true
           result.obfuscated.push(row.parameter_name)

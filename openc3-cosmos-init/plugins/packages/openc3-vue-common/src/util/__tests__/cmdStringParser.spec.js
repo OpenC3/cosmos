@@ -48,6 +48,12 @@ describe('parseCmdText', () => {
     ).toEqual({ A: "'hello, world'", B: '"x, y"', C: '1' })
   })
 
+  it('keeps brackets and commas inside quoted array elements', () => {
+    expect(
+      parseCmdText(`INST ARY with A [ "a]b", 'c,d', "e\\"]" ], B 1`).params,
+    ).toEqual({ A: `[ "a]b", 'c,d', "e\\"]" ]`, B: '1' })
+  })
+
   it('keeps commas inside arrays, including one level of nesting', () => {
     expect(
       parseCmdText('INST ARRAY with A [1, 2, 3], B [[1, 2], [3]], C 4').params,
@@ -194,7 +200,25 @@ describe('parseCmdLine', () => {
   })
 
   it('reads bare text that starts with a quoted word as command text', () => {
-    expect(() => parseCmdLine(`INST "ABORT"`)).not.toThrow(/method/)
+    const parsed = parseCmdLine(`INST "ABORT"`)
+    expect(parsed.method).toBeNull()
+    expect(parsed.target).toBe('INST')
+    expect(parsed.command).toBe('"ABORT"')
+  })
+
+  it('ignores a trailing comment on bare text, but not a # in a word', () => {
+    expect(
+      parseCmdLine(`INST SET with A 'x # y', B a#1 # a comment`).params,
+    ).toEqual({ A: "'x # y'", B: 'a#1' })
+    expect(parseCmdLine('INST ABORT # a comment').command).toBe('ABORT')
+  })
+
+  it('allows a trailing comma after the keywords, but not an empty one', () => {
+    expect(parseCmdLine(`cmd("INST ABORT", queue: "Q",)`).queue).toBe('Q')
+    expect(parseCmdLine(`cmd("INST ABORT",)`).command).toBe('ABORT')
+    expect(() => parseCmdLine(`cmd("INST ABORT", , queue: "Q")`)).toThrow(
+      /Invalid keyword argument/,
+    )
   })
 
   it('reads a Ruby call without parentheses or a comment', () => {
