@@ -172,6 +172,7 @@ COSMOS uses Python for scripting and provides a Python library (`openc3`) that m
 
 - **[UV](https://github.com/astral-sh/uv)** - Fast Python package manager (replaces pip/poetry)
 - **[Ruff](https://github.com/astral-sh/ruff)** - Fast Python linter and formatter (replaces flake8/black/isort)
+- **[ty](https://github.com/astral-sh/ty)** - Python type checker, installed by `uv sync` as a dev dependency
 - **[Just](https://github.com/casey/just)** - Command runner for development tasks
 
 ### Installing Tools
@@ -218,6 +219,10 @@ just lint-changed        # Lint only changed files (fast!)
 just lint-fix            # Auto-fix linting issues
 just lint-stats          # Show detailed linting statistics
 
+# Type Checking
+just typecheck           # Type check with ty (reports diagnostics, never fails)
+just typecheck-strict    # Type check and fail on any diagnostic
+
 # Testing
 just test                # Run all tests
 just test-cov            # Run tests with coverage
@@ -244,7 +249,8 @@ just clean               # Remove build artifacts and caches
 1.  Make your changes to the Python code
 2.  Quick check before committing: `just verify-changed` (fast!)
 3.  Or full verification: `just verify` (formats, lints, tests everything)
-4.  Commit your changes
+4.  Type check the files you changed: `uv run ty check <files>`. Neither `verify` recipe runs ty, and new code must have no ty diagnostics
+5.  Commit your changes
 
 **Tip:** Use `verify-changed` for quick iterations - it only checks files you've modified!
 
@@ -263,6 +269,9 @@ uv run pytest
 # Lint and format
 uv run ruff check openc3
 uv run ruff format openc3
+
+# Type check
+uv run ty check openc3
 
 # Run with coverage
 uv run coverage run -m pytest
