@@ -105,8 +105,9 @@ If the build stops, the message names the fix:
 | `uv.lock is not committed` | Run `git add uv.lock` and commit it. The bundle must match the lock in source control, so the gem can be traced to a reviewed commit. |
 | `Could not find a compatible wheel for every locked package for <platform>` | A dependency publishes no wheel for that platform or Python version (only a source distribution, or no build for that architecture). Pick a version that ships one, or drop that platform from `python_platforms`. |
 | `python_platforms also needs python_version` | Add `python_version`, set to the deployment's Python, such as `"3.13"`. |
+| `python3 (3.11 or newer) is required to read .../pyproject.toml` | The build ran outside the COSMOS image without a new enough Python. Install Python 3.11 or newer so `python3` is on `PATH`, or build with `openc3.sh cli rake build`. |
 
-`uv lock` needs network access to the package index, just like the build. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) on the machine where you edit the plugin.
+`uv lock` needs network access to the package index, just like the build. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) on the machine where you edit the plugin. Building outside the COSMOS image, for example with a locally installed `rake build`, also needs `python3` 3.11 or newer on `PATH`, which COSMOS uses to read `pyproject.toml`. `openc3.sh cli rake build` already has both.
 
 To check a built gem later, for example against a deployment's platform before shipping it, run [`cli verifywheels`](/docs/getting-started/cli#verify-wheels). It prints a per-target report of the wheel serving each package and its hash check.
 

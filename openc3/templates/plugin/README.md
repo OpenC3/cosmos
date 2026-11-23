@@ -57,6 +57,9 @@ reports any missing or incompatible package instead of going online.
 The build stops if `uv.lock` is missing, out of date with `pyproject.toml`, or (in a git repository) not committed.
 Run `uv lock`, commit `uv.lock`, and build again.
 
+Building outside the COSMOS image (a local `rake build` rather than `openc3.sh cli rake build`) needs `uv` and
+`python3` 3.11 or newer on `PATH`.
+
 Wheels with compiled code are specific to an OS, CPU architecture, and Python version. The bundle targets the
 machine running the build, so build with `openc3.sh cli rake build` to match the COSMOS image. To build elsewhere or
 for several architectures, set `python_platforms` and `python_version` in `[tool.openc3]` (see `pyproject.toml`).
