@@ -12,6 +12,7 @@
 # All Rights Reserved
 */
 
+import type { Page, Request } from '@playwright/test'
 import { test, expect } from './fixture'
 
 test.use({
@@ -236,6 +237,84 @@ test('stops polling the previous packet after switching', async ({
   const count = adcsCount
   await utils.sleep(2000) // Allow a leaked ADCS interval time to fire
   expect(adcsCount).toBe(count) // no change, so the old interval was cleared
+})
+
+// Routes the API requests for the given methods to a target that doesn't exist,
+// so the real server answers as it does once a plugin is uninstalled or its
+// target is renamed: get_tlm_packet raises "does not exist" and get_target
+// returns null. This avoids installing and removing a plugin in the test.
+async function removeTarget(page: Page, methods: string[]) {
+  await page.route('**/openc3-api/api', async (route) => {
+    const body = route.request().postDataJSON()
+    if (methods.includes(body?.method) && body.params?.[0] === 'INST') {
+      body.params[0] = 'REMOVED_TARGET'
+      return await route.continue({ postData: JSON.stringify(body) })
+    }
+    return await route.fallback()
+  })
+}
+
+const isPacketPoll = (request: Request) =>
+  request.url().includes('/openc3-api/api') &&
+  !!request.postData()?.includes('"get_tlm_packet"')
+
+test('stops polling a removed target and resumes when it returns', async ({
+  page,
+  utils,
+}) => {
+  let polls = 0
+  page.on('request', (request) => {
+    if (isPacketPoll(request)) {
+      polls++
+    }
+  })
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await expect(page.locator('id=openc3-tool')).toContainText(
+    'Health and status',
+  )
+  await page.waitForRequest(isPacketPoll)
+  await expect(page.locator('[data-test=target-missing]')).not.toBeVisible()
+
+  await removeTarget(page, ['get_tlm_packet', 'get_target'])
+  await expect(page.locator('[data-test=target-missing]')).toContainText(
+    'Target INST no longer exists',
+  )
+  const count = polls
+  await utils.sleep(3000) // Allow a few polling intervals to fire
+  expect(polls).toBe(count) // get_tlm_packet is no longer requested
+
+  // The target comes back, e.g. the plugin upgrade finished
+  await page.unroute('**/openc3-api/api')
+  await expect(page.locator('[data-test=target-missing]')).not.toBeVisible()
+  await page.waitForRequest(isPacketPoll)
+  await matchItem(page, 'TEMP1', /\d+/)
+})
+
+test('keeps polling when the packet fails but the target exists', async ({
+  page,
+  utils,
+}) => {
+  let polls = 0
+  page.on('request', (request) => {
+    if (isPacketPoll(request)) {
+      polls++
+    }
+  })
+  await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
+  await page.waitForRequest(isPacketPoll)
+
+  // get_tlm_packet fails but get_target still finds INST, as can happen while
+  // a plugin is upgraded, so polling has to continue
+  await removeTarget(page, ['get_tlm_packet'])
+  await page.waitForResponse(
+    async (response) =>
+      isPacketPoll(response.request()) &&
+      (await response.text()).includes('does not exist'),
+  )
+  const count = polls
+  await utils.sleep(3000) // Allow a few polling intervals to fire
+  expect(polls).toBeGreaterThan(count)
+  await expect(page.locator('[data-test=target-missing]')).not.toBeVisible()
 })
 
 // Changing the polling rate is fraught with danger because it's all

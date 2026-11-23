@@ -35,6 +35,18 @@
         </v-expansion-panel-text>
       </v-expansion-panel>
     </v-expansion-panels>
+    <v-alert
+      v-if="targetMissing"
+      type="warning"
+      variant="tonal"
+      density="compact"
+      class="mb-1"
+      data-test="target-missing"
+    >
+      Target {{ targetName }} no longer exists, so {{ targetName }}
+      {{ packetName }} is not being updated. Updates resume if the target is
+      reinstalled.
+    </v-alert>
     <v-card
       class="d-flex flex-column flex-shrink-1"
       style="overflow: hidden !important"
@@ -294,6 +306,10 @@ export default {
       ignoredItems: [],
       derivedItems: [],
       updater: null,
+      // True when the polled target no longer exists (e.g. its plugin was
+      // uninstalled or reinstalled under another name)
+      targetMissing: false,
+      checkingTarget: false,
       counter: 0,
       targetName: '',
       packetName: '',
@@ -594,6 +610,7 @@ export default {
         this.loadingPacket = true
         const target = await this.api.get_target(event.targetName)
         if (target) {
+          this.targetMissing = false
           this.ignoredItems = target.ignored_items
           this.targetName = event.targetName
           this.packetName = event.packetName
@@ -703,6 +720,12 @@ export default {
           }
           return // noop if target/packet aren't set
         }
+        // While the target is gone only check whether it has come back, since
+        // get_target returns null rather than raising an error the API logs
+        if (this.targetMissing) {
+          this.checkTarget()
+          return
+        }
 
         // Handle LATEST packet using get_tlm_values
         if (this.packetName === 'LATEST') {
@@ -712,7 +735,7 @@ export default {
               .then((values) => {
                 this.latestGetTlmValues(values)
               })
-              .catch(console.error)
+              .catch(this.handleUpdateError)
           } else {
             this.api
               .get_all_tlm_item_names(this.targetName)
@@ -732,7 +755,7 @@ export default {
               .then((values) => {
                 this.latestGetTlmValues(values)
               })
-              .catch(console.error)
+              .catch(this.handleUpdateError)
           }
         } else {
           // Regular packet handling using get_tlm_packet
@@ -783,10 +806,9 @@ export default {
                 }
               }
             })
-            // Catch errors but just log to the console
             // We don't clear the updater because errors can happen on upgrade
             // and we want to continue updating once the new plugin comes online
-            .catch(console.error)
+            .catch(this.handleUpdateError)
         }
         if (loadingFirstTlm) {
           loadingFirstTlm = false
@@ -795,6 +817,39 @@ export default {
       }
       update() // Fetch immediately
       this.updater = setInterval(update, this.refreshInterval)
+    },
+    handleUpdateError(error) {
+      console.error(error)
+      this.checkTarget()
+    },
+    // A failed update can mean the target was removed for good or that its
+    // plugin is being upgraded (which removes and re-adds the target). Stop
+    // requesting telemetry while the target is gone, and reload the packet
+    // once it exists again.
+    async checkTarget() {
+      if (this.checkingTarget) {
+        return // Don't stack up checks if get_target is slow
+      }
+      this.checkingTarget = true
+      const targetName = this.targetName
+      const packetName = this.packetName
+      try {
+        const target = await this.api.get_target(targetName)
+        if (targetName !== this.targetName || packetName !== this.packetName) {
+          return // The user picked another packet while we were checking
+        }
+        if (!target) {
+          this.targetMissing = true
+          this.rows = []
+        } else if (this.targetMissing) {
+          this.targetMissing = false
+          await this.packetChanged({ targetName, packetName }, true)
+        }
+      } catch {
+        // The API itself may be restarting, so keep checking
+      } finally {
+        this.checkingTarget = false
+      }
     },
     resetConfig: function () {
       this.refreshInterval = 1000
