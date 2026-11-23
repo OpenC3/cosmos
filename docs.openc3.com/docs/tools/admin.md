@@ -81,6 +81,13 @@ When multiple plugins install different versions of the same package, the Cached
 
 ![Multiple versions in cache](/img/admin/packages_cache_versions.png)
 
+#### Python Venv Lifecycle
+
+- A plugin's venv folder, `/gems/plugin_venvs/<SCOPE>__<plugin name>`, holds the `.venv`. For a plugin that ships a `uv.lock`, it also holds a copy of the plugin's `pyproject.toml` and `uv.lock`.
+- COSMOS writes a `.uv_managed` marker file into that folder when the uv install succeeds. Script Runner's [Python Venv selector](/docs/tools/script-runner#temp-scripts-and-the-python-venv-selector) lists only venvs that have the marker, and the **Migrate to UV** button appears for plugins that lack it.
+- Uninstalling a plugin deletes its whole venv folder, including any packages you added to it on this tab.
+- Nothing removes wheels from the UV cache (`/gems/uv`). The **Cached** section keeps listing a wheel after the plugin that downloaded it is uninstalled.
+
 ### Tools
 
 The Tools tab lists all the tools installed. You can reorder the tools in the Navigation bar by dragging and dropping the left side grab handle.
