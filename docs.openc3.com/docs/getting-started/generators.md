@@ -118,6 +118,8 @@ This creates the following files and directories:
 | targets/GSE/screens/status.txt             | Example [screen](../configuration/telemetry-screens.md) to display telemetry values                                                                                                                                                                                                                                                                                                                                            |
 | targets/GSE/target.txt                     | [Target](../configuration/target) configuration such as ignoring command and telemetry items and how to process the cmd/tlm files                                                                                                                                                                                                                                                                                              |
 
+A Python target in a plugin that has no `pyproject.toml` yet, such as a Ruby plugin, also gets the Python files the plugin generator creates: `pyproject.toml`, `lib/<package>/__init__.py`, and `.python-version`. The gemspec is updated to package `pyproject.toml` and `uv.lock`. The generator never creates a `requirements.txt`, which is deprecated. If the plugin already has one, the generator leaves it in place and prints a warning.
+
 It also updates the plugin.txt file to add the new target:
 
 ```cosmos
