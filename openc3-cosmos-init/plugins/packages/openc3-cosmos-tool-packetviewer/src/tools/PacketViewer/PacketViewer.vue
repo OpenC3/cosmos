@@ -723,7 +723,7 @@ export default {
         // While the target is gone only check whether it has come back, since
         // get_target returns null rather than raising an error the API logs
         if (this.targetMissing) {
-          this.checkTarget()
+          void this.checkTarget() // Handles its own errors
           return
         }
 
@@ -820,7 +820,7 @@ export default {
     },
     handleUpdateError(error) {
       console.error(error)
-      this.checkTarget()
+      void this.checkTarget() // Handles its own errors
     },
     // A failed update can mean the target was removed for good or that its
     // plugin is being upgraded (which removes and re-adds the target). Stop
