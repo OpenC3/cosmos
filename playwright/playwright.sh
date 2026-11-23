@@ -70,6 +70,7 @@ case $1 in
             echo "  - Generates a PW_TEST target"
             echo "  - Builds plugin gems (version 1.0.0 and 1.0.1)"
             echo "  - Validates the plugin gem"
+            echo "  - Generates a PW_OFFLINE python plugin with offline_install and checks its bundled wheels"
             echo ""
             echo "Options:"
             echo "  -h, --help    Show this help message"
@@ -98,6 +99,21 @@ case $1 in
         # match its filename or an upgrade installs 1.0.0 and uninstalling 1.0.1 fails
         ../../openc3.sh cli rake build VERSION=1.0.1
         ../../openc3.sh cli validate openc3-cosmos-pw-test-1.0.0.gem
+        cd - || exit 1
+
+        # A python plugin that sets [tool.openc3] offline_install, so rake build
+        # bundles its locked wheels (openc3cli bundlewheels) and
+        # offline-plugin.p.spec.ts can install it from that bundle alone. The
+        # lock is a fixture rather than generated here so the host needs no uv.
+        rm -rf openc3-cosmos-pw-offline
+        ../openc3.sh cli generate plugin PW_OFFLINE --python
+        cd openc3-cosmos-pw-offline || exit 1
+        cp ../fixtures/pw-offline-pyproject.toml pyproject.toml
+        cp ../fixtures/pw-offline-uv.lock uv.lock
+        ../../openc3.sh cli rake build VERSION=1.0.0
+        # Fail here, not in the browser, if the bundle cannot install offline
+        # on the COSMOS image's Python and platform
+        ../../openc3.sh cli verifywheels openc3-cosmos-pw-offline-1.0.0.gem || exit 1
         cd - || exit 1
         ;;
 
