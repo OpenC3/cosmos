@@ -309,17 +309,24 @@ module OpenC3
 
     # Fails when the plugin is in a git repository and its uv.lock is
     # untracked or changed since the last commit, so the bundled wheels always
-    # match a lock someone committed. Outside git (the COSMOS image has no git)
-    # there is nothing to compare against.
+    # match a lock someone committed. Outside a repository, or with no git on
+    # PATH, there is nothing to compare against.
+    #
+    # `openc3.sh cli rake build` mounts the plugin into a container whose user
+    # does not own it, and git refuses such a repository as "dubious
+    # ownership", which would skip this check without a word. safe.directory
+    # lifts that for these read-only queries, and --no-ext-diff keeps the
+    # repository's own config from running a diff program.
     def self.check_lock_committed(project_dir)
-      _, status = Open3.capture2e('git', '-C', project_dir, 'rev-parse', '--is-inside-work-tree')
+      git = ['git', '-c', 'safe.directory=*', '-C', project_dir]
+      _, status = Open3.capture2e(*git, 'rev-parse', '--is-inside-work-tree')
       return unless status.success?
 
-      _, tracked = Open3.capture2e('git', '-C', project_dir, 'ls-files', '--error-unmatch', 'uv.lock')
-      _, unchanged = Open3.capture2e('git', '-C', project_dir, 'diff', '--quiet', 'HEAD', '--', 'uv.lock')
+      _, tracked = Open3.capture2e(*git, 'ls-files', '--error-unmatch', 'uv.lock')
+      _, unchanged = Open3.capture2e(*git, 'diff', '--quiet', '--no-ext-diff', 'HEAD', '--', 'uv.lock')
       return if tracked.success? && unchanged.success?
 
-      raise Error, "uv.lock is not committed. Commit it so the bundled wheels match the lock in source control."
+      raise Error, "uv.lock is not committed. Run `git add uv.lock` and commit it, so the bundled wheels match the lock in source control."
     rescue Errno::ENOENT
       nil
     end
