@@ -343,6 +343,9 @@ test('retries LATEST item discovery that finds no items', async ({
 
   // The packets finish loading, so LATEST shows telemetry without reselecting
   await page.unroute('**/openc3-api/api')
+  // LATEST lists every INST item and the table only renders the rows in view,
+  // so filter down to TEMP1 before reading it
+  await page.locator('[data-test=search] input').fill('TEMP1')
   await matchItem(page, 'TEMP1', /\d+/)
 })
 
