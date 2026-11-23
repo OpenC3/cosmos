@@ -85,6 +85,7 @@ describe('parseCmdText', () => {
     ['INST COLLECT with', /must be followed by parameters/],
     ['INST COLLECT with TYPE', /Missing value/],
     ['INST COLLECT with TYPE 0 DURATION 1', /Missing comma/],
+    ['INST COLLECT with TYPE, DURATION 1', /Missing value for TYPE/],
     ['INST COLLECT with , TYPE 0', /Missing command parameter before comma/],
   ])('rejects %j', (text, error) => {
     expect(() => parseCmdText(text)).toThrow(error)
@@ -196,6 +197,35 @@ describe('parseCmdLine', () => {
     expect(() => parseCmdLine(`INST "ABORT"`)).not.toThrow(/method/)
   })
 
+  it('reads a Ruby call without parentheses or a comment', () => {
+    const parsed = parseCmdLine(`cmd "INST ABORT", queue: "Q"`)
+    expect(parsed.command).toBe('ABORT')
+    expect(parsed.queue).toBe('Q')
+  })
+
+  it('keeps escaped quotes and # in a Ruby call without parentheses', () => {
+    const parsed = parseCmdLine(
+      `cmd "INST SET with A 'say \\"#1\\"'" # a comment`,
+    )
+    expect(parsed.params).toEqual({ A: `'say "#1"'` })
+  })
+
+  it('reads an unquoted queue name', () => {
+    expect(parseCmdLine('cmd("INST ABORT", queue: Q1)').queue).toBe('Q1')
+  })
+
+  it('keeps escapes other than quotes and backslashes as written', () => {
+    expect(parseCmdLine(`cmd("INST SET with A 'a\\nb'")`).params).toEqual({
+      A: "'a\\nb'",
+    })
+  })
+
+  it('keeps escaped quotes in a keyword value', () => {
+    expect(parseCmdLine(`cmd("INST ABORT", queue: "Q\\"1")`).queue).toBe(
+      'Q\\"1',
+    )
+  })
+
   it('lists other keywords as ignored', () => {
     const parsed = parseCmdLine(
       `cmd("INST ABORT", timeout: 5, log_message: false)`,
@@ -220,6 +250,10 @@ describe('parseCmdLine', () => {
     ['cmd("INST ABORT"', /Unterminated|closing/],
     ['cmd("INST ABORT)', /Unterminated/],
     ['cmd("INST ABORT", queue: )', /Invalid keyword/],
+    ['cmd("INST ABORT", validate: maybe)', /validate must be true or false/],
+    ['cmd("INST ABORT\\)', /Unterminated string/],
+    ['cmd_raw "INST ABORT', /Unterminated string/],
+    ['cmd("INST ABORT" extra)', /single string/],
   ])('rejects %j', (line, error) => {
     expect(() => parseCmdLine(line)).toThrow(error)
   })
@@ -250,7 +284,14 @@ describe('parseCmdTextLenient', () => {
 
   it('returns null for text that is not a command', () => {
     expect(parseCmdTextLenient('INST')).toBeNull()
+    expect(parseCmdTextLenient('')).toBeNull()
     expect(parseCmdTextLenient('INST COLLECT NOW')).toBeNull()
+  })
+
+  it('skips a parameter without a value', () => {
+    expect(
+      parseCmdTextLenient('INST SETPARAMS with LABEL a b, ORPHAN').params,
+    ).toEqual({ LABEL: 'a b' })
   })
 })
 
@@ -278,6 +319,11 @@ describe('paramValueFromText', () => {
     expect(paramValueFromText({ type: 'STRING' }, '123')).toBe("'123'")
     expect(paramValueFromText({ type: 'STRING' }, "'abc'")).toBe("'abc'")
     expect(paramValueFromText({ type: 'BLOCK' }, '0xABCD')).toBe('0xABCD')
+  })
+
+  it('keeps other values as written', () => {
+    expect(paramValueFromText({ type: 'UINT' }, '0x10')).toBe('0x10')
+    expect(paramValueFromText({ type: 'FLOAT' }, '1.5e3')).toBe('1.5e3')
   })
 
   it('keeps arrays as arrays, including arrays of strings', () => {

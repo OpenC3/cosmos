@@ -86,6 +86,19 @@ describe('loadHistory', () => {
     ).toEqual([{ cmd: 'ok', sentAt: 1 }])
   })
 
+  it('drops saved data that is not a list and fixes bad times', () => {
+    expect(
+      loadHistory(memoryStorage({ [HISTORY_KEY]: '{"cmd":"x"}' })),
+    ).toEqual([])
+    expect(
+      loadHistory(
+        memoryStorage({
+          [HISTORY_KEY]: JSON.stringify([{ cmd: 'ok', sentAt: 'yesterday' }]),
+        }),
+      ),
+    ).toEqual([{ cmd: 'ok', sentAt: null }])
+  })
+
   it('works without storage, e.g. when the browser blocks it', () => {
     const blocked = {
       getItem: () => {
@@ -137,6 +150,13 @@ describe('useCommandHistory', () => {
     scope.stop()
   })
 
+  it('works outside a component, without cleanup', () => {
+    const storage = memoryStorage()
+    const history = useCommandHistory(storage, null)
+    history.add('cmd("INST ABORT")')
+    expect(history.entries.value).toHaveLength(1)
+  })
+
   it('keeps working when saving fails', () => {
     const storage = memoryStorage()
     storage.setItem = () => {
@@ -165,12 +185,22 @@ describe('useCommandHistory', () => {
       HISTORY_KEY,
       JSON.stringify([{ cmd: 'cmd("INST CLEAR")', sentAt: 9 }]),
     )
-    for (const [type, fn] of listeners) {
-      if (type === 'storage') fn({ key: HISTORY_KEY })
+    const storageEvent = (key) => {
+      for (const [type, fn] of listeners) {
+        if (type === 'storage') fn({ key })
+      }
     }
+    // Another key changing is ignored
+    storageEvent('some_other_key')
+    expect(history.entries.value).toEqual([])
+    storageEvent(HISTORY_KEY)
     expect(history.entries.value.map((e) => e.cmd)).toEqual([
       'cmd("INST CLEAR")',
     ])
+    // localStorage.clear() in another tab sends a null key
+    storage.removeItem(HISTORY_KEY)
+    storageEvent(null)
+    expect(history.entries.value).toEqual([])
     scope.stop()
     expect(listeners).toHaveLength(0)
   })

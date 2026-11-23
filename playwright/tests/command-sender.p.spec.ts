@@ -110,6 +110,15 @@ test('selects a target and packet', async ({ page, utils }) => {
   )
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
+  // Sending it again counts the sends
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    'cmd("INST ABORT") sent. (2)',
+  )
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    'cmd("INST ABORT") sent. (3)',
+  )
   // Test the autocomplete by typing in a command
   await page.locator('[data-test=select-packet]').click()
   await page.locator('[data-test=select-packet] input[type="text"]').fill('COL')
@@ -152,6 +161,30 @@ test('displays unset required states in hex', async ({ page, utils }) => {
   await checkValue(page, 'TYPE', '')
   await selectValue(page, 'TYPE', 'SPECIAL')
   await checkValue(page, 'TYPE', '0x1')
+  await selectValue(page, 'TYPE', 'NORMAL')
+  await checkValue(page, 'TYPE', '0x0')
+})
+
+test('shows ignored parameters', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+  await expect(page.locator('main')).toContainText(
+    'Aborts a collect on the INST instrument',
+  )
+  // All the ABORT parameters are ignored so the table shouldn't appear
+  await expect(page.locator('main')).not.toContainText('Parameters')
+  await toggleMode(page, 'Show Ignored')
+  await expect(page.locator('main')).toContainText('Parameters')
+  await expect(page.locator('main')).toContainText('CCSDSVER')
+})
+
+test('disables command validation', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'TIME_OFFSET')
+  await toggleMode(page, 'Disable Command Validation')
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    'cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS \'127.0.0.1\'", validate=False) sent',
+  )
 })
 
 test('searches state parameter drop downs', async ({ page, utils }) => {
@@ -856,6 +889,50 @@ test('reloads history commands with double quotes', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'ABORT')
   await loadFromHistory(page, 'ASCIICMD', 'INST ASCIICMD')
   await checkValue(page, 'ASCII', `'say "hi"'`)
+})
+
+test('copies and clears the history', async ({ page, utils }) => {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+  await page.locator('[data-test="select-send"]').click()
+  await checkSent(page, 'cmd("INST ABORT")')
+  // Copy puts the command on the clipboard, ready for a script
+  await historyEntries(page).first().hover()
+  await page.locator('[data-test=history-copy]').first().click()
+  await expect(
+    page.locator('[data-test=history-copy]').first(),
+  ).toHaveAttribute('title', 'Copied')
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+    'cmd("INST ABORT")',
+  )
+  // File > Clear History empties it
+  await page.locator('[data-test=command-sender-file]').click()
+  await page.getByText('Clear History').click()
+  await expect(historyEntries(page)).toHaveCount(0)
+})
+
+test('shows the ignored parameters a history command was sent with', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+  await toggleMode(page, 'Show Ignored')
+  await expect(page.locator('main')).toContainText('CCSDSVER')
+  await page.locator('[data-test="select-send"]').click()
+  await expect(historyEntries(page).first()).toContainText('CCSDSVER')
+  // Hide them again and pick another command
+  await toggleMode(page, 'Show Ignored')
+  await utils.selectTargetPacketItem('INST', 'CLEAR')
+  await expect(page.locator('tr:has(td:text-is("CCSDSVER"))')).toHaveCount(0)
+  // Loading the command shows them, so the form matches what was sent
+  await loadFromHistory(page, 'INST ABORT', 'INST ABORT')
+  await expect(
+    page.locator(
+      'tr:has(td:text-is("CCSDSVER")) [data-test=cmd-param-value] input',
+    ),
+  ).toHaveValue('0')
 })
 
 test('migrates the old history', async ({ page, utils }) => {

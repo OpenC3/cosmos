@@ -80,6 +80,32 @@ test('inserts and edits commands', async ({ page, utils }) => {
   )
 })
 
+test('asks for required parameters when inserting a command', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('.ace_content').click({ button: 'right' })
+  await page.getByText('Insert Command').click()
+  // TYPE is required and starts unset
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+  await expect(page.getByRole('dialog')).toContainText(
+    'Required parameter TYPE not set',
+  )
+  await expect(page.locator('.ace_content')).not.toContainText('INST COLLECT')
+  // Setting it inserts the command
+  await page
+    .locator('[data-test="cmd-param-select"]')
+    .getByRole('combobox')
+    .first()
+    .click()
+  await page.getByRole('option', { name: 'NORMAL' }).click()
+  await page.getByRole('button', { name: 'Insert Command' }).click()
+  await expect(page.locator('.ace_content')).toContainText(
+    `cmd("INST COLLECT with TYPE 'NORMAL'`,
+  )
+})
+
 test('edits the parameters of an inserted command', async ({ page, utils }) => {
   // Insert a command with parameters, including a quoted state
   await page.locator('.ace_content').click({ button: 'right' })

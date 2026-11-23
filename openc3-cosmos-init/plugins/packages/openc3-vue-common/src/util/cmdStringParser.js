@@ -100,11 +100,8 @@ export function parseCmdTextLenient(text) {
     // Not valid script syntax, try the lenient form
   }
   const parts = (text || '').trim().split(/\s+/)
-  if (parts.length < 2) return null
-  if (parts.length === 2) {
-    return { target: parts[0], command: parts[1], params: {} }
-  }
-  if (parts[2] !== 'with') return null
+  // The strict parse handles a bare TARGET COMMAND, so there's a 'with'
+  if (parts.length < 3 || parts[2] !== 'with') return null
   const paramsString = text.split(' with ')[1] || ''
   const pairs = []
   let depth = 0
