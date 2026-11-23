@@ -71,3 +71,6 @@ rubocop-report.json
 
 # TSDB benchmark results (openc3/test/integration/tsdb/python/test_perf_ingest.py)
 openc3/test/integration/tsdb/perf_results.jsonl
+
+# Claude Code agent worktrees (full repo checkouts)
+.claude/worktrees/

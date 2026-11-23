@@ -16,6 +16,8 @@ from unittest.mock import Mock
 import requests
 
 import openc3.script
+from openc3.environment import OPENC3_SCOPE
+from openc3.script import prompt_for_critical_cmd
 from openc3.script.critical_cmd import (
     critical_cmd_approve,
     critical_cmd_can_approve,
@@ -23,6 +25,7 @@ from openc3.script.critical_cmd import (
     critical_cmd_reject,
     critical_cmd_status,
 )
+from test.test_helper import capture_io
 
 
 class TestCriticalCmd(unittest.TestCase):
@@ -102,3 +105,17 @@ class TestCriticalCmd(unittest.TestCase):
         self.api_server.request.return_value = None
         with self.assertRaisesRegex(RuntimeError, "critical_cmd_reject failed"):
             critical_cmd_reject("UUID")
+
+    def test_prompt_for_critical_cmd_polls_the_status_in_the_given_scope(self):
+        self.stub_request(body={"status": "APPROVED"})
+        for _ in capture_io():
+            prompt_for_critical_cmd("UUID", "user", "INST", "ABORT", {}, 'cmd("INST ABORT")', scope="OTHER")
+        self.assertEqual(self.api_server.request.call_args.args, ("get", "/openc3-api/criticalcmd/status/UUID"))
+        self.assertEqual(self.api_server.request.call_args.kwargs["scope"], "OTHER")
+
+    def test_prompt_for_critical_cmd_raises_when_rejected(self):
+        self.stub_request(body={"status": "REJECTED"})
+        for _ in capture_io():
+            with self.assertRaisesRegex(RuntimeError, "Critical command rejected"):
+                prompt_for_critical_cmd("UUID", "user", "INST", "ABORT", {}, 'cmd("INST ABORT")')
+        self.assertEqual(self.api_server.request.call_args.kwargs["scope"], OPENC3_SCOPE)

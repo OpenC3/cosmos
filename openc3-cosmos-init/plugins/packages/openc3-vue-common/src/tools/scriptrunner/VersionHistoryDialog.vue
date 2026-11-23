@@ -698,8 +698,11 @@ export default {
 /* This tooltip covers the row above its activator, and during the scale
    transition its overlay still takes pointer events -- clicks on the
    neighboring version row get swallowed. The tooltip is display-only, so opt
-   its whole subtree out of hit testing. */
-:global(.version-tooltip),
+   its whole subtree out of hit testing. The content selector has to outrank
+   tool-base's global `.v-tooltip > .v-overlay__content { pointer-events: auto
+   !important }` (layout/_overrides.scss), which makes every tooltip clickable;
+   a bare `.version-tooltip` loses to it on specificity and never applies. */
+:global(.v-tooltip > .v-overlay__content.version-tooltip),
 :global(.version-tooltip *) {
   pointer-events: none !important;
 }

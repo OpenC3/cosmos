@@ -96,6 +96,7 @@ retry_build \
   --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
   --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
   --build-arg RUBY_VERSION=${RUBY_VERSION} \
+  --build-arg RUBY_PATCH_VERSION=${RUBY_PATCH_VERSION} \
   --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg PYPI_URL=$PYPI_URL \
@@ -115,6 +116,7 @@ retry_build \
   --build-arg DEBIAN_RELEASE=${DEBIAN_RELEASE} \
   --build-arg DEBIAN_POINT_RELEASE=${DEBIAN_POINT_RELEASE} \
   --build-arg RUBY_VERSION=${RUBY_VERSION} \
+  --build-arg RUBY_PATCH_VERSION=${RUBY_PATCH_VERSION} \
   --build-arg APT_URL=${APT_URL} \
   --build-arg RUBYGEMS_URL=${RUBYGEMS_URL} \
   --build-arg PYPI_URL=$PYPI_URL \
@@ -365,9 +367,9 @@ fi
 # Note: Missing OPENC3_REGISTRY build-arg intentionally to default to docker.io
 if [[ "${1:-default}" == "ubi" ]]; then
   OPENC3_DEPENDENCY_REGISTRY=${OPENC3_UBI_REGISTRY}/ironbank/opensource/traefik
-  OPENC3_TRAEFIK_RELEASE=v3.7.18
+  OPENC3_TRAEFIK_RELEASE=v3.7.19
 else
-  OPENC3_TRAEFIK_RELEASE=v3.7.18
+  OPENC3_TRAEFIK_RELEASE=v3.7.19
 fi
 cd ../openc3-traefik
 retry_build \

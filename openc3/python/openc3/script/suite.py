@@ -152,8 +152,14 @@ class Suite:
     ###########################################################################
 
     def __eq__(self, other: Any) -> bool:
-        """Compare suites by their name methods."""
-        return self.name == other.name
+        """Compare suites by name."""
+        if not isinstance(other, Suite):
+            return NotImplemented
+        return self.name() == other.name()
+
+    def __hash__(self) -> int:
+        """Hash suites by name, consistent with __eq__."""
+        return hash(self.name())
 
     def name(self) -> str:
         """Return the name of the suite.
@@ -388,7 +394,7 @@ class Suite:
         if "teardown" in dir(self) and len(self.scripts()) > 0:
             if not internal:
                 ScriptStatus.instance().total = 1
-            ScriptStatus.instance().status = f"{self.__class__} : teardown"
+            ScriptStatus.instance().status = f"{self.__class__.__name__} : teardown"
             # Get the first group
             result = next(iter(self.scripts().values())).run_method(self, "teardown")
 
@@ -631,7 +637,7 @@ class Group:
                 self.output_io.truncate(0)
                 self.output_io.seek(0)
                 sys.stdout.remove_stream(self.output_io)
-                sys.stdout.remove_stream(self.output_io)
+                sys.stderr.remove_stream(self.output_io)
 
                 match result.result:
                     case "FAIL":
@@ -654,7 +660,7 @@ class Group:
         """
         result = None
         if "setup" in dir(self):
-            ScriptStatus.instance().status = f"{self.__class__} : setup"
+            ScriptStatus.instance().status = f"{self.__class__.__name__} : setup"
             result = self.run_script("setup")
         return result
 
@@ -666,7 +672,7 @@ class Group:
         """
         result = None
         if "teardown" in dir(self):
-            ScriptStatus.instance().status = f"{self.__class__} : teardown"
+            ScriptStatus.instance().status = f"{self.__class__.__name__} : teardown"
             result = self.run_script("teardown")
         return result
 
@@ -804,7 +810,7 @@ class ScriptResult:
         """Initialize an empty result which defaults to SKIP."""
         self.suite = None
         if ScriptResult.suite:
-            ScriptResult.suite = copy.deepcopy(ScriptResult.suite)
+            self.suite = copy.deepcopy(ScriptResult.suite)
         self.group = None
         self.script = None
         self.output = None

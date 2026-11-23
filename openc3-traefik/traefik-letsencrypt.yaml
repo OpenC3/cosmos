@@ -92,6 +92,9 @@ http:
           default-src 'self' blob: data: https: http://localhost:* http://host.docker.internal:* http://*.local:*; script-src 'self' 'wasm-unsafe-eval'{{ if not (env "OPENC3_NO_EVAL") }} 'unsafe-eval'{{ end }} https: blob: http://localhost:* http://host.docker.internal:* http://*.local:*; connect-src blob: https: wss: http://localhost:* http://host.docker.internal:* http://*.local:* ws://localhost:* ws://host.docker.internal:* ws://*.local:*; style-src 'unsafe-inline' https: http://localhost:* http://host.docker.internal:* http://*.local:*; object-src 'none'; base-uri 'self'; frame-ancestors 'self';
   routers:
     # Note: Priorities control router check order with highest priority evaluated first
+    # PathPrefix is a plain string prefix (/files would also match /filesystem), so
+    # top-level routes use Path(`/x`) || PathPrefix(`/x/`) to leave /xother free for
+    # microservice ROUTE_PREFIX routes (priority 3, from MicroservicesController#traefik)
     # Serve the BUTTON widget sandbox document WITHOUT the app Content-Security-Policy
     # header so its own <meta> policy governs (it must allow 'unsafe-eval' while the
     # main app forbids it, and it blocks all network access). See sandbox.html.
@@ -122,7 +125,7 @@ http:
           - main: "mydomain.com"
     # Route to the openc3 cmd/tlm api
     api-router:
-      rule: PathPrefix(`/openc3-api`)
+      rule: Path(`/openc3-api`) || PathPrefix(`/openc3-api/`)
       service: service-api
       priority: 8
       tls:
@@ -131,7 +134,7 @@ http:
           - main: "mydomain.com"
     # Route to the script api
     script-router:
-      rule: PathPrefix(`/script-api`)
+      rule: Path(`/script-api`) || PathPrefix(`/script-api/`)
       service: service-script
       priority: 7
       tls:
@@ -182,7 +185,7 @@ http:
           - main: "mydomain.com"
     # Route to any path in bucket storage
     files-router:
-      rule: PathPrefix(`/files`)
+      rule: Path(`/files`) || PathPrefix(`/files/`)
       middlewares:
         # remove /files from the beginning
         - "removeFirst"

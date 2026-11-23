@@ -63,9 +63,9 @@ module OpenC3
       out_of_limits = get_out_of_limits(scope: scope, token: token)
       overall = 'GREEN'
 
-      # Build easily matchable ignore list
+      # Build easily matchable ignore list without modifying the caller's list
       if ignored_items
-        ignored_items.map! do |item|
+        ignored_items = ignored_items.map do |item|
           raise "Invalid ignored item: #{item}. Must be [TGT, PKT, ITEM] where ITEM can be nil." if item.length != 3
 
           item.join('__')
@@ -75,9 +75,11 @@ module OpenC3
       end
 
       out_of_limits.each do |target_name, packet_name, item_name, limits_state|
-        # Ignore this item if we match one of the ignored items. Checking against /^#{item}/
-        # allows us to detect matches against a TGT__PKT__ with no item defined.
-        next if ignored_items.detect { |item| "#{target_name}__#{packet_name}__#{item_name}" =~ /^#{item}/ }
+        # Ignore this item if we match one of the ignored items. A key ending in __
+        # has no item so it matches every item in the packet, otherwise the item must
+        # match exactly so ignoring TEMP1 does not also ignore TEMP10.
+        full_name = "#{target_name}__#{packet_name}__#{item_name}"
+        next if ignored_items.detect { |item| item.end_with?('__') ? full_name.start_with?(item) : full_name == item }
 
         if limits_state == 'RED' || limits_state == 'RED_HIGH' || limits_state == 'RED_LOW'
           overall = limits_state

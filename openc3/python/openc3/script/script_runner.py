@@ -229,7 +229,8 @@ def script_instrumented(script: str, scope: str = OPENC3_SCOPE) -> str:
         The instrumented script text.
 
     Raises:
-        RuntimeError: If the request to the Script Runner API fails.
+        RuntimeError: If the request to the Script Runner API fails or the
+            script can't be instrumented, e.g. because of a syntax error.
     """
     endpoint = "/script-api/scripts/temp.py/instrumented"
     # Explicitly set the headers to text/plain so the request.body is set correctly
@@ -245,7 +246,7 @@ def script_instrumented(script: str, scope: str = OPENC3_SCOPE) -> str:
             parsed = json.loads(result.get("description"))
             return "\n".join(parsed)
         else:
-            raise result
+            raise RuntimeError(f"{result.get('title')}: {result.get('description')}")
 
 
 def script_create(

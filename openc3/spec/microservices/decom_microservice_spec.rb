@@ -62,7 +62,9 @@ module OpenC3
         packet.received_time = Time.now.sys
         capture_io do |stdout|
           TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
-          sleep 0.01
+          # Limits messages are logged before the CVT is written, so wait for
+          # the CVT (the last step of decom) rather than sleeping
+          wait_for { @api.tlm("INST HEALTH_STATUS TEMP1") }
           expect(stdout.string).to include("INST HEALTH_STATUS TEMP1 = -100.0 is RED_LOW (-80.0)")
           expect(stdout.string).to include("INST HEALTH_STATUS TEMP2 = -100.0 is RED_LOW (-60.0)")
           expect(stdout.string).to include("INST HEALTH_STATUS TEMP3 = -100.0 is RED_LOW (-25.0)")
@@ -235,6 +237,24 @@ module OpenC3
         expect(System.limits.enabled?("INST", "HEALTH_STATUS", "TEMP1")).to be false
       end
 
+      it "queues the decom writes every 0.1s by default" do
+        expect(@dm.instance_variable_get(:@queued)).to be true
+        expect(EphemeralStoreQueued.instance(db_shard: 0).instance_variable_get(:@update_interval)).to eql 0.1
+        expect(StoreQueued.instance(db_shard: 0).instance_variable_get(:@update_interval)).to eql 0.1
+      end
+
+      it "uses the UPDATE_INTERVAL option and disables queuing with 0" do
+        @dm.instance_variable_set(:@config, { 'options' => [['UPDATE_INTERVAL', 0.5]] })
+        expect(EphemeralStoreQueued).to receive(:set_update_interval_all_shards).with(0.5)
+        expect(StoreQueued).to receive(:set_update_interval_all_shards).with(0.5)
+        @dm.setup_queued_writes
+        expect(@dm.instance_variable_get(:@queued)).to be true
+
+        @dm.instance_variable_set(:@config, { 'options' => [['UPDATE_INTERVAL', '0']] })
+        @dm.setup_queued_writes
+        expect(@dm.instance_variable_get(:@queued)).to be false
+      end
+
       it "handles exceptions in the thread" do
         expect(@dm).to receive(:microservice_cmd).and_raise("Bad command")
         capture_io do |stdout|
@@ -254,7 +274,9 @@ module OpenC3
         packet.received_time = Time.now.sys
         capture_io do |stdout|
           TelemetryTopic.write_packet(packet, scope: 'DEFAULT')
-          sleep 0.01
+          # The processor error is logged before the CVT is written, so wait
+          # for the CVT (the last step of decom) rather than sleeping
+          wait_for { @api.tlm("INST HEALTH_STATUS TEMP1") }
           expect(stdout.string).to include("Bad processor")
         end
         # This is an implementation detail but we want to ensure the error was logged

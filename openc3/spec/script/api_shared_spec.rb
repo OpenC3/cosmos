@@ -302,6 +302,18 @@ module OpenC3
         expect { check_exception("tlm", "INST HEALTH_STATUS TEMP1") }.to raise_error(/tlm\(INST HEALTH_STATUS TEMP1\) should have raised an exception/)
       end
 
+      it "raises if the method does not exist" do
+        expect { check_exception("no_such_method", "INST") }.to raise_error(CheckError, "check_exception: no_such_method is not a scripting method")
+      end
+
+      it "calls API methods proxied to the server" do
+        capture_io do |stdout|
+          check_exception("cmd", "INST NO_SUCH_CMD")
+          expect(stdout.string).to match(/CHECK: cmd raised RuntimeError:.*does not exist/)
+        end
+        expect { check_exception("tlm", "INST HEALTH_STATUS TEMP1", type: :RAW) }.to raise_error(CheckError, /should have raised an exception/)
+      end
+
       # it "checks that the exception is raised in other methods" do
       #   def raise1 # no args
       #     raise "error"
