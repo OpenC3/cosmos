@@ -24,6 +24,9 @@ class PacketItem(StructureItem):
     # The allowable state colors
     VALID_STATE_COLORS = ["GREEN", "YELLOW", "RED"]
 
+    # Default values (case insensitive) meaning a REQUIRED parameter has no default
+    NIL_DEFAULTS = ("NIL", "NONE", "NULL")
+
     # See StructureItem for why slots are used
     __slots__ = (
         "__format_string",
@@ -545,7 +548,12 @@ class PacketItem(StructureItem):
             config = "  PARAMETER "
         config += f"{quote_if_necessary(self.name)} {self.bit_offset} {self.bit_size} {self.data_type} "
 
-        if self.data_type == "BLOCK" or self.data_type == "STRING":
+        if value is None:
+            # Only REQUIRED parameters have no default. Only numeric types have a range.
+            if self.data_type in ("INT", "UINT", "FLOAT"):
+                config += f"{self.minimum} {self.maximum} "
+            val_string = "nil"
+        elif self.data_type == "BLOCK" or self.data_type == "STRING":
             if not value.isascii():
                 val_string = "0x" + simple_formatted(value)
             else:

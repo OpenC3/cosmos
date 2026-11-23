@@ -412,6 +412,23 @@ module OpenC3
         expect(result).to eql "Critical command 'abc-123' not released: Timeout updating critical command 'abc-123'"
       end
 
+      it "logs only the message for command parameter errors" do
+        messages = []
+        allow(Logger).to receive(:error) { |message, **_kwargs| messages << message }
+        [
+          [{ 'cmd_name' => 'COLLECT', 'cmd_params' => JSON.generate({ 'DURATION' => 1 }) },
+           "Required command parameter 'INST COLLECT TYPE' not given"],
+          [{ 'cmd_name' => 'ARYCMD', 'cmd_params' => JSON.generate({ 'ARRAY' => 10 }) },
+           "Command parameter 'INST ARYCMD ARRAY': values must be an Array type class is Integer"],
+          [{ 'cmd_name' => 'COLLECT', 'cmd_params' => JSON.generate({ 'TYPE' => 'NORMAL', 'DURATION' => 100 }) },
+           "Command parameter 'INST COLLECT DURATION' = 100 not in valid range of 0.0 to 10.0"],
+        ].each do |msg_hash, error|
+          messages.clear
+          expect(handle(msg_hash.merge('target_name' => 'INST'))).to eql error
+          expect(messages).to eql ["INST_INT: #{error}"]
+        end
+      end
+
       it "range checks a command that omits range_check" do
         result = handle({ 'target_name' => 'INST', 'cmd_name' => 'COLLECT', 'cmd_params' => JSON.generate({ 'TYPE' => 'NORMAL', 'DURATION' => 100 }) })
         expect(result).to match(/DURATION/)

@@ -364,7 +364,8 @@ class InterfaceCmdHandlerThread:
                         return f"Target {command.target_name} is disabled"
                     return None  # Don't ack disabled targets
             except ValueError as e:
-                # Command parameter out of range is a user error, not a bug,
+                # A command parameter that is out of range, can't be written, or
+                # is required but not given is a user error, not a bug,
                 # so only log the message and not the full stack trace
                 self.logger.error(f"{self.interface.name}: {str(e)}")
                 return str(e)

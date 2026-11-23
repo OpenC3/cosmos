@@ -1268,6 +1268,23 @@ module OpenC3
       end
     end
 
+    describe "check_command_default_sizes" do
+      def build_system(packet)
+        packet_config = double("PacketConfig", telemetry: {}, commands: { "INST" => { "PKT" => packet } })
+        double("System", packet_config: packet_config)
+      end
+
+      it "raises if a command STRING default doesn't fit" do
+        model = TargetModel.new(folder_name: "INST", name: "INST", scope: "DEFAULT", plugin: 'PLUGIN')
+        packet = Packet.new("INST", "PKT")
+        item = packet.append_item("ITEM", 32, :STRING)
+        item.default = "TOO LONG"
+        expect { model.check_command_default_sizes(build_system(packet)) }.to raise_error(ArgumentError, /INST PKT ITEM: default value of 8 bytes/)
+        item.default = "FITS"
+        expect { model.check_command_default_sizes(build_system(packet)) }.to_not raise_error
+      end
+    end
+
     describe "destroy" do
       before(:each) do
         @target_dir = File.join(SPEC_DIR, "install", "config")
