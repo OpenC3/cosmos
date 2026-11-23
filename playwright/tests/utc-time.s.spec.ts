@@ -28,6 +28,8 @@ test.beforeEach(async ({ page }) => {
   await page.locator('[data-test=time-zone]').click()
   await page.getByRole('option', { name: 'local' }).click()
   await page.locator('[data-test="save-time-zone"]').click()
+  // Wait for the save to land; navigating away aborts the request
+  await expect(page.getByText('Saved!').first()).toBeVisible()
 })
 test.afterAll(async ({ browser }) => {
   let page = await browser.newPage()
@@ -37,6 +39,8 @@ test.afterAll(async ({ browser }) => {
   await page.locator('[data-test=time-zone]').click()
   await page.getByRole('option', { name: 'local' }).click()
   await page.locator('[data-test="save-time-zone"]').click()
+  // Wait for the save to land; navigating away aborts the request
+  await expect(page.getByText('Saved!').first()).toBeVisible()
 })
 
 test.describe('CmdTlmServer', () => {
@@ -73,6 +77,8 @@ test.describe('CmdTlmServer', () => {
     await page.locator('[data-test=time-zone]').click()
     await page.getByRole('option', { name: 'UTC' }).click()
     await page.locator('[data-test="save-time-zone"]').click()
+    // Wait for the save to land; navigating away aborts the request
+    await expect(page.getByText('Saved!').first()).toBeVisible()
 
     await page.goto('/tools/cmdtlmserver')
     await expect(page.locator('.v-app-bar')).toContainText('CmdTlmServer')
@@ -157,6 +163,8 @@ test.describe('Data Extractor', () => {
     await page.locator('[data-test=time-zone]').click()
     await page.getByRole('option', { name: 'UTC' }).click()
     await page.locator('[data-test="save-time-zone"]').click()
+    // Wait for the save to land; navigating away aborts the request
+    await expect(page.getByText('Saved!').first()).toBeVisible()
 
     await page.goto('/tools/dataextractor')
     await expect(page.locator('.v-app-bar')).toContainText('Data Extractor', {
@@ -251,6 +259,8 @@ test.describe('Data Viewer', () => {
     await page.locator('[data-test=time-zone]').click()
     await page.getByRole('option', { name: 'UTC' }).click()
     await page.locator('[data-test="save-time-zone"]').click()
+    // Wait for the save to land; navigating away aborts the request
+    await expect(page.getByText('Saved!').first()).toBeVisible()
 
     await page.goto('/tools/dataviewer')
     await expect(page.locator('.v-app-bar')).toContainText('Data Viewer', {
@@ -352,6 +362,8 @@ test.describe('Packet Viewer', () => {
     await page.locator('[data-test=time-zone]').click()
     await page.getByRole('option', { name: 'UTC' }).click()
     await page.locator('[data-test="save-time-zone"]').click()
+    // Wait for the save to land; navigating away aborts the request
+    await expect(page.getByText('Saved!').first()).toBeVisible()
 
     await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
     await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
@@ -439,6 +451,8 @@ test.describe('Telemetry Grapher', () => {
     await page.locator('[data-test=time-zone]').click()
     await page.getByRole('option', { name: 'UTC' }).click()
     await page.locator('[data-test="save-time-zone"]').click()
+    // Wait for the save to land; navigating away aborts the request
+    await expect(page.getByText('Saved!').first()).toBeVisible()
 
     await page.goto('/tools/tlmgrapher')
     await expect(page.locator('.v-app-bar')).toContainText('Telemetry Grapher')

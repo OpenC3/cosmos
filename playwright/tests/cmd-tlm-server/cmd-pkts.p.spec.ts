@@ -122,8 +122,11 @@ test('displays a raw command', async ({ page, utils }) => {
   )
   await expect(page.locator('.raw-dialog')).toContainText('Received Time:')
   await expect(page.locator('.raw-dialog')).toContainText('Count:')
-  expect(await page.inputValue('.raw-dialog textarea')).toMatch('Address')
-  expect(await page.inputValue('.raw-dialog textarea')).toMatch('00000000:')
+  // The header renders before the first buffer fetch returns, so retry until
+  // the dump replaces the 'No Data' placeholder
+  const dump = page.locator('.raw-dialog textarea')
+  await expect(dump).toHaveValue(/Address/)
+  await expect(dump).toHaveValue(/00000000:/)
 
   await utils.download(page, '[data-test=download]', function (contents) {
     expect(contents).toMatch('Raw Command Packet: INST ABORT')

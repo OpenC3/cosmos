@@ -328,8 +328,11 @@ test('loads the script contents when connecting to a running script', async ({
   // to fetch the contents. That is the case where processLine caches an empty
   // placeholder (so it doesn't slam the API) while the fetch is in flight.
   const attachPage = await context.newPage()
-  // Go to a non-existent script first to prevent reloading the script cache
-  await attachPage.goto('/tools/scriptrunner/999')
+  // Go to a non-existent script first to prevent reloading the script cache.
+  // Script ids count up for the life of the stack, so use one far past any a
+  // test run reaches (a small one like 999 exists after enough runs).
+  const missingId = 999999999
+  await attachPage.goto(`/tools/scriptrunner/${missingId}`)
   await expect(attachPage.locator('.v-app-bar')).toContainText(
     'Script Runner',
     {
@@ -337,7 +340,7 @@ test('loads the script contents when connecting to a running script', async ({
     },
   )
   const toast = attachPage.locator('[data-test=toast]', {
-    hasText: 'Running Script 999 not found',
+    hasText: `Running Script ${missingId} not found`,
   })
   await expect(toast).toBeVisible()
   await toast.locator('button:has-text("Dismiss")').click()
