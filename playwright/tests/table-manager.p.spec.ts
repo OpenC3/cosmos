@@ -21,6 +21,12 @@ test.use({
   toolName: 'Table Manager',
 })
 
+// Run this file's tests in order in one worker (overrides fullyParallel). They
+// all regenerate, edit and save INST/tables/bin/ConfigTables.bin, so two of them
+// at once would overwrite each other. Nothing else touches the INST tables, so
+// the file as a whole can run alongside the other parallel specs.
+test.describe.configure({ mode: 'default' })
+
 // INST and INST2 both ship tables/bin/ConfigTables.bin and the matching
 // definitions, so a bare filename locator is ambiguous. Scope to one target's
 // top level tree node, which is the only place the target name appears exactly.
@@ -65,8 +71,12 @@ test('creates a single binary file', async ({ page, utils }) => {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=New Binary from Definition').click()
   await openFile(page, utils, 'mcconfigurationtable_def.txt')
-  // Handle optional confirmation dialog if binary file already exists
+  // Handle optional confirmation dialog if binary file already exists. Wait for
+  // either outcome first: a bare isVisible() races the dialog rendering, and if
+  // it loses, nobody clicks Overwrite and the table never loads.
   const confirmDialog = page.locator('.v-dialog:has-text("Confirm")')
+  const loaded = page.locator('id=openc3-tool').getByText('MC_CONFIGURATION')
+  await expect(confirmDialog.or(loaded).first()).toBeVisible()
   if (await confirmDialog.isVisible()) {
     await expect(confirmDialog).toContainText(
       'Binary file INST/tables/bin/MCConfigurationTable.bin already exists.',

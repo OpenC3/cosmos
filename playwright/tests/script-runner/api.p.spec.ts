@@ -293,6 +293,9 @@ test.describe('metadata apis', () => {
   // authorized deterministically. The @admin tag stays for the case where this
   // session has expired and the fixture has to sign in again.
   test.use({ storageState: ADMIN_STORAGE_STATE })
+  // Both tests start by clearing DEFAULT__METADATA, which would wipe the other's
+  // entries if they ran at the same time. Nothing else uses script metadata.
+  test.describe.configure({ mode: 'default' })
 
   test(
     'test ruby metadata apis',
