@@ -74,7 +74,14 @@ Both files are processed with [ERB](/docs/configuration/format#erb) using the pl
 
 A `uv.lock` is used as-is, so a plugin whose `pyproject.toml` dependencies depend on variables should not ship a `uv.lock`.
 
-System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning.
+System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading.
+
+COSMOS tries these installs in order and stops at the first one that succeeds:
+
+1. **Per-plugin venv.** COSMOS runs uv to install into the plugin's own venv, unless the [`OPENC3_USE_UV`](environment.md#common-variables) environment variable is `false` or `uv` is not on `PATH`.
+2. **Shared folder.** If step 1 failed or was skipped, COSMOS installs the dependencies into the shared `/gems/python_packages` folder, which is on the `PYTHONPATH` of scripts and plugin microservices. It logs a warning first when step 1 failed. If the shared install fails, COSMOS retries it once with `--no-index`.
+
+If both fail, COSMOS logs a warning and finishes installing the plugin, so its non-Python parts still work.
 
 Dependencies are resolved against the `pypi_url` Admin Console setting, falling back to the `PYPI_URL` environment variable and then to public PyPI. When that setting names an index other than `https://pypi.org`, COSMOS treats it as authoritative and passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. A plugin depending on a package published only to its author's private index therefore fails to install unless your index serves that package too.
 
