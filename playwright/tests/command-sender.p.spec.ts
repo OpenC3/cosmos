@@ -80,6 +80,26 @@ async function checkHistory(page, value) {
   await expect(page.locator('[data-test=sender-history]')).toContainText(value)
 }
 
+// The history entries, newest first
+function historyEntries(page) {
+  return page.locator('[data-test=history-entry]')
+}
+
+// Helper function to load a history entry into the form (it never sends)
+async function loadFromHistory(page, cmd, name) {
+  await historyEntries(page).filter({ hasText: cmd }).first().click()
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    `Loaded ${name}, press Send to send it`,
+  )
+}
+
+// Helper function to paste a command into the form (it never sends)
+async function pasteCommand(page, cmd) {
+  await page.locator('[data-test=paste-command]').click()
+  await page.locator('[data-test=paste-command-input] input').fill(cmd)
+  await page.locator('[data-test=paste-command-input] input').press('Enter')
+}
+
 //
 // Test the basic functionality of the application
 //
@@ -95,6 +115,8 @@ test('selects a target and packet', async ({ page, utils }) => {
   await page.locator('[data-test=select-packet] input[type="text"]').fill('COL')
   await page.locator('span:has-text("COL")').click()
   await expect(page.locator('main')).toContainText('Starts a collect')
+  // The status described the previous command, so it's cleared
+  await expect(page.locator('[data-test=sender-status]')).toHaveText('')
 })
 
 test('displays INST COLLECT using the route', async ({ page, utils }) => {
@@ -117,6 +139,19 @@ test('displays state parameters with drop downs', async ({ page, utils }) => {
   await checkValue(page, 'TYPE', '1')
   await selectValue(page, 'TYPE', 'NORMAL')
   await checkValue(page, 'TYPE', '0')
+})
+
+test('displays unset required states in hex', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  // TYPE is required so it starts unset, which used to break its editor in
+  // hex mode and leave the cell empty
+  await toggleMode(page, 'Display State Values in Hex')
+  await expect(
+    page.locator('tr:has(td:text-is("TYPE")) [data-test=cmd-param-select]'),
+  ).toBeVisible()
+  await checkValue(page, 'TYPE', '')
+  await selectValue(page, 'TYPE', 'SPECIAL')
+  await checkValue(page, 'TYPE', '0x1')
 })
 
 test('searches state parameter drop downs', async ({ page, utils }) => {
@@ -157,8 +192,8 @@ test('warns for hazardous commands', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText(
     'Clears counters on the INST instrument',
   )
-  // The hazardous description is shown below the selects (see issue 3472)
-  await expect(page.locator('main')).toContainText(
+  // The hazardous description is shown by the Send button (see issue 3472)
+  await expect(page.locator('[data-test="command-hazardous"]')).toContainText(
     'Hazardous: Clearing counters may lose valuable information.',
   )
   await page.locator('[data-test="select-send"]').click()
@@ -233,14 +268,15 @@ test('warns for hazardous parameters', async ({ page, utils }) => {
       .locator('tr:has(td:text-is("TYPE"))')
       .locator('.v-autocomplete__selection-text'),
   ).toHaveCSS('color', 'rgb(255, 220, 0)')
-  // The hazardous indicator is shown even without a hazardous description
-  await expect(page.locator('[data-test="hazardous-description"]')).toHaveText(
+  // The hazardous indicator is shown even without a hazardous description,
+  // and the command panel is outlined without moving the table
+  await expect(page.locator('[data-test="command-hazardous"]')).toHaveText(
     'Hazardous',
   )
+  await expect(page.locator('.cs-command')).toHaveClass(/ring-caution/)
   await selectValue(page, 'TYPE', 'NORMAL')
-  await expect(
-    page.locator('[data-test="hazardous-description"]'),
-  ).not.toBeVisible()
+  await expect(page.locator('[data-test="command-hazardous"]')).toHaveCount(0)
+  await expect(page.locator('.cs-command')).not.toHaveClass(/ring-caution/)
   await selectValue(page, 'TYPE', 'SPECIAL')
   await page.locator('[data-test="select-send"]').click()
   await page.getByRole('button', { name: 'Cancel' }).click()
@@ -407,7 +443,7 @@ test('gets details with right click', async ({ page, utils }) => {
   await expect(page.locator('.v-dialog')).not.toBeVisible()
 })
 
-test('executes commands from history', async ({ page, utils }) => {
+test('loads commands from history without sending', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'CLEAR')
   await expect(page.locator('main')).toContainText(
@@ -415,121 +451,55 @@ test('executes commands from history', async ({ page, utils }) => {
   )
   await sendHazardousCmd(page)
   await checkSent(page, 'cmd("INST CLEAR")')
-  // Re-execute the command from the history
-  await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('ArrowUp')
-  await page.locator('[data-test=sender-history]').press('Enter')
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
-  // Now history says it was sent twice (2)
-  await expect(page.locator('main')).toContainText(
-    'cmd("INST CLEAR") sent. (2)',
-  )
-  await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('ArrowUp')
-  await page.locator('[data-test=sender-history]').press('Enter')
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
-  // Now history says it was sent three times (3)
-  await expect(page.locator('main')).toContainText(
-    'cmd("INST CLEAR") sent. (3)',
-  )
+  await expect(historyEntries(page)).toHaveCount(1)
 
   // Send a different command: INST SETPARAMS
   await utils.selectTargetPacketItem('INST', 'SETPARAMS')
   await expect(page.locator('main')).toContainText('Sets numbered parameters')
   await expect(page.locator('main')).toContainText('Value 1 setting') // Ensures the params are rendered
   await page.locator('[data-test="select-send"]').click()
-  await expect(page.locator('main')).toContainText(
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent.',
-  )
-  // History should now contain both commands
-  await checkHistory(page, 'cmd("INST CLEAR")')
-  await checkHistory(
+  await checkSent(
     page,
     'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0")',
   )
-  // Re-execute command
-  await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('ArrowUp')
-  await page.locator('[data-test=sender-history]').press('Enter')
-  await expect(page.locator('main')).toContainText(
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent. (2)',
+
+  // Clicking a history entry loads it into the form but doesn't send it
+  await loadFromHistory(page, 'cmd("INST CLEAR")', 'INST CLEAR')
+  await utils.dropdownSelectedValue(
+    page,
+    '[data-test="select-packet"]',
+    'CLEAR',
   )
-  // Edit the existing SETPARAMS command and then send
-  // This is somewhat fragile but not sure how else to edit
-  await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('ArrowDown')
-  await page.locator('[data-test=sender-history]').press('ArrowDown')
-  await page.locator('[data-test=sender-history]').press('End')
-  await page.locator('[data-test=sender-history]').press('ArrowUp')
-  await page.locator('[data-test=sender-history]').press('End')
-  await page.locator('[data-test=sender-history]').press('ArrowLeft')
-  await page.locator('[data-test=sender-history]').press('ArrowLeft')
-  await page.locator('[data-test=sender-history]').press('Backspace')
-  await page.locator('[data-test=sender-history]').pressSequentially('5')
-  await page.locator('[data-test=sender-history]').press('Enter')
+  await expect(page).toHaveURL(/\/tools\/cmdsender\/INST\/CLEAR/)
+  await expect(historyEntries(page)).toHaveCount(2)
+  // Sending it adds a new entry on top: the history is a log of every send
+  await sendHazardousCmd(page)
+  await expect(page.locator('main')).toContainText('cmd("INST CLEAR") sent')
+  await expect(historyEntries(page)).toHaveCount(3)
+  await expect(historyEntries(page).first()).toHaveText('cmd("INST CLEAR")')
+
+  // Load SETPARAMS, edit a value in the form and send it
+  await loadFromHistory(page, 'cmd("INST SETPARAMS', 'INST SETPARAMS')
+  await checkValue(page, 'VALUE1', '1')
+  await setValue(page, 'BIGINT', '5')
+  await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('main')).toContainText(
     'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 5") sent.',
   )
-  // History should now contain CLEAR and both SETPARAMS commands
-  await checkHistory(page, 'cmd("INST CLEAR")')
-  await checkHistory(
-    page,
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0")',
-  )
-  await checkHistory(
-    page,
+  await expect(historyEntries(page)).toHaveText([
     'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 5")',
-  )
+    'cmd("INST CLEAR")',
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0")',
+    'cmd("INST CLEAR")',
+  ])
 
   // Reload page and verify history still exists
   await page.reload()
   await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
-  await utils.sleep(500)
-  await checkHistory(page, 'cmd("INST CLEAR")')
-  await checkHistory(
-    page,
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0")',
-  )
-  await checkHistory(
-    page,
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 5")',
-  )
+  await expect(historyEntries(page)).toHaveCount(4)
   // Clear history and verify cleared
-  let text = await page.locator('[data-test=sender-history]').innerText()
-  expect(text).toContain('INST CLEAR')
-  expect(text).toContain('INST SETPARAMS')
   await page.locator('[data-test="clear-history"]').click()
-  await expect
-    .poll(() => page.locator('[data-test=sender-history]').innerText())
-    .not.toContain('INST CLEAR')
-})
-
-test('send vs history', async ({ page, utils }) => {
-  await page.locator('[data-test="clear-history"]').click()
-  await utils.selectTargetPacketItem('INST', 'ABORT')
-  await expect(page.locator('main')).toContainText(
-    'Aborts a collect on the INST instrument',
-  )
-  await page.locator('[data-test="select-send"]').click()
-  await checkSent(page, 'cmd("INST ABORT")')
-  // Send a different command: INST SETPARAMS
-  await utils.selectTargetPacketItem('INST', 'SETPARAMS')
-  await expect(page.locator('main')).toContainText('Sets numbered parameters')
-  await expect(page.locator('main')).toContainText('Value 1 setting') // Ensures the params are rendered
-  await page.locator('[data-test="select-send"]').click()
-  await expect(page.locator('main')).toContainText(
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent.',
-  )
-  // Re-execute command
-  await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('ArrowDown')
-  await page.locator('[data-test=sender-history]').press('Enter')
-  await expect(page.locator('main')).toContainText('cmd("INST ABORT") sent')
-  // Send command vs Send button
-  await page.locator('[data-test="select-send"]').click()
-  await expect(page.locator('main')).toContainText(
-    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent.',
-  )
+  await expect(historyEntries(page)).toHaveCount(0)
 })
 
 test('hazardous commands from history', async ({ page, utils }) => {
@@ -537,6 +507,10 @@ test('hazardous commands from history', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'CLEAR')
   await expect(page.locator('main')).toContainText(
     'Clears counters on the INST instrument',
+  )
+  // The Send button shows the command is hazardous before it's pressed
+  await expect(page.locator('[data-test="select-send"]')).toHaveClass(
+    /bg-warning/,
   )
   await sendHazardousCmd(page)
   await checkSent(page, 'cmd("INST CLEAR")')
@@ -549,11 +523,11 @@ test('hazardous commands from history', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText(
     "cmd(\"INST ASCIICMD with STRING 'ARM LASER', BINARY 0xDEADBEEF, ASCII '0xDEADBEEF'\")",
   )
-  // Re-execute commands from history
-  await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('ArrowDown')
-  await page.locator('[data-test=sender-history]').press('Enter')
-  // The dialog describes the history command, not the selected INST ASCIICMD
+  // Loading from the history asks nothing until Send, then describes the
+  // loaded command
+  await loadFromHistory(page, 'cmd("INST CLEAR")', 'INST CLEAR')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.locator('[data-test="select-send"]').click()
   await expect(page.getByRole('dialog')).toContainText(
     'Warning: Command INST CLEAR is Hazardous. Send?',
   )
@@ -565,12 +539,340 @@ test('hazardous commands from history', async ({ page, utils }) => {
   ).toContainText('Clearing counters may lose valuable information.')
   await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
   await expect(page.locator('main')).toContainText('cmd("INST CLEAR") sent')
-  await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('Enter')
-  await page.getByRole('dialog').getByRole('button', { name: 'Send' }).click()
+  // Strings, binary and states load back exactly
+  await loadFromHistory(page, 'INST ASCIICMD', 'INST ASCIICMD')
+  await checkValue(page, 'STRING', 'ARM LASER')
+  await sendHazardousCmd(page)
   await expect(page.locator('main')).toContainText(
-    "cmd(\"INST ASCIICMD with STRING 'ARM LASER', BINARY 0xDEADBEEF, ASCII '0xDEADBEEF'\")",
+    "cmd(\"INST ASCIICMD with STRING 'ARM LASER', BINARY 0xDEADBEEF, ASCII '0xDEADBEEF'\") sent",
   )
+})
+
+test('pastes a command into the form', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+  // Errors are shown in the paste field and leave the form alone
+  await pasteCommand(page, 'cmd("INST NOPE")')
+  await expect(page.locator('[data-test=paste-command-card]')).toContainText(
+    'Unable to load INST NOPE',
+  )
+  await page
+    .locator('[data-test=paste-command-input] input')
+    .fill('cmd("INST", "ABORT")')
+  await page.locator('[data-test=paste-command-input] input').press('Enter')
+  await expect(page.locator('[data-test=paste-command-card]')).toContainText(
+    'Only the single string form is supported',
+  )
+  await page.locator('[data-test=paste-command-input] input').press('Escape')
+  await utils.dropdownSelectedValue(
+    page,
+    '[data-test="select-packet"]',
+    'ABORT',
+  )
+
+  // Pasting fills in the form but doesn't send
+  await pasteCommand(
+    page,
+    'cmd("INST COLLECT with TYPE \'SPECIAL\', DURATION 3, TEMP 2.5")',
+  )
+  await expect(page.locator('[data-test=paste-command-card]')).toHaveCount(0)
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST COLLECT, press Send to send it',
+  )
+  await utils.dropdownSelectedValue(
+    page,
+    '[data-test="select-packet"]',
+    'COLLECT',
+  )
+  await checkValue(page, 'DURATION', '3')
+  await checkValue(page, 'TEMP', '2.5')
+  await expect(historyEntries(page)).toHaveCount(0)
+  await sendHazardousCmd(page)
+  await checkSent(
+    page,
+    'cmd("INST COLLECT with TYPE \'SPECIAL\', DURATION 3, OPCODE 171, TEMP 2.5")',
+  )
+
+  // The Mode menu decides how it's sent, so a different method is noted
+  await page.locator('[data-test=command-sender-file]').click()
+  await page.getByText('Paste Command').click()
+  await page
+    .locator('[data-test=paste-command-input] input')
+    .fill('cmd_raw_no_range_check("INST ABORT", validate=False)')
+  await page.locator('[data-test=paste-command-input] input').press('Enter')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'it was written as cmd_raw_no_range_check but the Mode menu sends cmd',
+  )
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'validate false was not applied',
+  )
+  await expect(historyEntries(page)).toHaveCount(1)
+  // Picking a different command clears the status
+  await utils.selectTargetPacketItem('INST', 'CLEAR')
+  await expect(page.locator('[data-test=sender-status]')).not.toContainText(
+    'Loaded',
+  )
+})
+
+test('opens the help dialogs', async ({ page, utils }) => {
+  await page.locator('[data-test=command-sender-help]').click()
+  await page.getByText('Keyboard Shortcuts').click()
+  await expect(page.locator('[data-test=help-dialog-shortcuts]')).toContainText(
+    'Paste a command into the paste box',
+  )
+  await page.locator('[data-test=help-dialog-ok]').click()
+  await page.locator('[data-test=command-sender-help]').click()
+  await page.getByText('Using Command Sender').click()
+  await expect(page.locator('[data-test=help-dialog-guide]')).toContainText(
+    'Hazardous commands',
+  )
+  await page.locator('[data-test=help-dialog-ok]').click()
+  await expect(page.locator('[data-test=help-dialog-guide]')).toHaveCount(0)
+})
+
+// Paste text the way the browser does for Mod+V, on the focused element
+async function pasteOnPage(page, text) {
+  await page.evaluate((pasted) => {
+    const data = new DataTransfer()
+    data.setData('text/plain', pasted)
+    const target = document.activeElement || document.body
+    target.dispatchEvent(
+      new ClipboardEvent('paste', { clipboardData: data, bubbles: true }),
+    )
+  }, text)
+}
+
+test('pastes and steps through the history with the keyboard', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+  await page.locator('[data-test="select-send"]').click()
+  await checkSent(page, 'cmd("INST ABORT")')
+  await utils.selectTargetPacketItem('INST', 'SETPARAMS')
+  await expect(page.locator('main')).toContainText('Value 1 setting')
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    'cmd("INST SETPARAMS with VALUE1 1, VALUE2 1, VALUE3 1, VALUE4 1, VALUE5 1, BIGINT 0") sent',
+  )
+
+  // Mod+V with no field selected opens the paste box with the text
+  await page.locator('[data-test=history-count]').click()
+  await pasteOnPage(page, `cmd("INST COLLECT with TYPE 'NORMAL', DURATION 4")`)
+  await expect(
+    page.locator('[data-test=paste-command-input] input'),
+  ).toHaveValue(`cmd("INST COLLECT with TYPE 'NORMAL', DURATION 4")`)
+  // Focused once the box has opened, ready for Enter (pressing it while the
+  // box is still opening would go to the page)
+  await expect(
+    page.locator('[data-test=paste-command-input] input'),
+  ).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST COLLECT, press Send to send it',
+  )
+  await checkValue(page, 'DURATION', '4')
+
+  // Pasting in a field pastes there instead
+  await page
+    .locator('tr:has(td:text-is("TEMP")) [data-test=cmd-param-value] input')
+    .click()
+  await pasteOnPage(page, 'cmd("INST ABORT")')
+  await expect(page.locator('[data-test=paste-command-card]')).toHaveCount(0)
+
+  // Alt+Down / Alt+Up load older / newer history commands, never sending
+  await page.locator('[data-test=history-count]').click()
+  await page.keyboard.press('Alt+ArrowDown')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST SETPARAMS',
+  )
+  await page.keyboard.press('Alt+ArrowDown')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST ABORT',
+  )
+  await utils.dropdownSelectedValue(
+    page,
+    '[data-test="select-packet"]',
+    'ABORT',
+  )
+  await page.keyboard.press('Alt+ArrowUp')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST SETPARAMS',
+  )
+  await expect(historyEntries(page)).toHaveCount(2)
+})
+
+// https://github.com/OpenC3/cosmos/issues/3550: a single quoted cmd() line
+// used to become an empty command ("Invalid number of arguments (0) passed to
+// get_cmd_hazardous()")
+test('pastes commands written with single quotes', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'CLEAR')
+  await pasteCommand(page, "cmd('INST ABORT')")
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST ABORT, press Send to send it',
+  )
+  await utils.dropdownSelectedValue(
+    page,
+    '[data-test="select-packet"]',
+    'ABORT',
+  )
+  await page.locator('[data-test="select-send"]').click()
+  await checkSent(page, 'cmd("INST ABORT")')
+
+  // Single quoted with double quoted values and a single quoted queue keyword
+  await pasteCommand(
+    page,
+    `cmd('INST COLLECT with TYPE "NORMAL", DURATION 2', queue='None')`,
+  )
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'Loaded INST COLLECT, press Send to send it',
+  )
+  await checkValue(page, 'DURATION', '2')
+})
+
+test('leaves off a pasted queue that does not exist', async ({
+  page,
+  utils,
+}) => {
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+  await pasteCommand(page, 'cmd("INST CLEAR", queue: "NO_SUCH_QUEUE")')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    `queue "NO_SUCH_QUEUE" doesn't exist, the queue is None`,
+  )
+  // It used to be selected even though it isn't in the queue list, which is
+  // disabled when there are no queues, so it couldn't be changed back
+  await expect(page.locator('[data-test=select-queue]')).toContainText('None')
+  await expect(page.locator('[data-test=select-queue]')).not.toContainText(
+    'NO_SUCH_QUEUE',
+  )
+})
+
+test('loads the queue a history command was sent with', async ({
+  page,
+  utils,
+}) => {
+  const queue = `CMDSENDER_TEST_${Date.now()}`
+  const queueApi = (method) =>
+    page.evaluate(
+      async ({ queue, method }) => {
+        const response = await fetch(
+          `/openc3-api/queues/${queue}?scope=DEFAULT`,
+          { method, headers: { Authorization: localStorage.openc3Token } },
+        )
+        if (!response.ok) {
+          throw new Error(`${method} queue failed: ${response.status}`)
+        }
+      },
+      { queue, method },
+    )
+  await queueApi('POST')
+  try {
+    // The queue list loads with the page
+    await page.reload()
+    await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
+    await page.locator('[data-test="clear-history"]').click()
+
+    // Send one command to the queue and one directly
+    await utils.selectTargetPacketItem('INST', 'ABORT')
+    await page.locator('[data-test=select-queue]').click()
+    await page.getByRole('option', { name: queue }).click()
+    await page.locator('[data-test="select-send"]').click()
+    await expect(historyEntries(page).first()).toContainText(queue)
+    await utils.selectTargetPacketItem('INST', 'SETPARAMS')
+    await expect(page.locator('main')).toContainText('Value 1 setting')
+    await page.locator('[data-test=select-queue]').click()
+    await page.getByRole('option', { name: 'None' }).click()
+    await page.locator('[data-test="select-send"]').click()
+    await expect(historyEntries(page)).toHaveCount(2)
+    await expect(historyEntries(page).first()).not.toContainText(queue)
+
+    // Loading the queued command selects its queue
+    await loadFromHistory(page, 'INST ABORT', 'INST ABORT')
+    await expect(page.locator('[data-test=select-queue]')).toContainText(queue)
+    // Loading the direct command sets it back to None. It used to keep the
+    // queue, so pressing Send would have queued a command sent directly.
+    await loadFromHistory(page, 'INST SETPARAMS', 'INST SETPARAMS')
+    await expect(page.locator('[data-test=select-queue]')).toContainText('None')
+    await expect(page.locator('[data-test=select-queue]')).not.toContainText(
+      queue,
+    )
+  } finally {
+    await queueApi('DELETE')
+  }
+})
+
+test('asks for obfuscated values loaded from the history', async ({
+  page,
+  utils,
+}) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'SET_PASSWORD')
+  await expect(page.locator('main')).toContainText('Set Password Command')
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('[data-test=sender-status]')).toContainText('sent')
+  await expect(historyEntries(page).first()).toContainText(
+    "PASSWORD_STR '*****'",
+  )
+
+  // The history hides the values, so Send refuses rather than sending the
+  // defaults in their place
+  await loadFromHistory(page, 'SET_PASSWORD', 'INST SET_PASSWORD')
+  await checkValue(page, 'PASSWORD_STR', '')
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('.v-dialog')).toContainText(
+    'Enter PASSWORD_STR, PASSWORD_UINT',
+  )
+  await page.locator('[data-test=error-dialog-ok]').click()
+  await expect(historyEntries(page)).toHaveCount(1)
+
+  // Once entered they send
+  for (const [param, value] of [
+    ['PASSWORD_STR', 'secret'],
+    ['PASSWORD_UINT', '1'],
+    ['PASSWORD_BIG_UINT', '2'],
+    ['PASSWORD_INT', '3'],
+    ['PASSWORD_FLOAT', '4'],
+    ['PASSWORD_BLOCK', '0xAB'],
+    ['ARRAY', '[1, 2]'],
+  ]) {
+    await setValue(page, param, value)
+  }
+  await page.locator('[data-test="select-send"]').click()
+  await expect(historyEntries(page)).toHaveCount(2)
+})
+
+test('reloads history commands with double quotes', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'ASCIICMD')
+  await expect(page.locator('main')).toContainText('Enumerated ASCII command')
+  await setValue(page, 'ASCII', 'say "hi"')
+  await page.locator('[data-test="select-send"]').click()
+  // Escaped as in a script string literal
+  await expect(historyEntries(page).first()).toContainText(
+    `ASCII 'say \\"hi\\"'`,
+  )
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+  await loadFromHistory(page, 'ASCIICMD', 'INST ASCIICMD')
+  await checkValue(page, 'ASCII', `'say "hi"'`)
+})
+
+test('migrates the old history', async ({ page, utils }) => {
+  await page.evaluate(() => {
+    localStorage.removeItem('command_sender__history_v2')
+    localStorage.setItem(
+      'command_sender__history',
+      'cmd("INST ABORT")\ncmd("INST CLEAR")',
+    )
+  })
+  await page.reload()
+  await expect(page.locator('.v-app-bar')).toContainText('Command Sender')
+  await expect(historyEntries(page)).toHaveText([
+    'cmd("INST ABORT")',
+    'cmd("INST CLEAR")',
+  ])
+  await loadFromHistory(page, 'cmd("INST ABORT")', 'INST ABORT')
 })
 
 //
@@ -613,17 +915,14 @@ test('ignores normal range checks', async ({ page, utils }) => {
   await expect(page.locator('main')).toContainText(
     'Starts something on the example target',
   )
-  await page.locator('[data-test=sender-history]').click()
-  await utils.sleep(500) // Allow focus to change
-  await page.locator('[data-test=sender-history]').press('End')
-  await utils.sleep(100)
-  await page.locator('[data-test="sender-history"]').press('ArrowLeft')
-  await page.locator('[data-test="sender-history"]').press('ArrowLeft')
-  await page.locator('[data-test="sender-history"]').press('ArrowLeft')
-  await utils.sleep(100)
-  await page.locator('[data-test="sender-history"]').pressSequentially('5')
-  await utils.sleep(100)
-  await page.locator('[data-test="sender-history"]').press('Enter')
+  // Load the command sent without range checks; the Mode menu now checks them
+  await loadFromHistory(page, 'TEMP 100', 'INST COLLECT')
+  await expect(page.locator('[data-test=sender-status]')).toContainText(
+    'it was written as cmd_no_range_check but the Mode menu sends cmd',
+  )
+  await checkValue(page, 'TEMP', '100')
+  await setValue(page, 'TEMP', '50')
+  await page.locator('[data-test="select-send"]').click()
   // Dialog should pop up with error
   await expect(page.locator('.v-dialog')).toContainText(
     "Error sending INST COLLECT due to RuntimeError: Command parameter 'INST COLLECT TEMP' = 50 not in valid range of 0.0 to 25.0",
@@ -682,14 +981,13 @@ test('confirms commands when ignoring range checks', async ({
   )
 
   // Resending from history still requires confirmation and names the command.
-  // Select a different command to ensure the dialog describes the history
-  // command rather than the selected one.
+  // Select a different command first so the history entry replaces it.
   await utils.selectTargetPacketItem('INST', 'CLEAR')
   await expect(page.locator('main')).toContainText(
     'Clears counters on the INST instrument',
   )
-  await page.locator('[data-test=sender-history]').click()
-  await page.locator('[data-test=sender-history]').press('Enter')
+  await loadFromHistory(page, 'INST COLLECT', 'INST COLLECT')
+  await page.locator('[data-test="select-send"]').click()
   await expect(page.getByRole('dialog')).toContainText(
     'Warning: Command INST COLLECT is considered Hazardous because range checks are ignored. Send?',
   )

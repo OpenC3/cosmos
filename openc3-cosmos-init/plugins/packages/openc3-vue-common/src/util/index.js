@@ -37,6 +37,11 @@ export {
   removeQuotes,
 } from './cmdUtilities'
 export {
+  parseCmdLine,
+  parseCmdText,
+  parseCmdTextLenient,
+} from './cmdStringParser'
+export {
   getCachedSetting,
   invalidateCachedSetting,
   peekCachedSetting,

@@ -208,7 +208,7 @@
       <v-col :cols="colSize">
         <div>Description: {{ description }}</div>
         <div
-          v-if="isHazardous"
+          v-if="isHazardous && showHazardous"
           class="openc3-yellow font-weight-bold mt-2"
           data-test="hazardous-description"
         >
@@ -307,6 +307,12 @@ export default {
       default: false,
     },
     showQueueSelect: {
+      type: Boolean,
+      default: true,
+    },
+    // Show the hazardous warning below the description. Command Sender
+    // marks hazardous commands itself, without moving the parameters.
+    showHazardous: {
       type: Boolean,
       default: true,
     },
@@ -866,6 +872,40 @@ export default {
     queueNameChanged: function (value) {
       this.selectedQueueName = value
       this.emitOnSet()
+    },
+
+    // Select a target and packet from code, e.g. a command pasted into
+    // Command Sender. Loads the packet list and details and emits on-set like
+    // a user selection. queueName (cmd mode) is left as is when undefined,
+    // and only selected if it's in the queue list: otherwise the queue is
+    // None and this returns false so the caller can say so. The caller
+    // checks that the target and packet exist.
+    setSelection: function (targetName, packetName, queueName) {
+      let queueSelected = true
+      if (queueName !== undefined) {
+        queueSelected = this.queueNames.some(
+          (queue) => queue.value === queueName,
+        )
+        this.selectedQueueName = queueSelected ? queueName : null
+      }
+      const target = targetName.toUpperCase()
+      const packet = packetName.toUpperCase()
+      // Reloading the packet list disables the dropdowns while it loads, so
+      // only do it for a different target
+      const sameTarget =
+        target === this.selectedTargetName && this.packetNames.length > 0
+      const samePacket = sameTarget && packet === this.selectedPacketName
+      this.selectedTargetName = target
+      this.selectedPacketName = packet
+      this.selectedItemName = ''
+      if (samePacket) {
+        this.emitOnSet()
+      } else if (sameTarget) {
+        this.updatePacketDetails(packet)
+      } else {
+        this.updatePackets()
+      }
+      return queueSelected
     },
 
     updatePacketDetails: function (value) {
