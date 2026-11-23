@@ -27,15 +27,16 @@ protocol like LENGTH.
 <TabItem value="python" label="Python">
 
 - Requires a host Python 3.10+ installation
-- Install the OpenC3 package (recommend using a venv)
+- Install [uv](https://docs.astral.sh/uv/getting-started/installation/)
+- Install the OpenC3 package into a venv
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-python3 -m pip install openc3
+uv venv
+source .venv/bin/activate
+uv pip install openc3
 ```
 
-Note: Developers working from a checkout can use `pip install -e cosmos/openc3/python` instead of `pip install openc3`
+Note: Developers working from a checkout can use `uv pip install -e cosmos/openc3/python` instead of `uv pip install openc3`
 
 </TabItem>
 <TabItem value="ruby" label="Ruby">
