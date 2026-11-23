@@ -1566,18 +1566,16 @@ module OpenC3
 
       # Get all the packet counts with the global counters
       tlm_target_names.each do |target_name|
+        unknown_packet_names = []
         get_all_telemetry_counts(target_name, scope: scope).each do |packet_name, count|
           begin
             update_packet = System.telemetry.packet(target_name, packet_name)
             update_packet.received_count = count.to_i
           rescue RuntimeError
-            key = "#{target_name} #{packet_name}"
-            unless @@stale_packet_keys_warned.include?(key)
-              @@stale_packet_keys_warned.add(key)
-              Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
-            end
+            unknown_packet_names << packet_name
           end
         end
+        prune_stale_telemetry_counts(target_name, unknown_packet_names, scope: scope) unless unknown_packet_names.empty?
       end
       get_all_telemetry_counts('UNKNOWN', scope: scope).each do |packet_name, count|
         begin
@@ -1589,6 +1587,32 @@ module OpenC3
             @@stale_packet_keys_warned.add(key)
             Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
           end
+        end
+      end
+    end
+
+    # A microservice still running the old packet definitions during a plugin
+    # upgrade can write counts for removed packets after the upgrade cleared
+    # the counts. Delete the counts for packets the target no longer defines.
+    # Keep the count of a packet that is still defined but this System didn't
+    # load (e.g. a dynamic packet) and warn about it instead.
+    def self.prune_stale_telemetry_counts(target_name, unknown_packet_names, scope:)
+      begin
+        defined_packet_names = packet_names(target_name, type: :TLM, scope: scope)
+      rescue RuntimeError
+        # The target isn't installed so there's nothing to compare against
+        defined_packet_names = unknown_packet_names
+      end
+      stale_packet_names = unknown_packet_names - defined_packet_names
+      unless stale_packet_names.empty?
+        store_for_target(target_name, scope: scope).hdel("#{scope}__TELEMETRYCNTS__{#{target_name}}", *stale_packet_names)
+        Logger.info("Removed stale tlmcnt Redis keys for #{target_name} packets that are no longer defined: #{stale_packet_names.join(', ')}")
+      end
+      (unknown_packet_names & defined_packet_names).each do |packet_name|
+        key = "#{target_name} #{packet_name}"
+        unless @@stale_packet_keys_warned.include?(key)
+          @@stale_packet_keys_warned.add(key)
+          Logger.warn("Stale tlmcnt Redis key detected for unknown packet #{key} - ignoring")
         end
       end
     end
