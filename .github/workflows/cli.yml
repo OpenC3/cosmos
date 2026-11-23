@@ -154,6 +154,10 @@ jobs:
           ls xtce/MY_CLI/cmd_tlm | grep my_cli.xtce
           # --no-validate skips the check
           ! ../openc3.sh cli xtce_converter --plugin openc3-cosmos-cli-test-1.0.5.gem --output xtce_novalidate --no-validate | grep "Validated"
+          # Only the current directory is mounted into the container, so output to an
+          # absolute host path outside it is silently lost. openc3.sh warns about it
+          ../openc3.sh cli xtce_converter --plugin openc3-cosmos-cli-test-1.0.5.gem --output /tmp/xtce_outside --no-validate 2>&1 | tee /dev/tty | grep "is outside the current directory"
+          ! ../openc3.sh cli xtce_converter --plugin openc3-cosmos-cli-test-1.0.5.gem --output xtce_inside --no-validate 2>&1 | grep "is outside the current directory"
           ### IMPORT ###
           # Round trip: what we just exported imports back into COSMOS config files
           ../openc3.sh cli xtce_converter --import xtce/MY_CLI/cmd_tlm/my_cli.xtce --output config --validate | tee /dev/tty | grep "my_cli.xtce is valid XTCE 1.2"

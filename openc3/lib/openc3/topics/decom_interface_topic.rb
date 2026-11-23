@@ -38,7 +38,9 @@ module OpenC3
             if msg_hash["result"] == "SUCCESS"
               return msg_hash
             else
-              raise msg_hash["result"]
+              # The error happened in the decom microservice so don't add a
+              # backtrace which only shows this ack loop
+              raise RuntimeError, msg_hash["result"], []
             end
           end
         end
@@ -67,7 +69,9 @@ module OpenC3
             if msg_hash["result"] == "SUCCESS"
               return
             else
-              raise msg_hash["result"]
+              # The error happened in the decom microservice so don't add a
+              # backtrace which only shows this ack loop
+              raise RuntimeError, msg_hash["result"], []
             end
           end
         end
@@ -98,7 +102,9 @@ module OpenC3
               end
               return msg_hash
             else
-              raise msg_hash["result"]
+              # The error happened in the decom microservice so don't add a
+              # backtrace which only shows this ack loop
+              raise RuntimeError, msg_hash["result"], []
             end
           end
         end

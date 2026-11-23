@@ -20,6 +20,7 @@
     <v-text-field
       v-if="!states"
       :model-value="textFieldValue"
+      :placeholder="requiredPlaceholder"
       :disabled="disabled"
       hide-details
       density="compact"
@@ -122,6 +123,9 @@ export default {
       // Unset (e.g. a required parameter) shows empty, not 'null'
       if (this.modelValue === null || this.modelValue === undefined) return ''
       return this.convertToString(this.modelValue)
+    },
+    requiredPlaceholder() {
+      return this.modelValue === null ? 'Required' : undefined
     },
     stateValue() {
       // Unset, e.g. a required parameter (null) or a manually entered value

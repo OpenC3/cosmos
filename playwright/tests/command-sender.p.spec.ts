@@ -288,6 +288,36 @@ test('warns for required parameters', async ({ page, utils }) => {
   await page.locator('button:has-text("Ok")').click()
 })
 
+// INST SET_PASSWORD USERNAME is a REQUIRED STRING with a nil default,
+// see https://github.com/OpenC3/cosmos/issues/4210
+test('reports required string parameters as not given', async ({
+  page,
+  utils,
+}) => {
+  await utils.selectTargetPacketItem('INST', 'SET_PASSWORD')
+  await expect(page.locator('main')).toContainText('Set Password Command')
+  // Required parameters start empty rather than showing null
+  const username = page.locator(
+    'tr:has(td:text-is("USERNAME")) [data-test=cmd-param-value] input',
+  )
+  await expect(username).toHaveValue('')
+  await expect(username).toHaveAttribute('placeholder', 'Required')
+
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('.v-dialog')).toContainText(
+    "Required command parameter 'INST SET_PASSWORD USERNAME' not given",
+  )
+  await expect(page.locator('.v-dialog')).not.toContainText('does not fit')
+  await page.locator('button:has-text("Ok")').click()
+
+  await setValue(page, 'USERNAME', 'operator')
+  await page.locator('[data-test="select-send"]').click()
+  await checkHistory(
+    page,
+    `cmd("INST SET_PASSWORD with USERNAME 'operator', PASSWORD_STR '*****'`,
+  )
+})
+
 test('warns for hazardous parameters', async ({ page, utils }) => {
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'COLLECT')

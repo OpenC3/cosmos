@@ -16,15 +16,55 @@ require "openc3/utilities/script_env"
 
 module OpenC3
   describe ScriptEnv do
-    describe ".remove_unused" do
-      it "sets the unused vars to nil so the child process does not inherit them" do
-        environment = { "OPENC3_SCOPE" => "DEFAULT" }
-        ScriptEnv.remove_unused(environment)
+    describe ".scrub_spawn_environment" do
+      it "sets the scrubbed vars to nil so the child process does not inherit them" do
+        environment = { "OPENC3_SCOPE" => "DEFAULT", "OPENC3_REDIS_PASSWORD" => "pw" }
+        ScriptEnv.scrub_spawn_environment(environment)
         expect(environment["OPENC3_SCOPE"]).to eq("DEFAULT")
-        ScriptEnv::UNUSED_VARS.each do |key|
+        ScriptEnv::SPAWN_SCRUBBED_VARS.each do |key|
           expect(environment).to have_key(key)
           expect(environment[key]).to be_nil
         end
+      end
+
+      it "scrubs every secret the child needs, which goes over stdin instead" do
+        expect(ScriptEnv::SPAWN_SCRUBBED_VARS).to include(*ScriptEnv::UNUSED_VARS)
+        expect(ScriptEnv::SPAWN_SCRUBBED_VARS).to include(*ScriptEnv::STDIN_SECRET_VARS.keys)
+        expect(ScriptEnv::SPAWN_SCRUBBED_VARS).to include(*ScriptEnv::STDIN_SECRET_VARS.values)
+        expect(ScriptEnv::SPAWN_SCRUBBED_VARS).to include(
+          "SECRET_KEY_BASE", "OPENC3_SERVICE_PASSWORD", "OPENC3_API_PASSWORD", "OPENC3_API_TOKEN",
+          "OPENC3_API_CLIENT_SECRET"
+        )
+      end
+    end
+
+    describe ".stdin_secrets" do
+      around(:each) do |example|
+        keys = ScriptEnv::STDIN_SECRET_VARS.values
+        saved = keys.to_h { |key| [key, ENV[key]] }
+        keys.each { |key| ENV.delete(key) }
+        example.run
+      ensure
+        saved.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
+      end
+
+      it "maps the script runner credentials to the names the child reads" do
+        ENV["OPENC3_SR_REDIS_USERNAME"] = "sr_user"
+        ENV["OPENC3_SR_REDIS_PASSWORD"] = "sr_pw"
+        ENV["OPENC3_SR_BUCKET_USERNAME"] = "sr_bucket"
+        ENV["OPENC3_SR_BUCKET_PASSWORD"] = "sr_bucket_pw"
+        expected = {
+          "OPENC3_REDIS_USERNAME" => "sr_user",
+          "OPENC3_REDIS_PASSWORD" => "sr_pw",
+          "OPENC3_BUCKET_USERNAME" => "sr_bucket",
+          "OPENC3_BUCKET_PASSWORD" => "sr_bucket_pw",
+        }
+        expect(ScriptEnv.stdin_secrets).to eq(expected)
+      end
+
+      it "omits unset credentials" do
+        ENV["OPENC3_SR_REDIS_PASSWORD"] = "sr_pw"
+        expect(ScriptEnv.stdin_secrets).to eq({ "OPENC3_REDIS_PASSWORD" => "sr_pw" })
       end
     end
 

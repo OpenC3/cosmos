@@ -51,7 +51,7 @@ from openc3.models.microservice_model import MicroserviceModel
 from openc3.packets.packet import Packet
 from openc3.top_level import HazardousError
 from openc3.utilities.store import EphemeralStore
-from test.test_helper import capture_io, mock_redis, setup_system, shard_redis
+from test.test_helper import capture_io, mock_redis, setup_system, shard_redis, wait_for_first_topic_read
 
 
 class MyInterface(Interface):
@@ -957,11 +957,13 @@ class BuildCommand(unittest.TestCase):
         self.dm = DecomMicroservice("DEFAULT__DECOM__INST_INT")
         self.dm_thread = threading.Thread(target=self.dm.run)
         self.dm_thread.start()
-        time.sleep(0.1)  # Increased from 0.01 to 0.1 to allow microservice to fully initialize
+        # build_cmd writes to DECOMINTERFACE once, so the run thread must have
+        # started reading or it skips the request and build_cmd times out
+        wait_for_first_topic_read(redis, self.dm_thread)
 
     def tearDown(self):
         self.dm.shutdown()
-        time.sleep(0.01)
+        self.dm_thread.join()
 
     def test_complains_about_unknown_targets(self):
         with self.assertRaisesRegex(

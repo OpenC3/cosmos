@@ -386,11 +386,13 @@ export default {
           ) {
             val = `'${val}'`
           }
-          if (parameter.required) {
-            val = null // Special marker for required parameters
-          }
           if (parameter.format_string && parameter.default) {
             val = sprintf(parameter.format_string, parameter.default)
+          }
+          // Required parameters must be given so their default is
+          // never used. null marks them as not set (see getCmdString).
+          if (parameter.required) {
+            val = null
           }
           if (Object.prototype.toString.call(val).slice(8, -1) === 'Object') {
             val = this.convertToString(val)
