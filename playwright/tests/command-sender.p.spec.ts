@@ -873,6 +873,8 @@ test('asks for obfuscated values loaded from the history', async ({
   await page.locator('[data-test="clear-history"]').click()
   await utils.selectTargetPacketItem('INST', 'SET_PASSWORD')
   await expect(page.locator('main')).toContainText('Set Password Command')
+  // USERNAME is REQUIRED
+  await setValue(page, 'USERNAME', 'operator')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('[data-test=sender-status]')).toContainText('sent')
   await expect(historyEntries(page).first()).toContainText(
@@ -892,9 +894,10 @@ test('asks for obfuscated values loaded from the history', async ({
 
   // Toggling Show Ignored Parameters reloads the rows but keeps what's in the
   // form: an entered value, and the obfuscated values still waiting
-  await setValue(page, 'USERNAME', 'operator')
+  await checkValue(page, 'USERNAME', `'operator'`)
+  await setValue(page, 'USERNAME', 'admin')
   await toggleMode(page, 'Show Ignored')
-  await checkValue(page, 'USERNAME', 'operator')
+  await checkValue(page, 'USERNAME', 'admin')
   await checkValue(page, 'PASSWORD_STR', '')
   await page.locator('[data-test="select-send"]').click()
   await expect(page.locator('.v-dialog')).toContainText('Enter PASSWORD_STR')
