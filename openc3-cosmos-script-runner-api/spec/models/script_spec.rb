@@ -434,6 +434,8 @@ RSpec.describe Script, type: :model do
         site_packages = "#{venv_dir}/lib/python3.12/site-packages"
         allow(File).to receive(:directory?).and_call_original
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(File.join(File.dirname(venv_dir), ".uv_managed")).and_return(true)
         allow(Dir).to receive(:glob).with("#{venv_dir}/lib/python*/site-packages").and_return([site_packages])
 
         Script.process_suite("INST/procedures/suite.py", "suite content", scope: "DEFAULT")
@@ -451,6 +453,8 @@ RSpec.describe Script, type: :model do
         site_packages = "#{venv_dir}/lib/python3.12/site-packages"
         allow(File).to receive(:directory?).and_call_original
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(File.join(File.dirname(venv_dir), ".uv_managed")).and_return(true)
         allow(Dir).to receive(:glob).with("#{venv_dir}/lib/python*/site-packages").and_return([site_packages])
         expect(OpenC3::TargetModel).not_to receive(:get)
 

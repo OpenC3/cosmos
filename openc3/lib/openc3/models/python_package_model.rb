@@ -16,6 +16,7 @@ require 'open3'
 require 'set'
 require 'openc3/utilities/process_manager'
 require 'openc3/utilities/pypi_url'
+require 'openc3/utilities/python_venv'
 require 'openc3/api/api'
 require 'pathname'
 require 'json'
@@ -29,7 +30,7 @@ module OpenC3
     extend Api
 
     DIST_INFO =  '.dist-info'
-    PLUGIN_VENVS_DIR = '/gems/plugin_venvs'       # Per-plugin isolated venvs created by uvinstall
+    PLUGIN_VENVS_DIR = PythonVenv::PLUGIN_VENVS_DIR # Per-plugin isolated venvs created by uvinstall
     SYSTEM_VENV_DIR = '/openc3/python/.venv'       # Core openc3 Python library venv (read-only)
     DEFAULT_UV_CACHE_DIR = '/gems/uv'              # UV wheel cache, seeded from the Docker image at init
     UPLOADS_DIR_NAME = 'uploads'                   # Subdirectory under UV cache for uploaded .whl files
@@ -72,7 +73,8 @@ module OpenC3
       [name, version]
     end
 
-    def self.names
+    # @param scope [String] only plugin venvs in this scope are listed
+    def self.names(scope:)
       result = {}
 
       # Collect all packages available in the UV download cache
@@ -82,17 +84,11 @@ module OpenC3
       result['cached'] = cached.sort unless cached.empty?
 
       # Collect packages from per-plugin venvs
-      if File.directory?(PLUGIN_VENVS_DIR)
-        Dir.glob("#{PLUGIN_VENVS_DIR}/*/").each do |plugin_dir|
-          plugin_name = File.basename(plugin_dir)
-          venv_dir = File.join(plugin_dir, '.venv')
-          next unless File.directory?(venv_dir)
-
-          # Always include plugin venvs even if empty so they remain visible
-          # in the Admin UI and selectable as install targets
-          packages = packages_in_venv(venv_dir)
-          result[plugin_name] = packages.sort
-        end
+      each_scope_venv(scope) do |plugin_name, venv_dir|
+        # Always include plugin venvs even if empty so they remain visible
+        # in the Admin UI and selectable as install targets
+        packages = packages_in_venv(venv_dir)
+        result[plugin_name] = packages.sort
       end
 
       # Also collect packages from the shared venv for backwards compatibility
@@ -198,6 +194,8 @@ module OpenC3
     end
 
     def self.put(package_file_path, package_install: true, scope:, plugin: nil)
+      # Reject a bad venv name before the upload is copied into the shared cache
+      plugin_venv_dir(plugin, scope: scope) if plugin
       if File.file?(package_file_path)
         package_filename = File.basename(package_file_path)
         FileUtils.mkdir_p("#{ENV.fetch('PYTHONUSERBASE')}/cache") unless Dir.exist?("#{ENV.fetch('PYTHONUSERBASE')}/cache")
@@ -250,8 +248,10 @@ module OpenC3
       pip_args = PypiUrl.build_args(pypi_url) + [package_file_path]
       spawn_env = {}
       if plugin
-        venv_path = "#{PLUGIN_VENVS_DIR}/#{plugin}/.venv"
-        spawn_env['PIPINSTALL_VENV'] = venv_path
+        spawn_env['PIPINSTALL_VENV'] = plugin_venv_dir(plugin, scope: scope)
+        # The install runs in the background, so pipinstall does the purge that
+        # PluginModel.install_phase2 does with PythonVenv.purge_reserved_packages
+        spawn_env['PIPINSTALL_RESERVED_PACKAGES'] = PythonVenv::RESERVED_PACKAGES.join(' ')
       end
       result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipinstall"] + pip_args, "package_install", package_filename, Time.now + 3600.0, scope: scope, env: spawn_env)
       return result.name
@@ -264,33 +264,59 @@ module OpenC3
       Logger.info "Uninstalling package: #{name}"
       pip_args = [package_name]
       spawn_env = {}
-      if plugin
-        venv_path = "#{PLUGIN_VENVS_DIR}/#{plugin}/.venv"
-        spawn_env['PIPINSTALL_VENV'] = venv_path
-      end
+      spawn_env['PIPINSTALL_VENV'] = plugin_venv_dir(plugin, scope: scope) if plugin
       result = OpenC3::ProcessManager.instance.spawn(["/openc3/bin/pipuninstall"] + pip_args, "package_uninstall", name, Time.now + 3600.0, scope: scope, env: spawn_env)
       return result.name
     end
 
-    # Returns a hash of plugin_name => "uv pip list" text output for each plugin venv.
-    def self.trees
+    # Returns a hash of plugin_name => "uv pip list" text output for each plugin
+    # venv in +scope+.
+    def self.trees(scope:)
       result = {}
 
-      if File.directory?(PLUGIN_VENVS_DIR)
-        Dir.glob("#{PLUGIN_VENVS_DIR}/*/").each do |plugin_dir|
-          plugin_name = File.basename(plugin_dir)
-          venv_dir = File.join(plugin_dir, '.venv')
-          next unless File.directory?(venv_dir)
-
-          stdout, status = Open3.capture2('uv', 'pip', 'list', '--python', venv_dir)
-          if status.success? && stdout.lines.length > 2
-            result[plugin_name] = stdout.rstrip
-          end
+      each_scope_venv(scope) do |plugin_name, venv_dir|
+        stdout, status = Open3.capture2('uv', 'pip', 'list', '--python', venv_dir)
+        if status.success? && stdout.lines.length > 2
+          result[plugin_name] = stdout.rstrip
         end
       end
 
       result
     end
+
+    # Yield the directory name and .venv path of each plugin venv in +scope+.
+    # Venv directories are named "<scope>__<plugin>" by
+    # PluginModel.plugin_venv_name, so the prefix keeps each scope's venvs to
+    # itself, the same way ScriptsController#plugin_python_venvs does.
+    def self.each_scope_venv(scope)
+      return unless File.directory?(PLUGIN_VENVS_DIR)
+
+      prefix = "#{scope}__".tr('^a-zA-Z0-9_-', '_')
+      Dir.glob("#{PLUGIN_VENVS_DIR}/*/").each do |plugin_dir|
+        plugin_name = File.basename(plugin_dir)
+        next unless plugin_name.start_with?(prefix)
+
+        venv_dir = File.join(plugin_dir, '.venv')
+        next unless File.directory?(venv_dir)
+
+        yield plugin_name, venv_dir
+      end
+    end
+    private_class_method :each_scope_venv
+
+    # The .venv path for a plugin venv named by the client. The name must be one
+    # PluginModel.plugin_venv_name could have built for this scope, which keeps
+    # it inside PLUGIN_VENVS_DIR and out of other scopes' venvs.
+    def self.plugin_venv_dir(plugin, scope:)
+      plugin = plugin.to_s
+      prefix = "#{scope}__".tr('^a-zA-Z0-9_-', '_')
+      unless plugin == plugin.tr('^a-zA-Z0-9_-', '_') && plugin.start_with?(prefix) && plugin.length > prefix.length
+        raise "Plugin '#{plugin}' is not a python venv in scope #{scope}"
+      end
+
+      "#{PLUGIN_VENVS_DIR}/#{plugin}/.venv"
+    end
+    private_class_method :plugin_venv_dir
 
     def self.extract_name_and_version(name)
       split_name = name.split('-')

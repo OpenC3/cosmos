@@ -96,6 +96,24 @@ module OpenC3
 
         expect(only_uv_call("pip install")).to_not include("--no-sources")
       end
+
+      # An Admin upload into a plugin venv runs pipinstall in the background,
+      # so PythonPackageModel can't purge afterwards the way install_phase2
+      # does. pipinstall removes the packages it is told are reserved.
+      it "uninstalls PIPINSTALL_RESERVED_PACKAGES from the venv after a successful install" do
+        venv = File.join(@dir, "venv")
+        expect(run_script("pipinstall", *DEFAULT_ARGS, File.join(@dir, "pkg.whl"),
+                          env: { "PIPINSTALL_VENV" => venv, "PIPINSTALL_RESERVED_PACKAGES" => "openc3" })).to be true
+
+        expect(uv_calls("pip uninstall")).to eq(["pip uninstall --python #{venv} openc3"])
+      end
+
+      it "uninstalls nothing when PIPINSTALL_RESERVED_PACKAGES is unset" do
+        expect(run_pipinstall(*DEFAULT_ARGS, File.join(@dir, "pkg.whl"))).to be true
+
+        expect(uv_calls("pip install")).to_not be_empty
+        expect(uv_calls("pip uninstall")).to be_empty
+      end
     end
 
     describe "uvinstall" do

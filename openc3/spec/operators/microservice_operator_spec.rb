@@ -60,6 +60,8 @@ module OpenC3
         sanitized_name = "DEFAULT__my-plugin__0"
         venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(File.join(File.dirname(venv_dir), ".uv_managed")).and_return(true)
 
         _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
 
@@ -109,6 +111,8 @@ module OpenC3
         sanitized_name = "DEFAULT__my_plugin_1_0"
         venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(File.join(File.dirname(venv_dir), ".uv_managed")).and_return(true)
 
         _cmd, _work_dir, env, _scope, _container = @operator.convert_microservice_to_process_definition("DEFAULT__TYPE__NAME", config)
 

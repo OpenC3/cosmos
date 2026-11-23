@@ -13,12 +13,32 @@ case " $* " in
     *) NO_SOURCES="" ;;
 esac
 
+# PythonPackageModel sets PIPINSTALL_RESERVED_PACKAGES (from
+# PythonVenv::RESERVED_PACKAGES) when it installs into a plugin venv. Scripts
+# and microservices put that venv's site-packages first on PYTHONPATH, so a
+# copy of openc3 pulled in as a dependency would shadow the system library.
+# The install runs in the background, so the purge happens here rather than in
+# Ruby the way PluginModel.install_phase2 does it.
+purge_reserved() {
+    for PKG in ${PIPINSTALL_RESERVED_PACKAGES}; do
+        if uv pip show --python "$VENV" "$PKG" > /dev/null 2>&1; then
+            echo "Removing ${PKG} from ${VENV}: it would shadow the system library"
+            uv pip uninstall --python "$VENV" "$PKG"
+        fi
+    done
+}
+
+succeed() {
+    echo "$1"
+    purge_reserved
+    exit 0
+}
+
 uv venv "$VENV" --allow-existing
 echo "uv pip install $*"
 uv pip install --python "$VENV" ${NO_SOURCES} "$@"
 if [ $? -eq 0 ]; then
-    echo "Command succeeded"
-    exit 0
+    succeed "Command succeeded"
 fi
 
 # Collect the last arg and all preceding args
@@ -43,9 +63,8 @@ if [ -d "$LAST_ARG" ] && [ -f "$LAST_ARG/pyproject.toml" ]; then
     if [ $? -eq 0 ] && [ -s "$TMPFILE" ]; then
         uv pip install --python "$VENV" ${NO_SOURCES} ${OPTS} -r "$TMPFILE"
         if [ $? -eq 0 ]; then
-            echo "Dependencies installed successfully"
             rm -f "$TMPFILE"
-            exit 0
+            succeed "Dependencies installed successfully"
         fi
     fi
     rm -f "$TMPFILE"
@@ -57,3 +76,4 @@ if [ $? -ne 0 ]; then
     echo "ERROR: uv pip install failed"
     exit 1
 fi
+purge_reserved

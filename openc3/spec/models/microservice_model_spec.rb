@@ -408,6 +408,8 @@ module OpenC3
         )
         venv_dir = "/gems/plugin_venvs/DEFAULT__my-plugin__0/.venv"
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(File.join(File.dirname(venv_dir), ".uv_managed")).and_return(true)
         allow(Dir).to receive(:glob).with("#{venv_dir}/lib/python*/site-packages").and_return(["#{venv_dir}/lib/python3.12/site-packages"])
 
         env = model.runtime_python_env

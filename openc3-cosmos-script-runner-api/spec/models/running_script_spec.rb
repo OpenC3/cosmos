@@ -350,6 +350,8 @@ RSpec.describe RunningScript, type: :model do
         venv_dir = "/gems/plugin_venvs/#{sanitized_name}/.venv"
         allow(File).to receive(:directory?).and_call_original
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(File.join(File.dirname(venv_dir), ".uv_managed")).and_return(true)
 
         RunningScript.spawn("DEFAULT", "INST/script.py")
 
@@ -400,6 +402,8 @@ RSpec.describe RunningScript, type: :model do
         venv_dir = "/gems/plugin_venvs/#{plugin_name}/.venv"
         allow(File).to receive(:directory?).and_call_original
         allow(File).to receive(:directory?).with(venv_dir).and_return(true)
+        allow(File).to receive(:exist?).and_call_original
+        allow(File).to receive(:exist?).with(File.join(File.dirname(venv_dir), ".uv_managed")).and_return(true)
 
         RunningScript.spawn("DEFAULT", "__TEMP__/temp_script.py", nil, false, nil, nil, nil, nil, nil, plugin_name)
 
