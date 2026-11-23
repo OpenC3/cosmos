@@ -33,6 +33,8 @@ module OpenC3
     SYSTEM_VENV_DIR = '/openc3/python/.venv'       # Core openc3 Python library venv (read-only)
     DEFAULT_UV_CACHE_DIR = '/gems/uv'              # UV wheel cache, seeded from the Docker image at init
     UPLOADS_DIR_NAME = 'uploads'                   # Subdirectory under UV cache for uploaded .whl files
+    # UV cache wheel buckets keyed by a digest of their source, one level deeper than pypi/
+    HASHED_UV_BUCKETS = %w(index url path).freeze
 
     # Normalize a package name to lowercase with hyphens (PEP 503 canonical form)
     def self.normalize_pkg_name(name)
@@ -131,16 +133,18 @@ module OpenC3
     end
 
     # List unique packages in the UV download cache.
-    # UV cache structure: wheels-v<N>/<registry>/<package-name>/<version-pytag-abitag-platform>
+    # UV cache structure for PyPI: wheels-v<N>/pypi/<package-name>/<version-pytag-abitag-platform>
     # e.g. wheels-v6/pypi/numpy/2.4.6-cp312-cp312-musllinux_1_2_aarch64
+    # Every other index (a PYPI_URL mirror, a private index, or the find-links
+    # directory of a plugin's bundled wheels) is filed one level deeper under a
+    # hash of its URL: wheels-v<N>/index/<digest>/<package-name>/<version-entry>
     # Also scans the uploads/ subdirectory for user-uploaded .whl files.
     def self.cached_packages
       cache_dir = ENV.fetch('UV_CACHE_DIR', DEFAULT_UV_CACHE_DIR)
       return [] unless File.directory?(cache_dir)
 
       packages = Set.new
-      # Glob 4 levels deep: wheels-v<N>/<registry>/<package-name>/<version-entry>
-      Dir.glob("#{cache_dir}/wheels-v*/*/*/*").each do |entry|
+      add_version_entry = lambda do |entry|
         basename = File.basename(entry)
         # Skip UV metadata sidecar files (.http, .msgpack)
         next if basename.end_with?('.http', '.msgpack')
@@ -152,6 +156,18 @@ module OpenC3
         # Parent directory name is the package name
         pkg_name = File.basename(File.dirname(entry)).tr('_', '-').downcase
         packages.add("#{pkg_name}-#{match[1]}")
+      end
+      # Glob 4 levels deep: wheels-v<N>/<bucket>/<package-name or digest>/<version-entry or package-name>
+      Dir.glob("#{cache_dir}/wheels-v*/*/*/*").each do |entry|
+        bucket = File.basename(File.dirname(File.dirname(entry)))
+        if HASHED_UV_BUCKETS.include?(bucket)
+          # entry is <bucket>/<digest>/<package-name>; its children are the versions
+          next unless File.directory?(entry)
+
+          Dir.children(entry).each { |child| add_version_entry.call(File.join(entry, child)) }
+        else
+          add_version_entry.call(entry)
+        end
       end
 
       # Scan uploaded wheels stored at <cache_dir>/uploads/*.whl

@@ -194,6 +194,17 @@ module OpenC3
         expect(gemspec).to include('Dir.glob("{pyproject.toml,uv.lock}")')
       end
 
+      # [tool.openc3] offline_install bundles wheels into python_wheels/ at
+      # build time, and they only reach an air-gapped COSMOS inside the gem.
+      it "ships bundled wheels in a python plugin's gem" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        FileUtils.mkdir_p('python_wheels')
+        FileUtils.touch('python_wheels/six-1.16.0-py2.py3-none-any.whl')
+        FileUtils.touch('python_wheels/SHA256SUMS')
+        spec = Gem::Specification.load(File.expand_path('openc3-cosmos-test-plugin.gemspec'))
+        expect(spec.files).to include('python_wheels/six-1.16.0-py2.py3-none-any.whl', 'python_wheels/SHA256SUMS')
+      end
+
       it "keeps python bytecode out of a python plugin's gem" do
         run_gen(['plugin', 'test-plugin', '--python'])
         FileUtils.mkdir_p('lib/openc3_cosmos_test_plugin/__pycache__')
@@ -355,8 +366,10 @@ module OpenC3
         gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
         File.write('pyproject.toml', '')
         File.write('uv.lock', '')
+        FileUtils.mkdir_p('python_wheels')
+        FileUtils.touch('python_wheels/SHA256SUMS')
         spec = Gem::Specification.load(gemspec_file)
-        expect(spec.files).to include('pyproject.toml', 'uv.lock')
+        expect(spec.files).to include('pyproject.toml', 'uv.lock', 'python_wheels/SHA256SUMS')
         expect(spec.files).to_not include('requirements.txt')
         # The rewritten block keeps the 2-space indent of the gemspec body
         lines = File.read(gemspec_file).lines

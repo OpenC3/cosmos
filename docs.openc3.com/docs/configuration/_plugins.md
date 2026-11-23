@@ -73,6 +73,37 @@ This applies only to the paths where uv resolves — `requirements.txt` plugins,
 
 Shipping a `uv.lock` is still recommended, including for air-gapped deployments. COSMOS first tries `uv sync --frozen` offline against its seeded package cache. If the URLs recorded in the lock are unreachable, for example because they point at public PyPI from an air-gapped network, COSMOS falls back to resolving the plugin's `pyproject.toml` against the configured `pypi_url` index, so the install still succeeds as long as that index serves the packages. This fallback ignores the versions pinned in `uv.lock`. To keep those pins in an air-gapped deployment, generate the lock against the same mirror, e.g. `uv lock --no-config --no-sources --default-index <mirror-url>`, so the recorded URLs point at an index the deployment can reach.
 
+#### Offline installs with bundled wheels
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+A deployment with no index at all can install a plugin's Python dependencies from wheels bundled inside the plugin gem. Opt in from the plugin's `pyproject.toml`:
+
+```toml
+[tool.openc3]
+offline_install = true
+# Optional. By default the wheels target the machine running the build.
+python_platforms = ["x86_64-manylinux_2_28", "aarch64-manylinux_2_28"]
+python_version = "3.13"
+```
+
+Bundling is opt-in because every wheel adds to the gem's size. A dependency such as `torch` can add gigabytes, so only enable it when the deployment can't reach PyPI or a mirror.
+
+When the plugin is built, the Rakefile runs [`cli bundlewheels`](/docs/getting-started/cli#bundle-wheels) before `gem build`. The build needs network access, and it:
+
+1. Fails unless `uv.lock` exists and matches `pyproject.toml` (`uv lock --check`). When the plugin is in a git repository, it also fails if `uv.lock` is untracked or has uncommitted changes.
+1. Lets uv choose the wheel for every locked runtime dependency on each target platform. uv evaluates environment markers and wheel tags for that platform.
+1. Downloads exactly those wheels from the URLs recorded in `uv.lock` into `python_wheels/` and checks each one against the sha256 in `uv.lock`. It also writes `python_wheels/SHA256SUMS`.
+1. Installs from `python_wheels/` alone, offline, for each target to prove the bundle is complete.
+
+To check a built gem later, for example against a deployment's platform before shipping it, run [`cli verifywheels`](/docs/getting-started/cli#verify-wheels). It prints a per-target report of the wheel serving each package and its hash check.
+
+The gem ships `uv.lock` next to the wheels, so security scanners that read `uv.lock` cover every bundled package, and the bundled versions are exactly the locked ones.
+
+At install, COSMOS rejects a gem that sets `offline_install` but has no `uv.lock` or `python_wheels/`. Otherwise it copies the wheels to `offline_wheels/` in the shared UV cache (`/gems/uv/offline_wheels`) and installs with `uv pip install --offline --no-index --find-links /gems/uv/offline_wheels --require-hashes`, using requirements exported from the gem's `uv.lock`. Because that directory doesn't change between installs, reinstalling or upgrading the plugin reuses the cached packages instead of unpacking them again. The wheel files stay there after the plugin is uninstalled, so they count against the `/gems` volume. Any wheel whose hash differs from the lock is rejected. A package missing from the bundle, or built for another platform or Python version, fails the install with uv's message naming it. COSMOS doesn't fall back to an index for these plugins, including when uv is unavailable (`OPENC3_USE_UV=false`). In that case it logs an error and installs nothing. Installing the wheels also adds them to the shared UV cache, so they appear in the Cached section of the Admin Console [Packages tab](/docs/tools/admin#packages).
+
+Wheels with compiled code only install on the OS, CPU architecture and Python version they were built for. Pure-Python wheels install anywhere. Building with `openc3.sh cli rake build` runs the build in the COSMOS image, so the default target matches the deployment. When building on another machine, or for a deployment that runs more than one architecture, set `python_platforms` to uv's `--python-platform` names for the deployment and `python_version` to its Python version. `python_platforms` requires `python_version`; without it the wheels would match the build machine's Python.
+
 After installing dependencies, COSMOS parses `plugin.txt` again with [ERB](/docs/configuration/format#erb) variable substitution applied and deploys each component declared in the file: targets, interfaces, routers, microservices, tools, widgets, and script engines.
 
 ### Target Deployment

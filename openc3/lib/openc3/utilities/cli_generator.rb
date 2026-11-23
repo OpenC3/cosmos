@@ -500,9 +500,10 @@ module OpenC3
         unless gemspec.include?('python_dep_file') || gemspec.include?('pyproject.toml')
           gemspec.gsub!(/^ *s\.files = Dir\.glob.*\n/) do
             <<~RUBY.gsub(/^/, '  ')
-              # Prefer pyproject.toml (plus uv.lock if committed) over requirements.txt
+              # Prefer pyproject.toml (plus uv.lock if committed, and any wheels
+              # bundled for [tool.openc3] offline_install) over requirements.txt
               python_dep_files = if File.exist?('pyproject.toml')
-                ['pyproject.toml'] + Dir.glob('uv.lock')
+                ['pyproject.toml'] + Dir.glob('uv.lock') + Dir.glob('python_wheels/*')
               else
                 ['requirements.txt']
               end

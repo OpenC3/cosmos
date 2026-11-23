@@ -32,6 +32,7 @@ require 'openc3/packets/packet_config'
 require 'openc3/packets/parsers/xtce_converter'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/cli_generator'
+require 'openc3/utilities/python_wheel_bundle'
 require 'openc3/utilities/local_mode'
 require 'ostruct'
 require 'optparse'
@@ -81,6 +82,8 @@ def print_usage
   puts "  cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var"
   puts "  cli initsettings                  # Seed settings from OPENC3_SETTING_* env vars"
   puts "  cli migratetouv PLUGIN_NAME SCOPE # Migrate plugin to per-plugin UV virtual environment"
+  puts "  cli bundlewheels [PLUGIN_DIR]     # Bundle Python wheels for [tool.openc3] offline_install"
+  puts "  cli verifywheels PLUGIN.gem       # Report whether a plugin's bundled Python wheels install offline"
   puts ""
 end
 
@@ -1691,6 +1694,73 @@ if not ARGV[0].nil? # argument(s) given
       end
     rescue => e
       abort("Error migrating plugin: #{e.formatted}")
+    end
+
+  when 'bundlewheels'
+    if ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli bundlewheels [PLUGIN_DIR]"
+      puts ""
+      puts "Bundle the Python wheels a plugin's uv.lock pins into PLUGIN_DIR/#{OpenC3::PythonWheelBundle::WHEELS_DIR}/"
+      puts "so the plugin installs with no package index. Runs only when the plugin's"
+      puts "pyproject.toml sets offline_install; otherwise removes a stale #{OpenC3::PythonWheelBundle::WHEELS_DIR}/."
+      puts "The plugin Rakefile runs this before 'gem build'."
+      puts ""
+      puts "  [tool.openc3]"
+      puts "  offline_install = true"
+      puts "  # Optional, default is the machine running the build:"
+      puts "  python_platforms = [\"x86_64-manylinux_2_28\", \"aarch64-manylinux_2_28\"]"
+      puts "  python_version = \"3.13\""
+      puts ""
+      puts "Arguments:"
+      puts "  PLUGIN_DIR        Plugin source directory (optional, default: current directory)"
+      puts ""
+      puts "Options:"
+      puts "  -h, --help        Show this help message"
+      exit(0)
+    end
+    begin
+      OpenC3::PythonWheelBundle.build(ARGV[1] || Dir.pwd)
+    rescue OpenC3::PythonWheelBundle::Error => e
+      abort("ERROR: #{e.message}")
+    end
+
+  when 'verifywheels'
+    if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
+      puts "Usage: cli verifywheels PLUGIN.gem [--python-platform PLATFORM]... [--python-version VERSION]"
+      puts ""
+      puts "Report whether a plugin built with [tool.openc3] offline_install can install its Python"
+      puts "dependencies from its bundled wheels alone. Checks every bundled wheel against the sha256"
+      puts "in the gem's uv.lock, then installs offline for each target and lists the wheel that"
+      puts "serves each locked package. Needs no network. Exits 1 if any check fails."
+      puts ""
+      puts "Arguments:"
+      puts "  PLUGIN.gem        Plugin gem file, or plugin source directory (required)"
+      puts ""
+      puts "Options:"
+      puts "  --python-platform PLATFORM  Check this uv --python-platform instead of the plugin's"
+      puts "                              python_platforms (repeatable). Without either, checks this machine."
+      puts "  --python-version VERSION    Check this Python version instead of the plugin's python_version"
+      puts "  -h, --help                  Show this help message"
+      exit(ARGV[1].nil? ? 1 : 0)
+    end
+    platforms = []
+    version = nil
+    args = ARGV[2..]
+    until args.empty?
+      option = args.shift
+      value = args.shift
+      abort("ERROR: #{option} needs a value") if value.nil?
+      case option
+      when '--python-platform' then platforms << value
+      when '--python-version' then version = value
+      else abort("ERROR: unknown option #{option}")
+      end
+    end
+    begin
+      passed = OpenC3::PythonWheelBundle.verify(ARGV[1], python_platforms: platforms.empty? ? nil : platforms, python_version: version)
+      exit(1) unless passed
+    rescue OpenC3::PythonWheelBundle::Error => e
+      abort("ERROR: #{e.message}")
     end
 
   else # Unknown task

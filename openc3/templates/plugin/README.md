@@ -41,6 +41,23 @@ relocks, so a stale lock ships stale dependencies. `uv lock --check` fails if th
 
 The `dev` dependency group is never installed into COSMOS.
 
+### Air-gapped deployments
+
+If COSMOS cannot reach PyPI or a mirror, bundle the dependencies into the gem. Set this in `pyproject.toml`:
+
+```toml
+[tool.openc3]
+offline_install = true
+```
+
+`rake build` then checks that `uv.lock` is up to date, downloads every locked wheel into `python_wheels/`, verifies
+each one against the hash in `uv.lock`, and packages them into the gem. COSMOS installs from those wheels only and
+reports any missing or incompatible package instead of going online.
+
+Wheels with compiled code are specific to an OS, CPU architecture, and Python version. The bundle targets the
+machine running the build, so build with `openc3.sh cli rake build` to match the COSMOS image. To build elsewhere or
+for several architectures, set `python_platforms` and `python_version` in `[tool.openc3]` (see `pyproject.toml`).
+
 ### Developing locally
 
 ```sh

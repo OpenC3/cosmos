@@ -38,6 +38,23 @@ task :build => [:require_version] do
   end
   gem_name = PLUGIN_NAME + '-' + gem_version + '.gem'
 
+  # Bundle the locked Python wheels into python_wheels/ when pyproject.toml sets
+  # [tool.openc3] offline_install, so the gem installs on an air-gapped COSMOS.
+  # Without that setting this only removes a stale python_wheels/.
+  if File.exist?('pyproject.toml')
+    sh('openc3cli bundlewheels') do |ok, status|
+      if !ok
+        # 127 is "command not found". Only fatal if offline_install is set
+        # outside a comment: then the gem would ship without its wheels.
+        if status.exitstatus == 127 && File.read('pyproject.toml') !~ /^[^#\n]*offline_install/
+          puts "Install the openc3 gem to bundle Python wheels! (gem install openc3)"
+        else
+          raise "openc3cli bundlewheels failed"
+        end
+      end
+    end
+  end
+
   sh('gem', 'build', PLUGIN_NAME)
   sh("openc3cli validate #{gem_name}") do |ok, status|
     if !ok && status.exitstatus == 127 # command not found

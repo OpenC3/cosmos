@@ -203,6 +203,23 @@ module OpenC3
         expect(result).to eq(["boto3-1.43.17"])
       end
 
+      # Only PyPI gets a named bucket. uv files every other index under a hash
+      # of its URL, one level deeper: wheels-v<N>/index/<digest>/<package>/<entry>.
+      # That covers a PYPI_URL mirror, a private index, and the find-links
+      # install of a plugin's bundled wheels (offline_install).
+      it "includes wheels cached from indexes other than PyPI" do
+        Dir.mktmpdir do |cache|
+          FileUtils.mkdir_p("#{cache}/wheels-v8/pypi/six/1.16.0-py2.py3-none-any")
+          FileUtils.mkdir_p("#{cache}/wheels-v8/index/d14eac693f2c86cb/charset-normalizer/3.5.3-cp313-cp313-manylinux_2_28_x86_64")
+          File.write("#{cache}/wheels-v8/index/d14eac693f2c86cb/charset-normalizer/3.5.3-cp313-cp313-manylinux_2_28_x86_64.http", "")
+          FileUtils.mkdir_p("#{cache}/wheels-v8/index/d14eac693f2c86cb/idna/3.20-py3-none-any")
+          allow(ENV).to receive(:fetch).and_call_original
+          allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return(cache)
+
+          expect(PythonPackageModel.cached_packages).to contain_exactly("six-1.16.0", "charset-normalizer-3.5.3", "idna-3.20")
+        end
+      end
+
       it "includes uploaded wheels from the uploads directory" do
         allow(ENV).to receive(:fetch).with('UV_CACHE_DIR', PythonPackageModel::DEFAULT_UV_CACHE_DIR).and_return('/gems/uv')
         allow(File).to receive(:directory?).with('/gems/uv').and_return(true)

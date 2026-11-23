@@ -69,6 +69,28 @@ default-groups = []
 #
 # allow-insecure-host = ["private-pypi.example.com"]
 
+[tool.openc3]
+# Uncomment offline_install to ship this plugin's Python dependencies inside the
+# gem, for a COSMOS that cannot reach any package index. `rake build` then
+# requires an up-to-date uv.lock, downloads every locked wheel into
+# python_wheels/ (checked against the hashes in uv.lock), and the gem carries
+# them. COSMOS installs from those wheels alone and never goes online.
+# Every wheel adds to the gem's size, so leave this off for large dependencies
+# (torch, for example) unless the deployment really has no index.
+#
+# offline_install = true
+#
+# Wheels with compiled code only install on the OS, CPU architecture, and
+# Python version they were built for. By default the bundle targets the
+# machine running the build, which matches COSMOS when you build with
+# `openc3.sh cli rake build`. To build anywhere else, or for a deployment
+# with more than one architecture, list the deployment's platforms (uv
+# --python-platform names) and its Python version, which python_platforms
+# requires:
+#
+# python_platforms = ["x86_64-manylinux_2_28", "aarch64-manylinux_2_28"]
+# python_version = "3.13"
+
 [tool.ty.environment]
 # COSMOS puts the plugin's lib/ on sys.path at runtime rather than installing it,
 # so ty needs it here to resolve imports between the plugin's own modules.

@@ -576,12 +576,18 @@ module OpenC3
         # which Python dependency file it ships and what OPENC3_USE_UV is set
         # to, so the shared doubles live here and each example is left with the
         # behavior it actually asserts.
-        def stub_plugin_gem(dep_file: 'pyproject.toml', dep_body: '[project]', use_uv: nil, gem_install: true)
+        # extra_files maps a gem-relative path to its contents, or to nil for a
+        # directory. The block, when given, receives the extraction directory.
+        def stub_plugin_gem(dep_file: 'pyproject.toml', dep_body: '[project]', use_uv: nil, gem_install: true, extra_files: {}, &block)
           expect(GemModel).to receive(:get).and_return("my_plugin.gem")
           gem = double("gem")
           expect(gem).to receive(:extract_files) do |path|
             File.open("#{path}/plugin.txt", 'w') { |f| f.puts "" }
             File.open("#{path}/#{dep_file}", 'w') { |f| f.puts dep_body }
+            extra_files.each do |name, contents|
+              contents.nil? ? FileUtils.mkdir_p("#{path}/#{name}") : File.write("#{path}/#{name}", contents)
+            end
+            block&.call(path)
           end
           expect(Gem::Package).to receive(:new).and_return(gem)
           allow(gem).to receive(:spec).and_return(spec_double)
@@ -703,6 +709,58 @@ module OpenC3
           expect(Open3).to receive(:capture2e).with("/openc3/bin/pipinstall", "--default-index", anything, anything).and_return(["pip ok", success_status])
 
           expect(install_plugin['needs_dependencies']).to eql true
+        end
+
+        describe "with [tool.openc3] offline_install" do
+          OFFLINE_PYPROJECT = "[project]\nname = \"p\"\nversion = \"0.0.0\"\n\n[tool.openc3]\noffline_install = true\n".freeze
+
+          def stub_offline_gem(**kwargs)
+            extracted = nil
+            stub_plugin_gem(dep_body: OFFLINE_PYPROJECT, **kwargs) { |path| extracted = path }
+            -> { extracted }
+          end
+
+          it "installs from the bundled wheels and never falls back to pipinstall" do
+            gem_path = stub_offline_gem(extra_files: { 'uv.lock' => "version = 1\n", 'python_wheels' => nil })
+            stub_uv_on_path(true)
+            allow(OpenC3::Logger).to receive(:error)
+
+            expect(Open3).to receive(:capture2e) do |env, *argv|
+              expect(env).to eql({ 'UVINSTALL_OFFLINE_WHEELS' => File.join(gem_path.call, 'python_wheels') })
+              expect(argv[0]).to eql "/openc3/bin/uvinstall"
+              ["no compatible wheel", failure_status]
+            end
+            expect(Open3).to_not receive(:capture2e).with("/openc3/bin/pipinstall", any_args)
+
+            expect(install_plugin['needs_dependencies']).to eql true
+            expect(OpenC3::Logger).to have_received(:error).with(/bundled wheels/)
+          end
+
+          it "does not resolve against an index when uv is unavailable" do
+            stub_offline_gem(extra_files: { 'uv.lock' => "version = 1\n", 'python_wheels' => nil })
+            stub_uv_on_path(false)
+            allow(OpenC3::Logger).to receive(:error)
+            expect(Open3).to_not receive(:capture2e)
+
+            expect(install_plugin['needs_dependencies']).to eql true
+            expect(OpenC3::Logger).to have_received(:error).with(/needs uv/)
+          end
+
+          it "rejects a gem built without its bundled wheels" do
+            stub_offline_gem(extra_files: { 'uv.lock' => "version = 1\n" })
+            stub_uv_on_path(true)
+            expect(Open3).to_not receive(:capture2e)
+
+            expect { install_plugin }.to raise_error(/offline_install.*python_wheels/m)
+          end
+
+          it "rejects a gem without a uv.lock" do
+            stub_offline_gem(extra_files: { 'python_wheels' => nil })
+            stub_uv_on_path(true)
+            expect(Open3).to_not receive(:capture2e)
+
+            expect { install_plugin }.to raise_error(/offline_install.*uv.lock/m)
+          end
         end
 
         it "does not install python packages when diff_only" do
@@ -1052,6 +1110,27 @@ module OpenC3
 
         success_status = double("status", success?: true)
         expect(Open3).to receive(:capture2e).with("/openc3/bin/uvinstall", anything, anything, "--default-index", anything).and_return(["ok", success_status])
+
+        expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
+      end
+
+      it "points uvinstall at the bundled wheels of an offline_install plugin" do
+        model = unmigrated_plugin
+        extracted = nil
+        stub_migration_gem do |path|
+          extracted = path
+          File.write("#{path}/pyproject.toml", "[project]\nname = \"p\"\nversion = \"0.0.0\"\n[tool.openc3]\noffline_install = true\n")
+          File.write("#{path}/uv.lock", "version = 1\n")
+          FileUtils.mkdir_p("#{path}/python_wheels")
+        end
+        stub_default_pypi_url
+
+        success_status = double("status", success?: true)
+        expect(Open3).to receive(:capture2e) do |env, *argv|
+          expect(env).to eql({ 'UVINSTALL_OFFLINE_WHEELS' => File.join(extracted, 'python_wheels') })
+          expect(argv[0]).to eql "/openc3/bin/uvinstall"
+          ["ok", success_status]
+        end
 
         expect(model.migrate_to_uv!(scope: "DEFAULT")).to be true
       end
