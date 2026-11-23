@@ -63,7 +63,7 @@ This creates the following files:
 | .python-version           | Pins the Python version uv uses while you develop the plugin (only for Python plugins). The generator writes the Python minor version of the COSMOS image, so it only creates this file when it runs inside COSMOS, such as with `openc3.sh cli generate`. After upgrading to a COSMOS release with a newer Python, update it with `uv python pin <version>`.                                                                                                                             |
 
 :::note[Python Dependency Management]
-Python plugins can declare dependencies using either `pyproject.toml` (recommended) or `requirements.txt`. When a plugin is installed, COSMOS creates an isolated UV virtual environment for it, so each plugin's dependencies are fully isolated from other plugins.
+Python plugins declare dependencies in `pyproject.toml`. `requirements.txt` is deprecated: COSMOS still installs it for existing plugins, but new plugins should not use it. See [plugin Python dependencies](../configuration/plugins.md#phase-2-deploy) to convert one. When a plugin is installed, COSMOS creates an isolated UV virtual environment for it, so each plugin's dependencies are fully isolated from other plugins.
 
 If you use `pyproject.toml`, you can include a `uv.lock` file alongside it to enable reproducible installs via `uv sync --frozen`. This ensures the exact same package versions are installed every time.
 

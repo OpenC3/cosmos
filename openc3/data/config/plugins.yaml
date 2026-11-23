@@ -500,7 +500,7 @@ VARIABLE_TEXT_END:
 NEEDS_DEPENDENCIES:
   summary: Indicates the plugin needs dependencies and sets up the Ruby and Python environment of its microservices
   description: If the plugin has a top level lib folder, lists runtime dependencies in the gemspec,
-    or has a pyproject.toml or requirements.txt, NEEDS_DEPENDENCIES is effectively already set.
+    or has a pyproject.toml or (deprecated) requirements.txt, NEEDS_DEPENDENCIES is effectively already set.
     The keyword sets the GEM_HOME environment variable for the plugin's microservices. It also
     sets up their Python environment. A plugin with a per-plugin venv gets the venv's packages
     first on PYTHONPATH, and a plugin without one uses the shared /gems/python_packages folder.

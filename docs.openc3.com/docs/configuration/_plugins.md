@@ -60,10 +60,13 @@ COSMOS uploads the plugin gem file to an internal gem server and extracts the ge
 
 Once variables are set, COSMOS registers the plugin model in Redis and installs the Ruby gem. If the plugin contains Python dependencies (`pyproject.toml` or `requirements.txt`), COSMOS creates an isolated [UV](https://docs.astral.sh/uv/) virtual environment for the plugin at `/gems/plugin_venvs/<SCOPE>__<plugin name>/.venv` and installs the dependencies into it. The plugin name is the installed name, with characters other than `A-Z`, `a-z`, `0-9`, `_` and `-` replaced by `_`. For example, `openc3-cosmos-gse-1.0.0.gem__20250116214539` installed in the `DEFAULT` scope gets `/gems/plugin_venvs/DEFAULT__openc3-cosmos-gse-1_0_0_gem__20250116214539/.venv`. This gives each plugin full dependency isolation — different plugins can require different versions of the same package without conflicts.
 
-COSMOS supports two formats for declaring Python dependencies:
+Declare a plugin's Python dependencies in `pyproject.toml`. COSMOS also reads `requirements.txt`, but that format is deprecated:
 
-- **`pyproject.toml`** (recommended) — With a `uv.lock`, COSMOS runs `uv sync --frozen`, which installs exactly the locked versions. Without a `uv.lock`, or if `uv sync --frozen` fails, COSMOS runs `uv pip install` and resolves against the `pypi_url` index. If that fails, for example because the `pyproject.toml` is not a buildable package, COSMOS compiles its declared dependencies into a requirements file and installs from that.
-- **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins.
+- **`pyproject.toml`** — With a `uv.lock`, COSMOS runs `uv sync --frozen`, which installs exactly the locked versions. Without a `uv.lock`, or if `uv sync --frozen` fails, COSMOS runs `uv pip install` and resolves against the `pypi_url` index. If that fails, for example because the `pyproject.toml` is not a buildable package, COSMOS compiles its declared dependencies into a requirements file and installs from that.
+- **`requirements.txt`** (deprecated) — COSMOS still installs it with `uv pip install -r requirements.txt` so that existing plugins keep working. Do not use it for new plugins. It has no lock file, so each install can resolve different versions, and it cannot use [`offline_install`](#offline-installs-with-bundled-wheels). If a plugin ships both files and no `uv.lock`, COSMOS installs from `requirements.txt`. To move a plugin to `pyproject.toml`:
+  1. Copy the `pyproject.toml` from a plugin generated with `openc3.sh cli generate plugin <NAME> --python`, and set its `name`.
+  2. Run `uv add -r requirements.txt`, then `uv lock`.
+  3. Delete `requirements.txt`, and check that the gemspec packages `pyproject.toml` and `uv.lock`.
 
 Both files are processed with [ERB](/docs/configuration/format#erb) using the plugin variables before installation, so variables can select which dependencies are installed. ERB code can read files shipped next to the dependency file with `File.dirname(__FILE__)`. For example, a `requirements.txt` that installs only the driver for the selected device:
 
