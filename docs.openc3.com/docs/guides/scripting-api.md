@@ -10703,7 +10703,7 @@ Return all the current COSMOS settings along with their values.
 ```python
 settings = get_all_settings() # =>
 # { 'version': {'name': 'version', 'data': '5.11.4-beta0', 'updated_at': 1698074299509456507},
-#   'pypi_url': {'name': 'pypi_url', 'data': 'https://pypi.org/simple', 'updated_at': 1698026776574347007},
+#   'pypi_url': {'name': 'pypi_url', 'data': 'https://pypi.org', 'updated_at': 1698026776574347007},
 #   'rubygems_url': {'name': 'rubygems_url', 'data': 'https://rubygems.org', 'updated_at': 1698026776574105465},
 #   'source_url': {'name': 'source_url', 'data': 'https://github.com/OpenC3/cosmos', 'updated_at': 1698026776573904132} }
 ```
@@ -10715,7 +10715,7 @@ settings = get_all_settings() # =>
 ```ruby
 settings = get_all_settings() # =>
 # { "version"=>{"name"=>"version", "data"=>"5.11.4-beta0", "updated_at"=>1698074299509456507},
-#   "pypi_url"=>{"name"=>"pypi_url", "data"=>"https://pypi.org/simple", "updated_at"=>1698026776574347007},
+#   "pypi_url"=>{"name"=>"pypi_url", "data"=>"https://pypi.org", "updated_at"=>1698026776574347007},
 #   "rubygems_url"=>{"name"=>"rubygems_url", "data"=>"https://rubygems.org", "updated_at"=>1698026776574105465},
 #   "source_url"=>{"name"=>"source_url", "data"=>"https://github.com/OpenC3/cosmos", "updated_at"=>1698026776573904132} }
 ```

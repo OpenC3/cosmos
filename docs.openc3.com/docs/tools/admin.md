@@ -146,6 +146,10 @@ The available themes are:
 
 The selected theme is a system-wide setting that applies to all users. After saving, each user must refresh their browser to see the updated theme.
 
+#### PyPI URL
+
+The **Pypi URL** setting (`pypi_url`) is the package index COSMOS uses to install plugin Python dependencies. Enter the base URL of the index, without `/simple`, such as `https://pypi.org` or `https://mirror.example.com/pypi`. COSMOS adds `/simple` itself, so `https://pypi.org/simple` would become `https://pypi.org/simple/simple`. When the setting does not exist yet, COSMOS seeds it from the `PYPI_URL` environment variable, or `https://pypi.org` when that is not set. A value that is not an `http` or `https` URL is ignored, and COSMOS logs an error and uses `https://pypi.org/simple` instead.
+
 ### Roles (Enterprise)
 
 The Roles tab allows users to create custom roles for role-based access control (RBAC). Roles define permissions and access levels throughout the COSMOS system. For more details, visit [Roles and Permissions](../guides/roles-permissions.md).
