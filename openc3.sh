@@ -120,6 +120,60 @@ source_env_files() {
   set +a
 }
 
+# 'cli' and 'cliroot' mount only the current directory (at /openc3/local) into a
+# throwaway (--rm) container, so a host path outside it doesn't exist there. The
+# CLI can't read it, and anything it writes there (e.g. xtce_converter --output)
+# is created inside the container and lost when it exits, with no error. Warn
+# about every argument, or the value of an --opt=value / KEY=value argument,
+# that resolves outside the current directory. Paths under /openc3 are container
+# paths and are left alone.
+warn_paths_outside_pwd() {
+  local arg val path part physical_pwd
+  local -a parts resolved
+  # Everything is inside the current directory when it is the root
+  if [[ "$PWD" == "/" ]]; then
+    return 0
+  fi
+  physical_pwd="$(pwd -P)"
+  for arg in "$@"; do
+    val="${arg#*=}"
+    case "$val" in
+      /* ) path="$val" ;;
+      ..|../*|*/..|*/../* ) path="$PWD/$val" ;;
+      * ) continue ;;
+    esac
+    # Resolve '.' and '..' lexically: the path may not exist yet (an output directory)
+    resolved=()
+    IFS='/' read -r -a parts <<< "$path"
+    for part in "${parts[@]}"; do
+      case "$part" in
+        ''|. ) ;;
+        .. )
+          if [[ ${#resolved[@]} -gt 0 ]]; then
+            unset "resolved[$((${#resolved[@]} - 1))]"
+          fi
+          ;;
+        * ) resolved+=("$part") ;;
+      esac
+    done
+    path="/$(IFS='/'; echo "${resolved[*]}")"
+    case "$path" in
+      /openc3|/openc3/* ) continue ;;
+      # Any other path is a host path, checked against the current directory below
+      * ) ;;
+    esac
+    # Accept the physical path too, e.g. /private/tmp when $PWD is /tmp on macOS
+    if [[ "$path" == "$PWD" || "$path" == "$PWD/"* || "$path" == "$physical_pwd" || "$path" == "$physical_pwd/"* ]]; then
+      continue
+    fi
+    echo "WARNING: '$val' is outside the current directory ($PWD)." >&2
+    echo "         Only the current directory is mounted into the container (at /openc3/local)," >&2
+    echo "         so the CLI can't read that path, and anything it writes there is lost when" >&2
+    echo "         the container exits. Run from a directory that contains it and use a" >&2
+    echo "         relative path instead." >&2
+  done
+}
+
 # Helper function to find script - checks PATH first, then falls back to script location
 find_script() {
   local script_name="$1"
@@ -523,6 +577,7 @@ case $1 in
     # Run the command "ruby /openc3/bin/openc3cli" with all parameters starting at 2 since the first is 'openc3'
     # Shift off the first argument (script name) to get CLI args
     shift
+    warn_paths_outside_pwd "$@"
     # Most subcommands run in the cmd-tlm-api container, but a few only make
     # sense with the init container's environment. initsettings reads
     # OPENC3_SETTING_* variables, which are set on openc3-cosmos-init - running
@@ -583,6 +638,7 @@ case $1 in
     # (enterprise or non-enterprise) based on environment variables.
     # Shift off the first argument (script name) to get CLI args
     shift
+    warn_paths_outside_pwd "$@"
     if [[ "$OPENC3_ENTERPRISE" -eq 1 ]]; then
       ${CONTAINER_COMPOSE_CMD} "${COMPOSE_FILE_ARGS[@]}" run -it --rm --user=root -v "$PWD:/openc3/local:z" -w /openc3/local -e OPENC3_API_USER=$OPENC3_API_USER -e OPENC3_API_PASSWORD=$OPENC3_API_PASSWORD --no-deps openc3-cosmos-cmd-tlm-api ruby /openc3/bin/openc3cli "$@"
     else
