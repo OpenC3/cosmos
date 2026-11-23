@@ -74,6 +74,8 @@ Both files are processed with [ERB](/docs/configuration/format#erb) using the pl
 
 A `uv.lock` is used as-is, so a plugin whose `pyproject.toml` dependencies depend on variables should not ship a `uv.lock`.
 
+A plugin venv always uses the Python in the COSMOS image: currently Python 3.13 in the standard images and Python 3.12 in the UBI images. The images set `UV_PYTHON_DOWNLOADS=never`, so uv cannot download a different Python for a plugin. A plugin's `requires-python` must therefore accept the image's Python, or its install fails.
+
 System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading.
 
 COSMOS tries these installs in order and stops at the first one that succeeds:
