@@ -36,16 +36,14 @@
       </v-expansion-panel>
     </v-expansion-panels>
     <v-alert
-      v-if="targetMissing"
+      v-if="unavailable"
       type="warning"
       variant="tonal"
       density="compact"
       class="mb-1"
-      data-test="target-missing"
+      data-test="packet-unavailable"
     >
-      Target {{ targetName }} no longer exists, so {{ targetName }}
-      {{ packetName }} is not being updated. Updates resume if the target is
-      reinstalled.
+      {{ unavailableMessage }}
     </v-alert>
     <v-card
       class="d-flex flex-column flex-shrink-1"
@@ -306,10 +304,13 @@ export default {
       ignoredItems: [],
       derivedItems: [],
       updater: null,
-      // True when the polled target no longer exists (e.g. its plugin was
-      // uninstalled or reinstalled under another name)
-      targetMissing: false,
-      checkingTarget: false,
+      // 'target' or 'packet' when the polled target or packet no longer exists
+      // (e.g. its plugin was uninstalled or reinstalled under another name),
+      // otherwise null
+      unavailable: null,
+      checkingAvailability: false,
+      availabilityCheckDelay: 0,
+      nextAvailabilityCheck: 0,
       // Incremented by each packetChanged so a slower, older call can tell
       // that a newer selection replaced it while it was awaiting the API
       selectionGeneration: 0,
@@ -336,6 +337,17 @@ export default {
   computed: {
     loading: function () {
       return this.loadingPacket || this.loadingTlmData
+    },
+    unavailableMessage: function () {
+      const target = this.targetName
+      const packet = this.packetName
+      if (this.unavailable === 'target') {
+        return `Target ${target} no longer exists, so ${target} ${packet} is not being updated. Updates resume if the target is reinstalled.`
+      }
+      if (packet === 'LATEST') {
+        return `Target ${target} has no telemetry packets, so ${target} LATEST is not being updated. Updates resume once it has packets.`
+      }
+      return `Packet ${target} ${packet} no longer exists, so it is not being updated. Updates resume if the packet is reinstalled.`
     },
     menus: function () {
       return [
@@ -554,7 +566,7 @@ export default {
     }
   },
   beforeUnmount() {
-    // Stop pending packetChanged / checkTarget calls from restarting polling
+    // Stop pending packetChanged / checkAvailability calls from restarting polling
     // or routing back to Packet Viewer after the user has left
     this.unmounted = true
     if (this.updater != null) {
@@ -600,7 +612,10 @@ export default {
       if (item?.raw?.pinned) return true
       return tokenizedFilter(value, search)
     },
-    async packetChanged(event, force = false) {
+    // Pass recovering when reloading a packet that became available again:
+    // if the target is gone once more it keeps waiting instead of clearing
+    // the selection
+    async packetChanged(event, force = false, recovering = false) {
       if (
         this.targetName === event.targetName &&
         this.packetName === event.packetName &&
@@ -623,7 +638,6 @@ export default {
           return
         }
         if (target) {
-          this.targetMissing = false
           this.ignoredItems = target.ignored_items
           this.targetName = event.targetName
           this.packetName = event.packetName
@@ -659,10 +673,17 @@ export default {
               query: this.$route.query,
             })
           }
+          // Cleared only once the reload succeeded so a failed recovery keeps
+          // waiting for the packet
+          this.unavailable = null
           this.changeUpdater(true)
+        } else if (recovering) {
+          // Gone again, e.g. mid-upgrade, so keep waiting for it
+          this.setUnavailable('target')
         } else {
           // Probably got here from an old config or URL params that point to something that no longer exists
           // (e.g. the plugin that defined this target was deleted). Unset these to avoid API errors.
+          this.unavailable = null
           this.targetName = null
           this.packetName = null
           this.$router.push({
@@ -739,10 +760,13 @@ export default {
           }
           return // noop if target/packet aren't set
         }
-        // While the target is gone only check whether it has come back, since
-        // get_target returns null rather than raising an error the API logs
-        if (this.targetMissing) {
-          void this.checkTarget() // Handles its own errors
+        // While the target or packet is gone only check whether it has come
+        // back, with calls that return empty results rather than raising
+        // errors the API logs
+        if (this.unavailable) {
+          if (Date.now() >= this.nextAvailabilityCheck) {
+            void this.checkAvailability() // Handles its own errors
+          }
           return
         }
 
@@ -848,36 +872,66 @@ export default {
     },
     handleUpdateError(error) {
       console.error(error)
-      void this.checkTarget() // Handles its own errors
+      void this.checkAvailability() // Handles its own errors
     },
-    // A failed update can mean the target was removed for good or that its
-    // plugin is being upgraded (which removes and re-adds the target). Stop
-    // requesting telemetry while the target is gone, and reload the packet
-    // once it exists again.
-    async checkTarget() {
-      if (this.checkingTarget) {
-        return // Don't stack up checks if get_target is slow
+    // A failed update can mean the target or packet was removed for good or
+    // that its plugin is being upgraded (which removes and re-adds the
+    // target). Stop requesting telemetry while it is gone, and reload the
+    // packet once it exists again.
+    async checkAvailability() {
+      // Skip if a check is already running (get_target can be slow) or a
+      // packet is loading, which starts its own updates
+      if (this.checkingAvailability || this.loadingPacket) {
+        return
       }
-      this.checkingTarget = true
+      this.checkingAvailability = true
+      const generation = this.selectionGeneration
       const targetName = this.targetName
       const packetName = this.packetName
       try {
-        const target = await this.api.get_target(targetName)
-        if (targetName !== this.targetName || packetName !== this.packetName) {
-          return // The user picked another packet while we were checking
+        const unavailable = await this.findUnavailable(targetName, packetName)
+        if (generation !== this.selectionGeneration || this.unmounted) {
+          return // The user picked another packet or left while we checked
         }
-        if (!target) {
-          this.targetMissing = true
-          this.rows = []
-        } else if (this.targetMissing) {
-          this.targetMissing = false
-          await this.packetChanged({ targetName, packetName }, true)
+        if (unavailable) {
+          this.setUnavailable(unavailable)
+        } else if (this.unavailable) {
+          // Reload so derived and ignored items match the reinstalled packet
+          await this.packetChanged({ targetName, packetName }, true, true)
         }
       } catch {
-        // The API itself may be restarting, so keep checking
+        // The API may be restarting, or the reload failed because the plugin
+        // is still being installed. Keep checking.
+        if (this.unavailable) {
+          this.setUnavailable(this.unavailable)
+        }
       } finally {
-        this.checkingTarget = false
+        this.checkingAvailability = false
       }
+    },
+    // Returns 'target' or 'packet' for whichever no longer exists, or null.
+    // These calls return null or [] rather than raising, so the API logs
+    // nothing however long the tab waits.
+    async findUnavailable(targetName, packetName) {
+      const target = await this.api.get_target(targetName)
+      if (!target) {
+        return 'target'
+      }
+      if (packetName === 'LATEST') {
+        const items = await this.api.get_all_tlm_item_names(targetName)
+        return items?.length ? null : 'packet'
+      }
+      const packets = await this.api.get_all_tlm_names(targetName, true) // include hidden
+      return packets?.includes(packetName) ? null : 'packet'
+    },
+    setUnavailable(kind) {
+      // Back off while it stays gone, since a tab can be left open for days
+      this.availabilityCheckDelay = this.unavailable
+        ? Math.min(this.availabilityCheckDelay * 2, 30000)
+        : this.refreshInterval
+      this.nextAvailabilityCheck = Date.now() + this.availabilityCheckDelay
+      this.unavailable = kind
+      this.rows = []
     },
     resetConfig: function () {
       this.refreshInterval = 1000
