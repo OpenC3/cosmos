@@ -30,7 +30,7 @@ ARG PYPI_URL=https://pypi.org
 # --allow-insecure-host. Build-time only: compose.yaml sets the runtime value.
 ARG OPENC3_PYPI_ALLOW_INSECURE=
 # Keep in step with Dockerfile-ubi and the uv group in openc3/python/pyproject.toml
-ARG OPENC3_UV_VERSION=0.13.5
+ARG OPENC3_UV_VERSION=0.13.8
 
 ENV APT_URL=${APT_URL}
 ENV RUBYGEMS_URL=${RUBYGEMS_URL}
