@@ -13,6 +13,7 @@
 */
 
 import { test, expect } from './../fixture'
+import { viewRawPacket } from './helpers'
 
 test.use({
   toolPath: '/tools/cmdtlmserver/cmd-packets',
@@ -113,28 +114,12 @@ test('displays a raw command', async ({ page, utils }) => {
 
   await page.goto('/tools/cmdtlmserver/cmd-packets')
   await expect(page.locator('text=INSTABORT')).toBeVisible()
-  await page
-    .getByRole('row', { name: 'INST ABORT' })
-    .getByRole('button', { name: 'View Raw' })
-    .click()
-  await expect(page.locator('.raw-dialog')).toContainText(
+  await viewRawPacket(
+    page,
+    utils,
+    'INST ABORT',
     'Raw Command Packet: INST ABORT',
   )
-  await expect(page.locator('.raw-dialog')).toContainText('Received Time:')
-  await expect(page.locator('.raw-dialog')).toContainText('Count:')
-  // The header renders before the first buffer fetch returns, so retry until
-  // the dump replaces the 'No Data' placeholder
-  const dump = page.locator('.raw-dialog textarea')
-  await expect(dump).toHaveValue(/Address/)
-  await expect(dump).toHaveValue(/00000000:/)
-
-  await utils.download(page, '[data-test=download]', function (contents) {
-    expect(contents).toMatch('Raw Command Packet: INST ABORT')
-    expect(contents).toMatch('Received Time:')
-    expect(contents).toMatch('Count:')
-    expect(contents).toMatch('Address')
-    expect(contents).toMatch('00000000:')
-  })
   await page.locator('[data-test=close]').click()
   await expect(page.locator('.raw-dialog')).not.toBeVisible()
 })

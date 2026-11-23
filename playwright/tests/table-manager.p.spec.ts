@@ -64,6 +64,35 @@ async function openFile(
   await expect(openDialog).not.toBeVisible()
 }
 
+// The first TLM_MONITORING row, which 'edits a binary file' changes column by
+// column
+const monitorRow = '[data-test=TLM_MONITORING] tr:nth-child(1)'
+
+async function fillMonitorCell(page: Page, column: number, value: string) {
+  await page
+    .locator(
+      `${monitorRow} td:nth-child(${column}) [data-test=table-item-text-field] input`,
+    )
+    .fill(value)
+}
+
+async function selectMonitorCell(
+  page: Page,
+  column: number,
+  from: string,
+  to: string,
+) {
+  await page
+    .locator(monitorRow)
+    .getByRole('combobox')
+    .filter({ hasText: from })
+    .click()
+  await page.locator(`text=${to}`).click()
+  await expect(
+    page.locator(`${monitorRow} td:nth-child(${column})`),
+  ).toContainText(to)
+}
+
 //
 // Test the File menu
 //
@@ -178,62 +207,14 @@ test('edits a binary file', async ({ page, utils }) => {
 
   await page.locator('text=TLM_MONITORING').click()
   await expect(page.locator('id=openc3-tool')).toContainText('THRESHOLD')
-  await page
-    .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(2) [data-test=table-item-text-field] input',
-    )
-    .fill('1')
-  await page
-    .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(3) [data-test=table-item-text-field] input',
-    )
-    .fill('2')
-  await page
-    .locator('[data-test=TLM_MONITORING] tr:nth-child(1)')
-    .getByRole('combobox')
-    .filter({ hasText: 'BITS' })
-    .click()
-  await page.locator('text=BYTE').click()
-  await expect(
-    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(4)'),
-  ).toContainText('BYTE')
-  await page
-    .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(5) [data-test=table-item-text-field] input',
-    )
-    .fill('3')
-  await page
-    .locator(
-      '[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(6) [data-test=table-item-text-field] input',
-    )
-    .fill('4')
-  await page
-    .locator('[data-test=TLM_MONITORING] tr:nth-child(1)')
-    .getByRole('combobox')
-    .filter({ hasText: 'LESS_THAN' })
-    .click()
-  await page.locator('text=GREATER_THAN').click()
-  await expect(
-    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(7)'),
-  ).toContainText('GREATER_THAN')
-  await page
-    .locator('[data-test=TLM_MONITORING] tr:nth-child(1)')
-    .getByRole('combobox')
-    .filter({ hasText: 'NO_ACTION_REQUIRED' })
-    .click()
-  await page.locator('text=INITIATE_RESET').click()
-  await expect(
-    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(8)'),
-  ).toContainText('INITIATE_RESET')
-  await page
-    .locator('[data-test=TLM_MONITORING] tr:nth-child(1)')
-    .getByRole('combobox')
-    .filter({ hasText: 'ALL_MODES' })
-    .click()
-  await page.locator('text=SAFE_MODE').click()
-  await expect(
-    page.locator('[data-test=TLM_MONITORING] tr:nth-child(1) td:nth-child(9)'),
-  ).toContainText('SAFE_MODE')
+  await fillMonitorCell(page, 2, '1')
+  await fillMonitorCell(page, 3, '2')
+  await selectMonitorCell(page, 4, 'BITS', 'BYTE')
+  await fillMonitorCell(page, 5, '3')
+  await fillMonitorCell(page, 6, '4')
+  await selectMonitorCell(page, 7, 'LESS_THAN', 'GREATER_THAN')
+  await selectMonitorCell(page, 8, 'NO_ACTION_REQUIRED', 'INITIATE_RESET')
+  await selectMonitorCell(page, 9, 'ALL_MODES', 'SAFE_MODE')
 
   await page.locator('text=PPS_SELECTION').click()
   await page
@@ -501,112 +482,75 @@ test('downloads binary and definition and report', async ({ page, utils }) => {
   )
 })
 
-test('save as and delete', async ({ page, utils }) => {
+// Clicks Overwrite if the confirm appears (only after an earlier failed run)
+async function confirmOverwriteIfAsked(page: Page) {
+  const overwrite = page.locator('[data-test=confirm-dialog-overwrite]')
+  if (await overwrite.isVisible()) {
+    await overwrite.click()
+  }
+}
+
+async function openFromMenu(page: Page, utils: Utilities, filename: string) {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Open File').click()
-  await openFile(page, utils, 'configtables.bin')
-  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
-    await page.locator('[data-test=confirm-dialog-overwrite]').click()
-  }
-  await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
-  // These checks are all with regex because sometimes the file will be edited and have a * at the end
-  await expect(page.locator('[data-test=filename] input')).toHaveValue(
-    /INST\/tables\/bin\/ConfigTables\.bin/,
-  )
-  await expect(
-    page.locator('[data-test=definition-filename] input'),
-  ).toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
+  await openFile(page, utils, filename)
+  await confirmOverwriteIfAsked(page)
+}
 
+async function saveAs(page: Page, utils: Utilities, filename: string) {
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Save As').click()
   await expect(page.locator('.v-dialog')).toBeVisible()
   await utils.sleep(100) // Sometimes the test is too fast and the old filename gets populated after the test types?
   await expect(page.getByRole('progressbar')).not.toBeVisible()
   await expect(page.getByText('TEMPLATED')).not.toBeVisible()
-  await page
-    .locator('[data-test=file-open-save-filename] input')
-    .fill('INST/tables/bin/ConfigTables2.bin')
+  await page.locator('[data-test=file-open-save-filename] input').fill(filename)
   await page.locator('[data-test=file-open-save-submit-btn]').click()
-  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
-    await page.locator('[data-test=confirm-dialog-overwrite]').click()
+  await confirmOverwriteIfAsked(page)
+}
+
+// Regex rather than exact because the file may be edited and have a * at the end
+async function expectLoaded(page: Page, binary: RegExp, tables = false) {
+  if (tables) {
+    await expect(page.locator('id=openc3-tool')).toContainText(
+      'MC_CONFIGURATION',
+    )
   }
-  await expect(page.locator('[data-test=filename] input')).toHaveValue(
-    /INST\/tables\/bin\/ConfigTables2\.bin/,
-  )
+  await expect(page.locator('[data-test=filename] input')).toHaveValue(binary)
   await expect(
     page.locator('[data-test=definition-filename] input'),
   ).toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
+}
+
+test('save as and delete', async ({ page, utils }) => {
+  const original = /INST\/tables\/bin\/ConfigTables\.bin/
+  const copy = /INST\/tables\/bin\/ConfigTables2\.bin/
+  const binary = /INST\/tables\/bin\/Binary\.bin/
+
+  await openFromMenu(page, utils, 'configtables.bin')
+  await expectLoaded(page, original, true)
+
+  await saveAs(page, utils, 'INST/tables/bin/ConfigTables2.bin')
+  await expectLoaded(page, copy)
 
   // Verify we can open it cleanly
-  await page.locator('[data-test=table-manager-file]').click()
-  await page.locator('text=Open File').click()
-  await openFile(page, utils, 'configtables2.bin')
-  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
-    await page.locator('[data-test=confirm-dialog-overwrite]').click()
-  }
-  await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
-  await expect(page.locator('[data-test=filename] input')).toHaveValue(
-    /INST\/tables\/bin\/ConfigTables2\.bin/,
-  )
-  await expect(
-    page.locator('[data-test=definition-filename] input'),
-  ).toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
+  await openFromMenu(page, utils, 'configtables2.bin')
+  await expectLoaded(page, copy, true)
 
   // Save As to something that doesn't match the definition file convention
-  await page.locator('[data-test=table-manager-file]').click()
-  await page.locator('text=Save As').click()
-  await expect(page.locator('.v-dialog')).toBeVisible()
-  await utils.sleep(100) // Sometimes the test is too fast and the old filename gets populated after the test types?
-  await expect(page.getByRole('progressbar')).not.toBeVisible()
-  await expect(page.getByText('TEMPLATED')).not.toBeVisible()
-  await page
-    .locator('[data-test=file-open-save-filename] input')
-    .fill('INST/tables/bin/Binary.bin')
-  await page.locator('[data-test=file-open-save-submit-btn]').click()
-  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
-    await page.locator('[data-test=confirm-dialog-overwrite]').click()
-  }
-  await expect(page.locator('[data-test=filename] input')).toHaveValue(
-    /INST\/tables\/bin\/Binary\.bin/,
-  )
-  await expect(
-    page.locator('[data-test=definition-filename] input'),
-  ).toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
+  await saveAs(page, utils, 'INST/tables/bin/Binary.bin')
+  await expectLoaded(page, binary)
 
   // Now try to open it and be required to select the definition file
-  await page.locator('[data-test=table-manager-file]').click()
-  await page.locator('text=Open File').click()
-  await openFile(page, utils, 'Binary.bin')
-  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
-    await page.locator('[data-test=confirm-dialog-overwrite]').click()
-  }
+  await openFromMenu(page, utils, 'Binary.bin')
   await utils.sleep(500) // Allow previous dialog to close and new to open
   await openFile(page, utils, 'ConfigTables_def.txt')
-  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
-    await page.locator('[data-test=confirm-dialog-overwrite]').click()
-  }
-  await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
-  await expect(page.locator('[data-test=filename] input')).toHaveValue(
-    /INST\/tables\/bin\/Binary\.bin/,
-  )
-  await expect(
-    page.locator('[data-test=definition-filename] input'),
-  ).toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
+  await confirmOverwriteIfAsked(page)
+  await expectLoaded(page, binary, true)
 
   // Now delete the file
-  await page.locator('[data-test=table-manager-file]').click()
-  await page.locator('text=Open File').click()
-  await openFile(page, utils, 'configtables2.bin')
-  if (await page.locator('[data-test=confirm-dialog-overwrite]').isVisible()) {
-    await page.locator('[data-test=confirm-dialog-overwrite]').click()
-  }
-  await expect(page.locator('id=openc3-tool')).toContainText('MC_CONFIGURATION')
-  await expect(page.locator('[data-test=filename] input')).toHaveValue(
-    /INST\/tables\/bin\/ConfigTables2\.bin/,
-  )
-  await expect(
-    page.locator('[data-test=definition-filename] input'),
-  ).toHaveValue(/INST\/tables\/config\/ConfigTables_def\.txt/)
+  await openFromMenu(page, utils, 'configtables2.bin')
+  await expectLoaded(page, copy, true)
 
   await page.locator('[data-test=table-manager-file]').click()
   await page.locator('text=Delete File').click()

@@ -13,6 +13,7 @@
 */
 
 import { test, expect } from './../fixture'
+import { viewRawPacket } from './helpers'
 
 test.use({
   toolPath: '/tools/cmdtlmserver/tlm-packets',
@@ -47,28 +48,12 @@ test('displays the packet count', async ({ page, utils }) => {
 
 test('displays raw packets', async ({ page, utils }) => {
   await expect(page.locator('text=INSTHEALTH_STATUS')).toBeVisible()
-  await page
-    .getByRole('row', { name: 'INST MECH' })
-    .getByRole('button', { name: 'View Raw' })
-    .click()
-  await expect(page.locator('.raw-dialog')).toContainText(
+  await viewRawPacket(
+    page,
+    utils,
+    'INST MECH',
     'Raw Telemetry Packet: INST MECH',
   )
-  await expect(page.locator('.raw-dialog')).toContainText('Received Time:')
-  await expect(page.locator('.raw-dialog')).toContainText('Count:')
-  // The header renders before the first buffer fetch returns, so retry until
-  // the dump replaces the 'No Data' placeholder
-  const dump = page.locator('.raw-dialog textarea')
-  await expect(dump).toHaveValue(/Address/)
-  await expect(dump).toHaveValue(/00000000:/)
-
-  await utils.download(page, '[data-test=download]', function (contents) {
-    expect(contents).toMatch('Raw Telemetry Packet: INST MECH')
-    expect(contents).toMatch('Received Time:')
-    expect(contents).toMatch('Count:')
-    expect(contents).toMatch('Address')
-    expect(contents).toMatch('00000000:')
-  })
 
   // Open another raw packet to show we can display more than one
   // Filter the table since INST PARAMS isn't necessarily on the first page

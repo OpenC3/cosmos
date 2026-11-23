@@ -8,6 +8,7 @@
 # See LICENSE.md for more details.
 */
 
+import type { Page } from '@playwright/test'
 import { test, expect } from './fixture'
 import {
   format,
@@ -21,26 +22,25 @@ import {
 
 test.use({ storageState: 'adminStorageState.json' })
 
-test.beforeEach(async ({ page }) => {
-  // Ensure local time
+// Save the global time zone setting. Wait for the save to land before going
+// anywhere else: navigating away aborts the request.
+async function setTimeZone(page: Page, zone: 'local' | 'UTC') {
   await page.goto('/tools/admin/settings')
   await expect(page.locator('.v-app-bar')).toContainText('Administrator')
   await page.locator('[data-test=time-zone]').click()
-  await page.getByRole('option', { name: 'local' }).click()
+  await page.getByRole('option', { name: zone }).click()
   await page.locator('[data-test="save-time-zone"]').click()
-  // Wait for the save to land; navigating away aborts the request
   await expect(page.getByText('Saved!').first()).toBeVisible()
+}
+
+test.beforeEach(async ({ page }) => {
+  // Ensure local time
+  await setTimeZone(page, 'local')
 })
 test.afterAll(async ({ browser }) => {
   let page = await browser.newPage()
   // Ensure local time
-  await page.goto('/tools/admin/settings')
-  await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-  await page.locator('[data-test=time-zone]').click()
-  await page.getByRole('option', { name: 'local' }).click()
-  await page.locator('[data-test="save-time-zone"]').click()
-  // Wait for the save to land; navigating away aborts the request
-  await expect(page.getByText('Saved!').first()).toBeVisible()
+  await setTimeZone(page, 'local')
 })
 
 test.describe('CmdTlmServer', () => {
@@ -72,13 +72,7 @@ test.describe('CmdTlmServer', () => {
     ).toBeTruthy()
 
     // Switch to UTC
-    await page.goto('/tools/admin/settings')
-    await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('[data-test=time-zone]').click()
-    await page.getByRole('option', { name: 'UTC' }).click()
-    await page.locator('[data-test="save-time-zone"]').click()
-    // Wait for the save to land; navigating away aborts the request
-    await expect(page.getByText('Saved!').first()).toBeVisible()
+    await setTimeZone(page, 'UTC')
 
     await page.goto('/tools/cmdtlmserver')
     await expect(page.locator('.v-app-bar')).toContainText('CmdTlmServer')
@@ -158,13 +152,7 @@ test.describe('Data Extractor', () => {
     ).toBeTruthy()
 
     // Switch to UTC
-    await page.goto('/tools/admin/settings')
-    await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('[data-test=time-zone]').click()
-    await page.getByRole('option', { name: 'UTC' }).click()
-    await page.locator('[data-test="save-time-zone"]').click()
-    // Wait for the save to land; navigating away aborts the request
-    await expect(page.getByText('Saved!').first()).toBeVisible()
+    await setTimeZone(page, 'UTC')
 
     await page.goto('/tools/dataextractor')
     await expect(page.locator('.v-app-bar')).toContainText('Data Extractor', {
@@ -254,13 +242,7 @@ test.describe('Data Viewer', () => {
     ).toBeTruthy()
 
     // Switch to UTC
-    await page.goto('/tools/admin/settings')
-    await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('[data-test=time-zone]').click()
-    await page.getByRole('option', { name: 'UTC' }).click()
-    await page.locator('[data-test="save-time-zone"]').click()
-    // Wait for the save to land; navigating away aborts the request
-    await expect(page.getByText('Saved!').first()).toBeVisible()
+    await setTimeZone(page, 'UTC')
 
     await page.goto('/tools/dataviewer')
     await expect(page.locator('.v-app-bar')).toContainText('Data Viewer', {
@@ -357,13 +339,7 @@ test.describe('Packet Viewer', () => {
     ).toBeTruthy()
 
     // Switch to UTC
-    await page.goto('/tools/admin/settings')
-    await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('[data-test=time-zone]').click()
-    await page.getByRole('option', { name: 'UTC' }).click()
-    await page.locator('[data-test="save-time-zone"]').click()
-    // Wait for the save to land; navigating away aborts the request
-    await expect(page.getByText('Saved!').first()).toBeVisible()
+    await setTimeZone(page, 'UTC')
 
     await page.goto('/tools/packetviewer/INST/HEALTH_STATUS/')
     await expect(page.locator('.v-app-bar')).toContainText('Packet Viewer')
@@ -446,13 +422,7 @@ test.describe('Telemetry Grapher', () => {
     expect(value).toBeLessThanOrEqual(100)
 
     // Switch to UTC
-    await page.goto('/tools/admin/settings')
-    await expect(page.locator('.v-app-bar')).toContainText('Administrator')
-    await page.locator('[data-test=time-zone]').click()
-    await page.getByRole('option', { name: 'UTC' }).click()
-    await page.locator('[data-test="save-time-zone"]').click()
-    // Wait for the save to land; navigating away aborts the request
-    await expect(page.getByText('Saved!').first()).toBeVisible()
+    await setTimeZone(page, 'UTC')
 
     await page.goto('/tools/tlmgrapher')
     await expect(page.locator('.v-app-bar')).toContainText('Telemetry Grapher')
