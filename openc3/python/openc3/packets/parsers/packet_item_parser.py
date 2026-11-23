@@ -266,6 +266,14 @@ class PacketItemParser:
 
         index = 3 if self._append() else 4
         data_type = self._get_data_type()
+        # nil, none, or null means no default which is only allowed for REQUIRED
+        # parameters. REQUIRED comes later so PacketParser.check_item_data_types
+        # resolves it. STRING, BLOCK, and numeric types already keep it as is.
+        if (
+            data_type in ("BOOL", "ARRAY", "OBJECT")
+            and str(self.parser.parameters[index]).upper() in PacketItem.NIL_DEFAULTS
+        ):
+            return self.parser.parameters[index]
         if data_type == "BOOL":
             value = str(self.parser.parameters[index]).upper()
             if value == "TRUE" or value == "FALSE":

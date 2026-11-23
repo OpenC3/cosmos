@@ -11,6 +11,7 @@
 import { test as setup, expect, Page } from '@playwright/test'
 import { STORAGE_STATE, ADMIN_STORAGE_STATE } from './../playwright.config'
 import { saveAuthState } from './fixture'
+import { Utilities } from '../utilities'
 
 // Take the demo sim targets out of QUIET mode. The demo boots quiet
 // (INST/lib/sim_inst.rb @quiet = true, INST2/lib/sim_inst.py self.quiet = True),
@@ -109,10 +110,8 @@ setup('global setup', async ({ page }) => {
   setup.setTimeout(8 * 60 * 1000)
   await page.goto('/tools/cmdtlmserver')
   if (process.env.ENTERPRISE === '1') {
-    await page.getByLabel('Username or email').fill('operator')
-    await page.getByLabel('Password', { exact: true }).fill('operator')
-    await page.getByRole('button', { name: 'Sign In' }).click()
-    await page.waitForURL('**/tools/cmdtlmserver')
+    const utils = new Utilities(page)
+    await utils.signIn('operator', 'operator')
     await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
     // Save signed-in state to 'storageState.json'.
     await saveAuthState(page.context(), STORAGE_STATE)
@@ -124,13 +123,7 @@ setup('global setup', async ({ page }) => {
     }
 
     // Logout and log back in as admin
-    await page.getByText('The Operator', { exact: true }).click()
-    await page.getByRole('button', { name: 'Logout', exact: true }).click()
-    await page.waitForURL('**/auth/**')
-    await page.getByLabel('Username or email').fill('admin')
-    await page.getByLabel('Password', { exact: true }).fill('admin')
-    await page.getByRole('button', { name: 'Sign In' }).click()
-    await page.waitForURL('**/tools/cmdtlmserver')
+    await utils.switchUser('admin', 'admin')
     await expect(page.locator('nav:has-text("CmdTlmServer")')).toBeVisible()
     // Save signed-in state to 'adminStorageState.json'.
     await saveAuthState(page.context(), ADMIN_STORAGE_STATE)

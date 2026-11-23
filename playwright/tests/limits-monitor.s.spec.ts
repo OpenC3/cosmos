@@ -22,13 +22,40 @@ test.use({
   toolName: 'Limits Monitor',
 })
 
+// Collects the log messages CmdTlmServer receives over the cable. The log
+// table only keeps the newest 200 rows, and the flood produces far more than
+// that, so a message can scroll out of the table before the test checks it.
 async function openCmdTlmServer(page: Page) {
   const server = await page.context().newPage()
+  const messages: string[] = []
+  // The subscription starts with up to 200 history messages, sent in several
+  // batches, which can include a previous attempt's messages. Skip anything
+  // logged before this attempt started, with a margin for clock differences
+  // between the browser and the server.
+  const since = Date.now() - 10000
+  server.on('websocket', (ws) => {
+    ws.on('framereceived', ({ payload }) => {
+      if (typeof payload !== 'string') return
+      let frame
+      try {
+        frame = JSON.parse(payload)
+      } catch {
+        return
+      }
+      if (!Array.isArray(frame?.message)) return
+      for (const entry of frame.message) {
+        if (
+          typeof entry?.message === 'string' &&
+          Date.parse(entry['@timestamp']) >= since
+        ) {
+          messages.push(entry.message)
+        }
+      }
+    })
+  })
   await server.goto('/tools/cmdtlmserver')
   await expect(server.locator('[data-test=log-messages]')).toContainText('INFO')
-  // Clear older messages so only messages from this run can match
-  await server.locator('[data-test=clear-log]').click()
-  return server
+  return messages
 }
 
 async function runProcedure(page: Page, filename: string) {
@@ -74,11 +101,11 @@ for (const { language, filename, target, group } of [
   test(`${language} decom resyncs limits after limits events are trimmed`, async ({
     page,
     utils, // Requesting utils is what opens Limits Monitor on page
-  }) => {
+  }, testInfo) => {
     // The procedure stalls decom for 30s, floods the stream and then verifies
     test.setTimeout(5 * 60 * 1000)
     const microservice = `DEFAULT__DECOM__${target}`
-    const server = await openCmdTlmServer(page)
+    const messages = await openCmdTlmServer(page)
     const scriptRunner = await runProcedure(page, filename)
 
     await expect(scriptRunner.locator('[data-test=state] input')).toHaveValue(
@@ -94,20 +121,23 @@ for (const { language, filename, target, group } of [
 
     // Decom fell behind while stalled, then detected the trimmed events and resynced.
     // Decom reports catching up a few seconds after the procedure completes.
-    const logMessages = server.locator('[data-test=log-messages]')
+    const log = () => messages.join('\n')
     const timeout = 30000
-    await expect(logMessages).toContainText(
-      `${microservice} is falling behind processing`,
-      { timeout },
-    )
-    await expect(logMessages).toContainText(
-      `${microservice}: Limits events were trimmed before they could be read, resyncing limits`,
-      { timeout },
-    )
-    await expect(logMessages).toContainText(
-      `${microservice} has caught up processing`,
-      { timeout },
-    )
+    await expect
+      .poll(log, { timeout })
+      .toContain(
+        `${microservice}: Limits events were trimmed before they could be read, resyncing limits`,
+      )
+    // Decom doesn't repeat a lag notification within OPENC3_LAG_RENOTIFY_SECONDS
+    // (default 300s), so a retry stalls it again without any lag messages
+    if (testInfo.retry === 0) {
+      await expect
+        .poll(log, { timeout })
+        .toContain(`${microservice} is falling behind processing`)
+      await expect
+        .poll(log, { timeout })
+        .toContain(`${microservice} has caught up processing`)
+    }
 
     // The procedure re-enables the group when it finishes
     await expect(page.locator('[data-test=limits-events]')).toContainText(
