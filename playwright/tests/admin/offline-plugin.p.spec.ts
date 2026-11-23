@@ -31,7 +31,9 @@ test.use({
 
 async function waitForProcess(page: Page, process: string) {
   const processList = page.locator('[data-test=process-list]')
-  const running = new RegExp(`Processing ${process}: ${pluginGem}(__.*)? - Running`)
+  const running = new RegExp(
+    `Processing ${process}: ${pluginGem}(__.*)? - Running`,
+  )
   // Ensure no Running are left; it can finish before Running ever renders
   await expect(processList).not.toContainText(running, { timeout: 60000 })
   await expect(processList).toContainText(
@@ -40,8 +42,11 @@ async function waitForProcess(page: Page, process: string) {
   )
 }
 
+// utils is unused, but requesting it runs the fixture that navigates to
+// toolPath (and signs in on Enterprise). Without it the page stays blank.
 test('installs an offline_install plugin from its bundled wheels', async ({
   page,
+  utils,
 }) => {
   test.setTimeout(5 * 60 * 1000)
 
