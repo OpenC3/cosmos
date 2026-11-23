@@ -5927,14 +5927,22 @@ plugin_get('openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem__2025011621453
 
 <span class="since-heading"><span class="badge badge--success">openc3.script</span> <span class="badge badge--secondary">Since 5.12.0</span></span>
 
-List all the packages installed in COSMOS.
+List all the packages installed in COSMOS. Returns a hash (Ruby) or dict (Python) with two keys:
+
+- `ruby`: a list of the installed gem file names.
+- `python`: a hash or dict of package lists, keyed by where the packages are:
+  - `cached`: wheels in the UV download cache, including uploaded wheels. Omitted when the cache is empty.
+  - one key for each plugin venv, named after its folder under `/gems/plugin_venvs`, `<SCOPE>__<plugin name>`. Characters other than letters, digits, `_` and `-` in the name are replaced with `_`.
+  - `shared`: packages in the shared `/gems/python_packages` folder. Omitted when it is empty.
 
 <Tabs groupId="script-language">
 <TabItem value="python" label="Python Example">
 
 ```python
 package_list() # => {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem', ..., 'openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem'],
-               #    'python': ['numpy-2.1.1', 'pip-24.0', 'setuptools-65.5.0']}
+               #    'python': {'cached': ['numpy-2.1.1', ..., 'requests-2.32.3'],
+               #               'DEFAULT__openc3-cosmos-demo-6_0_3_pre_beta0_20250116214358_gem__20250116214539': ['numpy-2.1.1'],
+               #               'shared': ['setuptools-65.5.0']}}
 ```
 
 </TabItem>
@@ -5943,7 +5951,9 @@ package_list() # => {'ruby': ['openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358
 
 ```ruby
 package_list() # => {"ruby"=>["openc3-cosmos-demo-6.0.3.pre.beta0.20250116214358.gem", ..., "openc3-tool-base-6.0.3.pre.beta0.20250115195959.gem"],
-               #    "python"=>["numpy-2.1.1", "pip-24.0", "setuptools-65.5.0"]}
+               #    "python"=>{"cached"=>["numpy-2.1.1", ..., "requests-2.32.3"],
+               #               "DEFAULT__openc3-cosmos-demo-6_0_3_pre_beta0_20250116214358_gem__20250116214539"=>["numpy-2.1.1"],
+               #               "shared"=>["setuptools-65.5.0"]}}
 ```
 
 </TabItem>
