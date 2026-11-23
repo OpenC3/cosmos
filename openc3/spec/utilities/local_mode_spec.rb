@@ -696,6 +696,22 @@ module OpenC3
           expect(catalog["OTHER/targets_modified/ANOTHER/procedures/mod#{index}.rb"]).to be 9 + index
         end
       end
+
+      it "skips files deleted while the catalog is built" do
+        2.times do |index|
+          full_path = "#{@tmp_dir}/DEFAULT/targets_modified/INST/procedures/mod#{index}.rb"
+          FileUtils.mkdir_p(File.dirname(full_path))
+          File.open(full_path, 'wb') { |file| file.write("Some data") }
+        end
+        # Another request deletes mod0.rb after the glob lists it but before
+        # its size is read
+        deleted = "#{@tmp_dir}/DEFAULT/targets_modified/INST/procedures/mod0.rb"
+        allow(File).to receive(:size).and_call_original
+        allow(File).to receive(:size).with(deleted).and_raise(Errno::ENOENT, deleted)
+
+        catalog = LocalMode.build_local_catalog(scope: 'DEFAULT')
+        expect(catalog).to eql({ "DEFAULT/targets_modified/INST/procedures/mod1.rb" => 9 })
+      end
     end
 
     describe "build_remote_catalog" do

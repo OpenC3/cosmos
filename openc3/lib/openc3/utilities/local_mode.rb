@@ -587,8 +587,14 @@ module OpenC3
       FileUtils.mkdir_p(local_folder_path)
       Dir.glob(local_folder_path + "/**/*").each do |filename|
         next if File.directory?(filename)
+
         mod_filename = filename[prefix_length..-1]
-        local_catalog[mod_filename] = File.size(filename)
+        begin
+          local_catalog[mod_filename] = File.size(filename)
+        rescue Errno::ENOENT
+          # Deleted by another request after the glob listed it, so it's no
+          # longer part of the catalog
+        end
       end
       return local_catalog
     end
