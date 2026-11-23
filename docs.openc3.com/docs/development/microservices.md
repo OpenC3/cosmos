@@ -135,7 +135,7 @@ When a Python plugin microservice starts, the COSMOS operator automatically conf
 
 | Variable | Value | Purpose |
 | --- | --- | --- |
-| `VIRTUAL_ENV` | `/gems/plugin_venvs/<plugin>/.venv` | Points to the plugin's isolated virtual environment |
+| `VIRTUAL_ENV` | `/gems/plugin_venvs/<SCOPE>__<plugin name>/.venv` (see [how the folder is named](/docs/configuration/plugins#phase-2-deploy)) | Points to the plugin's isolated virtual environment |
 | `PATH` | Prepended with the venv's `bin/` directory | Ensures the venv's Python binary is used |
 | `PYTHONUSERBASE` | Same as `VIRTUAL_ENV` | Directs user-level installs to the venv |
 | `PYTHONPATH` | `/openc3/python/.venv/lib/python3.X/site-packages` | Makes the core `openc3` package and system dependencies available |

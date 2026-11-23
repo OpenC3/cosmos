@@ -5932,7 +5932,7 @@ List all the packages installed in COSMOS. Returns a hash (Ruby) or dict (Python
 - `ruby`: a list of the installed gem file names.
 - `python`: a hash or dict of package lists, keyed by where the packages are:
   - `cached`: wheels in the UV download cache, including uploaded wheels. Omitted when the cache is empty.
-  - one key for each plugin venv, named after its folder under `/gems/plugin_venvs`, `<SCOPE>__<plugin name>`. Characters other than letters, digits, `_` and `-` in the name are replaced with `_`.
+  - one key for each plugin venv, named after its folder under `/gems/plugin_venvs`, `<SCOPE>__<plugin name>` (see [how the folder is named](/docs/configuration/plugins#phase-2-deploy)).
   - `shared`: packages in the shared `/gems/python_packages` folder. Omitted when it is empty.
 
 <Tabs groupId="script-language">

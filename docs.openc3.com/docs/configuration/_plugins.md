@@ -58,7 +58,7 @@ COSMOS uploads the plugin gem file to an internal gem server and extracts the ge
 
 ### Phase 2: Deploy
 
-Once variables are set, COSMOS registers the plugin model in Redis and installs the Ruby gem. If the plugin contains Python dependencies (`pyproject.toml` or `requirements.txt`), COSMOS creates an isolated [UV](https://docs.astral.sh/uv/) virtual environment for the plugin at `/gems/plugin_venvs/<plugin>/.venv` and installs the dependencies into it. This gives each plugin full dependency isolation — different plugins can require different versions of the same package without conflicts.
+Once variables are set, COSMOS registers the plugin model in Redis and installs the Ruby gem. If the plugin contains Python dependencies (`pyproject.toml` or `requirements.txt`), COSMOS creates an isolated [UV](https://docs.astral.sh/uv/) virtual environment for the plugin at `/gems/plugin_venvs/<SCOPE>__<plugin name>/.venv` and installs the dependencies into it. The plugin name is the installed name, with characters other than `A-Z`, `a-z`, `0-9`, `_` and `-` replaced by `_`. For example, `openc3-cosmos-gse-1.0.0.gem__20250116214539` installed in the `DEFAULT` scope gets `/gems/plugin_venvs/DEFAULT__openc3-cosmos-gse-1_0_0_gem__20250116214539/.venv`. This gives each plugin full dependency isolation — different plugins can require different versions of the same package without conflicts.
 
 COSMOS supports two formats for declaring Python dependencies:
 
