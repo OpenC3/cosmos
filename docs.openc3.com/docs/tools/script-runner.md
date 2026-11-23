@@ -195,7 +195,9 @@ When plugins are installed with Python dependencies, COSMOS creates an isolated 
 
 ### Automatic Venv Resolution
 
-Scripts saved under a target folder (e.g. `INST2/procedures/my_script.py`) automatically use that target's plugin venv. No manual activation is needed — COSMOS sets `VIRTUAL_ENV`, `PATH`, and `PYTHONUSERBASE` on the spawned process so that `import` statements resolve against the plugin's installed packages.
+Scripts saved under a target folder (e.g. `INST2/procedures/my_script.py`) automatically use that target's plugin venv. No manual activation is needed. Every Python script runs with the COSMOS Python, `/openc3/python/.venv/bin/python`. COSMOS puts the plugin venv's `site-packages` at the front of `PYTHONPATH` on the spawned process, so that `import` statements resolve against the plugin's installed packages first. It also points `VIRTUAL_ENV`, `PATH`, and `PYTHONUSERBASE` at the venv.
+
+A saved script whose target's plugin has no venv runs against the system environment. `VIRTUAL_ENV` is the system venv, `PYTHONUSERBASE` is the shared `/gems/python_packages` folder, and `PYTHONPATH` is the value set in the COSMOS image, which lists the system venv and the shared folder.
 
 ### Temp Scripts and the Python Venv Selector
 
