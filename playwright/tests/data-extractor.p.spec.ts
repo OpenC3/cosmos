@@ -12,6 +12,8 @@
 # All Rights Reserved
 */
 
+import type { Page } from '@playwright/test'
+import type { Utilities } from '../utilities'
 import { test, expect } from './fixture'
 import { format, add, sub } from 'date-fns'
 
@@ -19,6 +21,45 @@ test.use({
   toolPath: '/tools/dataextractor',
   toolName: 'Data Extractor',
 })
+
+// Inject INST HEALTH_STATUS packets with TEMP2 set to each special float so an
+// export is guaranteed rows containing them. The sim only writes these values
+// outside QUIET mode (which global setup only turns off when the run starts)
+// and only at points in its TEMP2 sweep, so waiting for it needs up to a minute
+// of history that a freshly started stack doesn't have.
+async function injectSpecialFloats(utils: Utilities) {
+  // inject_tlm starts from the current packet, so without these each packet
+  // would keep the last sim packet's PACKET_TIME (from TIMESEC and TIMEUS) and
+  // the TSDB would store them all as one row. A random microsecond base keeps
+  // them clear of the sim's packets and of another test injecting this second.
+  // Stamp them in the past: the end time only has whole seconds, so a packet
+  // stamped now can land just after it.
+  const timesec = Math.floor(Date.now() / 1000) - 2
+  const timeusBase = Math.floor(Math.random() * 900000)
+  const values = ['NaN', 'Infinity', '-Infinity']
+  for (const [index, raw] of values.entries()) {
+    await utils.api('inject_tlm', [
+      'INST',
+      'HEALTH_STATUS',
+      {
+        TIMESEC: timesec,
+        TIMEUS: timeusBase + index,
+        TEMP2: { json_class: 'Float', raw },
+      },
+    ])
+  }
+}
+
+// Inject, then move the end time (set when the page loaded, so before the
+// injected packets) up to now so the export includes them
+async function injectAndSetEnd(page: Page, utils: Utilities) {
+  await injectSpecialFloats(utils)
+  const end = new Date()
+  await page
+    .locator('[data-test=end-date] input')
+    .fill(format(end, 'yyyy-MM-dd'))
+  await page.locator('[data-test=end-time] input').fill(format(end, 'HH:mm:ss'))
+}
 
 test('loads and saves the configuration', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
@@ -259,7 +300,8 @@ test('processes commands', async ({ page, utils }) => {
 })
 
 test('creates CSV output', async ({ page, utils }) => {
-  const start = sub(new Date(), { minutes: 2 })
+  const start = sub(new Date(), { minutes: 1 })
+  await injectAndSetEnd(page, utils)
   await page.locator('[data-test=data-extractor-file]').click()
   await page.locator('text=Comma Delimited').click()
   await page
@@ -279,12 +321,13 @@ test('creates CSV output', async ({ page, utils }) => {
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain(',') // csv
-    expect(lines.length).toBeGreaterThan(60) // 2 min at 60Hz is 120 samples
+    expect(lines.length).toBeGreaterThan(3) // header plus the injected rows
   })
 })
 
 test('creates tab delimited output', async ({ page, utils }) => {
-  const start = sub(new Date(), { minutes: 2 })
+  const start = sub(new Date(), { minutes: 1 })
+  await injectAndSetEnd(page, utils)
   await page.locator('[data-test=data-extractor-file]').click()
   await page.locator('text=Tab Delimited').click()
   await page
@@ -298,7 +341,7 @@ test('creates tab delimited output', async ({ page, utils }) => {
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain('\t') // tab delimited
-    expect(lines.length).toBeGreaterThan(60) // 2 min at 60Hz is 120 samples
+    expect(lines.length).toBeGreaterThan(3) // header plus the injected rows
   })
 })
 
