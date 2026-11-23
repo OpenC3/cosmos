@@ -499,7 +499,7 @@ export default {
       this.packetChanged({
         targetName: target.toUpperCase(),
         packetName: packet.toUpperCase(),
-      })
+      }).catch(console.error)
     },
   },
   async created() {
