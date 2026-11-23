@@ -155,18 +155,17 @@ export default class OpenC3Api {
     return null
   }
 
-  ensure_offline_access() {
-    this.offline_access_needed().then((needed) => {
-      if (needed) {
-        if (localStorage.openc3OfflineToken) {
-          this.set_offline_access(localStorage.openc3OfflineToken).then(() => {
-            delete localStorage.openc3OfflineToken
-          })
-        } else {
-          OpenC3Auth.getOfflineAccess()
-        }
-      }
-    })
+  async ensure_offline_access() {
+    const needed = await this.offline_access_needed()
+    if (!needed) {
+      return
+    }
+    if (localStorage.openc3OfflineToken) {
+      await this.set_offline_access(localStorage.openc3OfflineToken)
+      delete localStorage.openc3OfflineToken
+    } else {
+      OpenC3Auth.getOfflineAccess()
+    }
   }
 
   // #region CmdTlmServer APIs

@@ -194,6 +194,23 @@ module OpenC3
         expect(bridge).to_not be_nil
         expect(bridge.cmd[1]).to eql "bridge_microservice.py"
         expect(bridge.options).to include(["BRIDGE_NAME", "DEFAULT"])
+        # Core has no TSDB Partitions Microservice
+        expect(MicroserviceModel.get_model(name: "DEFAULT__TSDBPARTITIONS__DEFAULT", scope: "DEFAULT")).to be_nil
+      end
+
+      it "deploys the TSDB Partitions Microservice for the DEFAULT scope of Enterprise only" do
+        stub_const("OpenC3::ScopeModel::ENTERPRISE", true)
+        dir = File.join(SPEC_DIR, "install")
+        %w(DEFAULT OTHER).each do |name|
+          model = ScopeModel.new(name: name, updated_at: 12345)
+          model.create
+          model.deploy(dir, {})
+        end
+        microservice = MicroserviceModel.get_model(name: "DEFAULT__TSDBPARTITIONS__DEFAULT", scope: "DEFAULT")
+        expect(microservice.cmd).to eql ["ruby", "tsdb_partitions_microservice.rb", "DEFAULT__TSDBPARTITIONS__DEFAULT"]
+        expect(microservice.work_dir).to eql "/openc3-enterprise/lib/openc3-enterprise/microservices"
+        expect(microservice.parent).to be_nil
+        expect(MicroserviceModel.get_model(name: "OTHER__TSDBPARTITIONS__OTHER", scope: "OTHER")).to be_nil
       end
     end
 
