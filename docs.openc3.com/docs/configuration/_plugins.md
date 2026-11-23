@@ -96,6 +96,18 @@ When the plugin is built, the Rakefile runs [`cli bundlewheels`](/docs/getting-s
 1. Downloads exactly those wheels from the URLs recorded in `uv.lock` into `python_wheels/` and checks each one against the sha256 in `uv.lock`. It also writes `python_wheels/SHA256SUMS`.
 1. Installs from `python_wheels/` alone, offline, for each target to prove the bundle is complete.
 
+If the build stops, the message names the fix:
+
+| Build error | Fix |
+| --- | --- |
+| `offline_install requires a uv.lock` | Run `uv lock` in the plugin directory, then commit `uv.lock`. |
+| `uv.lock is out of date with pyproject.toml` | `pyproject.toml` changed after the last lock, for example a dependency was added by hand. Run `uv lock` and commit the updated `uv.lock`. Use `uv add <package>` next time, which updates both files. |
+| `uv.lock is not committed` | Run `git add uv.lock` and commit it. The bundle must match the lock in source control, so the gem can be traced to a reviewed commit. |
+| `Could not find a compatible wheel for every locked package for <platform>` | A dependency publishes no wheel for that platform or Python version (only a source distribution, or no build for that architecture). Pick a version that ships one, or drop that platform from `python_platforms`. |
+| `python_platforms also needs python_version` | Add `python_version`, set to the deployment's Python, such as `"3.13"`. |
+
+`uv lock` needs network access to the package index, just like the build. Install [uv](https://docs.astral.sh/uv/getting-started/installation/) on the machine where you edit the plugin.
+
 To check a built gem later, for example against a deployment's platform before shipping it, run [`cli verifywheels`](/docs/getting-started/cli#verify-wheels). It prints a per-target report of the wheel serving each package and its hash check.
 
 The gem ships `uv.lock` next to the wheels, so security scanners that read `uv.lock` cover every bundled package, and the bundled versions are exactly the locked ones.

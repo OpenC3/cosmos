@@ -54,6 +54,9 @@ offline_install = true
 each one against the hash in `uv.lock`, and packages them into the gem. COSMOS installs from those wheels only and
 reports any missing or incompatible package instead of going online.
 
+The build stops if `uv.lock` is missing, out of date with `pyproject.toml`, or (in a git repository) not committed.
+Run `uv lock`, commit `uv.lock`, and build again.
+
 Wheels with compiled code are specific to an OS, CPU architecture, and Python version. The bundle targets the
 machine running the build, so build with `openc3.sh cli rake build` to match the COSMOS image. To build elsewhere or
 for several architectures, set `python_platforms` and `python_version` in `[tool.openc3]` (see `pyproject.toml`).
