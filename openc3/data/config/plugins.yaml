@@ -498,9 +498,14 @@ VARIABLE_TEXT_END:
   summary: Complete a block of markdown text started by VARIABLE_TEXT_START
   since: _Coming Soon_
 NEEDS_DEPENDENCIES:
-  summary: Indicates the plugin needs dependencies and sets the GEM_HOME environment variable
-  description: If the plugin has a top level lib folder or lists runtime dependencies in the gemspec,
-    NEEDS_DEPENDENCIES is effectively already set. Note that in Enterprise, having
+  summary: Indicates the plugin needs dependencies and sets up the Ruby and Python environment of its microservices
+  description: If the plugin has a top level lib folder, lists runtime dependencies in the gemspec,
+    or has a pyproject.toml or requirements.txt, NEEDS_DEPENDENCIES is effectively already set.
+    The keyword sets the GEM_HOME environment variable for the plugin's microservices. It also
+    sets up their Python environment. A plugin with a per-plugin venv gets the venv's packages
+    first on PYTHONPATH, and a plugin without one uses the shared /gems/python_packages folder.
+    Without NEEDS_DEPENDENCIES, the plugin's Python microservices get no PYTHONPATH and can only
+    import the packages in the COSMOS image. Note that in Enterprise, having
     NEEDS_DEPENDENCIES adds the NFS volume mount to the Kubernetes pod.
   since: 5.5.0
 PRE_INSTALL_SCRIPT:
