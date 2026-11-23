@@ -534,7 +534,7 @@ In [Local Mode](/docs/guides/local-mode) a `plugins/<SCOPE>/settings/<name>.json
 
 Migrates an installed plugin from the shared Python virtual environment to a per-plugin UV virtual environment. This creates an isolated Python environment for the plugin with its own dependencies, preventing version conflicts between plugins.
 
-Plugins installed on COSMOS 7.3+ automatically get per-plugin virtual environments. This command is only needed for plugins that were installed on an earlier version and are still using the shared Python environment. Running it on a plugin that is already migrated is a safe no-op.
+Plugins installed on COSMOS 7.3+ automatically get per-plugin virtual environments. This command is needed for plugins that were installed on an earlier version and are still using the shared Python environment. It also retries the uv install for a plugin whose uv install failed, which left the plugin on the shared Python environment. Running it on a plugin that is already migrated is a safe no-op.
 
 The `PLUGIN_NAME` argument is the full installed plugin name (including the timestamp suffix), not a `.gem` file path. Use `cli list` to find the installed plugin name. The `SCOPE` argument is optional and defaults to `DEFAULT`.
 
