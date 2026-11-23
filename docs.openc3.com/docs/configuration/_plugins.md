@@ -62,7 +62,7 @@ Once variables are set, COSMOS registers the plugin model in Redis and installs 
 
 COSMOS supports two formats for declaring Python dependencies:
 
-- **`pyproject.toml`** (recommended) — When paired with a `uv.lock` file, enables reproducible installs via `uv sync --frozen`. COSMOS uses `uv sync` for `pyproject.toml`-based plugins.
+- **`pyproject.toml`** (recommended) — With a `uv.lock`, COSMOS runs `uv sync --frozen`, which installs exactly the locked versions. Without a `uv.lock`, or if `uv sync --frozen` fails, COSMOS runs `uv pip install` and resolves against the `pypi_url` index. If that fails, for example because the `pyproject.toml` is not a buildable package, COSMOS compiles its declared dependencies into a requirements file and installs from that.
 - **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins.
 
 Both files are processed with [ERB](/docs/configuration/format#erb) using the plugin variables before installation, so variables can select which dependencies are installed. ERB code can read files shipped next to the dependency file with `File.dirname(__FILE__)`. For example, a `requirements.txt` that installs only the driver for the selected device:
