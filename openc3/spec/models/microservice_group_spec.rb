@@ -102,22 +102,9 @@ module OpenC3
         expect { MicroserviceGroup.validate_member(target('B', language: 'ruby', plugin: 'PLUGIN2')) }.to_not raise_error
       end
 
-      it "rejects a different decom update interval within one language" do
+      it "allows different decom update intervals" do
         add_target('A', language: 'ruby', decom_update_interval: 0.01)
-        expect { MicroserviceGroup.validate_member(target('B', language: 'ruby', decom_update_interval: 5.0)) }.to \
-          raise_error(/DECOM_UPDATE_INTERVAL 5.0 but microservice group HK uses 0.01 for ruby decom \(target A\)/)
-        # No DECOM_UPDATE_INTERVAL is the default
-        expect { MicroserviceGroup.validate_member(target('B', language: 'ruby')) }.to raise_error(/DECOM_UPDATE_INTERVAL 0.1 but/)
-        expect { MicroserviceGroup.validate_member(target('B', language: 'ruby', decom_update_interval: 0.01)) }.to_not raise_error
-        # Python decom runs in its own process with its own queues
-        expect { MicroserviceGroup.validate_member(target('B', language: 'python', decom_update_interval: 5.0)) }.to_not raise_error
-        # 0 writes directly so it doesn't use the queues
-        expect { MicroserviceGroup.validate_member(target('B', language: 'ruby', decom_update_interval: 0)) }.to_not raise_error
-      end
-
-      it "uses the same default decom update interval as the decom microservice" do
-        require 'openc3/microservices/decom_microservice'
-        expect(MicroserviceGroup::DEFAULT_DECOM_UPDATE_INTERVAL).to eql DecomMicroservice::DEFAULT_UPDATE_INTERVAL
+        expect { MicroserviceGroup.validate_member(target('B', language: 'ruby', decom_update_interval: 5.0)) }.to_not raise_error
       end
 
       it "ignores the target's own existing model and other groups" do

@@ -113,7 +113,7 @@ TARGET POWER POWER
 Each target keeps its own microservices (for example `DEFAULT__DECOM__THERMAL`), settings, and status. The demo plugin puts its targets in the `DEMO` group (set its `microservice_group` variable to blank to give each target its own processes). Targets in different plugins can share a group. Some things to consider:
 
 - All targets in a group must use the same [SHARD](#shard-1) and [DB_SHARD](#db_shard-1).
-- The decoms in one process share its write queue, which flushes at one interval. So the group's Ruby targets must use the same [DECOM_UPDATE_INTERVAL](#decom_update_interval), and so must its Python targets. A DECOM_UPDATE_INTERVAL of 0 doesn't use the queue, so it can be mixed with any interval.
+- The decoms in one process share its write queue, which flushes at one interval: the fastest [DECOM_UPDATE_INTERVAL](#decom_update_interval) of the group's Ruby targets (and separately of its Python targets). A target with a DECOM_UPDATE_INTERVAL of 0 doesn't use the queue and writes directly.
 - A group can only have Python targets from one plugin, because its Python process uses that plugin's Python packages.
 - MICROSERVICE_GROUP can't be combined with [TARGET_MICROSERVICE](#target_microservice).
 - Installing, upgrading, or removing any target in the group restarts the group's processes, which briefly pauses processing for every target in it.

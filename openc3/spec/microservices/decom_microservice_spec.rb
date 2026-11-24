@@ -245,14 +245,24 @@ module OpenC3
 
       it "uses the UPDATE_INTERVAL option and disables queuing with 0" do
         @dm.instance_variable_set(:@config, { 'options' => [['UPDATE_INTERVAL', 0.5]] })
-        expect(EphemeralStoreQueued).to receive(:set_update_interval_all_shards).with(0.5)
-        expect(StoreQueued).to receive(:set_update_interval_all_shards).with(0.5)
+        expect(EphemeralStoreQueued).to receive(:set_update_interval_all_shards).with(0.5, fastest: true)
+        expect(StoreQueued).to receive(:set_update_interval_all_shards).with(0.5, fastest: true)
         @dm.setup_queued_writes
         expect(@dm.instance_variable_get(:@queued)).to be true
 
         @dm.instance_variable_set(:@config, { 'options' => [['UPDATE_INTERVAL', '0']] })
         @dm.setup_queued_writes
         expect(@dm.instance_variable_get(:@queued)).to be false
+      end
+
+      it "uses the fastest UPDATE_INTERVAL of the decoms in one process" do
+        # Like the decoms of a microservice group, which share the process's queues
+        @dm.instance_variable_set(:@config, { 'options' => [['UPDATE_INTERVAL', 0.01]] })
+        @dm.setup_queued_writes
+        @dm.instance_variable_set(:@config, { 'options' => [['UPDATE_INTERVAL', 5.0]] })
+        @dm.setup_queued_writes
+        expect(EphemeralStoreQueued.instance(db_shard: 0).update_interval).to eql 0.01
+        expect(StoreQueued.instance(db_shard: 0).update_interval).to eql 0.01
       end
 
       it "handles exceptions in the thread" do

@@ -40,8 +40,6 @@ module OpenC3
 
     LOCK_TIMEOUT_SECONDS = 60
     LOCK_EXPIRE_SECONDS = 120
-    # Same as DecomMicroservice::DEFAULT_UPDATE_INTERVAL, which isn't loaded here
-    DEFAULT_DECOM_UPDATE_INTERVAL = 0.1
     # The parent settings that come from the children (see build_model). The
     # rest, such as enabled, keep what was set on the parent.
     MANAGED_KEYS = %w(cmd work_dir plugin needs_dependencies shard db_shard)
@@ -84,18 +82,7 @@ module OpenC3
         if target.language == 'python' and member['language'] == 'python' and member['plugin'] != target.plugin
           raise "Target #{target.name} uses Python decom but microservice group #{group} already has Python decom target #{member['name']} from another plugin (#{member['plugin']})"
         end
-        # The decom microservices in one process share its write queues, which
-        # flush at one interval (0 or less doesn't queue)
-        interval = decom_update_interval(target.decom_update_interval)
-        member_interval = decom_update_interval(member['decom_update_interval'])
-        if member['language'] == target.language and interval > 0.0 and member_interval > 0.0 and interval != member_interval
-          raise "Target #{target.name} has DECOM_UPDATE_INTERVAL #{interval} but microservice group #{group} uses #{member_interval} for #{target.language} decom (target #{member['name']})"
-        end
       end
-    end
-
-    def self.decom_update_interval(value)
-      value.nil? ? DEFAULT_DECOM_UPDATE_INTERVAL : value.to_f
     end
 
     # Create, update, or remove the group's parent microservices so that each

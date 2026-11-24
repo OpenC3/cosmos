@@ -144,9 +144,10 @@ module OpenC3
       end
       @queued = update_interval > 0.0
       if @queued
-        # Apply to every db_shard since writes are routed to the shard of each target
-        EphemeralStoreQueued.set_update_interval_all_shards(update_interval)
-        StoreQueued.set_update_interval_all_shards(update_interval)
+        # Apply to every db_shard since writes are routed to the shard of each target.
+        # Decoms in a microservice group share the process's queues, so the fastest wins.
+        EphemeralStoreQueued.set_update_interval_all_shards(update_interval, fastest: true)
+        StoreQueued.set_update_interval_all_shards(update_interval, fastest: true)
       end
     end
 
