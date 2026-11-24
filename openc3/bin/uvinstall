@@ -43,6 +43,7 @@ UV_ARGS="$*"
 RESOLVE_ARGS="$UV_ARGS"
 case " ${UV_ARGS} " in
     *" --no-config "*) RESOLVE_ARGS="${UV_ARGS} --no-sources" ;;
+    *) ;; # Public default index: leave the plugin's own index settings alone
 esac
 
 if [ -z "$PLUGIN_VENV_NAME" ] || [ -z "$GEM_PATH" ]; then

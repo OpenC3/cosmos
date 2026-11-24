@@ -45,8 +45,14 @@ _openc3_test() {
                     install-playwright|build-plugin|reset-storage-state)
                         # These commands don't take arguments
                         ;;
+                    *)
+                        # Anything else has nothing to complete
+                        ;;
                 esac
             fi
+            ;;
+        *)
+            # Anything else has nothing to complete
             ;;
     esac
 }
@@ -157,6 +163,9 @@ _openc3_util() {
         clean|hostenter)
             # These commands don't take arguments
             ;;
+        *)
+            # Anything else has nothing to complete
+            ;;
     esac
 }
 
@@ -232,6 +241,9 @@ _openc3_cli() {
                         ;;
                     running)
                         _message 'limit and offset'
+                        ;;
+                    *)
+                        # Anything else has nothing to complete
                         ;;
                 esac
             fi
@@ -359,6 +371,9 @@ _openc3_cli() {
                         # These require NAME as first arg
                         _message -r 'NAME (required)'
                         ;;
+                    *)
+                        # Anything else has nothing to complete
+                        ;;
                 esac
             elif (( CURRENT == 4 )); then
                 case $gen_type in
@@ -467,6 +482,9 @@ _openc3_cli() {
                 case $words[2] in
                     hget)
                         _message 'KEY'
+                        ;;
+                    *)
+                        # Anything else has nothing to complete
                         ;;
                 esac
             fi
@@ -606,6 +624,9 @@ _openc3_cli() {
         irb|help)
             # These commands don't have specific completions
             ;;
+        *)
+            # Anything else has nothing to complete
+            ;;
     esac
 }
 
@@ -713,7 +734,13 @@ _openc3() {
                 start|stop|list|status|build|run|start-ubi|build-ubi|run-ubi)
                     # These commands don't take arguments
                     ;;
+                *)
+                    # Anything else has nothing to complete
+                    ;;
             esac
+            ;;
+        *)
+            # Anything else has nothing to complete
             ;;
     esac
 }
