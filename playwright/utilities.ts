@@ -24,6 +24,62 @@ export class Utilities {
     await new Promise((resolve) => setTimeout(resolve, time))
   }
 
+  // Sign in through the Keycloak form (Enterprise) and wait until the app is
+  // back with a token for this user.
+  //
+  // Waits for the form itself rather than a '**/auth/**' URL, and for the token
+  // rather than a '**/tools/<tool>/**' URL: the form's own URL carries the tool
+  // path in its redirect_uri, so URL globs can match on either side of the sign
+  // in. A sign in that doesn't take then fails here, showing the page it's on,
+  // instead of somewhere later in the test.
+  async signIn(username: string, password: string = username) {
+    await expect(
+      this.page.getByRole('heading', { name: 'Sign in to your account' }),
+    ).toBeVisible({ timeout: 20000 })
+    await this.page.locator('input[name="username"]').fill(username)
+    await this.page.locator('input[name="password"]').fill(password)
+    await this.page.getByRole('button', { name: 'Sign In' }).click()
+    await expect(this.page.locator('.v-app-bar')).toBeVisible({
+      timeout: 20000,
+    })
+    await expect
+      .poll(() => this.signedInUser(), {
+        message: `signed in as ${username}`,
+        timeout: 20000,
+      })
+      .toBe(username)
+  }
+
+  // Username in the app's current token, or undefined when there isn't one
+  async signedInUser(): Promise<string | undefined> {
+    try {
+      return await this.page.evaluate(() => {
+        const token = localStorage.openc3Token
+        if (!token) return undefined
+        const payload = token
+          .split('.')[1]
+          .replaceAll('-', '+')
+          .replaceAll('_', '/')
+        return JSON.parse(atob(payload)).preferred_username
+      })
+    } catch {
+      // Mid-navigation the page has no context to evaluate in; poll again
+      return undefined
+    }
+  }
+
+  // Log out from the user menu in the app bar
+  async logout() {
+    await this.page.locator('[data-test="user-menu"]').click()
+    await this.page.getByRole('button', { name: 'Logout', exact: true }).click()
+  }
+
+  // Log out and sign back in as another user (Enterprise)
+  async switchUser(username: string, password: string = username) {
+    await this.logout()
+    await this.signIn(username, password)
+  }
+
   // Clear every alert toast currently on screen.
   //
   // Clicking an individual toast's dismiss button is fragile three ways, all of

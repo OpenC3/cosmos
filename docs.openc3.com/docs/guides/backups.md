@@ -132,7 +132,7 @@ QuestDB 10.2 and later migrate internal metadata the first time they start on an
 
 #### Removing and Restoring Partitions
 
-COSMOS creates QuestDB tables partitioned by day (`PARTITION BY DAY`). Each day of telemetry/command data for a given packet lives in its own partition directory under `/var/lib/questdb/db/<table_name>/`. This allows individual partitions to be detached from the live database for long-term archival, then reattached when the historical data is needed again. See the [QuestDB DETACH PARTITION](https://questdb.com/docs/reference/sql/alter-table-detach-partition/) and [ATTACH PARTITION](https://questdb.com/docs/reference/sql/alter-table-attach-partition/) reference for the underlying SQL semantics.
+COSMOS creates QuestDB tables partitioned by day (`PARTITION BY DAY`). Each day of telemetry/command data for a given packet lives in its own partition directory inside the table's directory under `/var/lib/questdb/db/`. The directory name is not always the table name, so look it up (see [Identifying Partitions](#identifying-partitions)). This allows individual partitions to be detached from the live database for long-term archival, then reattached when the historical data is needed again. See the [QuestDB DETACH PARTITION](https://questdb.com/docs/reference/sql/alter-table-detach-partition/) and [ATTACH PARTITION](https://questdb.com/docs/reference/sql/alter-table-attach-partition/) reference for the underlying SQL semantics. COSMOS Enterprise automates partition archiving.
 
 :::warning
 Detaching a partition removes it from query results until it is reattached. Verify that downstream consumers (Data Extractor, Tlm Grapher, scripts) do not need the partition before detaching it. Always copy the detached partition directory to long-term storage before deleting it.
@@ -147,6 +147,14 @@ SELECT name, minTimestamp, maxTimestamp, diskSize FROM table_partitions('DEFAULT
 ```
 
 Partition names use the format `YYYY-MM-DD` for daily partitions (e.g., `2026-04-15`). COSMOS uses the table naming convention `<SCOPE>__TLM__<TARGET>__<PACKET>` for telemetry and `<SCOPE>__CMD__<TARGET>__<PACKET>` for commands (e.g., `DEFAULT__TLM__INST__HEALTH_STATUS`).
+
+Find the table's directory under `/var/lib/questdb/db/` (used in the steps below). It is the `directoryName` value and can differ from the table name, for example by a numeric suffix:
+
+```sql
+SELECT directoryName FROM tables() WHERE table_name = 'DEFAULT__TLM__INST__HEALTH_STATUS';
+```
+
+In the commands below, replace `<directoryName>` with that value.
 
 ##### Detach Procedure
 
@@ -168,15 +176,15 @@ Partition names use the format `YYYY-MM-DD` for daily partitions (e.g., `2026-04
    ```bash
    docker run --rm --volumes-from openc3-tsdb-1 \
      -v $(pwd):/backup eeacms/rsync \
-     rsync -a /var/lib/questdb/db/DEFAULT__TLM__INST__HEALTH_STATUS/2026-04-15.detached \
-     /backup/archive/DEFAULT__TLM__INST__HEALTH_STATUS/
+     rsync -a /var/lib/questdb/db/<directoryName>/2026-04-15.detached \
+     /backup/archive/<directoryName>/
    ```
 
 3. **(Optional) Delete the detached partition from the live volume** once archival is verified. Removing the `.detached` directory frees the disk space:
 
    ```bash
    docker run --rm --volumes-from openc3-tsdb-1 alpine \
-     rm -rf /var/lib/questdb/db/DEFAULT__TLM__INST__HEALTH_STATUS/2026-04-15.detached
+     rm -rf /var/lib/questdb/db/<directoryName>/2026-04-15.detached
    ```
 
 ##### Restore Procedure
@@ -186,15 +194,15 @@ Partition names use the format `YYYY-MM-DD` for daily partitions (e.g., `2026-04
    ```bash
    docker run --rm --volumes-from openc3-tsdb-1 \
      -v $(pwd):/backup eeacms/rsync \
-     rsync -a /backup/archive/DEFAULT__TLM__INST__HEALTH_STATUS/2026-04-15.detached/ \
-     /var/lib/questdb/db/DEFAULT__TLM__INST__HEALTH_STATUS/2026-04-15.attachable/
+     rsync -a /backup/archive/<directoryName>/2026-04-15.detached/ \
+     /var/lib/questdb/db/<directoryName>/2026-04-15.attachable/
    ```
 
    Ensure the directory is owned by the QuestDB process user inside the container (`questdb:questdb`, typically uid `10001`):
 
    ```bash
    docker exec openc3-tsdb-1 chown -R 10001:10001 \
-     /var/lib/questdb/db/DEFAULT__TLM__INST__HEALTH_STATUS/2026-04-15.attachable
+     /var/lib/questdb/db/<directoryName>/2026-04-15.attachable
    ```
 
 2. **Attach the partition** back into the active table:

@@ -172,6 +172,124 @@ RSpec.describe PluginsController, type: :controller do
     end
   end
 
+  describe "POST preview" do
+    it "returns the rendered plugin.txt" do
+      plugin_hash = {"variables" => {"folder" => {"value" => "INST"}}, "plugin_txt_lines" => ["VARIABLE folder X", "TARGET <%= folder %> <%= folder %>"]}
+      expect(OpenC3::PluginModel).to receive(:preview).with(plugin_hash, scope: "DEFAULT").and_return({"plugin_txt" => "TARGET INST INST"})
+      post :preview, params: {scope: "DEFAULT", plugin_hash: JSON.generate(plugin_hash)}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq({"plugin_txt" => "TARGET INST INST"})
+    end
+
+    it "returns ERB errors" do
+      allow(OpenC3::PluginModel).to receive(:preview).and_return({"error" => "ERB error at line 1: bad"})
+      post :preview, params: {scope: "DEFAULT", plugin_hash: JSON.generate({"variables" => {}, "plugin_txt_lines" => []})}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["error"]).to match(/ERB error at line 1/)
+    end
+
+    it "returns bad_request on invalid plugin_hash JSON" do
+      post :preview, params: {scope: "DEFAULT", plugin_hash: "not json"}
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it "returns nothing without authorization" do
+      post :preview, params: {plugin_hash: "{}"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "POST validate" do
+    it "returns the validation result" do
+      allow(OpenC3::PluginModel).to receive(:validate)
+        .with({"name" => "x"}, scope: "DEFAULT").and_return({"valid" => false, "error" => "plugin.txt:2: bad"})
+      post :validate, params: {scope: "DEFAULT", plugin_hash: '{"name":"x"}'}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq({"valid" => false, "error" => "plugin.txt:2: bad"})
+    end
+
+    it "returns internal_server_error when validation can't run" do
+      allow(OpenC3::PluginModel).to receive(:validate).and_raise("boom")
+      post :validate, params: {scope: "DEFAULT", plugin_hash: '{"name":"x"}'}
+      expect(response).to have_http_status(:internal_server_error)
+      expect(JSON.parse(response.body)["message"]).to eq("boom")
+    end
+
+    it "returns bad_request on invalid plugin_hash JSON" do
+      post :validate, params: {scope: "DEFAULT", plugin_hash: "not json"}
+      expect(response).to have_http_status(:bad_request)
+    end
+
+    it "returns nothing without authorization" do
+      post :validate, params: {plugin_hash: "{}"}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "POST upload_file" do
+    before(:each) do
+      @file = Tempfile.new(["icd", ".csv"])
+      @file.write("a,b")
+      @file.rewind
+      @upload = fixture_file_upload(@file.path, "text/csv")
+      allow(@upload).to receive(:original_filename).and_return("icd.csv")
+    end
+
+    it "stores the file and returns the variable value" do
+      expect(OpenC3::PluginModel).to receive(:store_upload) do |path, filename, scope:|
+        expect(File.read(path)).to eql "a,b"
+        expect(filename).to end_with ".csv"
+        expect(scope).to eql "DEFAULT"
+        "0f1e2d3c-aaaa-bbbb-cccc-000000000001/icd.csv"
+      end
+      post :upload_file, params: {scope: "DEFAULT", file: @upload}
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq({"value" => "0f1e2d3c-aaaa-bbbb-cccc-000000000001/icd.csv"})
+    end
+
+    it "rejects a missing or too large file" do
+      post :upload_file, params: {scope: "DEFAULT"}
+      expect(response).to have_http_status(:bad_request)
+      stub_const("PluginsController::MAX_UPLOAD_BYTES", 2)
+      expect(OpenC3::PluginModel).to_not receive(:store_upload)
+      post :upload_file, params: {scope: "DEFAULT", file: @upload}
+      expect(response).to have_http_status(:payload_too_large)
+    end
+
+    it "requires authorization" do
+      post :upload_file, params: {file: @upload}
+      expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe "POST create from an installed gem" do
+    it "parses the plugin.txt of a gem in COSMOS" do
+      allow(OpenC3::GemModel).to receive(:names).and_return(["openc3-cosmos-dualsense-1.0.0.gem"])
+      expect(OpenC3::PluginModel).to receive(:install_phase1).with("openc3-cosmos-dualsense-1.0.0.gem", scope: "DEFAULT").and_return({ "name" => "openc3-cosmos-dualsense-1.0.0.gem" })
+      post :create, params: { scope: "DEFAULT", gem: "../openc3-cosmos-dualsense-1.0.0.gem" }
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)["name"]).to eq "openc3-cosmos-dualsense-1.0.0.gem"
+    end
+
+    it "sends plugin.txt text outside Latin-1 as UTF-8 strings" do
+      allow(OpenC3::GemModel).to receive(:names).and_return(["openc3-cosmos-dualsense-1.0.0.gem"])
+      # plugin.txt is read as binary, here with an em dash and an emoji
+      text = "Power \xE2\x80\x94 supply \xF0\x9F\x8E\xAE".b
+      allow(OpenC3::PluginModel).to receive(:install_phase1).and_return({ "plugin_text" => text, "variables" => { "port" => { "markdown" => text } } })
+      post :create, params: { scope: "DEFAULT", gem: "openc3-cosmos-dualsense-1.0.0.gem" }
+      result = JSON.parse(response.body)
+      expect(result["plugin_text"]).to eq "Power \u2014 supply \u{1F3AE}"
+      expect(result["variables"]["port"]["markdown"]).to eq "Power \u2014 supply \u{1F3AE}"
+    end
+
+    it "rejects gems not in COSMOS" do
+      allow(OpenC3::GemModel).to receive(:names).and_return([])
+      post :create, params: { scope: "DEFAULT", gem: "missing-1.0.0.gem" }
+      expect(response).to have_http_status(:not_found)
+      expect(JSON.parse(response.body)["message"]).to eq "Plugin gem 'missing-1.0.0.gem' is not in COSMOS"
+    end
+  end
+
   describe "POST create" do
     before(:each) do
       @file = Tempfile.new(["test-plugin", ".gem"])

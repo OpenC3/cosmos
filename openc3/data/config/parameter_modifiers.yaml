@@ -2,10 +2,10 @@
 <%= MetaConfigParser.load('param_item_modifiers.yaml').to_meta_config_yaml(0) %>
 REQUIRED:
   summary: Parameter is required to be populated in scripts
-  description: When sending the command via Script Runner a value must always be
-    given for the current command parameter. This prevents the user from relying
-    on a default value. Note that this does not affect Command Sender which will
-    still populate the field with the default value provided in the PARAMETER definition.
+  description: When sending the command a value must always be given for the
+    current command parameter. This prevents the user from relying on a default
+    value. Command Sender shows the parameter as empty until a value is entered.
+    Since the default is never used, the PARAMETER default can be nil, none, or null.
 MINIMUM_VALUE:
   summary: Override the defined minimum value
   parameters:

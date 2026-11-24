@@ -67,6 +67,14 @@ function layoutGraph(direction, force = false) {
   }
 }
 
+// dialog.confirm rejects with true when the user cancels. Ignore that but let
+// real errors (e.g. a failed API call) propagate.
+function ignoreCancel(error) {
+  if (error !== true) {
+    throw error
+  }
+}
+
 onConnect((params) => {
   // params = { source: 'interface__EXAMPLE_INT',
   // sourceHandle: 'interface__cmd__input',
@@ -252,19 +260,19 @@ onConnect((params) => {
           },
         )
         .then(() => {
-          api
-            .map_target_to_interface(
-              target_name,
-              interface_or_router_name,
-              cmd_or_tlm === 'cmd',
-              cmd_or_tlm === 'tlm',
-              false,
-            )
-            .then((response) => {
-              addEdges(params)
-              edges.value.push(params)
-            })
+          return api.map_target_to_interface(
+            target_name,
+            interface_or_router_name,
+            cmd_or_tlm === 'cmd',
+            cmd_or_tlm === 'tlm',
+            false,
+          )
         })
+        .then(() => {
+          addEdges(params)
+          edges.value.push(params)
+        })
+        .catch(ignoreCancel)
     } else {
       dialog
         .confirm(
@@ -275,19 +283,19 @@ onConnect((params) => {
           },
         )
         .then(() => {
-          api
-            .map_target_to_router(
-              target_name,
-              interface_or_router_name,
-              cmd_or_tlm === 'cmd',
-              cmd_or_tlm === 'tlm',
-              false,
-            )
-            .then(() => {
-              addEdges(params)
-              edges.value.push(params)
-            })
+          return api.map_target_to_router(
+            target_name,
+            interface_or_router_name,
+            cmd_or_tlm === 'cmd',
+            cmd_or_tlm === 'tlm',
+            false,
+          )
         })
+        .then(() => {
+          addEdges(params)
+          edges.value.push(params)
+        })
+        .catch(ignoreCancel)
     }
   }
 })
@@ -340,80 +348,41 @@ onEdgesChange((changes) => {
         dialog_ok = 'Unmap'
       }
       // Implement side effects of deleting edges
+      // Note the argument order differs: the disable APIs take (name, target)
+      // while the unmap APIs take (target, name)
+      let request
+      if (first_type == 'cosmos') {
+        const disable =
+          interface_or_router == 'interface'
+            ? api.interface_target_disable.bind(api)
+            : api.router_target_disable.bind(api)
+        request = (cmd, tlm) =>
+          disable(interface_or_router_name, target_name, cmd, tlm)
+      } else {
+        const unmap =
+          interface_or_router == 'interface'
+            ? api.unmap_target_from_interface.bind(api)
+            : api.unmap_target_from_router.bind(api)
+        request = (cmd, tlm) =>
+          unmap(target_name, interface_or_router_name, cmd, tlm)
+      }
       dialog
         .confirm(dialog_text, {
           okText: dialog_ok,
           cancelText: 'Cancel',
         })
         .then(() => {
-          if (first_type == 'cosmos') {
-            if (interface_or_router == 'interface') {
-              api
-                .interface_target_disable(
-                  interface_or_router_name,
-                  target_name,
-                  cmd_or_tlm === 'cmd',
-                  cmd_or_tlm === 'tlm',
-                )
-                .then(() => {
-                  applyEdgeChanges([change])
-                  edges.value.forEach((edge, index) => {
-                    if (edge.id === change.id) {
-                      edges.value.splice(index, 1)
-                    }
-                  })
-                })
-            } else {
-              api
-                .router_target_disable(
-                  interface_or_router_name,
-                  target_name,
-                  cmd_or_tlm === 'cmd',
-                  cmd_or_tlm === 'tlm',
-                )
-                .then(() => {
-                  applyEdgeChanges([change])
-                  edges.value.forEach((edge, index) => {
-                    if (edge.id === change.id) {
-                      edges.value.splice(index, 1)
-                    }
-                  })
-                })
-            }
-          } else if (interface_or_router == 'interface') {
-            api
-              .unmap_target_from_interface(
-                target_name,
-                interface_or_router_name,
-                cmd_or_tlm === 'cmd',
-                cmd_or_tlm === 'tlm',
-              )
-              .then(() => {
-                applyEdgeChanges([change])
-                edges.value.forEach((edge, index) => {
-                  if (edge.id === change.id) {
-                    edges.value.splice(index, 1)
-                  }
-                })
-              })
-          } else {
-            api
-              .unmap_target_from_router(
-                target_name,
-                interface_or_router_name,
-                cmd_or_tlm === 'cmd',
-                cmd_or_tlm === 'tlm',
-              )
-              .then(() => {
-                applyEdgeChanges([change])
-                edges.value.forEach((edge, index) => {
-                  if (edge.id === change.id) {
-                    edges.value.splice(index, 1)
-                  }
-                })
-              })
-          }
+          return request(cmd_or_tlm === 'cmd', cmd_or_tlm === 'tlm')
         })
+        .then(() => {
+          applyEdgeChanges([change])
+          edges.value.forEach((edge, index) => {
+            if (edge.id === change.id) {
+              edges.value.splice(index, 1)
+            }
+          })
+        })
+        .catch(ignoreCancel)
     }
   }
 
