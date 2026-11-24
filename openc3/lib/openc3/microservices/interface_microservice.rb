@@ -351,9 +351,13 @@ module OpenC3
             # Check for Critical Command
             if @critical_commanding and @critical_commanding != 'OFF' and not release_critical
               restricted = command.restricted
-              if hazardous or restricted or (@critical_commanding == 'ALL' and manual)
+              # Command Sender treats any command as hazardous when range checks are
+              # ignored or parameter conversions are disabled, so require approval
+              # for those manual commands too. Scripts that send this way aren't held.
+              mode_hazardous = manual && (!range_check || raw)
+              if hazardous or mode_hazardous or restricted or (@critical_commanding == 'ALL' and manual)
                 cmd_type = 'NORMAL'
-                if hazardous
+                if hazardous or mode_hazardous
                   cmd_type = 'HAZARDOUS'
                 elsif restricted
                   cmd_type = 'RESTRICTED'
