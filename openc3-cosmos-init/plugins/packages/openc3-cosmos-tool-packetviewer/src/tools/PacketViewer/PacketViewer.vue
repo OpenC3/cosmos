@@ -40,7 +40,7 @@
       type="warning"
       variant="tonal"
       density="compact"
-      class="mb-1"
+      class="mb-1 flex-0-0"
       data-test="packet-unavailable"
     >
       {{ unavailableMessage }}
