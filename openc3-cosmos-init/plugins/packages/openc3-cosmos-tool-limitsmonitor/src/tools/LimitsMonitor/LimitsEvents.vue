@@ -32,13 +32,13 @@
         class="search"
       />
     </v-card-title>
-    <v-data-table
+    <!-- Virtual so a flood of limits events only renders the visible rows -->
+    <v-data-table-virtual
       :headers="headers"
       :items="data"
       :search="search"
-      :items-per-page="-1"
-      hide-default-footer
       multi-sort
+      fixed-header
       density="compact"
       :height="calcTableHeight()"
       hover
@@ -53,13 +53,19 @@
       <template #item.message="{ item }">
         <span :class="getColorClass(item.message)">{{ item.message }}</span>
       </template>
-    </v-data-table>
+    </v-data-table-virtual>
   </v-card>
 </template>
 
 <script>
+import { markRaw } from 'vue'
 import { Cable } from '@openc3/js-common/services'
 import { TimeFilters } from '@openc3/vue-common/util'
+
+// Received events are added to the table at most this often (ms). A flood
+// arrives as many small cable messages, and re-rendering for each one can't
+// keep up.
+const FLUSH_INTERVAL = 100
 
 export default {
   mixins: [TimeFilters],
@@ -86,6 +92,9 @@ export default {
     }
   },
   created() {
+    // Events received since the last flush, not reactive
+    this.pending = []
+    this.flushTimeout = null
     this.cable
       .createSubscription(
         'LimitsEventsChannel',
@@ -97,7 +106,8 @@ export default {
           },
         },
         {
-          historyCount: 1000,
+          // Channel parameter is history_count with underscore
+          history_count: this.historyCount,
         },
       )
       .then((limitsSubscription) => {
@@ -105,6 +115,7 @@ export default {
       })
   },
   unmounted() {
+    clearTimeout(this.flushTimeout)
     if (this.limitsSubscription) {
       this.limitsSubscription.unsubscribe()
     }
@@ -113,12 +124,20 @@ export default {
   methods: {
     handleMessages(messages) {
       for (let i = 0; i < messages.length; i++) {
-        let event = JSON.parse(messages[i]['event'])
-        this.data.unshift(event)
+        // Events are never modified so skip making each one deeply reactive
+        this.pending.push(markRaw(JSON.parse(messages[i]['event'])))
       }
-      if (this.data.length > this.historyCount) {
-        this.data.length = this.historyCount
+      if (this.pending.length > this.historyCount) {
+        this.pending.splice(0, this.pending.length - this.historyCount)
       }
+      this.flushTimeout ??= setTimeout(this.flush, FLUSH_INTERVAL)
+    },
+    flush() {
+      this.flushTimeout = null
+      // Newest first, and replace the array once so the table renders once
+      const events = this.pending.reverse()
+      this.pending = []
+      this.data = events.concat(this.data).slice(0, this.historyCount)
     },
     getStatus(message) {
       if (message.includes('GREEN')) {

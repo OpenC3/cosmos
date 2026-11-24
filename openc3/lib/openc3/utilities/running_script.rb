@@ -25,6 +25,7 @@ require 'openc3/io/stderr'
 require 'childprocess'
 require 'openc3/script/suite_runner'
 require 'openc3/utilities/script'
+require 'openc3/utilities/script_message_signing'
 require 'openc3/utilities/store'
 require 'openc3/utilities/store_queued'
 require 'openc3/utilities/bucket_require'
@@ -374,6 +375,12 @@ module OpenC3
 end
 
 class RunningScript
+  # In-memory HMAC key for signing/verifying control channel messages.
+  # Set by run_script.rb from stdin; never written to env or disk.
+  class << self
+    attr_accessor :signing_key
+  end
+
   # Raised when Goto, Run From Line, or Execute Selection would start or end
   # inside a method or block, so the lines can't run on their own
   class InvalidStartLineError < StandardError; end
@@ -494,6 +501,13 @@ class RunningScript
 
     running_script_id = OpenC3::Store.incr('running-script-id')
 
+    # Per-script key used to sign control-channel messages. Kept in a hash scripts
+    # cannot read (never on the script_status record, which they can). It is
+    # stored once the script status exists; see prune_signing_keys.
+    signing_key = SecureRandom.hex(32)
+    signing_keys = OpenC3::ScriptMessageSigning.keys_hash(scope)
+    prune_signing_keys(scope)
+
     # COSMOS Core username (Enterprise has the actual name)
     username ||= 'Anonymous'
     # COSMOS Core full name (Enterprise has the actual name)
@@ -502,7 +516,10 @@ class RunningScript
 
     begin
       process = ChildProcess.build(process_name, runner_path.to_s, running_script_id.to_s, scope)
+      # inherit! only wires stdout/stderr (childprocess 5.1.0), leaving stdin
+      # free for the duplex pipe used to deliver secrets
       process.io.inherit! # Helps with debugging
+      process.duplex = true
       script_cwd = File.join(RAILS_ROOT, 'tmp', "script_#{running_script_id}")
       FileUtils.mkdir_p(script_cwd)
       process.cwd = script_cwd
@@ -547,24 +564,22 @@ class RunningScript
         scope: scope # Scope of the script
       )
       script_status.create()
+      # Stored after the status so prune_signing_keys never sees a key without
+      # a running status
+      OpenC3::Store.hset(signing_keys, running_script_id.to_s, signing_key)
 
-      # Set proper secrets for running script
-      process.environment['SECRET_KEY_BASE'] = nil
-      OpenC3::ScriptEnv.remove_unused(process.environment)
-      process.environment['OPENC3_REDIS_USERNAME'] = ENV.fetch('OPENC3_SR_REDIS_USERNAME', nil)
-      process.environment['OPENC3_REDIS_PASSWORD'] = ENV.fetch('OPENC3_SR_REDIS_PASSWORD', nil)
-      process.environment['OPENC3_BUCKET_USERNAME'] = ENV.fetch('OPENC3_SR_BUCKET_USERNAME', nil)
-      process.environment['OPENC3_BUCKET_PASSWORD'] = ENV.fetch('OPENC3_SR_BUCKET_PASSWORD', nil)
-      process.environment['OPENC3_SR_REDIS_USERNAME'] = nil
-      process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
-      process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
-      process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
+      # Keep secrets out of the child's environment: /proc/<pid>/environ keeps the
+      # environment the process started with, even after the child deletes them
+      # from ENV. The child gets the ones it needs over stdin below. This also
+      # removes ANYCABLE_REDIS_URL, which embeds the all-keys 'openc3' Redis user
+      # and would expose every signing key.
+      OpenC3::ScriptEnv.scrub_spawn_environment(process.environment)
       process.environment['OPENC3_API_CLIENT'] = ENV.fetch('OPENC3_API_CLIENT', nil)
       if model and model.offline_access_token
         auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV.fetch('OPENC3_KEYCLOAK_URL', nil))
         valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
         if valid_token
-          process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
+          auth_secret = { 'token' => model.offline_access_token }
         else
           model.offline_access_token = nil
           model.update
@@ -573,7 +588,7 @@ class RunningScript
       else
         process.environment['OPENC3_API_USER'] = ENV.fetch('OPENC3_API_USER', nil)
         if ENV['OPENC3_SERVICE_PASSWORD']
-          process.environment['OPENC3_API_PASSWORD'] = ENV.fetch('OPENC3_SERVICE_PASSWORD')
+          auth_secret = { 'user' => ENV.fetch('OPENC3_API_USER', nil), 'password' => ENV.fetch('OPENC3_SERVICE_PASSWORD') }
         else
           raise "No authentication available for script"
         end
@@ -605,8 +620,18 @@ class RunningScript
 
       process.detach = true
       process.start
+      started = true
+      # Secrets go over stdin (not env, which is readable via /proc/<pid>/environ)
+      process.io.stdin.puts(JSON.generate({ 'signing_key' => signing_key, 'auth' => auth_secret, 'env' => OpenC3::ScriptEnv.stdin_secrets }))
+      process.io.stdin.close
       running_script_id
     rescue => e
+      begin
+        # Don't leave a detached child running without credentials
+        process.stop if started && process
+      rescue => stop_error
+        OpenC3::Logger.error("Failed to stop script process after spawn failure: #{stop_error.message}")
+      end
       begin
         # Clean up the orphaned script status record so the script
         # does not remain stuck in 'spawning' state forever.
@@ -616,8 +641,30 @@ class RunningScript
       rescue => cleanup_error
         OpenC3::Logger.error("Failed to cleanup after spawn failure: #{cleanup_error.message}")
       end
+      begin
+        OpenC3::Store.hdel(signing_keys, running_script_id.to_s)
+      rescue => del_error
+        OpenC3::Logger.error("Failed to delete signing key after spawn failure: #{del_error.message}")
+      end
       raise e
     end
+  end
+
+  # Signing keys have no expiry, so a key can never disappear while its script
+  # runs. Scripts that end on their own can't delete their key (their Redis user
+  # can't access the hash), so remove keys whose script is no longer running.
+  # Reads the keys before the running names so a script spawned in between keeps
+  # its key: spawn stores the key only after creating the running status.
+  def self.prune_signing_keys(scope)
+    signing_keys = OpenC3::ScriptMessageSigning.keys_hash(scope)
+    ids = OpenC3::Store.hkeys(signing_keys)
+    return if ids.empty?
+
+    stale = ids - OpenC3::ScriptStatusModel.names(scope: scope, type: 'running')
+    OpenC3::Store.hdel(signing_keys, *stale) unless stale.empty?
+  rescue => e
+    # Housekeeping only; never prevent a script from starting
+    OpenC3::Logger.error("Failed to prune script signing keys: #{e.message}")
   end
 
   def initialize(script_status)
@@ -1425,7 +1472,11 @@ class RunningScript
       @script_status.update(queued: true)
       thread.join
     end
-    running_script_publish("cmd-running-script-channel:#{@script_status.id}", "shutdown")
+    shutdown_msg = "shutdown"
+    if RunningScript.signing_key
+      shutdown_msg = OpenC3::ScriptMessageSigning.sign(RunningScript.signing_key, "shutdown")
+    end
+    running_script_publish("cmd-running-script-channel:#{@script_status.id}", shutdown_msg)
   end
 
   def mark_breakpoint

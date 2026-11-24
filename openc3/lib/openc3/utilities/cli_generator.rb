@@ -677,7 +677,7 @@ module OpenC3
       if args.length != 2
         abort("Usage: cli generate #{args[0]} <BatteryPanel>")
       end
-      if args[1] !~ /.+Panel$/ or args[1][0...-5] != args[1][0...-5].capitalize
+      if !args[1].end_with?('Panel') or args[1].length <= 5 or args[1][0...-5] != args[1][0...-5].capitalize
         abort("Panel name should be Uppercase followed by Panel, e.g. BatteryPanel. Found '#{args[1]}'.")
       end
 

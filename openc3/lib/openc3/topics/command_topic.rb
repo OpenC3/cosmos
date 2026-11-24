@@ -77,7 +77,9 @@ module OpenC3
             elsif msg_hash["result"].include?("CriticalCmdError")
               raise_critical_cmd_error(msg_hash, command)
             else
-              raise msg_hash["result"]
+              # The interface microservice already logged the error so don't
+              # add a backtrace which only shows this ack loop
+              raise RuntimeError, msg_hash["result"], []
             end
           end
         end

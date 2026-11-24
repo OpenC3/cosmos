@@ -132,6 +132,11 @@ module OpenC3
       @token = nil
       @log = [nil, nil]
       @http = Faraday.new
+      # Capture the credentials now: script processes remove OPENC3_API_PASSWORD
+      # from ENV (ScriptEnv.clear_credentials) before user code runs, which is
+      # before the first token request and any later re-login.
+      @api_user = ENV.fetch('OPENC3_API_USER', nil)
+      @api_password = ENV.fetch('OPENC3_API_PASSWORD', nil)
     end
 
     # Load the token from the environment
@@ -177,6 +182,15 @@ module OpenC3
       secret
     end
 
+    # Credentials captured at initialize, falling back to ENV when they were set later
+    def api_user
+      @api_user || ENV.fetch('OPENC3_API_USER', nil)
+    end
+
+    def api_password
+      @api_password || ENV.fetch('OPENC3_API_PASSWORD', nil)
+    end
+
     def redacted_log_data(data)
       log_data = data.dup
       %w[password client_secret refresh_token].each do |secret_key|
@@ -204,11 +218,11 @@ module OpenC3
         @refresh_token = nil
         @expires_at = current_time + oath['expires_in'] - REFRESH_OFFSET_SECONDS
         @refresh_expires_at = nil
-      elsif ENV['OPENC3_API_USER'] and ENV['OPENC3_API_PASSWORD']
+      elsif api_user and api_password
         # Username and password
         data = {
-          'username' => ENV.fetch('OPENC3_API_USER', nil),
-          'password' => ENV.fetch('OPENC3_API_PASSWORD', nil),
+          'username' => api_user,
+          'password' => api_password,
           'client_id' => client_id,
           'grant_type' => 'password',
           'scope' => openid_scope

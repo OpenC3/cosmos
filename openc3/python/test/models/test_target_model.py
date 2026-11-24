@@ -60,6 +60,11 @@ class TestTargetModel(unittest.TestCase):
         self.assertIn("TEST", all_targs.keys())
         self.assertIn("SPEC", all_targs.keys())
 
+    def test_accepts_decom_update_interval_from_the_ruby_json(self):
+        # Ruby writes decom_update_interval into the target JSON that from_json passes as kwargs
+        TargetModel(folder_name="TEST", name="TEST", decom_update_interval=0.5, scope="DEFAULT")
+        TargetModel(folder_name="TEST", name="TEST", decom_update_interval=None, scope="DEFAULT")
+
     def test_stored_limits_mode_defaults_to_process(self):
         model = TargetModel(folder_name="TEST", name="TEST", scope="DEFAULT")
         self.assertEqual(model.stored_limits_mode, "PROCESS")
@@ -611,6 +616,7 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
         # Simulate a stale Redis key left over from a removed packet definition.
         # INST currently defines HEALTH_STATUS, ADCS, PARAMS, IMAGE, MECH, HIDDEN —
         # OLD_PACKET was removed when the plugin was upgraded but its Redis key remains.
+        # No TargetModel is created, so INST isn't installed and the key is kept.
         Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
         Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
 
@@ -629,6 +635,40 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
 
         # The known packet's count must still be updated correctly
         self.assertEqual(System.telemetry.packet("INST", "HEALTH_STATUS").received_count, 10)
+
+    # GitHub issue #2868: a microservice still running the old packet
+    # definitions during an upgrade can recreate counts for removed packets
+    def test_init_tlm_packet_counts_removes_count_of_undefined_packet(self):
+        """Deletes the count of a packet the installed target no longer defines."""
+        TargetModel(folder_name="INST", name="INST", scope="DEFAULT").create()
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "OLD_PACKET", 5)
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+
+        for stdout in capture_io():
+            TargetModel.init_tlm_packet_counts(["INST"], scope="DEFAULT")
+            self.assertIn(
+                "Removed stale tlmcnt Redis keys for INST packets that are no longer defined: OLD_PACKET",
+                stdout.getvalue(),
+            )
+            self.assertNotIn("Stale tlmcnt Redis key detected", stdout.getvalue())
+
+        self.assertEqual(Store.hgetall("DEFAULT__TELEMETRYCNTS__{INST}"), {b"HEALTH_STATUS": b"10"})
+        self.assertEqual(System.telemetry.packet("INST", "HEALTH_STATUS").received_count, 10)
+
+    def test_init_tlm_packet_counts_keeps_count_of_defined_unloaded_packet(self):
+        """Keeps and warns about the count of a defined packet System didn't load."""
+        TargetModel(folder_name="INST", name="INST", scope="DEFAULT").create()
+        # DYNAMIC_PACKET is in the target's packet definitions (e.g. added with
+        # dynamic_update) but this System didn't load it
+        Store.hset("DEFAULT__openc3tlm__INST", "DYNAMIC_PACKET", "{}")
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "DYNAMIC_PACKET", 5)
+
+        for stdout in capture_io():
+            TargetModel.init_tlm_packet_counts(["INST"], scope="DEFAULT")
+            self.assertIn("Stale tlmcnt Redis key detected for unknown packet INST DYNAMIC_PACKET", stdout.getvalue())
+            self.assertNotIn("Removed stale tlmcnt Redis keys", stdout.getvalue())
+
+        self.assertEqual(Store.hget("DEFAULT__TELEMETRYCNTS__{INST}", "DYNAMIC_PACKET"), b"5")
 
     def test_sync_tlm_packet_counts_skips_stale_redis_key(self):
         # Simulate a stale Redis key left over from a removed packet definition.

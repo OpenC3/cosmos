@@ -224,7 +224,8 @@ module OpenC3
     # Extract the target name from the {TARGET} hash tag in a topic like
     # DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS. Returns nil if there is none.
     def self.target_name_from_topic(topic)
-      match = topic.match(/__\{([^}]+)\}__/)
+      # [^{}] (not [^}]) keeps this linear: target names never contain braces
+      match = topic.match(/__\{([^{}]+)\}__/)
       match ? match[1] : nil
     end
 
