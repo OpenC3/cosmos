@@ -1,0 +1,23 @@
+version = 1
+revision = 5
+requires-python = ">=3.11"
+
+[[package]]
+name = "openc3-cosmos-pw-offline"
+version = "0.0.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "pycowsay" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pycowsay", specifier = ">=0.0.0.2,<1.0" }]
+
+[[package]]
+name = "pycowsay"
+version = "0.0.0.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b5/07/ca61ee269a7e2a842af0d310edd4549eda080cb921bcdfe59e481e8492cf/pycowsay-0.0.0.2.tar.gz", hash = "sha256:d112c4ce55b04dbc363c5a8957b80a0dc7459e864866d6e0202d15a95633bcf4", size = 3804, upload-time = "2023-10-18T02:48:51.628Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/bd/17f894b13037499e615048a6daeb9cae28142ee85ce6eb8d24d10504860b/pycowsay-0.0.0.2-py3-none-any.whl", hash = "sha256:5c03d8a9c7666ec102aaed4bbd6c7d35228489ce236f95f6e5d079529c6a5050", size = 4020, upload-time = "2023-10-18T02:48:50.303Z" },
+]

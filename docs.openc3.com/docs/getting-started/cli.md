@@ -34,6 +34,9 @@ Usage:
   cli cstol_converter               # Converts CSTOL files (.prc) to COSMOS. Run with --help for more info.
   cli setpassword                   # Set the initial password from OPENC3_API_PASSWORD env var
   cli migratetouv PLUGIN_NAME SCOPE # Migrate plugin to per-plugin UV virtual environment
+  cli lock [PLUGIN_DIR]             # Lock a Python plugin's dependencies (uv lock), optionally then build
+  cli bundlewheels [PLUGIN_DIR]     # Bundle Python wheels for [tool.openc3] offline_install
+  cli verifywheels PLUGIN.gem       # Report whether a plugin's bundled Python wheels install offline
 ```
 
 :::note[seccomp profile]
@@ -549,6 +552,70 @@ Successfully migrated plugin 'openc3-cosmos-my-plugin-1.0.0.gem__20260501150000'
 If the plugin has no Python dependencies (`pyproject.toml` or `requirements.txt`), the command reports success without creating a venv. If the plugin is already migrated, the command is a no-op.
 
 This command performs the same operation as the **Migrate to UV** button in the [Admin Plugins tab](/docs/tools/admin#plugins).
+
+## Lock
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Locks a Python plugin's dependencies: it runs `uv lock` in the plugin directory, which writes `uv.lock` from `pyproject.toml`. It runs in the COSMOS image, so you don't need uv installed. `PLUGIN_DIR` defaults to the current directory. uv resolves against the index in the plugin's `[tool.uv]` settings, or else the `PYPI_URL` the COSMOS image was built with.
+
+Versions already in `uv.lock` are kept unless `pyproject.toml` no longer allows them. `--upgrade-package NAME` (repeatable) upgrades one package to the newest version `pyproject.toml` allows, and `--upgrade` upgrades every package. `--build VERSION` then builds the plugin gem, the same as `openc3.sh cli rake build VERSION=VERSION`:
+
+```bash
+% openc3.sh cli lock --upgrade-package numpy --build 1.2.0
+uv lock --upgrade-package numpy
+Resolved 3 packages in 412ms
+Updated numpy v2.4.5 -> v2.4.6
+openc3cli bundlewheels
+Bundled 2 wheel(s) into python_wheels/ for this machine
+  Successfully built RubyGem
+```
+
+See [Offline installs with bundled wheels](/docs/configuration/plugins#offline-installs-with-bundled-wheels) for updating a plugin's dependencies and converting an existing plugin.
+
+## Bundle Wheels
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Bundles a Python plugin's locked dependencies into `python_wheels/` so the plugin gem installs on a COSMOS that can't reach a package index. It runs only when the plugin's `pyproject.toml` sets `offline_install = true` in `[tool.openc3]`. Otherwise it removes any leftover `python_wheels/` directory so a stale bundle isn't packaged. `PLUGIN_DIR` defaults to the current directory.
+
+The Rakefile generated with the plugin runs this before `gem build`, so you normally run it through `rake build`:
+
+```bash
+% openc3.sh cli rake build VERSION=1.0.0
+openc3cli bundlewheels
+Bundled 7 wheel(s) into python_wheels/ for this machine
+  Successfully built RubyGem
+```
+
+A plugin generated before this command existed needs its Rakefile and gemspec updated first. See [Converting an existing plugin](/docs/configuration/plugins#converting-an-existing-plugin).
+
+See [Offline installs with bundled wheels](/docs/configuration/plugins#offline-installs-with-bundled-wheels) for the settings and what is checked at build and install time.
+
+## Verify Wheels
+
+<span class="badge badge--secondary since-heading">Since _Coming Soon_</span>
+
+Reports whether a plugin gem built with `offline_install` can install its Python dependencies from its bundled wheels alone, without network access. It checks every wheel in `python_wheels/` against the sha256 recorded in the gem's `uv.lock`, then installs offline for each target and lists which bundled wheel serves each locked package. It exits with status 1 if any check fails, so it can gate a release pipeline.
+
+The targets are the plugin's `python_platforms` and `python_version`, or the machine running the command when the plugin sets neither. Running it through `openc3.sh cli` therefore checks the gem against the COSMOS image. To check a gem against a specific deployment instead, pass `--python-platform` (repeatable) and `--python-version`:
+
+```bash
+% openc3.sh cli verifywheels openc3-cosmos-my-plugin-1.0.0.gem --python-platform aarch64-manylinux_2_28 --python-version 3.13
+Plugin: openc3-cosmos-my-plugin-1.0.0.gem
+
+Bundled wheels (2), checked against the sha256 in uv.lock:
+  numpy-2.4.6-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl  OK
+  six-1.17.0-py2.py3-none-any.whl                                          OK
+
+aarch64-manylinux_2_28 / Python 3.13  FAIL
+  error: No solution found when resolving dependencies
+    cause: Because numpy==2.4.6 has no wheels with a matching platform tag (e.g., `manylinux_2_28_aarch64`) and you require numpy==2.4.6, we can conclude that your requirements are unsatisfiable.
+
+FAIL
+```
+
+A target that passes lists each package with its version, wheel, and hash check. A wheel whose bytes differ from `uv.lock` is reported as `HASH MISMATCH`, and a wheel the lock doesn't record as `NOT IN uv.lock`.
 
 ## CSTOL Converter
 

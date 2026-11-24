@@ -89,6 +89,8 @@ git checkout vX.Y.Z # <- change to the specific version you want
 COSMOS pre-seeds the UV wheel cache with all system Python dependencies during first startup. This means plugins that only require packages already available in the cache can install without any network access.
 
 To see which Python packages are available in the cache, check the **Cached** section under the **Admin > Packages** tab. If your plugin requires additional packages not in the cache, you can upload `.whl` files via the Admin > Packages tab before installing the plugin.
+
+To ship a plugin's dependencies with the plugin itself, build it with [`offline_install`](/docs/configuration/plugins#offline-installs-with-bundled-wheels), so the plugin gem carries its own wheels.
 :::
 
 ### Certificates

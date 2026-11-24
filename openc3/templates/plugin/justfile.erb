@@ -1,0 +1,61 @@
+# Common tasks for this plugin. Install just from https://just.systems, then
+# run `just` to list the recipes.
+#
+# Recipes that build or lock run in the COSMOS image through openc3.sh, so they
+# need no local Ruby<% if @@language == 'py' %> or uv<% end %>. openc3.sh is expected one directory up, where
+# `openc3.sh cli generate plugin` puts a new plugin. Set OPENC3_SH to use another
+# path, e.g. `OPENC3_SH=~/cosmos-project/openc3.sh just build 1.0.0`.
+
+openc3_sh := if env("OPENC3_SH", "") == "" { "../openc3.sh" } else { env("OPENC3_SH") }
+
+# List the recipes
+default:
+    @just --list
+
+# Build the gem, e.g. `just build 1.0.0`
+build VERSION:
+    {{ openc3_sh }} cli rake build VERSION={{ VERSION }}
+<% if @@language == 'py' -%>
+
+# Takes --upgrade, --upgrade-package NAME and --build VERSION.
+# Update uv.lock after editing pyproject.toml, e.g. `just lock --build 1.0.1`
+lock *ARGS:
+    {{ openc3_sh }} cli lock {{ ARGS }}
+
+# For a gem built with offline_install.
+# Check a gem's bundled Python wheels, e.g. `just verify <%= plugin_name %>-1.0.0.gem`
+verify GEM:
+    {{ openc3_sh }} cli verifywheels {{ GEM }}
+
+# Create .venv with the runtime and dev dependencies
+sync:
+    uv sync --group dev
+
+# Run the Python tests (none yet is not a failure)
+test *ARGS:
+    uv run --group dev pytest {{ ARGS }} || test $? -eq 5
+
+# Check Python lint and formatting
+lint:
+    uv run --group dev ruff check
+    uv run --group dev ruff format --check
+
+# Fix Python lint and formatting
+format:
+    uv run --group dev ruff check --fix
+    uv run --group dev ruff format
+
+# Type check the Python code
+typecheck:
+    uv run --group dev ty check
+
+# Run every Python check
+check: lint typecheck test
+<% end -%>
+
+# Remove built gems<% if @@language == 'py' %> and bundled wheels<% end %>
+clean:
+    rm -f *.gem
+<% if @@language == 'py' -%>
+    rm -rf python_wheels
+<% end -%>

@@ -126,6 +126,11 @@ PWDEBUG=1 pnpm test:parallel --headed        # Debug mode
 ## Code Style
 
 - **Ruby**: RuboCop, configured in `.rubocop.yml`.
+- **Ruby checks**: RuboCop must pass for any Ruby code you write, specs included, before you commit. Run it from the repo root on the files you touched:
+  ```bash
+  just lint-ruby <files>
+  ```
+  New files must pass with no offenses. In existing files, no line you added or changed may produce an offense. Offenses that were already there on lines you didn't touch don't block your change. `just lint-ruby-fix <files>` applies the safe corrections.
 - **Python**: Ruff for lint and format, configured in `openc3/python/pyproject.toml`. Minimum supported Python is 3.10 (ruff `target-version = "py310"`), so don't use syntax newer than that. Commit `uv.lock` with any dependency change.
 - **Python checks**: All three of these must pass for any Python code you write, before you commit. Run them from `openc3/python` on the files you touched (paths relative to `openc3/python`):
   ```bash
@@ -136,6 +141,7 @@ PWDEBUG=1 pnpm test:parallel --headed        # Debug mode
   A ty diagnostic in your code is a failure. CI runs ty as advisory, but that doesn't relax this rule. New files must pass all three with no errors. In existing files, no line you added or changed may produce an error. Errors that were already there on lines you didn't touch don't block your change.
 - **JavaScript/Vue**: ESLint 9 + Prettier, configured in `openc3-cosmos-init/plugins/eslint.config.mjs`. After editing Vue/JS files, always run `pnpm lint` in the package. CI runs `pnpm lint --max-warnings 0`, so any warning fails the build.
 - **Vue API style**: New Vue files must use the Composition API (`<script setup>`), not the Options API. Share logic through composables (`useXxx` functions), not mixins. Existing Options API files can stay as they are for small edits.
+- **Shell `case` statements**: Every `case` in sh, bash, or zsh code (`openc3.sh`, `_openc3`, `openc3/bin/*install`, `scripts/`) needs a default `*)` branch. If nothing should happen, write `*) ;;` with a comment saying why. Without a default, an unexpected value passes through silently.
 
 ## Tests
 

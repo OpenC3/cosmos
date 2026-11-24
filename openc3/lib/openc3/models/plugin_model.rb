@@ -20,6 +20,7 @@ require 'rubygems/package'
 require 'openc3'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/python_venv'
+require 'openc3/utilities/python_wheel_bundle'
 require 'openc3/utilities/store'
 require 'openc3/config/config_parser'
 require 'openc3/models/model'
@@ -659,6 +660,9 @@ module OpenC3
         end
 
         if File.exist?(pyproject_path) || File.exist?(requirements_path)
+          # Checked even on a dry run so `cli validate` catches a gem that
+          # asks for an offline install but was built without its wheels.
+          offline_wheels = PythonWheelBundle.offline_wheels_dir(gem_path)
           pypi_url = resolve_pypi_url(scope: scope)
           # Skipped for any dry run: diff_only runs inline in an HTTP request, so
           # a slow or unreachable PyPI would time it out, and it must not mutate
@@ -672,24 +676,34 @@ module OpenC3
             # If UV is unavailable or the install fails, fall back to the shared pipinstall
             # which installs into PYTHONUSERBASE (the legacy shared environment).
             uv_installed = ENV['OPENC3_USE_UV'] != 'false' && system('which uv > /dev/null 2>&1')
-            if uv_installed
+            if offline_wheels && !uv_installed
+              # Bundled wheels are only installed by uvinstall. pipinstall would
+              # ignore them and resolve against an index the deployment lacks.
+              Logger.error "Plugin #{plugin_model.name} sets [tool.openc3] offline_install, which needs uv to install its bundled wheels. Plugin Python microservices may not function correctly."
+            elsif uv_installed
               plugin_venv_name = plugin_venv_name(scope: scope, plugin_name: plugin_model.name)
               Logger.info "Installing python packages into per-plugin venv '#{plugin_venv_name}' with pypi_url=#{pypi_url}"
               uv_args = [plugin_venv_name, gem_path] + pypi_args
-              output, status = Open3.capture2e("/openc3/bin/uvinstall", *uv_args)
+              output, status = Open3.capture2e(*uvinstall_command(offline_wheels), *uv_args)
               puts output
               if status.success?
                 # A plugin that declares openc3 itself would shadow the system
                 # library once its site-packages goes on PYTHONPATH, so drop it
                 # here rather than let the wrong client reach a running script.
                 PythonVenv.purge_reserved_packages(File.join('/gems', 'plugin_venvs', plugin_venv_name, '.venv'))
+              elsif offline_wheels
+                # The shared pipinstall resolves against an index, which an
+                # offline_install deployment does not have, so it would only
+                # stall on timeouts. uvinstall's output above names the
+                # missing or incompatible package.
+                Logger.error "Plugin #{plugin_model.name} could not install its Python dependencies from its bundled wheels. Plugin Python microservices may not function correctly."
               else
                 Logger.warn "UV per-plugin install failed, falling back to shared pipinstall"
                 uv_installed = false
               end
             end
 
-            unless uv_installed
+            unless uv_installed || offline_wheels
               pip_args = pypi_args.dup
               if File.exist?(pyproject_path)
                 Logger.info "Installing python packages from pyproject.toml with pypi_url=#{pypi_url}"
@@ -1270,6 +1284,14 @@ module OpenC3
       PypiUrl.build_args(pypi_url)
     end
 
+    # The uvinstall argv prefix, with the environment that points it at a
+    # plugin's bundled wheels when there are any
+    def self.uvinstall_command(offline_wheels)
+      return ["/openc3/bin/uvinstall"] unless offline_wheels
+
+      [{ 'UVINSTALL_OFFLINE_WHEELS' => offline_wheels }, "/openc3/bin/uvinstall"]
+    end
+
     # Build a sanitized venv directory name from scope and plugin name.
     # Replaces characters that are not alphanumeric, underscore, or hyphen with underscores.
     def self.plugin_venv_name(scope:, plugin_name:)
@@ -1321,6 +1343,8 @@ module OpenC3
         File.write(pyproject_path, @python_pyproject) if File.exist?(pyproject_path) && @python_pyproject
         File.write(requirements_path, @python_requirements) if File.exist?(requirements_path) && @python_requirements
 
+        # After rendering: offline_install is read from pyproject.toml
+        offline_wheels = PythonWheelBundle.offline_wheels_dir(gem_path)
         pypi_url = self.class.resolve_pypi_url(scope: scope)
         pypi_args = self.class.build_pypi_args(pypi_url)
 
@@ -1328,7 +1352,7 @@ module OpenC3
         plugin_venv_name = self.class.plugin_venv_name(scope: @scope, plugin_name: @name)
         Logger.info("Migrating plugin '#{@name}' to per-plugin UV venv '#{plugin_venv_name}'")
         uv_args = [plugin_venv_name, gem_path] + pypi_args
-        output, status = Open3.capture2e("/openc3/bin/uvinstall", *uv_args)
+        output, status = Open3.capture2e(*self.class.uvinstall_command(offline_wheels), *uv_args)
         puts output
         if status.success?
           Logger.info("Successfully migrated plugin '#{@name}' to per-plugin UV venv")

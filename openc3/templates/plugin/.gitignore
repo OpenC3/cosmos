@@ -4,4 +4,6 @@ node_modules
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+# Wheels bundled by `rake build` for [tool.openc3] offline_install
+python_wheels/
 <% end -%>

@@ -43,6 +43,7 @@ UV_ARGS="$*"
 RESOLVE_ARGS="$UV_ARGS"
 case " ${UV_ARGS} " in
     *" --no-config "*) RESOLVE_ARGS="${UV_ARGS} --no-sources" ;;
+    *) ;; # Public default index: leave the plugin's own index settings alone
 esac
 
 if [ -z "$PLUGIN_VENV_NAME" ] || [ -z "$GEM_PATH" ]; then
@@ -88,6 +89,75 @@ VENV_DIR="${VENV_BASE}/.venv"
 
 echo "Creating per-plugin venv for '${PLUGIN_VENV_NAME}' at ${VENV_DIR}"
 mkdir -p "${VENV_BASE}"
+
+# Path 0: the plugin was built with [tool.openc3] offline_install = true and
+# ships its wheels in the gem. PluginModel sets UVINSTALL_OFFLINE_WHEELS to that
+# directory. The install uses those wheels and nothing else, because the
+# deployment has no index to fall back to: an online retry would only hang on
+# timeouts and hide the real problem.
+#
+# The requirements come from the plugin's own uv.lock, exported with every
+# wheel hash it records. --require-hashes then rejects any bundled wheel whose
+# bytes differ from the lock, and --no-index --find-links restricts candidates
+# to the bundle, so a missing or incompatible wheel fails with uv's own report
+# naming the package. The index arguments in UV_ARGS are not passed: nothing
+# here talks to an index.
+#
+# uv pip install is additive, like `uv sync --inexact` in path 1, so packages an
+# admin added to this venv survive a reinstall. Installing populates the shared
+# UV cache (UV_CACHE_DIR) as a side effect, which is what lists the wheels in
+# Admin Console's Python packages.
+#
+# The wheels are staged in one fixed directory inside the UV cache first. uv
+# files find-links wheels under a digest of the directory they came from, and
+# the gem is extracted to a new temp directory on every install, so pointing
+# uv at the gem would add a fresh cache entry per install that is never reused.
+# The staged directory may hold other plugins' wheels too. That is safe: every
+# requirement is pinned and hash-checked against this plugin's uv.lock, so only
+# the exact bytes it locked can install.
+if [ -n "${UVINSTALL_OFFLINE_WHEELS}" ]; then
+    WHEELHOUSE="${UV_CACHE_DIR:-/gems/uv}/offline_wheels"
+    echo "Installing bundled wheels from ${UVINSTALL_OFFLINE_WHEELS} via ${WHEELHOUSE} (offline_install, no network)"
+    mkdir -p "${WHEELHOUSE}" || exit 1
+    for WHEEL in "${UVINSTALL_OFFLINE_WHEELS}"/*.whl; do
+        [ -f "${WHEEL}" ] || continue
+        # Another plugin's install may be reading a wheel with the same name, so
+        # never rewrite one in place: copy beside it, then rename over it. A
+        # reader sees either the whole old file or the whole new one. The temp
+        # name doesn't end in .whl, so uv never takes it as a candidate.
+        STAGED="${WHEELHOUSE}/$(basename "${WHEEL}")"
+        STAGING="${STAGED}.$$.tmp"
+        # -p keeps the mtime, which uv's cache uses to tell a wheel is unchanged
+        if ! cp -p "${WHEEL}" "${STAGING}" || ! mv -f "${STAGING}" "${STAGED}"; then
+            rm -f "${STAGING}"
+            echo "ERROR: could not stage ${WHEEL} in ${WHEELHOUSE}" >&2
+            exit 1
+        fi
+    done
+    cp "${GEM_PATH}/pyproject.toml" "${VENV_BASE}/pyproject.toml"
+    cp "${GEM_PATH}/uv.lock" "${VENV_BASE}/uv.lock"
+    cd "${VENV_BASE}" || exit 1
+    REQUIREMENTS="${VENV_BASE}/requirements.offline.txt"
+    if ! uv export --frozen --offline --no-dev --no-emit-project --no-header --no-annotate \
+            --format requirements-txt -o "${REQUIREMENTS}"; then
+        echo "ERROR: could not export requirements from the plugin's uv.lock" >&2
+        exit 1
+    fi
+    uv venv "${VENV_DIR}" --allow-existing
+    if uv pip install --python "${VENV_DIR}" --offline --no-index \
+            --find-links "${WHEELHOUSE}" --require-hashes -r "${REQUIREMENTS}"; then
+        echo "Bundled wheels installed successfully"
+        touch "${VENV_BASE}/.uv_managed"
+        exit 0
+    fi
+    {
+        echo "ERROR: plugin ${PLUGIN_VENV_NAME} cannot install its Python dependencies from its bundled wheels."
+        echo "       The gem must contain a wheel for every package in its uv.lock that is compatible with"
+        echo "       this deployment's Python version, OS, and architecture. Rebuild the plugin with"
+        echo "       python_platforms (and python_version) in [tool.openc3] set to match this deployment."
+    } >&2
+    exit 1
+fi
 
 # Path 1: uv.lock present - use `uv sync --frozen` for reproducible installs
 if [ -f "${GEM_PATH}/uv.lock" ] && [ -f "${GEM_PATH}/pyproject.toml" ]; then
@@ -167,7 +237,7 @@ elif [ -f "${GEM_PATH}/pyproject.toml" ]; then
         rm -f "$TMPFILE"
     fi
 else
-    echo "ERROR: No requirements.txt, pyproject.toml, or uv.lock found in ${GEM_PATH}"
+    echo "ERROR: No requirements.txt, pyproject.toml, or uv.lock found in ${GEM_PATH}" >&2
     exit 1
 fi
 
@@ -180,5 +250,5 @@ fi
 # No --no-index last resort here anymore: every attempt above already ran
 # cache-only first via uv_offline_then_online, so a cache-only retry at this
 # point would repeat an attempt that has already failed.
-echo "ERROR: uvinstall failed for plugin ${PLUGIN_VENV_NAME}"
+echo "ERROR: uvinstall failed for plugin ${PLUGIN_VENV_NAME}" >&2
 exit 1

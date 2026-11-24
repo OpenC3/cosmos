@@ -41,6 +41,34 @@ relocks, so a stale lock ships stale dependencies. `uv lock --check` fails if th
 
 The `dev` dependency group is never installed into COSMOS.
 
+### Air-gapped deployments
+
+If COSMOS cannot reach PyPI or a mirror, bundle the dependencies into the gem. Set this in `pyproject.toml`:
+
+```toml
+[tool.openc3]
+offline_install = true
+```
+
+`rake build` then checks that `uv.lock` is up to date, downloads every locked wheel into `python_wheels/`, verifies
+each one against the hash in `uv.lock`, and packages them into the gem. COSMOS installs from those wheels only and
+reports any missing or incompatible package instead of going online.
+
+The build stops if `uv.lock` is missing or out of date with `pyproject.toml`. Lock and build again in one step,
+with no local uv needed:
+
+```sh
+openc3.sh cli lock --build 1.0.1                             # after editing pyproject.toml
+openc3.sh cli lock --upgrade-package requests --build 1.0.1  # to move a dependency to a newer version
+```
+
+Building outside the COSMOS image (a local `rake build` rather than `openc3.sh cli rake build`) needs `uv` and
+`python3` 3.11 or newer on `PATH`.
+
+Wheels with compiled code are specific to an OS, CPU architecture, and Python version. The bundle targets the
+machine running the build, so build with `openc3.sh cli rake build` to match the COSMOS image. To build elsewhere or
+for several architectures, set `python_platforms` and `python_version` in `[tool.openc3]` (see `pyproject.toml`).
+
 ### Developing locally
 
 ```sh
@@ -104,6 +132,9 @@ package published only to your private index must also be served by that index, 
 1. <Path to COSMOS installation>/openc3.sh cli rake build VERSION=X.Y.Z (or openc3.bat for Windows)
    - VERSION is required
    - gem file will be built locally
+
+With [just](https://just.systems) installed, `just build X.Y.Z` runs the same command. Run `just` to list the
+other recipes in `justfile`. They expect `openc3.sh` one directory up; set `OPENC3_SH` to point elsewhere.
 
 ## Building tool / widget plugins using a local Ruby/Node/pnpm/Rake Environment
 

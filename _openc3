@@ -45,8 +45,14 @@ _openc3_test() {
                     install-playwright|build-plugin|reset-storage-state)
                         # These commands don't take arguments
                         ;;
+                    *)
+                        # Anything else has nothing to complete
+                        ;;
                 esac
             fi
+            ;;
+        *)
+            # Anything else has nothing to complete
             ;;
     esac
 }
@@ -157,6 +163,9 @@ _openc3_util() {
         clean|hostenter)
             # These commands don't take arguments
             ;;
+        *)
+            # Anything else has nothing to complete
+            ;;
     esac
 }
 
@@ -198,6 +207,9 @@ _openc3_cli() {
             'setpassword:set initial password from OPENC3_API_PASSWORD'
             'migratepassword:migrate password hash to argon2'
             'migratetouv:migrate plugin to per-plugin UV virtual environment'
+            'lock:lock Python plugin dependencies (uv lock), optionally then build'
+            'bundlewheels:bundle Python wheels for [tool.openc3] offline_install'
+            'verifywheels:report whether a plugin gem installs offline from its bundled wheels'
         )
         _describe 'cli commands' cli_commands
         return
@@ -229,6 +241,9 @@ _openc3_cli() {
                         ;;
                     running)
                         _message 'limit and offset'
+                        ;;
+                    *)
+                        # Anything else has nothing to complete
                         ;;
                 esac
             fi
@@ -356,6 +371,9 @@ _openc3_cli() {
                         # These require NAME as first arg
                         _message -r 'NAME (required)'
                         ;;
+                    *)
+                        # Anything else has nothing to complete
+                        ;;
                 esac
             elif (( CURRENT == 4 )); then
                 case $gen_type in
@@ -465,6 +483,9 @@ _openc3_cli() {
                     hget)
                         _message 'KEY'
                         ;;
+                    *)
+                        # Anything else has nothing to complete
+                        ;;
                 esac
             fi
             ;;
@@ -498,6 +519,65 @@ _openc3_cli() {
                     _message -r 'VERSION=<version> (e.g. VERSION=1.0.0)'
                     return 0
                 fi
+            fi
+            ;;
+        lock)
+            # Usage: lock [PLUGIN_DIR] [--upgrade] [--upgrade-package NAME]... [--build VERSION]
+            case $words[CURRENT-1] in
+                --upgrade-package)
+                    _message -r 'package name'
+                    ;;
+                --build)
+                    _message -r 'plugin gem version (e.g. 1.0.0)'
+                    ;;
+                *)
+                    _alternative \
+                        'directories:plugin directory:_directories' \
+                        'options: :(--upgrade --upgrade-package --build --help -h)'
+                    ;;
+            esac
+            ;;
+        bundlewheels)
+            # Usage: bundlewheels [PLUGIN_DIR]
+            if (( CURRENT == 2 )); then
+                _alternative \
+                    'directories:plugin directory:_directories' \
+                    'options: :(--help -h)'
+            fi
+            ;;
+        verifywheels)
+            # Usage: verifywheels PLUGIN.gem [--python-platform PLATFORM]... [--python-version VERSION]
+            if (( CURRENT == 2 )); then
+                _alternative \
+                    'gem-files:gem file:_files -g "*.gem"' \
+                    'options: :(--help -h)'
+            else
+                case $words[CURRENT-1] in
+                    --python-platform)
+                        local -a platforms
+                        platforms=(
+                            'x86_64-manylinux_2_28:Linux x86_64 (glibc 2.28+)'
+                            'aarch64-manylinux_2_28:Linux arm64 (glibc 2.28+)'
+                            'x86_64-unknown-linux-musl:Linux x86_64 (musl)'
+                            'aarch64-unknown-linux-musl:Linux arm64 (musl)'
+                            'x86_64-pc-windows-msvc:Windows x86_64'
+                            'aarch64-apple-darwin:macOS arm64'
+                            'x86_64-apple-darwin:macOS x86_64'
+                        )
+                        _describe 'uv python platform' platforms
+                        ;;
+                    --python-version)
+                        _message 'Python version (e.g. 3.13)'
+                        ;;
+                    *)
+                        local -a options
+                        options=(
+                            '--python-platform:check this uv --python-platform instead of the plugin targets'
+                            '--python-version:check this Python version instead of the plugin python_version'
+                        )
+                        _describe 'options' options
+                        ;;
+                esac
             fi
             ;;
         migratetouv)
@@ -543,6 +623,9 @@ _openc3_cli() {
             ;;
         irb|help)
             # These commands don't have specific completions
+            ;;
+        *)
+            # Anything else has nothing to complete
             ;;
     esac
 }
@@ -651,7 +734,13 @@ _openc3() {
                 start|stop|list|status|build|run|start-ubi|build-ubi|run-ubi)
                     # These commands don't take arguments
                     ;;
+                *)
+                    # Anything else has nothing to complete
+                    ;;
             esac
+            ;;
+        *)
+            # Anything else has nothing to complete
             ;;
     esac
 }

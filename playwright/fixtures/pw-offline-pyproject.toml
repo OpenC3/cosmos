@@ -1,0 +1,27 @@
+# Python dependencies for the generated PW_OFFLINE plugin, which exercises
+# [tool.openc3] offline_install end to end: `rake build` bundles the locked
+# wheels into python_wheels/, and installing the gem must install them from
+# the bundle with no index.
+#
+# pycowsay is deliberate: it is pure Python, has no dependencies of its own,
+# its wheel is 4 KB, and no other COSMOS venv or test plugin carries it (PW_TEST
+# uses cowsay, a different package). A pycowsay entry in the plugin venv or in
+# the Admin Packages "Cached" list therefore came from this plugin's bundle.
+#
+# pw-offline-uv.lock is this file's lock, copied in as uv.lock. Regenerate it
+# with `uv lock` after changing the dependencies: the build fails on a stale
+# lock, which is part of what it checks.
+[project]
+name = "openc3-cosmos-pw-offline"
+version = "0.0.0"
+description = "OpenC3 COSMOS Playwright offline_install test plugin Python dependencies"
+requires-python = ">=3.11"
+dependencies = [
+    "pycowsay>=0.0.0.2,<1.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.openc3]
+offline_install = true

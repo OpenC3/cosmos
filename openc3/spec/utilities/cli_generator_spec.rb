@@ -194,6 +194,17 @@ module OpenC3
         expect(gemspec).to include('Dir.glob("{pyproject.toml,uv.lock}")')
       end
 
+      # [tool.openc3] offline_install bundles wheels into python_wheels/ at
+      # build time, and they only reach an air-gapped COSMOS inside the gem.
+      it "ships bundled wheels in a python plugin's gem" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        FileUtils.mkdir_p('python_wheels')
+        FileUtils.touch('python_wheels/six-1.16.0-py2.py3-none-any.whl')
+        FileUtils.touch('python_wheels/SHA256SUMS')
+        spec = Gem::Specification.load(File.expand_path('openc3-cosmos-test-plugin.gemspec'))
+        expect(spec.files).to include('python_wheels/six-1.16.0-py2.py3-none-any.whl', 'python_wheels/SHA256SUMS')
+      end
+
       it "keeps python bytecode out of a python plugin's gem" do
         run_gen(['plugin', 'test-plugin', '--python'])
         FileUtils.mkdir_p('lib/openc3_cosmos_test_plugin/__pycache__')
@@ -268,6 +279,28 @@ module OpenC3
         expect(File.read('.gitignore')).to_not include('.venv/')
       end
 
+      it "generates a justfile with uv and wheel recipes for a python plugin" do
+        run_gen(['plugin', 'test-plugin', '--python'])
+        expect(File.exist?('justfile.erb')).to be false
+        justfile = File.read('justfile')
+        expect(justfile).to include("build VERSION:\n    {{ openc3_sh }} cli rake build VERSION={{ VERSION }}")
+        expect(justfile).to include("lock *ARGS:\n    {{ openc3_sh }} cli lock {{ ARGS }}")
+        expect(justfile).to include("verify GEM:\n    {{ openc3_sh }} cli verifywheels {{ GEM }}")
+        expect(justfile).to include('just verify openc3-cosmos-test-plugin-1.0.0.gem')
+        expect(justfile).to include('uv run --group dev pytest')
+        expect(justfile).to include('rm -rf python_wheels')
+        expect(justfile).to_not include('<%')
+      end
+
+      it "generates a justfile without uv recipes for a ruby plugin" do
+        run_gen(['plugin', 'test-plugin', '--ruby'])
+        justfile = File.read('justfile')
+        expect(justfile).to include('{{ openc3_sh }} cli rake build VERSION={{ VERSION }}')
+        expect(justfile).to_not include('uv')
+        expect(justfile).to_not include('python_wheels')
+        expect(justfile).to_not include('<%')
+      end
+
       it "does NOT generate lib/ for a ruby plugin" do
         run_gen(['plugin', 'test-plugin', '--ruby'])
         expect(Dir.exist?('lib')).to be false
@@ -281,7 +314,9 @@ module OpenC3
         run_gen(['plugin', 'test-plugin', '--python'])
         pyproject = File.read('pyproject.toml')
         expect(pyproject).to include('unresolved-reference = "ignore"')
-        expect(pyproject).to include('unresolved-import = "ignore"')
+        expect(pyproject).to include('missing-module-member = "ignore"')
+        # ty renamed unresolved-import and warns on the old name, which fails the check
+        expect(pyproject).to_not include('unresolved-import')
         expect(pyproject).to include('unknown-argument = "ignore"')
         expect(pyproject).to_not match(/^unresolved-reference = "warn"/)
       end
@@ -355,8 +390,10 @@ module OpenC3
         gemspec_file = File.expand_path('openc3-cosmos-test-plugin.gemspec')
         File.write('pyproject.toml', '')
         File.write('uv.lock', '')
+        FileUtils.mkdir_p('python_wheels')
+        FileUtils.touch('python_wheels/SHA256SUMS')
         spec = Gem::Specification.load(gemspec_file)
-        expect(spec.files).to include('pyproject.toml', 'uv.lock')
+        expect(spec.files).to include('pyproject.toml', 'uv.lock', 'python_wheels/SHA256SUMS')
         expect(spec.files).to_not include('requirements.txt')
         # The rewritten block keeps the 2-space indent of the gemspec body
         lines = File.read(gemspec_file).lines
