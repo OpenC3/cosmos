@@ -70,17 +70,19 @@
           :style="indent(0)"
         >
           <template #prepend>
-            <v-btn
-              :icon="row.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down'"
-              :aria-label="
-                row.collapsed
-                  ? `Expand microservice group ${row.name}`
-                  : `Collapse microservice group ${row.name}`
-              "
-              variant="text"
-              size="small"
-              @click="toggleCollapsed(row.key)"
-            />
+            <div class="toggle-cell">
+              <v-btn
+                :icon="row.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down'"
+                :aria-label="
+                  row.collapsed
+                    ? `Expand microservice group ${row.name}`
+                    : `Collapse microservice group ${row.name}`
+                "
+                variant="text"
+                size="small"
+                @click="toggleCollapsed(row.key)"
+              />
+            </div>
           </template>
           <v-list-item-title>
             Microservice Group: {{ row.name }}
@@ -91,18 +93,22 @@
           </v-list-item-subtitle>
         </v-list-item>
         <v-list-item v-else :style="indent(row.depth)">
-          <template v-if="row.childCount > 0" #prepend>
-            <v-btn
-              :icon="row.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down'"
-              :aria-label="
-                row.collapsed
-                  ? `Expand ${row.microservice.name}`
-                  : `Collapse ${row.microservice.name}`
-              "
-              variant="text"
-              size="small"
-              @click="toggleCollapsed(row.key)"
-            />
+          <!-- Every row reserves the toggle column so titles line up -->
+          <template v-if="hasToggles" #prepend>
+            <div class="toggle-cell">
+              <v-btn
+                v-if="row.childCount > 0"
+                :icon="row.collapsed ? 'mdi-chevron-right' : 'mdi-chevron-down'"
+                :aria-label="
+                  row.collapsed
+                    ? `Expand ${row.microservice.name}`
+                    : `Collapse ${row.microservice.name}`
+                "
+                variant="text"
+                size="small"
+                @click="toggleCollapsed(row.key)"
+              />
+            </div>
           </template>
           <v-list-item-title>{{ row.microservice.name }}</v-list-item-title>
           <v-list-item-subtitle
@@ -281,6 +287,10 @@ export default {
         new Set(this.collapsed),
       )
     },
+    // A flat list (no groups or parents) needs no toggle column
+    hasToggles() {
+      return this.rows.some((row) => row.type === 'group' || row.childCount > 0)
+    },
   },
   watch: {
     '$route.query.services': function () {
@@ -311,7 +321,9 @@ export default {
   },
   methods: {
     indent: function (depth) {
-      return { paddingInlineStart: `${16 + depth * 32}px` }
+      // Each level indents by one toggle column, so a child's toggle sits
+      // under its parent's title
+      return { paddingInlineStart: `${16 + depth * 40}px` }
     },
     toggleCollapsed: function (key) {
       if (this.collapsed.includes(key)) {
@@ -613,6 +625,12 @@ export default {
 .list {
   background-color: var(--color-background-surface-default) !important;
   overflow-x: hidden;
+}
+/* Matches the width of a small icon v-btn and the indent per depth */
+.toggle-cell {
+  width: 40px;
+  display: flex;
+  align-items: center;
 }
 .rotating-icon {
   animation: spin 1s linear infinite;
