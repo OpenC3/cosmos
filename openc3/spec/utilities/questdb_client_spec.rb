@@ -438,6 +438,37 @@ module OpenC3
         expect(entry['RECEIVED_TIMESECONDS']).to eq(250 / 1_000_000_000.0)
       end
 
+      it "selects the received time for item queries that include both times" do
+        query = QuestDBClient.build_item_columns_query("TBL", ['"TEMP1"'], 1, 2, include_times: true)
+        expect(query).to eq('SELECT "TEMP1", CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS, CAST(RECEIVED_TIMESECONDS AS LONG) as "__rx_time_ns", COSMOS_EXTRA FROM "TBL" WHERE PACKET_TIMESECONDS >= 1 AND PACKET_TIMESECONDS < 2')
+        # Only selected once when also filtering by received time
+        query = QuestDBClient.build_item_columns_query("TBL", ['"TEMP1"'], 1, 2, time_type: :RECEIVED, include_times: true)
+        expect(query.scan('"__rx_time_ns"').length).to eq(1)
+      end
+
+      it "returns both times from item rows only when asked" do
+        meta = { item_keys: ['TEMP1'], item_types: [{ 'data_type' => 'FLOAT', 'array_size' => nil }], stored_timestamp_item_keys: {}, calculated_positions: {} }
+        row = [["TEMP1", 1.5], ["PACKET_TIMESECONDS", 100], ["__rx_time_ns", 250], ["COSMOS_EXTRA", nil]]
+        entry = QuestDBClient.decode_item_row(row, [0], meta)
+        expect(entry).to_not have_key('__packet_time')
+        expect(entry).to_not have_key('__received_time')
+        entry = QuestDBClient.decode_item_row(row, [0], meta, time_type: :RECEIVED, include_times: true)
+        expect(entry['__time']).to eq(250)
+        expect(entry['__packet_time']).to eq(100)
+        expect(entry['__received_time']).to eq(250)
+      end
+
+      it "returns both times from packet rows only when asked" do
+        row = [["TEMP1", 1.5], ["__pkt_time_ns", 100], ["__rx_time_ns", 250]]
+        entry = QuestDBClient.decode_packet_row(row, :RAW, nil)
+        expect(entry).to_not have_key('__packet_time')
+        expect(entry).to_not have_key('__received_time')
+        entry = QuestDBClient.decode_packet_row(row, :RAW, nil, include_times: true)
+        expect(entry['__time']).to eq(100)
+        expect(entry['__packet_time']).to eq(100)
+        expect(entry['__received_time']).to eq(250)
+      end
+
       it "decodes the received time bucket of reduced rows as __time" do
         entry = QuestDBClient.decode_reduced_row([["RECEIVED_TIMESECONDS", 60_000_000_000], ["TEMP1__A", 2.0]])
         expect(entry).to eq({ '__time' => 60_000_000_000, 'TEMP1__A' => 2.0 })

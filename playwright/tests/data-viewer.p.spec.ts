@@ -13,6 +13,7 @@
 */
 
 import { test, expect } from './fixture'
+import { format, add, sub } from 'date-fns'
 
 test.use({
   toolPath: '/tools/dataviewer',
@@ -257,14 +258,26 @@ test('changes display settings', async ({ page, utils }) => {
   await utils.sleep(1000) // Allow a few packets to come in
   await page.locator('[data-test=history-component-open-settings]').click()
   await expect(page.locator('[data-test=display-settings-card]')).toBeVisible()
-  await page.getByText('Show timestamp').click()
+  // Both times are shown by default
   await expect(
     page.locator('[data-test=history-component-text-area] textarea'),
-  ).not.toHaveValue(/Received seconds:/)
-  await page.getByText('Show timestamp').click()
+  ).toHaveValue(/Packet seconds:(.*\n)+.*Received seconds:/)
+  await page.getByText('Show packet time').click()
+  await expect(
+    page.locator('[data-test=history-component-text-area] textarea'),
+  ).not.toHaveValue(/Packet seconds:/)
   await expect(
     page.locator('[data-test=history-component-text-area] textarea'),
   ).toHaveValue(/Received seconds:/)
+  await page.getByText('Show received time').click()
+  await expect(
+    page.locator('[data-test=history-component-text-area] textarea'),
+  ).not.toHaveValue(/(Received seconds:|\*{44})/)
+  await page.getByText('Show packet time').click()
+  await page.getByText('Show received time').click()
+  await expect(
+    page.locator('[data-test=history-component-text-area] textarea'),
+  ).toHaveValue(/Packet seconds:(.*\n)+.*Received seconds:/)
   await page.getByText('Show ASCII').click()
   await expect(
     page.locator('[data-test=history-component-text-area] textarea'),
@@ -402,10 +415,97 @@ test('adds single packet item', async ({ page, utils }) => {
 
   await expect(page.locator('[data-test=history-component-text-area] textarea'))
     // Create regular expression to match the line:
-    // Time: 2024-10-01T01:15:49.419Z  TEMP1: -1.119 C
+    // Packet Time: 2024-10-01T01:15:49.419Z  Received Time: 2024-10-01T01:15:49.420Z  TEMP1: -1.119 C
     .toHaveValue(
-      /Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+TEMP1: .*\.\d{3} C/,
+      /Packet Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+Received Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+TEMP1: .*\.\d{3} C/,
     )
+})
+
+test('selects data by packet time or received time', async ({
+  page,
+  utils,
+}) => {
+  const packetTime = new Date('2019-05-06T07:08:09Z')
+  const receivedTime = new Date('2022-06-07T08:09:10Z')
+  const offset = 1573 // OFFSET value which identifies the injected packet
+  await utils.injectReceivedTimeMemdump(offset, packetTime, receivedTime)
+
+  await page.locator('[data-test="data-viewer-file"]').click()
+  await page.getByText('Reset Configuration').click()
+  await page.locator('[data-test="new-tab"]').click()
+  await page.locator('[data-test="select-component"]').click()
+  await page.getByText('COSMOS Item Value').click()
+  await expect(
+    page.locator('.v-list-item-title').getByText('COSMOS Item Value'),
+  ).not.toBeVisible()
+  await utils.selectTargetPacketItem('INST', 'MEMDUMP', 'OFFSET')
+  await page.locator('button:has-text("Add Item")').click()
+  await page.locator('[data-test=add-component]').click()
+
+  // Stream 5s either side of the received time, entered in local time
+  const start = sub(receivedTime, { seconds: 5 })
+  const end = add(receivedTime, { seconds: 5 })
+  await page
+    .locator('[data-test=start-date] input')
+    .fill(format(start, 'yyyy-MM-dd'))
+  await page
+    .locator('[data-test=start-time] input')
+    .fill(format(start, 'HH:mm:ss'))
+  await page
+    .locator('[data-test=end-date] input')
+    .fill(format(end, 'yyyy-MM-dd'))
+  await page.locator('[data-test=end-time] input').fill(format(end, 'HH:mm:ss'))
+  // The time picker only takes the typed time when it loses focus
+  await page.locator('[data-test=end-time] input').press('Tab')
+  const textarea = page.locator(
+    '[data-test=history-component-text-area] textarea',
+  )
+
+  // Packet Time is the default and doesn't find the packet by its received
+  // time. Checked first because restarting doesn't clear the history.
+  await expect(
+    page.locator('[data-test=packet-time-radio] input'),
+  ).toBeChecked()
+  await page.locator('[data-test="start-button"]').click()
+  // The time type can't change while streaming
+  await expect(
+    page.locator('[data-test=received-time-radio] input'),
+  ).toBeDisabled()
+  await utils.sleep(5000) // Give the TSDB query time to return
+  await expect(textarea).not.toHaveValue(new RegExp(`OFFSET: ${offset}`))
+  await page.locator('[data-test="stop-button"]').click()
+
+  // Received Time finds it, and both times are shown
+  await page.locator('[data-test=received-time-radio]').click()
+  await page.locator('[data-test="start-button"]').click()
+  await expect(textarea).toHaveValue(
+    new RegExp(
+      `Packet Time: ${packetTime.toISOString()}\\s+Received Time: ${receivedTime.toISOString()}\\s+OFFSET: ${offset}`,
+    ),
+  )
+  await page.locator('[data-test="stop-button"]').click()
+
+  // Reset puts the time type back to packet time
+  await page.locator('[data-test="data-viewer-file"]').click()
+  await page.getByText('Reset Configuration').click()
+  await expect(
+    page.locator('[data-test=packet-time-radio] input'),
+  ).toBeChecked()
+})
+
+test('selects raw packets by packet time', async ({ page, utils }) => {
+  await page.locator('[data-test="data-viewer-file"]').click()
+  await page.getByText('Reset Configuration').click()
+
+  await page.locator('[data-test=received-time-radio]').click()
+  await addComponent(page, utils, 'INST', 'ADCS')
+  await page.locator('[data-test="start-button"]').click()
+  await expect(page.locator('.v-alert.bg-warning')).toContainText(
+    'Raw packets are selected by packet time',
+  )
+  await expect(
+    page.locator('[data-test=history-component-text-area] textarea'),
+  ).toHaveValue(/00000010:/)
 })
 
 test('adds multiple packet items', async ({ page, utils }) => {
@@ -424,7 +524,7 @@ test('adds multiple packet items', async ({ page, utils }) => {
 
   await expect(page.locator('[data-test=history-component-text-area] textarea'))
     // Create regular expression to match the line:
-    // Time: 2024-10-01T02:12:42.419Z  TEMP3: -20.785 C  PACKET_TIME: 2024-10-01 02:12:42 +0000
+    // Packet Time: 2024-10-01T02:12:42.419Z  Received Time: 2024-10-01T02:12:42.420Z  TEMP3: -20.785 C  PACKET_TIME: 2024-10-01 02:12:42 +0000
     .toHaveValue(
       /Time: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z\s+TEMP3: .*\.\d{3} C\s+PACKET_TIME: \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/,
     )

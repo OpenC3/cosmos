@@ -75,7 +75,7 @@ class LoggedStreamingThread < StreamingThread
     end
 
     # Check the topic to figure out what we have in Redis
-    oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(first_object.topic, db_shard: first_object.db_shard)
+    oldest_msg_id, oldest_msg_hash = get_oldest_realtime_message(first_object.topic, first_object.db_shard)
 
     if oldest_msg_id
       # We have data in Redis
@@ -180,7 +180,7 @@ class LoggedStreamingThread < StreamingThread
 
     @last_tsdb_times.each do |topic, last_time|
       topic_db_shard = topic_db_shard_map[topic] || 0
-      oldest_msg_id, oldest_msg_hash = OpenC3::Topic.get_oldest_message(topic, db_shard: topic_db_shard)
+      oldest_msg_id, oldest_msg_hash = get_oldest_realtime_message(topic, topic_db_shard)
       if oldest_msg_id
         oldest_time = message_time(oldest_msg_hash, @time_type)
         # Use the same interpolation formula as setup_thread_body
@@ -201,6 +201,43 @@ class LoggedStreamingThread < StreamingThread
       offset = offset_by_topic[obj.topic]
       obj.offset = offset if offset
     end
+  end
+
+  # Number of messages read at a time while looking past stored messages
+  OLDEST_REALTIME_SCAN_COUNT = 100
+  # Most messages read while looking past stored messages. A topic can hold only
+  # stored messages (e.g. a FileInterface feed), and reading all of it on every
+  # historical request is slow.
+  OLDEST_REALTIME_SCAN_MAX = 2000
+
+  # Returns the oldest [msg_id, msg_hash] in the topic that isn't stored, or nil.
+  # Stored messages (e.g. telemetry played back from a recorder) share the topic
+  # with realtime ones, but their packet and received times can be anything and
+  # redis_thread_body skips them. Using one as the oldest message would make a
+  # start time after it stream from Redis instead of the TSDB and return nothing.
+  # Returns nil if no realtime message is found within OLDEST_REALTIME_SCAN_MAX
+  # messages. Callers treat nil as no realtime data: setup reads from the TSDB
+  # and the bridge keeps the current offset.
+  def get_oldest_realtime_message(topic, db_shard)
+    msg_id, msg_hash = OpenC3::Topic.get_oldest_message(topic, db_shard: db_shard)
+    return nil unless msg_id
+    return [msg_id, msg_hash] unless OpenC3::ConfigParser.handle_true_false(msg_hash['stored'])
+
+    store = OpenC3::EphemeralStore.instance(db_shard: db_shard)
+    scanned = 1
+    while scanned < OLDEST_REALTIME_SCAN_MAX
+      # A '(' start is exclusive so this reads the messages after msg_id
+      count = [OLDEST_REALTIME_SCAN_COUNT, OLDEST_REALTIME_SCAN_MAX - scanned].min
+      messages = store.xrange(topic, "(#{msg_id}", '+', count: count)
+      return nil if messages.nil? or messages.empty?
+
+      messages.each do |id, hash|
+        return [id, hash] unless OpenC3::ConfigParser.handle_true_false(hash['stored'])
+      end
+      scanned += messages.length
+      msg_id = messages[-1][0]
+    end
+    nil
   end
 
   # Override parent to also filter overlap during TSDB→STREAM transition
@@ -397,7 +434,7 @@ class LoggedStreamingThread < StreamingThread
         sql_to_local << i unless name.nil?
       end
 
-      query = OpenC3::QuestDBClient.build_item_columns_query(table_name, query_names, start_time, end_time, include_received_ts: needs_received_ts, time_type: @time_type, packet_bounds: meta[:packet_bounds])
+      query = OpenC3::QuestDBClient.build_item_columns_query(table_name, query_names, start_time, end_time, include_received_ts: needs_received_ts, time_type: @time_type, include_times: @streaming_api.include_times, packet_bounds: meta[:packet_bounds])
       OpenC3::Logger.debug("QuestDB per-table query: #{query}")
 
       cursors << {
@@ -503,7 +540,7 @@ class LoggedStreamingThread < StreamingThread
     return nil unless result
     row_index = cursor[:row_index]
     return nil if row_index >= result.ntuples
-    OpenC3::QuestDBClient.decode_item_row(result[row_index], cursor[:sql_to_local], cursor[:meta], time_type: @time_type)
+    OpenC3::QuestDBClient.decode_item_row(result[row_index], cursor[:sql_to_local], cursor[:meta], time_type: @time_type, include_times: @streaming_api.include_times)
   end
 
   # Stream reduced (aggregated) items using QuestDB SAMPLE BY
@@ -764,7 +801,7 @@ class LoggedStreamingThread < StreamingThread
         results = []
         result.each do |tuples|
           objects.each do |object|
-            decoded = OpenC3::QuestDBClient.decode_packet_row(tuples, value_type, packet_def, time_type: @time_type)
+            decoded = OpenC3::QuestDBClient.decode_packet_row(tuples, value_type, packet_def, time_type: @time_type, include_times: @streaming_api.include_times)
             if decoded
               entry = decoded.merge("__type" => "PACKET", "__packet" => object.key)
               track_tsdb_time(object.topic, entry['__time'])
@@ -947,7 +984,8 @@ class LoggedStreamingThread < StreamingThread
   def handle_packet(packet, objects)
     first_object = objects[0]
     if first_object.stream_mode == :RAW
-      return handle_raw_packet(packet.buffer(false), objects, packet.packet_time.to_nsec_from_epoch)
+      received_time = packet.received_time ? packet.received_time.to_nsec_from_epoch : nil
+      return handle_raw_packet(packet.buffer(false), objects, packet.packet_time.to_nsec_from_epoch, received_time: received_time)
     else # @stream_mode == :DECOM
       return handle_json_packet(packet, objects)
     end
