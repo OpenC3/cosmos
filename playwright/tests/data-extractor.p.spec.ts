@@ -436,3 +436,121 @@ test('works with LATEST', async ({ page, utils }) => {
     expect(contents).toContain('INST,LATEST,JSON')
   })
 })
+
+// The DEMO simulator fills TIMESEC / TIMEUS (which PACKET_TIME is derived
+// from) with the current time, so packet time always equals received time.
+// Inject a stored INST MEMDUMP whose packet time and received time are a year
+// apart, years in the past, so each time type selects different data. Stored
+// packets don't update the current value table or realtime streams, MEMDUMP has
+// no limits, and the sim only sends it when commanded, so other tests never see
+// it. Reruns inject the same packet so the row is effectively idempotent.
+test('extracts by packet time or received time', async ({ page, utils }) => {
+  const packetTime = new Date('2020-01-02T03:04:05Z')
+  const receivedTime = new Date('2021-02-03T04:05:06Z')
+  const offset = 1571 // OFFSET value which identifies the injected packet
+
+  const api = (method: string, params: any[], keywordParams = {}) =>
+    page.evaluate(
+      async ({ method, params, keywordParams }) => {
+        const response = await fetch('/openc3-api/api', {
+          method: 'POST',
+          headers: {
+            Authorization: localStorage.openc3Token,
+            'Content-Type': 'application/json-rpc',
+            manual: 'true',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method,
+            params,
+            id: 1,
+            keyword_params: { scope: 'DEFAULT', ...keywordParams },
+          }),
+        })
+        return response.json()
+      },
+      { method, params, keywordParams },
+    )
+
+  const injected = await api(
+    'inject_tlm',
+    [
+      'INST',
+      'MEMDUMP',
+      { TIMESEC: packetTime.getTime() / 1000, TIMEUS: 0, OFFSET: offset },
+    ],
+    {
+      type: 'RAW',
+      stored: true,
+      received_time: receivedTime.getTime() * 1_000_000, // nanoseconds
+    },
+  )
+  expect(injected.error).toBeUndefined()
+
+  // The TSDB microservice flushes periodically so wait for the row to land
+  const packetRange = {
+    start_time: sub(packetTime, { seconds: 1 }).toISOString(),
+    end_time: add(packetTime, { seconds: 1 }).toISOString(),
+  }
+  await expect
+    .poll(
+      async () =>
+        JSON.stringify(
+          await api(
+            'get_tlm_values',
+            [['INST__MEMDUMP__OFFSET__RAW']],
+            packetRange,
+          ),
+        ),
+      { timeout: 30000 },
+    )
+    .toContain(`${offset}`)
+
+  // Times are entered in local time like the rest of these tests
+  const setRange = async (time: Date) => {
+    const start = sub(time, { seconds: 5 })
+    const end = add(time, { seconds: 5 })
+    await page
+      .locator('[data-test=start-date] input')
+      .fill(format(start, 'yyyy-MM-dd'))
+    await page
+      .locator('[data-test=start-time] input')
+      .fill(format(start, 'HH:mm:ss'))
+    await page
+      .locator('[data-test=end-date] input')
+      .fill(format(end, 'yyyy-MM-dd'))
+    await page
+      .locator('[data-test=end-time] input')
+      .fill(format(end, 'HH:mm:ss'))
+  }
+  await utils.addTargetPacketItem('INST', 'MEMDUMP', 'OFFSET')
+
+  // Packet Time is the default and finds the packet by its packet time
+  await setRange(packetTime)
+  await utils.download(page, 'text=Process', function (contents) {
+    const lines = contents.split('\n')
+    expect(lines[0]).toEqual('TIME,TARGET,PACKET,OFFSET')
+    expect(lines[1]).toEqual(
+      `2020-01-02T03:04:05.000000000Z,INST,MEMDUMP,${offset}`,
+    )
+  })
+
+  // Received Time doesn't find it in the packet time range
+  await page.locator('label:has-text("Received Time")').click()
+  await page.locator('text=Process').click()
+  await expect(
+    page.locator(
+      'text=No data found for the items in the requested received time range',
+    ),
+  ).toBeVisible()
+
+  // But does in the received time range, and outputs the received time
+  await setRange(receivedTime)
+  await utils.download(page, 'text=Process', function (contents) {
+    const lines = contents.split('\n')
+    expect(lines[0]).toEqual('RECEIVED_TIME,TARGET,PACKET,OFFSET')
+    expect(lines[1]).toEqual(
+      `2021-02-03T04:05:06.000000000Z,INST,MEMDUMP,${offset}`,
+    )
+  })
+})
