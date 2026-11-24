@@ -133,6 +133,9 @@ package published only to your private index must also be served by that index, 
    - VERSION is required
    - gem file will be built locally
 
+With [just](https://just.systems) installed, `just build X.Y.Z` runs the same command. Run `just` to list the
+other recipes in `justfile`. They expect `openc3.sh` one directory up; set `OPENC3_SH` to point elsewhere.
+
 ## Building tool / widget plugins using a local Ruby/Node/pnpm/Rake Environment
 
 1. pnpm install --frozen-lockfile --ignore-scripts
