@@ -43,7 +43,7 @@ Running discovery requires the `admin` permission, the same as installing a plug
 A variable configured for discovery shows a dropdown of the devices found, with a refresh button beside it.
 
 - **Choosing the computer.** Discovery runs on the bridge the plugin's bridge variable selects, or on `DEFAULT` if the plugin doesn't have one. Changing the bridge runs discovery again.
-- **New installs.** The first device found is selected automatically, unless a value was already chosen.
+- **New installs.** The first device found is selected automatically, unless a value was already chosen. **Install** waits for discovery to finish, so the device is selected before the plugin installs. Editing an installed plugin never changes its values: pick a device from the dropdown to change one.
 - **Devices in use.** A device another installed plugin is using on the same computer is shown as in use and isn't offered, which helps avoid two plugins opening the same serial port, for example. This only filters the dropdown: it doesn't reserve the device, so a value you type yourself, or a variable's default, can still name a device in use. Uninstalling the plugin frees the device. Upgrading or editing a plugin still offers the devices it already uses.
 - **Typing a value.** You can always type a value instead, for example when the device isn't connected yet.
 

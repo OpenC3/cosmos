@@ -585,7 +585,8 @@
           <v-btn
             variant="flat"
             data-test="edit-submit"
-            :disabled="uploadingFiles"
+            :disabled="uploadingFiles || discovering"
+            :loading="discovering"
             @click="checkVersionAndSubmit"
           >
             Install
@@ -798,6 +799,13 @@ export default {
   computed: {
     uploadingFiles() {
       return Object.values(this.uploading).some(Boolean)
+    },
+    // Install waits for the discovery of the variables shown, so a new install
+    // gets the device discovery selects instead of a blank value
+    discovering() {
+      return Object.entries(this.discoveryLoading).some(
+        ([name, loading]) => loading && this.isVariableVisible(name),
+      )
     },
     show: {
       get() {
