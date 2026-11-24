@@ -1281,16 +1281,114 @@ module OpenC3
     end
 
     describe "self.modified_diff" do
-      it "delegates to install_phase2 with diff_only and returns the file list" do
-        expect(PluginModel).to receive(:install_phase2).with(
-          hash_including("name" => "name"), scope: "DEFAULT", diff_only: true
-        ).and_return(["TGT/screen.txt"])
-        expect(PluginModel.modified_diff({"name" => "name"}, scope: "DEFAULT")).to eql(["TGT/screen.txt"])
+      # Stand-in for `openc3cli modifieddiff SCOPE PLUGIN_HASH.json RESULT.json`
+      # (openc3cli only exists in the containers). It gets the same arguments.
+      def stand_in(body)
+        allow(PluginModel).to receive(:modified_diff_command) do |scope, hash_path, result_path|
+          ['ruby', '-rjson', '-e', body, scope, hash_path, result_path]
+        end
       end
 
-      it "raises when install_phase2 raises rather than reporting no differences" do
-        expect(PluginModel).to receive(:install_phase2).and_raise("boom")
-        expect { PluginModel.modified_diff({"name" => "name"}, scope: "DEFAULT") }.to raise_error("boom")
+      it "runs openc3cli modifieddiff rather than install_phase2 in this process" do
+        expect(PluginModel.modified_diff_command("DEFAULT", "/a.json", "/b.json")).to eql(
+          ['ruby', '/openc3/bin/openc3cli', 'modifieddiff', 'DEFAULT', '/a.json', '/b.json']
+        )
+        expect(PluginModel).to_not receive(:install_phase2)
+        stand_in('File.write(ARGV[2], JSON.generate({"files" => ["TGT/screen.txt"]}))')
+        expect(PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT")).to eql(["TGT/screen.txt"])
+      end
+
+      it "passes the scope and plugin hash to the child" do
+        stand_in('h = JSON.parse(File.read(ARGV[1])); File.write(ARGV[2], JSON.generate({"files" => [ARGV[0], h["name"], h["plugin_txt_lines"][0]]}))')
+        result = PluginModel.modified_diff({ "name" => "name", "plugin_txt_lines" => ["<%= 1 + 1 %>"] }, scope: "OTHER")
+        # ERB is passed through unrendered: nothing in this process renders it
+        expect(result).to eql(["OTHER", "name", "<%= 1 + 1 %>"])
+      end
+
+      it "keeps state set by plugin code out of this process" do
+        stand_in('$modified_diff_marker = true; Object.const_set(:ModifiedDiffMarker, 1); File.write(ARGV[2], JSON.generate({"files" => []}))')
+        expect(PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT")).to eql([])
+        expect($modified_diff_marker).to be_nil
+        expect(Object.const_defined?(:ModifiedDiffMarker)).to be false
+      end
+
+      it "raises the child's error rather than reporting no differences" do
+        stand_in('File.write(ARGV[2], JSON.generate({"error" => "boom"})); exit 1')
+        expect { PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT") }.to raise_error("boom")
+      end
+
+      it "raises with the child's output if it dies without a result" do
+        stand_in('puts "something broke"; exit 3')
+        expect { PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT") }.to raise_error(/exit status 3.*something broke/m)
+      end
+
+      it "reads back only the end of a large child output" do
+        stand_in('$stdout.write("x" * 100_000); puts; puts "the real error"; exit 1')
+        expect { PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT") }.to raise_error do |error|
+          expect(error.message).to include("the real error")
+          expect(error.message.bytesize).to be < PluginModel::MODIFIED_DIFF_OUTPUT_LIMIT + 100
+        end
+      end
+
+      it "removes the child's temp files when it times out" do
+        Dir.mktmpdir do |dir|
+          marker = File.join(dir, 'child_tmp')
+          # The child can't clean up after itself when it's killed
+          stand_in("require 'tmpdir'; File.write('#{marker}', Dir.mktmpdir); sleep 30")
+          expect { PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT", timeout: 2) }.to raise_error(/Timed out/)
+          child_tmp = File.read(marker)
+          expect(child_tmp).to_not be_empty
+          expect(File.exist?(child_tmp)).to be false
+        end
+      end
+
+      it "raises if the child exits 0 without a valid result" do
+        stand_in('File.write(ARGV[2], "not json")')
+        expect { PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT") }.to raise_error(/Modified file check failed/)
+      end
+
+      it "kills processes the child leaves behind when it succeeds" do
+        Dir.mktmpdir do |dir|
+          marker = File.join(dir, 'grandchild.pid')
+          stand_in("pid = Process.spawn('sleep', '30'); Process.detach(pid); File.write('#{marker}', pid.to_s); File.write(ARGV[2], JSON.generate({ 'files' => [] }))")
+          expect(PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT")).to eql([])
+          grandchild = File.read(marker).to_i
+          alive = true
+          20.times do
+            begin
+              Process.kill(0, grandchild)
+              sleep 0.1
+            rescue Errno::ESRCH
+              alive = false
+              break
+            end
+          end
+          expect(alive).to be false
+        end
+      end
+
+      it "kills the child and its process group on timeout" do
+        Dir.mktmpdir do |dir|
+          marker = File.join(dir, 'grandchild.pid')
+          # The child spawns a grandchild that would outlive it unless the
+          # whole process group is killed
+          stand_in("pid = Process.spawn('sleep', '30'); File.write('#{marker}', pid.to_s); sleep 30")
+          start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+          expect { PluginModel.modified_diff({ "name" => "name" }, scope: "DEFAULT", timeout: 2) }.to raise_error(/Timed out after 2 seconds/)
+          expect(Process.clock_gettime(Process::CLOCK_MONOTONIC) - start).to be < 10
+          grandchild = File.read(marker).to_i
+          alive = true
+          20.times do
+            begin
+              Process.kill(0, grandchild)
+              sleep 0.1
+            rescue Errno::ESRCH
+              alive = false
+              break
+            end
+          end
+          expect(alive).to be false
+        end
       end
     end
 
