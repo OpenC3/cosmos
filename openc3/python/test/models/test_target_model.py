@@ -729,12 +729,12 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
         # which has 5000 packets from before a restart
         Store.hset("DEFAULT__TELEMETRYCNTS__{SYSTEM}", "META", 5000)
         meta = System.telemetry.packet("SYSTEM", "META")
-        TargetModel.sync_packet_count_time = time.time()
-        TargetModel.sync_tlm_packet_counts(meta, ["SYSTEM"], scope="DEFAULT")
+        with patch.object(TargetModel, "sync_packet_count_time", time.time()):
+            TargetModel.sync_tlm_packet_counts(meta, ["SYSTEM"], scope="DEFAULT")
         self.assertEqual(meta.received_count, 1)
         # The INST decom wins the next sync
-        TargetModel.sync_packet_count_time = None
-        TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope="DEFAULT")
+        with patch.object(TargetModel, "sync_packet_count_time", None):
+            TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope="DEFAULT")
         self.assertEqual(meta.received_count, 5001)
 
     def test_sync_tlm_packet_counts_doesnt_start_a_sync_while_another_reads_back(self):
@@ -754,12 +754,14 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
                 TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope=scope)
             return counts
 
-        TargetModel.sync_packet_count_time = None
-        with patch.object(TargetModel, "get_all_telemetry_counts", side_effect=sync_during_readback):
+        with (
+            patch.object(TargetModel, "sync_packet_count_time", None),
+            patch.object(TargetModel, "get_all_telemetry_counts", side_effect=sync_during_readback),
+        ):
             TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope="DEFAULT")
         # 10 from Redis plus the one not written yet, not the 10 read before it
         self.assertEqual(health_status.received_count, 11)
-        TargetModel.sync_packet_count_time = None
-        TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope="DEFAULT")
+        with patch.object(TargetModel, "sync_packet_count_time", None):
+            TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope="DEFAULT")
         self.assertEqual(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope="DEFAULT"), 11)
         self.assertEqual(health_status.received_count, 11)

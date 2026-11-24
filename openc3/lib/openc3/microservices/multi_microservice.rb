@@ -21,9 +21,9 @@ module OpenC3
   # command line, or if none are given (as for a MICROSERVICE_GROUP's
   # MULTIGROUP) they are the microservices that name this one as their parent.
   class MultiMicroservice < Microservice
-    # This microservice has no targets of its own, so leave System for run to
-    # set up for its children's targets
     def setup_system
+      # Intentionally empty. This microservice has no targets of its own, so
+      # leave System for run to set up for its children's targets.
     end
 
     def child_models
