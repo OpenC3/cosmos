@@ -24,6 +24,38 @@ export class Utilities {
     await new Promise((resolve) => setTimeout(resolve, time))
   }
 
+  // Call a JSON-RPC API method (e.g. inject_tlm) as the signed in user and
+  // return its result. Fails the test if the call returns an error. JSON has no
+  // NaN or Infinity, so pass those as { json_class: 'Float', raw: 'NaN' }.
+  async api(
+    method: string,
+    params: unknown[],
+    keywordParams: Record<string, unknown> = {},
+  ): Promise<unknown> {
+    const json = await this.page.evaluate(
+      async ({ method, params, keywordParams }) => {
+        const response = await fetch('/openc3-api/api', {
+          method: 'POST',
+          headers: {
+            Authorization: localStorage.openc3Token,
+            'Content-Type': 'application/json-rpc',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method,
+            params,
+            id: 1,
+            keyword_params: { scope: 'DEFAULT', ...keywordParams },
+          }),
+        })
+        return await response.json()
+      },
+      { method, params, keywordParams },
+    )
+    expect(json.error, `${method} returned an error`).toBeUndefined()
+    return json.result
+  }
+
   // Sign in through the Keycloak form (Enterprise) and wait until the app is
   // back with a token for this user.
   //

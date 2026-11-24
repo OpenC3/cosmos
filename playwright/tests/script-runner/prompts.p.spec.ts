@@ -15,6 +15,7 @@
 import type { Page } from '@playwright/test'
 import type { Utilities } from '../../utilities'
 import { expect, test } from '../fixture'
+import { openFile } from './helpers'
 
 test.use({
   toolPath: '/tools/scriptrunner',
@@ -383,27 +384,6 @@ ${L.print('value')}`)
       }
     })
   })
-}
-
-async function openFile(page: Page, utils: Utilities, filename: string) {
-  await page.locator('[data-test=script-runner-file]').click()
-  await page.locator('text=Open File').click()
-  await utils.sleep(500) // Allow background data to fetch
-  await expect(
-    page.locator('.v-dialog').getByText('INST2', { exact: true }),
-  ).toBeVisible()
-  await page.locator('[data-test=file-open-save-search] input').fill(filename)
-  await page.locator(`.v-dialog >> text=${filename}`).click()
-  await page.locator('[data-test=file-open-save-submit-btn]').click()
-  await expect(page.locator('.v-dialog')).not.toBeVisible()
-
-  // Check for potential "<User> is editing this script"
-  // This can happen if we had to do a retry on this test
-  const someone = page.getByText('is editing this script')
-  if (await someone.isVisible()) {
-    await page.locator('[data-test="unlock-button"]').click()
-    await page.locator('[data-test="confirm-dialog-force unlock"]').click()
-  }
 }
 
 // Open the file chooser, select files and click Ok.
