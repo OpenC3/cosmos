@@ -292,7 +292,9 @@ module OpenC3
         run_gen(['plugin', 'test-plugin', '--python'])
         pyproject = File.read('pyproject.toml')
         expect(pyproject).to include('unresolved-reference = "ignore"')
-        expect(pyproject).to include('unresolved-import = "ignore"')
+        expect(pyproject).to include('missing-module-member = "ignore"')
+        # ty renamed unresolved-import and warns on the old name, which fails the check
+        expect(pyproject).to_not include('unresolved-import')
         expect(pyproject).to include('unknown-argument = "ignore"')
         expect(pyproject).to_not match(/^unresolved-reference = "warn"/)
       end

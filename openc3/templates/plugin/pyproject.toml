@@ -110,10 +110,10 @@ pythonpath = ["lib"]
 # openc3.script re-exports its API through star imports (from .telemetry import *,
 # etc.) with no __all__, so ty cannot see tlm, cmd, send_raw and friends even
 # though they resolve at runtime. unresolved-reference covers using such a name,
-# unresolved-import covers importing one by name. Ruff's F405 flags the same
+# missing-module-member covers importing one by name. Ruff's F405 flags the same
 # thing if you want it reported.
 unresolved-reference = "ignore"
-unresolved-import = "ignore"
+missing-module-member = "ignore"
 # Script Runner replaces openc3.script.start() at runtime with its own
 # implementation, which accepts bind_variables. The pip package only ships the
 # stub signature start(procedure_name).
