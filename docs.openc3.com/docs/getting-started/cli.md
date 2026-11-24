@@ -566,7 +566,7 @@ Bundled 7 wheel(s) into python_wheels/ for this machine
   Successfully built RubyGem
 ```
 
-For a plugin generated before this command existed, add the `openc3cli bundlewheels` step to its Rakefile ahead of `gem build`, and add `Dir.glob("python_wheels/*")` to `s.files` in its gemspec.
+For a plugin generated before this command existed, add the `openc3cli bundlewheels` step to its Rakefile ahead of `gem build`, and add `Dir.glob("uv.lock")` and `Dir.glob("python_wheels/*")` to `s.files` in its gemspec. Install rejects an `offline_install` gem that lacks either.
 
 See [Offline installs with bundled wheels](/docs/configuration/plugins#offline-installs-with-bundled-wheels) for the settings and what is checked at build and install time.
 
