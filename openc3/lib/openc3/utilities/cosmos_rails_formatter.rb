@@ -7,6 +7,23 @@ module OpenC3
   class CosmosRailsFormatter
     include OpenC3::Authorization
 
+    # Resolve the username for a request, for use as a config.log_tags entry:
+    #
+    #   formatter = OpenC3::CosmosRailsFormatter.new
+    #   config.log_tags = { request_id: :request_id, username: ->(request) { formatter.username(request) } }
+    #
+    # Resolving it here, once per request, keeps the token itself out of the logger.
+    # Returns nil (no tag) when the request has no token, or 'anonymous' when the token
+    # does not resolve to a username (always in Core, which has no usernames).
+    def username(request)
+      token = request.headers['HTTP_AUTHORIZATION'] || request.query_parameters[:authorization]
+      return nil unless token
+
+      user_info(token)['username'] || 'anonymous'
+    rescue StandardError
+      'anonymous'
+    end
+
     def call(log, _appender = nil)
       #<SemanticLogger::Log:0x0000ffffa5002b20 @level=:info, @thread_name="puma srv tp 001", @name="MicroservicesController",
       # @time=2024-09-22 18:04:27.955490052 +0000, @tags=[], @named_tags={}, @level_index=2, @message="Completed #traefik",
@@ -22,16 +39,7 @@ module OpenC3
       username = nil
       if named_tags
         other[:request_id] = named_tags[:request_id]
-        if named_tags[:token]
-          begin
-            user = user_info(named_tags[:token])
-          rescue
-            user = {}
-          end
-          username = user['username']
-          # Core username (Enterprise has the actual username)
-          username ||= 'anonymous'
-        end
+        username = named_tags[:username]
       end
       username ||= 'anonymous'
       payload = log.payload

@@ -24,6 +24,38 @@ export class Utilities {
     await new Promise((resolve) => setTimeout(resolve, time))
   }
 
+  // Call a JSON-RPC API method (e.g. inject_tlm) as the signed in user and
+  // return its result. Fails the test if the call returns an error. JSON has no
+  // NaN or Infinity, so pass those as { json_class: 'Float', raw: 'NaN' }.
+  async api(
+    method: string,
+    params: unknown[],
+    keywordParams: Record<string, unknown> = {},
+  ): Promise<unknown> {
+    const json = await this.page.evaluate(
+      async ({ method, params, keywordParams }) => {
+        const response = await fetch('/openc3-api/api', {
+          method: 'POST',
+          headers: {
+            Authorization: localStorage.openc3Token,
+            'Content-Type': 'application/json-rpc',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method,
+            params,
+            id: 1,
+            keyword_params: { scope: 'DEFAULT', ...keywordParams },
+          }),
+        })
+        return await response.json()
+      },
+      { method, params, keywordParams },
+    )
+    expect(json.error, `${method} returned an error`).toBeUndefined()
+    return json.result
+  }
+
   // Sign in through the Keycloak form (Enterprise) and wait until the app is
   // back with a token for this user.
   //
@@ -172,6 +204,75 @@ export class Utilities {
     await this.selectTargetPacketItem(target, packet, item)
     await expect(this.page.locator('[data-test=select-send]')).toBeEnabled()
     await this.page.locator('[data-test=select-send]').click()
+  }
+
+  // Call the JSON-RPC API as the logged in user
+  async api(method: string, params: any[], keywordParams = {}) {
+    return await this.page.evaluate(
+      async ({ method, params, keywordParams }) => {
+        const response = await fetch('/openc3-api/api', {
+          method: 'POST',
+          headers: {
+            Authorization: localStorage.openc3Token,
+            'Content-Type': 'application/json-rpc',
+            manual: 'true',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method,
+            params,
+            id: 1,
+            keyword_params: { scope: 'DEFAULT', ...keywordParams },
+          }),
+        })
+        return response.json()
+      },
+      { method, params, keywordParams },
+    )
+  }
+
+  // The DEMO receives every packet at its packet time, so inject an
+  // INST MEMDUMP whose received time is different. It's stored, so it skips
+  // the CVT and the realtime streams and only lands in the TSDB, which keeps it
+  // out of every other test. Returns once the TSDB has it.
+  async injectReceivedTimeMemdump(
+    offset: number,
+    packetTime: Date,
+    receivedTime: Date,
+  ) {
+    const injected = await this.api(
+      'inject_tlm',
+      [
+        'INST',
+        'MEMDUMP',
+        { TIMESEC: packetTime.getTime() / 1000, TIMEUS: 0, OFFSET: offset },
+      ],
+      {
+        type: 'RAW',
+        stored: true,
+        received_time: receivedTime.getTime() * 1_000_000, // nanoseconds
+      },
+    )
+    expect(injected.error).toBeUndefined()
+
+    // The TSDB microservice flushes periodically so wait for the row to land
+    const range = {
+      start_time: new Date(packetTime.getTime() - 1000).toISOString(),
+      end_time: new Date(packetTime.getTime() + 1000).toISOString(),
+    }
+    await expect
+      .poll(
+        async () =>
+          JSON.stringify(
+            await this.api(
+              'get_tlm_values',
+              [['INST__MEMDUMP__OFFSET__RAW']],
+              range,
+            ),
+          ),
+        { timeout: 30000 },
+      )
+      .toContain(`${offset}`)
   }
 
   async download(

@@ -467,16 +467,43 @@ module OpenC3
       end
     end
 
-    # Build a SQL WHERE clause for PACKET_TIMESECONDS range filtering.
+    # Returns the timestamp column that filters and orders data for a time type.
+    #
+    # @param time_type [Symbol] :PACKET or :RECEIVED
+    # @return [String] PACKET_TIMESECONDS or RECEIVED_TIMESECONDS
+    def self.time_column(time_type)
+      time_type == :RECEIVED ? 'RECEIVED_TIMESECONDS' : 'PACKET_TIMESECONDS'
+    end
+
+    # Build a SQL WHERE clause for time range filtering.
     #
     # @param start_time [Integer, String] Start timestamp (nanoseconds)
     # @param end_time [Integer, String, nil] End timestamp (nanoseconds), or nil for open-ended
     # @param prefix [String] Table alias prefix (e.g., 'T0.') — default ''
+    # @param time_type [Symbol] :PACKET filters on PACKET_TIMESECONDS, :RECEIVED on RECEIVED_TIMESECONDS
+    # @param packet_bounds [Array<Integer, nil>, nil] [min, max] PACKET_TIMESECONDS limits (inclusive,
+    #   either may be nil) added to a :RECEIVED filter so QuestDB can skip partitions. See packet_time_bounds.
     # @return [String] SQL WHERE clause fragment (includes leading space)
-    def self.time_where_clause(start_time, end_time, prefix: '')
-      where = " WHERE #{prefix}PACKET_TIMESECONDS >= #{start_time}"
-      where += " AND #{prefix}PACKET_TIMESECONDS < #{end_time}" if end_time
+    def self.time_where_clause(start_time, end_time, prefix: '', time_type: :PACKET, packet_bounds: nil)
+      column = "#{prefix}#{time_column(time_type)}"
+      where = " WHERE #{column} >= #{start_time}"
+      where += " AND #{column} < #{end_time}" if end_time
+      if time_type == :RECEIVED and packet_bounds
+        min_time, max_time = packet_bounds
+        where += " AND #{prefix}PACKET_TIMESECONDS >= #{Integer(min_time)}" if min_time
+        where += " AND #{prefix}PACKET_TIMESECONDS <= #{Integer(max_time)}" if max_time
+      end
       where
+    end
+
+    # PACKET_TIMESECONDS is the designated timestamp so rows already come back in
+    # that order. RECEIVED_TIMESECONDS is a regular column and needs an explicit sort,
+    # which also keeps LIMIT pagination stable.
+    #
+    # @param time_type [Symbol] :PACKET or :RECEIVED
+    # @return [String] SQL ORDER BY clause (includes leading space) or ''
+    def self.time_order_clause(time_type)
+      time_type == :RECEIVED ? " ORDER BY RECEIVED_TIMESECONDS, PACKET_TIMESECONDS" : ''
     end
 
     # Fetch a packet definition from TargetModel, returning nil if not found.
@@ -563,10 +590,11 @@ module OpenC3
     # @param value_type [Symbol] :RAW or :CONVERTED
     # @param existing_columns [Set<String>, nil] Column names that actually exist in the
     #   table, used for CONVERTED-to-raw fallback (see build_aggregation_selects).
+    # @param time_type [Symbol] :PACKET or :RECEIVED, which timestamp the samples are bucketed by
     # @return [Array<String>, Boolean] Two-element array: [select_fragments, has_numeric_items]
-    #   select_fragments includes TIMESTAMP_SELECT as the first element.
-    def self.build_packet_reduced_selects(packet_def, value_type, existing_columns: nil)
-      selects = [TIMESTAMP_SELECT]
+    #   select_fragments includes the timestamp_select as the first element.
+    def self.build_packet_reduced_selects(packet_def, value_type, existing_columns: nil, time_type: :PACKET)
+      selects = [timestamp_select(time_type)]
       has_items = false
       return [selects, false] unless packet_def && packet_def['items']
 
@@ -602,6 +630,19 @@ module OpenC3
     # PG wire protocol truncates timestamp_ns to microseconds; CAST AS LONG preserves full precision.
     TIMESTAMP_SELECT = 'CAST(PACKET_TIMESECONDS AS LONG) as PACKET_TIMESECONDS'
 
+    # SQL: nanosecond-precision timestamp select for the given time type.
+    #
+    # @param time_type [Symbol] :PACKET or :RECEIVED
+    # @return [String] SELECT fragment aliased to the timestamp column name
+    def self.timestamp_select(time_type)
+      column = time_column(time_type)
+      "CAST(#{column} AS LONG) as #{column}"
+    end
+
+    # SQL: nanosecond-precision received timestamp for explicit SELECT lists that
+    # order by received time. Aliased to avoid colliding with a RECEIVED_TIMESECONDS item column.
+    RECEIVED_TIMESTAMP_SELECT = 'CAST(RECEIVED_TIMESECONDS AS LONG) as "__rx_time_ns"'
+
     # SQL: nanosecond-precision timestamps for SELECT * queries (different aliases avoid column name collision).
     TIMESTAMP_EXTRAS = 'CAST(PACKET_TIMESECONDS AS LONG) as "__pkt_time_ns", CAST(RECEIVED_TIMESECONDS AS LONG) as "__rx_time_ns"'
 
@@ -623,16 +664,37 @@ module OpenC3
     # @param table_name [String] Sanitized table name
     # @param start_time [Integer] Nanosecond start time
     # @param end_time [Integer, nil] Nanosecond end time
+    # @param time_type [Symbol] :PACKET or :RECEIVED, which timestamp the range applies to
     # @return [Boolean]
-    def self.table_has_data?(table_name, start_time, end_time, db_shard: 0)
+    def self.table_has_data?(table_name, start_time, end_time, db_shard: 0, time_type: :PACKET)
       query = "SELECT 1 FROM \"#{table_name}\""
-      query += time_where_clause(start_time, end_time)
+      query += time_where_clause(start_time, end_time, time_type: time_type)
       query += " LIMIT 1"
       result = query_with_retry(query, max_retries: 1, label: "table_has_data", db_shard: db_shard)
       result && result.ntuples > 0
     rescue QuestDBError, RuntimeError
       # A table which doesn't exist fails the query
       false
+    end
+
+    # Returns the PACKET_TIMESECONDS range of the rows received in a time range.
+    # RECEIVED_TIMESECONDS is a regular column, so QuestDB scans every partition to
+    # filter on it. Adding these limits to a received-time query (packet_bounds:) lets
+    # QuestDB skip the partitions outside them, so paging through the results doesn't
+    # scan the whole table for every page.
+    #
+    # @param table_name [String] Sanitized table name
+    # @param start_time [Integer] Nanosecond received start time
+    # @param end_time [Integer, nil] Nanosecond received end time
+    # @return [Array<Integer>, nil] [min, max] nanosecond packet times, or nil if no rows were received in the range
+    def self.packet_time_bounds(table_name, start_time, end_time, db_shard: 0)
+      query = "SELECT CAST(min(PACKET_TIMESECONDS) AS LONG) as min_time, CAST(max(PACKET_TIMESECONDS) AS LONG) as max_time FROM \"#{table_name}\""
+      query += time_where_clause(start_time, end_time, time_type: :RECEIVED)
+      result = query_with_retry(query, label: "packet_time_bounds", db_shard: db_shard)
+      return nil if result.nil? or result.ntuples == 0
+      row = result[0]
+      return nil if row['min_time'].nil? or row['max_time'].nil?
+      [row['min_time'].to_i, row['max_time'].to_i]
     end
 
     # Return the telemetry packets which have a table. The TSDB microservice only
@@ -729,14 +791,21 @@ module OpenC3
     # @param start_time [Integer] Start timestamp in nanoseconds
     # @param end_time [Integer, nil] End timestamp in nanoseconds
     # @param include_received_ts [Boolean] Whether to include RECEIVED_TIMESECONDS
+    # @param time_type [Symbol] :PACKET or :RECEIVED, which timestamp filters and orders the rows.
+    #   :RECEIVED also selects the nanosecond received time as "__rx_time_ns".
+    # @param include_times [Boolean] Also select the nanosecond received time as "__rx_time_ns"
+    #   so decode_item_row can return both the packet and received times
+    # @param packet_bounds [Array<Integer, nil>, nil] PACKET_TIMESECONDS limits for :RECEIVED (see time_where_clause)
     # @return [String] Complete SQL query (without LIMIT clause)
-    def self.build_item_columns_query(table_name, column_names, start_time, end_time, include_received_ts: false)
+    def self.build_item_columns_query(table_name, column_names, start_time, end_time, include_received_ts: false, time_type: :PACKET, include_times: false, packet_bounds: nil)
       names = column_names.dup
       names << TIMESTAMP_SELECT
       names << "RECEIVED_TIMESECONDS" if include_received_ts
+      names << RECEIVED_TIMESTAMP_SELECT if time_type == :RECEIVED or include_times
       names << "COSMOS_EXTRA"
       query = "SELECT #{names.join(', ')} FROM \"#{table_name}\""
-      query += time_where_clause(start_time, end_time)
+      query += time_where_clause(start_time, end_time, time_type: time_type, packet_bounds: packet_bounds)
+      query += time_order_clause(time_type)
       query
     end
 
@@ -745,10 +814,13 @@ module OpenC3
     # @param table_name [String] Sanitized QuestDB table name
     # @param start_time [Integer] Start timestamp in nanoseconds
     # @param end_time [Integer, nil] End timestamp in nanoseconds
+    # @param time_type [Symbol] :PACKET or :RECEIVED, which timestamp filters and orders the rows
+    # @param packet_bounds [Array<Integer, nil>, nil] PACKET_TIMESECONDS limits for :RECEIVED (see time_where_clause)
     # @return [String] Complete SQL query (without LIMIT clause)
-    def self.build_packet_query(table_name, start_time, end_time)
+    def self.build_packet_query(table_name, start_time, end_time, time_type: :PACKET, packet_bounds: nil)
       query = "SELECT *, #{TIMESTAMP_EXTRAS} FROM \"#{table_name}\""
-      query += time_where_clause(start_time, end_time)
+      query += time_where_clause(start_time, end_time, time_type: time_type, packet_bounds: packet_bounds)
+      query += time_order_clause(time_type)
       query
     end
 
@@ -759,13 +831,26 @@ module OpenC3
     # @param start_time [Integer] Start timestamp in nanoseconds
     # @param end_time [Integer, nil] End timestamp in nanoseconds
     # @param sample_interval [String] QuestDB SAMPLE BY interval ('1m', '1h', '1d')
+    # @param time_type [Symbol] :PACKET or :RECEIVED, which timestamp filters and buckets the rows.
+    #   select_columns should start with timestamp_select(time_type).
+    # @param packet_bounds [Array<Integer, nil>, nil] PACKET_TIMESECONDS limits for :RECEIVED (see time_where_clause)
     # @return [String] Complete SQL query (without LIMIT clause)
-    def self.build_reduced_query(table_name, select_columns, start_time, end_time, sample_interval)
-      query = "SELECT #{select_columns.join(', ')} FROM \"#{table_name}\""
-      query += time_where_clause(start_time, end_time)
+    def self.build_reduced_query(table_name, select_columns, start_time, end_time, sample_interval, time_type: :PACKET, packet_bounds: nil)
+      column = time_column(time_type)
+      query = "SELECT #{select_columns.join(', ')} FROM "
+      if time_type == :RECEIVED
+        # SAMPLE BY buckets on the designated timestamp (PACKET_TIMESECONDS), so
+        # sort a subquery by received time and declare that as its timestamp
+        query += "(SELECT * FROM \"#{table_name}\""
+        query += time_where_clause(start_time, end_time, time_type: time_type, packet_bounds: packet_bounds)
+        query += " ORDER BY #{column}) timestamp(#{column})"
+      else
+        query += "\"#{table_name}\""
+        query += time_where_clause(start_time, end_time, time_type: time_type, packet_bounds: packet_bounds)
+      end
       query += " SAMPLE BY #{sample_interval}"
       query += " ALIGN TO CALENDAR"
-      query += " ORDER BY PACKET_TIMESECONDS"
+      query += " ORDER BY #{column}"
       query
     end
 
@@ -779,13 +864,19 @@ module OpenC3
     #   :item_types [Array<Hash>] - type info per position ({ 'data_type' =>, 'array_size' => })
     #   :stored_timestamp_item_keys [Hash] - { item_key => { column: col_name } }
     #   :calculated_positions [Hash] - { local_idx => { source: col_name, format: :seconds/:formatted } }
+    # @param time_type [Symbol] :PACKET sets __time to the packet time, :RECEIVED to the
+    #   received time (requires the "__rx_time_ns" column from build_item_columns_query)
+    # @param include_times [Boolean] Also set __packet_time and __received_time (requires
+    #   build_item_columns_query with include_times: true)
     # @return [Hash] Entry hash with __type, item_key => value, __time, COSMOS_EXTRA
-    def self.decode_item_row(row, sql_to_local, meta)
+    #   and optionally __packet_time and __received_time
+    def self.decode_item_row(row, sql_to_local, meta, time_type: :PACKET, include_times: false)
       num_sql_item_cols = sql_to_local.length
 
       entry = { "__type" => "ITEMS" }
       timestamp_values = {}
       time_ns = nil
+      received_time_ns = nil
       cosmos_extra = nil
 
       values = Array.new(meta[:item_keys].length)
@@ -802,6 +893,8 @@ module OpenC3
             timestamp_values['PACKET_TIMESECONDS'] = nsec_to_utc_time(time_ns)
           when 'RECEIVED_TIMESECONDS'
             timestamp_values['RECEIVED_TIMESECONDS'] = value if value
+          when '__rx_time_ns'
+            received_time_ns = value.to_i if value
           when 'COSMOS_EXTRA'
             cosmos_extra = value
           # No else because we're only interested in these specific extra columns; others can be ignored
@@ -845,7 +938,12 @@ module OpenC3
         end
       end
 
-      entry['__time'] = time_ns if time_ns
+      entry_time = (time_type == :RECEIVED) ? received_time_ns : time_ns
+      entry['__time'] = entry_time if entry_time
+      if include_times
+        entry['__packet_time'] = time_ns if time_ns
+        entry['__received_time'] = received_time_ns if received_time_ns
+      end
       entry['COSMOS_EXTRA'] = cosmos_extra if cosmos_extra
       entry
     end
@@ -857,8 +955,11 @@ module OpenC3
     # @param row [PG::Result row] Single row as iterable [col_name, value] pairs
     # @param value_type [Symbol] :RAW, :CONVERTED, :FORMATTED
     # @param packet_def [Hash, nil] Packet definition for type-aware decoding
+    # @param time_type [Symbol] :PACKET sets __time to the packet time, :RECEIVED to the received time
+    # @param include_times [Boolean] Also set __packet_time and __received_time
     # @return [Hash] Entry hash with item => value, __time, COSMOS_EXTRA, timestamp entries
-    def self.decode_packet_row(row, value_type, packet_def)
+    #   and optionally __packet_time and __received_time
+    def self.decode_packet_row(row, value_type, packet_def, time_type: :PACKET, include_times: false)
       entry = {}
       item_defs = build_item_defs_map(packet_def)
 
@@ -878,12 +979,13 @@ module OpenC3
 
         if column_name == '__pkt_time_ns'
           cosmos_timestamp_ns = raw_value.to_i
-          entry['__time'] = cosmos_timestamp_ns
+          entry['__time'] = cosmos_timestamp_ns unless time_type == :RECEIVED
           next
         end
 
         if column_name == '__rx_time_ns'
           received_timestamp_ns = raw_value.to_i
+          entry['__time'] = received_timestamp_ns if time_type == :RECEIVED
           next
         end
 
@@ -929,11 +1031,17 @@ module OpenC3
 
       add_timestamp_entries!(entry, cosmos_timestamp_ns, 'PACKET')
       add_timestamp_entries!(entry, received_timestamp_ns, 'RECEIVED')
+      if include_times
+        entry['__packet_time'] = cosmos_timestamp_ns if cosmos_timestamp_ns
+        entry['__received_time'] = received_timestamp_ns if received_timestamp_ns
+      end
       entry
     end
 
     # Decode a single row from a SAMPLE BY aggregation query.
     # All non-timestamp columns are decoded as DOUBLE (aggregation results are always numeric).
+    # The bucket timestamp column is PACKET_TIMESECONDS or RECEIVED_TIMESECONDS
+    # depending on the time type passed to timestamp_select.
     #
     # @param row [PG::Result row] Single row as iterable [col_name, value] pairs
     # @return [Hash] { col_name => decoded_value, '__time' => ns_integer }
@@ -942,7 +1050,7 @@ module OpenC3
       row.each do |tuple|
         col_name = tuple[0]
         value = tuple[1]
-        if col_name == 'PACKET_TIMESECONDS'
+        if STORED_TIMESTAMP_ITEMS.include?(col_name)
           entry['__time'] = value.to_i
         else
           entry[col_name] = decode_value(value, data_type: 'DOUBLE', array_size: nil)

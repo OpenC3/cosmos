@@ -473,16 +473,21 @@ test('displays the limits log', async ({ page, utils }) => {
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     format(new Date(), 'yyyy-MM-dd'),
   )
-  // These have long timeouts just to allow the demo to hit another limit
-  await expect(page.locator('[data-test=limits-events]')).toContainText('RED', {
-    timeout: 20000,
-  })
-  await expect(page.locator('[data-test=limits-events]')).toContainText(
-    'YELLOW',
-    { timeout: 20000 },
+  // Force each state rather than waiting for the sim to sweep into them, which
+  // can take longer than the timeout. TEMP4 is yellow from 60 and red above 80
+  // and, unlike TEMP1, has no limits response that would send commands. The
+  // sim's next packet puts it back to green. It's stored as a scaled integer,
+  // so the logged values are close to the injected ones rather than exact.
+  const events = page.locator('[data-test=limits-events]')
+  await utils.api('inject_tlm', ['INST', 'HEALTH_STATUS', { TEMP4: 90 }])
+  await expect(events).toContainText(
+    /INST HEALTH_STATUS TEMP4 = [\d.]+ is RED_HIGH/,
   )
-  await expect(page.locator('[data-test=limits-events]')).toContainText(
-    'GREEN',
-    { timeout: 20000 },
+  await utils.api('inject_tlm', ['INST', 'HEALTH_STATUS', { TEMP4: 70 }])
+  await expect(events).toContainText(
+    /INST HEALTH_STATUS TEMP4 = [\d.]+ is YELLOW_HIGH/,
+  )
+  await expect(events).toContainText(
+    /INST HEALTH_STATUS TEMP4 = [\d.]+ is GREEN/,
   )
 })
