@@ -1,0 +1,27 @@
+# Discovery parameters from the states of another variable, like the Home
+# Assistant plugin: one matcher per state that sets them and shows the variable.
+VARIABLE integration demo
+  VARIABLE_STATE "Philips Hue" hue
+    VARIABLE_STATE_SHOW host
+    VARIABLE_STATE_SET mdns_types "_hue._tcp.local. _hap._tcp.local.|md=BSB002*"
+  VARIABLE_STATE "Shelly" shelly
+    VARIABLE_STATE_SHOW host ip_address
+    VARIABLE_STATE_SET mdns_types "_shelly._tcp.local."
+  VARIABLE_STATE "Acaia scale" acaia
+    VARIABLE_STATE_SHOW address
+    VARIABLE_STATE_SET ble_matchers "local_name=ACAIA*|manufacturer_id=16962"
+  VARIABLE_STATE "No discovery" plain
+    VARIABLE_STATE_SHOW host
+    VARIABLE_STATE_SET mdns_types ""
+  VARIABLE_STATE "Demo" demo
+VARIABLE mdns_types ""
+  VARIABLE_HIDDEN
+VARIABLE ble_matchers ""
+  VARIABLE_HIDDEN
+VARIABLE host ""
+  VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}
+# Only Shelly shows ip_address, so Hue doesn't give it a matcher
+VARIABLE ip_address ""
+  VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}
+VARIABLE address ""
+  VARIABLE_DISCOVERY openc3/discovery/bluetooth_discovery.py ${ble_matchers}
