@@ -37,14 +37,14 @@ class MultiMicroservice(Microservice):
     given (as for a MICROSERVICE_GROUP's PYMULTIGROUP) they are the
     microservices that name this one as their parent."""
 
-    # System is one per process and the first setup decides which targets it
-    # has, so leave it for run to set up for the children's targets. This
-    # microservice has none of its own and would set up an empty System.
-    SETUP_SYSTEM = False
-
     def __init__(self, *args):
         super().__init__(*args)
         self.sleeper = Sleeper()
+
+    # This microservice has no targets of its own, so leave System for run to
+    # set up for its children's targets
+    def setup_system(self):
+        pass
 
     def child_models(self):
         names = sys.argv[1:]

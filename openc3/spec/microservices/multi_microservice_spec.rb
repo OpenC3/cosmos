@@ -35,6 +35,13 @@ module OpenC3
       @mm.shutdown
     end
 
+    it "leaves System for its children" do
+      # Its own setup would build an empty System, and the first setup decides
+      # which targets System has, so only run sets it up (for its children)
+      expect(System).not_to receive(:setup_targets)
+      MultiMicroservice.new(name).shutdown
+    end
+
     it "runs the microservices given on the command line" do
       stub_const('ARGV', ['DEFAULT__DECOM__D', 'DEFAULT__PACKETLOG__A'])
       expect(@mm.child_models.map(&:name)).to eql ['DEFAULT__DECOM__D', 'DEFAULT__PACKETLOG__A']

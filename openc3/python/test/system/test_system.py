@@ -302,13 +302,19 @@ class TestSystemSetupTargets(unittest.TestCase):
     def test_builds_an_empty_system_without_targets(self):
         # Microservices without targets, such as an interface without
         # MAP_TARGET, still use System (e.g. to identify UNKNOWN packets)
+        self.check_empty_system([])
+
+    def test_builds_an_empty_system_for_none(self):
+        self.check_empty_system(None)
+
+    def check_empty_system(self, target_names):
         import tempfile
 
         with tempfile.TemporaryDirectory() as temp_dir, patch("openc3.system.system.Bucket") as bucket:
-            System.setup_targets([], temp_dir, scope="DEFAULT")
+            System.setup_targets(target_names, temp_dir, scope="DEFAULT")
             self.assertIsNotNone(System.instance_obj)
             self.assertEqual(System.targets, {})
-            self.assertIsNotNone(System.telemetry)
+            self.assertIsNotNone(System.telemetry.packet("UNKNOWN", "UNKNOWN"))
             bucket.get_client.return_value.get_object.assert_not_called()
 
 

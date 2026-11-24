@@ -42,10 +42,6 @@ openc3_scope = "DEFAULT"
 
 
 class Microservice:
-    # Whether __init__ sets up System for this microservice's targets.
-    # MultiMicroservice sets it up for its children's targets instead.
-    SETUP_SYSTEM = True
-
     @classmethod
     def class_run_body(cls, microservice):
         try:
@@ -151,10 +147,8 @@ class Microservice:
         self.target_names = self.config.get("target_names")
         if self.target_names is None:
             self.target_names = []
-        if not is_plugin and self.SETUP_SYSTEM:
-            System.setup_targets(
-                self.target_names, self.temp_dir, scope=self.scope, descriptions=self.load_descriptions()
-            )
+        if not is_plugin:
+            self.setup_system()
 
         # Use atexit to shutdown cleanly no matter how we die
         atexit.register(self.shutdown)
@@ -235,6 +229,12 @@ class Microservice:
     # use them override this to return False to reduce memory.
     def load_descriptions(self):
         return True
+
+    # Set up System for this microservice's targets (an empty System if it has
+    # none). System is one per process and the first setup decides which
+    # targets it has, so subclasses that set it up later override this.
+    def setup_system(self):
+        System.setup_targets(self.target_names, self.temp_dir, scope=self.scope, descriptions=self.load_descriptions())
 
     def shutdown(self, state="STOPPED"):
         if self.shutdown_complete:
