@@ -15,6 +15,8 @@ Green must not share blue's Redis, TSDB, or buckets. Green's init pod migrates t
 The cutover takes a few minutes of downtime: vehicles have no uplink from when blue stops until green's interfaces connect. Preserving all data rules out a zero-downtime switch, because green has to read blue's final commands and state after blue stops writing them. Time the cutover in a rehearsal (see [Validate Green](#5-validate-green)) and schedule it for when that gap is acceptable.
 :::
 
+Until cutover, green works like blue in every way except commanding vehicles: it receives live telemetry, has the full history, and runs tools, scripts, and procedures against simulators. Only one release commands at a time because the releases don't share state. Each has its own command authority, critical command approvals, autonomic reactions, Calendar timelines, and running scripts, and with both commanding, each would act on the same vehicles without knowing what the other had sent. Moving commanding from blue to green is what the cutover does, so the outage covers only that move and the data that comes with it.
+
 ## Choose a Strategy
 
 Both strategies use the same steps. They differ in how long green lives and in how much data you copy.
@@ -43,21 +45,21 @@ In a standing pair, "blue" and "green" are roles, not fixed releases. Name the n
 | [6. Cut over](#6-cut-over)                         | Stopped                         | Takes the links                                                       | A few minutes of outage |
 | [7. After cutover](#7-after-cutover)               | Removed, or becomes the standby | Active                                                                | None                    |
 
-In a standing pair, steps 0 through 4 happen once. Each later upgrade starts by running `helm upgrade` on the standby with the new chart version, then continues from [step 5](#5-validate-green).
+In a standing pair, steps 0 through 4 happen once. Each later upgrade [refreshes the standby's configuration](#standing-pair) and upgrades it to the new chart version, then continues from [step 5](#5-validate-green).
 
 ## How Green's Data Stays Complete
 
 Blue keeps running normally through the whole upgrade: operators command, run scripts, and change configuration. This table shows how each kind of data reaches green.
 
-| Data                                                                                     | Until cutover                                                                                                                           | At cutover                                                                    |
-| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Telemetry                                                                                | Seeded from blue, then received live through blue's routers. Repair gaps (the seed-to-follow gap, a router outage) from blue's raw logs | Already on green                                                              |
-| Commands                                                                                 | Only blue sends them, and routers don't forward commands. A scheduled job copies them from blue's TSDB into green's                     | Run the copy once more after blue stops                                       |
-| Raw log files (logs bucket)                                                              | Seeded from blue. Green then writes its own telemetry logs                                                                              | Copy blue's command logs, so green's archive is complete                      |
-| Configuration and user data in Redis (plugins, autonomic, Calendar, metadata, and so on) | Seeded from blue. Changes on blue after the seed don't reach green                                                                      | Copy blue's Redis again, or reconcile by hand (see [Sync State](#sync-state)) |
-| Config and tools buckets (target files, saved scripts and screens)                       | Seeded from blue                                                                                                                        | Incremental sync                                                              |
-| Keycloak users and roles                                                                 | Seeded from blue, or shared when you run your own Keycloak                                                                              | Copy again, unless shared                                                     |
-| Current values (ephemeral Redis)                                                         | Not copied                                                                                                                              | Rebuilt from live telemetry                                                   |
+| Data                                                                                     | Until cutover                                                                                                                           | At cutover                                               |
+| ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Telemetry                                                                                | Seeded from blue, then received live through blue's routers. Repair gaps (the seed-to-follow gap, a router outage) from blue's raw logs | Already on green                                         |
+| Commands                                                                                 | Only blue sends them, and routers don't forward commands. A scheduled job copies them from blue's TSDB into green's                     | Run the copy once more after blue stops                  |
+| Raw log files (logs bucket)                                                              | Seeded from blue. Green then writes its own telemetry logs                                                                              | Copy blue's command logs, so green's archive is complete |
+| Configuration and user data in Redis (plugins, autonomic, Calendar, metadata, and so on) | Seeded from blue. Changes on blue after the seed don't reach green, so make each change on both releases                                | Already on green (see [Sync State](#sync-state))         |
+| Config and tools buckets (target files, saved scripts and screens)                       | Seeded from blue                                                                                                                        | Incremental sync                                         |
+| Keycloak users and roles                                                                 | Seeded from blue, or shared when you run your own Keycloak                                                                              | Already on green, or shared                              |
+| Current values (ephemeral Redis)                                                         | Not copied                                                                                                                              | Rebuilt from live telemetry                              |
 
 Telemetry gap repair uses the TSDB tab of green's Admin Console: **Analyze Data Gap** finds missing time ranges in a table, and **Repair Gap** reingests them from the raw log files in the logs bucket. Reingest turns on `DEDUP` for the affected tables, so it overwrites rows green already has instead of duplicating them (see [Backfilling and Reingest](/docs/guides/packet-structure-changes#backfilling-and-reingest)). The routers use the `PREIDENTIFIED` protocol, which carries each packet's original received time, so green's live rows have the same timestamps as the reingested rows.
 
@@ -294,7 +296,7 @@ In either case, add green's hostname to the COSMOS client's **Valid redirect URI
 
 ## 3. Initialize Green
 
-1. Promote green's Redis. Blue keeps running normally. Changes on blue from now on reach green at [cutover](#sync-state).
+1. Promote green's Redis. Blue keeps running normally. Configuration changes on blue from now on don't reach green, so make them on both releases (see [Keeping Configuration in Step](#keeping-configuration-in-step)).
 
    ```
    REPLICAOF NO ONE
@@ -380,6 +382,31 @@ kubectl patch cronjob tsdb-cmd-sync -n openc3-green -p '{"spec":{"suspend":false
 
 Each run logs the rows it copied per table and the tables or columns it skipped. A job fails if any table failed to copy, and the next run retries it. Add `--dry-run` to the command to count the rows without writing them.
 
+### Keeping Configuration in Step
+
+Telemetry and commands follow blue on their own, but configuration doesn't. From [step 3](#3-initialize-green) until cutover, make each of these changes on both releases:
+
+- Plugin installs, upgrades, and edits. Keep green's own plugin versions and its `link_mode` and `active_host` values.
+- Autonomic groups, triggers, and reactions. Leave them disabled on green.
+- Calendar timelines and events. Leave the timelines paused on green.
+- Notes and metadata.
+- Users and roles, if Keycloak isn't shared.
+
+The config and tools buckets don't need this: sync them from blue on a schedule, or at cutover.
+
+If green falls too far behind to catch up by hand, refresh its configuration from blue. This doesn't stop blue or affect the vehicles, but green stops receiving telemetry while it runs:
+
+1. [Stop green's microservices](#stopping-and-starting-microservices).
+2. Make green's Redis a replica of blue's, as in [step 2](#redis), and wait for `connected`. Green's Redis now matches blue's, including blue's plugin versions and `link_mode` `vehicle`.
+3. Promote it with `REPLICAOF NO ONE`. Configuration changes on blue from here on must be made on both releases again.
+4. Copy Keycloak again if it isn't shared.
+5. Run `helm upgrade` on green with the same chart version and values. Its init pod migrates the copied data, and green's operator starts. Green's interfaces start in `vehicle` mode, and the `block-vehicle-links` NetworkPolicy keeps them from reaching the vehicles.
+6. On green, disable autonomic reactions and pause Calendar timelines, which came across active from blue.
+7. Install the plugin versions you're testing on green again, then edit each plugin to `link_mode` `standby` with `active_host` set to blue's router Service, as in [step 4](#4-follow-blue).
+8. Repair the telemetry gap from when green's microservices stopped, as in [step 4](#4-follow-blue).
+
+The command copy needs nothing: it works on the TSDB, which a refresh doesn't touch.
+
 ## 5. Validate Green
 
 1. Install all plugins. Check in green's Admin Console, Plugins tab, that every plugin from blue is installed and at the version you intend to run. Install new plugin versions now and repeat the checks below after any change.
@@ -389,6 +416,7 @@ Each run logs the rows it copied per table and the tables or columns it skipped.
 5. Run your own procedures and the scripts for each vehicle class.
 6. Load green with the full fleet's telemetry rate.
 7. Rehearse the cutover against the simulators, and time it. That time is roughly the outage the vehicles will see.
+8. Compare green's configuration with blue's (see [Keeping Configuration in Step](#keeping-configuration-in-step)). If they have drifted apart, refresh green's configuration from blue and repeat the checks above.
 
 You can keep green in this state for as long as you need. It keeps receiving telemetry the whole time.
 
@@ -401,6 +429,7 @@ All vehicles move together. The outage runs from step 1 to step 5 of **Switch**.
 - Let any scripts commanding vehicles finish, or stop them.
 - Approve or reject pending [critical commands](/docs/configuration/command#critical-commanding-enterprise).
 - Release [command authority](/docs/configuration/command#command-authority-enterprise).
+- Compare the Admin Console tabs on both releases and make any configuration change on green that is still missing.
 - On blue, note which autonomic reactions and Calendar timelines are active, then disable the reactions and pause the timelines.
 
 ### Stopping and Starting Microservices
@@ -433,7 +462,7 @@ The APIs and web tools keep running, so users can still log in and view history.
 
 1. Stop blue's microservices. Wait until all of blue's microservice pods have terminated, so the log microservices have written their last files to the bucket.
 2. Confirm the links are free: the vehicles or ground stations show no connection to blue.
-3. Stop green's microservices, then [sync state](#sync-state). Stopping them keeps green from writing to Redis while you replace or edit it. If green will serve your main hostname itself, set green's hostname values to it and run `helm upgrade` after the sync. Those values feed the environment ConfigMap, and the operator restarts every microservice when it changes, so green's microservices come back up. They can't reach the vehicles yet, because `block-vehicle-links` is still in place.
+3. Stop green's microservices, then [sync state](#sync-state). Stopping them keeps green from writing to Redis while you edit it. If green will serve your main hostname itself, set green's hostname values to it and run `helm upgrade` after the sync. Those values feed the environment ConfigMap, and the operator restarts every microservice when it changes, so green's microservices come back up. They can't reach the vehicles yet, because `block-vehicle-links` is still in place.
 4. Delete green's `block-vehicle-links` NetworkPolicy. If vehicles or ground stations connect in, point them at green's interface ports. Any of green's interfaces that are already running connect on their next reconnect attempt.
 5. Start green's microservices. If you ran `helm upgrade`, some or all of the microservices might have already started. Confirm each interface connects, then send a no-op command and check its response in telemetry.
 6. Repair telemetry gaps: in green's Admin Console, TSDB tab, run **Analyze Data Gap** on the telemetry tables across the time since [step 2](#2-seed-greens-data) and **Repair Gap** for each gap. The command tables are already complete from the final command copy.
@@ -469,12 +498,9 @@ aws s3 sync s3://$BLUE_TOOLS_BUCKET s3://$GREEN_TOOLS_BUCKET
 
 If green's telemetry stopped for a while (for example, a router outage), also copy blue's `raw_logs/tlm/` files for that period, so **Repair Gap** can find them.
 
-Then bring Redis and Keycloak up to date in one of two ways:
+Green's Redis and Keycloak already match blue's, because you made each configuration change on both releases (see [Keeping Configuration in Step](#keeping-configuration-in-step)). The last change is the link mode: in green's Admin Console, edit each plugin back to `link_mode` `vehicle`. Green's interfaces start in `vehicle` mode when you start green's microservices.
 
-| Option                       | How                                                                                                                                                                                                                                                                                                                                                             | Outage                | Tradeoff                                                                                                                                                     |
-| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Copy again** (recommended) | Make green's Redis a replica of blue's and promote it, as in [step 2](#redis) and [step 3](#3-initialize-green). Copy Keycloak again if it isn't shared. Run `helm upgrade` on green to re-run its init pod. This also starts green's operator, but `block-vehicle-links` still blocks the links. Green then has blue's exact configuration, in `vehicle` mode. | Includes green's init | Changes made on green during validation are replaced. Plugin versions you installed on green must be installed again before you start green's microservices. |
-| **Reconcile**                | Keep green's Redis. Before cutover, make every configuration change on both releases: plugins, autonomic groups, Calendar, notes and metadata, and users (if Keycloak isn't shared). At cutover, compare the two releases' Admin Console tabs, then edit each plugin on green back to `link_mode` `vehicle`.                                                    | Shorter               | Anything not repeated on green is lost. Command history copies over through the command copy, but other changes made on blue after the seed don't.           |
+Don't copy blue's Redis at cutover. Doing so would put green's init pod and plugin installs inside the outage. If green's configuration has drifted from blue's, [refresh it](#keeping-configuration-in-step) before cutover, while blue still has the links.
 
 ## 7. After Cutover
 
@@ -512,7 +538,7 @@ Blue becomes the standby:
 3. On blue, disable autonomic reactions, pause Calendar timelines, and edit each plugin to `link_mode` `standby` with `active_host` set to green's router Services. Blue now follows green, as green followed blue in [step 4](#4-follow-blue).
 4. Create the [command copy](#command-copy) CronJob in blue's namespace, with `--source-host` set to green's TSDB (`openc3-tsdb-SHARDNUM.openc3-tsdb.openc3-green.svc.cluster.local`). If blue's version doesn't include the script, use green's operator image. The script writes to blue's TSDB with that image's ingest protocol (`OPENC3_TSDB_INGEST_PROTOCOL`), so run it once by hand and check its log before relying on the schedule.
 
-For the next upgrade, run `helm upgrade` on blue with the new chart version and continue from [step 5](#5-validate-green), with the roles swapped. Between upgrades, sync the config and tools buckets to the standby on a schedule (daily, for example), so that the work at the next cutover stays small. The command copy keeps the standby's command tables current.
+For the next upgrade, swap the roles and [refresh the standby's configuration](#keeping-configuration-in-step) from the active release, but in that procedure's `helm upgrade` step, use the new chart version. The standby's own configuration is stale after months as the standby, and the refresh replaces it, so between upgrades you don't need to repeat configuration changes on the standby. Then continue from [step 5](#5-validate-green). Between upgrades, sync the config and tools buckets to the standby on a schedule (daily, for example), so that the work at the next cutover stays small. The command copy keeps the standby's command tables current.
 
 ## Rollback
 
@@ -521,7 +547,7 @@ For the next upgrade, run `helm upgrade` on blue with the new chart version and 
 | Before cutover                            | Temporary green: delete the `openc3-green` namespace. Standing pair: nothing to do. Blue is unchanged either way.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | During the outage                         | Stop green's microservices, restore green's `block-vehicle-links` policy, and start blue's microservices. Blue's data is unchanged.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | After cutover, within the rollback window | Run the cutover in reverse: stop green, run the [command copy](#command-copy) in blue's namespace with green as the source (as for a [standing pair](#standing-pair)), copy green's command logs (and telemetry logs if blue wasn't following) into blue's bucket, start blue, and repair the gaps in blue's telemetry tables. For a temporary green, first [restore blue's saved replica counts](#temporary-green) so its databases and APIs are running before you start its microservices. Configuration changes made on green after cutover are lost, because blue can't read green's migrated Redis. |
-| After rollback window                    | No rollback. Fix forward on green.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| After rollback window                     | No rollback. Fix forward on green.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 Blue never runs green's migrations, so it is always safe to start blue again while it exists.
 
