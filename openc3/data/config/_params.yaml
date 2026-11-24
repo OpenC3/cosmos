@@ -25,6 +25,7 @@
           description:
             Default value for this parameter. You must provide a default
             but if you mark the parameter REQUIRED then scripts will be forced to specify a value.
+            REQUIRED parameters can use nil, none, or null to have no default.
           values: .*
         - name: Description
           required: false
@@ -49,6 +50,8 @@
           description:
             Default value for this parameter. You must provide a default
             but if you mark the parameter REQUIRED then scripts will be forced to specify a value.
+            REQUIRED parameters can use nil, none, or null to have no default.
+            The default must fit in the Bit Size unless the parameter uses OVERFLOW TRUNCATE.
           values: .*
         - name: Description
           required: false

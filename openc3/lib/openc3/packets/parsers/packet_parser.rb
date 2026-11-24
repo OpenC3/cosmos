@@ -54,12 +54,57 @@ module OpenC3
     #   appropriate data types. Only applicable to COMMAND packets.
     def self.check_item_data_types(packet)
       packet.sorted_items.each do |item|
+        resolve_nil_default(item)
         item.check_default_and_range_data_types()
       end
     rescue
       # Add the target name and packet name to the error message so the user
       # can debug where the error occurred
       raise $!, "#{packet.target_name} #{packet.packet_name} #{$!}", $!.backtrace
+    end
+
+    # REQUIRED parameters can use nil, none, or null as the default since their
+    # default is never used. This is resolved once the packet is complete
+    # because REQUIRED comes after the PARAMETER line.
+    #
+    # @param item [PacketItem] Command parameter to check
+    def self.resolve_nil_default(item)
+      return unless String === item.default and PacketItem::NIL_DEFAULTS.include?(item.default.upcase)
+
+      if item.required
+        item.default = nil
+      elsif !item.write_conversion and ![:STRING, :BLOCK, :ANY, :DERIVED].include?(item.data_type)
+        # STRING, BLOCK, ANY, and DERIVED keep it as a literal value, as does
+        # any parameter with a WRITE_CONVERSION which converts it
+        raise ArgumentError, "#{item.name}: default of #{item.default} is only allowed for REQUIRED parameters"
+      end
+    end
+
+    # Check that each STRING and BLOCK default fits in its item. A default that
+    # doesn't fit makes the command impossible to build unless the parameter
+    # is given. This only runs at plugin install (TargetModel#deploy) so
+    # targets installed before this check was added still load.
+    #
+    # @param packet [Packet] Command packet to check
+    def self.check_item_default_sizes(packet)
+      return unless packet.accessor.is_a?(BinaryAccessor)
+
+      packet.sorted_items.each do |item|
+        next unless item.data_type == :STRING or item.data_type == :BLOCK
+        next unless String === item.default
+        next if item.array_size or item.variable_bit_size or item.parent_item or item.write_conversion
+        next if item.bit_size <= 0 or item.overflow == :TRUNCATE
+
+        # A default that names a state writes the state's value
+        default = item.default
+        default = item.states[default.upcase] || default if item.states
+        next unless String === default
+
+        byte_size = item.bit_size / 8
+        next if default.bytesize <= byte_size
+
+        raise ArgumentError, "#{packet.target_name} #{packet.packet_name} #{item.name}: default value of #{default.bytesize} bytes does not fit into #{byte_size} bytes for data_type #{item.data_type}"
+      end
     end
 
     # @param parser [ConfigParser] Configuration parser

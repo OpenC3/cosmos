@@ -117,23 +117,15 @@ class Script < OpenC3::TargetFile
       model = nil
       model = OpenC3::OfflineAccessModel.get_model(name: username, scope: scope) if username and username != ''
 
-      # Set proper secrets for running script
-      process.environment['SECRET_KEY_BASE'] = nil
-      OpenC3::ScriptEnv.remove_unused(process.environment)
-      process.environment['OPENC3_REDIS_USERNAME'] = ENV['OPENC3_SR_REDIS_USERNAME'] || 'OPENC3_SR_REDIS_USERNAME not set'
-      process.environment['OPENC3_REDIS_PASSWORD'] = ENV['OPENC3_SR_REDIS_PASSWORD'] || 'OPENC3_SR_REDIS_PASSWORD not set'
-      process.environment['OPENC3_BUCKET_USERNAME'] = ENV['OPENC3_SR_BUCKET_USERNAME'] || 'OPENC3_SR_BUCKET_USERNAME not set'
-      process.environment['OPENC3_BUCKET_PASSWORD'] = ENV['OPENC3_SR_BUCKET_PASSWORD'] || 'OPENC3_SR_BUCKET_PASSWORD not set'
-      process.environment['OPENC3_SR_REDIS_USERNAME'] = nil
-      process.environment['OPENC3_SR_REDIS_PASSWORD'] = nil
-      process.environment['OPENC3_SR_BUCKET_USERNAME'] = nil
-      process.environment['OPENC3_SR_BUCKET_PASSWORD'] = nil
+      # Keep secrets out of the child's environment (/proc/<pid>/environ keeps it
+      # even after the child deletes them from ENV); the ones it needs go over stdin
+      OpenC3::ScriptEnv.scrub_spawn_environment(process.environment)
       process.environment['OPENC3_API_CLIENT'] = ENV['OPENC3_API_CLIENT'] || 'api'
       if model and model.offline_access_token
         auth = OpenC3::OpenC3KeycloakAuthentication.new(ENV['OPENC3_KEYCLOAK_URL'])
         valid_token = auth.get_token_from_refresh_token(model.offline_access_token)
         if valid_token
-          process.environment['OPENC3_API_TOKEN'] = model.offline_access_token
+          auth_secret = { 'token' => model.offline_access_token }
         else
           model.offline_access_token = nil
           model.update
@@ -142,7 +134,7 @@ class Script < OpenC3::TargetFile
       else
         process.environment['OPENC3_API_USER'] = ENV['OPENC3_API_USER'] || nil
         if ENV['OPENC3_SERVICE_PASSWORD']
-          process.environment['OPENC3_API_PASSWORD'] = ENV['OPENC3_SERVICE_PASSWORD']
+          auth_secret = { 'user' => ENV.fetch('OPENC3_API_USER', nil), 'password' => ENV.fetch('OPENC3_SERVICE_PASSWORD') }
         else
           # The viewer user doesn't have an offline access token (because they can't run scripts)
           # but they still want to be able to view suite files
@@ -180,8 +172,24 @@ class Script < OpenC3::TargetFile
       stderr.sync = true
       process.io.stdout = stdout
       process.io.stderr = stderr
+      # Explicit stdout/stderr leave stdin free; duplex gives us a pipe to deliver auth
+      process.duplex = true
       process.start
       begin
+        # Secrets go over stdin (not env, which is readable via /proc/<pid>/environ)
+        begin
+          process.io.stdin.puts(JSON.generate({ 'auth' => auth_secret, 'env' => OpenC3::ScriptEnv.stdin_secrets }))
+          process.io.stdin.close
+        rescue StandardError
+          process.stop # don't leave a child running without credentials
+          [stdout, stderr].each do |f|
+            f.close
+            f.unlink
+          rescue StandardError
+            nil
+          end
+          raise
+        end
         process.poll_for_exit(10) # wait for max 10s
       rescue ChildProcess::TimeoutError
         process.stop
@@ -281,6 +289,8 @@ class Script < OpenC3::TargetFile
       process_name = ENV['OPENC3_PYTHON_BIN'] || '/openc3/python/.venv/bin/python'
       process = ChildProcess.build(process_name, runner_path.to_s, temp.path)
       process.cwd = File.join(RAILS_ROOT, 'scripts')
+      # run_instrument.py is pure local AST work and needs no secrets
+      OpenC3::ScriptEnv.scrub_spawn_environment(process.environment)
 
       stdout = Tempfile.new("child-stdout")
       stdout.sync = true

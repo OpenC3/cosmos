@@ -240,6 +240,12 @@ module OpenC3
 
       index = append? ? 3 : 4
       data_type = get_data_type()
+      # nil, none, or null means no default which is only allowed for REQUIRED
+      # parameters. REQUIRED comes later so PacketParser.check_item_data_types
+      # resolves it. STRING, BLOCK, and numeric types already keep it as is.
+      nil_default = PacketItem::NIL_DEFAULTS.include?(@parser.parameters[index].to_s.upcase)
+      return @parser.parameters[index] if nil_default and [:BOOL, :ARRAY, :OBJECT].include?(data_type)
+
       if data_type == :BOOL
         value = @parser.parameters[index].to_s.upcase
         if value == "TRUE" or value == "FALSE"

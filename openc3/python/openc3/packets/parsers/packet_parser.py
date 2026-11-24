@@ -10,6 +10,7 @@
 # if purchased from OpenC3, Inc.
 
 from openc3.packets.packet import Packet
+from openc3.packets.packet_item import PacketItem
 from openc3.utilities.logger import Logger
 
 
@@ -30,12 +31,36 @@ class PacketParser:
     def check_item_data_types(cls, packet):
         try:
             for item in packet.sorted_items:
+                cls.resolve_nil_default(item)
                 item.check_default_and_range_data_types()
 
         except TypeError as error:
             # Add the target name and packet name to the error message so the user
             # can debug where the error occurred
             raise TypeError(f"{packet.target_name} {packet.packet_name} {error}") from error
+
+    @classmethod
+    def resolve_nil_default(cls, item):
+        """Resolve a nil, none, or null default on a REQUIRED parameter to None.
+
+        REQUIRED parameters can use these since their default is never used.
+        This is resolved once the packet is complete because REQUIRED comes
+        after the PARAMETER line.
+
+        Args:
+            item: Command parameter to check
+
+        Raises:
+            TypeError: A parameter that isn't REQUIRED uses it as a numeric default
+        """
+        if not isinstance(item.default, str) or item.default.upper() not in PacketItem.NIL_DEFAULTS:
+            return
+        if item.required:
+            item.default = None
+        elif not item.write_conversion and item.data_type not in ("STRING", "BLOCK", "ANY", "DERIVED"):
+            # STRING, BLOCK, ANY, and DERIVED keep it as a literal value, as does
+            # any parameter with a WRITE_CONVERSION which converts it
+            raise TypeError(f"{item.name}: default of {item.default} is only allowed for REQUIRED parameters")
 
     @classmethod
     def _check_for_duplicate(cls, type, list, packet):

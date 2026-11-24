@@ -305,3 +305,17 @@ class TestRouterTopicRouteCommandDbShard(unittest.TestCase):
         packet.buffer = b"\x01\x02"
         RouterTopic.route_command(packet, ["INST2"], scope="DEFAULT")
         self.assertEqual(shard(1).xlen("{DEFAULT__CMD}TARGET__INST2"), 2)
+
+
+class TestTopicTargetNameFromTopic(unittest.TestCase):
+    def test_extracts_target_name(self):
+        self.assertEqual(Topic.target_name_from_topic("DEFAULT__TELEMETRY__{INST}__HEALTH_STATUS"), "INST")
+        self.assertIsNone(Topic.target_name_from_topic("DEFAULT__openc3_log_messages"))
+
+    def test_pathological_input_is_linear(self):
+        import time
+
+        topic = "__{" + ("{|__{" * 50_000)
+        start = time.monotonic()
+        self.assertIsNone(Topic.target_name_from_topic(topic))
+        self.assertLess(time.monotonic() - start, 1.0)

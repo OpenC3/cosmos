@@ -828,8 +828,15 @@ class Packet(Structure):
                 # JsonAccessor (key="$.field") from TemplateAccessor (key=name="FIELD")
                 if item.key and item.key != item.name and self.template is not None and use_template:
                     continue
-                if not (skip_item_names and item.name in upcase_skip_item_names):
+                if skip_item_names and item.name in upcase_skip_item_names:
+                    continue
+                try:
                     self.write_item(item, item.default, "CONVERTED", buffer)
+                except ValueError as error:
+                    # Name the item since the accessor error doesn't
+                    raise ValueError(
+                        f"{self.target_name} {self.packet_name} {item.name} default value: {error}"
+                    ) from error
 
     # Define the reserved items on the current telemetry packet
     def define_reserved_items(self):

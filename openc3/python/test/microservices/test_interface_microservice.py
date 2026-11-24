@@ -1261,6 +1261,34 @@ class TestInterfaceMicroservice(unittest.TestCase):
         )
         handler.interface.write.assert_not_called()
 
+    def test_process_cmd_logs_only_the_message_for_command_parameter_errors(self):
+        """Missing, mistyped, and out of range parameters are user errors so
+        they're acked and logged without a traceback."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        msg_id = f"{int(time.time() * 1000)}-0"
+        cases = [
+            ("COLLECT", {"DURATION": 1}, "Required command parameter 'INST COLLECT TYPE' not given"),
+            ("ARYCMD", {"ARRAY": 10}, "Command parameter 'INST ARYCMD ARRAY': values must be a list but is int"),
+            (
+                "COLLECT",
+                {"TYPE": "NORMAL", "DURATION": 100},
+                "Command parameter 'INST COLLECT DURATION' = 100 not in valid range of 0.0 to 10.0",
+            ),
+        ]
+        for cmd_name, cmd_params, error in cases:
+            with self.subTest(error=error):
+                handler.logger = Mock()
+                msg_hash = {
+                    b"target_name": b"INST",
+                    b"cmd_name": cmd_name.encode(),
+                    b"cmd_params": json.dumps(cmd_params).encode(),
+                }
+                result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", msg_id, msg_hash, None)
+                self.assertEqual(result, error)
+                handler.logger.error.assert_called_once_with(f"INST_INT: {error}")
+
     def test_process_cmd_validator_results(self):
         """Only an explicit False from pre_check/post_check rejects a command (None
         means unknown), and a raising validator reports its message, not a traceback."""

@@ -35,8 +35,13 @@ module OpenC3
       OpenC3::TimelineModel.delete(name: name, scope: scope, force: true)
     end
 
+    # Read the clock once per example. If each activity read DateTime.now, a
+    # second tick between two calls would give activities with the same offset
+    # different start times.
+    let(:base_time) { DateTime.now.new_offset(0) }
+
     def generate_activity(name:, scope:, start:, kind: "COMMAND", stop: 1.0, data: { "test" => "test" })
-      dt = DateTime.now.new_offset(0)
+      dt = base_time
       start_time = dt + (start / 24.0)
       end_time = dt + ((start + stop) / 24.0)
       ActivityModel.new(
@@ -285,7 +290,7 @@ module OpenC3
         activity1.create()
         activity2 = generate_activity(name: name, scope: scope, start: 5.0, kind: 'SCRIPT')
         activity2.create()
-        dt = DateTime.now.new_offset(0)
+        dt = base_time
         start = (dt + (1 / 24.0)).strftime("%s").to_i
         stop = (dt + (3 / 24.0)).strftime("%s").to_i
         array = ActivityModel.get(name: name, scope: scope, start: start, stop: stop)

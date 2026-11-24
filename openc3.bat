@@ -99,6 +99,7 @@ if "%1" == "-h" (
 if "%1" == "cli" (
   set params=%*
   call set params=%%params:*%1=%%
+  call :warn_paths_outside_cd !params!
   REM Start (and remove when done --rm) the cmd-tlm-api container with the current working directory
   REM mapped as volume (-v) /openc3/local and container working directory (-w) also set to /openc3/local.
   REM This allows tools running in the container to have a consistent path to the current working directory.
@@ -115,6 +116,7 @@ if "%1" == "cli" (
 if "%1" == "cliroot" (
   set params=%*
   call set params=%%params:*%1=%%
+  call :warn_paths_outside_cd !params!
   REM Note: The service name is always openc3-cosmos-cmd-tlm-api; compose.yaml pulls the correct image
   REM (enterprise or non-enterprise) based on environment variables.
   if "%OPENC3_ENTERPRISE%" == "1" (
@@ -365,6 +367,36 @@ REM /B beginning of line, /L literal search string, /C:# match #
     @echo   !CONTAINER_CMD! login ^<registry^> 1>&2
   )
   exit /b 0
+
+REM 'cli' and 'cliroot' mount only the current directory (at /openc3/local) into a
+REM throwaway (--rm) container, so a host path outside it doesn't exist there. The
+REM CLI can't read it, and anything it writes there (e.g. xtce_converter --output)
+REM is lost when the container exits, with no error. Warn about every argument that
+REM resolves outside the current directory. CALL splits --opt=value and KEY=value
+REM on "=", so the value is checked on its own. Paths under /openc3 are container
+REM paths and are left alone.
+:warn_paths_outside_cd
+  set "_cwd=%cd%"
+  if not "%_cwd:~-1%" == "\" set "_cwd=%_cwd%\"
+:warn_paths_loop
+  if "%~1" == "" exit /b 0
+  set "_arg=%~1"
+  if /i "!_arg:~0,7!" == "/openc3" goto warn_paths_next
+  REM %~f1 resolves relative paths and ".." against the current directory. The
+  REM leading "|" anchors the replacement so only a current directory prefix matches.
+  REM Inside the block, !CD! and !_arg! are used rather than %cd% and %~1, which
+  REM expand when the block is parsed and break it on a ")" in the path.
+  set "_full=|%~f1\"
+  if "!_full:|%_cwd%=!" == "!_full!" (
+    @echo WARNING: '!_arg!' is outside the current directory ^(!CD!^). 1>&2
+    @echo          Only the current directory is mounted into the container ^(at /openc3/local^), 1>&2
+    @echo          so the CLI can't read that path, and anything it writes there is lost when 1>&2
+    @echo          the container exits. Run from a directory that contains it and use a 1>&2
+    @echo          relative path instead. 1>&2
+  )
+:warn_paths_next
+  shift
+  goto warn_paths_loop
 
 :usage
   if "%OPENC3_DEVEL%" == "1" (

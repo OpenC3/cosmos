@@ -307,7 +307,7 @@ class TestCommands(unittest.TestCase):
         for range_checking in [True, False]:
             for raw in [True, False]:
                 with self.assertRaisesRegex(
-                    RuntimeError,
+                    ValueError,
                     "Required command parameter 'TGT2 PKT3 ITEM2' not given",
                 ):
                     self.cmd.build_cmd("tgt2", "pkt3", {}, range_checking, raw)
@@ -777,3 +777,57 @@ class TestCommands(unittest.TestCase):
         # First command should still be unchanged
         self.assertEqual(command1.read("ARRAY1"), [0x01, 0x02, 0x03])
         self.assertEqual(command1.read("ARRAY2"), [0x04, 0x05])
+
+
+class TestCommandsRequiredParameters(unittest.TestCase):
+    def setUp(self):
+        mock_redis(self)
+        setup_system()
+        tf = tempfile.NamedTemporaryFile(mode="w")
+        tf.write("COMMAND TGT1 STAT_FILE BIG_ENDIAN\n")
+        tf.write("  APPEND_ID_PARAMETER OPCODE 8 UINT 1 1 1\n")
+        tf.write('  APPEND_PARAMETER OPTION1 1024 STRING "Default" "Option 1"\n')
+        tf.write("    REQUIRED\n")
+        tf.write('  APPEND_PARAMETER OPTION2 256 STRING nil "Option 2"\n')
+        tf.write("    REQUIRED\n")
+        tf.write('  APPEND_PARAMETER OPTION3 16 UINT MIN MAX NONE "Option 3"\n')
+        tf.write("    REQUIRED\n")
+        tf.seek(0)
+        pc = PacketConfig()
+        pc.process_file(tf.name, "TGT1")
+        tf.close()
+        self.cmd = Commands(pc, System)
+
+    def test_reports_missing_required_parameters_before_writing_defaults(self):
+        with self.assertRaisesRegex(ValueError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given"):
+            self.cmd.build_cmd("TGT1", "STAT_FILE", {"OPTION1": "test", "OPTION3": 1})
+        # A default that can't be written must not hide the missing parameter
+        self.cmd.packet("TGT1", "STAT_FILE").get_item("OPTION2").default = "X" * 50
+        with self.assertRaisesRegex(ValueError, "Required command parameter 'TGT1 STAT_FILE OPTION2' not given"):
+            self.cmd.build_cmd("TGT1", "STAT_FILE", {"OPTION1": "test", "OPTION3": 1})
+        # Lowercase names count as given
+        cmd = self.cmd.build_cmd("TGT1", "STAT_FILE", {"option1": "test", "option2": "value", "Option3": 3})
+        self.assertEqual(cmd.read("OPTION1"), "test")
+        self.assertEqual(cmd.read("OPTION2"), "value")
+        self.assertEqual(cmd.read("OPTION3"), 3)
+
+    def test_skips_nil_defaults_when_required_parameters_are_not_checked(self):
+        cmd = self.cmd.build_cmd("TGT1", "STAT_FILE", {}, True, False, False)
+        self.assertEqual(cmd.read("OPTION1"), "Default")
+        self.assertEqual(cmd.read("OPTION2"), "")
+        self.assertEqual(cmd.read("OPTION3"), 0)
+
+    def test_names_the_parameter_when_a_given_value_does_not_fit(self):
+        with self.assertRaisesRegex(
+            ValueError,
+            r"Command parameter 'TGT1 STAT_FILE OPTION2': value of 33 bytes does not fit into 32 bytes for data_type STRING",
+        ):
+            self.cmd.build_cmd("TGT1", "STAT_FILE", {"OPTION1": "test", "OPTION2": "X" * 33, "OPTION3": 1})
+
+    def test_names_the_parameter_when_its_default_does_not_fit(self):
+        self.cmd.packet("TGT1", "STAT_FILE").get_item("OPTION2").default = "X" * 50
+        with self.assertRaisesRegex(
+            ValueError,
+            "TGT1 STAT_FILE OPTION2 default value: value of 50 bytes does not fit into 32 bytes for data_type STRING",
+        ):
+            self.cmd.build_cmd("TGT1", "STAT_FILE", {"OPTION1": "test"}, True, False, False)
