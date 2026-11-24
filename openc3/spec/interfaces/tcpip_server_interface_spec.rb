@@ -21,6 +21,16 @@ require 'openc3/interfaces/tcpip_server_interface'
 
 module OpenC3
   describe TcpipServerInterface do
+    def wait_until?(timeout)
+      end_time = Time.now + timeout
+      until yield
+        return false if Time.now > end_time
+
+        sleep(0.01)
+      end
+      true
+    end
+
     describe "initialize" do
       it "initializes the instance variables" do
         i = TcpipServerInterface.new('8888', '8889', '5', '5', 'burst')
@@ -155,13 +165,11 @@ module OpenC3
           expect(i.write_count).to eql 0
           expect(i.bytes_written).to eql 0
           i.write_raw("\x00\x01")
-          sleep(1)
+          expect(wait_until?(2) { i.bytes_written == 2 }).to be true
           expect(i.write_count).to eql 0
-          expect(i.bytes_written).to eql 2
           i.write_raw("\x02")
-          sleep(1)
+          expect(wait_until?(2) { i.bytes_written == 3 }).to be true
           expect(i.write_count).to eql 0
-          expect(i.bytes_written).to eql 3
         ensure
           i.disconnect
         end
@@ -210,17 +218,49 @@ module OpenC3
       end
     end
 
-    describe "slow clients" do
-      def wait_until?(timeout)
-        end_time = Time.now + timeout
-        until yield
-          return false if Time.now > end_time
+    describe "client disconnects" do
+      it "detects any write client disconnecting while no data is written" do
+        i = TcpipServerInterface.new('8892', nil, '5', nil, 'burst')
+        i.connect
+        sockets = []
+        begin
+          first = TCPSocket.new('127.0.0.1', 8892)
+          sockets << first
+          expect(wait_until?(2) { i.num_clients == 1 }).to be true
+          second = TCPSocket.new('127.0.0.1', 8892)
+          sockets << second
+          expect(wait_until?(2) { i.num_clients == 2 }).to be true
 
-          sleep(0.01)
+          # Nothing is written so only the idle check can see the second
+          # client go away, and it must check past the first client
+          second.close
+          expect(wait_until?(2) { i.num_clients == 1 }).to be true
+          remaining = i.instance_variable_get(:@write_interface_infos)[0].interface.stream.write_socket
+          expect(remaining.remote_address.ip_port).to eql first.local_address.ip_port
+        ensure
+          sockets.each { |socket| socket.close unless socket.closed? }
+          i.disconnect
         end
-        true
       end
 
+      it "removes every read client on disconnect" do
+        i = TcpipServerInterface.new(nil, '8889', nil, '5', 'burst')
+        read_interface_infos = i.instance_variable_get(:@read_interface_infos)
+        interfaces = Array.new(2) { double('interface', stream_log_pair: nil) }
+        interfaces.each do |interface|
+          expect(interface).to receive(:disconnect).once
+          read_interface_infos << TcpipServerInterface::InterfaceInfo.new(interface, nil, nil)
+        end
+        expect(i.num_clients).to eql 2
+
+        i.disconnect
+
+        expect(read_interface_infos).to be_empty
+        expect(i.num_clients).to eql 0
+      end
+    end
+
+    describe "slow clients" do
       # A client which connects but never reads so its socket buffers fill up
       def connect_stalled_client(port)
         socket = Socket.new(Socket::AF_INET, Socket::SOCK_STREAM, 0)
@@ -285,7 +325,8 @@ module OpenC3
           64.times { i.write_raw(chunk) }
           expect(wait_until?(5) { i.num_clients == 1 }).to be true
           # The reading client is the one which remains
-          expect(i.instance_variable_get(:@write_interface_infos)[0].interface.stream.write_socket).not_to be_closed
+          remaining = i.instance_variable_get(:@write_interface_infos)[0].interface.stream.write_socket
+          expect(remaining.remote_address.ip_port).to eql reader.local_address.ip_port
         ensure
           sockets.each(&:close)
           i.disconnect

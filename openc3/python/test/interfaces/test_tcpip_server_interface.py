@@ -79,6 +79,7 @@ class TestTcpipServerInterface(unittest.TestCase):
     def test_read_counts_the_packets_received(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
         i._connected = True
+        assert i.read_queue is not None
         i.read_queue.put(Packet(None, None))
         i.read_queue.put(Packet(None, None))
 
@@ -91,6 +92,7 @@ class TestTcpipServerInterface(unittest.TestCase):
     def test_read_does_not_count_none_packets(self):
         i = TcpipServerInterface("8888", "8889", "5", "5", "burst")
         i._connected = True
+        assert i.read_queue is not None
         i.read_queue.put(None)
         i.read_queue.put(None)
 
@@ -262,6 +264,42 @@ class TestTcpipServerInterface(unittest.TestCase):
         thread.join()
         i.disconnect()
 
+    def test_detects_any_write_client_disconnecting_while_no_data_is_written(self):
+        i = TcpipServerInterface("8892", None, "5", None, "burst")
+        i.connect()
+        first = None
+        second = None
+        try:
+            first = socket.create_connection(("127.0.0.1", 8892))
+            self.assertTrue(self.wait_until(lambda: i.num_clients() == 1, 2))
+            second = socket.create_connection(("127.0.0.1", 8892))
+            self.assertTrue(self.wait_until(lambda: i.num_clients() == 2, 2))
+
+            # Nothing is written so only the idle check can see the second
+            # client go away, and it must check past the first client
+            second.close()
+            self.assertTrue(self.wait_until(lambda: i.num_clients() == 1, 2))
+            remaining = i.write_interface_infos[0].interface.stream.write_socket
+            self.assertEqual(remaining.getpeername(), first.getsockname())
+        finally:
+            for sock in (first, second):
+                if sock:
+                    sock.close()
+            i.disconnect()
+
+    def test_disconnect_removes_every_read_client(self):
+        i = TcpipServerInterface(None, "8889", None, "5", "burst")
+        interface_infos = [Mock(interface=Mock(stream_log_pair=None)) for _ in range(2)]
+        i.read_interface_infos.extend(interface_infos)
+        self.assertEqual(i.num_clients(), 2)
+
+        i.disconnect()
+
+        self.assertEqual(i.read_interface_infos, [])
+        self.assertEqual(i.num_clients(), 0)
+        for interface_info in interface_infos:
+            interface_info.interface.disconnect.assert_called_once()
+
     def test_first_read_client_disconnect_cleans_up(self):
         """The first connected read client (index 0) must be cleaned up on disconnect."""
         i = TcpipServerInterface(None, "8889", None, "5", "burst")
@@ -409,7 +447,8 @@ class TestTcpipServerInterface(unittest.TestCase):
                 i.write_raw(chunk)
             self.assertTrue(self.wait_until(lambda: i.num_clients() == 1, 5))
             # The reading client is the one which remains
-            self.assertNotEqual(i.write_interface_infos[0].interface.stream.write_socket.fileno(), -1)
+            remaining = i.write_interface_infos[0].interface.stream.write_socket
+            self.assertEqual(remaining.getpeername(), reader.getsockname())
         finally:
             for sock in sockets:
                 sock.close()
