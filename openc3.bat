@@ -294,8 +294,9 @@ GOTO :EOF
   REM Send the remaining arguments to openc3_upgrade
   set args=%*
   call set args=%%args:*%1=%%
-  CALL scripts\windows\openc3_upgrade %args% || exit /b
-GOTO :EOF
+  REM The upgrade can rewrite this file, and cmd re-reads it from disk after
+  REM CALL returns, so return on the same line rather than reading another.
+  CALL scripts\windows\openc3_upgrade %args% & exit /b
 
 :util
   REM Send the remaining arguments to openc3_util

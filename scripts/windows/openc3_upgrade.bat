@@ -98,11 +98,16 @@ if errorlevel 1 goto cleanup_new_script
 findstr /c:"OPENC3_UPGRADE_REEXEC" "%NEW_SCRIPT%" >nul 2>&1
 if errorlevel 1 goto cleanup_new_script
 echo Running the upgrade script from '%TAG%'.
-set OPENC3_UPGRADE_REEXEC=1
-call "%NEW_SCRIPT%" %*
-set NEW_SCRIPT_RESULT=!errorlevel!
-del "%NEW_SCRIPT%" >nul 2>&1
-exit /b !NEW_SCRIPT_RESULT!
+REM cmd re-reads this file from disk at a saved offset after each command, and
+REM the handed-off script's 'git apply' rewrites it. Parsing the call and
+REM everything after it as one block means nothing is read from the new file.
+(
+    set OPENC3_UPGRADE_REEXEC=1
+    call "%NEW_SCRIPT%" %*
+    set NEW_SCRIPT_RESULT=!errorlevel!
+    del "%NEW_SCRIPT%" >nul 2>&1
+    exit /b !NEW_SCRIPT_RESULT!
+)
 
 :cleanup_new_script
 del "%NEW_SCRIPT%" >nul 2>&1
@@ -147,14 +152,17 @@ if "%2"=="--preview" (
     exit /b 0
 )
 
-REM Apply the changes
-git diff -R "refs/tags/%TAG%" --binary -- . %EXCLUDE_PATHSPECS% | git apply --whitespace=fix
-echo Applied changes from tag '%1'.
-echo We recommend committing these changes to your local repository.
-echo e.g. git commit -am "Upgrade to %1"
-echo You can now run 'openc3.bat run' to start the upgraded OpenC3 environment.
-echo.
-GOTO :EOF
+REM Apply the changes. 'git apply' can rewrite this file, so the rest is one
+REM block that cmd parses before the apply runs (see the handoff above).
+(
+    git diff -R "refs/tags/%TAG%" --binary -- . %EXCLUDE_PATHSPECS% | git apply --whitespace=fix
+    echo Applied changes from tag '%1'.
+    echo We recommend committing these changes to your local repository.
+    echo e.g. git commit -am "Upgrade to %1"
+    echo You can now run 'openc3.bat run' to start the upgraded OpenC3 environment.
+    echo.
+    GOTO :EOF
+)
 
 :usage
     echo Usage: openc3.bat upgrade ^<tag^> --preview
