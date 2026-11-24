@@ -113,7 +113,7 @@ VARIABLE_PATTERN:
     Must follow a VARIABLE definition.
   since: _Coming Soon_
   example: |
-    VARIABLE target_name INST
+    VARIABLE inst_target_name INST
       VARIABLE_PATTERN "[A-Z][A-Z0-9_]*" "Use capital letters, numbers and underscores"
   parameters:
     - name: Regular Expression
@@ -152,7 +152,7 @@ VARIABLE_ADVANCED:
   example: |
     VARIABLE host 127.0.0.1
     VARIABLE timeout 10
-      VARIABLE_DESCRIPTION Connection timeout in seconds
+      VARIABLE_DESCRIPTION "Connection timeout in seconds"
       VARIABLE_ADVANCED
 VARIABLE_MULTIPLE:
   summary: Let the user select any number of a plugin variable's states
@@ -491,6 +491,9 @@ VARIABLE_TEXT_START:
         VARIABLE_TEXT_START
           Connect the power supply's RS-232 port and select the **serial_port**.
         VARIABLE_TEXT_END
+    VARIABLE hostname 127.0.0.1
+    VARIABLE port 8080
+    VARIABLE serial_port /dev/ttyUSB0
 VARIABLE_TEXT_END:
   summary: Complete a block of markdown text started by VARIABLE_TEXT_START
   since: _Coming Soon_

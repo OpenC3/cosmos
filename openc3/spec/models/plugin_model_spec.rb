@@ -610,6 +610,16 @@ module OpenC3
         expect { phase1_with_plugin_txt(['PLUGIN_TEXT_END']) }.to raise_error(/PLUGIN_TEXT_END must follow a PLUGIN_TEXT_START/)
       end
 
+      it "parses every VARIABLE and PLUGIN_TEXT example in plugins.yaml" do
+        require 'openc3/config/meta_config_parser'
+        keywords = MetaConfigParser.load(File.expand_path('../../data/config/plugins.yaml', __dir__))
+        examples = keywords.select { |keyword, data| keyword =~ /\A(VARIABLE|PLUGIN_TEXT)/ and data['example'].to_s.strip != '' }
+        expect(examples.length).to be > 15
+        examples.each do |keyword, data|
+          expect { phase1_with_plugin_txt(data['example'].lines.map(&:chomp)) }.to_not raise_error, "#{keyword} example"
+        end
+      end
+
       def phase1_with_plugin_txt(lines, existing_variables: nil)
         expect(GemModel).to receive(:put)
         gem = double("gem")

@@ -53,6 +53,8 @@ In **Admin Console → Plugins**, click **Discover Hardware**. Choose a bridge, 
 
 Each device found is listed with the plugins that support it:
 
+![Discover Hardware listing a WLED light and a Govee light with the plugins proposed for them](/img/guides/hardware_discovery/discover_hardware.png)
+
 - **Store plugins.** These come from the OpenC3 Store. **Requires license** marks plugins you aren't entitled to install.
 - **Installed plugins.** These are already installed in COSMOS. **Install Another** installs another copy of the plugin for the new device.
 - **Possible match.** The plugin recognized the device only by a name pattern, such as a Bluetooth name starting with `Govee`, which other products from the same maker can share. The plugin may not support this exact device. Check the plugin's documentation.
@@ -60,7 +62,11 @@ Each device found is listed with the plugins that support it:
 
 Plugins are listed with the most specific match first, so a plugin for one exact product comes before a plugin that matches a USB-to-serial chip that many devices use.
 
-Click **Install** to open the plugin install dialog with the device, the computer and any settings that depend on the device already filled in. Review them and install as usual. Target names that are already taken are replaced with the next free name, such as `INST_2`, if the plugin uses [`VARIABLE_TYPE TARGET_NAME`](../configuration/plugins.md#variable_type).
+Click **Install** to open the plugin install dialog with the device, the computer and any settings that depend on the device already filled in. Review them and install as usual. Here **Install Another** on the WLED light opened its plugin with the controller already selected:
+
+![The WLED plugin install dialog with the discovered controller filled in](/img/guides/hardware_discovery/discover_install.png)
+
+Target names that are already taken are replaced with the next free name, such as `INST_2`, if the plugin uses [`VARIABLE_TYPE TARGET_NAME`](../configuration/plugins.md#variable_type).
 
 **Other devices** lists the devices no plugin recognized.
 
@@ -158,41 +164,48 @@ Discovery parameters can use the value of another variable as `${name}`. The dis
 A common pattern is a hidden variable that each state sets, so one plugin supports several kinds of device:
 
 ```cosmos
-VARIABLE device hue
-  VARIABLE_STATE "Philips Hue" hue
-    VARIABLE_STATE_SET mdns_types "_hue._tcp.local. _hap._tcp.local.|md=BSB002*"
-  VARIABLE_STATE Shelly shelly
-    VARIABLE_STATE_SET mdns_types _shelly._tcp.local.
+VARIABLE device wled
+  VARIABLE_LABEL "Device"
+  VARIABLE_STATE "WLED light" wled
+    VARIABLE_STATE_SET mdns_types _wled._tcp.local.
+  VARIABLE_STATE "Network printer" printer
+    VARIABLE_STATE_SET mdns_types "_ipp._tcp.local. _ipps._tcp.local."
 VARIABLE mdns_types ""
   VARIABLE_HIDDEN
 VARIABLE host ""
+  VARIABLE_LABEL "Host"
   VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}
 ```
 
 Here is what happens, step by step:
 
-1. **In the plugin install dialog**, the user picks a device type from the `device` dropdown, e.g. "Philips Hue".
-2. That state's [`VARIABLE_STATE_SET`](../configuration/plugins.md#variable_state_set) sets the hidden `mdns_types` variable to `_hue._tcp.local. _hap._tcp.local.|md=BSB002*`.
-3. Because `host` uses `${mdns_types}`, its discovery runs again on the host with those two parameters: devices advertising `_hue._tcp.local.`, or `_hap._tcp.local.` with a model (`md`) starting with `BSB002`.
-4. The `host` dropdown lists the IP addresses found. Choosing "Shelly" instead runs the discovery again for `_shelly._tcp.local.`.
+1. **In the plugin install dialog**, the user picks a device type from the `device` dropdown. "WLED light" is selected by default.
+2. That state's [`VARIABLE_STATE_SET`](../configuration/plugins.md#variable_state_set) sets the hidden `mdns_types` variable to `_wled._tcp.local.`.
+3. Because `host` uses `${mdns_types}`, its discovery runs on the host with that parameter, and the `host` dropdown lists the WLED controllers found:
 
-**Discover Hardware** works the other way round, since the user hasn't chosen a state yet. It reads the plugin's `plugin.txt` and creates one match for each state that sets `mdns_types`, here named "Philips Hue" and "Shelly", and scans for all of them at once. When a Shelly device is found, the plugin is proposed as "Shelly", and installing from that match selects the `shelly` state as well as filling in `host` with the device's IP address.
+   ![Host lists the WLED controllers found](/img/guides/hardware_discovery/discovery_dependent_wled.png)
 
-[`VARIABLE_STATE_SHOW`](../configuration/plugins.md#variable_state_show) lists the variables a state shows, hiding them for the other states. If the discovery variable is only shown by some states, only those states create matches. In this example only the Philips Hue bridge is discovered, because the Shelly state doesn't show `host`:
+4. Choosing "Network printer" sets `mdns_types` to `_ipp._tcp.local. _ipps._tcp.local.`. The value has two words, so discovery runs again with two parameters and finds devices advertising either service, and `host` now lists the printers:
+
+   ![Host lists the printers found](/img/guides/hardware_discovery/discovery_dependent_printer.png)
+
+**Discover Hardware** works the other way round, since the user hasn't chosen a state yet. It reads the plugin's `plugin.txt` and creates one match for each state that sets `mdns_types`, here named "WLED light" and "Network printer", and scans for all of them at once. When a printer is found, the plugin is proposed as "Network printer", and installing from that match selects the `printer` state as well as filling in `host` with the printer's IP address.
+
+[`VARIABLE_STATE_SHOW`](../configuration/plugins.md#variable_state_show) lists the variables a state shows, hiding them for the other states. If the discovery variable is only shown by some states, only those states create matches. In this example only WLED lights are discovered, because the printer state doesn't show `host`:
 
 ```cosmos
-VARIABLE device hue
-  VARIABLE_STATE "Philips Hue" hue
-    VARIABLE_STATE_SET mdns_types "_hue._tcp.local. _hap._tcp.local.|md=BSB002*"
+VARIABLE device wled
+  VARIABLE_STATE "WLED light" wled
+    VARIABLE_STATE_SET mdns_types _wled._tcp.local.
     VARIABLE_STATE_SHOW host
-  VARIABLE_STATE "Shelly (enter its address)" shelly
-    VARIABLE_STATE_SET mdns_types _shelly._tcp.local.
-    VARIABLE_STATE_SHOW shelly_address
+  VARIABLE_STATE "Network printer (enter its address)" printer
+    VARIABLE_STATE_SET mdns_types _ipp._tcp.local.
+    VARIABLE_STATE_SHOW printer_address
 VARIABLE mdns_types ""
   VARIABLE_HIDDEN
 VARIABLE host ""
   VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}
-VARIABLE shelly_address ""
+VARIABLE printer_address ""
 ```
 
 ### Making a Plugin Show Up in Discover Hardware
