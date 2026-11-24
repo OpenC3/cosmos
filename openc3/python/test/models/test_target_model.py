@@ -13,6 +13,7 @@
 # See https://github.com/OpenC3/cosmos/pull/1953
 
 import json
+import time
 import unittest
 import unittest.mock
 from unittest.mock import patch
@@ -626,6 +627,8 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
         TargetModel.sync_packet_count_data = {}
         TargetModel.sync_packet_count_time = None
         TargetModel.sync_packet_count_delay_seconds = 1.0
+        TargetModel.sync_packet_count_target_names = set()
+        TargetModel.sync_packet_count_in_progress = False
         TargetModel.stale_packet_keys_warned = set()
 
     def test_init_tlm_packet_counts_skips_stale_redis_key(self):
@@ -720,3 +723,43 @@ class TestTargetModelStaleTlmCntKeys(unittest.TestCase):
         with patch.object(TargetModel, "get_all_telemetry_counts", side_effect=queue_during_readback):
             TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope="DEFAULT")
         self.assertEqual(System.telemetry.packet("INST", "HEALTH_STATUS").received_count, 12)
+
+    def test_sync_tlm_packet_counts_reads_back_every_target_decomd_in_the_process(self):
+        # Another decom in the process (e.g. a MICROSERVICE_GROUP) handles SYSTEM,
+        # which has 5000 packets from before a restart
+        Store.hset("DEFAULT__TELEMETRYCNTS__{SYSTEM}", "META", 5000)
+        meta = System.telemetry.packet("SYSTEM", "META")
+        TargetModel.sync_packet_count_time = time.time()
+        TargetModel.sync_tlm_packet_counts(meta, ["SYSTEM"], scope="DEFAULT")
+        self.assertEqual(meta.received_count, 1)
+        # The INST decom wins the next sync
+        TargetModel.sync_packet_count_time = None
+        TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope="DEFAULT")
+        self.assertEqual(meta.received_count, 5001)
+
+    def test_sync_tlm_packet_counts_doesnt_start_a_sync_while_another_reads_back(self):
+        Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+        health_status = System.telemetry.packet("INST", "HEALTH_STATUS")
+        adcs = System.telemetry.packet("INST", "ADCS")
+        original = TargetModel.get_all_telemetry_counts
+        nested = []
+
+        def sync_during_readback(target_name, scope):
+            counts = original(target_name, scope=scope)
+            if target_name == "INST" and not nested:
+                nested.append(True)
+                # Another decom's packet arrives after this read, once the sync period
+                # has passed again, before this sync applies what it read
+                TargetModel.sync_packet_count_time = None
+                TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope=scope)
+            return counts
+
+        TargetModel.sync_packet_count_time = None
+        with patch.object(TargetModel, "get_all_telemetry_counts", side_effect=sync_during_readback):
+            TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope="DEFAULT")
+        # 10 from Redis plus the one not written yet, not the 10 read before it
+        self.assertEqual(health_status.received_count, 11)
+        TargetModel.sync_packet_count_time = None
+        TargetModel.sync_tlm_packet_counts(adcs, ["INST"], scope="DEFAULT")
+        self.assertEqual(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope="DEFAULT"), 11)
+        self.assertEqual(health_status.received_count, 11)

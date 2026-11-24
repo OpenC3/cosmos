@@ -40,9 +40,9 @@ module OpenC3
       local_s3_unset()
     end
 
-    def add_target(target_name, group: 'HK', language: 'ruby', plugin: 'PLUGIN', db_shard: 0, shard: 0)
+    def add_target(target_name, group: 'HK', language: 'ruby', plugin: 'PLUGIN', db_shard: 0, shard: 0, **kwargs)
       TargetModel.new(name: target_name, folder_name: target_name, microservice_group: group, language: language,
-                      plugin: plugin, db_shard: db_shard, shard: shard, scope: scope).create
+                      plugin: plugin, db_shard: db_shard, shard: shard, scope: scope, **kwargs).create
     end
 
     def add_child(name, parent, cmd: ['ruby', 'decom_microservice.rb'], **kwargs)
@@ -100,6 +100,24 @@ module OpenC3
         expect { MicroserviceGroup.validate_member(target('B', language: 'python', plugin: 'PLUGIN2')) }.to raise_error(/another plugin/)
         expect { MicroserviceGroup.validate_member(target('B', language: 'python', plugin: 'PLUGIN1')) }.to_not raise_error
         expect { MicroserviceGroup.validate_member(target('B', language: 'ruby', plugin: 'PLUGIN2')) }.to_not raise_error
+      end
+
+      it "rejects a different decom update interval within one language" do
+        add_target('A', language: 'ruby', decom_update_interval: 0.01)
+        expect { MicroserviceGroup.validate_member(target('B', language: 'ruby', decom_update_interval: 5.0)) }.to \
+          raise_error(/DECOM_UPDATE_INTERVAL 5.0 but microservice group HK uses 0.01 for ruby decom \(target A\)/)
+        # No DECOM_UPDATE_INTERVAL is the default
+        expect { MicroserviceGroup.validate_member(target('B', language: 'ruby')) }.to raise_error(/DECOM_UPDATE_INTERVAL 0.1 but/)
+        expect { MicroserviceGroup.validate_member(target('B', language: 'ruby', decom_update_interval: 0.01)) }.to_not raise_error
+        # Python decom runs in its own process with its own queues
+        expect { MicroserviceGroup.validate_member(target('B', language: 'python', decom_update_interval: 5.0)) }.to_not raise_error
+        # 0 writes directly so it doesn't use the queues
+        expect { MicroserviceGroup.validate_member(target('B', language: 'ruby', decom_update_interval: 0)) }.to_not raise_error
+      end
+
+      it "uses the same default decom update interval as the decom microservice" do
+        require 'openc3/microservices/decom_microservice'
+        expect(MicroserviceGroup::DEFAULT_DECOM_UPDATE_INTERVAL).to eql DecomMicroservice::DEFAULT_UPDATE_INTERVAL
       end
 
       it "ignores the target's own existing model and other groups" do
@@ -162,6 +180,20 @@ module OpenC3
         expect_any_instance_of(MicroserviceModel).to_not receive(:create)
         MicroserviceGroup.update('HK', scope: scope)
         expect(MicroserviceModel.get(name: multi, scope: scope)['updated_at']).to eql updated_at
+      end
+
+      it "keeps settings made on the parent, such as stopping it, when members change" do
+        add_child('DECOM__A', multi)
+        MicroserviceGroup.update('HK', scope: scope)
+        parent = model(multi)
+        parent.enabled = false
+        parent.env = { 'KEY' => 'VALUE' }
+        parent.update
+        add_child('DECOM__B', multi, needs_dependencies: true)
+        MicroserviceGroup.update('HK', scope: scope)
+        expect(model(multi).needs_dependencies).to be true
+        expect(model(multi).enabled).to be false
+        expect(model(multi).env).to eql({ 'KEY' => 'VALUE' })
       end
 
       it "only uses children of its own group" do
@@ -239,6 +271,21 @@ module OpenC3
         expect { capture_io { model.deploy(target_dir, {}) } }.to raise_error(/DB_SHARD 1 but microservice group HK uses DB_SHARD 0/)
         expect(Store.instance(db_shard: 1).hkeys("#{scope}__openc3tlm__INST2")).to be_empty
         expect(model("#{scope}__DECOM__INST2")).to be_nil
+      end
+
+      it "checks the group again under the group lock before saving the target" do
+        model = TargetModel.new(folder_name: 'INST', name: 'INST', microservice_group: 'HK', plugin: 'PLUGIN', scope: scope,
+                                tlm_log_retain_time: 60)
+        model.create
+        # Another plugin's target joins with a different DB_SHARD after this one's
+        # first check but before this one is saved
+        allow(model).to receive(:update_store).and_wrap_original do |method, *args|
+          add_target('OTHER', db_shard: 1)
+          method.call(*args)
+        end
+        expect(MicroserviceGroup).to receive(:with_lock).with('HK', scope: scope).and_call_original
+        expect { capture_io { model.deploy(target_dir, {}) } }.to raise_error(/DB_SHARD 0 but microservice group HK uses DB_SHARD 1/)
+        expect(model("#{scope}__DECOM__INST")).to be_nil
       end
 
       it "doesn't change targets without a group" do

@@ -60,8 +60,12 @@ module OpenC3
       end
       if models.empty?
         # Nothing to run until the operator restarts this with children
+        # Stop when the sleep is canceled too. shutdown cancels it before it
+        # sets @cancel_thread, and a canceled Sleeper can't sleep again.
         @sleeper = Sleeper.new
-        @sleeper.sleep(1) until @cancel_thread
+        until @cancel_thread
+          break if @sleeper.sleep(1)
+        end
       else
         ThreadManager.instance.monitor
         ThreadManager.instance.shutdown

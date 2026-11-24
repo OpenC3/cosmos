@@ -40,9 +40,19 @@ module OpenC3
 
     LOCK_TIMEOUT_SECONDS = 60
     LOCK_EXPIRE_SECONDS = 120
+    # Same as DecomMicroservice::DEFAULT_UPDATE_INTERVAL, which isn't loaded here
+    DEFAULT_DECOM_UPDATE_INTERVAL = 0.1
+    # The parent settings that come from the children (see build_model). The
+    # rest, such as enabled, keep what was set on the parent.
+    MANAGED_KEYS = %w(cmd work_dir plugin needs_dependencies shard db_shard)
 
     def self.microservice_name(type, group, scope:)
       "#{scope}__#{type}__#{group}"
+    end
+
+    # @return [Boolean] Whether name is a group's parent microservice
+    def self.parent?(name)
+      TYPES.include?(name.to_s.split('__')[1])
     end
 
     # @return [Array<Hash>] TargetModel JSON of the other members of the group
@@ -53,7 +63,9 @@ module OpenC3
     end
 
     # Raise if the target can't join its group. Called before anything is
-    # written so a failed install leaves the group as it was.
+    # written so a failed install leaves the group as it was, and again under
+    # the group lock right before the target is saved (see TargetModel#deploy)
+    # so that two targets installed at once can't both join.
     # @param target [TargetModel] Target being deployed
     def self.validate_member(target)
       group = target.microservice_group
@@ -72,7 +84,18 @@ module OpenC3
         if target.language == 'python' and member['language'] == 'python' and member['plugin'] != target.plugin
           raise "Target #{target.name} uses Python decom but microservice group #{group} already has Python decom target #{member['name']} from another plugin (#{member['plugin']})"
         end
+        # The decom microservices in one process share its write queues, which
+        # flush at one interval (0 or less doesn't queue)
+        interval = decom_update_interval(target.decom_update_interval)
+        member_interval = decom_update_interval(member['decom_update_interval'])
+        if member['language'] == target.language and interval > 0.0 and member_interval > 0.0 and interval != member_interval
+          raise "Target #{target.name} has DECOM_UPDATE_INTERVAL #{interval} but microservice group #{group} uses #{member_interval} for #{target.language} decom (target #{member['name']})"
+        end
       end
+    end
+
+    def self.decom_update_interval(value)
+      value.nil? ? DEFAULT_DECOM_UPDATE_INTERVAL : value.to_f
     end
 
     # Create, update, or remove the group's parent microservices so that each
@@ -94,9 +117,10 @@ module OpenC3
           end
           model = build_model(type, name, children, scope: scope)
           if existing
-            next if same_config?(existing, model.as_json)
+            desired = existing.merge(model.as_json.slice(*MANAGED_KEYS))
+            next if same_config?(existing, desired)
 
-            model.update
+            MicroserviceModel.from_json(desired, scope: scope).update
             Logger.info "Updated microservice #{name} for microservice group #{group}"
           else
             model.create

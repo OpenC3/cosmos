@@ -79,5 +79,18 @@ module OpenC3
       thread.join(10)
       expect(thread).to_not be_alive
     end
+
+    it "stops without an error when shutdown cancels its sleep before setting cancel_thread" do
+      stub_const('ARGV', [])
+      empty = MultiMicroservice.new('DEFAULT__MULTIGROUP__EMPTY')
+      thread = Thread.new { empty.run }
+      thread.report_on_exception = false
+      sleep 0.1 until empty.instance_variable_get(:@sleeper)
+      # shutdown cancels the sleeper and then logs before it sets cancel_thread
+      empty.instance_variable_get(:@sleeper).cancel
+      expect(thread.join(5)).to_not be_nil
+      expect { thread.value }.to_not raise_error
+      empty.shutdown
+    end
   end
 end

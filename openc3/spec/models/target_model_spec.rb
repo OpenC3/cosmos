@@ -1465,6 +1465,8 @@ module OpenC3
         # Reset class-level sync state between tests
         TargetModel.class_variable_set(:@@sync_packet_count_data, {})
         TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+        TargetModel.class_variable_set(:@@sync_packet_count_target_names, Set.new)
+        TargetModel.class_variable_set(:@@sync_packet_count_in_progress, false)
         TargetModel.class_variable_set(:@@stale_packet_keys_warned, Set.new)
       end
 
@@ -1596,6 +1598,44 @@ module OpenC3
           TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
           TargetModel.sync_tlm_packet_counts(packet, ["INST"], scope: "DEFAULT")
           expect(System.telemetry.packet("INST", "HEALTH_STATUS").received_count).to eql 12
+        end
+
+        it "reads back the counts of every target decom'd in the process, not just the syncing decom's" do
+          # Another decom in the process (e.g. a MICROSERVICE_GROUP) handles SYSTEM,
+          # which has 5000 packets from before a restart
+          Store.hset("DEFAULT__TELEMETRYCNTS__{SYSTEM}", "META", 5000)
+          TargetModel.class_variable_set(:@@sync_packet_count_time, Time.now)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("SYSTEM", "META"), ["SYSTEM"], scope: "DEFAULT")
+          expect(System.telemetry.packet("SYSTEM", "META").received_count).to eql 1
+          # The INST decom wins the next sync
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope: "DEFAULT")
+          expect(System.telemetry.packet("SYSTEM", "META").received_count).to eql 5001
+        end
+
+        it "doesn't start a sync while another one is reading back the counts" do
+          Store.hset("DEFAULT__TELEMETRYCNTS__{INST}", "HEALTH_STATUS", 10)
+          health_status = System.telemetry.packet("INST", "HEALTH_STATUS")
+          nested = false
+          allow(TargetModel).to receive(:get_all_telemetry_counts).and_wrap_original do |original, target_name, **kwargs|
+            counts = original.call(target_name, **kwargs)
+            if target_name == "INST" and !nested
+              nested = true
+              # Another decom's packet arrives after this read, once the sync period
+              # has passed again, before this sync applies what it read
+              TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+              TargetModel.sync_tlm_packet_counts(health_status, ["INST"], scope: "DEFAULT")
+            end
+            counts
+          end
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope: "DEFAULT")
+          # 10 from Redis plus the one not written yet, not the 10 read before it
+          expect(health_status.received_count).to eql 11
+          TargetModel.class_variable_set(:@@sync_packet_count_time, nil)
+          TargetModel.sync_tlm_packet_counts(System.telemetry.packet("INST", "ADCS"), ["INST"], scope: "DEFAULT")
+          expect(TargetModel.get_telemetry_count("INST", "HEALTH_STATUS", scope: "DEFAULT")).to eql 11
+          expect(health_status.received_count).to eql 11
         end
       end
     end

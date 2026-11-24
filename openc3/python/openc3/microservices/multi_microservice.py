@@ -37,6 +37,11 @@ class MultiMicroservice(Microservice):
     given (as for a MICROSERVICE_GROUP's PYMULTIGROUP) they are the
     microservices that name this one as their parent."""
 
+    # System is one per process and the first setup decides which targets it
+    # has, so leave it for run to set up for the children's targets. This
+    # microservice has none of its own and would set up an empty System.
+    SETUP_SYSTEM = False
+
     def __init__(self, *args):
         super().__init__(*args)
         self.sleeper = Sleeper()
@@ -97,8 +102,11 @@ class MultiMicroservice(Microservice):
 
         if not models:
             # Nothing to run until the operator restarts this with children
+            # Stop when the sleep is canceled too. shutdown cancels it before it
+            # sets cancel_thread, and a canceled Sleeper can't sleep again.
             while not self.cancel_thread:
-                self.sleeper.sleep(1)
+                if self.sleeper.sleep(1):
+                    break
         else:
             ThreadManager.instance().monitor()
             ThreadManager.instance().shutdown()

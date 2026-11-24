@@ -42,6 +42,10 @@ openc3_scope = "DEFAULT"
 
 
 class Microservice:
+    # Whether __init__ sets up System for this microservice's targets.
+    # MultiMicroservice sets it up for its children's targets instead.
+    SETUP_SYSTEM = True
+
     @classmethod
     def class_run_body(cls, microservice):
         try:
@@ -147,7 +151,7 @@ class Microservice:
         self.target_names = self.config.get("target_names")
         if self.target_names is None:
             self.target_names = []
-        if not is_plugin:
+        if not is_plugin and self.SETUP_SYSTEM:
             System.setup_targets(
                 self.target_names, self.temp_dir, scope=self.scope, descriptions=self.load_descriptions()
             )

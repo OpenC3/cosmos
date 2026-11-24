@@ -158,11 +158,16 @@ class Store(metaclass=StoreMeta):
 
         return db_shard_val
 
-    def ensure_pool_size(self, pool_size):
-        """Grow the connection pool to at least pool_size connections. A MULTI
-        microservice calls this before starting its children because each child
-        holds a connection while it reads its topics, and a thread waits for one
-        when they are all in use. Connections are still only opened as needed."""
+    def ensure_pool_size(self, pool_size: int) -> None:
+        """Grow the connection pool to at least pool_size connections.
+
+        A MULTI microservice calls this before starting its children because each
+        child holds a connection while it reads its topics, and a thread waits for
+        one when they are all in use. Connections are still only opened as needed.
+
+        Args:
+            pool_size: Minimum number of connections the pool allows.
+        """
         with self.redis_pool.lock:
             if self.redis_pool.pool_size < pool_size:
                 self.redis_pool.pool_size = pool_size
