@@ -63,7 +63,7 @@ Once variables are set, COSMOS registers the plugin model in Redis and installs 
 COSMOS supports two formats for declaring Python dependencies:
 
 - **`pyproject.toml`** (recommended) — When paired with a `uv.lock` file, enables reproducible installs via `uv sync --frozen`. COSMOS uses `uv sync` for `pyproject.toml`-based plugins.
-- **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins.
+- **`requirements.txt`** — COSMOS uses `uv pip install -r requirements.txt` for requirements-based plugins. It has no lock file, so it can't use [`offline_install`](#offline-installs-with-bundled-wheels).
 
 Both files are processed with [ERB](/docs/configuration/format#erb) using the plugin variables before installation, so variables can select which dependencies are installed. ERB code can read files shipped next to the dependency file with `File.dirname(__FILE__)`. For example, a `requirements.txt` that installs only the driver for the selected device:
 
@@ -74,7 +74,7 @@ Both files are processed with [ERB](/docs/configuration/format#erb) using the pl
 
 A `uv.lock` is used as-is, so a plugin whose `pyproject.toml` dependencies depend on variables should not ship a `uv.lock`.
 
-System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning.
+System Python packages (those shipped in the COSMOS Docker image) are pre-seeded into the UV download cache, so plugins that depend on those packages reuse them without re-downloading. If the UV install fails for any reason, COSMOS falls back to a shared pip install and logs a warning. A plugin built with [`offline_install`](#offline-installs-with-bundled-wheels) skips that fallback: the shared install would need a package index, so COSMOS logs an error instead.
 
 Dependencies are resolved against the `pypi_url` Admin Console setting, falling back to the `PYPI_URL` environment variable and then to public PyPI. When that setting names an index other than `https://pypi.org`, COSMOS treats it as authoritative and passes uv `--no-config --no-sources`, so a plugin cannot resolve around it using an index declared in its own `[tool.uv].index` table or a `[tool.uv].sources` pin. A plugin depending on a package published only to its author's private index therefore fails to install unless your index serves that package too.
 
