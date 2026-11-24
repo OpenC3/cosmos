@@ -19,6 +19,7 @@ require 'openc3/top_level'
 require 'openc3/models/model'
 require 'openc3/models/config_keyword_model'
 require 'openc3/models/metric_model'
+require 'openc3/models/shared_resource_model'
 require 'openc3/topics/config_topic'
 require 'openc3/utilities/bucket'
 require 'openc3/utilities/python_venv'
@@ -75,6 +76,7 @@ module OpenC3
     attr_accessor :shard
     attr_accessor :db_shard
     attr_accessor :enabled
+    attr_accessor :shared_resource
 
     # NOTE: The following three class methods are used by the ModelController
     # and are reimplemented to enable various Model class methods to work
@@ -139,6 +141,7 @@ module OpenC3
       shard: 0,
       db_shard: 0,
       enabled: true,
+      shared_resource: nil,
       scope:
     )
       parts = name.split("__")
@@ -169,21 +172,8 @@ module OpenC3
       @db_shard = db_shard.to_i # to_i to handle nil
       @enabled = enabled
       @enabled = true if @enabled.nil?
+      @shared_resource = shared_resource
       @bucket = Bucket.getClient()
-    end
-
-    # Validate the route prefix on every write, including microservices created
-    # directly through the API rather than from a plugin.txt. An update that keeps
-    # the stored prefix is allowed, so a microservice stored before prefixes were
-    # validated can still be started and stopped (#traefik doesn't route it).
-    def create(update: false, force: false, queued: false)
-      if @prefix
-        existing = self.class.get(name: @name) if update
-        unless existing and existing['prefix'] == @prefix
-          @prefix = self.class.validate_route_prefix(@prefix)
-        end
-      end
-      super(update: update, force: force, queued: queued)
     end
 
     # Resolve the Python environment variables that will be used at runtime.
@@ -229,6 +219,7 @@ module OpenC3
         'shard' => @shard,
         'db_shard' => @db_shard,
         'enabled' => @enabled,
+        'shared_resource' => @shared_resource,
       }
     end
 
@@ -301,10 +292,51 @@ module OpenC3
       when 'STOPPED'
         parser.verify_num_parameters(0, 0, "#{keyword}")
         @enabled = false
+      when 'SHARED_RESOURCE'
+        parser.verify_num_parameters(1, 1, "#{keyword} <Shared Resource Name>")
+        begin
+          @shared_resource = SharedResourceModel.validate_name(parameters[0])
+        rescue => e
+          raise parser.error(e.message)
+        end
       else
         raise ConfigParser::Error.new(parser, "Unknown keyword and parameters for Microservice: #{keyword} #{parameters.join(" ")}")
       end
       return nil
+    end
+
+    # Validate the route prefix on every write, including microservices created
+    # directly through the API rather than from a plugin.txt. An update that keeps
+    # the stored prefix is allowed, so a microservice stored before prefixes were
+    # validated can still be started and stopped (#traefik doesn't route it).
+    #
+    # Join the shared resource before the operator can see the microservice so
+    # it is never started in a scope where the resource isn't active.
+    def create(update: false, force: false, queued: false)
+      if @prefix
+        existing = self.class.get(name: @name) if update
+        unless existing and existing['prefix'] == @prefix
+          @prefix = self.class.validate_route_prefix(@prefix)
+        end
+      end
+      added = false
+      if @shared_resource and not update
+        type = shared_resource_member_type()
+        existed = SharedResourceModel.member?(@shared_resource, scope: @scope, type: type, member_name: @name)
+        SharedResourceModel.add_member(@shared_resource, scope: @scope, type: type, member_name: @name, shard: @shard)
+        added = !existed
+      end
+      super(update: update, force: force, queued: queued)
+    rescue
+      # Don't leave a member behind for a microservice that wasn't created
+      SharedResourceModel.remove_member(@shared_resource, scope: @scope, type: shared_resource_member_type(), member_name: @name) if added
+      raise
+    end
+
+    # @return [String] INTERFACE, ROUTER, or MICROSERVICE
+    def shared_resource_member_type
+      type = @name.split('__')[1]
+      %w(INTERFACE ROUTER).include?(type) ? type : 'MICROSERVICE'
     end
 
     def deploy(gem_path, variables, validate_only: false)
@@ -338,6 +370,13 @@ module OpenC3
     end
 
     def undeploy
+      if @shared_resource
+        begin
+          SharedResourceModel.remove_member(@shared_resource, scope: @scope, type: shared_resource_member_type(), member_name: @name)
+        rescue => error
+          Logger.error("Error removing microservice #{@name} from shared resource #{@shared_resource} in scope #{@scope} due to #{error}")
+        end
+      end
       prefix = "#{@scope}/microservices/#{@name}/"
       objects = @bucket.list_objects(bucket: ENV['OPENC3_CONFIG_BUCKET'], prefix: prefix)
       keys = objects.map(&:key)

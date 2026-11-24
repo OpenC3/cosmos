@@ -171,9 +171,19 @@ test('prompts before closing dirty plugin editor on ESC', async ({
   // The plugin dialog should still be open
   await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
 
+  // Wait for the cancelled confirmation to finish closing first. While it fades
+  // out its text is still visible, and an ESC pressed then is dropped, so the
+  // check below would pass on the dying dialog and the click would land on a
+  // button whose promise was already rejected.
+  await expect(page.getByText('You have unsaved changes')).toBeHidden()
+
   // Press ESC again to re-trigger the confirmation
   await page.keyboard.press('Escape')
-  await expect(page.getByText('You have unsaved changes')).toBeVisible()
+  await expect(
+    page.locator('.v-overlay--active', {
+      hasText: 'You have unsaved changes',
+    }),
+  ).toBeVisible()
 
   // This time confirm closing without saving
   await page
@@ -239,6 +249,21 @@ test.describe(() => {
     ).toHaveCount(previousCompleteCount + 1, { timeout: 30000 })
   }
 
+  /** Counts the Complete entries already listed for a process. Finished
+   * processes stay listed for a while, so ones from an earlier run (or the
+   * first attempt of a retried test) are still there. Call before starting the
+   * process and pass the result to waitForPluginProcess so only a new Complete
+   * entry counts.
+   */
+  async function countCompleted(page: Page, process: string, gem: string) {
+    return await page
+      .locator('[data-test=process-list] .v-list-item')
+      .filter({
+        hasText: new RegExp(`Processing ${process}: ${gem}(__.*)? - Complete`),
+      })
+      .count()
+  }
+
   test.afterEach('delete the installed plugin', async ({ page }) => {
     await page
       .locator('[data-test=plugin-list-item]')
@@ -251,16 +276,11 @@ test.describe(() => {
     await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
     // Check the delete box
     await page.locator('text=DELETE MODIFIED').click()
-    // Completed processes stay listed for a while so a retried test can still
-    // see the previous cleanup's uninstall; only count a new one
-    const completeCount = await page
-      .locator('[data-test=process-list] .v-list-item')
-      .filter({
-        hasText: new RegExp(
-          `Processing plugin_uninstall: ${pluginGem1}(__.*)? - Complete`,
-        ),
-      })
-      .count()
+    const completeCount = await countCompleted(
+      page,
+      'plugin_uninstall',
+      pluginGem1,
+    )
     await page.locator('data-test=modified-plugin-submit').click()
 
     await waitForPluginProcess(page, {
@@ -331,10 +351,12 @@ test.describe(() => {
     ])
     await installFileChooser.setFiles(`./${plugin}/${pluginGem}`)
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
+    const installCount = await countCompleted(page, 'plugin_install', pluginGem)
     await page.locator('data-test=edit-submit').click()
     await waitForPluginProcess(page, {
       alert: 'Started installing',
       gem: pluginGem,
+      previousCompleteCount: installCount,
     })
 
     await expect(
@@ -453,10 +475,16 @@ test.describe(() => {
     if (await deleteModified.isVisible()) {
       await deleteModified.click()
     }
+    const upgradeCount = await countCompleted(
+      page,
+      'plugin_install',
+      pluginGem1,
+    )
     await page.locator('data-test=modified-plugin-submit').click()
     await waitForPluginProcess(page, {
       alert: 'Started installing',
       gem: pluginGem1,
+      previousCompleteCount: upgradeCount,
     })
 
     // Check that there are no longer any links (modified targets)
@@ -495,12 +523,11 @@ test.describe(() => {
         '.v-dialog:has-text("Variables") .v-input:has-text("pw_test_target_name") >> input',
       )
       .fill('NEW_TGT')
-    const completeCount = await page
-      .locator('[data-test=process-list] .v-list-item')
-      .filter({
-        hasText: new RegExp(`Processing plugin_install: ${pluginGem1}(__.*)? - Complete`),
-      })
-      .count()
+    const completeCount = await countCompleted(
+      page,
+      'plugin_install',
+      pluginGem1,
+    )
     await page.locator('data-test=edit-submit').click()
     await waitForPluginProcess(page, {
       alert: 'Started installing',
@@ -510,10 +537,18 @@ test.describe(() => {
     // Ensure the target list is updated to show the new name
     // TODO: replace .nth(2) with a more robust selector, this is not robust to layout changes of plugin-list-item
     await expect(
-      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }).locator('div').nth(2),
+      page
+        .locator('[data-test=plugin-list-item]')
+        .filter({ hasText: plugin })
+        .locator('div')
+        .nth(2),
     ).not.toContainText('PW_TEST')
     await expect(
-      page.locator('[data-test=plugin-list-item]').filter({ hasText: plugin }).locator('div').nth(2),
+      page
+        .locator('[data-test=plugin-list-item]')
+        .filter({ hasText: plugin })
+        .locator('div')
+        .nth(2),
     ).toContainText('NEW_TGT')
     // Show the process output
     await page

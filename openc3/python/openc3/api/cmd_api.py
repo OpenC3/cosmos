@@ -24,6 +24,7 @@ from openc3.api.api_types import ValueType
 from openc3.api.interface_api import get_interface
 from openc3.environment import OPENC3_SCOPE
 from openc3.models.queue_model import QueueModel
+from openc3.models.shared_resource_model import SharedResourceModel
 from openc3.models.target_model import TargetModel
 from openc3.packets.packet import Packet  # noqa: F401
 from openc3.top_level import DisabledError
@@ -391,6 +392,7 @@ def send_raw(interface_name: str, data: bytes, scope: str = OPENC3_SCOPE, manual
     interface_name = interface_name.upper()
     authorize(permission="cmd_raw", interface_name=interface_name, scope=scope, manual=manual)
     get_interface(interface_name, scope=scope)  # Check to make sure the interface exists
+    SharedResourceModel.check_interface_active("INTERFACE", interface_name, scope=scope)
     InterfaceTopic.write_raw(interface_name, data, scope=scope)
 
 
@@ -882,6 +884,7 @@ def _cmd_implementation(
         scope=scope,
         manual=manual,
     )
+    SharedResourceModel.check_target_active(target_name, scope=scope)
     queue_username = kwargs.get("queue_username")
     extra = kwargs.get("extra")
     if extra is not None and not isinstance(extra, dict):
