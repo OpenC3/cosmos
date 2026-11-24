@@ -88,10 +88,7 @@ git checkout vX.Y.Z # <- change to the specific version you want
 
 COSMOS seeds the UV wheel cache with all system Python dependencies every time the init container starts. Each start copies only wheels the cache does not already have, so upgrading to a newer COSMOS image adds that image's wheels to an existing volume. This means plugins that only require packages already available in the cache can install without any network access.
 
-To see which Python packages are available in the cache, check the **Cached** section under the **Admin > Packages** tab. If your plugin requires packages that are not in the cache, use one of these:
-
-- Build the plugin with [`offline_install`](/docs/configuration/plugins#offline-installs-with-bundled-wheels), so the plugin gem carries its own wheels.
-- Set the `pypi_url` setting on the [Admin Settings tab](/docs/tools/admin#settings) to a PyPI mirror that the offline network can reach.
+To see which Python packages are available in the cache, check the **Cached** section under the **Admin > Packages** tab. If your plugin requires packages that are not in the cache, set the `pypi_url` setting on the [Admin Settings tab](/docs/tools/admin#settings) to a PyPI mirror that the offline network can reach.
 
 Uploading a `.whl` file on the Admin > Packages tab does not help a plugin install. COSMOS installs the uploaded wheel right away, into the plugin venv you select in the upload dialog, or into the shared `/gems/python_packages` folder when the dialog does not appear. Later plugin installs do not use it.
 :::
