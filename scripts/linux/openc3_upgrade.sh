@@ -22,11 +22,13 @@ fi
 # Files the user owns. COSMOS never ships these, so the upgrade must never
 # touch them. Without the exclude, a committed compose.override.yaml shows up
 # in 'git diff -R <tag>' as a deletion (it doesn't exist in the tag) and would
-# be removed. plugins/ holds the user's own plugins.
+# be removed. plugins/ holds the user's own plugins, and custom/ the Dockerfiles
+# for images that extend COSMOS (docs/guides/container-extension.md).
 EXCLUDE_PATHSPECS=(
   ':(exclude)plugins/'
   ':(exclude)compose.override.yaml'
   ':(exclude).env.local'
+  ':(exclude)custom/'
 )
 
 usage() {

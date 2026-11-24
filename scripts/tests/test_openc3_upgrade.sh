@@ -13,8 +13,8 @@
 # Offline regression test for scripts/linux/openc3_upgrade.sh.
 #
 # Builds a scratch "cosmos-project" with tags v1 and v2 and a user project
-# cloned from v1 that has committed its own compose.override.yaml, .env.local
-# and plugins/. Then it checks that 'upgrade v2 --preview' and 'upgrade v2'
+# cloned from v1 that has committed its own compose.override.yaml, .env.local,
+# plugins/ and custom/. Then it checks that 'upgrade v2 --preview' and 'upgrade v2'
 # leave those files alone, that the upgrade still applies v2, and that the
 # v1 script hands off to the v2 script. A git 'insteadOf' rule points the
 # script's hard-coded GitHub URL at the scratch repo, so nothing hits the
@@ -75,11 +75,13 @@ make_project() {
   echo "OPENC3_EXTERNAL_URL=https://mydomain.com" > "$project/.env.local"
   mkdir -p "$project/plugins/DEFAULT/my-plugin"
   echo "my plugin" > "$project/plugins/DEFAULT/my-plugin/plugin.txt"
-  git -C "$project" add -f compose.override.yaml .env.local plugins
+  mkdir -p "$project/custom/openc3-operator"
+  echo "FROM openc3inc/openc3-operator" > "$project/custom/openc3-operator/Dockerfile"
+  git -C "$project" add -f compose.override.yaml .env.local plugins custom
   git -C "$project" commit -q -m "user files"
 }
 
-USER_FILES=(compose.override.yaml .env.local plugins/DEFAULT/my-plugin/plugin.txt)
+USER_FILES=(compose.override.yaml .env.local plugins/DEFAULT/my-plugin/plugin.txt custom/openc3-operator/Dockerfile)
 
 check_user_files() {
   local project="$1" label="$2" file

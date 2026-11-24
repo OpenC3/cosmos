@@ -75,7 +75,7 @@ For step by step instructions see our [COSMOS Upgrade](https://youtu.be/Z3o1RACK
 </TabItem>
 </Tabs>
 
-The upgrade runs the upgrade script from the version you're installing, then makes every COSMOS file in your project match that release. It leaves your own files alone: `plugins/`, `compose.override.yaml` and `.env.local`. Any edits you made to COSMOS files such as `compose.yaml`, `.env` or `compose.override.example.yaml` are replaced, which is why customizations belong in [`compose.override.yaml`](/docs/configuration/compose) and [`.env.local`](/docs/configuration/environment#envlocal). Add `--preview` to see the changes without applying them.
+The upgrade runs the upgrade script from the version you're installing, then makes every COSMOS file in your project match that release. It leaves your own files alone: `plugins/`, `custom/`, `compose.override.yaml` and `.env.local`. Any edits you made to COSMOS files such as `compose.yaml`, `.env` or `compose.override.example.yaml` are replaced, which is why customizations belong in [`compose.override.yaml`](/docs/configuration/compose) and [`.env.local`](/docs/configuration/environment#envlocal). Add `--preview` to see the changes without applying them.
 
 :::warning[Upgrading from 7.3.0 through 7.5.1 deletes compose.override.yaml]
 Releases 7.3.0 through 7.5.1 shipped the example override as `compose.override.yaml` itself. Later releases ship it as `compose.override.example.yaml` so that `compose.override.yaml` is only ever yours. The upgrade script in those older releases doesn't skip `compose.override.yaml`, so the first upgrade past 7.5.1 deletes it. If you edited and committed it, restore it before committing the upgrade:
