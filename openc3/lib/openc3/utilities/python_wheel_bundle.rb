@@ -40,8 +40,9 @@ module OpenC3
 
     WHEELS_DIR = 'python_wheels'
 
-    # offline_install on a line before any comment marker
-    MENTIONS_OFFLINE_INSTALL = /^[^#\n]*offline_install/
+    # offline_install, or a \u or \U escape that could spell it in a quoted
+    # key ("offline\u005finstall"), on a line before any comment marker
+    MENTIONS_OFFLINE_INSTALL = /^[^#\n]*(?:offline_install|\\[uU])/
 
     # A Python version uv's --python-version takes: 3.13 or 3.13.1
     PYTHON_VERSION = /\A3\.\d+(\.\d+)?\z/
@@ -59,9 +60,9 @@ module OpenC3
       disabled = { offline_install: false, python_platforms: [], python_version: nil, requires_python: nil }
       pyproject = File.join(project_dir, 'pyproject.toml')
       return disabled unless File.exist?(pyproject)
-      # Every TOML spelling of the key contains its name outside a comment, so
-      # a plugin that never sets it, or only has the template's commented
-      # example, skips the Python process.
+      # Every TOML spelling of the key contains its name, or an escape, outside
+      # a comment, so a plugin that never sets it, or only has the template's
+      # commented example, skips the Python process.
       return disabled unless File.read(pyproject).match?(MENTIONS_OFFLINE_INSTALL)
 
       toml = read_toml(pyproject)
@@ -170,8 +171,8 @@ module OpenC3
           run_uv(project_dir, 'pip', 'install', '--target', target_dir, '--only-binary', ':all:', '--require-hashes',
                  *target_args(platform, settings[:python_version]), '-r', requirements,
                  what: "find a compatible wheel for every locked package for #{describe_target(platform, settings[:python_version])}")
-          installed_wheels(target_dir).each do |name, version, tags|
-            wheel = match_lock_wheel(lock_wheels, name, version, tags)
+          installed_wheels(target_dir).each do |name, version, build, tags|
+            wheel = match_lock_wheel(lock_wheels, name, version, build, tags)
             unless wheel
               raise Error, "uv installed #{name} #{version} for #{describe_target(platform, settings[:python_version])} " \
                            "from a wheel uv.lock does not record"
@@ -318,8 +319,8 @@ module OpenC3
           end
 
           out.puts "#{describe_target(platform, version)}  PASS"
-          rows = installed_wheels(target_dir).sort.map do |name, installed_version, tags|
-            wheel = match_lock_wheel(lock_wheels, name, installed_version, tags)
+          rows = installed_wheels(target_dir).sort_by(&:first).map do |name, installed_version, build, tags|
+            wheel = match_lock_wheel(lock_wheels, name, installed_version, build, tags)
             [name, installed_version, wheel ? wheel[:filename] : '(not in uv.lock)', wheel ? hash_status[wheel[:filename]] : 'NOT IN uv.lock']
           end
           print_table(out, [%w(Package Version Wheel Hash)] + rows)
@@ -384,7 +385,14 @@ module OpenC3
     end
     private_class_method :filename_tags
 
-    # @return [Hash] normalized name => array of { version:, filename:, tags:, url:/path:, sha256: }
+    # The optional build tag of a wheel filename (name-version-build-python-abi-platform)
+    def self.filename_build(filename)
+      parts = File.basename(filename, '.whl').split('-')
+      parts.length == 6 ? parts[2] : nil
+    end
+    private_class_method :filename_build
+
+    # @return [Hash] normalized name => array of { version:, build:, filename:, tags:, url:/path:, sha256: }
     def self.lock_wheels_by_name(lock)
       result = Hash.new { |hash, key| hash[key] = [] }
       Array(lock['package']).each do |package|
@@ -395,7 +403,7 @@ module OpenC3
           # A local version's "+" is percent-encoded in index URLs (torch-2.5.1%2Bcpu-...)
           filename = URI.decode_uri_component(File.basename(location.split(/[?#]/).first))
           result[normalize(package['name'])] << {
-            version: package['version'], filename: filename, tags: filename_tags(filename),
+            version: package['version'], build: filename_build(filename), filename: filename, tags: filename_tags(filename),
             url: wheel['url'], path: wheel['path'], sha256: wheel['hash'].to_s.delete_prefix('sha256:'),
           }
         end
@@ -439,23 +447,27 @@ module OpenC3
     end
     private_class_method :check_sources
 
-    # @return [Array<Array>] [name, version, sorted tags] for every dist uv installed
+    # @return [Array<Array>] [name, version, build or nil, sorted tags] for every dist uv installed
     def self.installed_wheels(target_dir)
       Dir[File.join(target_dir, '*.dist-info')].map do |dist_info|
         metadata = File.read(File.join(dist_info, 'METADATA'))
         name = metadata[/^Name: *(.+)$/, 1].strip
         version = metadata[/^Version: *(.+)$/, 1].strip
         # WHEEL is copied from the wheel as built, which may use CRLF line endings
-        tags = File.read(File.join(dist_info, 'WHEEL')).scan(/^Tag: *(\S+)\r?$/).flatten.sort
-        [name, version, tags]
+        wheel = File.read(File.join(dist_info, 'WHEEL'))
+        build = wheel[/^Build: *(\S+)\r?$/, 1]
+        tags = wheel.scan(/^Tag: *(\S+)\r?$/).flatten.sort
+        [name, version, build, tags]
       end
     end
     private_class_method :installed_wheels
 
-    def self.match_lock_wheel(lock_wheels, name, version, tags)
+    def self.match_lock_wheel(lock_wheels, name, version, build, tags)
       candidates = lock_wheels[normalize(name)].select { |wheel| wheel[:tags] == tags }
       # A lock can hold two versions of one package under different markers
       candidates = candidates.select { |wheel| wheel[:version] == version } if candidates.length > 1
+      # and a release can hold two builds of one wheel (fake-1.0-1-py3-none-any.whl)
+      candidates = candidates.select { |wheel| wheel[:build] == build } if candidates.length > 1
       candidates.length == 1 ? candidates[0] : nil
     end
     private_class_method :match_lock_wheel

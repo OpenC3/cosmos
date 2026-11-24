@@ -63,6 +63,12 @@ module OpenC3
         expect(PythonWheelBundle.offline_install?(@dir)).to be false
       end
 
+      # TOML allows escapes in a quoted key, so the prefilter can't rule this out
+      it "reads offline_install spelled with an escape in a quoted key" do
+        write_pyproject("[tool.openc3]\n\"offline\\u005finstall\" = true\n")
+        expect(PythonWheelBundle.offline_install?(@dir)).to be true
+      end
+
       it "is disabled when offline_install is false" do
         write_pyproject("[tool.openc3]\noffline_install = false\n")
         expect(PythonWheelBundle.offline_install?(@dir)).to be false
@@ -149,8 +155,36 @@ module OpenC3
           File.write(File.join(dist_info, 'METADATA'), ["Metadata-Version: 2.1", "Name: fake", "Version: 1.0", ""].join(newline))
           File.write(File.join(dist_info, 'WHEEL'), ["Wheel-Version: 1.0", "Tag: py2-none-any", "Tag: py3-none-any", ""].join(newline))
 
-          expect(PythonWheelBundle.send(:installed_wheels, target)).to eql [["fake", "1.0", ["py2-none-any", "py3-none-any"]]]
+          expect(PythonWheelBundle.send(:installed_wheels, target)).to eql [["fake", "1.0", nil, ["py2-none-any", "py3-none-any"]]]
         end
+      end
+
+      it "reads the build tag" do
+        dist_info = File.join(@dir, "target", "fake-1.0.dist-info")
+        FileUtils.mkdir_p(dist_info)
+        File.write(File.join(dist_info, 'METADATA'), "Metadata-Version: 2.1\nName: fake\nVersion: 1.0\n")
+        File.write(File.join(dist_info, 'WHEEL'), "Wheel-Version: 1.0\nBuild: 2\nTag: py3-none-any\n")
+
+        expect(PythonWheelBundle.send(:installed_wheels, File.join(@dir, "target"))).to eql [["fake", "1.0", "2", ["py3-none-any"]]]
+      end
+    end
+
+    describe "match_lock_wheel" do
+      def lock(*filenames)
+        wheels = filenames.map { |filename| { 'url' => "https://example.com/#{filename}", 'hash' => 'sha256:00' } }
+        PythonWheelBundle.send(:lock_wheels_by_name, { 'package' => [{ 'name' => 'fake', 'version' => '1.0', 'wheels' => wheels }] })
+      end
+
+      # Two builds of one release share the version and tags
+      it "tells builds of the same release apart" do
+        wheels = lock("fake-1.0-1-py3-none-any.whl", "fake-1.0-2-py3-none-any.whl")
+        expect(PythonWheelBundle.send(:match_lock_wheel, wheels, "fake", "1.0", "2", ["py3-none-any"])[:filename]).to eql "fake-1.0-2-py3-none-any.whl"
+        expect(PythonWheelBundle.send(:match_lock_wheel, wheels, "fake", "1.0", "1", ["py3-none-any"])[:filename]).to eql "fake-1.0-1-py3-none-any.whl"
+      end
+
+      it "matches a wheel without a build tag" do
+        wheels = lock("fake-1.0-py3-none-any.whl", "fake-1.0-1-py3-none-any.whl")
+        expect(PythonWheelBundle.send(:match_lock_wheel, wheels, "fake", "1.0", nil, ["py3-none-any"])[:filename]).to eql "fake-1.0-py3-none-any.whl"
       end
     end
 
