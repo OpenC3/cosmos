@@ -281,10 +281,11 @@ module OpenC3
 
       it "generates a justfile with uv and wheel recipes for a python plugin" do
         run_gen(['plugin', 'test-plugin', '--python'])
+        expect(File.exist?('justfile.erb')).to be false
         justfile = File.read('justfile')
-        expect(justfile).to include("build VERSION:\n    {{openc3_sh}} cli rake build VERSION={{VERSION}}")
-        expect(justfile).to include("lock *ARGS:\n    {{openc3_sh}} cli lock {{ARGS}}")
-        expect(justfile).to include("verify GEM:\n    {{openc3_sh}} cli verifywheels {{GEM}}")
+        expect(justfile).to include("build VERSION:\n    {{ openc3_sh }} cli rake build VERSION={{ VERSION }}")
+        expect(justfile).to include("lock *ARGS:\n    {{ openc3_sh }} cli lock {{ ARGS }}")
+        expect(justfile).to include("verify GEM:\n    {{ openc3_sh }} cli verifywheels {{ GEM }}")
         expect(justfile).to include('just verify openc3-cosmos-test-plugin-1.0.0.gem')
         expect(justfile).to include('uv run --group dev pytest')
         expect(justfile).to include('rm -rf python_wheels')
@@ -294,7 +295,7 @@ module OpenC3
       it "generates a justfile without uv recipes for a ruby plugin" do
         run_gen(['plugin', 'test-plugin', '--ruby'])
         justfile = File.read('justfile')
-        expect(justfile).to include('{{openc3_sh}} cli rake build VERSION={{VERSION}}')
+        expect(justfile).to include('{{ openc3_sh }} cli rake build VERSION={{ VERSION }}')
         expect(justfile).to_not include('uv')
         expect(justfile).to_not include('python_wheels')
         expect(justfile).to_not include('<%')

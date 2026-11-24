@@ -6,7 +6,7 @@
 # `openc3.sh cli generate plugin` puts a new plugin. Set OPENC3_SH to use another
 # path, e.g. `OPENC3_SH=~/cosmos-project/openc3.sh just build 1.0.0`.
 
-openc3_sh := env("OPENC3_SH", "../openc3.sh")
+openc3_sh := if env("OPENC3_SH", "") == "" { "../openc3.sh" } else { env("OPENC3_SH") }
 
 # List the recipes
 default:
@@ -14,18 +14,18 @@ default:
 
 # Build the gem, e.g. `just build 1.0.0`
 build VERSION:
-    {{openc3_sh}} cli rake build VERSION={{VERSION}}
+    {{ openc3_sh }} cli rake build VERSION={{ VERSION }}
 <% if @@language == 'py' -%>
 
 # Takes --upgrade, --upgrade-package NAME and --build VERSION.
 # Update uv.lock after editing pyproject.toml, e.g. `just lock --build 1.0.1`
 lock *ARGS:
-    {{openc3_sh}} cli lock {{ARGS}}
+    {{ openc3_sh }} cli lock {{ ARGS }}
 
 # For a gem built with offline_install.
 # Check a gem's bundled Python wheels, e.g. `just verify <%= plugin_name %>-1.0.0.gem`
 verify GEM:
-    {{openc3_sh}} cli verifywheels {{GEM}}
+    {{ openc3_sh }} cli verifywheels {{ GEM }}
 
 # Create .venv with the runtime and dev dependencies
 sync:
@@ -33,7 +33,7 @@ sync:
 
 # Run the Python tests (none yet is not a failure)
 test *ARGS:
-    uv run --group dev pytest {{ARGS}} || test $? -eq 5
+    uv run --group dev pytest {{ ARGS }} || test $? -eq 5
 
 # Check Python lint and formatting
 lint:

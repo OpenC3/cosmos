@@ -401,6 +401,9 @@ module OpenC3
 
       process_template("#{TEMPLATES_DIR}/plugin", binding) do |filename|
         filename.sub!("plugin.gemspec", "#{plugin_name}.gemspec")
+        # The template is ERB, not valid just syntax, so it can't be named
+        # justfile: just would load it from anywhere under templates/plugin
+        filename.sub!(/\Ajustfile\.erb\z/, "justfile")
         filename.sub!("lib/PACKAGE", "lib/#{package_name}")
         # Only python plugins get a pyproject.toml. Shipping one in every plugin
         # would make install_phase2 take the python dependency path (and build a
