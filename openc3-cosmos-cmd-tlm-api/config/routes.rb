@@ -59,6 +59,8 @@ Rails.application.routes.draw do
     get '/bridges/:id', to: 'bridges#show', id: /[^\/]+/
     post '/bridges/:id/token', to: 'bridges#token', id: /[^\/]+/
     delete '/bridges/:id', to: 'bridges#destroy', id: /[^\/]+/
+    post '/discovery', to: 'discovery#create'
+    post '/discovery/scan', to: 'discovery#scan'
 
     resources :process_status, only: [:index]
     get '/process_status/:id', to: 'process_status#show', id: /[^\/]+/
@@ -99,6 +101,9 @@ Rails.application.routes.draw do
 
     post '/plugins/install/:id', to: 'plugins#install', id: /[^\/]+/
     post '/plugins/modified_diff', to: 'plugins#modified_diff'
+    post '/plugins/preview', to: 'plugins#preview'
+    post '/plugins/validate', to: 'plugins#validate'
+    post '/plugins/files', to: 'plugins#upload_file'
     post '/plugins/:id/migrate_to_uv', to: 'plugins#migrate_to_uv', id: /[^\/]+/ # Migrate legacy plugin to per-plugin UV venv
     resources :plugins, only: [:index, :create]
     get '/plugins/:id', to: 'plugins#show', id: /[^\/]+/
@@ -215,6 +220,21 @@ Rails.application.routes.draw do
     get "/dashboard/:target/:dashboard/versions", to: "dashboard_version#versions"
     get "/dashboard/:target/:dashboard/version", to: "dashboard_version#version_body"
     post "/dashboard/:target/:dashboard/restore", to: "dashboard_version#restore"
+
+    # Enterprise TSDB partition management (TsdbPartitionsController)
+    get "/tsdb/partitions/destinations", to: "tsdb_partitions#destinations"
+    get "/tsdb/partitions/settings", to: "tsdb_partitions#settings"
+    put "/tsdb/partitions/settings", to: "tsdb_partitions#update_settings"
+    get "/tsdb/partitions/schedule/preview", to: "tsdb_partitions#preview"
+    get "/tsdb/partitions/status", to: "tsdb_partitions#status"
+    get "/tsdb/partitions/archived", to: "tsdb_partitions#archived"
+    post "/tsdb/partitions/run", to: "tsdb_partitions#run"
+    post "/tsdb/partitions/restore", to: "tsdb_partitions#restore"
+    post "/tsdb/partitions/release", to: "tsdb_partitions#release"
+    post "/tsdb/partitions/rescan", to: "tsdb_partitions#rescan"
+    post "/tsdb/partitions/unblock", to: "tsdb_partitions#unblock"
+    get "/tsdb/partitions/jobs/:id", to: "tsdb_partitions#job"
+    post "/tsdb/partitions/jobs/:id/cancel", to: "tsdb_partitions#cancel"
 
     get "/notebooks", to: "notebooks#index"
     get "/notebooks/running", to: "notebooks#running"

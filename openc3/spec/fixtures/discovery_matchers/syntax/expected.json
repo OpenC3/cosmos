@@ -1,0 +1,19 @@
+{
+  "format": 1,
+  "matchers": [
+    {
+      "class": "openc3.discovery.zeroconf_discovery",
+      "params": ["_basic._tcp.local.|name=Basic", "Unit*"],
+      "variable": "host",
+      "set": { "model": "basic" },
+      "title": "Basic model"
+    },
+    {
+      "class": "openc3.discovery.zeroconf_discovery",
+      "params": ["_pro._tcp.local."],
+      "variable": "host",
+      "set": { "model": "pro" },
+      "title": "Pro model"
+    }
+  ]
+}

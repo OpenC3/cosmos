@@ -434,6 +434,41 @@ module OpenC3
       end
     end
 
+    describe "VARIABLE_FILE uploads" do
+      let(:upload) { "0b5e6a1c-2d3f-4a5b-8c9d-0e1f2a3b4c5d/icd.csv" }
+      let(:plugin_hash) do
+        { 'name' => "test1-0.0.0.gem__1", 'variables' => {
+          'icd' => { 'type' => 'FILE', 'value' => upload, 'file_path' => 'targets/INST/data/icd.csv' },
+          'other' => { 'value' => 'TED' },
+        } }
+      end
+
+      it "saves them beside plugin_instance.json and puts them back in the bucket before installing" do
+        test_gems, _ = setup_plugin_test()
+        full_folder_path = File.dirname(test_gems[0])
+        client = double("client")
+        allow(Bucket).to receive(:getClient).and_return(client)
+        expect(client).to receive(:get_object).with(bucket: ENV['OPENC3_CONFIG_BUCKET'], key: "DEFAULT/plugin_uploads/#{upload}", path: anything) do |path:, **|
+          File.write(path, "a,b,c")
+        end
+        LocalMode.update_local_plugin_files(full_folder_path, test_gems[2], plugin_hash, "test1", scope: 'DEFAULT')
+        saved = "#{full_folder_path}/plugin_uploads/#{upload}"
+        expect(File.read(saved)).to eql "a,b,c"
+
+        # A fresh clone or wiped bucket: local init restores the upload first
+        expect(client).to receive(:put_object) do |bucket:, key:, body:|
+          expect(bucket).to eql ENV['OPENC3_CONFIG_BUCKET']
+          expect(key).to eql "DEFAULT/plugin_uploads/#{upload}"
+          expect(body.read).to eql "a,b,c"
+        end
+        LocalMode.restore_local_uploads(full_folder_path, scope: 'DEFAULT')
+
+        # Uninstalling removes them
+        LocalMode.remove_local_plugin("test1-0.0.0.gem__1", scope: 'DEFAULT')
+        expect(File.exist?("#{full_folder_path}/plugin_uploads")).to be false
+      end
+    end
+
     describe "scan_plugin_dir" do
       it "should scan a plugin dir" do
         test_gems = setup_plugin_test().first

@@ -18,6 +18,7 @@ Usage:
   cli irb                           # Runs irb in the local directory
   cli script                        # Interact with scripts. Run with --help for more info.
   cli validate /PATH/FILENAME.gem SCOPE variables.json  # Validate a COSMOS plugin gem file
+    OPTIONS: --plugin-hash plugin_hash.json validates a plugin hash of an uploaded gem (used by Admin)
   cli load /PATH/FILENAME.gem SCOPE plugin_hash.json    # Loads a COSMOS plugin gem file
     OPTIONS: --variables lets you pass a path to a JSON file containing your plugin\'s variables
   cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given
