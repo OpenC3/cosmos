@@ -45,14 +45,14 @@ module OpenC3
       it "defaults the targets to the build machine" do
         write_pyproject("[tool.openc3]\noffline_install = true\n")
         expect(PythonWheelBundle.offline_install?(@dir)).to be true
-        expect(PythonWheelBundle.config(@dir)).to eql({ offline_install: true, python_platforms: [], python_version: nil })
+        expect(PythonWheelBundle.config(@dir)).to eql({ offline_install: true, python_platforms: [], python_version: nil, requires_python: nil })
       end
 
       it "reads any TOML spelling of the table" do
         write_pyproject("[tool]\nopenc3 = { offline_install = true, python_platforms = [\"x86_64-manylinux_2_28\", \"aarch64-manylinux_2_28\"], python_version = \"3.13\" }\n")
         expect(PythonWheelBundle.config(@dir)).to eql({ offline_install: true,
                                                         python_platforms: ["x86_64-manylinux_2_28", "aarch64-manylinux_2_28"],
-                                                        python_version: "3.13" })
+                                                        python_version: "3.13", requires_python: nil })
       end
 
       # The plugin template documents the setting in a comment, so the commented
@@ -88,6 +88,54 @@ module OpenC3
       it "reports a pyproject.toml that is not valid TOML" do
         write_pyproject("[tool.openc3]\noffline_install = \n")
         expect { PythonWheelBundle.config(@dir) }.to raise_error(PythonWheelBundle::Error, /pyproject.toml/)
+      end
+
+      it "reads the plugin's requires-python" do
+        write_pyproject("requires-python = \">=3.11\"\n[tool.openc3]\noffline_install = true\n")
+        expect(PythonWheelBundle.config(@dir)[:requires_python]).to eql ">=3.11"
+      end
+    end
+
+    # uv selects wheels for any --python-version without checking the plugin's
+    # requires-python, so a version the lock doesn't cover would bundle wheels
+    # no COSMOS image can install. The check runs before the uv.lock checks,
+    # so a version it accepts fails next on the missing lock instead.
+    describe "python_version" do
+      def build_with(requires_python, python_version)
+        requires = requires_python ? "requires-python = \"#{requires_python}\"\n" : ""
+        write_pyproject("#{requires}[tool.openc3]\noffline_install = true\npython_version = \"#{python_version}\"\n")
+        PythonWheelBundle.build(@dir, out: StringIO.new)
+      end
+
+      it "rejects a version older than requires-python" do
+        expect { build_with(">=3.11", "3.10") }.to raise_error(PythonWheelBundle::Error,
+                                                               /python_version 3.10 is older than the plugin's requires-python \(>=3.11\)/)
+        expect { build_with("~=3.12", "3.11") }.to raise_error(PythonWheelBundle::Error, /older than/)
+      end
+
+      it "accepts the same or a newer minor version" do
+        expect { build_with(">=3.11", "3.11") }.to raise_error(PythonWheelBundle::Error, /requires a uv.lock/)
+        expect { build_with(">=3.11.4", "3.11") }.to raise_error(PythonWheelBundle::Error, /requires a uv.lock/)
+        expect { build_with(">=3.11,<4", "3.13.1") }.to raise_error(PythonWheelBundle::Error, /requires a uv.lock/)
+      end
+
+      it "accepts any version when requires-python has no lower bound" do
+        expect { build_with(nil, "3.9") }.to raise_error(PythonWheelBundle::Error, /requires a uv.lock/)
+      end
+
+      it "rejects a value that is not a Python 3 version" do
+        expect { build_with(nil, "abc") }.to raise_error(PythonWheelBundle::Error, /must be a Python version such as "3.13", not "abc"/)
+        expect { build_with(nil, "3") }.to raise_error(PythonWheelBundle::Error, /must be a Python version/)
+      end
+
+      # Install reads the same pyproject.toml, and an existing gem built for an
+      # older version must still install: only build and verify check it
+      it "is not checked at install" do
+        write_pyproject("requires-python = \">=3.11\"\n[tool.openc3]\noffline_install = true\npython_version = \"3.10\"\n")
+        File.write(File.join(@dir, 'uv.lock'), "version = 1\n")
+        FileUtils.mkdir_p(File.join(@dir, 'python_wheels'))
+
+        expect(PythonWheelBundle.offline_wheels_dir(@dir)).to eql File.join(@dir, 'python_wheels')
       end
     end
 
@@ -393,6 +441,14 @@ module OpenC3
 
           expect(verify(plugin, python_platforms: ["aarch64-apple-darwin"], python_version: "3.13")).to be false
           expect(@report.string).to match(/aarch64-apple-darwin \/ Python 3.13.*FAIL/m)
+        end
+
+        it "rejects a --python-version older than requires-python" do
+          plugin = locked_plugin(TARGETS)
+          PythonWheelBundle.build(plugin, out: StringIO.new)
+
+          expect { verify(plugin, python_platforms: ["x86_64-manylinux_2_28"], python_version: "3.10") }.to \
+            raise_error(PythonWheelBundle::Error, /python_version 3.10 is older than the plugin's requires-python/)
         end
 
         it "fails a gem that does not set offline_install" do

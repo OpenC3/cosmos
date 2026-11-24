@@ -43,16 +43,20 @@ module OpenC3
     # offline_install on a line before any comment marker
     MENTIONS_OFFLINE_INSTALL = /^[^#\n]*offline_install/
 
+    # A Python version uv's --python-version takes: 3.13 or 3.13.1
+    PYTHON_VERSION = /\A3\.\d+(\.\d+)?\z/
+
     # Reads TOML with Python's tomllib: Ruby has no TOML parser in the standard
     # library, and a hand-rolled one would miss spellings such as inline tables
     # and silently build a gem without its wheels.
     TOML_TO_JSON = 'import json, sys, tomllib; json.dump(tomllib.load(open(sys.argv[1], "rb")), sys.stdout)'
 
     # @param project_dir [String] plugin source or extracted gem directory
-    # @return [Hash] offline_install, python_platforms, python_version. Disabled
-    #   when the plugin has no pyproject.toml or does not set offline_install.
+    # @return [Hash] offline_install, python_platforms, python_version, and
+    #   [project] requires-python. Disabled when the plugin has no
+    #   pyproject.toml or does not set offline_install.
     def self.config(project_dir)
-      disabled = { offline_install: false, python_platforms: [], python_version: nil }
+      disabled = { offline_install: false, python_platforms: [], python_version: nil, requires_python: nil }
       pyproject = File.join(project_dir, 'pyproject.toml')
       return disabled unless File.exist?(pyproject)
       # Every TOML spelling of the key contains its name outside a comment, so
@@ -60,7 +64,8 @@ module OpenC3
       # example, skips the Python process.
       return disabled unless File.read(pyproject).match?(MENTIONS_OFFLINE_INSTALL)
 
-      settings = read_toml(pyproject).dig('tool', 'openc3') || {}
+      toml = read_toml(pyproject)
+      settings = toml.dig('tool', 'openc3') || {}
       offline = settings.fetch('offline_install', false)
       unless [true, false].include?(offline)
         raise Error, "[tool.openc3] offline_install must be true or false in #{pyproject}"
@@ -80,7 +85,8 @@ module OpenC3
                      "such as \"3.13\", in #{pyproject}. Otherwise the wheels match the build machine's Python."
       end
 
-      { offline_install: offline, python_platforms: platforms, python_version: version }
+      { offline_install: offline, python_platforms: platforms, python_version: version,
+        requires_python: toml.dig('project', 'requires-python') }
     end
 
     # @param project_dir [String] plugin source or extracted gem directory
@@ -138,6 +144,7 @@ module OpenC3
         end
         return []
       end
+      check_python_version(settings[:python_version], settings[:requires_python]) if settings[:python_version]
 
       lock_path = File.join(project_dir, 'uv.lock')
       unless File.exist?(lock_path)
@@ -270,6 +277,8 @@ module OpenC3
         raise Error, "--python-platform also needs --python-version, the deployment's Python such as 3.13"
       end
 
+      check_python_version(version, settings[:requires_python]) if version
+
       targets = platforms.empty? ? [nil] : platforms
       lock_wheels = lock_wheels_by_name(read_toml(lock_path))
       locked_by_filename = lock_wheels.values.flatten.to_h { |wheel| [wheel[:filename], wheel] }
@@ -394,6 +403,25 @@ module OpenC3
       result
     end
     private_class_method :lock_wheels_by_name
+
+    # Raises unless version is a Python the plugin's lock covers. uv selects
+    # wheels for any --python-version without checking requires-python, so a
+    # plugin locked for >=3.11 would otherwise bundle 3.10 wheels that no
+    # COSMOS image can install. Only the >= or ~= lower bound is checked, by
+    # major.minor: python_version names a minor release, such as 3.13.
+    def self.check_python_version(version, requires_python)
+      unless version.match?(PYTHON_VERSION)
+        raise Error, "python_version must be a Python version such as \"3.13\", not #{version.inspect}"
+      end
+
+      lower = requires_python.to_s[/(?:>=|~=)\s*(\d+\.\d+)/, 1]
+      return unless lower
+      return unless Gem::Version.new(version.split('.')[0, 2].join('.')) < Gem::Version.new(lower)
+
+      raise Error, "python_version #{version} is older than the plugin's requires-python (#{requires_python}), " \
+                   "so uv.lock doesn't cover it. Set it to the deployment's Python, such as \"3.13\"."
+    end
+    private_class_method :check_python_version
 
     # Rejects packages locked from a URL, git or local path. uv exports them as
     # direct references ("name @ url"), which --find-links can't satisfy, so a
