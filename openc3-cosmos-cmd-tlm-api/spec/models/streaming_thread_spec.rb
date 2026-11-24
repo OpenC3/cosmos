@@ -17,7 +17,7 @@ RSpec.describe StreamingThread, type: :model do
   let(:topic) { "DEFAULT__DECOM__{INST}__HEALTH_STATUS" }
   let(:streaming_api) { double("StreamingApi", transmit_results: nil) }
   let(:object) do
-    Struct.new(:offset, :db_shard, :topic).new("0-0", 0, topic)
+    Struct.new(:offset, :db_shard, :topic, :time_type).new("0-0", 0, topic, :PACKET)
   end
   let(:collection) do
     double("Collection", objects: [object], topics_offsets_and_objects: [[topic], ["0-0"], { topic => [object] }, {}])

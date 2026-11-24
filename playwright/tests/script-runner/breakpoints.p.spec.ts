@@ -23,6 +23,8 @@ test.use({
 // Breakpoints are stored server-side per filename and 'remembers breakpoints
 // and clears all' hits /script-api/breakpoints/delete/all, which wipes the
 // breakpoint 'sets and clears breakpoints' just saved if they overlap.
+// No other spec sets breakpoints, so the file as a whole can run alongside
+// the other parallel specs.
 test.describe.configure({ mode: 'default' })
 
 test('sets and clears breakpoints', async ({ page, utils }) => {

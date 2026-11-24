@@ -12,6 +12,8 @@
 # All Rights Reserved
 */
 
+import type { Page } from '@playwright/test'
+import type { Utilities } from '../utilities'
 import { test, expect } from './fixture'
 import { format, add, sub } from 'date-fns'
 
@@ -19,6 +21,45 @@ test.use({
   toolPath: '/tools/dataextractor',
   toolName: 'Data Extractor',
 })
+
+// Inject INST HEALTH_STATUS packets with TEMP2 set to each special float so an
+// export is guaranteed rows containing them. The sim only writes these values
+// outside QUIET mode (which global setup only turns off when the run starts)
+// and only at points in its TEMP2 sweep, so waiting for it needs up to a minute
+// of history that a freshly started stack doesn't have.
+async function injectSpecialFloats(utils: Utilities) {
+  // inject_tlm starts from the current packet, so without these each packet
+  // would keep the last sim packet's PACKET_TIME (from TIMESEC and TIMEUS) and
+  // the TSDB would store them all as one row. A random microsecond base keeps
+  // them clear of the sim's packets and of another test injecting this second.
+  // Stamp them in the past: the end time only has whole seconds, so a packet
+  // stamped now can land just after it.
+  const timesec = Math.floor(Date.now() / 1000) - 2
+  const timeusBase = Math.floor(Math.random() * 900000)
+  const values = ['NaN', 'Infinity', '-Infinity']
+  for (const [index, raw] of values.entries()) {
+    await utils.api('inject_tlm', [
+      'INST',
+      'HEALTH_STATUS',
+      {
+        TIMESEC: timesec,
+        TIMEUS: timeusBase + index,
+        TEMP2: { json_class: 'Float', raw },
+      },
+    ])
+  }
+}
+
+// Inject, then move the end time (set when the page loaded, so before the
+// injected packets) up to now so the export includes them
+async function injectAndSetEnd(page: Page, utils: Utilities) {
+  await injectSpecialFloats(utils)
+  const end = new Date()
+  await page
+    .locator('[data-test=end-date] input')
+    .fill(format(end, 'yyyy-MM-dd'))
+  await page.locator('[data-test=end-time] input').fill(format(end, 'HH:mm:ss'))
+}
 
 test('loads and saves the configuration', async ({ page, utils }) => {
   await utils.addTargetPacketItem('INST', 'HEALTH_STATUS', 'TEMP1')
@@ -260,7 +301,8 @@ test('processes commands', async ({ page, utils }) => {
 })
 
 test('creates CSV output', async ({ page, utils }) => {
-  const start = sub(new Date(), { minutes: 2 })
+  const start = sub(new Date(), { minutes: 1 })
+  await injectAndSetEnd(page, utils)
   await page.locator('[data-test=data-extractor-file]').click()
   await page.locator('text=Comma Delimited').click()
   await page
@@ -280,12 +322,13 @@ test('creates CSV output', async ({ page, utils }) => {
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain(',') // csv
-    expect(lines.length).toBeGreaterThan(60) // 2 min at 60Hz is 120 samples
+    expect(lines.length).toBeGreaterThan(3) // header plus the injected rows
   })
 })
 
 test('creates tab delimited output', async ({ page, utils }) => {
-  const start = sub(new Date(), { minutes: 2 })
+  const start = sub(new Date(), { minutes: 1 })
+  await injectAndSetEnd(page, utils)
   await page.locator('[data-test=data-extractor-file]').click()
   await page.locator('text=Tab Delimited').click()
   await page
@@ -299,7 +342,7 @@ test('creates tab delimited output', async ({ page, utils }) => {
     expect(lines[0]).toContain('TEMP1')
     expect(lines[0]).toContain('TEMP2')
     expect(lines[0]).toContain('\t') // tab delimited
-    expect(lines.length).toBeGreaterThan(60) // 2 min at 60Hz is 120 samples
+    expect(lines.length).toBeGreaterThan(3) // header plus the injected rows
   })
 })
 
@@ -435,5 +478,68 @@ test('works with LATEST', async ({ page, utils }) => {
     expect(contents).toContain('INST,LATEST,XML')
     expect(contents).toContain('INST,LATEST,CBOR')
     expect(contents).toContain('INST,LATEST,JSON')
+  })
+})
+
+// The DEMO simulator fills TIMESEC / TIMEUS (which PACKET_TIME is derived
+// from) with the current time, so packet time always equals received time.
+// Inject a stored INST MEMDUMP whose packet time and received time are a year
+// apart, years in the past, so each time type selects different data. Stored
+// packets don't update the current value table or realtime streams, MEMDUMP has
+// no limits, and the sim only sends it when commanded, so other tests never see
+// it. Reruns inject the same packet so the row is effectively idempotent.
+test('extracts by packet time or received time', async ({ page, utils }) => {
+  const packetTime = new Date('2020-01-02T03:04:05Z')
+  const receivedTime = new Date('2021-02-03T04:05:06Z')
+  const offset = 1571 // OFFSET value which identifies the injected packet
+
+  await utils.injectReceivedTimeMemdump(offset, packetTime, receivedTime)
+
+  // Times are entered in local time like the rest of these tests
+  const setRange = async (time: Date) => {
+    const start = sub(time, { seconds: 5 })
+    const end = add(time, { seconds: 5 })
+    await page
+      .locator('[data-test=start-date] input')
+      .fill(format(start, 'yyyy-MM-dd'))
+    await page
+      .locator('[data-test=start-time] input')
+      .fill(format(start, 'HH:mm:ss'))
+    await page
+      .locator('[data-test=end-date] input')
+      .fill(format(end, 'yyyy-MM-dd'))
+    await page
+      .locator('[data-test=end-time] input')
+      .fill(format(end, 'HH:mm:ss'))
+  }
+  await utils.addTargetPacketItem('INST', 'MEMDUMP', 'OFFSET')
+
+  // Packet Time is the default and finds the packet by its packet time
+  await setRange(packetTime)
+  await utils.download(page, 'text=Process', function (contents) {
+    const lines = contents.split('\n')
+    expect(lines[0]).toEqual('TIME,TARGET,PACKET,OFFSET')
+    expect(lines[1]).toEqual(
+      `2020-01-02T03:04:05.000000000Z,INST,MEMDUMP,${offset}`,
+    )
+  })
+
+  // Received Time doesn't find it in the packet time range
+  await page.locator('label:has-text("Received Time")').click()
+  await page.locator('text=Process').click()
+  await expect(
+    page.locator(
+      'text=No data found for the items in the requested received time range',
+    ),
+  ).toBeVisible()
+
+  // But does in the received time range, and outputs the received time
+  await setRange(receivedTime)
+  await utils.download(page, 'text=Process', function (contents) {
+    const lines = contents.split('\n')
+    expect(lines[0]).toEqual('RECEIVED_TIME,TARGET,PACKET,OFFSET')
+    expect(lines[1]).toEqual(
+      `2021-02-03T04:05:06.000000000Z,INST,MEMDUMP,${offset}`,
+    )
   })
 })

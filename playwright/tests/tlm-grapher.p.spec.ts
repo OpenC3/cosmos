@@ -13,7 +13,7 @@
 */
 
 import { test, expect } from './fixture'
-import { format, sub } from 'date-fns'
+import { format, add, sub } from 'date-fns'
 
 test.use({
   toolPath: '/tools/tlmgrapher',
@@ -222,7 +222,7 @@ test('custom x-axis item with RECEIVED_COUNT', async ({ page, utils }) => {
   await utils.selectTargetPacketItem('INST', 'ADCS', 'POSX')
   await page.locator('[data-test="add-item"]').click()
   await expect(page.locator('#chart0')).toContainText('POSX')
-  await expect(page.locator('#chart0')).toContainText('Time')
+  await expect(page.locator('#chart0')).toContainText('Packet Time')
 
   await page.locator('[data-test=edit-graph-icon]').click()
   await expect(page.locator('.v-dialog')).toContainText('Edit Graph')
@@ -289,4 +289,68 @@ test('XY scatter plot with draw style switching and X axis bounds', async ({
   await expect(page.locator('#chart0')).toContainText('POSY')
 })
 
+test('graphs by packet time or received time', async ({ page, utils }) => {
+  const packetTime = new Date('2020-03-04T05:06:07Z')
+  const receivedTime = new Date('2021-04-05T06:07:08Z')
+  const offset = 1572 // OFFSET value which identifies the injected packet
+  await utils.injectReceivedTimeMemdump(offset, packetTime, receivedTime)
 
+  await utils.selectTargetPacketItem('INST', 'MEMDUMP', 'OFFSET')
+  await page.locator('[data-test="add-item"]').click()
+  await expect(page.locator('#chart0')).toContainText('OFFSET')
+
+  // Graph 5s either side of time, entered in local time like 'edits a graph'
+  const graphRange = async (time: Date, timeType: string) => {
+    await page.locator('[data-test=edit-graph-icon]').click()
+    await expect(page.locator('.v-dialog')).toContainText('Edit Graph')
+    await page.locator(`.v-dialog label:has-text("${timeType}")`).click()
+    const start = sub(time, { seconds: 5 })
+    const end = add(time, { seconds: 5 })
+    await page.getByLabel('Start Date').fill(format(start, 'yyyy-MM-dd'))
+    await page.getByLabel('Start Time').fill(format(start, 'HH:mm:ss'))
+    await page.getByLabel('End Date').fill(format(end, 'yyyy-MM-dd'))
+    await page.getByLabel('End Time').fill(format(end, 'HH:mm:ss'))
+    // The time picker only takes the typed time when it loses focus
+    await page.getByLabel('End Time').press('Tab')
+    await page.getByRole('button', { name: 'Ok' }).click()
+  }
+  // The packet is the only point, in the middle of the graph, so hovering
+  // anywhere puts its value in the legend. Without data it shows '--'.
+  // uPlot only updates the legend when the mouse moves, so move off the
+  // chart first or hovering the same spot again does nothing.
+  const legend = page.locator('#chart0 .u-legend')
+  const hoverChart = async () => {
+    await page.mouse.move(0, 0)
+    await page.locator('#chart0 .u-over').hover()
+  }
+  const expectGraphed = async () => {
+    await expect(async () => {
+      await hoverChart()
+      await expect(legend).toContainText(`${offset}.000000`, { timeout: 500 })
+    }).toPass()
+  }
+
+  // Packet Time is the default and finds the packet by its packet time
+  await graphRange(packetTime, 'Packet Time')
+  await expectGraphed()
+  await expect(legend).toContainText('Packet Time')
+
+  // Received Time doesn't find it in the packet time range. Give the TSDB
+  // query the same 5s the graph waits before reporting empty data.
+  await graphRange(packetTime, 'Received Time')
+  await expect(legend).toContainText('Received Time')
+  await expect(legend).not.toContainText('Packet Time')
+  await utils.sleep(5000)
+  await hoverChart()
+  await expect(legend).not.toContainText(`${offset}.000000`)
+
+  // But does in the received time range
+  await graphRange(receivedTime, 'Received Time')
+  await expectGraphed()
+
+  // The time type is saved with the graph and restored on reload
+  await page.reload()
+  await expect(page.locator('#chart0')).toContainText('OFFSET')
+  await expect(legend).toContainText('Received Time')
+  await expectGraphed()
+})

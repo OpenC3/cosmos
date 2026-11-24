@@ -1931,8 +1931,9 @@ class QuestDBClient:
             True if a batch flush was performed, False otherwise
         """
         if rx_timestamp_ns is not None:
-            # Convert nanoseconds to datetime for QuestDB timestamp column
-            columns["RECEIVED_TIMESECONDS"] = datetime.fromtimestamp(rx_timestamp_ns / 1_000_000_000, tz=timezone.utc)
+            # Keep full nanosecond precision like PACKET_TIMESECONDS. A datetime only holds
+            # microseconds so streams couldn't match these rows to the same Valkey message.
+            columns["RECEIVED_TIMESECONDS"] = TimestampNanos(rx_timestamp_ns)
         # pending_rows is also cleared by callers recovering from errors
         if not self.pending_rows:
             self.pending_values = 0

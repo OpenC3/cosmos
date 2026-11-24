@@ -893,3 +893,43 @@ test('sends manually entered state values', async ({ page, utils }) => {
   // Close the dropdown by pressing Escape
   await page.keyboard.press('Escape')
 })
+
+// Command Sender's modes are page state (not persisted), so these can run
+// alongside everything else
+test('displays state values in hex', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('INST', 'COLLECT')
+  await selectValue(page, 'TYPE', 'NORMAL') // Ensure TYPE is set since its required
+  await checkValue(page, 'TYPE', '0')
+  await page.locator('[data-test=command-sender-mode]').click()
+  await page.getByText('Display State Values in Hex').click()
+  await page.locator('[data-test=command-sender-mode]').click()
+  await checkValue(page, 'TYPE', '0x0')
+})
+
+test('shows ignored parameters', async ({ page, utils }) => {
+  await utils.selectTargetPacketItem('INST', 'ABORT')
+  await expect(page.locator('main')).toContainText(
+    'Aborts a collect on the INST instrument',
+  )
+  // All the ABORT parameters are ignored so the table shouldn't appear
+  await expect(page.locator('main')).not.toContainText('Parameters')
+  await page.locator('[data-test=command-sender-mode]').click()
+  await page.locator('text=Show Ignored').click()
+  await page.locator('[data-test=command-sender-mode]').click()
+  await expect(page.locator('main')).toContainText('Parameters') // Now the parameters table is shown
+  await expect(page.locator('main')).toContainText('CCSDSVER') // CCSDSVER is one of the parameters
+})
+
+test('disables command validation', async ({ page, utils }) => {
+  await page.locator('[data-test="clear-history"]').click()
+  await utils.selectTargetPacketItem('INST', 'TIME_OFFSET')
+
+  await page.locator('[data-test=command-sender-mode]').click()
+  await page.getByText('Disable Command Validation').click()
+  await page.locator('[data-test=command-sender-mode]').click()
+
+  await page.locator('[data-test="select-send"]').click()
+  await expect(page.locator('main')).toContainText(
+    'cmd("INST TIME_OFFSET with SECONDS 0, IP_ADDRESS \'127.0.0.1\'", validate=False) sent',
+  )
+})
