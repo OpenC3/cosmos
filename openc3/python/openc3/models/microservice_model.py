@@ -114,6 +114,7 @@ class MicroserviceModel(Model):
         shard=0,
         db_shard=0,
         enabled: bool = True,
+        shared_resource: str | None = None,
         scope: str = OPENC3_SCOPE,
     ):
         parts = name.split("__")
@@ -161,6 +162,7 @@ class MicroserviceModel(Model):
         self.enabled = enabled
         if self.enabled is None:
             self.enabled = True
+        self.shared_resource = shared_resource
         self.bucket = Bucket.get_client()
 
     def create(self, update=False, force=False, queued=False):
@@ -197,4 +199,5 @@ class MicroserviceModel(Model):
             "shard": self.shard,
             "db_shard": self.db_shard,
             "enabled": self.enabled,
+            "shared_resource": self.shared_resource,
         }

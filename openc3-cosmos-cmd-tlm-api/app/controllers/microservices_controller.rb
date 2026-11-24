@@ -16,6 +16,7 @@
 # if purchased from OpenC3, Inc.
 
 require 'openc3/models/microservice_model'
+require 'openc3/models/shared_resource_model'
 
 class MicroservicesController < ModelController
   def initialize
@@ -47,6 +48,19 @@ class MicroservicesController < ModelController
     return unless authorization('admin')
     microservice = @model_class.get_model(name: params[:id], scope: params[:scope])
     if microservice
+      if microservice.shared_resource
+        record = OpenC3::SharedResourceModel.get(microservice.shared_resource)
+        unless OpenC3::SharedResourceModel.active?(record, params[:scope])
+          if record
+            message = OpenC3::SharedResourceModel.inactive_message(record, "Microservice #{params[:id]}")
+          else
+            message = "Microservice #{params[:id]} is part of shared resource #{microservice.shared_resource} which does not exist"
+          end
+          message += ". Switch the shared resource to scope #{params[:scope]} to start it."
+          render json: { status: 'error', message: message }, status: :bad_request
+          return
+        end
+      end
       OpenC3::Logger.info("#{params[:id]} started", scope: params[:scope], user: username())
       microservice.enabled = true
       microservice.update

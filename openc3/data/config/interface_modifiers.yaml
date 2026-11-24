@@ -301,6 +301,22 @@ DB_SHARD:
       values: \d+
   example: |
     DB_SHARD 0
+SHARED_RESOURCE:
+  summary: Share this interface's resource between scopes so it is only active in one scope at a time
+  description:
+    Interfaces, routers, microservices, and targets with the same shared resource name form a shared
+    resource. Each scope that installs one of them becomes a member, but the resource is only active in
+    one scope at a time. The first scope to install the resource owns it. Members in other scopes are
+    installed but their microservices are not started until the resource is switched to their scope with
+    switch_shared_resource. Can not be used with BRIDGE. See [Shared Resources](plugins#shared-resources).
+  since: _Coming Soon_
+  parameters:
+    - name: Shared Resource Name
+      required: true
+      description: Name of the shared resource. Must only contain letters, numbers, and single underscores.
+      values: .+
+  example: |
+    SHARED_RESOURCE THERMAL_VAC_CHAMBER
 BRIDGE:
   summary: Name of the bridge to run this interface on
   description: Run this interface on a bridge host rather than within COSMOS. Note only python is supported.

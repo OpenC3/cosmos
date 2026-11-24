@@ -17,6 +17,7 @@
 
 require 'openc3/models/router_model'
 require 'openc3/models/router_status_model'
+require 'openc3/models/shared_resource_model'
 require 'openc3/topics/router_topic'
 
 module OpenC3
@@ -63,6 +64,7 @@ module OpenC3
     def connect_router(router_name, *router_params, manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this router
       authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
+      SharedResourceModel.check_interface_active('ROUTER', router_name, scope: scope)
       RouterTopic.connect_router(router_name, *router_params, scope: scope)
     end
 
@@ -125,12 +127,14 @@ module OpenC3
     def router_cmd(router_name, cmd_name, *cmd_params, manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this router
       authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
+      SharedResourceModel.check_interface_active('ROUTER', router_name, scope: scope)
       RouterTopic.router_cmd(router_name, cmd_name, *cmd_params, scope: scope)
     end
 
     def router_protocol_cmd(router_name, cmd_name, *cmd_params, read_write: :READ_WRITE, index: -1, manual: false, scope: $openc3_scope, token: $openc3_token)
       # TODO: Check if they have command authority for the targets mapped to this router
       authorize(permission: 'system_set', router_name: router_name, manual: manual, scope: scope, token: token)
+      SharedResourceModel.check_interface_active('ROUTER', router_name, scope: scope)
       RouterTopic.protocol_cmd(router_name, cmd_name, *cmd_params, read_write: read_write, index: index, scope: scope)
     end
 
@@ -216,6 +220,7 @@ module OpenC3
 
     def router_details(router_name, manual: false, scope: $openc3_scope, token: $openc3_token)
       authorize(permission: 'system', router_name: router_name, manual: manual, scope: scope, token: token)
+      SharedResourceModel.check_interface_active('ROUTER', router_name, scope: scope)
       RouterTopic.router_details(router_name, scope: scope)
     end
   end
