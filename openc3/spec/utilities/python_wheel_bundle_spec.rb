@@ -91,6 +91,21 @@ module OpenC3
       end
     end
 
+    describe "installed_wheels" do
+      # WHEEL is copied from the wheel as built, so it can have CRLF line endings
+      it "reads the tags from a WHEEL file with LF or CRLF line endings" do
+        ["\n", "\r\n"].each_with_index do |newline, index|
+          target = File.join(@dir, "target_#{index}")
+          dist_info = File.join(target, "fake-1.0.dist-info")
+          FileUtils.mkdir_p(dist_info)
+          File.write(File.join(dist_info, 'METADATA'), ["Metadata-Version: 2.1", "Name: fake", "Version: 1.0", ""].join(newline))
+          File.write(File.join(dist_info, 'WHEEL'), ["Wheel-Version: 1.0", "Tag: py2-none-any", "Tag: py3-none-any", ""].join(newline))
+
+          expect(PythonWheelBundle.send(:installed_wheels, target)).to eql [["fake", "1.0", ["py2-none-any", "py3-none-any"]]]
+        end
+      end
+    end
+
     # These run real uv with UV_OFFLINE against a file:// index the examples
     # build themselves, so they need uv but no network. The index serves the
     # wheels with their sha256 the way PyPI does, so uv.lock records a hash for
@@ -211,6 +226,30 @@ module OpenC3
         PythonWheelBundle.build(plugin, out: StringIO.new)
 
         expect(bundled).to eql [LINUX_X86, PURE].sort
+      end
+
+      # cli bundlewheels and cli verifywheels both take a plugin directory
+      # argument, and uv runs inside that directory
+      it "builds and verifies a plugin given as a relative path" do
+        locked_plugin("offline_install = true\n")
+
+        Dir.chdir(@dir) do
+          expect(PythonWheelBundle.build('plugin', out: StringIO.new)).to include(PURE)
+          expect(PythonWheelBundle.verify('plugin', out: StringIO.new)).to be true
+        end
+      end
+
+      # uv exports such a package as "name @ url", which --find-links can't
+      # satisfy, so a deployment with no network could never install it
+      it "rejects a package locked from a direct reference" do
+        plugin = locked_plugin("offline_install = true\n")
+        pyproject = File.join(plugin, 'pyproject.toml')
+        direct = "fakepure @ file://#{File.join(@dir, 'wheelhouse', PURE)}"
+        File.write(pyproject, File.read(pyproject).sub('dependencies = ["fakepure", "fakenative"]', "dependencies = [\"#{direct}\"]"))
+        _, status = Open3.capture2e('uv', 'lock', chdir: plugin)
+        expect(status.success?).to be true
+
+        expect { PythonWheelBundle.build(plugin, out: StringIO.new) }.to raise_error(PythonWheelBundle::Error, /locks fakepure \((url|path)\) from a direct source/)
       end
 
       it "requires a uv.lock" do

@@ -127,6 +127,8 @@ module OpenC3
     # @param out [IO] where progress is reported
     # @return [Array<String>] the bundled wheel filenames
     def self.build(project_dir, out: $stdout)
+      # uv runs with chdir: project_dir, so a relative path would resolve twice
+      project_dir = File.expand_path(project_dir)
       wheels_dir = File.join(project_dir, WHEELS_DIR)
       settings = config(project_dir)
       unless settings[:offline_install]
@@ -149,8 +151,10 @@ module OpenC3
 
       check_lock_committed(project_dir)
 
+      lock = read_toml(lock_path)
+      check_sources(lock)
       targets = settings[:python_platforms].empty? ? [nil] : settings[:python_platforms]
-      lock_wheels = lock_wheels_by_name(read_toml(lock_path))
+      lock_wheels = lock_wheels_by_name(lock)
 
       Dir.mktmpdir do |tmp|
         requirements = export_requirements(project_dir, tmp)
@@ -179,9 +183,11 @@ module OpenC3
         File.write(File.join(wheels_dir, 'SHA256SUMS'),
                    selected.keys.sort.map { |filename| "#{selected[filename][:sha256]}  #{filename}\n" }.join)
 
+        # --no-cache: the selection above filled uv's cache online, and a
+        # cached download must not stand in for a wheel the bundle lacks
         targets.each_with_index do |platform, index|
           run_uv(project_dir, 'pip', 'install', '--target', File.join(tmp, "verify_#{index}"), '--offline', '--no-index',
-                 '--find-links', wheels_dir, '--require-hashes', *target_args(platform, settings[:python_version]),
+                 '--no-cache', '--find-links', wheels_dir, '--require-hashes', *target_args(platform, settings[:python_version]),
                  '-r', requirements,
                  what: "install from the bundled wheels alone for #{describe_target(platform, settings[:python_version])}")
         end
@@ -206,6 +212,8 @@ module OpenC3
     #   plugin's own python_version
     # @return [Boolean] true when every target installs from the bundle alone
     def self.verify(path, out: $stdout, python_platforms: nil, python_version: nil)
+      # uv runs with chdir: the plugin directory, so a relative path would resolve twice
+      path = File.expand_path(path)
       if File.directory?(path)
         return verify_dir(path, path, out, python_platforms, python_version)
       end
@@ -264,8 +272,9 @@ module OpenC3
         requirements = export_requirements(dir, tmp)
         targets.each_with_index do |platform, index|
           target_dir = File.join(tmp, "verify_#{index}")
+          # --no-cache, so only the bundle can satisfy a requirement, as on a deployment
           output, status = Open3.capture2e('uv', 'pip', 'install', '--target', target_dir, '--offline', '--no-index',
-                                           '--find-links', wheels_dir, '--require-hashes',
+                                           '--no-cache', '--find-links', wheels_dir, '--require-hashes',
                                            *target_args(platform, version), '-r', requirements, chdir: dir)
           out.puts ""
           unless status.success?
@@ -387,13 +396,30 @@ module OpenC3
     end
     private_class_method :lock_wheels_by_name
 
+    # Rejects packages locked from a URL, git or local path. uv exports them as
+    # direct references ("name @ url"), which --find-links can't satisfy, so a
+    # deployment would try to fetch them and fail with no network.
+    def self.check_sources(lock)
+      direct = Array(lock['package']).filter_map do |package|
+        kind = (Hash(package['source']).keys & %w(url git path directory)).first
+        "#{package['name']} (#{kind})" if kind
+      end
+      return if direct.empty?
+
+      raise Error, "offline_install can only bundle packages locked from a package index, but uv.lock locks " \
+                   "#{direct.join(', ')} from a direct source. Publish them to an index or a find-links directory, " \
+                   "depend on them by name, and run `uv lock`."
+    end
+    private_class_method :check_sources
+
     # @return [Array<Array>] [name, version, sorted tags] for every dist uv installed
     def self.installed_wheels(target_dir)
       Dir[File.join(target_dir, '*.dist-info')].map do |dist_info|
         metadata = File.read(File.join(dist_info, 'METADATA'))
         name = metadata[/^Name: *(.+)$/, 1].strip
         version = metadata[/^Version: *(.+)$/, 1].strip
-        tags = File.read(File.join(dist_info, 'WHEEL')).scan(/^Tag: *(\S+)$/).flatten.sort
+        # WHEEL is copied from the wheel as built, which may use CRLF line endings
+        tags = File.read(File.join(dist_info, 'WHEEL')).scan(/^Tag: *(\S+)\r?$/).flatten.sort
         [name, version, tags]
       end
     end
@@ -438,6 +464,9 @@ module OpenC3
             File.open(destination, 'wb') { |file| response.read_body { |chunk| file.write(chunk) } }
           when Net::HTTPRedirection
             return download(URI.join(uri, response['location']), destination, redirects: redirects - 1)
+          when Net::HTTPUnauthorized, Net::HTTPForbidden
+            raise Error, "Could not download #{uri}: HTTP #{response.code}. Wheels are downloaded without credentials, " \
+                         "so offline_install can't bundle from an index that requires authentication."
           else
             raise Error, "Could not download #{uri}: HTTP #{response.code}"
           end
