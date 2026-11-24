@@ -120,8 +120,18 @@ if [ -n "${UVINSTALL_OFFLINE_WHEELS}" ]; then
     mkdir -p "${WHEELHOUSE}" || exit 1
     for WHEEL in "${UVINSTALL_OFFLINE_WHEELS}"/*.whl; do
         [ -f "${WHEEL}" ] || continue
+        # Another plugin's install may be reading a wheel with the same name, so
+        # never rewrite one in place: copy beside it, then rename over it. A
+        # reader sees either the whole old file or the whole new one. The temp
+        # name doesn't end in .whl, so uv never takes it as a candidate.
+        STAGED="${WHEELHOUSE}/$(basename "${WHEEL}")"
+        STAGING="${STAGED}.$$.tmp"
         # -p keeps the mtime, which uv's cache uses to tell a wheel is unchanged
-        cp -p "${WHEEL}" "${WHEELHOUSE}/" || exit 1
+        if ! cp -p "${WHEEL}" "${STAGING}" || ! mv -f "${STAGING}" "${STAGED}"; then
+            rm -f "${STAGING}"
+            echo "ERROR: could not stage ${WHEEL} in ${WHEELHOUSE}" >&2
+            exit 1
+        fi
     done
     cp "${GEM_PATH}/pyproject.toml" "${VENV_BASE}/pyproject.toml"
     cp "${GEM_PATH}/uv.lock" "${VENV_BASE}/uv.lock"

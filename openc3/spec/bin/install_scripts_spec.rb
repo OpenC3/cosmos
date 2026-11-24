@@ -188,6 +188,23 @@ module OpenC3
           expect(File.exist?(File.join(@dir, "venvs", "TEST__PLUGIN", ".uv_managed"))).to be true
         end
 
+        # Plugins that share a dependency stage the same wheel name, and one
+        # install's uv may be reading it while another stages it. Rewriting the
+        # file in place would expose a partial wheel; a rename never does.
+        it "replaces a staged wheel by rename, never rewriting it in place" do
+          gem_path = offline_gem_path
+          staged = File.join(wheelhouse, "six-1.17.0-py2.py3-none-any.whl")
+          FileUtils.mkdir_p(wheelhouse)
+          File.write(staged, "old")
+          inode = File.stat(staged).ino
+
+          expect(run_offline_uvinstall(gem_path)).to be true
+
+          expect(File.read(staged)).to eql "wheel"
+          expect(File.stat(staged).ino).to_not eql inode
+          expect(Dir.children(wheelhouse)).to eql ["six-1.17.0-py2.py3-none-any.whl"]
+        end
+
         it "fails without retrying online when the bundle cannot satisfy the lock" do
           gem_path = offline_gem_path
           expect(run_offline_uvinstall(gem_path, fail_on: "pip install")).to be false
