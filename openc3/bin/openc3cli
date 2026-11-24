@@ -1086,11 +1086,12 @@ if not ARGV[0].nil? # argument(s) given
       exit 0
     end
     # Now check for Rakefile existence
-    if File.exist?('Rakefile')
-      puts `rake #{ARGV[1..-1].join(' ')}`
-    else
-      puts "No Rakefile found! Only run 'rake' in the presence of a Rakefile which is typically at the root of your COSMOS project."
+    unless File.exist?('Rakefile')
+      abort("No Rakefile found! Only run 'rake' in the presence of a Rakefile which is typically at the root of your COSMOS project.")
     end
+    # Stream rake's output as it runs, and exit with its status so a failed
+    # build fails `openc3.sh cli rake` too
+    exit(1) unless system('rake', *ARGV[1..])
 
   when 'validate'
     if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
