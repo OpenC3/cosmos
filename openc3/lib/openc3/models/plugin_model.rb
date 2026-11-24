@@ -74,6 +74,8 @@ module OpenC3
     # Seconds the plugin dialog's validation can run before it's reported as
     # not finishing (it can run PRE_INSTALL_SCRIPTs)
     VALIDATE_TIMEOUT_S = 120
+    # Seconds to wait for a preview of plugin.txt (under the frontend's 60s request timeout)
+    PREVIEW_TIMEOUT_S = 30
     PLUGIN_TXT = 'plugin.txt'
 
     attr_accessor :variables
@@ -724,10 +726,12 @@ module OpenC3
 
         # Run the PRE_INSTALL_SCRIPTs now that the plugin's files and Python
         # packages are in place, before anything is installed from them (they
-        # can generate files, e.g. target definitions). Dry runs (validation
-        # and the upgrade diff) run them too, with OPENC3_PLUGIN_DRY_RUN set,
-        # since what they generate may be needed. POST_INSTALL_SCRIPTs run
-        # after everything is installed, and not in dry runs.
+        # can generate files, e.g. target definitions). Validation runs them
+        # too, with OPENC3_PLUGIN_DRY_RUN set, since what they generate may be
+        # needed. The upgrade diff (diff_only) doesn't: it runs in an HTTP
+        # request, which must not run plugin code or wait on a slow script, so
+        # generated files aren't in the diff. POST_INSTALL_SCRIPTs run after
+        # everything is installed, and not in dry runs.
         erb_variables = self.erb_variables(plugin_hash, scope: scope)
         scripts = Tempfile.create(PLUGIN_TXT) do |scripts_tf|
           scripts_tf.write(plugin_hash['plugin_txt_lines'].join("\n"))
@@ -736,8 +740,10 @@ module OpenC3
         end
         script_options = { gem_path: gem_path, plugin_name: plugin_model.name, erb_variables: erb_variables, dry_run: dry_run, scope: scope }
         gem_lib_dirs = -> { Dir.glob("#{gem_path}/**/lib").select { |dir| File.directory?(dir) } }
-        scripts['PRE_INSTALL_SCRIPT'].each do |script, args|
-          run_install_script('PRE_INSTALL_SCRIPT', script, args, load_dirs: gem_lib_dirs.call, **script_options)
+        unless diff_only
+          scripts['PRE_INSTALL_SCRIPT'].each do |script, args|
+            run_install_script('PRE_INSTALL_SCRIPT', script, args, load_dirs: gem_lib_dirs.call, **script_options)
+          end
         end
 
         # Temporarily add all lib folders from the gem to the end of the load path
@@ -851,34 +857,45 @@ module OpenC3
     # { 'valid' => false, 'error' => message }.
     def self.validate(plugin_hash, scope:)
       plugin_hash = plugin_hash.slice('name', 'variables', 'plugin_txt_lines')
+      result, output = run_plugin_cli(['validate', '--plugin-hash'], plugin_hash, 'valid', VALIDATE_TIMEOUT_S, scope: scope)
+      return { 'valid' => false, 'error' => "Validation did not finish within #{VALIDATE_TIMEOUT_S} seconds" } if result == :timeout
+      result || { 'valid' => false, 'error' => "Validation failed: #{output.lines.last(5).join.strip}" }
+    end
+
+    # Run openc3cli with a plugin hash for work that loads the plugin's code or
+    # renders its ERB, which must not run in the API process. The child gets
+    # its own process group so a timeout also stops anything it started.
+    # Returns [result, output]: result is the last JSON object it printed whose
+    # first key is result_key (after anything the plugin's code printed), nil
+    # if there's none, or :timeout.
+    def self.run_plugin_cli(args, plugin_hash, result_key, timeout_s, scope:)
       output = +''
       Tempfile.create(['plugin_hash', '.json']) do |file|
         file.write(JSON.generate(plugin_hash, allow_nan: true))
         file.close
-        command = ['ruby', '/openc3/bin/openc3cli', 'validate', '--plugin-hash', file.path, scope]
-        # Its own process group so a timeout also stops any install scripts it started
+        command = ['ruby', '/openc3/bin/openc3cli', *args, file.path, scope]
         Open3.popen2e(*command, pgroup: true) do |stdin, out, wait_thread|
           stdin.close
           reader = Thread.new do
             output << out.read.to_s
           rescue IOError
           end
-          unless wait_thread.join(VALIDATE_TIMEOUT_S)
+          unless wait_thread.join(timeout_s)
             Process.kill('KILL', -wait_thread.pid) rescue nil
             wait_thread.join
             reader.join(1)
-            return { 'valid' => false, 'error' => "Validation did not finish within #{VALIDATE_TIMEOUT_S} seconds" }
+            return [:timeout, output]
           end
           reader.join
         end
       end
-      # The result is the last line, after anything the plugin's code printed
+      prefix = "{\"#{result_key}\""
       result = output.lines.reverse.lazy.filter_map do |line|
-        JSON.parse(line) if line.start_with?('{"valid"')
+        JSON.parse(line) if line.start_with?(prefix)
       rescue JSON::ParserError
         nil
       end.first
-      result || { 'valid' => false, 'error' => "Validation failed: #{output.lines.last(5).join.strip}" }
+      [result, output]
     end
 
     # The message of an error from validating a plugin, with where it is in
@@ -903,8 +920,19 @@ module OpenC3
 
     # The plugin.txt lines that install the plugin with ERB rendered using the
     # plugin_hash variables, without the variable definitions and text blocks.
-    # Returns { 'plugin_txt' => text } or { 'error' => message } if ERB fails.
+    # The ERB is arbitrary Ruby, so it's rendered in a separate process
+    # (render_preview through openc3cli) like validate and install.
+    # Returns { 'plugin_txt' => text } or { 'error' => message }.
     def self.preview(plugin_hash, scope:)
+      plugin_hash = plugin_hash.slice('variables', 'plugin_txt_lines')
+      result, output = run_plugin_cli(['validate', '--preview'], plugin_hash, 'preview', PREVIEW_TIMEOUT_S, scope: scope)
+      return { 'error' => "Preview did not finish within #{PREVIEW_TIMEOUT_S} seconds" } if result == :timeout
+      return result['preview'] if result
+      { 'error' => "Preview failed: #{output.lines.last(5).join.strip}" }
+    end
+
+    # Render the preview in this process. Only for openc3cli: see preview.
+    def self.render_preview(plugin_hash, scope:)
       erb_variables = self.erb_variables(plugin_hash, scope: scope)
       text = Array(plugin_hash['plugin_txt_lines']).join("\n")
       begin

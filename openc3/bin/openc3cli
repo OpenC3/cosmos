@@ -298,6 +298,21 @@ ensure
   exit(result && result['valid'] ? 0 : ERROR_CODE)
 end
 
+# Render the plugin.txt of a plugin hash from the plugin dialog for its
+# preview. Prints {"preview":{...}} on the last line for PluginModel.preview.
+def preview_plugin_hash(plugin_hash_file, scope:)
+  ENV['OPENC3_NO_STORE'] = '1'
+  OpenC3::Logger.stdout = false
+  plugin_hash = JSON.parse(File.read(plugin_hash_file), allow_nan: true, create_additions: true)
+  result = OpenC3::PluginModel.render_preview(plugin_hash, scope: scope || 'DEFAULT')
+rescue Exception => e
+  result = { 'error' => e.message }
+ensure
+  $stdout.puts JSON.generate({ 'preview' => result || { 'error' => 'Preview failed' } })
+  $stdout.flush
+  exit(0)
+end
+
 def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:, existing_plugin_name:, force: false, username: nil, version_history_files: nil)
   new_gem = File.basename(plugin_file_path)
   old_gem = existing_plugin_name.split("__")[0]
@@ -1092,8 +1107,15 @@ if not ARGV[0].nil? # argument(s) given
       puts "                    Validate a plugin hash (name, variables and plugin_txt_lines)"
       puts "                    of a gem on the COSMOS gem server and print the result as JSON."
       puts "                    Used by the Admin plugin dialog."
+      puts "  --preview PLUGIN_HASH.json"
+      puts "                    Render the plugin.txt of a plugin hash for the Admin plugin"
+      puts "                    dialog preview and print the result as JSON."
       puts "  -h, --help        Show this help message"
       exit(ARGV[1].nil? ? 1 : 0)
+    end
+    if ARGV[1] == '--preview'
+      abort("Usage: cli validate --preview PLUGIN_HASH.json [SCOPE]") unless ARGV[2]
+      preview_plugin_hash(ARGV[2], scope: ARGV[3])
     end
     if ARGV[1] == '--plugin-hash'
       abort("Usage: cli validate --plugin-hash PLUGIN_HASH.json [SCOPE]") unless ARGV[2]

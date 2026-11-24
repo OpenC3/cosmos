@@ -175,14 +175,15 @@ RSpec.describe PluginsController, type: :controller do
   describe "POST preview" do
     it "returns the rendered plugin.txt" do
       plugin_hash = {"variables" => {"folder" => {"value" => "INST"}}, "plugin_txt_lines" => ["VARIABLE folder X", "TARGET <%= folder %> <%= folder %>"]}
+      expect(OpenC3::PluginModel).to receive(:preview).with(plugin_hash, scope: "DEFAULT").and_return({"plugin_txt" => "TARGET INST INST"})
       post :preview, params: {scope: "DEFAULT", plugin_hash: JSON.generate(plugin_hash)}
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body)).to eq({"plugin_txt" => "TARGET INST INST"})
     end
 
     it "returns ERB errors" do
-      plugin_hash = {"variables" => {}, "plugin_txt_lines" => ["TARGET <%= missing %> X"]}
-      post :preview, params: {scope: "DEFAULT", plugin_hash: JSON.generate(plugin_hash)}
+      allow(OpenC3::PluginModel).to receive(:preview).and_return({"error" => "ERB error at line 1: bad"})
+      post :preview, params: {scope: "DEFAULT", plugin_hash: JSON.generate({"variables" => {}, "plugin_txt_lines" => []})}
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body)["error"]).to match(/ERB error at line 1/)
     end
@@ -268,6 +269,17 @@ RSpec.describe PluginsController, type: :controller do
       post :create, params: { scope: "DEFAULT", gem: "../openc3-cosmos-dualsense-1.0.0.gem" }
       expect(response).to have_http_status(:ok)
       expect(JSON.parse(response.body)["name"]).to eq "openc3-cosmos-dualsense-1.0.0.gem"
+    end
+
+    it "sends plugin.txt text outside Latin-1 as UTF-8 strings" do
+      allow(OpenC3::GemModel).to receive(:names).and_return(["openc3-cosmos-dualsense-1.0.0.gem"])
+      # plugin.txt is read as binary, here with an em dash and an emoji
+      text = "Power \xE2\x80\x94 supply \xF0\x9F\x8E\xAE".b
+      allow(OpenC3::PluginModel).to receive(:install_phase1).and_return({ "plugin_text" => text, "variables" => { "port" => { "markdown" => text } } })
+      post :create, params: { scope: "DEFAULT", gem: "openc3-cosmos-dualsense-1.0.0.gem" }
+      result = JSON.parse(response.body)
+      expect(result["plugin_text"]).to eq "Power \u2014 supply \u{1F3AE}"
+      expect(result["variables"]["port"]["markdown"]).to eq "Power \u2014 supply \u{1F3AE}"
     end
 
     it "rejects gems not in COSMOS" do

@@ -145,6 +145,17 @@ module OpenC3
       expect(described_class.gem_discovery_matchers('library-1.0.0.gem', scope: 'DEFAULT')).to eql []
     end
 
+    it "retries a gem whose plugin.txt couldn't be read" do
+      allow(PluginModel).to receive(:install_phase1).and_raise('bucket timeout')
+      expect(described_class.gem_discovery_matchers('local-plugin-2.0.0.gem', scope: 'DEFAULT')).to eql []
+      allow(PluginModel).to receive(:install_phase1).and_return({ 'variables' => {
+        'port' => { 'value' => '', 'discovery' => [{ 'discovery' => ['openc3/discovery/serial_discovery.py', '1A86:7523'] }] },
+      } })
+      expect(described_class.gem_discovery_matchers('local-plugin-2.0.0.gem', scope: 'DEFAULT')).to eql [
+        { 'class' => serial, 'params' => ['1A86:7523'], 'variable' => 'port', 'set' => {} },
+      ]
+    end
+
     it "ranks how specifically matchers identify hardware" do
       expect(described_class.specificity(serial, ['10C4:EA60'])).to eql 2
       expect(described_class.specificity(serial, ['10C4', '10C4:*'])).to eql 1

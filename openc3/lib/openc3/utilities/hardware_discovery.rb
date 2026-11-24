@@ -151,14 +151,14 @@ module OpenC3
     # The matchers of an installed plugin gem, from its plugin.txt
     def self.gem_discovery_matchers(gem, scope:)
       @gem_matchers_mutex.synchronize do
-        @gem_matchers[gem] ||= begin
-          variables = PluginModel.install_phase1(GemModel.get(gem), validate_only: true, scope: scope)['variables']
-          # plugin.txt is read as binary but its titles are UTF-8 text, as the store's are
-          utf8(PluginModel.discovery_matchers(variables)['matchers'])
-        rescue => error
-          Logger.warn("Hardware discovery could not read the plugin.txt of #{gem}: #{error.message}", scope: scope)
-          []
-        end
+        return @gem_matchers[gem] if @gem_matchers.key?(gem)
+        variables = PluginModel.install_phase1(GemModel.get(gem), validate_only: true, scope: scope)['variables']
+        # plugin.txt is read as binary but its titles are UTF-8 text, as the store's are
+        # Only successful reads are cached so a failure is retried on the next scan
+        @gem_matchers[gem] = utf8(PluginModel.discovery_matchers(variables)['matchers'])
+      rescue => error
+        Logger.warn("Hardware discovery could not read the plugin.txt of #{gem}: #{error.message}", scope: scope)
+        []
       end
     end
 

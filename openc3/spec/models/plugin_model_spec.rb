@@ -866,9 +866,9 @@ module OpenC3
           "",
         ]
         variables = { "folder" => { "value" => "INST" } }
-        result = PluginModel.preview({ "variables" => variables, "plugin_txt_lines" => plugin_txt_lines }, scope: "DEFAULT")
+        result = PluginModel.render_preview({ "variables" => variables, "plugin_txt_lines" => plugin_txt_lines }, scope: "DEFAULT")
         expect(result).to eq({ 'plugin_txt' => "TARGET INST INST_2" })
-        result = PluginModel.preview({ "variables" => variables, "plugin_txt_lines" => ["TARGET A", "", "TARGET <%= missing %> B"] }, scope: "DEFAULT")
+        result = PluginModel.render_preview({ "variables" => variables, "plugin_txt_lines" => ["TARGET A", "", "TARGET <%= missing %> B"] }, scope: "DEFAULT")
         expect(result['error']).to match(/ERB error at line 3: undefined local variable or method .missing/)
       end
 
@@ -998,6 +998,24 @@ module OpenC3
         start = Time.now
         expect(PluginModel.validate(plugin_hash, scope: 'DEFAULT')).to eql({ 'valid' => false, 'error' => 'Validation did not finish within 0.5 seconds' })
         expect(Time.now - start).to be < 5
+      end
+
+      it "previews plugin.txt in openc3cli" do
+        allow(Open3).to receive(:popen2e).and_wrap_original do |original, *command, **options, &block|
+          expect(command[0..4]).to eql ['ruby', '/openc3/bin/openc3cli', 'validate', '--preview', command[4]]
+          expect(JSON.parse(File.read(command[4]))).to eql({ 'variables' => {}, 'plugin_txt_lines' => ['TARGET INST INST'] })
+          expect(options[:pgroup]).to be true
+          original.call('ruby', '-e', 'puts "from ERB"; puts %q({"preview":{"plugin_txt":"TARGET INST INST"}})', **options, &block)
+        end
+        expect(PluginModel.preview(plugin_hash, scope: 'DEFAULT')).to eql({ 'plugin_txt' => 'TARGET INST INST' })
+      end
+
+      it "stops a preview that takes too long" do
+        stub_const("OpenC3::PluginModel::PREVIEW_TIMEOUT_S", 0.5)
+        allow(Open3).to receive(:popen2e).and_wrap_original do |original, *_command, **options, &block|
+          original.call('ruby', '-e', 'sleep 30', **options, &block)
+        end
+        expect(PluginModel.preview(plugin_hash, scope: 'DEFAULT')).to eql({ 'error' => 'Preview did not finish within 0.5 seconds' })
       end
 
       it "describes where a configuration error is" do
@@ -1215,6 +1233,11 @@ module OpenC3
           File.delete(order)
           install(lines, scripts, validate_only: true)
           expect(File.read(order).lines.map(&:chomp)).to eql ["pre INST true true", "deploy from lib"]
+
+          # The upgrade diff runs in an HTTP request so it runs no scripts
+          File.delete(order)
+          install(["PRE_INSTALL_SCRIPT scripts/setup.rb pre"], scripts, diff_only: true)
+          expect(File.exist?(order)).to be false
         end
       end
 

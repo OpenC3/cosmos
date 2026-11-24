@@ -544,6 +544,18 @@
           {{ missingSecrets.length === 1 ? 'it' : 'them' }}.
         </v-alert>
         <v-alert
+          v-if="presetBridgeUnusable"
+          type="warning"
+          variant="tonal"
+          density="compact"
+          class="mt-3"
+          data-test="preset-bridge-unusable"
+        >
+          The device was found on bridge {{ presetBridgeUnusable }}, but this
+          plugin can only use the DEFAULT bridge's host, so the device wasn't
+          filled in.
+        </v-alert>
+        <v-alert
           v-if="showRequired && errorCount > 0"
           type="error"
           variant="tonal"
@@ -732,6 +744,8 @@ export default {
       discoveryClaimed: {},
       // Variables the user picked a value for, so discovery leaves them alone
       discoveryChosen: {},
+      // A bridge the preset device was found on that this plugin can't use
+      presetBridgeUnusable: null,
       // Available bridges for the VARIABLE_BRIDGE variable: [{ value, text }]
       bridges: [],
       // Expand the VARIABLE_ADVANCED section
@@ -1514,6 +1528,17 @@ export default {
     // Set the presetVariables the plugin defines. Variables whose states set
     // others go first, so a state's defaults don't replace a preset value.
     applyPresetVariables() {
+      // A device found on another host can't be used by a plugin without
+      // VARIABLE_BRIDGE, which always runs on the DEFAULT bridge's host
+      const bridge = this.presetVariables?.bridge_name
+      if (
+        bridge &&
+        bridge !== 'DEFAULT' &&
+        !('bridge_name' in this.localVariables)
+      ) {
+        this.presetBridgeUnusable = bridge
+        return
+      }
       const presets = Object.entries(this.presetVariables || {}).filter(
         ([name]) => name in this.localVariables,
       )

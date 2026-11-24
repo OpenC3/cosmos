@@ -84,7 +84,7 @@ class BluetoothDiscovery(Discovery):
 
     def scan(self):
         try:
-            from bleak import BleakScanner  # ty: ignore[unresolved-import]
+            from bleak import BleakScanner  # ty: ignore[import-not-found]
         except ImportError as error:
             raise RuntimeError("The bleak Python package is not installed on the host") from error
 

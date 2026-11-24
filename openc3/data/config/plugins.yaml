@@ -55,12 +55,20 @@ VARIABLE_TYPE:
     Must follow a VARIABLE definition.
   since: _Coming Soon_
   example: |
+    VARIABLE hostname localhost
+      VARIABLE_TYPE TEXT
     VARIABLE port 8080
       VARIABLE_TYPE INTEGER
+    VARIABLE poll_rate 0.5
+      VARIABLE_TYPE NUMBER
     VARIABLE use_ssl false
       VARIABLE_TYPE BOOLEAN
     VARIABLE password ""
       VARIABLE_TYPE PASSWORD
+    VARIABLE options '{"timeout": 5, "retries": 3}'
+      VARIABLE_TYPE JSON
+    VARIABLE api_key_secret API_KEY
+      VARIABLE_TYPE SECRET
     VARIABLE inst_target_name INST
       VARIABLE_TYPE TARGET_NAME
   parameters:

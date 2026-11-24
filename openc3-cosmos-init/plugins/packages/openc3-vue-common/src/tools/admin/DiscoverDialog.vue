@@ -227,8 +227,12 @@
   </v-dialog>
 </template>
 
-<script>
+<script setup>
+import { computed, ref } from 'vue'
 import { Api } from '@openc3/js-common/services'
+
+const show = defineModel({ type: Boolean })
+const emit = defineEmits(['install'])
 
 // How each discovery class's devices are shown
 const KINDS = {
@@ -259,121 +263,111 @@ const KINDS = {
   },
 }
 
-export default {
-  props: {
-    modelValue: Boolean,
-  },
-  emits: ['update:modelValue', 'install'],
-  data() {
-    return {
-      bridges: [],
-      bridgesLoaded: false,
-      bridge: 'ALL',
-      scanning: false,
-      result: null,
-      error: null,
-      showOther: false,
-    }
-  },
-  computed: {
-    show: {
-      get() {
-        return this.modelValue
-      },
-      set(value) {
-        this.$emit('update:modelValue', value)
-      },
-    },
-    // Only bridges paired with openc3-cosmos-app can scan their host
-    bridgeItems() {
-      const items = this.bridges.map((name) => ({ value: name, text: name }))
-      if (items.length > 1) {
-        items.unshift({ value: 'ALL', text: 'All bridges' })
-      }
-      return items
-    },
-    multipleBridges() {
-      return this.bridges.length > 1
-    },
-    recognized() {
-      return (this.result?.devices || []).filter(
-        (device) => device.candidates.length > 0,
-      )
-    },
-    unrecognized() {
-      return (this.result?.devices || []).filter(
-        (device) => device.candidates.length === 0,
-      )
-    },
-  },
-  async created() {
-    await this.loadBridges()
-    if (this.bridgeItems.length > 0) {
-      this.scan()
-    }
-  },
-  methods: {
-    async loadBridges() {
-      try {
-        const response = await Api.get('/openc3-api/bridges/ALL', {
-          headers: { Accept: 'application/json' },
-        })
-        this.bridges = Object.values(response.data || {})
-          .filter((bridge) => bridge.app_public_key)
-          .map((bridge) => bridge.name)
-          .sort((a, b) => a.localeCompare(b))
-      } catch {
-        // No paired bridges, so only ALL is offered
-        this.bridges = []
-      }
-      this.bridge = this.bridgeItems[0]?.value || 'ALL'
-      this.bridgesLoaded = true
-    },
-    async scan() {
-      this.scanning = true
-      this.error = null
-      try {
-        const response = await Api.post('/openc3-api/discovery/scan', {
-          data: { bridge: this.bridge },
-          headers: { 'Ignore-Errors': '500,503' },
-        })
-        this.result = response.data
-      } catch (error) {
-        this.result = null
-        this.error =
-          error.response?.data?.message || error.message || String(error)
-      } finally {
-        this.scanning = false
-      }
-    },
-    install(candidate) {
-      this.$emit('install', candidate)
-      this.show = false
-    },
-    kind(device) {
-      return KINDS[device.class] || { text: device.class, icon: 'mdi-chip' }
-    },
-    deviceKey(device) {
-      return `${device.bridge}/${device.class}/${device.value}`
-    },
-    candidateSubtitle(candidate) {
-      const parts = []
-      if (candidate.match_title && candidate.match_title !== candidate.title) {
-        parts.push(candidate.match_title)
-      }
-      parts.push(
-        candidate.source === 'store' ? 'OpenC3 Store' : 'Installed in COSMOS',
-      )
-      return parts.join(' · ')
-    },
-    errorText(scanError) {
-      const where = scanError.class
-        ? `${this.kind({ class: scanError.class }).text}s on ${scanError.bridge}`
-        : scanError.bridge
-      return `${where}: ${scanError.message}`
-    },
-  },
+const bridges = ref([])
+const bridgesLoaded = ref(false)
+const bridge = ref('ALL')
+const scanning = ref(false)
+const result = ref(null)
+const error = ref(null)
+const showOther = ref(false)
+
+// Only bridges paired with openc3-cosmos-app can scan their host
+const bridgeItems = computed(() => {
+  const items = bridges.value.map((name) => ({ value: name, text: name }))
+  if (items.length > 1) {
+    items.unshift({ value: 'ALL', text: 'All bridges' })
+  }
+  return items
+})
+const multipleBridges = computed(() => bridges.value.length > 1)
+const recognized = computed(() =>
+  (result.value?.devices || []).filter(
+    (device) => device.candidates.length > 0,
+  ),
+)
+const unrecognized = computed(() =>
+  (result.value?.devices || []).filter(
+    (device) => device.candidates.length === 0,
+  ),
+)
+
+async function loadBridges() {
+  try {
+    const response = await Api.get('/openc3-api/bridges/ALL', {
+      headers: { Accept: 'application/json' },
+    })
+    bridges.value = Object.values(response.data || {})
+      .filter((item) => item.app_public_key)
+      .map((item) => item.name)
+      .sort((a, b) => a.localeCompare(b))
+  } catch {
+    // No paired bridges, so only ALL is offered
+    bridges.value = []
+  }
+  bridge.value = bridgeItems.value[0]?.value || 'ALL'
+  bridgesLoaded.value = true
 }
+
+async function scan() {
+  scanning.value = true
+  error.value = null
+  try {
+    const response = await Api.post('/openc3-api/discovery/scan', {
+      data: { bridge: bridge.value },
+      headers: { 'Ignore-Errors': '500,503' },
+    })
+    result.value = response.data
+  } catch (scanError) {
+    result.value = null
+    error.value =
+      scanError.response?.data?.message ||
+      scanError.message ||
+      String(scanError)
+  } finally {
+    scanning.value = false
+  }
+}
+
+function install(candidate) {
+  emit('install', candidate)
+  show.value = false
+}
+
+function kind(device) {
+  return KINDS[device.class] || { text: device.class, icon: 'mdi-chip' }
+}
+
+function deviceKey(device) {
+  return `${device.bridge}/${device.class}/${device.value}`
+}
+
+function candidateSubtitle(candidate) {
+  const parts = []
+  if (candidate.match_title && candidate.match_title !== candidate.title) {
+    parts.push(candidate.match_title)
+  }
+  parts.push(
+    candidate.source === 'store' ? 'OpenC3 Store' : 'Installed in COSMOS',
+  )
+  return parts.join(' · ')
+}
+
+function errorText(scanError) {
+  const where = scanError.class
+    ? `${kind({ class: scanError.class }).text}s on ${scanError.bridge}`
+    : scanError.bridge
+  return `${where}: ${scanError.message}`
+}
+
+async function loadAndScan() {
+  await loadBridges()
+  if (bridgeItems.value.length > 0) {
+    await scan()
+  }
+}
+
+// loadBridges and scan report their own errors
+void loadAndScan()
 </script>
 
 <style scoped>

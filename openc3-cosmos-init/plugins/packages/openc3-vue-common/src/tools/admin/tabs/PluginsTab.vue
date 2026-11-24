@@ -645,6 +645,8 @@ export default {
     },
     // Install a plugin hardware discovery proposed, starting with the device it found
     installDiscovered(candidate) {
+      // Start a fresh install so a cancelled upgrade's plugin isn't replaced
+      this.resetControlState()
       this.presetVariables = candidate.variables
       if (candidate.source === 'store') {
         this.upload(null, {

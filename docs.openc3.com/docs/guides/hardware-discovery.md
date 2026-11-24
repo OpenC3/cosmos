@@ -169,7 +169,31 @@ VARIABLE host ""
   VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}
 ```
 
-Discover Hardware creates one match for each state, here named "Philips Hue" and "Shelly". Installing from a match selects its state as well as filling in the device. If the variable is only shown by some states (`VARIABLE_STATE_SHOW`), only those states count.
+Here is what happens, step by step:
+
+1. **In the plugin install dialog**, the user picks a device type from the `device` dropdown, e.g. "Philips Hue".
+2. That state's [`VARIABLE_STATE_SET`](../configuration/plugins.md#variable_state_set) sets the hidden `mdns_types` variable to `_hue._tcp.local. _hap._tcp.local.|md=BSB002*`.
+3. Because `host` uses `${mdns_types}`, its discovery runs again on the host with those two parameters: devices advertising `_hue._tcp.local.`, or `_hap._tcp.local.` with a model (`md`) starting with `BSB002`.
+4. The `host` dropdown lists the IP addresses found. Choosing "Shelly" instead runs the discovery again for `_shelly._tcp.local.`.
+
+**Discover Hardware** works the other way round, since the user hasn't chosen a state yet. It reads the plugin's `plugin.txt` and creates one match for each state that sets `mdns_types`, here named "Philips Hue" and "Shelly", and scans for all of them at once. When a Shelly device is found, the plugin is proposed as "Shelly", and installing from that match selects the `shelly` state as well as filling in `host` with the device's IP address.
+
+[`VARIABLE_STATE_SHOW`](../configuration/plugins.md#variable_state_show) lists the variables a state shows, hiding them for the other states. If the discovery variable is only shown by some states, only those states create matches. In this example only the Philips Hue bridge is discovered, because the Shelly state doesn't show `host`:
+
+```cosmos
+VARIABLE device hue
+  VARIABLE_STATE "Philips Hue" hue
+    VARIABLE_STATE_SET mdns_types "_hue._tcp.local. _hap._tcp.local.|md=BSB002*"
+    VARIABLE_STATE_SHOW host
+  VARIABLE_STATE "Shelly (enter its address)" shelly
+    VARIABLE_STATE_SET mdns_types _shelly._tcp.local.
+    VARIABLE_STATE_SHOW shelly_address
+VARIABLE mdns_types ""
+  VARIABLE_HIDDEN
+VARIABLE host ""
+  VARIABLE_DISCOVERY openc3/discovery/zeroconf_discovery.py ${mdns_types}
+VARIABLE shelly_address ""
+```
 
 ### Making a Plugin Show Up in Discover Hardware
 
@@ -212,7 +236,24 @@ class MyRadioDiscovery(Discovery):
         return not self.models or device["model"] in self.models
 ```
 
-The class is named after its file: `my_radio_discovery.py` contains `MyRadioDiscovery`. openc3-cosmos-app finds it if it's in the `lib` folder of a plugin already installed in COSMOS, since openc3-cosmos-app syncs those folders to the host. It isn't available when the plugin that contains it is being installed for the first time. Discover Hardware only uses the classes COSMOS provides.
+The class is named after its file: `my_radio_discovery.py` contains `MyRadioDiscovery`. Use it like a provided class, by its path in the plugin's `lib` folder:
+
+```cosmos
+VARIABLE radio_serial ""
+  VARIABLE_DISCOVERY my_radio_discovery.py X Y
+```
+
+#### How a Custom Class Gets to the Computer
+
+openc3-cosmos-app runs discovery on the host, so the class must be on the host first. openc3-cosmos-app copies the `lib` folders of the plugins **installed in COSMOS** to the host. A plugin that isn't installed yet has nothing on the host, so its own discovery class can't run while it's being installed for the first time. This is how it plays out:
+
+1. **First install.** The plugin dialog can't run the class, so the variable shows an error beside its field, and the value is typed by hand (e.g. the radio's serial number). The plugin installs normally.
+2. **After installing.** openc3-cosmos-app copies the plugin's `lib` folder to the host the next time it syncs plugin files.
+3. **Later installs and edits.** Editing the installed plugin, upgrading it, or installing it again for a second radio runs the class and lists the devices found.
+
+To have discovery work on the very first install, put the class in a separate plugin, such as a small library plugin with just a `lib` folder, and install that first. Any installed plugin's `lib` folder is copied to the host, so every plugin can use the classes it contains.
+
+Discover Hardware only uses the classes COSMOS provides, since it never runs code from plugins that aren't installed. A plugin that only uses a custom class isn't proposed by Discover Hardware. If your hardware needs a new kind of discovery, consider contributing the class to COSMOS.
 
 ### Testing Discovery on a Computer
 

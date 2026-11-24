@@ -117,7 +117,7 @@ class PluginsController < ModelController
         plugin['default'] = OpenC3::DefaultPlugins.default?(plugin_name)
       end
 
-      render json: plugins
+      render json: text_json(plugins)
     else
       plugin = @model_class.get(name: params[:id], scope: params[:scope])
       if plugin && plugin['store_plugin_id']
@@ -127,7 +127,7 @@ class PluginsController < ModelController
         plugin.merge!(store_version) if store_version
       end
 
-      render json: plugin
+      render json: text_json(plugin)
     end
   rescue StandardError => error
     render json: { status: 'error', message: error.message }, status: :internal_server_error
@@ -195,7 +195,7 @@ class PluginsController < ModelController
         else
           result = OpenC3::PluginModel.install_phase1(gem_file_path, store_plugin_id: params[:store_plugin_id], store_version_id: params[:store_version_id], scope: scope)
         end
-        render json: result
+        render json: text_json(result)
       rescue OpenC3::EmptyGemFileError => error
         render json: { status: 'error', message: error.message }, status: :bad_request
         logger.error(error.formatted)
@@ -222,7 +222,7 @@ class PluginsController < ModelController
       return
     end
     # Given just the gem name, install_phase1 takes the gem from COSMOS
-    render json: OpenC3::PluginModel.install_phase1(gem, scope: scope[0])
+    render json: text_json(OpenC3::PluginModel.install_phase1(gem, scope: scope[0]))
   rescue Exception => error
     render json: { status: 'error', message: error.message }, status: :internal_server_error
     logger.error(error.formatted)
@@ -265,7 +265,7 @@ class PluginsController < ModelController
       return unless scope
       scope = scope[0]
       plugin_hash = JSON.parse(params[:plugin_hash])
-      render json: OpenC3::PluginModel.preview(plugin_hash, scope: scope)
+      render json: text_json(OpenC3::PluginModel.preview(plugin_hash, scope: scope))
     rescue JSON::ParserError => error
       render json: { status: 'error', message: error.message }, status: :bad_request
     rescue Exception => error
@@ -311,7 +311,7 @@ class PluginsController < ModelController
       return
     end
     value = OpenC3::PluginModel.store_upload(file.tempfile.path, file.original_filename, scope: scope[0])
-    render json: { value: value }
+    render json: text_json({ value: value })
   rescue Exception => error
     logger.error(error.formatted)
     render json: { status: 'error', message: error.message }, status: :internal_server_error

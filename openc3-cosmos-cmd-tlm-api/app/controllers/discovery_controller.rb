@@ -61,12 +61,4 @@ class DiscoveryController < ApplicationController
     render json: { status: 'error', message: error.message }, status: status
     logger.error(error.formatted) if status == :internal_server_error
   end
-
-  private
-
-  # Device names and plugin titles are text, like "Manette 🎮", which the
-  # COSMOS String#as_json would send as raw bytes outside the Latin-1 range
-  def text_json(value)
-    JSON.generate(value)
-  end
 end
