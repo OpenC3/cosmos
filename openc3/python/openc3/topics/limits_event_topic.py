@@ -349,7 +349,10 @@ class LimitsEventTopic(Topic):
                             continue
                         if limits_set == "state_colors":
                             for state_name, color in settings.items():
-                                System.limits.set_state_color(target_name, packet_name, item_name, state_name, color)
+                                # Earlier versions of the Ruby API saved a cleared color as "" so treat it as cleared
+                                System.limits.set_state_color(
+                                    target_name, packet_name, item_name, state_name, color or None
+                                )
                             continue
                         if change_type:
                             Logger.warn(

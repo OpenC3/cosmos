@@ -569,6 +569,36 @@ class TestLimitsEventTopic(unittest.TestCase):
         finally:
             limits.change_type = None
 
+    def test_resync_system_clears_a_state_color_that_was_cleared_with_a_limits_state_color_event(self):
+        item = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("GROUND1STATUS")
+        self.assertEqual(item.state_colors["CONNECTED"], "GREEN")
+        event = {
+            "type": "LIMITS_STATE_COLOR",
+            "target_name": "INST",
+            "packet_name": "HEALTH_STATUS",
+            "item_name": "GROUND1STATUS",
+            "state_name": "CONNECTED",
+            "color": None,
+            "time_nsec": 0,
+            "message": "Clearing color",
+        }
+        LimitsEventTopic.write(event, scope="DEFAULT")
+        settings = json.loads(Store.hget("DEFAULT__current_limits_settings", "INST__HEALTH_STATUS__GROUND1STATUS"))
+        self.assertEqual(settings["state_colors"], {"CONNECTED": None})
+        LimitsEventTopic.resync_system("DEFAULT")
+        self.assertNotIn("CONNECTED", item.state_colors)
+
+    def test_resync_system_treats_a_state_color_saved_as_an_empty_string_as_cleared(self):
+        # Earlier versions of the Ruby API saved a cleared color as "" which isn't a valid color
+        item = System.telemetry.packet("INST", "HEALTH_STATUS").get_item("GROUND1STATUS")
+        Store.hset(
+            "DEFAULT__current_limits_settings",
+            "INST__HEALTH_STATUS__GROUND1STATUS",
+            json.dumps({"state_colors": {"CONNECTED": ""}}),
+        )
+        LimitsEventTopic.resync_system("DEFAULT")
+        self.assertNotIn("CONNECTED", item.state_colors)
+
     def test_sync_system_thread_body_applies_a_limits_group_enable_state_event(self):
         LimitsEventTopic.sync_system_thread_body(scope="DEFAULT")  # Set the stream offset
         Store.hset("DEFAULT__limits_groups", "FIRST", json.dumps([["INST", "HEALTH_STATUS", "TEMP1"]]))

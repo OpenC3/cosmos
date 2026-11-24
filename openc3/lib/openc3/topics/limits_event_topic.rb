@@ -159,7 +159,8 @@ module OpenC3
           limits_settings = {}
         end
         limits_settings['state_colors'] ||= {}
-        limits_settings['state_colors'][event[:state_name].to_s] = event[:color].to_s
+        # A cleared color is saved as nil (not "") so sync_system clears it
+        limits_settings['state_colors'][event[:state_name].to_s] = event[:color]&.to_s
         Store.hset("#{scope}__current_limits_settings", field, JSON.generate(limits_settings, allow_nan: true))
 
       when :LIMITS_SET
@@ -325,6 +326,8 @@ module OpenC3
               next unless Hash === settings
               if limits_set == 'state_colors'
                 settings.each do |state_name, color|
+                  # Earlier versions saved a cleared color as "" so treat it as cleared
+                  color = nil if color.to_s.empty?
                   System.limits.set_state_color(target_name, packet_name, item_name, state_name, color)
                 end
                 next

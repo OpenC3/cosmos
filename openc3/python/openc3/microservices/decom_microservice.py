@@ -396,8 +396,9 @@ class DecomMicroservice(Microservice):
             "target_name": packet.target_name,
             "packet_name": packet.packet_name,
             "item_name": item.name,
-            "old_limits_state": str(old_limits_state),
-            "new_limits_state": str(item.limits.state),
+            # No state (initial check or disabled) is "" to match Ruby's nil.to_s, not "None"
+            "old_limits_state": old_limits_state or "",
+            "new_limits_state": item.limits.state or "",
             "time_nsec": to_nsec_from_epoch(packet_time),
             "message": str(message),
         }

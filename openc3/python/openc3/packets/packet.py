@@ -682,8 +682,9 @@ class Packet(Structure):
                 super().write_item(item, value, value_type, buffer)
             case "CONVERTED":
                 if item.states:
-                    # Convert from state to value if possible:
-                    state_value = item.states.get(str(value).upper())
+                    # Convert from state to value if possible. None never matches a state,
+                    # like Ruby's nil.to_s ("") and unlike str(None) ("None")
+                    state_value = item.states.get("" if value is None else str(value).upper())
                     if state_value is not None:
                         value = state_value
                 if item.write_conversion:
