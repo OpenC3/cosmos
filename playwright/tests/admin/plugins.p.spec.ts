@@ -264,28 +264,58 @@ test.describe(() => {
       .count()
   }
 
+  /** Opens the actions menu of the installed plugin whose row contains `name`.
+   * While any process is listed the page reloads the plugin list every 5
+   * seconds, and a plugin renamed by an install gets a new row, which closes
+   * an open menu. After an install, pass the new gem name so the menu opens
+   * only once the row has been replaced.
+   */
+  async function openPluginActions(page: Page, name: string) {
+    const row = page
+      .locator('[data-test=plugin-list-item]')
+      .filter({ hasText: name })
+    await expect(row).toHaveCount(1)
+    await row.locator('[data-test=plugin-actions]').click()
+  }
+
   test.afterEach('delete the installed plugin', async ({ page }) => {
-    await page
+    // The test can fail before the upgrade, leaving the original gem installed
+    const row = page
       .locator('[data-test=plugin-list-item]')
       .filter({ hasText: plugin })
-      .locator('[data-test=plugin-actions]')
-      .click()
-    await page.locator('[data-test=delete-plugin]').click()
-    await expect(page.locator('.v-dialog')).toContainText('Confirm')
-    await page.locator('[data-test=confirm-dialog-delete]').click()
-    await expect(page.locator('.v-dialog:has-text("Modified")')).toBeVisible()
-    // Check the delete box
-    await page.locator('text=DELETE MODIFIED').click()
+    const installedGem = (await row.textContent())?.includes(pluginGem1)
+      ? pluginGem1
+      : pluginGem
+    // An unmodified plugin is removed as soon as the delete is confirmed, so
+    // count before then
     const completeCount = await countCompleted(
       page,
       'plugin_uninstall',
-      pluginGem1,
+      installedGem,
     )
-    await page.locator('data-test=modified-plugin-submit').click()
+    await openPluginActions(page, plugin)
+    await page.locator('[data-test=delete-plugin]').click()
+    await expect(page.locator('.v-dialog')).toContainText('Confirm')
+    await page.locator('[data-test=confirm-dialog-delete]').click()
+    // Only a plugin with modified files asks about them; an unmodified one
+    // (the test failed before modifying it) is removed right away
+    const modifiedDialog = page.locator('.v-dialog:has-text("Modified")')
+    await expect(
+      modifiedDialog.or(
+        page
+          .locator('[data-test=plugin-alert]')
+          .filter({ hasText: 'Removing plugin' }),
+      ),
+    ).toBeVisible()
+    if (await modifiedDialog.isVisible()) {
+      // Check the delete box
+      await page.locator('text=DELETE MODIFIED').click()
+      await page.locator('data-test=modified-plugin-submit').click()
+    }
 
     await waitForPluginProcess(page, {
       alert: 'Removing plugin',
-      gem: pluginGem1,
+      gem: installedGem,
       process: 'plugin_uninstall',
       previousCompleteCount: completeCount,
     })
@@ -455,11 +485,7 @@ test.describe(() => {
       // It is important to call waitForEvent before click to set up waiting.
       page.waitForEvent('filechooser'),
       // Opens the file chooser.
-      await page
-        .locator('[data-test=plugin-list-item]')
-        .filter({ hasText: plugin })
-        .locator('[data-test=plugin-actions]')
-        .click(),
+      await openPluginActions(page, pluginGem),
       await page.locator('[data-test=upgrade-plugin]').click(),
     ])
 
@@ -498,12 +524,9 @@ test.describe(() => {
     // Section: EDIT THE PLUGIN
     // ==========================================
 
-    // Edit then cancel
-    await page
-      .locator('[data-test=plugin-list-item]')
-      .filter({ hasText: plugin })
-      .locator('[data-test=plugin-actions]')
-      .click()
+    // Edit then cancel. The upgrade renamed the plugin, so wait for the list
+    // to show the new name or its row is replaced under the open menu.
+    await openPluginActions(page, pluginGem1)
     await page.locator('[data-test=edit-plugin]').click()
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
     await page.locator('data-test=edit-cancel').click()
@@ -511,11 +534,7 @@ test.describe(() => {
       page.locator('.v-dialog:has-text("Variables")'),
     ).not.toBeVisible()
     // Edit and change a target name (forces re-install)
-    await page
-      .locator('[data-test=plugin-list-item]')
-      .filter({ hasText: plugin })
-      .locator('[data-test=plugin-actions]')
-      .click()
+    await openPluginActions(page, pluginGem1)
     await page.locator('[data-test=edit-plugin]').click()
     await expect(page.locator('.v-dialog:has-text("Variables")')).toBeVisible()
     await page
