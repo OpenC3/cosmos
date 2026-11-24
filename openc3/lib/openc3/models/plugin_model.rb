@@ -77,6 +77,12 @@ module OpenC3
     # Seconds to wait for a preview of plugin.txt (under the frontend's 60s request timeout)
     PREVIEW_TIMEOUT_S = 30
     PLUGIN_TXT = 'plugin.txt'
+    # Seconds modified_diff waits for its child process. Kept under the
+    # frontend's 60s request timeout so the user sees this error, not a
+    # generic timeout.
+    MODIFIED_DIFF_TIMEOUT = 50
+    # Most bytes of the modifieddiff child's output read back into an error
+    MODIFIED_DIFF_OUTPUT_LIMIT = 2048
 
     attr_accessor :variables
     attr_accessor :plugin_txt_lines
@@ -552,7 +558,9 @@ module OpenC3
 
     # Called by the PluginsController to create the plugin
     # Because this uses ERB it must be run in a separate process from the API to
-    # prevent corruption and single require problems in the current process
+    # prevent corruption and single require problems in the current process.
+    # This also applies to validate_only and diff_only: both still render ERB
+    # and load the plugin's classes. Use modified_diff from the API.
     # diff_only: dry run that renders the plugin's target files and returns the
     # list of modified files ("TARGET/path") whose live content differs from
     # what this plugin would deploy — used to warn before an upgrade which user
@@ -660,7 +668,7 @@ module OpenC3
 
         if File.exist?(pyproject_path) || File.exist?(requirements_path)
           pypi_url = resolve_pypi_url(scope: scope)
-          # Skipped for any dry run: diff_only runs inline in an HTTP request, so
+          # Skipped for any dry run: diff_only runs during an HTTP request, so
           # a slow or unreachable PyPI would time it out, and it must not mutate
           # the plugin venv.
           unless dry_run
@@ -846,9 +854,92 @@ module OpenC3
     # Returns a list of "TARGET/path" names whose live (modified) content
     # differs from the rendered plugin content. Read-only; no side effects.
     # Errors propagate so callers can tell a failed check from an empty diff.
-    def self.modified_diff(plugin_hash, scope:)
-      install_phase2(plugin_hash, scope: scope, diff_only: true)
+    #
+    # Like an install, this runs install_phase2 in a separate process
+    # (`openc3cli modifieddiff`) to prevent corruption and single require
+    # problems in the API process: install_phase2 renders ERB, adds the gem's
+    # lib folders to $LOAD_PATH and loads the plugin's classes. The child runs
+    # in its own process group so it can be cleaned up as a whole, and the
+    # result is read back from a file.
+    def self.modified_diff(plugin_hash, scope:, timeout: MODIFIED_DIFF_TIMEOUT)
+      temp_dir = Dir.mktmpdir
+      begin
+        plugin_hash_path = File.join(temp_dir, 'plugin_hash.json')
+        result_path = File.join(temp_dir, 'result.json')
+        output_path = File.join(temp_dir, 'output.txt')
+        # The child's temp files (extracted gem, rendered files) go under
+        # temp_dir too. A child killed on timeout can't run its own cleanup,
+        # so removing temp_dir below is what cleans them up.
+        child_tmp_dir = File.join(temp_dir, 'tmp')
+        FileUtils.mkdir_p(child_tmp_dir)
+        File.write(plugin_hash_path, JSON.generate(plugin_hash, allow_nan: true))
+        cmd = modified_diff_command(scope, plugin_hash_path, result_path)
+        pid = Process.spawn({ 'TMPDIR' => child_tmp_dir }, *cmd, in: File::NULL, [:out, :err] => [output_path, 'w'], pgroup: true)
+        status = wait_for_child(pid, timeout)
+        raise "Timed out after #{timeout} seconds checking modified files against the plugin" unless status
+
+        result = nil
+        if File.exist?(result_path)
+          result = JSON.parse(File.read(result_path), allow_nan: true) rescue nil
+        end
+        if status.success? and result.is_a?(Hash) and result['files'].is_a?(Array)
+          return result['files'].map(&:to_s)
+        end
+
+        message = result['error'] if result.is_a?(Hash) and result['error']
+        unless message
+          output = output_tail(output_path).strip
+          message = "Modified file check failed (exit status #{status.exitstatus.inspect})"
+          message += ": #{output.lines.last(5).join.strip}" unless output.empty?
+        end
+        raise message.to_s
+      ensure
+        FileUtils.remove_entry_secure(temp_dir, true)
+      end
     end
+
+    # Command run by modified_diff. A separate method so specs can substitute
+    # a stand-in for openc3cli, which only exists inside the containers.
+    def self.modified_diff_command(scope, plugin_hash_path, result_path)
+      ['ruby', '/openc3/bin/openc3cli', 'modifieddiff', scope, plugin_hash_path, result_path]
+    end
+
+    # Returns at most the last max_bytes of the file at path, or '' if it
+    # doesn't exist, so a huge child log isn't read into the API process.
+    def self.output_tail(path, max_bytes = MODIFIED_DIFF_OUTPUT_LIMIT)
+      return '' unless File.exist?(path)
+
+      File.open(path, 'rb') do |file|
+        file.seek([file.size - max_bytes, 0].max)
+        # The seek can land inside a multibyte character
+        return file.read.to_s.force_encoding(Encoding::UTF_8).scrub('')
+      end
+    end
+    private_class_method :output_tail
+
+    # Waits up to timeout seconds for pid. Returns its Process::Status, or nil
+    # if it didn't finish in time. Either way it then kills pid's whole process
+    # group, so nothing the plugin started outlives the check. (A process group
+    # id isn't reused while the group has members, so this is safe after pid
+    # has exited.)
+    def self.wait_for_child(pid, timeout)
+      status = nil
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + timeout
+      while Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+        _, status = Process.wait2(pid, Process::WNOHANG)
+        break if status
+
+        sleep(0.1)
+      end
+      begin
+        Process.kill('KILL', -pid)
+      rescue Errno::ESRCH, Errno::EPERM
+        # Group already empty
+      end
+      Process.wait(pid) rescue nil unless status
+      return status
+    end
+    private_class_method :wait_for_child
 
     # Validate a plugin as the plugin dialog would install it (its variables
     # and possibly edited plugin.txt lines) with a dry run install of its gem.

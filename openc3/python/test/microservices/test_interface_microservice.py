@@ -1208,6 +1208,49 @@ class TestInterfaceMicroservice(unittest.TestCase):
         increment.assert_not_called()
         handler.interface.write.assert_not_called()
 
+    def test_process_cmd_holds_manual_cmd_with_hazardous_modes(self):
+        """Command Sender treats any command as hazardous when range checks are
+        ignored or parameter conversions are disabled, so a manual command sent
+        that way must also get critical approval. Scripts aren't held.
+        ABORT isn't hazardous itself."""
+        im = InterfaceMicroservice("DEFAULT__INTERFACE__INST_INT")
+        self.addCleanup(im.shutdown)
+        handler = im.handler_thread
+        assert isinstance(handler, InterfaceCmdHandlerThread)
+        handler.critical_commanding = "NORMAL"
+        msg_id = f"{int(time.time() * 1000)}-0"
+        write = Mock()
+        handler.interface.connected = Mock(return_value=True)
+        handler.interface.write = write
+
+        def abort(manual, key, value):
+            return {
+                b"target_name": b"INST",
+                b"cmd_name": b"ABORT",
+                b"cmd_params": json.dumps({}).encode(),
+                b"cmd_string": b"cmd('INST ABORT')",
+                b"hazardous_check": b"FALSE" if manual == b"TRUE" else b"TRUE",
+                b"manual": manual,
+                key: value,
+            }
+
+        for key, value in [(b"range_check", b"FALSE"), (b"raw", b"TRUE")]:
+            with (
+                self.subTest(key=key),
+                patch("openc3.microservices.interface_microservice.CriticalCmdModel", create=True) as model_class,
+            ):
+                model_class.return_value.name = "abc-123"
+                result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", msg_id, abort(b"TRUE", key, value), None)
+                self.assertEqual(result, "CriticalCmdError\nabc-123")
+                self.assertEqual(model_class.call_args.kwargs["cmd_type"], "HAZARDOUS")
+                write.assert_not_called()
+
+                result = handler.process_cmd("{DEFAULT__CMD}TARGET__INST", msg_id, abort(b"FALSE", key, value), None)
+                self.assertEqual(result, "SUCCESS")
+                model_class.assert_called_once()
+                write.assert_called_once()
+                write.reset_mock()
+
     def test_process_cmd_does_not_send_unclaimed_critical_cmd(self):
         """A duplicate release message, or one whose approval was undone, can't claim
         the release so the command isn't sent again."""

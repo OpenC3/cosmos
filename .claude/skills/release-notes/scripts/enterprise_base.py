@@ -40,8 +40,8 @@ def strip_refs(text):
 
 def main():
     if len(sys.argv) > 1:
-        with open(sys.argv[1], encoding="utf-8") as f:
-            core = f.read()
+        with open(sys.argv[1], encoding="utf-8") as file:
+            core = file.read()
     else:
         core = sys.stdin.read()
     match = WHATS_CHANGED.search(core)
