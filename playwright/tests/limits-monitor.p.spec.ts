@@ -148,7 +148,8 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
 
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
-  await page.locator(`td:has-text("playwright")`).click()
+  // Exact match so other tests' configs (e.g. playwright-ignored-mix) don't match
+  await page.getByRole('cell', { name: 'playwright', exact: true }).click()
   await page.locator('button:has-text("Ok")').click()
   // Opening the config shows a toast banner that auto-hides after ~5s, so its
   // Dismiss button can disappear (or be briefly covered by a transitioning
@@ -181,7 +182,11 @@ test('saves, opens, and resets the configuration', async ({ page, utils }) => {
   await page.locator('[data-test=limits-monitor-file]').click()
   await page.locator('text=Open Configuration').click()
   await page
-    .locator(`tr:has-text("playwright") [data-test=item-delete]`)
+    .getByRole('row')
+    .filter({
+      has: page.getByRole('cell', { name: 'playwright', exact: true }),
+    })
+    .locator('[data-test=item-delete]')
     .click()
   await page.locator('button:has-text("Delete")').click()
   await page.locator('[data-test=open-config-cancel-btn]').click()
@@ -468,16 +473,21 @@ test('displays the limits log', async ({ page, utils }) => {
   await expect(page.locator('[data-test=limits-events]')).toContainText(
     format(new Date(), 'yyyy-MM-dd'),
   )
-  // These have long timeouts just to allow the demo to hit another limit
-  await expect(page.locator('[data-test=limits-events]')).toContainText('RED', {
-    timeout: 20000,
-  })
-  await expect(page.locator('[data-test=limits-events]')).toContainText(
-    'YELLOW',
-    { timeout: 20000 },
+  // Force each state rather than waiting for the sim to sweep into them, which
+  // can take longer than the timeout. TEMP4 is yellow from 60 and red above 80
+  // and, unlike TEMP1, has no limits response that would send commands. The
+  // sim's next packet puts it back to green. It's stored as a scaled integer,
+  // so the logged values are close to the injected ones rather than exact.
+  const events = page.locator('[data-test=limits-events]')
+  await utils.api('inject_tlm', ['INST', 'HEALTH_STATUS', { TEMP4: 90 }])
+  await expect(events).toContainText(
+    /INST HEALTH_STATUS TEMP4 = [\d.]+ is RED_HIGH/,
   )
-  await expect(page.locator('[data-test=limits-events]')).toContainText(
-    'GREEN',
-    { timeout: 20000 },
+  await utils.api('inject_tlm', ['INST', 'HEALTH_STATUS', { TEMP4: 70 }])
+  await expect(events).toContainText(
+    /INST HEALTH_STATUS TEMP4 = [\d.]+ is YELLOW_HIGH/,
+  )
+  await expect(events).toContainText(
+    /INST HEALTH_STATUS TEMP4 = [\d.]+ is GREEN/,
   )
 })

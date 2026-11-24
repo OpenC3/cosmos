@@ -114,6 +114,11 @@ class CosmosMetaTag
         if File.basename(@yaml_file) == 'screen.yaml' and File.exist?("../static/img/telemetry_viewer/widgets/#{keyword.downcase}.png")
           page << "![#{keyword}](/img/telemetry_viewer/widgets/#{keyword.downcase}.png)\n\n"
         end
+        # A plugin keyword's example as the plugin install dialog shows it
+        if File.basename(@yaml_file) == 'plugins.yaml' and File.exist?("../static/img/plugins/#{keyword.downcase}.png")
+          page << "\nThe example in the plugin install dialog:\n\n"
+          page << "![#{keyword}](/img/plugins/#{keyword.downcase}.png)\n\n"
+        end
       end
       if data['ruby_example'] or data['python_example']
         page << "\n<Tabs groupId=\"script-language\">\n"

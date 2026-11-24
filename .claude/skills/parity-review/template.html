@@ -1,0 +1,170 @@
+<title>{{TITLE}}</title>
+<!--
+Data schema (render.py injects it into #data):
+{
+  "meta": {"title", "date", "sha", "scope", "intro" (html), "counts": {"public", "ruby_only", "python_only", "signatures", "whitelist"}, "prs": ["#1234", ...]},
+  "callout": {"title", "body" (html)} | null,
+  "findings": [{"title" (html), "impact": "Safety|High|Medium|Low", "who", "right": "ruby|python|unclear",
+                "ruby": {"loc", "code"}, "python": {"loc", "code"}, "why" (html), "repro" (code), "tests" (html), "checked": bool}],
+  "smaller": [{"item" (html), "where", "right": "ruby|python|unclear", "note" (html)}],
+  "signatures": [{"name", "ruby", "python", "diffs": [str], "status" (html)}],
+  "gaps": [{"name", "side": "Ruby only|Python only|WHITELIST", "where", "verdict" (html)}],
+  "fixed": [{"item" (html), "pr"}],
+  "recommendation": {"headline" (html), "steps": [html, ...]}
+}
+-->
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+<style>
+  /* Single deliberate light look, matching the architecture and reuse reports. */
+  :root { color-scheme: light; --bg: #fafaf9; --fg: #0f172a; }
+  body { background: var(--bg); color: var(--fg); }
+  :focus-visible { outline: 2px solid #059669; outline-offset: 2px; }
+  .lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+  .deep { background: #ecfdf5; color: #064e3b; border: 3px solid #047857; }
+  .side { background: #ffffff; border: 1px solid #cbd5e1; }
+  .side.right { border: 2px solid #047857; background: #f0fdf4; }
+  .side.wrong { border-left: 4px solid #b91c1c; }
+  .scroll { overflow-x: auto; }
+  code { font-size: .85em; background: #f1f5f9; padding: 0 .25em; border-radius: 3px; }
+  pre code { background: transparent; padding: 0; }
+  .deep code { background: #d1fae5; }
+  .prose-c p { max-width: 70ch; }
+  h1, h2 { text-wrap: balance; }
+  details > summary { cursor: pointer; }
+</style>
+<div class="font-sans">
+<main class="max-w-6xl mx-auto py-12 space-y-12" style="padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))">
+  <header id="hdr" class="space-y-4"></header>
+  <section id="callout"></section>
+  <section id="findings" class="space-y-8"></section>
+  <section class="space-y-3">
+    <h2 class="font-serif text-2xl">Smaller items</h2>
+    <div class="scroll rounded-lg border border-slate-200 bg-white"><table class="w-full text-sm">
+      <thead class="bg-slate-50 text-left"><tr><th class="p-2">Item</th><th class="p-2">Where</th><th class="p-2">Right side</th><th class="p-2">Note</th></tr></thead>
+      <tbody id="smaller" class="divide-y divide-slate-100 align-top"></tbody></table></div>
+  </section>
+  <section class="space-y-3">
+    <h2 class="font-serif text-2xl">Fixed in open PRs</h2>
+    <p class="text-sm text-slate-600">Drift the sweeps found that an open PR already fixes. These are not repeated above.</p>
+    <div class="scroll rounded-lg border border-slate-200 bg-white"><table class="w-full text-sm">
+      <thead class="bg-slate-50 text-left"><tr><th class="p-2">Item</th><th class="p-2">PR</th></tr></thead>
+      <tbody id="fixed" class="divide-y divide-slate-100 align-top"></tbody></table></div>
+  </section>
+  <section class="space-y-3">
+    <h2 class="font-serif text-2xl">Signature inventory</h2>
+    <details class="rounded-lg border border-slate-200 bg-white p-3">
+      <summary class="text-sm font-medium">Every public method whose Ruby and Python signatures differ, with its status (<span id="sigcount"></span> rows)</summary>
+      <div class="scroll mt-3"><table class="w-full text-sm">
+        <thead class="bg-slate-50 text-left"><tr><th class="p-2">Method</th><th class="p-2">Differences</th><th class="p-2">Status</th></tr></thead>
+        <tbody id="signatures" class="divide-y divide-slate-100 align-top"></tbody></table></div>
+    </details>
+    <details class="rounded-lg border border-slate-200 bg-white p-3">
+      <summary class="text-sm font-medium">Methods on one side only, and WHITELIST gaps (<span id="gapcount"></span> rows)</summary>
+      <div class="scroll mt-3"><table class="w-full text-sm">
+        <thead class="bg-slate-50 text-left"><tr><th class="p-2">Name</th><th class="p-2">Side</th><th class="p-2">Where</th><th class="p-2">Verdict</th></tr></thead>
+        <tbody id="gaps" class="divide-y divide-slate-100 align-top"></tbody></table></div>
+    </details>
+  </section>
+  <section id="rec" class="rounded-xl deep p-6 sm:p-8 space-y-3"></section>
+  <p id="foot" class="text-xs text-slate-500"></p>
+</main>
+</div>
+<script id="data" type="application/json">{{DATA}}</script>
+<script>
+const D = JSON.parse(document.getElementById('data').textContent);
+// Report data holds trusted prose with inline <code>/<strong>. Render it through
+// an allowlist instead of assigning raw HTML: tags not listed are removed with their
+// content, and only the listed attributes survive (href only for http(s) or #).
+const SAFE_TAGS = new Set(['a', 'article', 'b', 'br', 'code', 'details', 'div', 'em', 'h1', 'h2', 'h3', 'i', 'li', 'ol', 'p', 'pre', 's', 'section', 'small', 'span', 'strong', 'summary', 'table', 'tbody', 'td', 'th', 'thead', 'tr', 'ul']);
+const SAFE_ATTRS = new Set(['class', 'colspan', 'href', 'id', 'open', 'title']);
+function sanitize(node) {
+  for (const child of [...node.childNodes]) {
+    if (child.nodeType === Node.TEXT_NODE) continue;
+    if (child.nodeType !== Node.ELEMENT_NODE || !SAFE_TAGS.has(child.localName)) { child.remove(); continue; }
+    for (const { name, value } of [...child.attributes]) {
+      if (!SAFE_ATTRS.has(name) || (name === 'href' && !/^(https?:|#)/i.test(value))) child.removeAttribute(name);
+    }
+    sanitize(child);
+  }
+}
+// el.cleanHTML = html parses html in el's own context (rows need a table) and
+// replaces el's children with the sanitized nodes.
+Object.defineProperty(Element.prototype, 'cleanHTML', {
+  set(html) {
+    const inTable = ['tbody', 'thead', 'table'].includes(this.localName);
+    const doc = new DOMParser().parseFromString(inTable ? `<table><tbody>${html}</tbody></table>` : html, 'text/html');
+    const root = inTable ? doc.querySelector('tbody') : doc.body;
+    sanitize(root);
+    this.replaceChildren(...root.childNodes);
+  },
+});
+const esc = s => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const IMPACT = { Safety: 'bg-red-100 text-red-800', High: 'bg-orange-100 text-orange-800', Medium: 'bg-yellow-100 text-yellow-800', Low: 'bg-slate-100 text-slate-700' };
+const RIGHT = { ruby: ['bg-rose-100 text-rose-800', 'Ruby is right'], python: ['bg-sky-100 text-sky-800', 'Python is right'], unclear: ['bg-slate-200 text-slate-700', 'Unclear: decide'] };
+const pill = (cls, t) => `<span class="px-2 py-0.5 rounded-full text-xs whitespace-nowrap ${cls}">${t}</span>`;
+const m = D.meta, c = m.counts;
+
+document.getElementById('hdr').cleanHTML = `
+  <p class="lbl text-slate-500">OpenC3 COSMOS · ${esc(m.scope)} · ${esc(m.date)} · main @ ${esc(m.sha)}</p>
+  <h1 class="font-serif text-4xl">Ruby ↔ Python parity review</h1>
+  <div class="prose-c text-sm text-slate-700 space-y-2">${m.intro}</div>
+  <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+    <div class="rounded-lg border border-slate-200 bg-white p-3"><p class="lbl text-slate-500">Behavior findings</p><p class="text-2xl font-serif">${D.findings.length}</p><p class="text-xs text-slate-500">+ ${D.smaller.length} smaller</p></div>
+    <div class="rounded-lg border border-slate-200 bg-white p-3"><p class="lbl text-slate-500">Public methods compared</p><p class="text-2xl font-serif">${c.public}</p><p class="text-xs text-slate-500">${c.ruby_only} Ruby only · ${c.python_only} Python only</p></div>
+    <div class="rounded-lg border border-slate-200 bg-white p-3"><p class="lbl text-slate-500">Signature differences</p><p class="text-2xl font-serif">${c.signatures}</p><p class="text-xs text-slate-500">${c.whitelist} WHITELIST gaps</p></div>
+    <div class="rounded-lg border border-slate-200 bg-white p-3"><p class="lbl text-slate-500">Open PRs checked</p><p class="text-2xl font-serif">${m.prs.length}</p><p class="text-xs text-slate-500">${m.prs.join(' · ')}</p></div>
+  </div>
+  <div class="flex flex-wrap gap-4 text-xs text-slate-600">
+    <span class="flex items-center gap-2"><span class="inline-block w-6 h-4 side right rounded"></span>the side that is right</span>
+    <span class="flex items-center gap-2"><span class="inline-block w-6 h-4 side wrong rounded"></span>the side that drifted</span>
+  </div>`;
+
+if (D.callout) document.getElementById('callout').cleanHTML = `
+  <div class="rounded-xl border-2 border-red-700 bg-red-50 text-red-950 p-5 space-y-2">
+    <p class="lbl text-red-800">Fix first</p><h2 class="font-serif text-2xl">${D.callout.title}</h2><div class="prose-c text-sm space-y-2">${D.callout.body}</div></div>`;
+
+const side = (label, s, state) => `
+  <div class="side ${state} rounded-lg p-3 min-w-0">
+    <div class="flex items-center justify-between gap-2 mb-1"><p class="lbl text-slate-600">${label}</p>${state === 'right' ? pill('bg-emerald-100 text-emerald-800', 'right') : ''}</div>
+    <p class="font-mono text-xs text-slate-500 mb-2 break-words">${esc(s.loc)}</p>
+    <pre class="scroll text-xs leading-relaxed"><code>${esc(s.code)}</code></pre>
+  </div>`;
+
+document.getElementById('findings').cleanHTML = `<h2 class="font-serif text-2xl">Behavior drift</h2>` + D.findings.map((f, i) => {
+  const r = f.right === 'ruby' ? 'right' : (f.right === 'python' ? 'wrong' : '');
+  const p = f.right === 'python' ? 'right' : (f.right === 'ruby' ? 'wrong' : '');
+  return `
+  <article id="f${i + 1}" class="rounded-xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm space-y-4">
+    <div class="flex flex-wrap items-center gap-2">
+      <span class="text-slate-400 font-mono">${String(i + 1).padStart(2, '0')}</span>
+      <h3 class="font-serif text-xl">${f.title}</h3>
+      ${pill(IMPACT[f.impact], f.impact)} ${pill(RIGHT[f.right][0], RIGHT[f.right][1])}
+      ${f.checked ? pill('bg-emerald-50 text-emerald-700', '✓ read') : pill('bg-slate-100 text-slate-500', 'sweep')}
+    </div>
+    <p class="text-xs text-slate-500">Affects: <strong>${esc(f.who)}</strong></p>
+    <div class="grid md:grid-cols-2 gap-3">${side('Ruby', f.ruby, r)}${side('Python', f.python, p)}</div>
+    <div class="grid md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+      <div class="min-w-0"><p class="lbl text-slate-500 mb-1">What differs</p><p>${f.why}</p></div>
+      <div class="min-w-0 space-y-3">
+        <div><p class="lbl text-slate-500 mb-1">Call that behaves differently</p><pre class="scroll text-xs bg-slate-50 rounded p-2"><code>${esc(f.repro)}</code></pre></div>
+        <div><p class="lbl text-slate-500 mb-1">Tests</p><p>${f.tests}</p></div>
+      </div>
+    </div>
+  </article>`;
+}).join('');
+
+document.getElementById('smaller').cleanHTML = D.smaller.map(s => `
+  <tr><td class="p-2">${s.item}</td><td class="p-2 font-mono text-xs">${esc(s.where)}</td><td class="p-2">${pill(RIGHT[s.right][0], RIGHT[s.right][1])}</td><td class="p-2 text-slate-700">${s.note}</td></tr>`).join('');
+document.getElementById('fixed').cleanHTML = D.fixed.map(x => `<tr><td class="p-2">${x.item}</td><td class="p-2 text-xs whitespace-nowrap">${esc(x.pr)}</td></tr>`).join('');
+document.getElementById('sigcount').textContent = D.signatures.length;
+document.getElementById('signatures').cleanHTML = D.signatures.map(s => `
+  <tr><td class="p-2"><code>${esc(s.name)}</code><div class="font-mono text-[11px] text-slate-500">${esc(s.ruby)}<br>${esc(s.python)}</div></td>
+  <td class="p-2 text-xs"><ul class="list-disc pl-4">${s.diffs.map(d => `<li>${esc(d)}</li>`).join('')}</ul></td><td class="p-2 text-xs">${s.status}</td></tr>`).join('');
+document.getElementById('gapcount').textContent = D.gaps.length;
+document.getElementById('gaps').cleanHTML = D.gaps.map(g => `
+  <tr><td class="p-2"><code>${esc(g.name)}</code></td><td class="p-2 text-xs whitespace-nowrap">${esc(g.side)}</td><td class="p-2 font-mono text-xs">${esc(g.where)}</td><td class="p-2 text-xs">${g.verdict}</td></tr>`).join('');
+document.getElementById('rec').cleanHTML = `
+  <p class="lbl">Top recommendation</p><h2 class="font-serif text-2xl">${D.recommendation.headline}</h2>
+  <ol class="prose-c space-y-2 text-sm list-decimal pl-5">${D.recommendation.steps.map(s => `<li>${s}</li>`).join('')}</ol>`;
+document.getElementById('foot').cleanHTML = m.footer || '';
+</script>

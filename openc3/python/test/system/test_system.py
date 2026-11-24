@@ -251,6 +251,28 @@ class TestSystem(unittest.TestCase):
         # Should return DEFAULT when no limits set is configured
         self.assertEqual(result, "DEFAULT")
 
+    def test_limits_set_is_cached_until_set_or_cleared(self):
+        Store.hset("DEFAULT__limits_sets", mapping={"DEFAULT": "true", "TVAC": "false"})
+        reads = []
+
+        class CountingStore:
+            @staticmethod
+            def hgetall(key):
+                reads.append(key)
+                return Store.hgetall(key)
+
+        with patch("openc3.system.system.Store", CountingStore):
+            self.assertEqual(System.limits_set(), "DEFAULT")
+            Store.hset("DEFAULT__limits_sets", mapping={"DEFAULT": "false", "TVAC": "true"})
+            self.assertEqual(System.limits_set(), "DEFAULT")  # Cached
+            self.assertEqual(len(reads), 1)
+            System.set_limits_set("TVAC")
+            self.assertEqual(System.limits_set(), "TVAC")
+            self.assertEqual(len(reads), 1)
+            System.clear_limits_set_cache()
+            self.assertEqual(System.limits_set(), "TVAC")  # Reloaded from Redis
+            self.assertEqual(len(reads), 2)
+
     @patch("openc3.system.system.Bucket")
     def test_setup_targets(self, mock_bucket_class):
         """Test the setup_targets class method"""

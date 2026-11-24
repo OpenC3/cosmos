@@ -364,7 +364,8 @@ class InterfaceCmdHandlerThread:
                         return f"Target {command.target_name} is disabled"
                     return None  # Don't ack disabled targets
             except ValueError as e:
-                # Command parameter out of range is a user error, not a bug,
+                # A command parameter that is out of range, can't be written, or
+                # is required but not given is a user error, not a bug,
                 # so only log the message and not the full stack trace
                 self.logger.error(f"{self.interface.name}: {str(e)}")
                 return str(e)
@@ -401,9 +402,13 @@ class InterfaceCmdHandlerThread:
 
             if self.critical_commanding is not None and self.critical_commanding != "OFF" and not release_critical:
                 restricted = command.restricted
-                if hazardous or restricted or (self.critical_commanding == "ALL" and manual):
+                # Command Sender treats any command as hazardous when range checks are
+                # ignored or parameter conversions are disabled, so require approval
+                # for those manual commands too. Scripts that send this way aren't held.
+                mode_hazardous = manual and (not range_check or raw)
+                if hazardous or mode_hazardous or restricted or (self.critical_commanding == "ALL" and manual):
                     cmd_type = "NORMAL"
-                    if hazardous:
+                    if hazardous or mode_hazardous:
                         cmd_type = "HAZARDOUS"
                     elif restricted:
                         cmd_type = "RESTRICTED"

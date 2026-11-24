@@ -46,10 +46,11 @@ RSpec.describe RunningScript, type: :model do
     before do
       # Only mock the process spawning parts to avoid actual process creation
       process_double = double("process")
-      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
+      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil, stdin: double("stdin", puts: nil, close: nil)))
       allow(process_double).to receive(:cwd=)
       allow(process_double).to receive(:environment).and_return({})
       allow(process_double).to receive(:detach=)
+      allow(process_double).to receive(:duplex=)
       allow(process_double).to receive(:start)
       allow(ChildProcess).to receive(:build).and_return(process_double)
     end
@@ -113,16 +114,17 @@ RSpec.describe RunningScript, type: :model do
 
       process_env_double = {}
       process_double = double("process")
-      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
+      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil, stdin: double("stdin", puts: nil, close: nil)))
       allow(process_double).to receive(:cwd=)
       allow(process_double).to receive(:environment).and_return(process_env_double)
       allow(process_double).to receive(:detach=)
+      allow(process_double).to receive(:duplex=)
       allow(process_double).to receive(:start)
       allow(ChildProcess).to receive(:build).and_return(process_double)
 
       RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
 
-      expect(process_env_double["OPENC3_API_TOKEN"]).to eq("valid_token")
+      expect(process_env_double["OPENC3_API_TOKEN"]).to be_nil
     end
 
     it "raises an error and cleans up script status if offline token is invalid" do
@@ -169,10 +171,11 @@ RSpec.describe RunningScript, type: :model do
 
     it "cleans up script status if process.start raises an error" do
       failing_process = double("process")
-      allow(failing_process).to receive(:io).and_return(double("io", inherit!: nil))
+      allow(failing_process).to receive(:io).and_return(double("io", inherit!: nil, stdin: double("stdin", puts: nil, close: nil)))
       allow(failing_process).to receive(:cwd=)
       allow(failing_process).to receive(:environment).and_return({})
       allow(failing_process).to receive(:detach=)
+      allow(failing_process).to receive(:duplex=)
       allow(failing_process).to receive(:start).and_raise(RuntimeError.new("Failed to start process"))
       allow(ChildProcess).to receive(:build).and_return(failing_process)
 
@@ -184,20 +187,145 @@ RSpec.describe RunningScript, type: :model do
       expect(OpenC3::ScriptStatusModel.count(scope: "DEFAULT", type: "running")).to eq(0)
     end
 
-    it "does not pass unused credentials to the script process" do
-      process_env = {}
-      process_double = double("process", cwd: nil, start: nil)
-      allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
-      allow(process_double).to receive(:cwd=)
-      allow(process_double).to receive(:detach=)
-      allow(process_double).to receive(:environment).and_return(process_env)
-      allow(ChildProcess).to receive(:build).and_return(process_double)
+    context "signing key and stdin secret delivery" do
+      let(:env) { {} }
+      let(:written) { [] }
+      let(:closed) { [false] }
+      let(:process_double) do
+        stdin = double("stdin")
+        allow(stdin).to receive(:puts) { |data| written << data }
+        allow(stdin).to receive(:close) { closed[0] = true }
+        pd = double("process")
+        allow(pd).to receive(:io).and_return(double("io", inherit!: nil, stdin: stdin))
+        allow(pd).to receive(:cwd=)
+        allow(pd).to receive(:environment).and_return(env)
+        allow(pd).to receive(:detach=)
+        allow(pd).to receive(:duplex=)
+        allow(pd).to receive(:start)
+        pd
+      end
 
-      RunningScript.spawn("DEFAULT", "script.rb")
+      before { allow(ChildProcess).to receive(:build).and_return(process_double) }
 
-      OpenC3::ScriptEnv::UNUSED_VARS.each do |key|
-        expect(process_env).to have_key(key)
-        expect(process_env[key]).to be_nil
+      it "stores the signing key in the scope's hash and keeps it off the environment" do
+        id = RunningScript.spawn("DEFAULT", "script.rb")
+        key = OpenC3::Store.hget("script-signing-keys__DEFAULT", id.to_s)
+        expect(key).to match(/\A\h{64}\z/)
+        expect(env.values).not_to include(key)
+        expect(JSON.parse(written.first)["signing_key"]).to eq(key)
+      end
+
+      it "stores the signing key only after the running status exists" do
+        status_exists = nil
+        # Store forwards hset via method_missing
+        without_partial_double_verification do
+          allow(OpenC3::Store).to receive(:hset).and_wrap_original do |original, hash_key, field, value|
+            if hash_key == "script-signing-keys__DEFAULT"
+              status_exists = !OpenC3::ScriptStatusModel.get(name: field, scope: "DEFAULT").nil?
+            end
+            original.call(hash_key, field, value)
+          end
+        end
+        RunningScript.spawn("DEFAULT", "script.rb")
+        expect(status_exists).to be true
+      end
+
+      it "removes signing keys of scripts that are no longer running" do
+        first = RunningScript.spawn("DEFAULT", "script.rb")
+        OpenC3::Store.hset("script-signing-keys__DEFAULT", "999", "d" * 64) # no status (ended)
+        OpenC3::Store.hset("script-signing-keys__OTHER", "998", "e" * 64) # other scope untouched
+        second = RunningScript.spawn("DEFAULT", "script.rb")
+        keys = OpenC3::Store.hkeys("script-signing-keys__DEFAULT")
+        expect(keys).to contain_exactly(first.to_s, second.to_s)
+        expect(OpenC3::Store.hget("script-signing-keys__OTHER", "998")).to eq("e" * 64)
+
+        status = OpenC3::ScriptStatusModel.get_model(name: first.to_s, scope: "DEFAULT")
+        status.state = "completed"
+        status.update
+        third = RunningScript.spawn("DEFAULT", "script.rb")
+        keys = OpenC3::Store.hkeys("script-signing-keys__DEFAULT")
+        expect(keys).to contain_exactly(second.to_s, third.to_s)
+      end
+
+      it "still spawns if removing old signing keys fails" do
+        without_partial_double_verification do
+          allow(OpenC3::Store).to receive(:hkeys).and_raise(Redis::CannotConnectError)
+        end
+        expect(OpenC3::Logger).to receive(:error).with(/Failed to prune script signing keys/)
+        id = RunningScript.spawn("DEFAULT", "script.rb")
+        expect(OpenC3::Store.hget("script-signing-keys__DEFAULT", id.to_s)).to match(/\A\h{64}\z/)
+      end
+
+      it "enables duplex stdin and writes one JSON line then closes stdin (Core)" do
+        allow(ENV).to receive(:[]).and_call_original
+        allow(ENV).to receive(:[]).with('OPENC3_SERVICE_PASSWORD').and_return("svcpw")
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('OPENC3_SERVICE_PASSWORD').and_return("svcpw")
+        allow(ENV).to receive(:fetch).with('OPENC3_API_USER', nil).and_return("svcuser")
+        expect(process_double).to receive(:duplex=).with(true)
+        RunningScript.spawn("DEFAULT", "script.rb")
+        expect(env["OPENC3_API_TOKEN"]).to be_nil
+        expect(env["OPENC3_API_PASSWORD"]).to be_nil
+        expect(written.length).to eq(1)
+        expect(closed[0]).to be true
+        msg = JSON.parse(written.first)
+        expect(msg["auth"]).to eq({ "user" => "svcuser", "password" => "svcpw" })
+      end
+
+      it "sends the offline token as auth (Enterprise)" do
+        model_double = double("model", offline_access_token: "valid_token", update: nil)
+        auth_double = double("auth", get_token_from_refresh_token: true)
+        allow(OpenC3::OpenC3KeycloakAuthentication).to receive(:new).and_return(auth_double)
+        allow(OpenC3::OfflineAccessModel).to receive(:get_model).with(name: "testuser", scope: "DEFAULT").and_return(model_double)
+        RunningScript.spawn("DEFAULT", "script.rb", nil, false, nil, "Test User", "testuser")
+        expect(env["OPENC3_API_TOKEN"]).to be_nil
+        expect(JSON.parse(written.first)["auth"]).to eq({ "token" => "valid_token" })
+      end
+
+      it "scrubs inherited secrets from the child environment but keeps needed ones" do
+        scrub = OpenC3::ScriptEnv::SPAWN_SCRUBBED_VARS
+        sr_secrets = { 'OPENC3_SR_REDIS_USERNAME' => 'sr_user', 'OPENC3_SR_REDIS_PASSWORD' => 'sr_pw',
+                       'OPENC3_SR_BUCKET_USERNAME' => 'sr_bucket', 'OPENC3_SR_BUCKET_PASSWORD' => 'sr_bucket_pw' }
+        saved = (scrub + ['OPENC3_API_USER']).to_h { |k| [k, ENV[k]] }
+        begin
+          scrub.each { |k| ENV[k] = "secret-#{k}" }
+          sr_secrets.each { |k, v| ENV[k] = v }
+          ENV['OPENC3_API_USER'] = 'apiuser'
+          RunningScript.spawn("DEFAULT", "script.rb")
+          scrub.each do |k|
+            expect(env).to have_key(k) # explicitly nil'd so the child does not inherit it
+            expect(env[k]).to be_nil, "#{k} leaked"
+          end
+          expect(env['OPENC3_API_USER']).to eq('apiuser')
+          # The Redis and bucket credentials go over stdin (not /proc/<pid>/environ)
+          expected = { 'OPENC3_REDIS_USERNAME' => 'sr_user', 'OPENC3_REDIS_PASSWORD' => 'sr_pw',
+                       'OPENC3_BUCKET_USERNAME' => 'sr_bucket', 'OPENC3_BUCKET_PASSWORD' => 'sr_bucket_pw' }
+          expect(JSON.parse(written.first)["env"]).to eq(expected)
+        ensure
+          saved.each { |k, v| v.nil? ? ENV.delete(k) : ENV[k] = v }
+        end
+      end
+
+      it "stops the child and deletes the key if the stdin write fails" do
+        allow(process_double.io.stdin).to receive(:puts).and_raise(Errno::EPIPE)
+        expect(process_double).to receive(:stop)
+        expect { RunningScript.spawn("DEFAULT", "script.rb") }.to raise_error(Errno::EPIPE)
+        expect(OpenC3::Store.hkeys("script-signing-keys__DEFAULT")).to be_empty
+      end
+
+      it "deletes the signing key when spawn fails after it is stored" do
+        allow(process_double).to receive(:start).and_raise(RuntimeError.new("boom"))
+        expect { RunningScript.spawn("DEFAULT", "script.rb") }.to raise_error("boom")
+        expect(OpenC3::Store.hkeys("script-signing-keys__DEFAULT")).to be_empty
+      end
+
+      it "does not pass unused credentials to the script process" do
+        RunningScript.spawn("DEFAULT", "script.rb")
+
+        OpenC3::ScriptEnv::UNUSED_VARS.each do |key|
+          expect(env).to have_key(key)
+          expect(env[key]).to be_nil
+        end
       end
     end
 
@@ -205,10 +333,11 @@ RSpec.describe RunningScript, type: :model do
       before do
         process_env = {}
         @process_double = double("process")
-        allow(@process_double).to receive(:io).and_return(double("io", inherit!: nil))
+        allow(@process_double).to receive(:io).and_return(double("io", inherit!: nil, stdin: double("stdin", puts: nil, close: nil)))
         allow(@process_double).to receive(:cwd=)
         allow(@process_double).to receive(:environment).and_return(process_env)
         allow(@process_double).to receive(:detach=)
+        allow(@process_double).to receive(:duplex=)
         allow(@process_double).to receive(:start)
         allow(ChildProcess).to receive(:build).and_return(@process_double)
       end
@@ -305,10 +434,11 @@ RSpec.describe RunningScript, type: :model do
         # Fully stubbed process double that captures its environment
         @process_env = {}
         process_double = double("process")
-        allow(process_double).to receive(:io).and_return(double("io", inherit!: nil))
+        allow(process_double).to receive(:io).and_return(double("io", inherit!: nil, stdin: double("stdin", puts: nil, close: nil)))
         allow(process_double).to receive(:cwd=)
         allow(process_double).to receive(:environment).and_return(@process_env)
         allow(process_double).to receive(:detach=)
+        allow(process_double).to receive(:duplex=)
         allow(process_double).to receive(:start)
         allow(ChildProcess).to receive(:build).and_return(process_double)
         allow(OpenC3::Logger).to receive(:warn)

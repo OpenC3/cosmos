@@ -65,6 +65,7 @@ def print_usage
   puts "  cli irb                           # Runs irb in the local directory"
   puts "  cli script                        # Interact with scripts. Run with --help for more info."
   puts "  cli validate /PATH/FILENAME.gem SCOPE variables.json  # Validate a COSMOS plugin gem file"
+  puts "    OPTIONS: --plugin-hash plugin_hash.json validates a plugin hash of an uploaded gem (used by Admin)"
   puts "  cli load /PATH/FILENAME.gem SCOPE plugin_hash.json    # Loads a COSMOS plugin gem file"
   puts "    OPTIONS: --variables lets you pass a path to a JSON file containing your plugin's variables"
   puts "  cli list <SCOPE>                  # Lists installed plugins, SCOPE is DEFAULT if not given"
@@ -277,6 +278,39 @@ rescue => e
   result = ERROR_CODE
 ensure
   exit(result)
+end
+
+# Validate a plugin hash from the plugin dialog (its variables and possibly
+# edited plugin.txt lines) with a dry run install of its gem, which is fetched
+# from the gem server. Prints the result as JSON on the last line for
+# PluginModel.validate: {"valid":true} or {"valid":false,"error":"..."}
+def validate_plugin_hash(plugin_hash_file, scope:)
+  ENV['OPENC3_NO_STORE'] = '1' # Don't publish the dry run's log messages
+  OpenC3::Logger.stdout = false
+  plugin_hash = JSON.parse(File.read(plugin_hash_file), allow_nan: true, create_additions: true)
+  OpenC3::PluginModel.install_phase2(plugin_hash, scope: scope || 'DEFAULT', validate_only: true)
+  result = { 'valid' => true }
+rescue Exception => e # Anything the plugin's code raises is a validation error
+  result = { 'valid' => false, 'error' => OpenC3::PluginModel.validation_error(e) }
+ensure
+  $stdout.puts JSON.generate(result || { 'valid' => false, 'error' => 'Validation failed' })
+  $stdout.flush
+  exit(result && result['valid'] ? 0 : ERROR_CODE)
+end
+
+# Render the plugin.txt of a plugin hash from the plugin dialog for its
+# preview. Prints {"preview":{...}} on the last line for PluginModel.preview.
+def preview_plugin_hash(plugin_hash_file, scope:)
+  ENV['OPENC3_NO_STORE'] = '1'
+  OpenC3::Logger.stdout = false
+  plugin_hash = JSON.parse(File.read(plugin_hash_file), allow_nan: true, create_additions: true)
+  result = OpenC3::PluginModel.render_preview(plugin_hash, scope: scope || 'DEFAULT')
+rescue Exception => e
+  result = { 'error' => e.message }
+ensure
+  $stdout.puts JSON.generate({ 'preview' => result || { 'error' => 'Preview failed' } })
+  $stdout.flush
+  exit(0)
 end
 
 def update_plugin(plugin_file_path, plugin_name, variables: nil, plugin_txt_lines: nil, scope:, existing_plugin_name:, force: false, username: nil, version_history_files: nil)
@@ -501,6 +535,9 @@ def unload_plugin(plugin_name, scope:)
     begin
       plugin_model = OpenC3::PluginModel.get_model(name: plugin_name, scope: scope)
       plugin_model.destroy
+      # Uninstall-only, like the Version History below: an upgrade keeps the
+      # files uploaded for VARIABLE_FILE
+      OpenC3::PluginModel.cleanup_uploads(plugin_model.variables, scope: scope)
       OpenC3::LocalMode.remove_local_plugin(plugin_name, scope: scope)
       # Remove the backing gem now that no PluginModel references it,
       # so it disappears from the admin Packages tab.
@@ -1054,7 +1091,9 @@ if not ARGV[0].nil? # argument(s) given
 
   when 'validate'
     if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
-      puts "Usage: cli validate PLUGIN.gem [SCOPE] [VARIABLES.json]"
+      puts "Usage:"
+      puts "  cli validate PLUGIN.gem [SCOPE] [VARIABLES.json]"
+      puts "  cli validate --plugin-hash PLUGIN_HASH.json [SCOPE]"
       puts ""
       puts "Validate a COSMOS plugin gem file"
       puts ""
@@ -1064,8 +1103,23 @@ if not ARGV[0].nil? # argument(s) given
       puts "  VARIABLES.json    Variables JSON file (optional)"
       puts ""
       puts "Options:"
+      puts "  --plugin-hash PLUGIN_HASH.json"
+      puts "                    Validate a plugin hash (name, variables and plugin_txt_lines)"
+      puts "                    of a gem on the COSMOS gem server and print the result as JSON."
+      puts "                    Used by the Admin plugin dialog."
+      puts "  --preview PLUGIN_HASH.json"
+      puts "                    Render the plugin.txt of a plugin hash for the Admin plugin"
+      puts "                    dialog preview and print the result as JSON."
       puts "  -h, --help        Show this help message"
       exit(ARGV[1].nil? ? 1 : 0)
+    end
+    if ARGV[1] == '--preview'
+      abort("Usage: cli validate --preview PLUGIN_HASH.json [SCOPE]") unless ARGV[2]
+      preview_plugin_hash(ARGV[2], scope: ARGV[3])
+    end
+    if ARGV[1] == '--plugin-hash'
+      abort("Usage: cli validate --plugin-hash PLUGIN_HASH.json [SCOPE]") unless ARGV[2]
+      validate_plugin_hash(ARGV[2], scope: ARGV[3])
     end
     validate_plugin(ARGV[1], scope: ARGV[2], variables_file: ARGV[3])
 
@@ -1275,14 +1329,14 @@ if not ARGV[0].nil? # argument(s) given
     if ARGV[1].nil? || ARGV[1] == '--help' || ARGV[1] == '-h'
       puts "Usage: cli bridgeenroll BRIDGE_NAME APP_PUBLIC_KEY [SCOPE]"
       puts ""
-      puts "Authorize an openc3-app control identity for a bridge (Iroh hub) and"
-      puts "print that bridge's current connection ticket. Used by openc3-app to"
+      puts "Authorize an openc3-cosmos-app control identity for a bridge (Iroh hub) and"
+      puts "print that bridge's current connection ticket. Used by openc3-cosmos-app to"
       puts "auto-enroll over the local Docker control plane: the bridge then only"
       puts "accepts api/* control connections from the given app identity."
       puts ""
       puts "Arguments:"
       puts "  BRIDGE_NAME       Name of the bridge (hub)"
-      puts "  APP_PUBLIC_KEY    openc3-app's Iroh public key (EndpointId, hex)"
+      puts "  APP_PUBLIC_KEY    openc3-cosmos-app's Iroh public key (EndpointId, hex)"
       puts "  SCOPE             Scope (optional, default: OPENC3_SCOPE or DEFAULT)"
       puts ""
       puts "On success the bridge ticket is printed alone on stdout."
@@ -1304,7 +1358,7 @@ if not ARGV[0].nil? # argument(s) given
     old_app_public_key = model.app_public_key
     model.app_public_key = app_public_key
     model.update
-    # Print ONLY the ticket so openc3-app can capture it from stdout.
+    # Print ONLY the ticket so openc3-cosmos-app can capture it from stdout.
     puts model.ticket
 
   when 'bridgegem'

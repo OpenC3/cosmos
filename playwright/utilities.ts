@@ -24,6 +24,94 @@ export class Utilities {
     await new Promise((resolve) => setTimeout(resolve, time))
   }
 
+  // Call a JSON-RPC API method (e.g. inject_tlm) as the signed in user and
+  // return its result. Fails the test if the call returns an error. JSON has no
+  // NaN or Infinity, so pass those as { json_class: 'Float', raw: 'NaN' }.
+  async api(
+    method: string,
+    params: unknown[],
+    keywordParams: Record<string, unknown> = {},
+  ): Promise<unknown> {
+    const json = await this.page.evaluate(
+      async ({ method, params, keywordParams }) => {
+        const response = await fetch('/openc3-api/api', {
+          method: 'POST',
+          headers: {
+            Authorization: localStorage.openc3Token,
+            'Content-Type': 'application/json-rpc',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method,
+            params,
+            id: 1,
+            keyword_params: { scope: 'DEFAULT', ...keywordParams },
+          }),
+        })
+        return await response.json()
+      },
+      { method, params, keywordParams },
+    )
+    expect(json.error, `${method} returned an error`).toBeUndefined()
+    return json.result
+  }
+
+  // Sign in through the Keycloak form (Enterprise) and wait until the app is
+  // back with a token for this user.
+  //
+  // Waits for the form itself rather than a '**/auth/**' URL, and for the token
+  // rather than a '**/tools/<tool>/**' URL: the form's own URL carries the tool
+  // path in its redirect_uri, so URL globs can match on either side of the sign
+  // in. A sign in that doesn't take then fails here, showing the page it's on,
+  // instead of somewhere later in the test.
+  async signIn(username: string, password: string = username) {
+    await expect(
+      this.page.getByRole('heading', { name: 'Sign in to your account' }),
+    ).toBeVisible({ timeout: 20000 })
+    await this.page.locator('input[name="username"]').fill(username)
+    await this.page.locator('input[name="password"]').fill(password)
+    await this.page.getByRole('button', { name: 'Sign In' }).click()
+    await expect(this.page.locator('.v-app-bar')).toBeVisible({
+      timeout: 20000,
+    })
+    await expect
+      .poll(() => this.signedInUser(), {
+        message: `signed in as ${username}`,
+        timeout: 20000,
+      })
+      .toBe(username)
+  }
+
+  // Username in the app's current token, or undefined when there isn't one
+  async signedInUser(): Promise<string | undefined> {
+    try {
+      return await this.page.evaluate(() => {
+        const token = localStorage.openc3Token
+        if (!token) return undefined
+        const payload = token
+          .split('.')[1]
+          .replaceAll('-', '+')
+          .replaceAll('_', '/')
+        return JSON.parse(atob(payload)).preferred_username
+      })
+    } catch {
+      // Mid-navigation the page has no context to evaluate in; poll again
+      return undefined
+    }
+  }
+
+  // Log out from the user menu in the app bar
+  async logout() {
+    await this.page.locator('[data-test="user-menu"]').click()
+    await this.page.getByRole('button', { name: 'Logout', exact: true }).click()
+  }
+
+  // Log out and sign back in as another user (Enterprise)
+  async switchUser(username: string, password: string = username) {
+    await this.logout()
+    await this.signIn(username, password)
+  }
+
   // Clear every alert toast currently on screen.
   //
   // Clicking an individual toast's dismiss button is fragile three ways, all of
@@ -116,6 +204,75 @@ export class Utilities {
     await this.selectTargetPacketItem(target, packet, item)
     await expect(this.page.locator('[data-test=select-send]')).toBeEnabled()
     await this.page.locator('[data-test=select-send]').click()
+  }
+
+  // Call the JSON-RPC API as the logged in user
+  async api(method: string, params: any[], keywordParams = {}) {
+    return await this.page.evaluate(
+      async ({ method, params, keywordParams }) => {
+        const response = await fetch('/openc3-api/api', {
+          method: 'POST',
+          headers: {
+            Authorization: localStorage.openc3Token,
+            'Content-Type': 'application/json-rpc',
+            manual: 'true',
+          },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method,
+            params,
+            id: 1,
+            keyword_params: { scope: 'DEFAULT', ...keywordParams },
+          }),
+        })
+        return response.json()
+      },
+      { method, params, keywordParams },
+    )
+  }
+
+  // The DEMO receives every packet at its packet time, so inject an
+  // INST MEMDUMP whose received time is different. It's stored, so it skips
+  // the CVT and the realtime streams and only lands in the TSDB, which keeps it
+  // out of every other test. Returns once the TSDB has it.
+  async injectReceivedTimeMemdump(
+    offset: number,
+    packetTime: Date,
+    receivedTime: Date,
+  ) {
+    const injected = await this.api(
+      'inject_tlm',
+      [
+        'INST',
+        'MEMDUMP',
+        { TIMESEC: packetTime.getTime() / 1000, TIMEUS: 0, OFFSET: offset },
+      ],
+      {
+        type: 'RAW',
+        stored: true,
+        received_time: receivedTime.getTime() * 1_000_000, // nanoseconds
+      },
+    )
+    expect(injected.error).toBeUndefined()
+
+    // The TSDB microservice flushes periodically so wait for the row to land
+    const range = {
+      start_time: new Date(packetTime.getTime() - 1000).toISOString(),
+      end_time: new Date(packetTime.getTime() + 1000).toISOString(),
+    }
+    await expect
+      .poll(
+        async () =>
+          JSON.stringify(
+            await this.api(
+              'get_tlm_values',
+              [['INST__MEMDUMP__OFFSET__RAW']],
+              range,
+            ),
+          ),
+        { timeout: 30000 },
+      )
+      .toContain(`${offset}`)
   }
 
   async download(

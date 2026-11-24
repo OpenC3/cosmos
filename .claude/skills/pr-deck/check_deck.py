@@ -9,9 +9,20 @@ import re
 import sys
 from html.parser import HTMLParser
 
+
 # Class names (from template.html) that count as a diagram or visual
 VISUAL_CLASSES = {
-    "flow", "fan", "compare", "phases", "lanes", "matrix", "diagram", "sizebar", "stats", "checks", "snippet",
+    "flow",
+    "fan",
+    "compare",
+    "phases",
+    "lanes",
+    "matrix",
+    "diagram",
+    "sizebar",
+    "stats",
+    "checks",
+    "snippet",
 }
 # Elements whose text counts as prose (diagram labels and code don't)
 PROSE_TAGS = {"p", "li"}
@@ -86,7 +97,7 @@ def main(path):
     if "<!-- SLIDES -->" in html or "{{TITLE}}" in html:
         problems.append("template placeholders were not replaced")
     if not parser.slides:
-        problems.append("no <section class=\"slide\"> elements found")
+        problems.append('no <section class="slide"> elements found')
     if len(parser.slides) > MAX_SLIDES:
         problems.append(f"{len(parser.slides)} slides; the limit is {MAX_SLIDES}")
     for number, slide in enumerate(parser.slides, 1):

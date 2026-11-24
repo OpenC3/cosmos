@@ -73,18 +73,22 @@ module CmdTlmApi
     else
       config.log_level = ENV["LOG_LEVEL"] || :info
     end
+    formatter = OpenC3::CosmosRailsFormatter.new
+    # Resolve the username here, once per request, so the token never enters the logger.
+    # Named (Hash) log_tags need rails_semantic_logger's semantic mode (the default),
+    # which swaps in its own Rack logger. Rails' Rack logger can't resolve them.
     config.log_tags = {
       request_id: :request_id,
-      token: -> request { request.headers['HTTP_AUTHORIZATION'] || request.query_parameters[:authorization] }
+      username: ->(request) { formatter.username(request) }
     }
-    config.rails_semantic_logger.add_file_appender = false
-    # Disable middleware swap - Rails 8.1 API-only apps don't include Rails::Rack::Logger
-    config.rails_semantic_logger.semantic = false
-    config.semantic_logger.add_appender(
-      io: $stdout,
-      formatter: OpenC3::CosmosRailsFormatter.new,
-      # These happen every 5s and clog up the logs
-      filter: -> log { log.message != "Completed #traefik" }
-    )
+    # Declaring appenders replaces the default log/<env>.log file appender
+    config.rails_semantic_logger.appenders do |appenders|
+      appenders.add(
+        io: $stdout,
+        formatter: formatter,
+        # These happen every 5s and clog up the logs
+        filter: -> log { log.message != "Completed #traefik" }
+      )
+    end
   end
 end

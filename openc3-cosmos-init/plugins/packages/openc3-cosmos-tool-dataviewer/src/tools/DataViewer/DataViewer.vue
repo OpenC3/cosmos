@@ -81,6 +81,29 @@
                 </v-btn>
               </v-col>
             </v-row>
+            <v-row dense>
+              <v-col>
+                <!-- Selects which timestamp the start / end times apply to -->
+                <v-radio-group
+                  v-model="config.timeType"
+                  inline
+                  hide-details
+                  :disabled="running"
+                  data-test="time-type"
+                >
+                  <v-radio
+                    label="Packet Time"
+                    value="PACKET"
+                    data-test="packet-time-radio"
+                  />
+                  <v-radio
+                    label="Received Time"
+                    value="RECEIVED"
+                    data-test="received-time-radio"
+                  />
+                </v-radio-group>
+              </v-col>
+            </v-row>
           </v-container>
         </v-expansion-panel-text>
       </v-expansion-panel>
@@ -341,6 +364,7 @@ export default {
       errorText: '',
       connectionFailure: false,
       config: {
+        timeType: 'PACKET',
         tabs: [],
       },
       tabNameDialog: false,
@@ -399,42 +423,20 @@ export default {
   },
   async created() {
     this.api = new OpenC3Api()
-    await this.api
-      .get_setting('time_zone')
-      .then((response) => {
-        if (response) {
-          this.timeZone = response
-        }
-      })
-      .catch((error) => {
-        // Do nothing
-      })
+    try {
+      const response = await this.api.get_setting('time_zone')
+      if (response) {
+        this.timeZone = response
+      }
+    } catch {
+      // Do nothing
+    }
     let now = new Date()
     this.startDate = this.formatDate(now, this.timeZone)
     this.startTime = this.formatTimeHMS(now, this.timeZone)
 
     // Determine if there are any user added widgets
-    Api.get('/openc3-api/widgets').then((response) => {
-      response.data.forEach((widget) => {
-        // Only list the ones following the naming convention DataviewerxxxxxWidget
-        const found = widget.match(/DATAVIEWER([A-Z]+)/)
-        if (found) {
-          Api.get(`/openc3-api/widgets/${widget}`).then((response) => {
-            let label = response.data.label
-            let items = response.data.items
-            if (label === null) {
-              label = response.data.name.slice(10)
-              label = label.charAt(0) + label.slice(1).toLowerCase()
-            }
-            this.components.push({
-              label: label,
-              value: found[0],
-              items: items,
-            })
-          })
-        }
-      })
-    })
+    this.loadUserWidgets()
     this.subscribe()
   },
   mounted: function () {
@@ -447,7 +449,7 @@ export default {
       // Only apply the config if it's not an empty object (config does not exist)
       if (JSON.stringify(config) !== '{}') {
         this.autoStart = true
-        this.config = config
+        this.config = this.withDefaults(config)
       }
     }
   },
@@ -458,6 +460,52 @@ export default {
     this.cable.disconnect()
   },
   methods: {
+    // Only list the widgets following the naming convention DataviewerxxxxxWidget
+    loadUserWidgets: async function () {
+      try {
+        const { data: widgets } = await Api.get('/openc3-api/widgets')
+        const matches = widgets
+          .map((widget) => ({
+            widget,
+            found: widget.match(/DATAVIEWER([A-Z]+)/),
+          }))
+          .filter(({ found }) => found)
+        // allSettled keeps the original widget order and lets one failed
+        // widget request not discard the others
+        const results = await Promise.allSettled(
+          matches.map(({ widget }) => Api.get(`/openc3-api/widgets/${widget}`)),
+        )
+        results.forEach((result, index) => {
+          if (result.status !== 'fulfilled') {
+            console.error(
+              'Unable to load widget',
+              matches[index].widget,
+              result.reason,
+            )
+            return
+          }
+          const response = result.value
+          if (!response.data) {
+            // Widget deleted between list and detail requests
+            console.error('Unable to load widget', matches[index].widget)
+            return
+          }
+          let label = response.data.label
+          if (label === null) {
+            label = response.data.name.slice(10)
+            label = label.charAt(0) + label.slice(1).toLowerCase()
+          }
+          this.components.push({
+            label: label,
+            value: matches[index].found[0],
+            items: response.data.items,
+          })
+        })
+      } catch (error) {
+        // User widgets are optional, don't break DataViewer without them
+        console.error('Unable to load user widgets', error)
+      }
+    },
     packetTitle: function (packet) {
       if (packet.itemName !== undefined) {
         return `${packet.targetName} ${packet.packetName} ${packet.itemName}`
@@ -553,6 +601,9 @@ export default {
               token: localStorage.openc3Token,
               items: itemBased.map(this.itemSubscriptionKey),
               ...this.startEndTime,
+              time_type: this.config.timeType,
+              // Return __packet_time and __received_time so both can be shown
+              include_times: true,
             })
           })
           // An AuthRequiredError means we have no token and are being
@@ -575,6 +626,11 @@ export default {
           // This eliminates duplicates by converted to Set and back to Array
           modeGroups[mode] = [...new Set(modeGroups[mode])]
         })
+        if (modeGroups['RAW'] && this.config.timeType === 'RECEIVED') {
+          this.warningText =
+            'Raw packets are selected by packet time because raw logs are stored by packet time.'
+          this.warning = true
+        }
         OpenC3Auth.updateToken(OpenC3Auth.defaultMinValidity)
           .then((refreshed) => {
             if (refreshed) {
@@ -586,6 +642,9 @@ export default {
                 token: localStorage.openc3Token,
                 packets: modeGroups[mode].map(this.subscriptionKey),
                 ...this.startEndTime,
+                time_type: this.packetTimeType(mode),
+                // Return __packet_time and __received_time so both can be shown
+                include_times: true,
               })
             })
           })
@@ -651,6 +710,8 @@ export default {
               // These fields are always in the item subscription
               newItem['__type'] = item['__type']
               newItem['__time'] = item['__time']
+              newItem['__packet_time'] = item['__packet_time']
+              newItem['__received_time'] = item['__received_time']
               let found = false
               keys.forEach((key) => {
                 if (item[key]) {
@@ -731,16 +792,26 @@ export default {
       let key = `DECOM__TLM__${item.targetName}__${item.packetName}__${item.itemName}__${item.valueType}`
       return key
     },
+    // RECEIVED isn't supported for historical RAW packets because the raw
+    // logs are organized by packet time
+    packetTimeType: function (mode) {
+      return mode === 'RAW' ? 'PACKET' : this.config.timeType
+    },
+    // Configs saved before the time type existed used packet time
+    withDefaults: function (config) {
+      return { ...config, timeType: config.timeType || 'PACKET' }
+    },
     resetConfig: function () {
       this.stop()
       this.receivedPackets = {}
+      this.config.timeType = 'PACKET'
       this.config.tabs = []
     },
     openConfiguration: function (name, routed = false) {
       this.openConfigBase(name, routed, (config) => {
         this.stop()
         this.receivedPackets = {}
-        this.config = config
+        this.config = this.withDefaults(config)
         // Only call start() if autoStart is false like during a reload.
         // Otherwise we might call start before the subscription is valid.
         // See watch on canStart for more info.

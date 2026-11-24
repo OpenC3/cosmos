@@ -125,6 +125,20 @@ TARGET:
           required: true
           description: Number of seconds between flushing rows to the TSDB (default = 5.0)
           values: .+
+    DECOM_UPDATE_INTERVAL:
+      summary: Number of seconds the decom microservice waits before writing decommutated packets to Redis
+      description:
+        The decom microservice queues the decommutated packet stream and Current Value Table (CVT) writes
+        and flushes them to Redis in a single pipelined batch every update interval. Raising this value
+        reduces processor utilization for high rate data at the cost of slower updates. Lowering it gives
+        faster updates but increases processor utilization. Setting it to 0 disables queuing and writes
+        every packet to Redis immediately. This is the decom equivalent of the interface UPDATE_INTERVAL option.
+      since: _Coming Soon_
+      parameters:
+        - name: Interval
+          required: true
+          description: Number of seconds between writes to Redis (default = 0.1, 0 = write immediately)
+          values: .+
     LOG_RETAIN_TIME:
       summary: How long to keep all regular telemetry logs in seconds.
       parameters:
@@ -208,3 +222,18 @@ TARGET:
           values: ^(PROCESS|LOG|DISABLE)$
       example: |
         STORED_LIMITS_MODE DISABLE
+    SHARED_RESOURCE:
+      summary: Only accept commands to this target in the scope where its shared resource is active
+      description:
+        Commands sent to the target in a scope where the shared resource is not active are rejected.
+        The target's own microservices (decom, logging, cleanup) keep running in every scope so telemetry
+        screens, build_cmd, inject_tlm, and historical data still work.
+        See [Shared Resources](plugins#shared-resources).
+      since: _Coming Soon_
+      parameters:
+        - name: Shared Resource Name
+          required: true
+          description: Name of the shared resource. Must only contain letters, numbers, and single underscores.
+          values: .+
+      example: |
+        SHARED_RESOURCE THERMAL_VAC_CHAMBER
